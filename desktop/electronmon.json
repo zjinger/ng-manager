@@ -1,0 +1,10 @@
+{
+  "patterns": [
+    "dist/main/**/*.js",
+    "dist/preload/**/*.js",
+    "!dist/**/*.d.ts",
+    "!dist/**/*.map"
+  ],
+  "ignore": ["dist/**/*.map", "dist/**/*.d.ts"],
+  "exec": "electron . --serve"
+}

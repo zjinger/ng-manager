@@ -1,0 +1,56 @@
+# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build Output
+dist/
+build/
+lib/
+out/
+
+# Env / Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+pm2.log
+
+# Runtime Data
+data/
+storage/
+uploads/
+tmp/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+
+# Test / Coverage
+coverage/
+.nyc_output/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (optional)
+docker-data/
