@@ -1,39 +1,18 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    // File Layout
     "rootDir": "src",
     "outDir": "dist",
-
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "commonjs",
     "target": "ES2022",
-    "types": ["node"],
-    "moduleResolution": "node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node", "electron"],
+    "sourceMap": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "lib": ["esnext"],
-    "removeComments": true,
-    
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
-
-    // Other Outputs
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-
-    // Recommended Options
     "strict": true,
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist/**/*"]
+  "exclude": ["node_modules"]
 }

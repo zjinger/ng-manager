@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
+import { join } from "node:path";
 
 function delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,41 +29,51 @@ export class ServerManager {
 
     async start(): Promise<void> {
         if (this.proc) return;
-
-        const {
-            mode,
-            serverDir,
-            host,
-            port,
-            onLog,
-        } = this.opts;
+        const { mode, serverDir, host, port, onLog } = this.opts;
 
         const env = {
             ...process.env,
             NGM_SERVER_HOST: host,
             NGM_SERVER_PORT: String(port),
-            // 让日志更“开发友好”
             FORCE_COLOR: "1",
         };
 
-        // dev：用 npm run dev（tsx watch）
-        // prod：用 node dist/index.js（后面打包用）
-        const cmd =
-            process.platform === "win32" ? "cmd" : "npm";
-        const args =
-            process.platform === "win32"
-                ? [
-                    "/c",
-                    "npm",
-                    "--prefix",
-                    serverDir,
-                    "run",
-                    mode === "dev" ? "dev" : "start",
-                ]
-                : ["--prefix", serverDir, "run", mode === "dev" ? "dev" : "start"];
+        const isWin = process.platform === "win32";
+
+        let cmd: string;
+        let args: string[] = [];
+        let cwd = serverDir;
+
+        if (mode === "dev") {
+            // ✅ dev：直接用 node 跑 tsx（不走 npm，不依赖 prefix）
+            // 要求：server/package.json 里有 devDependencies: tsx
+            cmd = isWin ? "cmd" : "node";
+            args = isWin
+                ? ["/c", "npm", "run", "start:dev"]
+                : ["run", "start:dev"];
+
+            // if (isWin) {
+            //     args = [
+            //         "/c",
+            //         "node",
+            //         join(serverDir, "node_modules", "tsx", "dist", "cli.mjs"),
+            //         join(serverDir, "src", "index.ts"),
+            //     ];
+            // } else {
+            //     args = [
+            //         join(serverDir, "node_modules", "tsx", "dist", "cli.mjs"),
+            //         join(serverDir, "src", "index.ts"),
+            //     ];
+            // }
+        } else {
+            // ✅ prod：直接 node dist
+            cmd = isWin ? "node.exe" : "node";
+            // args = [join(serverDir, "dist", "index.js")];
+            args = ["dist/index.js"];
+        }
 
         const p = spawn(cmd, args, {
-            cwd: serverDir,
+            cwd: serverDir,   // ✅ 关键：在 serverDir 内执行
             env,
             stdio: "pipe",
             windowsHide: true,

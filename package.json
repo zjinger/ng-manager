@@ -1,0 +1,13 @@
+{
+  "name": "ng-manager",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "build:core": "tsc -b core",
+    "build:server": "tsc -b server",
+    "build:desktop": "tsc -b desktop",
+    "dev:server": "tsx watch server/src/index.ts",
+    "dev:desktop": "tsx watch desktop/src/main/index.ts"
+  }
+}
