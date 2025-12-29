@@ -100,7 +100,8 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "dev": {
-              "buildTarget": "webapp:build:dev"
+              "buildTarget": "webapp:build:dev",
+              "proxyConfig": "proxy.config.json"
             },
             "production": {
               "buildTarget": "webapp:build:production"

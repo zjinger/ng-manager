@@ -1,0 +1,48 @@
+<div class="layout">
+  <div class="left">
+    <div class="start-card">
+      <div class="row">
+        <label>Project</label>
+        <input class="input" [(ngModel)]="projectId" placeholder="p1" />
+      </div>
+
+      <div class="row">
+        <label>Name</label>
+        <input class="input" [(ngModel)]="name" />
+      </div>
+
+      <div class="row">
+        <label>Command</label>
+        <input class="input" [(ngModel)]="command" />
+      </div>
+
+      <div class="row">
+        <label>CWD</label>
+        <input class="input" [(ngModel)]="cwd" />
+      </div>
+
+      <div class="btns">
+        <button class="btn primary" (click)="start()" [disabled]="starting">
+          {{ starting ? 'Starting...' : 'Start' }}
+        </button>
+        <button class="btn" (click)="stopSelected()" [disabled]="!selectedTaskId()">
+          Stop Selected
+        </button>
+      </div>
+
+      @if (startError) {
+      <div class="error">{{ startError }}</div>
+      }
+    </div>
+
+    <ngm-task-list [projectId]="projectId()" [(selectedTaskId)]="selectedTaskId"> </ngm-task-list>
+  </div>
+
+  <div class="right">
+    @if (selectedTaskId()) {
+    <ngm-task-console [taskId]="selectedTaskId()" [tail]="200"></ngm-task-console>
+    } @else {
+    <div class="empty">Select a task to view logs.</div>
+    }
+  </div>
+</div>

@@ -17,19 +17,7 @@ export async function createServer() {
     // system
     await fastify.register(systemRoutes);
     // routes
-    await fastify.register(taskRoutes);
+    await fastify.register(taskRoutes, { prefix: '/api' });
 
     return fastify;
 }
-
-// /* -------------------- standalone start -------------------- */
-
-// if (require.main === module) {
-//     (async () => {
-//         const server = await createServer();
-//         const port = 3000;
-
-//         await server.listen({ port });
-//         console.log(`🚀 server listening on http://localhost:${port}`);
-//     })();
-// }

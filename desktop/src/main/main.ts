@@ -54,7 +54,6 @@ function resolveServerDir() {
 async function boot() {
     const mode = "dev" as const; // 当前阶段先固定 dev。后面 build 时再切 prod
     const serverDir = resolveServerDir();
-    console.log("[desktop] serverDir:", serverDir);
     // ⚠️ dist 输出目录若不同，这里按实际改
     console.log("[desktop] serverDir:", serverDir);
     serverMgr = new ServerManager({

@@ -1,12 +1,20 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { LayoutComponent } from './layout/layout.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.less'
+  imports: [LayoutComponent],
+  template: `<ngm-layout></ngm-layout>`,
+  styles: [
+    `:host {
+        display: block;
+        height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+
+    }`,
+  ]
 })
 export class App {
-  protected readonly title = signal('webapp');
+  protected readonly title = signal('Ng-Manager');
 }

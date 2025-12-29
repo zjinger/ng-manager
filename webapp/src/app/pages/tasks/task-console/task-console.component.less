@@ -1,0 +1,74 @@
+.console-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+
+  .title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+      font-size: 12px;
+      opacity: 0.85;
+    }
+
+    .badge {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+
+      &[data-status='running'] {
+        font-weight: 600;
+      }
+      &[data-status='stopped'] {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+
+    .btn {
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      background: transparent;
+      cursor: pointer;
+    }
+  }
+}
+
+.viewport {
+  flex: 1;
+  padding: 10px 12px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+
+  .line {
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding: 2px 0;
+
+    &[data-stream='stderr'] {
+      font-weight: 600;
+    }
+  }
+}

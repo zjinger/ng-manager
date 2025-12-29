@@ -1,0 +1,12 @@
+<aside class="sidebar" [class.collapsed]="collapsed">
+  @for (item of nav; track item.path) {
+  <div
+    class="nav-item"
+    [class.active]="isActive(item.path)"
+    (click)="router.navigateByUrl(item.path)"
+    [title]="item.label"
+  >
+    <span class="label">{{ item.label }}</span>
+  </div>
+  }
+</aside>

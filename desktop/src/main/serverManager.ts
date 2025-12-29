@@ -29,6 +29,18 @@ export class ServerManager {
 
     async start(): Promise<void> {
         if (this.proc) return;
+
+        // 启动前探测端口，如果已有 server，先杀
+        try {
+            const res = await fetch(`${this.baseUrl}${this.opts.healthPath ?? "/health"}`);
+            if (res.ok) {
+                await this.stop();
+                await delay(300);
+            }
+        } catch {
+            // ignore
+        }
+
         const { mode, serverDir, host, port, onLog } = this.opts;
 
         const env = {
@@ -45,12 +57,21 @@ export class ServerManager {
         let cwd = serverDir;
 
         if (mode === "dev") {
+            const tsxBin = join(
+                serverDir,
+                "node_modules",
+                "tsx",
+                "dist",
+                "cli.mjs"
+            );
             // ✅ dev：直接用 node 跑 tsx（不走 npm，不依赖 prefix）
             // 要求：server/package.json 里有 devDependencies: tsx
-            cmd = isWin ? "cmd" : "node";
-            args = isWin
-                ? ["/c", "npm", "run", "start:dev"]
-                : ["run", "start:dev"];
+            cmd = isWin ? "node.exe" : "node";
+            args = [tsxBin, join(serverDir, "src", "index.ts")];
+            // cmd = isWin ? "cmd" : "node";
+            // args = isWin
+            //     ? ["/c", "npm", "run", "start:dev"]
+            //     : ["run", "start:dev"];
 
             // if (isWin) {
             //     args = [
@@ -72,11 +93,19 @@ export class ServerManager {
             args = ["dist/index.js"];
         }
 
+        // const p = spawn(cmd, args, {
+        //     cwd: serverDir,   // ✅ 关键：在 serverDir 内执行
+        //     env,
+        //     stdio: "pipe",
+        //     windowsHide: true,
+        // });
+
         const p = spawn(cmd, args, {
-            cwd: serverDir,   // ✅ 关键：在 serverDir 内执行
+            cwd: serverDir,
             env,
             stdio: "pipe",
             windowsHide: true,
+            detached: process.platform !== "win32", // *nix 用进程组
         });
 
         this.proc = p;

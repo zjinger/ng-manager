@@ -1,0 +1,10 @@
+<div class="shell" [class.collapsed]="sidebarCollapsed">
+  <ngm-header (toggleSidebar)="toggleSidebar()"></ngm-header>
+
+  <div class="body">
+    <ngm-sidebar [collapsed]="sidebarCollapsed"></ngm-sidebar>
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
