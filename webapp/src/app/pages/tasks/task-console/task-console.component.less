@@ -1,3 +1,9 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .console-card {
   display: flex;
   flex-direction: column;
@@ -12,16 +18,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-
   .title {
     display: flex;
     align-items: center;
     gap: 10px;
+    font-size: 16px;
 
     .id {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-      font-size: 12px;
       opacity: 0.85;
     }
 

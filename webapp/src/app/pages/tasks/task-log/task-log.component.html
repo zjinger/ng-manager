@@ -1,0 +1,44 @@
+<div class="status-bar">
+  <div class="project-path">
+    <div class="home">
+      <nz-icon class="icon" nzType="home" nzTheme="outline"></nz-icon>
+    </div>
+    <div class="pos-path">
+      <nz-icon nzType="folder" class="icon" nzTheme="outline"></nz-icon>
+      <span>/var/www/myapp/tasks/task-processor</span>
+    </div>
+  </div>
+  <div class="last-log" (click)="facade.openLog()" nz-tooltip="打开日志">
+    <nz-icon nzType="profile" class="icon" nzTheme="outline" />
+    <nz-tag nzColor="blue">INFO</nz-tag>
+    <div class="info">Task d:\workspace-dashboard\dashboard\webapp-vue:build was terminated</div>
+    <div class="time">2024-06-10 14:23:45</div>
+  </div>
+</div>
+<nz-drawer
+  [nzVisible]="facade.logOpen()"
+  (nzOnClose)="facade.closeLog()"
+  nzTitle="任务日志"
+  [nzWidth]="720"
+  nzPlacement="bottom"
+>
+  <ng-container *nzDrawerContent>
+    <div class="log-toolbar">
+      <nz-space>
+        <nz-tag>Task: {{ facade.logTaskId() }}</nz-tag>
+        <button nz-button nzSize="small" (click)="facade.clearLog()">
+          <span nz-icon nzType="delete"></span> 清空
+        </button>
+      </nz-space>
+    </div>
+
+    <div class="log">
+      @for (l of lines; track l) {
+      <div class="line" [class.err]="l.type === 'stderr'">
+        <span class="time">{{ l.time | date : 'HH:mm:ss' }}</span>
+        <span class="msg">{{ l.message }}</span>
+      </div>
+      }
+    </div>
+  </ng-container>
+</nz-drawer>

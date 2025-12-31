@@ -1,34 +1,15 @@
-<div class="page">
-  <div class="toolbar">
-    <nz-space nzAlign="center">
-      <nz-select
-        style="width: 240px"
-        [ngModel]="projectId()"
-        (ngModelChange)="projectId.set($event); refresh()"
-        nzPlaceHolder="选择项目"
-      >
-        <nz-option nzValue="default" nzLabel="Default"></nz-option>
-        <!-- 后面接 projects 列表 -->
-      </nz-select>
-
-      <nz-input-group nzPrefixIcon="search">
-        <input
-          nz-input
-          placeholder="搜索任务（name / id）"
-          [ngModel]="keyword()"
-          (ngModelChange)="keyword.set($event)"
-        />
-      </nz-input-group>
-
-      <button nz-button (click)="refresh()">
-        <span nz-icon nzType="reload"></span>
-        刷新
-      </button>
-    </nz-space>
-  </div>
-
-  <nz-card nzTitle="Tasks" [nzBodyStyle]="{ padding: '0' }">
-    <nz-table
+<nz-layout class="page">
+  <nz-layout class="page-tasks">
+    <app-task-list></app-task-list>
+    <nz-content class="content">
+      <app-task-header></app-task-header>
+      <app-task-actions></app-task-actions>
+      <app-task-console [taskId]="'1'"></app-task-console>
+    </nz-content>
+  </nz-layout>
+  <app-task-log></app-task-log>
+  <!-- <nz-card nzTitle="Tasks" [nzBodyStyle]="{ padding: '0' }"> -->
+  <!-- <nz-table
       #tb
       [nzData]="rows()"
       [nzFrontPagination]="false"
@@ -84,14 +65,6 @@
         </tr>
         }
       </tbody>
-    </nz-table>
-  </nz-card>
-
-  <app-task-log-drawer
-    [open]="facade.logOpen()"
-    [taskId]="facade.logTaskId()"
-    [lines]="facade.logLines()"
-    (close)="facade.closeLog()"
-    (clear)="facade.clearLog()"
-  ></app-task-log-drawer>
-</div>
+    </nz-table> -->
+  <!-- </nz-card> -->
+</nz-layout>

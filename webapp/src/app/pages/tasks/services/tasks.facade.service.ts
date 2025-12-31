@@ -19,6 +19,10 @@ export class TasksFacadeService {
     ]);
   }
 
+  setTaskId(taskId: string) {
+    this.logTaskId.set(taskId);
+  }
+
   statusColor(s: TaskStatus) {
     switch (s) {
       case "running": return "green";
@@ -41,11 +45,13 @@ export class TasksFacadeService {
     this.appendLog(taskId, "system", `Stop ${taskId}`);
   }
 
-  openLog(taskId: string) {
-    this.logTaskId.set(taskId);
+  openLog(taskId?: string) {
+    if (taskId) {
+      this.setTaskId(taskId);
+    }
     this.logOpen.set(true);
     // TODO: 订阅 WS：taskId 的 log stream
-    this.appendLog(taskId, "stdout", "hello log...");
+    this.appendLog(this.logTaskId(), "stdout", "hello log...");
   }
 
   closeLog() {

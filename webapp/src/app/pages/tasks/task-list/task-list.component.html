@@ -1,34 +1,43 @@
 <div class="list-card">
   <div class="topbar">
-    <div class="title">Tasks</div>
-    <div class="right">
-      <button class="btn" (click)="refresh()" [disabled]="loading">Refresh</button>
-    </div>
+    <nz-input-wrapper>
+      <nz-icon class="search-icon" nzInputAddonBefore nzType="search" />
+      <input
+        nz-input
+        placeholder="搜索任务（name / id）"
+        [ngModel]="keyword()"
+        (ngModelChange)="keyword.set($event)"
+      />
+    </nz-input-wrapper>
+    <button nz-button (click)="refresh()">
+      <span nz-icon nzType="reload"></span>
+    </button>
   </div>
+  <div class="items-container">
+    @if (error) {
+    <div class="error">{{ error }}</div>
+    } @if (loading) {
+    <div class="hint">Loading...</div>
+    } @else { @if (list.length === 0) {
+    <div class="hint">No tasks for project: {{ projectId }}</div>
+    } @else {
+    <div class="items">
+      @for (t of list; track t.taskId) {
+      <div class="item" [class.active]="t.taskId === selectedTaskId" (click)="select(t.taskId)">
+        <div class="row">
+          <div class="name" [title]="t.name">{{ t.name }}</div>
+          <div class="badge" [attr.data-status]="t.status">{{ badge(t.status) }}</div>
+        </div>
 
-  @if (error) {
-  <div class="error">{{ error }}</div>
-  } @if (loading) {
-  <div class="hint">Loading...</div>
-  } @else { @if (list.length === 0) {
-  <div class="hint">No tasks for project: {{ projectId }}</div>
-  } @else {
-  <div class="items">
-    @for (t of list; track t.taskId) {
-    <div class="item" [class.active]="t.taskId === selectedTaskId" (click)="select(t.taskId)">
-      <div class="row">
-        <div class="name" [title]="t.name">{{ t.name }}</div>
-        <div class="badge" [attr.data-status]="t.status">{{ badge(t.status) }}</div>
+        <div class="meta">
+          <span class="mono">{{ t.taskId }}</span>
+          @if (t.pid) { <span class="sep">·</span><span>pid={{ t.pid }}</span> } @if (t.exitCode !==
+          undefined && t.status === 'stopped') { <span class="sep">·</span
+          ><span>exit={{ t.exitCode }}</span> }
+        </div>
       </div>
-
-      <div class="meta">
-        <span class="mono">{{ t.taskId }}</span>
-        @if (t.pid) { <span class="sep">·</span><span>pid={{ t.pid }}</span> } @if (t.exitCode !==
-        undefined && t.status === 'stopped') { <span class="sep">·</span
-        ><span>exit={{ t.exitCode }}</span> }
-      </div>
+      }
     </div>
-    }
+    } }
   </div>
-  } }
 </div>

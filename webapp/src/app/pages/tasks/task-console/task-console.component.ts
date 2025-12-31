@@ -2,10 +2,14 @@ import { Component, Input, OnDestroy, OnInit, ViewChild, ElementRef } from "@ang
 import { Subscription } from "rxjs";
 import { TaskStreamService, TaskConsoleLine, TaskRuntimeStatus } from "../services/task-stream.service";
 import { FormsModule } from "@angular/forms";
+import { NzButtonModule } from "ng-zorro-antd/button";
+import { NzIconModule } from "ng-zorro-antd/icon";
+import { NzSpaceModule } from "ng-zorro-antd/space";
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 
 @Component({
-  providers: [FormsModule],
   selector: "app-task-console",
+  imports: [FormsModule, NzButtonModule, NzSpaceModule, NzIconModule, NzTooltipModule],
   templateUrl: "./task-console.component.html",
   styleUrls: ["./task-console.component.less"],
 })
@@ -52,6 +56,14 @@ export class TaskConsoleComponent implements OnInit, OnDestroy {
 
   clear() {
     this.stream.clear(this.taskId);
+  }
+
+  toBottom() {
+
+  }
+
+  copy() {
+
   }
 
   private scrollToBottom() {

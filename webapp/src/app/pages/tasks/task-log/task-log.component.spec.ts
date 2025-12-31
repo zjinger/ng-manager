@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TaskLogDrawerComponent } from './task-log-drawer.component';
+import { TaskLogDrawerComponent } from './task-log.component';
 
 describe('TaskLogDrawerComponent', () => {
   let component: TaskLogDrawerComponent;

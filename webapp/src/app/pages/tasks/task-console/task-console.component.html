@@ -1,4 +1,4 @@
-@if (taskId) {
+<!-- @if (taskId) {
 <div class="console-card">
   <div class="header">
     <div class="title">
@@ -31,4 +31,34 @@
     }
   </div>
 </div>
-}
+} -->
+
+<div class="console-card">
+  <div class="header">
+    <div class="title">
+      <nz-icon nzType="desktop" nzTheme="outline" />
+      <div class="id">输出</div>
+    </div>
+    <div class="actions">
+      <nz-space nzAlign="center">
+        <button nz-button (click)="clear()" nz-tooltip="清空日志">
+          <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
+        </button>
+        <button nz-button (click)="copy()" nz-tooltip="复制日志">
+          <nz-icon nzType="copy" nzTheme="outline" />
+        </button>
+        <button nz-button (click)="toBottom()" nz-tooltip="滚动到底部">
+          <nz-icon nzType="vertical-align-bottom" nzTheme="outline" />
+        </button>
+      </nz-space>
+    </div>
+  </div>
+
+  <div #viewport class="viewport">
+    @for (l of lines; track $index) {
+    <div class="line" [attr.data-stream]="l.stream">
+      <span class="text">{{ l.text }}</span>
+    </div>
+    }
+  </div>
+</div>
