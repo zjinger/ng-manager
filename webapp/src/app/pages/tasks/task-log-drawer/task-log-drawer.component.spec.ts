@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { LogViewer } from './log-viewer';
+import { TaskLogDrawerComponent } from './task-log-drawer.component';
 
-describe('LogViewer', () => {
-  let component: LogViewer;
-  let fixture: ComponentFixture<LogViewer>;
+describe('TaskLogDrawerComponent', () => {
+  let component: TaskLogDrawerComponent;
+  let fixture: ComponentFixture<TaskLogDrawerComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LogViewer]
+      imports: [TaskLogDrawerComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(LogViewer);
+    fixture = TestBed.createComponent(TaskLogDrawerComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

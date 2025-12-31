@@ -1,0 +1,27 @@
+.log-toolbar {
+  margin-bottom: 8px;
+}
+
+.log {
+  height: calc(100vh - 160px);
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  .time {
+    opacity: 0.6;
+    margin-right: 8px;
+  }
+}
+.line.err .msg {
+  color: #cf1322;
+}

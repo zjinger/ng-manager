@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { TasksApiService, type TaskRuntime } from "../services/tasks-api.service";
 
 @Component({
-  selector: "ngm-task-list",
+  selector: "app-task-list",
   templateUrl: "./task-list.component.html",
   styleUrls: ["./task-list.component.less"],
 })

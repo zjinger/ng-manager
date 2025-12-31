@@ -1,29 +1,23 @@
 import { Component, Input } from '@angular/core';
 import { Router } from '@angular/router';
-
-type NavItem = {
-  label: string;
-  path: string;
-};
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzLayoutModule } from 'ng-zorro-antd/layout';
+import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { LayoutMenuComponent } from '../menu/layout-menu.component';
 
 @Component({
   selector: 'ngm-sidebar',
-  imports: [],
+  imports: [NzLayoutModule, NzIconModule, NzMenuModule, LayoutMenuComponent],
   templateUrl: './layout-sidebar.component.html',
   styleUrl: './layout-sidebar.component.less',
+  host: {
+    '[class.collapsed]': 'isCollapsed',
+    '[class.ant-layout-sider]': 'true'
+  }
 })
 export class LayoutSidebarComponent {
-  @Input() collapsed = false;
-
-  nav: NavItem[] = [
-    { label: "Dashboard", path: "/dashboard" },
-    { label: "Projects", path: "/projects" },
-    { label: "Tasks", path: "/tasks" },
-    { label: "Settings", path: "/settings" },
-  ];
-
+  @Input() isCollapsed = false;
   constructor(public router: Router) { }
-
   isActive(path: string) {
     return this.router.url.startsWith(path);
   }

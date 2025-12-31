@@ -9,9 +9,6 @@ import { LayoutComponent } from './layout/layout.component';
     `:host {
         display: block;
         height: 100vh;
-        background: var(--bg);
-        color: var(--text);
-
     }`,
   ]
 })

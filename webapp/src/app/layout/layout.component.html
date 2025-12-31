@@ -1,10 +1,12 @@
-<div class="shell" [class.collapsed]="sidebarCollapsed">
-  <ngm-header (toggleSidebar)="toggleSidebar()"></ngm-header>
-
-  <div class="body">
-    <ngm-sidebar [collapsed]="sidebarCollapsed"></ngm-sidebar>
-    <main class="content">
-      <router-outlet></router-outlet>
-    </main>
-  </div>
-</div>
+<nz-layout class="app-layout">
+  <ngm-sidebar [isCollapsed]="isCollapsed"></ngm-sidebar>
+  <nz-layout>
+    <ngm-header [isCollapsed]="isCollapsed" (toggleSidebar)="toggleSidebar()"></ngm-header>
+    <nz-content>
+      <div class="inner-content">
+        <router-outlet></router-outlet>
+      </div>
+    </nz-content>
+    <nz-footer>NG Manager ©2025</nz-footer>
+  </nz-layout>
+</nz-layout>

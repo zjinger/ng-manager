@@ -26,8 +26,23 @@
                 "output": "/assets/"
               }
             ],
-            "styles": ["src/styles.less"],
-            "scripts": []
+            "styles": [
+              "src/styles.less",
+              {
+                "input": "src/styles/default.less",
+                "bundleName": "default",
+                "inject": false
+              },
+              {
+                "input": "src/styles/dark.less",
+                "bundleName": "dark",
+                "inject": false
+              }
+            ],
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": ["src/styles/themes"]
+            }
           },
           "configurations": {
             "dev": {

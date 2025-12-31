@@ -4,9 +4,8 @@ import { TaskStreamService, TaskConsoleLine, TaskRuntimeStatus } from "../servic
 import { FormsModule } from "@angular/forms";
 
 @Component({
-  standalone: true,
   providers: [FormsModule],
-  selector: "ngm-task-console",
+  selector: "app-task-console",
   templateUrl: "./task-console.component.html",
   styleUrls: ["./task-console.component.less"],
 })

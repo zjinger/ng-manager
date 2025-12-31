@@ -1,18 +1,32 @@
-.shell {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+@import 'mixin';
 
-.body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
+.themeMixin({
+  :host {
+    .inner-content {
+      background: @layout-trigger-background;
+    }
+  }
+});
 
-.content {
-  flex: 1;
-  padding: 16px;
-  overflow: auto;
-  background: var(--bg);
+:host {
+  display: flex;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  .app-layout {
+    height: 100vh;
+    width: 100%;
+    flex-direction: row;
+  }
+  nz-content {
+    margin: 8px;
+    .inner-content {
+      border-radius: 8px;
+      padding: 12px;
+      height: 100%;
+    }
+  }
+  nz-footer {
+    text-align: center;
+  }
 }

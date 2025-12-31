@@ -1,33 +1,57 @@
-.sidebar {
-  width: 200px;
-  background: var(--panel-2);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  padding: 8px;
-  transition: width 0.2s ease;
-
-  &.collapsed {
-    width: 56px;
-
-    .label {
-      display: none;
+@import 'mixin';
+.themeMixin({
+  :host {
+   .sidebar-logo {
+    background: var(--ant-primary-1);
+      h1 {
+        color: var(--ant-text-color);
+      }
     }
+  }
+});
+
+:host {
+  display: block;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
+  width: 256px;
+  transition: all 0.2s;
+  flex: 0 0 auto;
+  &.collapsed {
+    width: 80px;
+  }
+}
+.menu-sidebar {
+  height: 100%;
+  ::ng-deep .ant-menu-inline {
+    border-right: none;
   }
 }
 
-.nav-item {
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: var(--muted);
+.sidebar-logo {
+  position: relative;
+  height: 64px;
+  padding-left: 24px;
+  overflow: hidden;
+  line-height: 64px;
+  transition: all 0.3s;
+}
 
-  &.active {
-    background: rgba(79, 140, 255, 0.15);
-    color: var(--text);
-  }
+.sidebar-logo img {
+  display: inline-block;
+  height: 32px;
+  width: 32px;
+  vertical-align: middle;
+}
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
+.sidebar-logo h1 {
+  display: inline-block;
+  margin: 0 0 0 20px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
+  vertical-align: middle;
 }

@@ -1,48 +1,97 @@
-<div class="layout">
-  <div class="left">
-    <div class="start-card">
-      <div class="row">
-        <label>Project</label>
-        <input class="input" [(ngModel)]="projectId" placeholder="p1" />
-      </div>
+<div class="page">
+  <div class="toolbar">
+    <nz-space nzAlign="center">
+      <nz-select
+        style="width: 240px"
+        [ngModel]="projectId()"
+        (ngModelChange)="projectId.set($event); refresh()"
+        nzPlaceHolder="选择项目"
+      >
+        <nz-option nzValue="default" nzLabel="Default"></nz-option>
+        <!-- 后面接 projects 列表 -->
+      </nz-select>
 
-      <div class="row">
-        <label>Name</label>
-        <input class="input" [(ngModel)]="name" />
-      </div>
+      <nz-input-group nzPrefixIcon="search">
+        <input
+          nz-input
+          placeholder="搜索任务（name / id）"
+          [ngModel]="keyword()"
+          (ngModelChange)="keyword.set($event)"
+        />
+      </nz-input-group>
 
-      <div class="row">
-        <label>Command</label>
-        <input class="input" [(ngModel)]="command" />
-      </div>
-
-      <div class="row">
-        <label>CWD</label>
-        <input class="input" [(ngModel)]="cwd" />
-      </div>
-
-      <div class="btns">
-        <button class="btn primary" (click)="start()" [disabled]="starting">
-          {{ starting ? 'Starting...' : 'Start' }}
-        </button>
-        <button class="btn" (click)="stopSelected()" [disabled]="!selectedTaskId()">
-          Stop Selected
-        </button>
-      </div>
-
-      @if (startError) {
-      <div class="error">{{ startError }}</div>
-      }
-    </div>
-
-    <ngm-task-list [projectId]="projectId()" [(selectedTaskId)]="selectedTaskId"> </ngm-task-list>
+      <button nz-button (click)="refresh()">
+        <span nz-icon nzType="reload"></span>
+        刷新
+      </button>
+    </nz-space>
   </div>
 
-  <div class="right">
-    @if (selectedTaskId()) {
-    <ngm-task-console [taskId]="selectedTaskId()" [tail]="200"></ngm-task-console>
-    } @else {
-    <div class="empty">Select a task to view logs.</div>
-    }
-  </div>
+  <nz-card nzTitle="Tasks" [nzBodyStyle]="{ padding: '0' }">
+    <nz-table
+      #tb
+      [nzData]="rows()"
+      [nzFrontPagination]="false"
+      [nzShowPagination]="false"
+      nzSize="middle"
+    >
+      <thead>
+        <tr>
+          <th style="width: 44px"></th>
+          <th>任务</th>
+          <th style="width: 120px">分组</th>
+          <th style="width: 140px">状态</th>
+          <th style="width: 260px">操作</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        @for (r of tb.data; track r.def.id) {
+        <tr>
+          <td>
+            <app-task-status-badge [status]="r.rt.status"></app-task-status-badge>
+          </td>
+
+          <td>
+            <div class="task-title">
+              <div class="name">{{ r.def.name }}</div>
+              <div class="id">{{ r.def.id }}</div>
+            </div>
+          </td>
+
+          <td>
+            @if(r.def.group){
+            <nz-tag>{{ r.def.group }}</nz-tag>
+            }@else{ — }
+          </td>
+
+          <td>
+            <nz-tag [nzColor]="facade.statusColor(r.rt.status)">
+              {{ r.rt.status }}
+              @if(r.rt.pid){
+              <span> · PID {{ r.rt.pid }}</span>
+              }
+            </nz-tag>
+          </td>
+          <td>
+            <app-task-actions
+              [row]="r"
+              (run)="facade.run(r.def.id)"
+              (stop)="facade.stop(r.def.id)"
+              (log)="openLog(r)"
+            ></app-task-actions>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </nz-table>
+  </nz-card>
+
+  <app-task-log-drawer
+    [open]="facade.logOpen()"
+    [taskId]="facade.logTaskId()"
+    [lines]="facade.logLines()"
+    (close)="facade.closeLog()"
+    (clear)="facade.clearLog()"
+  ></app-task-log-drawer>
 </div>

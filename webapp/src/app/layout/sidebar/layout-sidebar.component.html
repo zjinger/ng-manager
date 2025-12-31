@@ -1,12 +1,16 @@
-<aside class="sidebar" [class.collapsed]="collapsed">
-  @for (item of nav; track item.path) {
-  <div
-    class="nav-item"
-    [class.active]="isActive(item.path)"
-    (click)="router.navigateByUrl(item.path)"
-    [title]="item.label"
-  >
-    <span class="label">{{ item.label }}</span>
+<nz-sider
+  class="menu-sidebar"
+  nzCollapsible
+  nzWidth="256px"
+  nzBreakpoint="md"
+  [(nzCollapsed)]="isCollapsed"
+  [nzTrigger]="null"
+>
+  <div class="sidebar-logo">
+    <a href="https://ng.ant.design/" target="_blank">
+      <img src="https://ng.ant.design/assets/img/logo.svg" alt="logo" />
+      <h1>Ant Design Of Angular</h1>
+    </a>
   </div>
-  }
-</aside>
+  <ngm-menu [isCollapsed]="isCollapsed"></ngm-menu>
+</nz-sider>

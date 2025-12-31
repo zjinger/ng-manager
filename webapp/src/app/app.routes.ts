@@ -18,4 +18,8 @@ export const routes: Routes = [
         path: 'projects',
         loadChildren: () => import('./pages/projects/projects-module').then(m => m.ProjectsModule)
     },
+    {
+        path: 'settings',
+        loadChildren: () => import('./pages/setting/setting-module').then(m => m.SettingModule)
+    }
 ];

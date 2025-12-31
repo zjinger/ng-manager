@@ -1,11 +1,22 @@
-<header class="topbar">
+<!-- <header class="topbar">
   <button class="icon-btn" (click)="toggleSidebar.emit()">☰</button>
 
   <div class="title">NG Manager</div>
 
   <div class="spacer"></div>
 
-  <!-- 状态灯（后续接 /health + ws） -->
+   状态灯（后续接 /health + ws） 
   <div class="status ok">● Server</div>
   <div class="status ok">● WS</div>
-</header>
+</header> -->
+
+<nz-header>
+  <div class="app-header">
+    <span class="header-trigger" (click)="toggleSidebar.emit()">
+      <i class="trigger" nz-icon [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"></i>
+    </span>
+    <span class="header-trigger" (click)="toggleTheme()">
+      <i class="trigger" nz-icon nzType="skin" nzTheme="outline"></i>
+    </span>
+  </div>
+</nz-header>

@@ -1,0 +1,11 @@
+<nz-space>
+  <button nz-button nzType="primary" [disabled]="isRunning" (click)="run.emit()">
+    <span nz-icon nzType="play-circle"></span> 运行
+  </button>
+
+  <button nz-button nzDanger [disabled]="!isRunning" (click)="stop.emit()">
+    <span nz-icon nzType="stop"></span> 停止
+  </button>
+
+  <button nz-button (click)="log.emit()"><span nz-icon nzType="file-text"></span> 日志</button>
+</nz-space>
