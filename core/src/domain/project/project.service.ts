@@ -1,3 +1,4 @@
+import { ProjectMeta } from "./project.meta";
 import { Project } from "./project.model";
 
 export interface CreateProjectInput {
@@ -13,4 +14,8 @@ export interface ProjectService {
     create(input: CreateProjectInput): Promise<Project>;
     update(id: string, patch: Partial<Omit<Project, "id" | "createdAt">>): Promise<Project>;
     remove(id: string): Promise<void>;
+    // 从磁盘重新扫描并回填 scripts
+    refreshScripts(id: string): Promise<Project>;
+    // 扫描指定路径，得到 ProjectMeta
+    scan(root: string): Promise<ProjectMeta>;
 }
