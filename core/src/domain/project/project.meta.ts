@@ -27,6 +27,8 @@ export interface ProjectMeta {
         }[];
     };
 
+    hasGit?: boolean;
+
     vite?: {
         configPath?: string;
     };
