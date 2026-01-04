@@ -5,9 +5,10 @@ import { routes } from './app.routes';
 import { zh_CN, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { registerLocaleData } from '@angular/common';
 import zh from '@angular/common/locales/zh';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { AppInitializerProvider } from './app-initializer.service';
+import { httpErrorInterceptor } from './core/http/http-error.interceptor';
 
 registerLocaleData(zh);
 
@@ -19,6 +20,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideNzI18n(zh_CN),
     provideAnimationsAsync(),
-    provideHttpClient()
+    provideHttpClient(
+      withInterceptors([httpErrorInterceptor])
+    )
   ]
 };
