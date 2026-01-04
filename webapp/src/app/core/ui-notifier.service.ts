@@ -1,9 +1,10 @@
 import { Injectable } from "@angular/core";
 import { NzMessageService } from "ng-zorro-antd/message";
+import { NzModalService } from "ng-zorro-antd/modal";
 
 @Injectable({ providedIn: "root" })
 export class UiNotifierService {
-    constructor(private msg: NzMessageService) { }
+    constructor(private msg: NzMessageService, private modalService: NzModalService) { }
 
     error(text: string, meta?: any) {
         this.msg.error(text);
@@ -16,5 +17,23 @@ export class UiNotifierService {
 
     info(text: string) {
         this.msg.info(text);
+    }
+
+    modal(text: string, action?: any) {
+        this.modalService.error({
+            nzTitle: '错误',
+            nzContent: text,
+            nzOnOk: () => {
+                if (action?.reload) {
+                    window.location.reload();
+                } else if (action?.redirect) {
+                    window.location.href = action.redirect;
+                }
+            }
+        });
+    }
+
+    banner(text: string, action?: any) {
+        
     }
 }
