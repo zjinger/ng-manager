@@ -4,6 +4,7 @@ import type { CoreEventMap } from "../infra/event/events";
 import type { ILogStore } from "../infra/log/log.store";
 import type { TaskService } from "../domain/task/task.service";
 import { ProjectService } from "../domain/project/project.service";
+import { LoggerService } from "../domain/logger/logger.service";
 
 /**
  * 创建 CoreApp 的参数
@@ -26,6 +27,9 @@ export interface CoreApp {
 
     /** 日志存储（ring buffer） */
     log: ILogStore;
+
+    /** 日志服务（封装日志写入与事件通知） */
+    logger: LoggerService;
 
     /** 任务执行与管理 */
     task: TaskService;

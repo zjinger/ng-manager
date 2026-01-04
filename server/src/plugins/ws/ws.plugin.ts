@@ -1,77 +1,11 @@
-import fp from "fastify-plugin";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
-
-import { Events, AppError } from "@core";
-
-/* ---------------- WS 协议 ---------------- */
-type WsConn = {
-    socket: {
-        readyState: number;
-        send(data: string): void;
-        on(event: "message", cb: (data: any) => void): void;
-        on(event: "close", cb: () => void): void;
-    };
-};
-
-type WsClientMsg =
-    | { op: "ping" }
-    | { op: "sub"; topic: "task"; taskId: string; tail?: number }
-    | { op: "unsub"; topic: "task"; taskId: string };
-
-
-type WsServerMsg =
-    | { op: "hello"; connId: string; ts: number }
-    | { op: "pong"; ts: number }
-    | { op: "log"; taskId: string; entry: any }
-    | { op: "status"; taskId: string; event: string; payload: any }
-    | { op: "error"; code: string; message: string; details?: any; ts: number; connId?: string };
-
-/* ---------------- utils ---------------- */
-function wsError(conn: WsConn, code: string, message: string, details?: any, connId?: string) {
-    send(conn, { op: "error", code, message, details, ts: Date.now(), connId });
-}
-
-function fromUnknownWsError(e: any) {
-    return { code: "INTERNAL_ERROR", message: e?.message || "Unknown error", details: undefined };
-}
-
-function fromCoreError(e: any) {
-    if (e instanceof AppError) {
-        return { code: e.code, message: e.message, details: e.meta };
-    }
-    return fromUnknownWsError(e);
-}
-
-function send(conn: WsConn, msg: WsServerMsg) {
-    if (conn.socket.readyState === 1) {
-        conn.socket.send(JSON.stringify(msg));
-    }
-}
-
-function safeSend(conn: WsConn, msg: WsServerMsg) {
-    try {
-        send(conn, msg);
-    } catch {
-        // ignore: 防止广播链路被某个连接拖死
-    }
-}
-
-/* ---------------- topic extension point ---------------- */
-
-type TopicHandler = {
-    // 校验消息是否有效（可选）
-    validate?: (msg: any) => { ok: true } | { ok: false; code: string; message: string; details?: any };
-
-    // 订阅
-    sub: (ctx: { connId: string; conn: WsConn }, msg: any) => Promise<void> | void;
-
-    // 取消订阅
-    unsub: (ctx: { connId: string; conn: WsConn }, msg: any) => Promise<void> | void;
-};
-
-
-/* ---------------- plugin ---------------- */
+import fp from "fastify-plugin";
+import { Events } from "@core";
+import { WsClientMsg, WsConn } from "./ws.types";
+import { mapWsError, safeSend, wsError } from "./ws.utils";
+import { TopicHandler } from "./topics/topic.types";
+import { createTaskTopic } from "./topics/task.topic";
 
 export default fp(async function wsPlugin(fastify: FastifyInstance) {
 
@@ -88,12 +22,10 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     }
 
     /* ---------- core events bridge ---------- */
-
     // task stdout / stderr
     fastify.core.events.on(Events.TASK_OUTPUT, (e) => {
         try {
             const { taskId, text, stream } = e;
-
             for (const [connId, conn] of conns) {
                 if (isSub(connId, taskId)) {
                     safeSend(conn, {
@@ -140,36 +72,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     /* ---------- topics registry ---------- */
     const topics = new Map<string, TopicHandler>();
     // topic: task
-    topics.set("task", {
-        validate: (msg) => {
-            if (!msg?.taskId || typeof msg.taskId !== "string") {
-                return { ok: false as const, code: "INVALID_MSG", message: "taskId required", details: { msg } };
-            }
-            if (msg.tail !== undefined && typeof msg.tail !== "number") {
-                return { ok: false as const, code: "INVALID_MSG", message: "tail must be number", details: { msg } };
-            }
-            return { ok: true as const };
-        },
-
-        sub: async ({ connId, conn }, msg: { taskId: string; tail?: number }) => {
-            subs.get(connId)!.add(msg.taskId);
-
-            // 订阅时推历史日志
-            const tail = Math.min(Math.max(msg.tail ?? 200, 1), 2000);
-            const entries = fastify.core.log.tail(tail, { refId: msg.taskId });
-            for (const entry of entries) {
-                safeSend(conn, { op: "log", taskId: msg.taskId, entry });
-            }
-
-            // 推一次当前状态（snapshot）
-            const status = await fastify.core.task.status(msg.taskId);
-            safeSend(conn, { op: "status", taskId: msg.taskId, event: "snapshot", payload: status });
-        },
-
-        unsub: ({ connId }, msg: { taskId: string }) => {
-            subs.get(connId)?.delete(msg.taskId);
-        },
-    });
+    topics.set("task", createTaskTopic(fastify, subs));
 
     /* ---------- websocket route ---------- */
     fastify.get("/ws", { websocket: true }, (conn) => {
@@ -229,7 +132,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
 
                 wsError(conn, "UNSUPPORTED_OP", "unsupported op", { msg }, connId);
             } catch (e) {
-                const mapped = fromCoreError(e);
+                const mapped = mapWsError(e);
                 wsError(conn, mapped.code, mapped.message, mapped.details, connId);
             }
         });

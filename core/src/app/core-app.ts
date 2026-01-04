@@ -15,6 +15,7 @@ import { ProjectServiceImpl } from "../domain/project/project.service.impl";
 import * as path from "path";
 import * as os from "os";
 import { JsonProjectRepo } from "../infra/storage/project.repo.json";
+import { LoggerService } from "../domain/logger/logger.service";
 
 /**
  * 创建 CoreApp
@@ -31,6 +32,8 @@ export function createCoreApp(
 
     // 日志存储（ring buffer）
     const log = new RingLogStore(opts.logCapacity ?? 2000);
+
+    const logger = new LoggerService(log, events);
 
     /* ------------------ process ------------------ */
 
@@ -63,6 +66,7 @@ export function createCoreApp(
     return {
         events,
         log,
+        logger,
         task,
         project,
     };
