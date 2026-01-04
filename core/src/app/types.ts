@@ -3,6 +3,7 @@ import type { IEventBus } from "../infra/event/event-bus";
 import type { CoreEventMap } from "../infra/event/events";
 import type { ILogStore } from "../infra/log/log.store";
 import type { TaskService } from "../domain/task/task.service";
+import { ProjectService } from "../domain/project/project.service";
 
 /**
  * 创建 CoreApp 的参数
@@ -11,6 +12,8 @@ import type { TaskService } from "../domain/task/task.service";
 export interface CreateCoreAppOptions {
     /** 内存日志最大条数 */
     logCapacity?: number;
+    /** 数据目录（存储项目列表等） */
+    dataDir?: string;
 }
 
 /**
@@ -26,4 +29,7 @@ export interface CoreApp {
 
     /** 任务执行与管理 */
     task: TaskService;
+
+    /** 项目管理 */
+    project: ProjectService;
 }

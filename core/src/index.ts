@@ -15,3 +15,7 @@ export * from "./infra/log/ring-log-store";
 
 export * from "./domain/task/task.model";
 export * from "./domain/task/task.service";
+
+export * from "./domain/project/project.model";
+export * from "./domain/project/project.service";
+export * from "./domain/project/project.scanner";

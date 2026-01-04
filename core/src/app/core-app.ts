@@ -1,4 +1,4 @@
-// src/core/app/core-app.ts
+// src/app/core-app.ts
 
 import type { CoreApp, CreateCoreAppOptions } from "./types";
 
@@ -11,6 +11,10 @@ import { NodeProcessDriver } from "../infra/process/node-process.driver";
 import { ProcessService } from "../domain/process/process.service";
 
 import { TaskServiceImpl } from "../domain/task/task.service.impl";
+import { ProjectServiceImpl } from "../domain/project/project.service.impl";
+import * as path from "path";
+import * as os from "os";
+import { JsonProjectRepo } from "../infra/storage/project.repo.json";
 
 /**
  * 创建 CoreApp
@@ -45,11 +49,21 @@ export function createCoreApp(
         events
     );
 
+    /* ------------------ project ------------------ */
+
+    const dataDir =
+        opts.dataDir ??
+        path.join(os.homedir(), ".ng-manager"); // ✅ 非 Electron 场景默认落这里
+    const projectRepo = new JsonProjectRepo(dataDir);
+    const project = new ProjectServiceImpl(
+        projectRepo
+    )
     /* ------------------ core app ------------------ */
 
     return {
         events,
         log,
         task,
+        project,
     };
 }

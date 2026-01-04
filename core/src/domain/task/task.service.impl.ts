@@ -1,11 +1,12 @@
-import type { TaskService } from "./task.service";
-import type { TaskRuntime, TaskSpec } from "./task.model";
 import { AppError } from "../../common/errors";
 import { genId } from "../../common/id";
-import type { ILogStore } from "../../infra/log/log.store";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { Events, type CoreEventMap } from "../../infra/event/events";
+import type { ILogStore } from "../../infra/log/log.store";
 import { ProcessService } from "../process/process.service";
+import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
+import type { TaskRuntime, TaskSpec, TaskView } from "./task.model";
+import type { TaskService } from "./task.service";
 
 function bufToText(b: Buffer) {
     // 统一转 utf8，后续需要 gbk，可在这里扩展
@@ -175,4 +176,50 @@ export class TaskServiceImpl implements TaskService {
     async listByProject(projectId: string): Promise<TaskRuntime[]> {
         return Array.from(this.runtimes.values()).filter((r) => r.projectId === projectId);
     }
+
+    async listSpecsByProject(projectId: string): Promise<TaskSpec[]> {
+        return Array.from(this.specs.values()).filter(s => s.projectId === projectId);
+    }
+
+    /**
+     * 生成 TaskSpec（写入 specs Map，并返回）.从 Project.scripts 同步
+     */
+    async syncSpecsFromProjectScripts(
+        projectId: string,
+        rootDir: string,
+        scripts: Record<string, string>
+    ): Promise<TaskSpec[]> {
+        const specs = genSpecsFromScripts(projectId, rootDir, scripts, "npm");
+
+        // 先清理该 projectId 的旧 specs
+        for (const [id, s] of this.specs.entries()) {
+            if (s.projectId === projectId) this.specs.delete(id);
+        }
+
+        // 写入 specs map
+        for (const s of specs) this.specs.set(s.id, s);
+
+        this.log.append({
+            ts: Date.now(),
+            level: "info",
+            source: "system",
+            refId: projectId,
+            text: `[task] synced ${specs.length} specs from project scripts`,
+        });
+
+        return specs;
+    }
+
+    async listViewsByProject(projectId: string): Promise<TaskView[]> {
+        const specs = await this.listSpecsByProject(projectId);
+        const runtimes = await this.listByProject(projectId);
+        // runtime 按 name 建索引（同项目下 name 通常唯一：dev/build/test）
+        const rtByName = new Map<string, (typeof runtimes)[number]>();
+        for (const rt of runtimes) rtByName.set(rt.name, rt);
+        return specs.map((spec) => ({
+            spec,
+            runtime: rtByName.get(spec.name),
+        }));
+    }
+
 }

@@ -1,6 +1,7 @@
 export type ErrorCode =
     | "PROJECT_NOT_FOUND"
     | "PROJECT_ROOT_INVALID"
+    | "PROJECT_ALREADY_EXISTS"
     | "TASK_ALREADY_RUNNING"
     | "TASK_NOT_FOUND"
     | "PROCESS_SPAWN_FAILED"

@@ -1,5 +1,7 @@
 export type TaskStatus = "idle" | "running" | "stopped" | "failed";
 
+export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
+
 export interface TaskSpec {
     id: string;
     projectId: string;
@@ -23,6 +25,17 @@ export interface TaskRuntime {
 
     exitCode?: number | null;
     signal?: string | null;
-    
+
     lastError?: string;
+}
+
+
+export interface TaskView {
+    spec: TaskSpec;
+    runtime?: TaskRuntime; // 没运行过则为空
+}
+
+export interface TaskView {
+    spec: TaskSpec;
+    runtime?: TaskRuntime; // 没运行过则为空
 }

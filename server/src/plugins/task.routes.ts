@@ -1,9 +1,48 @@
-// src/server/plugins/task.routes.ts
-
-import type { FastifyInstance } from "fastify";
 import { AppError } from "@core";
+import type { FastifyInstance } from "fastify";
 
 export default async function taskRoutes(fastify: FastifyInstance) {
+    /**
+ * 获取 task views（spec + runtime 聚合）
+ * GET /projects/:projectId/task-views
+ */
+    fastify.get("/projects/:projectId/task-views", async (req, reply) => {
+        try {
+            const { projectId } = req.params as { projectId: string };
+            // 可选：确保项目存在（更友好 404）
+            await fastify.core.project.get(projectId);
+            return await fastify.core.task.listViewsByProject(projectId);
+        } catch (e) {
+            return handleError(e, reply);
+        }
+    });
+    // 同步该项目的 task specs（根据 rootDir 扫描 + scripts 生成）
+    fastify.post("/projects/:projectId/tasks/sync", async (req, reply) => {
+        try {
+            const { projectId } = req.params as { projectId: string };
+            // 从 ProjectService 读取持久化项目
+            const proj = await fastify.core.project.get(projectId);
+            const specs = await fastify.core.task.syncSpecsFromProjectScripts(
+                projectId,
+                proj.root,
+                proj.scripts ?? {}
+            );
+            return { projectId, specs };
+        } catch (e) {
+            return handleError(e, reply);
+        }
+    });
+
+    // 列出该项目的 task specs
+    fastify.get("/projects/:projectId/task-specs", async (req, reply) => {
+        try {
+            const { projectId } = req.params as { projectId: string };
+            return await fastify.core.task.listSpecsByProject(projectId);
+        } catch (e) {
+            return handleError(e, reply);
+        }
+    });
+
     /**
      * 启动任务
      */
