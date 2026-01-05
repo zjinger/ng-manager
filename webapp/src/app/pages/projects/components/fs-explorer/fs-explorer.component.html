@@ -1,0 +1,129 @@
+<div class="page">
+  <div class="toolbar">
+    <button nz-button (click)="up()" nz-tooltip="上一层">
+      <nz-icon nzType="up" nzTheme="outline" />
+    </button>
+    @if(isEditingPath){
+    <div class="path-edit">
+      <nz-input-wrapper>
+        <input
+          nz-input
+          nzSize="small"
+          [(ngModel)]="path"
+          placeholder="输入文件夹完整路径，如 D:\work 或 /Users/xx"
+          (keyup.enter)="load()"
+        />
+        <button nzInputSuffix nz-button nzType="link">
+          <nz-icon nzInputSuffix nzType="edit" nzTheme="outline" />
+        </button>
+      </nz-input-wrapper>
+    </div>
+    }@else {
+    <div class="current-path">
+      <div class="path-value">
+        @for (seg of segments(); track seg.key) {
+        <div class="path-part">
+          <button nz-button nzType="link" (click)="jumpTo(seg)">
+            {{ seg.label }}
+          </button>
+        </div>
+        }
+      </div>
+      <button nz-button nzType="link" (click)="editPath()">
+        <nz-icon nzType="edit" nzTheme="outline" />
+      </button>
+    </div>
+    }
+    <button nz-button nzType="primary" (click)="load()" [nzLoading]="reloading" nz-tooltip="刷新">
+      <nz-icon [nzType]="reloading ? 'loading' : 'reload'" nzTheme="outline" />
+    </button>
+    <button nz-button (click)="up()" nz-tooltip="添加/取消收藏">
+      <nz-icon nzType="star" nzTheme="outline" />
+    </button>
+    <button
+      nz-button
+      nz-tooltip="收藏的文件夹"
+      nz-dropdown
+      [nzDropdownMenu]="collectMenu"
+      nzTrigger="click"
+      nzPlacement="bottomRight"
+    >
+      <nz-icon nzType="caret-down" nzTheme="outline" />
+    </button>
+    <button
+      nz-button
+      nz-dropdown
+      [nzDropdownMenu]="moreMenu"
+      nzPlacement="bottomRight"
+      nzTrigger="click"
+      nz-tooltip="更多操作"
+    >
+      <nz-icon nzType="more" nzTheme="outline" />
+    </button>
+  </div>
+  <div class="folders">
+    @for (e of entries(); track $index) {
+    <div class="folder-item" (click)="open(e)">
+      <div class="icon">
+        <span nz-icon [nzType]="e.type === 'dir' ? 'folder' : 'file'"></span>
+      </div>
+      <div class="name" title="{{ e.name }}">{{ e.name }}</div>
+    </div>
+    }
+  </div>
+</div>
+
+<nz-dropdown-menu #collectMenu="nzDropdownMenu">
+  <ul nz-menu>
+    <li nz-menu-item>
+      <nz-icon nzType="folder" nzTheme="fill" style="font-size: 16px" />
+      1st menu item
+    </li>
+  </ul>
+</nz-dropdown-menu>
+
+<nz-dropdown-menu #moreMenu="nzDropdownMenu">
+  <ul nz-menu>
+    <li nz-menu-item (click)="createFolder()">
+      <nz-icon nzType="folder-add" nzTheme="fill" style="font-size: 16px" />
+      新建文件夹
+    </li>
+    <li nz-menu-item (click)="toggleShowSystemFolders()">
+      <nz-icon nzType="eye" nzTheme="fill" style="font-size: 16px" />
+      是否隐藏系统文件夹
+      <nz-switch [ngModel]="showSystemFolders" style="margin-left: 8px"></nz-switch>
+    </li>
+  </ul>
+</nz-dropdown-menu>
+
+<!--新增文件夹-->
+<nz-modal
+  nzCentered
+  [(nzVisible)]="isCreateFolderModalVisible"
+  nzTitle="新建文件夹"
+  (nzOnCancel)="isCreateFolderModalVisible = false"
+  [nzMaskClosable]="false"
+>
+  <ng-container *nzModalContent>
+    <div class="modal-body">
+      <label>文件夹名称：</label>
+      <nz-input-wrapper>
+        <input nz-input [(ngModel)]="newFolderName" placeholder="请输入文件夹名称" />
+        <nz-icon nzInputPrefix nzType="folder" nzTheme="fill" />
+      </nz-input-wrapper>
+    </div>
+  </ng-container>
+
+  <ng-container *nzModalFooter>
+    <button nz-button (click)="isCreateFolderModalVisible = false">取消</button>
+    <button
+      nz-button
+      nzType="primary"
+      (click)="doCreateFolder()"
+      [disabled]="!newFolderName.trim()"
+    >
+      <nz-icon nzType="folder-add" nzTheme="fill" />
+      创建
+    </button>
+  </ng-container>
+</nz-modal>

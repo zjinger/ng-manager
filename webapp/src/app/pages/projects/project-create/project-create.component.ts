@@ -10,14 +10,17 @@ import { StepFeaturesComponent } from '../components/step-features.component';
 import { StepConfigComponent } from '../components/step-config.component';
 import { CreateSummaryAsideComponent } from '../components/create-summary-aside.component';
 import { createEmptyDraft, CreateProjectDraft } from '../models/project-draft';
-import { ProjectService } from '../project.service';
+import { ProjectService } from '../services/project.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { FsExplorerComponent } from "../components/fs-explorer/fs-explorer.component";
+import { NzGridModule } from 'ng-zorro-antd/grid';
 
 @Component({
-  selector: 'app-project-create.component',
+  selector: 'app-project-create',
   imports: [
     CommonModule,
     RouterModule,
+    NzGridModule,
     NzStepsModule,
     NzCardModule,
     NzButtonModule,
@@ -26,6 +29,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
     StepFeaturesComponent,
     StepConfigComponent,
     CreateSummaryAsideComponent,
+    FsExplorerComponent
   ],
   templateUrl: './project-create.component.html',
   styleUrl: './project-create.component.less',

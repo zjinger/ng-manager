@@ -6,6 +6,7 @@ import { inject } from "@angular/core";
 import { catchError, throwError } from "rxjs";
 import { ErrorDispatcher, ErrorPolicyCode } from "../error";
 import { ApiBizError } from "../api/api-biz-error";
+import { APP_CONFIG } from "@env/environment";
 
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
     const dispatcher = inject(ErrorDispatcher);
@@ -17,6 +18,9 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
 
     return next(req).pipe(
         catchError((err: unknown) => {
+            if (!APP_CONFIG.production) {
+                console.error(`[HTTP][${requestId}] Error:`, err);
+            }
             if (err instanceof ApiBizError) {
                 dispatcher.dispatch(err.code as ErrorPolicyCode, err.message, err.details);
                 return throwError(() => err);

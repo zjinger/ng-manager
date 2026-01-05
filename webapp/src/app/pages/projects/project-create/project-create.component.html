@@ -1,45 +1,56 @@
-<div class="page">
-  <nz-card class="shell" nzTitle="创建新项目">
-    <nz-steps [nzCurrent]="step()" nzSize="small">
-      <nz-step nzTitle="详情"></nz-step>
-      <nz-step nzTitle="预设"></nz-step>
-      <nz-step nzTitle="功能"></nz-step>
-      <nz-step nzTitle="配置"></nz-step>
-    </nz-steps>
+<div nz-row class="page">
+  <div nz-col nzSpan="16" nzOffset="4" class="explorer-container">
+    <app-fs-explorer></app-fs-explorer>
+  </div>
+  <div class="actions-bar center">
+    <button nz-button nzType="primary">
+      <nz-icon nzType="plus" nzTheme="outline" />
+      在此创建新项目
+    </button>
+  </div>
+  <!-- <div nz-col nzSpan="16" nzOffset="4">
+    <nz-card class="shell" nzTitle="创建新项目">
+      <nz-steps [nzCurrent]="step()" nzSize="small">
+        <nz-step nzTitle="详情"></nz-step>
+        <nz-step nzTitle="预设"></nz-step>
+        <nz-step nzTitle="功能"></nz-step>
+        <nz-step nzTitle="配置"></nz-step>
+      </nz-steps>
 
-    <div class="content">
-      <div class="main">
-        @switch(step()){ @case(0){
-        <app-step-basic [draft]="draft()" (draftChange)="setDraft($event)" />
-        } @case(1){
-        <app-step-preset
-          [draft]="draft()"
-          (draftChange)="setDraft($event)"
-          (requestDetect)="detectNow()"
-        />
-        } @case(2){
-        <app-step-features [draft]="draft()" (draftChange)="setDraft($event)" />
-        } @case(3){
-        <app-step-config [draft]="draft()" (draftChange)="setDraft($event)" />
-        } }
-        <div class="actions">
-          <button nz-button (click)="cancel()">取消</button>
-          <button nz-button [disabled]="step() === 0" (click)="prev()">上一步</button>
-          @if(step() < 3){
-          <button nz-button nzType="primary" (click)="next()" [disabled]="!canNext()">
-            下一步
-          </button>
-          } @if(step()===3){
-          <button nz-button nzType="primary" (click)="create()" [disabled]="creating()">
-            创建并进入项目
-          </button>
-          }
+      <div class="content">
+        <div class="main">
+          @switch(step()){ @case(0){
+          <app-step-basic [draft]="draft()" (draftChange)="setDraft($event)" />
+          } @case(1){
+          <app-step-preset
+            [draft]="draft()"
+            (draftChange)="setDraft($event)"
+            (requestDetect)="detectNow()"
+          />
+          } @case(2){
+          <app-step-features [draft]="draft()" (draftChange)="setDraft($event)" />
+          } @case(3){
+          <app-step-config [draft]="draft()" (draftChange)="setDraft($event)" />
+          } }
+          <div class="actions">
+            <button nz-button (click)="cancel()">取消</button>
+            <button nz-button [disabled]="step() === 0" (click)="prev()">上一步</button>
+            @if(step() < 3){
+            <button nz-button nzType="primary" (click)="next()" [disabled]="!canNext()">
+              下一步
+            </button>
+            } @if(step()===3){
+            <button nz-button nzType="primary" (click)="create()" [disabled]="creating()">
+              创建并进入项目
+            </button>
+            }
+          </div>
+        </div>
+
+        <div class="aside">
+          <app-create-summary-aside [draft]="draft()" />
         </div>
       </div>
-
-      <div class="aside">
-        <app-create-summary-aside [draft]="draft()" />
-      </div>
-    </div>
-  </nz-card>
+    </nz-card>
+  </div> -->
 </div>

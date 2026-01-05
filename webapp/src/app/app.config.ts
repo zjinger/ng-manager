@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
@@ -9,7 +9,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { AppInitializerProvider } from './app-initializer.service';
 import { httpErrorInterceptor } from './core/http/http-error.interceptor';
-
+import { NzModalModule } from "ng-zorro-antd/modal";
 registerLocaleData(zh);
 
 export const appConfig: ApplicationConfig = {
@@ -20,6 +20,9 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideNzI18n(zh_CN),
     provideAnimationsAsync(),
+    importProvidersFrom(
+      NzModalModule,
+    ),
     provideHttpClient(
       withInterceptors([httpErrorInterceptor])
     )

@@ -1,14 +1,13 @@
-import { Injectable } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
 import { NzMessageService } from "ng-zorro-antd/message";
 import { NzModalService } from "ng-zorro-antd/modal";
 
 @Injectable({ providedIn: "root" })
 export class UiNotifierService {
-    constructor(private msg: NzMessageService, private modalService: NzModalService) { }
-
+    private modalService: NzModalService = inject(NzModalService);
+    private msg: NzMessageService = inject(NzMessageService);
     error(text: string, meta?: any) {
         this.msg.error(text);
-        console.error("[UI ERROR]", text, meta);
     }
 
     warn(text: string) {
@@ -34,6 +33,6 @@ export class UiNotifierService {
     }
 
     banner(text: string, action?: any) {
-        
+
     }
 }

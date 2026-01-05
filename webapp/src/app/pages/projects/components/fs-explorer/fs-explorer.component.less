@@ -1,0 +1,110 @@
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 16px 0;
+  flex: 0 0 auto;
+}
+
+.folders {
+  flex: 100% 1 1;
+  height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+}
+
+.current-path {
+  min-width: 0; // 关键：内部可省略
+  flex: 100% 1 1;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border-radius: 3px;
+  height: 34px;
+
+  .path-value {
+    flex: auto 1 1;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+
+    .path-part {
+      flex: auto 0 0;
+      border-left-width: 2px;
+      border-left-style: solid;
+    }
+  }
+}
+
+.path-edit {
+  flex: 100% 1 1;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border-radius: 3px;
+  border: none;
+  outline: none;
+}
+
+.folder-item {
+  padding: 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  position: relative;
+
+  .icon {
+    margin: 0 4px;
+    flex: auto 0 0;
+
+    span {
+      font-size: 24px;
+    }
+  }
+
+  .name {
+    flex: 100% 1 1;
+    margin-left: 16px;
+    overflow: hidden;
+    -ms-text-overflow: ellipsis;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@import 'mixin';
+
+.themeMixin({
+  :host {
+    .current-path {
+      background: var(--app-primary-3);
+    }
+
+    button:not(.ant-btn-link) {
+      background-color: var(--app-primary-3);
+    }
+
+    .path-part button {
+      color: @text-color;
+    }
+
+    .path-part {
+      border-left-color:@layout-body-background;
+    }
+
+    .folder-item:hover {
+      background: var(--app-primary-3);
+    }
+  }
+});

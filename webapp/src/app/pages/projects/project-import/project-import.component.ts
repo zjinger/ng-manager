@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ProjectService } from '../project.service';
+import { ProjectService } from '../services/project.service';
 import { Router, RouterModule } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +9,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-project-import.component',
+  selector: 'app-project-import',
   imports: [CommonModule, FormsModule, RouterModule, NzCardModule, NzInputModule, NzButtonModule],
   templateUrl: './project-import.component.html',
   styleUrl: './project-import.component.less',

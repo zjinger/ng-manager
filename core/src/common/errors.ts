@@ -5,7 +5,11 @@ export type ErrorCode =
     | "TASK_ALREADY_RUNNING"
     | "TASK_NOT_FOUND"
     | "PROCESS_SPAWN_FAILED"
-    | "STORAGE_IO_ERROR";
+    | "STORAGE_IO_ERROR"
+    | "FS_ALREADY_EXISTS"
+    | "FS_NOT_FOUND"
+    | "UNAUTHORIZED"
+    | "UNKNOWN_ERROR";
 
 export class AppError extends Error {
     constructor(

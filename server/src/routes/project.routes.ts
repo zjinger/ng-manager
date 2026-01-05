@@ -11,7 +11,9 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     * POST /list
     */
     fastify.get("/list", async () => {
-        return await fastify.core.project.list();
+        const projects =  await fastify.core.project.list();
+        console.log('[List Projects]', projects);
+        return projects;
     });
 
     /**

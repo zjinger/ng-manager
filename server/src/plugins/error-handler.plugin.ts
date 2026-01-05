@@ -16,6 +16,12 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
 
     PROCESS_SPAWN_FAILED: 500,
     STORAGE_IO_ERROR: 500,
+
+    FS_ALREADY_EXISTS: 409,
+    FS_NOT_FOUND: 404,
+
+    UNAUTHORIZED: 401,
+    UNKNOWN_ERROR: 500,
 };
 
 export function mapStatus(code: ErrorCode): number {

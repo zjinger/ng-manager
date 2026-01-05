@@ -127,7 +127,8 @@
               "buildTarget": "webapp:build:production"
             },
             "web": {
-              "buildTarget": "webapp:build:web"
+              "buildTarget": "webapp:build:web",
+              "proxyConfig": "proxy.config.json"
             },
             "web-production": {
               "buildTarget": "webapp:build:web-production"

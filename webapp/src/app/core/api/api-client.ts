@@ -1,4 +1,4 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { map } from "rxjs";
 import type { ApiSuccess } from "./api.types";
@@ -8,9 +8,9 @@ import { unwrapApi } from "./api-executor";
 export class ApiClient {
     private http = inject(HttpClient);
 
-    get<T>(url: string) {
+    get<T>(url: string, params?: HttpParams) {
         return this.http
-            .get<ApiSuccess<T>>(url)
+            .get<ApiSuccess<T>>(url, { params })
             .pipe(unwrapApi<T>());
     }
 

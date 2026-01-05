@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog } from "electron";
-import path, { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ServerManager } from "./serverManager.js";
 

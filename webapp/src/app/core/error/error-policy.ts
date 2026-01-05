@@ -6,10 +6,17 @@ export const enum ErrorPolicyCode {
     TASK_ALREADY_RUNNING = "TASK_ALREADY_RUNNING",
     /* ---------- project ---------- */
     PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND",
+
+    /* ---------- fs ---------- */
+    FS_ALREADY_EXISTS = "FS_ALREADY_EXISTS",
+    FS_NOT_FOUND = "FS_NOT_FOUND",
+
     /* ---------- system ---------- */
     INTERNAL_ERROR = "INTERNAL_ERROR",
     CONNECTION_LOST = "CONNECTION_LOST",
     HTTP_ERROR = "HTTP_ERROR",
+    UNAUTHORIZED = "UNAUTHORIZED",
+    UNKNOWN_ERROR = "UNKNOWN_ERROR",
 
     /* ---------- ws ---------- */
     WS_ERROR = "WS_ERROR",
@@ -18,8 +25,6 @@ export const enum ErrorPolicyCode {
     /* ---------- protocol / dev ---------- */
     INVALID_JSON = "INVALID_JSON",
     INVALID_MSG = "INVALID_MSG",
-
-
 }
 
 
@@ -48,8 +53,17 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         message: "项目不存在",
     },
 
-    /* ---------- system ---------- */
+    /* ---------- fs ---------- */
 
+    FS_ALREADY_EXISTS: {
+        level: "toast",
+        message: "文件或文件夹已存在",
+    },
+    FS_NOT_FOUND: {
+        level: "toast",
+        message: "文件或文件夹未找到",
+    },
+    /* ---------- system ---------- */
     INTERNAL_ERROR: {
         level: "toast",
         message: "系统异常，请稍后重试",
@@ -64,6 +78,17 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     HTTP_ERROR: {
         level: "toast",
         message: "网络请求失败，请检查您的网络连接",
+    },
+
+    UNAUTHORIZED: {
+        level: "banner",
+        message: "未授权访问，请重新登录",
+        action: { reload: true },
+    },
+
+    UNKNOWN_ERROR: {
+        level: "toast",
+        message: "发生未知错误，请稍后重试",
     },
 
     /* ---------- ws ---------- */
