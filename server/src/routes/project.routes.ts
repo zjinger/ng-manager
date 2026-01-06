@@ -168,4 +168,31 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         });
         return { id: project.id };
     });
+
+
+    /**
+     * 设置收藏
+     * POST /projects/favorite/:id
+     * body: { isFavorite: boolean }
+     */
+    fastify.post("/favorite/:id", async (req, reply) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as { isFavorite?: boolean };
+        if (typeof body?.isFavorite !== "boolean") {
+            reply.code(400);
+            return { message: "isFavorite must be boolean" };
+        }
+        const updated = await fastify.core.project.setFavorite(id, body.isFavorite);
+        return updated;
+    });
+
+    /**
+     * 切换收藏
+     * POST /projects/favorite/:id/toggle
+     */
+    fastify.post("/favorite/:id/toggle", async (req) => {
+        const { id } = req.params as { id: string };
+        const updated = await fastify.core.project.toggleFavorite(id);
+        return updated;
+    });
 }   

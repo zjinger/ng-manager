@@ -3,7 +3,6 @@ import { Component, OnInit } from '@angular/core';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { ProjectItem } from './project-item.component';
-import { Project } from '@models/project.model';
 import { ProjectStateService } from '../services/project.state.service';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 
@@ -12,19 +11,17 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
   imports: [CommonModule, NzCardModule, NzGridModule, ProjectItem, NzEmptyModule],
   template: `
   <div nz-row class="page">
-    @if(projectState.favoriteProjects().length > 0){
-    <div nz-col nzSpan="16" nzOffset="4">
-      <div class="header">
-        <h2>收藏的项目</h2>
-      </div>
-      <div class="content">
-         @for(project of projectState.favoriteProjects();track project.id){
-          <app-project-item [project]="project" [open]="project.id === projectState.currentProject()?.id"></app-project-item>
-        }
-      </div> 
-    </div>
-    }
-    <div nz-col nzSpan="16" nzOffset="4">
+    <div nz-col nzSpan="16" nzOffset="4" class="col">
+      @if(projectState.favoriteProjects().length > 0){
+        <div class="header">
+          <h2>收藏的项目</h2>
+        </div>
+        <div class="content">
+          @for(project of projectState.favoriteProjects();track project.id){
+            <app-project-item (toggleFavorite)="projectState.toggleFavorite(project.id)" [project]="project" [open]="project.id === projectState.currentProject()?.id"></app-project-item>
+          }
+        </div> 
+      }
       @if(projectState.favoriteProjects().length > 0){
         <div class="header">
           <h2>更多项目</h2>
@@ -32,7 +29,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
       }
       <div class="content">
         @for(project of projectState.moreProjects();track project.id){
-          <app-project-item [project]="project" [open]="project.id === projectState.currentProject()?.id"></app-project-item>
+          <app-project-item (toggleFavorite)="projectState.toggleFavorite(project.id)" [project]="project"  [open]="project.id === projectState.currentProject()?.id"></app-project-item>
         }
       </div>
       @if(projectState.projects().length === 0){
@@ -43,8 +40,18 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
     </div>
   </div>`,
   styles: [`
+  :host{
+    display: block;
+    height: 100%;
+    overflow:hidden;
+  }
     .page {
-      margin-top: 24px;
+      height:100%;
+      overflow-y: auto;
+      .col{
+        display: flex;
+        flex-direction: column;
+      }
     }
     .header {
       padding: 12px 0;

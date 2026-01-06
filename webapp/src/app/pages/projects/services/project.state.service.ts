@@ -11,6 +11,14 @@ export class ProjectStateService {
   currentProject = signal<Project | null>(null);
   projects = signal<Project[]>([]);
 
+  toggleFavorite(projectId: string) {
+    this.projectService.toggleFavorite(projectId).subscribe((updated) => {
+      // 更新 projects 列表
+      this.projects.update(list => list.map(p => (p.id === updated.id ? updated : p)));
+      // 如果当前项目就是它，也同步
+      this.projectChanged(updated);
+    });
+  }
   getProjects() {
     this.projectService.list().subscribe((data: Project[]) => {
       this.projects.set(data);

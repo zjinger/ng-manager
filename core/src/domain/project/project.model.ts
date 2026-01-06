@@ -10,6 +10,8 @@ export interface Project {
     scripts?: Record<string, string>;
     // 可选：环境变量
     env?: Record<string, string>;
+    // 收藏
+    isFavorite?: boolean; // default false
 }
 export interface CreateProjectInput {
     name: string;

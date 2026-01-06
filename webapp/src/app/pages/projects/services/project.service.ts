@@ -60,4 +60,12 @@ export class ProjectService {
   update(id: string, data: Partial<Project>) {
     return this.api.post<Project>(`/api/projects/update/${id}`, data);
   }
+
+  setFavorite(id: string, isFavorite: boolean) {
+    return this.api.post<Project>(`/api/projects/favorite/${id}`, { isFavorite });
+  }
+
+  toggleFavorite(id: string) {
+    return this.api.post<Project>(`/api/projects/favorite/${id}/toggle`, {});
+  }
 }

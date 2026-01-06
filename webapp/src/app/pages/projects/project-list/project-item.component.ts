@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Project } from '@models/project.model';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
@@ -16,14 +16,13 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
     <div nz-row class="project-item" [class.open]="open">
       <div nz-col nzSpan="24" class="content">
         <div class="favorite">
-          <button nz-button nzType="primary">
+          <button nz-button nzType="primary" (click)="$event.stopPropagation();toggleFavorite.emit()">
             <nz-icon nzType="star" [nzTheme]="project?.isFavorite ? 'fill' : 'outline'"></nz-icon>
           </button>
         </div>
         <div class="info">
           <div class="list-item-info">
             <div class="name">
-              <!-- [nzPopoverVisible]="true"  -->
               <span>{{ project?.name }}</span>
               <nz-badge nzStatus="processing" 
               nz-popover 
@@ -112,4 +111,8 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
 export class ProjectItem {
   @Input() project: Project | null = null;
   @Input() open = false;
+
+  @Output() toggleFavorite = new EventEmitter<void>();
+
+
 }

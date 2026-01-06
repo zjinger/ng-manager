@@ -30,7 +30,7 @@ export class ProjectServiceImpl implements ProjectService {
             root,
         });
     }
-    
+
     async checkImport(rootPath: string): Promise<ImportCheckResult> {
         const base = await this.checkRoot(rootPath);
         if (!base.ok) return { ok: false, root: base.root, reason: base.message || "invalid root" };
@@ -44,7 +44,7 @@ export class ProjectServiceImpl implements ProjectService {
         try {
             meta = await this.scan(base.root);
         } catch (e: any) {
-            // 如果你“不是所有文件夹都能导入”，scan 失败我建议直接 hard fail
+            // 不是所有文件夹都能导入，scan 失败直接 hard fail
             return { ok: false, root: base.root, reason: `scan failed: ${e?.message || "unknown"}` };
         }
 
@@ -63,7 +63,7 @@ export class ProjectServiceImpl implements ProjectService {
             hasDockerCompose: meta.hasDockerCompose ?? false,
         };
 
-        // hard-3:核心判定：看起来像个项目吗？
+        // hard-3:核心判定：看起来像个项目？
         const looksLikeProject =
             !!detect.hasPackageJson ||
             !!detect.hasGit ||
@@ -148,7 +148,6 @@ export class ProjectServiceImpl implements ProjectService {
     async update(id: string, patch: Partial<Omit<Project, "id" | "createdAt">>): Promise<Project> {
         // 先确保存在
         await this.get(id);
-
         const now = Date.now();
         const updated = await this.repo.update(id, {
             ...patch,
@@ -176,5 +175,19 @@ export class ProjectServiceImpl implements ProjectService {
      */
     async scan(root: string): Promise<ProjectMeta> {
         return scanProject(root);
+    }
+
+    async setFavorite(id: string, isFavorite: boolean): Promise<Project> {
+        // 确保存在
+        await this.get(id);
+        return this.update(id, {
+            isFavorite: !!isFavorite,
+        } as any);
+    }
+
+    async toggleFavorite(id: string): Promise<Project> {
+        const p = await this.get(id);
+        const next = !p.isFavorite;
+        return this.setFavorite(id, next);
     }
 }
