@@ -52,9 +52,8 @@ export class ProjectService {
     return this.api.post<{ id: string }>("/api/projects/import", data);
   }
 
-
   delete(id: string) {
-    return this.api.delete<void>(`/api/projects/delete/${id}`);
+    return this.api.delete<{ id: string }>(`/api/projects/delete/${id}`);
   }
 
   update(id: string, data: Partial<Project>) {
@@ -69,9 +68,16 @@ export class ProjectService {
     return this.api.post<Project>(`/api/projects/favorite/${id}/toggle`, {});
   }
 
+  setLastOpened(id: string, timestamp: number) {
+    return this.api.post<Project>(`/api/projects/lastOpened/${id}`, { timestamp });
+  }
+
   openInEditor(id: string, editor: "code" | "system" = "code") {
     return this.api.post<{ ok: boolean }>(`/api/projects/openInEditor/${id}`, { editor });
   }
 
+  rename(projectId: string, name: string): Observable<Project> {
+    return this.api.post<Project>(`/api/projects/rename/${projectId}`, { name });
+  }
 
 }

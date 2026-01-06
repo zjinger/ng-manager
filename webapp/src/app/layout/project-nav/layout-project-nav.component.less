@@ -1,0 +1,30 @@
+:host {
+    display: flex;
+    padding: 16px;
+
+    .project-quick-dropdown {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+        border-radius: 20px;
+    }
+}
+
+.item {
+    ::ng-deep .ant-menu-title-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    a {
+        color: var(--app-text-color);
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 8px;
+    }
+}

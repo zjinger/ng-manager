@@ -1,0 +1,73 @@
+<button
+  class="project-quick-dropdown"
+  nz-button
+  nzType="primary"
+  nzSize="large"
+  nz-dropdown
+  [nzDropdownMenu]="menu"
+  nzTrigger="click"
+  [nzPlacement]="'bottomCenter'"
+  [nzOverlayStyle]="{ width: '100%' }"
+>
+  {{ projectState.currentProject()?.name || '请选择项目' }}
+  <nz-icon nzType="down" />
+</button>
+<nz-dropdown-menu #menu="nzDropdownMenu" style="width: 100%">
+  <ul nz-menu>
+    @if(projectState.currentProject()) {
+    <li nz-menu-item class="item">
+      <nz-icon
+        nzType="star"
+        [nzTheme]="projectState.currentProject()?.isFavorite ? 'fill' : 'outline'"
+      ></nz-icon>
+      <span>添加/取消收藏</span>
+      <nz-switch
+        [nzDisabled]="!projectState.currentProject()?.id"
+        style="margin-left: 6px"
+        [ngModel]="projectState.currentProject()?.isFavorite"
+        (ngModelChange)="projectState.toggleFavorite(projectState.currentProject()?.id!)"
+      />
+    </li>
+    <li
+      nz-menu-item
+      class="item"
+      (click)="projectState.openInEditor(projectState.currentProject()?.id!)"
+    >
+      <nz-icon nzType="code"></nz-icon>
+      <span>在编辑器中打开</span>
+    </li>
+    <li
+      nz-menu-item
+      class="item"
+      (click)="projectState.openEditModal(projectState.currentProject()!)"
+    >
+      <nz-icon nzType="edit"></nz-icon>
+      <span>重命名</span>
+    </li>
+    }
+    <li nz-menu-divider></li>
+    <li nz-menu-group nzTitle="收藏的项目"></li>
+    @for(item of projectState.favoriteProjects(); track item.id) {
+    <li nz-menu-item class="item" (click)="projectState.selectProject(item)">
+      <nz-icon nzType="star" nzTheme="fill"></nz-icon>
+      <span>{{ item.name }}</span>
+    </li>
+    }
+    <li nz-menu-divider></li>
+    <li nz-menu-group nzTitle="最近使用"></li>
+    @for(item of projectState.recentProjects(); track item.id) {
+    <li nz-menu-item class="item" (click)="projectState.selectProject(item)">
+      <nz-icon nzType="star" [nzTheme]="item.isFavorite ? 'fill' : 'outline'"></nz-icon>
+      <span>{{ item.name }}</span>
+    </li>
+    }
+    <li nz-menu-divider></li>
+    <li nz-menu-item class="item">
+      <a routerLink="/projects">
+        <nz-icon nzType="project"></nz-icon>
+        <span>项目管理</span>
+      </a>
+    </li>
+  </ul>
+</nz-dropdown-menu>
+<app-project-edit-modal></app-project-edit-modal>

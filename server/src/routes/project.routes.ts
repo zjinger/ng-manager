@@ -1,27 +1,36 @@
-import type { FastifyInstance } from "fastify";
+import { fastify, type FastifyInstance } from "fastify";
 import * as path from "path";
 import launchEditor from "launch-editor";
 import { AppError } from "@core";
 import { OpenFolderOptions } from "@core/domain/editor";
-
-async function openFolder(folder: string, opts: OpenFolderOptions = {}): Promise<void> {
+async function openFolder(folder: string, fastify: FastifyInstance, opts: OpenFolderOptions = {}): Promise<void> {
     const editor = opts.editor ?? "code";
     const file = opts.file;
 
+    const target = file
+        ? path.resolve(folder, file)
+        : path.resolve(folder);
+
     return new Promise<void>((resolve, reject) => {
+        let settled = false;
+
+        // 兜底：避免 callback 不触发导致请求永远挂起
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            resolve();
+        }, 200);
+
         launchEditor(
-            file ? `${folder}/${file}` : folder,
+            target,
             editor === "system" ? undefined : editor,
             (fileName, errorMsg) => {
+                fastify.log.info(`launchEditor callback invoked: file=${fileName}, error=${errorMsg}`);
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
                 if (errorMsg) {
-                    // launch-editor 内部已经区分了 editor 不存在 / 启动失败
-                    reject(
-                        new AppError(
-                            "EDITOR_NOT_FOUND",
-                            errorMsg,
-                            { editor, folder, file }
-                        )
-                    );
+                    reject(new AppError("EDITOR_NOT_FOUND", errorMsg, { editor, folder, file, target }));
                     return;
                 }
                 resolve();
@@ -224,20 +233,44 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         return updated;
     });
 
+    fastify.post("/lastOpened/:id", async (req) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as { timestamp: number };
+        if (typeof body?.timestamp !== "number") {
+            throw new AppError("INVALID_TIMESTAMP", "timestamp must be a number");
+        }
+        const updated = await fastify.core.project.setLastOpened(id, body.timestamp);
+        return updated;
+    });
+
+    fastify.post("/rename/:id", async (req) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as { name: string };
+        if (typeof body?.name !== "string" || body.name.trim() === "") {
+            throw new AppError("INVALID_NAME", "name must be a non-empty string");
+        }
+        const updated = await fastify.core.project.rename(id, body.name.trim());
+        return updated;
+    })
+
+
     /**
      * 在编辑器打开项目
      * POST /projects/openInEditor/:id
      * body: { editor?: "code" | "system" }
      */
     fastify.post("/openInEditor/:id", async (req) => {
-        const { id } = req.params as { id: string };
-        const body = req.body as { editor?: "code" | "system" };
-        const p = await fastify.core.project.get(id);
-        const editor = body?.editor || "code";
-        await openFolder(p.root, { editor });
-        return {
-            ok: true,
+        try {
+            const { id } = req.params as { id: string };
+            const body = req.body as { editor?: "code" | "system" };
+            const p = await fastify.core.project.get(id);
+            const editor = body?.editor || "code";
+            await openFolder(p.root, fastify, { editor });
+            return { ok: true };
+        } catch (e: any) {
+            throw new AppError("EDITOR_LAUNCH_FAILED", e?.message || "openInEditor failed");
         }
+
         // await fastify.core.project.openInEditor(id, { editor: body?.editor });
     });
 }

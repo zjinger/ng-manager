@@ -24,6 +24,10 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     PROJECT_IMPORT_NOT_RECOGNIZED: 422,         // 不像项目（语义错误）
     PROJECT_IMPORT_SCAN_FAILED: 500,            // 扫描失败（IO/解析）
 
+    /* ---------------- Project Creation ---------------- */
+
+    INVALID_NAME: 400,                          // 无效的项目名称
+
     /* ---------------- Task / Process ---------------- */
 
     TASK_NOT_FOUND: 404,
@@ -39,11 +43,14 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     /* ---------------- Editor ---------------- */
 
     EDITOR_NOT_FOUND: 404,
+    EDITOR_LAUNCH_FAILED: 500,
 
     /* ---------------- Infra / Auth ---------------- */
 
     STORAGE_IO_ERROR: 500,
     UNAUTHORIZED: 401,
+    INVALID_TIMESTAMP: 400, // 时间戳无效
+
 
     /* ---------------- Fallback ---------------- */
     UNKNOWN_ERROR: 500,

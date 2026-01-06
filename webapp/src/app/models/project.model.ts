@@ -18,6 +18,7 @@ export interface Project {
     scripts?: Record<string, string>;
     // 可选：环境变量
     env?: Record<string, string>;
+    lastOpened?: number;    // 上次打开时间戳
 }
 
 export interface CheckRootResult {

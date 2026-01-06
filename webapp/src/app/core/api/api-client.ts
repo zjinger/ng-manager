@@ -22,7 +22,7 @@ export class ApiClient {
 
     delete<T>(url: string) {
         return this.http
-            .delete<ApiSuccess<T>>(url)
+            .get<ApiSuccess<T>>(url)
             .pipe(unwrapApi<T>());
     }
 }

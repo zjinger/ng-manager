@@ -12,6 +12,8 @@ export interface Project {
     env?: Record<string, string>;
     // 收藏
     isFavorite?: boolean; // default false
+
+    lastOpened?: number;    // 上次打开时间戳
 }
 export interface CreateProjectInput {
     name: string;

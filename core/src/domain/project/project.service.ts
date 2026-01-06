@@ -23,5 +23,9 @@ export interface ProjectService {
     setFavorite(id: string, isFavorite: boolean): Promise<Project>;
     toggleFavorite(id: string): Promise<Project>;
 
+    setLastOpened(id: string, timestamp: number): Promise<Project>;
+
     openInEditor(id: string, opts?: { editor?: "code" | "system" }): Promise<void>;
+
+    rename(id: string, name: string): Promise<Project>;
 }

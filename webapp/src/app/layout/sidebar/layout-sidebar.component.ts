@@ -4,10 +4,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { LayoutMenuComponent } from '../menu/layout-menu.component';
+import { LayoutProjectNavComponent } from "../project-nav/layout-project-nav.component";
 
 @Component({
   selector: 'ngm-sidebar',
-  imports: [NzLayoutModule, NzIconModule, NzMenuModule, LayoutMenuComponent],
+  imports: [NzLayoutModule, NzIconModule, NzMenuModule, LayoutMenuComponent, LayoutProjectNavComponent],
   templateUrl: './layout-sidebar.component.html',
   styleUrl: './layout-sidebar.component.less',
   host: {

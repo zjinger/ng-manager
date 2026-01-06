@@ -13,7 +13,7 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
   selector: 'app-project-item',
   imports: [CommonModule, FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzPopoverModule, NzBadgeModule, NzSpaceModule, ProjectItemPopoverComponent],
   template: `
-    <div nz-row class="project-item" [class.open]="open">
+    <div nz-row class="project-item" [class.open]="open" (click)="selectProject.emit()">
       <div nz-col nzSpan="24" class="content">
         <div class="favorite">
           <button nz-button nzType="primary" (click)="$event.stopPropagation();toggleFavorite.emit()">
@@ -39,15 +39,15 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
         </div>
         <div class="actions">
           <nz-space>
-            <button nz-button nzType="primary" (click)="openInEditor.emit()">
+            <button nz-button nzType="primary" (click)="$event.stopPropagation();openInEditor.emit()">
               <nz-icon nzType="code" nzTheme="outline" />
               <span>在编辑器中打开</span>
             </button>
-            <button nz-button nzType="primary">
+            <button nz-button nzType="primary" (click)="$event.stopPropagation();editProject.emit()">
               <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
               <span>编辑</span>
             </button>
-            <button nz-button nzType="primary">
+            <button nz-button nzType="primary" (click)="$event.stopPropagation();deleteProject.emit()">
               <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
               <span>删除</span>
             </button>
@@ -112,8 +112,11 @@ export class ProjectItem {
   @Input() project: Project | null = null;
   @Input() open = false;
 
+  @Output() selectProject = new EventEmitter<void>();
   @Output() toggleFavorite = new EventEmitter<void>();
+  @Output() editProject = new EventEmitter<void>();
   @Output() openInEditor = new EventEmitter<void>();
+  @Output() deleteProject = new EventEmitter<void>();
 
 
 }

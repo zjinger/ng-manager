@@ -190,6 +190,22 @@ export class ProjectServiceImpl implements ProjectService {
         } as any);
     }
 
+    async setLastOpened(id: string, timestamp: number): Promise<Project> {
+        // 确保存在
+        await this.get(id);
+        return this.update(id, {
+            lastOpened: timestamp,
+        } as any);
+    }
+
+    async rename(id: string, name: string): Promise<Project> {
+        // 确保存在
+        await this.get(id);
+        return this.update(id, {
+            name: name.trim(),
+        } as any);
+    }
+
     async toggleFavorite(id: string): Promise<Project> {
         const p = await this.get(id);
         const next = !p.isFavorite;

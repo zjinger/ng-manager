@@ -1,8 +1,10 @@
 @import 'mixin';
+
 .themeMixin({
   :host {
-   .sidebar-logo {
-    background: var(--ant-primary-1);
+    .sidebar-logo {
+      background: var(--ant-primary-1);
+
       h1 {
         color: var(--ant-text-color);
       }
@@ -15,19 +17,36 @@
   box-sizing: border-box;
   position: relative;
   z-index: 10;
-  min-height: 100vh;
   box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
   width: 256px;
   transition: all 0.2s;
   flex: 0 0 auto;
+
   &.collapsed {
     width: 80px;
   }
 }
+
 .menu-sidebar {
   height: 100%;
+
+  ::ng-deep .ant-layout-sider-children {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
   ::ng-deep .ant-menu-inline {
     border-right: none;
+  }
+
+  .header {
+    flex: 0 0 auto;
+  }
+
+  .content {
+    flex: 1 1 auto;
+    height: 0;
   }
 }
 
