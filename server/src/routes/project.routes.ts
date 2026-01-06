@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import * as fs from "fs";
 import * as path from "path";
 
 /**
@@ -11,8 +10,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     * POST /list
     */
     fastify.get("/list", async () => {
-        const projects =  await fastify.core.project.list();
-        console.log('[List Projects]', projects);
+        const projects = await fastify.core.project.list();
         return projects;
     });
 
@@ -68,65 +66,8 @@ export default async function projectRoutes(fastify: FastifyInstance) {
      * 检查路径是否合法 / 是否已存在项目
      */
     fastify.post("/check", async (req) => {
-        const body = req.body as {
-            mode: "create" | "import";
-            rootPath: string;
-        };
-
-        const root = path.resolve(body.rootPath).replace(/[\\/]+$/, "");
-        if (!root) {
-            return {
-                ok: false,
-                exists: false,
-                isDir: false,
-                alreadyRegistered: false,
-                message: "rootPath is empty",
-            };
-        }
-
-        let stat: fs.Stats | null = null;
-        try {
-            stat = fs.statSync(root);
-        } catch { }
-
-        const exists = !!stat;
-        const isDir = !!stat && stat.isDirectory();
-
-        const existedProject = await fastify.core.project
-            .scan(root) // 只是 scan，不创建
-            .then(() => fastify.core.project.list())
-            .then(list => list.find(p => p.root === root))
-            .catch(() => null);
-
-        const alreadyRegistered = !!existedProject;
-
-        if (body.mode === "import") {
-            if (!exists) {
-                return {
-                    ok: false,
-                    exists,
-                    isDir,
-                    alreadyRegistered,
-                    message: "Import path does not exist",
-                };
-            }
-            if (!isDir) {
-                return {
-                    ok: false,
-                    exists,
-                    isDir,
-                    alreadyRegistered,
-                    message: "Import path must be a directory",
-                };
-            }
-        }
-
-        return {
-            ok: true,
-            exists,
-            isDir,
-            alreadyRegistered,
-        };
+        const body = req.body as { rootPath: string };
+        return fastify.core.project.checkRoot(body.rootPath);
     });
 
     /**
@@ -141,7 +82,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const meta = await fastify.core.project.scan(root);
 
         return {
-            framework: meta.framework ?? "Unknown",
+            framework: meta.framework ?? "unknown",
             hasPackageJson: !!meta.scripts && Object.keys(meta.scripts).length > 0,
             scripts: meta.scripts ?? {},
             recommendedScript:
@@ -155,38 +96,76 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     });
 
     /**
-     * 创建 / 导入项目
+     * 导入已有项目
      */
-    fastify.post("/new", async (req, reply) => {
+    fastify.post("/import", async (req) => {
         const body = req.body as {
-            mode: "create" | "import";
-            name: string;
             root: string;
-            scripts?: Record<string, string>;
+            name?: string;
             syncTasks?: boolean;
         };
-        const project = await fastify.core.project.create({
-            name: body.name,
+        const project = await fastify.core.project.importProject({
             root: body.root,
-            scripts: body.scripts,
+            name: body.name,
         });
-
-        let syncedSpecs: any[] | undefined;
-
-        // 创建后默认同步 scripts → task specs
-        if (body.syncTasks !== false) {
-            syncedSpecs = await fastify.core.task.syncSpecsFromProjectScripts(
+        // 要自动 sync task，这里加
+        if (body.syncTasks === true) {
+            await fastify.core.task.syncSpecsFromProjectScripts(
                 project.id,
                 project.root,
                 project.scripts ?? {}
             );
         }
         return {
-            projectId: project.id,
-            syncedSpecs,
+            id: project.id,
         };
-
     });
 
+    /**
+     * 检查 root 是否是一个可导入的项目
+     */
+    fastify.post("/checkImport", async (req) => {
+        const body = req.body as { root: string };
+        return fastify.core.project.checkImport(body.root);
+    });
 
-}
+    /**
+     * 创建新项目（暂不接 scaffold） 
+     */
+    fastify.post("/create", async (req) => {
+        // const body = req.body as {
+        //     name: string;
+        //     root: string;
+        //     scripts?: Record<string, string>;
+        //     syncTasks?: boolean;
+        // };
+
+        // const chk = await fastify.core.project.checkRoot(body.root);
+        // if (!chk.ok) return chk;
+
+        // const project = await fastify.core.project.create({
+        //     name: body.name,
+        //     root: chk.root,
+        //     scripts: body.scripts,
+        // });
+
+        // let syncedSpecs: any[] | undefined;
+        // if (body.syncTasks === true) {
+        //     syncedSpecs = await fastify.core.task.syncSpecsFromProjectScripts(
+        //         project.id,
+        //         project.root,
+        //         project.scripts ?? {}
+        //     );
+        // }
+        // return { id: project.id, syncedSpecs };
+        const body = req.body as {
+            name: string;
+            root: string;
+        };
+        const project = await fastify.core.project.create({
+            name: body.name,
+            root: body.root,
+        });
+        return { id: project.id };
+    });
+}   

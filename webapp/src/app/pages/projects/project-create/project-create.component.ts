@@ -14,6 +14,7 @@ import { ProjectService } from '../services/project.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { FsExplorerComponent } from "../components/fs-explorer/fs-explorer.component";
 import { NzGridModule } from 'ng-zorro-antd/grid';
+import { DetectResult } from '@models/project.model';
 
 @Component({
   selector: 'app-project-create',
@@ -60,6 +61,10 @@ export class ProjectCreateComponent {
     this.draft.set(d);
   }
 
+  goCreate() {
+
+  }
+
   canNext(): boolean {
     const s = this.step();
     const d = this.draft();
@@ -102,36 +107,36 @@ export class ProjectCreateComponent {
     this.router.navigateByUrl('/projects');
   }
 
-  async detectNow() {
+  detectNow() {
     const d = this.draft();
     if (!d.rootPath?.trim()) return;
+    this.api.detect(d.rootPath).subscribe(r => {
+      const scripts = r.scripts ?? [];
+      const detected: DetectResult = {
+        framework: r.framework ?? 'unknown',
+        hasPackageJson: !!r.hasPackageJson,
+        scriptsCount: scripts.length,
+        hasGit: !!r.hasGit,
+        lockFile: r.lockFile ?? 'unknown',
+        recommendedScript: scripts.includes('dev') ? 'dev' : (scripts.includes('start') ? 'start' : ''),
+        hasMakefile: !!r.hasMakefile,
+        hasDockerCompose: !!r.hasDockerCompose,
+      };
 
-    const r = await this.api.detectProject(d.rootPath);
-    const scripts = r.scripts ?? [];
-    const detected = {
-      framework: r.framework ?? 'Unknown',
-      hasPackageJson: !!r.hasPackageJson,
-      scriptsCount: scripts.length,
-      hasGit: !!r.hasGit,
-      lockFile: r.lockFile ?? 'none',
-      recommendedScript: scripts.includes('dev') ? 'dev' : (scripts.includes('start') ? 'start' : ''),
-      hasMakefile: !!r.hasMakefile,
-      hasDockerCompose: !!r.hasDockerCompose,
-    };
+      // 根据识别结果调整导入选项
+      const importScriptsAsTasks = scripts.length > 0;
+      const importMakefileTasks = !!r.hasMakefile;
+      const importDockerComposeTasks = !!r.hasDockerCompose;
 
-    // 根据识别结果调整导入选项
-    const importScriptsAsTasks = scripts.length > 0;
-    const importMakefileTasks = !!r.hasMakefile;
-    const importDockerComposeTasks = !!r.hasDockerCompose;
-
-    this.draft.set({
-      ...d,
-      detected,
-      importScriptsAsTasks,
-      importMakefileTasks: importMakefileTasks && d.importMakefileTasks, // 默认不强开
-      importDockerComposeTasks: importDockerComposeTasks && d.importDockerComposeTasks,
-      defaultTaskName: detected.recommendedScript || d.defaultTaskName,
-    });
+      this.draft.set({
+        ...d,
+        detected,
+        importScriptsAsTasks,
+        importMakefileTasks: importMakefileTasks && d.importMakefileTasks, // 默认不强开
+        importDockerComposeTasks: importDockerComposeTasks && d.importDockerComposeTasks,
+        defaultTaskName: detected.recommendedScript || d.defaultTaskName,
+      });
+    })
   }
 
   async create() {

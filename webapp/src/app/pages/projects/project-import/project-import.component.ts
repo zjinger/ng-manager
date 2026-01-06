@@ -1,37 +1,57 @@
-import { Component } from '@angular/core';
-import { ProjectService } from '../services/project.service';
-import { Router, RouterModule } from '@angular/router';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { FormsModule } from '@angular/forms';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzButtonModule } from 'ng-zorro-antd/button';
 import { CommonModule } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { FsExplorerComponent } from '../components/fs-explorer/fs-explorer.component';
+import { ProjectImportState } from '../services/project-import.state.service';
 
 @Component({
   selector: 'app-project-import',
-  imports: [CommonModule, FormsModule, RouterModule, NzCardModule, NzInputModule, NzButtonModule],
-  templateUrl: './project-import.component.html',
-  styleUrl: './project-import.component.less',
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzGridModule,
+    NzButtonModule,
+    NzIconModule,
+    FsExplorerComponent
+  ],
+  template: `
+    <div nz-row class="page">
+      <div nz-col nzSpan="16" nzOffset="4" class="explorer-container">
+        <app-fs-explorer></app-fs-explorer>
+      </div>
+      <div class="actions-bar center">
+        <button nz-button nzSize="large" nzType="primary" (click)="importState.import()" [disabled]="importState.checking() || !importState.canImport()">
+          <nz-icon nzType="import" nzTheme="outline" />
+          导入这个文件夹
+        </button>
+      </div>
+    </div>
+  `,
+  styles: [`
+    .page {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      .explorer-container {
+        flex: 1 1 auto;
+        height: 0;
+      }
+
+      .actions-bar {
+        flex: 0 0 auto;
+        padding: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+    }
+  `]
 })
 export class ProjectImportComponent {
-  path = '';
-
-  constructor(
-    private api: ProjectService,
-    private router: Router,
-    private msg: NzMessageService
-  ) { }
-
-  async pick() {
-    const p = await this.api.pickFolder();
-    if (p) this.path = p;
-  }
-
-  goCreate() {
-    const p = this.path.trim();
-    if (!p) return;
-    // 关键：导入后走 create 的 Step2（预设识别/导入任务）
-    this.router.navigate(['/projects/create'], { queryParams: { mode: 'import', path: p } });
-  }
+  importState = inject(ProjectImportState);
 }

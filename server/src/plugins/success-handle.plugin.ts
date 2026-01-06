@@ -18,16 +18,6 @@ export const successHandlerPlugin: FastifyPluginAsync = fp(async (app) => {
         if (typeof type === "string" && !type.includes("application/json")) {
             return payload;
         }
-
-        //  已经是标准结构（ok:true/false），不重复包
-        if (
-            typeof payload === "object" &&
-            payload !== null &&
-            "ok" in (payload as any)
-        ) {
-            return payload;
-        }
-
         // 统一包装成功返回
         return {
             ok: true,

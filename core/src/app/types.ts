@@ -5,6 +5,7 @@ import type { ILogStore } from "../infra/log/log.store";
 import type { TaskService } from "../domain/task/task.service";
 import { ProjectService } from "../domain/project/project.service";
 import { LoggerService } from "../domain/logger/logger.service";
+import { FsService } from "../domain/fs";
 
 /**
  * 创建 CoreApp 的参数
@@ -36,4 +37,7 @@ export interface CoreApp {
 
     /** 项目管理 */
     project: ProjectService;
+
+    /** 文件系统管理 */
+    fs: FsService;
 }

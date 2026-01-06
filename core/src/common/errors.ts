@@ -2,12 +2,26 @@ export type ErrorCode =
     | "PROJECT_NOT_FOUND"
     | "PROJECT_ROOT_INVALID"
     | "PROJECT_ALREADY_EXISTS"
+
+    // import / detect
+    | "PROJECT_IMPORT_NOT_DIR"
+    | "PROJECT_IMPORT_NOT_EXISTS"
+    | "PROJECT_IMPORT_ALREADY_REGISTERED"
+    | "PROJECT_IMPORT_NOT_RECOGNIZED"
+    | "PROJECT_IMPORT_SCAN_FAILED"
+
+    // fs
+    | "FS_ALREADY_EXISTS"
+    | "FS_NOT_FOUND"
+
+
+    // task / process
     | "TASK_ALREADY_RUNNING"
     | "TASK_NOT_FOUND"
     | "PROCESS_SPAWN_FAILED"
     | "STORAGE_IO_ERROR"
-    | "FS_ALREADY_EXISTS"
-    | "FS_NOT_FOUND"
+
+    // generic
     | "UNAUTHORIZED"
     | "UNKNOWN_ERROR";
 

@@ -19,3 +19,5 @@ export * from "./domain/task/task.service";
 export * from "./domain/project/project.model";
 export * from "./domain/project/project.service";
 export * from "./domain/project/project.scanner";
+
+export * from "./domain/fs";

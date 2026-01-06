@@ -1,13 +1,110 @@
+import { promises as fsp } from "node:fs";
+import * as path from "node:path";
 import { AppError } from "../../common/errors";
 import { genId } from "../../common/id";
 import type { ProjectRepo } from "./project.repo";
-import type { Project } from "./project.model";
-import type { CreateProjectInput, ProjectService } from "./project.service";
+import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, CheckRootResult } from "./project.model";
 import { scanProject } from "./project.scanner";
 import { ProjectMeta } from "./project.meta";
+import { ProjectService } from "./project.service";
 
 export class ProjectServiceImpl implements ProjectService {
     constructor(private repo: ProjectRepo) { }
+
+    async importProject(input: { root: string; name?: string; }): Promise<Project> {
+        const { root, name } = input;
+        const check = await this.checkImport(root);
+        if (!check.ok) {
+            throw new AppError(
+                check.code ?? "PROJECT_ROOT_INVALID",
+                check.reason ?? "Import project failed",
+                { root, detect: check.detect }
+            );
+        }
+        const projectName =
+            name?.trim() ||
+            path.basename(root.replace(/[\\/]+$/, "")) ||
+            "Imported Project";
+        return this.create({
+            name: projectName,
+            root,
+        });
+    }
+    
+    async checkImport(rootPath: string): Promise<ImportCheckResult> {
+        const base = await this.checkRoot(rootPath);
+        if (!base.ok) return { ok: false, root: base.root, reason: base.message || "invalid root" };
+        // hard-1: 必须存在且是目录
+        if (!base.exists) return { ok: false, root: base.root, reason: "path does not exist" };
+        if (!base.isDir) return { ok: false, root: base.root, reason: "path must be a directory" };
+        // hard-2: 不能重复注册
+        if (base.alreadyRegistered) return { ok: false, root: base.root, reason: "already registered" };
+        // soft detect（scan 可能失败，但我们可以把失败当 hard fail 或 soft warning）
+        let meta: ProjectMeta;
+        try {
+            meta = await this.scan(base.root);
+        } catch (e: any) {
+            // 如果你“不是所有文件夹都能导入”，scan 失败我建议直接 hard fail
+            return { ok: false, root: base.root, reason: `scan failed: ${e?.message || "unknown"}` };
+        }
+
+        const scripts = meta.scripts ?? {};
+        const scriptKeys = Object.keys(scripts);
+
+        const detect: DetectResult = {
+            framework: meta.framework,
+            hasPackageJson: meta.hasPackageJson ?? false,   // 下面 scanner 会补
+            scripts: scriptKeys,
+            scriptsCount: scriptKeys.length,
+            recommendedScript: scripts.dev ? "dev" : scripts.start ? "start" : scriptKeys[0],
+            lockFile: meta.packageManager,
+            hasGit: meta.hasGit ?? false,
+            hasMakefile: meta.hasMakefile ?? false,
+            hasDockerCompose: meta.hasDockerCompose ?? false,
+        };
+
+        // hard-3:核心判定：看起来像个项目吗？
+        const looksLikeProject =
+            !!detect.hasPackageJson ||
+            !!detect.hasGit ||
+            (detect.framework && detect.framework !== "unknown") ||
+            !!detect.hasMakefile ||
+            !!detect.hasDockerCompose ||
+            (detect.scriptsCount ?? 0) > 0;
+
+        if (!looksLikeProject) {
+            return { ok: false, root: base.root, reason: "not a recognized project folder", detect };
+        }
+        // soft warnings：不阻止导入，但提示
+        const warnings: string[] = [];
+        if (!detect.hasGit) warnings.push("No .git found");
+        if ((detect.scriptsCount ?? 0) === 0) warnings.push("No scripts found in package.json");
+        return { ok: true, root: base.root, detect, warnings };
+    }
+
+    async checkRoot(rootPath: string): Promise<CheckRootResult> {
+        const root = path.resolve(rootPath || "").replace(/[\\/]+$/, "");
+        if (!root) {
+            return { ok: false, root: "", exists: false, isDir: false, alreadyRegistered: false, message: "rootPath is empty" };
+        }
+
+        let st: any = null;
+        try { st = await fsp.stat(root); } catch { }
+
+        const exists = !!st;
+        const isDir = !!st && st.isDirectory();
+
+        const existed = await this.repo.findByRoot(root);
+        const alreadyRegistered = !!existed;
+
+        return {
+            ok: true,
+            root,
+            exists,
+            isDir,
+            alreadyRegistered,
+        };
+    }
 
     async list(): Promise<Project[]> {
         return this.repo.list();

@@ -27,7 +27,10 @@ export interface ProjectMeta {
         }[];
     };
 
+    hasPackageJson?: boolean;
     hasGit?: boolean;
+    hasMakefile?: boolean;
+    hasDockerCompose?: boolean;
 
     vite?: {
         configPath?: string;

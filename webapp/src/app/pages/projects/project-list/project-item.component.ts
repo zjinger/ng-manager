@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Project } from '@models/project.model';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -8,8 +9,6 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { ProjectItemPopoverComponent } from "./project-item-popover.component";
-import { Project } from '@models/project.model';
-import { ProjectStateService } from '../services/project-state.service';
 @Component({
   selector: 'app-project-item',
   imports: [CommonModule, FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzPopoverModule, NzBadgeModule, NzSpaceModule, ProjectItemPopoverComponent],
@@ -17,8 +16,8 @@ import { ProjectStateService } from '../services/project-state.service';
     <div nz-row class="project-item" [class.open]="open">
       <div nz-col nzSpan="24" class="content">
         <div class="favorite">
-          <button nz-button >
-            <nz-icon nzType="star" nzTheme="outline"></nz-icon>
+          <button nz-button nzType="primary">
+            <nz-icon nzType="star" [nzTheme]="project?.isFavorite ? 'fill' : 'outline'"></nz-icon>
           </button>
         </div>
         <div class="info">
@@ -41,15 +40,15 @@ import { ProjectStateService } from '../services/project-state.service';
         </div>
         <div class="actions">
           <nz-space>
-            <button nz-button nzType="default">
+            <button nz-button nzType="primary">
               <nz-icon nzType="code" nzTheme="outline" />
               <span>在编辑器中打开</span>
             </button>
-            <button nz-button nzType="default">
+            <button nz-button nzType="primary">
               <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
               <span>编辑</span>
             </button>
-            <button nz-button nzType="default">
+            <button nz-button nzType="primary">
               <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
               <span>删除</span>
             </button>
@@ -65,15 +64,14 @@ import { ProjectStateService } from '../services/project-state.service';
   styles: [
     `
     .project-item{
-      border:1px solid #e8e8e8;
       border-radius:4px;
       padding:0;
       margin:8px 0;
-      box-shadow:0 2px 8px rgba(0,0,0,.05);
       transition:all .3s;
       cursor:pointer;
-      &:hover{
+      &.open, &:hover{
         box-shadow:0 4px 12px rgba(0,0,0,.1);
+        background:var(--app-primary-3);
       }
       .content{
           padding: 16px;

@@ -21,7 +21,7 @@ import { CreateProjectDraft } from '../models/project-draft';
     </ng-template>
 
     <div class="kv">
-      <div><span class="k">Framework</span><span class="v">{{draft.detected?.framework || 'Unknown'}}</span></div>
+      <div><span class="k">Framework</span><span class="v">{{draft.detected?.framework || 'unknown'}}</span></div>
       <div><span class="k">package.json</span><span class="v">{{draft.detected?.hasPackageJson ? 'Yes' : 'No'}}</span></div>
       <div><span class="k">scripts</span><span class="v">{{draft.detected?.scriptsCount ?? 0}}</span></div>
       <div><span class="k">lockfile</span><span class="v">{{draft.detected?.lockFile || 'none'}}</span></div>

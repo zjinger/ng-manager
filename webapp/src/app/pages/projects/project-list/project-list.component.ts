@@ -4,7 +4,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { ProjectItem } from './project-item.component';
 import { Project } from '@models/project.model';
-import { ProjectStateService } from '../services/project-state.service';
+import { ProjectStateService } from '../services/project.state.service';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 
 @Component({
@@ -12,30 +12,30 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
   imports: [CommonModule, NzCardModule, NzGridModule, ProjectItem, NzEmptyModule],
   template: `
   <div nz-row class="page">
-    @if(favoriteProjects.length > 0){
+    @if(projectState.favoriteProjects().length > 0){
     <div nz-col nzSpan="16" nzOffset="4">
       <div class="header">
         <h2>收藏的项目</h2>
       </div>
       <div class="content">
-         @for(project of favoriteProjects;track project.id){
-          <app-project-item [project]="project" [open]="project.id === curProject?.id"></app-project-item>
+         @for(project of projectState.favoriteProjects();track project.id){
+          <app-project-item [project]="project" [open]="project.id === projectState.currentProject()?.id"></app-project-item>
         }
       </div> 
     </div>
     }
     <div nz-col nzSpan="16" nzOffset="4">
-      @if(favoriteProjects.length > 0){
+      @if(projectState.favoriteProjects().length > 0){
         <div class="header">
           <h2>更多项目</h2>
         </div>
       }
       <div class="content">
-        @for(project of moreProjects;track project.id){
-          <app-project-item [project]="project" [open]="project.id === curProject?.id"></app-project-item>
+        @for(project of projectState.moreProjects();track project.id){
+          <app-project-item [project]="project" [open]="project.id === projectState.currentProject()?.id"></app-project-item>
         }
       </div>
-      @if(projects.length === 0){
+      @if(projectState.projects().length === 0){
         <div class="no-projects">
           <nz-empty nzNotFoundImage="simple" nzNotFoundContent="暂无项目，快去创建或导入第一个项目吧！"></nz-empty>
         </div>
@@ -57,21 +57,10 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 })
 export class ProjectListComponent implements OnInit {
 
-  projects: Project[] = [];
-
-  favoriteProjects: Project[] = [];
-  moreProjects: Project[] = [];
-
-  curProject: Project | null = null;
-
-  constructor(private projectStateService: ProjectStateService) {
-    this.projects = this.projectStateService.projects;
-    this.favoriteProjects = this.projectStateService.getFavoriteProjects();
-    this.moreProjects = this.projectStateService.getMoreProjects();
-    this.curProject = this.projectStateService.currentProject;
+  constructor(public projectState: ProjectStateService) {
   }
 
   ngOnInit() {
-    this.projectStateService.getProjects();
+    this.projectState.getProjects();
   }
 }

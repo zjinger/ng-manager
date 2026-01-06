@@ -18,6 +18,10 @@ export class UiNotifierService {
         this.msg.info(text);
     }
 
+    success(text: string) {
+        this.msg.success(text);
+    }
+
     modal(text: string, action?: any) {
         this.modalService.error({
             nzTitle: '错误',

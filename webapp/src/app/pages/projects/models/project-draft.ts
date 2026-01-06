@@ -1,6 +1,7 @@
+import { DetectResult, PackageManager } from "@models/project.model";
+
 // src/app/projects/models/project-draft.ts
 export type ProjectMode = 'create' | 'import';
-export type PackageManager = 'auto' | 'npm' | 'pnpm' | 'yarn';
 
 export interface CreateProjectDraft {
     mode: ProjectMode;
@@ -15,17 +16,8 @@ export interface CreateProjectDraft {
 
     initGit: boolean;
     initialCommitMessage?: string;
-
-    detected?: {
-        framework?: string;
-        hasPackageJson?: boolean;
-        scriptsCount?: number;
-        hasGit?: boolean;
-        lockFile?: 'pnpm' | 'yarn' | 'npm' | 'none';
-        recommendedScript?: string;
-        hasMakefile?: boolean;
-        hasDockerCompose?: boolean;
-    };
+    
+    detected?: DetectResult
 
     importScriptsAsTasks: boolean;
     importMakefileTasks: boolean;

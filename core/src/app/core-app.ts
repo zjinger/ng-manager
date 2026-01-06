@@ -16,6 +16,7 @@ import * as path from "path";
 import * as os from "os";
 import { JsonProjectRepo } from "../infra/storage/project.repo.json";
 import { LoggerService } from "../domain/logger/logger.service";
+import { FsServiceImpl } from "../domain/fs/fs.service.impl";
 
 /**
  * 创建 CoreApp
@@ -56,11 +57,15 @@ export function createCoreApp(
 
     const dataDir =
         opts.dataDir ??
-        path.join(os.homedir(), ".ng-manager"); // ✅ 非 Electron 场景默认落这里
+        path.join(os.homedir(), ".ng-manager"); // 非 Electron 场景默认落这里
     const projectRepo = new JsonProjectRepo(dataDir);
     const project = new ProjectServiceImpl(
         projectRepo
     )
+
+    /* ------------------ fs ------------------ */
+    const fs = new FsServiceImpl();
+
     /* ------------------ core app ------------------ */
 
     return {
@@ -69,5 +74,6 @@ export function createCoreApp(
         logger,
         task,
         project,
+        fs,
     };
 }

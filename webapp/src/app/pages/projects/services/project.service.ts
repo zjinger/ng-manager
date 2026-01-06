@@ -1,18 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { CreateProjectDraft } from '../models/project-draft';
 import { ApiClient } from '@app/core/api/api-client';
-import { Project } from '@models/project.model';
-
-export interface DetectResult {
-  framework?: string;
-  hasPackageJson?: boolean;
-  scripts?: string[];
-  lockFile?: 'pnpm' | 'yarn' | 'npm' | 'none';
-  hasGit?: boolean;
-  hasMakefile?: boolean;
-  hasDockerCompose?: boolean;
-}
-
+import { CheckRootResult, DetectResult, ImportCheckResult, Project } from '@models/project.model';
+import { Observable } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
 
@@ -23,17 +13,8 @@ export class ProjectService {
     return true;
   }
 
-  async detectProject(_rootPath: string): Promise<DetectResult> {
-    // TODO: 调用本地服务扫描 package.json / lockfile / .git / Makefile / compose
-    return {
-      framework: 'Unknown',
-      hasPackageJson: false,
-      scripts: [],
-      lockFile: 'none',
-      hasGit: false,
-      hasMakefile: false,
-      hasDockerCompose: false,
-    };
+  detect(rootPath: string): Observable<DetectResult> {
+    return this.api.post<DetectResult>("/api/projects/detect", { rootPath });
   }
 
   async createProject(_draft: CreateProjectDraft): Promise<{ projectId: string }> {
@@ -46,7 +27,6 @@ export class ProjectService {
     return null;
   }
 
-
   list() {
     return this.api.get<Project[]>("/api/projects/list");
   }
@@ -55,15 +35,29 @@ export class ProjectService {
     return this.api.get<Project>(`/api/projects/getInfo/${id}`);
   }
 
-  create(data: { name: string; root: string }) {
-    return this.api.post<Project>("/api/projects/new", data);
+  check(rootPath: string) {
+    return this.api.post<CheckRootResult>("/api/projects/check", { rootPath });
   }
+
+
+  createByPath(data: { root: string; name: string; syncTasks?: boolean }) {
+    return this.api.post<{ id: string }>("/api/projects/create", data);
+  }
+
+  checkImport(root: string) {
+    return this.api.post<ImportCheckResult>("/api/projects/checkImport", { root });
+  }
+
+  importByPath(data: { root: string; name?: string; syncTasks?: boolean }) {
+    return this.api.post<{ id: string }>("/api/projects/import", data);
+  }
+
 
   delete(id: string) {
     return this.api.delete<void>(`/api/projects/delete/${id}`);
   }
 
-  update(id: string, data: Partial<Project>) { 
+  update(id: string, data: Partial<Project>) {
     return this.api.post<Project>(`/api/projects/update/${id}`, data);
   }
 }

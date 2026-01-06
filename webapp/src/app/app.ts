@@ -1,6 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
+import { ProjectIconRegistry } from './icons/project-icon-registry';
 import { LayoutComponent } from './layout/layout.component';
-
 @Component({
   selector: 'app-root',
   imports: [LayoutComponent],
@@ -13,5 +13,7 @@ import { LayoutComponent } from './layout/layout.component';
   ]
 })
 export class App {
-  protected readonly title = signal('Ng-Manager');
+  constructor(reg: ProjectIconRegistry) {
+    reg.init();
+  }
 }

@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
-import { ProjectListComponent } from "./project-list/project-list.component";
 import { ProjectCreateComponent } from "./project-create/project-create.component";
 import { ProjectImportComponent } from "./project-import/project-import.component";
+import { ProjectListComponent } from "./project-list/project-list.component";
+import { ProjectImportState } from './services/project-import.state.service';
 
 @Component({
   selector: 'app-projects',
@@ -14,14 +15,13 @@ import { ProjectImportComponent } from "./project-import/project-import.componen
       <div class="header">
         <h2>项目管理</h2>
       </div>
-      <nz-tabs nzCentered class="tabs-container">
+      <nz-tabs nzCentered class="tabs-container" [(nzSelectedIndex)]="selectedIndex" (nzSelectedIndexChange)="tabIndexChange($event)">
         <nz-tab [nzTitle]="projectTitleTemplate">
           <ng-template #projectTitleTemplate>
             <nz-icon nzType="unordered-list" nzTheme="outline" />
              项目
           </ng-template>
-          <!-- <app-project-list></app-project-list> -->
-            <app-project-create></app-project-create>
+          <app-project-list></app-project-list>
         </nz-tab>
         <nz-tab [nzTitle]="addTitleTemplate">
           <ng-template #addTitleTemplate>
@@ -66,4 +66,13 @@ import { ProjectImportComponent } from "./project-import/project-import.componen
   `]
 })
 export class ProjectsComponent {
+  importState = inject(ProjectImportState);
+  selectedIndex = 0;
+  tabIndexChange(index: number) {
+    if (index === 2) {
+      this.importState.active.set(true);
+    } else {
+      this.importState.active.set(false);
+    }
+  }
 }

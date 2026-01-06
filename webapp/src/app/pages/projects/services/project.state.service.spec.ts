@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { ProjectStateService } from './project-state.service';
+import { ProjectStateService } from './project.state.service';
 
 describe('ProjectStateService', () => {
   let service: ProjectStateService;
