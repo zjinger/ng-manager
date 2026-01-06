@@ -68,4 +68,10 @@ export class ProjectService {
   toggleFavorite(id: string) {
     return this.api.post<Project>(`/api/projects/favorite/${id}/toggle`, {});
   }
+
+  openInEditor(id: string, editor: "code" | "system" = "code") {
+    return this.api.post<{ ok: boolean }>(`/api/projects/openInEditor/${id}`, { editor });
+  }
+
+
 }

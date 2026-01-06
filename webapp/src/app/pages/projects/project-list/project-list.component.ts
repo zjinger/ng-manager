@@ -16,27 +16,33 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
         <div class="header">
           <h2>收藏的项目</h2>
         </div>
-        <div class="content">
-          @for(project of projectState.favoriteProjects();track project.id){
-            <app-project-item (toggleFavorite)="projectState.toggleFavorite(project.id)" [project]="project" [open]="project.id === projectState.currentProject()?.id"></app-project-item>
-          }
-        </div> 
+        <ng-container *ngTemplateOutlet="itemsTpl; context: { $implicit: projectState.favoriteProjects()}"></ng-container>
       }
       @if(projectState.favoriteProjects().length > 0){
         <div class="header">
           <h2>更多项目</h2>
         </div>
       }
-      <div class="content">
-        @for(project of projectState.moreProjects();track project.id){
-          <app-project-item (toggleFavorite)="projectState.toggleFavorite(project.id)" [project]="project"  [open]="project.id === projectState.currentProject()?.id"></app-project-item>
-        }
-      </div>
+      <ng-container *ngTemplateOutlet="itemsTpl; context: { $implicit: projectState.moreProjects()}"></ng-container>
+      <!-- No projects -->
       @if(projectState.projects().length === 0){
         <div class="no-projects">
           <nz-empty nzNotFoundImage="simple" nzNotFoundContent="暂无项目，快去创建或导入第一个项目吧！"></nz-empty>
         </div>
       }
+      <!-- Template for project items -->
+      <ng-template #itemsTpl let-projects>
+        <div class="content">
+          @for (project of projects; track project.id) {
+            <app-project-item 
+              (toggleFavorite)="projectState.toggleFavorite(project.id)" 
+              (openInEditor)="projectState.openCurrentInEditor()"
+              [project]="project"  
+              [open]="project.id === projectState.currentProject()?.id">
+            </app-project-item>
+          }
+        </div>
+      </ng-template>
     </div>
   </div>`,
   styles: [`

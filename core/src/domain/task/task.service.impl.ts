@@ -3,7 +3,7 @@ import { genId } from "../../common/id";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { Events, type CoreEventMap } from "../../infra/event/events";
 import type { ILogStore } from "../../infra/log/log.store";
-import { ProcessService } from "../process/process.service";
+import { ProcessService } from "../process";
 import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
 import type { TaskRuntime, TaskSpec, TaskView } from "./task.model";
 import type { TaskService } from "./task.service";
@@ -19,7 +19,7 @@ export class TaskServiceImpl implements TaskService {
     private procs = new Map<string, { kill: (s?: NodeJS.Signals) => void }>();
 
     constructor(
-        private processService: ProcessService,
+        private proc: ProcessService,
         private log: ILogStore,
         private events: IEventBus<CoreEventMap>
     ) { }
@@ -60,7 +60,7 @@ export class TaskServiceImpl implements TaskService {
         });
 
         try {
-            const p = await this.processService.spawn(spec.command, {
+            const p = await this.proc.spawn(spec.command, [], {
                 cwd: spec.cwd,
                 env: spec.env,
                 shell: spec.shell,

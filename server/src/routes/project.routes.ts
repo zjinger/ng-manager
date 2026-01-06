@@ -1,6 +1,34 @@
 import type { FastifyInstance } from "fastify";
 import * as path from "path";
+import launchEditor from "launch-editor";
+import { AppError } from "@core";
+import { OpenFolderOptions } from "@core/domain/editor";
 
+async function openFolder(folder: string, opts: OpenFolderOptions = {}): Promise<void> {
+    const editor = opts.editor ?? "code";
+    const file = opts.file;
+
+    return new Promise<void>((resolve, reject) => {
+        launchEditor(
+            file ? `${folder}/${file}` : folder,
+            editor === "system" ? undefined : editor,
+            (fileName, errorMsg) => {
+                if (errorMsg) {
+                    // launch-editor 内部已经区分了 editor 不存在 / 启动失败
+                    reject(
+                        new AppError(
+                            "EDITOR_NOT_FOUND",
+                            errorMsg,
+                            { editor, folder, file }
+                        )
+                    );
+                    return;
+                }
+                resolve();
+            }
+        );
+    });
+}
 /**
  * Project routes
  */
@@ -195,4 +223,22 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const updated = await fastify.core.project.toggleFavorite(id);
         return updated;
     });
-}   
+
+    /**
+     * 在编辑器打开项目
+     * POST /projects/openInEditor/:id
+     * body: { editor?: "code" | "system" }
+     */
+    fastify.post("/openInEditor/:id", async (req) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as { editor?: "code" | "system" };
+        const p = await fastify.core.project.get(id);
+        const editor = body?.editor || "code";
+        await openFolder(p.root, { editor });
+        return {
+            ok: true,
+        }
+        // await fastify.core.project.openInEditor(id, { editor: body?.editor });
+    });
+}
+

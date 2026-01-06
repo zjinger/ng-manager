@@ -6,6 +6,7 @@ import type { TaskService } from "../domain/task/task.service";
 import { ProjectService } from "../domain/project/project.service";
 import { LoggerService } from "../domain/logger/logger.service";
 import { FsService } from "../domain/fs";
+import { EditorService } from "../domain/editor";
 
 /**
  * 创建 CoreApp 的参数
@@ -40,4 +41,7 @@ export interface CoreApp {
 
     /** 文件系统管理 */
     fs: FsService;
+
+    /** 编辑器集成 */
+    editor: EditorService;
 }

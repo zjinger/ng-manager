@@ -1,15 +1,28 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Project } from '@models/project.model';
 import { ProjectService } from './project.service';
+import { UiNotifierService } from '@app/core/ui-notifier.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ProjectStateService {
+  private notify = inject(UiNotifierService);
   private projectService = inject(ProjectService);
   currentProjectId = signal<string | null>(null);
   currentProject = signal<Project | null>(null);
   projects = signal<Project[]>([]);
+
+  openCurrentInEditor() {
+    const p = this.currentProject();
+    if (!p) return;
+    this.projectService.openInEditor(p.id).subscribe({
+      next: () => {
+        this.notify.success("已在编辑器中打开项目");
+      },
+      // error: (e) => console.error("openInEditor failed:", e),
+    });
+  }
 
   toggleFavorite(projectId: string) {
     this.projectService.toggleFavorite(projectId).subscribe((updated) => {
@@ -54,4 +67,6 @@ export class ProjectStateService {
       this.currentProject.set(project);
     }
   }
+
+
 }

@@ -39,7 +39,7 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
         </div>
         <div class="actions">
           <nz-space>
-            <button nz-button nzType="primary">
+            <button nz-button nzType="primary" (click)="openInEditor.emit()">
               <nz-icon nzType="code" nzTheme="outline" />
               <span>在编辑器中打开</span>
             </button>
@@ -113,6 +113,7 @@ export class ProjectItem {
   @Input() open = false;
 
   @Output() toggleFavorite = new EventEmitter<void>();
+  @Output() openInEditor = new EventEmitter<void>();
 
 
 }

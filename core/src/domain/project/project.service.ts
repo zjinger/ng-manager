@@ -22,4 +22,6 @@ export interface ProjectService {
 
     setFavorite(id: string, isFavorite: boolean): Promise<Project>;
     toggleFavorite(id: string): Promise<Project>;
+
+    openInEditor(id: string, opts?: { editor?: "code" | "system" }): Promise<void>;
 }

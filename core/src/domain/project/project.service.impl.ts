@@ -7,9 +7,14 @@ import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, Chec
 import { scanProject } from "./project.scanner";
 import { ProjectMeta } from "./project.meta";
 import { ProjectService } from "./project.service";
+import { EditorService } from "../editor";
 
 export class ProjectServiceImpl implements ProjectService {
-    constructor(private repo: ProjectRepo) { }
+    constructor(
+        private repo: ProjectRepo,
+        private editor: EditorService
+
+    ) { }
 
     async importProject(input: { root: string; name?: string; }): Promise<Project> {
         const { root, name } = input;
@@ -189,5 +194,15 @@ export class ProjectServiceImpl implements ProjectService {
         const p = await this.get(id);
         const next = !p.isFavorite;
         return this.setFavorite(id, next);
+    }
+
+    async openInEditor(id: string, opts?: { editor?: "code" | "system" }): Promise<void> {
+        const p = await this.get(id); // 不存在会抛 PROJECT_NOT_FOUND
+        try {
+            await this.editor.openFolder(p.root, { editor: opts?.editor ?? "code" });
+        } catch (e: any) {
+            if (e instanceof AppError) throw e;
+            throw new AppError("UNKNOWN_ERROR", e?.message || "open editor failed", { projectId: id, root: p.root });
+        }
     }
 }

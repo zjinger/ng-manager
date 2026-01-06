@@ -1,5 +1,4 @@
-import type { SpawnOptions, SpawnedProcess } from "./process.model";
-
+import type { SpawnOptions, SpawnedProcess } from "./process.types";
 export interface IProcessDriver {
-    spawn(command: string, opts: SpawnOptions): Promise<SpawnedProcess>;
+    spawn(command: string, args: string[], opts: SpawnOptions): Promise<SpawnedProcess>;
 }

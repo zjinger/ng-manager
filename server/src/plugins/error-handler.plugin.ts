@@ -3,24 +3,49 @@ import type { FastifyPluginAsync } from "fastify";
 import { AppError, type ErrorCode } from "@core";
 
 /**
- * 错误码到 HTTP 状态码映射
+ * ErrorCode → HTTP Status 映射
+ *
+ * 约定：
+ * - 4xx：客户端/业务条件不满足
+ * - 5xx：服务端/系统错误
  */
 export const ERROR_STATUS: Record<ErrorCode, number> = {
+    /* ---------------- Project ---------------- */
+
     PROJECT_NOT_FOUND: 404,
-    TASK_NOT_FOUND: 404,
-
-    PROJECT_ALREADY_EXISTS: 409,
-    TASK_ALREADY_RUNNING: 409,
-
     PROJECT_ROOT_INVALID: 400,
+    PROJECT_ALREADY_EXISTS: 409,
 
+    /* ---------------- Project Import ---------------- */
+
+    PROJECT_IMPORT_NOT_EXISTS: 404,            // 路径不存在
+    PROJECT_IMPORT_NOT_DIR: 400,               // 不是目录
+    PROJECT_IMPORT_ALREADY_REGISTERED: 409,    // 已导入
+    PROJECT_IMPORT_NOT_RECOGNIZED: 422,         // 不像项目（语义错误）
+    PROJECT_IMPORT_SCAN_FAILED: 500,            // 扫描失败（IO/解析）
+
+    /* ---------------- Task / Process ---------------- */
+
+    TASK_NOT_FOUND: 404,
+    TASK_ALREADY_RUNNING: 409,
     PROCESS_SPAWN_FAILED: 500,
-    STORAGE_IO_ERROR: 500,
 
-    FS_ALREADY_EXISTS: 409,
+    /* ---------------- File System ---------------- */
+
     FS_NOT_FOUND: 404,
+    FS_ALREADY_EXISTS: 409,
+    FS_PERMISSION_DENIED: 403,
 
+    /* ---------------- Editor ---------------- */
+
+    EDITOR_NOT_FOUND: 404,
+
+    /* ---------------- Infra / Auth ---------------- */
+
+    STORAGE_IO_ERROR: 500,
     UNAUTHORIZED: 401,
+
+    /* ---------------- Fallback ---------------- */
     UNKNOWN_ERROR: 500,
 };
 
