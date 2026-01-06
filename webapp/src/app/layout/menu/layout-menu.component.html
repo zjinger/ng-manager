@@ -6,7 +6,7 @@
       nz-menu-item
       [nzPaddingLeft]="menu.level * 24"
       [nzDisabled]="menu.disabled"
-      [nzSelected]="isActive(menu.path!)"
+      [nzSelected]="menuService.isActive(menu.path!)"
       (click)="menuService.clickMenu(menu)"
     >
       @if (menu.icon) {

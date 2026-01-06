@@ -14,14 +14,8 @@ import { MenuService } from './menu.service';
 })
 export class LayoutMenuComponent {
   @Input() isCollapsed = false;
-  menus: MenuItem[] = []
+  menus: MenuItem[] = [];
   constructor(public menuService: MenuService) {
     this.menus = this.menuService.getMenus();
-  }
-  isActive(path: string) {
-    // return this.router.url.startsWith(path);
-    const curPath = this.menuService.currentMenu()?.path;
-    console.log('curPath', curPath, path);
-    return curPath === path;
   }
 }
