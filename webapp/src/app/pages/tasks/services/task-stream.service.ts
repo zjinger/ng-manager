@@ -1,19 +1,7 @@
 import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
 import { WsClientService } from "./ws-client.service";
-
-export type TaskConsoleLine = {
-  ts?: number;
-  text: string;
-  level?: string;
-  stream?: "stdout" | "stderr";
-};
-
-export type TaskRuntimeStatus =
-  | { status: "idle" }
-  | { status: "running"; pid?: number; startedAt?: number }
-  | { status: "stopped"; exitCode?: number | null; signal?: string | null; stoppedAt?: number };
-
+import { TaskConsoleLine, TaskRuntimeStatus } from "@models/task.model";
 @Injectable({ providedIn: "root" })
 export class TaskStreamService {
   private linesByTask = new Map<string, BehaviorSubject<TaskConsoleLine[]>>();

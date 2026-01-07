@@ -10,6 +10,7 @@ export const Events = {
     TASK_STOPPED: "task.stopped",
     TASK_EXITED: "task.exited",
     TASK_FAILED: "task.failed",
+    TASK_SPECS_REFRESHED: "task.specs.refreshed",
 
     // system / log
     LOG_APPENDED: "log.appended",
@@ -28,6 +29,7 @@ export type CoreEventMap = {
     [Events.TASK_STOPPED]: { taskId: string };
     [Events.TASK_EXITED]: { taskId: string; exitCode: number | null; signal: string | null };
     [Events.TASK_FAILED]: { taskId: string; error: string | null };
+    [Events.TASK_SPECS_REFRESHED]: { projectId: string; count: number };
 
     [Events.LOG_APPENDED]: { refId?: string };
 };

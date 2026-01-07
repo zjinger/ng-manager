@@ -1,7 +1,7 @@
 <div class="list-card">
   <div class="topbar">
     <nz-input-wrapper>
-      <nz-icon class="search-icon" nzInputAddonBefore nzType="search" />
+      <nz-icon class="search-icon" nzInputPrefix nzType="search" />
       <input
         nz-input
         placeholder="搜索任务（name / id）"
@@ -9,32 +9,48 @@
         (ngModelChange)="keyword.set($event)"
       />
     </nz-input-wrapper>
-    <button nz-button (click)="refresh()">
+    <button nz-button (click)="refresh()" nzType="text">
       <span nz-icon nzType="reload"></span>
     </button>
   </div>
   <div class="items-container">
-    @if (error) {
-    <div class="error">{{ error }}</div>
-    } @if (loading) {
+    @if (error()) {
+    <div class="error">{{ error() }}</div>
+    } @if (loading()) {
     <div class="hint">Loading...</div>
-    } @else { @if (list.length === 0) {
-    <div class="hint">No tasks for project: {{ projectId }}</div>
+    } @else { @if (list().length === 0) {
+    <div class="hint">No tasks for project: {{ projectId() }}</div>
     } @else {
     <div class="items">
-      @for (t of list; track t.taskId) {
-      <div class="item" [class.active]="t.taskId === selectedTaskId" (click)="select(t.taskId)">
-        <div class="row">
-          <div class="name" [title]="t.name">{{ t.name }}</div>
-          <div class="badge" [attr.data-status]="t.status">{{ badge(t.status) }}</div>
+      @for (t of list(); track t.spec.id) {
+      <div
+        class="item"
+        [class.active]="t.runtime && t.runtime.taskId === selectedId()"
+        (click)="select(t.runtime.taskId)"
+      >
+        <div class="row" nz-tooltip="{{ t.spec.description || '' }}" nzTooltipPlacement="right">
+          <div class="icon">
+            <nz-icon nzType="codepen-circle" nzTheme="outline" />
+            <nz-badge nzStatus="processing" />
+          </div>
+          <div class="info">
+            <div class="name" [title]="t.spec.name">{{ t.spec.name }}</div>
+            <div class="description">
+              {{ t.spec.description || '' }}
+            </div>
+          </div>
+          <!-- <div class="badge" [attr.data-status]="t?.runtime?.status">
+            {{ badge(t?.runtime?.status) }}
+          </div> -->
         </div>
-
+        @if(t.runtime) {
         <div class="meta">
-          <span class="mono">{{ t.taskId }}</span>
-          @if (t.pid) { <span class="sep">·</span><span>pid={{ t.pid }}</span> } @if (t.exitCode !==
-          undefined && t.status === 'stopped') { <span class="sep">·</span
-          ><span>exit={{ t.exitCode }}</span> }
+          <span class="mono">{{ t.runtime.taskId }}</span>
+          @if (t.runtime.pid) { <span class="sep">·</span><span>pid={{ t.runtime.pid }}</span> } @if
+          (t.runtime.exitCode !== undefined && t.runtime.status === 'stopped') {
+          <span class="sep">·</span><span>exit={{ t.runtime.exitCode }}</span> }
         </div>
+        }
       </div>
       }
     </div>

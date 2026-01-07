@@ -1,5 +1,5 @@
 import { ErrorCode } from "../../common/errors";
-import { PackageManager, ProjectFramework } from "./project.meta";
+import { PackageManager, ProjectFramework, ProjectMeta } from "./project.meta";
 
 export interface Project {
     id: string;
@@ -8,13 +8,16 @@ export interface Project {
     createdAt: number;
     updatedAt: number;
     scripts?: Record<string, string>;
+    packageManager?: PackageManager;
+    framework?: ProjectFramework;
     // 可选：环境变量
     env?: Record<string, string>;
     // 收藏
     isFavorite?: boolean; // default false
-
-    lastOpened?: number;    // 上次打开时间戳
+    // 上次打开时间戳
+    lastOpened?: number;
 }
+
 export interface CreateProjectInput {
     name: string;
     root: string;
@@ -38,6 +41,7 @@ export interface ImportCheckResult {
     reason?: string;    // hard fail
     detect?: DetectResult;
     warnings?: string[]; // soft
+    meta?: ProjectMeta;
 }
 
 

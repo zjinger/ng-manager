@@ -147,11 +147,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         });
         // 要自动 sync task，这里加
         if (body.syncTasks === true) {
-            await fastify.core.task.syncSpecsFromProjectScripts(
-                project.id,
-                project.root,
-                project.scripts ?? {}
-            );
+            await fastify.core.task.refreshByProject(project.id);
         }
         return {
             id: project.id,

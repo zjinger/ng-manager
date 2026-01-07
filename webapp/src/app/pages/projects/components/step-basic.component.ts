@@ -11,7 +11,7 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 
 import { CreateProjectDraft } from '../models/project-draft';
-import { ProjectService } from '../services/project.service';
+import { ProjectApiService, } from '../services/project-api.service';
 
 @Component({
   standalone: true,
@@ -115,7 +115,7 @@ export class StepBasicComponent {
   @Input({ required: true }) draft!: CreateProjectDraft;
   @Output() draftChange = new EventEmitter<CreateProjectDraft>();
 
-  constructor(private api: ProjectService) { }
+  constructor(private api: ProjectApiService) { }
 
   async pickParent() {
     const p = await this.api.pickFolder();

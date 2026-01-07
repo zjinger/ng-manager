@@ -1,12 +1,15 @@
-import { Component, EventEmitter, Input, OnChanges, Output, signal, SimpleChanges } from "@angular/core";
-import { TasksApiService, type TaskRuntime } from "../services/tasks-api.service";
+import { Component, inject } from "@angular/core";
+import { FormsModule } from "@angular/forms";
+import { TaskRuntime } from "@models/task.model";
+import { NzBadgeModule } from "ng-zorro-antd/badge";
 import { NzButtonModule } from "ng-zorro-antd/button";
-import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzCardModule } from "ng-zorro-antd/card";
+import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzInputModule } from "ng-zorro-antd/input";
 import { NzSelectModule } from "ng-zorro-antd/select";
 import { NzSpaceModule } from "ng-zorro-antd/space";
-import { FormsModule } from "@angular/forms";
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
+import { TaskStateService } from "../services/tasks.state.service";
 
 @Component({
   selector: "app-task-list",
@@ -18,47 +21,33 @@ import { FormsModule } from "@angular/forms";
     NzSpaceModule,
     NzSelectModule,
     NzButtonModule,
-    NzInputModule,],
+    NzInputModule,
+    NzTooltipModule,
+    NzBadgeModule
+  ],
   templateUrl: "./task-list.component.html",
   styleUrls: ["./task-list.component.less"],
 })
-export class TaskListComponent implements OnChanges {
-  @Input() projectId: string = "p1";
-  @Input() selectedTaskId: string = "";
-  @Output() selectedTaskIdChange = new EventEmitter<string>();
-  readonly keyword = signal("");
-  loading = false;
-  error = "";
-  list: TaskRuntime[] = [];
+export class TaskListComponent {
 
-  constructor(private api: TasksApiService) { }
+  readonly state = inject(TaskStateService);
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes["projectId"]) {
-      this.refresh();
-    }
+  keyword = this.state.keyword;
+  loading = this.state.loading;
+  error = this.state.error;
+  list = this.state.filteredRows;
+  selectedId = this.state.selectedTaskId;
+  projectId = this.state.projectId;
+
+  refresh() {
+    this.state.refresh();
   }
 
-  async refresh() {
-    this.loading = true;
-    this.error = "";
-    try {
-      this.list = await this.api.listByProject(this.projectId);
-    } catch (e: any) {
-      this.error = e?.message || String(e);
-    } finally {
-      this.loading = false;
-    }
+  select(specId: string) {
+    this.state.select(specId);
   }
 
-  select(id: string) {
-    this.selectedTaskId = id;
-    this.selectedTaskIdChange.emit(id);
+  badge(status: TaskRuntime["status"] | undefined): string {
+    return status ?? "";
   }
-
-  badge(status: TaskRuntime["status"]) {
-    return status;
-  }
-
-  trackByTaskId = (_: number, item: TaskRuntime) => item.taskId;
 }

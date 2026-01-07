@@ -1,55 +1,69 @@
-import type { ProjectMeta } from "../../project/project.meta";
-import type { TaskSpec } from "../task.model";
+import { createHash } from "crypto";
+import type { TaskDefinition, TaskKind } from "../task.types";
+import { PackageManager } from "../../project/project.meta";
 
-function detectPm(meta: ProjectMeta): "npm" | "pnpm" | "yarn" {
-    if (meta.packageManager === "pnpm" || meta.packageManager === "yarn" || meta.packageManager === "npm") {
-        return meta.packageManager;
-    }
-    return "npm";
+function buildSpecId(projectId: string, scriptName: string) {
+    const h = createHash("sha1")
+        .update(`${projectId}::${scriptName}`, "utf8")
+        .digest("hex")
+        .slice(0, 10);
+    return `task:${projectId}:${h}`;
 }
 
-function buildRunCommand(pm: "npm" | "pnpm" | "yarn", scriptName: string) {
-    // yarn：yarn dev / yarn build
+function buildRunCommand(pm: PackageManager, scriptName: string) {
     if (pm === "yarn") return `yarn ${scriptName}`;
-    // npm/pnpm：npm run dev / pnpm run dev
     return `${pm} run ${scriptName}`;
 }
 
-// 稳定 specId：同一 projectId + scriptName 固定
-function buildSpecId(projectId: string, scriptName: string) {
-    return `task:${projectId}:${scriptName}`;
-}
-
-function sortScriptKeys(keys: string[]) {
-    const order = ["dev", "start", "serve", "preview", "build", "test", "lint"];
-    return keys.sort((a, b) => {
-        const ia = order.indexOf(a);
-        const ib = order.indexOf(b);
-        if (ia !== -1 || ib !== -1) {
-            return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-        }
-        return a.localeCompare(b);
-    });
+/**
+ *  根据command 名称，推断任务类型
+ * @param name
+ * @returns
+ */
+function getTaskKindFromName(name: string): TaskKind {
+    const lower = name.toLowerCase();
+    if (lower.includes("build")) return "build";
+    if (lower.includes("test")) return "test";
+    if (lower.includes("lint")) return "lint";
+    if (lower === "run" || lower === "dev" || lower === "start") return "run";
+    return "custom";
 }
 
 export function genSpecsFromScripts(
     projectId: string,
     rootDir: string,
     scripts: Record<string, string>,
-    packageManager: "npm" | "pnpm" | "yarn" = "npm"
-): TaskSpec[] {
-    const keys = sortScriptKeys(Object.keys(scripts ?? {}));
-    const buildRunCmd = (name: string) => {
-        if (packageManager === "yarn") return `yarn ${name}`;
-        return `${packageManager} run ${name}`;
-    };
+    packageManager: PackageManager
+): TaskDefinition[] {
+    const specs: TaskDefinition[] = [];
 
-    return keys.map((name) => ({
-        id: buildSpecId(projectId, name),
-        projectId,
-        name,
-        command: buildRunCmd(name),
-        cwd: rootDir,
-        shell: true,
-    }));
+    let pendingDescription: string | undefined;
+
+    for (const name of Object.keys(scripts ?? {})) {
+        const raw = (scripts[name] ?? "").trim();
+        // 描述行：先缓存，不生成 task
+        if (!raw) {
+            pendingDescription = name; // 用 key 作为描述文本
+            continue;
+        }
+        // 可执行任务
+        const spec: TaskDefinition = {
+            id: buildSpecId(projectId, name),
+            projectId,
+            name,
+            kind: getTaskKindFromName(name),
+            command: buildRunCommand(packageManager, name),
+            cwd: rootDir,
+            shell: true,
+        };
+        // 如果前面有描述，挂载到当前 task 上
+        if (pendingDescription) {
+            spec.description = pendingDescription;
+            pendingDescription = undefined;
+        }
+        specs.push(spec);
+    }
+
+    return specs;
 }
+

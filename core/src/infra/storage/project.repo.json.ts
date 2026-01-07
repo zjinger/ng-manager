@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as  path from "path";
-import type { Project } from "../../domain/project/project.model";
+import type { Project } from "../../domain/project/project.types";
 import type { ProjectRepo } from "../../domain/project/project.repo";
 
 interface DbShape {

@@ -13,10 +13,10 @@ export * from "./infra/log/types";
 export * from "./infra/log/log.store";
 export * from "./infra/log/ring-log-store";
 
-export * from "./domain/task/task.model";
+export * from "./domain/task/task.types";
 export * from "./domain/task/task.service";
 
-export * from "./domain/project/project.model";
+export * from "./domain/project/project.types";
 export * from "./domain/project/project.service";
 export * from "./domain/project/project.scanner";
 

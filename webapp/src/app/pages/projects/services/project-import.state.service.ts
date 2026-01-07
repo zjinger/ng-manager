@@ -1,14 +1,14 @@
 import { Injectable, inject, signal, computed, effect } from "@angular/core";
 import { ImportCheckResult } from "@models/project.model";
 import { FsService } from "./fs.service";
-import { ProjectService } from "./project.service";
+import { ProjectApiService } from "./project-api.service";
 import { ProjectStateService } from "./project.state.service";
 import { UiNotifierService } from "@app/core/ui-notifier.service";
 
 @Injectable({ providedIn: "root" })
 export class ProjectImportState {
   private fs = inject(FsService);
-  private projectApi = inject(ProjectService);
+  private projectApi = inject(ProjectApiService);
   private projectState = inject(ProjectStateService);
 
   /** 是否处于 import 页面 */
@@ -83,6 +83,7 @@ export class ProjectImportState {
     this.projectApi.importByPath({
       root,
       name: name || defaultName,
+      syncTasks: true,
     }).subscribe({
       next: (res) => {
         this.projectState.getProjects();

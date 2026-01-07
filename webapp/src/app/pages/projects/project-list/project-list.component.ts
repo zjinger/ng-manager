@@ -33,6 +33,7 @@ import { ProjectItem } from './project-item.component';
         <div class="content">
           @for (project of projects; track project.id) {
             <app-project-item 
+              [project] ="project"
               (selectProject)="projectState.selectProject(project)"
               (toggleFavorite)="projectState.toggleFavorite(project.id)" 
               (openInEditor)="projectState.openInEditor(project.id)"

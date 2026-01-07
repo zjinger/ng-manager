@@ -1,13 +1,13 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Project } from '@models/project.model';
-import { ProjectService } from './project.service';
+import { ProjectApiService } from './project-api.service';
 import { UiNotifierService } from '@app/core/ui-notifier.service';
 import { NzModalService } from 'ng-zorro-antd/modal';
 @Injectable({ providedIn: 'root' })
 export class ProjectStateService {
   private modal = inject(NzModalService);
   private notify = inject(UiNotifierService);
-  private projectService = inject(ProjectService);
+  private projectService = inject(ProjectApiService);
 
   currentProjectId = signal<string | null>(null);
   currentProject = signal<Project | null>(null);

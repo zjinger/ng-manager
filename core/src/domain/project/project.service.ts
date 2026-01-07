@@ -1,5 +1,5 @@
 import { ProjectMeta } from "./project.meta";
-import { CheckRootResult, CreateProjectInput, ImportCheckResult, Project } from "./project.model";
+import { CheckRootResult, CreateProjectInput, ImportCheckResult, Project } from "./project.types";
 
 export interface ProjectService {
     list(): Promise<Project[]>;

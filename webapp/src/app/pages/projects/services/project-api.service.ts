@@ -4,7 +4,7 @@ import { ApiClient } from '@app/core/api/api-client';
 import { CheckRootResult, DetectResult, ImportCheckResult, Project } from '@models/project.model';
 import { Observable } from 'rxjs';
 @Injectable({ providedIn: 'root' })
-export class ProjectService {
+export class ProjectApiService {
 
   api = inject(ApiClient)
 

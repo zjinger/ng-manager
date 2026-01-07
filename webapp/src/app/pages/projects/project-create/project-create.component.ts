@@ -10,7 +10,7 @@ import { StepFeaturesComponent } from '../components/step-features.component';
 import { StepConfigComponent } from '../components/step-config.component';
 import { CreateSummaryAsideComponent } from '../components/create-summary-aside.component';
 import { createEmptyDraft, CreateProjectDraft } from '../models/project-draft';
-import { ProjectService } from '../services/project.service';
+import { ProjectApiService } from '../services/project-api.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { FsExplorerComponent } from "../components/fs-explorer/fs-explorer.component";
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -41,7 +41,7 @@ export class ProjectCreateComponent {
   draft = signal<CreateProjectDraft>(createEmptyDraft());
 
   constructor(
-    private api: ProjectService,
+    private api: ProjectApiService,
     private msg: NzMessageService,
     private router: Router,
     private route: ActivatedRoute,

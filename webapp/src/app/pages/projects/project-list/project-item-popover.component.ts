@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
+import { TaskRow } from '@models/task.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
@@ -19,7 +20,8 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
           </button>
         </div>
         <div class="tasks">
-          <div class="task-item" (click)="openTask()"  nz-tooltip [nzTooltipTitle]="playing ? '运行中' : description||'空闲'" nzTooltipPlacement="right">
+          @for( task of tasks;track task.spec.id){ 
+            <div class="task-item" (click)="openTask(task)"  nz-tooltip [nzTooltipTitle]="getTaskStatus(task)" nzTooltipPlacement="right">
               <div class="item-logo">
                 <nz-icon nzType="code" nzTheme="outline" />
               </div>
@@ -28,14 +30,15 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
                   <span>dev</span>
                 </div>
                 <div class="description">
-                  <span>空闲</span>
+                  <span>{{ getTaskDescription(task) }}</span>
                 </div>
               </div>
-              <button nz-button nzType="text" type="button" (click)="$event.stopPropagation(); playing = !playing">
-                <nz-icon [nzType]="playing ? 'pause-circle' : 'play-circle'" nzTheme="outline"   />
+              <button nz-button nzType="text" type="button" (click)="$event.stopPropagation(); toggleTask(task)">
+                <nz-icon [nzType]="getTaskActionIcon(task)" nzTheme="outline"   />
               </button>
             </div>
-        </div>
+          }
+          </div>
       </div>
   `,
   styles: [
@@ -105,8 +108,37 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
   ],
 })
 export class ProjectItemPopoverComponent {
-  @Input() playing = false;
-  @Input() description = '';
+  @Input() tasks: TaskRow[] = []
 
-  openTask() { }
+  openTask(task: TaskRow) { }
+
+  toggleTask(task: TaskRow) { }
+
+  getTaskStatus(task: TaskRow) {
+    switch (task.runtime.status) {
+      case "running": return "运行中";
+      case "success": return "成功";
+      case "error": return "错误";
+      case "stopped": return "已停止";
+      default: return "空闲";
+    }
+  }
+
+  getTaskName(task: TaskRow) {
+    return task.spec.name || task.spec.id;
+  }
+
+  getTaskDescription(task: TaskRow) {
+    switch (task.runtime.status) {
+      case "running": return `运行中 (PID: ${task.runtime.pid})`;
+      case "success": return "上次运行成功";
+      case "error": return "上次运行错误";
+      case "stopped": return "已停止";
+      default: return "空闲";
+    }
+  }
+
+  getTaskActionIcon(task: TaskRow) {
+    return task.runtime.status == 'running' ? 'pause-circle' : 'play-circle';
+  }
 }

@@ -34,13 +34,6 @@ export function createCoreApp(
     const processDriver = new NodeProcessDriver();
     // 进程服务（错误包装 + 生命周期抽象）
     const processService = new ProcessService(processDriver);
-    /* ------------------ task ------------------ */
-    // 任务服务（start / stop / status）
-    const task = new TaskServiceImpl(
-        processService,
-        log,
-        events
-    );
     /* ------------------ editor ------------------ */
     const editor = new EditorServiceImpl(processService);
     /* ------------------ project ------------------ */
@@ -52,6 +45,15 @@ export function createCoreApp(
         projectRepo,
         editor
     )
+
+    /* ------------------ task ------------------ */
+    // 任务服务（start / stop / status）
+    const task = new TaskServiceImpl(
+        project,
+        processService,
+        log,
+        events
+    );
     /* ------------------ fs ------------------ */
     const fs = new FsServiceImpl();
     /* ------------------ core app ------------------ */

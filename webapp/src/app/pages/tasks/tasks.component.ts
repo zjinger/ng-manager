@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TaskRow } from '@models/task.model';
+import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -11,13 +11,13 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { TasksFacadeService } from './services/tasks.facade.service';
+import { TaskStateService } from './services/tasks.state.service';
 import { TaskActionsComponent } from './task-actions/task-actions.component';
 import { TaskConsoleComponent } from './task-console/task-console.component';
 import { TaskHeaderComponent } from './task-header/task-header.component';
 import { TaskListComponent } from './task-list/task-list.component';
 import { TaskLogDrawerComponent } from './task-log/task-log.component';
-import { TaskStatusBadgeComponent } from './task-status-badge/task-status-badge.component';
+// import { TaskStatusBadgeComponent } from './task-status-badge/task-status-badge.component';
 
 @Component({
   selector: 'app-tasks',
@@ -37,7 +37,7 @@ import { TaskStatusBadgeComponent } from './task-status-badge/task-status-badge.
     TaskListComponent,
     TaskActionsComponent,
     TaskHeaderComponent,
-    TaskStatusBadgeComponent,
+    // TaskStatusBadgeComponent,
     TaskLogDrawerComponent,
     NzLayoutComponent
   ],
@@ -45,28 +45,14 @@ import { TaskStatusBadgeComponent } from './task-status-badge/task-status-badge.
   styleUrl: './tasks.component.less',
 })
 export class TasksComponent {
-  readonly keyword = signal("");
-  readonly projectId = signal("default");
+  projectState = inject(ProjectStateService);
+  taskState = inject(TaskStateService);
 
-  constructor(public readonly facade: TasksFacadeService) {
-    this.facade.load(this.projectId());
+  constructor() {
+    // currentProjectId 变化时，自动 setProject + refresh
+    effect(() => {
+      const pid = this.projectState.currentProjectId();
+      if (pid) this.taskState.setProject(pid);
+    });
   }
-
-  readonly rows = computed(() => {
-    const kw = this.keyword().trim().toLowerCase();
-    const list = this.facade.rows();
-    if (!kw) return list;
-    return list.filter(r =>
-      (r.def.name + " " + r.def.id).toLowerCase().includes(kw)
-    );
-  });
-
-  refresh() {
-    this.facade.load(this.projectId());
-  }
-
-  openLog(row: TaskRow) {
-    this.facade.openLog(row.def.id);
-  }
-
 }

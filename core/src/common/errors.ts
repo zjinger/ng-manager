@@ -19,6 +19,8 @@ export type ErrorCode =
     | "TASK_NOT_FOUND"
     | "TASK_ALREADY_RUNNING"
     | "PROCESS_SPAWN_FAILED"
+    | "TASK_SPEC_NOT_FOUND"
+    | "TASK_NOT_RUNNABLE"
 
     // FS
     | "FS_NOT_FOUND"
@@ -35,8 +37,9 @@ export type ErrorCode =
     | "INVALID_TIMESTAMP"
 
     // Fallback
-    | "UNKNOWN_ERROR";
-
+    | "UNKNOWN_ERROR"
+    // Generic
+    | "BAD_REQUEST" // 通用的请求错误
 
 export class AppError extends Error {
     constructor(

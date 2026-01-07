@@ -17,9 +17,11 @@
   width: 100%;
   padding: 10px 12px;
   display: flex;
+  gap: 10px;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  flex: 0 0 auto;
 
   .title {
     font-weight: 600;
@@ -34,49 +36,85 @@
   }
 }
 
+.items-container {
+  flex: 1 1 auto;
+  height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .error {
   padding: 10px 12px;
   color: #b42318;
+  flex: 0 0 auto;
 }
 
 .hint {
   padding: 12px;
   opacity: 0.7;
+  flex: 0 0 auto;
 }
 
 .items {
-  flex: 1;
+  flex: 1 1 auto;
   overflow: auto;
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .item {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 10px;
+  border-radius: 3px;
   padding: 10px 10px;
   cursor: pointer;
 
+  &:hover,
   &.active {
-    border-color: rgba(0, 0, 0, 0.28);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset;
+    background: var(--app-primary-3);
   }
 
   .row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
     gap: 10px;
+    align-items: center;
+    overflow: hidden;
+    justify-content: space-between;
+
+    .icon {
+      font-size: 42px;
+      flex: 0 0 auto;
+      position: relative;
+    }
+
+    .info {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+
+      .name {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .description {
+        font-size: 13px;
+        color: var(--app-text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
   }
 
-  .name {
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+
 
   .badge {
     font-size: 12px;
@@ -88,9 +126,11 @@
     &[data-status='running'] {
       font-weight: 700;
     }
+
     &[data-status='stopped'] {
       opacity: 0.7;
     }
+
     &[data-status='failed'] {
       font-weight: 700;
     }
@@ -107,6 +147,7 @@
     .mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
     }
+
     .sep {
       opacity: 0.5;
     }

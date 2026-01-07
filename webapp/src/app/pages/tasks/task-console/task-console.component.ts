@@ -1,11 +1,12 @@
 import { Component, Input, OnDestroy, OnInit, ViewChild, ElementRef } from "@angular/core";
 import { Subscription } from "rxjs";
-import { TaskStreamService, TaskConsoleLine, TaskRuntimeStatus } from "../services/task-stream.service";
+import { TaskStreamService, } from "../services/task-stream.service";
 import { FormsModule } from "@angular/forms";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzSpaceModule } from "ng-zorro-antd/space";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
+import { TaskConsoleLine, TaskRuntimeStatus } from "@models/task.model";
 
 @Component({
   selector: "app-task-console",

@@ -33,6 +33,8 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     TASK_NOT_FOUND: 404,
     TASK_ALREADY_RUNNING: 409,
     PROCESS_SPAWN_FAILED: 500,
+    TASK_SPEC_NOT_FOUND: 404,
+    TASK_NOT_RUNNABLE: 400,
 
     /* ---------------- File System ---------------- */
 
@@ -54,6 +56,9 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
 
     /* ---------------- Fallback ---------------- */
     UNKNOWN_ERROR: 500,
+
+    /* ---------------- Generic ---------------- */
+    BAD_REQUEST: 400,
 };
 
 export function mapStatus(code: ErrorCode): number {

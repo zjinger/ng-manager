@@ -1,49 +1,63 @@
-import { Injectable } from "@angular/core";
-
-export type TaskRuntime = {
-  taskId: string;
-  projectId: string;
-  name: string;
-  status: "idle" | "running" | "stopped" | "failed";
-  pid?: number;
-  startedAt?: number;
-  stoppedAt?: number;
-  exitCode?: number | null;
-  signal?: string | null;
-};
-
-export type StartTaskPayload = {
-  id?: string;
-  projectId: string;
-  name: string;
-  command: string;
-  cwd: string;
-  env?: Record<string, string>;
-};
+import { inject, Injectable } from "@angular/core";
+import { ApiClient } from "@app/core/api/api-client";
+import { Observable } from "rxjs";
+import { TaskRow, TaskRuntime } from "@models/task.model";
+import { HttpParams } from "@angular/common/http";
 
 @Injectable({ providedIn: "root" })
 export class TasksApiService {
+  private api = inject(ApiClient);
 
-  async listByProject(projectId: string): Promise<TaskRuntime[]> {
-    const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks`);
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  }
-  async start(payload: StartTaskPayload): Promise<TaskRuntime> {
-    const res = await fetch(`/api/tasks/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+  /**
+   * 刷新任务（页面进入时调用）
+   * POST /tasks/refresh/:projectId
+   */
+  refresh(projectId: string): Observable<TaskRow[]> {
+    return this.api.post(`/api/tasks/refresh/${projectId}`, {});
   }
 
-  async stop(taskId: string): Promise<TaskRuntime> {
-    const res = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/stop`, {
-      method: "POST",
+  /**
+   * 获取任务视图（spec + runtime）
+   * GET /tasks/list/:projectId
+   * 后端已做懒加载
+   */
+  getViews(projectId: string): Observable<TaskRow[]> {
+    return this.api.get(`/api/tasks/list/${projectId}`);
+  }
+
+  /**
+   * 启动任务（唯一方式）
+   * POST /tasks/start
+   */
+  start(projectId: string, specId: string): Observable<TaskRuntime> {
+    return this.api.post(`/api/tasks/start`, {
+      projectId,
+      specId,
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+  }
+
+  /**
+   * 停止任务
+   * POST /task/stop/:taskId
+   */
+  stop(taskId: string): Observable<TaskRuntime> {
+    return this.api.post(`/api/tasks/stop/${taskId}`, {});
+  }
+
+  /**
+   * 查询任务状态
+   * GET /tasks/status/:taskId
+   */
+  getStatus(taskId: string): Observable<TaskRuntime> {
+    return this.api.get(`/api/tasks/status/${taskId}`);
+  }
+
+  /**
+   * 拉取任务日志（HTTP 拉取，非 WS）
+   * GET /tasks/log/:taskId?tail=200
+   */
+  getLog(taskId: string, tail = 200): Observable<any[]> {
+    const params = new HttpParams().set("tail", tail.toString());
+    return this.api.get(`/api/tasks/log/${taskId}`, params);
   }
 }

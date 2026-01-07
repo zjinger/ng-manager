@@ -1,4 +1,4 @@
-import type { Project } from "./project.model";
+import type { Project } from "./project.types";
 
 export interface ProjectRepo {
     list(): Promise<Project[]>;

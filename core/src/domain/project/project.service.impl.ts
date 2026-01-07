@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { AppError } from "../../common/errors";
 import { genId } from "../../common/id";
 import type { ProjectRepo } from "./project.repo";
-import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, CheckRootResult } from "./project.model";
+import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, CheckRootResult } from "./project.types";
 import { scanProject } from "./project.scanner";
 import { ProjectMeta } from "./project.meta";
 import { ProjectService } from "./project.service";
@@ -19,20 +19,23 @@ export class ProjectServiceImpl implements ProjectService {
     async importProject(input: { root: string; name?: string; }): Promise<Project> {
         const { root, name } = input;
         const check = await this.checkImport(root);
-        if (!check.ok) {
+
+        if (!check.ok || !check.meta) {
             throw new AppError(
                 check.code ?? "PROJECT_ROOT_INVALID",
                 check.reason ?? "Import project failed",
-                { root, detect: check.detect }
+                { root, detect: check.detect, meta: check.meta }
             );
         }
         const projectName =
             name?.trim() ||
             path.basename(root.replace(/[\\/]+$/, "")) ||
             "Imported Project";
+
         return this.create({
             name: projectName,
             root,
+            scripts: check.meta.scripts,
         });
     }
 
@@ -84,7 +87,7 @@ export class ProjectServiceImpl implements ProjectService {
         const warnings: string[] = [];
         if (!detect.hasGit) warnings.push("No .git found");
         if ((detect.scriptsCount ?? 0) === 0) warnings.push("No scripts found in package.json");
-        return { ok: true, root: base.root, detect, warnings };
+        return { ok: true, root: base.root, detect, warnings, meta };
     }
 
     async checkRoot(rootPath: string): Promise<CheckRootResult> {

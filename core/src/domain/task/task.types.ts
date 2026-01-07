@@ -2,16 +2,20 @@ export type TaskStatus = "idle" | "running" | "stopped" | "failed";
 
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 
-export interface TaskSpec {
+export interface TaskDefinition {
     id: string;
     projectId: string;
     name: string;            // "dev" / "build"
-    command: string;         // 最终要执行的命令
-    cwd: string;             // 一般就是 project.root
-    shell?: boolean;         // 默认 true（跨平台更省事）
-    env?: Record<string, string>;
-}
+    kind?: TaskKind;
 
+    // 仅task of kind "run"/"build"/"test"/"lint"/"custom" 有效：
+    command?: string;         // 如果时desc ,则可无command
+    cwd?: string;             // 一般就是 project.root
+    shell?: boolean;            // 默认 true（跨平台更省事）
+    env?: Record<string, string>;
+    description?: string;
+
+}
 export interface TaskRuntime {
     taskId: string;
     projectId: string;
@@ -28,14 +32,7 @@ export interface TaskRuntime {
 
     lastError?: string;
 }
-
-
-export interface TaskView {
-    spec: TaskSpec;
-    runtime?: TaskRuntime; // 没运行过则为空
-}
-
-export interface TaskView {
-    spec: TaskSpec;
+export interface TaskRow {
+    spec: TaskDefinition;
     runtime?: TaskRuntime; // 没运行过则为空
 }

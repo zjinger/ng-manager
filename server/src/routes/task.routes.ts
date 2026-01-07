@@ -1,78 +1,88 @@
+import { AppError } from "@core";
 import type { FastifyInstance } from "fastify";
+/** 判断该项目是否已有 specs（用于懒加载） */
+async function ensureSpecs(fastify: FastifyInstance, projectId: string) {
+    const specs = await fastify.core.task.listSpecsByProject(projectId);
+    if (specs.length === 0) {
+        await fastify.core.task.refreshByProject(projectId);
+    }
+}
+
+/** 根据 projectId + name 找 spec（用于 start） */
+async function findSpecByName(fastify: FastifyInstance, projectId: string, name: string) {
+    await ensureSpecs(fastify, projectId);
+    const specs = await fastify.core.task.listSpecsByProject(projectId);
+    return specs.find((s) => s.projectId === projectId && s.name === name);
+}
 
 export default async function taskRoutes(fastify: FastifyInstance) {
+
     /**
      * 获取 task views（spec + runtime 聚合）
+     * 懒加载，如果该项目未 refresh 过则自动 refresh
      * GET /views/:projectId
      */
-    fastify.get("/views/:projectId", async (req) => {
+    fastify.get("/list/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
-        await fastify.core.project.get(projectId); // 不存在就抛 AppError
+        await ensureSpecs(fastify, projectId);
         return fastify.core.task.listViewsByProject(projectId);
     });
 
     /**
-     * 同步项目脚本为 task specs
-     * 根据 rootDir 扫描 + scripts 生成 
+     * 刷新（从 ProjectService.get(projectId) 的 scripts 重新生成 specs）
+     * 返回 views，前端可直接渲染
+     * POST /refresh/:projectId
      */
-    fastify.post("/sync/:projectId", async (req) => {
+    fastify.post("/refresh/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
-        // 从 ProjectService 读取持久化项目
-        const proj = await fastify.core.project.get(projectId);
-        const specs = await fastify.core.task.syncSpecsFromProjectScripts(
-            projectId,
-            proj.root,
-            proj.scripts ?? {}
-        );
-        return { projectId, specs };
-
+        // refreshByProject 内部会从 ProjectService.get() 拉 root/scripts/pm 并更新 specs
+        return await fastify.core.task.refreshByProject(projectId);
     });
 
     /**
      * 列出该项目的 task specs
+     * 懒加载，避免空
+     * GET /specs/:projectId
      */
-    fastify.get("/task-specs/:projectId", async (req) => {
+    fastify.get("/specs/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
+        await ensureSpecs(fastify, projectId);
         return await fastify.core.task.listSpecsByProject(projectId);
     });
 
-    /**
-     * 启动任务
+    /** 
+     * 启动任务（唯一方式）
+     * POST /start
+     * body: { taskId: string }
      */
     fastify.post("/start", async (req) => {
-        const body = req.body as {
-            id?: string;
-            projectId: string;
-            name: string;
-            command: string;
-            cwd: string;
-            env?: Record<string, string>;
-        };
-        return await fastify.core.task.start(body);
+        const body = req.body as { taskId?: string };
+        const specId = body?.taskId?.trim();
+
+        if (!specId) {
+            throw new AppError("BAD_REQUEST", "specId is required", { body });
+        }
+        return fastify.core.task.start(specId);
     });
+
 
     /**
      * 停止任务
+     * POST /stop/:id
+     *  id === taskId === specId
      */
     fastify.post("/stop/:id", async (req) => {
         const { id } = req.params as { id: string };
-        return await fastify.core.task.stop(id);
+        return fastify.core.task.stop(id);
     });
 
     /**
      * 查询任务状态
+     * GET /status/:id
      */
     fastify.get("/status/:id", async (req) => {
         const { id } = req.params as { id: string };
-        return await fastify.core.task.status(id);
-    });
-
-    /**
-     * 按 project 查询任务列表
-     */
-    fastify.get("/list/:projectId", async (req) => {
-        const { projectId } = req.params as { projectId: string };
-        return await fastify.core.task.listByProject(projectId);
+        return fastify.core.task.status(id);
     });
 
     /**
@@ -82,10 +92,7 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.get("/log/:id", async (req) => {
         const { id } = req.params as { id: string };
         const { tail } = req.query as { tail?: string };
-        const limit = Math.min(
-            Math.max(Number(tail) || 200, 1),
-            5000
-        );
+        const limit = Math.min(Math.max(Number(tail) || 200, 1), 5000);
         return fastify.core.log.tail(limit, { refId: id });
     });
 }

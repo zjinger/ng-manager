@@ -1,30 +1,56 @@
 export type TaskStatus = "idle" | "running" | "success" | "error" | "stopped";
-
+export type LogType = "stdout" | "stderr" | "system";
+export type TaskKind = "run" | "build" | "test" | "lint" | "custom" | 'desc';
 export interface TaskDefinition {
     id: string;        // dev:serve
     name: string;      // 启动前端
     group?: string;    // frontend/backend/tools
     command?: string;  // UI可展示（可选）
+    kind?: TaskKind;
+    description?: string;
 }
-
 export interface TaskRuntime {
     taskId: string;
+    projectId: string;
     status: TaskStatus;
     pid?: number;
-    startTime?: number;
-    endTime?: number;
-}
+    startedAt?: number;
+    stoppedAt?: number;
+    exitCode?: number | null;
+    signal?: string | null;
+};
+
+export type StartTaskPayload = {
+    id?: string;
+    projectId: string;
+    name: string;
+    command: string;
+    cwd: string;
+    env?: Record<string, string>;
+};
 
 export interface TaskRow {
-    def: TaskDefinition;
-    rt: TaskRuntime;
+    spec: TaskDefinition;
+    runtime: TaskRuntime;
 }
-
-export type LogType = "stdout" | "stderr" | "system";
 
 export interface TaskLogLine {
     taskId: string;
     type: LogType;
     message: string;
     time: number;
+    level?: string;
 }
+
+export type TaskConsoleLine = {
+    ts?: number;
+    text: string;
+    level?: string;
+    stream?: LogType;
+};
+
+export type TaskRuntimeStatus =
+    | { status: "idle" }
+    | { status: "running"; pid?: number; startedAt?: number }
+    | { status: "stopped"; exitCode?: number | null; signal?: string | null; stoppedAt?: number };
+
