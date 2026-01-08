@@ -3,11 +3,13 @@ import { Project } from '@models/project.model';
 import { ProjectApiService } from './project-api.service';
 import { UiNotifierService } from '@core/ui-notifier.service';
 import { NzModalService } from 'ng-zorro-antd/modal';
+import { LocalStateStore, LS_KEYS } from '@core/local-state';
 @Injectable({ providedIn: 'root' })
 export class ProjectStateService {
   private modal = inject(NzModalService);
   private notify = inject(UiNotifierService);
   private projectService = inject(ProjectApiService);
+  private ls = inject(LocalStateStore);
 
   currentProjectId = signal<string | null>(null);
   currentProject = signal<Project | null>(null);
@@ -37,7 +39,6 @@ export class ProjectStateService {
   selectProject(project: Project) {
     this.setCurrentProject(project);
     const lastOpened = Date.now();
-    // 本地立即更新（UI 立刻有反馈）
     this.projects.update(list =>
       list.map(p => (p.id === project.id ? { ...p, lastOpened } : p))
     );
@@ -72,7 +73,18 @@ export class ProjectStateService {
   getProjects() {
     this.projectService.list().subscribe((data: Project[]) => {
       this.projects.set(data);
-      if (data.length > 0 && !this.currentProjectId()) {
+      if (!data.length) {
+        this.setCurrentProject(null);
+        return;
+      }
+
+      const cachedId = this.ls.getNullable<string>(LS_KEYS.project.currentProjectId);
+      const cached = cachedId ? data.find(p => p.id === cachedId) : null;
+      if (cached) {
+        this.setCurrentProject(cached);
+        return;
+      }
+      if (!this.currentProjectId()) {
         this.setCurrentProject(data[0]);
       }
     });
@@ -82,10 +94,13 @@ export class ProjectStateService {
     return this.projects().find(p => p.id === projectId) || null;
   }
 
-
   setCurrentProject(project: Project | null) {
     this.currentProject.set(project);
-    this.currentProjectId.set(project ? project.id : null);
+    const id = project ? project.id : null;
+    this.currentProjectId.set(id);
+
+    if (id) this.ls.set(LS_KEYS.project.currentProjectId, id);
+    else this.ls.remove(LS_KEYS.project.currentProjectId);
   }
 
   setCurrentProjectById(projectId: string) {
