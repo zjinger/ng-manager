@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
-import { WsClientService } from "./ws-client.service";
+import { WsClientService } from "@app/core/ws/ws-client.service";
 import { TaskConsoleLine, TaskRuntimeStatus } from "@models/task.model";
 @Injectable({ providedIn: "root" })
 export class TaskStreamService {

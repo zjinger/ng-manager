@@ -56,8 +56,8 @@ export default async function taskRoutes(fastify: FastifyInstance) {
      * body: { taskId: string }
      */
     fastify.post("/start", async (req) => {
-        const body = req.body as { taskId?: string };
-        const specId = body?.taskId?.trim();
+        const body = req.body as { specId?: string };
+        const specId = body?.specId?.trim();
 
         if (!specId) {
             throw new AppError("BAD_REQUEST", "specId is required", { body });

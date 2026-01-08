@@ -9,7 +9,7 @@
         (ngModelChange)="keyword.set($event)"
       />
     </nz-input-wrapper>
-    <button nz-button (click)="refresh()" nzType="text">
+    <button nz-button (click)="state.refresh()" nzType="text">
       <span nz-icon nzType="reload"></span>
     </button>
   </div>
@@ -25,8 +25,8 @@
       @for (t of list(); track t.spec.id) {
       <div
         class="item"
-        [class.active]="t.runtime && t.runtime.taskId === selectedId()"
-        (click)="select(t.runtime.taskId)"
+        [class.active]="t.spec && t.spec.id === selectedId()"
+        (click)="state.select(t.spec.id)"
       >
         <div class="row" nz-tooltip="{{ t.spec.description || '' }}" nzTooltipPlacement="right">
           <div class="icon">

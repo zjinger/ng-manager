@@ -267,4 +267,15 @@ export class TaskServiceImpl implements TaskService {
         return Array.from(this.specs.values()).filter((s) => s.projectId === projectId);
     }
 
+    async getSnapshot(taskId: string): Promise<TaskRuntime | null> {
+        // spec 不存在也允许（因为 runtime 可能存在 / 或用户传错）
+        return this.runtimes.get(taskId) ?? null;
+    }
+
+    async getTailLogs(taskId: string, tail: number): Promise<any[]> {
+        const n = Math.max(0, Math.min(tail ?? 0, 5000)); // 防御一下
+        if (n === 0) return [];
+        return this.log.tailById(taskId, n);
+    }
+
 }

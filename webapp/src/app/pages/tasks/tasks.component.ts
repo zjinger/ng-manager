@@ -48,6 +48,9 @@ export class TasksComponent {
   projectState = inject(ProjectStateService);
   taskState = inject(TaskStateService);
 
+  selectedTask = this.taskState.selectedRow;
+
+
   constructor() {
     // currentProjectId 变化时，自动 setProject + refresh
     effect(() => {

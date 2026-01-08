@@ -36,16 +36,8 @@ export class TaskListComponent {
   loading = this.state.loading;
   error = this.state.error;
   list = this.state.filteredRows;
-  selectedId = this.state.selectedTaskId;
+  selectedId = this.state.selectedTaskId
   projectId = this.state.projectId;
-
-  refresh() {
-    this.state.refresh();
-  }
-
-  select(specId: string) {
-    this.state.select(specId);
-  }
 
   badge(status: TaskRuntime["status"] | undefined): string {
     return status ?? "";

@@ -1,5 +1,5 @@
 import { AppError } from "@core";
-import type { WsConn, WsServerMsg } from "./ws.types";
+import type { WsConn, WsServerMsg } from "@core/protocol";
 
 export function send(conn: WsConn, msg: WsServerMsg) {
     if (conn.socket.readyState === 1) {

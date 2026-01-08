@@ -57,6 +57,10 @@ export class RingLogStore implements ILogStore {
         return out.slice(out.length - lim);
     }
 
+    tailById(refId: string, n: number): LogLine[] {
+        return this.tail(n, { refId });
+    }
+
     clear(filter?: LogTailFilter): void {
         if (!filter) {
             this.buf = new Array(this.cap);

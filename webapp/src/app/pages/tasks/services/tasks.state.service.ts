@@ -1,7 +1,6 @@
 import { Injectable, computed, signal } from "@angular/core";
 import { TaskLogLine, TaskRow, TaskRuntime } from "@models/task.model";
 import { TasksApiService } from "./tasks-api.service";
-
 @Injectable({ providedIn: "root" })
 export class TaskStateService {
   // 由页面传入
@@ -71,16 +70,17 @@ export class TaskStateService {
       next: (res) => {
         this.rows.set(res);
         this.loading.set(false);
-        // // 选中态兜底：如果没选中，默认选第一个可运行任务（跳过 desc）
-        // if (!this.selectedTaskId()) {
-        //   const firstRunnable = views.find(v => v.spec.kind !== "desc") ?? views[0];
-        //   if (firstRunnable) this.selectedTaskId.set(firstRunnable.spec.id);
-        // } else {
-        //   // scripts 变化导致选中项消失
-        //   if (!views.some(v => v.spec.id === this.selectedTaskId())) {
-        //     this.selectedTaskId.set("");
-        //   }
-        // }
+        // 选中态兜底：如果没选中，默认选第一个可运行任务（跳过 desc）
+        if (!this.selectedTaskId()) {
+          // const firstRunnable = this.rows().find(v => v.spec.kind !== "desc") ?? this.rows()[0];
+          const firstRunnable = this.rows()[0];
+          if (firstRunnable) this.selectedTaskId.set(firstRunnable.spec.id);
+        } else {
+          // scripts 变化导致选中项消失
+          if (!this.rows().some(v => v.spec.id === this.selectedTaskId())) {
+            this.selectedTaskId.set("");
+          }
+        }
       },
       error: (err) => {
         this.error.set(err?.message || String(err));
@@ -93,12 +93,18 @@ export class TaskStateService {
     this.selectedTaskId.set(taskId);
   }
 
+  toggleTask() {
+    if (this.isRunning()) {
+      this.stopSelected();
+    } else {
+      this.startSelected();
+    }
+  }
+
   startSelected() {
     const pid = this.projectId();
     const spec = this.selectedSpec();
     if (!pid || !spec) return;
-    if (spec.kind === "desc") return;
-
     this.api.start(pid, spec.id).subscribe({
       next: (rt) => this.upsertRuntime(rt),
       error: (err) => this.error.set(err?.message || String(err)),

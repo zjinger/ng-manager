@@ -18,4 +18,6 @@ export interface ILogStore {
 
     /** 当前缓存条数 */
     size(): number;
+
+    tailById(refId: string, n: number): LogLine[];
 }

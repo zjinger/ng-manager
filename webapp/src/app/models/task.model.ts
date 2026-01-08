@@ -1,6 +1,6 @@
 export type TaskStatus = "idle" | "running" | "success" | "error" | "stopped";
 export type LogType = "stdout" | "stderr" | "system";
-export type TaskKind = "run" | "build" | "test" | "lint" | "custom" | 'desc';
+export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {
     id: string;        // dev:serve
     name: string;      // 启动前端

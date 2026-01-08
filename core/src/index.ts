@@ -21,3 +21,5 @@ export * from "./domain/project/project.service";
 export * from "./domain/project/project.scanner";
 
 export * from "./domain/fs";
+
+export * from "./protocol"
