@@ -12,7 +12,6 @@ import { EditorServiceImpl } from "../domain/editor";
 import { ProjectServiceImpl } from "../domain/project";
 import { TaskServiceImpl } from "../domain/task/task.service.impl";
 import { JsonProjectRepo } from "../infra/storage/project.repo.json";
-import { LoggerService } from "../domain/logger/logger.service";
 import { FsServiceImpl } from "../domain/fs/fs.service.impl";
 
 /**
@@ -28,7 +27,6 @@ export function createCoreApp(
     const events = new MemoryEventBus<CoreEventMap>();
     // 日志存储（ring buffer）
     const log = new RingLogStore(opts.logCapacity ?? 2000);
-    const logger = new LoggerService(log, events);
     /* ------------------ process ------------------ */
     // 进程驱动（Node spawn）
     const processDriver = new NodeProcessDriver();
@@ -60,7 +58,6 @@ export function createCoreApp(
     return {
         events,
         log,
-        logger,
         task,
         project,
         fs,

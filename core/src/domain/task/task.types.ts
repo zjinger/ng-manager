@@ -9,8 +9,9 @@ export interface TaskDefinition {
     kind?: TaskKind;
 
     // 仅task of kind "run"/"build"/"test"/"lint"/"custom" 有效：
-    command?: string;         // 如果时desc ,则可无command
-    cwd?: string;             // 一般就是 project.root
+    command?: string;           // 如果时desc ,则可无command
+    runnable?: boolean;         // 默认 true
+    cwd?: string;               // 一般就是 project.root
     shell?: boolean;            // 默认 true（跨平台更省事）
     env?: Record<string, string>;
     description?: string;

@@ -13,8 +13,7 @@ export class LoggerService {
         this.store.append(line);
         this.events.emit(Events.LOG_APPENDED, line);
     }
-
-    // 便捷方法（建议你用这个）
+   
     log(
         level: LogLevel,
         source: LogSource,

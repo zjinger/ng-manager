@@ -52,6 +52,7 @@ export function genSpecsFromScripts(
             projectId,
             name,
             kind: getTaskKindFromName(name),
+            runnable: packageManager !== "unknown", // packageManager 未知时，任务不可运行
             command: buildRunCommand(packageManager, name),
             cwd: rootDir,
             shell: true,

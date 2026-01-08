@@ -41,8 +41,50 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
     TaskLogDrawerComponent,
     NzLayoutComponent
   ],
-  templateUrl: './tasks.component.html',
-  styleUrl: './tasks.component.less',
+  template: `
+    <nz-layout class="page">
+    <nz-layout class="page-tasks">
+      <app-task-list></app-task-list>
+      <nz-content class="content">
+        <app-task-header
+          [name]="selectedTask()?.spec?.name"
+          [description]="selectedTask()?.spec?.description"
+          [command]="selectedTask()?.spec?.command"
+        ></app-task-header>
+        <app-task-actions (toggle)="taskState.toggleTask()"></app-task-actions>
+        <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
+      </nz-content>
+    </nz-layout>
+    <app-task-log></app-task-log>
+</nz-layout>
+
+  `,
+  styles: [
+    `
+    .page{
+      height: 100%;
+    }
+    .page-tasks {
+      flex-direction: row;
+      gap: 8px;
+      height: 100%;
+      app-task-list {
+        flex: 0 0 320px;
+        width: 320px;
+      }
+      app-task-console {
+        flex: 1;
+      }
+      .content{
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 16px;
+        height: 100%;
+      }
+    }
+    `
+  ],
 })
 export class TasksComponent {
   projectState = inject(ProjectStateService);
