@@ -118,7 +118,7 @@ export class ProjectItemPopoverComponent {
     switch (task.runtime.status) {
       case "running": return "运行中";
       case "success": return "成功";
-      case "error": return "错误";
+      case "failed": return "错误";
       case "stopped": return "已停止";
       default: return "空闲";
     }
@@ -132,7 +132,7 @@ export class ProjectItemPopoverComponent {
     switch (task.runtime.status) {
       case "running": return `运行中 (PID: ${task.runtime.pid})`;
       case "success": return "上次运行成功";
-      case "error": return "上次运行错误";
+      case "failed": return "上次运行错误";
       case "stopped": return "已停止";
       default: return "空闲";
     }

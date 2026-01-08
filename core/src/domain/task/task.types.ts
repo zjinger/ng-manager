@@ -1,4 +1,4 @@
-export type TaskStatus = "idle" | "running" | "stopped" | "failed";
+export type TaskRunStatus = "idle" | "running" | "stopping" | "success" | "failed" | "stopped";
 
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 
@@ -18,13 +18,14 @@ export interface TaskDefinition {
 
 }
 export interface TaskRuntime {
-    taskId: string;
+    taskId: string;         // spec.id
     projectId: string;
     name: string;
 
-    status: TaskStatus;
-    pid?: number;
+    runId: string;          // NEW: execution session id
+    status: TaskRunStatus;
 
+    pid?: number;
     startedAt?: number;
     stoppedAt?: number;
 

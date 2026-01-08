@@ -1,8 +1,7 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
-import { map } from "rxjs";
-import type { ApiSuccess } from "./api.types";
 import { unwrapApi } from "./api-executor";
+import type { ApiSuccess } from "./api.types";
 
 @Injectable({ providedIn: "root" })
 export class ApiClient {

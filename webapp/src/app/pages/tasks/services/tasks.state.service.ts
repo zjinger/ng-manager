@@ -20,6 +20,16 @@ export class TaskStateService {
   readonly logLines = signal<TaskLogLine[]>([]);
   readonly logLoading = signal(false);
 
+  readonly activeRunId = signal<string>("");
+  readonly selectedRunId = signal<string>("");
+
+  readonly isRunning = computed(() => this.selectedRuntime()?.status === "running");
+  readonly isStopping = computed(() => this.selectedRuntime()?.status === "stopping");
+  readonly isDisabled = computed(() => {
+    const spec = this.selectedSpec();
+    if (!spec) return true;
+    return spec.runnable === false;
+  })
 
   // 当前选中行
   readonly selectedRow = computed(() => {
@@ -30,8 +40,6 @@ export class TaskStateService {
 
   readonly selectedSpec = computed(() => this.selectedRow()?.spec ?? null);
   readonly selectedRuntime = computed(() => this.selectedRow()?.runtime ?? null);
-
-  readonly isRunning = computed(() => this.selectedRuntime()?.status === "running");
 
   // 过滤后的列表（给页面直接用）
   readonly filteredRows = computed(() => {
@@ -91,6 +99,8 @@ export class TaskStateService {
 
   select(taskId: string) {
     this.selectedTaskId.set(taskId);
+    const row = this.rows().find(r => r.spec.id === taskId);
+    this.selectedRunId.set(row?.runtime?.runId ?? "");
   }
 
   toggleTask() {
@@ -102,19 +112,24 @@ export class TaskStateService {
   }
 
   startSelected() {
-    const pid = this.projectId();
     const spec = this.selectedSpec();
-    if (!pid || !spec) return;
-    this.api.start(pid, spec.id).subscribe({
-      next: (rt) => this.upsertRuntime(rt),
+    if (!spec) return;
+
+    this.api.start(spec.id).subscribe({
+      next: (rt) => {
+        this.upsertRuntime(rt);
+        this.activeRunId.set(rt.runId);
+        this.selectedRunId.set(rt.runId);
+      },
       error: (err) => this.error.set(err?.message || String(err)),
     });
   }
 
   stopSelected() {
     const rt = this.selectedRuntime();
-    if (!rt) return;
-    this.api.stop(rt.taskId).subscribe({
+    if (!rt?.runId) return;
+
+    this.api.stop(rt.runId).subscribe({
       next: (nextRt) => this.upsertRuntime(nextRt),
       error: (err) => this.error.set(err?.message || String(err)),
     });

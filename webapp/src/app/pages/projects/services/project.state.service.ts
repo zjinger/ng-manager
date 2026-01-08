@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Project } from '@models/project.model';
 import { ProjectApiService } from './project-api.service';
-import { UiNotifierService } from '@app/core/ui-notifier.service';
+import { UiNotifierService } from '@core/ui-notifier.service';
 import { NzModalService } from 'ng-zorro-antd/modal';
 @Injectable({ providedIn: 'root' })
 export class ProjectStateService {

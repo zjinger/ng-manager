@@ -1,78 +1,47 @@
-:host {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
 .console-card {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 8px 12px;
+
   .title {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 16px;
-
-    .id {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-      opacity: 0.85;
-    }
-
-    .badge {
-      font-size: 12px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(0, 0, 0, 0.2);
-
-      &[data-status='running'] {
-        font-weight: 600;
-      }
-      &[data-status='stopped'] {
-        opacity: 0.7;
-      }
-    }
-  }
-
-  .actions {
-    display: flex;
     gap: 8px;
 
-    .btn {
-      padding: 4px 10px;
-      border-radius: 8px;
-      border: 1px solid rgba(0, 0, 0, 0.2);
-      background: transparent;
-      cursor: pointer;
+    .status {
+      margin-left: 8px;
+      font-size: 12px;
+
+      .running {
+        opacity: 0.9;
+      }
+
+      .stopped {
+        opacity: 0.8;
+      }
+
+      .idle {
+        opacity: 0.6;
+      }
     }
   }
 }
 
 .viewport {
-  flex: 1;
-  padding: 10px 12px;
-  overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-  font-size: 12px;
-  line-height: 1.45;
-
-  .line {
-    white-space: pre-wrap;
-    word-break: break-word;
-    padding: 2px 0;
-
-    &[data-stream='stderr'] {
-      font-weight: 600;
-    }
-  }
+  flex: 1 1 auto;
+  min-height: 0; // 让 xterm 能正确撑开并滚动
+  padding: 8px;
+  background: #000;
+  border-radius: 8px;
 }

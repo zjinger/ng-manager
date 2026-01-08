@@ -17,6 +17,7 @@ export type ErrorCode =
 
     // Task / Process
     | "TASK_NOT_FOUND"
+    | "RUN_NOT_FOUND"
     | "TASK_ALREADY_RUNNING"
     | "PROCESS_SPAWN_FAILED"
     | "TASK_SPEC_NOT_FOUND"

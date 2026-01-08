@@ -3,7 +3,7 @@ import { ImportCheckResult } from "@models/project.model";
 import { FsService } from "./fs.service";
 import { ProjectApiService } from "./project-api.service";
 import { ProjectStateService } from "./project.state.service";
-import { UiNotifierService } from "@app/core/ui-notifier.service";
+import { UiNotifierService } from "@core/ui-notifier.service";
 
 @Injectable({ providedIn: "root" })
 export class ProjectImportState {

@@ -1,5 +1,5 @@
 import { inject, Injectable } from "@angular/core";
-import { ApiClient } from "@app/core/api/api-client";
+import { ApiClient } from "@core/api";
 import { Observable } from "rxjs";
 import { TaskRow, TaskRuntime } from "@models/task.model";
 import { HttpParams } from "@angular/common/http";
@@ -26,38 +26,29 @@ export class TasksApiService {
   }
 
   /**
-   * 启动任务（唯一方式）
-   * POST /tasks/start
-   */
-  start(projectId: string, specId: string): Observable<TaskRuntime> {
-    return this.api.post(`/api/tasks/start`, {
-      projectId,
-      specId,
-    });
-  }
-
-  /**
-   * 停止任务
-   * POST /task/stop/:taskId
-   */
-  stop(taskId: string): Observable<TaskRuntime> {
-    return this.api.post(`/api/tasks/stop/${taskId}`, {});
-  }
-
-  /**
    * 查询任务状态
-   * GET /tasks/status/:taskId
+   * GET /tasks/status/:runId
    */
-  getStatus(taskId: string): Observable<TaskRuntime> {
-    return this.api.get(`/api/tasks/status/${taskId}`);
+  getStatus(runId: string): Observable<TaskRuntime> {
+    return this.api.get(`/api/tasks/status/${runId}`);
   }
 
-  /**
-   * 拉取任务日志（HTTP 拉取，非 WS）
-   * GET /tasks/log/:taskId?tail=200
-   */
-  getLog(taskId: string, tail = 200): Observable<any[]> {
+
+  start(specId: string): Observable<TaskRuntime> {
+    return this.api.post(`/api/tasks/start`, { specId });
+  }
+
+  stop(runId: string): Observable<TaskRuntime> {
+    return this.api.post(`/api/tasks/stop`, { runId });
+  }
+
+  getRunLog(runId: string, tail = 200) {
     const params = new HttpParams().set("tail", tail.toString());
-    return this.api.get(`/api/tasks/log/${taskId}`, params);
+    return this.api.get(`/api/tasks/log/run/${runId}`, params);
+  }
+
+  getSyslog(tail = 200) {
+    const params = new HttpParams().set("tail", tail.toString());
+    return this.api.get(`/api/tasks/syslog`, params);
   }
 }

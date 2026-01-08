@@ -1,107 +1,119 @@
-import { Component, Input, OnDestroy, ViewChild, ElementRef } from "@angular/core";
-import { Subscription } from "rxjs";
-import { TaskStreamService } from "../services/task-stream.service";
+import { Component, Input, OnDestroy, ViewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { TaskRuntimeStatus } from "@models/task.model";
+import { TerminalViewComponent } from "@shared/index";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzSpaceModule } from "ng-zorro-antd/space";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
-import { TaskConsoleLine, TaskRuntimeStatus } from "@models/task.model";
-
+import { Subscription } from "rxjs";
+import { TaskStreamService } from "../services/task-stream.service";
+import { ClipboardModule, Clipboard } from '@angular/cdk/clipboard';
+import { UiNotifierService } from "@app/core";
 @Component({
   selector: "app-task-console",
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzSpaceModule, NzIconModule, NzTooltipModule],
+  imports: [
+    FormsModule,
+    NzButtonModule,
+    NzSpaceModule,
+    NzIconModule,
+    NzTooltipModule,
+    TerminalViewComponent,
+    ClipboardModule
+  ],
   templateUrl: "./task-console.component.html",
   styleUrls: ["./task-console.component.less"],
 })
 export class TaskConsoleComponent implements OnDestroy {
-  private _taskId = "";
+  private _runId = "";
+
   @Input()
-  set taskId(id: string) {
+  set runId(id: string) {
     const next = (id ?? "").trim();
-    if (!next) return;                 // 初始为空：不做任何事
-    if (next === this._taskId) return; // 相同：不重复订阅
-    // 切换任务：先退订旧的
-    if (this._taskId) {
-      this.stream.clear(this._taskId); // 清掉旧数据
-      this.stream.unsubscribeTask(this._taskId); // 退订旧任务
+    if (!next) return;
+    if (next === this._runId) return;
+    // 切换 run：先退订旧 run（并清 UI）
+    if (this._runId) {
+      this.stream.unsubscribeRun(this._runId);
+      this.term?.clear();
     }
 
-    this._taskId = next;
-    this.bindToTask(next);
+    this._runId = next;
+    this.bind(next);
   }
-  get taskId() {
-    return this._taskId;
+  get runId() {
+    return this._runId;
   }
 
-  @Input() tail: number = 200;
+  @Input() tail = 200;
 
-  // --- view state ---
-  lines: TaskConsoleLine[] = [];
-  status: TaskRuntimeStatus = { status: "idle" };
   follow = true;
+  status: TaskRuntimeStatus = { status: "idle" };
 
-  @ViewChild("viewport") viewport?: ElementRef<HTMLDivElement>;
+  @ViewChild(TerminalViewComponent) term?: TerminalViewComponent;
 
   private sub = new Subscription();
 
-  constructor(private stream: TaskStreamService) { }
+  constructor(
+    private stream: TaskStreamService,
+    private clipboard: Clipboard,
+    private notify: UiNotifierService
+  ) { }
 
-  private bindToTask(taskId: string) {
-    // 确保 ws 已连接（内部幂等）
+  private bind(runId: string) {
     this.stream.ensureConnected();
+    // 订阅 run 输出
+    this.stream.subscribeRun(runId, this.tail);
 
-    // 发送订阅
-    this.stream.subscribeTask(taskId, this.tail);
-
-    // 清掉旧订阅，避免串台
+    // 重绑 rx 订阅
     this.sub.unsubscribe();
     this.sub = new Subscription();
-
-    // 绑定新的 task 流
+    // 输出：每个 chunk 直接写 xterm
     this.sub.add(
-      this.stream.lines$(taskId).subscribe((lines) => {
-        this.lines = lines;
-        if (this.follow) queueMicrotask(() => this.scrollToBottom());
+      this.stream.output$(runId).subscribe((m) => {
+        if (!this.term) return;
+        // 如果想对 stderr 做更明显的颜色：可以在写入前加 ANSI SGR
+        // 这里不强行染色，尊重原始 ANSI（如果有）
+        // 仅在无 ANSI 且 stderr 时加一个轻微红色，可以后续再做
+        this.term.follow = this.follow;
+        this.term.write(m.chunk);
       })
     );
-
-    this.sub.add(this.stream.status$(taskId).subscribe((s) => (this.status = s)));
+    // 状态
+    this.sub.add(this.stream.status$(runId).subscribe((s) => (this.status = s)));
   }
 
   ngOnDestroy() {
-    // 组件销毁：退订当前 task + rx 订阅
-    if (this._taskId) this.stream.unsubscribeTask(this._taskId);
+    if (this._runId) this.stream.unsubscribeRun(this._runId);
     this.sub.unsubscribe();
   }
 
-  /**
-   * 切换是否跟随底部
-   */
   toggleFollow() {
     this.follow = !this.follow;
-    if (this.follow) this.scrollToBottom();
+    if (this.follow) this.term?.scrollToBottom();
   }
 
   clear() {
-    if (!this._taskId) return;
-    this.stream.clear(this._taskId);
+    this.term?.clear();
   }
 
   toBottom() {
-    this.scrollToBottom();
+    this.term?.scrollToBottom();
   }
 
-  // TODO: 复制全部
-  copy() {
-
+  async copy() {
+    const text = this.term?.copyAll() ?? "";
+    if (!text) return;
+    const ok = this.clipboard.copy(text);
+    if (ok) {
+      this.notify.success("Console output copied to clipboard.");
+    } else {
+      this.notify.error("Failed to copy console output.");
+    }
   }
 
-  private scrollToBottom() {
-    const el = this.viewport?.nativeElement;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+  fit() {
+    this.term?.fit();
   }
-
 }

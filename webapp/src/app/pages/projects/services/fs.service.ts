@@ -1,6 +1,6 @@
 import { HttpParams } from "@angular/common/http";
 import { Injectable, computed, signal } from "@angular/core";
-import { ApiClient } from "@app/core/api/api-client";
+import { ApiClient } from "@core/api/api-client";
 import type { FsEntry, FsListResult } from "@models/fs.model";
 
 type PathSeg = {

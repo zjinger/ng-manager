@@ -15,14 +15,8 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
         [nzDanger]="isRunning"
         [disabled]="disabled"
       >
-        <span nz-icon [nzType]="isRunning?'stop':'play-circle'"></span> 运行
+        <span nz-icon [nzType]="isRunning?'pause':'play-circle'"></span> {{ isRunning ? '停止' : '运行' }}
       </button>
-      <!-- <button nz-button  [disabled]="disabled || !isRunning" (click)="stop.emit()">
-        <span nz-icon nzType="stop"></span> 停止
-      </button> -->
-      <!-- <button nz-button [disabled]="disabled" (click)="log.emit()">
-        <span nz-icon nzType="file-text"></span> 日志
-      </button> -->
     </nz-space>
   `,
   styles: [
@@ -42,6 +36,4 @@ export class TaskActionsComponent {
   @Input() disabled = false;
 
   @Output() toggle = new EventEmitter<void>();
-  // @Output() stop = new EventEmitter<void>();
-  // @Output() log = new EventEmitter<void>();
 }

@@ -1,4 +1,4 @@
-export type TaskStatus = "idle" | "running" | "success" | "error" | "stopped";
+export type TaskStatus = "idle" | "running" | "stopping" | "success" | "failed" | "stopped";
 export type LogType = "stdout" | "stderr" | "system";
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {
@@ -8,17 +8,22 @@ export interface TaskDefinition {
     command?: string;  // UI可展示（可选）
     kind?: TaskKind;
     description?: string;
+
+    runnable?: boolean; // 是否可运行（默认 true）
 }
+
 export interface TaskRuntime {
     taskId: string;
     projectId: string;
+    runId: string;           // NEW
     status: TaskStatus;
+
     pid?: number;
     startedAt?: number;
     stoppedAt?: number;
     exitCode?: number | null;
     signal?: string | null;
-};
+}
 
 export type StartTaskPayload = {
     id?: string;
@@ -52,5 +57,5 @@ export type TaskConsoleLine = {
 export type TaskRuntimeStatus =
     | { status: "idle" }
     | { status: "running"; pid?: number; startedAt?: number }
+    | { status: "stopping" }
     | { status: "stopped"; exitCode?: number | null; signal?: string | null; stoppedAt?: number };
-

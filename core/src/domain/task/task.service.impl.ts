@@ -14,202 +14,128 @@ function bufToText(b: Buffer) {
     return b.toString("utf8");
 }
 export class TaskServiceImpl implements TaskService {
-    private specs = new Map<string, TaskDefinition>();     // key: spec.id
-    private runtimes = new Map<string, TaskRuntime>();     // key: taskId(=spec.id)
-    private procs = new Map<string, { kill: (s?: NodeJS.Signals) => void }>();
+    private specs = new Map<string, TaskDefinition>();     // key: taskId, value: spec
+    private activeRunByTaskId = new Map<string, string>(); // key: taskId, value: runId
+    private runtimes = new Map<string, TaskRuntime>();     // key: runId , value: runtime
+    private procs = new Map<string, { kill: (s?: NodeJS.Signals) => void }>(); // key: runId , value: proc handle
 
     constructor(
         private projectService: ProjectService,
         private proc: ProcessService,
-        private log: ILogStore,
+        private sysLog: ILogStore,
+        private taskLog: ILogStore,
         private events: IEventBus<CoreEventMap>
     ) { }
 
     async start(taskId: string): Promise<TaskRuntime> {
         const spec = this.specs.get(taskId);
-        if (!spec) {
-            throw new AppError("TASK_SPEC_NOT_FOUND", `Task spec not found: ${taskId}`, {
-                taskId,
-            });
-        }
-        if (!spec.command) {
-            throw new AppError("TASK_NOT_RUNNABLE", `Task is description only: ${spec.name}`, {
-                taskId,
-                name: spec.name,
-            });
+        if (!spec?.command) throw new AppError("TASK_SPEC_NOT_FOUND", "Task spec not found or not runnable", { taskId });
+
+        const active = this.activeRunByTaskId.get(taskId);
+        if (active) {
+            const rt = this.runtimes.get(active);
+            if (rt?.status === "running" || rt?.status === "stopping") {
+                throw new AppError("TASK_ALREADY_RUNNING", "Task already running", { taskId, runId: active });
+            }
         }
 
-        const existed = this.runtimes.get(taskId);
-        if (existed?.status === "running") {
-            throw new AppError("TASK_ALREADY_RUNNING", `Task already running: ${taskId}`, {
-                taskId,
-            });
-        }
-
-        const runtime: TaskRuntime = {
-            taskId: spec.id,               // 关键：taskId === spec.id
+        const runId = `run:${genId()}`; // 或 uuid
+        const rt: TaskRuntime = {
+            taskId,
             projectId: spec.projectId,
             name: spec.name,
+            runId,
             status: "running",
             startedAt: Date.now(),
         };
 
-        this.runtimes.set(taskId, runtime);
+        this.activeRunByTaskId.set(taskId, runId);
+        this.runtimes.set(runId, rt);
 
-        this.log.append({
-            ts: Date.now(),
-            level: "info",
-            source: "system",
-            refId: taskId,
-            text: `[task] start: ${spec.command} (cwd=${spec.cwd})`,
+        // syslog: run requested
+        this.sysLog.append({ ts: Date.now(), level: "info", source: "system", refId: runId, text: `[task] run: ${spec.name}` });
+        this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
+
+        const p = await this.proc.spawn(spec.command, [], { cwd: spec.cwd!, env: spec.env, shell: spec.shell ?? true });
+
+        rt.pid = p.pid;
+        this.runtimes.set(runId, rt);
+        this.procs.set(runId, { kill: p.kill });
+
+        this.events.emit(Events.TASK_STARTED, { taskId, runId, pid: p.pid });
+
+        p.onStdout((chunk) => {
+            const text = bufToText(chunk);
+            this.taskLog.append({ ts: Date.now(), level: "info", source: "task", refId: runId, text });
+            this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stdout" });
         });
 
-        try {
-            const p = await this.proc.spawn(spec.command, [], {
-                cwd: spec.cwd!,
-                env: spec.env,
-                shell: spec.shell ?? true,
-            });
+        p.onStderr((chunk) => {
+            const text = bufToText(chunk);
+            this.taskLog.append({ ts: Date.now(), level: "warn", source: "task", refId: runId, text });
+            this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stderr" });
+        });
 
-            runtime.pid = p.pid;
-            this.runtimes.set(taskId, runtime);
-            this.procs.set(taskId, { kill: p.kill });
+        p.onExit((code, signal) => {
+            const cur = this.runtimes.get(runId);
+            if (!cur) return;
 
-            this.events.emit(Events.TASK_STARTED, {
-                taskId: taskId,
-                pid: p.pid,
-            });
+            cur.exitCode = code;
+            cur.signal = signal;
+            cur.stoppedAt = Date.now();
 
-            /* ---------- stdout ---------- */
-            p.onStdout((chunk) => {
-                const text = bufToText(chunk);
-                this.log.append({
-                    ts: Date.now(),
-                    level: "info",
-                    source: "task",
-                    refId: taskId,
-                    text,
-                });
-                this.events.emit(Events.TASK_OUTPUT, {
-                    taskId: taskId,
-                    text,
-                    stream: "stdout",
-                });
-                this.events.emit(Events.LOG_APPENDED, { refId: taskId });
-            });
+            // final status
+            if (signal) cur.status = "stopped";
+            else if (code === 0) cur.status = "success";
+            else cur.status = "failed";
 
-            /* ---------- stderr ---------- */
-            p.onStderr((chunk) => {
-                const text = bufToText(chunk);
-                this.log.append({
-                    ts: Date.now(),
-                    level: "warn",
-                    source: "task",
-                    refId: taskId,
-                    text,
-                });
-                this.events.emit(Events.TASK_OUTPUT, {
-                    taskId: taskId,
-                    text,
-                    stream: "stderr",
-                });
-                this.events.emit(Events.LOG_APPENDED, { refId: taskId });
-            });
+            this.runtimes.set(runId, cur);
+            this.procs.delete(runId);
+            this.activeRunByTaskId.delete(taskId);
 
-            /* ---------- exit ---------- */
-            p.onExit((code, signal) => {
-                const cur = this.runtimes.get(taskId);
-                if (!cur) return;
-
-                cur.exitCode = code;
-                cur.signal = signal;
-                cur.stoppedAt = Date.now();
-                cur.status = code === 0 || code === null ? "stopped" : "failed";
-
-                this.runtimes.set(taskId, cur);
-                this.procs.delete(taskId);
-
-                this.log.append({
-                    ts: Date.now(),
-                    level: cur.status === "failed" ? "error" : "info",
-                    source: "system",
-                    refId: taskId,
-                    text: `[task] exited: code=${code} signal=${signal}`,
-                });
-
-                this.events.emit(Events.TASK_EXITED, {
-                    taskId: taskId,
-                    exitCode: code,
-                    signal,
-                });
-
-                if (cur.status === "failed") {
-                    this.events.emit(Events.TASK_FAILED, {
-                        taskId: taskId,
-                        error: `exit code=${code}`,
-                    });
-                }
-
-                this.events.emit(Events.LOG_APPENDED, { refId: taskId });
-            });
-
-            return runtime;
-        } catch (e: any) {
-            runtime.status = "failed";
-            runtime.lastError = e?.message || String(e);
-            runtime.stoppedAt = Date.now();
-            this.runtimes.set(taskId, runtime);
-
-            this.log.append({
+            // syslog: exited
+            this.sysLog.append({
                 ts: Date.now(),
-                level: "error",
+                level: cur.status === "failed" ? "error" : "info",
                 source: "system",
-                refId: taskId,
-                text: `[task] spawn failed: ${runtime.lastError}`,
+                refId: runId,
+                text: `[task] exited: status=${cur.status} code=${code} signal=${signal}`,
             });
+            this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
 
-            this.events.emit(Events.TASK_FAILED, {
-                taskId: taskId,
-                error: runtime.lastError || null,
-            });
-            this.events.emit(Events.LOG_APPENDED, { refId: taskId });
-            throw e;
-        }
+            this.events.emit(Events.TASK_EXITED, { taskId, runId, exitCode: code, signal });
+
+            if (cur.status === "failed") {
+                this.events.emit(Events.TASK_FAILED, { taskId, runId, error: `exit code=${code}` });
+            }
+        });
+
+        return rt;
     }
 
-    async stop(taskId: string): Promise<TaskRuntime> {
-        const rt = this.runtimes.get(taskId);
-        if (!rt) {
-            throw new AppError("TASK_NOT_FOUND", `Task not found: ${taskId}`, {
-                taskId,
-            });
-        }
+    async stop(runId: string): Promise<TaskRuntime> {
+        const rt = this.runtimes.get(runId);
+        if (!rt) throw new AppError("RUN_NOT_FOUND", "Run not found", { runId });
+
         if (rt.status !== "running") return rt;
-        const proc = this.procs.get(taskId);
-        if (proc) {
-            proc.kill("SIGTERM"); // TODO: Windows 后续可升级为 killTree
-            this.log.append({
-                ts: Date.now(),
-                level: "info",
-                source: "system",
-                refId: taskId,
-                text: `[task] stop requested (SIGTERM)`,
-            });
-            this.events.emit(Events.TASK_STOPPED, { taskId });
-            this.events.emit(Events.LOG_APPENDED, { refId: taskId });
-        } else {
-            // 极端情况：没有进程句柄
-            rt.status = "stopped";
-            rt.stoppedAt = Date.now();
-            this.runtimes.set(taskId, rt);
-        }
 
-        return this.runtimes.get(taskId)!;
+        rt.status = "stopping";
+        this.runtimes.set(runId, rt);
+
+        this.sysLog.append({ ts: Date.now(), level: "info", source: "system", refId: runId, text: `[task] stop requested` });
+        this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
+
+        const proc = this.procs.get(runId);
+        if (proc) proc.kill("SIGTERM");
+
+        this.events.emit(Events.TASK_STOP_REQUESTED, { taskId: rt.taskId, runId });
+
+        return rt;
     }
 
-    async status(taskId: string): Promise<TaskRuntime> {
-        const rt = this.runtimes.get(taskId);
-        if (!rt) throw new AppError("TASK_NOT_FOUND", `Task not found: ${taskId}`, { taskId });
+    async status(runId: string): Promise<TaskRuntime> {
+        const rt = this.runtimes.get(runId);
+        if (!rt) throw new AppError("RUN_NOT_FOUND", `Run not found: ${runId}`, { runId });
         return rt;
     }
 
@@ -236,7 +162,7 @@ export class TaskServiceImpl implements TaskService {
         // 例如 scripts 被删了，runtime 还在（先不动也行）
         // 先不删，避免用户正在跑但 scripts 被改导致 UI 突然消失。
         // 真要做清理，可以加一个 opts: { pruneOrphan?: boolean }
-        this.log.append({
+        this.sysLog.append({
             ts: Date.now(),
             level: "info",
             source: "system",
@@ -267,15 +193,19 @@ export class TaskServiceImpl implements TaskService {
         return Array.from(this.specs.values()).filter((s) => s.projectId === projectId);
     }
 
-    async getSnapshot(taskId: string): Promise<TaskRuntime | null> {
+    async getSnapshot(runId: string): Promise<TaskRuntime | null> {
         // spec 不存在也允许（因为 runtime 可能存在 / 或用户传错）
-        return this.runtimes.get(taskId) ?? null;
+        return this.runtimes.get(runId) ?? null;
     }
 
-    async getTailLogs(taskId: string, tail: number): Promise<any[]> {
-        const n = Math.max(0, Math.min(tail ?? 0, 5000)); // 防御一下
-        if (n === 0) return [];
-        return this.log.tailById(taskId, n);
+    // logs
+    async getTailLogsByRun(runId: string, tail: number) {
+        return this.taskLog.tail(Math.min(tail, 5000), { refId: runId, source: "task" });
+    }
+
+    // syslog
+    async getSyslogTail(tail: number) {
+        return this.sysLog.tail(Math.min(tail, 2000), { source: "system" });
     }
 
 }

@@ -14,7 +14,7 @@ export class TaskStatusBadgeComponent {
     switch (this.status) {
       case "running": return "#22c55e";
       case "success": return "#16a34a";
-      case "error": return "#ef4444";
+      case "failed": return "#ef4444";
       case "stopped": return "#f59e0b";
       default: return "rgba(0,0,0,.25)";
     }

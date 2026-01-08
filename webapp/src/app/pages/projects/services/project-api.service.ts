@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { CreateProjectDraft } from '../models/project-draft';
-import { ApiClient } from '@app/core/api/api-client';
+import { ApiClient } from '@core/api';
 import { CheckRootResult, DetectResult, ImportCheckResult, Project } from '@models/project.model';
 import { Observable } from 'rxjs';
 @Injectable({ providedIn: 'root' })

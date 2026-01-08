@@ -26,7 +26,10 @@ export function createCoreApp(
     // 事件总线（内存）
     const events = new MemoryEventBus<CoreEventMap>();
     // 日志存储（ring buffer）
-    const log = new RingLogStore(opts.logCapacity ?? 2000);
+    const taskLog = new RingLogStore(opts.taskLogCapacity ?? 8000);
+    const sysLog = new RingLogStore(opts.sysLogCapacity ?? 2000);
+
+
     /* ------------------ process ------------------ */
     // 进程驱动（Node spawn）
     const processDriver = new NodeProcessDriver();
@@ -49,7 +52,8 @@ export function createCoreApp(
     const task = new TaskServiceImpl(
         project,
         processService,
-        log,
+        sysLog,
+        taskLog,
         events
     );
     /* ------------------ fs ------------------ */
@@ -57,7 +61,8 @@ export function createCoreApp(
     /* ------------------ core app ------------------ */
     return {
         events,
-        log,
+        taskLog,
+        sysLog,
         task,
         project,
         fs,

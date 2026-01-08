@@ -16,13 +16,13 @@ export class WsClientService {
   private reconnectAttempt = 0;
   private manualClose = false;
 
-  // 连接锁 + 可取消的重连订阅
   private opening = false;
   private reconnectSub?: Subscription;
 
   constructor(private zone: NgZone) { }
 
-  getState(): Observable<WsState> {
+  /** 给外部监听连接状态 */
+  stateChanges(): Observable<WsState> {
     return this.state$.asObservable();
   }
 
@@ -31,9 +31,12 @@ export class WsClientService {
   }
 
   connect() {
-    // 已经 open/connecting/opening 就直接返回
     if (this.opening) return;
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
     this.manualClose = false;
@@ -42,7 +45,6 @@ export class WsClientService {
 
   close() {
     this.manualClose = true;
-    // 手动关闭时：取消重连、停心跳
     this.cancelReconnect();
     this.stopHeartbeat();
     this.ws?.close();
@@ -62,16 +64,18 @@ export class WsClientService {
   }
 
   private open() {
-    // open() 本身也要幂等，防止 timer 并发触发
     if (this.opening) return;
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
 
     this.opening = true;
     this.state$.next("connecting");
 
-    // 每次真正开始连接前，先取消之前挂着的重连 timer
     this.cancelReconnect();
 
     this.zone.runOutsideAngular(() => {
@@ -82,14 +86,13 @@ export class WsClientService {
         this.reconnectAttempt = 0;
         this.opening = false;
 
-        // 连接成功也再保险取消一次 pending reconnect
         this.cancelReconnect();
-        // 发送 pending 消息
+
         const toSend = this.pending.splice(0);
-        toSend.forEach(m => this.send(m));
-        // 切换状态
+        toSend.forEach((m) => this.send(m));
+
         this.zone.run(() => this.state$.next("open"));
-        // 启动心跳
+
         this.startHeartbeat();
       };
 
@@ -104,14 +107,13 @@ export class WsClientService {
       };
 
       ws.onerror = () => {
-        // error 时通常会紧接 close，但不同环境不一致
-        // 标记状态 + 主动 close 触发统一流程
         this.zone.run(() => this.state$.next("error"));
-        try { ws.close(); } catch { }
+        try {
+          ws.close();
+        } catch { }
       };
 
       ws.onclose = () => {
-        // 统一清理
         this.opening = false;
         this.ws = undefined;
         this.stopHeartbeat();
@@ -142,7 +144,6 @@ export class WsClientService {
   }
 
   private scheduleReconnect() {
-    // 防止重复 schedule：如果已有重连订阅在跑，直接返回
     if (this.reconnectSub) return;
 
     this.reconnectAttempt++;
@@ -150,10 +151,7 @@ export class WsClientService {
 
     this.reconnectSub = timer(delay).subscribe(() => {
       this.reconnectSub = undefined;
-
-      // 如果这段时间用户手动 close 了，就别再连
       if (this.manualClose) return;
-
       this.open();
     });
   }
@@ -163,4 +161,3 @@ export class WsClientService {
     this.reconnectSub = undefined;
   }
 }
-

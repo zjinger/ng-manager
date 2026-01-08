@@ -1,7 +1,7 @@
 import type { RingLogStore } from "../../infra/log/ring-log-store";
 import type { LogLine, LogLevel, LogSource } from "../../infra/log/types";
 import { CoreEventMap, Events } from "../../infra/event/events";
-import type { MemoryEventBus } from "../../infra/event/memory-event-bus"; 
+import type { MemoryEventBus } from "../../infra/event/memory-event-bus";
 
 export class LoggerService {
     constructor(
@@ -11,9 +11,9 @@ export class LoggerService {
 
     append(line: LogLine) {
         this.store.append(line);
-        this.events.emit(Events.LOG_APPENDED, line);
+        this.events.emit(Events.SYSLOG_APPENDED, { entry: line });
     }
-   
+
     log(
         level: LogLevel,
         source: LogSource,

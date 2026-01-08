@@ -50,19 +50,16 @@ export default async function taskRoutes(fastify: FastifyInstance) {
         return await fastify.core.task.listSpecsByProject(projectId);
     });
 
-    /** 
+    /**
      * 启动任务（唯一方式）
      * POST /start
-     * body: { taskId: string }
+     * body: { specId: string } -- specId === taskId 
      */
     fastify.post("/start", async (req) => {
         const body = req.body as { specId?: string };
         const specId = body?.specId?.trim();
-
-        if (!specId) {
-            throw new AppError("BAD_REQUEST", "specId is required", { body });
-        }
-        return fastify.core.task.start(specId);
+        if (!specId) throw new AppError("BAD_REQUEST", "specId is required", { body });
+        return await fastify.core.task.start(specId); // returns { runId ... }
     });
 
 
@@ -71,9 +68,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
      * POST /stop/:id
      *  id === taskId === specId
      */
-    fastify.post("/stop/:id", async (req) => {
-        const { id } = req.params as { id: string };
-        return fastify.core.task.stop(id);
+    fastify.post("/stop", async (req) => {
+        const body = req.body as { runId?: string };
+        const runId = body?.runId?.trim();
+        if (!runId) throw new AppError("BAD_REQUEST", "runId is required", { body });
+        return await fastify.core.task.stop(runId);
     });
 
     /**
@@ -82,18 +81,30 @@ export default async function taskRoutes(fastify: FastifyInstance) {
      */
     fastify.get("/status/:id", async (req) => {
         const { id } = req.params as { id: string };
-        return fastify.core.task.status(id);
+        return await fastify.core.task.status(id);
     });
 
+    // /**
+    //  * 拉取任务日志
+    //  * GET /log/:id?tail=200
+    //  */
+    // fastify.get("/log/:id", async (req) => {
+    //     const { id } = req.params as { id: string };
+    //     const { tail } = req.query as { tail?: string };
+    //     const limit = Math.min(Math.max(Number(tail) || 200, 1), 5000);
+    //     return fastify.core.log.tail(limit, { refId: id });
+    // });
+
+
     /**
-     * 拉取任务日志
-     * GET /log/:id?tail=200
+     * 拉取某次运行的任务日志
+     * GET /log/run/:runId?tail=200
      */
-    fastify.get("/log/:id", async (req) => {
-        const { id } = req.params as { id: string };
+    fastify.get("/log/run/:runId", async (req) => {
+        const { runId } = req.params as { runId: string };
         const { tail } = req.query as { tail?: string };
         const limit = Math.min(Math.max(Number(tail) || 200, 1), 5000);
-        return fastify.core.log.tail(limit, { refId: id });
+        return await fastify.core.task.getTailLogsByRun(runId, limit);
     });
 }
 

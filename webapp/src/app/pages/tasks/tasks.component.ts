@@ -51,8 +51,8 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
           [description]="selectedTask()?.spec?.description"
           [command]="selectedTask()?.spec?.command"
         ></app-task-header>
-        <app-task-actions (toggle)="taskState.toggleTask()"></app-task-actions>
-        <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
+        <app-task-actions [disabled]="taskState.isDisabled()" [isRunning]="taskState.isRunning()" (toggle)="taskState.toggleTask()"></app-task-actions>
+        <app-task-console [runId]="taskState.selectedRunId()"></app-task-console>
       </nz-content>
     </nz-layout>
     <app-task-log></app-task-log>

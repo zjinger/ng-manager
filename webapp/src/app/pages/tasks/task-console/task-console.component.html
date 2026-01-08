@@ -18,12 +18,7 @@
       </nz-space>
     </div>
   </div>
-
-  <div #viewport class="viewport">
-    @for (l of lines; track $index) {
-    <div class="line" [attr.data-stream]="l.stream">
-      <span class="text">{{ l.text }}</span>
-    </div>
-    }
+  <div class="viewport">
+    <app-terminal-view [follow]="follow"></app-terminal-view>
   </div>
 </div>

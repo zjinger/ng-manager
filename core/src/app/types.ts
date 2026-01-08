@@ -12,8 +12,10 @@ import { EditorService } from "../domain/editor";
  * - 后续可以逐步扩展（dataDir / workspaceDir / storageType 等）
  */
 export interface CreateCoreAppOptions {
-    /** 内存日志最大条数 */
-    logCapacity?: number;
+    /** 任务日志最大条数 */
+    taskLogCapacity?: number;
+    /** 系统日志最大条数 */
+    sysLogCapacity?: number;
     /** 数据目录（存储项目列表等） */
     dataDir?: string;
 }
@@ -27,7 +29,8 @@ export interface CoreApp {
     events: IEventBus<CoreEventMap>;
 
     /** 日志存储（ring buffer） */
-    log: ILogStore;
+    taskLog: ILogStore;
+    sysLog: ILogStore;
 
     /** 任务执行与管理 */
     task: TaskService;

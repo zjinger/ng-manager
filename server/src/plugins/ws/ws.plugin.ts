@@ -6,13 +6,14 @@ import { WsContext } from "./ws.context";
 import { WsRouter } from "./ws.router";
 import { createTaskTopicHandler } from "./topics";
 import { Events } from "@core";
+import { createSyslogTopicHandler } from "./topics/syslog.ws";
 
 function uid() {
     return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
 export default fp(async function wsPlugin(fastify: FastifyInstance) {
-    
+
     await fastify.register(websocket);
 
     const clients = new Map<string, WsContext>();
@@ -21,43 +22,45 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
 
     // 注册 topics： core.task 的能力注入进来
     const taskHandler = createTaskTopicHandler(
-        {
-            getTaskSnapshot: (taskId) => fastify.core.task.getSnapshot(taskId),
-            getTaskTailLogs: (taskId, tail) => fastify.core.task.getTailLogs(taskId, tail),
-        },
+        { getRunTailLogs: (runId, tail) => fastify.core.task.getTailLogsByRun(runId, tail) },
         () => clients.values()
     );
     router.register(taskHandler);
+    // syslog
+    const syslogHandler = createSyslogTopicHandler(
+        { getSyslogTail: (tail) => fastify.core.task.getSyslogTail(tail) },
+        () => clients.values()
+    );
+    router.register(syslogHandler);
+
+
     // 事件订阅：拿到 disposer，onClose 释放
     const offs: Array<() => void> = [];
 
-    // 把 push 接到 core events 上（下面演示）
     offs.push(fastify.core.events.on(Events.TASK_OUTPUT, (e) => {
-        taskHandler.pushTaskLog(e.taskId, {
-            ts: Date.now(),
-            level: e.stream === "stderr" ? "warn" : "info",
-            source: "task",
-            refId: e.taskId,
-            text: e.text,
-            stream: e.stream,
-        });
+        taskHandler.pushOutput(e.runId, e.stream, e.text);
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_STARTED, (e) => {
-        taskHandler.pushTaskStatus(e.taskId, "task.started", { pid: e.pid });
+        taskHandler.pushEvent(e.runId, "started", { pid: e.pid, taskId: e.taskId });
     }));
+
+    offs.push(fastify.core.events.on(Events.TASK_STOP_REQUESTED, (e) => {
+        taskHandler.pushEvent(e.runId, "stopRequested", { taskId: e.taskId });
+    }));
+
     offs.push(fastify.core.events.on(Events.TASK_EXITED, (e) => {
-        taskHandler.pushTaskStatus(e.taskId, "task.exited", { exitCode: e.exitCode, signal: e.signal });
+        taskHandler.pushEvent(e.runId, "exited", { exitCode: e.exitCode, signal: e.signal, taskId: e.taskId });
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_FAILED, (e) => {
-        taskHandler.pushTaskStatus(e.taskId, "task.failed", { error: e.error });
+        taskHandler.pushEvent(e.runId, "failed", { error: e.error, taskId: e.taskId });
     }));
 
-    offs.push(fastify.core.events.on(Events.TASK_STOPPED, (e) => {
-        taskHandler.pushTaskStatus(e.taskId, "task.stopped", {});
+    offs.push(fastify.core.events.on(Events.SYSLOG_APPENDED, (e) => {
+        syslogHandler.push(e.entry);
     }));
-
+    
     fastify.addHook("onClose", async () => {
         // 防止 dev 热重载 / 反复 register 导致重复推送
         offs.forEach((off) => {

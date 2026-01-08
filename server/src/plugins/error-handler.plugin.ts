@@ -35,6 +35,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     PROCESS_SPAWN_FAILED: 500,
     TASK_SPEC_NOT_FOUND: 404,
     TASK_NOT_RUNNABLE: 400,
+    RUN_NOT_FOUND: 404,
 
     /* ---------------- File System ---------------- */
 
