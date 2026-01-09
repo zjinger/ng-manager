@@ -13,7 +13,6 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
           nz-button
           nzType="primary"
           (click)="toggle.emit()"
-          [disabled]="disabled"
         >
           <span nz-icon nzType="play-circle"></span> 运行
         </button>
@@ -23,7 +22,6 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         nz-button
         nzType="primary"
         nzDanger
-        [disabled]="disabled"
       >
       <span nz-icon nzType="loading"></span> 停止中...
       </button>
@@ -33,7 +31,6 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         nz-button
         nzType="primary"
         nzDanger
-        [disabled]="disabled"
         nz-popconfirm
         nzPopconfirmTitle="确定要停止该任务吗？"
         (nzOnConfirm)="stopTask()"
@@ -60,11 +57,9 @@ export class TaskActionsComponent {
   @Input() isRunning = false;
   @Input() isStopping = false;
   @Input() isStopped = false;
-  @Input() disabled = false;
   @Output() toggle = new EventEmitter<void>();
 
   stopTask() {
-    if (this.disabled) return;
     this.toggle.emit();
   }
 }

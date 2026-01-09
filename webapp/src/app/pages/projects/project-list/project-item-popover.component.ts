@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, Input, OnChanges, Signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { TaskItemVM, TaskStatus } from '@models/task.model';
+import { TaskRow, TaskStatus } from '@models/task.model';
 import { TaskStateService } from '@pages/tasks/services/tasks.state.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -117,64 +117,48 @@ import { ProjectStateService } from '../services/project.state.service';
   ],
 })
 export class ProjectItemPopoverComponent implements OnChanges {
-  @Input() projectId: string | undefined;
-
-  private taskState = inject(TaskStateService);
-  private router = inject(Router);
+  @Input() projectId?: string;
   private projectState = inject(ProjectStateService);
+  private router = inject(Router);
+  private state = inject(TaskStateService);
 
-  // “按 projectId 的 rowsView”
-  readonly tasks: Signal<TaskItemVM[]> = computed(() => {
-    const pid = (this.projectId ?? "").trim();
-    if (!pid) return [];
-    const tasks = this.taskState.listVMOf(pid)();
-    console.log('ProjectItemPopoverComponent tasks:', tasks);
-    return tasks;
+  readonly tasks: Signal<TaskRow[]> = computed(() => {
+    if (!this.projectId) return [];
+    return this.state.rowsViewOf(this.projectId)();
   });
 
   async ngOnChanges() {
-    const pid = (this.projectId ?? "").trim();
-    if (!pid) return;
-    await this.taskState.ensureProjectLoaded(pid);
-  }
-
-  async openTask(task: TaskItemVM) {
-    console.log('ProjectItemPopoverComponent openTask:', task);
-    const pid = (task.spec.projectId ?? "").trim();
-    if (!pid) return;
-    this.projectState.setCurrentProjectById(pid);
-    // 让 state 先切项目+选中（不依赖 tasks 页面是否已初始化）
-    await this.taskState.openTask(pid, task.spec.id);
-    // 跳转（按你实际路由改）
-    await this.router.navigate(["/tasks"], {
-      queryParams: { projectId: pid, taskId: task.spec.id },
-    });
-  }
-
-  async toggleTask(task: TaskItemVM) {
-    // 先跳转并选中
-    await this.openTask(task);
-    // 再执行动作（用“真实状态”判断：优先 runtime.status）
-    const st = (task.runtime?.status ?? task.status) as TaskStatus | undefined;
-    if (st === "running" || st === "stopping") {
-      const runId =
-        (task.runtime?.runId ?? task.runId ?? "").trim();
-      if (runId) this.taskState.stopRun(runId);
-    } else {
-      this.taskState.startTask(task.spec.id);
+    if (this.projectId) {
+      await this.state.ensureProjectLoaded(this.projectId);
     }
   }
 
-  getTaskName(task: TaskItemVM) {
+  toggleTask(task: TaskRow) {
+    if (task.runtime?.status === "running") {
+      this.state.select(task.spec.id);
+      this.state.stopSelected();
+    } else {
+      this.state.select(task.spec.id);
+      this.state.startSelected();
+    }
+  }
+
+  async openTask(task: TaskRow) {
+    this.state.select(task.spec.id);
+    await this.router.navigate(['/tasks']);
+    this.projectState.setCurrentProjectById(task.spec.projectId);
+  }
+
+  getTaskName(task: TaskRow) {
     return task.spec.name || task.spec.id;
   }
-  getTaskDescription(task: TaskItemVM) {
-    const st = task.status
+  getTaskDescription(task: TaskRow) {
+    const st = task.runtime?.status;
     return task.runtime ? this.computedStatusText(st) : task.spec.description || "";
   }
 
-  getTaskActionIcon(task: TaskItemVM) {
-    const st = task.status;
+  getTaskActionIcon(task: TaskRow) {
+    const st = task.runtime?.status;
     return st === "running" || st === "stopping" ? "pause-circle" : "play-circle";
   }
 

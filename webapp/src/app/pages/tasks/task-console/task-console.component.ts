@@ -32,8 +32,7 @@ export class TaskConsoleComponent implements OnDestroy {
   set runId(id: string) {
     const next = (id ?? "").trim();
     if (!next) {
-      queueMicrotask(() => this.term?.reset());
-      if (this._runId) this.stream.unsubscribeRun(this._runId);
+      // queueMicrotask(() => this.term?.reset());
       return;
     };
     if (next === this._runId) return;
@@ -79,7 +78,6 @@ export class TaskConsoleComponent implements OnDestroy {
   }
 
   private bind(runId: string) {
-    this.stream.ensureConnected();
     // 订阅 run 输出
     this.stream.subscribeRun(runId, this.tail);
 

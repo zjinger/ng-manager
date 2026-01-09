@@ -35,7 +35,7 @@ export class TaskListComponent {
   keyword = this.state.keyword;
   loading = this.state.loading;
   error = this.state.error;
-  list = this.state.listVM;
+  list = this.state.rowsViewFiltered;
   selectedId = this.state.selectedTaskId
   projectId = this.state.projectId;
 

@@ -40,7 +40,6 @@ export class TaskStreamService {
   subscribeRun(runId: string, tail = 200) {
     const id = String(runId ?? "").trim();
     if (!id) return;
-
     const t = Number.isFinite(tail) ? Math.max(0, Math.min(5000, Math.floor(tail))) : 0;
 
     const cur = this.subs.get(id);

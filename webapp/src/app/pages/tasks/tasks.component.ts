@@ -52,11 +52,11 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
             [command]="selectedTask()?.spec?.command"
           ></app-task-header>
           <app-task-actions 
-            [disabled]="taskState.isDisabled()"
-            [isStopped]="taskState.isStopped()"
             [isStopping]="taskState.isStopping()"
             [isRunning]="taskState.isRunning()" 
-            (toggle)="taskState.toggleTask()">
+            [isStopped]="taskState.isStopped()"
+            (toggle)="taskState.toggleTask()"
+            >
           </app-task-actions>
           <app-task-console [runId]="taskState.selectedRunId()"></app-task-console>
         </nz-content>
