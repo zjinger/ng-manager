@@ -51,6 +51,7 @@ export function genSpecsFromScripts(
             id: buildSpecId(projectId, name),
             projectId,
             name,
+            // mode: "daemon",
             kind: getTaskKindFromName(name),
             runnable: packageManager !== "unknown", // packageManager 未知时，任务不可运行
             command: buildRunCommand(packageManager, name),

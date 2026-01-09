@@ -5,7 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { WsContext } from "./ws.context";
 import { WsRouter } from "./ws.router";
 import { createTaskTopicHandler } from "./topics";
-import { Events } from "@core";
+import { Events, WsServerMsg } from "@core";
 import { createSyslogTopicHandler } from "./topics/syslog.ws";
 
 function uid() {
@@ -22,7 +22,11 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
 
     // 注册 topics： core.task 的能力注入进来
     const taskHandler = createTaskTopicHandler(
-        { getRunTailLogs: (runId, tail) => fastify.core.task.getTailLogsByRun(runId, tail) },
+        {
+            getTaskSnapshot: (runId) => fastify.core.task.getSnapshot(runId),
+            getTaskTailLogs: (runId, tail) => fastify.core.task.getTailLogsByRun(runId, tail),
+            resizeRun: (runId, cols, rows) => fastify.core.task.resizeRun(runId, cols, rows),
+        },
         () => clients.values()
     );
     router.register(taskHandler);
@@ -60,7 +64,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     offs.push(fastify.core.events.on(Events.SYSLOG_APPENDED, (e) => {
         syslogHandler.push(e.entry);
     }));
-    
+
     fastify.addHook("onClose", async () => {
         // 防止 dev 热重载 / 反复 register 导致重复推送
         offs.forEach((off) => {
@@ -72,10 +76,10 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     fastify.get("/ws", { websocket: true }, (ws) => {
         const connId = uid();
         const ctx = new WsContext(connId, ws);
-        console.log("[ws] open", connId, "clients=", clients.size + 1);
+        // console.log("[ws] open", connId, "clients=", clients.size + 1);
         clients.set(connId, ctx);
         ctx.send({ op: "hello", connId, ts: Date.now() });
-
+        // 接收client消息
         ws.on("message", (data: any) => router.handleRaw(ctx, data));
         ws.on("close", () => {
             ctx.clearAll();

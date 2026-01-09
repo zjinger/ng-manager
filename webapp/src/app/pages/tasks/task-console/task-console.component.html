@@ -19,6 +19,6 @@
     </div>
   </div>
   <div class="viewport">
-    <app-terminal-view [follow]="follow"></app-terminal-view>
+    <app-terminal-view (resized)="onTermResized($event)" [follow]="follow"></app-terminal-view>
   </div>
 </div>

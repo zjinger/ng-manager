@@ -115,13 +115,14 @@ export class ProjectItemPopoverComponent {
   toggleTask(task: TaskRow) { }
 
   getTaskStatus(task: TaskRow) {
-    switch (task.runtime.status) {
-      case "running": return "运行中";
-      case "success": return "成功";
-      case "failed": return "错误";
-      case "stopped": return "已停止";
-      default: return "空闲";
-    }
+    return '';
+    // switch (task.runtime.status) {
+    //   case "running": return "运行中";
+    //   case "success": return "成功";
+    //   case "failed": return "错误";
+    //   case "stopped": return "已停止";
+    //   default: return "空闲";
+    // }
   }
 
   getTaskName(task: TaskRow) {
@@ -129,16 +130,18 @@ export class ProjectItemPopoverComponent {
   }
 
   getTaskDescription(task: TaskRow) {
-    switch (task.runtime.status) {
-      case "running": return `运行中 (PID: ${task.runtime.pid})`;
-      case "success": return "上次运行成功";
-      case "failed": return "上次运行错误";
-      case "stopped": return "已停止";
-      default: return "空闲";
-    }
+    return ''
+    // switch (task.runtime.status) {
+    //   case "running": return `运行中 (PID: ${task.runtime.pid})`;
+    //   case "success": return "上次运行成功";
+    //   case "failed": return "上次运行错误";
+    //   case "stopped": return "已停止";
+    //   default: return "空闲";
+    // }
   }
 
   getTaskActionIcon(task: TaskRow) {
-    return task.runtime.status == 'running' ? 'pause-circle' : 'play-circle';
+    // return task.runtime.status == 'running' ? 'pause-circle' : 'play-circle';
+    return 'play-circle';
   }
 }

@@ -6,9 +6,8 @@ import type { CoreEventMap } from "../infra/event/events";
 import type { CoreApp, CreateCoreAppOptions } from "./types";
 import { MemoryEventBus } from "../infra/event/memory-event-bus";
 import { RingLogStore } from "../infra/log/ring-log-store";
-import { NodeProcessDriver } from "../infra/process";
+import { PtyProcessDriver } from "../infra/process";
 import { ProcessService } from "../domain/process";
-import { EditorServiceImpl } from "../domain/editor";
 import { ProjectServiceImpl } from "../domain/project";
 import { TaskServiceImpl } from "../domain/task/task.service.impl";
 import { JsonProjectRepo } from "../infra/storage/project.repo.json";
@@ -32,21 +31,15 @@ export function createCoreApp(
 
     /* ------------------ process ------------------ */
     // 进程驱动（Node spawn）
-    const processDriver = new NodeProcessDriver();
+    const processDriver = new PtyProcessDriver();
     // 进程服务（错误包装 + 生命周期抽象）
     const processService = new ProcessService(processDriver);
-    /* ------------------ editor ------------------ */
-    const editor = new EditorServiceImpl(processService);
     /* ------------------ project ------------------ */
     const dataDir =
         opts.dataDir ??
         path.join(os.homedir(), ".ng-manager"); // 非 Electron 场景默认落这里
     const projectRepo = new JsonProjectRepo(dataDir);
-    const project = new ProjectServiceImpl(
-        projectRepo,
-        editor
-    )
-
+    const project = new ProjectServiceImpl(projectRepo)
     /* ------------------ task ------------------ */
     // 任务服务（start / stop / status）
     const task = new TaskServiceImpl(
@@ -66,6 +59,5 @@ export function createCoreApp(
         task,
         project,
         fs,
-        editor
     };
 }

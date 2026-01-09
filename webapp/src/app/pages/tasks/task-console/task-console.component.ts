@@ -6,7 +6,7 @@ import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzSpaceModule } from "ng-zorro-antd/space";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
-import { Subscription } from "rxjs";
+import { debounceTime, Subject, Subscription } from "rxjs";
 import { TaskStreamService } from "../services/task-stream.service";
 import { ClipboardModule, Clipboard } from '@angular/cdk/clipboard';
 import { UiNotifierService } from "@app/core";
@@ -31,7 +31,10 @@ export class TaskConsoleComponent implements OnDestroy {
   @Input()
   set runId(id: string) {
     const next = (id ?? "").trim();
-    if (!next) return;
+    if (!next) {
+      queueMicrotask(() => this.term?.reset());
+      return;
+    };
     if (next === this._runId) return;
     // 切换 run：先退订旧 run（并清 UI）
     if (this._runId) {
@@ -54,12 +57,25 @@ export class TaskConsoleComponent implements OnDestroy {
   @ViewChild(TerminalViewComponent) term?: TerminalViewComponent;
 
   private sub = new Subscription();
+  private resizeSub = new Subscription();
+  private resizeSubject: Subject<{ cols: number; rows: number }> = new Subject();
 
   constructor(
     private stream: TaskStreamService,
     private clipboard: Clipboard,
     private notify: UiNotifierService
-  ) { }
+  ) {
+    this.resizeSub.add(
+      this.resizeSubject
+        .pipe(debounceTime(200))
+        .subscribe((size) => {
+          if (this._runId) {
+            console.log("Terminal resized:", size);
+            this.stream.resize(this._runId, size.cols, size.rows);
+          }
+        })
+    );
+  }
 
   private bind(runId: string) {
     this.stream.ensureConnected();
@@ -115,5 +131,11 @@ export class TaskConsoleComponent implements OnDestroy {
 
   fit() {
     this.term?.fit();
+  }
+
+
+  onTermResized(size: { cols: number; rows: number }) {
+    // 使用rxjs 节流发送到后端
+    this.resizeSubject.next(size);
   }
 }

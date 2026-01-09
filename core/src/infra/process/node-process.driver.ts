@@ -65,6 +65,9 @@ export class NodeProcessDriver implements IProcessDriver {
             onStdout: (cb) => stdoutHandlers.add(cb),
             onStderr: (cb) => stderrHandlers.add(cb),
             onExit: (cb) => exitHandlers.add(cb),
+            write: (data: string) => { }, // pipe 模式不支持写入
+            interrupt: () => { }, // pipe 模式不支持 Ctrl+C
+
         };
     }
 }

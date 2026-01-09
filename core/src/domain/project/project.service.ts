@@ -25,7 +25,5 @@ export interface ProjectService {
 
     setLastOpened(id: string, timestamp: number): Promise<Project>;
 
-    openInEditor(id: string, opts?: { editor?: "code" | "system" }): Promise<void>;
-
     rename(id: string, name: string): Promise<Project>;
 }

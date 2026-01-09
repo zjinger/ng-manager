@@ -43,14 +43,14 @@
             {{ badge(t?.runtime?.status) }}
           </div> -->
         </div>
-        @if(t.runtime) {
+        <!-- @if(t.runtime) {
         <div class="meta">
           <span class="mono">{{ t.runtime.taskId }}</span>
           @if (t.runtime.pid) { <span class="sep">·</span><span>pid={{ t.runtime.pid }}</span> } @if
           (t.runtime.exitCode !== undefined && t.runtime.status === 'stopped') {
           <span class="sep">·</span><span>exit={{ t.runtime.exitCode }}</span> }
         </div>
-        }
+        } -->
       </div>
       }
     </div>

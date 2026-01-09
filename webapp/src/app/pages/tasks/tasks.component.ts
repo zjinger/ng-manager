@@ -43,45 +43,66 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
   ],
   template: `
     <nz-layout class="page">
-    <nz-layout class="page-tasks">
-      <app-task-list></app-task-list>
-      <nz-content class="content">
-        <app-task-header
-          [name]="selectedTask()?.spec?.name"
-          [description]="selectedTask()?.spec?.description"
-          [command]="selectedTask()?.spec?.command"
-        ></app-task-header>
-        <app-task-actions [disabled]="taskState.isDisabled()" [isRunning]="taskState.isRunning()" (toggle)="taskState.toggleTask()"></app-task-actions>
-        <app-task-console [runId]="taskState.selectedRunId()"></app-task-console>
-      </nz-content>
+      <nz-layout class="page-tasks">
+        <app-task-list></app-task-list>
+        <nz-content class="content">
+          <app-task-header
+            [name]="selectedTask()?.spec?.name"
+            [description]="selectedTask()?.spec?.description"
+            [command]="selectedTask()?.spec?.command"
+          ></app-task-header>
+          <app-task-actions 
+            [disabled]="taskState.isDisabled()"
+            [isStopped]="taskState.isStopped()"
+            [isStopping]="taskState.isStopping()"
+            [isRunning]="taskState.isRunning()" 
+            (toggle)="taskState.toggleTask()">
+          </app-task-actions>
+          <app-task-console [runId]="taskState.selectedRunId()"></app-task-console>
+        </nz-content>
+      </nz-layout>
+      <app-task-log></app-task-log>
     </nz-layout>
-    <app-task-log></app-task-log>
-</nz-layout>
 
   `,
   styles: [
     `
     .page{
       height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     .page-tasks {
+      flex: 1 1 auto;
       flex-direction: row;
       gap: 8px;
-      height: 100%;
+      height: 0;
+      display: flex;
+      overflow: hidden;
+      
       app-task-list {
         flex: 0 0 320px;
         width: 320px;
       }
-      app-task-console {
-        flex: 1;
-      }
       .content{
+        flex: 1 1 auto;
         display: flex;
         flex-direction: column;
         padding: 16px;
         gap: 16px;
         height: 100%;
+        overflow: hidden;
       }
+       app-task-header,
+        app-task-actions{
+          flex:0 0 auto;
+        }
+        app-task-console {
+          flex: 1 1 auto;
+          display: block;
+          height:0;
+        }
     }
     `
   ],

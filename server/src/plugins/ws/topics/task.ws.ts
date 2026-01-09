@@ -1,11 +1,13 @@
-import type { WsServerMsg } from "@core/protocol";
+import type { WsClientMsg, WsServerMsg } from "@core/protocol";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 
 const keyOf = (runId: string) => `run:${runId}`;
 
 export type TaskWsDeps = {
-    getRunTailLogs: (runId: string, tail: number) => Promise<any[]> | any[];
+    getTaskSnapshot?: (runId: string) => Promise<any> | any;
+    getTaskTailLogs?: (runId: string, tail: number) => Promise<any[]> | any[];
+    resizeRun?: (runId: string, cols: number, rows: number) => void;
 };
 
 export function createTaskTopicHandler(
@@ -26,12 +28,24 @@ export function createTaskTopicHandler(
             }
             ctx.addSub("task", keyOf(runId));
 
-            // snapshot：一期先不强依赖 core 查询，直接发一个占位（后续你要更强的 snapshot 再加 getRunSnapshot）
-            const snap: WsServerMsg = { op: "task.event", runId, type: "snapshot", payload: {}, ts: Date.now() };
-            ctx.send(snap);
+            // snapshot
+            if (deps.getTaskSnapshot) {
+                const snap = await deps.getTaskSnapshot(runId);
+                if (snap) {
+                    const m: WsServerMsg = {
+                        op: "task.event",
+                        runId,
+                        type: "snapshot",
+                        payload: snap,
+                        ts: Date.now(),
+                    };
+                    ctx.send(m);
+                }
+            }
 
-            if (tail > 0) {
-                const entries = await deps.getRunTailLogs(runId, tail);
+            // tail logs
+            if (deps.getTaskTailLogs && tail > 0) {
+                const entries = await deps.getTaskTailLogs(runId, tail);
                 for (const e of entries ?? []) {
                     const m: WsServerMsg = {
                         op: "task.output",
@@ -44,7 +58,19 @@ export function createTaskTopicHandler(
                 }
             }
         },
+        // resize
+        resize(ctx, msg: Extract<WsClientMsg, { op: "resize" }>) {
+            const runId = (msg as any).runId as string;
+            const cols = Number((msg as any).cols);
+            const rows = Number((msg as any).rows);
+            if (!runId || !Number.isFinite(cols) || !Number.isFinite(rows)) return;
 
+            // 防御：最小值
+            const c = Math.max(2, Math.floor(cols));
+            const r = Math.max(1, Math.floor(rows));
+
+            deps.resizeRun?.(runId, c, r);
+        },
         unsub(ctx, msg: any) {
             const runId = String(msg?.runId ?? "").trim();
             if (!runId) return;

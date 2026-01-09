@@ -15,4 +15,7 @@ export interface TaskService {
     getSnapshot(runId: string): Promise<TaskRuntime | null>;
     getTailLogsByRun(runId: string, tail: number): Promise<LogLine[]>; // 返回 log entry[]
     getSyslogTail(tail: number): Promise<LogLine[]>; // 返回 log entry[]
+    
+    // PTY 专用：调整终端大小
+    resizeRun(runId: string, cols: number, rows: number): void;
 }

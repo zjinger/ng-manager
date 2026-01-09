@@ -1,28 +1,26 @@
 import { Injectable } from "@angular/core";
 import { WsClientService } from "@app/core/ws/ws-client.service";
-import { WsState } from "@core/ws";
-import type { TaskRuntimeStatus } from "@models/task.model";
-import { BehaviorSubject, Subject } from "rxjs";
-
-export type TaskOutputMsg = {
-  runId: string;
-  stream: "stdout" | "stderr";
-  chunk: string;
-  ts: number;
-};
-
+import { WsClientMsg, WsServerMsg, WsState } from "@core/ws";
+import type { TaskEventMsg, TaskEventType, TaskOutputMsg, TaskRuntimeStatus } from "@models/task.model";
+import { Subject } from "rxjs";
+import { TaskRuntimeStore } from "./task-runtime-store";
+/**
+ * 输出流 + 事件流 + 写入 store
+ * 收到 WS task.event 时，直接落地到 runtimeStore（单源）
+ */
 @Injectable({ providedIn: "root" })
 export class TaskStreamService {
-  // runId -> output subject（chunk stream）
   private outputByRun = new Map<string, Subject<TaskOutputMsg>>();
-  // runId -> status subject（state store）
-  private statusByRun = new Map<string, BehaviorSubject<TaskRuntimeStatus>>();
+  private event$ = new Subject<TaskEventMsg>();
 
   // 断线重连后的订阅重放：runId -> tail
   private subs = new Map<string, number>();
   private lastWsState: WsState = "idle";
 
-  constructor(private ws: WsClientService) {
+  constructor(
+    private ws: WsClientService,
+    private runtimeStore: TaskRuntimeStore
+  ) {
     this.ws.messages().subscribe((msg) => this.onMessage(msg));
 
     this.ws.stateChanges().subscribe((s) => {
@@ -38,22 +36,38 @@ export class TaskStreamService {
   }
 
   subscribeRun(runId: string, tail = 200) {
-    const id = (runId ?? "").trim();
+    const id = String(runId ?? "").trim();
     if (!id) return;
 
-    const t = Number.isFinite(tail) ? Math.max(0, Math.min(5000, Math.floor(tail))) : 0;
+    const t = Number.isFinite(tail)
+      ? Math.max(0, Math.min(5000, Math.floor(tail)))
+      : 0;
+    // 幂等：已订阅且 tail 相同 -> 不做任何事（关键）
+    const prev = this.subs.get(id);
+    if (prev === t) return;
+    // 用于断线重连重放
     this.subs.set(id, t);
-
-    // sub topic=task runId tail
-    this.ws.send({ op: "sub", topic: "task", runId: id, tail: t } as any);
+    // 只在 open 时才真正发送，避免进入 ws.pending 造成重复
+    if (this.ws.isOpen()) {
+      this.ws.send({ op: "sub", topic: "task", runId: id, tail: t } as WsClientMsg);
+    }
   }
 
   unsubscribeRun(runId: string) {
-    const id = (runId ?? "").trim();
+    const id = String(runId ?? "").trim();
     if (!id) return;
-
+    // 幂等：没订阅过就不发 unsub
+    if (!this.subs.has(id)) return;
     this.subs.delete(id);
-    this.ws.send({ op: "unsub", topic: "task", runId: id } as any);
+    if (this.ws.isOpen()) {
+      this.ws.send({ op: "unsub", topic: "task", runId: id } as WsClientMsg);
+    }
+  }
+
+  resize(runId: string, cols: number, rows: number) {
+    const id = String(runId ?? "").trim();
+    if (!id) return;
+    this.ws.send({ op: "resize", topic: "task", runId: id, cols, rows } as WsClientMsg);
   }
 
   /** 给 Console 用：输出 chunk stream */
@@ -61,20 +75,27 @@ export class TaskStreamService {
     return this.ensureOutput(runId).asObservable();
   }
 
-  /** 给 Console/ActionBar 用：运行状态 */
+  /** 给 State 用：事件流 */
+  events$() {
+    return this.event$.asObservable();
+  }
+  /** 运行态单源 */
   status$(runId: string) {
-    return this.ensureStatus(runId).asObservable();
+    return this.runtimeStore.status$(runId);
   }
 
+  /**
+   * 断线重连后，重放订阅
+   */
   private replaySubs() {
     for (const [runId, tail] of this.subs.entries()) {
-      this.ws.send({ op: "sub", topic: "task", runId, tail } as any);
+      this.ws.send({ op: "sub", topic: "task", runId, tail } as WsClientMsg);
     }
   }
 
-  private onMessage(msg: any) {
-    //  task.output
-    if (msg?.op === "task.output") {
+  private onMessage(msg: WsServerMsg) {
+    const op = msg?.op;
+    if (op === "task.output") {
       const runId = String(msg.runId ?? "").trim();
       if (!runId) return;
 
@@ -85,55 +106,24 @@ export class TaskStreamService {
       this.ensureOutput(runId).next({ runId, stream, chunk, ts });
       return;
     }
-
     //  task.event
-    if (msg?.op === "task.event") {
+    if (op === "task.event") {
       const runId = String(msg.runId ?? "").trim();
       if (!runId) return;
 
-      const type = String(msg.type ?? "");
+      const type = String(msg.type ?? "") as TaskEventType;
       const payload = msg.payload;
+      const ts = typeof msg.ts === "number" ? msg.ts : Date.now();
 
-      const st = this.ensureStatus(runId);
+      // 先发事件（给 State 维护 taskId->runId 等）
+      this.event$.next({ runId, type, payload, ts });
 
-      if (type === "snapshot") {
-        if (payload?.status === "running") {
-          st.next({ status: "running", pid: payload?.pid, startedAt: payload?.startedAt });
-        } else if (payload?.status === "stopping") {
-          st.next({ status: "stopping" } as any);
-        } else if (payload?.status === "stopped") {
-          st.next({
-            status: "stopped",
-            exitCode: payload?.exitCode,
-            signal: payload?.signal,
-            stoppedAt: payload?.stoppedAt,
-          });
-        }
-        return;
-      }
+      // 再写入运行态 store
+      const next = this.mapEventToStatus(type, payload);
+      if (next) this.runtimeStore.set(runId, next);
 
-      if (type === "started") {
-        st.next({ status: "running", pid: payload?.pid, startedAt: payload?.startedAt });
-        return;
-      }
-
-      if (type === "stopRequested") {
-        st.next({ status: "stopping" } as any);
-        return;
-      }
-
-      if (type === "exited") {
-        st.next({
-          status: "stopped",
-          exitCode: payload?.exitCode,
-          signal: payload?.signal,
-          stoppedAt: payload?.stoppedAt,
-        });
-        return;
-      }
-
+      // failed：额外打一条 stderr 到输出
       if (type === "failed") {
-        st.next({ status: "stopped" });
         const errText = `[failed] ${payload?.error ?? ""}`.trim();
         if (errText) {
           this.ensureOutput(runId).next({
@@ -143,20 +133,60 @@ export class TaskStreamService {
             ts: Date.now(),
           });
         }
-        return;
       }
+      return;
     }
   }
 
   private ensureOutput(runId: string) {
-    const id = (runId ?? "").trim();
+    const id = String(runId ?? "").trim();
     if (!this.outputByRun.has(id)) this.outputByRun.set(id, new Subject<TaskOutputMsg>());
     return this.outputByRun.get(id)!;
   }
 
-  private ensureStatus(runId: string) {
-    const id = (runId ?? "").trim();
-    if (!this.statusByRun.has(id)) this.statusByRun.set(id, new BehaviorSubject<TaskRuntimeStatus>({ status: "idle" }));
-    return this.statusByRun.get(id)!;
+  private mapEventToStatus(
+    type: TaskEventType,
+    payload: any
+  ): TaskRuntimeStatus | null {
+    if (type === "snapshot") {
+      if (payload?.status === "running") {
+        return { status: "running", pid: payload?.pid, startedAt: payload?.startedAt };
+      }
+      if (payload?.status === "stopping") {
+        return { status: "stopping" };
+      }
+      if (payload?.status === "stopped" || payload?.status === "failed" || payload?.status === "success") {
+        return {
+          status: "stopped",
+          exitCode: payload?.exitCode,
+          signal: payload?.signal,
+          stoppedAt: payload?.stoppedAt,
+        };
+      }
+      return { status: "idle" };
+    }
+
+    if (type === "started") {
+      return { status: "running", pid: payload?.pid, startedAt: payload?.startedAt };
+    }
+
+    if (type === "stopRequested") {
+      return { status: "stopping" };
+    }
+
+    if (type === "exited") {
+      return {
+        status: "stopped",
+        exitCode: payload?.exitCode,
+        signal: payload?.signal,
+        stoppedAt: payload?.stoppedAt,
+      };
+    }
+
+    if (type === "failed") {
+      return { status: "stopped" };
+    }
+
+    return null;
   }
 }

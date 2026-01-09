@@ -1,22 +1,47 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, computed, EventEmitter, Input, Output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
-
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 @Component({
   selector: 'app-task-actions',
-  imports: [NzSpaceModule, NzButtonModule, NzIconModule],
+  imports: [NzSpaceModule, NzButtonModule, NzIconModule, NzPopconfirmModule],
   template: `
     <nz-space>
+    @if(isStopped){
+        <button
+          nz-button
+          nzType="primary"
+          (click)="toggle.emit()"
+          [disabled]="disabled"
+        >
+          <span nz-icon nzType="play-circle"></span> 运行
+        </button>
+    }
+    @else if(isStopping){
       <button
         nz-button
         nzType="primary"
-        (click)="toggle.emit()"
-        [nzDanger]="isRunning"
+        nzDanger
         [disabled]="disabled"
       >
-        <span nz-icon [nzType]="isRunning?'pause':'play-circle'"></span> {{ isRunning ? '停止' : '运行' }}
+      <span nz-icon nzType="loading"></span> 停止中...
       </button>
+    } 
+    @else if(isRunning){
+      <button
+        nz-button
+        nzType="primary"
+        nzDanger
+        [disabled]="disabled"
+        nz-popconfirm
+        nzPopconfirmTitle="确定要停止该任务吗？"
+        (nzOnConfirm)="stopTask()"
+      >
+        <span nz-icon nzType="pause"></span> 停止
+      </button>
+    }
+    
     </nz-space>
   `,
   styles: [
@@ -33,7 +58,13 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
 })
 export class TaskActionsComponent {
   @Input() isRunning = false;
+  @Input() isStopping = false;
+  @Input() isStopped = false;
   @Input() disabled = false;
-
   @Output() toggle = new EventEmitter<void>();
+
+  stopTask() {
+    if (this.disabled) return;
+    this.toggle.emit();
+  }
 }

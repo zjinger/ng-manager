@@ -2,9 +2,11 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  EventEmitter,
   Input,
   NgZone,
   OnDestroy,
+  Output,
   ViewChild,
 } from "@angular/core";
 
@@ -22,26 +24,32 @@ type TerminalTheme = {
 @Component({
   selector: "app-terminal-view",
   standalone: true,
-  template: `
-    <div class="term-wrap" #host></div>
-  `,
+  template: `<div class="term-wrap" #host></div>`,
   styles: [
     `
       :host {
         display: block;
         height: 100%;
         width: 100%;
+        min-height: 0;
       }
       .term-wrap {
         height: 100%;
         width: 100%;
         overflow: hidden;
       }
+      /* 让 xterm 内部也吃满高度（Angular scoped 样式需要 :global） */
+      .term-wrap :global(.xterm),
+      .term-wrap :global(.xterm-viewport),
+      .term-wrap :global(.xterm-screen) {
+        height: 100%;
+      }
     `,
   ],
 })
 export class TerminalViewComponent implements AfterViewInit, OnDestroy {
   @ViewChild("host", { static: true }) host!: ElementRef<HTMLDivElement>;
+  @Output() resized = new EventEmitter<{ cols: number; rows: number }>();
 
   /** 是否自动滚到底部 */
   @Input() follow = true;
@@ -50,15 +58,29 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
   @Input() fontSize = 16;
   @Input() fontFamily =
     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
-  @Input() cursorBlink = false; // 是否闪烁
+  @Input() cursorBlink = false;
   @Input() cursorStyle: "block" | "underline" | "bar" = "underline";
 
-  /** 可选：主题（你后续可接你自己的 light/dark token） */
+  /** 可选：主题 */
   @Input() theme?: TerminalTheme;
 
   private term?: Terminal;
   private fitAddon?: FitAddon;
   private ro?: ResizeObserver;
+
+  private rafId = 0;
+  private fitTimer: any;
+
+  private lastCR?: { cols: number; rows: number };
+
+  // 用真实宽高做去抖；避免 RO 抖动导致反复 fit
+  private lastSize?: { w: number; h: number };
+
+  // fit 期间忽略 RO（切断回环）
+  private fitting = false;
+
+  // 拖拽停止后多久执行 fit
+  private readonly FIT_DEBOUNCE_MS = 180;
 
   constructor(private zone: NgZone) { }
 
@@ -69,7 +91,7 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
         fontFamily: this.fontFamily,
         cursorBlink: this.cursorBlink,
         cursorStyle: this.cursorStyle,
-        disableStdin: true, // 先不考虑输入
+        disableStdin: true,
         scrollback: 5000,
         theme: this.theme,
       });
@@ -83,15 +105,27 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
       this.term = term;
       this.fitAddon = fit;
 
-      // 初次 fit
-      this.safeFit();
+      // 初次 fit：等布局稳定一帧
+      this.scheduleFit("init");
 
-      // 容器变化 -> fit（轻的节流）
-      let t: any;
-      this.ro = new ResizeObserver(() => {
-        clearTimeout(t);
-        t = setTimeout(() => this.safeFit(), 80);
+      // ResizeObserver：只在“尺寸真的变化”时触发，并且拖拽停下后才 fit
+      this.ro = new ResizeObserver((entries) => {
+        if (this.fitting) return;
+
+        const rect = entries[0]?.contentRect;
+        if (!rect) return;
+
+        // 用像素取整压掉 0.x 抖动
+        const w = Math.round(rect.width);
+        const h = Math.round(rect.height);
+
+        const prev = this.lastSize;
+        if (prev && prev.w === w && prev.h === h) return;
+
+        this.lastSize = { w, h };
+        this.scheduleFit("ro");
       });
+
       this.ro.observe(this.host.nativeElement);
     });
   }
@@ -101,29 +135,41 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
       this.ro?.disconnect();
     } catch { }
     try {
+      cancelAnimationFrame(this.rafId);
+    } catch { }
+    try {
+      clearTimeout(this.fitTimer);
+    } catch { }
+    try {
       this.term?.dispose();
     } catch { }
   }
 
   /** 写入 chunk（支持 ANSI 高亮） */
   write(chunk: string) {
-    if (!this.term) return;
-    this.term.write(chunk);
-    if (this.follow) this.scrollToBottom();
+    const term = this.term;
+    if (!term) return;
+    term.write(chunk);
+    if (this.follow) term.scrollToBottom();
   }
 
-  /** 写入一行（会加换行） */
   writeln(line: string) {
-    if (!this.term) return;
-    this.term.writeln(line);
-    if (this.follow) this.scrollToBottom();
+    const term = this.term;
+    if (!term) return;
+    term.writeln(line);
+    if (this.follow) term.scrollToBottom();
   }
 
   clear() {
     this.term?.clear();
   }
 
-  /** 全量复制：把 buffer 转成文本（适合日志量不太大；后续可做范围复制） */
+  reset() {
+    const term = this.term;
+    if (!term) return;
+    term.write("\x1bc"); // RIS reset
+  }
+
   copyAll(): string {
     const term = this.term;
     if (!term) return "";
@@ -140,14 +186,45 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
   }
 
   fit() {
-    this.safeFit();
+    this.scheduleFit("manual");
   }
 
-  private safeFit() {
+  /**
+   * - debounce：拖拽过程中不断重置定时器，停下后只 fit 一次
+   * - 避免拖拽过程中反复 fit 导致 cols floor 漂移（“滚动条变短”）
+   */
+  private scheduleFit(_reason: string) {
+    clearTimeout(this.fitTimer);
+    this.fitTimer = setTimeout(() => {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = requestAnimationFrame(() => this.safeFitAndEmit());
+    }, this.FIT_DEBOUNCE_MS);
+  }
+
+  private safeFitAndEmit() {
+    const term = this.term;
+    const fit = this.fitAddon;
+    if (!term || !fit) return;
+
+    this.fitting = true;
     try {
-      this.fitAddon?.fit();
+      fit.fit();
     } catch {
-      // fit 偶发会抛（容器未完成布局等），吞掉即可
+      // ignore
+      return;
+    } finally {
+      // 下一拍放开，避免同步回环
+      queueMicrotask(() => (this.fitting = false));
     }
+    const cols = term.cols;
+    const rows = term.rows;
+
+    if (!Number.isFinite(cols) || !Number.isFinite(rows) || cols <= 0 || rows <= 0) return;
+
+    const prev = this.lastCR;
+    if (prev && prev.cols === cols && prev.rows === rows) return;
+
+    this.lastCR = { cols, rows };
+    this.zone.run(() => this.resized.emit({ cols, rows }));
   }
 }

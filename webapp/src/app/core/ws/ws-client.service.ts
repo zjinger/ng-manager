@@ -62,6 +62,9 @@ export class WsClientService {
       this.pending.push(obj);
     }
   }
+  isOpen(): boolean {
+    return this.state$.value === "open";
+  }
 
   private open() {
     if (this.opening) return;
@@ -131,9 +134,9 @@ export class WsClientService {
 
   private startHeartbeat() {
     this.stopHeartbeat();
-    this.heartbeatTimer = setInterval(() => {
-      this.send({ op: "ping" });
-    }, 20_000);
+    // this.heartbeatTimer = setInterval(() => {
+    //   this.send({ op: "ping" });
+    // }, 20_000);
   }
 
   private stopHeartbeat() {

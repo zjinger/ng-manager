@@ -5,6 +5,8 @@ export type TopicHandler = {
     topic: WsTopic;
     sub(ctx: WsContext, msg: Extract<WsClientMsg, { op: "sub" }>): Promise<void> | void;
     unsub(ctx: WsContext, msg: Extract<WsClientMsg, { op: "unsub" }>): Promise<void> | void;
+
+    resize?(ctx: WsContext, msg: Extract<WsClientMsg, { op: "resize" }>): Promise<void> | void;
 };
 
 export class WsRouter {
@@ -16,7 +18,7 @@ export class WsRouter {
 
     handleRaw(ctx: WsContext, raw: any) {
         let msg: WsClientMsg | null = null;
-        console.log("[ws] recv", ctx.connId, raw);
+        // console.log("[ws] recv", ctx.connId, raw);
         try {
             const text = typeof raw === "string" ? raw : raw?.toString?.() ?? "";
             msg = JSON.parse(text);
@@ -35,8 +37,25 @@ export class WsRouter {
             return;
         }
 
+        // resize
+        if (msg.op === "resize") {
+            const topic = (msg as Extract<WsClientMsg, { op: "resize" }>).topic as WsTopic;
+            const h = this.handlers.get(topic);
+            if (!h || !h.resize) {
+                ctx.send(this.err("OP_NOT_SUPPORTED", `resize not supported on topic: ${String(topic)}`, { topic }));
+                return;
+            }
+            try {
+                return void h.resize(ctx, msg as any);
+            } catch (e: any) {
+                ctx.send(this.err("HANDLER_FAILED", e?.message ?? "handler failed", { topic, op: msg.op }));
+                return;
+            }
+        }
+
+
         if (msg.op === "sub" || msg.op === "unsub") {
-            const topic = (msg as any).topic as WsTopic;
+            const topic = (msg as Extract<WsClientMsg, { op: "sub" | "unsub" }>).topic as WsTopic;
             const h = this.handlers.get(topic);
             if (!h) {
                 ctx.send(this.err("TOPIC_NOT_FOUND", `Unknown topic: ${String(topic)}`, { topic }));

@@ -11,6 +11,7 @@ export type WsServerMsg =
 export type WsClientMsg =
     | { op: "ping" }
     | { op: "sub"; topic: "task"; runId: string; tail?: number }
+    | { op: "resize"; topic: "task"; runId: string; cols: number; rows: number }
     | { op: "unsub"; topic: "task"; runId: string }
     | { op: "sub"; topic: "syslog"; tail?: number }
     | { op: "unsub"; topic: "syslog" };
