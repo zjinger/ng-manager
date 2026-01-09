@@ -1,5 +1,5 @@
 export type TaskStatus = "idle" | "running" | "stopping" | "success" | "failed" | "stopped";
-export type TaskEventType = "snapshot" | "started" | "stopRequested" | "exited" | "failed";
+export type TaskEventType = | "snapshot" | "started" | "stopRequested" | "exited" | "failed";
 export type LogType = "stdout" | "stderr" | "system";
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {
@@ -23,20 +23,13 @@ export interface TaskRuntime {
     signal?: string | null;
 }
 
-/**
- * TaskRow 里只保留“引用信息”，不保留实时 status
- * （实时 status 由 WS -> TaskRuntimeStore 单源管理）
- */
-export interface TaskRuntimeRef {
-    runId?: string;              // 最近一次（或当前 active）的 runId
-    lastExitCode?: number | null; // 可选：做历史展示
-    lastStoppedAt?: number;       // 可选：做历史展示
-}
-
-
 export interface TaskRow {
     spec: TaskDefinition;
-    runtime?: TaskRuntimeRef;
+    runtime?: TaskRuntime;
+    ui?: {
+        status?: TaskStatus;
+        runId?: string;
+    }
 }
 
 export interface TaskLogLine {
@@ -60,9 +53,56 @@ export type TaskOutputMsg = {
     ts: number;
 };
 
-export type TaskEventMsg = {
+
+export type TaskSnapshotPayload = {
+    taskId: string;
+    projectId: string;
     runId: string;
-    type: TaskEventType;
-    payload: any;
+    status: "running" | "stopping" | "stopped" | "success" | "failed";
+    pid?: number;
+    startedAt?: number;
+    stoppedAt?: number;
+    exitCode?: number | null;
+    signal?: string | null;
+};
+
+export type TaskStartedPayload = {
+    taskId: string;
+    runId: string;
+    pid?: number;
+};
+
+export type TaskExitedPayload = {
+    taskId: string;
+    runId: string;
+    exitCode: number | null;
+    signal: string | null;
+};
+
+export type TaskFailedPayload = {
+    taskId: string;
+    runId: string;
+    error: string;
+};
+
+export type TaskEventPayloadMap = {
+    snapshot: TaskSnapshotPayload;
+    started: TaskStartedPayload;
+    stopRequested: { taskId: string; runId: string };
+    exited: TaskExitedPayload;
+    failed: TaskFailedPayload;
+};
+
+export type TaskEventMsg<K extends TaskEventType = TaskEventType> = {
+    runId: string;
+    type: K;
+    payload: TaskEventPayloadMap[K];
     ts: number;
+};
+
+export type TaskItemVM = {
+    spec: TaskDefinition;
+    runtime?: TaskRuntime; // 后端快照（可选）
+    runId: string;         // 当前用于展示/订阅的 runId（active 优先）
+    status: TaskRuntimeStatus["status"]; // UI 用的状态（store 优先）
 };

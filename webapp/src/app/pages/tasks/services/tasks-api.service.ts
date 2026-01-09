@@ -19,7 +19,6 @@ export class TasksApiService {
   /**
    * 获取任务视图（spec + runtime）
    * GET /tasks/list/:projectId
-   * 后端已做懒加载
    */
   getViews(projectId: string): Observable<TaskRow[]> {
     return this.api.get(`/api/tasks/list/${projectId}`);

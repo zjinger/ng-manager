@@ -1,12 +1,13 @@
-import type { WsClientMsg, WsServerMsg } from "@core/protocol";
+import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType } from "@core/protocol";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
+import { LogLine, TaskRuntime } from "@core";
 
 const keyOf = (runId: string) => `run:${runId}`;
 
 export type TaskWsDeps = {
-    getTaskSnapshot?: (runId: string) => Promise<any> | any;
-    getTaskTailLogs?: (runId: string, tail: number) => Promise<any[]> | any[];
+    getTaskSnapshot?: (runId: string) => Promise<TaskRuntime | null>;
+    getTaskTailLogs?: (runId: string, tail: number) => Promise<LogLine[]>;
     resizeRun?: (runId: string, cols: number, rows: number) => void;
 };
 
@@ -15,7 +16,7 @@ export function createTaskTopicHandler(
     getAllClients: () => Iterable<WsContext>
 ): TopicHandler & {
     pushOutput(runId: string, stream: "stdout" | "stderr", chunk: string): void;
-    pushEvent(runId: string, type: (WsServerMsg & { op: "task.event" })["type"], payload: any): void;
+    pushEvent<K extends TaskEventType>(runId: string, type: K, payload: TaskEventPayloadMap[K]): void;
 } {
     return {
         topic: "task",
@@ -77,13 +78,13 @@ export function createTaskTopicHandler(
             ctx.delSub("task", keyOf(runId));
         },
 
-        pushOutput(runId, stream, chunk) {
+        pushOutput(runId: string, stream: "stdout" | "stderr", chunk: string) {
             const m: WsServerMsg = { op: "task.output", runId, stream, chunk, ts: Date.now() };
             for (const c of getAllClients()) if (c.hasSub("task", keyOf(runId))) c.send(m);
         },
 
-        pushEvent(runId, type, payload) {
-            const m: WsServerMsg = { op: "task.event", runId, type, payload, ts: Date.now() };
+        pushEvent<K extends TaskEventType>(runId: string, type: K, payload: TaskEventPayloadMap[K]) {
+            const m: WsServerMsg = { op: "task.event", runId, type, payload, ts: Date.now() } as WsServerMsg;
             for (const c of getAllClients()) if (c.hasSub("task", keyOf(runId))) c.send(m);
         },
     };

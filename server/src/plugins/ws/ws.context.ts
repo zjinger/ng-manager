@@ -1,4 +1,3 @@
-// server/src/plugins/ws/ws.context.ts
 import type { WsServerMsg, WsTopic } from "@core/protocol";
 export class WsContext {
     readonly connId: string;

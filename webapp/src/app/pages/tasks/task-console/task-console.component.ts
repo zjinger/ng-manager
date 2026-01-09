@@ -33,6 +33,7 @@ export class TaskConsoleComponent implements OnDestroy {
     const next = (id ?? "").trim();
     if (!next) {
       queueMicrotask(() => this.term?.reset());
+      if (this._runId) this.stream.unsubscribeRun(this._runId);
       return;
     };
     if (next === this._runId) return;

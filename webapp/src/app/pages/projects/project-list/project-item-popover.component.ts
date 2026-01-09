@@ -1,13 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
-import { TaskRow } from '@models/task.model';
+import { Component, computed, inject, Input, OnChanges, Signal } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
+import { TaskItemVM, TaskStatus } from '@models/task.model';
+import { TaskStateService } from '@pages/tasks/services/tasks.state.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-project-item-popover',
-  imports: [CommonModule, NzIconModule, NzButtonModule, NzTooltipModule],
+  imports: [CommonModule, NzIconModule, NzButtonModule, NzTooltipModule, RouterModule],
   template: `
       <div class="dropdown-content">
         <div class="pane-toolbar">
@@ -20,14 +22,14 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
           </button>
         </div>
         <div class="tasks">
-          @for( task of tasks;track task.spec.id){ 
-            <div class="task-item" (click)="openTask(task)"  nz-tooltip [nzTooltipTitle]="getTaskStatus(task)" nzTooltipPlacement="right">
+          @for( task of tasks();track task.spec.id){ 
+            <div class="task-item" (click)="openTask(task)"  nz-tooltip [nzTooltipTitle]="getTaskDescription(task)" nzTooltipPlacement="right">
               <div class="item-logo">
                 <nz-icon nzType="code" nzTheme="outline" />
               </div>
               <div class="list-item-info">
                 <div class="name">
-                  <span>dev</span>
+                  <span>{{task.spec.name}}</span>
                 </div>
                 <div class="description">
                   <span>{{ getTaskDescription(task) }}</span>
@@ -46,7 +48,6 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     .dropdown-content{
       display: flex;
       flex-direction: column;
-      min-width:150px;
       .pane-toolbar{
         display: flex;
         flex-direction: row;
@@ -69,7 +70,9 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         }
       }
       .tasks{
-        width:400px;
+        width:320px;
+        max-height:360px;
+        overflow: hidden auto;
         .task-item{
           padding:16px;
           display: flex;
@@ -94,6 +97,11 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
             flex-direction: column;
             align-items: stretch;
             justify-content: center;
+            .description{
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
           }
           button{
             flex: auto 0 0;
@@ -107,41 +115,71 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     `
   ],
 })
-export class ProjectItemPopoverComponent {
-  @Input() tasks: TaskRow[] = []
+export class ProjectItemPopoverComponent implements OnChanges {
+  @Input() projectId: string | undefined;
 
-  openTask(task: TaskRow) { }
+  private taskState = inject(TaskStateService);
+  private router = inject(Router);
 
-  toggleTask(task: TaskRow) { }
+  // “按 projectId 的 rowsView”
+  readonly tasks: Signal<TaskItemVM[]> = computed(() => {
+    const pid = (this.projectId ?? "").trim();
+    if (!pid) return [];
+    const tasks = this.taskState.listVMOf(pid)();
+    console.log('ProjectItemPopoverComponent tasks:', tasks);
+    return tasks;
+  });
 
-  getTaskStatus(task: TaskRow) {
-    return '';
-    // switch (task.runtime.status) {
-    //   case "running": return "运行中";
-    //   case "success": return "成功";
-    //   case "failed": return "错误";
-    //   case "stopped": return "已停止";
-    //   default: return "空闲";
-    // }
+  async ngOnChanges() {
+    const pid = (this.projectId ?? "").trim();
+    if (!pid) return;
+    await this.taskState.ensureProjectLoaded(pid);
   }
 
-  getTaskName(task: TaskRow) {
+  async openTask(task: TaskItemVM) {
+    const pid = (this.projectId ?? "").trim();
+    if (!pid) return;
+    // 让 state 先切项目+选中（不依赖 tasks 页面是否已初始化）
+    await this.taskState.openTask(pid, task.spec.id);
+    // 跳转（按你实际路由改）
+    await this.router.navigate(["/tasks"]);
+  }
+
+  async toggleTask(task: TaskItemVM) {
+    // 先跳转并选中
+    await this.openTask(task);
+    // 再执行动作（用“真实状态”判断：优先 runtime.status，其次 ui.status）
+    const st = (task.runtime?.status ?? (task as any)?.ui?.status) as TaskStatus | undefined;
+    if (st === "running" || st === "stopping") {
+      const runId =
+        (task.runtime?.runId ?? (task as any)?.ui?.runId ?? "").trim();
+      if (runId) this.taskState.stopRun(runId);
+    } else {
+      this.taskState.startTask(task.spec.id);
+    }
+  }
+
+  getTaskName(task: TaskItemVM) {
     return task.spec.name || task.spec.id;
   }
-
-  getTaskDescription(task: TaskRow) {
-    return ''
-    // switch (task.runtime.status) {
-    //   case "running": return `运行中 (PID: ${task.runtime.pid})`;
-    //   case "success": return "上次运行成功";
-    //   case "failed": return "上次运行错误";
-    //   case "stopped": return "已停止";
-    //   default: return "空闲";
-    // }
+  getTaskDescription(task: TaskItemVM) {
+    const st = task.status
+    return task.runtime ? this.computedStatusText(st) : task.spec.description || "";
   }
 
-  getTaskActionIcon(task: TaskRow) {
-    // return task.runtime.status == 'running' ? 'pause-circle' : 'play-circle';
-    return 'play-circle';
+  getTaskActionIcon(task: TaskItemVM) {
+    const st = task.status;
+    return st === "running" || st === "stopping" ? "pause-circle" : "play-circle";
+  }
+
+  private computedStatusText(status: TaskStatus | undefined): string {
+    switch (status) {
+      case "running": return "运行中";
+      case "stopping": return "停止中";
+      case "success": return "成功";
+      case "failed": return "错误";
+      case "stopped": return "已停止";
+      default: return "空闲";
+    }
   }
 }

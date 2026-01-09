@@ -1,17 +1,15 @@
 import type { WsServerMsg } from "@core/protocol";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
-
+import { LogLine } from "@core";
 const KEY = "syslog:all";
-
 export type SyslogWsDeps = {
-    getSyslogTail: (tail: number) => Promise<any[]> | any[];
+    getSyslogTail: (tail: number) => Promise<LogLine[]>;
 };
-
 export function createSyslogTopicHandler(
     deps: SyslogWsDeps,
     getAllClients: () => Iterable<WsContext>
-): TopicHandler & { push(entry: any): void } {
+): TopicHandler & { push(entry: LogLine): void } {
     return {
         topic: "syslog",
         async sub(ctx, msg: any) {
@@ -26,11 +24,9 @@ export function createSyslogTopicHandler(
                 }
             }
         },
-
         unsub(ctx) {
             ctx.delSub("syslog", KEY);
         },
-
         push(entry: any) {
             const m: WsServerMsg = { op: "syslog.append", entry };
             for (const c of getAllClients()) if (c.hasSub("syslog", KEY)) c.send(m);

@@ -21,21 +21,27 @@ import { ProjectImportState } from './services/project-import.state.service';
             <nz-icon nzType="unordered-list" nzTheme="outline" />
              项目
           </ng-template>
-          <app-project-list></app-project-list>
+          <ng-template nz-tab>
+            <app-project-list></app-project-list>
+          </ng-template>
         </nz-tab>
         <nz-tab [nzTitle]="addTitleTemplate">
           <ng-template #addTitleTemplate>
             <nz-icon nzType="plus-square" nzTheme="outline" />
              创建
           </ng-template>
-          <app-project-create></app-project-create>
+          <ng-template nz-tab>
+            <app-project-create></app-project-create>
+          </ng-template>
         </nz-tab>
         <nz-tab [nzTitle]="importTitleTemplate">
           <ng-template #importTitleTemplate>
             <nz-icon nzType="import" nzTheme="outline" />
              导入
           </ng-template>
-          <app-project-import></app-project-import>
+          <ng-template nz-tab>
+            <app-project-import></app-project-import>
+          </ng-template>
         </nz-tab>
     </nz-tabs>
     </div>

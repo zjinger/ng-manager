@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Project } from '@models/project.model';
-import { TaskRow } from '@models/task.model';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -25,13 +24,17 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
           <div class="list-item-info">
             <div class="name">
               <span>{{ project?.name }}</span>
-              <nz-badge nzStatus="processing" 
-                nz-popover 
-                nzTitle="null" 
-                nzPopoverTrigger="click"
-                [nzPopoverContent]="contentTemplate" 
-                nzPopoverPlacement="right" 
-                [nzPopoverOverlayClassName]="'project-item-popover'" />
+               <span
+                  class="task-popover-trigger"
+                  (click)="$event.stopPropagation()"
+                  nz-popover
+                  nzPopoverTrigger="click"
+                  [nzPopoverContent]="contentTemplate"
+                  nzPopoverPlacement="right"
+                  [nzPopoverOverlayClassName]="'project-item-popover'"
+                >
+                 <nz-badge nzStatus="processing"></nz-badge>
+                </span>
             </div>
             <div class="description">
               <span>{{ project?.description }}</span>
@@ -58,7 +61,7 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
     </div>
 
     <ng-template #contentTemplate>
-      <app-project-item-popover [tasks]="tasks"></app-project-item-popover>
+      <app-project-item-popover [projectId]="project?.id"></app-project-item-popover>
     </ng-template>
   `,
   styles: [
@@ -118,8 +121,6 @@ export class ProjectItem {
   @Output() editProject = new EventEmitter<void>();
   @Output() openInEditor = new EventEmitter<void>();
   @Output() deleteProject = new EventEmitter<void>();
-
-  tasks: TaskRow[] = []
 
   computedTasks() { }
 

@@ -116,9 +116,11 @@ export class TasksComponent {
 
   constructor() {
     // currentProjectId 变化时，自动 setProject + refresh
-    effect(() => {
+    effect(async () => {
       const pid = this.projectState.currentProjectId();
-      if (pid) this.taskState.setProject(pid);
+      if (pid) {
+        await this.taskState.setProject(pid);
+      }
     });
   }
 }

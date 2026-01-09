@@ -1,12 +1,12 @@
 // server/src/plugins/ws/ws.plugin.ts
-import fp from "fastify-plugin";
+import { Events } from "@core";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
+import fp from "fastify-plugin";
+import { createTaskTopicHandler } from "./topics";
+import { createSyslogTopicHandler } from "./topics/syslog.ws";
 import { WsContext } from "./ws.context";
 import { WsRouter } from "./ws.router";
-import { createTaskTopicHandler } from "./topics";
-import { Events, WsServerMsg } from "@core";
-import { createSyslogTopicHandler } from "./topics/syslog.ws";
 
 function uid() {
     return Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -46,19 +46,19 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_STARTED, (e) => {
-        taskHandler.pushEvent(e.runId, "started", { pid: e.pid, taskId: e.taskId });
+        taskHandler.pushEvent(e.runId, "started", { pid: e.pid, taskId: e.taskId, runId: e.runId });
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_STOP_REQUESTED, (e) => {
-        taskHandler.pushEvent(e.runId, "stopRequested", { taskId: e.taskId });
+        taskHandler.pushEvent(e.runId, "stopRequested", { taskId: e.taskId, runId: e.runId });
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_EXITED, (e) => {
-        taskHandler.pushEvent(e.runId, "exited", { exitCode: e.exitCode, signal: e.signal, taskId: e.taskId });
+        taskHandler.pushEvent(e.runId, "exited", { exitCode: e.exitCode, signal: e.signal, taskId: e.taskId, runId: e.runId });
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_FAILED, (e) => {
-        taskHandler.pushEvent(e.runId, "failed", { error: e.error, taskId: e.taskId });
+        taskHandler.pushEvent(e.runId, "failed", { error: e.error || '', taskId: e.taskId, runId: e.runId });
     }));
 
     offs.push(fastify.core.events.on(Events.SYSLOG_APPENDED, (e) => {

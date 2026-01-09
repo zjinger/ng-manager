@@ -14,15 +14,44 @@
     </button>
   </div>
   <div class="items-container">
-    @if (error()) {
+    <!-- @if (error()) {
     <div class="error">{{ error() }}</div>
-    } @if (loading()) {
+    } -->
+     @if (loading()) {
     <div class="hint">Loading...</div>
     } @else { @if (list().length === 0) {
     <div class="hint">No tasks for project: {{ projectId() }}</div>
     } @else {
     <div class="items">
       @for (t of list(); track t.spec.id) {
+      <div
+        class="item"
+        [class.active]="t.spec.id === selectedId()"
+        (click)="state.select(t.spec.id)"
+      >
+        <div class="row" nz-tooltip="{{ t.spec.description || '' }}" nzTooltipPlacement="right">
+          <div class="icon">
+            <nz-icon nzType="codepen-circle" nzTheme="outline" />
+
+            @if (t.status === 'running') {
+            <nz-badge nzStatus="processing" />
+            } @else if (t.status === 'stopping') {
+            <nz-badge nzStatus="warning" />
+            } @else {
+            <nz-badge nzStatus="default" />
+            }
+          </div>
+
+          <div class="info">
+            <div class="name" [title]="t.spec.name">{{ t.spec.name }}</div>
+            <div class="description">
+              {{ t.status }}
+            </div>
+          </div>
+        </div>
+      </div>
+      }
+      <!-- @for (t of list(); track t.spec.id) {
       <div
         class="item"
         [class.active]="t.spec && t.spec.id === selectedId()"
@@ -39,20 +68,20 @@
               {{ t.spec.description || '' }}
             </div>
           </div>
-          <!-- <div class="badge" [attr.data-status]="t?.runtime?.status">
+          <div class="badge" [attr.data-status]="t?.runtime?.status">
             {{ badge(t?.runtime?.status) }}
-          </div> -->
+          </div>
         </div>
-        <!-- @if(t.runtime) {
+        @if(t.runtime) {
         <div class="meta">
           <span class="mono">{{ t.runtime.taskId }}</span>
           @if (t.runtime.pid) { <span class="sep">·</span><span>pid={{ t.runtime.pid }}</span> } @if
           (t.runtime.exitCode !== undefined && t.runtime.status === 'stopped') {
           <span class="sep">·</span><span>exit={{ t.runtime.exitCode }}</span> }
         </div>
-        } -->
+        }
       </div>
-      }
+      } -->
     </div>
     } }
   </div>
