@@ -66,7 +66,6 @@ export class TaskStreamService {
   unsubscribeRun(runId: string) {
     const id = String(runId ?? "").trim();
     if (!id) return;
-
     const cur = this.subs.get(id);
     if (!cur) return;
 
@@ -75,7 +74,6 @@ export class TaskStreamService {
       this.subs.set(id, { ref, tail: cur.tail });
       return;
     }
-
     // ref==0：真正退订
     this.subs.delete(id);
     if (this.ws.isOpen()) {
@@ -87,7 +85,6 @@ export class TaskStreamService {
       out.complete();
       this.outputByRun.delete(id);
     }
-    // runtimeStore 是否清理：建议由“exited/failed”事件统一清理（更准确）
   }
 
   resize(runId: string, cols: number, rows: number) {

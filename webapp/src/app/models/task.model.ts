@@ -4,6 +4,7 @@ export type LogType = "stdout" | "stderr" | "system";
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {
     id: string;        // dev:serve
+    projectId: string; // 所属项目 ID
     name: string;      // 启动前端
     command?: string;  // 展示用的命令行
     kind?: TaskKind;
@@ -26,10 +27,6 @@ export interface TaskRuntime {
 export interface TaskRow {
     spec: TaskDefinition;
     runtime?: TaskRuntime;
-    ui?: {
-        status?: TaskStatus;
-        runId?: string;
-    }
 }
 
 export interface TaskLogLine {

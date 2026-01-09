@@ -6,6 +6,7 @@ import { TaskStateService } from '@pages/tasks/services/tasks.state.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { ProjectStateService } from '../services/project.state.service';
 
 @Component({
   selector: 'app-project-item-popover',
@@ -120,6 +121,7 @@ export class ProjectItemPopoverComponent implements OnChanges {
 
   private taskState = inject(TaskStateService);
   private router = inject(Router);
+  private projectState = inject(ProjectStateService);
 
   // “按 projectId 的 rowsView”
   readonly tasks: Signal<TaskItemVM[]> = computed(() => {
@@ -137,22 +139,26 @@ export class ProjectItemPopoverComponent implements OnChanges {
   }
 
   async openTask(task: TaskItemVM) {
-    const pid = (this.projectId ?? "").trim();
+    console.log('ProjectItemPopoverComponent openTask:', task);
+    const pid = (task.spec.projectId ?? "").trim();
     if (!pid) return;
+    this.projectState.setCurrentProjectById(pid);
     // 让 state 先切项目+选中（不依赖 tasks 页面是否已初始化）
     await this.taskState.openTask(pid, task.spec.id);
     // 跳转（按你实际路由改）
-    await this.router.navigate(["/tasks"]);
+    await this.router.navigate(["/tasks"], {
+      queryParams: { projectId: pid, taskId: task.spec.id },
+    });
   }
 
   async toggleTask(task: TaskItemVM) {
     // 先跳转并选中
     await this.openTask(task);
-    // 再执行动作（用“真实状态”判断：优先 runtime.status，其次 ui.status）
-    const st = (task.runtime?.status ?? (task as any)?.ui?.status) as TaskStatus | undefined;
+    // 再执行动作（用“真实状态”判断：优先 runtime.status）
+    const st = (task.runtime?.status ?? task.status) as TaskStatus | undefined;
     if (st === "running" || st === "stopping") {
       const runId =
-        (task.runtime?.runId ?? (task as any)?.ui?.runId ?? "").trim();
+        (task.runtime?.runId ?? task.runId ?? "").trim();
       if (runId) this.taskState.stopRun(runId);
     } else {
       this.taskState.startTask(task.spec.id);
