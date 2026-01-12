@@ -1,8 +1,12 @@
-import { fastify, type FastifyInstance } from "fastify";
-import * as path from "path";
-import launchEditor from "launch-editor";
 import { AppError } from "@core";
-import { OpenFolderOptions } from "@core/domain/editor";
+import { type FastifyInstance } from "fastify";
+import launchEditor from "launch-editor";
+import * as path from "path";
+export interface OpenFolderOptions {
+    editor?: "code" | "system";
+    file?: string;
+}
+
 async function openFolder(folder: string, fastify: FastifyInstance, opts: OpenFolderOptions = {}): Promise<void> {
     const editor = opts.editor ?? "code";
     const file = opts.file;
