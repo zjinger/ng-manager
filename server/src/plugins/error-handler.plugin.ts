@@ -36,7 +36,15 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     TASK_SPEC_NOT_FOUND: 404,
     TASK_NOT_RUNNABLE: 400,
     RUN_NOT_FOUND: 404,
+    TASK_ID_REQUIRED: 400,
 
+    // WS 
+    BAD_JSON: 400,
+    BAD_MSG: 400,
+    OP_NOT_SUPPORTED: 400,
+    HANDLER_FAILED: 500,
+    TOPIC_NOT_FOUND: 404,
+    OP_NOT_FOUND: 400,
     /* ---------------- File System ---------------- */
 
     FS_NOT_FOUND: 404,

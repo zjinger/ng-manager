@@ -4,12 +4,21 @@ export const enum ErrorPolicyCode {
     /* ---------- task ---------- */
     TASK_NOT_FOUND = "TASK_NOT_FOUND",
     TASK_ALREADY_RUNNING = "TASK_ALREADY_RUNNING",
+    PROCESS_SPAWN_FAILED = "PROCESS_SPAWN_FAILED",
+    TASK_SPEC_NOT_FOUND = "TASK_SPEC_NOT_FOUND",
+    TASK_NOT_RUNNABLE = "TASK_NOT_RUNNABLE",
+    RUN_NOT_FOUND = "RUN_NOT_FOUND",
+    TASK_ID_REQUIRED = "TASK_ID_REQUIRED",
+
     /* ---------- project ---------- */
     PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND",
+    PROJECT_ROOT_INVALID = "PROJECT_ROOT_INVALID",
+    PROJECT_ALREADY_EXISTS = "PROJECT_ALREADY_EXISTS",
 
     /* ---------- fs ---------- */
     FS_ALREADY_EXISTS = "FS_ALREADY_EXISTS",
     FS_NOT_FOUND = "FS_NOT_FOUND",
+    FS_PERMISSION_DENIED = "FS_PERMISSION_DENIED",
 
     /* ---------- system ---------- */
     INTERNAL_ERROR = "INTERNAL_ERROR",
@@ -21,6 +30,12 @@ export const enum ErrorPolicyCode {
     /* ---------- ws ---------- */
     WS_ERROR = "WS_ERROR",
     WS_CLOSED = "WS_CLOSED",
+    BAD_JSON = "BAD_JSON",
+    BAD_MSG = "BAD_MSG",
+    OP_NOT_SUPPORTED = "OP_NOT_SUPPORTED",
+    HANDLER_FAILED = "HANDLER_FAILED",
+    TOPIC_NOT_FOUND = "TOPIC_NOT_FOUND",
+    OP_NOT_FOUND = "OP_NOT_FOUND",
 
     /* ---------- protocol / dev ---------- */
     INVALID_JSON = "INVALID_JSON",
@@ -45,12 +60,40 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "任务已在运行中",
     },
+    PROCESS_SPAWN_FAILED: {
+        level: "toast",
+        message: "任务启动失败",
+    },
+    TASK_SPEC_NOT_FOUND: {
+        level: "toast",
+        message: "任务规格未找到",
+    },
+    TASK_NOT_RUNNABLE: {
+        level: "toast",
+        message: "任务不可运行",
+    },
+    RUN_NOT_FOUND: {
+        level: "toast",
+        message: "运行实例未找到",
+    },
+    TASK_ID_REQUIRED: {
+        level: "toast",
+        message: "任务 ID 为必填项",
+    },
 
     /* ---------- project ---------- */
 
     PROJECT_NOT_FOUND: {
         level: "toast",
         message: "项目不存在",
+    },
+    PROJECT_ROOT_INVALID: {
+        level: "toast",
+        message: "项目根目录无效",
+    },
+    PROJECT_ALREADY_EXISTS: {
+        level: "toast",
+        message: "项目已存在",
     },
 
     /* ---------- fs ---------- */
@@ -62,6 +105,10 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     FS_NOT_FOUND: {
         level: "toast",
         message: "文件或文件夹未找到",
+    },
+    FS_PERMISSION_DENIED: {
+        level: "toast",
+        message: "文件系统权限被拒绝",
     },
     /* ---------- system ---------- */
     INTERNAL_ERROR: {
@@ -103,6 +150,30 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "banner",
         message: "WebSocket 连接已关闭",
         action: { retry: true },
+    },
+    BAD_JSON: {
+        level: "toast",
+        message: "收到无效的 JSON 数据",
+    },
+    BAD_MSG: {
+        level: "toast",
+        message: "收到无效的消息格式",
+    },
+    OP_NOT_SUPPORTED: {
+        level: "toast",
+        message: "操作不被支持",
+    },
+    HANDLER_FAILED: {
+        level: "toast",
+        message: "消息处理失败",
+    },
+    TOPIC_NOT_FOUND: {
+        level: "toast",
+        message: "未知的消息主题",
+    },
+    OP_NOT_FOUND: {
+        level: "toast",
+        message: "未知的操作类型",
     },
 
     /* ---------- protocol / dev ---------- */

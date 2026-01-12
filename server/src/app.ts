@@ -11,7 +11,7 @@ import fsRoutes from "./routes/fs.routes";
 
 export async function createServer() {
     const fastify = Fastify({
-        logger: true,
+        logger: false,
         genReqId: (req) => {
             // 优先使用前端传入的 X-Request-Id
             const hdr = req.headers["x-request-id"];

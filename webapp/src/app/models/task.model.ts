@@ -1,5 +1,4 @@
 export type TaskStatus = "idle" | "running" | "stopping" | "success" | "failed" | "stopped";
-export type TaskEventType = | "snapshot" | "started" | "stopRequested" | "exited" | "failed";
 export type LogType = "stdout" | "stderr" | "system";
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {
@@ -11,7 +10,6 @@ export interface TaskDefinition {
     description?: string;
     runnable?: boolean; // 是否可运行（默认 true）
 }
-
 export interface TaskRuntime {
     taskId: string;
     projectId: string;
@@ -39,61 +37,15 @@ export interface TaskLogLine {
 
 export type TaskRuntimeStatus =
     | { status: "idle" }
-    | { status: "running"; pid?: number; startedAt?: number }
+    | { status: "running"; pid?: number; startedAt?: number; }
     | { status: "stopping" }
     | { status: "stopped"; exitCode?: number | null; signal?: string | null; stoppedAt?: number };
 
 export type TaskOutputMsg = {
+    taskId: string;
     runId: string;
     stream: LogType;
     chunk: string;
-    ts: number;
-};
-
-
-export type TaskSnapshotPayload = {
-    taskId: string;
-    projectId: string;
-    runId: string;
-    status: "running" | "stopping" | "stopped" | "success" | "failed";
-    pid?: number;
-    startedAt?: number;
-    stoppedAt?: number;
-    exitCode?: number | null;
-    signal?: string | null;
-};
-
-export type TaskStartedPayload = {
-    taskId: string;
-    runId: string;
-    pid?: number;
-};
-
-export type TaskExitedPayload = {
-    taskId: string;
-    runId: string;
-    exitCode: number | null;
-    signal: string | null;
-};
-
-export type TaskFailedPayload = {
-    taskId: string;
-    runId: string;
-    error: string;
-};
-
-export type TaskEventPayloadMap = {
-    snapshot: TaskSnapshotPayload;
-    started: TaskStartedPayload;
-    stopRequested: { taskId: string; runId: string };
-    exited: TaskExitedPayload;
-    failed: TaskFailedPayload;
-};
-
-export type TaskEventMsg<K extends TaskEventType = TaskEventType> = {
-    runId: string;
-    type: K;
-    payload: TaskEventPayloadMap[K];
     ts: number;
 };
 

@@ -30,8 +30,8 @@ export type TaskSnapshotPayload = {
 
 export type TaskStartedPayload = {
     taskId: string;
-    runId: string;
     startedAt: number;
+    runId: string;
     pid?: number;
 };
 

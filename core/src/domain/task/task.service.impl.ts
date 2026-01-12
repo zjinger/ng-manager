@@ -67,7 +67,7 @@ export class TaskServiceImpl implements TaskService {
         let p: any;
         try {
             // node-pty driver：这里的 command 仍然是整段字符串
-            // 先给默认 cols/rows，后续前端会 task.resize(runId)
+            // 先给默认 cols/rows，后续前端会 task.resize(taskId, cols, rows)
             p = await this.proc.spawn(spec.command, [], {
                 cwd: spec.cwd!,
                 env: spec.env,
@@ -115,8 +115,8 @@ export class TaskServiceImpl implements TaskService {
             },
             resize: typeof p.resize === "function" ? (c, r) => p.resize(c, r) : undefined,
         });
-
-        this.events.emit(Events.TASK_STARTED, { taskId, runId, pid: p.pid });
+        // console.log(`[task] started: taskId=${taskId} runId=${runId} pid=${p.pid}`);
+        this.events.emit(Events.TASK_STARTED, { taskId, runId, pid: p.pid, startedAt: rt.startedAt! });
 
         // 输出：优先 PTY 的 onData（如果 driver 提供）
         if (typeof p.onData === "function") {
@@ -170,10 +170,10 @@ export class TaskServiceImpl implements TaskService {
                 refId: runId,
                 text: `[task] exited: status=${cur.status} code=${code} signal=${signal}`,
             });
-            
+
             this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
 
-            this.events.emit(Events.TASK_EXITED, { taskId, runId, exitCode: code, signal });
+            this.events.emit(Events.TASK_EXITED, { taskId, runId, exitCode: code, signal, stoppedAt: cur.stoppedAt! });
 
             if (cur.status === "failed") {
                 this.events.emit(Events.TASK_FAILED, { taskId, runId, error: `exit code=${code}` });
@@ -183,7 +183,9 @@ export class TaskServiceImpl implements TaskService {
         return rt;
     }
 
-    async stop(runId: string): Promise<TaskRuntime> {
+    async stop(taskId: string): Promise<TaskRuntime> {
+        const runId = this.activeRunByTaskId.get(taskId);
+        if (!runId) throw new AppError("RUN_NOT_FOUND", "Run not found", { taskId });
         const rt = this.runtimes.get(runId);
         if (!rt) throw new AppError("RUN_NOT_FOUND", "Run not found", { runId });
 
@@ -208,12 +210,13 @@ export class TaskServiceImpl implements TaskService {
 
         return rt;
     }
-    async status(runId: string): Promise<TaskRuntime> {
+    async status(taskId: string): Promise<TaskRuntime> {
+        const runId = this.activeRunByTaskId.get(taskId);
+        if (!runId) throw new AppError("RUN_NOT_FOUND", `Run not found for task: ${taskId}`, { taskId });
         const rt = this.runtimes.get(runId);
         if (!rt) throw new AppError("RUN_NOT_FOUND", `Run not found: ${runId}`, { runId });
         return rt;
     }
-
 
     /**
      * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
@@ -255,7 +258,7 @@ export class TaskServiceImpl implements TaskService {
      */
     async listViewsByProject(projectId: string): Promise<TaskRow[]> {
         const specs = await this.listSpecsByProject(projectId);
-        const rtByTaskId = new Map<string, TaskRuntime>();
+        const rtByTaskId = new Map<string, TaskRuntime>(); // key: taskId, value: runtime
         for (const rt of this.runtimes.values()) {
             if (rt.projectId === projectId) rtByTaskId.set(rt.taskId, rt);
         }
@@ -274,6 +277,15 @@ export class TaskServiceImpl implements TaskService {
         return this.runtimes.get(runId) ?? null;
     }
 
+    /**
+     * 根据 taskId 找最近一次的 runtime 
+     */
+    async getSnapshotByTaskId(taskId: string): Promise<TaskRuntime | null> {
+        const activeRunId = this.activeRunByTaskId.get(taskId);
+        if (!activeRunId) return null;
+        return this.runtimes.get(activeRunId) ?? null;
+    }
+
     // logs
     async getTailLogsByRun(runId: string, tail: number) {
         return this.taskLog.tail(Math.min(tail, 5000), { refId: runId, source: "task" });
@@ -285,7 +297,9 @@ export class TaskServiceImpl implements TaskService {
     }
 
     /** 给 WS 的 task.resize 用 */
-    resizeRun(runId: string, cols: number, rows: number) {
+    resizeRun(taskId: string, cols: number, rows: number) {
+        const runId = this.activeRunByTaskId.get(taskId);
+        if (!runId) return;
         const h = this.procs.get(runId);
         if (!h?.resize) return;
         h.resize(cols, rows);

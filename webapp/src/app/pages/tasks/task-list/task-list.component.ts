@@ -10,10 +10,12 @@ import { NzSelectModule } from "ng-zorro-antd/select";
 import { NzSpaceModule } from "ng-zorro-antd/space";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { TaskStateService } from "../services/tasks.state.service";
+import { CommonModule } from "@angular/common";
 
 @Component({
   selector: "app-task-list",
   imports: [
+    CommonModule,
     FormsModule,
     NzButtonModule,
     NzIconModule,
@@ -34,7 +36,6 @@ export class TaskListComponent {
 
   keyword = this.state.keyword;
   loading = this.state.loading;
-  error = this.state.error;
   list = this.state.rowsViewFiltered;
   selectedId = this.state.selectedTaskId
   projectId = this.state.projectId;

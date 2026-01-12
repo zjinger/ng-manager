@@ -26,19 +26,18 @@ export class TasksApiService {
 
   /**
    * 查询任务状态
-   * GET /tasks/status/:runId
+   * GET /tasks/status/:taskId
    */
-  getStatus(runId: string): Observable<TaskRuntime> {
-    return this.api.get(`/api/tasks/status/${runId}`);
+  getStatus(taskId: string): Observable<TaskRuntime> {
+    return this.api.get(`/api/tasks/status/${taskId}`);
   }
 
-
-  start(specId: string): Observable<TaskRuntime> {
-    return this.api.post(`/api/tasks/start`, { specId });
+  start(taskId: string): Observable<TaskRuntime> {
+    return this.api.post(`/api/tasks/start`, { taskId });
   }
 
-  stop(runId: string): Observable<TaskRuntime> {
-    return this.api.post(`/api/tasks/stop`, { runId });
+  stop(taskId: string): Observable<TaskRuntime> {
+    return this.api.post(`/api/tasks/stop`, { taskId });
   }
 
   getRunLog(runId: string, tail = 200) {

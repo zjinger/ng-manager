@@ -58,7 +58,7 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
             (toggle)="taskState.toggleTask()"
             >
           </app-task-actions>
-          <app-task-console [runId]="taskState.selectedRunId()"></app-task-console>
+          <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
         </nz-content>
       </nz-layout>
       <app-task-log></app-task-log>

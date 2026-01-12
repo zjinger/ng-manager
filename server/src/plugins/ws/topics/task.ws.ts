@@ -3,39 +3,43 @@ import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 import { LogLine, TaskRuntime } from "@core";
 
-const keyOf = (runId: string) => `run:${runId}`;
+const keyOfTask = (taskId: string) => `task:${taskId}`;
 
 export type TaskWsDeps = {
-    getTaskSnapshot?: (runId: string) => Promise<TaskRuntime | null>;
-    getTaskTailLogs?: (runId: string, tail: number) => Promise<LogLine[]>;
-    resizeRun?: (runId: string, cols: number, rows: number) => void;
+    getTaskSnapshotByTaskId?: (taskId: string) => Promise<TaskRuntime | null>;
+    getTaskTailLogsByRun?: (runId: string, tail: number) => Promise<LogLine[]>;
+    resizeRun?: (taskId: string, cols: number, rows: number) => void;
 };
 
 export function createTaskTopicHandler(
     deps: TaskWsDeps,
     getAllClients: () => Iterable<WsContext>
 ): TopicHandler & {
-    pushOutput(runId: string, stream: "stdout" | "stderr", chunk: string): void;
-    pushEvent<K extends TaskEventType>(runId: string, type: K, payload: TaskEventPayloadMap[K]): void;
+    pushOutput(taskId: string, runId: string, stream: "stdout" | "stderr", chunk: string): void;
+    pushEvent<K extends TaskEventType>(taskId: string, runId: string, type: K, payload: TaskEventPayloadMap[K]): void;
 } {
     return {
         topic: "task",
-        async sub(ctx, msg: any) {
-            const runId = String(msg?.runId ?? "").trim();
+        async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "task" }>) {
+            console.log("task.sub", msg);
+            const taskId = String(msg?.taskId ?? "").trim();
             const tail = Number(msg?.tail ?? 0);
-            if (!runId) {
-                ctx.send({ op: "error", code: "RUN_ID_REQUIRED", message: "runId is required", ts: Date.now() });
+
+            if (!taskId) {
+                ctx.send({ op: "error", code: "TASK_ID_REQUIRED", message: "runId is required", ts: Date.now() });
                 return;
             }
-            ctx.addSub("task", keyOf(runId));
+            ctx.addSub("task", keyOfTask(taskId));
 
-            // snapshot
-            if (deps.getTaskSnapshot) {
-                const snap = await deps.getTaskSnapshot(runId);
+            // snapshot：按 taskId
+            let snap: TaskRuntime | undefined
+            if (deps.getTaskSnapshotByTaskId) {
+                snap = await deps.getTaskSnapshotByTaskId(taskId) ?? undefined;
                 if (snap) {
                     const m: WsServerMsg = {
                         op: "task.event",
-                        runId,
+                        taskId,
+                        runId: snap.runId,
                         type: "snapshot",
                         payload: snap,
                         ts: Date.now(),
@@ -44,13 +48,15 @@ export function createTaskTopicHandler(
                 }
             }
 
-            // tail logs
-            if (deps.getTaskTailLogs && tail > 0) {
-                const entries = await deps.getTaskTailLogs(runId, tail);
+            // tail logs : 按 runId 去拉（因为 log 是按 runId 存的）
+            if (snap?.runId && deps.getTaskTailLogsByRun && tail > 0) {
+                // if (deps.getTaskTailLogs && tail > 0) {
+                const entries = await deps.getTaskTailLogsByRun(snap.runId, tail);
                 for (const e of entries ?? []) {
                     const m: WsServerMsg = {
                         op: "task.output",
-                        runId,
+                        taskId,
+                        runId: snap.runId,
                         stream: (e?.level === "warn" ? "stderr" : "stdout"),
                         chunk: String(e?.text ?? ""),
                         ts: e?.ts ?? Date.now(),
@@ -61,31 +67,32 @@ export function createTaskTopicHandler(
         },
         // resize
         resize(ctx, msg: Extract<WsClientMsg, { op: "resize" }>) {
-            const runId = (msg as any).runId as string;
+            const taskId = (msg as any).taskId as string;
             const cols = Number((msg as any).cols);
             const rows = Number((msg as any).rows);
-            if (!runId || !Number.isFinite(cols) || !Number.isFinite(rows)) return;
+            if (!taskId || !Number.isFinite(cols) || !Number.isFinite(rows)) return;
 
             // 防御：最小值
             const c = Math.max(2, Math.floor(cols));
             const r = Math.max(1, Math.floor(rows));
 
-            deps.resizeRun?.(runId, c, r);
-        },
-        unsub(ctx, msg: any) {
-            const runId = String(msg?.runId ?? "").trim();
-            if (!runId) return;
-            ctx.delSub("task", keyOf(runId));
+            deps.resizeRun?.(taskId, c, r);
         },
 
-        pushOutput(runId: string, stream: "stdout" | "stderr", chunk: string) {
-            const m: WsServerMsg = { op: "task.output", runId, stream, chunk, ts: Date.now() };
-            for (const c of getAllClients()) if (c.hasSub("task", keyOf(runId))) c.send(m);
+        unsub(ctx, msg: Extract<WsClientMsg, { op: "unsub"; topic: "task" }>) {
+            const taskId = String(msg?.taskId ?? "").trim();
+            if (!taskId) return;
+            ctx.delSub("task", keyOfTask(taskId));
         },
 
-        pushEvent<K extends TaskEventType>(runId: string, type: K, payload: TaskEventPayloadMap[K]) {
-            const m: WsServerMsg = { op: "task.event", runId, type, payload, ts: Date.now() } as WsServerMsg;
-            for (const c of getAllClients()) if (c.hasSub("task", keyOf(runId))) c.send(m);
+        pushOutput(taskId: string, runId: string, stream: "stdout" | "stderr", chunk: string) {
+            const m: WsServerMsg = { op: "task.output", taskId, runId, stream, chunk, ts: Date.now() };
+            for (const c of getAllClients()) if (c.hasSub("task", keyOfTask(taskId))) c.send(m);
+        },
+
+        pushEvent<K extends TaskEventType>(taskId: string, runId: string, type: K, payload: TaskEventPayloadMap[K]) {
+            const m: WsServerMsg = { op: "task.event", taskId, runId, type, payload, ts: Date.now() } as WsServerMsg;
+            for (const c of getAllClients()) if (c.hasSub("task", keyOfTask(taskId))) c.send(m);
         },
     };
 }

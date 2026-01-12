@@ -8,13 +8,6 @@ async function ensureSpecs(fastify: FastifyInstance, projectId: string) {
     }
 }
 
-/** 根据 projectId + name 找 spec（用于 start） */
-async function findSpecByName(fastify: FastifyInstance, projectId: string, name: string) {
-    await ensureSpecs(fastify, projectId);
-    const specs = await fastify.core.task.listSpecsByProject(projectId);
-    return specs.find((s) => s.projectId === projectId && s.name === name);
-}
-
 export default async function taskRoutes(fastify: FastifyInstance) {
 
     /**
@@ -40,48 +33,37 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     });
 
     /**
-     * 列出该项目的 task specs
-     * 懒加载，避免空
-     * GET /specs/:projectId
-     */
-    fastify.get("/specs/:projectId", async (req) => {
-        const { projectId } = req.params as { projectId: string };
-        await ensureSpecs(fastify, projectId);
-        return await fastify.core.task.listSpecsByProject(projectId);
-    });
-
-    /**
      * 启动任务（唯一方式）
      * POST /start
-     * body: { specId: string } -- specId === taskId 
+     * body: { taskId: string } 
      */
     fastify.post("/start", async (req) => {
-        const body = req.body as { specId?: string };
-        const specId = body?.specId?.trim();
-        if (!specId) throw new AppError("BAD_REQUEST", "specId is required", { body });
-        return await fastify.core.task.start(specId); // returns { runId ... }
+        const body = req.body as { taskId?: string };
+        const taskId = body?.taskId?.trim();
+        if (!taskId) throw new AppError("TASK_ID_REQUIRED", "taskId is required", { body });
+        return await fastify.core.task.start(taskId);
     });
 
 
     /**
      * 停止任务
-     * POST /stop/:id
-     *  id === taskId === specId
+     * POST /stop
+     * body: { taskId: string } 
      */
     fastify.post("/stop", async (req) => {
-        const body = req.body as { runId?: string };
-        const runId = body?.runId?.trim();
-        if (!runId) throw new AppError("BAD_REQUEST", "runId is required", { body });
-        return await fastify.core.task.stop(runId);
+        const body = req.body as { taskId?: string };
+        const taskId = body?.taskId?.trim();
+        if (!taskId) throw new AppError("TASK_ID_REQUIRED", "taskId is required", { body });
+        return await fastify.core.task.stop(taskId);
     });
 
     /**
      * 查询任务状态
-     * GET /status/:id
+     * GET /status/:taskId  
      */
-    fastify.get("/status/:id", async (req) => {
-        const { id } = req.params as { id: string };
-        return await fastify.core.task.status(id);
+    fastify.get("/status/:taskId", async (req) => {
+        const { taskId } = req.params as { taskId: string };
+        return await fastify.core.task.status(taskId);
     });
 
     // /**

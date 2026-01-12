@@ -27,6 +27,7 @@ export class TaskCatalogService {
     return computed(() => this.state().rowsByProject[pid] ?? []);
   }
 
+  /** 是否正在加载中 */
   isLoading(projectId: string) {
     const pid = (projectId ?? "").trim();
     return computed(() => !!this.state().loadingByProject[pid]);
@@ -58,6 +59,7 @@ export class TaskCatalogService {
 
     try {
       const res = await firstValueFrom(this.api.getViews(pid));
+      console.log("[task catalog] loaded", pid, res);
 
       // 这里保留后端 runtime（是快照，不是实时态）
       const normalized: TaskRow[] = (res ?? []).map((r: any) => ({
@@ -102,6 +104,7 @@ export class TaskCatalogService {
     }));
   }
 
+  /** 清除某项目缓存 */
   clear(projectId: string) {
     const pid = (projectId ?? "").trim();
     if (!pid) return;

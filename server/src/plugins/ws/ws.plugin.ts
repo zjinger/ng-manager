@@ -23,9 +23,9 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     // 注册 topics： core.task 的能力注入进来
     const taskHandler = createTaskTopicHandler(
         {
-            getTaskSnapshot: (runId) => fastify.core.task.getSnapshot(runId),
-            getTaskTailLogs: (runId, tail) => fastify.core.task.getTailLogsByRun(runId, tail),
-            resizeRun: (runId, cols, rows) => fastify.core.task.resizeRun(runId, cols, rows),
+            getTaskSnapshotByTaskId: (taskId) => fastify.core.task.getSnapshotByTaskId(taskId),
+            getTaskTailLogsByRun: (runId, tail) => fastify.core.task.getTailLogsByRun(runId, tail),
+            resizeRun: (taskId, cols, rows) => fastify.core.task.resizeRun(taskId, cols, rows),
         },
         () => clients.values()
     );
@@ -42,23 +42,23 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     const offs: Array<() => void> = [];
 
     offs.push(fastify.core.events.on(Events.TASK_OUTPUT, (e) => {
-        taskHandler.pushOutput(e.runId, e.stream, e.text);
+        taskHandler.pushOutput(e.taskId, e.runId, e.stream, e.text);
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_STARTED, (e) => {
-        taskHandler.pushEvent(e.runId, "started", { pid: e.pid, taskId: e.taskId, runId: e.runId });
+        taskHandler.pushEvent(e.taskId, e.runId, "started", { pid: e.pid, taskId: e.taskId, runId: e.runId, startedAt: e.startedAt });
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_STOP_REQUESTED, (e) => {
-        taskHandler.pushEvent(e.runId, "stopRequested", { taskId: e.taskId, runId: e.runId });
+        taskHandler.pushEvent(e.taskId, e.runId, "stopRequested", { taskId: e.taskId, runId: e.runId });
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_EXITED, (e) => {
-        taskHandler.pushEvent(e.runId, "exited", { exitCode: e.exitCode, signal: e.signal, taskId: e.taskId, runId: e.runId });
+        taskHandler.pushEvent(e.taskId, e.runId, "exited", { exitCode: e.exitCode, signal: e.signal, taskId: e.taskId, runId: e.runId, stoppedAt: e.stoppedAt });
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_FAILED, (e) => {
-        taskHandler.pushEvent(e.runId, "failed", { error: e.error || '', taskId: e.taskId, runId: e.runId });
+        taskHandler.pushEvent(e.taskId, e.runId, "failed", { error: e.error || '', taskId: e.taskId, runId: e.runId });
     }));
 
     offs.push(fastify.core.events.on(Events.SYSLOG_APPENDED, (e) => {

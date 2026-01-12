@@ -28,6 +28,6 @@ export class LayoutComponent implements OnInit {
     this.isCollapsed = !this.isCollapsed;
   }
   ngOnInit(): void {
-    this.wsClient.connect();
+    // this.wsClient.connect();
   }
 }

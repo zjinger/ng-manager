@@ -1,5 +1,6 @@
 import { WsClientMsg, WsServerMsg, WsTopic } from "@core/protocol";
 import { WsContext } from "./ws.context";
+import { ErrorCode } from "@core";
 
 export type TopicHandler = {
     topic: WsTopic;
@@ -73,7 +74,7 @@ export class WsRouter {
         ctx.send(this.err("OP_NOT_FOUND", `Unknown op: ${(msg as any).op}`));
     }
 
-    private err(code: string, message: string, details?: any): WsServerMsg {
+    private err(code: ErrorCode, message: string, details?: any): WsServerMsg {
         return { op: "error", code, message, details, ts: Date.now() };
     }
 }

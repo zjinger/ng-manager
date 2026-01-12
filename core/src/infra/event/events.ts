@@ -24,10 +24,10 @@ export type CoreEventMap = {
     [Events.PROJECT_UPDATED]: { projectId: string };
     [Events.PROJECT_REMOVED]: { projectId: string };
 
-    [Events.TASK_STARTED]: { taskId: string; runId: string; pid: number };
+    [Events.TASK_STARTED]: { taskId: string; runId: string; pid: number; startedAt: number };
     [Events.TASK_OUTPUT]: { taskId: string; runId: string; text: string; stream: "stdout" | "stderr" };
     [Events.TASK_STOP_REQUESTED]: { taskId: string; runId: string };
-    [Events.TASK_EXITED]: { taskId: string; runId: string; exitCode: number | null; signal: string | null };
+    [Events.TASK_EXITED]: { taskId: string; runId: string; stoppedAt: number; exitCode: number | null; signal: string | null };
     [Events.TASK_FAILED]: { taskId: string; runId: string; error: string | null };
 
     [Events.TASK_SPECS_REFRESHED]: { projectId: string; count: number };

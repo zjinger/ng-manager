@@ -26,27 +26,27 @@ import { UiNotifierService } from "@app/core";
   styleUrls: ["./task-console.component.less"],
 })
 export class TaskConsoleComponent implements OnDestroy {
-  private _runId = "";
+  private _taskId = "";
 
   @Input()
-  set runId(id: string) {
+  set taskId(id: string) {
     const next = (id ?? "").trim();
     if (!next) {
       // queueMicrotask(() => this.term?.reset());
       return;
     };
-    if (next === this._runId) return;
+    if (next === this._taskId) return;
     // 切换 run：先退订旧 run（并清 UI）
-    if (this._runId) {
-      this.stream.unsubscribeRun(this._runId);
+    if (this._taskId) {
+      this.stream.unsubscribeTask(this._taskId);
       this.term?.clear();
     }
 
-    this._runId = next;
+    this._taskId = next;
     this.bind(next);
   }
-  get runId() {
-    return this._runId;
+  get taskId() {
+    return this._taskId;
   }
 
   @Input() tail = 200;
@@ -69,24 +69,24 @@ export class TaskConsoleComponent implements OnDestroy {
       this.resizeSubject
         .pipe(debounceTime(200))
         .subscribe((size) => {
-          if (this._runId) {
+          if (this._taskId) {
             console.log("Terminal resized:", size);
-            this.stream.resize(this._runId, size.cols, size.rows);
+            this.stream.resize(this._taskId, size.cols, size.rows);
           }
         })
     );
   }
 
-  private bind(runId: string) {
+  private bind(taskId: string) {
     // 订阅 run 输出
-    this.stream.subscribeRun(runId, this.tail);
+    this.stream.subscribeTask(taskId, this.tail);
 
     // 重绑 rx 订阅
     this.sub.unsubscribe();
     this.sub = new Subscription();
     // 输出：每个 chunk 直接写 xterm
     this.sub.add(
-      this.stream.output$(runId).subscribe((m) => {
+      this.stream.output$(taskId).subscribe((m) => {
         if (!this.term) return;
         // 如果想对 stderr 做更明显的颜色：可以在写入前加 ANSI SGR
         // 这里不强行染色，尊重原始 ANSI（如果有）
@@ -96,11 +96,11 @@ export class TaskConsoleComponent implements OnDestroy {
       })
     );
     // 状态
-    this.sub.add(this.stream.status$(runId).subscribe((s) => (this.status = s)));
+    this.sub.add(this.stream.status$(taskId).subscribe((s) => (this.status = s)));
   }
 
   ngOnDestroy() {
-    if (this._runId) this.stream.unsubscribeRun(this._runId);
+    if (this._taskId) this.stream.unsubscribeTask(this._taskId);
     this.sub.unsubscribe();
   }
 

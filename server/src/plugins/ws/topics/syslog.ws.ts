@@ -1,4 +1,4 @@
-import type { WsServerMsg } from "@core/protocol";
+import type { WsClientMsg, WsServerMsg } from "@core/protocol";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 import { LogLine } from "@core";
@@ -12,7 +12,7 @@ export function createSyslogTopicHandler(
 ): TopicHandler & { push(entry: LogLine): void } {
     return {
         topic: "syslog",
-        async sub(ctx, msg: any) {
+        async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "syslog" }>) {
             const tail = Number(msg?.tail ?? 0);
             ctx.addSub("syslog", KEY);
 

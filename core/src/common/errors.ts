@@ -18,10 +18,18 @@ export type ErrorCode =
     // Task / Process
     | "TASK_NOT_FOUND"
     | "RUN_NOT_FOUND"
+    | "TASK_ID_REQUIRED"
     | "TASK_ALREADY_RUNNING"
     | "PROCESS_SPAWN_FAILED"
     | "TASK_SPEC_NOT_FOUND"
     | "TASK_NOT_RUNNABLE"
+    // WS 
+    | "BAD_JSON"
+    | "BAD_MSG"
+    | "OP_NOT_SUPPORTED"
+    | "HANDLER_FAILED"
+    | "TOPIC_NOT_FOUND"
+    | "OP_NOT_FOUND"
 
     // FS
     | "FS_NOT_FOUND"
