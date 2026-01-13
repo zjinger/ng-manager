@@ -305,6 +305,11 @@ export class TaskServiceImpl implements TaskService {
         h.resize(cols, rows);
     }
 
+    /** 注册一个临时/系统任务 spec（用于 bootstrap / system ops） */
+    registerSpec(spec: TaskDefinition): void {
+        this.specs.set(spec.id, spec);
+    }
+
     /* ----------------------------- stop reliable ---------------------------- */
 
     private sleep(ms: number) {

@@ -10,7 +10,7 @@ import { NzModalModule } from "ng-zorro-antd/modal";
 import { NzSwitchModule } from "ng-zorro-antd/switch";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { AboutRoutingModule } from "@pages/about/about-routing-module";
-import { FsService } from "@pages/projects/services/fs.service";
+import { FsExplorerService } from "./fs-explorer.service";
 
 @Component({
   selector: "app-fs-explorer",
@@ -31,7 +31,7 @@ import { FsService } from "@pages/projects/services/fs.service";
   styleUrl: "./fs-explorer.component.less",
 })
 export class FsExplorerComponent implements OnInit {
-  constructor(public fs: FsService) { }
+  constructor(public fs: FsExplorerService) { }
 
   ngOnInit() {
     this.fs.load();

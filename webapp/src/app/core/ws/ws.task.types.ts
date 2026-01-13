@@ -11,7 +11,9 @@ export type TaskEventType =
     | "started" // 任务启动
     | "stopRequested" // 请求停止
     | "exited" // 任务退出
-    | "failed"; // 任务失败
+    | "failed" // 任务失败
+    | "bootstrapDone" // 任务关联的项目 bootstrap 完成
+    | "bootstrapFailed"; // 任务关联的项目 bootstrap 失败
 
 export type TaskSnapshotPayload = {
     taskId: string;
@@ -53,6 +55,19 @@ export type TaskFailedPayload = {
     runId: string;
     error: string;
 };
+export type TaskBootstrapDonePayload = {
+    projectId: string;
+    rootPath: string;
+    taskId: string;
+    runId: string;
+};
+
+export type TaskBootstrapFailedPayload = {
+    taskId: string;
+    runId: string;
+    rootPath: string;
+    reason: string;
+};
 
 export type TaskEventPayloadMap = {
     snapshot: TaskSnapshotPayload;
@@ -60,6 +75,8 @@ export type TaskEventPayloadMap = {
     stopRequested: TaskStopRequestedPayload;
     exited: TaskExitedPayload;
     failed: TaskFailedPayload;
+    bootstrapDone: TaskBootstrapDonePayload;
+    bootstrapFailed: TaskBootstrapFailedPayload;
 };
 
 export type TaskEventMsg =

@@ -1,30 +1,53 @@
 import { inject, Injectable } from '@angular/core';
-import { CreateProjectDraft } from '../models/project-draft';
 import { ApiClient } from '@core/api';
 import { CheckRootResult, DetectResult, ImportCheckResult, Project } from '@models/project.model';
-import { Observable } from 'rxjs';
+import { lastValueFrom, Observable } from 'rxjs';
+import { FsExplorerApiService } from '../components/fs-explorer';
+import { CreateProjectDraft } from '../models/project-draft';
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
 
   api = inject(ApiClient)
+  fs = inject(FsExplorerApiService)
 
-  async checkPathExists(_rootPath: string): Promise<boolean> {
-    // TODO: 调用本地服务检查路径是否存在 & 是否重复注册
-    return true;
+  // 调用本地服务检查路径是否存在 & 是否重复注册
+  async checkPathExists(path: string): Promise<boolean> {
+    return await lastValueFrom(this.fs.pathExists(path));
   }
 
   detect(rootPath: string): Observable<DetectResult> {
     return this.api.post<DetectResult>("/api/projects/detect", { rootPath });
   }
 
-  async createProject(_draft: CreateProjectDraft): Promise<{ projectId: string }> {
-    // TODO: create project + import tasks
-    return { projectId: crypto.randomUUID() };
-  }
-
   // Electron 里建议通过 preload 暴露 window.ngm.pickFolder()
   async pickFolder(): Promise<string | null> {
     return null;
+  }
+
+
+  bootstrapByCli(draft: CreateProjectDraft): Observable<{ taskId: string; rootPath: string }> {
+    return this.api.post("/api/projects/bootstrap/cli", {
+      parentDir: draft.parentDir,
+      name: draft.name,
+      rootPath: draft.rootPath,
+      packageManager: draft.packageManager,
+      overwriteIfExists: draft.overwriteIfExists,
+      skipOnboarding: draft.skipOnboarding,
+      initGit: draft.initGit,
+      initialCommitMessage: draft.initialCommitMessage,
+      cliFramework: draft.cliFramework,
+      cliTool: draft.cliTool,
+      cliArgs: draft.cliArgs ?? [],
+    });
+  }
+
+  bootstrapByGit(draft: CreateProjectDraft): Observable<{ taskId: string; rootPath: string }> {
+    return this.api.post("/api/projects/bootstrap/git", {
+      repoUrl: draft.repoUrl,
+      parentDir: draft.parentDir,
+      name: draft.name,
+      rootPath: draft.rootPath,
+    });
   }
 
   list() {

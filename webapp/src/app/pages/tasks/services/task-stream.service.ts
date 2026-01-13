@@ -8,7 +8,7 @@ import { TaskRuntimeStore } from "./task-runtime-store";
 
 @Injectable({ providedIn: "root" })
 export class TaskStreamService {
-  private outputByRun = new Map<string, Subject<TaskOutputMsg>>();
+  private outputByTaskId = new Map<string, Subject<TaskOutputMsg>>(); // taskId -> output stream
   private event$ = new Subject<TaskEventMsg>();
 
   private subs = new Map<string, number>(); // taskId -> tail
@@ -103,20 +103,25 @@ export class TaskStreamService {
       const next = this.mapEventToStatus(type, payload);
       console.log("[task stream] event", next);
       if (next) this.runtimeStore.setTaskStatus(taskId, next);
+      // 每个 taskId 都会 new Subject()，但从来不 complete()、不 delete()
+      // 所以需要清理
+      if (type === "exited" || type === "failed") {
+        setTimeout(() => {
+          this.outputByTaskId.delete(taskId);
+        }, 5 * 60 * 1000);
+      }
 
       if (type === "failed") {
         const errText = `[failed] ${payload?.error ?? ""}`.trim();
-        if (errText) {
-          this.ensureOutput(runId).next({ taskId, runId, stream: "stderr", chunk: errText + "\n", ts: Date.now() });
-        }
+        this.ensureOutput(taskId).next({ taskId, runId, stream: "stderr", chunk: errText + "\n", ts: Date.now() });
       }
     }
   }
 
   private ensureOutput(taskId: string) {
     const id = String(taskId ?? "").trim();
-    if (!this.outputByRun.has(id)) this.outputByRun.set(id, new Subject<TaskOutputMsg>());
-    return this.outputByRun.get(id)!;
+    if (!this.outputByTaskId.has(id)) this.outputByTaskId.set(id, new Subject<TaskOutputMsg>());
+    return this.outputByTaskId.get(id)!;
   }
 
   private mapEventToStatus<K extends TaskEventType>(type: K, payload: TaskEventPayloadMap[K]): TaskRuntimeStatus | null {
@@ -141,6 +146,10 @@ export class TaskStreamService {
       return { status: "stopped", exitCode, signal, stoppedAt }
     }
     else if (type === "failed") return { status: "stopped" };
+    else if (type === "bootstrapDone" || type === "bootstrapFailed") {
+      // 不变更状态
+      return null;
+    }
     return null;
   }
 }

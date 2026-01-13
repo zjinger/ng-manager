@@ -19,4 +19,7 @@ export interface TaskService {
 
     // PTY 专用：调整终端大小
     resizeRun(taskId: string, cols: number, rows: number): void;
+
+    /** 注册一个临时/系统任务 spec（用于 bootstrap / system ops） */
+    registerSpec(spec: TaskDefinition): void;
 }

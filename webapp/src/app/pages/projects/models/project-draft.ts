@@ -1,22 +1,22 @@
 import { DetectResult, PackageManager } from "@models/project.model";
 
-// src/app/projects/models/project-draft.ts
-export type ProjectMode = 'create' | 'import';
+export type ProjectPreset = "angular" | "vue3" | "manual" | "git";
 
 export interface CreateProjectDraft {
-    mode: ProjectMode;
+    preset: ProjectPreset;
 
     name: string;
     parentDir: string;  // create 模式：父目录
-    rootPath: string;   // 最终路径：parentDir + name（import 模式直接等于选择路径）
+    rootPath: string;   // 最终路径：parentDir + name
     packageManager: PackageManager;
+    repoUrl?: string; // Git 仓库地址
 
     overwriteIfExists: boolean;
     skipOnboarding: boolean;
 
     initGit: boolean;
     initialCommitMessage?: string;
-    
+
     detected?: DetectResult
 
     importScriptsAsTasks: boolean;
@@ -32,12 +32,17 @@ export interface CreateProjectDraft {
     pinFavorite: boolean;
     openAfterCreate: 'tasks' | 'home';
     defaultTaskName?: string;
+
+    // cli 相关
+    cliFramework?: "angular" | "vue";
+    cliTool?: "@angular/cli" | "@vue/cli" | "create-vue" | "custom";
+    cliArgs?: string[];          // 可选扩展
 }
 
 export function createEmptyDraft(): CreateProjectDraft {
     return {
-        mode: 'create',
-        name: '',
+        preset: "angular", // 默认预设
+        name: 'test2',
         parentDir: '',
         rootPath: '',
         packageManager: 'auto',
@@ -56,5 +61,9 @@ export function createEmptyDraft(): CreateProjectDraft {
         pinFavorite: false,
         openAfterCreate: 'tasks',
         defaultTaskName: '',
+
+        cliFramework: "angular",
+        cliTool: "@angular/cli",
+        cliArgs: [],
     };
 }

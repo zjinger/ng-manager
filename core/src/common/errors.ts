@@ -14,6 +14,9 @@ export type ErrorCode =
 
     // Project Creation
     | "INVALID_NAME"
+    | "TARGET_EXISTS"
+    | "INVALID_REPO_URL"
+    | "INVALID_PARENT_DIR"
 
     // Task / Process
     | "TASK_NOT_FOUND"
@@ -35,6 +38,7 @@ export type ErrorCode =
     | "FS_NOT_FOUND"
     | "FS_ALREADY_EXISTS"
     | "FS_PERMISSION_DENIED"
+    | "FS_EXISTS_FAILED"
 
     // Editor
     | "EDITOR_NOT_FOUND"

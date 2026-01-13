@@ -70,7 +70,6 @@ export class TaskConsoleComponent implements OnDestroy {
         .pipe(debounceTime(200))
         .subscribe((size) => {
           if (this._taskId) {
-            console.log("Terminal resized:", size);
             this.stream.resize(this._taskId, size.cols, size.rows);
           }
         })

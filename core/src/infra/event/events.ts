@@ -14,11 +14,16 @@ export const Events = {
 
     // system / log
     SYSLOG_APPENDED: "syslog.appended",
+
+    // bootstrap
+    PROJECT_BOOTSTRAP_DONE: "PROJECT_BOOTSTRAP_DONE",
+    PROJECT_BOOTSTRAP_FAILED: "PROJECT_BOOTSTRAP_FAILED",
+
 } as const;
 
 export type EventName = (typeof Events)[keyof typeof Events];
 
-// payload 类型（v0.1 先最小化，后续随 task/process 落地再补全）
+// payload 类型
 export type CoreEventMap = {
     [Events.PROJECT_ADDED]: { projectId: string };
     [Events.PROJECT_UPDATED]: { projectId: string };
@@ -33,4 +38,7 @@ export type CoreEventMap = {
     [Events.TASK_SPECS_REFRESHED]: { projectId: string; count: number };
 
     [Events.SYSLOG_APPENDED]: { entry: import("../log/types").LogLine };
+
+    [Events.PROJECT_BOOTSTRAP_DONE]: { taskId: string; runId: string; projectId: string; rootPath: string };
+    [Events.PROJECT_BOOTSTRAP_FAILED]: { taskId: string; runId: string; rootPath: string; reason: string };
 };

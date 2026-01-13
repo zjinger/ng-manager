@@ -270,8 +270,16 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         } catch (e: any) {
             throw new AppError("EDITOR_LAUNCH_FAILED", e?.message || "openInEditor failed");
         }
+    });
 
-        // await fastify.core.project.openInEditor(id, { editor: body?.editor });
+    fastify.post("/bootstrap/cli", async (req) => {
+        const body = req.body as any;
+        return await fastify.core.bootstrap.bootstrapByCli(body);
+    });
+
+    fastify.post("/bootstrap/git", async (req) => {
+        const body = req.body as any;
+        return await fastify.core.bootstrap.bootstrapByGit(body);
     });
 }
 

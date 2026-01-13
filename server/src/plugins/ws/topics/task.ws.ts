@@ -26,7 +26,7 @@ export function createTaskTopicHandler(
             const tail = Number(msg?.tail ?? 0);
 
             if (!taskId) {
-                ctx.send({ op: "error", code: "TASK_ID_REQUIRED", message: "runId is required", ts: Date.now() });
+                ctx.send({ op: "error", code: "TASK_ID_REQUIRED", message: "taskId is required", ts: Date.now() });
                 return;
             }
             ctx.addSub("task", keyOfTask(taskId));
@@ -57,7 +57,7 @@ export function createTaskTopicHandler(
                         op: "task.output",
                         taskId,
                         runId: snap.runId,
-                        stream: (e?.level === "warn" ? "stderr" : "stdout"),
+                        stream: (e?.level === "warn" || e?.level === "error") ? "stderr" : "stdout",
                         chunk: String(e?.text ?? ""),
                         ts: e?.ts ?? Date.now(),
                     };

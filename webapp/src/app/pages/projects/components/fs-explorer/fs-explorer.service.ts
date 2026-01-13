@@ -1,22 +1,24 @@
-import { HttpParams } from "@angular/common/http";
-import { Injectable, computed, signal } from "@angular/core";
-import { ApiClient } from "@core/api/api-client";
-import type { FsEntry, FsListResult } from "@models/fs.model";
+import { Injectable, computed, inject, signal } from "@angular/core";
+import type { FsEntry } from "@models/fs.model";
+import { FsExplorerApiService } from "./fs-explorer-api.service";
 
-type PathSeg = {
+export type PathSeg = {
   key: string;
   label: string;
   fullPath: string;
   disabled?: boolean;
 };
 
-@Injectable({ providedIn: "root" })
-export class FsService {
-  constructor(private api: ApiClient) { }
+
+@Injectable({
+  providedIn: 'root',
+})
+export class FsExplorerService {
+  private fsApi = inject(FsExplorerApiService)
 
   /* ---------------- state ---------------- */
   // 输入框 path（用户可编辑）
-  readonly path = signal<string>("d:\\");
+  readonly path = signal<string>("D:\\");
   // 服务端返回的 realpath（更可信）
   readonly currentPath = signal<string>("");
   readonly entries = signal<FsEntry[]>([]);
@@ -38,17 +40,6 @@ export class FsService {
     return this.buildSegments(p);
   });
 
-  /* ---------------- api ---------------- */
-  ls(dirPath: string, showSystem = false) {
-    const params = new HttpParams()
-      .set("path", dirPath)
-      .set("showSystem", showSystem ? "1" : "0");
-    return this.api.get<FsListResult>("/api/fs/ls", params);
-  }
-
-  mkdir(dirPath: string, folderName: string) {
-    return this.api.post<void>("/api/fs/mkdir", { path: dirPath, name: folderName });
-  }
 
   /* ---------------- actions ---------------- */
 
@@ -60,7 +51,7 @@ export class FsService {
     this.reloading.set(true);
     this.isEditingPath.set(false);
 
-    this.ls(p, this.showSystemFolders()).subscribe({
+    this.fsApi.ls(p, this.showSystemFolders()).subscribe({
       next: (res) => {
         this.currentPath.set(res.path);
         this.entries.set(res.entries);
@@ -125,7 +116,7 @@ export class FsService {
     if (!name) return;
 
     const parentPath = this.currentPath() || this.path();
-    this.mkdir(parentPath, name).subscribe(() => {
+    this.fsApi.mkdir(parentPath, name).subscribe(() => {
       this.isCreateFolderModalVisible.set(false);
       this.newFolderName.set("");
       this.load();

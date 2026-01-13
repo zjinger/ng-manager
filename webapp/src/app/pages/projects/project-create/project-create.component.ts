@@ -1,165 +1,67 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Component } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzStepsModule } from 'ng-zorro-antd/steps';
-import { StepBasicComponent } from '../components/step-basic.component';
-import { StepPresetComponent } from '../components/step-preset.component';
-import { StepFeaturesComponent } from '../components/step-features.component';
-import { StepConfigComponent } from '../components/step-config.component';
-import { CreateSummaryAsideComponent } from '../components/create-summary-aside.component';
-import { createEmptyDraft, CreateProjectDraft } from '../models/project-draft';
-import { ProjectApiService } from '../services/project-api.service';
-import { NzMessageService } from 'ng-zorro-antd/message';
 import { FsExplorerComponent } from "../components/fs-explorer/fs-explorer.component";
 import { NzGridModule } from 'ng-zorro-antd/grid';
-import { DetectResult } from '@models/project.model';
-
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { ProjectCreateModal } from './project-create-modal.component';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 @Component({
   selector: 'app-project-create',
   imports: [
     CommonModule,
-    RouterModule,
-    NzGridModule,
-    NzStepsModule,
-    NzCardModule,
     NzButtonModule,
-    StepBasicComponent,
-    StepPresetComponent,
-    StepFeaturesComponent,
-    StepConfigComponent,
-    CreateSummaryAsideComponent,
-    FsExplorerComponent
+    NzGridModule,
+    FsExplorerComponent,
+    NzIconModule
   ],
-  templateUrl: './project-create.component.html',
-  styleUrl: './project-create.component.less',
-})
-export class ProjectCreateComponent {
-  step = signal(0);
-  creating = signal(false);
-  draft = signal<CreateProjectDraft>(createEmptyDraft());
-
-  constructor(
-    private api: ProjectApiService,
-    private msg: NzMessageService,
-    private router: Router,
-    private route: ActivatedRoute,
-  ) {
-    // 支持 /projects/create?mode=import&path=xxx
-    const mode = this.route.snapshot.queryParamMap.get('mode');
-    const path = this.route.snapshot.queryParamMap.get('path');
-    if (mode === 'import' && path) {
-      const d = this.draft();
-      this.draft.set({ ...d, mode: 'import', rootPath: path, parentDir: '', name: this.basename(path) });
-      this.step.set(1); // 直接跳到“预设”
-      queueMicrotask(() => this.detectNow());
-    }
-  }
-
-  setDraft(d: CreateProjectDraft) {
-    this.draft.set(d);
-  }
-
-  goCreate() {
-
-  }
-
-  canNext(): boolean {
-    const s = this.step();
-    const d = this.draft();
-
-    if (s === 0) {
-      if (!d.name?.trim()) return false;
-      if (d.mode === 'create' && !d.parentDir?.trim()) return false;
-      if (!d.rootPath?.trim()) return false;
-      return true;
-    }
-    if (s === 1) {
-      // Step2 允许跳过 detect，但建议至少有 rootPath
-      return !!d.rootPath?.trim();
-    }
-    return true;
-  }
-
-  async next() {
-    const s = this.step();
-    if (s === 0) {
-      // Step1 校验 + 路径重复检查（可选）
-      const ok = await this.api.checkPathExists(this.draft().rootPath);
-      if (!ok) {
-        this.msg.error('该路径不可用或已存在重复项目');
-        return;
+  template: `
+    <div nz-row class="page">
+      <div nz-col nzSpan="16" nzOffset="4" class="explorer-container">
+        <app-fs-explorer></app-fs-explorer>
+      </div>
+      <div class="actions-bar">
+        <button nz-button nzType="primary" nzSize="large" (click)="goCreate()">
+          <nz-icon nzType="plus" nzTheme="outline" />
+          在此创建新项目
+        </button>
+      </div>
+    </div>
+  `,
+  styles: [
+    `
+    .page {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      .explorer-container {
+        flex: 1 1 auto;
+        height: 0;
+      }
+      .actions-bar {
+        flex: 0 0 auto;
+        padding: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
     }
-    const ns = Math.min(3, s + 1);
-    this.step.set(ns);
+    `
+  ],
+})
+export class ProjectCreateComponent {
 
-    // 进入 Step2 自动 detect
-    if (ns === 1) await this.detectNow();
-  }
-
-  prev() {
-    this.step.set(Math.max(0, this.step() - 1));
-  }
-
-  cancel() {
-    this.router.navigateByUrl('/projects');
-  }
-
-  detectNow() {
-    const d = this.draft();
-    if (!d.rootPath?.trim()) return;
-    this.api.detect(d.rootPath).subscribe(r => {
-      const scripts = r.scripts ?? [];
-      const detected: DetectResult = {
-        framework: r.framework ?? 'unknown',
-        hasPackageJson: !!r.hasPackageJson,
-        scriptsCount: scripts.length,
-        hasGit: !!r.hasGit,
-        lockFile: r.lockFile ?? 'unknown',
-        recommendedScript: scripts.includes('dev') ? 'dev' : (scripts.includes('start') ? 'start' : ''),
-        hasMakefile: !!r.hasMakefile,
-        hasDockerCompose: !!r.hasDockerCompose,
-      };
-
-      // 根据识别结果调整导入选项
-      const importScriptsAsTasks = scripts.length > 0;
-      const importMakefileTasks = !!r.hasMakefile;
-      const importDockerComposeTasks = !!r.hasDockerCompose;
-
-      this.draft.set({
-        ...d,
-        detected,
-        importScriptsAsTasks,
-        importMakefileTasks: importMakefileTasks && d.importMakefileTasks, // 默认不强开
-        importDockerComposeTasks: importDockerComposeTasks && d.importDockerComposeTasks,
-        defaultTaskName: detected.recommendedScript || d.defaultTaskName,
-      });
+  constructor(private modal: NzModalService) { }
+  goCreate() {
+    this.modal.create({
+      nzTitle: '创建新项目',
+      nzFooter: null,
+      nzMaskClosable: false,
+      nzClosable: false,
+      nzContent: ProjectCreateModal,
+      nzWidth: '1020px',
+      nzCentered: true,
     })
-  }
-
-  async create() {
-    const d = this.draft();
-    if (!d.rootPath?.trim() || !d.name?.trim()) {
-      this.msg.error('请先完善项目信息');
-      return;
-    }
-
-    this.creating.set(true);
-    try {
-      const { projectId } = await this.api.createProject(d);
-      this.msg.success('项目已创建');
-      // TODO: 进入 Project Workspace（你后面会有 /projects/:id）
-      this.router.navigateByUrl('/projects');
-    } catch (e: any) {
-      this.msg.error(e?.message ?? '创建失败');
-    } finally {
-      this.creating.set(false);
-    }
-  }
-
-  private basename(p: string) {
-    return p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? p;
   }
 }

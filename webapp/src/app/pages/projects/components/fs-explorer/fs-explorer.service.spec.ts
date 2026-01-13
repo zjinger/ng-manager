@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { FsService } from './fs.service';
+import { FsExplorerService } from './fs-explorer.service';
 
-describe('FsService', () => {
-  let service: FsService;
+describe('FsExplorerService', () => {
+  let service: FsExplorerService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(FsService);
+    service = TestBed.inject(FsExplorerService);
   });
 
   it('should be created', () => {

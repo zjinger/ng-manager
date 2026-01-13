@@ -15,10 +15,16 @@ export const enum ErrorPolicyCode {
     PROJECT_ROOT_INVALID = "PROJECT_ROOT_INVALID",
     PROJECT_ALREADY_EXISTS = "PROJECT_ALREADY_EXISTS",
 
+    /** project creation */
+    INVALID_NAME = "INVALID_NAME",
+    TARGET_EXISTS = "TARGET_EXISTS",
+    INVALID_REPO_URL = "INVALID_REPO_URL",
+
     /* ---------- fs ---------- */
     FS_ALREADY_EXISTS = "FS_ALREADY_EXISTS",
     FS_NOT_FOUND = "FS_NOT_FOUND",
     FS_PERMISSION_DENIED = "FS_PERMISSION_DENIED",
+    FS_EXISTS_FAILED = "FS_EXISTS_FAILED",
 
     /* ---------- system ---------- */
     INTERNAL_ERROR = "INTERNAL_ERROR",
@@ -96,6 +102,20 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         message: "项目已存在",
     },
 
+    /** project creation */
+    INVALID_NAME: {
+        level: "toast",
+        message: "无效的项目名称",
+    },
+    TARGET_EXISTS: {
+        level: "toast",
+        message: "目标路径已存在",
+    },
+    INVALID_REPO_URL: {
+        level: "toast",
+        message: "无效的仓库地址",
+    },
+
     /* ---------- fs ---------- */
 
     FS_ALREADY_EXISTS: {
@@ -110,6 +130,11 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "文件系统权限被拒绝",
     },
+    FS_EXISTS_FAILED: {
+        level: "toast",
+        message: "检查路径是否存在时出错",
+    },
+
     /* ---------- system ---------- */
     INTERNAL_ERROR: {
         level: "toast",

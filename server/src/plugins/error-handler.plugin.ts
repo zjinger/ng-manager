@@ -27,6 +27,9 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     /* ---------------- Project Creation ---------------- */
 
     INVALID_NAME: 400,                          // 无效的项目名称
+    TARGET_EXISTS: 409,                         // 目标路径已存在
+    INVALID_REPO_URL: 400,                      // 无效的仓库地址
+    INVALID_PARENT_DIR: 400,                    // 无效的父目录
 
     /* ---------------- Task / Process ---------------- */
 
@@ -50,6 +53,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     FS_NOT_FOUND: 404,
     FS_ALREADY_EXISTS: 409,
     FS_PERMISSION_DENIED: 403,
+    FS_EXISTS_FAILED: 500,
 
     /* ---------------- Editor ---------------- */
 

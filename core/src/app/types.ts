@@ -5,6 +5,7 @@ import type { ILogStore } from "../infra/log/log.store";
 import type { TaskService } from "../domain/task/task.service";
 import { ProjectService } from "../domain/project/project.service";
 import { FsService } from "../domain/fs";
+import { ProjectBootstrapService } from "../domain/project/project-bootstrap.service";
 
 /**
  * 创建 CoreApp 的参数
@@ -28,14 +29,15 @@ export interface CoreApp {
     events: IEventBus<CoreEventMap>;
 
     /** 日志存储（ring buffer） */
-    taskLog: ILogStore;
-    sysLog: ILogStore;
+    taskLog: ILogStore; // 任务日志
+    sysLog: ILogStore;  // 系统日志
 
     /** 任务执行与管理 */
     task: TaskService;
 
     /** 项目管理 */
     project: ProjectService;
+    bootstrap: ProjectBootstrapService;
 
     /** 文件系统管理 */
     fs: FsService;

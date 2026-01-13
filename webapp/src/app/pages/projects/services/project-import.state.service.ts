@@ -1,13 +1,13 @@
 import { Injectable, inject, signal, computed, effect } from "@angular/core";
 import { ImportCheckResult } from "@models/project.model";
-import { FsService } from "./fs.service";
 import { ProjectApiService } from "./project-api.service";
 import { ProjectStateService } from "./project.state.service";
 import { UiNotifierService } from "@core/ui-notifier.service";
+import { FsExplorerService } from "../components/fs-explorer";
 
 @Injectable({ providedIn: "root" })
 export class ProjectImportState {
-  private fs = inject(FsService);
+  private fs = inject(FsExplorerService);
   private projectApi = inject(ProjectApiService);
   private projectState = inject(ProjectStateService);
 

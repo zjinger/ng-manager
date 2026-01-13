@@ -12,6 +12,7 @@ import { ProjectServiceImpl } from "../domain/project";
 import { TaskServiceImpl } from "../domain/task/task.service.impl";
 import { JsonProjectRepo } from "../infra/storage/project.repo.json";
 import { FsServiceImpl } from "../domain/fs/fs.service.impl";
+import { ProjectBootstrapService } from "../domain/project/project-bootstrap.service";
 
 /**
  * 创建 CoreApp
@@ -49,6 +50,14 @@ export function createCoreApp(
         taskLog,
         events
     );
+
+    /* ------------------ bootstrap ------------------ */
+    const bootstrap = new ProjectBootstrapService(
+        project,
+        task,
+        events
+    );
+
     /* ------------------ fs ------------------ */
     const fs = new FsServiceImpl();
     /* ------------------ core app ------------------ */
@@ -58,6 +67,7 @@ export function createCoreApp(
         sysLog,
         task,
         project,
+        bootstrap,
         fs,
     };
 }

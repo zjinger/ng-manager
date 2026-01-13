@@ -65,6 +65,25 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         syslogHandler.push(e.entry);
     }));
 
+    offs.push(fastify.core.events.on(Events.PROJECT_BOOTSTRAP_DONE, (e) => {
+        taskHandler.pushEvent(e.taskId, e.runId, "bootstrapDone", {
+            projectId: e.projectId,
+            rootPath: e.rootPath,
+            taskId: e.taskId,
+            runId: e.runId,
+        });
+    }))
+
+    offs.push(fastify.core.events.on(Events.PROJECT_BOOTSTRAP_FAILED, (e) => {
+        taskHandler.pushEvent(e.taskId, e.runId, "bootstrapFailed", {
+            taskId: e.taskId,
+            runId: e.runId,
+            rootPath: e.rootPath,
+            reason: e.reason,
+        });
+    }))
+
+
     fastify.addHook("onClose", async () => {
         // 防止 dev 热重载 / 反复 register 导致重复推送
         offs.forEach((off) => {

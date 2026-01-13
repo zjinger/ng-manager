@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { promises as fsp } from "node:fs";
+import { promises as fsp, accessSync, constants } from "node:fs";
 import type { FsEntry, FsListResult, FsLsOptions } from "./fs.types";
 import { detectProjectKind } from "./fs.project-detect";
 import {
@@ -98,5 +98,30 @@ export class FsServiceImpl implements FsService {
         }
 
         return { name: dirName, fullPath: target, type: "dir" as const };
+    }
+
+    /**
+     * 路径是否存在
+     * @param path
+     * @returns
+     */
+    private async _exists(p: string): Promise<boolean> {
+        try {
+            accessSync(p, constants.F_OK);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+
+    async exists(path: string): Promise<boolean> {
+        const p = String(path ?? "").trim();
+        if (!p) return false;
+        try {
+            return await this._exists(p);
+        } catch (e: any) {
+            throw new AppError("FS_EXISTS_FAILED", e?.message ?? "fs exists failed", { path: p });
+        }
     }
 }
