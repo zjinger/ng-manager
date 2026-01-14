@@ -73,7 +73,7 @@ import { inject } from '@angular/core';
     </div>
   </nz-card> -->
 
-  <nz-card nzTitle="导入内容" style="margin-top:12px;">
+  <!-- <nz-card nzTitle="导入内容" style="margin-top:12px;">
     <label nz-checkbox [(ngModel)]="draft.importScriptsAsTasks" (ngModelChange)="emit()">
       导入 package.json scripts 生成 Tasks（推荐）
     </label>
@@ -98,7 +98,7 @@ import { inject } from '@angular/core';
         生成通用任务模板（install / open / clean）
       </label>
     </div>
-  </nz-card>
+  </nz-card> -->
   `,
   styles: [`
     .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }

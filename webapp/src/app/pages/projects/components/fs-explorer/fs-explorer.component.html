@@ -1,6 +1,6 @@
 <div class="page">
   <div class="toolbar">
-    <button nz-button (click)="fs.up()" nz-tooltip="上一层">
+    <button nz-button (click)="fs.up()" [disabled]="!fs.canUp()" nz-tooltip="上一层">
       <nz-icon nzType="up" nzTheme="outline" />
     </button>
     @if(fs.isEditingPath()){

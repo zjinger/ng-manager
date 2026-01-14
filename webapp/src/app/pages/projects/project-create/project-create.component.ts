@@ -51,10 +51,10 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
   ],
 })
 export class ProjectCreateComponent {
-
+  
   constructor(private modal: NzModalService) { }
   goCreate() {
-    this.modal.create({
+    const modal = this.modal.create({
       nzTitle: '创建新项目',
       nzFooter: null,
       nzMaskClosable: false,
@@ -62,6 +62,13 @@ export class ProjectCreateComponent {
       nzContent: ProjectCreateModal,
       nzWidth: '1020px',
       nzCentered: true,
+    })
+
+    const instance = modal.getContentComponent();
+    modal.afterClose.subscribe((data) => {
+      if (data?.ok) {
+        // 创建成功
+      }
     })
   }
 }

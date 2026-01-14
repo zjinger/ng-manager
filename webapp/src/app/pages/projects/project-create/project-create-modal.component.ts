@@ -21,6 +21,8 @@ import { FsExplorerService } from '../components/fs-explorer';
 import { filter, first, firstValueFrom, map, merge, Subject, Subscription, take, takeUntil, timeout } from 'rxjs';
 import { TaskStreamService } from '@pages/tasks/services/task-stream.service';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { ProjectStateService } from '../services/project.state.service';
+import { Router } from '@angular/router';
 @Component({
   selector: 'app-project-create-modal',
   imports: [
@@ -94,7 +96,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
           </div>
           </nz-spin>
           <div class="aside">
-            <app-create-summary-aside [draft]="draft()" [(isDrawerOpen)]="creating" [chunk]="output()" />
+            <app-create-summary-aside [draft]="draft()" [(isCreating)]="creating" [chunk]="output()" />
           </div>
         </div>
       
@@ -142,6 +144,8 @@ export class ProjectCreateModal implements OnInit {
   private modal = inject(NzModalService);
   private notify = inject(UiNotifierService);
   private taskStream = inject(TaskStreamService);
+  private projectState = inject(ProjectStateService);
+  private router = inject(Router);
 
   private sub: Subscription = new Subscription();
 
@@ -189,8 +193,29 @@ export class ProjectCreateModal implements OnInit {
       this.notify.error('请先完善项目信息');
       return;
     }
-    // 防止重复点击
     if (this.creating()) return;
+    if (d.overwriteIfExists) {
+      // 再次提示是否覆盖
+      const modalRef = this.modal.confirm({
+        nzTitle: '确认覆盖已存在的项目？',
+        nzContent: `请确认目标路径 ${d.rootPath}，创建时会覆盖原有数据，且不可恢复，确定要继续吗？`,
+        nzOkDanger: true,
+        nzOkText: '确认覆盖',
+        nzCancelText: '取消',
+        nzCentered: true,
+        nzOnOk: () => {
+          this.doCreate(d);
+          modalRef.close();
+        },
+      })
+    }
+    else {
+      this.doCreate(d);
+    }
+  }
+
+  private async doCreate(d: CreateProjectDraft) {
+    // 防止重复点击
     this.creating.set(true);
     // 确保 WS 连接 
     this.taskStream.ensureConnected();
@@ -202,8 +227,8 @@ export class ProjectCreateModal implements OnInit {
           ? this.api.bootstrapByGit(d)
           : this.api.bootstrapByCli(d);
       const { taskId } = await firstValueFrom(bootstrap$);
-      //  订阅这个 task
-      this.taskStream.subscribeTask(taskId, 300); // tail 随便，方便日志面板显示
+      //  订阅 task
+      this.taskStream.subscribeTask(taskId, 3000);
       // 监听输出
       this.sub.add(
         this.taskStream.output$(taskId).subscribe((m) => {
@@ -239,14 +264,9 @@ export class ProjectCreateModal implements OnInit {
       if (result.type === "bootstrapDone") {
         const payload = result.payload;
         this.notify.success("项目创建完成");
-        // 把 projectId/rootPath 回传给外面，让外层刷新列表/打开项目
-        this.modalRef.close({
-          ok: true,
-          projectId: payload.projectId,
-          rootPath: payload.rootPath,
-          taskId: payload.taskId,
-          runId: payload.runId,
-        });
+        this.projectState.getProjects(payload.projectId);  // 刷新项目列表 + 切换当前项目
+        this.modalRef.close({ ok: true, });
+        this.router.navigate(['/dashboard']);  // 跳转到首页
       } else {
         this.notify.error(`项目创建失败：${result.payload?.reason}`);
       }
@@ -289,7 +309,7 @@ export class ProjectCreateModal implements OnInit {
     if (s === 0) {
       // Step1 校验 + 路径重复检查（可选）
       const exists = await this.api.checkPathExists(this.draft().rootPath);
-      if (exists) {
+      if (exists && !this.draft().overwriteIfExists) {
         this.notify.error('该路径不可用或已存在重复项目');
         return;
       }

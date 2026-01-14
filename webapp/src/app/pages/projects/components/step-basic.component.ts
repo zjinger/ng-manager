@@ -62,7 +62,7 @@ import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
         <nz-form-control>
           <div class="switch-row">
             <span>若目标文件夹已存在则覆盖</span>
-            <nz-switch [(ngModel)]="draft.overwriteIfExists" name="overwrite"></nz-switch>
+            <nz-switch [(ngModel)]="draft.overwriteIfExists" (ngModelChange)="emit()" name="overwrite"></nz-switch>
           </div>
           <div class="switch-row">
             <span>无新手指引的脚手架项目</span>
@@ -122,7 +122,7 @@ export class StepBasicComponent implements OnInit {
     this.draft.rootPath = parent && name ? `${parent}/${name}`.replaceAll("\\", "/") : parent;
   }
 
-  private emit() {
+  emit() {
     this.draftChange.emit({ ...this.draft });
   }
 }

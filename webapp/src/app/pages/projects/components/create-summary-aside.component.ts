@@ -18,7 +18,7 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, NzCardModule, NzTagModule, NzTooltipModule, NzIconModule, NzButtonModule, TerminalViewComponent, NzDrawerModule],
   template: `
-  <nz-card nzTitle="摘要" nzSize="small" [nzExtra]="logActions">
+  <nz-card nzTitle="摘要" nzSize="small" [nzExtra]="isCreating() ? logActions : undefined">
     <div class="item"><span class="k">名称</span><span class="v">{{draft.name || '-'}}</span></div>
     <div class="item"><span class="k">路径</span><span class="v mono">{{draft.rootPath || '-'}}</span></div>
     <div class="item"><span class="k">包管理器</span><span class="v">{{draft.packageManager}}</span></div>
@@ -51,15 +51,15 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
     }
   </nz-card>
   <ng-template #logActions>
-    <button nz-button nzType="text" nzSize="small" (click)="isDrawerOpen.set(true)">
+    <button nz-button nzType="text" nzSize="small" (click)="isDrawerOpen = !isDrawerOpen">
       <nz-icon nzType="desktop" nzTheme="outline"></nz-icon>
       日志输出
     </button>
   </ng-template>
   
   <nz-drawer
-  [nzVisible]="isDrawerOpen()"
-  (nzOnClose)="isDrawerOpen.set(false)"
+  [nzVisible]="isDrawerOpen"
+  (nzOnClose)="isDrawerOpen = false"
   nzTitle="日志"
   [nzWidth]="720"
   nzPlacement="right"
@@ -85,17 +85,17 @@ export class CreateSummaryAsideComponent implements OnChanges {
   @Input({ required: true }) draft!: CreateProjectDraft;
   @Input() chunk: string = '';
   private clipboard = inject(Clipboard);
-  private cdr = inject(ChangeDetectorRef);
   @ViewChild(TerminalViewComponent) term?: TerminalViewComponent;
-  isDrawerOpen = model(false);
-
+  isDrawerOpen = false
+  isCreating = model(false);
   copyied = false;
-
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['chunk'] && changes['chunk'].currentValue && this.term) {
-      console.log('write chunk to terminal:', this.chunk);
       this.term.write(this.chunk);
+    }
+    if (changes['isCreating'] && changes['isCreating'].currentValue === true) {
+      this.isDrawerOpen = true;
     }
   }
   copy() {

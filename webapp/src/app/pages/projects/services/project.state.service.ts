@@ -70,7 +70,7 @@ export class ProjectStateService {
     });
   }
 
-  getProjects() {
+  getProjects(currentProjectId?: string) {
     this.projectService.list().subscribe((data: Project[]) => {
       this.projects.set(data);
       if (!data.length) {
@@ -78,14 +78,19 @@ export class ProjectStateService {
         return;
       }
 
-      const cachedId = this.ls.getNullable<string>(LS_KEYS.project.currentProjectId);
-      const cached = cachedId ? data.find(p => p.id === cachedId) : null;
-      if (cached) {
-        this.setCurrentProject(cached);
-        return;
+      if (currentProjectId) {
+        this.setCurrentProjectById(currentProjectId);
       }
-      if (!this.currentProjectId()) {
-        this.setCurrentProject(data[0]);
+      else {
+        const cachedId = this.ls.getNullable<string>(LS_KEYS.project.currentProjectId);
+        const cached = cachedId ? data.find(p => p.id === cachedId) : null;
+        if (cached) {
+          this.setCurrentProject(cached);
+          return;
+        }
+        if (!this.currentProjectId()) {
+          this.setCurrentProject(data[0]);
+        }
       }
     });
   }

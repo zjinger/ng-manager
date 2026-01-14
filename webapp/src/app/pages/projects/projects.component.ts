@@ -73,7 +73,7 @@ import { ProjectImportState } from './services/project-import.state.service';
 })
 export class ProjectsComponent {
   importState = inject(ProjectImportState);
-  selectedIndex = 1;
+  selectedIndex = 0;
   tabIndexChange(index: number) {
     if (index === 2) {
       this.importState.active.set(true);

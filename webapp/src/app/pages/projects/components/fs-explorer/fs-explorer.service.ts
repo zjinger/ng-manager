@@ -31,15 +31,30 @@ export class FsExplorerService {
   readonly isCreateFolderModalVisible = signal<boolean>(false);
   readonly newFolderName = signal<string>("");
 
-  // 新增 导入文件夹: 当前路径是否可导入
-  // readonly isCurPathCanImport = signal<boolean>(false);
-
   // breadcrumb
   readonly segments = computed<PathSeg[]>(() => {
     const p = this.currentPath() || this.path() || "";
     return this.buildSegments(p);
   });
 
+  // 当前是否处于根目录（用于禁用“上一级”）
+  readonly isRoot = computed(() => {
+    const p = (this.currentPath() || this.path() || "").trim();
+    if (!p) return true;
+
+    // UNC: \\server\share 视为根
+    if (/^\\\\[^\\]+\\[^\\]+$/.test(p.replaceAll("/", "\\"))) return true;
+
+    // Windows drive: D:\ 或 D:
+    const win = p.replaceAll("/", "\\");
+    if (/^[a-zA-Z]:\\?$/.test(win)) return true;
+
+    // Posix: /
+    const posix = p.replaceAll("\\", "/");
+    return posix === "/";
+  });
+
+  readonly canUp = computed(() => !this.reloading() && !this.isRoot());
 
   /* ---------------- actions ---------------- */
 
@@ -48,6 +63,13 @@ export class FsExplorerService {
     const p = (this.path() || "").trim();
     if (!p) return;
 
+    //  如果 path 与 currentPath 一样，并且 entries 已经有了，就不重复刷
+    const cur = (this.currentPath() || "").trim();
+    if (cur && this.normalizePath(cur) === this.normalizePath(p) && this.entries().length) {
+      this.isEditingPath.set(false);
+      return;
+    }
+
     this.reloading.set(true);
     this.isEditingPath.set(false);
 
@@ -55,14 +77,17 @@ export class FsExplorerService {
       next: (res) => {
         this.currentPath.set(res.path);
         this.entries.set(res.entries);
-        // path 规范化回写（保持 UI 输入同步）
         this.path.set(res.path);
+      },
+      error: () => {
+        this.reloading.set(false);
       },
       complete: () => {
         this.reloading.set(false);
       },
     });
   }
+
 
   toggleShowSystemFolders() {
     this.showSystemFolders.update((v) => !v);
@@ -80,16 +105,66 @@ export class FsExplorerService {
     this.load();
   }
 
-  /** 返回上一级 */
+  /** 返回父级目录，直到根目录停止 */
   up() {
-    const cur = this.currentPath();
-    if (!cur) return;
+    if (!this.canUp()) return;
 
-    const next = cur.replace(/[\\\/][^\\\/]+$/, "");
-    if (next && next !== cur) {
+    const curRaw = (this.currentPath() || this.path() || "").trim();
+    if (!curRaw) return;
+
+    const cur = this.normalizePath(curRaw);
+
+    // 判断 win/unc
+    const winCur = cur.replaceAll("/", "\\");
+    const isUNC = /^\\\\[^\\]+\\[^\\]+/.test(winCur);
+    const isWinDrive = /^[a-zA-Z]:\\/.test(winCur);
+    const isWin = isUNC || isWinDrive;
+    const sep = isWin ? "\\" : "/";
+
+    // UNC 根：\\server\share 不再上退
+    if (isUNC) {
+      const m = winCur.match(/^\\\\([^\\]+)\\([^\\]+)(?:\\(.*))?$/);
+      if (!m) return;
+      const root = `\\\\${m[1]}\\${m[2]}`;
+      if (winCur === root) return;
+
+      const idx = winCur.lastIndexOf("\\");
+      const next = idx <= root.length ? root : winCur.slice(0, idx);
+      if (this.normalizePath(next) === this.normalizePath(this.currentPath())) return;
+
       this.path.set(next);
       this.load();
+      return;
     }
+
+    // Windows drive：D:\foo\bar -> D:\foo -> D:\
+    if (isWinDrive) {
+      const idx = winCur.lastIndexOf("\\");
+      if (idx <= 2) {
+        const driveRoot = `${winCur.slice(0, 2)}\\`;
+        if (this.normalizePath(driveRoot) === this.normalizePath(this.currentPath())) return;
+        this.path.set(driveRoot);
+        this.load();
+        return;
+      }
+
+      const next = winCur.slice(0, idx);
+      if (this.normalizePath(next) === this.normalizePath(this.currentPath())) return;
+      this.path.set(next);
+      this.load();
+      return;
+    }
+
+    // Posix：/a/b -> /a -> /
+    const posixCur = cur.replaceAll("\\", "/");
+    if (posixCur === "/") return;
+
+    const idx = posixCur.lastIndexOf("/");
+    const next = idx <= 0 ? "/" : posixCur.slice(0, idx);
+
+    if (this.normalizePath(next) === this.normalizePath(this.currentPath())) return;
+    this.path.set(next);
+    this.load();
   }
 
   /** breadcrumb 跳转 */
@@ -105,6 +180,7 @@ export class FsExplorerService {
     this.isCreateFolderModalVisible.set(true);
   }
 
+  /** 取消创建 */
   cancelCreateFolder() {
     this.isCreateFolderModalVisible.set(false);
     this.newFolderName.set("");
@@ -175,5 +251,27 @@ export class FsExplorerService {
     }
 
     return segs;
+  }
+
+  private normalizePath(raw: string): string {
+    const p = (raw || "").trim();
+    if (!p) return "";
+
+    // 先判断 win/unc
+    const isUNC = /^\\\\[^\\]+\\[^\\]+/.test(p.replaceAll("/", "\\"));
+    const isWinDrive = /^[a-zA-Z]:([\\/]|$)/.test(p);
+    const isWin = isUNC || isWinDrive;
+
+    let norm = isWin ? p.replaceAll("/", "\\") : p.replaceAll("\\", "/");
+
+    // 去掉末尾分隔符，但保留根
+    if (isWinDrive) {
+      const drive = norm.slice(0, 2);
+      if (norm === drive || norm === `${drive}\\`) return `${drive}\\`;
+    }
+    if (!isWin && norm === "/") return "/";
+
+    norm = norm.replace(/[\\\/]+$/, "");
+    return norm;
   }
 }

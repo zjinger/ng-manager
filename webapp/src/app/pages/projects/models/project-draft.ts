@@ -24,13 +24,13 @@ export interface CreateProjectDraft {
     importDockerComposeTasks: boolean;
     generateCommonTasks: boolean;
 
-    featureTasks: boolean;
-    featureProcesses: boolean;
-    featureLogs: boolean;
-    featureTerminal: boolean;
+    // featureTasks: boolean;
+    // featureProcesses: boolean;
+    // featureLogs: boolean;
+    // featureTerminal: boolean;
 
     pinFavorite: boolean;
-    openAfterCreate: 'tasks' | 'home';
+    // openAfterCreate: 'tasks' | 'home';
     defaultTaskName?: string;
 
     // cli 相关
@@ -47,19 +47,19 @@ export function createEmptyDraft(): CreateProjectDraft {
         rootPath: '',
         packageManager: 'auto',
         overwriteIfExists: false,
-        skipOnboarding: false,
+        skipOnboarding: true,
         initGit: true,
         initialCommitMessage: '',
         importScriptsAsTasks: true,
         importMakefileTasks: false,
         importDockerComposeTasks: false,
         generateCommonTasks: true,
-        featureTasks: true,
-        featureProcesses: true,
-        featureLogs: true,
-        featureTerminal: false,
+        // featureTasks: true,
+        // featureProcesses: true,
+        // featureLogs: true,
+        // featureTerminal: false,
         pinFavorite: false,
-        openAfterCreate: 'tasks',
+        // openAfterCreate: 'tasks',
         defaultTaskName: '',
 
         cliFramework: "angular",

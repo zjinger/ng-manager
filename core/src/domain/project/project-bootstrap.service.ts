@@ -275,10 +275,11 @@ export class ProjectBootstrapService {
 
             // 不要传绝对路径的 --directory
             // 让它在 cwd=parentDir 下创建 ./<name>
-            // --defaults + --no-interactive + --style=less 避免交互式询问
+            // --defaults + --no-interactive + --style=less 避免交互式询问 
+            // --skip-git 避免重复初始化 git 仓库
             const command =
                 `npx -y @angular/cli new ${safeName} ` +
-                `--skip-git --defaults --no-interactive --style=less ${pmArg}`.trim();
+                `--defaults --no-interactive --skip-install --style=less ${pmArg} `.trim();
 
             return { command, cwd: opts.parentDir };
         }
