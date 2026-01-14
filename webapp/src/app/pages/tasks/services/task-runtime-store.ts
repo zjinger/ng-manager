@@ -59,7 +59,7 @@ export class TaskRuntimeStore {
       const curTotal = this.totalRunningCount();
       this.totalRunningCount.set(prevBusy ? Math.max(0, curTotal - 1) : curTotal + 1);
     }
-    console.log("[task runtime] set", taskId, rt, "->", next);
+    // console.log("[task runtime] set", taskId, rt, "->", next);
   }
 
   /** rx */

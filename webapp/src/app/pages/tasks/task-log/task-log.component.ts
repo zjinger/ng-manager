@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -12,6 +12,7 @@ import { LogLevel } from '@models/log.model';
 
 @Component({
   selector: 'app-task-log',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     NzTagModule,
@@ -68,8 +69,6 @@ export class TaskLogDrawerComponent implements OnInit {
 
   openLog() {
     this.isOpen.set(true);
-    // 也可以显式清零（effect 里也会清）
-    // this.taskLogStream.markRead();
   }
 
   closeLog() {

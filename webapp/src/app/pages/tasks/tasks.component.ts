@@ -84,6 +84,7 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
       }
       .content{
         flex: 1 1 auto;
+        width: 0;
         display: flex;
         flex-direction: column;
         padding: 16px;

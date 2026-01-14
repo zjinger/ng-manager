@@ -1,5 +1,6 @@
 <button
   class="project-quick-dropdown"
+  [class.collapsed]="isCollapsed()"
   nz-button
   nzType="primary"
   nzSize="large"
@@ -9,8 +10,10 @@
   [nzPlacement]="'bottomCenter'"
   [nzOverlayStyle]="{ width: '100%' }"
 >
-  {{ projectState.currentProject()?.name || '请选择项目' }}
+  <span>{{ curProjectName() }}</span>
+  @if(!isCollapsed()) {
   <nz-icon nzType="down" />
+  }
 </button>
 <nz-dropdown-menu #menu="nzDropdownMenu" style="width: 100%">
   <ul nz-menu>

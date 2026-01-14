@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, computed, Input, model, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
@@ -27,7 +27,14 @@ import { ProjectEditModalComponent } from "@pages/projects/project-list/project-
   styleUrl: './layout-project-nav.component.less',
 })
 export class LayoutProjectNavComponent implements OnInit {
+  isCollapsed = model(false);
   constructor(public projectState: ProjectStateService) { }
+
+  readonly curProjectName = computed(() => {
+    const name = this.projectState.currentProject()?.name || '请选择项目'
+    return this.isCollapsed() ? name?.charAt(0).toUpperCase() : name;
+  });
+
   ngOnInit() {
     this.projectState.getProjects();
   }

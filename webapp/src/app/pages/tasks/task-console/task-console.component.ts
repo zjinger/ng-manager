@@ -1,15 +1,16 @@
-import { Component, Input, OnDestroy, ViewChild } from "@angular/core";
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
+import { Component, DestroyRef, inject, Input, OnDestroy, ViewChild } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
+import { UiNotifierService } from "@app/core";
 import { TaskRuntimeStatus } from "@models/task.model";
 import { TerminalViewComponent } from "@shared/index";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzSpaceModule } from "ng-zorro-antd/space";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
-import { debounceTime, Subject, Subscription } from "rxjs";
+import { debounceTime, distinctUntilChanged, Subject, Subscription } from "rxjs";
 import { TaskStreamService } from "../services/task-stream.service";
-import { ClipboardModule, Clipboard } from '@angular/cdk/clipboard';
-import { UiNotifierService } from "@app/core";
 @Component({
   selector: "app-task-console",
   standalone: true,
@@ -27,7 +28,7 @@ import { UiNotifierService } from "@app/core";
 })
 export class TaskConsoleComponent implements OnDestroy {
   private _taskId = "";
-
+  private destroyRef = inject(DestroyRef);
   @Input()
   set taskId(id: string) {
     const next = (id ?? "").trim();
@@ -58,16 +59,18 @@ export class TaskConsoleComponent implements OnDestroy {
 
   private sub = new Subscription();
   private resizeSub = new Subscription();
-  private resizeSubject: Subject<{ cols: number; rows: number }> = new Subject();
-
+  /** WS resize：只在这一层做“协议级收敛” */
+  private resize$ = new Subject<{ cols: number; rows: number }>();
   constructor(
     private stream: TaskStreamService,
     private clipboard: Clipboard,
     private notify: UiNotifierService
   ) {
     this.resizeSub.add(
-      this.resizeSubject
-        .pipe(debounceTime(200))
+      this.resize$
+        .pipe(debounceTime(350),
+          distinctUntilChanged((a, b) => a.cols === b.cols && a.rows === b.rows),
+          takeUntilDestroyed(this.destroyRef))
         .subscribe((size) => {
           if (this._taskId) {
             this.stream.resize(this._taskId, size.cols, size.rows);
@@ -75,7 +78,6 @@ export class TaskConsoleComponent implements OnDestroy {
         })
     );
   }
-
   private bind(taskId: string) {
     // 订阅 run 输出
     this.stream.subscribeTask(taskId, this.tail);
@@ -101,6 +103,7 @@ export class TaskConsoleComponent implements OnDestroy {
   ngOnDestroy() {
     if (this._taskId) this.stream.unsubscribeTask(this._taskId);
     this.sub.unsubscribe();
+    this.resizeSub.unsubscribe();
   }
 
   toggleFollow() {
@@ -127,13 +130,8 @@ export class TaskConsoleComponent implements OnDestroy {
     }
   }
 
-  fit() {
-    this.term?.fit();
-  }
-
-
   onTermResized(size: { cols: number; rows: number }) {
     // 使用rxjs 节流发送到后端
-    this.resizeSubject.next(size);
+    this.resize$.next(size);
   }
 }

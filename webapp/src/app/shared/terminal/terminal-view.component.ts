@@ -13,6 +13,7 @@ import {
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Observable, Subject, takeUntil, throttleTime } from "rxjs";
 
 type TerminalTheme = {
   background?: string;
@@ -24,7 +25,7 @@ type TerminalTheme = {
 @Component({
   selector: "app-terminal-view",
   standalone: true,
-  template: `<div class="term-wrap" #host></div>`,
+  template: `<div class="term-wrap" #terminal></div>`,
   styles: [
     `
       :host {
@@ -32,13 +33,13 @@ type TerminalTheme = {
         height: 100%;
         width: 100%;
         min-height: 0;
+        overflow: hidden;
       }
       .term-wrap {
         height: 100%;
         width: 100%;
         overflow: hidden;
       }
-      /* 让 xterm 内部也吃满高度（Angular scoped 样式需要 :global） */
       .term-wrap :global(.xterm),
       .term-wrap :global(.xterm-viewport),
       .term-wrap :global(.xterm-screen) {
@@ -48,7 +49,7 @@ type TerminalTheme = {
   ],
 })
 export class TerminalViewComponent implements AfterViewInit, OnDestroy {
-  @ViewChild("host", { static: true }) host!: ElementRef<HTMLDivElement>;
+  @ViewChild("terminal", { static: true }) terminal!: ElementRef<HTMLDivElement>;
   @Output() resized = new EventEmitter<{ cols: number; rows: number }>();
 
   /** 是否自动滚到底部 */
@@ -64,24 +65,16 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
   /** 可选：主题 */
   @Input() theme?: TerminalTheme;
 
+  /**
+   * ResizeObserver 触发后，fit 的“节流间隔”
+   * - 拖拽过程中最多每 N ms fit 一次
+   * - 停手后会自动补一次最终 fit
+   */
+  @Input() fitThrottleMs = 500;
+
   private term?: Terminal;
   private fitAddon?: FitAddon;
-  private ro?: ResizeObserver;
-
-  private rafId = 0;
-  private fitTimer: any;
-
-  private lastCR?: { cols: number; rows: number };
-
-  // 用真实宽高做去抖；避免 RO 抖动导致反复 fit
-  private lastSize?: { w: number; h: number };
-
-  // fit 期间忽略 RO（切断回环）
-  private fitting = false;
-
-  // 拖拽停止后多久执行 fit
-  private readonly FIT_DEBOUNCE_MS = 180;
-
+  private destroy$ = new Subject<void>()
   constructor(private zone: NgZone) { }
 
   ngAfterViewInit(): void {
@@ -99,53 +92,38 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
       const fit = new FitAddon();
       term.loadAddon(fit);
       term.loadAddon(new WebLinksAddon());
-
-      term.open(this.host.nativeElement);
+      const ele = this.terminal.nativeElement;
+      term.open(ele);
 
       this.term = term;
       this.fitAddon = fit;
 
-      // 初次 fit：等布局稳定一帧
-      this.scheduleFit("init");
-
-      // ResizeObserver：只在“尺寸真的变化”时触发，并且拖拽停下后才 fit
-      this.ro = new ResizeObserver((entries) => {
-        if (this.fitting) return;
-
-        const rect = entries[0]?.contentRect;
-        if (!rect) return;
-
-        // 用像素取整压掉 0.x 抖动
-        const w = Math.round(rect.width);
-        const h = Math.round(rect.height);
-
-        const prev = this.lastSize;
-        if (prev && prev.w === w && prev.h === h) return;
-
-        this.lastSize = { w, h };
-        this.scheduleFit("ro");
-      });
-
-      this.ro.observe(this.host.nativeElement);
+      this.term.onResize(({ cols, rows }) => {
+        // console.log(`terminal resized: ${cols} cols, ${rows} rows`);
+        this.resized.emit({ cols, rows });
+      })
+      this.fit();
+      this.resizeObservable(ele)
+        .pipe(
+          takeUntil(this.destroy$),
+          throttleTime(this.fitThrottleMs),
+        )
+        .subscribe(() => {
+          setTimeout(() => {
+            this.fit()
+          }, 0);
+        });
     });
   }
 
   ngOnDestroy(): void {
-    try {
-      this.ro?.disconnect();
-    } catch { }
-    try {
-      cancelAnimationFrame(this.rafId);
-    } catch { }
-    try {
-      clearTimeout(this.fitTimer);
-    } catch { }
-    try {
-      this.term?.dispose();
-    } catch { }
+    this.destroy$.next()
+    this.destroy$.complete()
+    this.term?.dispose();
   }
 
-  /** 写入 chunk（支持 ANSI 高亮） */
+  /* ---------------- public api ---------------- */
+
   write(chunk: string) {
     const term = this.term;
     if (!term) return;
@@ -165,9 +143,7 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
   }
 
   reset() {
-    const term = this.term;
-    if (!term) return;
-    term.write("\x1bc"); // RIS reset
+    this.term?.write("\x1bc"); // RIS reset
   }
 
   copyAll(): string {
@@ -185,46 +161,27 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
     this.term?.scrollToBottom();
   }
 
+  /** 外部手动触发 fit（不走 throttle，直接走一次） */
   fit() {
-    this.scheduleFit("manual");
+    this.fitAddon?.fit();
   }
 
-  /**
-   * - debounce：拖拽过程中不断重置定时器，停下后只 fit 一次
-   * - 避免拖拽过程中反复 fit 导致 cols floor 漂移（“滚动条变短”）
-   */
-  private scheduleFit(_reason: string) {
-    clearTimeout(this.fitTimer);
-    this.fitTimer = setTimeout(() => {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = requestAnimationFrame(() => this.safeFitAndEmit());
-    }, this.FIT_DEBOUNCE_MS);
+  getColsRows(): { cols: number; rows: number } | null {
+    const t = this.term;
+    if (!t) return null;
+    return { cols: t.cols, rows: t.rows };
   }
 
-  private safeFitAndEmit() {
-    const term = this.term;
-    const fit = this.fitAddon;
-    if (!term || !fit) return;
-
-    this.fitting = true;
-    try {
-      fit.fit();
-    } catch {
-      // ignore
-      return;
-    } finally {
-      // 下一拍放开，避免同步回环
-      queueMicrotask(() => (this.fitting = false));
-    }
-    const cols = term.cols;
-    const rows = term.rows;
-
-    if (!Number.isFinite(cols) || !Number.isFinite(rows) || cols <= 0 || rows <= 0) return;
-
-    const prev = this.lastCR;
-    if (prev && prev.cols === cols && prev.rows === rows) return;
-
-    this.lastCR = { cols, rows };
-    this.zone.run(() => this.resized.emit({ cols, rows }));
+  private resizeObservable(elem: HTMLElement): Observable<ResizeObserverEntry[]> {
+    return new Observable(subscriber => {
+      const ro = new ResizeObserver((entries: ResizeObserverEntry[]) => {
+        subscriber.next(entries);
+      });
+      ro.observe(elem);
+      return () => {
+        ro.unobserve(elem);
+      }
+    });
   }
+
 }
