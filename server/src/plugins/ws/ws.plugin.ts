@@ -30,6 +30,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         () => clients.values()
     );
     router.register(taskHandler);
+    
     // syslog
     const syslogHandler = createSyslogTopicHandler(
         { getSyslogTail: (tail) => fastify.core.task.getSyslogTail(tail) },

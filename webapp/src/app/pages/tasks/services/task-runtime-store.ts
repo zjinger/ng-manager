@@ -15,7 +15,7 @@ export class TaskRuntimeStore {
   setTaskStatus(taskId: string, st: TaskRuntimeStatus) {
     this.ensureSubject(taskId).next(st);
     this.ensureSignal(taskId).set(st);
-    console.log(`[task runtime store] sigByTask:`, this.sigByTask);
+    // console.log(`[task runtime store] sigByTask:`, this.sigByTask);
   }
 
   /** rx */

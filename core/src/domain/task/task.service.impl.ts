@@ -60,6 +60,7 @@ export class TaskServiceImpl implements TaskService {
             ts: Date.now(),
             level: "info",
             source: "system",
+            scope: "task",
             refId: runId,
             text: `[task] run: ${spec.name}`,
         });
@@ -90,6 +91,7 @@ export class TaskServiceImpl implements TaskService {
                 ts: Date.now(),
                 level: "error",
                 source: "system",
+                scope: "task",
                 refId: runId,
                 text: `[task] spawn failed: ${e?.message ?? String(e)}`,
                 data: { taskId, runId },
@@ -123,19 +125,19 @@ export class TaskServiceImpl implements TaskService {
             p.onData((data: string) => {
                 // data 本身是 string（包含 \r\n 和 ANSI）
                 const text = typeof data === "string" ? data : String(data ?? "");
-                this.taskLog.append({ ts: Date.now(), level: "info", source: "task", refId: runId, text });
+                this.taskLog.append({ ts: Date.now(), level: "info", source: "task", scope: "task", refId: runId, text });
                 this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stdout" });
             });
         } else {
             // 兼容 pipe driver
             p.onStdout?.((chunk: Buffer) => {
                 const text = bufToText(chunk);
-                this.taskLog.append({ ts: Date.now(), level: "info", source: "task", refId: runId, text });
+                this.taskLog.append({ ts: Date.now(), level: "info", source: "task", scope: "task", refId: runId, text });
                 this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stdout" });
             });
             p.onStderr?.((chunk: Buffer) => {
                 const text = bufToText(chunk);
-                this.taskLog.append({ ts: Date.now(), level: "warn", source: "task", refId: runId, text });
+                this.taskLog.append({ ts: Date.now(), level: "warn", source: "task", scope: 'task', refId: runId, text });
                 this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stderr" });
             });
         }
@@ -163,18 +165,23 @@ export class TaskServiceImpl implements TaskService {
             const active2 = this.activeRunByTaskId.get(taskId);
             if (active2 === runId) this.activeRunByTaskId.delete(taskId);
             // syslog
-            this.sysLog.append({
-                ts: Date.now(),
-                level: cur.status === "failed" ? "error" : "info",
-                source: "system",
-                refId: runId,
-                text: `[task] exited: status=${cur.status} code=${code} signal=${signal}`,
-            });
+            // this.sysLog.append({
+            //     ts: Date.now(),
+            //     level: cur.status === "failed" ? "error" : "info",
+            //     source: "system",
+            //     scope: "task",
+            //     refId: runId,
+            //     text: `[task] exited: status=${cur.status} code=${code} signal=${signal}`,
+            // });
 
-            this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
-
+            // this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
+            // task output event
+            const level = cur.status === "failed" ? "warn" : "info";
+            const text = `[task] exited: status=${cur.status} code=${code} signal=${signal}`;
+            this.taskLog.append({ ts: Date.now(), level, source: "task", scope: 'task', refId: runId, text });
+            const stream = cur.status === "failed" ? "stderr" : "stdout";
+            this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream });
             this.events.emit(Events.TASK_EXITED, { taskId, runId, exitCode: code, signal, stoppedAt: cur.stoppedAt! });
-
             if (cur.status === "failed") {
                 this.events.emit(Events.TASK_FAILED, { taskId, runId, error: `exit code=${code}` });
             }
@@ -198,6 +205,7 @@ export class TaskServiceImpl implements TaskService {
             ts: Date.now(),
             level: "info",
             source: "system",
+            scope: "task",
             refId: runId,
             text: `[task] stop requested`,
         });
@@ -246,6 +254,7 @@ export class TaskServiceImpl implements TaskService {
             level: "info",
             source: "system",
             refId: projectId,
+            scope: "project",
             text: `[task] refreshed ${nextSpecs.length} specs from project scripts`,
         });
         this.events.emit(Events.TASK_SPECS_REFRESHED, { projectId, count: nextSpecs.length });

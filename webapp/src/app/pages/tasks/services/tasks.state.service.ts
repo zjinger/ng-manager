@@ -87,7 +87,7 @@ export class TaskStateService {
     effect((onCleanup) => {
       const taskId = this.selectedTaskId();
       if (!taskId) return;
-      console.log("[task state effect] subscribe task stream", taskId);
+      // console.log("[task state effect] subscribe task stream", taskId);
       this.stream.ensureConnected();
       this.stream.subscribeTask(taskId, 200);
       const sub = this.runtimeStore.status$(taskId).subscribe();

@@ -2,34 +2,48 @@ import type { WsClientMsg, WsServerMsg } from "@core/protocol";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 import { LogLine } from "@core";
-const KEY = "syslog:all";
+const KEY_ALL = "syslog:all";
 export type SyslogWsDeps = {
     getSyslogTail: (tail: number) => Promise<LogLine[]>;
 };
+
 export function createSyslogTopicHandler(
     deps: SyslogWsDeps,
     getAllClients: () => Iterable<WsContext>
 ): TopicHandler & { push(entry: LogLine): void } {
     return {
         topic: "syslog",
+        // async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "syslog" }>) {
+        //     const tail = Number(msg?.tail ?? 0);
+        //     ctx.addSub("syslog", KEY_ALL);
+
+        //     if (tail > 0) {
+        //         const entries = await deps.getSyslogTail(tail);
+        //         for (const entry of entries ?? []) {
+        //             const m: WsServerMsg = { op: "syslog.append", entry };
+        //             ctx.send(m);
+        //         }
+        //     }
+        // },
         async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "syslog" }>) {
-            const tail = Number(msg?.tail ?? 0);
-            ctx.addSub("syslog", KEY);
+            const tail = Math.max(0, Number(msg?.tail ?? 0));
+            ctx.addSub("syslog", KEY_ALL);
 
             if (tail > 0) {
                 const entries = await deps.getSyslogTail(tail);
-                for (const entry of entries ?? []) {
-                    const m: WsServerMsg = { op: "syslog.append", entry };
-                    ctx.send(m);
-                }
+                // 用一个 batch，前端更好处理
+                const m: WsServerMsg = { op: "syslog.tail", entries: entries ?? [] };
+                ctx.send(m);
             }
         },
         unsub(ctx) {
-            ctx.delSub("syslog", KEY);
+            ctx.delSub("syslog", KEY_ALL);
         },
-        push(entry: any) {
+        push(entry: LogLine) {
             const m: WsServerMsg = { op: "syslog.append", entry };
-            for (const c of getAllClients()) if (c.hasSub("syslog", KEY)) c.send(m);
+            for (const c of getAllClients()) {
+                if (c.hasSub("syslog", KEY_ALL)) c.send(m);
+            }
         },
     };
 }

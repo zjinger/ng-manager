@@ -116,6 +116,12 @@ export class TaskStreamService {
         this.ensureOutput(taskId).next({ taskId, runId, stream: "stderr", chunk: errText + "\n", ts: Date.now() });
       }
     }
+    
+    if (op === 'syslog.append') {
+      const entry = msg.entry;
+      console.log('[syslog]', entry);
+
+    }
   }
 
   private ensureOutput(taskId: string) {

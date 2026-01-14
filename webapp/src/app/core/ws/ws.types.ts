@@ -1,3 +1,4 @@
+import { LogLine } from "@models/log.model";
 import { TaskEventMsg } from "./ws.task.types";
 
 export type WsTopic = "task" | "syslog";
@@ -9,7 +10,8 @@ export type WsServerMsg =
     | { op: "pong"; ts: number }
     | { op: "task.output"; taskId: string; runId: string; stream: "stdout" | "stderr"; chunk: string; ts: number }
     | TaskEventMsg
-    | { op: "syslog.append"; entry: any }
+    | { op: "syslog.append"; entry: LogLine }
+    | { op: "syslog.tail"; entries: LogLine[] }
     | { op: "error"; code: string; message: string; details?: any; ts: number; fatal?: boolean };
 
 

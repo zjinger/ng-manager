@@ -1,6 +1,7 @@
 // 未来扩展：| "git" | "proxy" | "terminal" | "ai"
 
 import { ErrorCode } from "../common/errors";
+import { LogLine } from "../infra/log/types";
 import { TaskEventMsg } from "./ws.task.types";
 
 export type WsTopic = "task" | "syslog";
@@ -19,7 +20,8 @@ export type WsServerMsg =
     | { op: "pong"; ts: number }
     | { op: "task.output"; taskId: string; runId: string; stream: "stdout" | "stderr"; chunk: string; ts: number }
     | TaskEventMsg
-    | { op: "syslog.append"; entry: any }
+    | { op: "syslog.append"; entry: LogLine }
+    | { op: "syslog.tail"; entries: LogLine[] }
     | { op: "error"; code: ErrorCode; message: string; details?: any; ts: number; fatal?: boolean };
 
 
