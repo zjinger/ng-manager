@@ -11,6 +11,8 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { ProjectItemPopoverComponent } from "./project-item-popover.component";
 import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 import { TaskRuntimeStore } from '@pages/tasks/services/task-runtime-store';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { UiNotifierService } from '@app/core';
 @Component({
   selector: 'app-project-item',
   imports: [CommonModule, FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzPopoverModule, NzBadgeModule, NzSpaceModule, ProjectItemPopoverComponent, NzTooltipDirective],
@@ -55,7 +57,7 @@ import { TaskRuntimeStore } from '@pages/tasks/services/task-runtime-store';
             <button nz-button nzType="primary" (click)="$event.stopPropagation();editProject.emit()" nz-tooltip="重命名">
               <nz-icon nzType="edit" nzTheme="outline"/>
             </button>
-            <button nz-button nzType="primary" (click)="$event.stopPropagation();deleteProject.emit()" nz-tooltip="删除">
+            <button nz-button nzType="primary" (click)="$event.stopPropagation();del()" nz-tooltip="删除">
               <nz-icon nzType="delete" nzTheme="outline"/>
             </button>
           </nz-space>
@@ -117,6 +119,7 @@ import { TaskRuntimeStore } from '@pages/tasks/services/task-runtime-store';
 })
 export class ProjectItem {
   private taskRuntime = inject(TaskRuntimeStore);
+  private notify = inject(UiNotifierService);
 
   @Input() project: Project | null = null;
   @Input() open = false;
@@ -144,4 +147,12 @@ export class ProjectItem {
     const n = this.tasksRunningCount();
     return n > 0 ? `${n} 个任务正在运行` : '任务';
   });
+
+  del() {
+    if (this.hasTasksRunning()) {
+      this.notify.warn('当前项目有任务正在运行，请先停止这些任务后再删除项目。');
+      return;
+    }
+    this.deleteProject.emit();
+  }
 }

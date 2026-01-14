@@ -33,9 +33,9 @@ export class ErrorDispatcher {
                 this.ui.banner?.(finalMessage ?? "系统异常", policy.action);
                 return;
 
-            case "modal":
-                this.ui.modal?.(finalMessage ?? "操作异常", policy.action);
-                return;
+            // case "modal":
+            //     this.ui.modal?.(finalMessage ?? "操作异常", policy.action);
+            //     return;
 
             case "dev-only":
                 if (!APP_CONFIG.production) {

@@ -1,10 +1,10 @@
 import { inject, Injectable } from "@angular/core";
 import { NzMessageService } from "ng-zorro-antd/message";
-import { NzModalService } from "ng-zorro-antd/modal";
+// import { NzModalService } from "ng-zorro-antd/modal";
 
 @Injectable({ providedIn: "root" })
 export class UiNotifierService {
-    private modalService: NzModalService = inject(NzModalService);
+    // private modalService: NzModalService = inject(NzModalService);
     private msg: NzMessageService = inject(NzMessageService);
     error(text: string, meta?: any) {
         this.msg.error(text);
@@ -22,21 +22,27 @@ export class UiNotifierService {
         this.msg.success(text);
     }
 
-    modal(text: string, action?: any) {
-        this.modalService.error({
-            nzTitle: '错误',
-            nzContent: text,
-            nzOnOk: () => {
-                if (action?.reload) {
-                    window.location.reload();
-                } else if (action?.redirect) {
-                    window.location.href = action.redirect;
-                }
-            }
-        });
-    }
+    // modal(text: string, action?: any) {
+    //     this.modalService.error({
+    //         nzTitle: '错误',
+    //         nzContent: text,
+    //         nzOnOk: () => {
+    //             if (action?.reload) {
+    //                 window.location.reload();
+    //             } else if (action?.redirect) {
+    //                 window.location.href = action.redirect;
+    //             }
+    //         }
+    //     });
+    // }
 
     banner(text: string, action?: any) {
+
+    }
+
+
+    // 系统提示
+    totast(text: string, action?: any) {
 
     }
 }
