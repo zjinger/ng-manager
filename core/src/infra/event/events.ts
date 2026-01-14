@@ -1,3 +1,6 @@
+import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "../../protocol";
+import { LogLine } from "../log/types";
+
 export const Events = {
     // project
     PROJECT_ADDED: "project.added",
@@ -29,16 +32,16 @@ export type CoreEventMap = {
     [Events.PROJECT_UPDATED]: { projectId: string };
     [Events.PROJECT_REMOVED]: { projectId: string };
 
-    [Events.TASK_STARTED]: { taskId: string; runId: string; pid: number; startedAt: number };
-    [Events.TASK_OUTPUT]: { taskId: string; runId: string; text: string; stream: "stdout" | "stderr" };
-    [Events.TASK_STOP_REQUESTED]: { taskId: string; runId: string };
-    [Events.TASK_EXITED]: { taskId: string; runId: string; stoppedAt: number; exitCode: number | null; signal: string | null };
-    [Events.TASK_FAILED]: { taskId: string; runId: string; error: string | null };
+    [Events.TASK_STARTED]: TaskStartedPayload;
+    [Events.TASK_OUTPUT]: TaskOutputPayload;  //{ taskId: string; runId: string; text: string; stream: "stdout" | "stderr" };
+    [Events.TASK_STOP_REQUESTED]: TaskStopRequestedPayload;// { taskId: string; runId: string };
+    [Events.TASK_EXITED]: TaskExitedPayload,  //{ taskId: string; runId: string; stoppedAt: number; exitCode: number | null; signal: string | null };
+    [Events.TASK_FAILED]: TaskFailedPayload,  //{ taskId: string; runId: string; error: string | null };
 
     [Events.TASK_SPECS_REFRESHED]: { projectId: string; count: number };
 
-    [Events.SYSLOG_APPENDED]: { entry: import("../log/types").LogLine };
+    [Events.SYSLOG_APPENDED]: { entry: LogLine };
 
-    [Events.PROJECT_BOOTSTRAP_DONE]: { taskId: string; runId: string; projectId: string; rootPath: string };
-    [Events.PROJECT_BOOTSTRAP_FAILED]: { taskId: string; runId: string; rootPath: string; reason: string };
+    [Events.PROJECT_BOOTSTRAP_DONE]: TaskBootstrapDonePayload;// { taskId: string; runId: string; projectId: string; rootPath: string };
+    [Events.PROJECT_BOOTSTRAP_FAILED]: TaskBootstrapFailedPayload;// { taskId: string; runId: string; rootPath: string; reason: string };
 };

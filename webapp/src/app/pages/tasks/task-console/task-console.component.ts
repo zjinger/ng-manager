@@ -91,7 +91,7 @@ export class TaskConsoleComponent implements OnDestroy {
         // 这里不强行染色，尊重原始 ANSI（如果有）
         // 仅在无 ANSI 且 stderr 时加一个轻微红色，可以后续再做
         this.term.follow = this.follow;
-        this.term.write(m.chunk);
+        this.term.write(m.payload.text);
       })
     );
     // 状态

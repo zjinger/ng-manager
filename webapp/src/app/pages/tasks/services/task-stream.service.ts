@@ -1,7 +1,7 @@
 import { Injectable } from "@angular/core";
 import { WsClientService } from "@app/core/ws/ws-client.service";
-import { type WsClientMsg, type WsServerMsg, type WsState, type TaskEventMsg, type TaskEventType, TaskEventPayloadMap, TaskSnapshotPayload, TaskStartedPayload, TaskExitedPayload } from "@core/ws";
-import type { TaskOutputMsg, TaskRuntimeStatus } from "@models/task.model";
+import type { WsClientMsg, WsServerMsg, WsState, TaskEventMsg, TaskEventType, TaskEventPayloadMap, TaskSnapshotPayload, TaskStartedPayload, TaskExitedPayload, TaskOutputMsg, TaskOutputPayload } from "@core/ws";
+import type { TaskRuntimeStatus } from "@models/task.model";
 import { Subject } from "rxjs";
 import { TaskRuntimeStore } from "./task-runtime-store";
 
@@ -81,24 +81,22 @@ export class TaskStreamService {
 
   private onMessage(msg: WsServerMsg) {
     const op = msg?.op;
-
     if (op === "task.output") {
-      const taskId = String(msg.taskId ?? "").trim();
+      const payload = msg.payload;
+      const taskId = String(payload.taskId ?? "").trim();
       if (!taskId) return;
-
-      const chunk = typeof msg.chunk === "string" ? msg.chunk : String(msg.chunk ?? "");
-      const stream = msg.stream === "stderr" ? "stderr" : "stdout";
-      const ts = typeof msg.ts === "number" ? msg.ts : Date.now();
-
-      this.ensureOutput(taskId).next({ taskId, runId: msg.runId, stream, chunk, ts });
+      this.ensureOutput(taskId).next(msg);
       return;
     }
 
     if (op === "task.event") {
-      const { taskId, runId, type, payload } = msg;
-      const ts = typeof (msg as any).ts === "number" ? (msg as any).ts : Date.now();
+      const payload = msg.payload;
+      const type = msg.type;
+      const { taskId, runId } = payload;
+      // const { taskId, runId, type, payload } = msg;
+      // const ts = typeof (msg as any).ts === "number" ? (msg as any).ts : Date.now();
       // 事件先发出去（StateService 用它维护 taskId -> runId）
-      this.event$.next({ taskId, runId, type, payload, ts } as TaskEventMsg);
+      this.event$.next(msg);
       // 再落 store
       const next = this.mapEventToStatus(type, payload);
       console.log("[task stream] event", next);
@@ -110,17 +108,17 @@ export class TaskStreamService {
           this.outputByTaskId.delete(taskId);
         }, 5 * 60 * 1000);
       }
-
       if (type === "failed") {
-        const errText = `[failed] ${payload?.error ?? ""}`.trim();
-        this.ensureOutput(taskId).next({ taskId, runId, stream: "stderr", chunk: errText + "\n", ts: Date.now() });
+        const failePayload = payload as TaskEventPayloadMap["failed"];
+        const errText = `[failed] ${failePayload?.error ?? ""}`.trim();
+        const outputPayload: TaskOutputPayload = {
+          runId,
+          taskId,
+          stream: "stderr",
+          text: errText + "\n",
+        }
+        this.ensureOutput(taskId).next({ op: "task.output", payload: outputPayload, ts: msg.ts });
       }
-    }
-    
-    if (op === 'syslog.append') {
-      const entry = msg.entry;
-      console.log('[syslog]', entry);
-
     }
   }
 

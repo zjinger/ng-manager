@@ -1,15 +1,20 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
-import { TaskRuntimeStatus } from '@models/task.model';
+import { TaskRuntimeStatus, TaskStatus } from '@models/task.model';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class TaskRuntimeStore {
+  /* ---------------- taskId -> status ---------------- */
   // taskId -> subject（给已有 rx 订阅用）
   private statusByTask = new Map<string, BehaviorSubject<TaskRuntimeStatus>>();
   // taskId -> signal（给 signal/computed 用）
   private sigByTask = new Map<string, WritableSignal<TaskRuntimeStatus>>();
+
+  /* ---------------- projectId -> runningCount ---------------- */
+  private runningCountByProject = new Map<string, WritableSignal<number>>();
+
 
   /** 给外部落地状态（WS event -> store） */
   setTaskStatus(taskId: string, st: TaskRuntimeStatus) {
@@ -31,6 +36,10 @@ export class TaskRuntimeStore {
 
   private snapshot(taskId: string): TaskRuntimeStatus {
     return this.ensureSignal(taskId)();
+  }
+
+  private isRunning(st: TaskStatus | undefined): boolean {
+    return st === 'running';
   }
 
   private ensureSubject(taskId: string) {

@@ -3,11 +3,12 @@ import { genId } from "../../common/id";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { Events, type CoreEventMap } from "../../infra/event/events";
 import type { ILogStore } from "../../infra/log/log.store";
-import { ProcessService, ProcHandle } from "../process";
+import { ProcessService, ProcHandle, SpawnedProcess } from "../process";
 import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
 import type { TaskRuntime, TaskDefinition, TaskRow } from "./task.types";
 import type { TaskService } from "./task.service";
 import { ProjectService } from "../project";
+import { TaskOutputPayload } from "../../protocol";
 
 function bufToText(b: Buffer) {
     // 统一转 utf8，后续需要 gbk，可在这里扩展
@@ -65,7 +66,7 @@ export class TaskServiceImpl implements TaskService {
             text: `[task] run: ${spec.name}`,
         });
         this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
-        let p: any;
+        let p: SpawnedProcess;
         try {
             // node-pty driver：这里的 command 仍然是整段字符串
             // 先给默认 cols/rows，后续前端会 task.resize(taskId, cols, rows)
@@ -107,38 +108,43 @@ export class TaskServiceImpl implements TaskService {
         // 记录 pid + proc handle
         rt.pid = p.pid;
         this.runtimes.set(runId, rt);
+        const resizeFn = typeof p.resize === "function" ? p.resize : undefined;
+        const interruptFn = typeof p.interrupt === "function" ? p.interrupt : undefined;
         this.procs.set(runId, {
             pid: p.pid,
-            interrupt: typeof p.interrupt === "function" ? () => p.interrupt() : undefined,
+            interrupt: interruptFn ? () => interruptFn() : undefined,
             kill: (sig?: NodeJS.Signals) => {
                 try {
                     p.kill(sig);
                 } catch { }
             },
-            resize: typeof p.resize === "function" ? (c, r) => p.resize(c, r) : undefined,
+            resize: resizeFn ? (c, r) => resizeFn(c, r) : undefined,
         });
         // console.log(`[task] started: taskId=${taskId} runId=${runId} pid=${p.pid}`);
-        this.events.emit(Events.TASK_STARTED, { taskId, runId, pid: p.pid, startedAt: rt.startedAt! });
+        this.events.emit(Events.TASK_STARTED, { taskId, runId, pid: p.pid, startedAt: rt.startedAt!, projectId: spec.projectId });
 
         // 输出：优先 PTY 的 onData（如果 driver 提供）
         if (typeof p.onData === "function") {
             p.onData((data: string) => {
                 // data 本身是 string（包含 \r\n 和 ANSI）
                 const text = typeof data === "string" ? data : String(data ?? "");
+                const outputPayload: TaskOutputPayload = { runId, taskId, stream: "stdout", text, }
                 this.taskLog.append({ ts: Date.now(), level: "info", source: "task", scope: "task", refId: runId, text });
-                this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stdout" });
+                this.events.emit(Events.TASK_OUTPUT, outputPayload);
             });
         } else {
             // 兼容 pipe driver
             p.onStdout?.((chunk: Buffer) => {
                 const text = bufToText(chunk);
+                const outputPayload: TaskOutputPayload = { runId, taskId, stream: "stdout", text, }
                 this.taskLog.append({ ts: Date.now(), level: "info", source: "task", scope: "task", refId: runId, text });
-                this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stdout" });
+                this.events.emit(Events.TASK_OUTPUT, outputPayload);
             });
             p.onStderr?.((chunk: Buffer) => {
                 const text = bufToText(chunk);
+                const outputPayload: TaskOutputPayload = { runId, taskId, stream: "stderr", text, }
                 this.taskLog.append({ ts: Date.now(), level: "warn", source: "task", scope: 'task', refId: runId, text });
-                this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream: "stderr" });
+                this.events.emit(Events.TASK_OUTPUT, outputPayload);
             });
         }
 

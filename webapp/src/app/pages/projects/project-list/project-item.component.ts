@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Project } from '@models/project.model';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
@@ -9,9 +9,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { ProjectItemPopoverComponent } from "./project-item-popover.component";
+import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
+import { TaskRuntimeStore } from '@pages/tasks/services/task-runtime-store';
 @Component({
   selector: 'app-project-item',
-  imports: [CommonModule, FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzPopoverModule, NzBadgeModule, NzSpaceModule, ProjectItemPopoverComponent],
+  imports: [CommonModule, FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzPopoverModule, NzBadgeModule, NzSpaceModule, ProjectItemPopoverComponent, NzTooltipDirective],
   template: `
     <div nz-row class="project-item" [class.open]="open" (click)="selectProject.emit()">
       <div nz-col nzSpan="24" class="content">
@@ -33,7 +35,7 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
                   nzPopoverPlacement="right"
                   [nzPopoverOverlayClassName]="'project-item-popover'"
                 >
-                 <nz-badge nzStatus="processing"></nz-badge>
+                 <nz-badge [nzStatus]="'processing'" [nz-tooltip]="hasTasksRunning() ? '1个任务正在运行' : '任务'"></nz-badge>
                 </span>
             </div>
             <div class="description">
@@ -42,18 +44,16 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
           </div>
         </div>
         <div class="actions">
-          <nz-space>
+          <nz-space nzSize="large">
             <button nz-button nzType="primary" (click)="$event.stopPropagation();openInEditor.emit()">
-              <nz-icon nzType="code" nzTheme="outline" />
+              <nz-icon nzType="code" nzTheme="outline"/>
               <span>在编辑器中打开</span>
             </button>
-            <button nz-button nzType="primary" (click)="$event.stopPropagation();editProject.emit()">
-              <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
-              <span>编辑</span>
+            <button nz-button nzType="primary" (click)="$event.stopPropagation();editProject.emit()" nz-tooltip="重命名">
+              <nz-icon nzType="edit" nzTheme="outline"/>
             </button>
-            <button nz-button nzType="primary" (click)="$event.stopPropagation();deleteProject.emit()">
-              <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
-              <span>删除</span>
+            <button nz-button nzType="primary" (click)="$event.stopPropagation();deleteProject.emit()" nz-tooltip="删除">
+              <nz-icon nzType="delete" nzTheme="outline"/>
             </button>
           </nz-space>
         </div>
@@ -113,8 +113,13 @@ import { ProjectItemPopoverComponent } from "./project-item-popover.component";
   ],
 })
 export class ProjectItem {
+  private taskRuntime = inject(TaskRuntimeStore);
+
   @Input() project: Project | null = null;
   @Input() open = false;
+
+  /** 父组件传入该项目的任务 id 列表 */
+  @Input() taskIds: string[] = [];
 
   @Output() selectProject = new EventEmitter<void>();
   @Output() toggleFavorite = new EventEmitter<void>();
@@ -122,7 +127,19 @@ export class ProjectItem {
   @Output() openInEditor = new EventEmitter<void>();
   @Output() deleteProject = new EventEmitter<void>();
 
-  computedTasks() { }
+  
 
-
+  /**
+   * 是否有任务在运行
+   * - 只要该 project 任意 taskId 的 runtime.status 是 running，就认为在运行
+   */
+  hasTasksRunning(): boolean {
+    for (const id of this.taskIds ?? []) {
+      const st = this.taskRuntime.statusSignal(id)(); // 读 signal 快照
+      if (st?.status === 'running') return true;
+      // 如果你还有 starting/queued 之类状态，也可以一起算：
+      // if (st?.status === 'running' || st?.status === 'starting' || st?.status === 'queued') return true;
+    }
+    return false;
+  }
 }

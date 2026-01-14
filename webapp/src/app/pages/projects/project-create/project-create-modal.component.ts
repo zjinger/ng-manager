@@ -232,19 +232,19 @@ export class ProjectCreateModal implements OnInit {
       // 监听输出
       this.sub.add(
         this.taskStream.output$(taskId).subscribe((m) => {
-          const chunk = m.chunk;
+          const chunk = m.payload.text;
           this.output.set(chunk);
         })
       )
 
       const done$ = this.taskStream.events$().pipe(
-        filter(e => e.taskId === taskId),
+        filter(e => e.payload.taskId === taskId),
         filter(e => e.type === "bootstrapDone"),
         first()
       );
 
       const fail$ = this.taskStream.events$().pipe(
-        filter(e => e.taskId === taskId),
+        filter(e => e.payload.taskId === taskId),
         filter(e => e.type === "bootstrapFailed"),
         first()
       );

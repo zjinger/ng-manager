@@ -1,8 +1,7 @@
 import { Injectable, NgZone } from "@angular/core";
 import { BehaviorSubject, Observable, Subject, Subscription, timer } from "rxjs";
-import { WsClientMsg, WsServerMsg } from "./ws.types";
+import { WsClientMsg, WsServerMsg, WsState } from "./ws.types";
 
-type WsState = "idle" | "connecting" | "open" | "closed" | "error";
 
 @Injectable({ providedIn: "root" })
 export class WsClientService {

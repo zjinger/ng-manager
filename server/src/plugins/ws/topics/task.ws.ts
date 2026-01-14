@@ -1,4 +1,4 @@
-import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType } from "@core/protocol";
+import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg } from "@core/protocol";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 import { LogLine, TaskRuntime } from "@core";
@@ -15,8 +15,9 @@ export function createTaskTopicHandler(
     deps: TaskWsDeps,
     getAllClients: () => Iterable<WsContext>
 ): TopicHandler & {
-    pushOutput(taskId: string, runId: string, stream: "stdout" | "stderr", chunk: string): void;
-    pushEvent<K extends TaskEventType>(taskId: string, runId: string, type: K, payload: TaskEventPayloadMap[K]): void;
+    pushOutput(payload: TaskOutputPayload): void;
+    // pushEvent<K extends TaskEventType>(taskId: string, runId: string, type: K, payload: TaskEventPayloadMap[K]): void;
+    pushEvent<K extends TaskEventType>(type: K, payload: TaskEventPayloadMap[K]): void;
 } {
     return {
         topic: "task",
@@ -38,8 +39,6 @@ export function createTaskTopicHandler(
                 if (snap) {
                     const m: WsServerMsg = {
                         op: "task.event",
-                        taskId,
-                        runId: snap.runId,
                         type: "snapshot",
                         payload: snap,
                         ts: Date.now(),
@@ -53,12 +52,14 @@ export function createTaskTopicHandler(
                 // if (deps.getTaskTailLogs && tail > 0) {
                 const entries = await deps.getTaskTailLogsByRun(snap.runId, tail);
                 for (const e of entries ?? []) {
-                    const m: WsServerMsg = {
+                    const m: TaskOutputMsg = {
                         op: "task.output",
-                        taskId,
-                        runId: snap.runId,
-                        stream: (e?.level === "warn" || e?.level === "error") ? "stderr" : "stdout",
-                        chunk: String(e?.text ?? ""),
+                        payload: {
+                            taskId: taskId,
+                            runId: snap.runId,
+                            stream: (e?.level === "warn" || e?.level === "error") ? "stderr" : "stdout",
+                            text: String(e?.text ?? ""),
+                        },
                         ts: e?.ts ?? Date.now(),
                     };
                     ctx.send(m);
@@ -85,14 +86,15 @@ export function createTaskTopicHandler(
             ctx.delSub("task", keyOfTask(taskId));
         },
 
-        pushOutput(taskId: string, runId: string, stream: "stdout" | "stderr", chunk: string) {
-            const m: WsServerMsg = { op: "task.output", taskId, runId, stream, chunk, ts: Date.now() };
-            for (const c of getAllClients()) if (c.hasSub("task", keyOfTask(taskId))) c.send(m);
+        pushOutput(payload: TaskOutputPayload) {
+            const m: TaskOutputMsg = { op: "task.output", payload, ts: Date.now() };
+            for (const c of getAllClients()) if (c.hasSub("task", keyOfTask(payload.taskId))) c.send(m);
         },
 
-        pushEvent<K extends TaskEventType>(taskId: string, runId: string, type: K, payload: TaskEventPayloadMap[K]) {
-            const m: WsServerMsg = { op: "task.event", taskId, runId, type, payload, ts: Date.now() } as WsServerMsg;
-            for (const c of getAllClients()) if (c.hasSub("task", keyOfTask(taskId))) c.send(m);
+        pushEvent<K extends TaskEventType>(type: K, payload: TaskEventPayloadMap[K]) {
+            const m: WsServerMsg = { op: "task.event", type, payload, ts: Date.now() } as TaskEventMsg;
+            for (const c of getAllClients()) if (c.hasSub("task", keyOfTask(payload.taskId))) c.send(m);
+
         },
     };
 }

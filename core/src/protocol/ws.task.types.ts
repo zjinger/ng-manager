@@ -15,6 +15,9 @@ export type TaskEventType =
     | "bootstrapDone" // 任务关联的项目 bootstrap 完成
     | "bootstrapFailed"; // 任务关联的项目 bootstrap 失败
 
+export type LogType = "stdout" | "stderr" | "system";
+
+
 export type TaskSnapshotPayload = {
     taskId: string;
     projectId: string;
@@ -35,6 +38,7 @@ export type TaskStartedPayload = {
     runId: string;
     startedAt: number;
     pid?: number;
+    projectId?: string;
 };
 
 export type TaskStopRequestedPayload = {
@@ -81,14 +85,27 @@ export type TaskEventPayloadMap = {
 };
 
 
+
 export type TaskEventMsg =
     {
         [K in TaskEventType]: {
             op: "task.event";
-            runId: string;
-            taskId: string;
             type: K;
             payload: TaskEventPayloadMap[K];
             ts: number;
         };
     }[TaskEventType];
+
+
+export type TaskOutputPayload = {
+    runId: string;
+    taskId: string;
+    stream: LogType;
+    text: string;
+};
+
+export type TaskOutputMsg = {
+    op: "task.output";
+    payload: TaskOutputPayload;
+    ts: number;
+}

@@ -1,5 +1,5 @@
 // server/src/plugins/ws/ws.plugin.ts
-import { Events } from "@core";
+import { Events, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "@core";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
@@ -30,7 +30,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         () => clients.values()
     );
     router.register(taskHandler);
-    
+
     // syslog
     const syslogHandler = createSyslogTopicHandler(
         { getSyslogTail: (tail) => fastify.core.task.getSyslogTail(tail) },
@@ -43,23 +43,23 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     const offs: Array<() => void> = [];
 
     offs.push(fastify.core.events.on(Events.TASK_OUTPUT, (e) => {
-        taskHandler.pushOutput(e.taskId, e.runId, e.stream, e.text);
+        taskHandler.pushOutput(e);
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_STARTED, (e) => {
-        taskHandler.pushEvent(e.taskId, e.runId, "started", { pid: e.pid, taskId: e.taskId, runId: e.runId, startedAt: e.startedAt });
+        taskHandler.pushEvent("started", e);
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_STOP_REQUESTED, (e) => {
-        taskHandler.pushEvent(e.taskId, e.runId, "stopRequested", { taskId: e.taskId, runId: e.runId });
+        taskHandler.pushEvent("stopRequested", e);
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_EXITED, (e) => {
-        taskHandler.pushEvent(e.taskId, e.runId, "exited", { exitCode: e.exitCode, signal: e.signal, taskId: e.taskId, runId: e.runId, stoppedAt: e.stoppedAt });
+        taskHandler.pushEvent("exited", e);
     }));
 
     offs.push(fastify.core.events.on(Events.TASK_FAILED, (e) => {
-        taskHandler.pushEvent(e.taskId, e.runId, "failed", { error: e.error || '', taskId: e.taskId, runId: e.runId });
+        taskHandler.pushEvent("failed", e);
     }));
 
     offs.push(fastify.core.events.on(Events.SYSLOG_APPENDED, (e) => {
@@ -67,23 +67,12 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     }));
 
     offs.push(fastify.core.events.on(Events.PROJECT_BOOTSTRAP_DONE, (e) => {
-        taskHandler.pushEvent(e.taskId, e.runId, "bootstrapDone", {
-            projectId: e.projectId,
-            rootPath: e.rootPath,
-            taskId: e.taskId,
-            runId: e.runId,
-        });
+        taskHandler.pushEvent("bootstrapDone", e);
     }))
 
     offs.push(fastify.core.events.on(Events.PROJECT_BOOTSTRAP_FAILED, (e) => {
-        taskHandler.pushEvent(e.taskId, e.runId, "bootstrapFailed", {
-            taskId: e.taskId,
-            runId: e.runId,
-            rootPath: e.rootPath,
-            reason: e.reason,
-        });
+        taskHandler.pushEvent("bootstrapFailed", e);
     }))
-
 
     fastify.addHook("onClose", async () => {
         // 防止 dev 热重载 / 反复 register 导致重复推送
