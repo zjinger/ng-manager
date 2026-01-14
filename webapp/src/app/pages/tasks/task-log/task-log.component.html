@@ -54,6 +54,19 @@
         [class.info]="l.level === 'info'"
         [class.debug]="l.level === 'debug'"
       >
+        <nz-tag
+          [nzColor]="
+            l.level === 'error'
+              ? 'red'
+              : l.level === 'warn'
+              ? 'orange'
+              : l.level === 'info'
+              ? 'blue'
+              : 'default'
+          "
+        >
+          {{ l.level | uppercase }}
+        </nz-tag>
         <span class="time">{{ l.ts | date : 'yyyy-MM-dd HH:mm:ss' }}</span>
         <span class="msg">{{ l.text }}</span>
       </div>
