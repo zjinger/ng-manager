@@ -32,13 +32,10 @@ export class TaskStateService {
     const rows = this.rows();
     return rows.map((r) => {
       const taskId = r.spec.id;
-      const st = this.runtimeStore.statusSignal(taskId)();
+      const rt = this.runtimeStore.runtimeSignal(taskId)();
       return {
         ...r,
-        runtime: {
-          ...(r.runtime ?? {}),
-          status: st.status,
-        },
+        runtime: rt ?? r.runtime,
       };
     });
   });
@@ -47,10 +44,8 @@ export class TaskStateService {
     const kw = this.keyword().trim().toLowerCase();
     const rows = this.rowsView();
     if (!kw) return rows;
-
     return rows.filter((r) => {
       return (
-        // r.spec.id?.toLowerCase().includes(kw) ||
         r.spec.name?.toLowerCase().includes(kw)
       );
     });
@@ -150,18 +145,22 @@ export class TaskStateService {
   stopSelected() {
     const taskId = this.selectedTaskId();
     if (!taskId) return;
-    this.runtimeStore.setTaskStatus(taskId, { status: "stopping" });
+    // 取当前 runtime（必须要有 runId/projectId 才能工程化维护 runningCount） 
+    const curRt = this.stream.getRuntime(taskId); // 注入 TaskStreamService
+    if (curRt) {
+      // 先置 stopping（保留 pid/startedAt/runId/projectId）
+      this.runtimeStore.setRuntime({ ...curRt, status: 'stopping' });
+    }
+
     this.api.stop(taskId).subscribe({
       next: () => { },
       error: () => {
-        // 恢复原状态
-        const cur = this.runtimeStore.statusSignal(taskId)();
-        if (cur.status === "stopping") {
-          this.runtimeStore.setTaskStatus(taskId, { status: "running" });
+        // 回滚：如果乐观置了 stopping，则恢复为 running（前提：原来确实在 running）
+        if (curRt && curRt.status === 'running') {
+          this.runtimeStore.setRuntime(curRt);
         }
       }
-    }
-    );
+    });
   }
 
   /* ---------------- 给 popover 用 ---------------- */
@@ -185,4 +184,5 @@ export class TaskStateService {
   ensureProjectLoaded(projectId: string) {
     return this.catalog.ensureLoaded(projectId);
   }
+
 }

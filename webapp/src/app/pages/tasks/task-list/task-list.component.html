@@ -43,11 +43,11 @@
             <div class="name" [title]="t.spec.name">{{ t.spec.name }}</div>
             <div class="description">
               {{
-                t.runtime.status === 'running'
+                t.runtime?.status === 'running'
                   ? '运行中'
-                  : t.runtime.status === 'stopping'
+                  : t.runtime?.status === 'stopping'
                   ? '停止中'
-                  : t.runtime.status === 'stopped'
+                  : t.runtime?.status === 'stopped'
                   ? '已停止'
                   : t.spec.description || '空闲中'
               }}

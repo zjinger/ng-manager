@@ -8,6 +8,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TaskLogStreamService } from '../services/task-log-stream.service';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { LogLevel } from '@models/log.model';
 
 @Component({
   selector: 'app-task-log',
@@ -87,4 +88,15 @@ export class TaskLogDrawerComponent implements OnInit {
 
   /** 给 @for 的 trackBy，用 index 或 ts+refId+text  */
   trackByLine = (_: number, l: any) => `${l.ts}-${l.refId ?? ''}-${l.text}`;
+
+  getColor(level?: LogLevel): string {
+    if (!level) return "#000000";
+    switch (level) {
+      case 'info': return "#18bdfd";
+      case 'debug': return "#94a3b8";
+      case "error": return "#ef4444";
+      case "warn": return "#f59e0b";
+      default: return "#000000";
+    }
+  }
 }

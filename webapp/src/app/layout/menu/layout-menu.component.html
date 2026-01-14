@@ -8,11 +8,20 @@
       [nzDisabled]="menu.disabled"
       [nzSelected]="menuService.isActive(menu.path!)"
       (click)="menuService.clickMenu(menu)"
+      [nz-tooltip]="
+        menu.taskCountBadge === true && runningTaskCount() > 0
+          ? runningTaskCount() + '个任务正在运行'
+          : null
+      "
+      nzTooltipPlacement="right"
     >
       @if (menu.icon) {
-      <nz-icon [nzType]="menu.icon" />
+      <nz-icon [nzType]="menu.icon" nzTheme="outline" style="font-size: 18px" />
       }
       <span>{{ menu.title }}</span>
+      @if(menu.taskCountBadge === true && runningTaskCount() > 0) {
+      <nz-badge style="margin-left: 12px" nzStatus="processing"></nz-badge>
+      }
     </li>
     } @else {
     <li

@@ -43,6 +43,7 @@ export type TaskStartedPayload = {
 export type TaskStopRequestedPayload = {
     taskId: string;
     runId: string;
+    projectId?: string;
 };
 
 export type TaskExitedPayload = {
@@ -51,12 +52,14 @@ export type TaskExitedPayload = {
     stoppedAt: number;
     exitCode: number | null;
     signal: string | null;
+    projectId?: string;
 };
 
 export type TaskFailedPayload = {
     taskId: string;
     runId: string;
     error: string;
+    projectId?: string;
 };
 export type TaskBootstrapDonePayload = {
     projectId: string;
@@ -66,6 +69,7 @@ export type TaskBootstrapDonePayload = {
 };
 
 export type TaskBootstrapFailedPayload = {
+    projectId: string;
     taskId: string;
     runId: string;
     rootPath: string;

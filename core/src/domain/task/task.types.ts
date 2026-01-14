@@ -4,6 +4,8 @@ export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {
     id: string;
     projectId: string;
+    projectRoot: string;
+    projectName: string;
     name: string;            // "dev" / "build"
     kind?: TaskKind;
     description?: string;

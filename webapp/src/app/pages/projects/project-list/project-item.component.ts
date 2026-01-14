@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { Component, computed, EventEmitter, inject, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Project } from '@models/project.model';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
@@ -35,7 +35,10 @@ import { TaskRuntimeStore } from '@pages/tasks/services/task-runtime-store';
                   nzPopoverPlacement="right"
                   [nzPopoverOverlayClassName]="'project-item-popover'"
                 >
-                 <nz-badge [nzStatus]="'processing'" [nz-tooltip]="hasTasksRunning() ? '1个任务正在运行' : '任务'"></nz-badge>
+                 <nz-badge 
+                    [nzStatus]="hasTasksRunning() ? 'processing' : 'default'"
+                    [nz-tooltip]="taskBadgeTip()">
+                  </nz-badge>
                 </span>
             </div>
             <div class="description">
@@ -118,28 +121,27 @@ export class ProjectItem {
   @Input() project: Project | null = null;
   @Input() open = false;
 
-  /** 父组件传入该项目的任务 id 列表 */
-  @Input() taskIds: string[] = [];
-
   @Output() selectProject = new EventEmitter<void>();
   @Output() toggleFavorite = new EventEmitter<void>();
   @Output() editProject = new EventEmitter<void>();
   @Output() openInEditor = new EventEmitter<void>();
   @Output() deleteProject = new EventEmitter<void>();
 
-  
+  /** 运行中任务数（running/stopping） */
+  readonly tasksRunningCount = computed((): number => {
+    const pid = this.project?.id?.trim();
+    if (!pid) return 0;
+    return this.taskRuntime.runningCountSignal(pid)();
+  });
 
-  /**
-   * 是否有任务在运行
-   * - 只要该 project 任意 taskId 的 runtime.status 是 running，就认为在运行
-   */
-  hasTasksRunning(): boolean {
-    for (const id of this.taskIds ?? []) {
-      const st = this.taskRuntime.statusSignal(id)(); // 读 signal 快照
-      if (st?.status === 'running') return true;
-      // 如果你还有 starting/queued 之类状态，也可以一起算：
-      // if (st?.status === 'running' || st?.status === 'starting' || st?.status === 'queued') return true;
-    }
-    return false;
-  }
+  /** 是否有任务占用中 */
+  readonly hasTasksRunning = computed((): boolean => {
+    return this.tasksRunningCount() > 0;
+  });
+
+  /** tooltip 文案 */
+  readonly taskBadgeTip = computed(() => {
+    const n = this.tasksRunningCount();
+    return n > 0 ? `${n} 个任务正在运行` : '任务';
+  });
 }

@@ -66,17 +66,10 @@ export default async function taskRoutes(fastify: FastifyInstance) {
         return await fastify.core.task.status(taskId);
     });
 
-    // /**
-    //  * 拉取任务日志
-    //  * GET /log/:id?tail=200
-    //  */
-    // fastify.get("/log/:id", async (req) => {
-    //     const { id } = req.params as { id: string };
-    //     const { tail } = req.query as { tail?: string };
-    //     const limit = Math.min(Math.max(Number(tail) || 200, 1), 5000);
-    //     return fastify.core.log.tail(limit, { refId: id });
-    // });
-
+    /** 列出所有活跃的任务（running / stopping） */
+    fastify.get("/active", async () => {
+        return await fastify.core.task.listActive();
+    });
 
     /**
      * 拉取某次运行的任务日志

@@ -6,7 +6,7 @@
 }
 
 .status-bar {
-  height: 28px;
+  height: 32px;
   display: flex;
   align-items: center;
   width: 100%;
@@ -67,6 +67,7 @@
   gap: 12px;
   padding: 2px 0;
   align-items: center;
+
   .time {
     flex: 0 0 auto;
     opacity: 0.65;
@@ -77,7 +78,7 @@
     flex: 1 1 auto;
     overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis; 
+    text-overflow: ellipsis;
   }
 
   &.err .msg {
@@ -87,4 +88,15 @@
   &.warn .msg {
     font-weight: 500;
   }
+}
+
+.level-tag {
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1.5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  border-radius: 4px;
 }

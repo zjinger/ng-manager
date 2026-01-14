@@ -151,6 +151,8 @@ export class ProjectBootstrapService {
         const spec: TaskDefinition = {
             id: taskId,
             projectId: "__system__",
+            projectName: rawName,
+            projectRoot: normalizedRoot,
             name: fw === "angular" ? `Scaffold Angular: ${rawName}` : `Scaffold Vue: ${rawName}`,
             kind: "custom",
             command,
@@ -211,6 +213,8 @@ export class ProjectBootstrapService {
         const spec: TaskDefinition = {
             id: taskId,
             projectId: "__system__",
+            projectName: name,
+            projectRoot: normalizedRoot,
             name: `Git clone: ${name}`,
             kind: "custom",
             command,

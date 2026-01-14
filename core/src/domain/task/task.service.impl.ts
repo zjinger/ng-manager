@@ -63,7 +63,7 @@ export class TaskServiceImpl implements TaskService {
             source: "system",
             scope: "task",
             refId: runId,
-            text: `[task] run: ${spec.name}`,
+            text: `[Task] ${spec.projectRoot}: ${spec.command || spec.name}`,
         });
         this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
         let p: SpawnedProcess;
@@ -94,7 +94,7 @@ export class TaskServiceImpl implements TaskService {
                 source: "system",
                 scope: "task",
                 refId: runId,
-                text: `[task] spawn failed: ${e?.message ?? String(e)}`,
+                text: `[Task] ${spec.projectRoot}: spawn failed, ${e?.message ?? String(e)}`,
                 data: { taskId, runId },
             });
             this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
@@ -120,7 +120,7 @@ export class TaskServiceImpl implements TaskService {
             },
             resize: resizeFn ? (c, r) => resizeFn(c, r) : undefined,
         });
-        // console.log(`[task] started: taskId=${taskId} runId=${runId} pid=${p.pid}`);
+        // 事件：started
         this.events.emit(Events.TASK_STARTED, { taskId, runId, pid: p.pid, startedAt: rt.startedAt!, projectId: spec.projectId });
 
         // 输出：优先 PTY 的 onData（如果 driver 提供）
@@ -171,25 +171,26 @@ export class TaskServiceImpl implements TaskService {
             const active2 = this.activeRunByTaskId.get(taskId);
             if (active2 === runId) this.activeRunByTaskId.delete(taskId);
             // syslog
-            // this.sysLog.append({
-            //     ts: Date.now(),
-            //     level: cur.status === "failed" ? "error" : "info",
-            //     source: "system",
-            //     scope: "task",
-            //     refId: runId,
-            //     text: `[task] exited: status=${cur.status} code=${code} signal=${signal}`,
-            // });
+            this.sysLog.append({
+                ts: Date.now(),
+                level: cur.status === "failed" ? "error" : "info",
+                source: "system",
+                scope: "task",
+                refId: runId,
+                text: `[Task] ${spec.projectRoot}: ${spec.command || spec.name} exited, status=${cur.status} code=${code} signal=${signal}`,
+            });
 
-            // this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
+            this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
             // task output event
             const level = cur.status === "failed" ? "warn" : "info";
-            const text = `[task] exited: status=${cur.status} code=${code} signal=${signal}`;
+            const text = `[Task] ${spec.projectRoot}: exited: status=${cur.status} code=${code} signal=${signal}`;
+            const taskOutputText = `[Task] exited: status=${cur.status} code=${code} signal=${signal}`;
             this.taskLog.append({ ts: Date.now(), level, source: "task", scope: 'task', refId: runId, text });
             const stream = cur.status === "failed" ? "stderr" : "stdout";
-            this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text, stream });
+            this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text: taskOutputText, stream });
             this.events.emit(Events.TASK_EXITED, { taskId, runId, exitCode: code, signal, stoppedAt: cur.stoppedAt! });
             if (cur.status === "failed") {
-                this.events.emit(Events.TASK_FAILED, { taskId, runId, error: `exit code=${code}` });
+                this.events.emit(Events.TASK_FAILED, { taskId, runId, error: `[Task] exit code=${code}` });
             }
         });
 
@@ -206,6 +207,12 @@ export class TaskServiceImpl implements TaskService {
 
         rt.status = "stopping";
         this.runtimes.set(runId, rt);
+        const projectId = rt.projectId;
+        let projectRoot = ''
+        try {
+            const project = await this.projectService.get(projectId);
+            projectRoot = project.root;
+        } catch { }
 
         this.sysLog.append({
             ts: Date.now(),
@@ -213,7 +220,7 @@ export class TaskServiceImpl implements TaskService {
             source: "system",
             scope: "task",
             refId: runId,
-            text: `[task] stop requested`,
+            text: `[Task] ${projectRoot}: stop requested`,
         });
         this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
 
@@ -232,6 +239,18 @@ export class TaskServiceImpl implements TaskService {
         return rt;
     }
 
+    async listActive(): Promise<TaskRuntime[]> {
+        const out: TaskRuntime[] = [];
+        for (const rt of this.runtimes.values()) {
+            if (rt.status === "running" || rt.status === "stopping") {
+                out.push(rt);
+            }
+        }
+        // 可选：按 startedAt 排序
+        out.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
+        return out;
+    }
+
     /**
      * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
      */
@@ -241,8 +260,9 @@ export class TaskServiceImpl implements TaskService {
         const rootDir = project.root;
         const scripts = project.scripts ?? {};
         const pm = project.packageManager ?? "npm";
+        const projectName = project.name;
         // 生成新的 specs
-        const nextSpecs = genSpecsFromScripts(projectId, rootDir, scripts, pm);
+        const nextSpecs = genSpecsFromScripts(projectId, rootDir, projectName, scripts, pm);
         // 清理该 projectId 的旧 specs（只清 specs，不碰 runtimes）
         for (const [id, s] of this.specs.entries()) {
             if (s.projectId === projectId) this.specs.delete(id);
@@ -261,7 +281,7 @@ export class TaskServiceImpl implements TaskService {
             source: "system",
             refId: projectId,
             scope: "project",
-            text: `[task] refreshed ${nextSpecs.length} specs from project scripts`,
+            text: `[Project] refreshed ${nextSpecs.length} specs from project scripts`,
         });
         this.events.emit(Events.TASK_SPECS_REFRESHED, { projectId, count: nextSpecs.length });
         return await this.listViewsByProject(projectId);

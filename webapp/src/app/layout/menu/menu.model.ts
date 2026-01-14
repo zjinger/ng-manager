@@ -9,4 +9,5 @@ export interface MenuItem {
     expanded?: boolean;
     disabled?: boolean;
     hidden?: boolean;
+    taskCountBadge?: boolean;
 }

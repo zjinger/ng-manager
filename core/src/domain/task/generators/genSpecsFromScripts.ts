@@ -12,6 +12,10 @@ function buildSpecId(projectId: string, scriptName: string) {
 
 function buildRunCommand(pm: PackageManager, scriptName: string) {
     if (pm === "yarn") return `yarn ${scriptName}`;
+    if (scriptName === "start" && pm === "npm") {
+        // npm start 可以省略 run
+        return `npm start`;
+    }
     return `${pm} run ${scriptName}`;
 }
 
@@ -70,6 +74,7 @@ function shouldIncludeScript(
 export function genSpecsFromScripts(
     projectId: string,
     rootDir: string,
+    projectName: string,
     scripts: Record<string, string>,
     packageManager: PackageManager
 ): TaskDefinition[] {
@@ -93,6 +98,8 @@ export function genSpecsFromScripts(
         const spec: TaskDefinition = {
             id: buildSpecId(projectId, name),
             projectId,
+            projectRoot: rootDir,
+            projectName: projectId,
             name,
             kind: getTaskKindFromName(name),
             runnable: packageManager !== "unknown",

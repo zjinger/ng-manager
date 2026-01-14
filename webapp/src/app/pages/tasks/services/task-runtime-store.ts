@@ -1,7 +1,16 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
-import { TaskRuntimeStatus, TaskStatus } from '@models/task.model';
+import { TaskStatus } from '@core/ws';
+import { TaskRuntime, TaskRuntimeStatus } from '@models/task.model';
 import { BehaviorSubject, Observable } from 'rxjs';
-
+/**
+ * TaskRuntimeStore
+ * - taskId -> TaskRuntimeStatus  (给任务列表/详情用)
+ * - projectId -> runningCount   (给 ProjectItem 判断是否有任务在跑)
+ *
+ * 运行态判定：
+ * - running / stopping 都算“占用中”
+ *   （后端：running/stopping 都不允许再次 start）
+ */
 @Injectable({
   providedIn: 'root',
 })
@@ -12,45 +21,140 @@ export class TaskRuntimeStore {
   // taskId -> signal（给 signal/computed 用）
   private sigByTask = new Map<string, WritableSignal<TaskRuntimeStatus>>();
 
+  // taskId -> runtime（完整 runtime 信息）
+  private runtimeByTask = new Map<string, WritableSignal<TaskRuntime | undefined>>();
+
   /* ---------------- projectId -> runningCount ---------------- */
   private runningCountByProject = new Map<string, WritableSignal<number>>();
 
+  private totalRunningCount = signal<number>(0);
 
-  /** 给外部落地状态（WS event -> store） */
-  setTaskStatus(taskId: string, st: TaskRuntimeStatus) {
-    this.ensureSubject(taskId).next(st);
-    this.ensureSignal(taskId).set(st);
-    // console.log(`[task runtime store] sigByTask:`, this.sigByTask);
+  totalRunningCountSignal() {
+    return this.totalRunningCount;
+  }
+
+  setRuntime(rt: TaskRuntime): void {
+    const taskId = this.norm(rt.taskId);
+    const projectId = this.norm(rt.projectId);
+    if (!taskId || !projectId) return;
+
+    const prev = this.ensureTaskSignal(taskId)(); // snapshot
+    const prevBusy = this.isBusy(prev.status);
+    const nextBusy = this.isBusy(rt.status);
+
+    const next = this.toStatus(rt);
+
+    // 更新 task 维度
+    this.ensureTaskSubject(taskId).next(next);
+    this.ensureTaskSignal(taskId).set(next);
+    this.ensureRuntimeSignal(taskId).set(rt);
+
+    // 更新 project runningCount
+    if (prevBusy !== nextBusy) {
+      const cntSig = this.ensureProjectCount(projectId);
+      const cur = cntSig();
+      cntSig.set(prevBusy ? Math.max(0, cur - 1) : cur + 1);
+
+      // total count
+      const curTotal = this.totalRunningCount();
+      this.totalRunningCount.set(prevBusy ? Math.max(0, curTotal - 1) : curTotal + 1);
+    }
+    console.log("[task runtime] set", taskId, rt, "->", next);
   }
 
   /** rx */
   status$(taskId: string): Observable<TaskRuntimeStatus> {
-    return this.ensureSubject(taskId).asObservable();
+    return this.ensureTaskSubject(taskId).asObservable();
   }
 
   /** signal：列表/组件 computed 直接用它 */
   statusSignal(taskId: string): WritableSignal<TaskRuntimeStatus> {
-    return this.ensureSignal(taskId);
+    return this.ensureTaskSignal(taskId);
   }
 
+  runtimeSignal(taskId: string): WritableSignal<TaskRuntime | undefined> {
+    return this.ensureRuntimeSignal(taskId);
+  }
+
+  /**  ProjectItem 用：O(1) 判断 project 是否有任务占用中 */
+  hasRunning(projectId: string): boolean {
+    return this.ensureProjectCount(projectId)() > 0;
+  }
+
+  /** signal 版（在模板 / computed 里用） */
+  runningCountSignal(projectId: string): WritableSignal<number> {
+    return this.ensureProjectCount(projectId);
+  }
 
   private snapshot(taskId: string): TaskRuntimeStatus {
-    return this.ensureSignal(taskId)();
+    return this.ensureTaskSignal(taskId)();
   }
 
-  private isRunning(st: TaskStatus | undefined): boolean {
-    return st === 'running';
+  /**
+   * 将 TaskRuntime 转为 TaskRuntimeStatus
+   * @param rt TaskRuntime
+   * @return TaskRuntimeStatus
+   */
+  private toStatus(rt: TaskRuntime): TaskRuntimeStatus {
+    switch (rt.status) {
+      case 'idle':
+        return { status: 'idle' };
+      case 'running':
+        return { status: 'running', pid: rt.pid, startedAt: rt.startedAt };
+      case 'stopping':
+        return { status: 'stopping' };
+      case 'success':
+      case 'failed':
+      case 'stopped':
+        return {
+          status: 'stopped',
+          exitCode: rt.exitCode ?? null,
+          signal: rt.signal ?? null,
+          stoppedAt: rt.stoppedAt,
+        };
+      default:
+        return { status: 'idle' };
+    }
+  }
+  /** busy = running-like，占用态：running/stopping */
+  private isBusy(st: TaskStatus | TaskRuntimeStatus['status']): boolean {
+    return st === 'running' || st === 'stopping';
   }
 
-  private ensureSubject(taskId: string) {
-    const id = (taskId ?? "").trim();
-    if (!this.statusByTask.has(id)) this.statusByTask.set(id, new BehaviorSubject<TaskRuntimeStatus>({ status: "idle" }));
+  private norm(v: string | undefined | null): string {
+    return (v ?? '').trim();
+  }
+
+  private ensureTaskSubject(taskId: string) {
+    const id = this.norm(taskId);
+    if (!this.statusByTask.has(id)) {
+      this.statusByTask.set(id, new BehaviorSubject<TaskRuntimeStatus>({ status: 'idle' }));
+    }
     return this.statusByTask.get(id)!;
   }
 
-  private ensureSignal(taskId: string) {
-    const id = (taskId ?? "").trim();
-    if (!this.sigByTask.has(id)) this.sigByTask.set(id, signal<TaskRuntimeStatus>({ status: "idle" }));
+  private ensureTaskSignal(taskId: string) {
+    const id = this.norm(taskId);
+    if (!this.sigByTask.has(id)) {
+      this.sigByTask.set(id, signal<TaskRuntimeStatus>({ status: 'idle' }));
+    }
     return this.sigByTask.get(id)!;
   }
+
+  private ensureProjectCount(projectId: string) {
+    const id = this.norm(projectId);
+    if (!this.runningCountByProject.has(id)) {
+      this.runningCountByProject.set(id, signal<number>(0));
+    }
+    return this.runningCountByProject.get(id)!;
+  }
+
+  private ensureRuntimeSignal(taskId: string) {
+    const id = this.norm(taskId);
+    if (!this.runtimeByTask.has(id)) {
+      this.runtimeByTask.set(id, signal<TaskRuntime | undefined>(undefined));
+    }
+    return this.runtimeByTask.get(id)!;
+  }
+
 }

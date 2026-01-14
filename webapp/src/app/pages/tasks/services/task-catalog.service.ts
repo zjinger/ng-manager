@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from "@angular/core";
 import type { TaskRow } from "@models/task.model";
 import { firstValueFrom } from "rxjs";
 import { TasksApiService } from "./tasks-api.service";
+import { TaskRuntimeStore } from "./task-runtime-store";
 
 type ProjectId = string;
 
@@ -14,7 +15,7 @@ type CatalogState = {
 @Injectable({ providedIn: "root" })
 export class TaskCatalogService {
   private api = inject(TasksApiService);
-
+  private runtimeStore = inject(TaskRuntimeStore);
   private state = signal<CatalogState>({
     rowsByProject: {},
     loadingByProject: {},
@@ -59,7 +60,7 @@ export class TaskCatalogService {
 
     try {
       const res = await firstValueFrom(this.api.getViews(pid));
-      // console.log("[task catalog] loaded", pid, res);
+      console.log("[task catalog] loaded", pid, res);
 
       // 这里保留后端 runtime（是快照，不是实时态）
       const normalized: TaskRow[] = (res ?? []).map((r: any) => ({
@@ -79,6 +80,11 @@ export class TaskCatalogService {
           : undefined,
       }));
 
+      // 用后端 runtime 快照初始化 runtimeStore（建立 runningCount）
+      for (const row of normalized) {
+        if (row.runtime) this.runtimeStore.setRuntime(row.runtime);
+      }
+
       this.state.update((st) => ({
         ...st,
         rowsByProject: { ...st.rowsByProject, [pid]: normalized },
@@ -96,7 +102,9 @@ export class TaskCatalogService {
   setRows(projectId: string, rows: TaskRow[]) {
     const pid = (projectId ?? "").trim();
     if (!pid) return;
-
+    for (const row of rows ?? []) {
+      if (row.runtime) this.runtimeStore.setRuntime(row.runtime);
+    }
     this.state.update((st) => ({
       ...st,
       rowsByProject: { ...st.rowsByProject, [pid]: rows ?? [] },

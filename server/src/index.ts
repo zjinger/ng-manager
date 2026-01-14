@@ -8,6 +8,13 @@ async function start() {
     const app = await createServer();
     await app.listen({ port, host });
     app.log.info(`local server listening on http://${host}:${port}`);
+    app.core.sysLog.append({
+        level: "info",
+        text: `Server started at http://${host}:${port}`,
+        ts: Date.now(),
+        source: "system",
+        scope: "task", // 理论上这里scope 应该是server， 但是为了在task 模块中展示，暂时用task
+    })
 }
 
 start().catch((err) => {

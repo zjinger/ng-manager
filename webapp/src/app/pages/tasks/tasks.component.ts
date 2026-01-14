@@ -17,8 +17,6 @@ import { TaskConsoleComponent } from './task-console/task-console.component';
 import { TaskHeaderComponent } from './task-header/task-header.component';
 import { TaskListComponent } from './task-list/task-list.component';
 import { TaskLogDrawerComponent } from './task-log/task-log.component';
-// import { TaskStatusBadgeComponent } from './task-status-badge/task-status-badge.component';
-
 @Component({
   selector: 'app-tasks',
   imports: [
@@ -37,7 +35,6 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
     TaskListComponent,
     TaskActionsComponent,
     TaskHeaderComponent,
-    // TaskStatusBadgeComponent,
     TaskLogDrawerComponent,
     NzLayoutComponent
   ],

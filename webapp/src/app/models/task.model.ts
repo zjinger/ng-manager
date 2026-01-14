@@ -1,8 +1,11 @@
-export type TaskStatus = "idle" | "running" | "stopping" | "success" | "failed" | "stopped";
+import { TaskStatus } from "@core/ws";
+
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {
     id: string;        // dev:serve
     projectId: string; // 所属项目 ID
+    projectRoot: string;
+    projectName: string;
     name: string;      // 启动前端
     command?: string;  // 展示用的命令行
     kind?: TaskKind;

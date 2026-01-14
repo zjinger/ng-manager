@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -71,6 +71,6 @@ import { ProjectItem } from './project-item.component';
 })
 export class ProjectListComponent {
 
-  constructor(public projectState: ProjectStateService) {
-  }
+  public projectState: ProjectStateService = inject(ProjectStateService);
+
 }

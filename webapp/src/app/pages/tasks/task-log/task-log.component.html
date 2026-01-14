@@ -13,17 +13,7 @@
   <div class="last-log" (click)="openLog()" nz-tooltip="打开日志">
     <nz-icon nzType="profile" class="icon" nzTheme="outline" />
     @if (lastLine()) {
-    <nz-tag
-      [nzColor]="
-        lastLine()?.level === 'error'
-          ? 'red'
-          : lastLine()?.level === 'warn'
-          ? 'orange'
-          : lastLine()?.level === 'info'
-          ? 'blue'
-          : 'default'
-      "
-    >
+    <nz-tag [nzColor]="getColor(lastLine()?.level)" class="level-tag">
       {{ lastLine()?.level | uppercase }}
     </nz-tag>
     <div class="info">{{ lastLine()?.text }}</div>
@@ -38,6 +28,8 @@
 <nz-drawer
   [nzVisible]="isOpen()"
   (nzOnClose)="closeLog()"
+  [nzMaskClosable]="false"
+  [nzMask]="false"
   nzTitle="任务日志"
   nzPlacement="bottom"
   [nzExtra]="extra"
@@ -54,17 +46,7 @@
         [class.info]="l.level === 'info'"
         [class.debug]="l.level === 'debug'"
       >
-        <nz-tag
-          [nzColor]="
-            l.level === 'error'
-              ? 'red'
-              : l.level === 'warn'
-              ? 'orange'
-              : l.level === 'info'
-              ? 'blue'
-              : 'default'
-          "
-        >
+        <nz-tag [nzColor]="getColor(l.level)" class="level-tag">
           {{ l.level | uppercase }}
         </nz-tag>
         <span class="time">{{ l.ts | date : 'yyyy-MM-dd HH:mm:ss' }}</span>

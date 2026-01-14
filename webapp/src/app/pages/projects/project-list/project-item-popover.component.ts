@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, Input, OnChanges, Signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { TaskRow, TaskStatus } from '@models/task.model';
+import { TaskRow } from '@models/task.model';
 import { TaskStateService } from '@pages/tasks/services/tasks.state.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { ProjectStateService } from '../services/project.state.service';
+import { TaskStatus } from '@core/ws';
 
 @Component({
   selector: 'app-project-item-popover',

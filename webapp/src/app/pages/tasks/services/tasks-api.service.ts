@@ -40,6 +40,10 @@ export class TasksApiService {
     return this.api.post(`/api/tasks/stop`, { taskId });
   }
 
+  active(): Observable<TaskRuntime[]> {
+    return this.api.get(`/api/tasks/active`);
+  }
+
   getRunLog(runId: string, tail = 200) {
     const params = new HttpParams().set("tail", tail.toString());
     return this.api.get(`/api/tasks/log/run/${runId}`, params);
