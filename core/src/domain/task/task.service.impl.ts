@@ -265,30 +265,90 @@ export class TaskServiceImpl implements TaskService {
         return out;
     }
 
+    // /**
+    //  * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
+    //  */
+    // async refreshByProject2(projectId: string): Promise<TaskRow[]> {
+    //     const project = await this.projectService.get(projectId);
+
+    //     const rootDir = project.root;
+    //     const scripts = project.scripts ?? {};
+    //     const pm = project.packageManager ?? "npm";
+    //     const projectName = project.name;
+    //     // 生成新的 specs
+    //     const nextSpecs = genSpecsFromScripts(projectId, rootDir, projectName, scripts, pm);
+    //     // 清理该 projectId 的旧 specs（只清 specs，不碰 runtimes）
+    //     for (const [id, s] of this.specs.entries()) {
+    //         if (s.projectId === projectId) this.specs.delete(id);
+    //     }
+
+    //     // 2) 写入新 specs
+    //     for (const s of nextSpecs) this.specs.set(s.id, s);
+
+    //     // 3) 可选：清理“孤儿 runtime”
+    //     // 例如 scripts 被删了，runtime 还在（先不动也行）
+    //     // 先不删，避免用户正在跑但 scripts 被改导致 UI 突然消失。
+    //     // 真要做清理，可以加一个 opts: { pruneOrphan?: boolean }
+    //     this.sysLog.append({
+    //         ts: Date.now(),
+    //         level: "info",
+    //         source: "system",
+    //         refId: projectId,
+    //         scope: "project",
+    //         text: `[Project] refreshed ${nextSpecs.length} specs from project scripts`,
+    //     });
+    //     this.events.emit(Events.TASK_SPECS_REFRESHED, { projectId, count: nextSpecs.length });
+    //     return await this.listViewsByProject(projectId);
+    // }
+
     /**
-     * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
-     */
-    async refreshByProject(projectId: string): Promise<TaskRow[]> {
+  * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
+  * - 默认不清 orphan（避免用户正在跑时 scripts 被改导致 UI 消失）
+  * - 可通过 opts.pruneOrphan 开启“安全清理”
+  *  - safe: 只清理那些没有 active run 的 orphan
+  *  - all: 清理所有 orphan（不管有没有 active run，都删掉）
+  *  - none: 不清理
+  */
+    async refreshByProject(
+        projectId: string,
+        opts: { pruneOrphan?: "none" | "safe" | "all" } = {}
+    ): Promise<TaskRow[]> {
         const project = await this.projectService.get(projectId);
 
         const rootDir = project.root;
         const scripts = project.scripts ?? {};
         const pm = project.packageManager ?? "npm";
         const projectName = project.name;
+
         // 生成新的 specs
         const nextSpecs = genSpecsFromScripts(projectId, rootDir, projectName, scripts, pm);
-        // 清理该 projectId 的旧 specs（只清 specs，不碰 runtimes）
+
+        // 记录旧 taskIds（该 project 的）
+        const prevTaskIds = new Set<string>();
         for (const [id, s] of this.specs.entries()) {
-            if (s.projectId === projectId) this.specs.delete(id);
+            if (s.projectId === projectId) prevTaskIds.add(id);
         }
+
+        // 1) 清理该 projectId 的旧 specs（只清 specs，不碰 runtimes）
+        for (const id of prevTaskIds) this.specs.delete(id);
 
         // 2) 写入新 specs
         for (const s of nextSpecs) this.specs.set(s.id, s);
 
-        // 3) 可选：清理“孤儿 runtime”
-        // 例如 scripts 被删了，runtime 还在（先不动也行）
-        // 先不删，避免用户正在跑但 scripts 被改导致 UI 突然消失。
-        // 真要做清理，可以加一个 opts: { pruneOrphan?: boolean }
+        // 3) 可选：清理 “孤儿”（默认 none）
+        const mode = opts.pruneOrphan ?? "none";
+        if (mode !== "none") {
+            const nextTaskIds = new Set(nextSpecs.map((s) => s.id));
+            const orphanTaskIds = [...prevTaskIds].filter((id) => !nextTaskIds.has(id));
+
+            if (mode === "safe") {
+                this.pruneOrphanSafe(orphanTaskIds);
+            } else if (mode === "all") {
+                // 目前 all 先按 safe 行为处理，避免误删；后续如需更激进再扩展
+                this.pruneOrphanAll(orphanTaskIds);
+            }
+        }
+
         this.sysLog.append({
             ts: Date.now(),
             level: "info",
@@ -298,6 +358,7 @@ export class TaskServiceImpl implements TaskService {
             text: `[Project] refreshed ${nextSpecs.length} specs from project scripts`,
         });
         this.events.emit(Events.TASK_SPECS_REFRESHED, { projectId, count: nextSpecs.length });
+
         return await this.listViewsByProject(projectId);
     }
 
@@ -463,6 +524,8 @@ export class TaskServiceImpl implements TaskService {
 
 
     /* -------------------------------------------------------------------------- */
+    /*                                run helpers                                 */
+    /* -------------------------------------------------------------------------- */
 
     // 根据 taskId 找 active runtime
     private getActiveRuntime(taskId: string): { runId: string; rt: TaskRuntime } | null {
@@ -546,5 +609,71 @@ export class TaskServiceImpl implements TaskService {
             this.procs.delete(runId);
             target--;
         }
+    }
+
+
+    /* -------------------------------------------------------------------------- */
+    /*                              orphan management                              */
+    /* -------------------------------------------------------------------------- */
+
+    /**
+     * 安全清理 orphan（被 scripts 删掉的 taskId）
+     * 规则：
+     * - 运行中的（running/stopping）不动
+     * - 仅清理已结束且不在 procs 的 run
+     * - 会自修复 active 指针与 run 索引
+     */
+    private pruneOrphanSafe(orphanTaskIds: string[]) {
+        for (const taskId of orphanTaskIds) {
+            // 如果 task 还有 active run（运行中/停止中），不动
+            const activeRunId = this.activeRunByTaskId.get(taskId);
+            if (activeRunId) {
+                const rt = this.runtimes.get(activeRunId);
+                if (rt && (rt.status === "running" || rt.status === "stopping")) {
+                    continue;
+                }
+                // active 指针异常或已结束：可以清掉指针，但不强删 runtime
+                this.activeRunByTaskId.delete(taskId);
+            }
+
+            // 清理该 task 下“可安全删除的 run”（不在 procs、非 active）
+            const arr = this.runIdsByTaskId.get(taskId);
+            if (arr && arr.length > 0) {
+                const keep: string[] = [];
+
+                for (const runId of arr) {
+                    // 保护：在 procs 的不删（理论上不会发生，但兜底）
+                    if (this.procs.has(runId)) {
+                        keep.push(runId);
+                        continue;
+                    }
+                    // 保护：仍是 active 的不删（兜底）
+                    if (this.activeRunByTaskId.get(taskId) === runId) {
+                        keep.push(runId);
+                        continue;
+                    }
+
+                    this.runtimes.delete(runId);
+                    this.procs.delete(runId);
+                }
+
+                if (keep.length > 0) this.runIdsByTaskId.set(taskId, keep);
+                else this.runIdsByTaskId.delete(taskId);
+            } else {
+                // 索引都没了：兜底清 active
+                this.activeRunByTaskId.delete(taskId);
+            }
+        }
+
+        // 全局再跑一次，保持上限
+        this.pruneRunsGlobal();
+    }
+
+    /**
+     * all 模式：目前等价 safe（避免误删）
+     * - 如果未来要更激进，建议只在“用户主动点击清理/重建”场景开放
+     */
+    private pruneOrphanAll(orphanTaskIds: string[]) {
+        this.pruneOrphanSafe(orphanTaskIds);
     }
 }
