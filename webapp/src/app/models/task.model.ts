@@ -33,4 +33,6 @@ export type TaskRuntimeStatus =
     | { status: "idle" }
     | { status: "running"; pid?: number; startedAt?: number; }
     | { status: "stopping" }
-    | { status: "stopped"; exitCode?: number | null; signal?: string | null; stoppedAt?: number };
+    | { status: "stopped"; exitCode?: number | null; signal?: string | null; stoppedAt?: number }
+    | { status: "failed"; exitCode?: number | null; signal?: string | null; stoppedAt?: number }
+    | { status: "success"; exitCode?: number | null; signal?: string | null; stoppedAt?: number };

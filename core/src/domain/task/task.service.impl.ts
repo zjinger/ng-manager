@@ -20,6 +20,14 @@ export class TaskServiceImpl implements TaskService {
     private runtimes = new Map<string, TaskRuntime>();     // key: runId , value: runtime
     private procs = new Map<string, ProcHandle>(); // key: runId , value: proc handle
 
+    // 索引（task -> runId 列表，按时间从旧到新）
+    private runIdsByTaskId = new Map<string, string[]>(); // key: taskId, value: runId[]
+
+    // 清理策略
+    private readonly MAX_RUNS_PER_TASK = 5; // 每个 task 最多保留的 run 记录数
+    private readonly MAX_TOTAL_RUNS = 200; // 全部任务最多保留的 run 记录数
+
+
     constructor(
         private projectService: ProjectService,
         private proc: ProcessService,
@@ -56,6 +64,10 @@ export class TaskServiceImpl implements TaskService {
 
         this.activeRunByTaskId.set(taskId, runId);
         this.runtimes.set(runId, rt);
+
+        // 记录索引
+        this.trackRun(taskId, runId);
+
         // syslog
         this.sysLog.append({
             ts: Date.now(),
@@ -192,21 +204,25 @@ export class TaskServiceImpl implements TaskService {
             if (cur.status === "failed") {
                 this.events.emit(Events.TASK_FAILED, { taskId, runId, error: `[Task] exit code=${code}` });
             }
+
+            // exit 后再跑一次清理（把旧 run 淘汰掉）
+            this.pruneRunsForTask(taskId);
+            this.pruneRunsGlobal();
         });
 
         return rt;
     }
 
     async stop(taskId: string): Promise<TaskRuntime> {
-        const runId = this.activeRunByTaskId.get(taskId);
-        if (!runId) throw new AppError("RUN_NOT_FOUND", "Run not found", { taskId });
-        const rt = this.runtimes.get(runId);
-        if (!rt) throw new AppError("RUN_NOT_FOUND", "Run not found", { runId });
+
+        const cur = this.getActiveRuntime(taskId);
+        if (!cur) throw new AppError("RUN_NOT_FOUND", "Run not found", { taskId });
+        const { runId, rt } = cur;
 
         if (rt.status !== "running") return rt;
-
         rt.status = "stopping";
         this.runtimes.set(runId, rt);
+
         const projectId = rt.projectId;
         let projectRoot = ''
         try {
@@ -232,11 +248,9 @@ export class TaskServiceImpl implements TaskService {
         return rt;
     }
     async status(taskId: string): Promise<TaskRuntime> {
-        const runId = this.activeRunByTaskId.get(taskId);
-        if (!runId) throw new AppError("RUN_NOT_FOUND", `Run not found for task: ${taskId}`, { taskId });
-        const rt = this.runtimes.get(runId);
-        if (!rt) throw new AppError("RUN_NOT_FOUND", `Run not found: ${runId}`, { runId });
-        return rt;
+        const cur = this.getActiveRuntime(taskId);
+        if (!cur) throw new AppError("RUN_NOT_FOUND", `Run not found for task: ${taskId}`, { taskId });
+        return cur.rt;
     }
 
     async listActive(): Promise<TaskRuntime[]> {
@@ -293,14 +307,41 @@ export class TaskServiceImpl implements TaskService {
      */
     async listViewsByProject(projectId: string): Promise<TaskRow[]> {
         const specs = await this.listSpecsByProject(projectId);
-        const rtByTaskId = new Map<string, TaskRuntime>(); // key: taskId, value: runtime
-        for (const rt of this.runtimes.values()) {
-            if (rt.projectId === projectId) rtByTaskId.set(rt.taskId, rt);
-        }
-        return specs.map((spec) => ({
-            spec,
-            runtime: rtByTaskId.get(spec.id),
-        }));
+        return specs.map((spec) => {
+            let runtime: TaskRuntime | undefined;
+            // 优先 active run
+            const activeRunId = this.activeRunByTaskId.get(spec.id);
+            if (activeRunId) {
+                const rt = this.runtimes.get(activeRunId);
+                if (rt) {
+                    runtime = rt;
+                } else {
+                    // active 指针异常，清掉
+                    this.activeRunByTaskId.delete(spec.id);
+                }
+            }
+            // fallback：最近一次 run（索引里的最后一个）
+            if (!runtime) {
+                const arr = this.runIdsByTaskId.get(spec.id);
+                if (arr && arr.length > 0) {
+                    // 从后往前找一个仍存在的 runtime
+                    for (let i = arr.length - 1; i >= 0; i--) {
+                        const runId = arr[i]!;
+                        const rt = this.runtimes.get(runId);
+                        if (rt) {
+                            runtime = rt;
+                            break;
+                        }
+                        // 索引脏数据，顺手清理
+                        arr.splice(i, 1);
+                    }
+                    // 索引清空则移除
+                    if (arr.length === 0) this.runIdsByTaskId.delete(spec.id);
+                    else this.runIdsByTaskId.set(spec.id, arr);
+                }
+            }
+            return { spec, runtime };
+        });
     }
 
     async listSpecsByProject(projectId: string): Promise<TaskDefinition[]> {
@@ -314,11 +355,32 @@ export class TaskServiceImpl implements TaskService {
 
     /**
      * 根据 taskId 找最近一次的 runtime 
+     * 不只看 active，也返回“最近一次 run（不管是否 active）
      */
     async getSnapshotByTaskId(taskId: string): Promise<TaskRuntime | null> {
-        const activeRunId = this.activeRunByTaskId.get(taskId);
-        if (!activeRunId) return null;
-        return this.runtimes.get(activeRunId) ?? null;
+        //  优先 active
+        const active = this.activeRunByTaskId.get(taskId);
+        if (active) {
+            const rt = this.runtimes.get(active);
+            if (rt) return rt;
+            // active 指针异常：清掉，继续走 fallback
+            this.activeRunByTaskId.delete(taskId);
+        }
+        //  fallback：取该 task 最近一次 runId（索引里最后一个）
+        const arr = this.runIdsByTaskId.get(taskId);
+        if (!arr || arr.length === 0) return null;
+        // 从后往前找第一个仍存在的 runtime（防止已被 prune/异常丢失）
+        for (let i = arr.length - 1; i >= 0; i--) {
+            const runId = arr[i]!;
+            const rt = this.runtimes.get(runId);
+            if (rt) return rt;
+            // 索引里有但 runtimes 没了：顺手清理掉这个 runId，保持索引健康
+            arr.splice(i, 1);
+        }
+        // 索引被清空
+        if (arr.length === 0) this.runIdsByTaskId.delete(taskId);
+        else this.runIdsByTaskId.set(taskId, arr);
+        return null;
     }
 
     // logs
@@ -333,9 +395,9 @@ export class TaskServiceImpl implements TaskService {
 
     /** 给 WS 的 task.resize 用 */
     resizeRun(taskId: string, cols: number, rows: number) {
-        const runId = this.activeRunByTaskId.get(taskId);
-        if (!runId) return;
-        const h = this.procs.get(runId);
+        const cur = this.getActiveRuntime(taskId);
+        if (!cur) return;
+        const h = this.procs.get(cur.runId);
         if (!h?.resize) return;
         h.resize(cols, rows);
     }
@@ -399,4 +461,90 @@ export class TaskServiceImpl implements TaskService {
         }
     }
 
+
+    /* -------------------------------------------------------------------------- */
+
+    // 根据 taskId 找 active runtime
+    private getActiveRuntime(taskId: string): { runId: string; rt: TaskRuntime } | null {
+        const runId = this.activeRunByTaskId.get(taskId);
+        if (!runId) return null;
+        const rt = this.runtimes.get(runId);
+        if (!rt) return null;
+        return { runId, rt };
+    }
+
+    //  记录 run 到索引，并触发清理（只清旧的、非 active 的）
+    private trackRun(taskId: string, runId: string) {
+        const arr = this.runIdsByTaskId.get(taskId) ?? [];
+        arr.push(runId);
+        this.runIdsByTaskId.set(taskId, arr);
+
+        this.pruneRunsForTask(taskId);
+        this.pruneRunsGlobal();
+    }
+
+    //  是否允许删除某个 run（保护：active、还在 procs 里的）
+    private canPruneRun(taskId: string, runId: string) {
+        const active = this.activeRunByTaskId.get(taskId);
+        if (active === runId) return false;
+        if (this.procs.has(runId)) return false;
+        return true;
+    }
+
+    //  每个 task 只保留最近 N 次 run
+    private pruneRunsForTask(taskId: string) {
+        const arr = this.runIdsByTaskId.get(taskId);
+        if (!arr || arr.length <= this.MAX_RUNS_PER_TASK) return;
+
+        // 从最旧的开始删
+        let removed = 0;
+        while (arr.length > this.MAX_RUNS_PER_TASK) {
+            const oldest = arr[0]!;
+            if (!this.canPruneRun(taskId, oldest)) break; // 遇到不能删的就停，避免误删
+            arr.shift();
+            this.runtimes.delete(oldest);
+            this.procs.delete(oldest); // 理论上已不在，但安全起见
+            removed++;
+        }
+
+        if (removed > 0) {
+            this.runIdsByTaskId.set(taskId, arr);
+        }
+    }
+
+    // 全局最多保留 M 个 run（按“索引中的时间顺序”粗略清理）
+    private pruneRunsGlobal() {
+        const total = this.runtimes.size;
+        if (total <= this.MAX_TOTAL_RUNS) return;
+
+        // 构造一个全局队列（旧 -> 新）
+        const queue: Array<{ taskId: string; runId: string }> = [];
+        for (const [taskId, runIds] of this.runIdsByTaskId.entries()) {
+            for (const runId of runIds) queue.push({ taskId, runId });
+        }
+
+        // 如果索引里比 runtimes 少（异常情况），就不做全局清理，避免误删
+        if (queue.length === 0) return;
+
+        let target = total - this.MAX_TOTAL_RUNS;
+        for (const item of queue) {
+            if (target <= 0) break;
+            const { taskId, runId } = item;
+
+            if (!this.runtimes.has(runId)) continue;
+            if (!this.canPruneRun(taskId, runId)) continue;
+
+            // 从 task 索引里移除这个 runId
+            const arr = this.runIdsByTaskId.get(taskId);
+            if (arr) {
+                const idx = arr.indexOf(runId);
+                if (idx >= 0) arr.splice(idx, 1);
+                if (arr.length === 0) this.runIdsByTaskId.delete(taskId);
+            }
+
+            this.runtimes.delete(runId);
+            this.procs.delete(runId);
+            target--;
+        }
+    }
 }

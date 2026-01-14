@@ -103,8 +103,20 @@ export class TaskRuntimeStore {
         return { status: 'running', pid: rt.pid, startedAt: rt.startedAt };
       case 'stopping':
         return { status: 'stopping' };
-      case 'success':
       case 'failed':
+        return {
+          status: 'failed',
+          exitCode: rt.exitCode ?? null,
+          signal: rt.signal ?? null,
+          stoppedAt: rt.stoppedAt,
+        };
+      case 'success':
+        return {
+          status: 'success',
+          exitCode: rt.exitCode ?? null,
+          signal: rt.signal ?? null,
+          stoppedAt: rt.stoppedAt,
+        };
       case 'stopped':
         return {
           status: 'stopped',
