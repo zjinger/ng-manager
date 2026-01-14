@@ -14,3 +14,9 @@ export type FsListResult = {
     path: string;       // realpath
     entries: FsEntry[];
 };
+
+export type FsFavorite = {
+    path: string;      // 规范化后的路径
+    label: string;     // 展示名（默认用最后一段目录名/盘符）
+    createdAt: number;
+};

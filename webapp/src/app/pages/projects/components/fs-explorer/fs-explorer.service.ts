@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from "@angular/core";
-import type { FsEntry } from "@models/fs.model";
+import type { FsEntry, FsFavorite } from "@models/fs.model";
 import { FsExplorerApiService } from "./fs-explorer-api.service";
+import { LocalStateStore, LS_KEYS } from "@core/local-state";
 
 export type PathSeg = {
   key: string;
@@ -15,6 +16,7 @@ export type PathSeg = {
 })
 export class FsExplorerService {
   private fsApi = inject(FsExplorerApiService)
+  private localState = inject(LocalStateStore);
 
   /* ---------------- state ---------------- */
   // 输入框 path（用户可编辑）
@@ -54,7 +56,118 @@ export class FsExplorerService {
     return posix === "/";
   });
 
+  // 是否可以上退（非根目录且不在加载中）
   readonly canUp = computed(() => !this.reloading() && !this.isRoot());
+
+  /* ---------------- favorites ---------------- */
+  // 从 LocalState 初始化
+  readonly favorites = signal<FsFavorite[]>(
+    this.normalizeFavorites(
+      this.localState.get<FsFavorite[]>(LS_KEYS.fs.explorer.favorites, [])
+    )
+  );
+  // 当前路径是否已收藏
+  readonly isCurFavorited = computed(() => {
+    const p = this.normalizePath(this.currentPath() || this.path() || "");
+    if (!p) return false;
+    return this.favorites().some((f) => f.path === p);
+  });
+
+  /** 添加/取消收藏 */
+  toggleFavoriteCurrent() {
+    const cur = this.normalizePath(this.currentPath() || this.path() || "");
+    if (!cur) return;
+
+    const list = this.favorites();
+    const idx = list.findIndex((f) => f.path === cur);
+
+    let next: FsFavorite[];
+    if (idx >= 0) {
+      // 取消
+      next = list.slice(0, idx).concat(list.slice(idx + 1));
+    } else {
+      // 添加（置顶）
+      const fav: FsFavorite = {
+        path: cur,
+        label: this.buildFavoriteLabel(cur),
+        createdAt: Date.now(),
+      };
+      next = [fav, ...list];
+    }
+
+    next = this.normalizeFavorites(next);
+    this.favorites.set(next);
+    this.persistFavorites(next);
+  }
+
+  /** 从收藏跳转 */
+  openFavorite(f: FsFavorite) {
+    if (!f?.path) return;
+    this.path.set(f.path);
+    this.load();
+  }
+
+  /** 删除某条收藏 */
+  removeFavorite(f: FsFavorite) {
+    const next = this.normalizeFavorites(
+      this.favorites().filter((x) => x.path !== f.path)
+    );
+    this.favorites.set(next);
+    this.persistFavorites(next);
+  }
+
+  /** 清空收藏（可选） */
+  clearFavorites() {
+    this.favorites.set([]);
+    this.persistFavorites([]);
+  }
+
+  /** 写入 LocalStateStore */
+  private persistFavorites(list: FsFavorite[]) {
+    this.localState.set(LS_KEYS.fs.explorer.favorites, list);
+  }
+
+  /** 兜底：规范化 + 去重 + 排序 */
+  private normalizeFavorites(list: FsFavorite[]): FsFavorite[] {
+    const map = new Map<string, FsFavorite>();
+
+    for (const it of list || []) {
+      const p = this.normalizePath((it as any)?.path || "");
+      if (!p) continue;
+
+      map.set(p, {
+        path: p,
+        label: String((it as any)?.label || this.buildFavoriteLabel(p)).trim(),
+        createdAt: Number((it as any)?.createdAt || Date.now()),
+      });
+    }
+
+    // 最近收藏在前
+    return Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  /** label 生成策略：最后一段目录名 / 盘符 / UNC */
+  private buildFavoriteLabel(p: string): string {
+    const win = p.replaceAll("/", "\\");
+
+    // Windows drive root: D:\ -> D:
+    if (/^[a-zA-Z]:\\?$/.test(win)) return win.slice(0, 2);
+
+    // UNC root: \\server\share
+    if (/^\\\\[^\\]+\\[^\\]+$/.test(win)) return win;
+
+    // UNC: \\server\share\dir -> dir
+    if (/^\\\\/.test(win)) {
+      const parts = win.split("\\").filter(Boolean);
+      return parts[parts.length - 1] || win;
+    }
+
+    // Posix: /a/b -> b ; / -> /
+    const posix = p.replaceAll("\\", "/");
+    if (posix === "/") return "/";
+    const arr = posix.split("/").filter(Boolean);
+    return arr[arr.length - 1] || posix;
+  }
 
   /* ---------------- actions ---------------- */
 

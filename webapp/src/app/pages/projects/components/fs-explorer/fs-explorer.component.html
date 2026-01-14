@@ -43,8 +43,8 @@
     >
       <nz-icon [nzType]="fs.reloading() ? 'loading' : 'reload'" nzTheme="outline" />
     </button>
-    <button nz-button (click)="fs.up()" nz-tooltip="添加/取消收藏">
-      <nz-icon nzType="star" nzTheme="outline" />
+    <button nz-button (click)="fs.toggleFavoriteCurrent()" nz-tooltip="添加/取消收藏">
+      <nz-icon nzType="star" [nzTheme]="fs.isCurFavorited() ? 'fill' : 'outline'" />
     </button>
     <button
       nz-button
@@ -90,10 +90,14 @@
 
 <nz-dropdown-menu #collectMenu="nzDropdownMenu">
   <ul nz-menu>
+    @for (fav of fs.favorites(); track fav.path) {
     <li nz-menu-item>
-      <nz-icon nzType="folder" nzTheme="fill" style="font-size: 16px" />
-      1st menu item
+      <nz-icon nzType="folder" nzTheme="fill" />
+      <button nz-button nzType="link" (click)="fs.openFavorite(fav)" [nz-tooltip]="fav.path">
+        {{ fav.label }}
+      </button>
     </li>
+    }
   </ul>
 </nz-dropdown-menu>
 
