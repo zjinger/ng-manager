@@ -50,7 +50,7 @@
 </div>
 
 <ng-template #contentTemplate let-items let-title="title">
-  <div class="group-title">运行依赖</div>
+  <div class="group-title">{{title}}</div>
   <div class="list">
     @for(item of items;track trackByName($index,item)){
     <div class="row">
