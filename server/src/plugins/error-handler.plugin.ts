@@ -66,6 +66,11 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     UNAUTHORIZED: 401,
     INVALID_TIMESTAMP: 400, // 时间戳无效
 
+    /* ---------------- Deps ---------------- */
+    DEP_INSTALL_FAILED: 500,
+    DEP_UNINSTALL_FAILED: 500,
+    DEP_NOT_FOUND: 404,
+
 
     /* ---------------- Fallback ---------------- */
     UNKNOWN_ERROR: 500,

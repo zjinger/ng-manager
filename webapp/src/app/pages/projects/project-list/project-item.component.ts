@@ -11,7 +11,6 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { ProjectItemPopoverComponent } from "./project-item-popover.component";
 import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 import { TaskRuntimeStore } from '@pages/tasks/services/task-runtime-store';
-import { NzModalService } from 'ng-zorro-antd/modal';
 import { UiNotifierService } from '@app/core';
 @Component({
   selector: 'app-project-item',

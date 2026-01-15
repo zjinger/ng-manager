@@ -43,6 +43,11 @@ export const enum ErrorPolicyCode {
     TOPIC_NOT_FOUND = "TOPIC_NOT_FOUND",
     OP_NOT_FOUND = "OP_NOT_FOUND",
 
+    /* ---------- deps ---------- */
+    DEP_INSTALL_FAILED = "DEP_INSTALL_FAILED",
+    DEP_UNINSTALL_FAILED = "DEP_UNINSTALL_FAILED",
+    DEP_NOT_FOUND = "DEP_NOT_FOUND",
+
     /* ---------- protocol / dev ---------- */
     INVALID_JSON = "INVALID_JSON",
     INVALID_MSG = "INVALID_MSG",
@@ -199,6 +204,20 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     OP_NOT_FOUND: {
         level: "toast",
         message: "未知的操作类型",
+    },
+
+    /* ---------- deps ---------- */
+    DEP_INSTALL_FAILED: {
+        level: "toast",
+        message: "依赖安装失败",
+    },
+    DEP_UNINSTALL_FAILED: {
+        level: "toast",
+        message: "依赖卸载失败",
+    },
+    DEP_NOT_FOUND: {
+        level: "toast",
+        message: "依赖未找到",
     },
 
     /* ---------- protocol / dev ---------- */

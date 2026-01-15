@@ -6,6 +6,7 @@ import type { TaskService } from "../domain/task/task.service";
 import { ProjectService } from "../domain/project/project.service";
 import { FsService } from "../domain/fs";
 import { ProjectBootstrapService } from "../domain/project/project-bootstrap.service";
+import { DepsService } from "../domain/deps";
 
 /**
  * 创建 CoreApp 的参数
@@ -38,8 +39,11 @@ export interface CoreApp {
     /** 项目管理 */
     project: ProjectService;
     bootstrap: ProjectBootstrapService;
+    deps: DepsService;
 
     /** 文件系统管理 */
     fs: FsService;
+    /** 关闭应用/服务前调用，做一些清理工作 */
+    dispose(): Promise<void>;
 
 }

@@ -49,6 +49,11 @@ export type ErrorCode =
     | "UNAUTHORIZED"
     | "INVALID_TIMESTAMP"
 
+    // Deps
+    | "DEP_INSTALL_FAILED"
+    | "DEP_UNINSTALL_FAILED"
+    | "DEP_NOT_FOUND"
+
     // Fallback
     | "UNKNOWN_ERROR"
     // Generic

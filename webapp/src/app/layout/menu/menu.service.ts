@@ -11,9 +11,10 @@ export class MenuService {
 
   private menus: MenuItem[] = [
     { title: '仪表盘', path: '/dashboard', icon: 'dashboard', level: 1 },
-    { title: '项目管理', path: '/projects', icon: 'project', level: 1 },
-    { title: '任务管理', path: '/tasks', icon: 'check-circle', level: 1, taskCountBadge: true },
-    { title: '系统设置', path: '/settings', icon: 'setting', level: 1 },
+    { title: '依赖', path: '/dependencies', icon: 'codepen', level: 1 },
+    { title: '任务', path: '/tasks', icon: 'schedule', level: 1, taskCountBadge: true },
+    { title: '配置', path: '/configuration', icon: 'setting', level: 1 },
+    // { title: '系统设置', path: '/settings', icon: 'setting', level: 1 },
   ];
 
   constructor() {

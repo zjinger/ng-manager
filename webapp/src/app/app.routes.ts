@@ -21,5 +21,13 @@ export const routes: Routes = [
     {
         path: 'settings',
         loadChildren: () => import('./pages/setting/setting-module').then(m => m.SettingModule)
+    },
+    {
+        path: 'configuration',
+        loadChildren: () => import('./pages/configuration/configuration.module').then(m => m.ConfigurationModule)
+    },
+    {
+        path: 'dependencies',
+        loadChildren: () => import('./pages/dependencies/dependencies.module').then(m => m.DependenciesModule)
     }
 ];

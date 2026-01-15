@@ -8,6 +8,7 @@ import { errorHandlerPlugin } from "./plugins/error-handler.plugin";
 import projectRoutes from "./routes/project.routes";
 import successHandlerPlugin from "./plugins/success-handle.plugin";
 import fsRoutes from "./routes/fs.routes";
+import depsRoutes from "./routes/deps.route";
 
 export async function createServer() {
     const fastify = Fastify({
@@ -36,8 +37,17 @@ export async function createServer() {
     await fastify.register(taskRoutes, { prefix: '/api/tasks' });
     //projects 
     await fastify.register(projectRoutes, { prefix: '/api/projects' });
+    // deps 
+    await fastify.register(depsRoutes, { prefix: '/api/deps' });
     // fs
     await fastify.register(fsRoutes, { prefix: '/api/fs' });
+
+    fastify.addHook('onClose', async () => {
+        // 在这里执行任何需要在服务器关闭时完成的异步操作
+        // 例如，关闭数据库连接、清理资源等
+        await fastify.core.dispose?.();
+        fastify.log.info('Server is closing, performing cleanup...');
+    });
 
     return fastify;
 }

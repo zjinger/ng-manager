@@ -7,6 +7,12 @@ interface DbShape {
     projects: Project[];
 }
 
+/**
+ * @deprecated quick-and-dirty 实现，建议使用 ProjectRepoJsonKv
+ * JsonProjectRepo
+ * - 基于单个 JSON 文件的 ProjectRepo 实现
+ * - 仅用于简单场景或测试
+ */
 export class JsonProjectRepo implements ProjectRepo {
     private file: string;
 
