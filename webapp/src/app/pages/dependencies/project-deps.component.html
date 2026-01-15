@@ -9,7 +9,17 @@
     </div>
     <div nz-col>
       <div class="actions">
-        <button nz-button nzType="default" (click)="installDevtools()">安装 devtools</button>
+        <button
+          nz-button
+          nzType="default"
+          nz-popover
+          [nzPopoverTrigger]="'click'"
+          [nzPopoverOverlayClassName]="'install-dep-popover'"
+          [nzPopoverContent]="installTemplate"
+          nzPopoverPlacement="bottomRight"
+        >
+          安装 devtools
+        </button>
         <nz-input-wrapper>
           <input
             nz-input
@@ -20,7 +30,7 @@
           />
           <nz-icon nzType="search" nzInputPrefix />
         </nz-input-wrapper>
-        <button nz-button nzType="primary" (click)="installAll()">
+        <button nz-button nzType="primary">
           <span nz-icon nzType="plus"></span>
           安装依赖
         </button>
@@ -50,7 +60,7 @@
 </div>
 
 <ng-template #contentTemplate let-items let-title="title">
-  <div class="group-title">{{title}}</div>
+  <div class="group-title">{{ title }}</div>
   <div class="list">
     @for(item of items;track trackByName($index,item)){
     <div class="row">
@@ -125,5 +135,23 @@
     } @if(items.length === 0){
     <div class="empty">无数据</div>
     }
+  </div>
+</ng-template>
+
+<ng-template #installTemplate>
+  <div class="install-popover-content">
+    <p>
+      Angular DevTools is a browser extension that provides debugging and profiling capabilities for
+      Angular applications.
+    </p>
+    <div class="img-wrapper">
+      <img src="/devtools.png" alt="" srcset="" />
+    </div>
+    <div class="actions">
+      <button nz-button nzType="default" (click)="openDevtoolsLearnMorePage()">了解更多</button>
+      <button nz-button nzType="primary" (click)="openDevtoolsInstallPage()">
+        安装 Angular DevTools
+      </button>
+    </div>
   </div>
 </ng-template>

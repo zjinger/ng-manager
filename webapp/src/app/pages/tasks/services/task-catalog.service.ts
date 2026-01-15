@@ -60,7 +60,7 @@ export class TaskCatalogService {
 
     try {
       const res = await firstValueFrom(this.api.getViews(pid));
-      console.log("[task catalog] loaded", pid, res);
+      // console.log("[task catalog] loaded", pid, res);
 
       // 这里保留后端 runtime（是快照，不是实时态）
       const normalized: TaskRow[] = (res ?? []).map((r: any) => ({

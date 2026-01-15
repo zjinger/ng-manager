@@ -53,7 +53,6 @@ export class WsClientService {
   }
 
   send(obj: WsClientMsg) {
-    console.log("[ws] send", obj);
     const data = JSON.stringify(obj);
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(data);

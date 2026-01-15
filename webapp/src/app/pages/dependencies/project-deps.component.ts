@@ -16,6 +16,7 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { DepItem } from "@models/deps.model";
 import { NzGridModule } from "ng-zorro-antd/grid";
 import { ProjectStateService } from "@pages/projects/services/project.state.service";
+import { NzPopoverModule } from "ng-zorro-antd/popover";
 @Component({
   selector: 'app-project-deps.component',
   imports: [
@@ -30,6 +31,7 @@ import { ProjectStateService } from "@pages/projects/services/project.state.serv
     NzSpinModule,
     NzDividerModule,
     NzPopconfirmModule,
+    NzPopoverModule,
   ],
   templateUrl: './project-deps.component.html',
   styleUrl: './project-deps.component.less',
@@ -88,9 +90,17 @@ export class ProjectDepsComponent {
   }
 
   openDetail(item: DepItem) {
-    // 你可以直接跳 npm 页面（若允许），或打开一个 Drawer 弹层展示更多信息
+    // 直接跳 npm 页面
     if (item.homepage) window.open(item.homepage, "_blank");
     else window.open(`https://www.npmjs.com/package/${encodeURIComponent(item.name)}`, "_blank");
+  }
+
+  openDevtoolsLearnMorePage() {
+    window.open("https://angular.dev/tools/devtools", "_blank");
+  }
+
+  openDevtoolsInstallPage() {
+    window.open("https://chromewebstore.google.com/detail/angular-devtools/ienfalfjdbdpebioblfackkekamfmbnh", "_blank");
   }
 
   installOrUpdate(item: DepItem) {
@@ -164,7 +174,7 @@ export class ProjectDepsComponent {
         this.msg.success("已完成安装");
         this.refresh();
       } catch (e: any) {
-        this.msg.error(e?.message || "批量安装失败");
+        this.msg.error("批量安装失败");
       } finally {
         this.loading.set(false);
       }
