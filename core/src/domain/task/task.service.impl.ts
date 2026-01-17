@@ -265,50 +265,14 @@ export class TaskServiceImpl implements TaskService {
         return out;
     }
 
-    // /**
-    //  * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
-    //  */
-    // async refreshByProject2(projectId: string): Promise<TaskRow[]> {
-    //     const project = await this.projectService.get(projectId);
-
-    //     const rootDir = project.root;
-    //     const scripts = project.scripts ?? {};
-    //     const pm = project.packageManager ?? "npm";
-    //     const projectName = project.name;
-    //     // 生成新的 specs
-    //     const nextSpecs = genSpecsFromScripts(projectId, rootDir, projectName, scripts, pm);
-    //     // 清理该 projectId 的旧 specs（只清 specs，不碰 runtimes）
-    //     for (const [id, s] of this.specs.entries()) {
-    //         if (s.projectId === projectId) this.specs.delete(id);
-    //     }
-
-    //     // 2) 写入新 specs
-    //     for (const s of nextSpecs) this.specs.set(s.id, s);
-
-    //     // 3) 可选：清理“孤儿 runtime”
-    //     // 例如 scripts 被删了，runtime 还在（先不动也行）
-    //     // 先不删，避免用户正在跑但 scripts 被改导致 UI 突然消失。
-    //     // 真要做清理，可以加一个 opts: { pruneOrphan?: boolean }
-    //     this.sysLog.append({
-    //         ts: Date.now(),
-    //         level: "info",
-    //         source: "system",
-    //         refId: projectId,
-    //         scope: "project",
-    //         text: `[Project] refreshed ${nextSpecs.length} specs from project scripts`,
-    //     });
-    //     this.events.emit(Events.TASK_SPECS_REFRESHED, { projectId, count: nextSpecs.length });
-    //     return await this.listViewsByProject(projectId);
-    // }
-
     /**
-  * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
-  * - 默认不清 orphan（避免用户正在跑时 scripts 被改导致 UI 消失）
-  * - 可通过 opts.pruneOrphan 开启“安全清理”
-  *  - safe: 只清理那些没有 active run 的 orphan
-  *  - all: 清理所有 orphan（不管有没有 active run，都删掉）
-  *  - none: 不清理
-  */
+     * 从 ProjectMeta 刷新 specs（并返回聚合视图，UI 直接用）
+     * - 默认不清 orphan（避免用户正在跑时 scripts 被改导致 UI 消失）
+     * - 可通过 opts.pruneOrphan 开启“安全清理”
+     *  - safe: 只清理那些没有 active run 的 orphan
+     *  - all: 清理所有 orphan（不管有没有 active run，都删掉）
+     *  - none: 不清理
+     */
     async refreshByProject(
         projectId: string,
         opts: { pruneOrphan?: "none" | "safe" | "all" } = {}
