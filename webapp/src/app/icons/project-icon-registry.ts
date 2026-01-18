@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import { NzIconService } from "ng-zorro-antd/icon";
-import { ICON_ANGULAR, ICON_NODE, ICON_REACT, ICON_VUE } from "./project-icons";
+import { ICON_ANGULAR, ICON_ESLINT, ICON_NODE, ICON_REACT, ICON_VUE } from "./project-icons";
 
 @Injectable({ providedIn: "root" })
 export class ProjectIconRegistry {
@@ -17,5 +17,6 @@ export class ProjectIconRegistry {
         this.icons.addIconLiteral("proj:vue", ICON_VUE);
         this.icons.addIconLiteral("proj:react", ICON_REACT);
         this.icons.addIconLiteral("proj:node", ICON_NODE);
+        this.icons.addIconLiteral("proj:eslint", ICON_ESLINT);
     }
 }

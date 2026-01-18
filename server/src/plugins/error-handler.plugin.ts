@@ -31,6 +31,16 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     INVALID_REPO_URL: 400,                      // 无效的仓库地址
     INVALID_PARENT_DIR: 400,                    // 无效的父目录
 
+    /* ---------------- Project Analysis ---------------- */
+    PROJECT_ANGULAR_JSON_INVALID: 400,          // angular.json 无效
+    PROJECT_VITE_CONFIG_INVALID: 400,           // vite 配置无效
+
+
+    /* ---------------- Config ---------------- */
+    CONFIG_BACKUP_NOT_FOUND: 404,               // 配置备份不存在
+    CONFIG_READ_FAILED: 500,                    // 配置读取失败
+
+
     /* ---------------- Task / Process ---------------- */
 
     TASK_NOT_FOUND: 404,

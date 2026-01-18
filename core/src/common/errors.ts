@@ -18,6 +18,14 @@ export type ErrorCode =
     | "INVALID_REPO_URL"
     | "INVALID_PARENT_DIR"
 
+    // Project Analysis
+    | "PROJECT_ANGULAR_JSON_INVALID"
+    | "PROJECT_VITE_CONFIG_INVALID"
+
+    // Config
+    | "CONFIG_BACKUP_NOT_FOUND"
+    | "CONFIG_READ_FAILED"
+
     // Task / Process
     | "TASK_NOT_FOUND"
     | "RUN_NOT_FOUND"

@@ -2,24 +2,15 @@
   <div nz-row nzAlign="middle" nzJustify="space-between" class="page-header">
     <div nz-col>
       <div class="title">
-        项目依赖 @if(loading()){
-        <nz-icon nzType="loading" nzTheme="outline" />
+        项目依赖
+        @if (loading()) {
+          <nz-icon nzType="loading" nzTheme="outline" />
         }
       </div>
     </div>
     <div nz-col>
       <div class="actions">
-        <button
-          nz-button
-          nzType="default"
-          nz-popover
-          [nzPopoverTrigger]="'click'"
-          [nzPopoverOverlayClassName]="'install-dep-popover'"
-          [nzPopoverContent]="installTemplate"
-          nzPopoverPlacement="bottomRight"
-        >
-          安装 devtools
-        </button>
+        <app-ng-devtool></app-ng-devtool>
         <nz-input-wrapper>
           <input
             nz-input
@@ -62,45 +53,45 @@
 <ng-template #contentTemplate let-items let-title="title">
   <div class="group-title">{{ title }}</div>
   <div class="list">
-    @for(item of items;track trackByName($index,item)){
-    <div class="row">
-      <div nz-row nzAlign="middle" class="row-inner">
-        <!-- left -->
-        <div nz-col nzFlex="400px" class="left">
-          <div class="pkg-icon">
-            <span nz-icon nzType="appstore"></span>
-          </div>
-          <div class="pkg">
-            <div class="name">{{ item.name }}</div>
-            <div class="sub">
-              <span>版本 {{ item.current || '-' }}</span>
-              <span class="sep">·</span>
-              <span>要求 {{ item.required || '-' }}</span>
-              <span class="sep">·</span>
-              <span>最新 {{ item.latest || '-' }}</span>
+    @for (item of items; track trackByName($index, item)) {
+      <div class="row">
+        <div nz-row nzAlign="middle" class="row-inner">
+          <!-- left -->
+          <div nz-col nzFlex="400px" class="left">
+            <div class="pkg-icon">
+              <span nz-icon nzType="appstore"></span>
+            </div>
+            <div class="pkg">
+              <div class="name">{{ item.name }}</div>
+              <div class="sub">
+                <span>版本 {{ item.current || '-' }}</span>
+                <span class="sep">·</span>
+                <span>要求 {{ item.required || '-' }}</span>
+                <span class="sep">·</span>
+                <span>最新 {{ item.latest || '-' }}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- middle -->
-        <div nz-col nzFlex="auto" class="mid">
-          @if(item.installed){
-          <nz-tag nzColor="success">已安装</nz-tag>
-          } @else{
-          <nz-tag nzColor="warning">未安装</nz-tag>
-          }
-          <!-- @if(item.hasUpdate){
+          <!-- middle -->
+          <div nz-col nzFlex="auto" class="mid">
+            @if (item.installed) {
+              <nz-tag nzColor="success">已安装</nz-tag>
+            } @else {
+              <nz-tag nzColor="warning">未安装</nz-tag>
+            }
+            <!-- @if(item.hasUpdate){
           <nz-tag nzColor="warning">可更新</nz-tag>
           } -->
-          <a class="detail" (click)="openDetail(item)">
-            <span nz-icon nzType="link"></span>
-            查看详情
-          </a>
-        </div>
+            <a class="detail" (click)="openDetail(item)">
+              <span nz-icon nzType="link"></span>
+              查看详情
+            </a>
+          </div>
 
-        <!-- right -->
-        <div nz-col nzFlex="180px" class="right">
-          <!-- <button
+          <!-- right -->
+          <div nz-col nzFlex="180px" class="right">
+            <!-- <button
             nz-button
             nzType="default"
             [nzLoading]="installing()[item.name]"
@@ -108,50 +99,34 @@
           >
             {{ item.hasUpdate ? '更新' : item.installed ? '重装' : '安装' }}
           </button> -->
-          @if(item.hasUpdate || !item.installed){
-          <button
-            nz-button
-            nzType="text"
-            [nzLoading]="installing()[item.name]"
-            (click)="installOrUpdate(item)"
-            [nz-tooltip]="item.hasUpdate ? '更新到最新版本' : '安装依赖'"
-          >
-            <nz-icon nzType="download" />
-          </button>
-          } @if(item.installed){
-          <button
-            nz-button
-            nzType="text"
-            nz-popconfirm
-            nzPopconfirmTitle="确定卸载 {{ item.name }}？"
-            (nzOnConfirm)="uninstall(item)"
-          >
-            <nz-icon nzType="delete" nzTheme="fill" [nz-tooltip]="'卸载' + item.name" />
-          </button>
-          }
+            @if (item.hasUpdate || !item.installed) {
+              <button
+                nz-button
+                nzType="text"
+                [nzLoading]="installing()[item.name]"
+                (click)="installOrUpdate(item)"
+                [nz-tooltip]="item.hasUpdate ? '更新到最新版本' : '安装依赖'"
+              >
+                <nz-icon nzType="download" />
+              </button>
+            }
+            @if (item.installed) {
+              <button
+                nz-button
+                nzType="text"
+                nz-popconfirm
+                nzPopconfirmTitle="确定卸载 {{ item.name }}？"
+                (nzOnConfirm)="uninstall(item)"
+              >
+                <nz-icon nzType="delete" nzTheme="fill" [nz-tooltip]="'卸载' + item.name" />
+              </button>
+            }
+          </div>
         </div>
       </div>
-    </div>
-    } @if(items.length === 0){
-    <div class="empty">无数据</div>
     }
-  </div>
-</ng-template>
-
-<ng-template #installTemplate>
-  <div class="install-popover-content">
-    <p>
-      Angular DevTools is a browser extension that provides debugging and profiling capabilities for
-      Angular applications.
-    </p>
-    <div class="img-wrapper">
-      <img src="/devtools.png" alt="" srcset="" />
-    </div>
-    <div class="actions">
-      <button nz-button nzType="default" (click)="openDevtoolsLearnMorePage()">了解更多</button>
-      <button nz-button nzType="primary" (click)="openDevtoolsInstallPage()">
-        安装 Angular DevTools
-      </button>
-    </div>
+    @if (items.length === 0) {
+      <div class="empty">无数据</div>
+    }
   </div>
 </ng-template>

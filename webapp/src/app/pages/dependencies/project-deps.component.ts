@@ -17,6 +17,7 @@ import { DepItem } from "@models/deps.model";
 import { NzGridModule } from "ng-zorro-antd/grid";
 import { ProjectStateService } from "@pages/projects/services/project.state.service";
 import { NzPopoverModule } from "ng-zorro-antd/popover";
+import { NgDevtoolComponent } from "@app/shared/devtools/ng-devtool.component";
 @Component({
   selector: 'app-project-deps.component',
   imports: [
@@ -32,6 +33,7 @@ import { NzPopoverModule } from "ng-zorro-antd/popover";
     NzDividerModule,
     NzPopconfirmModule,
     NzPopoverModule,
+    NgDevtoolComponent
   ],
   templateUrl: './project-deps.component.html',
   styleUrl: './project-deps.component.less',
@@ -93,14 +95,6 @@ export class ProjectDepsComponent {
     // 直接跳 npm 页面
     if (item.homepage) window.open(item.homepage, "_blank");
     else window.open(`https://www.npmjs.com/package/${encodeURIComponent(item.name)}`, "_blank");
-  }
-
-  openDevtoolsLearnMorePage() {
-    window.open("https://angular.dev/tools/devtools", "_blank");
-  }
-
-  openDevtoolsInstallPage() {
-    window.open("https://chromewebstore.google.com/detail/angular-devtools/ienfalfjdbdpebioblfackkekamfmbnh", "_blank");
   }
 
   installOrUpdate(item: DepItem) {

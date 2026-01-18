@@ -1,0 +1,136 @@
+.conf-page {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* header */
+.page-header {
+    margin-bottom: 18px;
+    flex: 0 0 auto;
+
+    .title {
+        font-size: 22px;
+        font-weight: 600;
+    }
+
+    .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        button[nz-button] {
+            border-radius: 18px;
+        }
+    }
+}
+
+.page-content {
+    flex: 1 1 auto;
+    overflow: hidden auto;
+    height: 0;
+}
+
+/* content panel */
+.panel {
+    background: var(--ant-layout-body-background, #fff);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    display: flex;
+
+    .list {
+        flex: 0 0 300px;
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+
+        .topbar {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+
+            nz-input-wrapper {
+                width: 100%;
+                border-radius: 18px;
+            }
+        }
+
+        .items {
+            flex: 1 1 auto;
+            overflow: auto;
+            height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 8px;
+
+            .item {
+                border-radius: 3px;
+                padding: 10px 10px;
+                cursor: pointer;
+
+                &:hover,
+                &.active {
+                    background: var(--app-primary-3);
+                }
+
+                .row {
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                    overflow: hidden;
+                    justify-content: space-between;
+
+                    .icon {
+                        font-size: 42px;
+                        flex: 0 0 auto;
+                        position: relative;
+                    }
+
+                    .info {
+                        flex: 1 1 auto;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        overflow: hidden;
+
+                        .name {
+                            font-weight: 600;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                        }
+
+                        .description {
+                            font-size: 13px;
+                            color: var(--app-text-secondary);
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    .content {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        padding: 8px 16px;
+
+        .group-title {
+            font-size: 24px;
+        }
+
+        .config-list {
+            display: flex;
+            flex-direction: column;
+        }
+    }
+}

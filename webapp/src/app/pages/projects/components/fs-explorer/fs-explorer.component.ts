@@ -9,7 +9,6 @@ import { NzMenuModule } from "ng-zorro-antd/menu";
 import { NzModalModule } from "ng-zorro-antd/modal";
 import { NzSwitchModule } from "ng-zorro-antd/switch";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
-import { AboutRoutingModule } from "@pages/about/about-routing-module";
 import { FsExplorerService } from "./fs-explorer.service";
 
 @Component({
@@ -25,7 +24,6 @@ import { FsExplorerService } from "./fs-explorer.service";
     NzMenuModule,
     NzSwitchModule,
     NzModalModule,
-    AboutRoutingModule,
   ],
   templateUrl: "./fs-explorer.component.html",
   styleUrl: "./fs-explorer.component.less",

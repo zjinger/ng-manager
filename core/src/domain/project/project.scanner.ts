@@ -49,8 +49,9 @@ export async function scanProject(
         const angularJsonPath = path.join(rootDir, "angular.json");
         if (fs.existsSync(angularJsonPath)) {
             meta.angular = {
-                angularJsonPath,
-                projects: [],
+                found: {
+                    angularJsonPath,
+                },
             };
         }
     }
@@ -66,7 +67,7 @@ export async function scanProject(
         const p = path.join(rootDir, file);
         if (fs.existsSync(p)) {
             // TODO: 解析更多 vite 配置
-            meta.vite = { configPath: p };
+            meta.vite = { found: { configPath: p, configFileName: file } };
             break;
         }
     }
