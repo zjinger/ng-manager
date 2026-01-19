@@ -1,7 +1,7 @@
 import { promises as fsp } from "node:fs";
 import * as path from "node:path";
 import { AppError } from "../../common/errors";
-import { genId } from "../../common/id";
+import { uid } from "../../common/id";
 import type { ProjectRepo } from "./project.repo";
 import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, CheckRootResult } from "./project.types";
 import { scanProject } from "./project.scanner";
@@ -136,7 +136,7 @@ export class ProjectServiceImpl implements ProjectService {
 
         const now = Date.now();
         const p: Project = {
-            id: genId("proj"),
+            id: uid("proj"),
             name: input.name,
             root: input.root,
             scripts,

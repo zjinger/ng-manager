@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
-import { configRoutes, depsRoutes, fsRoutes, projectRoutes, systemRoutes, taskRoutes } from "../routes";
+import { configRoutes, dashboardRoutes, depsRoutes, fsRoutes, projectRoutes, systemRoutes, taskRoutes } from "../routes";
 
 export default fp(async function configPlugin(fastify: FastifyInstance) {
     // system
@@ -15,4 +15,7 @@ export default fp(async function configPlugin(fastify: FastifyInstance) {
     await fastify.register(fsRoutes, { prefix: '/api/fs' });
     // config
     await fastify.register(configRoutes, { prefix: '/api/config' });
+
+    // dashboard
+    await fastify.register(dashboardRoutes, { prefix: '/api/dashboard' });
 });

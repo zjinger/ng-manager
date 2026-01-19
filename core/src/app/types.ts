@@ -2,11 +2,11 @@
 import type { IEventBus } from "../infra/event/event-bus";
 import type { CoreEventMap } from "../infra/event/events";
 import type { ILogStore } from "../infra/log/log.store";
-import type { TaskService } from "../domain/task/task.service";
-import { ProjectService } from "../domain/project/project.service";
+import { ProjectService, ProjectBootstrapService } from "../domain/project";
+import { TaskService } from "../domain/task";
 import { FsService } from "../domain/fs";
-import { ProjectBootstrapService } from "../domain/project/project-bootstrap.service";
 import { DepsService } from "../domain/deps";
+import { DashboardService } from "../domain/dashboard";
 
 /**
  * 创建 CoreApp 的参数
@@ -43,6 +43,10 @@ export interface CoreApp {
 
     /** 文件系统管理 */
     fs: FsService;
+
+    /** 仪表盘管理 */
+    dashboard: DashboardService;
+
     /** 关闭应用/服务前调用，做一些清理工作 */
     dispose(): Promise<void>;
 

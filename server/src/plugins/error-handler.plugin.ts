@@ -81,6 +81,11 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     DEP_UNINSTALL_FAILED: 500,
     DEP_NOT_FOUND: 404,
 
+    /* ---------------- Dashboard ---------------- */
+    DASHBOARD_CONFLICT: 409,
+    WIDGET_NOT_FOUND: 404,
+    WIDGET_LOCKED: 423,
+
 
     /* ---------------- Fallback ---------------- */
     UNKNOWN_ERROR: 500,

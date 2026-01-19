@@ -1,14 +1,6 @@
-import { createHash } from "crypto";
 import type { TaskDefinition, TaskKind } from "../task.types";
 import { PackageManager } from "../../project/project.meta";
-
-function buildSpecId(projectId: string, scriptName: string) {
-    const h = createHash("sha1")
-        .update(`${projectId}::${scriptName}`, "utf8")
-        .digest("hex")
-        .slice(0, 10);
-    return `task:${projectId}:${h}`;
-}
+import { buildTaskId } from "../../../common/id";
 
 function buildRunCommand(pm: PackageManager, scriptName: string) {
     if (pm === "yarn") return `yarn ${scriptName}`;
@@ -96,10 +88,10 @@ export function genSpecsFromScripts(
             continue;
         }
         const spec: TaskDefinition = {
-            id: buildSpecId(projectId, name),
+            id: buildTaskId(projectId, name),
             projectId,
             projectRoot: rootDir,
-            projectName: projectId,
+            projectName,
             name,
             kind: getTaskKindFromName(name),
             runnable: packageManager !== "unknown",

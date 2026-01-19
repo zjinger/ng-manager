@@ -18,6 +18,8 @@ import { Project } from "../domain/project/project.types";
 import { CachedNpmRegistry, LatestCacheKv, LatestCacheSnapshot, NodeModulesReader, NpmDriver, NpmRegistryByCli } from "../infra/deps";
 import { migrateProjectsIfNeeded, ProjectRepoJsonKv } from "../infra/project";
 import { JsonFileKvRepo } from "../infra/storage/json-file-kv.repo";
+import { JsonDashboardRepo } from "../infra/dashboard";
+import { DashboardServiceImpl } from "../domain/dashboard";
 
 /**
  * 创建 CoreApp
@@ -111,6 +113,11 @@ export async function createCoreApp(
         npm,
         latestCache,
     )
+
+    /* ------------------ dashboard ------------------ */
+    const repo = new JsonDashboardRepo(dataDir);
+    const dashboard = new DashboardServiceImpl(repo);
+
     /* ------------------ core app ------------------ */
     return {
         events,
@@ -121,6 +128,7 @@ export async function createCoreApp(
         bootstrap,
         fs,
         deps,
+        dashboard,
         async dispose() {
             // 停止定时器
             latestCache.stopPruneTimer();

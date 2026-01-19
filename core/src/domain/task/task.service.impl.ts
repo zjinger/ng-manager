@@ -1,5 +1,5 @@
 import { AppError } from "../../common/errors";
-import { genId } from "../../common/id";
+import { uid } from "../../common/id";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { Events, type CoreEventMap } from "../../infra/event/events";
 import type { ILogStore } from "../../infra/log/log.store";
@@ -52,7 +52,7 @@ export class TaskServiceImpl implements TaskService {
             this.activeRunByTaskId.delete(taskId);
         }
 
-        const runId = `run:${genId()}`;
+        const runId = `run:${uid()}`;
         const rt: TaskRuntime = {
             taskId,
             projectId: spec.projectId,

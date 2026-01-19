@@ -62,6 +62,11 @@ export type ErrorCode =
     | "DEP_UNINSTALL_FAILED"
     | "DEP_NOT_FOUND"
 
+    // Dashboard
+    | "DASHBOARD_CONFLICT"
+    | "WIDGET_NOT_FOUND"
+    | "WIDGET_LOCKED"
+
     // Fallback
     | "UNKNOWN_ERROR"
     // Generic

@@ -1,6 +1,6 @@
 // core/src/domain/project/project-bootstrap.service.ts
 import { AppError } from "../../common/errors";
-import { genId } from "../../common/id";
+import { uid } from "../../common/id";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { Events, type CoreEventMap } from "../../infra/event/events";
 import type { TaskService } from "../task/task.service";
@@ -136,7 +136,7 @@ export class ProjectBootstrapService {
         // Angular CLI 会自己创建目标目录
         this.prepareDirForCliScaffold(parentDir, normalizedRoot, !!input.overwriteIfExists);
 
-        const taskId = `bootstrap:${genId()}`;
+        const taskId = `bootstrap:${uid()}`;
         const fw = input.cliFramework ?? "angular";
         const pm = input.packageManager ?? "auto";
 
@@ -202,7 +202,7 @@ export class ProjectBootstrapService {
         // git clone：目标目录必须不存在（或 overwrite 删掉）
         this.prepareDirForClone(normalizedRoot, !!input.overwriteIfExists);
 
-        const taskId = `bootstrap:${genId()}`;
+        const taskId = `bootstrap:${uid()}`;
 
         const args: string[] = [];
         if (input.branch) args.push(`--branch "${input.branch}"`);
