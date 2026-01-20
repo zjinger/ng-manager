@@ -1,0 +1,1 @@
+export * from './quick-task-widget.component';

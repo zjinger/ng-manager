@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
-import { DashboardItem } from '../../dashboard.model';
-import { WidgetBaseComponent } from './widget-base.component';
+import { DashboardItem } from '../../../dashboard.model';
+import { WidgetBaseComponent } from '../widget-base.component';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSpaceModule } from 'ng-zorro-antd/space';

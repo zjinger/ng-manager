@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
-import { DashboardItem } from '../../dashboard.model';
-import { WidgetBaseComponent } from './widget-base.component';
+import { DashboardItem } from '../../../dashboard.model';
+import { WidgetBaseComponent } from '../widget-base.component';
 @Component({
   selector: 'app-news-feed-widget',
   imports: [

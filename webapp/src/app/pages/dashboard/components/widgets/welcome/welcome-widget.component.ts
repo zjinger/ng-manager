@@ -1,9 +1,9 @@
 import { Component, Input } from '@angular/core';
-import { DashboardItem } from '../../dashboard.model';
+import { DashboardItem } from '../../../dashboard.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { CommonModule } from '@angular/common';
-import { WidgetBaseComponent } from './widget-base.component';
+import { WidgetBaseComponent } from '../widget-base.component';
 @Component({
   selector: 'app-welcome-widget',
   imports: [
