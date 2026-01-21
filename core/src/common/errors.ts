@@ -67,6 +67,10 @@ export type ErrorCode =
     | "WIDGET_NOT_FOUND"
     | "WIDGET_LOCKED"
 
+    // Dashboard RSS
+    | "RSS_FETCH_FAILED"
+    | "INVALID_RSS_URL"
+
     // Fallback
     | "UNKNOWN_ERROR"
     // Generic

@@ -1,0 +1,65 @@
+<app-widget-base [item]="item">
+  <ng-container ngProjectAs="actions">
+    <button nz-button nzType="link" nzSize="small" (click)="reload()">
+      <nz-icon [nzType]="loading() ? 'loading' : 'reload'" nzTheme="outline" />
+    </button>
+    <button nz-button nzType="link" nzSize="small" (click)="openConfig()">
+      <nz-icon nzType="setting" nzTheme="outline" />
+    </button>
+    <!-- <button nz-button nzType="link" nzSize="small">
+          <nz-icon nzType="fullscreen" nzTheme="outline" />
+        </button> -->
+  </ng-container>
+  <div class="news-feed-widget">
+    @if (!hasConfig()) {
+      <div class="empty">
+        <div class="hint">未配置 RSS 源</div>
+        <button nz-button nzType="default" nzSize="small" (click)="openConfig()">去配置</button>
+      </div>
+    } @else {
+      @if (errorMsg()) {
+        <div class="error">
+          <span>{{ errorMsg() }}</span>
+          <button nz-button nzType="link" nzSize="small" (click)="reload(true)">重试</button>
+        </div>
+      } @else {
+        <div class="list">
+          @for (it of feedItems(); track it.link) {
+            <a class="row" [href]="it.link" target="_blank" rel="noreferrer">
+              <div class="t">{{ it.title }}</div>
+              <div class="m">
+                @if (it.pubDate) {
+                  <span class="d">{{ it.pubDate | date: 'yyyy-MM-dd HH:mm' }}</span>
+                }
+                @if (it.author) {
+                  <span class="a">{{ it.author }}</span>
+                }
+              </div>
+            </a>
+          }
+        </div>
+      }
+    }
+  </div>
+</app-widget-base>
+<nz-modal
+  nzCentered
+  [(nzVisible)]="isModalVisible"
+  nzTitle="配置部件"
+  (nzOnCancel)="isModalVisible.set(false)"
+  [nzMaskClosable]="false"
+>
+  <ng-container *nzModalContent>
+    <div class="modal-body">
+      <label>RSS源地址</label>
+      <nz-input-wrapper>
+        <input nz-input placeholder="请输入RSS源地址" [(ngModel)]="rssUrl" style="width: 100%" />
+        <nz-icon nzType="global" nzTheme="outline" nzInputPrefix />
+      </nz-input-wrapper>
+    </div>
+  </ng-container>
+
+  <ng-container *nzModalFooter>
+    <button nz-button nzType="primary" (click)="save()" [disabled]="!rssUrl().trim()">保存</button>
+  </ng-container>
+</nz-modal>

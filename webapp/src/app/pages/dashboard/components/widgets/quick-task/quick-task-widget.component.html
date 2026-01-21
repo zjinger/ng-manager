@@ -14,9 +14,9 @@
           <div class="row" [nz-tooltip]="curConfig()?.description ?? ''" nzTooltipPlacement="right">
             <div class="icon">
               <nz-icon nzType="codepen-circle" nzTheme="outline" />
-              @if (curRuntime()?.status === 'running') {
+              @if (curRuntime().status === 'running') {
                 <nz-badge nzStatus="processing" />
-              } @else if (curRuntime()?.status === 'stopping') {
+              } @else if (curRuntime().status === 'stopping') {
                 <nz-badge nzStatus="warning" />
               } @else {
                 <nz-badge nzStatus="default" />
@@ -27,11 +27,11 @@
               <div class="name" [title]="curConfig()?.taskName">{{ curConfig()?.taskName }}</div>
               <div class="description">
                 {{
-                  curRuntime()?.status === 'running'
+                  curRuntime().status === 'running'
                     ? '运行中'
-                    : curRuntime()?.status === 'stopping'
+                    : curRuntime().status === 'stopping'
                       ? '停止中'
-                      : curRuntime()?.status === 'stopped'
+                      : curRuntime().status === 'stopped'
                         ? '已停止'
                         : curConfig()?.description || '空闲中'
                 }}
@@ -59,7 +59,7 @@
   nzCentered
   [(nzVisible)]="isModalVisible"
   nzTitle="配置部件"
-  (nzOnCancel)="isModalVisible = false"
+  (nzOnCancel)="isModalVisible.set(false)"
   [nzMaskClosable]="false"
 >
   <ng-container *nzModalContent>

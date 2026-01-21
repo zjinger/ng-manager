@@ -39,7 +39,7 @@ export class QuickTaskWidgetComponent implements OnChanges {
   private layout = inject(DashboardLayoutService);
   private router = inject(Router);
 
-  isModalVisible = false;
+  isModalVisible = signal(false);
 
   readonly loading = signal(false);
 
@@ -87,14 +87,14 @@ export class QuickTaskWidgetComponent implements OnChanges {
   async openConfig() {
     const pid = this.item.projectId;
     if (!pid) {
-      this.isModalVisible = true;
+      this.isModalVisible.set(false);
       return;
     }
 
     // 回填已有配置
     const cfg = this.item?.config as QuickTaskWidgetConfig | undefined;
     this.selectedTaskId = cfg?.taskId ?? '';
-    this.isModalVisible = true;
+    this.isModalVisible.set(true);
     // 确保任务已加载
     this.loading.set(true);
     try {
@@ -116,8 +116,7 @@ export class QuickTaskWidgetComponent implements OnChanges {
     this.item.config = next;
     this.curConfig.set(next);
     this.layout.updateConfig(pid, this.item.id, next);
-
-    this.isModalVisible = false;
+    this.isModalVisible.set(false);
 
   }
   toggleTask() {

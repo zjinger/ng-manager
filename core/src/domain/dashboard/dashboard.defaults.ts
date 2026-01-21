@@ -10,7 +10,7 @@ export function defaultDashboard(projectId: string): DashboardDocV1 {
         projectId,
         updatedAt: Date.now(),
         items: [
-            welcomeItem,
+            welcomeItem
         ],
     };
 }

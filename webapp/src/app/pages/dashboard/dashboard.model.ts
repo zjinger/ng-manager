@@ -10,10 +10,11 @@ export type QuickTaskWidgetConfig = {
 
 export type NewsFeedWidgetConfig = {
     rssUrl: string;
+    limit?: number;      // 可选：显示条数
+    cacheSec?: number;   // 可选：缓存时间（服务端用）
 }
 
 export type DashboardItemConfig = QuickTaskWidgetConfig | NewsFeedWidgetConfig;
-
 export interface DashboardItem extends GridsterItem {
     projectId: string;
     id: string;
@@ -38,3 +39,18 @@ export type DashboardDocV1 = {
     items: DashboardItem[];
 }
 
+export interface RssFeedItem {
+    title: string;
+    link: string;
+    pubDate?: string;     // ISO string
+    author?: string;
+    summary?: string;
+}
+
+export interface RssFeed {
+    title?: string;
+    description?: string;
+    link?: string;
+    items: RssFeedItem[];
+    fetchedAt: string; // ISO
+}

@@ -86,6 +86,8 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     WIDGET_NOT_FOUND: 404,
     WIDGET_LOCKED: 423,
 
+    /* ---------------- Dashboard RSS ---------------- */
+    RSS_FETCH_FAILED: 500,
 
     /* ---------------- Fallback ---------------- */
     UNKNOWN_ERROR: 500,

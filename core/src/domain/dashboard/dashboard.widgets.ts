@@ -9,6 +9,8 @@ export type QuickTaskWidgetConfig = {
 
 export type NewsFeedWidgetConfig = {
     rssUrl: string;
+    limit?: number;      // 可选：显示条数
+    cacheSec?: number;   // 可选：缓存时间（服务端用）
 }
 
 export type DashboardItemConfig = QuickTaskWidgetConfig | NewsFeedWidgetConfig;
@@ -34,7 +36,11 @@ export const WIDGETS: Record<WidgetKey, WidgetMeta> = {
     welcome: { key: "welcome", title: "欢迎", desc: '快速上手tips', cols: 6, rows: 8, singleton: true, resizeEnabled: false, icon: 'smile' },
     quickTasks: { key: "quickTasks", title: "运行任务", desc: '快速运行任务', cols: 4, rows: 2, icon: 'rocket', resizeEnabled: false, configurable: true, },
     killPort: { key: "killPort", title: "终止端口", desc: '终止占用指定端口的进程', cols: 4, rows: 2, singleton: true, icon: 'thunderbolt', resizeEnabled: false },
-    newsFeed: { key: "newsFeed", title: "订阅", desc: '订阅新闻源', cols: 4, rows: 6, icon: 'read', resizeEnabled: true, defaultConfig: { rssUrl: "https://hnrss.org/frontpage" } },
+    newsFeed: {
+        key: "newsFeed", title: "订阅", desc: '订阅新闻源', cols: 4, rows: 6, icon: 'read', resizeEnabled: true, configurable: true,
+        defaultConfig: { rssUrl: "https://blog.angular.io/feed" } // angular 官方博客
+        // Angular 官方更新日志（GitHub Releases） ：https://github.com/angular/angular/releases.atom
+    },
 };
 
 export function makeWidgetItem(projectId: string, meta: WidgetMeta): DashboardItem {
