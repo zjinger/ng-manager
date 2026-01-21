@@ -14,6 +14,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { DashboardItem } from '../../dashboard.model';
 import { WidgetHostComponent } from '../widget-host/widget-host.component';
+import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 
 @Component({
   selector: 'app-dashboard-canvas',
@@ -24,7 +25,8 @@ import { WidgetHostComponent } from '../widget-host/widget-host.component';
     NzIconModule,
     GridsterComponent,
     GridsterItemComponent,
-    WidgetHostComponent
+    WidgetHostComponent,
+    NzTooltipDirective
   ],
   template: `
     <gridster [options]="options">
@@ -39,6 +41,9 @@ import { WidgetHostComponent } from '../widget-host/widget-host.component';
                   {{ it.title }}
                 </button>
               </div>
+              <button nz-button nzType="text" nzSize="small" nz-tooltip="移除部件" class="remove-button" (click)="remove.emit(it.id)">
+                <nz-icon nzType="close" nzTheme="outline" />
+              </button>
             }
             <div class="card-body">
               <app-widget-host [item]="it" [editMode]="editMode"></app-widget-host>
@@ -73,6 +78,19 @@ import { WidgetHostComponent } from '../widget-host/widget-host.component';
       pointer-events:none;
       z-index: 2;
     }
+    .remove-button{
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      z-index: 3;
+      background: var(--app-primary-1);
+      color: var(--app-primary);
+      transition: all 0.3s;
+      &:hover{
+        background: var(--app-primary);
+        color: #fff;
+      }
+    }
     .card-overlay button { pointer-events:none; border-radius: 20px; }
     .title{ font-size: 12px; color: rgba(0,0,0,.75); }
 
@@ -80,13 +98,14 @@ import { WidgetHostComponent } from '../widget-host/widget-host.component';
       position: relative;
       height: 100%;
     }
-    .card.edit-mode .card-body {cursor: move;}
+    .card.edit-mode .card-body {cursor: move;pointer-events: none;opacity: 0.8;}
   `,
 })
 export class DashboardCanvasComponent implements OnChanges {
   @Input() editMode = false;
   @Input() items: DashboardItem[] = [];
   @Output() itemsChange = new EventEmitter<DashboardItem[]>();
+  @Output() remove = new EventEmitter<string>();
   private patch = new Map<string, Partial<DashboardItem>>();
   itemChange = (item: GridsterItem, itemComp: GridsterItemComponentInterface) => {
     const id = (itemComp.item as DashboardItem).id as string;
@@ -99,18 +118,12 @@ export class DashboardCanvasComponent implements OnChanges {
     });
   };
   itemResize = (item: GridsterItem, itemComp: GridsterItemComponentInterface) => {
-    // console.info('itemResized', item);
-    // const id = (itemComp.item as DashboardItem).id as string;
-    // if (!id) return;
-    // this.patch.set(id, {
-    //   cols: item.cols ?? itemComp.item.cols,
-    //   rows: item.rows ?? itemComp.item.rows,
-    // });
+
   }
   options: GridsterConfig = {
     gridType: GridType.Fixed,
-    fixedColWidth: 80,
-    fixedRowHeight: 50,
+    fixedColWidth: 90,
+    fixedRowHeight: 90,
     margin: 10,
     outerMargin: true,
     compactType: CompactType.None,
@@ -139,8 +152,8 @@ export class DashboardCanvasComponent implements OnChanges {
         ...this.options,
         draggable: { ...this.options.draggable, enabled: this.editMode },
         resizable: { ...this.options.resizable, enabled: this.editMode },
-        fixedColWidth: this.editMode ? 60 : 80,
-        fixedRowHeight: this.editMode ? 40 : 50,
+        fixedColWidth: this.editMode ? 70 : 90,
+        fixedRowHeight: this.editMode ? 70 : 90,
       }
     }
   }

@@ -13,9 +13,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         <div class="title">{{ item.title }}</div>
           @if(item.configurable){
           <div class="actions">
-            <button nz-button nzType="link" nzSize="small" (click)="item.configurable">
-              <nz-icon nzType="setting" nzTheme="outline"/>
-            </button>
+            <ng-content select="actions"></ng-content>
           </div>
           }
       </div>
@@ -55,11 +53,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 
     .content {
         flex: 1 1 auto;
-        overflow: auto;
         display: flex;
         flex-direction: column;
         width: 100%;
         height: 0;
+        overflow: hidden; 
     }
   `,
 })

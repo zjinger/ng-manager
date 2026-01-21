@@ -22,13 +22,15 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     });
 
     // post /dashboard/widgets/:projectId
-    fastify.get("/addWidget/:projectId/:widgetKey", async (req,) => {
-        const { projectId, widgetKey } = req.params as any;
-        return await fastify.core.dashboard.addWidget(projectId, widgetKey);
+    fastify.get("/addWidget/:projectId/:widgetKey/:x/:y", async (req,) => {
+        let { projectId, widgetKey, x, y } = req.params as any;
+        x = Number(x) || 0;
+        y = Number(y) || 0;
+        return await fastify.core.dashboard.addWidget(projectId, widgetKey, x, y);
     });
 
     // delete /dashboard/widgets/:projectId/:widgetKey
-    fastify.delete("/removeWidget/:projectId/:widgetId", async (req,) => {
+    fastify.get("/removeWidget/:projectId/:widgetId", async (req,) => {
         const { projectId, widgetId } = req.params as any;
         return await fastify.core.dashboard.removeWidget(projectId, widgetId);
     });

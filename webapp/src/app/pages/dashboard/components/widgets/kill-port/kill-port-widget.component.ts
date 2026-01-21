@@ -1,13 +1,18 @@
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { DashboardItem } from '../../../dashboard.model';
 import { WidgetBaseComponent } from '../widget-base.component';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-kill-port-widget',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    CommonModule,
+    FormsModule,
     WidgetBaseComponent,
     NzIconModule,
     NzInputModule,
@@ -23,7 +28,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
         <h3>准备好终止</h3>
       </div>
       <nz-space>
-        <input nz-input placeholder="输入一个网络端口" />
+        <input nz-input placeholder="输入一个网络端口" name="port" [(ngModel)]="port" />
         <button nz-button nzType="primary">
           <nz-icon nzType="thunderbolt" nzTheme="outline" />
           终止
@@ -64,4 +69,5 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 })
 export class KillPortWidgetComponent {
   @Input() item!: DashboardItem;
+  port: string = '';
 }

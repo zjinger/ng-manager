@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, EventEmitter, inject, Input, OnChanges, Output, signal, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, EventEmitter, inject, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DashboardApiService } from '@pages/dashboard/services/dashboard-api.service';
+import { DashboardLayoutService } from '@pages/dashboard/services/dashboard-layout.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -10,6 +10,7 @@ import { DashboardItem } from '../../dashboard.model';
 
 @Component({
   selector: 'app-add-widget-drawer',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -60,13 +61,12 @@ import { DashboardItem } from '../../dashboard.model';
   `,
   styleUrls: ['./add-widget-drawer.component.less']
 })
-export class AddWidgetDrawerComponent implements OnChanges {
-  private api: DashboardApiService = inject(DashboardApiService);
-  @Input() projectId!: string;
+export class AddWidgetDrawerComponent {
+  private layout: DashboardLayoutService = inject(DashboardLayoutService);
   @Output() add = new EventEmitter<DashboardItem>();
   keyword = signal("");
 
-  widgets = signal<DashboardItem[]>([]);
+  widgets = this.layout.widgets
 
   filtered = computed(() => {
     const k = this.keyword().trim().toLowerCase();
@@ -75,23 +75,8 @@ export class AddWidgetDrawerComponent implements OnChanges {
   });
 
   constructor() { }
-  ngOnChanges(changes: SimpleChanges): void {
-    const projectId = changes['projectId'];
-    if (projectId && projectId.currentValue != projectId.previousValue) {
-      this.getWidgets();
-    }
-  }
-
-  getWidgets() {
-    this.api.widgets(this.projectId).subscribe(
-      widgets => {
-        this.widgets.set(widgets);
-      }
-    );
-  }
 
   addWidget(widget: DashboardItem) {
     this.add.emit(widget);
-    this.getWidgets();
   }
 }

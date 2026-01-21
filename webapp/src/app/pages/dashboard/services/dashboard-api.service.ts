@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@core/api';
 import { Observable } from 'rxjs';
-import { DashboardDocV1, DashboardItem } from '../dashboard.model';
+import { DashboardDocV1, DashboardItem, WidgetKey } from '../dashboard.model';
 
 @Injectable({
   providedIn: 'root',
@@ -21,8 +21,9 @@ export class DashboardApiService {
     return this.api.get<DashboardItem[]>(`/api/dashboard/widgets/${projectId}`);
   }
 
-  addWidget(projectId: string, widgetKey: string): Observable<DashboardDocV1> {
-    return this.api.get<DashboardDocV1>(`/api/dashboard/addWidget/${projectId}/${widgetKey}`);
+  addWidget(projectId: string, data: { widgetKey: WidgetKey, x: number, y: number }): Observable<DashboardDocV1> {
+    const { x, y } = data;
+    return this.api.get<DashboardDocV1>(`/api/dashboard/addWidget/${projectId}/${data.widgetKey}/${x}/${y}`);
   }
 
   removeWidget(projectId: string, widgetId: string): Observable<DashboardDocV1> {

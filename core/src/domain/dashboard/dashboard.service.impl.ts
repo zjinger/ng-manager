@@ -42,7 +42,7 @@ export class DashboardServiceImpl implements DashboardService {
         return next;
     }
 
-    async addWidget(projectId: string, widgetKey: WidgetKey): Promise<DashboardDocV1> {
+    async addWidget(projectId: string, widgetKey: WidgetKey, x: number, y: number): Promise<DashboardDocV1> {
         const doc = await this.getOrCreate(projectId);
         const meta = WIDGETS[widgetKey];
         if (!meta) throw new AppError("WIDGET_NOT_FOUND", "unknown widget", { widgetKey });
@@ -53,13 +53,14 @@ export class DashboardServiceImpl implements DashboardService {
             if (existed) return doc; // 幂等：已存在就不重复加
         }
 
-        const newItem = makeWidgetItem(meta);
+        const newItem = makeWidgetItem(projectId, meta);
 
         // 找一个空位
-        const pos = findFirstFit(doc.items, newItem, 12);
-        newItem.x = pos.x;
-        newItem.y = pos.y;
-
+        // const pos = findFirstFit(doc.items, newItem, 12);
+        // newItem.x = pos.x;
+        // newItem.y = pos.y;
+        newItem.x = x;
+        newItem.y = y;
         const next: DashboardDocV1 = {
             ...doc,
             items: [...doc.items, newItem],

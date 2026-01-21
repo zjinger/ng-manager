@@ -48,6 +48,12 @@ export const enum ErrorPolicyCode {
     DEP_UNINSTALL_FAILED = "DEP_UNINSTALL_FAILED",
     DEP_NOT_FOUND = "DEP_NOT_FOUND",
 
+    /* ---------- dashboard ---------- */
+    DASHBOARD_CONFLICT = "DASHBOARD_CONFLICT",
+    WIDGET_NOT_FOUND = "WIDGET_NOT_FOUND",
+    WIDGET_LOCKED = "WIDGET_LOCKED",
+
+
     /* ---------- protocol / dev ---------- */
     INVALID_JSON = "INVALID_JSON",
     INVALID_MSG = "INVALID_MSG",
@@ -218,6 +224,20 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     DEP_NOT_FOUND: {
         level: "toast",
         message: "依赖未找到",
+    },
+
+    /* ---------- dashboard ---------- */
+    DASHBOARD_CONFLICT: {
+        level: "toast",
+        message: "仪表盘已被其他地方修改，请刷新重试",
+    },
+    WIDGET_NOT_FOUND: {
+        level: "toast",
+        message: "部件未找到",
+    },
+    WIDGET_LOCKED: {
+        level: "toast",
+        message: "部件被锁定，无法修改",
     },
 
     /* ---------- protocol / dev ---------- */

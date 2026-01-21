@@ -1,6 +1,7 @@
 export type WidgetKey = "welcome" | "quickTasks" | "killPort" | "newsFeed";
 
 export interface DashboardItem {
+    projectId: string;
     id: string;
     key: WidgetKey;
     title: string;

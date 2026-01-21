@@ -10,7 +10,11 @@ export class DashboardLayoutService {
   private api: DashboardApiService = inject(DashboardApiService);
 
   private _doc = signal<DashboardDocV1 | null>(null);
-  items = computed(() => this._doc()?.items ?? []);
+
+  private _dashboards = signal<DashboardItem[]>([]);
+
+  items = computed(() => this._dashboards());
+
   updatedAt = computed(() => this._doc()?.updatedAt ?? 0);
 
   widgets = signal<DashboardItem[]>([]);
@@ -26,12 +30,14 @@ export class DashboardLayoutService {
       this._doc.set(doc);
       // 同步一份到 local，作为兜底缓存
       this.local.set(this.localKey(projectId), doc);
+      this._dashboards.set(doc.items);
       return;
     } catch {
       // 2) fallback local
       const cached = this.local.get<DashboardDocV1>(this.localKey(projectId), null as any);
       if (cached) {
         this._doc.set(cached);
+        this._dashboards.set(cached.items);
         return;
       }
       // 3) 什么都没有：给一个最小默认（理论上不会到这，server 会 getOrCreate）
@@ -41,6 +47,7 @@ export class DashboardLayoutService {
         updatedAt: Date.now(),
         items: [],
       });
+      this._dashboards.set([]);
     }
   }
 
@@ -48,6 +55,7 @@ export class DashboardLayoutService {
     const cur = this._doc();
     if (!cur) return;
     this._doc.set({ ...cur, items });
+    this._dashboards.set(items);
     // 编辑中自动保存（debounce）
     this.scheduleAutoSave(projectId);
   }
@@ -71,6 +79,7 @@ export class DashboardLayoutService {
     }
     const doc = this._doc();
     if (!doc) return;
+    doc.items = this._dashboards();
     // 先写本地兜底（即使 server 失败也能保留）
     this.local.set(this.localKey(projectId), doc);
     const saved = await firstValueFrom(
@@ -78,6 +87,7 @@ export class DashboardLayoutService {
     );
     this._doc.set(saved);
     this.local.set(this.localKey(projectId), saved);
+    this._dashboards.set(saved.items);
     return;
   }
 
@@ -85,9 +95,46 @@ export class DashboardLayoutService {
     // console.log('add widget', widget);
     const cur = this._doc();
     if (!cur) return;
-    this.api.addWidget(cur.projectId, widget.key).subscribe(added => {
-      this._doc.set(added);
-    });
+    this._dashboards.set([...this._dashboards(), widget]);
+    setTimeout(() => {
+      const { x, y } = widget;
+      this.api.addWidget(cur.projectId, {
+        widgetKey: widget.key,
+        x,
+        y,
+      }).subscribe(doc => {
+        this._doc.set(doc);
+        this.local.set(this.localKey(cur.projectId), doc);
+        this._dashboards.set(doc.items);
+        this.getWidgets();
+      });
+    }, 0);
+
+  }
+
+  remove(widgetId: string) {
+    const cur = this._doc();
+    if (!cur) return;
+    const nextItems = this._dashboards().filter(it => it.id !== widgetId);
+    this._dashboards.set(nextItems);
+    this.api.removeWidget(cur.projectId, widgetId).subscribe(
+      doc => {
+        this._doc.set(doc);
+        this.local.set(this.localKey(cur.projectId), doc);
+        this._dashboards.set(doc.items);
+        this.getWidgets();
+      },
+    );
+  }
+
+  getWidgets() {
+    const cur = this._doc();;
+    if (!cur) return;
+    this.api.widgets(cur.projectId).subscribe(
+      widgets => {
+        this.widgets.set(widgets);
+      }
+    );
   }
 }
 

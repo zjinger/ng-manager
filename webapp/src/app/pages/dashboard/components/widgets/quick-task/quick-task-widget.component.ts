@@ -1,15 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, computed, inject, Input, signal } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { DashboardItem } from '../../../dashboard.model';
+import { DashboardItem, QuickTaskWidgetConfig } from '../../../dashboard.model';
 import { WidgetBaseComponent } from '../widget-base.component';
+import { TaskStateService } from '@pages/tasks/services/tasks.state.service';
+import { TaskRow } from '@models/task.model';
+import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-quick-task-widget',
   imports: [
     CommonModule,
+    FormsModule,
     WidgetBaseComponent,
     NzButtonModule,
     NzIconModule,
@@ -18,16 +22,17 @@ import { WidgetBaseComponent } from '../widget-base.component';
   ],
   template: `
     <app-widget-base [item]="item">
-      <div class="content">
+        <ng-container ngProjectAs="actions">
+          <button nz-button nzType="link" nzSize="small" (click)="openConfig()">
+            <nz-icon nzType="setting" nzTheme="outline"/>
+          </button>
+        </ng-container>
         @if(item.configurable && !item.config){
-          <div class="icon-wrapper">
-            <nz-icon nzType="setting" nzTheme="fill" />
-          </div>
-          <div class="actions">
-            <button nz-button (click)="isModalVisible = true" nzType="primary">配置部件</button>
-          </div>
+        <div class="no-config">
+          <nz-icon nzType="setting" nzTheme="fill" />
+          <button nz-button (click)="openConfig()" nzType="primary">配置部件</button>
+        </div>
         }
-      </div>
     </app-widget-base>
     <nz-modal
       nzCentered
@@ -39,10 +44,16 @@ import { WidgetBaseComponent } from '../widget-base.component';
       <ng-container *nzModalContent>
         <div class="modal-body">
           <label>选择一项任务</label>
-          <nz-select nzPlaceHolder="请选择任务">
-            <nz-option nzLabel="任务一" nzValue="task1"></nz-option>
-            <nz-option nzLabel="任务二" nzValue="task2"></nz-option>
-            <nz-option nzLabel="任务三" nzValue="task3"></nz-option>
+          <nz-select 
+            nzPlaceHolder="请选择任务"
+            [(ngModel)]="selectedTaskId"
+            [nzLoading]="loading()"
+            [nzDisabled]="loading()"
+            style="width: 100%;"
+          >
+           @for (opt of taskOptions(); track opt.value) {
+              <nz-option [nzLabel]="opt.label" [nzValue]="opt.value"></nz-option>
+            }
           </nz-select>
         </div>
       </ng-container>
@@ -52,25 +63,25 @@ import { WidgetBaseComponent } from '../widget-base.component';
           nz-button
           nzType="primary"
           (click)="save()"
+          [disabled]="!selectedTaskId"
         >
-          <nz-icon nzType="folder-add" nzTheme="fill" />
-          创建
+          保存
         </button>
       </ng-container>
     </nz-modal>    
   `,
   styles: [`
-    .content {
+    .no-config {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      .icon-wrapper {
-        margin-top: 8px;
-        margin-bottom: 16px;
-        nz-icon {
-          font-size: 48px;
-          color: var(--app-gray);
-        }
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      nz-icon {
+        font-size: 48px;
+        color: var(--app-gray);
       }
     }
     .modal-body{
@@ -94,7 +105,67 @@ import { WidgetBaseComponent } from '../widget-base.component';
 export class QuickTaskWidgetComponent {
   @Input() item!: DashboardItem;
 
+  private taskState = inject(TaskStateService);
+
   isModalVisible = false;
 
-  save() { }
+  readonly loading = signal(false);
+
+  selectedTaskId = '';
+
+  /** 当前项目任务 rows */
+  readonly rowsOfProject = computed<TaskRow[]>(() => {
+    const pid = this.item.projectId;
+    if (!pid) return [];
+    return this.taskState.rowsViewOf(pid)();
+  });
+
+  readonly taskOptions = computed(() => {
+    const rows = this.rowsOfProject();
+    return rows
+      .map(r => ({
+        value: r.spec.id,
+        label: r.spec.name ?? r.spec.id
+      }));
+  });
+
+  async openConfig() {
+    const pid = this.item.projectId;
+    if (!pid) {
+      this.isModalVisible = true;
+      return;
+    }
+
+    // 回填已有配置
+    const cfg = this.item?.config as QuickTaskWidgetConfig | undefined;
+    this.selectedTaskId = cfg?.taskId ?? '';
+
+    this.isModalVisible = true;
+
+    // 确保任务已加载
+    this.loading.set(true);
+    try {
+      await this.taskState.ensureProjectLoaded(pid);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+
+  save() {
+    const pid = this.item.projectId;
+    const taskId = (this.selectedTaskId ?? '').trim();
+    if (!pid || !taskId) return;
+
+    const next: QuickTaskWidgetConfig = { taskId };
+
+    // 1) 写回 widget 配置（你们 Dashboard 如果是 immutable，就别直接改对象）
+    this.item.config = next;
+
+    // 2) 通知 Dashboard 持久化（这里接你们已有的 dashboard-state / dashboard-service）
+    //    例如：this.dashboardState.updateItemConfig(this.item.id, next);
+
+    this.isModalVisible = false;
+
+  }
 }
