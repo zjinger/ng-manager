@@ -124,7 +124,7 @@ export class DashboardComponent {
   projectId = computed(() => this.projectState.currentProjectId() || '');
   editMode = signal(false);
 
-  items = this.layout.items;
+  items = computed(() => this.layout.items());
 
   constructor() {
     effect(() => {

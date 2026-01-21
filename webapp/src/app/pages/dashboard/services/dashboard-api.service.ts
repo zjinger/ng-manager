@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@core/api';
 import { Observable } from 'rxjs';
-import { DashboardDocV1, DashboardItem, WidgetKey } from '../dashboard.model';
+import { DashboardDocV1, DashboardItem, DashboardItemConfig, WidgetKey } from '../dashboard.model';
 
 @Injectable({
   providedIn: 'root',
@@ -28,5 +28,9 @@ export class DashboardApiService {
 
   removeWidget(projectId: string, widgetId: string): Observable<DashboardDocV1> {
     return this.api.delete<DashboardDocV1>(`/api/dashboard/removeWidget/${projectId}/${widgetId}`);
+  }
+
+  updateItemConfig(projectId: string, widgetId: string, config: DashboardItemConfig): Observable<DashboardDocV1> {
+    return this.api.post<DashboardDocV1>(`/api/dashboard/updateItemConfig/${projectId}/${widgetId}`, config);
   }
 }

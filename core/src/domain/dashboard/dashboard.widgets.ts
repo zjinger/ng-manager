@@ -3,6 +3,8 @@ import type { DashboardItem, WidgetKey } from "./dashboard.types";
 
 export type QuickTaskWidgetConfig = {
     taskId: string;
+    taskName?: string;
+    description?: string;
 }
 
 export type NewsFeedWidgetConfig = {

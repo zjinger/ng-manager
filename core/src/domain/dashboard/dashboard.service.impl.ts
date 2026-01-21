@@ -3,7 +3,7 @@ import { DashboardService } from "./dashboard.service";
 import { defaultDashboard } from "./dashboard.defaults";
 import { AppError } from "../../common/errors";
 import { DashboardRepo } from "./dashboard.repo";
-import { makeWidgetItem, WidgetMeta, WIDGETS } from "./dashboard.widgets";
+import { DashboardItemConfig, makeWidgetItem, WidgetMeta, WIDGETS } from "./dashboard.widgets";
 import { findFirstFit } from "./dashboard.layout";
 
 
@@ -108,5 +108,27 @@ export class DashboardServiceImpl implements DashboardService {
             availableWidgets.push(meta);
         }
         return availableWidgets;
+    }
+
+    async updateItemConfig(projectId: string, widgetId: string, config: DashboardItemConfig): Promise<DashboardDocV1> {
+        const doc = await this.getOrCreate(projectId);
+        const itemIndex = doc.items.findIndex(it => it.id === widgetId);
+        if (itemIndex === -1) {
+            throw new AppError("WIDGET_NOT_FOUND", "widget not found", { widgetId });
+        }
+        const item = doc.items[itemIndex];
+        const updatedItem: typeof item = {
+            ...item,
+            config: config as Record<string, any>,
+        };
+        const nextItems = [...doc.items];
+        nextItems[itemIndex] = updatedItem;
+        const next: DashboardDocV1 = {
+            ...doc,
+            items: nextItems,
+            updatedAt: Date.now(),
+        };
+        await this.repo.save(projectId, next);
+        return next;
     }
 }

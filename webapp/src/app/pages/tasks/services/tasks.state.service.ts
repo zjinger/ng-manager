@@ -67,7 +67,7 @@ export class TaskStateService {
   readonly isStopping = computed(() => this.selectedRuntimeStatus().status === "stopping");
   readonly isStopped = computed(() => {
     const st = this.selectedRuntimeStatus().status;
-    return st === "idle" || st === "stopped";
+    return st === "idle" || st === "stopped" || st === "failed" || st === "success";
   });
 
   /* ---------------- 构造 & WS 同步 ---------------- */
@@ -91,6 +91,10 @@ export class TaskStateService {
         this.stream.unsubscribeTask(taskId);
       });
     });
+  }
+
+  getRuntime(taskId: string): TaskRuntimeStatus {
+    return this.runtimeStore.statusSignal(taskId)();
   }
 
   /* ---------------- 页面动作 ---------------- */
@@ -135,15 +139,25 @@ export class TaskStateService {
       this.startSelected();
     }
   }
-  startSelected() {
-    const spec = this.selectedRow()?.spec;
-    if (!spec) return;
 
-    this.api.start(spec.id).subscribe();
+  /**
+   * 启动选中任务
+   * @param taskId 如果不传则启动 selectedTaskId 指定的任务
+   */
+  startSelected(taskId?: string) {
+    taskId = taskId?.trim() || this.selectedRow()?.spec?.id;
+    if (!taskId) return;
+    // const spec = this.selectedRow()?.spec;
+    // if (!spec) return;
+    this.api.start(taskId).subscribe();
   }
 
-  stopSelected() {
-    const taskId = this.selectedTaskId();
+  /**
+   * 停止选中任务
+   * @param taskId 如果不传则停止 selectedTaskId 指定的任务
+   */
+  stopSelected(taskId?: string) {
+    taskId = taskId?.trim() || this.selectedTaskId();
     if (!taskId) return;
     // 取当前 runtime（必须要有 runId/projectId 才能工程化维护 runningCount） 
     const curRt = this.stream.getRuntime(taskId); // 注入 TaskStreamService

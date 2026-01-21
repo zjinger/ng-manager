@@ -34,4 +34,10 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
         const { projectId, widgetId } = req.params as any;
         return await fastify.core.dashboard.removeWidget(projectId, widgetId);
     });
+
+    fastify.post("/updateItemConfig/:projectId/:widgetId", async (req,) => {
+        const { projectId, widgetId } = req.params as any;
+        const config = req.body as any;
+        return await fastify.core.dashboard.updateItemConfig(projectId, widgetId, config);
+    });
 }

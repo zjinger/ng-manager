@@ -4,6 +4,8 @@ export type WidgetKey = "welcome" | "quickTasks" | "killPort" | "newsFeed";
 
 export type QuickTaskWidgetConfig = {
     taskId: string;
+    taskName?: string;
+    description?: string;
 }
 
 export type NewsFeedWidgetConfig = {

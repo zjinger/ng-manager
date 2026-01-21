@@ -1,0 +1,85 @@
+<app-widget-base [item]="item">
+  <ng-container ngProjectAs="actions">
+    <button nz-button nzType="link" nzSize="small" (click)="openConfig()">
+      <nz-icon nzType="setting" nzTheme="outline" />
+    </button>
+  </ng-container>
+  @if (item.configurable) {
+    <div class="configured-info" [class.no-config]="curConfig() === null">
+      @if (curConfig() === null) {
+        <nz-icon nzType="setting" nzTheme="fill" />
+        <button nz-button (click)="openConfig()" nzType="primary">配置部件</button>
+      } @else {
+        <div class="item">
+          <div class="row" [nz-tooltip]="curConfig()?.description ?? ''" nzTooltipPlacement="right">
+            <div class="icon">
+              <nz-icon nzType="codepen-circle" nzTheme="outline" />
+              @if (curRuntime()?.status === 'running') {
+                <nz-badge nzStatus="processing" />
+              } @else if (curRuntime()?.status === 'stopping') {
+                <nz-badge nzStatus="warning" />
+              } @else {
+                <nz-badge nzStatus="default" />
+              }
+            </div>
+
+            <div class="info">
+              <div class="name" [title]="curConfig()?.taskName">{{ curConfig()?.taskName }}</div>
+              <div class="description">
+                {{
+                  curRuntime()?.status === 'running'
+                    ? '运行中'
+                    : curRuntime()?.status === 'stopping'
+                      ? '停止中'
+                      : curRuntime()?.status === 'stopped'
+                        ? '已停止'
+                        : curConfig()?.description || '空闲中'
+                }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <app-task-actions
+            [isRunning]="isRunning()"
+            [isStopping]="isStopping()"
+            [isStopped]="isStopped()"
+            (toggle)="toggleTask()"
+          ></app-task-actions>
+          <button nz-button (click)="goToTask()" nzType="default">
+            <nz-icon nzType="schedule" nzTheme="outline" />
+            前往任务页
+          </button>
+        </div>
+      }
+    </div>
+  }
+</app-widget-base>
+<nz-modal
+  nzCentered
+  [(nzVisible)]="isModalVisible"
+  nzTitle="配置部件"
+  (nzOnCancel)="isModalVisible = false"
+  [nzMaskClosable]="false"
+>
+  <ng-container *nzModalContent>
+    <div class="modal-body">
+      <label>选择一项任务</label>
+      <nz-select
+        nzPlaceHolder="请选择任务"
+        [(ngModel)]="selectedTaskId"
+        [nzLoading]="loading()"
+        [nzDisabled]="loading()"
+        style="width: 100%"
+      >
+        @for (opt of taskOptions(); track opt.value) {
+          <nz-option [nzLabel]="opt.label" [nzValue]="opt.value"></nz-option>
+        }
+      </nz-select>
+    </div>
+  </ng-container>
+
+  <ng-container *nzModalFooter>
+    <button nz-button nzType="primary" (click)="save()" [disabled]="!selectedTaskId">保存</button>
+  </ng-container>
+</nz-modal>

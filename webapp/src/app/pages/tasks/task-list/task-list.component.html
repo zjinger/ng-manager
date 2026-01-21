@@ -26,7 +26,7 @@
         [class.active]="t.spec.id === selectedId()"
         (click)="state.select(t.spec.id)"
       >
-        <div class="row" nz-tooltip="{{ t.spec.description || '' }}" nzTooltipPlacement="right">
+        <div class="row" [nz-tooltip]="t.spec.description || ''" nzTooltipPlacement="right">
           <div class="icon">
             <nz-icon nzType="codepen-circle" nzTheme="outline" />
 

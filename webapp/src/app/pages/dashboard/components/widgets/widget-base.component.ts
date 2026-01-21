@@ -30,12 +30,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 
     .widget {
         height: 100%;
-        padding: 12px 16px;
+        padding: 12px 0;
         display: flex;
         flex-direction: column;
     }
     .header {
         flex : 0 0 auto;
+        padding:0  16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
