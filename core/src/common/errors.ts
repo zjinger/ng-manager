@@ -25,6 +25,10 @@ export type ErrorCode =
     // Config
     | "CONFIG_BACKUP_NOT_FOUND"
     | "CONFIG_READ_FAILED"
+    // | "CONFIG_WRITE_FAILED"
+    // | "CONFIG_INVALID_JSON"
+    // | "CONFIG_VALIDATION_FAILED"
+    | "CONFIG_CONFLICT"
 
     // Task / Process
     | "TASK_NOT_FOUND"
@@ -75,6 +79,7 @@ export type ErrorCode =
     | "UNKNOWN_ERROR"
     // Generic
     | "BAD_REQUEST" // 通用的请求错误
+    | "NOT_IMPLEMENTED" // 通用的未实现错误
 
 export class AppError extends Error {
     constructor(

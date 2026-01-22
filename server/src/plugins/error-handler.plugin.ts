@@ -39,6 +39,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     /* ---------------- Config ---------------- */
     CONFIG_BACKUP_NOT_FOUND: 404,               // 配置备份不存在
     CONFIG_READ_FAILED: 500,                    // 配置读取失败
+    CONFIG_CONFLICT: 409,                      // 配置冲突
 
 
     /* ---------------- Task / Process ---------------- */
@@ -88,12 +89,14 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
 
     /* ---------------- Dashboard RSS ---------------- */
     RSS_FETCH_FAILED: 500,
+    INVALID_RSS_URL: 400,
 
     /* ---------------- Fallback ---------------- */
     UNKNOWN_ERROR: 500,
 
     /* ---------------- Generic ---------------- */
     BAD_REQUEST: 400,
+    NOT_IMPLEMENTED: 501,
 };
 
 export function mapStatus(code: ErrorCode): number {

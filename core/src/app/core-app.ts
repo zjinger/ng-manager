@@ -1,4 +1,3 @@
-// src/app/core-app.ts
 import * as os from "os";
 import * as path from "path";
 
@@ -10,7 +9,6 @@ import { MemoryEventBus } from "../infra/event/memory-event-bus";
 import { RingLogStore } from "../infra/log/ring-log-store";
 import { PtyProcessDriver } from "../infra/process";
 import type { CoreApp, CreateCoreAppOptions } from "./types";
-// import { JsonProjectRepo } from "../infra/storage/project.repo.json";
 import { DepsServiceImpl } from "../domain/deps";
 import { FsServiceImpl } from "../domain/fs/fs.service.impl";
 import { ProjectBootstrapService } from "../domain/project/project-bootstrap.service";
@@ -20,6 +18,7 @@ import { migrateProjectsIfNeeded, ProjectRepoJsonKv } from "../infra/project";
 import { JsonFileKvRepo } from "../infra/storage/json-file-kv.repo";
 import { JsonDashboardRepo } from "../infra/dashboard";
 import { DashboardServiceImpl } from "../domain/dashboard";
+import { ConfigServiceImpl } from "../domain/config";
 
 /**
  * 创建 CoreApp
@@ -47,14 +46,14 @@ export async function createCoreApp(
     /* ------------------ project ------------------ */
     // 底层 KV 文件
     const projectKv = new JsonFileKvRepo<Project>(path.join(dataDir, "projects.kv.json"));
-    // 2) 迁移旧 projects.json（如果存在且 KV 为空）
+    // 迁移旧 projects.json（如果存在且 KV 为空）
     await migrateProjectsIfNeeded({
         dbDir: dataDir,
         projectKv,
         legacyFileName: "projects.json",
         backup: true,
     });
-    // 3) ProjectRepo 实现
+    //  ProjectRepo 实现
     const projectRepo = new ProjectRepoJsonKv(projectKv);
     // const projectRepo = new JsonProjectRepo(dataDir);
     const project = new ProjectServiceImpl(projectRepo)
@@ -118,6 +117,9 @@ export async function createCoreApp(
     const repo = new JsonDashboardRepo(dataDir);
     const dashboard = new DashboardServiceImpl(repo);
 
+    /* ------------------ config ------------------ */
+    const config = new ConfigServiceImpl(project);
+
     /* ------------------ core app ------------------ */
     return {
         events,
@@ -129,6 +131,7 @@ export async function createCoreApp(
         fs,
         deps,
         dashboard,
+        config,
         async dispose() {
             // 停止定时器
             latestCache.stopPruneTimer();

@@ -7,6 +7,7 @@ import { TaskService } from "../domain/task";
 import { FsService } from "../domain/fs";
 import { DepsService } from "../domain/deps";
 import { DashboardService } from "../domain/dashboard";
+import { ConfigService } from "../domain/config";
 
 /**
  * 创建 CoreApp 的参数
@@ -40,6 +41,7 @@ export interface CoreApp {
     project: ProjectService;
     bootstrap: ProjectBootstrapService;
     deps: DepsService;
+    config: ConfigService;
 
     /** 文件系统管理 */
     fs: FsService;

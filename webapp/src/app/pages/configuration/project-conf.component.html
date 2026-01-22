@@ -17,89 +17,19 @@
   </div>
   <div nz-row nzJustify="center" class="page-content">
     <div class="panel" nz-col nzXs="24" nzSm="24" nzMd="20" nzLg="16" nzXl="16">
-      <div class="list">
-        <div class="topbar">
-          <nz-input-wrapper>
-            <nz-icon class="search-icon" nzInputPrefix nzType="search" />
-            <input
-              nz-input
-              placeholder=""
-              [ngModel]="keyword()"
-              (ngModelChange)="keyword.set($event)"
-            />
-          </nz-input-wrapper>
-        </div>
-        <div class="items">
-          @for (c of descriptor()?.categories ?? []; track c.id) {
-            <div
-              class="item"
-              [class.active]="c.id === activeCategoryId()"
-              (click)="selectCategory(c.id)"
-            >
-              <div class="row">
-                <div class="icon">
-                  <nz-icon
-                    class="project-suffix-icon"
-                    [nzType]="c.icon || 'setting'"
-                    nzTheme="outline"
-                  />
-                </div>
-                <div class="info">
-                  <div class="name">{{ c.name }}</div>
-                  <div class="description">{{ c.description }}</div>
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
+      <app-config-nav-component
+        [nodes]="nodes()"
+        [active]="activeNodeId() ?? ''"
+        (nodeSelect)="onNodeSelect($event)"
+      ></app-config-nav-component>
       <div class="content">
-        @for (g of filteredGroups(); track g.id) {
-          <div class="group-title">{{ g.title }}</div>
-          <div class="config-list">
-            <form nz-form [formGroup]="form()">
-              @for (f of g.fields; track f.path) {
-                <nz-form-item>
-                  <nz-form-label [nzSpan]="7">{{ f.label }}</nz-form-label>
-                  <nz-form-control [nzSpan]="17">
-                    @switch (f.kind) {
-                      @case ('string') {
-                        <input
-                          nz-input
-                          [formControlName]="f.path"
-                          [placeholder]="f.placeholder || ''"
-                        />
-                      }
-                      @case ('path') {
-                        <input
-                          nz-input
-                          [formControlName]="f.path"
-                          [placeholder]="f.placeholder || ''"
-                        />
-                      }
-                      @case ('boolean') {
-                        <nz-switch [formControlName]="f.path"></nz-switch>
-                      }
-                      @default {
-                        <input nz-input [formControlName]="f.path" />
-                      }
-                    }
-                    @if (f.help) {
-                      <div class="help">{{ f.help }}</div>
-                    }
-                  </nz-form-control>
-                </nz-form-item>
-              }
-            </form>
-          </div>
-        }
-
-        @if (diffText()) {
-          <div class="diff-box">
-            <div class="diff-title">Diff 预览</div>
-            <pre class="diff-pre">{{ diffText() }}</pre>
-          </div>
-        }
+        <app-config-section-component
+          [fileNodes]="contentFileNodes()"
+          [schemas]="schemas()"
+          [valuesByType]="valuesByType()"
+          [vmOptionsByType]="vmOptionsByType()"
+          (valuesChange)="onValuesChange($event)"
+        ></app-config-section-component>
       </div>
     </div>
   </div>

@@ -1,23 +1,26 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { NgDevtoolComponent } from '@app/shared/devtools/ng-devtool.component';
+import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzSwitchModule } from 'ng-zorro-antd/switch';
-import { NzTypographyModule } from 'ng-zorro-antd/typography';
-import { ConfApiService, ConfigCategory, ConfigDescriptor, ConfigField, JsonPatchOp } from './conf-api.service';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
-import { NgDevtoolComponent } from '@app/shared/devtools/ng-devtool.component';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzTypographyModule } from 'ng-zorro-antd/typography';
+import { ConfigNavComponent } from './components/config-nav-component';
+import { ConfigSectionComponent } from './components/config-section-component';
+import { ConfApiService } from './conf-api.service';
+import { ConfigCatalogDocV1, ConfigFileType, ConfigSchema, ConfigTreeNode } from './models';
 
 @Component({
   selector: 'app-project-conf.component',
+  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -29,171 +32,196 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
     NzSwitchModule,
     NzButtonModule,
     NzTypographyModule,
-    NzButtonModule,
     NzPopoverModule,
     NzTooltipModule,
     NgDevtoolComponent,
-    NzIconModule
-
+    NzIconModule,
+    ConfigNavComponent,
+    ConfigSectionComponent
   ],
   templateUrl: './project-conf.component.html',
   styleUrls: ['./project-conf.component.less'],
 })
 export class ProjectConfComponent {
   private api = inject(ConfApiService);
-  private fb = inject(FormBuilder);
-  private msg = inject(NzMessageService);
   private projectState = inject(ProjectStateService);
 
-  projectId = computed(() => this.projectState.currentProjectId() || "");
-
-  descriptor = signal<ConfigDescriptor | null>(null);
-  values = signal<Record<string, any>>({});
-  selectedSectionId = signal<string>("base");
+  projectId = computed(() => this.projectState.currentProjectId() || '');
 
   loading = signal(false);
-  keyword = signal("");
 
+  catalog = signal<ConfigCatalogDocV1 | null>(null);
 
-  activeCategoryId = signal<string>("angular");
+  nodes = computed<ConfigTreeNode[]>(() => this.catalog()?.tree ?? []);
 
-  form = signal<FormGroup>(this.fb.group({}));
+  schemas = computed<Record<ConfigFileType, ConfigSchema> | null>(() => this.catalog()?.schemas ?? null);
 
-  // 当前类目
-  activeCategory = computed<ConfigCategory | null>(() => {
-    const d = this.descriptor();
-    if (!d) return null;
-    return d.categories.find((c) => c.id === this.activeCategoryId()) ?? d.categories[0] ?? null;
+  activeNodeId = signal<string | null>(null);
+
+  /** 当前选中的（递归）节点 */
+  selectedNode = computed<ConfigTreeNode | null>(() => {
+    const id = this.activeNodeId();
+    if (!id) return null;
+    return this.findNodeById(this.nodes(), id);
   });
 
-  // 当前类目的所有字段（用于建表单、生成 patch）
-  activeFields = computed<ConfigField[]>(() => {
-    const cat = this.activeCategory();
-    if (!cat) return [];
-    return cat.groups.flatMap((g) => g.fields);
+  /** 右侧展示：选中节点下所有 file 节点（递归扁平化） */
+  contentFileNodes = computed<ConfigTreeNode[]>(() => {
+    const root = this.selectedNode();
+    if (!root) return [];
+    return this.collectFileNodes(root);
   });
 
-  // 右侧渲染用：过滤后的 groups（按 keyword 过滤 fields）
-  filteredGroups = computed(() => {
-    const cat = this.activeCategory();
-    if (!cat) return [];
-    const kw = this.keyword().trim().toLowerCase();
-    if (!kw) return cat.groups;
+  /** 表单 values：先按 type 存一份（后续 patch 用） */
+  valuesByType = signal<Record<string, Record<string, any>>>({});
+  vmOptionsByType = signal<Record<string, any>>({});
 
-    return cat.groups
-      .map((g) => ({
-        ...g,
-        fields: g.fields.filter((f) => {
-          const hay = `${f.label} ${f.key} ${f.path}`.toLowerCase();
-          return hay.includes(kw);
-        }),
-      }))
-      .filter((g) => g.fields.length > 0);
+  /** 当前文件 schema（右侧渲染入口） */
+  curSchema = computed<ConfigSchema | null>(() => {
+    const node = this.selectedNode();
+    const type = node?.file?.type;
+    if (!type) return null;
+    return this.schemas()?.[type] ?? null;
   });
 
-  // diff/backup
-  diffText = signal("");
-  lastBackupId = signal("");
+  /** 用于 patch.before（来自 /workspace） */
+  baseRaw = signal<any>(null);
+
+  /** 右侧上下文：后续 Project/Target/Configuration 选择框时用 */
+  vmCtx = signal<{ project?: string; target?: string; configuration?: string }>({
+    project: undefined,
+    target: undefined,
+    configuration: undefined,
+  });
 
   constructor() {
-    // 初始化加载
-    this.reload(this.projectId());
-
-    // 类目切换 -> 重建 form（包含该类目的全部字段）
-    effect(() => {
-      const fields = this.activeFields();
-      const g: any = {};
-      for (const f of fields) {
-        g[f.path] = [this.values()[f.path] ?? (f as any).default ?? null];
-      }
-      this.form.set(this.fb.group(g));
-      this.diffText.set("");
-    });
-
-    // project 切换 -> 重新加载
     effect(() => {
       const pid = this.projectId();
-      this.reload(pid);
+      if (pid) this.getCatalog();
     });
   }
 
-  selectCategory(id: string) {
-    this.activeCategoryId.set(id);
-  }
+  getCatalog() {
+    const pid = this.projectId();
+    if (!pid) return;
 
-  reload(pid: string) {
     this.loading.set(true);
-    this.api.getDescriptor(pid).subscribe({
-      next: (d) => {
-        this.descriptor.set(d);
-        this.activeCategoryId.set(d.categories?.[0]?.id ?? "angular");
-        this.api.getValues(pid).subscribe({
-          next: (r) => {
-            this.values.set(r.values ?? {});
-            this.loading.set(false);
-          },
-          error: () => this.loading.set(false),
-        });
+    this.api.getCatalog(pid).subscribe({
+      next: (catalog) => {
+        this.catalog.set(catalog);
+        this.activeNodeId.set(this.nodes()[0]?.id ?? null);
+        const firstFile = this.findFirstFileNode(catalog.tree);
+        // 触发加载右侧数据
+        if (firstFile) this.loadNodeData(firstFile);
       },
-      error: () => this.loading.set(false),
+      error: (err) => {
+        // TODO: toast
+        console.error(err);
+      },
+      complete: () => this.loading.set(false),
     });
+  }
+
+  /** 左侧点击节点 */
+  onNodeSelect(node: ConfigTreeNode) {
+    if (!node.file) return;
+    this.activeNodeId.set(node.id);
+    this.loadNodeData(node);
+  }
+
+  /** 拉取 workspace + view-model，写入 baseRaw/values */
+  private async loadNodeData(node: ConfigTreeNode) {
+    console.log('loadNodeData', node);
+    const pid = this.projectId();
+    const type = node.file?.type;
+    if (!pid || !type) return;
+
+    // MVP：目前只对 angular 做表单（其他可以先显示“未实现/Raw 模式”）
+    if (type !== 'angular') {
+      this.baseRaw.set(null);
+      this.valuesByType.update(prev => ({
+        ...prev,
+        [type]: {},
+      }));
+      this.vmOptionsByType.update(prev => ({
+        ...prev,
+        [type]: {},
+      }));
+      return;
+    }
+
+    this.loading.set(true);
+    try {
+      // 1) workspace.raw（before 的基线）
+      const ws = await this.api.getWorkspacePromise(pid, type);
+      this.baseRaw.set(ws.raw);
+      // 2) view-model.values（表单值）
+      const ctx = this.vmCtx();
+      const vm = await this.api.getViewModelPromise(pid, {
+        type,
+        project: ctx.project,
+        target: ctx.target,
+        configuration: ctx.configuration,
+      });
+      // 约定：vm.values
+      this.valuesByType.update(prev => ({
+        ...prev,
+        [type]: vm?.values ?? {},
+      }));
+      this.vmOptionsByType.update(prev => ({
+        ...prev,
+        [type]: (vm as any)?.options ?? {},
+      }));
+
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /** 右侧表单变化回传 */
+  onValuesChange(e: { type: string; values: Record<string, any> }) {
+    this.valuesByType.update(prev => ({
+      ...prev,
+      [e.type]: e.values,
+    }));
   }
 
   openConfig() {
-    // this.api.openConfig(this.projectId(), "angular").subscribe({
-    //   next: () => this.msg.success("已打开配置文件"),
-    //   error: () => this.msg.error("打开失败"),
-    // });
+    // TODO：后端有 open editor 的 api，可根据 selectedNode().file.relPath 打开
   }
 
-  private buildPatch(): JsonPatchOp[] {
-    const fields = this.activeFields();
-    const fg = this.form();
-    const patch: JsonPatchOp[] = [];
+  // ---------------- utils ----------------
 
-    for (const f of fields) {
-      const next = fg.get(f.path)?.value;
-      const prev = this.values()[f.path];
-      if (next !== prev) patch.push({ op: "replace", path: f.path, value: next });
+  private findNodeById(nodes: ConfigTreeNode[], id: string): ConfigTreeNode | null {
+    for (const n of nodes) {
+      if (n.id === id) return n;
+      if (n.children?.length) {
+        const hit = this.findNodeById(n.children, id);
+        if (hit) return hit;
+      }
     }
-    return patch;
+    return null;
   }
 
-  preview() {
-    const patch = this.buildPatch();
-    if (!patch.length) {
-      this.msg.info("没有变更");
-      return
+  /** 把某个节点下所有 file 节点扁平化收集出来 */
+  private collectFileNodes(root: ConfigTreeNode): ConfigTreeNode[] {
+    const out: ConfigTreeNode[] = [];
+    const walk = (n: ConfigTreeNode) => {
+      if (n.file) out.push(n);
+      if (n.children?.length) n.children.forEach(walk);
+    };
+    walk(root);
+    return out;
+  }
+
+  private findFirstFileNode(nodes: ConfigTreeNode[]): ConfigTreeNode | null {
+    for (const n of nodes) {
+      if (n.file) return n;
+      if (n.children?.length) {
+        const hit = this.findFirstFileNode(n.children);
+        if (hit) return hit;
+      }
     }
-    const pid = this.projectId();
-    this.api.patch(pid, patch, true).subscribe((res) => {
-      this.diffText.set(res.diffText || "");
-      this.msg.success("已生成 Diff 预览");
-    });
-  }
-
-  apply() {
-    const patch = this.buildPatch();
-    if (!patch.length) {
-      this.msg.info("没有变更");
-      return
-    }
-    const pid = this.projectId();
-    this.api.patch(pid, patch, false).subscribe((res) => {
-      this.diffText.set(res.diffText || "");
-      this.lastBackupId.set(res.backupId || "");
-      this.api.getValues(pid).subscribe((r) => this.values.set(r.values ?? {}));
-      this.msg.success("已应用修改");
-    });
-  }
-
-  rollback() {
-    const id = this.lastBackupId();
-    if (!id) return;
-    const pid = this.projectId();
-    this.api.rollback(pid, id).subscribe(() => {
-      this.msg.success("已回滚");
-      this.reload(pid);
-    });
+    return null;
   }
 }
