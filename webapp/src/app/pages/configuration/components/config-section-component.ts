@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { ConfigFileType, ConfigItem, ConfigSchema, ConfigTreeNode } from '../models';
+import { ConfigFileType, ConfigSchemaItem, ConfigSchema, ConfigTreeNode } from '../models';
 import { ConfigItemComponent } from './config-item-component';
 
 @Component({
@@ -22,7 +22,7 @@ import { ConfigItemComponent } from './config-item-component';
           @let values = valuesByType[fileType] || {};
           @for (sec of schema.sections; track sec.id) {
             <section class="section" [attr.id]="fileType + ':' + sec.id">
-              <h3 class="section-title">{{ sec.label }}</h3>
+              <!-- <h3 class="section-title">{{ sec.label }}</h3> -->
               @for (item of sec.items; track item.key) {
                 <app-config-item-component
                   [item]="item"
@@ -49,16 +49,16 @@ import { ConfigItemComponent } from './config-item-component';
       overflow: hidden;
     }
     .file-head {
-      padding: 12px 14px;
+      padding: 12px 16px;
       background: rgba(0,0,0,0.02);
       border-bottom: 1px solid rgba(0,0,0,0.06);
     }
-    .file-title { font-weight: 600; }
-    .file-desc { color: #888; font-size: 12px; margin-top: 4px; }
+    .file-title {  font-size: 24px; font-weight: 500;}
+    .file-desc { color: #888; font-size: 14px; margin-top: 4px; }
 
-    .section { padding: 12px 14px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .section { padding: 0px; } //border-bottom: 1px solid rgba(0,0,0,0.06); 
     .section:last-child { border-bottom: none; }
-    .section-title { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+    .section-title { margin: 0 0 10px; font-size: 18px;font-weight: 500; padding: 0 16px; }
 
     .empty { padding: 12px 14px; color: #999; }
   `],
@@ -89,7 +89,7 @@ export class ConfigSectionComponent {
     });
   }
 
-  getOptions(fileType: string, item: ConfigItem): any[] {
+  getOptions(fileType: string, item: ConfigSchemaItem): any[] {
     if (item.type !== "select") return [];
     const k = item.optionsRef?.key;
     if (!k) return [];

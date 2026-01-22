@@ -1,7 +1,5 @@
 import { Injectable } from "@angular/core";
-
-type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
-
+import { JsonValue } from "../common";
 export interface LocalStateDriver {
   get<T extends JsonValue>(key: string): T | null;
   set<T extends JsonValue>(key: string, value: T): void;

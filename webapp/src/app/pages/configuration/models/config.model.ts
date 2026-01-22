@@ -1,41 +1,27 @@
-export interface ConfigContext {
+import { JsonValue } from "@app/core/common";
+
+export interface ConfigCtx {
     project?: string;
     target?: string;
     configuration?: string;
+    architectKey?: string;
 }
+
 
 export interface ConfigSchema {
     id: string;
     label: string;
-    sections: ConfigSection[];
+    sections: ConfigSchemaSection[];
 }
 
-export interface ConfigSection {
+export interface ConfigSchemaSection {
     id: string;
     label: string;
     scope?: "workspace" | "project";
     target?: string;
-    items: ConfigItem[];
+    items: ConfigSchemaItem[];
 }
-
-export interface ConfigItem {
-    key: string;
-    label: string;
-    type: string;
-    level?: "basic" | "advanced";
-    desc?: string;
-    options?: string[]; // 可选值列表（type 为 select 时）
-}
-
-
-export interface ConfigItemOptionRef {
-    /** 从 view-model.options 里取哪个 key */
-    key: "projects" | "targets" | "configurations" | string;
-    /** 可选：是否允许空 */
-    allowEmpty?: boolean;
-}
-
-export interface ConfigItem {
+export interface ConfigSchemaItem {
     key: string; // 配置键名
     label: string; // 显示名称
     type: string; // e.g., "string", "boolean", "path", "select", etc.
@@ -44,11 +30,22 @@ export interface ConfigItem {
 
     /** select/radio 等枚举型输入：options 从哪来 */
     optionsRef?: ConfigItemOptionRef;
+
+    configuration?: string; // e.g. "production"
 }
 
+export interface ConfigItemOptionRef {
+    /** 从 view-model.options 里取哪个 key */
+    key: "projects" | "targets" | "configurations" | string;
+    /** 可选：是否允许空 */
+    allowEmpty?: boolean;
+}
+
+
 /**
- * 通用配置视图模型
- */
+* 通用配置视图模型
+* core 返回的 viewModel（只用到 values/filePath/options 等即可） 
+*/
 export interface ConfigViewModel<TValues extends Record<string, any> = Record<string, any>,
     TOptions extends Record<string, any> = Record<string, any>> {
     /** 哪种配置文件（由 provider.type 决定） */
@@ -58,7 +55,7 @@ export interface ConfigViewModel<TValues extends Record<string, any> = Record<st
     filePath: string;
 
     /** 表单上下文（project/target/configuration） */
-    ctx?: ConfigContext;
+    ctx: ConfigCtx;
 
     /**
      * 表单枚举/候选项（可选）
@@ -70,4 +67,14 @@ export interface ConfigViewModel<TValues extends Record<string, any> = Record<st
 
     /** 表单值 */
     values: TValues;
+}
+
+export type AngularOptions = {
+    projects: string[];
+    targets: string[];
+    configurations: string[];
+};
+
+export interface AngularViewModel extends ConfigViewModel<Record<string, any>, AngularOptions> {
+    architectKey: "architect" | "targets";
 }

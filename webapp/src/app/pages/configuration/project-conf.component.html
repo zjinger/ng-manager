@@ -19,7 +19,7 @@
     <div class="panel" nz-col nzXs="24" nzSm="24" nzMd="20" nzLg="16" nzXl="16">
       <app-config-nav-component
         [nodes]="nodes()"
-        [active]="activeNodeId() ?? ''"
+        [active]="activeNavId() ?? ''"
         (nodeSelect)="onNodeSelect($event)"
       ></app-config-nav-component>
       <div class="content">
@@ -29,7 +29,15 @@
           [valuesByType]="valuesByType()"
           [vmOptionsByType]="vmOptionsByType()"
           (valuesChange)="onValuesChange($event)"
-        ></app-config-section-component>
+        >
+        </app-config-section-component>
+        <app-config-change-bar-component
+          [dirty]="activeDirty()"
+          (diff)="onDiff()"
+          (reset)="onReset()"
+          (save)="saveActive()"
+        >
+        </app-config-change-bar-component>
       </div>
     </div>
   </div>

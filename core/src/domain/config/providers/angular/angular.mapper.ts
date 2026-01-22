@@ -1,8 +1,8 @@
 import { AppError } from "../../../../common/errors";
-import { WorkspaceModel } from "../../workspace/workspace.model";
-import { ConfigSchema, ConfigSection } from "../config-provider";
-import { AngularViewModel } from "./angular-view-model";
 import { getByDotPath } from "../../patch/path-access";
+import { WorkspaceModel } from "../../workspace/workspace.model";
+import { ConfigCtx, ConfigSchema, ConfigSchemaItem, ConfigSchemaSection } from "../config-provider";
+import { AngularViewModel } from "./angular-view-model";
 import { pickArchitectKey } from "./angular.path";
 
 function pickDefaultProject(raw: any): string {
@@ -14,17 +14,18 @@ function pickDefaultProject(raw: any): string {
 
 function buildPathForItem(args: {
     raw: any;
-    section: ConfigSection;
-    itemKey: string;
-    ctx: { project: string; target?: string; configuration?: string };
+    section: ConfigSchemaSection;
+    item: ConfigSchemaItem;
+    ctx: ConfigCtx;
+    architectKey: "architect" | "targets";
 }): string {
-    const { raw, section, itemKey, ctx } = args;
 
+    const { raw, section, item, ctx, architectKey } = args;
+    const itemKey = item.key
     // workspace scope
     if (section.scope === "workspace") {
         return itemKey; // e.g. defaultProject
     }
-
     // project scope：projects.<project>.(architect|targets).<target>.options.<itemKey>
     if (section.scope === "project") {
         const project = ctx.project;
@@ -40,18 +41,14 @@ function buildPathForItem(args: {
                 sectionId: section.id,
             });
         }
-
-        const projectNode = raw?.projects?.[project];
-        const architectKey = pickArchitectKey(projectNode);
-
         const base = `projects.${project}.${architectKey}.${target}`;
-
-        if (ctx.configuration) {
-            return `${base}.configurations.${ctx.configuration}.${itemKey}`;
+        // 单项覆盖：sourceMap -> production
+        const cfg = item.configuration ?? ctx.configuration;
+        if (cfg) {
+            return `${base}.configurations.${cfg}.${itemKey}`;
         }
         return `${base}.options.${itemKey}`;
     }
-
     return itemKey;
 }
 
@@ -61,7 +58,7 @@ function buildPathForItem(args: {
 export function toAngularViewModel(
     workspace: WorkspaceModel,
     schema: ConfigSchema,
-    inputCtx?: { project?: string; target?: string; configuration?: string }
+    inputCtx?: ConfigCtx
 ): AngularViewModel {
     const raw = workspace.raw;
 
@@ -83,7 +80,12 @@ export function toAngularViewModel(
 
     const cfgs = target ? Object.keys((arch?.[target]?.configurations ?? {})) : [];
 
-    const ctx = { project, target, configuration: inputCtx?.configuration };
+    const ctx: ConfigCtx = {
+        project,
+        target,
+        configuration: inputCtx?.configuration,
+        architectKey
+    };
 
     const values: Record<string, any> = {};
 
@@ -92,8 +94,9 @@ export function toAngularViewModel(
             const p = buildPathForItem({
                 raw,
                 section: sec,
-                itemKey: item.key,
+                item,
                 ctx: { project, target, configuration: inputCtx?.configuration },
+                architectKey,
             });
             values[item.key] = getByDotPath(raw, p);
         }
@@ -102,7 +105,6 @@ export function toAngularViewModel(
     if (values["defaultProject"] == null) {
         values["defaultProject"] = project;
     }
-
     return {
         fileType: "angular",
         filePath: workspace.filePath,

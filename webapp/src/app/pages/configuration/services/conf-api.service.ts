@@ -2,7 +2,7 @@ import { HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { ApiClient } from "@core/api";
 import { firstValueFrom } from "rxjs";
-import { ConfigCatalogDocV1, ConfigFileType, ConfigViewModel } from "./models";
+import { ConfigCatalogDocV1, ConfigFileType, ConfigPatch, ConfigViewModel } from "../models";
 
 @Injectable({ providedIn: "root" })
 export class ConfApiService {
@@ -33,6 +33,10 @@ export class ConfApiService {
     if (query.target) params = params.set("target", query.target);
     if (query.configuration) params = params.set("configuration", query.configuration);
     return firstValueFrom(this.api.get<ConfigViewModel>(`/api/config/view-model/${pid}`, params));
+  }
+
+  applyConfigPromise(pid: string, body: { type: ConfigFileType; patch: ConfigPatch }) {
+    return firstValueFrom(this.api.post<void>(`/api/config/apply/${pid}`, body));
   }
 
 }

@@ -37,6 +37,7 @@ export const angularSchema: ConfigSchema = {
                     type: "boolean",
                     level: "basic",
                     desc: "是否生成 source map 文件，生产环境建议关闭以减小包体积",
+                    configuration: "production",
                 },
             ],
         },

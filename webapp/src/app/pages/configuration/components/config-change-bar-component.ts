@@ -1,23 +1,36 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 
 @Component({
   selector: 'app-config-change-bar-component',
   imports: [
-    CommonModule
+    CommonModule,
+    NzButtonModule,
   ],
   template: `
     @if(dirty){
       <div class="change-bar">
-        <span>有未保存更改</span>
-
+         <span class="hint">有未保存更改</span>
         <button nz-button (click)="diff.emit()">Diff</button>
         <button nz-button (click)="reset.emit()">重置</button>
         <button nz-button nzType="primary" (click)="save.emit()">保存</button>
       </div>
     }
   `,
-  styles: [],
+  styles: [
+    `
+    .change-bar {
+      width: 100%;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+    }
+    .hint { margin-right: auto; opacity: .75; }
+    `
+  ],
 })
 export class ConfigChangeBarComponent {
   @Input() dirty = false;

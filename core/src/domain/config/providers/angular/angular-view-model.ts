@@ -7,4 +7,5 @@ export type AngularOptions = {
     configurations: string[];
 };
 
-export type AngularViewModel = ConfigViewModel<Record<string, any>, AngularOptions>;
+export interface AngularViewModel extends ConfigViewModel<Record<string, any>, AngularOptions> {
+}

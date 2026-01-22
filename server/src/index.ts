@@ -15,6 +15,16 @@ async function start() {
         source: "system",
         scope: "task", // 理论上这里scope 应该是server， 但是为了在task 模块中展示，暂时用task
     })
+
+    process.on("unhandledRejection", (reason) => {
+        console.error("[unhandledRejection]", reason);
+        // 开发期：不要让进程直接死，先定位根因
+    });
+
+    process.on("uncaughtException", (err) => {
+        console.error("[uncaughtException]", err);
+        // 同上：开发期先不 exit
+    });
 }
 
 start().catch((err) => {

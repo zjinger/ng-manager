@@ -5,7 +5,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
-import { ConfigItem } from '../models/config.model';
+import { ConfigSchemaItem } from '../models';
 
 @Component({
   selector: 'app-config-item-component',
@@ -55,14 +55,16 @@ import { ConfigItem } from '../models/config.model';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 0;
+      padding: 12px 16px;
+      &:hover{
+        background: var(--app-primary-2);
+      }
       .meta {
         .label {
           font-weight: 500;
-          font-size: 14px;
         }
         .desc {
-          font-size: 12px;
+          font-size: 14px;
           color: #888;
           margin-top: 4px;
         }
@@ -80,7 +82,7 @@ import { ConfigItem } from '../models/config.model';
   ],
 })
 export class ConfigItemComponent {
-  @Input() item!: ConfigItem;
+  @Input() item!: ConfigSchemaItem;
   @Input() value: any;
   @Output() valueChange = new EventEmitter<any>();
   @Input() options: string[] = [];

@@ -1,11 +1,11 @@
 // core/src/domain/config/providers/angular/angular.provider.ts
-import { ConfigProvider, ConfigContext } from "../config-provider";
+import { applyPatch } from "../../patch/patch.engine";
+import { ConfigPatch } from "../../patch/patch.model";
 import { loadWorkspace } from "../../workspace/workspace.loader";
 import { WorkspaceModel } from "../../workspace/workspace.model";
-import { ConfigPatch } from "../../patch/patch.model";
-import { applyPatch } from "../../patch/patch.engine";
-import { angularSchema } from "./angular.schema";
+import { ConfigCtx, ConfigProvider } from "../config-provider";
 import { toAngularViewModel } from "./angular.mapper";
+import { angularSchema } from "./angular.schema";
 
 export class AngularConfigProvider implements ConfigProvider {
 
@@ -23,7 +23,7 @@ export class AngularConfigProvider implements ConfigProvider {
 
     toViewModel(
         workspace: WorkspaceModel,
-        ctx: ConfigContext
+        ctx: ConfigCtx
     ) {
         return toAngularViewModel(workspace, angularSchema, ctx);
     }

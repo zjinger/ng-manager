@@ -20,6 +20,12 @@ export const enum ErrorPolicyCode {
     TARGET_EXISTS = "TARGET_EXISTS",
     INVALID_REPO_URL = "INVALID_REPO_URL",
 
+    /** config */
+    CONFIG_BACKUP_NOT_FOUND = "CONFIG_BACKUP_NOT_FOUND",
+    CONFIG_READ_FAILED = "CONFIG_READ_FAILED",
+    CONFIG_CONFLICT = "CONFIG_CONFLICT",
+
+
     /* ---------- fs ---------- */
     FS_ALREADY_EXISTS = "FS_ALREADY_EXISTS",
     FS_NOT_FOUND = "FS_NOT_FOUND",
@@ -125,6 +131,22 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     INVALID_REPO_URL: {
         level: "toast",
         message: "无效的仓库地址",
+    },
+
+    /** config */
+    CONFIG_BACKUP_NOT_FOUND: {
+        level: "toast",
+        message: "配置备份未找到",
+    },
+    
+    CONFIG_READ_FAILED: {
+        level: "toast",
+        message: "配置读取失败，文件可能已损坏",
+    },
+
+    CONFIG_CONFLICT: {
+        level: "toast",
+        message: "配置已被其他地方修改，请刷新重试",
     },
 
     /* ---------- fs ---------- */

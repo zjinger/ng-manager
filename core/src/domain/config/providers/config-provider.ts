@@ -1,24 +1,25 @@
 import { ConfigPatch } from "../patch/patch.model";
 import { WorkspaceModel } from "../workspace";
 
-export interface ConfigContext {
+export interface ConfigCtx {
     project?: string;
     target?: string;
     configuration?: string;
+    architectKey?: string;
 }
 
 export interface ConfigSchema {
     id: string;
     label: string;
-    sections: ConfigSection[];
+    sections: ConfigSchemaSection[];
 }
 
-export interface ConfigSection {
+export interface ConfigSchemaSection {
     id: string;
     label: string;
     scope?: "workspace" | "project";
     target?: string;
-    items: ConfigItem[];
+    items: ConfigSchemaItem[];
 }
 
 export interface ConfigItemOptionRef {
@@ -28,13 +29,14 @@ export interface ConfigItemOptionRef {
     allowEmpty?: boolean;
 }
 
-export interface ConfigItem {
+export interface ConfigSchemaItem {
     key: string; // 配置键名
     label: string; // 显示名称
     type: string; // e.g., "string", "boolean", "path", "select", etc.
     level?: "basic" | "advanced"; // 级别
     desc?: string; // 描述
-
+    // 对 project scope 项：指定写入哪个 configuration
+    configuration?: string; // e.g. "production"
     /** select/radio 等枚举型输入：options 从哪来 */
     optionsRef?: ConfigItemOptionRef;
 }
@@ -51,7 +53,7 @@ export interface ConfigViewModel<TValues extends Record<string, any> = Record<st
     filePath: string;
 
     /** 表单上下文（project/target/configuration） */
-    ctx?: ConfigContext;
+    ctx?: ConfigCtx;
 
     /**
      * 表单枚举/候选项（可选）
@@ -84,7 +86,7 @@ export interface ConfigProvider {
 
     toViewModel(
         workspace: WorkspaceModel,
-        ctx: ConfigContext
+        ctx: ConfigCtx
     ): ConfigViewModel;
 
     applyPatch(

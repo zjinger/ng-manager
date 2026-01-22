@@ -17,7 +17,7 @@ export function getByDotPath(obj: any, path: string): any {
 
 /**
  * 写入：obj.a.b.c = value
- * @param createMissing 默认 true：中间对象不存在则自动创建（兼容你现有行为）
+ * @param createMissing 默认 true：中间对象不存在则自动创建
  *                     false：路径不存在直接抛错（严格模式，避免写错 key 悄悄污染文件）
  */
 export function setByDotPath(obj: any, path: string, value: any, createMissing = true): void {

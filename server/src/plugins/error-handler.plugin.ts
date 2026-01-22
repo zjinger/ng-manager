@@ -130,7 +130,6 @@ function buildErrorBody(reqId: string | undefined, code: string, message: string
 export const errorHandlerPlugin: FastifyPluginAsync = fp(async (app) => {
     app.setErrorHandler((err, req, reply) => {
         const requestId = req.id;
-
         // 1) core 业务错误
         if (err instanceof AppError || isCoreAppError(err)) {
             const status = mapStatus(err.code as ErrorCode);

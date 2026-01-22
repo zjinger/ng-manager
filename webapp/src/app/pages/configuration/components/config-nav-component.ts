@@ -86,7 +86,7 @@ import { FormsModule } from '@angular/forms';
 
                 &:hover,
                 &.active {
-                    background: var(--app-primary-3);
+                    background: var(--app-primary-2);
                 }
 
                 .row {

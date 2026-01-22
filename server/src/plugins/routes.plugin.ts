@@ -2,7 +2,7 @@ import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
 import { configRoutes, dashboardRoutes, depsRoutes, fsRoutes, projectRoutes, rssRoutes, systemRoutes, taskRoutes } from "../routes";
 
-export default fp(async function configPlugin(fastify: FastifyInstance) {
+export default fp(async function routesPlugin(fastify: FastifyInstance) {
     // system
     await fastify.register(systemRoutes);
     // routes
