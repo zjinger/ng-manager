@@ -1,7 +1,7 @@
-import { FsEntry, FsListResult, FsLsOptions } from "./fs.types"
+import { FsEntry, FsListResult, FsLsOptions, FsMkdirOptions } from "./fs.types"
 
 export interface FsService {
     ls(inputPath: string, opts?: FsLsOptions): Promise<FsListResult>
-    mkdir(basePath: string, name: string): Promise<FsEntry>
+    mkdir(basePath: string, name: string, opts?: FsMkdirOptions): Promise<FsEntry>
     exists(path: string): Promise<boolean>
 }

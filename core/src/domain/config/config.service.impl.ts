@@ -1,16 +1,32 @@
+import * as path from "node:path";
+import { AppError } from "../../common/errors";
 import { FileLock } from "../../infra/storage/file-lock";
 import { ProjectService } from "../project";
 import { ConfigCatalog, ConfigCatalogDocV1, ConfigFileType, ConfigTreeNode } from "./catalog";
+import { ConfigRegistry } from "./config.registry";
+import { ConfigResolver } from "./config.resolver";
 import { ConfigService } from "./config.service";
+import { ConfigDocumentStore } from "./config.store";
+import { ConfigCodec, ConfigFileReadResult, ResolvedDoc, ResolvedDomain } from "./config.types";
 import { ConfigPatch, diffToText } from "./patch";
 import { ConfigSchema, ConfigViewModel, ConfigViewModelQuery, assertPatchBeforeMatch, getProviderByFramework } from "./providers";
 import { WorkspaceModel, validateWorkspace, writeWorkspace } from "./workspace";
+import { angularDomain, qualityDomain } from "./domains";
 
 export class ConfigServiceImpl implements ConfigService {
 
-    private fileLock = new FileLock();
-
-    constructor(private projectService: ProjectService) { }
+    private readonly fileLock = new FileLock();
+    private readonly registry: ConfigRegistry = new ConfigRegistry()
+    private readonly resolver: ConfigResolver = new ConfigResolver()
+    private readonly store: ConfigDocumentStore = new ConfigDocumentStore()
+    private catalogCache = new Map<string, { rootDir: string; catalog: ResolvedDomain[]; ts: number }>();
+    private readonly CATALOG_TTL = 2000; // 2s，MVP 足够
+    constructor(private projectService: ProjectService) {
+        this.registry.registerMany([
+            angularDomain,
+            qualityDomain,
+        ])
+    }
 
     async getCatalogDoc(projectId: string): Promise<ConfigCatalogDocV1> {
         const project = await this.projectService.get(projectId);
@@ -132,4 +148,78 @@ export class ConfigServiceImpl implements ConfigService {
     }
 
 
+    async getCatalog(projectId: string): Promise<ResolvedDomain[]> {
+        const project = await this.projectService.get(projectId);
+        return this.getCachedCatalog(projectId, project.root);
+    }
+
+    async readDoc(projectId: string, docId: string): Promise<ConfigFileReadResult> {
+        const project = await this.projectService.get(projectId);
+        const catalog = this.getCachedCatalog(projectId, project.root);
+        const rd = this.findResolvedDoc(catalog, docId);
+        if (!rd) throw new AppError("CONFIG_READ_FAILED", "unknown config docId", { docId, projectId });
+        if (!rd.exists || !rd.absPath || !rd.chosen) {
+            throw new AppError("CONFIG_READ_FAILED", "config doc not found on disk", { docId, projectId, rootDir: project.root });
+        }
+        const result = this.store.read(rd.absPath, rd.chosen.codec);
+        return { ...result, relPath: rd.chosen.relPath };
+    }
+
+    async writeDoc(projectId: string, docId: string, next: unknown): Promise<void> {
+        const project = await this.projectService.get(projectId);
+        const catalog = this.getCachedCatalog(projectId, project.root);
+        const rd = this.findResolvedDoc(catalog, docId);
+
+        // 注意：doc 可能被裁剪掉（missing=hide），此时 rd 为空
+        // 如果需要支持 showAsCreate，则不能依赖 catalog，得从 registry 找 spec
+        if (rd?.exists && rd.absPath && rd.chosen) {
+            await this.fileLock.withLock(rd.absPath, async () => {
+                this.store.write(rd.absPath!, rd.chosen!.codec, next, { format: "pretty" });
+            });
+            // 写完刷新 cache，确保 UI 立即一致
+            this.catalogCache.delete(projectId);
+            return;
+        }
+        throw new AppError("CONFIG_WRITE_FAILED", "unknown config docId", { docId, projectId, rootDir: project.root });
+    }
+
+    /**
+     * 解析配置目录
+     * rootDir 项目根目录
+     * @returns 解析后的配置域数组
+     */
+    private resolveCatalog(rootDir: string): ResolvedDomain[] {
+        return this.resolver.resolveAll(rootDir, this.registry.list());
+    }
+
+    /**
+     * 获取缓存的配置目录
+     * @param projectId 项目 ID
+     * @param rootDir 项目根目录
+     * @returns 解析后的配置域数组
+     */
+    private getCachedCatalog(projectId: string, rootDir: string): ResolvedDomain[] {
+        const hit = this.catalogCache.get(projectId);
+        const now = Date.now();
+        if (hit && hit.rootDir === rootDir && (now - hit.ts) < this.CATALOG_TTL) {
+            return hit.catalog;
+        }
+        const catalog = this.resolveCatalog(rootDir);
+        this.catalogCache.set(projectId, { rootDir, catalog, ts: now });
+        return catalog;
+    }
+
+    /**
+     * 从 catalog 中获取指定 doc
+     * @param catalog 配置目录
+     * @param docId 配置文件 ID
+     * @returns 解析后的配置文件 | undefined
+     */
+    private findResolvedDoc(catalog: ResolvedDomain[], docId: string): ResolvedDoc | undefined {
+        for (const d of catalog) {
+            const rd = d.docs.find(x => x.spec.id === docId);
+            if (rd) return rd;
+        }
+        return undefined;
+    }
 }

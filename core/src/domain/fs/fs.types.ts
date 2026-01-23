@@ -23,5 +23,15 @@ export type FsLsOptions = {
 };
 
 export type FsMkdirOptions = {
-    // 预留：是否允许 recursive / overwrite 等
+    /**
+     * 是否递归创建父目录
+     * @default false
+     */
+    recursive?: boolean; 
+    
+    /**
+     * 是否覆盖已存在的目录
+     * @default false
+     */
+    overwrite?: boolean;
 };

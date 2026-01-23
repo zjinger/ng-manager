@@ -31,21 +31,23 @@ export class FileLock {
         let release!: () => void;
         const next = new Promise<void>((res) => (release = res));
 
+        const tail = prev.finally(() => next);
         // 将 next 挂到队列尾部；无论 prev 成功/失败，都要继续串行
-        this.queues.set(key, prev.finally(() => next));
+        this.queues.set(key, tail);
 
         // 等待前一个结束（这里不需要 catch，因为 prev 永远 resolve 了）
-        await prev;
+        // await prev;
+        // 不让上一次 fn 的失败影响后续队列执行
+        await prev.catch(() => void 0);
 
         try {
             return await fn();
         } finally {
             // 永远释放队列（resolve next），不要 reject
             release();
-
             // 清理：如果当前 key 的尾巴仍然是我们挂上去的那条链，则删除
             // 注意：这里不要重新构造 finally 链进行比较（会是新 Promise），直接比较引用
-            if (this.queues.get(key) === prev.finally(() => next)) {
+            if (this.queues.get(key) === tail) {
                 this.queues.delete(key);
             }
         }

@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import { promises as fsp, accessSync, constants } from "node:fs";
-import type { FsEntry, FsListResult, FsLsOptions } from "./fs.types";
+import type { FsEntry, FsListResult, FsLsOptions, FsMkdirOptions } from "./fs.types";
 import { detectProjectKind } from "./fs.project-detect";
 import {
     normalizeInput,
@@ -67,7 +67,15 @@ export class FsServiceImpl implements FsService {
         return { path: real, entries: dirs };
     }
 
-    async mkdir(basePath: string, name: string): Promise<FsEntry> {
+    /**
+     * 创建目录
+     * TODO: 使用 FsMkdirOptions 选项，支持 overwrite/recursive
+     * @param basePath 基础路径
+     * @param name 目录名
+     * @param opts FsMkdirOptions 选项
+     * @returns 创建的目录信息
+     */
+    async mkdir(basePath: string, name: string, opts?: FsMkdirOptions): Promise<FsEntry> {
         const baseInput = normalizeInput(basePath);
         if (!baseInput) throw new AppError("PROJECT_ROOT_INVALID" as any, "path is required", { path: baseInput });
 
@@ -102,19 +110,9 @@ export class FsServiceImpl implements FsService {
 
     /**
      * 路径是否存在
-     * @param path
-     * @returns
+     * @param path 路径
+     * @returns 是否存在
      */
-    private async _exists(p: string): Promise<boolean> {
-        try {
-            accessSync(p, constants.F_OK);
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
-
     async exists(path: string): Promise<boolean> {
         const p = String(path ?? "").trim();
         if (!p) return false;
@@ -122,6 +120,20 @@ export class FsServiceImpl implements FsService {
             return await this._exists(p);
         } catch (e: any) {
             throw new AppError("FS_EXISTS_FAILED", e?.message ?? "fs exists failed", { path: p });
+        }
+    }
+
+    /**
+   * 路径是否存在
+   * @param path
+   * @returns
+   */
+    private async _exists(p: string): Promise<boolean> {
+        try {
+            accessSync(p, constants.F_OK);
+            return true;
+        } catch {
+            return false;
         }
     }
 }

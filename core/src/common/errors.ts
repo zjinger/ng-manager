@@ -25,7 +25,7 @@ export type ErrorCode =
     // Config
     | "CONFIG_BACKUP_NOT_FOUND"
     | "CONFIG_READ_FAILED"
-    // | "CONFIG_WRITE_FAILED"
+    | "CONFIG_WRITE_FAILED"
     // | "CONFIG_INVALID_JSON"
     // | "CONFIG_VALIDATION_FAILED"
     | "CONFIG_CONFLICT"

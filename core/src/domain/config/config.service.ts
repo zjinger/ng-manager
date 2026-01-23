@@ -3,6 +3,7 @@ import type { ConfigPatch } from "./patch/patch.model";
 import type { ConfigSchema, ConfigViewModel, ConfigViewModelQuery } from "./providers";
 import { type ConfigFileType, ConfigTreeNode, ConfigCatalogDocV1 } from "./catalog";
 import { WorkspaceModel } from "./workspace";
+import { ConfigFileReadResult, ResolvedDomain } from "./config.types";
 
 
 
@@ -32,4 +33,30 @@ export interface ConfigService {
         patch: ConfigPatch,
         opts?: { type?: ConfigFileType; force?: boolean }
     ): Promise<{ saved: true; forced: boolean; filePath: string; diffText: string }>;
+
+
+    /**
+     * 获取指定项目的配置目录解析结果
+     * @param projectId 项目 ID
+     * @returns 解析后的配置域数组
+     */
+    getCatalog(projectId: string): Promise<ResolvedDomain[]>;
+
+    /** 
+     * 读取指定配置文件
+     * @param projectId 项目 ID
+     * @param docId 配置文件 ID
+     * @returns 读取结果
+     */
+    readDoc(projectId: string, docId: string): Promise<ConfigFileReadResult>;
+
+    /**
+     * 写入指定配置文件
+     * @param projectId 项目 ID
+     * @param docId 配置文件 ID
+     * @param next 写入内容
+     * @returns void
+     */
+    writeDoc(projectId: string, docId: string, next: unknown): Promise<void>;
+
 }
