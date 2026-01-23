@@ -11,39 +11,40 @@ import { AppError, type ErrorCode } from "@core";
  */
 export const ERROR_STATUS: Record<ErrorCode, number> = {
     /* ---------------- Project ---------------- */
-
     PROJECT_NOT_FOUND: 404,
     PROJECT_ROOT_INVALID: 400,
     PROJECT_ALREADY_EXISTS: 409,
 
     /* ---------------- Project Import ---------------- */
+    PROJECT_IMPORT_NOT_EXISTS: 404, // 路径不存在
+    PROJECT_IMPORT_NOT_DIR: 400, // 不是目录
+    PROJECT_IMPORT_ALREADY_REGISTERED: 409, // 已导入
+    PROJECT_IMPORT_NOT_RECOGNIZED: 422, // 不像项目（语义错误）
+    PROJECT_IMPORT_SCAN_FAILED: 500, // 扫描失败（IO/解析）
 
-    PROJECT_IMPORT_NOT_EXISTS: 404,            // 路径不存在
-    PROJECT_IMPORT_NOT_DIR: 400,               // 不是目录
-    PROJECT_IMPORT_ALREADY_REGISTERED: 409,    // 已导入
-    PROJECT_IMPORT_NOT_RECOGNIZED: 422,         // 不像项目（语义错误）
-    PROJECT_IMPORT_SCAN_FAILED: 500,            // 扫描失败（IO/解析）
+
 
     /* ---------------- Project Creation ---------------- */
+    INVALID_NAME: 400, // 无效的项目名称
+    TARGET_EXISTS: 409, // 目标路径已存在
+    INVALID_REPO_URL: 400, // 无效的仓库地址
+    INVALID_PARENT_DIR: 400, // 无效的父目录
 
-    INVALID_NAME: 400,                          // 无效的项目名称
-    TARGET_EXISTS: 409,                         // 目标路径已存在
-    INVALID_REPO_URL: 400,                      // 无效的仓库地址
-    INVALID_PARENT_DIR: 400,                    // 无效的父目录
 
     /* ---------------- Project Analysis ---------------- */
-    PROJECT_ANGULAR_JSON_INVALID: 400,          // angular.json 无效
-    PROJECT_VITE_CONFIG_INVALID: 400,           // vite 配置无效
+    PROJECT_ANGULAR_JSON_INVALID: 400, // angular.json 无效
+    PROJECT_VITE_CONFIG_INVALID: 400, // vite 配置无效
+
 
 
     /* ---------------- Config ---------------- */
-    CONFIG_BACKUP_NOT_FOUND: 404,               // 配置备份不存在
-    CONFIG_READ_FAILED: 500,                    // 配置读取失败
-    CONFIG_CONFLICT: 409,                      // 配置冲突
-
+    CONFIG_BACKUP_NOT_FOUND: 404, // 配置备份不存在
+    CONFIG_READ_FAILED: 500, // 配置读取失败
+    CONFIG_WRITE_FAILED: 500, // 配置写入失败
+    CONFIG_CONFLICT: 409, // 配置冲突
+    CONFIG_OPEN_FAILED: 500, // 配置文件打开失败
 
     /* ---------------- Task / Process ---------------- */
-
     TASK_NOT_FOUND: 404,
     TASK_ALREADY_RUNNING: 409,
     PROCESS_SPAWN_FAILED: 500,
@@ -60,22 +61,20 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     TOPIC_NOT_FOUND: 404,
     OP_NOT_FOUND: 400,
     /* ---------------- File System ---------------- */
-
     FS_NOT_FOUND: 404,
     FS_ALREADY_EXISTS: 409,
     FS_PERMISSION_DENIED: 403,
     FS_EXISTS_FAILED: 500,
 
     /* ---------------- Editor ---------------- */
-
     EDITOR_NOT_FOUND: 404,
     EDITOR_LAUNCH_FAILED: 500,
 
     /* ---------------- Infra / Auth ---------------- */
-
     STORAGE_IO_ERROR: 500,
     UNAUTHORIZED: 401,
     INVALID_TIMESTAMP: 400, // 时间戳无效
+
 
     /* ---------------- Deps ---------------- */
     DEP_INSTALL_FAILED: 500,

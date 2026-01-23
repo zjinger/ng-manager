@@ -183,6 +183,19 @@ export class ConfigServiceImpl implements ConfigService {
         throw new AppError("CONFIG_WRITE_FAILED", "unknown config docId", { docId, projectId, rootDir: project.root });
     }
 
+    async openDoc(projectId: string, docId: string): Promise<{ root: string; filePath: string }> {
+        console.log('ConfigServiceImpl.openDoc', projectId, docId);
+        const project = await this.projectService.get(projectId);
+        const catalog = this.getCachedCatalog(projectId, project.root);
+        const rd = this.findResolvedDoc(catalog, docId);
+        console.log('rd', rd)
+        if (!rd) throw new AppError("CONFIG_OPEN_FAILED", "unknown config docId", { docId, projectId });
+        if (!rd.exists || !rd.absPath || !rd.chosen) {
+            throw new AppError("CONFIG_OPEN_FAILED", "config doc not found on disk", { docId, projectId, rootDir: project.root });
+        }
+        return { root: project.root, filePath: rd.absPath! };
+    }
+
     /**
      * 解析配置目录
      * rootDir 项目根目录
@@ -222,4 +235,6 @@ export class ConfigServiceImpl implements ConfigService {
         }
         return undefined;
     }
+
+
 }

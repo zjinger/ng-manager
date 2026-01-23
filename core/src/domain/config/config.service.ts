@@ -59,4 +59,7 @@ export interface ConfigService {
      */
     writeDoc(projectId: string, docId: string, next: unknown): Promise<void>;
 
+    /**打开文件（用于“打开配置文件”按钮） */
+    openDoc(projectId: string, docId: string): Promise<{ root: string; filePath: string }>;
+
 }

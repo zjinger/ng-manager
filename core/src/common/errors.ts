@@ -29,6 +29,7 @@ export type ErrorCode =
     // | "CONFIG_INVALID_JSON"
     // | "CONFIG_VALIDATION_FAILED"
     | "CONFIG_CONFLICT"
+    | "CONFIG_OPEN_FAILED"
 
     // Task / Process
     | "TASK_NOT_FOUND"

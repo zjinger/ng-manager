@@ -9,19 +9,22 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzTypographyModule } from 'ng-zorro-antd/typography';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalService } from 'ng-zorro-antd/modal';
 
-import { ConfigNavComponent } from './components/config-nav-component';
-import { ConfigSectionComponent } from './components/config-section-component';
+import { firstValueFrom } from 'rxjs';
 import { ConfigChangeBarComponent } from './components/config-change-bar-component';
-import { ConfigCatalogDocV1, ConfigFileType, ConfigSchema, ConfigTreeNode } from './models';
+import { ConfigDomainDocsComponent } from './components/config-domain-docs.component';
+import { ConfigNavComponent } from './components/config-nav-component';
+import { ResolvedDomain } from './models/config-domain.model';
+import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM } from './models/config-ui.model';
 import { ConfApiService, ConfigEditSessionStore } from './services';
-import { buildPatch, diffToScopedChanges } from './utils';
+import { mapResolvedToNav } from './utils/map';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
 @Component({
   selector: 'app-project-conf.component',
@@ -34,6 +37,7 @@ import { buildPatch, diffToScopedChanges } from './utils';
     NzMenuModule,
     NzFormModule,
     NzInputModule,
+    NzSelectModule,
     NzSwitchModule,
     NzButtonModule,
     NzTypographyModule,
@@ -42,8 +46,9 @@ import { buildPatch, diffToScopedChanges } from './utils';
     NgDevtoolComponent,
     NzIconModule,
     ConfigNavComponent,
-    ConfigSectionComponent,
     ConfigChangeBarComponent,
+    ConfigDomainDocsComponent,
+    NzModalModule
   ],
   templateUrl: './project-conf.component.html',
   styleUrls: ['./project-conf.component.less'],
@@ -58,79 +63,40 @@ export class ProjectConfComponent {
   projectId = computed(() => this.projectState.currentProjectId() || '');
 
   loading = signal(false);
-  catalog = signal<ConfigCatalogDocV1 | null>(null);
+  isModalVisible = signal(false);
+  catalog = signal<ResolvedDomain[] | null>(null);
 
-  nodes = computed<ConfigTreeNode[]>(() => this.catalog()?.tree ?? []);
-  schemas = computed<Record<ConfigFileType, ConfigSchema> | null>(() => this.catalog()?.schemas ?? null);
+  // 左侧 nav 的 VM（domain->doc 扁平结构）
+  navNodes = computed<ConfigNavNodeVM[]>(() => mapResolvedToNav(this.catalog() ?? []));
+  // 当前选中 domain ID
+  activeDomainId = signal<string | null>(null);
+  // 选中的 doc ID
+  selectedDocId = signal<string | null>(null);
+  // 当前 doc 内容（raw/json）
+  docStates = signal<Record<string, DocStateVM>>({});
 
-  /**
-   * 拆分：
-   * - activeNavId: 左侧“顶层分类”选中（angular / quality）
-   * - activeFileId: 当前激活文件（angular/angular.json）
-   */
-  activeNavId = signal<string | null>(null);
-  activeFileId = signal<string | null>(null);
-
-  /** 顶层分类节点 */
-  selectedNavNode = computed<ConfigTreeNode | null>(() => {
-    const id = this.activeNavId();
-    if (!id) return null;
-    return this.findNodeById(this.nodes(), id);
+  activeDomain = computed(() => {
+    const did = this.activeDomainId();
+    return (this.catalog() ?? []).find(x => x.domain.id === did) ?? null;
   });
 
-  /** 当前激活的 file 节点（用于 load/diff/save/reset/dirty） */
-  selectedFileNode = computed<ConfigTreeNode | null>(() => {
-    const id = this.activeFileId();
-    if (!id) return null;
-    return this.findNodeById(this.nodes(), id);
+  activeDocs = computed(() => this.activeDomain()?.docs ?? []);
+
+  activeDocsMeta = computed<DomainDocMetaVM[]>(() => {
+    const d = this.activeDomain();
+    if (!d) return [];
+    return (d.docs ?? []).map(x => ({
+      docId: x.spec.id,
+      title: x.spec.title,
+      description: x.spec.description,
+      exists: x.exists,
+      relPath: x.chosen?.relPath,
+      codec: x.chosen?.codec,
+    }));
   });
 
-  /** 右侧展示：当前分类下所有 file 节点（扁平化） */
-  contentFileNodes = computed<ConfigTreeNode[]>(() => {
-    const root = this.selectedNavNode();
-    if (!root) return [];
-    return this.collectFileNodes(root);
-  });
-
-  /** 当前激活文件的 schema */
-  curSchema = computed<ConfigSchema | null>(() => {
-    const node = this.selectedFileNode();
-    const type = node?.file?.type;
-    if (!type) return null;
-    return this.schemas()?.[type] ?? null;
-  });
-
-  /** 当前激活文件类型（change-bar / session key） */
-  activeType = computed<string | null>(() => {
-    return this.selectedFileNode()?.file?.type ?? null;
-  });
-
-  /** change-bar 是否显示：当前类型是否 dirty */
-  activeDirty = computed(() => {
-    const type = this.activeType();
-    if (!type) return false;
-    return this.editStore.isDirty(type);
-  });
-
-  /** 给 ConfigSectionComponent 用：valuesByType / vmOptionsByType */
-  valuesByType = computed<Record<string, Record<string, any>>>(() => {
-    const out: Record<string, Record<string, any>> = {};
-    const sessions = this.editStore.sessions();
-    for (const [type, s] of Object.entries(sessions)) {
-      out[type] = s.current ?? {};
-    }
-    return out;
-  });
-
-  vmOptionsByType = computed<Record<string, any>>(() => {
-    const out: Record<string, any> = {};
-    const sessions = this.editStore.sessions();
-    for (const [type, s] of Object.entries(sessions)) {
-      out[type] = s.options ?? {};
-    }
-    return out;
-  });
-
+  // dirty：对 raw 做 dirty（json 可后续）
+  domainDirty = computed(() => Object.values(this.docStates()).some(s => !!s.dirty));
   /**
    * 右侧上下文：Project/Target/Configuration 选择框（后续做 UI 时用）
    * - 注意：schema 里 section.target 已经固定 build/serve，因此保存时不依赖 ctx.target
@@ -153,22 +119,15 @@ export class ProjectConfComponent {
     if (!pid) return;
 
     this.loading.set(true);
-    this.api.getCatalog(pid).subscribe({
+    this.api.getCatalogV2(pid).subscribe({
       next: (catalog) => {
         this.catalog.set(catalog);
-
-        // 1) 初始化选中第一个顶层分类（用于左侧高亮 + 右侧展示 fileNodes）
-        const firstNav = catalog.tree?.[0] ?? null;
-        if (firstNav) this.activeNavId.set(firstNav.id);
-
-        // 2) 初始化激活第一个 file（用于右侧加载表单 & change-bar/dirty）
-        const firstFile = this.findFirstFileNode(catalog.tree);
-        if (firstFile) {
-          this.activeFileId.set(firstFile.id);
-          this.loadNodeData(firstFile);
-        } else {
-          this.activeFileId.set(null);
+        const firstDomainId = catalog[0]?.domain?.id ?? "";
+        if (firstDomainId) {
+          this.activeDomainId.set(firstDomainId);
+          this.loadDomainDocs(firstDomainId);
         }
+
       },
       error: (err) => {
         console.error(err);
@@ -179,54 +138,72 @@ export class ProjectConfComponent {
   }
 
   /**
-   * 左侧点击顶层分类节点
-   * - 设置 activeNavId
-   * - 自动选中该分类下第一个 file 为 activeFileId 并加载
+   * 左侧目录选择 domain
    */
-  onNodeSelect(navNode: ConfigTreeNode) {
-    this.activeNavId.set(navNode.id);
-
-    const files = this.collectFileNodes(navNode);
-    const firstFile = files[0] ?? null;
-
-    if (firstFile?.file) {
-      this.activeFileId.set(firstFile.id);
-      this.loadNodeData(firstFile);
-    } else {
-      this.activeFileId.set(null);
-    }
+  onDomainSelect(domainId: string) {
+    this.activeDomainId.set(domainId);
+    this.loadDomainDocs(domainId);
   }
 
-  /** 拉取 view-model，开启 edit session（baseline/current） */
-  private async loadNodeData(node: ConfigTreeNode) {
+  async loadDomainDocs(domainId: string) {
     const pid = this.projectId();
-    const type = node.file?.type;
-    if (!pid || !type) return;
-
-    // MVP：目前只对 angular 做表单（其他先占位/不处理）
-    if (type !== 'angular') {
-      this.editStore.discard(type);
-      return;
-    }
+    const domain = (this.catalog() ?? []).find(x => x.domain.id === domainId);
+    if (!pid || !domain) return;
 
     this.loading.set(true);
     try {
-      const ctx = this.vmCtx();
-      const vm = await this.api.getViewModelPromise(pid, {
-        type,
-        project: ctx.project,
-        target: ctx.target,
-        configuration: ctx.configuration,
-      });
-
-      // 切文件/ctx：强制新会话，避免串写
-      this.editStore.start(type, vm as any, { keepCurrent: false });
-    } catch (err) {
-      console.error(err);
-      this.msg.error('加载配置失败');
+      const nextStates: Record<string, DocStateVM> = {};
+      console.log('Loading docs for domain:', domainId, domain.docs);
+      for (const d of domain.docs) {
+        const docId = d.spec.id;
+        if (!d.exists) {
+          // missing=hide 的 doc 在 catalog 里通常不会出现；如果出现，按只读处理
+          nextStates[docId] = { docId, loading: false, exists: false, dirty: false };
+          continue;
+        }
+        try {
+          const r = await firstValueFrom(this.api.readDocV2(pid, docId));
+          const raw = r.raw ?? "";
+          nextStates[docId] = {
+            docId,
+            loading: false,
+            exists: true,
+            codec: r.codec,
+            relPath: r.relPath,
+            baselineRaw: raw,
+            raw,
+            json: r.data,
+            dirty: false,
+          };
+        } catch {
+          // 读取失败，标记 error
+          nextStates[docId] = { docId, loading: false, exists: false, error: '读取失败', dirty: false };
+          continue;
+        }
+      }
+      this.docStates.set(nextStates);
+      console.log('Loaded doc states:', nextStates);
+    } catch (e) {
+      console.error(e);
+      this.msg.error("加载配置文件失败");
+      this.docStates.set({});
     } finally {
       this.loading.set(false);
     }
+  }
+
+  onRawChange(e: { docId: string; raw: string }) {
+    const map = this.docStates();
+    const cur = map[e.docId];
+    if (!cur) return;
+
+    const baseline = cur.baselineRaw ?? "";
+    const dirty = e.raw !== baseline;
+
+    this.docStates.set({
+      ...map,
+      [e.docId]: { ...cur, raw: e.raw, dirty }
+    });
   }
 
   /** 右侧表单变化回传（整包 values） */
@@ -234,144 +211,24 @@ export class ProjectConfComponent {
     this.editStore.setCurrent(e.type, e.values);
   }
 
-  /** change-bar: Diff */
-  onDiff() {
-    const type = this.activeType();
-    if (!type) return;
-
-    const schema = this.curSchema();
-    if (!schema) return;
-
-    const s = this.editStore.getSession(type);
-    if (!s) return;
-
-    const { workspace, project } = diffToScopedChanges(s.baseline, s.current, schema, s.ctx);
-
-    const lines: string[] = [];
-    if (workspace.length) {
-      lines.push('[workspace]');
-      for (const c of workspace) lines.push(`${c.path}: ${JSON.stringify(c.before)} -> ${JSON.stringify(c.after)}`);
-      lines.push('');
-    }
-    if (project.length) {
-      lines.push('[project]');
-      for (const c of project) lines.push(`${c.path}: ${JSON.stringify(c.before)} -> ${JSON.stringify(c.after)}`);
-    }
-
-    const text = lines.join('\n') || '无变更';
-    this.modal.info({
-      nzTitle: '配置变更 Diff',
-      nzContent: `<pre style="max-height:60vh;overflow:auto;white-space:pre-wrap;">${escapeHtml(text)}</pre>`,
-      nzMaskClosable: true,
-      nzWidth: 760,
-    });
-  }
-
-  /** change-bar: Reset */
   onReset() {
-    const type = this.activeType();
-    if (!type) return;
 
-    const s = this.editStore.getSession(type);
-    if (!s) return;
-
-    this.editStore.setCurrent(type, deepClone(s.baseline));
   }
 
-  /** change-bar: Save（方案 A：workspace patch + project patch 串行 apply） */
   async saveActive() {
-    const pid = this.projectId();
-    const type = this.activeType();
 
-    if (!pid || !type) return;
-    if (type !== 'angular') return;
+  }
 
-    const schema = this.curSchema();
-    if (!schema) return;
-
-    const s = this.editStore.getSession(type);
-    if (!s) return;
-
-    const { workspace, project } = diffToScopedChanges(s.baseline, s.current, schema, s.ctx);
-
-    if (workspace.length === 0 && project.length === 0) {
-      this.msg.info('没有变更');
+  /** 打开配置文件 */
+  openConfig() {
+    if (!this.selectedDocId()) {
+      this.msg.warning('请先选择配置文件');
       return;
     }
-
-    this.loading.set(true);
-    try {
-      // 1) workspace patch
-      if (workspace.length > 0) {
-        const patch = buildPatch('workspace', s.ctx, workspace);
-        await this.api.applyConfigPromise(pid, { type, patch });
-      }
-
-      // 2) project patch
-      if (project.length > 0) {
-        const patch = buildPatch('project', s.ctx, project);
-        await this.api.applyConfigPromise(pid, { type, patch });
-      }
-
-      this.editStore.commit(type);
-      this.msg.success('保存成功');
-    } catch (err) {
-      console.error(err);
-      this.msg.error('保存失败');
-    } finally {
-      this.loading.set(false);
-    }
+    this.api.openInEditor(
+      this.projectId()!,
+      this.selectedDocId()!).subscribe(res => {
+        console.log('openInEditor response:', res);
+      })
   }
-
-  /** 打开配置文件（后续可接 open editor api） */
-  openConfig() {
-    // TODO：后端有 open editor 的 api，可根据 selectedFileNode().file.relPath 打开
-  }
-
-  // ---------------- utils ----------------
-
-  private findNodeById(nodes: ConfigTreeNode[], id: string): ConfigTreeNode | null {
-    for (const n of nodes) {
-      if (n.id === id) return n;
-      if (n.children?.length) {
-        const hit = this.findNodeById(n.children, id);
-        if (hit) return hit;
-      }
-    }
-    return null;
-  }
-
-  private collectFileNodes(root: ConfigTreeNode): ConfigTreeNode[] {
-    const out: ConfigTreeNode[] = [];
-    const walk = (n: ConfigTreeNode) => {
-      if (n.file) out.push(n);
-      if (n.children?.length) n.children.forEach(walk);
-    };
-    walk(root);
-    return out;
-  }
-
-  private findFirstFileNode(nodes: ConfigTreeNode[]): ConfigTreeNode | null {
-    for (const n of nodes) {
-      if (n.file) return n;
-      if (n.children?.length) {
-        const hit = this.findFirstFileNode(n.children);
-        if (hit) return hit;
-      }
-    }
-    return null;
-  }
-}
-
-function deepClone<T>(v: T): T {
-  return v == null ? v : JSON.parse(JSON.stringify(v));
-}
-
-function escapeHtml(s: string) {
-  return s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }

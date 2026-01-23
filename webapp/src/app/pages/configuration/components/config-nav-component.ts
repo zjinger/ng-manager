@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, computed, EventEmitter, input, Output, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { ConfigTreeNode } from '../models';
-import { FormsModule } from '@angular/forms';
+import { ConfigNavNodeVM } from '../models/config-ui.model';
 
 @Component({
   selector: 'app-config-nav-component',
@@ -27,23 +27,23 @@ import { FormsModule } from '@angular/forms';
           </nz-input-wrapper>
         </div>
         <div class="items">
-          @for (node of nodes; track node.id) {
+          @for (g of filtered(); track g.id) {
             <div
               class="item"
-              [class.active]="node.id === active"
-              (click)="select(node)"
+              [class.active]="g.id === activeDomainId()"
+              (click)="selectDomain(g)"
             >
               <div class="row">
                 <div class="icon">
                   <nz-icon
                     class="project-suffix-icon"
-                    [nzType]="node.icon || 'setting'"
+                    [nzType]="g.icon || 'setting'"
                     nzTheme="outline"
                   />
                 </div>
                 <div class="info">
-                  <div class="name">{{ node.label }}</div>
-                  <div class="description">{{ node.description }}</div>
+                  <div class="name">{{ g.label }}</div>
+                  <div class="description">{{ g.description }}</div>
                 </div>
               </div>
             </div>
@@ -133,14 +133,27 @@ import { FormsModule } from '@angular/forms';
 })
 export class ConfigNavComponent {
   keyword = signal("");
+  nodes = input<ConfigNavNodeVM[]>([]);
+  activeDomainId = input<string>("");
+  @Output() domainSelect = new EventEmitter<string>();
 
-  @Input() nodes!: ConfigTreeNode[];
-  @Input() active!: string;
-
-  @Output() nodeSelect = new EventEmitter<ConfigTreeNode>();
-  select(node: ConfigTreeNode) {
-    if (node.file) {
-      this.nodeSelect.emit(node);
-    }
+  selectDomain(node: ConfigNavNodeVM) {
+    this.domainSelect.emit(node.id); // domainId
   }
+
+  filtered = computed(() => {
+    const kw = this.keyword().trim().toLowerCase();
+    if (!kw) return this.nodes();
+
+    return this.nodes()
+      .map(g => ({
+        ...g,
+        children: (g.children ?? []).filter(d =>
+          (d.label ?? "").toLowerCase().includes(kw)
+          || (d.relPath ?? "").toLowerCase().includes(kw)
+        )
+      }))
+      .filter(g => (g.children?.length ?? 0) > 0);
+  });
+
 }

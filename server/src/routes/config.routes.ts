@@ -1,6 +1,7 @@
 import { AppError } from "@core";
 import type { ConfigFileType, ConfigPatch } from "@core/domain/config";
 import type { FastifyInstance } from "fastify";
+import { openFolder } from "../common/editor";
 type QueryBase = {
     relPath?: string;
     type: ConfigFileType
@@ -26,9 +27,9 @@ export default async function configRoutes(fastify: FastifyInstance) {
     /**
      * 返回配置目录树 + 各文件 Schema
      */
-    fastify.get("/catalog/:projectId", async (req) => {
-        return fastify.core.config.getCatalogDoc((req.params as { projectId: string }).projectId);
-    });
+    // fastify.get("/catalog/:projectId", async (req) => {
+    //     return fastify.core.config.getCatalogDoc((req.params as { projectId: string }).projectId);
+    // });
 
     /**
      * 返回配置文件树结构
@@ -117,5 +118,46 @@ export default async function configRoutes(fastify: FastifyInstance) {
     //     raw: workspace.raw,
     // };
     // });
+
+    // GET catalog
+    fastify.get("/catalog/:projectId", async (req) => {
+        const { projectId } = req.params as { projectId: string };
+        return await fastify.core.config.getCatalog(projectId);
+    });
+
+    // GET doc
+    fastify.get("/readDoc/:projectId/:docId", async (req) => {
+        const { projectId, docId } = req.params as { projectId: string; docId: string };
+        return await fastify.core.config.readDoc(projectId, docId);
+    });
+
+    // PUT doc
+    fastify.post("/writeDoc/:projectId/:docId", async (req) => {
+        const { projectId, docId } = req.params as { projectId: string; docId: string };
+        const body = req.body as any;
+
+        // 约定：raw 优先，其次 data
+        const next = body?.raw ?? body?.data;
+        if (next === undefined) {
+            throw new AppError("CONFIG_WRITE_FAILED", "missing body.raw or body.data", { projectId, docId });
+        }
+        return await fastify.core.config.writeDoc(projectId, docId, next);
+    });
+
+    /**
+        * 在编辑器打开项目
+        * POST /projects/openInEditor/:projectId
+        * body: { editor?: "code" | "system" }
+        */
+    fastify.post("/openInEditor/:projectId/:docId", async (req) => {
+        try {
+            const { projectId, docId } = req.params as { projectId: string; docId: string };
+            const { filePath } = await fastify.core.config.openDoc(projectId, docId);
+            await openFolder(filePath, { editor: 'code' });
+            return { ok: true };
+        } catch (e: any) {
+            throw new AppError("EDITOR_LAUNCH_FAILED", e?.message || "openInEditor failed");
+        }
+    });
 
 }

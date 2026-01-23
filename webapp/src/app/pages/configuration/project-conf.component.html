@@ -10,30 +10,51 @@
     </div>
     <div nz-col>
       <div class="actions">
-        <button nz-button nzType="primary" (click)="openConfig()">打开配置文件</button>
+        <button nz-button nzType="primary" (click)="isModalVisible.set(true)">打开配置文件</button>
         <app-ng-devtool></app-ng-devtool>
       </div>
     </div>
   </div>
   <div nz-row nzJustify="center" class="page-content">
     <div class="panel" nz-col nzXs="24" nzSm="24" nzMd="20" nzLg="16" nzXl="16">
-      <app-config-nav-component
+      <!-- <app-config-nav-component
         [nodes]="nodes()"
         [active]="activeNavId() ?? ''"
         (nodeSelect)="onNodeSelect($event)"
-      ></app-config-nav-component>
+      ></app-config-nav-component> -->
+
+      <app-config-nav-component
+        [nodes]="navNodes()"
+        [activeDomainId]="activeDomainId() ?? ''"
+        (domainSelect)="onDomainSelect($event)"
+      >
+      </app-config-nav-component>
       <div class="content">
-        <app-config-section-component
+        <!-- <app-config-section-component
           [fileNodes]="contentFileNodes()"
           [schemas]="schemas()"
           [valuesByType]="valuesByType()"
           [vmOptionsByType]="vmOptionsByType()"
           (valuesChange)="onValuesChange($event)"
         >
-        </app-config-section-component>
-        <app-config-change-bar-component
+        </app-config-section-component> -->
+        <app-config-domain-docs
+          [docs]="activeDocsMeta()"
+          [states]="docStates()"
+          (rawChange)="onRawChange($event)"
+        >
+        </app-config-domain-docs>
+        <!-- <app-config-change-bar-component
           [dirty]="activeDirty()"
           (diff)="onDiff()"
+          (reset)="onReset()"
+          (save)="saveActive()"
+        >
+        </app-config-change-bar-component> -->
+
+        <!-- (diff)="onDiffV2()" -->
+        <app-config-change-bar-component
+          [dirty]="domainDirty()"
           (reset)="onReset()"
           (save)="saveActive()"
         >
@@ -42,3 +63,25 @@
     </div>
   </div>
 </div>
+<nz-modal
+  [(nzVisible)]="isModalVisible"
+  nzTitle="配置"
+  (nzOnCancel)="isModalVisible.set(false)"
+  [nzMaskClosable]="false"
+>
+  <ng-container *nzModalContent>
+    <div class="modal-body">
+      <label>选择配置文件</label>
+      <nz-select style="width: 100%" [(ngModel)]="selectedDocId" nzPlaceHolder="请选择配置文件">
+        @for (doc of activeDocsMeta() || []; track doc.docId) {
+          <nz-option [nzLabel]="doc.title" [nzValue]="doc.docId"></nz-option>
+        }
+      </nz-select>
+    </div>
+  </ng-container>
+  <ng-container *nzModalFooter>
+    <button nz-button nzType="primary" (click)="openConfig()" [disabled]="!selectedDocId()">
+      打开配置文件
+    </button>
+  </ng-container>
+</nz-modal>

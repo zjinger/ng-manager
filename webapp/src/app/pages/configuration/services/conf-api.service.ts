@@ -3,6 +3,7 @@ import { inject, Injectable } from "@angular/core";
 import { ApiClient } from "@core/api";
 import { firstValueFrom } from "rxjs";
 import { ConfigCatalogDocV1, ConfigFileType, ConfigPatch, ConfigViewModel } from "../models";
+import { ConfigFileReadResult, ResolvedDomain } from "../models/config-domain.model";
 
 @Injectable({ providedIn: "root" })
 export class ConfApiService {
@@ -37,6 +38,32 @@ export class ConfApiService {
 
   applyConfigPromise(pid: string, body: { type: ConfigFileType; patch: ConfigPatch }) {
     return firstValueFrom(this.api.post<void>(`/api/config/apply/${pid}`, body));
+  }
+
+
+  getCatalogV2(projectId: string) {
+    return this.api.get<ResolvedDomain[]>(`/api/config/catalog/${projectId}`)
+  }
+
+  readDocV2(projectId: string, docId: string) {
+    return this.api.get<ConfigFileReadResult>(
+      `/api/config/readDoc/${projectId}/${encodeURIComponent(docId)}`
+    )
+  }
+
+  writeDocV2(projectId: string, docId: string, payload: { raw?: string; data?: any }) {
+    return this.api.post(
+      `/api/config/writeDoc/${projectId}/${encodeURIComponent(docId)}`,
+      payload
+    );
+  }
+
+  // /openInEditor/:projectId/:docId
+  openInEditor(projectId: string, docId: string) {
+    return this.api.post(
+      `/api/config/openInEditor/${projectId}/${encodeURIComponent(docId)}`,
+      {}
+    );
   }
 
 }
