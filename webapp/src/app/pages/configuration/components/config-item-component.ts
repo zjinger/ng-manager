@@ -65,10 +65,14 @@ import { ConfigSchemaItem } from '../models';
         background: var(--app-primary-2);
       }
       .meta {
+        .label {
+          font-weight: 500;
+          opacity: 0.75;
+        }
         .desc {
           font-size: 14px;
           margin-top: 4px;
-          color: var(--text-color-gray);
+          opacity: 0.55;
         }
       }
       .control {

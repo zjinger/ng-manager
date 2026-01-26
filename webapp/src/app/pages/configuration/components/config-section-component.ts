@@ -33,7 +33,7 @@ import { ConfigItemComponent } from './config-item-component';
   styles: [`
     .section { padding: 0px; } 
     .section:last-child { border-bottom: none; }
-    .section-title { margin: 0 0 10px; font-size: 18px;font-weight: 500; padding: 0 16px; }
+    .section-title { margin: 0 0 10px; font-size: 24px; opacity: 0.85; font-weight: 500; padding: 0 16px; }
     .empty { padding: 12px 14px;}
   `],
 })
