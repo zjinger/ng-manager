@@ -86,9 +86,9 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
         let angularCompilerOptions: any = {};
         if (typeof tsConfigRel === "string" && tsConfigRel.trim()) {
             try {
-                const { data, chain } = this.readTsConfigMerged(ctx, tsConfigRel.trim(), { maxDepth: 8 });
+                const { data, chain } = this.readTsConfigMerged(ctx, tsConfigRel.trim(), { maxDepth: 4 });
                 // 你如果要调试链路：
-                console.log("[tsconfig chain]", chain);
+                // console.log("[tsconfig chain]", chain);
 
                 compilerOptions = data.compilerOptions ?? {};
                 angularCompilerOptions = data.angularCompilerOptions ?? {};
