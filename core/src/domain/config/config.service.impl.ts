@@ -17,6 +17,7 @@ import {
     DomainSchemaRegistry,
 } from "./schema";
 import type { DomainSchemaContext, DomainSchemaDiffResult } from "./schema/schema.types";
+import { Project } from "../project/project.types";
 
 export class ConfigServiceImpl implements ConfigService {
     private readonly fileLock = new FileLock();
@@ -122,18 +123,23 @@ export class ConfigServiceImpl implements ConfigService {
      * - 改为：根据 provider.diff 的 docPatch/filePatch，使用 store.patchJsonLike 增量写回原文件
      */
     async writeDomainSchema(projectId: string, domainId: string, nextVM: any) {
-        const project = await this.projectService.get(projectId);
-        const provider = this.getProvider(domainId);
-        const ctx = this.buildSchemaCtx(projectId, project.root);
+        // const project = await this.projectService.get(projectId);
+        // const provider = this.getProvider(domainId);
+        // const ctx = this.buildSchemaCtx(projectId, project.root);
 
-        const baselineDocs = await this.getBaselineDocs(projectId, domainId);
-        const baselineVM = provider.assemble(baselineDocs, ctx);
+        // const baselineDocs = await this.getBaselineDocs(projectId, domainId);
+        // const baselineVM = provider.assemble(baselineDocs, ctx);
 
-        provider.validate?.(nextVM, ctx);
+        // provider.validate?.(nextVM, ctx);
 
-        const diffRes: DomainSchemaDiffResult = provider.diff(baselineVM, nextVM, ctx);
+        // const diffRes: DomainSchemaDiffResult = provider.diff(baselineVM, nextVM, ctx);
+        // const docPatch = diffRes.docPatch ?? {};
+        // const filePatch = diffRes.filePatch ?? [];
+        const diffRes = await this.diffDomainSchema(projectId, domainId, nextVM);
         const docPatch = diffRes.docPatch ?? {};
         const filePatch = diffRes.filePatch ?? [];
+        const project = diffRes.project!;
+        const ctx = diffRes.ctx;
 
         // 用最新 catalog 定位 docId -> absPath/codec
         const catalog = this.getCachedCatalog(projectId, project.root);
@@ -171,6 +177,29 @@ export class ConfigServiceImpl implements ConfigService {
 
         // 写完刷新缓存
         this.catalogCache.delete(projectId);
+    }
+
+    /**
+     * 对比指定域的域级配置结构化数据差异
+     * - 返回值可用于 UI 展示差异，也可用于 writeDomainSchema 直接写回
+     */
+    async diffDomainSchema(projectId: string, domainId: string, nextVM: any): Promise<DomainSchemaDiffResult & { project: Project; ctx: DomainSchemaContext }> {
+
+        const project = await this.projectService.get(projectId);
+        const provider = this.getProvider(domainId);
+        const ctx = this.buildSchemaCtx(projectId, project.root);
+
+        const baselineDocs = await this.getBaselineDocs(projectId, domainId);
+        const baselineVM = provider.assemble(baselineDocs, ctx);
+
+        provider.validate?.(nextVM, ctx);
+        const diffRes: DomainSchemaDiffResult = provider.diff(baselineVM, nextVM, ctx);
+        return {
+            docPatch: diffRes.docPatch ?? {},
+            filePatch: diffRes.filePatch ?? [],
+            project,
+            ctx,
+        };
     }
 
     private getProvider(domainId: string): DomainSchemaProvider {

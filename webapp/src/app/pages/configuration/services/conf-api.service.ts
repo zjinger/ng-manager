@@ -1,6 +1,6 @@
 import { inject, Injectable } from "@angular/core";
 import { ApiClient } from "@core/api";
-import { ConfigFileReadResult, DomainSchemaDoc, ResolvedDomain } from "../models";
+import { DomainSchemaDiffResult, DomainSchemaDoc, ResolvedDomain } from "../models";
 
 @Injectable({ providedIn: "root" })
 export class ConfApiService {
@@ -25,4 +25,7 @@ export class ConfApiService {
     return this.api.get<DomainSchemaDoc>(`/api/config/getDomainSchema/${projectId}/${domainId}`)
   }
 
+  diffDomainSchema(projectId: string, domainId: string, vm: any) {
+    return this.api.post<DomainSchemaDiffResult>(`/api/config/diffSchema/${projectId}/${domainId}`, { vm });
+  }
 }

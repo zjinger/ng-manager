@@ -1,5 +1,6 @@
 // core/src/domain/config/config.service.ts
 import { ConfigFileReadResult, ResolvedDomain } from "./config.types";
+import { DomainSchemaDiffResult } from "./schema";
 import { DomainSchemaDoc } from "./schema/schema.domain.dto";
 
 
@@ -55,5 +56,14 @@ export interface ConfigService {
      * @param next 结构化数据
      * @returns void
      */
-    writeDomainSchema( projectId: string, domainId: string, nextVM: any ): Promise<void>;
+    writeDomainSchema(projectId: string, domainId: string, nextVM: any): Promise<void>;
+
+    /**
+     * 对比指定域的域级配置结构化数据差异
+     * @param projectId 项目 ID
+     * @param domainId 域 ID
+     * @param currentVM 当前结构化数据
+     * @returns 差异结果
+     */
+    diffDomainSchema(projectId: string, domainId: string, currentVM: any): Promise<DomainSchemaDiffResult>;
 }

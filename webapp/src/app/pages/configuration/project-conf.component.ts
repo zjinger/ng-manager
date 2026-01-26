@@ -22,9 +22,9 @@ import { firstValueFrom } from 'rxjs';
 import { ConfigChangeBarComponent } from './components/config-change-bar-component';
 import { ConfigNavComponent } from './components/config-nav-component';
 import { ConfigSectionComponent } from './components/config-section-component';
-import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM, DomainSchemaDoc, ResolvedDomain } from './models';
+import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM, DomainSchemaDiffResult, DomainSchemaDoc, ResolvedDomain } from './models';
 import { ConfApiService, } from './services';
-import { diffObjects, mapResolvedToNav } from './utils';
+import { flattenPatch, mapResolvedToNav } from './utils';
 
 @Component({
   selector: 'app-project-conf.component',
@@ -171,28 +171,63 @@ export class ProjectConfComponent {
     }
   }
 
-  onDiff() {
-    const base = this.baselineDomainVM();
+  async onDiff() {
+    const pid = this.projectId();
+    const domainId = this.activeDomainId();
     const cur = this.domainVM();
-    if (!base || !cur) return;
+    if (!pid || !domainId || !cur) return;
 
-    const rows = diffObjects(base, cur);
-    this.modal.create({
-      nzTitle: '变更 Diff（MVP）',
-      nzContent: `
+    this.loading.set(true);
+
+    try {
+      const data: DomainSchemaDiffResult = await firstValueFrom(this.api.diffDomainSchema(pid, domainId, cur));
+      const docPatch = data?.docPatch ?? {};
+      const filePatch = data?.filePatch ?? [];
+
+      const rows: any[] = [];
+      for (const [docId, patch] of Object.entries(docPatch)) {
+        rows.push(...flattenPatch("doc", docId, patch));
+      }
+      for (const fp of filePatch) {
+        rows.push(...flattenPatch("file", fp.relPath, fp.patch));
+      }
+      if (rows.length === 0) {
+        this.msg.info("没有可写回的变更");
+        return;
+      }
+      rows.sort((a, b) => {
+        if (a.scope !== b.scope) return a.scope.localeCompare(b.scope);
+        const aa = `${a.target}:${a.path}`;
+        const bb = `${b.target}:${b.path}`;
+        return aa.localeCompare(bb);
+      });
+
+      this.modal.create({
+        nzTitle: "变更",
+        nzContent: `
         <div style="max-height:60vh; overflow:auto;">
-          ${rows.map((r: any) => `
-            <div style="padding:8px 0; border-bottom:1px solid #f0f0f0;">
-              <div style="font-weight:600;">${r.path}</div>
-              <pre style="margin:6px 0; opacity:.85;">before: ${this.safeStringify(r.before)}</pre>
-              <pre style="margin:6px 0;">after : ${this.safeStringify(r.after)}</pre>
-            </div>
-          `).join('')}
+          ${rows
+            .map(
+              (r: any) => `
+              <div style="padding:8px 0; border-bottom:1px solid #f0f0f0;">
+                <div style="font-weight:600;">[${r.scope}] ${r.target}</div>
+                <div style="opacity:.85; margin-top:4px;">${r.path}</div>
+                <pre style="margin:6px 0;">after : ${this.safeStringify(r.value)}</pre>
+              </div>
+            `
+            )
+            .join("")}
         </div>
       `,
-      nzFooter: null,
-      nzWidth: 900,
-    });
+        nzFooter: null,
+        nzWidth: 900,
+      });
+    } catch (e) {
+      console.error(e);
+      this.msg.error("生成 Diff 失败");
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   private safeStringify(v: any): string {

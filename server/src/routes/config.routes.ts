@@ -72,4 +72,15 @@ export default async function configRoutes(fastify: FastifyInstance) {
         return await fastify.core.config.getDomainSchemaDoc(projectId, domainId);
     });
 
+    // POST diff domain schema
+    fastify.post("/diffSchema/:projectId/:domainId", async (req) => {
+        const { projectId, domainId } = req.params as { projectId: string; domainId: string };
+        const body = req.body as any;
+        const vm = body?.vm;
+        if (vm === undefined) {
+            throw new AppError("BAD_REQUEST", "missing body.vm");
+        }
+        return await fastify.core.config.diffDomainSchema(projectId, domainId, vm);
+    });
+
 }
