@@ -59,7 +59,11 @@ export default async function configRoutes(fastify: FastifyInstance) {
         if (vm === undefined) {
             throw new AppError("BAD_REQUEST", "missing body.vm");
         }
-        return await fastify.core.config.writeDomainSchema(projectId, domainId, vm);
+        await fastify.core.config.writeDomainSchema(projectId, domainId, vm);
+        return {
+            projectId,
+            domainId,
+        };
     });
 
     // GET domain schema doc

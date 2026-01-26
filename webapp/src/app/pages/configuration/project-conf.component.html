@@ -33,6 +33,7 @@
         </app-config-section-component>
         <app-config-change-bar-component
           [dirty]="domainDirty()"
+          (diff)="onDiff()"
           (reset)="onReset()"
           (save)="saveActive()"
         >

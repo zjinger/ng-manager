@@ -24,7 +24,7 @@ import { ConfigNavComponent } from './components/config-nav-component';
 import { ConfigSectionComponent } from './components/config-section-component';
 import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM, DomainSchemaDoc, ResolvedDomain } from './models';
 import { ConfApiService, } from './services';
-import { mapResolvedToNav } from './utils/map';
+import { diffObjects, mapResolvedToNav } from './utils';
 
 @Component({
   selector: 'app-project-conf.component',
@@ -59,6 +59,7 @@ export class ProjectConfComponent {
   private msg = inject(NzMessageService);
   private modal = inject(NzModalService);
 
+
   projectId = computed(() => this.projectState.currentProjectId() || '');
 
   loading = signal(false);
@@ -92,7 +93,6 @@ export class ProjectConfComponent {
     return (d.docs ?? []).map(x => ({
       docId: x.spec.id,
       title: x.spec.title,
-      // description: x.spec.description,
       exists: x.exists,
       relPath: x.chosen?.relPath,
       codec: x.chosen?.codec,
@@ -100,7 +100,12 @@ export class ProjectConfComponent {
   });
 
   // dirty：对 raw 做 dirty（json 可后续）
-  domainDirty = computed(() => Object.values(this.docStates()).some(s => !!s.dirty));
+  domainDirty = computed(() => {
+    const base = this.baselineDomainVM();
+    const cur = this.domainVM();
+    if (!base || !cur) return false;
+    return !_.isEqual(base, cur);
+  });
 
   constructor() {
     effect(() => {
@@ -166,7 +171,42 @@ export class ProjectConfComponent {
     }
   }
 
+  onDiff() {
+    const base = this.baselineDomainVM();
+    const cur = this.domainVM();
+    if (!base || !cur) return;
 
+    const rows = diffObjects(base, cur);
+    this.modal.create({
+      nzTitle: '变更 Diff（MVP）',
+      nzContent: `
+        <div style="max-height:60vh; overflow:auto;">
+          ${rows.map((r: any) => `
+            <div style="padding:8px 0; border-bottom:1px solid #f0f0f0;">
+              <div style="font-weight:600;">${r.path}</div>
+              <pre style="margin:6px 0; opacity:.85;">before: ${this.safeStringify(r.before)}</pre>
+              <pre style="margin:6px 0;">after : ${this.safeStringify(r.after)}</pre>
+            </div>
+          `).join('')}
+        </div>
+      `,
+      nzFooter: null,
+      nzWidth: 900,
+    });
+  }
+
+  private safeStringify(v: any): string {
+    try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+  }
+
+  onReset() {
+    const base = this.baselineDomainVM();
+    if (!base) return;
+    this.domainVM.set(_.cloneDeep(base));
+    this.msg.success("已重置为未修改状态");
+  }
+
+  /** 右侧编辑器 raw 内容变化回传 */
   onRawChange(e: { docId: string; raw: string }) {
     const map = this.docStates();
     const cur = map[e.docId];
@@ -185,12 +225,25 @@ export class ProjectConfComponent {
   onValuesChange(e: { type: string; values: Record<string, any> }) {
   }
 
-  onReset() {
-
-  }
-
   async saveActive() {
+    const pid = this.projectId();
+    const did = this.activeDomainId();
+    const vm = this.domainVM();
+    if (!pid || !did || !vm) return;
 
+    this.loading.set(true);
+    try {
+      await firstValueFrom(this.api.writeDomainSchema(pid, did, vm));
+      this.msg.success("保存成功");
+      // 保存后：更新 baseline（直接重新加载一次，确保与后端 merge/默认值一致）
+      await this.loadDomainSchema(did);
+
+    } catch (e) {
+      console.error(e);
+      this.msg.error("保存失败");
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   /** 打开配置文件 */

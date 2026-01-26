@@ -3,7 +3,7 @@ import type { DomainSchemaProvider } from "./domain-schema.registry";
 import type { ConfigSchema, DomainSchemaContext, DomainSchemaDiffResult } from "./schema.types";
 import type { ConfigCodec } from "../domains";
 import { angularSchema } from "./angular.schema"; // 你已引入，可后续用于生成 UI schema（此处暂不强依赖）
-import { applySchemaDefaults } from "./schema-default";
+import { applySchemaDefaults, getByPath, setByPath } from "./schema-default";
 type TsConfigData = Record<string, any>;
 export interface AngularDomainSchemaVM {
     defaultProject?: string;
@@ -12,13 +12,13 @@ export interface AngularDomainSchemaVM {
     build: {
         options?: Record<string, any>;
         defaultConfiguration?: string;
-        configurations?: any[];
+        configurations?: Record<string, any>;
     };
 
     serve: {
         options?: Record<string, any>;
         defaultConfiguration?: string;
-        configurations?: any[];
+        configurations?: Record<string, any>;
     }
 
     ts: {
@@ -116,28 +116,112 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
         return applySchemaDefaults(rawVm, angularSchema);
     }
 
-    diff(baseline: AngularDomainSchemaVM, current: AngularDomainSchemaVM, ctx: DomainSchemaContext): DomainSchemaDiffResult {
+    diff(
+        baseline: AngularDomainSchemaVM,
+        current: AngularDomainSchemaVM,
+        ctx: DomainSchemaContext
+    ): DomainSchemaDiffResult {
         const docPatch: Record<string, any> = {};
         const filePatch: Array<{ relPath: string; codec: ConfigCodec; patch: any }> = [];
 
-        // 要写回的目标 project：以 current.project 为准；否则 fallback baseline.project
         const proj = current.project ?? baseline.project;
+        if (!proj) return { docPatch, filePatch };
 
-        // angular.json docPatch（写真实路径结构） ---
+        // 收集 schema 中所有可编辑项（递归 children）
+        const items = this.collectSchemaItems(angularSchema);
+
+        // 用于生成 angular.json 的叶子 patch（相对 build/serve 根）
+        const buildPatch: any = {};
+        const servePatch: any = {};
+
+        // 用于生成 tsconfig 的叶子 patch（相对 ts 根：compilerOptions / angularCompilerOptions）
+        const tsPatch: any = {};
+
+        // 1) defaultProject（workspace）
+        // 默认项过滤（schema 中 defaultProject 没 default，一般无需过滤）
+        if (!this.isEqualJson(baseline.defaultProject, current.defaultProject)) {
+            docPatch["angular.angularJson"] = {
+                ...(docPatch["angular.angularJson"] ?? {}),
+                defaultProject: current.defaultProject,
+            };
+        }
+
+        // 2) 遍历 schema items，计算 leaf patch
+        for (const item of items) {
+            const rawKey = item.key;
+            if (!rawKey) continue;
+
+            // 处理占位符：<build.defaultConfiguration> / <serve.defaultConfiguration>
+            const key = this.expandKeyWithVm(rawKey, current);
+
+            // 不可展开（缺少 defaultConfiguration）则跳过（MVP）
+            if (!key) continue;
+
+            // 取值：从 VM 上取（注意 key 是 VM 路径）
+            const baseVal = getByPath(baseline, key);
+            const curVal = getByPath(current, key);
+
+            // 没变化，跳过
+            if (this.isEqualJson(baseVal, curVal)) continue;
+
+            // 默认值过滤：baseline 没有，current 恰等于 schema default，则不写入
+            if (baseVal === undefined && item.default !== undefined && this.isEqualJson(curVal, item.default)) {
+                continue;
+            }
+
+            // 分流：build.* / serve.* / ts.*
+            if (key.startsWith("build.")) {
+                // build.options.xxx / build.defaultConfiguration / build.configurations.xxx
+                const rel = key.slice("build.".length);
+                setByPath(buildPatch, rel, curVal);
+                continue;
+            }
+
+            if (key.startsWith("serve.")) {
+                const rel = key.slice("serve.".length);
+                setByPath(servePatch, rel, curVal);
+                continue;
+            }
+
+            if (key.startsWith("ts.")) {
+                const rel = key.slice("ts.".length);
+                setByPath(tsPatch, rel, curVal);
+                continue;
+            }
+
+            // workspace 目前只处理 defaultProject；其他 workspace 字段后续按需扩展
+        }
+
+        // 3) 组装 angular.json docPatch（只写有变化的 build/serve）
         const angularPatch: any = {};
 
-        // defaultProject（如果你 UI 暴露了这个字段，就写回）
-        if (baseline.defaultProject !== current.defaultProject) {
-            angularPatch.defaultProject = current.defaultProject;
+        if (Object.keys(buildPatch).length || Object.keys(servePatch).length) {
+            angularPatch.projects = {
+                [proj]: {
+                    architect: {
+                        ...(Object.keys(buildPatch).length ? { build: buildPatch } : {}),
+                        ...(Object.keys(servePatch).length ? { serve: servePatch } : {}),
+                    },
+                },
+            };
         }
 
         if (Object.keys(angularPatch).length) {
-            docPatch["angular.angularJson"] = angularPatch;
+            docPatch["angular.angularJson"] = {
+                ...(docPatch["angular.angularJson"] ?? {}),
+                ...angularPatch,
+            };
         }
 
+        // 4) 组装 tsconfig filePatch
+        const tsRel = current.ts?.relPath ?? baseline.ts?.relPath;
+        if (tsRel && Object.keys(tsPatch).length) {
+            filePatch.push({ relPath: tsRel, codec: "jsonc", patch: tsPatch });
+        }
 
         return { docPatch, filePatch };
     }
+
 
     getOptions(docs: Record<string, any>, ctx: DomainSchemaContext, vm: AngularDomainSchemaVM) {
         const angularJson = docs["angular.angularJson"] ?? {};
@@ -220,7 +304,6 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
         return { data, chain };
     }
 
-
     private deepMergeTsConfig(base: any, cur: any): any {
         if (cur == null) return base;
         if (base == null) return cur;
@@ -274,6 +357,47 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
             else stack.push(p);
         }
         return stack.join("/");
+    }
+
+    private collectSchemaItems(schema: ConfigSchema): Array<any> {
+        const out: any[] = [];
+        const walk = (items: any[]) => {
+            for (const it of items ?? []) {
+                if (!it?.key) continue;
+                out.push(it);
+                if (Array.isArray(it.children) && it.children.length) walk(it.children);
+            }
+        };
+        for (const sec of schema.sections ?? []) walk(sec.items ?? []);
+        return out;
+    }
+
+    /**
+     * 把 key 中的 <xxx> 替换为 vm 对应路径的值
+     * 例如：
+     * - build.configurations.<build.defaultConfiguration>.fileReplacements
+     * - serve.configurations.<serve.defaultConfiguration>.host
+     */
+    private expandKeyWithVm(key: string, vm: any): string | null {
+        // 找所有 <...> 占位符
+        const re = /<([^>]+)>/g;
+        let m: RegExpExecArray | null;
+        let out = key;
+
+        while ((m = re.exec(key)) !== null) {
+            const placeholderPath = m[1]; // e.g. build.defaultConfiguration
+            const val = getByPath(vm, placeholderPath);
+            if (val === undefined || val === null || val === "") {
+                return null; // 无法展开
+            }
+            out = out.replace(m[0], String(val));
+        }
+
+        return out;
+    }
+    private isEqualJson(a: any, b: any): boolean {
+        // MVP：足够用；后续要更严谨可换深比较（避免 key 顺序影响）
+        return JSON.stringify(a) === JSON.stringify(b);
     }
 
 }

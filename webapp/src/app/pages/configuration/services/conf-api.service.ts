@@ -9,20 +9,6 @@ export class ConfApiService {
   getCatalog(projectId: string) {
     return this.api.get<ResolvedDomain[]>(`/api/config/catalog/${projectId}`)
   }
-
-  readDocV2(projectId: string, docId: string) {
-    return this.api.get<ConfigFileReadResult>(
-      `/api/config/readDoc/${projectId}/${encodeURIComponent(docId)}`
-    )
-  }
-
-  writeDocV2(projectId: string, docId: string, payload: { raw?: string; data?: any }) {
-    return this.api.post(
-      `/api/config/writeDoc/${projectId}/${encodeURIComponent(docId)}`,
-      payload
-    );
-  }
-
   // /openInEditor/:projectId/:docId
   openInEditor(projectId: string, docId: string) {
     return this.api.post(
@@ -31,9 +17,6 @@ export class ConfApiService {
     );
   }
 
-  readDomainSchema(projectId: string, domainId: string) {
-    return this.api.get(`/api/config/readSchema/${projectId}/${domainId}`)
-  }
   writeDomainSchema(projectId: string, domainId: string, vm: any) {
     return this.api.post(`/api/config/writeSchema/${projectId}/${domainId}`, { vm });
   }
@@ -41,6 +24,5 @@ export class ConfApiService {
   getDomainSchemas(projectId: string, domainId: string) {
     return this.api.get<DomainSchemaDoc>(`/api/config/getDomainSchema/${projectId}/${domainId}`)
   }
-
 
 }

@@ -1,11 +1,52 @@
-import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
+import * as yaml from "js-yaml";
+import {
+    applyEdits,
+    FormattingOptions,
+    modify,
+    parse as parseJsonc, printParseErrorCode
+} from "jsonc-parser";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as yaml from "js-yaml";
 
 import { AppError } from "../../common/errors";
 import { ConfigFileReadResult, ConfigFileWriteOptions } from "./config.types";
 import { type ConfigCodec } from "./domains";
+
+type PatchOp = { path: (string | number)[]; value: any };
+
+/**
+ * 将 {a:{b:1}, c:[...]} 打平成：
+ *  - path: ["a","b"] value: 1
+ *  - path: ["c"] value: [...]
+ *
+ * 注意：这里采用“叶子写入”，避免整块覆盖带来额外字段落盘
+ */
+function flattenPatchToOps(patch: any): PatchOp[] {
+    const ops: PatchOp[] = [];
+    const walk = (node: any, p: (string | number)[]) => {
+        if (node === undefined) return;
+
+        // 数组/原始类型：作为叶子整体写入
+        const isObj = node != null && typeof node === "object" && !Array.isArray(node);
+        if (!isObj) {
+            ops.push({ path: p, value: node });
+            return;
+        }
+
+        const keys = Object.keys(node);
+        // 空对象也要写（例如要创建中间节点时）
+        if (keys.length === 0) {
+            ops.push({ path: p, value: {} });
+            return;
+        }
+
+        for (const k of keys) walk(node[k], [...p, k]);
+    };
+
+    walk(patch, []);
+    // 重要：父路径先于子路径/或反过来都可，但这里按生成顺序即可
+    return ops;
+}
 
 export class ConfigDocumentStore {
 
@@ -84,6 +125,48 @@ export class ConfigDocumentStore {
         // 原子写：write tmp + rename
         const tmp = absPath + ".tmp";
         fs.writeFileSync(tmp, content, "utf-8");
+        fs.renameSync(tmp, absPath);
+    }
+
+    /**
+     * 对 json/jsonc 做增量写回：尽量保留原文件格式（注释/缩进/数组折行等）
+     * patch 是“对象形式”的补丁（仅包含要写入的叶子字段/子树）
+     */
+    patchJsonLike(
+        absPath: string,
+        codec: ConfigCodec,
+        patch: any,
+        opts?: { formatting?: FormattingOptions }
+    ): void {
+        if (codec !== "json" && codec !== "jsonc") {
+            throw new AppError("CONFIG_WRITE_FAILED", `patchJsonLike only supports json/jsonc, got: ${codec}`);
+        }
+
+        const dir = path.dirname(absPath);
+        fs.mkdirSync(dir, { recursive: true });
+
+        const raw = fs.existsSync(absPath) ? fs.readFileSync(absPath, "utf-8") : "{}\n";
+        const formatting: FormattingOptions = opts?.formatting ?? {
+            insertSpaces: true,
+            tabSize: 2,
+            eol: "\n",
+        };
+
+        // 将 patch 对象打平成 “jsonc-parser modify” edits
+        const ops = flattenPatchToOps(patch);
+
+        let nextRaw = raw;
+        for (const op of ops) {
+            const edits = modify(nextRaw, op.path, op.value, {
+                formattingOptions: formatting,
+                getInsertionIndex: undefined,
+            });
+            nextRaw = applyEdits(nextRaw, edits);
+        }
+
+        // 原子写
+        const tmp = absPath + ".tmp";
+        fs.writeFileSync(tmp, nextRaw, "utf-8");
         fs.renameSync(tmp, absPath);
     }
 }

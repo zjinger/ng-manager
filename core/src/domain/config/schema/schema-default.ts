@@ -28,11 +28,11 @@ export function applySchemaDefaults<T extends object>(
 
 /* ---------- helpers ---------- */
 
-function getByPath(obj: any, path: string): any {
+export function getByPath(obj: any, path: string): any {
     return path.split(".").reduce((o, k) => (o ? o[k] : undefined), obj);
 }
 
-function setByPath(obj: any, path: string, value: any) {
+export  function setByPath(obj: any, path: string, value: any) {
     const keys = path.split(".");
     const last = keys.pop()!;
     let cur = obj;
@@ -46,3 +46,5 @@ function setByPath(obj: any, path: string, value: any) {
 
     cur[last] = value;
 }
+
+
