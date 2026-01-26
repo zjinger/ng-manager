@@ -27,6 +27,9 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
       justify-content: flex-end;
       align-items: center;
       gap: 10px;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+      background: var(--app-component-bg);
+      border: 1px solid var(--app-border-color);
     }
     .hint { margin-right: auto; opacity: .75; }
     `
