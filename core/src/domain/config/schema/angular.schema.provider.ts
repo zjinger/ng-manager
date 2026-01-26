@@ -4,23 +4,25 @@ import type { ConfigSchema, DomainSchemaContext, DomainSchemaDiffResult } from "
 import type { ConfigCodec } from "../config.types";
 import { angularSchema } from "./angular.schema"; // 你已引入，可后续用于生成 UI schema（此处暂不强依赖）
 import { applySchemaDefaults } from "./schema-default";
-
+type TsConfigData = Record<string, any>;
 export interface AngularDomainSchemaVM {
     defaultProject?: string;
     project?: string;
 
     build: {
-        options?: any;
+        options?: Record<string, any>;
         defaultConfiguration?: string;
         configurations?: any[];
     };
 
     serve: {
+        options?: Record<string, any>;
         defaultConfiguration?: string;
         configurations?: any[];
     }
 
     ts: {
+        relPath?: string; // 当前实际读取的 tsconfig 路径（便于 diff 写回）
         extends?: string;
         compilerOptions?: {
             target?: string;
@@ -44,85 +46,73 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
         return angularSchema;
     }
 
-    assemble(
-        docs: Record<string, any>,
-        ctx: DomainSchemaContext
-    ): AngularDomainSchemaVM {
+    assemble(docs: Record<string, any>, ctx: DomainSchemaContext): AngularDomainSchemaVM {
         const angularJson = docs["angular.angularJson"] ?? {};
-        const projects: Record<string, any> = angularJson.projects ?? {};
-        const projectNames = Object.keys(projects);
+        const projectsObj: Record<string, any> = angularJson.projects ?? {};
+        const projectNames = Object.keys(projectsObj);
 
-        // workspace / project 选择
-        const defaultProject: string | undefined = projectNames[0];
+        // 1) project / defaultProject
+        const defaultProject: string | undefined =
+            (typeof angularJson.defaultProject === "string" && angularJson.defaultProject.trim())
+                ? angularJson.defaultProject.trim()
+                : (projectNames[0] ?? undefined);
 
+        // 当前编辑 project（MVP：先跟 defaultProject）
         const project = defaultProject;
 
-        // 没有任何项目，返回“空但结构完整”的 VM
-        if (!project) {
-            return applySchemaDefaults(
-                {
-                    defaultProject: undefined,
-                    project: undefined,
-                    build: {},
-                    ts: {},
-                } as AngularDomainSchemaVM,
-                angularSchema
-            );
-        }
-        const architect = projects[project]?.architect
-        // build options（来自 angular.json）
-        const build = architect?.build ?? {};
-        const buildOptions = architect?.build?.options ?? {};
-        const serve = architect?.serve ?? {};
+        // 2) build/serve 目标（保持与 schema: build.options.* / serve.configurations.* 一致）
+        const architect = project ? (projectsObj?.[project]?.architect ?? {}) : {};
+        const buildTarget = architect?.build ?? {};
+        const serveTarget = architect?.serve ?? {};
 
+        const build: AngularDomainSchemaVM["build"] = {
+            defaultConfiguration: buildTarget.defaultConfiguration,
+            options: buildTarget.options ?? {},
+            configurations: buildTarget.configurations ?? {},
+        };
 
-        // tsconfig（通过 build.options.tsConfig 动态读取）
+        const serve: AngularDomainSchemaVM["serve"] = {
+            defaultConfiguration: serveTarget.defaultConfiguration,
+            options: serveTarget.options ?? {},
+            configurations: serveTarget.configurations ?? {},
+        };
+
+        // 3) 通过 build.options.tsConfig 动态读 tsconfig（jsonc + extends 合并）
+        const tsConfigRel = (typeof build.options?.tsConfig === "string" && build.options.tsConfig.trim())
+            ? build.options.tsConfig.trim()
+            : undefined;
+
         let compilerOptions: any = {};
         let angularCompilerOptions: any = {};
-        const tsConfigPath = buildOptions.tsConfig;
-
-        if (typeof tsConfigPath === "string" && tsConfigPath.trim()) {
+        if (typeof tsConfigRel === "string" && tsConfigRel.trim()) {
             try {
-                const r = ctx.readFile(tsConfigPath, "jsonc");
-                const data = r.data || {};
+                const { data, chain } = this.readTsConfigMerged(ctx, tsConfigRel.trim(), { maxDepth: 8 });
+                // 你如果要调试链路：
+                console.log("[tsconfig chain]", chain);
 
-                const _extends = r.data?.extends;
-
-                if (_extends) {
-                    // 处理 extends 继承
-                    const basePath = tsConfigPath.replace(/[^\/\\]+$/, '');
-                    const extPath = _extends.startsWith('.') ? basePath + _extends : _extends;
-                    const extR = ctx.readFile(extPath, 'jsonc');
-                    data.compilerOptions = {
-                        ...extR.data?.compilerOptions,
-                        ...data.compilerOptions || {},
-                    };
-                    data.angularCompilerOptions = {
-                        ...extR.data?.angularCompilerOptions,
-                        ...data.angularCompilerOptions || {},
-                    };
-                }
-                compilerOptions = data.compilerOptions || {};
-                angularCompilerOptions = data.angularCompilerOptions || {};
-            } catch {
+                compilerOptions = data.compilerOptions ?? {};
+                angularCompilerOptions = data.angularCompilerOptions ?? {};
+            } catch (e) {
+                // 读取失败不阻断：MVP 策略
                 compilerOptions = {};
-                angularCompilerOptions = {}
+                angularCompilerOptions = {};
             }
         }
 
-        // 构造“原始 VM”（允许 undefined）
+
+        // 4) raw vm -> apply schema defaults
         const rawVm: AngularDomainSchemaVM = {
             defaultProject,
             project,
             build,
             serve,
             ts: {
+                relPath: tsConfigRel,
                 compilerOptions,
-                angularCompilerOptions,
+                angularCompilerOptions
             },
         };
 
-        // 应用 schema 默认值（关键）
         return applySchemaDefaults(rawVm, angularSchema);
     }
 
@@ -133,7 +123,7 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
         // 要写回的目标 project：以 current.project 为准；否则 fallback baseline.project
         const proj = current.project ?? baseline.project;
 
-        // --- 1) angular.json docPatch（写真实路径结构） ---
+        // angular.json docPatch（写真实路径结构） ---
         const angularPatch: any = {};
 
         // defaultProject（如果你 UI 暴露了这个字段，就写回）
@@ -141,63 +131,10 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
             angularPatch.defaultProject = current.defaultProject;
         }
 
-        // build.options.* 必须写到 projects[proj].architect.build.options
-        // const buildChanged =
-        //     baseline.build.outputPath !== current.build.outputPath ||
-        //     baseline.build.tsConfig !== current.build.tsConfig ||
-        //     baseline.build.inlineStyleLanguage !== current.build.inlineStyleLanguage;
-
-        // if (buildChanged) {
-        //     if (!proj) {
-        //         // 没有 project 就无法定位写入位置
-        //         // 你可以选择 silent ignore，但更建议抛错，避免保存成功但没写
-        //         throw new Error("AngularSchemaProvider.diff: project is required to write build options");
-        //     }
-
-        // angularPatch.projects = {
-        //     [proj]: {
-        //         architect: {
-        //             build: {
-        //                 options: {
-        //                     outputPath: current.build.outputPath,
-        //                     tsConfig: current.build.tsConfig,
-        //                     inlineStyleLanguage: current.build.inlineStyleLanguage,
-        //                 },
-        //             },
-        //         },
-        //     },
-        // };
-        // }
-
         if (Object.keys(angularPatch).length) {
             docPatch["angular.angularJson"] = angularPatch;
         }
 
-        // --- 2) tsconfig filePatch（写 current.build.tsConfig 指向的文件） ---
-        // const tsChanged =
-        //     baseline.ts.target !== current.ts.target ||
-        //     baseline.ts.module !== current.ts.module ||
-        //     baseline.ts.strict !== current.ts.strict;
-
-        // const tsConfigRel = current.build.tsConfig ?? baseline.build.tsConfig;
-
-        // if (tsChanged) {
-        //     if (typeof tsConfigRel !== "string" || !tsConfigRel.trim()) {
-        //         // build.tsConfig 没有值：无法写回
-        //         // MVP：直接跳过；也可抛错看你策略
-        //     } else {
-        //         const tsPatch: any = {};
-        //         if (baseline.ts.target !== current.ts.target) tsPatch.target = current.ts.target;
-        //         if (baseline.ts.module !== current.ts.module) tsPatch.module = current.ts.module;
-        //         if (baseline.ts.strict !== current.ts.strict) tsPatch.strict = current.ts.strict;
-
-        //         filePatch.push({
-        //             relPath: tsConfigRel,
-        //             codec: "jsonc",
-        //             patch: { compilerOptions: tsPatch },
-        //         });
-        //     }
-        // }
 
         return { docPatch, filePatch };
     }
@@ -231,4 +168,112 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
         // - project 必须存在于 angular.json.projects
         // - tsConfig 路径存在
     }
+
+    /**
+   * 读取 tsconfig，并处理 extends（只做一层 extends 合并，MVP 足够；后续可递归）
+   */
+    private readTsConfigMerged(
+        ctx: DomainSchemaContext,
+        tsConfigRel: string,
+        opts?: { maxDepth?: number }
+    ): { data: TsConfigData; chain: string[] } {
+        const maxDepth = opts?.maxDepth ?? 8;
+
+        const visited = new Set<string>();
+        const chain: string[] = [];
+
+        const readOne = (rel: string, depth: number): TsConfigData => {
+            if (depth > maxDepth) {
+                throw new Error(`tsconfig extends too deep (> ${maxDepth}): ${rel}`);
+            }
+            const normRel = rel.replace(/\\/g, "/");
+
+            if (visited.has(normRel)) {
+                // 循环引用
+                chain.push(normRel);
+                throw new Error(`tsconfig extends cycle detected: ${chain.join(" -> ")}`);
+            }
+
+            visited.add(normRel);
+            chain.push(normRel);
+
+            const r = ctx.readFile(normRel, "jsonc");
+            const cur: TsConfigData = (r.data ?? {}) as TsConfigData;
+
+            const ext = cur.extends;
+            // 只解析相对路径 extends（MVP）
+            if (typeof ext === "string" && ext.trim() && ext.trim().startsWith(".")) {
+                const extRel = this.resolveExtendsRelPath(normRel, ext.trim());
+                const base = readOne(extRel, depth + 1);
+
+                // 合并规则：
+                // - compilerOptions / angularCompilerOptions / 其他对象：深合并（子覆盖父）
+                // - arrays：直接覆盖（MVP）
+                // - 其余标量：子覆盖父
+                return this.deepMergeTsConfig(base, cur);
+            }
+
+            return cur;
+        };
+
+        const data = readOne(tsConfigRel, 0);
+        return { data, chain };
+    }
+
+
+    private deepMergeTsConfig(base: any, cur: any): any {
+        if (cur == null) return base;
+        if (base == null) return cur;
+
+        // arrays：直接覆盖（tsconfig 里像 include/exclude/files）
+        if (Array.isArray(base) || Array.isArray(cur)) {
+            return cur;
+        }
+
+        // 不是对象：覆盖
+        if (typeof base !== "object" || typeof cur !== "object") {
+            return cur;
+        }
+
+        const out: any = { ...base };
+        for (const [k, v] of Object.entries(cur)) {
+            if (k in out) out[k] = this.deepMergeTsConfig(out[k], v);
+            else out[k] = v;
+        }
+        return out;
+    }
+
+    /**
+     * 解析 extends 路径相对于当前 tsconfig 路径的真实相对路径
+     * @param curRel 当前 tsconfig 相对路径
+     */
+    private resolveExtendsRelPath(curRel: string, ext: string): string {
+        // ext 可能是：
+        // - "./tsconfig.base.json"
+        // - "../tsconfig.json"
+        // - "tsconfig/base"（node resolve 风格；MVP 不做 node_modules 解析，直接原样返回）
+        // - "@/tsconfig.json"（同上，原样返回）
+        if (!ext.startsWith(".")) return ext;
+
+        // 统一成 posix 风格路径，避免 Windows "\" 干扰
+        const cur = curRel.replace(/\\/g, "/");
+        const e = ext.replace(/\\/g, "/");
+
+        // dirname：确保是目录而不是文件名
+        const dir = cur.includes("/") ? cur.slice(0, cur.lastIndexOf("/")) : "";
+
+        // join + normalize：处理 ./ 与 ../
+        const joined = dir ? `${dir}/${e}` : e;
+
+        // 归一化：a/b/../c -> a/c
+        const parts = joined.split("/").filter(Boolean);
+        const stack: string[] = [];
+        for (const p of parts) {
+            if (p === ".") continue;
+            if (p === "..") stack.pop();
+            else stack.push(p);
+        }
+        return stack.join("/");
+    }
+
 }

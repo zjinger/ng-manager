@@ -34,6 +34,14 @@ export interface ConfigSchemaItem {
     configuration?: string; // e.g. "production"
 
     options?: { label: string; value: string }[]; // 内联枚举选项
+    children?: ConfigSchemaItem[]; // 子项 (针对 object 类型)
+
+    default?: JsonValue; // 默认值
+
+    item?: {
+        type: "object" | "string" | "number" | "boolean";
+        fields?: ConfigSchemaItem[]; // 当 type=object
+    };
 }
 
 export interface ConfigItemOptionRef {

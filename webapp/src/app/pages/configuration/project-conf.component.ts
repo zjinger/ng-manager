@@ -206,7 +206,8 @@ export class ProjectConfComponent {
     this.api.openInEditor(
       this.projectId()!,
       this.selectedDocId()!).subscribe(res => {
-        console.log('openInEditor response:', res);
+        this.msg.success('已在默认编辑器中打开该配置文件');
+        this.isModalVisible.set(false);
       })
   }
 }

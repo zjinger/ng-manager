@@ -26,6 +26,14 @@ export interface ConfigSchemaItem {
     optionsRef?: ConfigItemOptionRef;
     options?: Array<{ label: string; value: any }>; // 直接内联的枚举选项
     default?: any; // 默认值
+    children?: ConfigSchemaItem[]; // 子项 (针对 object 类型)
+    // 当 type=array 时，定义数组项类型
+    item?: {
+        type: "object" | "string" | "number" | "boolean";
+        fields?: ConfigSchemaItem[]; // 当 type=object
+    };
+
+
 }
 
 export interface ConfigItemOptionRef {

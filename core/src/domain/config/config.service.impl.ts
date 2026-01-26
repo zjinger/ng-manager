@@ -211,7 +211,7 @@ export class ConfigServiceImpl implements ConfigService {
 
         const schema: ConfigSchemaV2 = provider.getSchema();
         const vm = provider.assemble(docs, ctx);
-        console.log("ConfigServiceImpl.getDomainSchemaDoc: vm =", vm);
+        // console.log("ConfigServiceImpl.getDomainSchemaDoc: vm =", vm);
         const options = provider.getOptions?.(docs, ctx, vm) ?? {};
 
         return {
