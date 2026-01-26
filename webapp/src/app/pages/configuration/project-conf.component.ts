@@ -22,10 +22,8 @@ import { firstValueFrom } from 'rxjs';
 import { ConfigChangeBarComponent } from './components/config-change-bar-component';
 import { ConfigNavComponent } from './components/config-nav-component';
 import { ConfigSectionComponent } from './components/config-section-component';
-import { DomainSchemaDoc } from './models';
-import { ResolvedDomain } from './models/config-domain.model';
-import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM } from './models/config-ui.model';
-import { ConfApiService, ConfigEditSessionStore } from './services';
+import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM, DomainSchemaDoc, ResolvedDomain } from './models';
+import { ConfApiService, } from './services';
 import { mapResolvedToNav } from './utils/map';
 
 @Component({
@@ -58,7 +56,6 @@ import { mapResolvedToNav } from './utils/map';
 export class ProjectConfComponent {
   private api = inject(ConfApiService);
   private projectState = inject(ProjectStateService);
-  private editStore = inject(ConfigEditSessionStore);
   private msg = inject(NzMessageService);
   private modal = inject(NzModalService);
 
@@ -95,7 +92,7 @@ export class ProjectConfComponent {
     return (d.docs ?? []).map(x => ({
       docId: x.spec.id,
       title: x.spec.title,
-      description: x.spec.description,
+      // description: x.spec.description,
       exists: x.exists,
       relPath: x.chosen?.relPath,
       codec: x.chosen?.codec,
@@ -117,7 +114,7 @@ export class ProjectConfComponent {
     if (!pid) return;
 
     this.loading.set(true);
-    this.api.getCatalogV2(pid).subscribe({
+    this.api.getCatalog(pid).subscribe({
       next: (catalog) => {
         this.catalog.set(catalog);
         const firstDomainId = catalog[0]?.domain?.id ?? "";
@@ -186,7 +183,6 @@ export class ProjectConfComponent {
 
   /** 右侧表单变化回传（整包 values） */
   onValuesChange(e: { type: string; values: Record<string, any> }) {
-    this.editStore.setCurrent(e.type, e.values);
   }
 
   onReset() {

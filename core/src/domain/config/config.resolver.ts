@@ -1,6 +1,7 @@
-import * as path from "node:path";
-import { ConfigDocCandidate, ConfigDomain, ResolvedDoc, ResolvedDomain } from "./config.types";
 import { existsSync } from "node:fs";
+import * as path from "node:path";
+import { ResolvedDoc, ResolvedDomain } from "./config.types";
+import { ConfigDocCandidate, ConfigDomain } from "./domains";
 
 
 

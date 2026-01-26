@@ -1,90 +1,31 @@
-import { JsonValue } from "@app/core/common";
-
-export interface ConfigCtx {
-    project?: string;
-    target?: string;
-    configuration?: string;
-    architectKey?: string;
-}
-
-
-export interface ConfigSchema {
-    id: string;
-    label: string;
-    sections: ConfigSchemaSection[];
-}
-
-export interface ConfigSchemaSection {
-    id: string;
-    label: string;
-    scope?: "workspace" | "project";
-    target?: string;
-    items: ConfigSchemaItem[];
-}
-export interface ConfigSchemaItem {
-    key: string; // 配置键名
-    label: string; // 显示名称
-    type: string; // e.g., "string", "boolean", "path", "select", etc.
-    level?: "basic" | "advanced"; // 级别
-    desc?: string; // 描述
-
-    /** select/radio 等枚举型输入：options 从哪来 */
-    optionsRef?: ConfigItemOptionRef;
-
-    configuration?: string; // e.g. "production"
-
-    options?: { label: string; value: string }[]; // 内联枚举选项
-    children?: ConfigSchemaItem[]; // 子项 (针对 object 类型)
-
-    default?: JsonValue; // 默认值
-
-    item?: {
-        type: "object" | "string" | "number" | "boolean";
-        fields?: ConfigSchemaItem[]; // 当 type=object
-    };
-}
-
-export interface ConfigItemOptionRef {
-    /** 从 view-model.options 里取哪个 key */
-    key: "projects" | "targets" | "configurations" | string;
-    /** 可选：是否允许空 */
-    allowEmpty?: boolean;
-}
-
+import { ConfigDocSpec, ConfigDocCandidate, ConfigDomain, type ConfigCodec } from "./config-domain.model";
 
 /**
-* 通用配置视图模型
-* core 返回的 viewModel（只用到 values/filePath/options 等即可） 
-*/
-export interface ConfigViewModel<TValues extends Record<string, any> = Record<string, any>,
-    TOptions extends Record<string, any> = Record<string, any>> {
-    /** 哪种配置文件（由 provider.type 决定） */
-    fileType: string;
-
-    /** 真实文件路径（用于展示/打开文件/调试） */
-    filePath: string;
-
-    /** 表单上下文（project/target/configuration） */
-    ctx: ConfigCtx;
-
-    /**
-     * 表单枚举/候选项（可选）
-     * - Angular: { projects, targets, configurations }
-     * - tsconfig: { extendsCandidates? }
-     * - eslint/prettier: 未来可扩展
-     */
-    options?: TOptions;
-
-    /** 表单值 */
-    values: TValues;
+ * 解析后的配置文件
+ */
+export interface ResolvedDoc {
+    spec: ConfigDocSpec; // 原始声明
+    exists: boolean;       // 文件是否存在
+    chosen?: ConfigDocCandidate; // 命中的候选
+    absPath?: string;            // 解析后绝对路径（若 chosen 存在）
 }
 
-export type AngularOptions = {
-    projects: string[];
-    targets: string[];
-    configurations: string[];
-};
+/**
+ * 解析后的配置域
+ */
+export interface ResolvedDomain {
+    domain: ConfigDomain;
+    docs: ResolvedDoc[];
+}
 
-export interface AngularViewModel extends ConfigViewModel<Record<string, any>, AngularOptions> {
-    architectKey: "architect" | "targets";
+/**
+ * 配置文件读取结果
+ * @template T 解析后的数据类型
+ */
+export interface ConfigFileReadResult<T = unknown> {
+    codec: ConfigCodec;
+    absPath: string;
+    relPath: string;
+    raw: string;
+    data?: T; // json 时提供
 }

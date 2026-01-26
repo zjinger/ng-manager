@@ -1,4 +1,4 @@
-import { ResolvedDomain } from "../models/config-domain.model";
+import { ResolvedDomain } from "../models";
 import { ConfigNavNodeVM } from "../models/config-ui.model";
 
 function mapResolvedToNav(catalog: ResolvedDomain[]): ConfigNavNodeVM[] {
