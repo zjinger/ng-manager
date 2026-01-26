@@ -1,7 +1,7 @@
 // packages/core/src/domain/config/schema/angular.schema.provider.ts
 import type { DomainSchemaProvider } from "./domain-schema.registry";
 import type { ConfigSchema, DomainSchemaContext, DomainSchemaDiffResult } from "./schema.types";
-import type { ConfigCodec } from "../config.types";
+import type { ConfigCodec } from "../domains";
 import { angularSchema } from "./angular.schema"; // 你已引入，可后续用于生成 UI schema（此处暂不强依赖）
 import { applySchemaDefaults } from "./schema-default";
 type TsConfigData = Record<string, any>;

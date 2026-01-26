@@ -1,4 +1,4 @@
-import { ConfigDomain } from "./config.types";
+import { ConfigDomain } from "./domains";
 
 /**
  * 只存 ConfigDomain[]

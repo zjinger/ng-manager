@@ -1,7 +1,5 @@
-export * from "./workspace";
-export * from "./providers";
+export * from "./domains";
 export * from "./patch";
-export * from "./catalog";
 
 export * from "./config.types";
 export * from "./config.registry";

@@ -1,11 +1,10 @@
-import { ConfigCodec } from "../config.types";
+import { ConfigCodec } from "../domains";
 
 export interface ConfigSchema {
     id: string;
     label: string;
     sections: ConfigSchemaSection[];
 }
-
 export interface ConfigSchemaSection {
     id: string;
     label: string;
@@ -32,8 +31,6 @@ export interface ConfigSchemaItem {
         type: "object" | "string" | "number" | "boolean";
         fields?: ConfigSchemaItem[]; // 当 type=object
     };
-
-
 }
 
 export interface ConfigItemOptionRef {
@@ -57,7 +54,6 @@ export interface DomainSchemaContext {
 export interface DomainSchemaDiffResult {
     /** 写回 domain docs（docId） */
     docPatch?: Record<string, any>;
-
     /**
      * 写回引用文件（relPath）
      * patch 会被 deepMerge 回 base 后写入

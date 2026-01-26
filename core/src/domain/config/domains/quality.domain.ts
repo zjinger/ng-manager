@@ -1,5 +1,5 @@
 // packages/core/src/domain/config/domains/quality.domain.ts
-import { ConfigDomain } from "../config.types";
+import { ConfigDomain } from "./config.domain.types";
 
 export const qualityDomain: ConfigDomain = {
     id: "quality",

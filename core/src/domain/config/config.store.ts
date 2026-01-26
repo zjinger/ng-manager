@@ -4,7 +4,8 @@ import * as path from "node:path";
 import * as yaml from "js-yaml";
 
 import { AppError } from "../../common/errors";
-import { ConfigCodec, ConfigFileReadResult, ConfigFileWriteOptions } from "./config.types";
+import { ConfigFileReadResult, ConfigFileWriteOptions } from "./config.types";
+import { type ConfigCodec } from "./domains";
 
 export class ConfigDocumentStore {
 

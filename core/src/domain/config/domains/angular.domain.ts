@@ -1,5 +1,6 @@
 // packages/core/src/domain/config/domains/angular.domain.ts
-import { ConfigDomain } from "../config.types";
+
+import { ConfigDomain } from "./config.domain.types";
 
 export const angularDomain: ConfigDomain = {
     id: "angular",
@@ -17,32 +18,5 @@ export const angularDomain: ConfigDomain = {
             writable: true,
             policy: "single",
         },
-        // {
-        //     id: "angular.tsconfig",
-        //     title: "tsconfig.json",
-        //     kind: "tsconfig",
-        //     candidates: [{ relPath: "tsconfig.json", codec: "jsonc" }],
-        //     missing: "hide",
-        //     writable: true,
-        //     policy: "mergeTsconfigExtends",
-        // },
-        // {
-        //     id: "angular.tsconfig.app",
-        //     title: "tsconfig.app.json",
-        //     kind: "tsconfig",
-        //     candidates: [{ relPath: "tsconfig.app.json", codec: "jsonc" }],
-        //     missing: "hide",
-        //     writable: true,
-        //     policy: "mergeTsconfigExtends",
-        // },
-        // {
-        //     id: "angular.tsconfig.spec",
-        //     title: "tsconfig.spec.json",
-        //     kind: "tsconfig",
-        //     candidates: [{ relPath: "tsconfig.spec.json", codec: "jsonc" }],
-        //     missing: "hide",
-        //     writable: true,
-        //     policy: "mergeTsconfigExtends",
-        // },
     ],
 };
