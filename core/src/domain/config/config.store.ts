@@ -1,8 +1,10 @@
+import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as yaml from "js-yaml";
 
-import { ConfigCodec, ConfigFileReadResult, ConfigFileWriteOptions } from "./config.types";
 import { AppError } from "../../common/errors";
+import { ConfigCodec, ConfigFileReadResult, ConfigFileWriteOptions } from "./config.types";
 
 export class ConfigDocumentStore {
 
@@ -16,13 +18,30 @@ export class ConfigDocumentStore {
         const raw = fs.readFileSync(absPath, "utf-8");
         const relPath = path.basename(absPath); // 仅用于回显；上层可覆盖为真实 relPath
 
-        if (codec === "json") {
-            const data = JSON.parse(raw);
-            return { codec, absPath, relPath, raw, data };
-        }
+        switch (codec) {
+            case "json": {
+                const data = JSON.parse(raw);
+                return { codec, absPath, relPath, raw, data };
+            }
+            case "jsonc": {
+                const errors: any[] = [];
+                const data = parseJsonc(raw, errors, { allowTrailingComma: true });
+                if (errors.length > 0) {
+                    // 把错误变成可读 message
+                    const first = errors[0];
+                    const code = printParseErrorCode(first.error);
+                    throw new AppError('CONFIG_READ_FAILED', `读取 JSONC 配置失败：${code} at offset ${first.offset}`, { absPath, error: first });
+                }
+                return { codec, raw, data, relPath, absPath };
+            }
 
-        // MVP：jsonc/yaml 先不解析，避免引入依赖；UI 可走 raw editor
-        return { codec, absPath, relPath, raw };
+            case "yaml": {
+                const data = yaml.load(raw);
+                return { codec, raw, data, relPath, absPath };
+            }
+            default:
+                return { codec, absPath, relPath, raw };
+        }
     }
 
     /**
@@ -37,20 +56,30 @@ export class ConfigDocumentStore {
     write(absPath: string, codec: ConfigCodec, next: unknown, opts: ConfigFileWriteOptions = {}): void {
         const dir = path.dirname(absPath);
         fs.mkdirSync(dir, { recursive: true });
-
         let content: string;
 
-        if (codec === "json") {
-            const format = opts.format ?? "pretty";
-            content = format === "pretty" ? JSON.stringify(next, null, 2) + "\n" : JSON.stringify(next);
-        } else {
-            // raw / jsonc / yaml：上层直接传 string
+        if (codec === "json" || codec === "jsonc") {
+            // JSONC 写入时不保留注释和格式
+            const pretty = opts.format === "pretty";
+            const obj = typeof next === "string" ? JSON.parse(next) : next;
+            content = pretty ? JSON.stringify(obj, null, 2) + "\n" : JSON.stringify(next);
+        }
+        // YAML 写入
+        else if (codec === "yaml") {
+            const obj = typeof next === "string" ? yaml.load(next) : next;
+            content = yaml.dump(obj, {
+                indent: 2,
+                lineWidth: 120,
+                noRefs: true,
+            });
+        }
+        // Raw 写入
+        else {
             if (typeof next !== "string") {
                 throw new AppError('CONFIG_WRITE_FAILED', `写入 ${codec} 配置时内容必须为字符串`);
             }
             content = next;
         }
-
         // 原子写：write tmp + rename
         const tmp = absPath + ".tmp";
         fs.writeFileSync(tmp, content, "utf-8");

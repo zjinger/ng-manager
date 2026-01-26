@@ -32,6 +32,8 @@ export interface ConfigSchemaItem {
     optionsRef?: ConfigItemOptionRef;
 
     configuration?: string; // e.g. "production"
+
+    options?: { label: string; value: string }[]; // 内联枚举选项
 }
 
 export interface ConfigItemOptionRef {

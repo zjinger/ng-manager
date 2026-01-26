@@ -2,7 +2,7 @@ import { HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { ApiClient } from "@core/api";
 import { firstValueFrom } from "rxjs";
-import { ConfigCatalogDocV1, ConfigFileType, ConfigPatch, ConfigViewModel } from "../models";
+import { ConfigCatalogDocV1, ConfigFileType, ConfigPatch, ConfigViewModel, DomainSchemaDoc } from "../models";
 import { ConfigFileReadResult, ResolvedDomain } from "../models/config-domain.model";
 
 @Injectable({ providedIn: "root" })
@@ -65,5 +65,17 @@ export class ConfApiService {
       {}
     );
   }
+
+  readDomainSchema(projectId: string, domainId: string) {
+    return this.api.get(`/api/config/readSchema/${projectId}/${domainId}`)
+  }
+  writeDomainSchema(projectId: string, domainId: string, vm: any) {
+    return this.api.post(`/api/config/writeSchema/${projectId}/${domainId}`, { vm });
+  }
+
+  getDomainSchemas(projectId: string, domainId: string) {
+    return this.api.get<DomainSchemaDoc>(`/api/config/getDomainSchema/${projectId}/${domainId}`)
+  }
+
 
 }

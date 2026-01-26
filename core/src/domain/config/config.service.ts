@@ -4,6 +4,7 @@ import type { ConfigSchema, ConfigViewModel, ConfigViewModelQuery } from "./prov
 import { type ConfigFileType, ConfigTreeNode, ConfigCatalogDocV1 } from "./catalog";
 import { WorkspaceModel } from "./workspace";
 import { ConfigFileReadResult, ResolvedDomain } from "./config.types";
+import { DomainSchemaDoc } from "./schema/schema.domain.dto";
 
 
 
@@ -17,23 +18,11 @@ export interface ConfigService {
 
     getWorkspace(projectId: string, opts?: { type?: ConfigFileType; relPath?: string }): Promise<Pick<WorkspaceModel, "filePath" | "raw">>;
 
-    getViewModel(
-        projectId: string,
-        opts?: { type?: ConfigFileType } & ConfigViewModelQuery
-    ): Promise<ConfigViewModel>;
+    getViewModel( projectId: string, opts?: { type?: ConfigFileType } & ConfigViewModelQuery ): Promise<ConfigViewModel>;
 
-    diff(
-        projectId: string,
-        patch: ConfigPatch,
-        opts?: { type?: ConfigFileType }
-    ): Promise<{ patch: ConfigPatch; diffText: string; nextRawPreview: ConfigViewModel }>;
+    diff( projectId: string, patch: ConfigPatch, opts?: { type?: ConfigFileType } ): Promise<{ patch: ConfigPatch; diffText: string; nextRawPreview: ConfigViewModel }>;
 
-    apply(
-        projectId: string,
-        patch: ConfigPatch,
-        opts?: { type?: ConfigFileType; force?: boolean }
-    ): Promise<{ saved: true; forced: boolean; filePath: string; diffText: string }>;
-
+    apply( projectId: string, patch: ConfigPatch, opts?: { type?: ConfigFileType; force?: boolean } ): Promise<{ saved: true; forced: boolean; filePath: string; diffText: string }>;
 
     /**
      * 获取指定项目的配置目录解析结果
@@ -62,4 +51,28 @@ export interface ConfigService {
     /**打开文件（用于“打开配置文件”按钮） */
     openDoc(projectId: string, docId: string): Promise<{ root: string; filePath: string }>;
 
+    /**
+     * 获取指定域的域级配置文档
+     * @param projectId 项目 ID
+     * @param domainId 域 ID
+     * @returns 域级配置文档
+     */
+    getDomainSchemaDoc(projectId: string, domainId: string): Promise<DomainSchemaDoc>;
+
+    /**
+     * 读取指定域的域级配置结构化数据
+     * @param projectId 项目 ID
+     * @param domainId 域 ID
+     * @returns 结构化数据
+     */
+    readDomainSchema(projectId: string, domainId: string): Promise<any>;
+
+    /**
+     * 写入指定域的域级配置结构化数据
+     * @param projectId 项目 ID
+     * @param domainId 域 ID
+     * @param next 结构化数据
+     * @returns void
+     */
+    writeDomainSchema( projectId: string, domainId: string, nextVM: any ): Promise<void>;
 }

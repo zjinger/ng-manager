@@ -17,12 +17,6 @@
   </div>
   <div nz-row nzJustify="center" class="page-content">
     <div class="panel" nz-col nzXs="24" nzSm="24" nzMd="20" nzLg="16" nzXl="16">
-      <!-- <app-config-nav-component
-        [nodes]="nodes()"
-        [active]="activeNavId() ?? ''"
-        (nodeSelect)="onNodeSelect($event)"
-      ></app-config-nav-component> -->
-
       <app-config-nav-component
         [nodes]="navNodes()"
         [activeDomainId]="activeDomainId() ?? ''"
@@ -30,29 +24,13 @@
       >
       </app-config-nav-component>
       <div class="content">
-        <!-- <app-config-section-component
-          [fileNodes]="contentFileNodes()"
-          [schemas]="schemas()"
-          [valuesByType]="valuesByType()"
-          [vmOptionsByType]="vmOptionsByType()"
-          (valuesChange)="onValuesChange($event)"
+        <app-config-section-component
+          [schema]="domainSchema()?.schema"
+          [vm]="domainVM()"
+          (vmChange)="domainVM.set($event)"
+          [options]="domainSchema()?.options ?? {}"
         >
-        </app-config-section-component> -->
-        <app-config-domain-docs
-          [docs]="activeDocsMeta()"
-          [states]="docStates()"
-          (rawChange)="onRawChange($event)"
-        >
-        </app-config-domain-docs>
-        <!-- <app-config-change-bar-component
-          [dirty]="activeDirty()"
-          (diff)="onDiff()"
-          (reset)="onReset()"
-          (save)="saveActive()"
-        >
-        </app-config-change-bar-component> -->
-
-        <!-- (diff)="onDiffV2()" -->
+        </app-config-section-component>
         <app-config-change-bar-component
           [dirty]="domainDirty()"
           (reset)="onReset()"

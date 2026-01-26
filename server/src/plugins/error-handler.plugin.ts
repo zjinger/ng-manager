@@ -43,6 +43,9 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     CONFIG_WRITE_FAILED: 500, // 配置写入失败
     CONFIG_CONFLICT: 409, // 配置冲突
     CONFIG_OPEN_FAILED: 500, // 配置文件打开失败
+    CONFIG_SCHEMA_NOT_FOUND: 404, // 配置 schema 未找到
+    CONFIG_DOMAIN_NOT_FOUND: 404, // 配置 domain 未找到
+    CONFIG_DOC_NOT_FOUND: 404, // 配置 doc 未找到
 
     /* ---------------- Task / Process ---------------- */
     TASK_NOT_FOUND: 404,

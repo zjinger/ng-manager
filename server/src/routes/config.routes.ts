@@ -100,38 +100,19 @@ export default async function configRoutes(fastify: FastifyInstance) {
         return await fastify.core.config.apply(projectId, patch, { type, force: force === "1" || force === "true" || force === true });
     });
 
-    /**
-     * Reset（可选）
-     * - 这里的 reset 先做成“重新读取文件返回最新 workspace”
-     * - 真正的“重置为模板”后面再加（未来可选项）
-     */
-    // fastify.post<{ Body: { type?: string; projectRoot: string } }>("/reset", async (req) => {
-    //     const { projectRoot, type } = req.body;
-    //     if (!projectRoot) throw new AppError("BAD_REQUEST", "projectRoot is required");
-    // const provider = getProvider(type);
-
-    // const workspace = await provider.load(projectRoot);
-    // validateWorkspace(workspace);
-
-    // return {
-    //     filePath: workspace.filePath,
-    //     raw: workspace.raw,
-    // };
-    // });
-
     // GET catalog
     fastify.get("/catalog/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
         return await fastify.core.config.getCatalog(projectId);
     });
 
-    // GET doc
+    // GET read doc
     fastify.get("/readDoc/:projectId/:docId", async (req) => {
         const { projectId, docId } = req.params as { projectId: string; docId: string };
         return await fastify.core.config.readDoc(projectId, docId);
     });
 
-    // PUT doc
+    // POST write doc
     fastify.post("/writeDoc/:projectId/:docId", async (req) => {
         const { projectId, docId } = req.params as { projectId: string; docId: string };
         const body = req.body as any;
@@ -158,6 +139,29 @@ export default async function configRoutes(fastify: FastifyInstance) {
         } catch (e: any) {
             throw new AppError("EDITOR_LAUNCH_FAILED", e?.message || "openInEditor failed");
         }
+    });
+
+    // GET read schema
+    fastify.get("/readSchema/:projectId/:domainId", async (req) => {
+        const { projectId, domainId } = req.params as { projectId: string; domainId: string };
+        return await fastify.core.config.readDomainSchema(projectId, domainId);
+    });
+
+    // POST write schema
+    fastify.post("/writeSchema/:projectId/:domainId", async (req) => {
+        const { projectId, domainId } = req.params as { projectId: string; domainId: string };
+        const body = req.body as any;
+        const vm = body?.vm;
+        if (vm === undefined) {
+            throw new AppError("BAD_REQUEST", "missing body.vm");
+        }
+        return await fastify.core.config.writeDomainSchema(projectId, domainId, vm);
+    });
+
+    // GET domain schema doc
+    fastify.get("/getDomainSchema/:projectId/:domainId", async (req) => {
+        const { projectId, domainId } = req.params as { projectId: string; domainId: string };
+        return await fastify.core.config.getDomainSchemaDoc(projectId, domainId);
     });
 
 }

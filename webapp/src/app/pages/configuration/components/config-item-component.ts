@@ -30,20 +30,25 @@ import { ConfigSchemaItem } from '../models';
       <div class="control">
         @switch (item.type) {
           @case ('path'){
-             <input nz-input [ngModel]="value" (ngModelChange)="emit($event)" />
+            <input nz-input [ngModel]="value" (ngModelChange)="emit($event)" />
+          }
+          @case('string')
+          {
+            <input nz-input [ngModel]="value" (ngModelChange)="emit($event)" />
+          }
+          @case('file')
+          {
+            <input nz-input [ngModel]="value" (ngModelChange)="emit($event)" />
           }
           @case ('boolean'){
              <nz-switch [ngModel]="value" (ngModelChange)="emit($event)"> </nz-switch>
           }
           @case('select'){
             <nz-select [ngModel]="value" (ngModelChange)="emit($event)">
-              @for (opt of options; track opt) {
-                <nz-option [nzValue]="opt" [nzLabel]="opt"></nz-option>
+              @for (opt of options; track opt.value) {
+                <nz-option [nzValue]="opt.value" [nzLabel]="opt.label"></nz-option>
               }
             </nz-select>
-          }
-          @case('file'){
-
           }
         }
       </div>
@@ -60,13 +65,10 @@ import { ConfigSchemaItem } from '../models';
         background: var(--app-primary-2);
       }
       .meta {
-        .label {
-          font-weight: 500;
-        }
         .desc {
           font-size: 14px;
-          color: #888;
           margin-top: 4px;
+          color: var(--text-color-gray);
         }
       }
       .control {
@@ -85,7 +87,7 @@ export class ConfigItemComponent {
   @Input() item!: ConfigSchemaItem;
   @Input() value: any;
   @Output() valueChange = new EventEmitter<any>();
-  @Input() options: string[] = [];
+  @Input() options: { label: string; value: string }[] = [];
   emit(v: any) {
     this.valueChange.emit(v);
   }

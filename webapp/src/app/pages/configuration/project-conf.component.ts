@@ -16,15 +16,17 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzTypographyModule } from 'ng-zorro-antd/typography';
 
+import * as _ from 'lodash';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { firstValueFrom } from 'rxjs';
 import { ConfigChangeBarComponent } from './components/config-change-bar-component';
-import { ConfigDomainDocsComponent } from './components/config-domain-docs.component';
 import { ConfigNavComponent } from './components/config-nav-component';
+import { ConfigSectionComponent } from './components/config-section-component';
+import { DomainSchemaDoc } from './models';
 import { ResolvedDomain } from './models/config-domain.model';
 import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM } from './models/config-ui.model';
 import { ConfApiService, ConfigEditSessionStore } from './services';
 import { mapResolvedToNav } from './utils/map';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 
 @Component({
   selector: 'app-project-conf.component',
@@ -47,8 +49,8 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
     NzIconModule,
     ConfigNavComponent,
     ConfigChangeBarComponent,
-    ConfigDomainDocsComponent,
-    NzModalModule
+    NzModalModule,
+    ConfigSectionComponent
   ],
   templateUrl: './project-conf.component.html',
   styleUrls: ['./project-conf.component.less'],
@@ -75,6 +77,11 @@ export class ProjectConfComponent {
   // 当前 doc 内容（raw/json）
   docStates = signal<Record<string, DocStateVM>>({});
 
+  domainSchema = signal<DomainSchemaDoc | null>(null);
+  // 当前 domain 级 VM（由多个 doc 组装而成）
+  domainVM = signal<any | null>(null);
+  baselineDomainVM = signal<any | null>(null);
+
   activeDomain = computed(() => {
     const did = this.activeDomainId();
     return (this.catalog() ?? []).find(x => x.domain.id === did) ?? null;
@@ -97,15 +104,6 @@ export class ProjectConfComponent {
 
   // dirty：对 raw 做 dirty（json 可后续）
   domainDirty = computed(() => Object.values(this.docStates()).some(s => !!s.dirty));
-  /**
-   * 右侧上下文：Project/Target/Configuration 选择框（后续做 UI 时用）
-   * - 注意：schema 里 section.target 已经固定 build/serve，因此保存时不依赖 ctx.target
-   */
-  vmCtx = signal<{ project?: string; target?: string; configuration?: string }>({
-    project: undefined,
-    target: undefined,
-    configuration: undefined,
-  });
 
   constructor() {
     effect(() => {
@@ -125,7 +123,7 @@ export class ProjectConfComponent {
         const firstDomainId = catalog[0]?.domain?.id ?? "";
         if (firstDomainId) {
           this.activeDomainId.set(firstDomainId);
-          this.loadDomainDocs(firstDomainId);
+          this.loadDomainSchema(firstDomainId);
         }
 
       },
@@ -142,55 +140,35 @@ export class ProjectConfComponent {
    */
   onDomainSelect(domainId: string) {
     this.activeDomainId.set(domainId);
-    this.loadDomainDocs(domainId);
+
+    // 先只做 angular 示例
+    if (domainId === "angular") {
+      this.loadDomainSchema(domainId);
+    } else {
+      this.domainVM.set(null);
+    }
   }
 
-  async loadDomainDocs(domainId: string) {
+  async loadDomainSchema(domainId: string) {
     const pid = this.projectId();
-    const domain = (this.catalog() ?? []).find(x => x.domain.id === domainId);
-    if (!pid || !domain) return;
-
+    if (!pid) return;
     this.loading.set(true);
+
     try {
-      const nextStates: Record<string, DocStateVM> = {};
-      console.log('Loading docs for domain:', domainId, domain.docs);
-      for (const d of domain.docs) {
-        const docId = d.spec.id;
-        if (!d.exists) {
-          // missing=hide 的 doc 在 catalog 里通常不会出现；如果出现，按只读处理
-          nextStates[docId] = { docId, loading: false, exists: false, dirty: false };
-          continue;
-        }
-        try {
-          const r = await firstValueFrom(this.api.readDocV2(pid, docId));
-          const raw = r.raw ?? "";
-          nextStates[docId] = {
-            docId,
-            loading: false,
-            exists: true,
-            codec: r.codec,
-            relPath: r.relPath,
-            baselineRaw: raw,
-            raw,
-            json: r.data,
-            dirty: false,
-          };
-        } catch {
-          // 读取失败，标记 error
-          nextStates[docId] = { docId, loading: false, exists: false, error: '读取失败', dirty: false };
-          continue;
-        }
-      }
-      this.docStates.set(nextStates);
-      console.log('Loaded doc states:', nextStates);
+      const doc = await firstValueFrom(this.api.getDomainSchemas(pid, domainId));
+      this.domainSchema.set(doc);
+      this.domainVM.set(doc.vm);
+      this.baselineDomainVM.set(_.cloneDeep(doc.vm));
     } catch (e) {
       console.error(e);
-      this.msg.error("加载配置文件失败");
-      this.docStates.set({});
+      this.msg.error("加载配置模型失败");
+      this.domainVM.set(null);
+      this.baselineDomainVM.set(null);
     } finally {
       this.loading.set(false);
     }
   }
+
 
   onRawChange(e: { docId: string; raw: string }) {
     const map = this.docStates();

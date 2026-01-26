@@ -12,6 +12,9 @@ import { ConfigPatch, diffToText } from "./patch";
 import { ConfigSchema, ConfigViewModel, ConfigViewModelQuery, assertPatchBeforeMatch, getProviderByFramework } from "./providers";
 import { WorkspaceModel, validateWorkspace, writeWorkspace } from "./workspace";
 import { angularDomain, qualityDomain } from "./domains";
+import { AngularSchemaProvider, DomainSchemaDoc, DomainSchemaProvider, DomainSchemaRegistry, ConfigSchema as ConfigSchemaV2 } from "./schema";
+import { deepMerge } from "./schema/merge";
+import { DomainSchemaContext, DomainSchemaDiffResult } from "./schema/schema.types";
 
 export class ConfigServiceImpl implements ConfigService {
 
@@ -19,13 +22,17 @@ export class ConfigServiceImpl implements ConfigService {
     private readonly registry: ConfigRegistry = new ConfigRegistry()
     private readonly resolver: ConfigResolver = new ConfigResolver()
     private readonly store: ConfigDocumentStore = new ConfigDocumentStore()
+    private readonly schemaRegistry = new DomainSchemaRegistry();
+
     private catalogCache = new Map<string, { rootDir: string; catalog: ResolvedDomain[]; ts: number }>();
+
     private readonly CATALOG_TTL = 2000; // 2s，MVP 足够
     constructor(private projectService: ProjectService) {
         this.registry.registerMany([
             angularDomain,
             qualityDomain,
         ])
+        this.schemaRegistry.register(new AngularSchemaProvider());
     }
 
     async getCatalogDoc(projectId: string): Promise<ConfigCatalogDocV1> {
@@ -184,7 +191,6 @@ export class ConfigServiceImpl implements ConfigService {
     }
 
     async openDoc(projectId: string, docId: string): Promise<{ root: string; filePath: string }> {
-        console.log('ConfigServiceImpl.openDoc', projectId, docId);
         const project = await this.projectService.get(projectId);
         const catalog = this.getCachedCatalog(projectId, project.root);
         const rd = this.findResolvedDoc(catalog, docId);
@@ -194,6 +200,118 @@ export class ConfigServiceImpl implements ConfigService {
             throw new AppError("CONFIG_OPEN_FAILED", "config doc not found on disk", { docId, projectId, rootDir: project.root });
         }
         return { root: project.root, filePath: rd.absPath! };
+    }
+
+    async getDomainSchemaDoc(projectId: string, domainId: string): Promise<DomainSchemaDoc> {
+        const project = await this.projectService.get(projectId);
+
+        const provider = this.getProvider(domainId);
+        const docs = await this.getBaselineDocs(projectId, domainId);
+        const ctx = this.buildSchemaCtx(projectId, project.root);
+
+        const schema: ConfigSchemaV2 = provider.getSchema();
+        const vm = provider.assemble(docs, ctx);
+        console.log("ConfigServiceImpl.getDomainSchemaDoc: vm =", vm);
+        const options = provider.getOptions?.(docs, ctx, vm) ?? {};
+
+        return {
+            domainId,
+            schema,
+            vm,
+            options,
+            meta: {
+                // 可选：把 domain docs 的 relPath/codec/exist 也塞进去，UI 可展示“来源文件”
+            },
+        };
+    }
+
+    async readDomainSchema(projectId: string, domainId: string) {
+        const project = await this.projectService.get(projectId);
+        const provider = this.getProvider(domainId);
+        const docsData = await this.getBaselineDocs(projectId, domainId);
+        const ctx = this.buildSchemaCtx(projectId, project.root);
+        console.log('docsData', docsData);
+        return provider.assemble(docsData, ctx);
+    }
+
+    async writeDomainSchema(
+        projectId: string,
+        domainId: string,
+        nextVM: any
+    ) {
+        const project = await this.projectService.get(projectId);
+        const provider = this.getProvider(domainId);
+        const ctx = this.buildSchemaCtx(projectId, project.root);
+
+        const baselineDocs = await this.getBaselineDocs(projectId, domainId);
+        const baselineVM = provider.assemble(baselineDocs, ctx);
+
+        provider.validate?.(nextVM, ctx);
+
+        const diffRes: DomainSchemaDiffResult = provider.diff(baselineVM, nextVM, ctx);
+        const docPatch = diffRes.docPatch ?? {};
+        const filePatch = diffRes.filePatch ?? [];
+
+        // 1) 写回 domain docs（docId）
+        for (const [docId, patch] of Object.entries(docPatch)) {
+            const base = baselineDocs[docId];
+            if (base == null) {
+                // patch 指向不存在的 doc：明确抛错，避免 silent fail
+                throw new AppError("CONFIG_WRITE_FAILED", "docPatch refers to unknown baseline doc", {
+                    projectId,
+                    domainId,
+                    docId,
+                });
+            }
+            const nextDoc = deepMerge(base, patch);
+            await this.writeDoc(projectId, docId, nextDoc);
+        }
+
+        // 2) 写回引用文件（relPath）
+        for (const fp of filePatch) {
+            if (!fp?.relPath) {
+                throw new AppError("CONFIG_WRITE_FAILED", "filePatch.relPath is required", {
+                    projectId,
+                    domainId,
+                    fp,
+                });
+            }
+            const base = ctx.readFile(fp.relPath, fp.codec).data;
+            const nextFile = deepMerge(base, fp.patch);
+            await ctx.writeFile(fp.relPath, fp.codec, nextFile);
+        }
+
+        // 写完刷新缓存
+        this.catalogCache.delete(projectId);
+    }
+
+
+
+
+    private getProvider(domainId: string): DomainSchemaProvider {
+        const provider = this.schemaRegistry.get(domainId);
+        if (!provider) {
+            throw new AppError("CONFIG_SCHEMA_NOT_FOUND", "schema provider not found", { domainId });
+        }
+        return provider;
+    }
+
+    private async getDomain(projectId: string, domainId: string): Promise<ResolvedDomain> {
+        const catalog = await this.getCatalog(projectId);
+        const domain = catalog.find(d => d.domain.id === domainId);
+        if (!domain) throw new AppError("CONFIG_DOMAIN_NOT_FOUND", domainId);
+        return domain;
+    }
+
+    private async getBaselineDocs(projectId: string, domainId: string): Promise<Record<string, any>> {
+        const domain = await this.getDomain(projectId, domainId);
+        const docsData: Record<string, any> = {};
+        for (const d of domain.docs) {
+            if (!d.exists) continue;
+            const r = await this.readDoc(projectId, d.spec.id);
+            docsData[d.spec.id] = r.data;
+        }
+        return docsData;
     }
 
     /**
@@ -234,6 +352,31 @@ export class ConfigServiceImpl implements ConfigService {
             if (rd) return rd;
         }
         return undefined;
+    }
+
+
+    /**
+     * 构建 DomainSchemaContext
+     * @param projectId 项目 ID
+     * @param rootDir 项目根目录
+     * @returns DomainSchemaContext
+     */
+    private buildSchemaCtx(projectId: string, rootDir: string) {
+        return {
+            projectId,
+            rootDir,
+            readFile: (relPath: string, codec: ConfigCodec) => {
+                const absPath = path.resolve(rootDir, relPath);
+                const r = this.store.read(absPath, codec);
+                return { data: r.data, raw: r.raw, absPath };
+            },
+            writeFile: async (relPath: string, codec: ConfigCodec, next: any) => {
+                const absPath = path.resolve(rootDir, relPath);
+                await this.fileLock.withLock(absPath, async () => {
+                    this.store.write(absPath, codec, next, { format: "pretty" });
+                });
+            },
+        } satisfies DomainSchemaContext;
     }
 
 

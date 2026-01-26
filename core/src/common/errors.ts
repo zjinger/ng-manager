@@ -30,6 +30,9 @@ export type ErrorCode =
     // | "CONFIG_VALIDATION_FAILED"
     | "CONFIG_CONFLICT"
     | "CONFIG_OPEN_FAILED"
+    | "CONFIG_SCHEMA_NOT_FOUND"
+    | "CONFIG_DOMAIN_NOT_FOUND"
+    | "CONFIG_DOC_NOT_FOUND"
 
     // Task / Process
     | "TASK_NOT_FOUND"
