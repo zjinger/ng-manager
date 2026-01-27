@@ -41,6 +41,11 @@ export class ProjectApiService {
     });
   }
 
+  bootstrapPickRoot(input: { taskId: string; pickedRoot: string }): Observable<any> {
+    return this.api.post<any>("/api/projects/bootstrap/pickRoot", input);
+  }
+
+
   bootstrapByGit(draft: CreateProjectDraft): Observable<{ taskId: string; rootPath: string }> {
     return this.api.post("/api/projects/bootstrap/git", {
       repoUrl: draft.repoUrl,

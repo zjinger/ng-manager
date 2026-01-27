@@ -13,7 +13,8 @@ export type TaskEventType =
     | "exited" // 任务退出
     | "failed" // 任务失败
     | "bootstrapDone" // 任务关联的项目 bootstrap 完成
-    | "bootstrapFailed"; // 任务关联的项目 bootstrap 失败
+    | "bootstrapFailed" // 任务关联的项目 bootstrap 失败
+    | "bootstrapNeedPickRoot"  // 任务关联的项目 bootstrap 需要用户选择根目录
 
 export type LogType = "stdout" | "stderr" | "system";
 
@@ -76,6 +77,15 @@ export type TaskBootstrapFailedPayload = {
     reason: string;
 };
 
+export type TaskBootstrapNeedPickRootPayload = {
+    projectId: string;
+    taskId: string;
+    runId: string;
+    rootPath: string;        // clone 出来的仓库根目录
+    candidates: string[];    // 可选子目录（绝对路径 or 相对 rootPath）
+    reason: string;          // 需要选择根目录的原因描述
+}
+
 export type TaskEventPayloadMap = {
     snapshot: TaskSnapshotPayload;
     started: TaskStartedPayload;
@@ -84,6 +94,7 @@ export type TaskEventPayloadMap = {
     failed: TaskFailedPayload;
     bootstrapDone: TaskBootstrapDonePayload;
     bootstrapFailed: TaskBootstrapFailedPayload;
+    bootstrapNeedPickRoot: TaskBootstrapNeedPickRootPayload;
 };
 
 export type TaskEventMsg =

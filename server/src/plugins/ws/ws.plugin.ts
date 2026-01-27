@@ -74,6 +74,11 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         taskHandler.pushEvent("bootstrapFailed", e);
     }))
 
+    offs.push(fastify.core.events.on(Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT, (e) => {
+        taskHandler.pushEvent("bootstrapNeedPickRoot", e);
+    }))
+
+
     fastify.addHook("onClose", async () => {
         // 防止 dev 热重载 / 反复 register 导致重复推送
         offs.forEach((off) => {

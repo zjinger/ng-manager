@@ -26,7 +26,7 @@ import { inject } from '@angular/core';
         <nz-icon nzType="reload" nzTheme="outline" />
       </button>
     </ng-template>
-    <nz-radio-group [(ngModel)]="draft.preset" (ngModelChange)="presetChange($event)">
+    <nz-radio-group [(ngModel)]="draft.preset" (ngModelChange)="presetChange($event)" nzSize="large">
       <div nz-radio nzValue="angular">
         <label for="angular">Angular</label>
         <div class="hint">
@@ -104,8 +104,16 @@ import { inject } from '@angular/core';
     .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
     .k { opacity: .7; display:inline-block; width: 120px; }
     .opt { margin-top: 10px; }
+    nz-radio-group { width: 100%; }
     [nz-radio] {
         display: block;
+        padding: 12px 12px;
+        border-radius: 8px;
+        width: 100%;
+        margin:0;
+        &:hover{
+          background-color: var(--app-primary-3);
+        }
     }
     .hint {
       margin-left: 24px;
@@ -144,7 +152,7 @@ export class StepPresetComponent {
       nzWidth: '580px',
       nzClosable: false,
       nzData: {
-        cloneUrl: 'http://admin@192.168.1.10:7777/r/ais-broadcaster.git',// ssh://admin@192.168.1.10:29418/ais-broadcaster.git
+        cloneUrl: 'http://zhangj@192.168.1.10:7777/r/smartlogix-mini.git',//'http://admin@192.168.1.10:7777/r/ais-broadcaster.git',// ssh://admin@192.168.1.10:29418/ais-broadcaster.git
         isSaving: false
       },
       nzFooter: [
@@ -164,7 +172,6 @@ export class StepPresetComponent {
               return;
             }
             comp.nzModalData.isSaving = true;
-            console.log('Importing from git:', comp.nzModalData.cloneUrl);
             this.draft.repoUrl = url.trim();
             comp.nzModalData.isSaving = false;
             this.emit();

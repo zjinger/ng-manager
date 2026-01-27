@@ -14,7 +14,21 @@ const execFileAsync = promisify(execFile);
 
 type BootstrapCtx =
     | { kind: "cli"; root: string; name: string; overwrite: boolean; importAs: "create" }
-    | { kind: "git"; root: string; name: string; overwrite: boolean; importAs: "import"; repoUrl: string; branch?: string; };
+    | {
+        kind: "git";
+        root: string;
+        name: string;
+        overwrite: boolean;
+        importAs: "import";
+        repoUrl: string;
+        branch?: string;
+        /**
+         * git clone / import 的“项目根”不等于“可管理的工作区根
+         * 是否需要用户选择
+         */
+        needPick?: boolean;
+        candidates?: string[];
+    };
 
 function isValidNpmName(name: string): boolean {
     // Angular CLI 的 name 校验基本等同于 npm package name（简化版）
@@ -87,6 +101,8 @@ export class ProjectBootstrapService {
 
             const runId = this.runIdByTaskId.get(taskId) ?? _runId;
 
+            let shouldCleanup = true;
+
             // 失败：不 finalize，发 failed
             if (signal || exitCode !== 0) {
                 try {
@@ -102,13 +118,51 @@ export class ProjectBootstrapService {
                 return;
             }
 
-            // 成功：scan / create(import) / refresh tasks / done
             try {
-                // git 项目确保已 checkout
+                // 成功：git 项目先确保 checkout，再决定是否需要 pick
                 if (ctx.kind === "git") {
-                    await this.ensureGitCheckedOut(ctx.root, runId, ctx.branch,);
+                    await this.ensureGitCheckedOut(ctx.root, runId, ctx.branch);
+
+                    // 1) root 本身就是 workspace？直接导入
+                    const rootKind = detectWorkspaceKind(ctx.root);
+                    if (!rootKind) {
+                        // 2) 扫描候选子目录
+                        const candidates = scanWorkspaceCandidates(ctx.root, 3);
+
+                        if (candidates.length === 0) {
+                            throw new AppError(
+                                "NO_WORKSPACE_FOUND",
+                                "No Angular/Vue workspace found in repo. Please pick a sub folder manually.",
+                                { root: ctx.root }
+                            );
+                        }
+
+                        if (candidates.length === 1) {
+                            // 自动选择唯一候选
+                            ctx.root = candidates[0];
+                        } else {
+                            // 3) 多候选：进入 needPick 状态，并发事件给前端
+                            ctx.needPick = true;
+                            ctx.candidates = candidates;
+
+                            // 关键：进入 pick 状态就不要 cleanup
+                            shouldCleanup = false;
+
+                            this.events.emit(Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT, {
+                                taskId,
+                                runId,
+                                rootPath: ctx.root, // 仓库根
+                                candidates,
+                                reason: "多个工作区候选目录，请选择其中一个作为项目根目录",
+                            });
+                            return; // return 之后 finally 仍执行，用 shouldCleanup 控制
+                        }
+                    }
                 }
+
+                // === 走到这里，说明已经确定 ctx.root 是最终 workspace root ===
                 await this.project.scan(ctx.root);
+
                 const p =
                     ctx.importAs === "create"
                         ? await this.project.create({ name: ctx.name, root: ctx.root })
@@ -123,7 +177,6 @@ export class ProjectBootstrapService {
                     rootPath: ctx.root,
                 });
             } catch (e: any) {
-                // finalize 阶段失败也要发 failed，避免前端卡死
                 this.events.emit(Events.PROJECT_BOOTSTRAP_FAILED, {
                     taskId,
                     runId,
@@ -131,9 +184,10 @@ export class ProjectBootstrapService {
                     reason: e?.message ?? "finalize failed",
                 });
             } finally {
-                this.cleanup(taskId);
+                if (shouldCleanup) this.cleanup(taskId);
             }
         });
+
 
         // 任务失败：发 failed
         this.events.on(Events.TASK_FAILED, ({ taskId, runId: _runId, error }) => {
@@ -297,6 +351,60 @@ export class ProjectBootstrapService {
         return { ok: true, taskId, rootPath: normalizedRoot };
     }
 
+    async pickWorkspaceRoot(input: {
+        taskId: string;
+        pickedRoot: string; // 绝对路径
+    }): Promise<{ ok: boolean; projectId?: string; rootPath?: string; reason?: string }> {
+        const { taskId, pickedRoot } = input;
+        const ctx = this.ctxByTaskId.get(taskId);
+        if (!ctx || ctx.kind !== "git") {
+            throw new AppError("BOOTSTRAP_CTX_NOT_FOUND", "bootstrap ctx not found", { taskId });
+        }
+        if (!ctx.needPick || !ctx.candidates?.length) {
+            throw new AppError("BOOTSTRAP_NOT_IN_PICK_STATE", "bootstrap is not waiting for pick", { taskId });
+        }
+        const runId = this.runIdByTaskId.get(taskId);
+        if (!runId) {
+            throw new AppError("BOOTSTRAP_RUN_NOT_FOUND", "bootstrap runId not found", { taskId });
+        }
+        const normalizedPicked = path.resolve(pickedRoot);
+        const ok = ctx.candidates.some((c) => path.resolve(c) === normalizedPicked);
+        if (!ok) {
+            throw new AppError("INVALID_PICKED_ROOT", "pickedRoot is not in candidates", {
+                taskId,
+                pickedRoot: normalizedPicked,
+            });
+        }
+        // 选中后继续 finalize（和成功分支一致）
+        try {
+            ctx.root = normalizedPicked;
+            ctx.needPick = false;
+
+            await this.project.scan(ctx.root);
+
+            const p = await this.project.importProject({ name: ctx.name, root: ctx.root });
+            await this.task.refreshByProject(p.id);
+
+            this.events.emit(Events.PROJECT_BOOTSTRAP_DONE, {
+                taskId,
+                runId,
+                projectId: p.id,
+                rootPath: ctx.root,
+            });
+
+            return { ok: true, projectId: p.id, rootPath: ctx.root };
+        } catch (e: any) {
+            this.events.emit(Events.PROJECT_BOOTSTRAP_FAILED, {
+                taskId,
+                runId,
+                rootPath: ctx.root,
+                reason: e?.message ?? "pick finalize failed",
+            });
+            return { ok: false, reason: e?.message ?? "pick finalize failed" };
+        } finally {
+            this.cleanup(taskId);
+        }
+    }
 
     /* ---------------- helpers ---------------- */
 
@@ -435,4 +543,77 @@ export class ProjectBootstrapService {
             { root, preferredBranch }
         );
     }
+}
+
+
+function existsFile(p: string) {
+    try { return fs.existsSync(p); } catch { return false; }
+}
+
+function isWorkspaceAngular(dir: string) {
+    return existsFile(path.join(dir, "angular.json"));
+}
+
+function isWorkspaceVue(dir: string) {
+    // 先用“常见配置文件”作为 MVP 判定
+    if (existsFile(path.join(dir, "vue.config.js"))) return true;
+    if (existsFile(path.join(dir, "vite.config.ts"))) return true;
+    if (existsFile(path.join(dir, "vite.config.js"))) return true;
+    // 兜底：有 package.json + src/main.(ts|js)
+    if (existsFile(path.join(dir, "package.json"))) {
+        if (existsFile(path.join(dir, "src", "main.ts"))) return true;
+        if (existsFile(path.join(dir, "src", "main.js"))) return true;
+    }
+    return false;
+}
+
+function detectWorkspaceKind(dir: string): "angular" | "vue" | null {
+    if (isWorkspaceAngular(dir)) return "angular";
+    if (isWorkspaceVue(dir)) return "vue";
+    return null;
+}
+
+const DEFAULT_IGNORE_DIRS = new Set([
+    ".git",
+    "node_modules",
+    "dist",
+    "build",
+    "out",
+    "target",
+    ".angular",
+    ".nx",
+    ".turbo",
+]);
+
+function scanWorkspaceCandidates(root: string, maxDepth = 3): string[] {
+    const out: string[] = [];
+
+    const walk = (dir: string, depth: number) => {
+        if (depth > maxDepth) return;
+
+        const kind = detectWorkspaceKind(dir);
+        if (kind) {
+            out.push(dir);
+            // workspace 根目录通常不需要继续向下扫（避免把 apps/** 都塞进来）
+            return;
+        }
+
+        let ents: fs.Dirent[];
+        try {
+            ents = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+            return;
+        }
+
+        for (const e of ents) {
+            if (!e.isDirectory()) continue;
+            if (DEFAULT_IGNORE_DIRS.has(e.name)) continue;
+            walk(path.join(dir, e.name), depth + 1);
+        }
+    };
+
+    walk(root, 0);
+
+    // 去重 + 稳定排序
+    return Array.from(new Set(out)).sort((a, b) => a.localeCompare(b));
 }

@@ -242,5 +242,15 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const body = req.body as any;
         return await fastify.core.bootstrap.bootstrapByGit(body);
     });
+
+    fastify.post("/bootstrap/pickRoot", async (req) => {
+        const body = req.body as any;
+        const taskId = String(body?.taskId ?? "").trim();
+        const pickedRoot = String(body?.pickedRoot ?? "").trim();
+        if (!taskId) throw new AppError("BAD_REQUEST", "taskId is required");
+        if (!pickedRoot) throw new AppError("BAD_REQUEST", "pickedRoot is required");
+        const r = await fastify.core.bootstrap.pickWorkspaceRoot({ taskId, pickedRoot });
+        return r;
+    });
 }
 

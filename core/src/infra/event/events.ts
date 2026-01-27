@@ -1,4 +1,4 @@
-import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "../../protocol";
+import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "../../protocol";
 import { LogLine } from "../log/types";
 
 export const Events = {
@@ -19,8 +19,9 @@ export const Events = {
     SYSLOG_APPENDED: "syslog.appended",
 
     // bootstrap
-    PROJECT_BOOTSTRAP_DONE: "PROJECT_BOOTSTRAP_DONE",
-    PROJECT_BOOTSTRAP_FAILED: "PROJECT_BOOTSTRAP_FAILED",
+    PROJECT_BOOTSTRAP_DONE: "PROJECT_BOOTSTRAP_DONE", // 创建成功
+    PROJECT_BOOTSTRAP_FAILED: "PROJECT_BOOTSTRAP_FAILED", // 创建失败
+    PROJECT_BOOTSTRAP_NEED_PICK_ROOT: "PROJECT_BOOTSTRAP_NEED_PICK_ROOT",  // 需要用户选择根目录
 
 } as const;
 
@@ -44,4 +45,5 @@ export type CoreEventMap = {
 
     [Events.PROJECT_BOOTSTRAP_DONE]: TaskBootstrapDonePayload;// { taskId: string; runId: string; projectId: string; rootPath: string };
     [Events.PROJECT_BOOTSTRAP_FAILED]: TaskBootstrapFailedPayload;// { taskId: string; runId: string; rootPath: string; reason: string };
+    [Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT]: TaskBootstrapNeedPickRootPayload;
 };
