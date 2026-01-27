@@ -18,7 +18,8 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, NzCardModule, NzTagModule, NzTooltipModule, NzIconModule, NzButtonModule, TerminalViewComponent, NzDrawerModule],
   template: `
-  <nz-card nzTitle="摘要" nzSize="small" [nzExtra]="isCreating() ? logActions : undefined">
+  <!--[nzExtra]="isCreating() ? logActions : undefined"-->
+  <nz-card nzTitle="摘要" nzSize="small" [nzExtra]="logActions">
     <div class="item"><span class="k">名称</span><span class="v">{{draft.name || '-'}}</span></div>
     <div class="item"><span class="k">路径</span><span class="v mono">{{draft.rootPath || '-'}}</span></div>
     <div class="item"><span class="k">包管理器</span><span class="v">{{draft.packageManager}}</span></div>

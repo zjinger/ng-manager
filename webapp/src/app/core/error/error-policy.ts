@@ -20,6 +20,7 @@ export const enum ErrorPolicyCode {
     INVALID_NAME = "INVALID_NAME",
     TARGET_EXISTS = "TARGET_EXISTS",
     INVALID_REPO_URL = "INVALID_REPO_URL",
+    GIT_CHECKOUT_FAILED = "GIT_CHECKOUT_FAILED",
 
     /** project analysis */
     PROJECT_ANGULAR_JSON_INVALID = "PROJECT_ANGULAR_JSON_INVALID",
@@ -148,6 +149,10 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     INVALID_REPO_URL: {
         level: "toast",
         message: "无效的仓库地址",
+    },
+    GIT_CHECKOUT_FAILED: {
+        level: "toast",
+        message: "Git 检出失败",
     },
     /** project analysis */
     PROJECT_ANGULAR_JSON_INVALID: {

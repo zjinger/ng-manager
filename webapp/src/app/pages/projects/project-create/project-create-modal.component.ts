@@ -194,24 +194,25 @@ export class ProjectCreateModal implements OnInit {
       return;
     }
     if (this.creating()) return;
+    let nzTitle = '确认创建项目？', nzContent = `请确认目标路径 ${d.rootPath}，确定要创建该项目吗？`, nzOkText = '确认创建', nzOkDanger = false;
     if (d.overwriteIfExists) {
-      // 再次提示是否覆盖
-      const modalRef = this.modal.confirm({
-        nzTitle: '确认覆盖已存在的项目？',
-        nzContent: `请确认目标路径 ${d.rootPath}，创建时会覆盖原有数据，且不可恢复，确定要继续吗？`,
-        nzOkDanger: true,
-        nzOkText: '确认覆盖',
-        nzCancelText: '取消',
-        nzCentered: true,
-        nzOnOk: () => {
-          this.doCreate(d);
-          modalRef.close();
-        },
-      })
+      nzTitle = '确认覆盖已存在的项目？';
+      nzContent = `请确认目标路径 ${d.rootPath}，创建时会覆盖原有数据，且不可恢复，确定要继续吗？`;
+      nzOkText = '确认覆盖';
+      nzOkDanger = true;
     }
-    else {
-      this.doCreate(d);
-    }
+    const modalRef = this.modal.confirm({
+      nzTitle,
+      nzContent,
+      nzOkText,
+      nzCancelText: '取消',
+      nzOkDanger,
+      nzCentered: true,
+      nzOnOk: () => {
+        this.doCreate(d);
+        modalRef.close();
+      },
+    })
   }
 
   private async doCreate(d: CreateProjectDraft) {

@@ -1,4 +1,8 @@
 // core/src/domain/project/project-bootstrap.service.ts
+import * as fs from "fs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import * as path from "path";
 import { AppError } from "../../common/errors";
 import { uid } from "../../common/id";
 import type { IEventBus } from "../../infra/event/event-bus";
@@ -6,12 +10,11 @@ import { Events, type CoreEventMap } from "../../infra/event/events";
 import type { TaskService } from "../task/task.service";
 import type { TaskDefinition } from "../task/task.types";
 import type { ProjectService } from "./project.service";
-import * as path from "path";
-import * as fs from "fs";
+const execFileAsync = promisify(execFile);
 
 type BootstrapCtx =
     | { kind: "cli"; root: string; name: string; overwrite: boolean; importAs: "create" }
-    | { kind: "git"; root: string; name: string; overwrite: boolean; importAs: "import"; repoUrl: string };
+    | { kind: "git"; root: string; name: string; overwrite: boolean; importAs: "import"; repoUrl: string; branch?: string; };
 
 function isValidNpmName(name: string): boolean {
     // Angular CLI 的 name 校验基本等同于 npm package name（简化版）
@@ -47,6 +50,18 @@ function splitRelPathName(inputName: string) {
     const relDir = parts.join("/"); // 相对 parentDir 的目录：workspace-test/test
 
     return { raw, norm, parts, projectName, relDir };
+}
+
+/**
+ * 从 Git 仓库 URL 推导仓库名
+ * @param repoUrl
+ * @returns 
+ */
+function getRepoName(repoUrl: string): string {
+    const cleaned = repoUrl.replace(/[#?].*$/, "").replace(/\.git$/i, "");
+    const seg = cleaned.split("/").pop();
+    if (!seg) throw new AppError("INVALID_REPO_URL", "cannot infer repo name", { repoUrl });
+    return seg;
 }
 
 export class ProjectBootstrapService {
@@ -89,8 +104,11 @@ export class ProjectBootstrapService {
 
             // 成功：scan / create(import) / refresh tasks / done
             try {
+                // git 项目确保已 checkout
+                if (ctx.kind === "git") {
+                    await this.ensureGitCheckedOut(ctx.root, runId, ctx.branch,);
+                }
                 await this.project.scan(ctx.root);
-
                 const p =
                     ctx.importAs === "create"
                         ? await this.project.create({ name: ctx.name, root: ctx.root })
@@ -180,7 +198,7 @@ export class ProjectBootstrapService {
         const spec: TaskDefinition = {
             id: taskId,
             projectId: "__system__",
-            projectName, // ✅显示/归档用最后一段
+            projectName, // 显示/归档用最后一段
             projectRoot: normalizedRoot,
             name: fw === "angular" ? `Scaffold Angular: ${relDir}` : `Scaffold Vue: ${relDir}`,
             kind: "custom",
@@ -204,11 +222,10 @@ export class ProjectBootstrapService {
         return { ok: true, taskId, rootPath: normalizedRoot };
     }
 
-
     async bootstrapByGit(input: {
         repoUrl: string;
         parentDir: string;
-        name: string;
+        name: string;               // 作为“父目录 / 分组目录”
         overwriteIfExists?: boolean;
         branch?: string;
         depth?: number;
@@ -216,62 +233,70 @@ export class ProjectBootstrapService {
         const repoUrl = (input.repoUrl || "").trim();
         if (!repoUrl) throw new AppError("INVALID_REPO_URL", "repoUrl is required");
 
-        const name = (input.name || "").trim();
-        if (!name) throw new AppError("INVALID_NAME", "name is required");
+        const containerName = (input.name || "").trim();
+        if (!containerName) throw new AppError("INVALID_NAME", "name is required");
 
         const parentDir = path.resolve(input.parentDir || "");
         if (!parentDir) throw new AppError("INVALID_PARENT_DIR", "parentDir is required");
 
-        const root = path.resolve(parentDir, name);
+        // 1) 推导仓库名
+        const repoName = getRepoName(repoUrl);
 
+        // 2) 计算目录
+        const baseDir = path.resolve(parentDir, containerName); // 分组目录
+        const root = path.join(baseDir, repoName);              // 最终仓库目录
+
+        // 3) 校验 / 准备目录
         const chk = await this.project.checkRoot(root);
         if (!chk.ok) return chk;
 
         const normalizedRoot = chk.root;
 
-        // git clone：目标目录必须不存在（或 overwrite 删掉）
+        // 先确保 baseDir 存在（git 不会建多级父目录）
+        if (!fs.existsSync(baseDir)) {
+            fs.mkdirSync(baseDir, { recursive: true });
+        }
+
+        // git clone：目标仓库目录必须不存在
         this.prepareDirForClone(normalizedRoot, !!input.overwriteIfExists);
 
+        // 4) 构造 git clone
         const taskId = `bootstrap:${uid()}`;
-
-        // const args: string[] = [];
-        // if (input.branch) args.push(`--branch "${input.branch}"`);
-        // if (input.depth && input.depth > 0) args.push(`--depth ${input.depth}`);
-        // args.push(`"${repoUrl}" "${normalizedRoot}"`);
-        // const command = `git clone ${args.join(" ")}`;
-
         const args: string[] = ["clone"];
+
         if (input.branch) args.push("--branch", input.branch);
         if (input.depth && input.depth > 0) args.push("--depth", String(input.depth));
+
         args.push(repoUrl, normalizedRoot);
 
         const spec: TaskDefinition = {
             id: taskId,
             projectId: "__system__",
-            projectName: name,
+            projectName: repoName,             // 项目名 = 仓库名
             projectRoot: normalizedRoot,
-            name: `Git clone: ${name}`,
+            name: `Git clone: ${repoName}`,
             kind: "custom",
-            command: 'git',
+            command: "git",
             args,
-            cwd: parentDir,
+            cwd: baseDir,                      // 在父目录下 clone
             shell: false,
         };
 
         this.ctxByTaskId.set(taskId, {
             kind: "git",
             root: normalizedRoot,
-            name,
+            name: repoName,
             overwrite: !!input.overwriteIfExists,
             importAs: "import",
             repoUrl,
+            branch: input.branch,
         });
 
         this.task.registerSpec(spec);
         await this.task.start(taskId);
-
         return { ok: true, taskId, rootPath: normalizedRoot };
     }
+
 
     /* ---------------- helpers ---------------- */
 
@@ -346,5 +371,68 @@ export class ProjectBootstrapService {
             `--default --name ${opts.projectName} ${pmArg}`.trim();
 
         return { command, cwd: opts.parentDir };
+    }
+
+    private async gitExec(root: string, args: string[]): Promise<void> {
+        // 用 execFile 避免 shell quoting/pty 干扰；finalize 阶段不走 TaskService
+        await execFileAsync("git", ["-C", root, ...args], {
+            windowsHide: true,
+            maxBuffer: 10 * 1024 * 1024,
+        });
+    }
+
+    private async ensureGitCheckedOut(root: string, runId: string, preferredBranch?: string): Promise<void> {
+        // 1) HEAD 是否已有效（已 checkout）
+        try {
+            await this.gitExec(root, ["rev-parse", "--verify", "HEAD"]);
+            return;
+        } catch {
+            // ignore
+        }
+
+        // 2) 尝试补救 checkout
+        const candidates = preferredBranch ? [preferredBranch] : ["main", "master"];
+
+        this.events.emit(Events.SYSLOG_APPENDED, {
+            entry: {
+                ts: Date.now(),
+                level: "warn",
+                source: "system",
+                scope: "project",
+                refId: runId,
+                text: `[Git] clone succeeded but HEAD invalid, trying checkout (${candidates.join(", ")})`,
+            }
+        });
+
+        // 确保有远端 refs（避免某些环境下没有 fetch）
+        // clone 通常已经有 origin，但这里不强依赖
+        try {
+            await this.gitExec(root, ["fetch", "--all", "--prune"]);
+        } catch {
+            // ignore
+        }
+
+        for (const br of candidates) {
+            // 远端分支存在？
+            try {
+                await this.gitExec(root, ["show-ref", "--verify", "--quiet", `refs/remotes/origin/${br}`]);
+            } catch {
+                continue;
+            }
+
+            // 创建本地分支并切换到 origin/<br>
+            await this.gitExec(root, ["checkout", "-B", br, `origin/${br}`]);
+
+            // 再验证一次 HEAD
+            await this.gitExec(root, ["rev-parse", "--verify", "HEAD"]);
+            return;
+        }
+
+        // 3) 仍失败：明确失败（不要 import/create）
+        throw new AppError(
+            "GIT_CHECKOUT_FAILED",
+            "GIT_CHECKOUT_FAILED: remote HEAD invalid, cannot checkout any branch. Please specify branch (e.g. main).",
+            { root, preferredBranch }
+        );
     }
 }

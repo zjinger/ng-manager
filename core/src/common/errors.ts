@@ -17,6 +17,7 @@ export type ErrorCode =
     | "TARGET_EXISTS"
     | "INVALID_REPO_URL"
     | "INVALID_PARENT_DIR"
+    | "GIT_CHECKOUT_FAILED"
 
     // Project Analysis
     | "PROJECT_ANGULAR_JSON_INVALID"

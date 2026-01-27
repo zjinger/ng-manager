@@ -29,6 +29,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     TARGET_EXISTS: 409, // 目标路径已存在
     INVALID_REPO_URL: 400, // 无效的仓库地址
     INVALID_PARENT_DIR: 400, // 无效的父目录
+    GIT_CHECKOUT_FAILED: 500, // Git 检出失败
 
 
     /* ---------------- Project Analysis ---------------- */

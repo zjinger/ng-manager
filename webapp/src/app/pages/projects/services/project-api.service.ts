@@ -47,6 +47,11 @@ export class ProjectApiService {
       parentDir: draft.parentDir,
       name: draft.name,
       rootPath: draft.rootPath,
+      overwriteIfExists: draft.overwriteIfExists,
+      initGit: draft.initGit,
+      initialCommitMessage: draft.initialCommitMessage,
+      packageManager: draft.packageManager,
+      skipOnboarding: draft.skipOnboarding ?? true,
     });
   }
 

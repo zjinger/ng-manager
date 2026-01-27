@@ -42,8 +42,8 @@ import { UiNotifierService } from '@app/core';
                   </nz-badge>
                 </span>
             </div>
-            <div class="description">
-              <span>{{ project?.description }}</span>
+            <div class="root-path">
+              <span>{{ project?.root }}</span>
             </div>
           </div>
         </div>
@@ -102,12 +102,15 @@ import { UiNotifierService } from '@app/core';
             flex-direction: column;
             align-items: stretch;
             justify-content: center;
+            gap: 4px;
             .name{
               flex: auto 0 0;
               nz-badge{ margin-left:8px;}
             }
-            .description{
+            .root-path{
               flex:auto 0 0;
+              opacity:0.7;
+              font-size:14px;
             }
           }
         }

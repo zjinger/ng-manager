@@ -11,8 +11,9 @@ export interface CreateProjectDraft {
     packageManager: PackageManager;
     repoUrl?: string; // Git 仓库地址
 
-    overwriteIfExists: boolean;
-    skipOnboarding: boolean;
+    overwriteIfExists: boolean; // 覆盖已存在目录
+    
+    skipOnboarding: boolean; // 跳过新手引导
 
     initGit: boolean;
     initialCommitMessage?: string;
@@ -24,15 +25,8 @@ export interface CreateProjectDraft {
     importDockerComposeTasks: boolean;
     generateCommonTasks: boolean;
 
-    // featureTasks: boolean;
-    // featureProcesses: boolean;
-    // featureLogs: boolean;
-    // featureTerminal: boolean;
-
     pinFavorite: boolean;
-    // openAfterCreate: 'tasks' | 'home';
     defaultTaskName?: string;
-
     // cli 相关
     cliFramework?: "angular" | "vue";
     cliTool?: "@angular/cli" | "@vue/cli" | "create-vue" | "custom";
@@ -42,7 +36,7 @@ export interface CreateProjectDraft {
 export function createEmptyDraft(): CreateProjectDraft {
     return {
         preset: "angular", // 默认预设
-        name: 'test2',
+        name: '',
         parentDir: '',
         rootPath: '',
         packageManager: 'auto',
@@ -54,12 +48,7 @@ export function createEmptyDraft(): CreateProjectDraft {
         importMakefileTasks: false,
         importDockerComposeTasks: false,
         generateCommonTasks: true,
-        // featureTasks: true,
-        // featureProcesses: true,
-        // featureLogs: true,
-        // featureTerminal: false,
         pinFavorite: false,
-        // openAfterCreate: 'tasks',
         defaultTaskName: '',
 
         cliFramework: "angular",

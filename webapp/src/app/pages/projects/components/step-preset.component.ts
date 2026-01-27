@@ -39,12 +39,12 @@ import { inject } from '@angular/core';
           适用于使用 Vue 3 框架开发的项目，支持 Vite 和 Vue CLI 相关任务和配置。
         </div>
       </div>
-      <div nz-radio nzValue="manual">
+      <!-- <div nz-radio nzValue="manual">
         <label for="manual">手动</label>
         <div class="hint">
           不使用任何预设，手动配置项目功能和任务。
         </div>
-      </div>
+      </div> -->
       <div nz-radio nzValue="git">
         <label for="git">Git导入</label>
         <div class="hint">
