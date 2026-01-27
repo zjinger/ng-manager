@@ -19,7 +19,7 @@
     } @else {
       @if (errorMsg()) {
         <div class="error">
-          <span>{{ errorMsg() }}</span>
+          <p>{{ errorMsg() }}</p>
           <button nz-button nzType="link" nzSize="small" (click)="reload(true)">重试</button>
         </div>
       } @else {

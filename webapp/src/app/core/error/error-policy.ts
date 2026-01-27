@@ -59,6 +59,9 @@ export const enum ErrorPolicyCode {
     WIDGET_NOT_FOUND = "WIDGET_NOT_FOUND",
     WIDGET_LOCKED = "WIDGET_LOCKED",
 
+    /* ---------- dashboard rss---------- */
+    RSS_FETCH_FAILED = "RSS_FETCH_FAILED",
+    INVALID_RSS_URL = "INVALID_RSS_URL",
 
     /* ---------- protocol / dev ---------- */
     INVALID_JSON = "INVALID_JSON",
@@ -138,7 +141,7 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "配置备份未找到",
     },
-    
+
     CONFIG_READ_FAILED: {
         level: "toast",
         message: "配置读取失败，文件可能已损坏",
@@ -260,6 +263,16 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     WIDGET_LOCKED: {
         level: "toast",
         message: "部件被锁定，无法修改",
+    },
+
+    /* ---------- dashboard rss ---------- */
+    RSS_FETCH_FAILED: {
+        level: "toast",
+        message: "RSS 源获取失败",
+    },
+    INVALID_RSS_URL: {
+        level: "toast",
+        message: "无效的 RSS 源地址",
     },
 
     /* ---------- protocol / dev ---------- */

@@ -69,6 +69,7 @@ export class NewsFeedWidgetComponent implements OnChanges {
 
     this.rss.preview(url, { limit, cacheSec, force }).subscribe({
       next: (data) => {
+        this.loading.set(false);
         this.feedTitle.set(data.title ?? '');
         this.feedItems.set(data.items ?? []);
         if (this.feedTitle()) {
@@ -78,8 +79,8 @@ export class NewsFeedWidgetComponent implements OnChanges {
       },
       error: (err) => {
         this.errorMsg.set(err?.error?.detail || err?.message || '加载失败');
-      },
-      complete: () => this.loading.set(false),
+        this.loading.set(false);
+      }
     });
   }
 

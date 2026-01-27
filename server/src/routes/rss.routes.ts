@@ -6,7 +6,7 @@ type CacheEntry = { expireAt: number; payload: any };
 const cache = new Map<string, CacheEntry>();
 
 const parser = new Parser({
-    timeout: 8000, // 8s
+    timeout: 15000, // 15s
 });
 export default async function rssRoutes(app: FastifyInstance) {
     app.get("/preview", async (req) => {
@@ -20,8 +20,8 @@ export default async function rssRoutes(app: FastifyInstance) {
         const limit = Math.min(Math.max(parseInt(q.limit ?? "20", 10) || 20, 1), 100);
         // force fetch, default false
         const force = (q.force ?? "0") === "1";
-        // cache duration between 10 and 3600 seconds, default 300
-        const cacheSec = Math.min(Math.max(parseInt(q.cacheSec ?? "300", 10) || 300, 10), 3600);
+        // cache duration between 30 and 3600 seconds, default 2400
+        const cacheSec = Math.min(Math.max(parseInt(q.cacheSec ?? "2400", 10) || 2400, 30), 3600);
         const key = `${url}|${limit}`;
         const now = Date.now();
         if (!force) {
