@@ -204,11 +204,16 @@ export class ProjectBootstrapService {
 
         const taskId = `bootstrap:${uid()}`;
 
-        const args: string[] = [];
-        if (input.branch) args.push(`--branch "${input.branch}"`);
-        if (input.depth && input.depth > 0) args.push(`--depth ${input.depth}`);
-        args.push(`"${repoUrl}" "${normalizedRoot}"`);
-        const command = `git clone ${args.join(" ")}`;
+        // const args: string[] = [];
+        // if (input.branch) args.push(`--branch "${input.branch}"`);
+        // if (input.depth && input.depth > 0) args.push(`--depth ${input.depth}`);
+        // args.push(`"${repoUrl}" "${normalizedRoot}"`);
+        // const command = `git clone ${args.join(" ")}`;
+
+        const args: string[] = ["clone"];
+        if (input.branch) args.push("--branch", input.branch);
+        if (input.depth && input.depth > 0) args.push("--depth", String(input.depth));
+        args.push(repoUrl, normalizedRoot);
 
         const spec: TaskDefinition = {
             id: taskId,
@@ -217,9 +222,10 @@ export class ProjectBootstrapService {
             projectRoot: normalizedRoot,
             name: `Git clone: ${name}`,
             kind: "custom",
-            command,
+            command: 'git',
+            args,
             cwd: parentDir,
-            shell: true,
+            shell: false,
         };
 
         this.ctxByTaskId.set(taskId, {

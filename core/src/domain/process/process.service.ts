@@ -1,6 +1,5 @@
 import { AppError } from "../../common/errors";
-import type { IProcessDriver } from "./process.driver";
-import type { SpawnOptions, SpawnedProcess } from "./process.types";
+import { IProcessDriver , SpawnOptions, SpawnedProcess } from "../../infra/process";
 
 export class ProcessService {
     constructor(private driver: IProcessDriver) { }
@@ -13,7 +12,7 @@ export class ProcessService {
             return await this.driver.spawn(command, args, opts);
         } catch (e: any) {
             if (e?.code === "ENOENT") {
-                throw new AppError("EDITOR_NOT_FOUND", `Command not found: ${command}`, {
+                throw new AppError("COMMAND_NOT_FOUND", `Command not found: ${command}`, {
                     command,
                     args,
                     cwd: opts.cwd,

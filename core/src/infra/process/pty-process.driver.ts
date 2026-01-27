@@ -1,9 +1,15 @@
-import type { IProcessDriver } from "../../domain/process/process.driver";
-import type { SpawnOptions, SpawnedProcess } from "../../domain/process/process.types";
+import type { IProcessDriver } from "./process.driver";
+import type { SpawnOptions, SpawnedProcess } from "./process.types";
 import * as pty from "node-pty";
 
 function mergeEnv(env?: Record<string, string>) {
     return { ...process.env, ...(env || {}) } as Record<string, string>;
+}
+
+function quoteWin(arg: string) {
+    // 用于 cmd.exe /c 拼接：含空格/引号才加引号
+    if (!/[ \t"]/g.test(arg)) return arg;
+    return `"${arg.replace(/"/g, '\\"')}"`;
 }
 
 function buildShellCommand(command: string) {
@@ -18,7 +24,6 @@ function buildShellCommand(command: string) {
             args: ["/d", "/s", "/c", command],
         };
     }
-
     // mac/linux
     // -l: login shell（可选）
     // -c: 执行命令
@@ -28,23 +33,58 @@ function buildShellCommand(command: string) {
     };
 }
 
+const isWin = process.platform === "win32";
+
 export class PtyProcessDriver implements IProcessDriver {
     async spawn(command: string, args: string[], opts: SpawnOptions): Promise<SpawnedProcess> {
-        // 这里的 IProcessDriver.spawn 签名是 (command,args)
-        // 对于 PTY，忽略 args，把 command 当“整段命令”
         const cols = Math.max(10, opts.cols ?? 140);
         const rows = Math.max(5, opts.rows ?? 40);
 
-        const { file, args: shellArgs } = buildShellCommand(command);
+        const env = mergeEnv(opts.env);
+        const useShell = opts.shell ?? false;
 
-        const p = pty.spawn(file, shellArgs, {
-            name: "xterm-256color",
-            cols,
-            rows,
-            cwd: opts.cwd,
-            env: mergeEnv(opts.env),
-        });
+        let p: pty.IPty;
 
+        if (useShell) {
+            // shell 模式：把 command + args 拼成一行交给 cmd/bash
+            const commandLine = isWin
+                ? [command, ...(args ?? [])].map(quoteWin).join(" ")
+                : [command, ...(args ?? [])].join(" ");
+
+            const { file, args: shellArgs } = buildShellCommand(commandLine);
+            p = pty.spawn(file, shellArgs, {
+                name: "xterm-256color",
+                cols,
+                rows,
+                cwd: opts.cwd,
+                env,
+            });
+        } else {
+            // 非 shell：必须把 args 原样传给 node-pty
+            if (isWin) {
+                // Windows：用 cmd.exe 执行，避免 node-pty 找不到 git.exe
+                const commandLine = [command, ...(args ?? [])].map(quoteWin).join(" ");
+                const { file, args: shellArgs } = buildShellCommand(commandLine);
+                p = pty.spawn(file, shellArgs, {
+                    name: "xterm-256color",
+                    cols,
+                    rows,
+                    cwd: opts.cwd,
+                    env,
+                });
+            } else {
+                // mac/linux：直接 file+args
+                p = pty.spawn(command, args ?? [], {
+                    name: "xterm-256color",
+                    cols,
+                    rows,
+                    cwd: opts.cwd,
+                    env,
+                });
+            }
+        }
+
+        // === 下面保持你原来的封装 ===
         const dataHandlers = new Set<(s: string) => void>();
         const exitHandlers = new Set<(code: number | null, signal: string | null) => void>();
 
@@ -58,7 +98,6 @@ export class PtyProcessDriver implements IProcessDriver {
             for (const h of exitHandlers) h(code, signal);
         });
 
-        // pipe 协议兼容：stdout/stderr 不区分，统一走 stdout
         const stdoutHandlers = new Set<(b: Buffer) => void>();
         const stderrHandlers = new Set<(b: Buffer) => void>();
 
@@ -70,13 +109,12 @@ export class PtyProcessDriver implements IProcessDriver {
         return {
             pid: p.pid,
 
-            write: (data) => { try { p.write(data); } catch { } },
+            write: (data) => {
+                try { p.write(data); } catch { }
+            },
 
             interrupt: () => {
-                try {
-                    // Ctrl+C
-                    p.write("\x03");
-                } catch { }
+                try { p.write("\x03"); } catch { }
             },
 
             kill: () => {
@@ -88,10 +126,11 @@ export class PtyProcessDriver implements IProcessDriver {
             },
 
             onStdout: (cb) => stdoutHandlers.add(cb),
-            onStderr: (cb) => stderrHandlers.add(cb), // PTY 不区分，留空也行
+            onStderr: (cb) => stderrHandlers.add(cb), // PTY 不区分
             onExit: (cb) => exitHandlers.add(cb),
 
             onData: (cb) => dataHandlers.add(cb),
         };
     }
 }
+

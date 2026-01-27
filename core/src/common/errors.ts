@@ -42,6 +42,7 @@ export type ErrorCode =
     | "PROCESS_SPAWN_FAILED"
     | "TASK_SPEC_NOT_FOUND"
     | "TASK_NOT_RUNNABLE"
+    | "COMMAND_NOT_FOUND"
     // WS 
     | "BAD_JSON"
     | "BAD_MSG"

@@ -55,6 +55,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     TASK_NOT_RUNNABLE: 400,
     RUN_NOT_FOUND: 404,
     TASK_ID_REQUIRED: 400,
+    COMMAND_NOT_FOUND: 404,
 
     // WS 
     BAD_JSON: 400,

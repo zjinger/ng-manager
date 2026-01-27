@@ -1,7 +1,7 @@
 
 import { spawn } from "child_process";
-import type { IProcessDriver } from "../../domain/process";
-import type { SpawnOptions, SpawnedProcess } from "../../domain/process";
+import { IProcessDriver } from "./process.driver";
+import { SpawnedProcess, SpawnOptions } from "./process.types";
 
 /**
  * NodeProcessDriver

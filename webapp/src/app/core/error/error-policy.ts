@@ -9,6 +9,7 @@ export const enum ErrorPolicyCode {
     TASK_NOT_RUNNABLE = "TASK_NOT_RUNNABLE",
     RUN_NOT_FOUND = "RUN_NOT_FOUND",
     TASK_ID_REQUIRED = "TASK_ID_REQUIRED",
+    COMMAND_NOT_FOUND = "COMMAND_NOT_FOUND",
 
     /* ---------- project ---------- */
     PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND",
@@ -105,6 +106,11 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     TASK_ID_REQUIRED: {
         level: "toast",
         message: "任务 ID 为必填项",
+    },
+    
+    COMMAND_NOT_FOUND: {
+        level: "toast",
+        message: "命令未找到，请确保已正确安装所需软件",
     },
 
     /* ---------- project ---------- */

@@ -3,7 +3,8 @@ import { uid } from "../../common/id";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { Events, type CoreEventMap } from "../../infra/event/events";
 import type { ILogStore } from "../../infra/log/log.store";
-import { ProcessService, ProcHandle, SpawnedProcess } from "../process";
+import { ProcessService, } from "../process";
+import { type ProcHandle, SpawnedProcess } from "../../infra/process";
 import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
 import type { TaskRuntime, TaskDefinition, TaskRow } from "./task.types";
 import type { TaskService } from "./task.service";
@@ -69,27 +70,30 @@ export class TaskServiceImpl implements TaskService {
         this.trackRun(taskId, runId);
 
         // syslog
+        const cmdStr =
+            `${spec.command}${(spec.args?.length ? " " + spec.args.join(" ") : "")}`;
+
         this.sysLog.append({
             ts: Date.now(),
             level: "info",
             source: "system",
             scope: "task",
             refId: runId,
-            text: `[Task] ${spec.projectRoot}: ${spec.command || spec.name}`,
+            text: `[Task] ${spec.projectRoot}: ${cmdStr} started`,
         });
         this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
         let p: SpawnedProcess;
         try {
             // node-pty driver：这里的 command 仍然是整段字符串
             // 先给默认 cols/rows，后续前端会 task.resize(taskId, cols, rows)
-            p = await this.proc.spawn(spec.command, [], {
+            p = await this.proc.spawn(spec.command, spec.args ?? [], {
                 cwd: spec.cwd!,
                 env: spec.env,
-                shell: spec.shell ?? true,
+                shell: spec.shell ?? false,
                 cols: 140,
                 rows: 40,
             });
-        } catch (e: any) {
+        } catch (e: AppError | any) {
             // spawn 失败：runtime 置失败 + syslog + 事件
             const cur = this.runtimes.get(runId);
             if (cur) {
@@ -115,6 +119,7 @@ export class TaskServiceImpl implements TaskService {
                 runId,
                 error: e?.message ?? String(e),
             });
+            console.error("Task spawn failed:", e);
             throw e;
         }
         // 记录 pid + proc handle
@@ -189,7 +194,7 @@ export class TaskServiceImpl implements TaskService {
                 source: "system",
                 scope: "task",
                 refId: runId,
-                text: `[Task] ${spec.projectRoot}: ${spec.command || spec.name} exited, status=${cur.status} code=${code} signal=${signal}`,
+                text: `[Task] ${spec.projectRoot}: ${cmdStr} exited, status=${cur.status} code=${code} signal=${signal}`,
             });
 
             this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });

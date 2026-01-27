@@ -97,7 +97,8 @@ export function genSpecsFromScripts(
             runnable: packageManager !== "unknown",
             command: buildRunCommand(packageManager, name),
             cwd: rootDir,
-            shell: true,
+            shell: true, // npm script 一般需要 shell 环境
+            // args: [], // npm script 的参数一般直接拼在 command 里
         };
         if (pendingDescription) {
             spec.description = pendingDescription;
