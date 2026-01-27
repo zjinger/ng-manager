@@ -160,7 +160,7 @@ export class TaskStateService {
     taskId = taskId?.trim() || this.selectedTaskId();
     if (!taskId) return;
     // 取当前 runtime（必须要有 runId/projectId 才能工程化维护 runningCount） 
-    const curRt = this.stream.getRuntime(taskId); // 注入 TaskStreamService
+    const curRt = this.runtimeStore.runtimeSignal(taskId)(); 
     if (curRt) {
       // 先置 stopping（保留 pid/startedAt/runId/projectId）
       this.runtimeStore.setRuntime({ ...curRt, status: 'stopping' });

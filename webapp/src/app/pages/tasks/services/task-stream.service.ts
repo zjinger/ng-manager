@@ -9,7 +9,6 @@ import { TaskRuntimeStore } from "./task-runtime-store";
 export class TaskStreamService {
   private outputByTaskId = new Map<string, Subject<TaskOutputMsg>>(); // taskId -> output stream
   private event$ = new Subject<TaskEventMsg>();
-  private runtimeByTaskId = new Map<string, TaskRuntime>(); // 最新 runtime（按 taskId） taskId -> TaskRuntime
 
   private subs = new Map<string, number>(); // taskId -> tail
   private lastWsState: WsState = "idle";
@@ -73,10 +72,6 @@ export class TaskStreamService {
     return this.runtimeStore.status$(runId);
   }
 
-  /** 获取最新 runtime 快照 */
-  getRuntime(taskId: string): TaskRuntime | null {
-    return this.runtimeByTaskId.get(taskId) ?? null;
-  }
 
   private replaySubs() {
     for (const [taskId, tail] of this.subs.entries()) {
@@ -104,7 +99,6 @@ export class TaskStreamService {
       // 组装 TaskRuntime，然后 setRuntime
       const nextRt = this.applyEventToRuntime(type, payload);
       if (nextRt) {
-        this.runtimeByTaskId.set(taskId, nextRt);
         this.runtimeStore.setRuntime(nextRt);
       }
       // 清理 output subject 
@@ -136,7 +130,7 @@ export class TaskStreamService {
     const taskId = String(payload?.taskId ?? '').trim();
     const runId = String(payload?.runId ?? '').trim();
     if (!taskId || !runId) return null;
-    const prev = this.runtimeByTaskId.get(taskId);
+    const prev = this.runtimeStore.runtimeSignal(taskId)();
     // 如果 runId 变了（新一次执行），以新 runId 为准
     const base: TaskRuntime = prev && prev.runId === runId
       ? { ...prev }
@@ -193,33 +187,5 @@ export class TaskStreamService {
         return null;
     }
   }
-  // private mapEventToStatus<K extends TaskEventType>(type: K, payload: TaskEventPayloadMap[K]): TaskRuntimeStatus | null {
-  //   if (type === "snapshot" && (payload as TaskSnapshotPayload)?.status) {
-  //     const { status, startedAt, stoppedAt, pid, exitCode, signal } = payload as TaskSnapshotPayload;
-  //     return {
-  //       status: status as TaskRuntimeStatus["status"],
-  //       startedAt: startedAt,
-  //       stoppedAt: stoppedAt,
-  //       pid: pid,
-  //       exitCode: exitCode,
-  //       signal: signal,
-  //     }
-  //   }
-  //   else if (type === "started") {
-  //     const { pid, startedAt } = payload as TaskStartedPayload;
-  //     return { status: "running", pid: pid, startedAt: startedAt }
-  //   }
-  //   else if (type === "stopRequested") return { status: "stopping" };
-  //   else if (type === "exited") {
-  //     const { exitCode, signal, stoppedAt } = payload as TaskExitedPayload;
-  //     return { status: "stopped", exitCode, signal, stoppedAt }
-  //   }
-  //   else if (type === "failed") return { status: "stopped" };
-  //   else if (type === "bootstrapDone" || type === "bootstrapFailed") {
-  //     // 不变更状态
-  //     return null;
-  //   }
-  //   return null;
-  // }
 }
 

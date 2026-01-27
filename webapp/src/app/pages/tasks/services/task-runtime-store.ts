@@ -72,6 +72,7 @@ export class TaskRuntimeStore {
     return this.ensureTaskSignal(taskId);
   }
 
+  /** signal：获取完整 runtime 信息 */
   runtimeSignal(taskId: string): WritableSignal<TaskRuntime | undefined> {
     return this.ensureRuntimeSignal(taskId);
   }
