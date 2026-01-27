@@ -22,7 +22,6 @@ export const enum ErrorPolicyCode {
     INVALID_REPO_URL = "INVALID_REPO_URL",
     GIT_CHECKOUT_FAILED = "GIT_CHECKOUT_FAILED",  // Git 检出失败
     NO_WORKSPACE_FOUND = "NO_WORKSPACE_FOUND", // 未找到工作区
-    BOOTSTRAP_CTX_NOT_FOUND = "BOOTSTRAP_CTX_NOT_FOUND", // 引导上下文未找到
     BOOTSTRAP_NOT_IN_PICK_STATE = "BOOTSTRAP_NOT_IN_PICK_STATE", // 当前不处于选择根目录状态
     BOOTSTRAP_RUN_NOT_FOUND = "BOOTSTRAP_RUN_NOT_FOUND", // 引导任务运行记录未找到
     INVALID_PICKED_ROOT = "INVALID_PICKED_ROOT", // 选择的根目录无效
@@ -162,10 +161,7 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "未找到工作区",
     },
-    BOOTSTRAP_CTX_NOT_FOUND: {
-        level: "toast",
-        message: "引导上下文未找到",
-    },
+   
     BOOTSTRAP_NOT_IN_PICK_STATE: {
         level: "toast",
         message: "当前不处于选择根目录状态",

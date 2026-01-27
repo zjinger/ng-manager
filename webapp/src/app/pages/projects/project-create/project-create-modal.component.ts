@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, UiNotifierService } from '@app/core';
+import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskEventMsg, TaskEventType, UiNotifierService } from '@app/core';
 import { DetectResult } from '@models/project.model';
 import { TaskStreamService } from '@pages/tasks/services/task-stream.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -217,10 +217,7 @@ export class ProjectCreateModal implements OnInit {
   }
 
   private async doCreate(d: CreateProjectDraft) {
-    // 防止重复点击
     this.creating.set(true);
-
-    // 确保 WS 连接
     this.taskStream.ensureConnected();
 
     const destroy$ = new Subject<void>();
@@ -244,37 +241,15 @@ export class ProjectCreateModal implements OnInit {
         })
       );
 
-      // 4) 事件流：done / failed / needPickRoot
-      const done$ = this.taskStream.events$().pipe(
-        filter(e => e.payload?.taskId === taskId),
-        filter(e => e.type === 'bootstrapDone'),
-        first()
-      );
+      // 4) 等待首个关键事件：done / failed / needPick
+      const firstEvt = await this.waitForTaskEvent(taskId, [
+        'bootstrapDone',
+        'bootstrapFailed',
+        'bootstrapNeedPickRoot',
+      ], 10 * 60 * 1000, destroy$);
 
-      const fail$ = this.taskStream.events$().pipe(
-        filter(e => e.payload?.taskId === taskId),
-        filter(e => e.type === 'bootstrapFailed'),
-        first()
-      );
-
-      const pick$ = this.taskStream.events$().pipe(
-        filter(e => e.payload?.taskId === taskId),
-        filter(e => e.type === 'bootstrapNeedPickRoot'),
-        first()
-      );
-
-      // 5) 等待第一次结果（done/fail/pick）
-      const firstResult = await firstValueFrom(
-        merge(done$, fail$, pick$).pipe(
-          first(),
-          timeout(10 * 60 * 1000),
-          takeUntil(destroy$),
-        )
-      );
-
-      // 6) 已完成
-      if (firstResult.type === 'bootstrapDone') {
-        const payload = firstResult.payload as TaskBootstrapDonePayload;
+      if (firstEvt.type === 'bootstrapDone') {
+        const payload = firstEvt.payload as TaskBootstrapDonePayload;
         this.notify.success('项目创建完成');
         this.projectState.getProjects(payload.projectId);
         this.modalRef.close({ ok: true });
@@ -282,62 +257,62 @@ export class ProjectCreateModal implements OnInit {
         return;
       }
 
-      // 7) 已失败
-      if (firstResult.type === 'bootstrapFailed') {
-        const payload = firstResult.payload as TaskBootstrapFailedPayload;
+      if (firstEvt.type === 'bootstrapFailed') {
+        const payload = firstEvt.payload as TaskBootstrapFailedPayload;
         this.notify.error(`项目创建失败：${payload?.reason ?? 'unknown error'}`);
         return;
       }
 
-      // 8) 需要选择工作区目录（git 导入场景）
-      if (firstResult.type === 'bootstrapNeedPickRoot') {
-        const payload = firstResult.payload as any; // TaskBootstrapNeedPickRootPayload
-        const candidates: string[] = payload?.candidates ?? [];
-
-        if (!candidates.length) {
-          this.notify.error('项目创建失败：未找到可导入的工作区目录');
-          return;
-        }
-
-        const pickedRoot = await this.pickWorkspaceRootByModal(candidates);
-        if (!pickedRoot) {
-          this.notify.error('已取消选择工作区目录');
-          return;
-        }
-
-        // 9) 把用户选择回传给后端，让后端继续 finalize（import + refresh tasks）
-        await firstValueFrom(
-          this.api.bootstrapPickRoot({ taskId, pickedRoot: pickedRoot }).pipe(
-            timeout(60 * 1000),
-            takeUntil(destroy$),
-          )
-        );
-
-        // 10) 再等最终结果（done/fail）
-        const finalResult = await firstValueFrom(
-          merge(done$, fail$).pipe(
-            first(),
-            timeout(10 * 60 * 1000),
-            takeUntil(destroy$),
-          )
-        );
-
-        if (finalResult.type === 'bootstrapDone') {
-          const payload2 = finalResult.payload as TaskBootstrapDonePayload;
-          this.notify.success('项目导入完成');
-          this.projectState.getProjects(payload2.projectId);
-          this.modalRef.close({ ok: true });
-          this.router.navigate(['/dashboard']);
-          return;
-        } else {
-          const payload2 = finalResult.payload as TaskBootstrapFailedPayload;
-          this.notify.error(`项目导入失败：${payload2?.reason ?? 'unknown error'}`);
-          return;
-        }
+      // 5) needPickRoot：打开选择框
+      const pickPayload = firstEvt.payload as any; // TaskBootstrapNeedPickRootPayload
+      const candidates: string[] = pickPayload?.candidates ?? [];
+      if (!candidates.length) {
+        this.notify.error('项目导入失败：未找到可导入的工作区目录');
+        return;
       }
 
-      // 理论上不会走到这里
-      this.notify.error('创建流程异常：未知事件类型');
+      const pickedRoot = await this.pickWorkspaceRootByModal(candidates);
+      if (!pickedRoot) {
+        this.notify.error('已取消选择工作区目录');
+        return;
+      }
+
+      // 6) 回传 pickedRoot（这里用 HTTP 返回 ok 即可，不依赖 WS done）
+      const pickResult = await firstValueFrom(
+        this.api.bootstrapPickRoot({ taskId, pickedRoot }).pipe(
+          timeout(60 * 1000),
+          takeUntil(destroy$),
+        )
+      );
+
+      if (!pickResult.ok) {
+        this.notify.error(pickResult.reason ?? '项目导入失败');
+        return;
+      }
+
+      this.notify.success('项目导入完成');
+      this.projectState.getProjects(pickResult.projectId);
+      this.modalRef.close({ ok: true });
+      this.router.navigate(['/dashboard']);
+
+      // 7) 再等最终结果：done / failed（重新订阅等待，不复用之前的 done$）
+      // const finalEvt = await this.waitForTaskEvent(taskId, [
+      //   'bootstrapDone',
+      //   'bootstrapFailed',
+      // ], 10 * 60 * 1000, destroy$);
+
+      // if (finalEvt.type === 'bootstrapDone') {
+      //   const payload2 = finalEvt.payload as TaskBootstrapDonePayload;
+      //   this.notify.success('项目导入完成');
+      //   this.projectState.getProjects(payload2.projectId);
+      //   this.modalRef.close({ ok: true });
+      //   this.router.navigate(['/dashboard']);
+      //   return;
+      // } else {
+      //   const payload2 = finalEvt.payload as TaskBootstrapFailedPayload;
+      //   this.notify.error(`项目导入失败：${payload2?.reason ?? 'unknown error'}`);
+      //   return;
+      // }
     } catch (err: any) {
       const msg =
         err?.name === 'TimeoutError'
@@ -352,6 +327,27 @@ export class ProjectCreateModal implements OnInit {
     }
   }
 
+  /**
+ * 等待指定 taskId 的某些事件类型之一出现（每次调用都会创建新订阅，避免 first() 复用导致丢事件）
+ */
+  private async waitForTaskEvent(
+    taskId: string,
+    types: Array<'bootstrapDone' | 'bootstrapFailed' | 'bootstrapNeedPickRoot'>,
+    timeoutMs: number,
+    destroy$: Subject<void>,
+  ): Promise<TaskEventMsg> {
+    const typeSet = new Set(types);
+
+    return await firstValueFrom(
+      this.taskStream.events$().pipe(
+        filter(e => e?.payload?.taskId === taskId),
+        filter(e => typeSet.has(e.type as 'bootstrapDone' | 'bootstrapFailed' | 'bootstrapNeedPickRoot')),
+        first(),
+        timeout(timeoutMs),
+        takeUntil(destroy$),
+      )
+    );
+  }
 
   setDraft(d: CreateProjectDraft) {
     this.draft.set(d);

@@ -41,8 +41,8 @@ export class ProjectApiService {
     });
   }
 
-  bootstrapPickRoot(input: { taskId: string; pickedRoot: string }): Observable<any> {
-    return this.api.post<any>("/api/projects/bootstrap/pickRoot", input);
+  bootstrapPickRoot(input: { taskId: string; pickedRoot: string }) {
+    return this.api.post<{ ok: boolean; reason?: string; projectId?: string; rootPath?: string; }>("/api/projects/bootstrap/pickRoot", input);
   }
 
 

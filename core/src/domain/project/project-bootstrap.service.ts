@@ -13,29 +13,40 @@ import type { ProjectService } from "./project.service";
 const execFileAsync = promisify(execFile);
 
 type BootstrapCtx =
-    | { kind: "cli"; root: string; name: string; overwrite: boolean; importAs: "create" }
+    | { kind: "cli"; root: string; name: string; overwrite: boolean }
     | {
         kind: "git";
-        root: string;
-        name: string;
+        root: string;              // 仓库根 or 选中的 workspace 根
+        name: string;              // 项目名（repoName）
         overwrite: boolean;
-        importAs: "import";
         repoUrl: string;
         branch?: string;
-        /**
-         * git clone / import 的“项目根”不等于“可管理的工作区根
-         * 是否需要用户选择
-         */
         needPick?: boolean;
         candidates?: string[];
     };
 
+/* ---------------- utils ---------------- */
+
+/**
+ * 从 Git 仓库 URL 推导仓库名
+ */
+function getRepoName(repoUrl: string): string {
+    const cleaned = repoUrl.replace(/[#?].*$/, "").replace(/\.git$/i, "");
+    const seg = cleaned.split("/").pop();
+    if (!seg) throw new AppError("INVALID_REPO_URL", "cannot infer repo name", { repoUrl });
+    return seg;
+}
+
+/** 
+ * 校验 npm package name（简化版）
+ */
 function isValidNpmName(name: string): boolean {
     // Angular CLI 的 name 校验基本等同于 npm package name（简化版）
     // 允许: foo, foo-bar, @scope/foo-bar
     const re = /^(?:@[a-zA-Z0-9-*~][a-zA-Z0-9-*._~]*\/)?[a-zA-Z0-9-~][a-zA-Z0-9-._~]*$/;
     return re.test(name);
 }
+
 /**
  * 拆分相对路径名称
  * - 统一分隔符为 /
@@ -66,18 +77,6 @@ function splitRelPathName(inputName: string) {
     return { raw, norm, parts, projectName, relDir };
 }
 
-/**
- * 从 Git 仓库 URL 推导仓库名
- * @param repoUrl
- * @returns 
- */
-function getRepoName(repoUrl: string): string {
-    const cleaned = repoUrl.replace(/[#?].*$/, "").replace(/\.git$/i, "");
-    const seg = cleaned.split("/").pop();
-    if (!seg) throw new AppError("INVALID_REPO_URL", "cannot infer repo name", { repoUrl });
-    return seg;
-}
-
 export class ProjectBootstrapService {
     private ctxByTaskId = new Map<string, BootstrapCtx>();
     private runIdByTaskId = new Map<string, string>();
@@ -87,13 +86,14 @@ export class ProjectBootstrapService {
         private task: TaskService,
         private events: IEventBus<CoreEventMap>
     ) {
-        // 记 runId
+        /* 记录 runId */
         this.events.on(Events.TASK_STARTED, (e) => {
             if (this.ctxByTaskId.has(e.taskId)) {
                 this.runIdByTaskId.set(e.taskId, e.runId);
             }
         });
 
+        /* TASK_EXITED：唯一 finalize 入口 */
         // 任务退出：成功 finalize / 失败发 failed
         this.events.on(Events.TASK_EXITED, async ({ taskId, runId: _runId, exitCode, signal }) => {
             const ctx = this.ctxByTaskId.get(taskId);
@@ -161,14 +161,7 @@ export class ProjectBootstrapService {
                 }
 
                 // === 走到这里，说明已经确定 ctx.root 是最终 workspace root ===
-                await this.project.scan(ctx.root);
-
-                const p =
-                    ctx.importAs === "create"
-                        ? await this.project.create({ name: ctx.name, root: ctx.root })
-                        : await this.project.importProject({ name: ctx.name, root: ctx.root });
-
-                await this.task.refreshByProject(p.id);
+                const p = await this.finalizeProject(ctx);
 
                 this.events.emit(Events.PROJECT_BOOTSTRAP_DONE, {
                     taskId,
@@ -177,35 +170,19 @@ export class ProjectBootstrapService {
                     rootPath: ctx.root,
                 });
             } catch (e: any) {
-                this.events.emit(Events.PROJECT_BOOTSTRAP_FAILED, {
-                    taskId,
-                    runId,
-                    rootPath: ctx.root,
-                    reason: e?.message ?? "finalize failed",
-                });
+                this.emitFailed(taskId, runId, ctx.root, e?.message ?? "finalize failed");
             } finally {
                 if (shouldCleanup) this.cleanup(taskId);
             }
         });
 
-
         // 任务失败：发 failed
         this.events.on(Events.TASK_FAILED, ({ taskId, runId: _runId, error }) => {
             const ctx = this.ctxByTaskId.get(taskId);
             if (!ctx) return;
-
             const runId = this.runIdByTaskId.get(taskId) ?? _runId;
-
-            try {
-                this.events.emit(Events.PROJECT_BOOTSTRAP_FAILED, {
-                    taskId,
-                    runId,
-                    rootPath: ctx.root,
-                    reason: error || "unknown error",
-                });
-            } finally {
-                this.cleanup(taskId);
-            }
+            this.emitFailed(taskId, runId, ctx.root, error || "unknown error");
+            this.cleanup(taskId);
         });
     }
 
@@ -267,7 +244,6 @@ export class ProjectBootstrapService {
             root: normalizedRoot,
             name: projectName, // 项目名用最后一段
             overwrite: !!input.overwriteIfExists,
-            importAs: "create",
         });
 
         this.task.registerSpec(spec);
@@ -341,7 +317,6 @@ export class ProjectBootstrapService {
             root: normalizedRoot,
             name: repoName,
             overwrite: !!input.overwriteIfExists,
-            importAs: "import",
             repoUrl,
             branch: input.branch,
         });
@@ -353,40 +328,27 @@ export class ProjectBootstrapService {
 
     async pickWorkspaceRoot(input: {
         taskId: string;
-        pickedRoot: string; // 绝对路径
-    }): Promise<{ ok: boolean; projectId?: string; rootPath?: string; reason?: string }> {
-        const { taskId, pickedRoot } = input;
-        const ctx = this.ctxByTaskId.get(taskId);
-        if (!ctx || ctx.kind !== "git") {
-            throw new AppError("BOOTSTRAP_CTX_NOT_FOUND", "bootstrap ctx not found", { taskId });
+        pickedRoot: string;
+    }) {
+        const ctx = this.ctxByTaskId.get(input.taskId);
+        if (!ctx || ctx.kind !== "git" || !ctx.needPick) {
+            throw new AppError("BOOTSTRAP_NOT_IN_PICK_STATE", "not in pick state", input);
         }
-        if (!ctx.needPick || !ctx.candidates?.length) {
-            throw new AppError("BOOTSTRAP_NOT_IN_PICK_STATE", "bootstrap is not waiting for pick", { taskId });
+
+        const picked = path.resolve(input.pickedRoot);
+        if (!ctx.candidates?.some((c) => path.resolve(c) === picked)) {
+            throw new AppError("INVALID_PICKED_ROOT", "pickedRoot not in candidates", { picked });
         }
-        const runId = this.runIdByTaskId.get(taskId);
-        if (!runId) {
-            throw new AppError("BOOTSTRAP_RUN_NOT_FOUND", "bootstrap runId not found", { taskId });
-        }
-        const normalizedPicked = path.resolve(pickedRoot);
-        const ok = ctx.candidates.some((c) => path.resolve(c) === normalizedPicked);
-        if (!ok) {
-            throw new AppError("INVALID_PICKED_ROOT", "pickedRoot is not in candidates", {
-                taskId,
-                pickedRoot: normalizedPicked,
-            });
-        }
-        // 选中后继续 finalize（和成功分支一致）
+
+        ctx.root = picked;
+        ctx.needPick = false;
+
+        const runId = this.runIdByTaskId.get(input.taskId)!;
+
         try {
-            ctx.root = normalizedPicked;
-            ctx.needPick = false;
-
-            await this.project.scan(ctx.root);
-
-            const p = await this.project.importProject({ name: ctx.name, root: ctx.root });
-            await this.task.refreshByProject(p.id);
-
+            const p = await this.finalizeProject(ctx);
             this.events.emit(Events.PROJECT_BOOTSTRAP_DONE, {
-                taskId,
+                taskId: input.taskId,
                 runId,
                 projectId: p.id,
                 rootPath: ctx.root,
@@ -394,25 +356,13 @@ export class ProjectBootstrapService {
 
             return { ok: true, projectId: p.id, rootPath: ctx.root };
         } catch (e: any) {
-            this.events.emit(Events.PROJECT_BOOTSTRAP_FAILED, {
-                taskId,
-                runId,
-                rootPath: ctx.root,
-                reason: e?.message ?? "pick finalize failed",
-            });
-            return { ok: false, reason: e?.message ?? "pick finalize failed" };
+            this.emitFailed(input.taskId, runId, ctx.root, e?.message ?? "pick finalize failed");
+            return { ok: false, reason: e?.message };
         } finally {
-            this.cleanup(taskId);
+            this.cleanup(input.taskId);
         }
     }
-
     /* ---------------- helpers ---------------- */
-
-    private cleanup(taskId: string) {
-        this.ctxByTaskId.delete(taskId);
-        this.runIdByTaskId.delete(taskId);
-    }
-
     /**
      * 准备 CLI 脚手架目录
      * - Angular CLI / Vue CLI 会自己创建目标目录（但中间父目录不一定）
@@ -543,17 +493,73 @@ export class ProjectBootstrapService {
             { root, preferredBranch }
         );
     }
+
+    /* finalize project 创建/导入 + 扫描 + 刷新任务 */
+    private async finalizeProject(ctx: BootstrapCtx) {
+        await this.project.scan(ctx.root);
+
+        const p = ctx.kind === "cli"
+            ? await this.project.create({ name: ctx.name, root: ctx.root })
+            : await this.project.importProject({ name: ctx.name, root: ctx.root });
+
+        await this.task.refreshByProject(p.id);
+        return p;
+    }
+
+    /* 发失败事件 */
+    private emitFailed(taskId: string, runId: string, root: string, reason: string) {
+        this.events.emit(Events.PROJECT_BOOTSTRAP_FAILED, {
+            taskId,
+            runId,
+            rootPath: root,
+            reason,
+        });
+    }
+
+    /* 清理 ctx */
+    private cleanup(taskId: string) {
+        this.ctxByTaskId.delete(taskId);
+        this.runIdByTaskId.delete(taskId);
+    }
 }
 
+/* ---------------- workspace detect ---------------- */
 
 function existsFile(p: string) {
     try { return fs.existsSync(p); } catch { return false; }
 }
 
+function detectWorkspaceKind(dir: string): "angular" | "vue" | null {
+    if (isWorkspaceAngular(dir)) return "angular";
+    if (isWorkspaceVue(dir)) return "vue";
+    return null;
+}
+const IGNORE_DIRS = new Set([".git", "node_modules", "dist", "build", "out", "target", ".angular", ".nx", ".turbo",]);
+
+function scanWorkspaceCandidates(root: string, maxDepth = 3): string[] {
+    const out: string[] = [];
+    const walk = (dir: string, depth: number) => {
+        if (depth > maxDepth) return;
+        const kind = detectWorkspaceKind(dir);
+        if (kind) {
+            out.push(dir);
+            return;
+        }
+        let ents: fs.Dirent[];
+        try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of ents) {
+            if (e.isDirectory() && !IGNORE_DIRS.has(e.name)) {
+                walk(path.join(dir, e.name), depth + 1);
+            }
+        }
+    };
+    walk(root, 0);
+    return Array.from(new Set(out)).sort();
+}
+
 function isWorkspaceAngular(dir: string) {
     return existsFile(path.join(dir, "angular.json"));
 }
-
 function isWorkspaceVue(dir: string) {
     // 先用“常见配置文件”作为 MVP 判定
     if (existsFile(path.join(dir, "vue.config.js"))) return true;
@@ -565,55 +571,4 @@ function isWorkspaceVue(dir: string) {
         if (existsFile(path.join(dir, "src", "main.js"))) return true;
     }
     return false;
-}
-
-function detectWorkspaceKind(dir: string): "angular" | "vue" | null {
-    if (isWorkspaceAngular(dir)) return "angular";
-    if (isWorkspaceVue(dir)) return "vue";
-    return null;
-}
-
-const DEFAULT_IGNORE_DIRS = new Set([
-    ".git",
-    "node_modules",
-    "dist",
-    "build",
-    "out",
-    "target",
-    ".angular",
-    ".nx",
-    ".turbo",
-]);
-
-function scanWorkspaceCandidates(root: string, maxDepth = 3): string[] {
-    const out: string[] = [];
-
-    const walk = (dir: string, depth: number) => {
-        if (depth > maxDepth) return;
-
-        const kind = detectWorkspaceKind(dir);
-        if (kind) {
-            out.push(dir);
-            // workspace 根目录通常不需要继续向下扫（避免把 apps/** 都塞进来）
-            return;
-        }
-
-        let ents: fs.Dirent[];
-        try {
-            ents = fs.readdirSync(dir, { withFileTypes: true });
-        } catch {
-            return;
-        }
-
-        for (const e of ents) {
-            if (!e.isDirectory()) continue;
-            if (DEFAULT_IGNORE_DIRS.has(e.name)) continue;
-            walk(path.join(dir, e.name), depth + 1);
-        }
-    };
-
-    walk(root, 0);
-
-    // 去重 + 稳定排序
-    return Array.from(new Set(out)).sort((a, b) => a.localeCompare(b));
 }
