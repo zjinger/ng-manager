@@ -32,7 +32,7 @@ export class TaskStateService {
     const rows = this.rows();
     return rows.map((r) => {
       const taskId = r.spec.id;
-      const rt = this.runtimeStore.runtimeSignal(taskId)();
+      const rt = this.getRuntimeSignal(taskId);
       return {
         ...r,
         runtime: rt ?? r.runtime,
@@ -59,7 +59,7 @@ export class TaskStateService {
   readonly selectedRuntimeStatus = computed<TaskRuntimeStatus>(() => {
     const taskId = this.selectedTaskId();
     if (!taskId) return { status: "idle" };
-    const st = this.runtimeStore.statusSignal(taskId)();
+    const st = this.getRuntime(taskId);
     return st;
   });
 
@@ -74,9 +74,9 @@ export class TaskStateService {
 
   constructor() {
     /** WS 事件是 runIndex 的唯一实时来源 */
-    this.stream.events$().subscribe((e) => {
-      console.log("[task state] event", e);
-    });
+    // this.stream.events$().subscribe((e) => {
+    // console.log("[task state] event", e);
+    // });
 
     /** 选中 runId → 自动订阅 WS */
     effect((onCleanup) => {
@@ -95,6 +95,10 @@ export class TaskStateService {
 
   getRuntime(taskId: string): TaskRuntimeStatus {
     return this.runtimeStore.statusSignal(taskId)();
+  }
+
+  private getRuntimeSignal(taskId: string): TaskRuntime | undefined {
+    return this.runtimeStore.runtimeSignal(taskId)();
   }
 
   /* ---------------- 页面动作 ---------------- */
@@ -160,7 +164,7 @@ export class TaskStateService {
     taskId = taskId?.trim() || this.selectedTaskId();
     if (!taskId) return;
     // 取当前 runtime（必须要有 runId/projectId 才能工程化维护 runningCount） 
-    const curRt = this.runtimeStore.runtimeSignal(taskId)(); 
+    const curRt = this.getRuntimeSignal(taskId);
     if (curRt) {
       // 先置 stopping（保留 pid/startedAt/runId/projectId）
       this.runtimeStore.setRuntime({ ...curRt, status: 'stopping' });
@@ -186,7 +190,7 @@ export class TaskStateService {
       const rows = this.catalog.rowsOf(pid)();
       return rows.map((r) => {
         const taskId = r.spec.id;
-        const st = this.runtimeStore.statusSignal(taskId)();
+        const st = this.getRuntime(taskId);
         return {
           ...r,
           runtime: { ...(r.runtime ?? {}), status: st.status } as TaskRuntime,
