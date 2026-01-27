@@ -33,9 +33,9 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
 
     /* ---------------- Project Analysis ---------------- */
     PROJECT_ANGULAR_JSON_INVALID: 400, // angular.json 无效
+    PROJECT_ANGULAR_JSON_NOT_FOUND: 404, // angular.json 未找到
     PROJECT_VITE_CONFIG_INVALID: 400, // vite 配置无效
-
-
+    PROJECT_VUE_CONFIG_NOT_FOUND: 404, // vite 配置未找到
 
     /* ---------------- Config ---------------- */
     CONFIG_BACKUP_NOT_FOUND: 404, // 配置备份不存在
@@ -65,10 +65,12 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     TOPIC_NOT_FOUND: 404,
     OP_NOT_FOUND: 400,
     /* ---------------- File System ---------------- */
-    FS_NOT_FOUND: 404,
+    FS_PATH_NOT_FOUND: 404,
     FS_ALREADY_EXISTS: 409,
     FS_PERMISSION_DENIED: 403,
     FS_EXISTS_FAILED: 500,
+    FS_INVALID_NAME: 400,
+    FS_MKDIR_FAILED: 500,
 
     /* ---------------- Editor ---------------- */
     EDITOR_NOT_FOUND: 404,

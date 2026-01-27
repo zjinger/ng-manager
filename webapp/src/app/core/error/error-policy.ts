@@ -21,6 +21,12 @@ export const enum ErrorPolicyCode {
     TARGET_EXISTS = "TARGET_EXISTS",
     INVALID_REPO_URL = "INVALID_REPO_URL",
 
+    /** project analysis */
+    PROJECT_ANGULAR_JSON_INVALID = "PROJECT_ANGULAR_JSON_INVALID",
+    PROJECT_ANGULAR_JSON_NOT_FOUND = "PROJECT_ANGULAR_JSON_NOT_FOUND",
+    PROJECT_VITE_CONFIG_INVALID = "PROJECT_VITE_CONFIG_INVALID",
+    PROJECT_VUE_CONFIG_NOT_FOUND = "PROJECT_VUE_CONFIG_NOT_FOUND",
+
     /** config */
     CONFIG_BACKUP_NOT_FOUND = "CONFIG_BACKUP_NOT_FOUND",
     CONFIG_READ_FAILED = "CONFIG_READ_FAILED",
@@ -29,9 +35,11 @@ export const enum ErrorPolicyCode {
 
     /* ---------- fs ---------- */
     FS_ALREADY_EXISTS = "FS_ALREADY_EXISTS",
-    FS_NOT_FOUND = "FS_NOT_FOUND",
+    FS_PATH_NOT_FOUND = "FS_PATH_NOT_FOUND",
     FS_PERMISSION_DENIED = "FS_PERMISSION_DENIED",
     FS_EXISTS_FAILED = "FS_EXISTS_FAILED",
+    FS_INVALID_NAME = "FS_INVALID_NAME",
+    FS_MKDIR_FAILED = "FS_MKDIR_FAILED",
 
     /* ---------- system ---------- */
     INTERNAL_ERROR = "INTERNAL_ERROR",
@@ -107,7 +115,7 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "任务 ID 为必填项",
     },
-    
+
     COMMAND_NOT_FOUND: {
         level: "toast",
         message: "命令未找到，请确保已正确安装所需软件",
@@ -141,6 +149,23 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "无效的仓库地址",
     },
+    /** project analysis */
+    PROJECT_ANGULAR_JSON_INVALID: {
+        level: "toast",
+        message: "angular.json 无效",
+    },
+    PROJECT_ANGULAR_JSON_NOT_FOUND: {
+        level: "toast",
+        message: "angular.json 未找到",
+    },
+    PROJECT_VITE_CONFIG_INVALID: {
+        level: "toast",
+        message: "vite 配置无效",
+    },
+    PROJECT_VUE_CONFIG_NOT_FOUND: {
+        level: "toast",
+        message: "vite 配置未找到",
+    },
 
     /** config */
     CONFIG_BACKUP_NOT_FOUND: {
@@ -164,7 +189,7 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "文件或文件夹已存在",
     },
-    FS_NOT_FOUND: {
+    FS_PATH_NOT_FOUND: {
         level: "toast",
         message: "文件或文件夹未找到",
     },
@@ -176,6 +201,15 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "检查路径是否存在时出错",
     },
+    FS_INVALID_NAME: {
+        level: "toast",
+        message: "无效的文件或文件夹名称",
+    },
+    FS_MKDIR_FAILED: {
+        level: "toast",
+        message: "创建文件夹失败",
+    },
+
 
     /* ---------- system ---------- */
     INTERNAL_ERROR: {

@@ -20,14 +20,14 @@ export type ErrorCode =
 
     // Project Analysis
     | "PROJECT_ANGULAR_JSON_INVALID"
+    | "PROJECT_ANGULAR_JSON_NOT_FOUND"
     | "PROJECT_VITE_CONFIG_INVALID"
+    | "PROJECT_VUE_CONFIG_NOT_FOUND"
 
     // Config
     | "CONFIG_BACKUP_NOT_FOUND"
     | "CONFIG_READ_FAILED"
     | "CONFIG_WRITE_FAILED"
-    // | "CONFIG_INVALID_JSON"
-    // | "CONFIG_VALIDATION_FAILED"
     | "CONFIG_CONFLICT"
     | "CONFIG_OPEN_FAILED"
     | "CONFIG_SCHEMA_NOT_FOUND"
@@ -52,10 +52,12 @@ export type ErrorCode =
     | "OP_NOT_FOUND"
 
     // FS
-    | "FS_NOT_FOUND"
+    | "FS_PATH_NOT_FOUND"
     | "FS_ALREADY_EXISTS"
     | "FS_PERMISSION_DENIED"
     | "FS_EXISTS_FAILED"
+    | "FS_INVALID_NAME"
+    | "FS_MKDIR_FAILED"
 
     // Editor
     | "EDITOR_NOT_FOUND"

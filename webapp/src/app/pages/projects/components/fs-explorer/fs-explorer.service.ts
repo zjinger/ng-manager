@@ -172,13 +172,13 @@ export class FsExplorerService {
   /* ---------------- actions ---------------- */
 
   /** 初始化/刷新 */
-  load() {
+  load(force = false) {
     const p = (this.path() || "").trim();
     if (!p) return;
 
     //  如果 path 与 currentPath 一样，并且 entries 已经有了，就不重复刷
     const cur = (this.currentPath() || "").trim();
-    if (cur && this.normalizePath(cur) === this.normalizePath(p) && this.entries().length) {
+    if (cur && this.normalizePath(cur) === this.normalizePath(p) && this.entries().length && !force) {
       this.isEditingPath.set(false);
       return;
     }
@@ -308,7 +308,7 @@ export class FsExplorerService {
     this.fsApi.mkdir(parentPath, name).subscribe(() => {
       this.isCreateFolderModalVisible.set(false);
       this.newFolderName.set("");
-      this.load();
+      this.load(true);
     });
   }
 

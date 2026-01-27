@@ -42,7 +42,7 @@ export class ProjectInspector {
 
         const configPath = vite.found.configPath;
         if (!fs.existsSync(configPath)) {
-            throw new AppError("FS_NOT_FOUND", `vite config not found: ${configPath}`, { path: configPath });
+            throw new AppError("PROJECT_VUE_CONFIG_NOT_FOUND", `vite config not found: ${configPath}`, { path: configPath });
         }
 
         // MVP：只判定 static/dynamic/unknown（不 eval，不 AST）

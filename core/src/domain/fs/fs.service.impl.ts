@@ -29,7 +29,9 @@ async function mapLimit<T, R>(items: T[], limit: number, worker: (item: T, idx: 
 export class FsServiceImpl implements FsService {
     async ls(inputPath: string, opts: FsLsOptions = {}): Promise<FsListResult> {
         const input = normalizeInput(inputPath);
-        if (!input) throw new AppError("PROJECT_ROOT_INVALID" as any, "path is required", { path: input });
+        if (!input) {
+            throw new AppError("FS_INVALID_NAME", "path is required", { path: input });
+        }
 
         const showSystem = !!opts.showSystem;
         const detectProject = opts.detectProject !== false; // 默认 true
@@ -38,9 +40,9 @@ export class FsServiceImpl implements FsService {
         const real = await resolveReal(input);
 
         const st = await statSafe(real);
-        if (!st) throw new AppError("PROJECT_ROOT_INVALID" as any, "path not found", { path: real });
+        if (!st) throw new AppError("FS_PATH_NOT_FOUND", "path not found", { path: real });
         if (!st.isDirectory())
-            throw new AppError("PROJECT_ROOT_INVALID" as any, "path is not a directory", { path: real });
+            throw new AppError("FS_PATH_NOT_FOUND", "path is not a directory", { path: real });
 
         const dirents = (await readdirSafe(real)) ?? [];
 
@@ -68,44 +70,107 @@ export class FsServiceImpl implements FsService {
     }
 
     /**
-     * 创建目录
-     * TODO: 使用 FsMkdirOptions 选项，支持 overwrite/recursive
-     * @param basePath 基础路径
-     * @param name 目录名
-     * @param opts FsMkdirOptions 选项
-     * @returns 创建的目录信息
+     * 创建目录（支持多级路径）
+     *
+     * @param basePath 已存在的基础目录
+     * @param name 相对路径（支持 a/b/c 或 a\b\c）
+     * @param opts 创建选项
      */
     async mkdir(basePath: string, name: string, opts?: FsMkdirOptions): Promise<FsEntry> {
         const baseInput = normalizeInput(basePath);
-        if (!baseInput) throw new AppError("PROJECT_ROOT_INVALID" as any, "path is required", { path: baseInput });
-
-        const dirName = validateDirName(name);
-        const baseReal = await resolveReal(baseInput);
-
-        const st = await statSafe(baseReal);
-        if (!st) throw new AppError("PROJECT_ROOT_INVALID" as any, "path not found", { path: baseReal });
-        if (!st.isDirectory())
-            throw new AppError("PROJECT_ROOT_INVALID" as any, "path is not a directory", { path: baseReal });
-
-        const target = path.join(baseReal, dirName);
-
-        const st2 = await statSafe(target);
-        if (st2) {
-            if (st2.isDirectory())
-                throw new AppError("FS_ALREADY_EXISTS" as any, "folder already exists", { path: target });
-            throw new AppError("FS_ALREADY_EXISTS" as any, "a file with same name exists", { path: target });
+        if (!baseInput) {
+            throw new AppError("FS_INVALID_NAME", "basePath is required", { path: baseInput });
         }
 
+        const rawName = String(name ?? "").trim();
+        if (!rawName) {
+            throw new AppError("FS_INVALID_NAME", "name is required", { name: rawName });
+        }
+        const baseReal = await resolveReal(baseInput);
+        const st = await statSafe(baseReal);
+        if (!st) {
+            throw new AppError("FS_INVALID_NAME", "basePath not found", { path: baseReal });
+        }
+        if (!st.isDirectory()) {
+            throw new AppError("FS_INVALID_NAME", "basePath is not a directory", { path: baseReal });
+        }
+
+        // ---------- 1) 规范化 & 校验路径 ----------
+        // 统一分隔符
+        const norm = rawName.replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "");
+        if (!norm) {
+            throw new AppError("FS_INVALID_NAME", "name is invalid", { name: rawName });
+        }
+
+        // 禁止绝对路径（Windows / POSIX）
+        if (
+            path.isAbsolute(rawName) ||
+            /^[a-zA-Z]:[\\/]/.test(rawName) || // C:\a
+            /^\\\\/.test(rawName)              // \\server\share
+        ) {
+            throw new AppError("FS_INVALID_NAME", "absolute path is not allowed", { name: rawName });
+        }
+
+        const parts = norm.split("/").filter(Boolean);
+        if (parts.length === 0) {
+            throw new AppError("FS_INVALID_NAME", "name is invalid", { name: rawName });
+        }
+
+        // recursive=false 时，只允许单级
+        const recursive = opts?.recursive ?? false;
+        if (!recursive && parts.length > 1) {
+            throw new AppError("FS_INVALID_NAME", "recursive mkdir is disabled", { name: rawName });
+        }
+
+        // 逐段校验（复用既有规则）
+        for (const seg of parts) {
+            if (seg === "." || seg === "..") {
+                throw new AppError("FS_INVALID_NAME", "name contains invalid path segment", { name: rawName, seg });
+            }
+            validateDirName(seg);
+        }
+
+        const target = path.join(baseReal, ...parts);
+
+        // ---------- 2) 目标存在性处理 ----------
+        const overwrite = opts?.overwrite ?? false;
+        const st2 = await statSafe(target);
+
+        if (st2) {
+            if (!overwrite) {
+                if (st2.isDirectory()) {
+                    throw new AppError("FS_ALREADY_EXISTS", "folder already exists", { path: target });
+                }
+                throw new AppError("FS_ALREADY_EXISTS", "a file with same name exists", { path: target });
+            }
+
+            // overwrite=true
+            if (!st2.isDirectory()) {
+                throw new AppError("FS_ALREADY_EXISTS", "cannot overwrite non-directory", { path: target });
+            }
+
+            await fsp.rm(target, { recursive: true, force: true });
+        }
+
+        // ---------- 3) 创建目录 ----------
         try {
-            await fsp.mkdir(target, { recursive: false });
+            await fsp.mkdir(target, { recursive });
         } catch (e: any) {
             if (e?.code === "EACCES" || e?.code === "EPERM") {
-                throw new AppError("FS_PERMISSION_DENIED" as any, "permission denied", { path: target, code: e.code });
+                throw new AppError(
+                    "FS_PERMISSION_DENIED",
+                    "permission denied",
+                    { path: target, code: e.code }
+                );
             }
-            throw e;
+            throw new AppError("FS_MKDIR_FAILED", "mkdir failed", { path: target, error: e });
         }
 
-        return { name: dirName, fullPath: target, type: "dir" as const };
+        return {
+            name: norm,          // 保留相对多级路径
+            fullPath: target,
+            type: "dir",
+        };
     }
 
     /**

@@ -14,7 +14,9 @@ export default async function fsRoutes(fastify: FastifyInstance) {
 
     fastify.post("/mkdir", async (req) => {
         const body = req.body as { path?: string; name?: string };
-        return fastify.core.fs.mkdir(body?.path || "", body?.name || "");
+        return fastify.core.fs.mkdir(body?.path || "", body?.name || "", {
+            recursive: true, // 默认支持多级创建
+        });
     });
 
     fastify.get("/path-exists", async (req) => {

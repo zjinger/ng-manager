@@ -10,7 +10,7 @@ export async function scanProject(
     rootDir: string
 ): Promise<ProjectMeta> {
     if (!fs.existsSync(rootDir)) {
-        throw new AppError('FS_NOT_FOUND', `Project root not found: ${rootDir}`, { path: rootDir });
+        throw new AppError('PROJECT_NOT_FOUND', `Project root not found: ${rootDir}`, { path: rootDir });
     }
 
     const pkgPath = path.join(rootDir, "package.json");

@@ -10,7 +10,7 @@ function uniq(arr: string[]): string[] {
 
 export function analyzeAngularJson(angularJsonPath: string): AngularSnapshot {
     if (!fs.existsSync(angularJsonPath)) {
-        throw new AppError("FS_NOT_FOUND", `angular.json not found: ${angularJsonPath}`, { path: angularJsonPath });
+        throw new AppError("PROJECT_ANGULAR_JSON_NOT_FOUND", `angular.json not found: ${angularJsonPath}`, { path: angularJsonPath });
     }
 
     let json: any;
