@@ -25,16 +25,18 @@ import { TaskStatus } from '@core/ws';
         </div>
         <div class="tasks">
           @for( task of tasks();track task.spec.id){ 
-            <div class="task-item" (click)="openTask(task)"  nz-tooltip [nzTooltipTitle]="getTaskDescription(task)" nzTooltipPlacement="right">
-              <div class="item-logo">
-                <nz-icon nzType="code" nzTheme="outline" />
-              </div>
-              <div class="list-item-info">
-                <div class="name">
-                  <span>{{task.spec.name}}</span>
+            <div class="task-item"  nz-tooltip [nzTooltipTitle]="getTaskDescription(task)" nzTooltipPlacement="right">
+              <div class="item-content" (click)="openTask(task)">
+                <div class="item-logo">
+                  <nz-icon nzType="code" nzTheme="outline" />
                 </div>
-                <div class="description">
-                  <span>{{ getTaskDescription(task) }}</span>
+                <div class="list-item-info">
+                  <div class="name">
+                    <span>{{task.spec.name}}</span>
+                  </div>
+                  <div class="description">
+                    <span>{{ getTaskDescription(task) }}</span>
+                  </div>
                 </div>
               </div>
               <button nz-button nzType="text" type="button" (click)="$event.stopPropagation(); toggleTask(task)">
@@ -80,9 +82,17 @@ import { TaskStatus } from '@core/ws';
           display: flex;
           flex-direction: row;
           align-items: center;
-          cursor:pointer;
           &:hover{
             background:#f5f5f5;
+          }
+          .item-content{
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            flex: 100% 1 1;
+            width: 0;
+            gap:16px;
+            cursor:pointer;
           }
           .item-logo{
             font-size:42px;
