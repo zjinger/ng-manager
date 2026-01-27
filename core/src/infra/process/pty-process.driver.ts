@@ -47,9 +47,20 @@ export class PtyProcessDriver implements IProcessDriver {
 
         if (useShell) {
             // shell 模式：把 command + args 拼成一行交给 cmd/bash
-            const commandLine = isWin
-                ? [command, ...(args ?? [])].map(quoteWin).join(" ")
-                : [command, ...(args ?? [])].join(" ");
+            // command 在 shell 模式下通常已经是“整段命令行”（包含空格）
+            // 只有当 args 非空时，才需要拼接并对各参数做 quote
+
+            // const commandLine = isWin
+            //     ? [command, ...(args ?? [])].map(quoteWin).join(" ")
+            //     : [command, ...(args ?? [])].join(" ");
+
+            const commandLine =
+                (args && args.length > 0)
+                    ? (isWin
+                        ? [command, ...args].map(quoteWin).join(" ")
+                        : [command, ...args].join(" "))
+                    : command; 
+
 
             const { file, args: shellArgs } = buildShellCommand(commandLine);
             p = pty.spawn(file, shellArgs, {

@@ -19,6 +19,35 @@ function isValidNpmName(name: string): boolean {
     const re = /^(?:@[a-zA-Z0-9-*~][a-zA-Z0-9-*._~]*\/)?[a-zA-Z0-9-~][a-zA-Z0-9-._~]*$/;
     return re.test(name);
 }
+/**
+ * 拆分相对路径名称
+ * - 统一分隔符为 /
+ * - 禁止 . .. 等危险片段
+ * - 返回拆分结果
+ * - 抛出异常：无效名称
+ * @param inputName 输入名称
+ * @returns 拆分结果
+ */
+function splitRelPathName(inputName: string) {
+    const raw = (inputName || "").trim();
+    if (!raw) throw new AppError("INVALID_NAME", "name is required");
+
+    // 统一分隔符：\ / -> /
+    const norm = raw.replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "");
+    if (!norm) throw new AppError("INVALID_NAME", "name is required");
+
+    const parts = norm.split("/").filter(Boolean);
+
+    // 禁止危险片段
+    if (parts.some((p) => p === "." || p === "..")) {
+        throw new AppError("INVALID_NAME", "name contains invalid path segment", { name: raw });
+    }
+
+    const projectName = parts[parts.length - 1]!;
+    const relDir = parts.join("/"); // 相对 parentDir 的目录：workspace-test/test
+
+    return { raw, norm, parts, projectName, relDir };
+}
 
 export class ProjectBootstrapService {
     private ctxByTaskId = new Map<string, BootstrapCtx>();
@@ -110,30 +139,30 @@ export class ProjectBootstrapService {
 
     async bootstrapByCli(input: {
         parentDir: string;
-        name: string;
+        name: string; // 支持多层级：workspace-test\test
         packageManager?: "auto" | "npm" | "pnpm" | "yarn";
         overwriteIfExists?: boolean;
         skipOnboarding?: boolean; // 目前不细分，留接口
         cliFramework?: "angular" | "vue";
     }) {
-        const rawName = (input.name || "").trim();
-        if (!rawName) throw new AppError("INVALID_NAME", "name is required");
-        if (!isValidNpmName(rawName)) {
-            throw new AppError("INVALID_NAME", "name is not a valid npm package name", { name: rawName });
+        const { projectName, relDir } = splitRelPathName(input.name);
+
+        // npm name 校验只校验最后一段
+        if (!isValidNpmName(projectName)) {
+            throw new AppError("INVALID_NAME", "name is not a valid npm package name", { name: projectName });
         }
 
         const parentDir = path.resolve(input.parentDir || "");
         if (!parentDir) throw new AppError("INVALID_PARENT_DIR", "parentDir is required");
 
-        const root = path.resolve(parentDir, rawName);
+        const root = path.resolve(parentDir, relDir);
 
         const chk = await this.project.checkRoot(root);
         if (!chk.ok) return chk;
 
         const normalizedRoot = chk.root;
 
-        // 不 mkdir(root)，只做删目录 + 确保 parentDir 存在
-        // Angular CLI 会自己创建目标目录
+        // 不 mkdir(root)，只做删目录 + 确保 parentDir / rootParent 存在
         this.prepareDirForCliScaffold(parentDir, normalizedRoot, !!input.overwriteIfExists);
 
         const taskId = `bootstrap:${uid()}`;
@@ -142,29 +171,29 @@ export class ProjectBootstrapService {
 
         const { command, cwd } = this.buildCliCommand({
             fw,
-            name: rawName,
+            projectName,
+            relDir,
             parentDir,
             pm,
-            // 未来 style/ssr/standalone 这些也走 cliArgs
         });
 
         const spec: TaskDefinition = {
             id: taskId,
             projectId: "__system__",
-            projectName: rawName,
+            projectName, // ✅显示/归档用最后一段
             projectRoot: normalizedRoot,
-            name: fw === "angular" ? `Scaffold Angular: ${rawName}` : `Scaffold Vue: ${rawName}`,
+            name: fw === "angular" ? `Scaffold Angular: ${relDir}` : `Scaffold Vue: ${relDir}`,
             kind: "custom",
             command,
             cwd,
-            shell: true,
+            shell: true, // npx 在 Windows 下通常需要 shell（npx.cmd）
         };
 
         // 先写 ctx，再 start（避免极端情况下 TASK_STARTED 早于 ctx set）
         this.ctxByTaskId.set(taskId, {
             kind: "cli",
             root: normalizedRoot,
-            name: rawName,
+            name: projectName, // 项目名用最后一段
             overwrite: !!input.overwriteIfExists,
             importAs: "create",
         });
@@ -174,6 +203,7 @@ export class ProjectBootstrapService {
 
         return { ok: true, taskId, rootPath: normalizedRoot };
     }
+
 
     async bootstrapByGit(input: {
         repoUrl: string;
@@ -251,12 +281,19 @@ export class ProjectBootstrapService {
     }
 
     /**
-     * - Angular CLI 会自己创建目标目录
-     * - overwrite 就删掉 root；确保 parentDir 存在
+     * 准备 CLI 脚手架目录
+     * - Angular CLI / Vue CLI 会自己创建目标目录（但中间父目录不一定）
+     * - overwrite 就删掉 root；确保 parentDir + rootParent 存在
      */
     private prepareDirForCliScaffold(parentDir: string, root: string, overwrite: boolean) {
         if (!fs.existsSync(parentDir)) {
             fs.mkdirSync(parentDir, { recursive: true });
+        }
+
+        // 多层级时保证 root 的父目录存在
+        const rootParent = path.dirname(root);
+        if (!fs.existsSync(rootParent)) {
+            fs.mkdirSync(rootParent, { recursive: true });
         }
 
         if (fs.existsSync(root)) {
@@ -267,36 +304,47 @@ export class ProjectBootstrapService {
         }
     }
 
+    /**
+     * 准备 Git clone 目录
+     * - overwrite 就删掉 root
+     * - 不存在就直接返回
+     */
     private prepareDirForClone(root: string, overwrite: boolean) {
         if (!fs.existsSync(root)) return;
         if (!overwrite) throw new AppError("TARGET_EXISTS", "target directory already exists", { root });
         fs.rmSync(root, { recursive: true, force: true });
     }
 
+    /**
+     * 构建 CLI 脚手架命令
+     */
     private buildCliCommand(opts: {
         fw: "angular" | "vue";
-        name: string;
+        projectName: string; // 最后一段
+        relDir: string;      // workspace-test/test
         parentDir: string;
         pm: "auto" | "npm" | "pnpm" | "yarn";
     }): { command: string; cwd: string } {
         if (opts.fw === "angular") {
-            const safeName = opts.name.trim();
             const pmArg = opts.pm !== "auto" ? `--package-manager ${opts.pm}` : "";
 
-            // 不要传绝对路径的 --directory
-            // 让它在 cwd=parentDir 下创建 ./<name>
-            // --defaults + --no-interactive + --style=less 避免交互式询问 
-            // --skip-git 避免重复初始化 git 仓库
+            // cwd=parentDir，--directory=relDir（相对路径，可多层级）
             const command =
-                `npx -y @angular/cli new ${safeName} ` +
-                `--defaults --no-interactive --skip-install --style=less ${pmArg} `.trim();
+                `npx -y @angular/cli new ${opts.projectName} ` +
+                `--directory ${opts.relDir} ` +
+                `--defaults --no-interactive --skip-install --style=less ${pmArg}`.trim();
 
             return { command, cwd: opts.parentDir };
         }
 
-        // Vue（用 @vue/cli create）
+        // Vue（@vue/cli create）
+        // 目标目录传 relDir；--name 让 package.json 的 name 用 projectName（最后一段）
+        // cwd=parentDir，最终创建到 parentDir/relDir
         const pmArg = opts.pm !== "auto" ? `--packageManager ${opts.pm}` : "";
-        const command = `npx -y @vue/cli create "${opts.name}" --default ${pmArg}`.trim();
+        const command =
+            `npx -y @vue/cli create ${opts.relDir} ` +
+            `--default --name ${opts.projectName} ${pmArg}`.trim();
+
         return { command, cwd: opts.parentDir };
     }
 }
