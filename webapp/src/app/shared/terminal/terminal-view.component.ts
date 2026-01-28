@@ -52,7 +52,7 @@ export class TerminalViewComponent implements AfterViewInit, OnDestroy {
   @ViewChild("terminal", { static: true }) terminal!: ElementRef<HTMLDivElement>;
   @Output() resized = new EventEmitter<{ cols: number; rows: number }>();
 
-  /** 是否自动滚到底部 */
+  /** 是否自动l滚到底部 */
   @Input() follow = true;
 
   /** xterm 基础配置 */
