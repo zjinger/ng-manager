@@ -16,13 +16,11 @@ export function createTaskTopicHandler(
     getAllClients: () => Iterable<WsContext>
 ): TopicHandler & {
     pushOutput(payload: TaskOutputPayload): void;
-    // pushEvent<K extends TaskEventType>(taskId: string, runId: string, type: K, payload: TaskEventPayloadMap[K]): void;
     pushEvent<K extends TaskEventType>(type: K, payload: TaskEventPayloadMap[K]): void;
 } {
     return {
         topic: "task",
         async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "task" }>) {
-            console.log("task.sub", msg);
             const taskId = String(msg?.taskId ?? "").trim();
             const tail = Number(msg?.tail ?? 0);
 
@@ -47,9 +45,8 @@ export function createTaskTopicHandler(
                 }
             }
 
-            // tail logs : 按 runId 去拉（因为 log 是按 runId 存的）
+            // tail logs : 按 runId 去拉
             if (snap?.runId && deps.getTaskTailLogsByRun && tail > 0) {
-                // if (deps.getTaskTailLogs && tail > 0) {
                 const entries = await deps.getTaskTailLogsByRun(snap.runId, tail);
                 for (const e of entries ?? []) {
                     const m: TaskOutputMsg = {
@@ -73,7 +70,7 @@ export function createTaskTopicHandler(
             const rows = Number((msg as any).rows);
             if (!taskId || !Number.isFinite(cols) || !Number.isFinite(rows)) return;
 
-            // 防御：最小值
+            // 最小值
             const c = Math.max(2, Math.floor(cols));
             const r = Math.max(1, Math.floor(rows));
 

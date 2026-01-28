@@ -13,18 +13,6 @@ export function createSyslogTopicHandler(
 ): TopicHandler & { push(entry: LogLine): void } {
     return {
         topic: "syslog",
-        // async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "syslog" }>) {
-        //     const tail = Number(msg?.tail ?? 0);
-        //     ctx.addSub("syslog", KEY_ALL);
-
-        //     if (tail > 0) {
-        //         const entries = await deps.getSyslogTail(tail);
-        //         for (const entry of entries ?? []) {
-        //             const m: WsServerMsg = { op: "syslog.append", entry };
-        //             ctx.send(m);
-        //         }
-        //     }
-        // },
         async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "syslog" }>) {
             const tail = Math.max(0, Number(msg?.tail ?? 0));
             ctx.addSub("syslog", KEY_ALL);

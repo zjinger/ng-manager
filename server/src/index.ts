@@ -18,12 +18,10 @@ async function start() {
 
     process.on("unhandledRejection", (reason) => {
         console.error("[unhandledRejection]", reason);
-        // 开发期：不要让进程直接死，先定位根因
     });
 
     process.on("uncaughtException", (err) => {
         console.error("[uncaughtException]", err);
-        // 同上：开发期先不 exit
     });
 }
 
