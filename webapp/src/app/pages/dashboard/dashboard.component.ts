@@ -1,12 +1,17 @@
 import { CommonModule } from '@angular/common';
 import {
-  Component, computed, effect, inject, signal,
-  EnvironmentInjector, runInInjectionContext, afterNextRender, untracked
+  afterNextRender,
+  Component, computed, effect,
+  EnvironmentInjector,
+  inject,
+  runInInjectionContext,
+  signal,
+  untracked
 } from '@angular/core';
-import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzCardModule } from 'ng-zorro-antd/card';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { PageLayoutComponent } from '@app/shared';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
@@ -45,21 +50,6 @@ import { DashboardLayoutService } from './services/dashboard-layout.service';
         (remove)="layout.remove($event)"
       ></app-dashboard-canvas>
     </page-layout>
-
-    <!-- <nz-drawer
-      [nzVisible]="editMode()"
-      (nzOnClose)="editMode.set(false)"
-      [nzMaskClosable]="false"
-      [nzMask]="false"
-      nzTitle="添加部件"
-      nzPlacement="right"
-      [nzWidth]="360"
-      [nzBodyStyle]="{ padding: '0px', overflow: 'hidden' }"
-    >
-      <ng-container *nzDrawerContent>
-        <app-add-widget-drawer (add)="layout.add($event)"></app-add-widget-drawer>
-      </ng-container>
-    </nz-drawer> -->
     <div class="side-panel" [class.open]="editMode()">
       <div class="side-header">
         <div class="title">添加部件</div>
@@ -67,7 +57,6 @@ import { DashboardLayoutService } from './services/dashboard-layout.service';
           <nz-icon nzType="close"></nz-icon>
         </button>
       </div>
-
       <div class="side-body">
         <app-add-widget-drawer (add)="layout.add($event)"></app-add-widget-drawer>
       </div>

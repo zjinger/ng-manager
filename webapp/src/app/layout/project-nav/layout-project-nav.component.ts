@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, Input, model, OnInit } from '@angular/core';
+import { Component, computed, input, Input, model, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';

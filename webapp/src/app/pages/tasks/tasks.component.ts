@@ -17,6 +17,7 @@ import { TaskConsoleComponent } from './task-console/task-console.component';
 import { TaskHeaderComponent } from './task-header/task-header.component';
 import { TaskListComponent } from './task-list/task-list.component';
 import { TaskLogDrawerComponent } from './task-log/task-log.component';
+import { PageLayoutComponent } from '@app/shared';
 @Component({
   selector: 'app-tasks',
   imports: [
@@ -36,9 +37,11 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
     TaskActionsComponent,
     TaskHeaderComponent,
     TaskLogDrawerComponent,
-    NzLayoutComponent
+    NzLayoutComponent,
+    PageLayoutComponent
   ],
   template: `
+  <page-layout [title]="'任务'" [isFullscreen]="true">
     <nz-layout class="page">
       <nz-layout class="page-tasks">
         <app-task-list></app-task-list>
@@ -60,7 +63,7 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
       </nz-layout>
       <app-task-log></app-task-log>
     </nz-layout>
-
+  </page-layout>
   `,
   styles: [
     `
@@ -73,7 +76,8 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
     .page-tasks {
       flex: 1 1 auto;
       flex-direction: row;
-      gap: 8px;
+      gap: 16px;
+      padding:0 16px;
       height: 0;
       display: flex;
       overflow: hidden;
@@ -87,7 +91,6 @@ import { TaskLogDrawerComponent } from './task-log/task-log.component';
         width: 0;
         display: flex;
         flex-direction: column;
-        padding: 16px;
         gap: 16px;
         height: 100%;
         overflow: hidden;

@@ -25,6 +25,7 @@ import { ConfigSectionComponent } from './components/config-section-component';
 import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM, DomainSchemaDiffResult, DomainSchemaDoc, ResolvedDomain } from './models';
 import { ConfApiService, } from './services';
 import { flattenPatch, mapResolvedToNav } from './utils';
+import { PageLayoutComponent } from '@app/shared';
 
 @Component({
   selector: 'app-project-conf.component',
@@ -48,7 +49,8 @@ import { flattenPatch, mapResolvedToNav } from './utils';
     ConfigNavComponent,
     ConfigChangeBarComponent,
     NzModalModule,
-    ConfigSectionComponent
+    ConfigSectionComponent,
+    PageLayoutComponent,
   ],
   templateUrl: './project-conf.component.html',
   styleUrls: ['./project-conf.component.less'],

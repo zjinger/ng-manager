@@ -1,55 +1,33 @@
-<div class="deps-page">
-  <div nz-row nzAlign="middle" nzJustify="space-between" class="page-header">
-    <div nz-col>
-      <div class="title">
-        项目依赖
-        @if (loading()) {
-          <nz-icon nzType="loading" nzTheme="outline" />
-        }
-      </div>
-    </div>
-    <div nz-col>
-      <div class="actions">
-        <app-ng-devtool></app-ng-devtool>
-        <nz-input-wrapper>
-          <input
-            nz-input
-            class="search"
-            placeholder="搜索"
-            [(ngModel)]="keyword"
-            (ngModelChange)="keyword.set($event)"
-          />
-          <nz-icon nzType="search" nzInputPrefix />
-        </nz-input-wrapper>
-        <button nz-button nzType="primary">
-          <span nz-icon nzType="plus"></span>
-          安装依赖
-        </button>
-      </div>
-    </div>
+<page-layout [title]="'项目配置'" [loading]="loading()">
+  <ng-container ngProjectAs="actions">
+    <app-ng-devtool></app-ng-devtool>
+    <nz-input-wrapper>
+      <input
+        nz-input
+        class="search"
+        placeholder="搜索"
+        [(ngModel)]="keyword"
+        (ngModelChange)="keyword.set($event)"
+      />
+      <nz-icon nzType="search" nzInputPrefix />
+    </nz-input-wrapper>
+    <!-- <button nz-button nzType="primary">
+      <span nz-icon nzType="plus"></span>
+      安装依赖
+    </button> -->
+  </ng-container>
+  <div class="panel">
+    <!-- Runtime deps -->
+    <ng-container
+      *ngTemplateOutlet="contentTemplate; context: { $implicit: runtimeItems(), title: '运行依赖' }"
+    ></ng-container>
+    <nz-divider></nz-divider>
+    <!-- Dev deps -->
+    <ng-container
+      *ngTemplateOutlet="contentTemplate; context: { $implicit: devItems(), title: '开发依赖' }"
+    ></ng-container>
   </div>
-  <div nz-row nzJustify="center" class="page-content">
-    <div nz-col nzXs="24" nzSm="24" nzMd="18" nzLg="12" nzXl="12">
-      <!-- <nz-spin [nzSpinning]="loading()"> -->
-      <div class="panel">
-        <!-- Runtime deps -->
-        <ng-container
-          *ngTemplateOutlet="
-            contentTemplate;
-            context: { $implicit: runtimeItems(), title: '运行依赖' }
-          "
-        ></ng-container>
-        <nz-divider></nz-divider>
-        <!-- Dev deps -->
-        <ng-container
-          *ngTemplateOutlet="contentTemplate; context: { $implicit: devItems(), title: '开发依赖' }"
-        ></ng-container>
-      </div>
-      <!-- </nz-spin> -->
-    </div>
-  </div>
-</div>
-
+</page-layout>
 <ng-template #contentTemplate let-items let-title="title">
   <div class="group-title">{{ title }}</div>
   <div class="list">

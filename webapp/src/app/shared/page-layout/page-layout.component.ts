@@ -31,7 +31,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
           </div>
       </div>
     </div>
-    <div nz-row nzJustify="center" class="page-content">
+    <div nz-row nzJustify="center" class="page-content" [class.fullscreen]="isFullscreen">
       <div nz-col nzXs="24" nzSm="24"  [nzMd]="isFullscreen?24:18" [nzLg]="isFullscreen?24:12" [nzXl]="isFullscreen?24:12" >
         <ng-content></ng-content>
       </div>
@@ -47,6 +47,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
       height:64px;
       padding:0 16px;
       flex: 0 0 auto;
+       box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
       .title {
           font-size: 24px;
           font-weight: 600;
@@ -70,6 +71,9 @@ import { NzInputModule } from 'ng-zorro-antd/input';
       flex: 1 1 auto;
       overflow: hidden auto;
       height: 0;
+      &:not(.fullscreen){
+        padding: 16px 0;
+      }
     }
   }
   `,

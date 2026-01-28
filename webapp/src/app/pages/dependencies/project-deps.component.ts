@@ -18,6 +18,7 @@ import { NzGridModule } from "ng-zorro-antd/grid";
 import { ProjectStateService } from "@pages/projects/services/project.state.service";
 import { NzPopoverModule } from "ng-zorro-antd/popover";
 import { NgDevtoolComponent } from "@app/shared/devtools/ng-devtool.component";
+import { PageLayoutComponent } from "@app/shared";
 @Component({
   selector: 'app-project-deps.component',
   imports: [
@@ -33,7 +34,8 @@ import { NgDevtoolComponent } from "@app/shared/devtools/ng-devtool.component";
     NzDividerModule,
     NzPopconfirmModule,
     NzPopoverModule,
-    NgDevtoolComponent
+    NgDevtoolComponent,
+    PageLayoutComponent
   ],
   templateUrl: './project-deps.component.html',
   styleUrl: './project-deps.component.less',

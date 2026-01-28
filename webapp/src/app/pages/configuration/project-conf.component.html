@@ -1,47 +1,33 @@
-<div class="conf-page">
-  <div nz-row nzAlign="middle" nzJustify="space-between" class="page-header">
-    <div nz-col>
-      <div class="title">
-        项目配置
-        @if (loading()) {
-          <nz-icon nzType="loading" nzTheme="outline" />
-        }
-      </div>
-    </div>
-    <div nz-col>
-      <div class="actions">
-        <button nz-button nzType="primary" (click)="isModalVisible.set(true)">打开配置文件</button>
-        <app-ng-devtool></app-ng-devtool>
-      </div>
-    </div>
-  </div>
-  <div nz-row nzJustify="center" class="page-content">
-    <div class="panel" nz-col nzXs="24" nzSm="24" nzMd="20" nzLg="16" nzXl="16">
-      <app-config-nav-component
-        [nodes]="navNodes()"
-        [activeDomainId]="activeDomainId() ?? ''"
-        (domainSelect)="onDomainSelect($event)"
+<page-layout [title]="'项目配置'" [loading]="loading()">
+  <ng-container ngProjectAs="actions">
+    <button nz-button nzType="primary" (click)="isModalVisible.set(true)">打开配置文件</button>
+    <app-ng-devtool></app-ng-devtool>
+  </ng-container>
+  <div class="panel">
+    <app-config-nav-component
+      [nodes]="navNodes()"
+      [activeDomainId]="activeDomainId() ?? ''"
+      (domainSelect)="onDomainSelect($event)"
+    >
+    </app-config-nav-component>
+    <div class="content">
+      <app-config-section-component
+        [schema]="domainSchema()?.schema"
+        [vm]="domainVM()"
+        (vmChange)="domainVM.set($event)"
+        [options]="domainSchema()?.options ?? {}"
       >
-      </app-config-nav-component>
-      <div class="content">
-        <app-config-section-component
-          [schema]="domainSchema()?.schema"
-          [vm]="domainVM()"
-          (vmChange)="domainVM.set($event)"
-          [options]="domainSchema()?.options ?? {}"
-        >
-        </app-config-section-component>
-        <app-config-change-bar-component
-          [dirty]="domainDirty()"
-          (diff)="onDiff()"
-          (reset)="onReset()"
-          (save)="saveActive()"
-        >
-        </app-config-change-bar-component>
-      </div>
+      </app-config-section-component>
+      <app-config-change-bar-component
+        [dirty]="domainDirty()"
+        (diff)="onDiff()"
+        (reset)="onReset()"
+        (save)="saveActive()"
+      >
+      </app-config-change-bar-component>
     </div>
   </div>
-</div>
+</page-layout>
 <nz-modal
   [(nzVisible)]="isModalVisible"
   nzTitle="配置"
