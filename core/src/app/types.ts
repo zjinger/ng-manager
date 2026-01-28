@@ -8,14 +8,13 @@ import { FsService } from "../domain/fs";
 import { DepsService } from "../domain/deps";
 import { DashboardService } from "../domain/dashboard";
 import { ConfigService } from "../domain/config";
+import { SystemLogService } from "../domain/logger";
 
 /**
  * 创建 CoreApp 的参数
  * - 后续可以逐步扩展（dataDir / workspaceDir / storageType 等）
  */
 export interface CreateCoreAppOptions {
-    /** 任务日志最大条数 */
-    taskLogCapacity?: number;
     /** 系统日志最大条数 */
     sysLogCapacity?: number;
     /** 数据目录（存储项目列表等） */
@@ -31,8 +30,7 @@ export interface CoreApp {
     events: IEventBus<CoreEventMap>;
 
     /** 日志存储（ring buffer） */
-    taskLog: ILogStore; // 任务日志
-    sysLog: ILogStore;  // 系统日志
+    sysLog: SystemLogService;  // 系统日志
 
     /** 任务执行与管理 */
     task: TaskService;

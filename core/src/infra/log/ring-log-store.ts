@@ -1,14 +1,23 @@
 
 import type { ILogStore, LogTailFilter } from "./log.store";
-import type { LogLine } from "./types";
+import type { LogLine } from "./log.types";
 
 function matchFilter(line: LogLine, filter?: LogTailFilter) {
     if (!filter) return true;
     if (filter.refId !== undefined && line.refId !== filter.refId) return false;
     if (filter.source !== undefined && line.source !== filter.source) return false;
     if (filter.level !== undefined && line.level !== filter.level) return false;
+    if (filter.scope !== undefined && line.scope !== filter.scope) return false;
+
+    if (filter.data) {
+        const d = (line.data ?? {}) as Record<string, any>;
+        for (const [k, v] of Object.entries(filter.data)) {
+            if (d[k] !== v) return false;
+        }
+    }
     return true;
 }
+
 
 /**
  * Ring Buffer 日志存储：固定容量，性能稳定
@@ -61,12 +70,17 @@ export class RingLogStore implements ILogStore {
         return this.tail(n, { refId });
     }
 
-    clear(filter?: LogTailFilter): void {
+    /**
+     * 清空日志（可按 refId/source 过滤）
+     * @returns 被清除的条数
+     */
+    clear(filter?: LogTailFilter): number {
+        let len = this.len;
         if (!filter) {
             this.buf = new Array(this.cap);
             this.head = 0;
             this.len = 0;
-            return;
+            return len;
         }
 
         // 有过滤条件：保留不匹配的，重新构建 ring
@@ -75,6 +89,7 @@ export class RingLogStore implements ILogStore {
         this.head = 0;
         this.len = 0;
         for (const l of kept.slice(-this.cap)) this.append(l);
+        return len - this.len;
     }
 
     size(): number {

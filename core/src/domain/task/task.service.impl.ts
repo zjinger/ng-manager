@@ -1,15 +1,15 @@
 import { AppError } from "../../common/errors";
 import { uid } from "../../common/id";
-import type { IEventBus } from "../../infra/event/event-bus";
-import { Events, type CoreEventMap } from "../../infra/event/events";
-import type { ILogStore } from "../../infra/log/log.store";
-import { ProcessService, } from "../process";
+import { type CoreEventMap, Events, IEventBus } from "../../infra/event";
+import { ILogStore, LogLine } from "../../infra/log";
 import { type ProcHandle, SpawnedProcess } from "../../infra/process";
-import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
-import type { TaskRuntime, TaskDefinition, TaskRow } from "./task.types";
-import type { TaskService } from "./task.service";
+import { LogStreamType, TaskOutputPayload } from "../../protocol";
+import { SystemLogLevel, SystemLogService } from "../logger";
+import { ProcessService, } from "../process";
 import { ProjectService } from "../project";
-import { TaskOutputPayload } from "../../protocol";
+import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
+import type { TaskService } from "./task.service";
+import type { TaskDefinition, TaskRow, TaskRuntime } from "./task.types";
 
 function bufToText(b: Buffer) {
     // 统一转 utf8，后续需要 gbk，可在这里扩展
@@ -28,12 +28,11 @@ export class TaskServiceImpl implements TaskService {
     private readonly MAX_RUNS_PER_TASK = 5; // 每个 task 最多保留的 run 记录数
     private readonly MAX_TOTAL_RUNS = 200; // 全部任务最多保留的 run 记录数
 
-
     constructor(
         private projectService: ProjectService,
         private proc: ProcessService,
-        private sysLog: ILogStore,
-        private taskLog: ILogStore,
+        private sysLog: SystemLogService,
+        private taskStreamLog: ILogStore,
         private events: IEventBus<CoreEventMap>
     ) { }
 
@@ -70,18 +69,11 @@ export class TaskServiceImpl implements TaskService {
         this.trackRun(taskId, runId);
 
         // syslog
-        const cmdStr =
-            `${spec.command}${(spec.args?.length ? " " + spec.args.join(" ") : "")}`;
+        const cmdStr = `${spec.command}${(spec.args?.length ? " " + spec.args.join(" ") : "")}`;
+        const text = `[Task] ${spec.projectRoot}: ${cmdStr} started`;
+        // 发送 syslog
+        this.appendSysLog(runId, text, 'info');
 
-        this.sysLog.append({
-            ts: Date.now(),
-            level: "info",
-            source: "system",
-            scope: "task",
-            refId: runId,
-            text: `[Task] ${spec.projectRoot}: ${cmdStr} started`,
-        });
-        this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
         let p: SpawnedProcess;
         try {
             // node-pty driver：这里的 command 仍然是整段字符串
@@ -104,22 +96,17 @@ export class TaskServiceImpl implements TaskService {
                 this.runtimes.set(runId, cur);
             }
             this.activeRunByTaskId.delete(taskId);
-            this.sysLog.append({
-                ts: Date.now(),
-                level: "error",
-                source: "system",
-                scope: "task",
-                refId: runId,
-                text: `[Task] ${spec.projectRoot}: spawn failed, ${e?.message ?? String(e)}`,
-                data: { taskId, runId },
-            });
-            this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
+            // 发送 syslog
+            this.appendSysLog(runId, `[Task] ${spec.projectRoot}: spawn failed, ${e?.message ?? String(e)}`, 'error', { taskId, runId });
+            // 发送 task stream log 
+            this.appendTaskOutput(runId, taskId, `[Task] spawn failed: ${e?.message ?? String(e)}`, "stderr");
+
             this.events.emit(Events.TASK_FAILED, {
                 taskId,
                 runId,
                 error: e?.message ?? String(e),
             });
-            console.error("Task spawn failed:", e);
+
             throw e;
         }
         // 记录 pid + proc handle
@@ -145,23 +132,17 @@ export class TaskServiceImpl implements TaskService {
             p.onData((data: string) => {
                 // data 本身是 string（包含 \r\n 和 ANSI）
                 const text = typeof data === "string" ? data : String(data ?? "");
-                const outputPayload: TaskOutputPayload = { runId, taskId, stream: "stdout", text, }
-                this.taskLog.append({ ts: Date.now(), level: "info", source: "task", scope: "task", refId: runId, text });
-                this.events.emit(Events.TASK_OUTPUT, outputPayload);
+                this.appendTaskOutput(runId, taskId, text);
             });
         } else {
             // 兼容 pipe driver
             p.onStdout?.((chunk: Buffer) => {
                 const text = bufToText(chunk);
-                const outputPayload: TaskOutputPayload = { runId, taskId, stream: "stdout", text, }
-                this.taskLog.append({ ts: Date.now(), level: "info", source: "task", scope: "task", refId: runId, text });
-                this.events.emit(Events.TASK_OUTPUT, outputPayload);
+                this.appendTaskOutput(runId, taskId, text);
             });
             p.onStderr?.((chunk: Buffer) => {
                 const text = bufToText(chunk);
-                const outputPayload: TaskOutputPayload = { runId, taskId, stream: "stderr", text, }
-                this.taskLog.append({ ts: Date.now(), level: "warn", source: "task", scope: 'task', refId: runId, text });
-                this.events.emit(Events.TASK_OUTPUT, outputPayload);
+                this.appendTaskOutput(runId, taskId, text, "stderr");
             });
         }
 
@@ -187,29 +168,19 @@ export class TaskServiceImpl implements TaskService {
             // active 指针只在当前 runId 才清
             const active2 = this.activeRunByTaskId.get(taskId);
             if (active2 === runId) this.activeRunByTaskId.delete(taskId);
-            // syslog
-            this.sysLog.append({
-                ts: Date.now(),
-                level: cur.status === "failed" ? "error" : "info",
-                source: "system",
-                scope: "task",
-                refId: runId,
-                text: `[Task] ${spec.projectRoot}: ${cmdStr} exited, status=${cur.status} code=${code} signal=${signal}`,
-            });
-
-            this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
-            // task output event
-            const level = cur.status === "failed" ? "warn" : "info";
-            const text = `[Task] ${spec.projectRoot}: exited: status=${cur.status} code=${code} signal=${signal}`;
-            const taskOutputText = `[Task] exited: status=${cur.status} code=${code} signal=${signal}`;
-            this.taskLog.append({ ts: Date.now(), level, source: "task", scope: 'task', refId: runId, text });
             const stream = cur.status === "failed" ? "stderr" : "stdout";
-            this.events.emit(Events.TASK_OUTPUT, { taskId, runId, text: taskOutputText, stream });
+            const level = cur.status === "failed" ? "warn" : "info";
+            // 发送 syslog
+            const sysText = `[Task] ${spec.projectRoot}: exited: status=${cur.status} code=${code} signal=${signal}`;
+            this.appendSysLog(runId, sysText, level);
+            // task output event
+            const taskOutputText = `[Task] exited: status=${cur.status} code=${code} signal=${signal}`;
+            this.appendTaskOutput(runId, taskId, taskOutputText, stream);
+
             this.events.emit(Events.TASK_EXITED, { taskId, runId, exitCode: code, signal, stoppedAt: cur.stoppedAt! });
             if (cur.status === "failed") {
                 this.events.emit(Events.TASK_FAILED, { taskId, runId, error: `[Task] exit code=${code}` });
             }
-
             // exit 后再跑一次清理（把旧 run 淘汰掉）
             this.pruneRunsForTask(taskId);
             this.pruneRunsGlobal();
@@ -219,7 +190,6 @@ export class TaskServiceImpl implements TaskService {
     }
 
     async stop(taskId: string): Promise<TaskRuntime> {
-
         const cur = this.getActiveRuntime(taskId);
         if (!cur) throw new AppError("RUN_NOT_FOUND", "Run not found", { taskId });
         const { runId, rt } = cur;
@@ -234,22 +204,12 @@ export class TaskServiceImpl implements TaskService {
             const project = await this.projectService.get(projectId);
             projectRoot = project.root;
         } catch { }
-
-        this.sysLog.append({
-            ts: Date.now(),
-            level: "info",
-            source: "system",
-            scope: "task",
-            refId: runId,
-            text: `[Task] ${projectRoot}: stop requested`,
-        });
-        this.events.emit(Events.SYSLOG_APPENDED, { entry: this.sysLog.tail(1)[0]! });
-
+        this.appendSysLog(runId, `[Task] ${projectRoot}: stop requested`, 'info', { taskId, runId });
         this.events.emit(Events.TASK_STOP_REQUESTED, { taskId: rt.taskId, runId });
-
         // 可靠停止：Ctrl+C -> 超时 -> kill
-        this.stopReliable(runId).catch(() => { });
-
+        this.stopReliable(runId).then(() => {
+            this.appendSysLog(runId, `[Task] ${projectRoot}: stopped`, 'info', { taskId, runId });
+        }).catch(() => { });
         return rt;
     }
     async status(taskId: string): Promise<TaskRuntime> {
@@ -317,17 +277,6 @@ export class TaskServiceImpl implements TaskService {
                 this.pruneOrphanAll(orphanTaskIds);
             }
         }
-
-        this.sysLog.append({
-            ts: Date.now(),
-            level: "info",
-            source: "system",
-            refId: projectId,
-            scope: "project",
-            text: `[Project] refreshed ${nextSpecs.length} specs from project scripts`,
-        });
-        this.events.emit(Events.TASK_SPECS_REFRESHED, { projectId, count: nextSpecs.length });
-
         return await this.listViewsByProject(projectId);
     }
 
@@ -413,9 +362,9 @@ export class TaskServiceImpl implements TaskService {
         return null;
     }
 
-    // logs
+    //task logs
     async getTailLogsByRun(runId: string, tail: number) {
-        return this.taskLog.tail(Math.min(tail, 5000), { refId: runId, source: "task" });
+        return this.taskStreamLog.tail(Math.min(tail, 1000), { refId: runId, source: "task" });
     }
 
     // syslog
@@ -580,7 +529,6 @@ export class TaskServiceImpl implements TaskService {
         }
     }
 
-
     /* -------------------------------------------------------------------------- */
     /*                              orphan management                              */
     /* -------------------------------------------------------------------------- */
@@ -644,5 +592,38 @@ export class TaskServiceImpl implements TaskService {
      */
     private pruneOrphanAll(orphanTaskIds: string[]) {
         this.pruneOrphanSafe(orphanTaskIds);
+    }
+
+    /**
+     * 添加一条任务流日志
+     * @param runId 运行 ID
+     * @param taskId 任务 ID
+     * @param text 日志内容
+     * @param stream 日志流类型，stdout | stderr
+     */
+    private appendTaskOutput(runId: string, taskId: string, text: string, stream: LogStreamType = 'stdout') {
+        const outputPayload: TaskOutputPayload = { runId, taskId, stream, text }
+        const level = stream === 'stderr' ? 'warn' : 'info';
+        const log: LogLine = { ts: Date.now(), level, source: "task", scope: "task", refId: runId, text }
+        this.taskStreamLog.append(log);
+        // 记录任务流日志
+        this.events.emit(Events.TASK_OUTPUT, outputPayload);
+    }
+
+    /**
+     * 添加一条系统日志
+     * @param runId 关联 ID（runId）
+     * @param text 日志内容
+     * @param level 日志级别
+     */
+    private appendSysLog(refId: string, text: string, level: SystemLogLevel, data?: any) {
+        this.sysLog.append({
+            level,
+            source: "system",
+            scope: "task",
+            refId,
+            text,
+            data
+        });
     }
 }

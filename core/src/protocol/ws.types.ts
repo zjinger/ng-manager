@@ -1,7 +1,7 @@
 // 未来扩展：| "git" | "proxy" | "terminal" | "ai"
 
 import { ErrorCode } from "../common/errors";
-import { LogLine } from "../infra/log/types";
+import { LogLine } from "../infra/log/log.types";
 import { TaskEventMsg, TaskOutputMsg } from "./ws.task.types";
 
 export type WsTopic = "task" | "syslog";

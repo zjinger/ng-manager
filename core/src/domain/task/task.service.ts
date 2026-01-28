@@ -1,4 +1,4 @@
-import { LogLine } from "../../infra/log/types";
+import { LogLine } from "../../infra/log/log.types";
 import type { TaskRuntime, TaskDefinition, TaskRow } from "./task.types";
 
 export interface TaskService {

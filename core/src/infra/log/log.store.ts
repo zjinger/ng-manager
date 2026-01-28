@@ -1,9 +1,11 @@
-import type { LogLine } from "./types";
+import type { LogLine } from "./log.types";
 
 export interface LogTailFilter {
     refId?: string;
     source?: LogLine["source"];
     level?: LogLine["level"];
+    scope?: LogLine["scope"];
+    data?: Record<string, any>;
 }
 
 export interface ILogStore {
@@ -14,7 +16,7 @@ export interface ILogStore {
     tail(limit: number, filter?: LogTailFilter): LogLine[];
 
     /** 清空日志（可按 refId/source 过滤） */
-    clear(filter?: LogTailFilter): void;
+    clear(filter?: LogTailFilter): number;
 
     /** 当前缓存条数 */
     size(): number;

@@ -16,7 +16,7 @@ export type TaskEventType =
     | "bootstrapFailed" // 任务关联的项目 bootstrap 失败
     | "bootstrapNeedPickRoot"  // 任务关联的项目 bootstrap 需要用户选择根目录
 
-export type LogType = "stdout" | "stderr" | "system";
+export type LogStreamType = "stdout" | "stderr" | "system";
 
 export type TaskSnapshotPayload = {
     taskId: string;
@@ -113,7 +113,7 @@ export type TaskEventMsg =
 export type TaskOutputPayload = {
     runId: string;
     taskId: string;
-    stream: LogType;
+    stream: LogStreamType;
     text: string;
 };
 

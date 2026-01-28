@@ -4,7 +4,7 @@ import type { TopicHandler } from "../ws.router";
 import { LogLine } from "@core";
 const KEY_ALL = "syslog:all";
 export type SyslogWsDeps = {
-    getSyslogTail: (tail: number) => Promise<LogLine[]>;
+    getSyslogTail: (tail: number) => LogLine[];
 };
 
 export function createSyslogTopicHandler(

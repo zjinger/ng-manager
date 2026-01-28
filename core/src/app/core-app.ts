@@ -19,6 +19,7 @@ import { JsonFileKvRepo } from "../infra/storage/json-file-kv.repo";
 import { JsonDashboardRepo } from "../infra/dashboard";
 import { DashboardServiceImpl } from "../domain/dashboard";
 import { ConfigServiceImpl } from "../domain/config";
+import { SystemLogServiceImpl } from "../domain/logger";
 
 /**
  * 创建 CoreApp
@@ -32,8 +33,10 @@ export async function createCoreApp(
     // 事件总线（内存）
     const events = new MemoryEventBus<CoreEventMap>();
     // 日志存储（ring buffer）
-    const taskLog = new RingLogStore(opts.taskLogCapacity ?? 8000);
-    const sysLog = new RingLogStore(opts.sysLogCapacity ?? 2000);
+    const logStore = new RingLogStore(opts.sysLogCapacity ?? 10000);
+    const sysLog = new SystemLogServiceImpl(logStore, events, "system");
+    // 任务流日志存储（ring buffer）
+    const taskStreamLogStore = new RingLogStore(5000);
     // 数据目录
     const dataDir =
         opts.dataDir ??
@@ -55,7 +58,6 @@ export async function createCoreApp(
     });
     //  ProjectRepo 实现
     const projectRepo = new ProjectRepoJsonKv(projectKv);
-    // const projectRepo = new JsonProjectRepo(dataDir);
     const project = new ProjectServiceImpl(projectRepo)
     /* ------------------ task ------------------ */
     // 任务服务（start / stop / status）
@@ -63,7 +65,7 @@ export async function createCoreApp(
         project,
         processService,
         sysLog,
-        taskLog,
+        taskStreamLogStore,
         events
     );
 
@@ -123,7 +125,6 @@ export async function createCoreApp(
     /* ------------------ core app ------------------ */
     return {
         events,
-        taskLog,
         sysLog,
         task,
         project,

@@ -33,7 +33,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
 
     // syslog
     const syslogHandler = createSyslogTopicHandler(
-        { getSyslogTail: (tail) => fastify.core.task.getSyslogTail(tail) },
+        { getSyslogTail: (tail) => fastify.core.sysLog.tail(tail) },
         () => clients.values()
     );
     router.register(syslogHandler);

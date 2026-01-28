@@ -9,7 +9,7 @@ export * from "./infra/event/events";
 export * from "./infra/event/event-bus";
 export * from "./infra/event/memory-event-bus";
 
-export * from "./infra/log/types";
+export * from "./infra/log/log.types";
 export * from "./infra/log/log.store";
 export * from "./infra/log/ring-log-store";
 

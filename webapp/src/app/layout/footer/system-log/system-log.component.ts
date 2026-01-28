@@ -7,9 +7,9 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { SyslogStreamService } from '@app/core/log/syslog-stream.service';
 import { LogLevel } from '@models/log.model';
-import { TaskLogStreamService } from '@pages/tasks/services/task-log-stream.service';
+import { ProjectStateService } from '@pages/projects/services/project.state.service';
 
 @Component({
   selector: 'app-system-log',
@@ -27,7 +27,7 @@ import { TaskLogStreamService } from '@pages/tasks/services/task-log-stream.serv
   styleUrl: './system-log.component.less',
 })
 export class SystemLogDrawerComponent implements OnInit {
-  private taskLogStream = inject(TaskLogStreamService);
+  private sysLogStream = inject(SyslogStreamService);
   private projectState = inject(ProjectStateService);
   private logBox = viewChild<ElementRef<HTMLDivElement>>('logBox');
   // 自动跟随（可选开关，默认开更符合日志体验）
@@ -38,19 +38,19 @@ export class SystemLogDrawerComponent implements OnInit {
   readonly curProjectPath = computed(() => this.projectState.currentProject()?.root || '');
 
   // lines 是 computed，跟随 logs signal 更新
-  readonly lines = computed(() => this.taskLogStream.logs());
+  readonly lines = computed(() => this.sysLogStream.logs());
 
   readonly lastLine = computed(() => {
-    const logs = this.taskLogStream.logs();
+    const logs = this.sysLogStream.logs();
     return logs.length ? logs[logs.length - 1] : null;
   });
 
   // 可用于 badge
-  readonly unread = computed(() => this.taskLogStream.unread());
+  readonly unread = computed(() => this.sysLogStream.unread());
   constructor() {
     // 让 service 知道 drawer 开关，用于 unread 正确累加/清零
     effect(() => {
-      this.taskLogStream.setDrawerOpen(this.isOpen());
+      this.sysLogStream.setDrawerOpen(this.isOpen());
       // 打开 drawer 时滚到底
       if (this.isOpen()) queueMicrotask(() => this.toBottom());
     });
@@ -65,7 +65,7 @@ export class SystemLogDrawerComponent implements OnInit {
   }
   ngOnInit(): void {
     // 应用启动就订阅一次（幂等）
-    this.taskLogStream.enable(300);
+    this.sysLogStream.enable(300);
   }
 
   openLog() {
@@ -77,7 +77,7 @@ export class SystemLogDrawerComponent implements OnInit {
   }
 
   clearLog() {
-    this.taskLogStream.clear();
+    this.sysLogStream.clear();
   }
 
   toBottom() {

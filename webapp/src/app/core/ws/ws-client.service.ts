@@ -132,9 +132,9 @@ export class WsClientService {
 
   private startHeartbeat() {
     this.stopHeartbeat();
-    // this.heartbeatTimer = setInterval(() => {
-    //   this.send({ op: "ping" });
-    // }, 20_000);
+    this.heartbeatTimer = setInterval(() => {
+      this.send({ op: "ping" });
+    }, 20_000);
   }
 
   private stopHeartbeat() {

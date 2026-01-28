@@ -1,5 +1,5 @@
 import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "../../protocol";
-import { LogLine } from "../log/types";
+import { LogLine } from "../log/log.types";
 
 export const Events = {
     // project
