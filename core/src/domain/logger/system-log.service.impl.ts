@@ -52,7 +52,9 @@ export class SystemLogServiceImpl implements SystemLogService {
     error(input: Omit<SystemLogAppendInput, "level">) {
         return this.append({ ...input, level: "error" });
     }
-
+    success(input: Omit<SystemLogAppendInput, "level">) {
+        return this.append({ ...input, level: "success" });
+    }
     tail(limit: number, filter?: SystemLogFilter): SystemLogEntry[] {
         const lines = this.store.tail(Math.max(0, limit | 0), this.toStoreFilter(filter));
         return lines as SystemLogEntry[];

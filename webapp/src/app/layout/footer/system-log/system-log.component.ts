@@ -92,6 +92,7 @@ export class SystemLogDrawerComponent implements OnInit {
   getColor(level?: LogLevel): string {
     if (!level) return "#000000";
     switch (level) {
+      case 'success': return "#22c55e"; 
       case 'info': return "#18bdfd";
       case 'debug': return "#94a3b8";
       case "error": return "#ef4444";

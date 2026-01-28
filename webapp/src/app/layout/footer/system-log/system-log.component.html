@@ -45,12 +45,18 @@
           [class.warn]="l.level === 'warn'"
           [class.info]="l.level === 'info'"
           [class.debug]="l.level === 'debug'"
+          [class.success]="l.level === 'success'"
         >
           <nz-tag [nzColor]="getColor(l.level)" class="level-tag">
             {{ l.level | uppercase }}
           </nz-tag>
           <span class="time">{{ l.ts | date: 'yyyy-MM-dd HH:mm:ss' }}</span>
-          <span class="msg">{{ l.text }}</span>
+          <span class="msg">
+            @if (l.data?.icon) {
+              {{ l.data?.icon }}
+            }
+            {{ l.text }}
+          </span>
         </div>
       }
     </div>

@@ -73,7 +73,8 @@ export async function createCoreApp(
     const bootstrap = new ProjectBootstrapService(
         project,
         task,
-        events
+        events,
+        sysLog
     );
     /* ------------------ fs ------------------ */
     const fs = new FsServiceImpl();

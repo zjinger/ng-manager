@@ -1,6 +1,6 @@
 import { LogLine } from "../../infra/log";
 
-export type SystemLogLevel = "debug" | "info" | "warn" | "error";
+export type SystemLogLevel = "debug" | "info" | "warn" | "error" | "success";
 export type SystemLogScope =
     | "system"
     | "task"

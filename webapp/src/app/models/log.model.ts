@@ -10,7 +10,7 @@ export type LogScope =
     | "core";
 
 // 日志等级
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = "debug" | "info" | "warn" | "error" | "success";
 
 // 记录日志的来源
 export type LogSource = "system" | "task";

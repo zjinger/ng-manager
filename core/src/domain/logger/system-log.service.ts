@@ -63,6 +63,7 @@ export interface SystemLogService {
     info(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
     warn(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
     error(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
+    success(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
 
     /**
      *  最近 N 条（最新在后）

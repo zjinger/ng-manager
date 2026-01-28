@@ -169,10 +169,10 @@ export class TaskServiceImpl implements TaskService {
             const active2 = this.activeRunByTaskId.get(taskId);
             if (active2 === runId) this.activeRunByTaskId.delete(taskId);
             const stream = cur.status === "failed" ? "stderr" : "stdout";
-            const level = cur.status === "failed" ? "warn" : "info";
+            const sysLevel = cur.status === "failed" ? "error" : "info";
             // 发送 syslog
-            const sysText = `[Task] ${spec.projectRoot}: exited: status=${cur.status} code=${code} signal=${signal}`;
-            this.appendSysLog(runId, sysText, level);
+            const sysText = `[Task] ${spec.projectRoot}: ${cmdStr} ${cur.status}`;
+            this.appendSysLog(runId, sysText, sysLevel);
             // task output event
             const taskOutputText = `[Task] exited: status=${cur.status} code=${code} signal=${signal}`;
             this.appendTaskOutput(runId, taskId, taskOutputText, stream);
@@ -204,12 +204,9 @@ export class TaskServiceImpl implements TaskService {
             const project = await this.projectService.get(projectId);
             projectRoot = project.root;
         } catch { }
-        this.appendSysLog(runId, `[Task] ${projectRoot}: stop requested`, 'info', { taskId, runId });
         this.events.emit(Events.TASK_STOP_REQUESTED, { taskId: rt.taskId, runId });
         // 可靠停止：Ctrl+C -> 超时 -> kill
-        this.stopReliable(runId).then(() => {
-            this.appendSysLog(runId, `[Task] ${projectRoot}: stopped`, 'info', { taskId, runId });
-        }).catch(() => { });
+        this.stopReliable(runId).catch(() => { });
         return rt;
     }
     async status(taskId: string): Promise<TaskRuntime> {

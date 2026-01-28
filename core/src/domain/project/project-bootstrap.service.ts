@@ -11,6 +11,7 @@ import type { TaskService } from "../task/task.service";
 import { BootstrapCtx } from "./bootstrap.types";
 import { scanWorkspaceCandidates } from "./detectors/detectFramework";
 import type { ProjectService } from "./project.service";
+import { SystemLogService } from "../logger";
 const execFileAsync = promisify(execFile);
 export class ProjectBootstrapService {
     private ctxByTaskId = new Map<string, BootstrapCtx>();
@@ -18,7 +19,8 @@ export class ProjectBootstrapService {
     constructor(
         private project: ProjectService,
         private task: TaskService,
-        private events: IEventBus<CoreEventMap>
+        private events: IEventBus<CoreEventMap>,
+        private sysLog: SystemLogService,
     ) {
         this.bindEvents();
         // 任务失败：发 failed
@@ -145,10 +147,10 @@ export class ProjectBootstrapService {
         try {
             ctx.root = normalizedRoot;
             ctx.status = "finalizing";
-            const projectId = await this.finalizeImport(ctx);
+            const project = await this.finalizeImport(ctx);
             ctx.status = "done";
-            this.emitDone(ctx, projectId);
-            return { ok: true, projectId, rootPath: ctx.root };
+            this.emitDone(ctx, project.id, project.projectName);
+            return { ok: true, projectId: project.id, rootPath: ctx.root };
         } catch (e: any) {
             this.emitFailed(ctx, e?.message ?? "pick finalize failed");
             return { ok: false, reason: e?.message };
@@ -184,12 +186,10 @@ export class ProjectBootstrapService {
                     if (candidates.length > 1) {
                         ctx.status = "waitingPick";
                         ctx.candidates = candidates;
-                        this.events.emit(Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT, {
-                            taskId: ctx.taskId,
-                            runId: ctx.runId!,
-                            rootPath: ctx.root,
-                            candidates,
-                        });
+
+                        this.emitNeedPick(ctx, candidates);
+
+
                         return;
                     }
 
@@ -197,9 +197,9 @@ export class ProjectBootstrapService {
                 }
 
                 ctx.status = "finalizing";
-                const projectId = await this.finalizeImport(ctx);
+                const project = await this.finalizeImport(ctx);
                 ctx.status = "done";
-                this.emitDone(ctx, projectId);
+                this.emitDone(ctx, project.id, project.projectName);
             } catch (e: any) {
                 this.emitFailed(ctx, e.message);
             } finally {
@@ -209,7 +209,7 @@ export class ProjectBootstrapService {
     }
     /* ================= finalize ================= */
     /* finalize project 创建/导入 + 扫描 + 刷新任务 */
-    private async finalizeImport(ctx: BootstrapCtx): Promise<string> {
+    private async finalizeImport(ctx: BootstrapCtx): Promise<{ id: string; projectName: string }> {
         await this.project.scan(ctx.root);
         const p =
             ctx.kind === "cli"
@@ -217,7 +217,7 @@ export class ProjectBootstrapService {
                 : await this.project.importProject({ name: ctx.name, root: ctx.root });
 
         await this.task.refreshByProject(p.id);
-        return p.id;
+        return { id: p.id, projectName: p.name };
     }
 
     /* ---------------- helpers ---------------- */
@@ -378,14 +378,50 @@ export class ProjectBootstrapService {
             rootPath: ctx.root,
             reason,
         });
+        this.sysLog.error({
+            source: "system",
+            scope: "project",
+            refId: ctx.runId!,
+            text: `[Project Bootstrap] failed: ${reason}`,
+            data: {
+                icon: '📦',
+            }
+        })
     }
-    private emitDone(ctx: BootstrapCtx, projectId: string) {
+    /* 发完成事件 */
+    private emitDone(ctx: BootstrapCtx, projectId: string, projectName: string) {
         this.events.emit(Events.PROJECT_BOOTSTRAP_DONE, {
             taskId: ctx.taskId,
             runId: ctx.runId!,
             projectId,
             rootPath: ctx.root,
         });
+        this.sysLog.success({
+            source: "system",
+            scope: "project",
+            refId: ctx.runId!,
+            text: `[Project Bootstrap] done: project ${projectName} imported`,
+            data: {
+                icon: '📦',
+                status: 'success',
+            }
+        })
+    }
+
+    /* 发需要用户 pick 事件 */
+    private emitNeedPick(ctx: BootstrapCtx, candidates: { path: string; kind: "angular" | "vue"; }[]) {
+        this.events.emit(Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT, {
+            taskId: ctx.taskId,
+            runId: ctx.runId!,
+            rootPath: ctx.root,
+            candidates,
+        });
+        this.sysLog.warn({
+            source: "system",
+            scope: "project",
+            refId: ctx.runId!,
+            text: `[Project Bootstrap] multiple workspace candidates found, waiting for user pick`,
+        })
     }
 
     /* 清理 ctx */
