@@ -30,11 +30,10 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     INVALID_REPO_URL: 400, // 无效的仓库地址
     INVALID_PARENT_DIR: 400, // 无效的父目录
     GIT_CHECKOUT_FAILED: 500, // Git 检出失败
-    NO_WORKSPACE_FOUND: 404, // 未找到工作区
     BOOTSTRAP_NOT_IN_PICK_STATE: 400, // 当前不处于选择根目录状态
-    BOOTSTRAP_RUN_NOT_FOUND: 404, // 引导任务运行记录未找到
-    INVALID_PICKED_ROOT: 400, // 选择的根目录无效
-
+    BOOTSTRAP_CTX_NOT_FOUND: 404, // 引导上下文未找到
+    BOOTSTRAP_INVALID_PICKED_ROOT: 400, // 选择的根目录无效
+    BOOTSTRAP_NOT_WAITING_PICK: 400, // 引导未处于等待选择状态
 
     /* ---------------- Project Analysis ---------------- */
     PROJECT_ANGULAR_JSON_INVALID: 400, // angular.json 无效

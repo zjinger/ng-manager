@@ -152,7 +152,7 @@ export class StepPresetComponent {
       nzWidth: '580px',
       nzClosable: false,
       nzData: {
-        cloneUrl: 'http://zhangj@192.168.1.10:7777/r/smartlogix-mini.git',//'http://admin@192.168.1.10:7777/r/ais-broadcaster.git',// ssh://admin@192.168.1.10:29418/ais-broadcaster.git
+        cloneUrl: '',
         isSaving: false
       },
       nzFooter: [

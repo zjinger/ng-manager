@@ -21,10 +21,12 @@ export const enum ErrorPolicyCode {
     TARGET_EXISTS = "TARGET_EXISTS",
     INVALID_REPO_URL = "INVALID_REPO_URL",
     GIT_CHECKOUT_FAILED = "GIT_CHECKOUT_FAILED",  // Git 检出失败
-    NO_WORKSPACE_FOUND = "NO_WORKSPACE_FOUND", // 未找到工作区
     BOOTSTRAP_NOT_IN_PICK_STATE = "BOOTSTRAP_NOT_IN_PICK_STATE", // 当前不处于选择根目录状态
-    BOOTSTRAP_RUN_NOT_FOUND = "BOOTSTRAP_RUN_NOT_FOUND", // 引导任务运行记录未找到
-    INVALID_PICKED_ROOT = "INVALID_PICKED_ROOT", // 选择的根目录无效
+    BOOTSTRAP_CTX_NOT_FOUND = "BOOTSTRAP_CTX_NOT_FOUND", // 引导上下文未找到
+    BOOTSTRAP_INVALID_PICKED_ROOT = "BOOTSTRAP_INVALID_PICKED_ROOT", // 选择的根目录无效
+    BOOTSTRAP_NOT_WAITING_PICK = "BOOTSTRAP_NOT_WAITING_PICK", // 引导未处于等待选择状态
+
+
     /** project analysis */
     PROJECT_ANGULAR_JSON_INVALID = "PROJECT_ANGULAR_JSON_INVALID",
     PROJECT_ANGULAR_JSON_NOT_FOUND = "PROJECT_ANGULAR_JSON_NOT_FOUND",
@@ -157,22 +159,22 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
         level: "toast",
         message: "Git 检出失败",
     },
-    NO_WORKSPACE_FOUND: {
-        level: "toast",
-        message: "未找到工作区",
-    },
-   
+
     BOOTSTRAP_NOT_IN_PICK_STATE: {
         level: "toast",
         message: "当前不处于选择根目录状态",
     },
-    BOOTSTRAP_RUN_NOT_FOUND: {
+    BOOTSTRAP_CTX_NOT_FOUND: {
         level: "toast",
-        message: "引导任务运行记录未找到",
+        message: "引导上下文未找到",
     },
-    INVALID_PICKED_ROOT: {
+    BOOTSTRAP_INVALID_PICKED_ROOT: {
         level: "toast",
         message: "选择的根目录无效",
+    },
+    BOOTSTRAP_NOT_WAITING_PICK: {
+        level: "toast",
+        message: "引导未处于等待选择状态",
     },
 
     /** project analysis */

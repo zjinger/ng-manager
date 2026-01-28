@@ -1,18 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NZ_MODAL_DATA, NzModalModule, NzModalRef } from 'ng-zorro-antd/modal';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NZ_MODAL_DATA, NzModalModule, NzModalRef } from 'ng-zorro-antd/modal';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 
 export type PickWorkspaceResult = { pickedRoot: string };
 
+export type PickWorkspaceCandidate = { path: string; kind: "angular" | "vue" };
+
 export interface PickWorkspaceModalData {
-  candidates: string[];
-  defaultPicked?: string;
+  candidates: PickWorkspaceCandidate[];
+  defaultPicked?: PickWorkspaceCandidate;
 }
 
 @Component({
@@ -27,6 +31,8 @@ export interface PickWorkspaceModalData {
     NzButtonModule,
     NzIconModule,
     NzEmptyModule,
+    NzTagModule,
+    NzTooltipModule
   ],
   template: `
     <div class="wrap">
@@ -45,11 +51,17 @@ export interface PickWorkspaceModalData {
         @if (filtered().length === 0) {
           <nz-empty nzNotFoundContent="没有匹配的目录"></nz-empty>
         } @else {
-          <nz-radio-group [(ngModel)]="selected" nzSize="large">
+          <nz-radio-group [(ngModel)]="selectedPath" nzSize="large">
             @for (p of filtered(); track p) {
-              <div nz-radio [nzValue]="p" class="item">
+              <div nz-radio [nzValue]="p.path" class="item">
                 <div class="path">
-                  {{ p }}
+                  <div class="value" [nz-tooltip]="p.path" nzTooltipPlacement="top">{{ p.path }}</div>
+                  @let kind = p.kind;
+                  @if(kind) {
+                  <nz-tag [nzColor]="kind==='angular' ? '#dd0031' : kind==='vue' ? '#42b883' : '#108ee9'"  nzMode="default">
+                      {{ p.kind | titlecase }} 
+                  </nz-tag>
+                  }
                 </div>
               </div>
             }
@@ -66,7 +78,7 @@ export interface PickWorkspaceModalData {
         <button
           nz-button
           nzType="primary"
-          [disabled]="!selected()"
+          [disabled]="!selectedPath()"
           (click)="ok()"
         >
           <nz-icon nzType="check" nzTheme="outline" />
@@ -97,8 +109,24 @@ export interface PickWorkspaceModalData {
       &:hover{
         background-color: var(--app-primary-3);
       }
+      ::ng-deep .ant-radio+span{
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex: 1 1 auto;
+        width: 0;
+        padding: 0;
+      }
     }
-    .path { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .path{display:flex;gap:12px; flex: 1 1 auto; text-overflow: ellipsis; white-space: nowrap; width: 0; overflow: hidden;}
+    .path .value{ 
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; 
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1 1 auto;
+      width: 0;
+      overflow: hidden;
+  }
     .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
   `]
 })
@@ -107,7 +135,8 @@ export class PickWorkspaceModalComponent {
   readonly data = inject<PickWorkspaceModalData>(NZ_MODAL_DATA);
 
   keyword = signal<string>('');
-  selected = signal<string>('');
+
+  selectedPath = signal<string | null>(null);
 
   constructor(private modalRef: NzModalRef<PickWorkspaceResult | null>) { }
 
@@ -116,14 +145,14 @@ export class PickWorkspaceModalComponent {
     const first = defaultPicked && candidates.includes(defaultPicked)
       ? defaultPicked
       : (candidates[0] ?? '');
-    this.selected.set(first);
+    this.selectedPath.set(first?.path ?? null);
   }
 
   filtered = computed(() => {
     const kw = (this.keyword() || '').trim().toLowerCase();
     const list = this.data.candidates ?? [];
     if (!kw) return list;
-    return list.filter(p => p.toLowerCase().includes(kw));
+    return list.filter(p => p.path.toLowerCase().includes(kw));
   });
 
   cancel() {
@@ -131,7 +160,7 @@ export class PickWorkspaceModalComponent {
   }
 
   ok() {
-    const picked = this.selected();
+    const picked = this.selectedPath();
     if (!picked) return;
     this.modalRef.close({ pickedRoot: picked });
   }

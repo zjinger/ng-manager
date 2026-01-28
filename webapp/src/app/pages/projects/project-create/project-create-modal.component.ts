@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskEventMsg, TaskEventType, UiNotifierService } from '@app/core';
+import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskEventMsg, TaskEventType, UiNotifierService } from '@app/core';
 import { DetectResult } from '@models/project.model';
 import { TaskStreamService } from '@pages/tasks/services/task-stream.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -16,7 +16,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { filter, first, firstValueFrom, merge, Subject, Subscription, takeUntil, timeout } from 'rxjs';
 import { CreateSummaryAsideComponent } from '../components/create-summary-aside.component';
 import { FsExplorerService } from '../components/fs-explorer';
-import { PickWorkspaceModalComponent, PickWorkspaceResult } from '../components/pick-workspace-modal.component';
+import { PickWorkspaceCandidate, PickWorkspaceModalComponent, PickWorkspaceResult } from '../components/pick-workspace-modal.component';
 import { StepBasicComponent } from '../components/step-basic.component';
 import { StepConfigComponent } from '../components/step-config.component';
 import { StepFeaturesComponent } from '../components/step-features.component';
@@ -153,7 +153,7 @@ export class ProjectCreateModal implements OnInit {
   ngOnInit(): void {
     const d = this.draft();
     const parentDir = this.parentDir;
-    this.draft.set({ ...d, rootPath: '', parentDir, name: "workspace\\smartlogix-mini" });
+    this.draft.set({ ...d, rootPath: '', parentDir, name: "" });
   }
 
   detectNow() {
@@ -223,17 +223,17 @@ export class ProjectCreateModal implements OnInit {
     const destroy$ = new Subject<void>();
 
     try {
-      // 1) 发起 bootstrap
+      //  发起 bootstrap
       const bootstrap$ = d.preset === 'git'
         ? this.api.bootstrapByGit(d)
         : this.api.bootstrapByCli(d);
 
       const { taskId } = await firstValueFrom(bootstrap$);
 
-      // 2) 订阅 task（用于 tail / output）
+      // 订阅 task（用于 tail / output）
       this.taskStream.subscribeTask(taskId, 3000);
 
-      // 3) 监听输出（展示在 aside）
+      // 监听输出（展示在 aside）
       this.sub.add(
         this.taskStream.output$(taskId).subscribe((m) => {
           const chunk = m.payload.text ?? '';
@@ -241,7 +241,7 @@ export class ProjectCreateModal implements OnInit {
         })
       );
 
-      // 4) 等待首个关键事件：done / failed / needPick
+      // 等待首个关键事件：done / failed / needPick
       const firstEvt = await this.waitForTaskEvent(taskId, [
         'bootstrapDone',
         'bootstrapFailed',
@@ -263,9 +263,9 @@ export class ProjectCreateModal implements OnInit {
         return;
       }
 
-      // 5) needPickRoot：打开选择框
-      const pickPayload = firstEvt.payload as any; // TaskBootstrapNeedPickRootPayload
-      const candidates: string[] = pickPayload?.candidates ?? [];
+      // needPickRoot：打开选择框
+      const pickPayload = firstEvt.payload as TaskBootstrapNeedPickRootPayload; // TaskBootstrapNeedPickRootPayload
+      const candidates = pickPayload?.candidates ?? [];
       if (!candidates.length) {
         this.notify.error('项目导入失败：未找到可导入的工作区目录');
         return;
@@ -273,11 +273,19 @@ export class ProjectCreateModal implements OnInit {
 
       const pickedRoot = await this.pickWorkspaceRootByModal(candidates);
       if (!pickedRoot) {
-        this.notify.error('已取消选择工作区目录');
+        this.modal.info({
+          nzTitle: '提示',
+          nzContent: '您未选择任何目录，项目导入已取消。可通过“导入”功能重新手动导入。',
+          nzCancelText: null,
+          nzOkText: '我知道了',
+          nzOnOk: () => {
+            this.modalRef.close();
+          }
+        });
         return;
       }
 
-      // 6) 回传 pickedRoot（这里用 HTTP 返回 ok 即可，不依赖 WS done）
+      //  回传 pickedRoot（这里用 HTTP 返回 ok 即可，不依赖 WS done）
       const pickResult = await firstValueFrom(
         this.api.bootstrapPickRoot({ taskId, pickedRoot }).pipe(
           timeout(60 * 1000),
@@ -295,7 +303,7 @@ export class ProjectCreateModal implements OnInit {
       this.modalRef.close({ ok: true });
       this.router.navigate(['/dashboard']);
 
-      // 7) 再等最终结果：done / failed（重新订阅等待，不复用之前的 done$）
+      //  再等最终结果：done / failed（重新订阅等待，不复用之前的 done$）
       // const finalEvt = await this.waitForTaskEvent(taskId, [
       //   'bootstrapDone',
       //   'bootstrapFailed',
@@ -420,7 +428,7 @@ export class ProjectCreateModal implements OnInit {
     })
   }
 
-  private async pickWorkspaceRootByModal(candidates: string[]): Promise<string | null> {
+  private async pickWorkspaceRootByModal(candidates: PickWorkspaceCandidate[]): Promise<string | null> {
     const modal: NzModalRef<PickWorkspaceModalComponent> = this.modal.create({
       nzTitle: '选择要导入的工作区目录',
       nzContent: PickWorkspaceModalComponent,

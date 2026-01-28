@@ -82,7 +82,10 @@ export type TaskBootstrapNeedPickRootPayload = {
     taskId: string;
     runId: string;
     rootPath: string;        // clone 出来的仓库根目录
-    candidates: string[];    // 可选子目录（绝对路径 or 相对 rootPath）
+    candidates: Array<{         // 可选子目录（绝对路径）
+        path: string;
+        kind: "angular" | "vue";
+    }>;
     reason: string;          // 需要选择根目录的原因描述
 }
 
