@@ -1,0 +1,102 @@
+:host {
+  display: block;
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+}
+
+.status-bar {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  user-select: none;
+
+  .project-path {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+  }
+
+  .last-log {
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+
+    .info {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .time {
+      flex: 0 0 auto;
+      opacity: 0.75;
+      font-size: 14px;
+    }
+
+    &:hover {
+      background: #f5f7fa;
+    }
+  }
+}
+
+.icon {
+  margin-right: 8px;
+  font-size: 16px;
+  display: inline-flex;
+}
+
+/* Drawer 内的日志区域 */
+.log {
+  height: 100%;
+  overflow: auto;
+  padding: 8px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.line {
+  display: flex;
+  gap: 12px;
+  padding: 2px 0;
+  align-items: center;
+
+  .time {
+    flex: 0 0 auto;
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .msg {
+    flex: 1 1 auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &.err .msg {
+    font-weight: 600;
+  }
+
+  &.warn .msg {
+    font-weight: 500;
+  }
+}
+
+.level-tag {
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1.5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  border-radius: 4px;
+}

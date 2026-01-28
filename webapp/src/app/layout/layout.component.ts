@@ -7,6 +7,7 @@ import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { LayoutHeaderComponent } from "./header/layout-header.component";
 import { LayoutSidebarComponent } from './sidebar/layout-sidebar.component';
 import { WsClientService } from '@app/core';
+import { LayoutFooterComponent } from "./footer/layout-footer.component";
 @Component({
   selector: 'ngm-layout',
   imports: [
@@ -16,8 +17,9 @@ import { WsClientService } from '@app/core';
     NzIconModule,
     NzMenuModule,
     LayoutSidebarComponent,
-    LayoutHeaderComponent
-  ],
+    LayoutHeaderComponent,
+    LayoutFooterComponent
+],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.less',
 })

@@ -16,7 +16,6 @@ import { TaskActionsComponent } from './task-actions/task-actions.component';
 import { TaskConsoleComponent } from './task-console/task-console.component';
 import { TaskHeaderComponent } from './task-header/task-header.component';
 import { TaskListComponent } from './task-list/task-list.component';
-import { TaskLogDrawerComponent } from './task-log/task-log.component';
 import { PageLayoutComponent } from '@app/shared';
 @Component({
   selector: 'app-tasks',
@@ -36,32 +35,28 @@ import { PageLayoutComponent } from '@app/shared';
     TaskListComponent,
     TaskActionsComponent,
     TaskHeaderComponent,
-    TaskLogDrawerComponent,
     NzLayoutComponent,
     PageLayoutComponent
   ],
   template: `
   <page-layout [title]="'任务'" [isFullscreen]="true">
     <nz-layout class="page">
-      <nz-layout class="page-tasks">
-        <app-task-list></app-task-list>
-        <nz-content class="content">
-          <app-task-header
-            [name]="selectedTask()?.spec?.name"
-            [description]="selectedTask()?.spec?.description"
-            [command]="selectedTask()?.spec?.command"
-          ></app-task-header>
-          <app-task-actions 
-            [isStopping]="taskState.isStopping()"
-            [isRunning]="taskState.isRunning()" 
-            [isStopped]="taskState.isStopped()"
-            (toggle)="taskState.toggleTask()"
-            >
-          </app-task-actions>
-          <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
-        </nz-content>
-      </nz-layout>
-      <app-task-log></app-task-log>
+      <app-task-list></app-task-list>
+      <nz-content class="content">
+        <app-task-header
+          [name]="selectedTask()?.spec?.name"
+          [description]="selectedTask()?.spec?.description"
+          [command]="selectedTask()?.spec?.command"
+        ></app-task-header>
+        <app-task-actions 
+          [isStopping]="taskState.isStopping()"
+          [isRunning]="taskState.isRunning()" 
+          [isStopped]="taskState.isStopped()"
+          (toggle)="taskState.toggleTask()"
+          >
+        </app-task-actions>
+        <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
+      </nz-content>
     </nz-layout>
   </page-layout>
   `,
@@ -70,40 +65,32 @@ import { PageLayoutComponent } from '@app/shared';
     .page{
       height: 100%;
       display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .page-tasks {
-      flex: 1 1 auto;
       flex-direction: row;
+      overflow: hidden;
       gap: 16px;
       padding:0 16px;
-      height: 0;
+    }
+    app-task-list {
+      flex: 0 0 320px;
+      width: 320px;
+    }
+    .content{
+      flex: 1 1 auto;
+      width: 0;
       display: flex;
+      flex-direction: column;
+      gap: 16px;
+      height: 100%;
       overflow: hidden;
-      
-      app-task-list {
-        flex: 0 0 320px;
-        width: 320px;
-      }
-      .content{
-        flex: 1 1 auto;
-        width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        height: 100%;
-        overflow: hidden;
-      }
-       app-task-header,
-        app-task-actions{
-          flex:0 0 auto;
-        }
-        app-task-console {
-          flex: 1 1 auto;
-          display: block;
-          height:0;
-        }
+    }
+    app-task-header,
+    app-task-actions{
+      flex:0 0 auto;
+    }
+    app-task-console {
+      flex: 1 1 auto;
+      display: block;
+      height:0;
     }
     `
   ],

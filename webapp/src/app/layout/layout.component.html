@@ -1,11 +1,14 @@
 <nz-layout class="app-layout">
-  <ngm-sidebar></ngm-sidebar>
-  <nz-layout>
-    <!-- <ngm-header></ngm-header> -->
-    <nz-content>
-      <div class="inner-content">
-        <router-outlet></router-outlet>
-      </div>
-    </nz-content>
+  <ngm-header></ngm-header>
+  <nz-layout class="app-content">
+    <ngm-sidebar></ngm-sidebar>
+    <nz-layout>
+      <nz-content>
+        <div class="inner-content">
+          <router-outlet></router-outlet>
+        </div>
+      </nz-content>
+    </nz-layout>
   </nz-layout>
+  <ngm-footer></ngm-footer>
 </nz-layout>

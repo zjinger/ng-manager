@@ -1,22 +1,36 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { ThemeService } from '@app/theme.service';
-import { NzButtonModule } from 'ng-zorro-antd/button';
+import { Component } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 
 @Component({
   selector: 'ngm-header',
-  imports: [NzLayoutModule, NzButtonModule, NzIconModule],
-  templateUrl: './layout-header.component.html',
-  styleUrl: './layout-header.component.less',
+  imports: [NzLayoutModule, NzIconModule],
+  template: `
+    <nz-header class="app-header">
+      <nz-icon nzType="disconnect" nzTheme="outline" />
+      <span>连接已断开</span>
+    </nz-header>
+  `,
+  styles: [
+    `
+      nz-header {
+        padding: 0;
+        width: 100%;
+        position: relative;
+        height: 48px;
+        line-height: 48px;
+        background:var(--header-error-background);
+        transition: all 0.3s;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        gap: 8px;
+    }
+    `
+  ],
 })
 export class LayoutHeaderComponent {
-  @Input() isCollapsed = false;
-  @Output() toggleSidebar = new EventEmitter<void>();
 
-  constructor(private themeService: ThemeService) { }
-
-  toggleTheme() {
-    this.themeService.toggleTheme().then();
-  }
 }
