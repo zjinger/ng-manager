@@ -109,8 +109,8 @@ export class ProjectApiService {
     return this.api.post<{ ok: boolean }>(`/api/projects/openInEditor/${id}`, { editor });
   }
 
-  rename(projectId: string, name: string): Observable<Project> {
-    return this.api.post<Project>(`/api/projects/rename/${projectId}`, { name });
+  edit(projectId: string, data: { name: string, desc?: string }): Observable<Project> {
+    return this.api.post<Project>(`/api/projects/edit/${projectId}`, data);
   }
 
 }

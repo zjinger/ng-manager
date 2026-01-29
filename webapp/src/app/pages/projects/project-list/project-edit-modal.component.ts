@@ -16,7 +16,7 @@ import { ProjectStateService } from '../services/project.state.service';
       [nzClosable]="false"
       [nzMaskClosable]="false"
       [nzVisible]="projectState.isEditModalVisible()"
-      nzTitle="重命名"
+      nzTitle="编辑项目"
       (nzOnCancel)="projectState.closeEditModal()"
     >
       <ng-container *nzModalContent>
@@ -34,6 +34,18 @@ import { ProjectStateService } from '../services/project.state.service';
             <nz-icon nzInputPrefix nzType="folder" nzTheme="fill" />
           </nz-input-wrapper>
           <div class="hint">输入新名称，将同步更新项目显示名称（不会重命名磁盘目录）。</div>
+          <label class="label">描述</label>
+          <nz-input-wrapper>
+            <textarea
+              nz-input
+              rows="3"
+              style="resize: none;"
+              [ngModel]="projectState.editingProjectDescription()"
+              (ngModelChange)="projectState.editingProjectDescription.set($event)"
+              placeholder="请输入新描述"
+              (keydown.enter)="projectState.confirmEditProject()"
+            ></textarea>
+          </nz-input-wrapper>
         </div>
       </ng-container>
 

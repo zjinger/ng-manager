@@ -26,4 +26,6 @@ export interface ProjectService {
     setLastOpened(id: string, timestamp: number): Promise<Project>;
 
     rename(id: string, name: string): Promise<Project>;
+
+    edit(id: string, data: { name: string; desc?: string }): Promise<Project>;
 }

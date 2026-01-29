@@ -213,6 +213,15 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const updated = await fastify.core.project.rename(id, body.name.trim());
         return updated;
     })
+    fastify.post("/edit/:id", async (req) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as { name: string; desc?: string };
+        if (typeof body?.name !== "string" || body.name.trim() === "") {
+            throw new AppError("INVALID_NAME", "name must be a non-empty string");
+        }
+        const updated = await fastify.core.project.edit(id, { name: body.name.trim(), desc: body.desc?.trim() });
+        return updated;
+    })
 
 
     /**

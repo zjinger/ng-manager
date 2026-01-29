@@ -98,7 +98,7 @@ export class LayoutHeaderComponent {
 
     setTimeout(() => {
       this.waitingForOpen.set(true);
-    }, 4000);
+    }, 10_000);
   }
 
   onAnimationEnd() {

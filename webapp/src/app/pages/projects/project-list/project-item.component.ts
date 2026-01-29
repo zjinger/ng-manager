@@ -53,7 +53,7 @@ import { UiNotifierService } from '@app/core';
               <nz-icon nzType="code" nzTheme="outline"/>
               <span>在编辑器中打开</span>
             </button>
-            <button nz-button nzType="primary" (click)="$event.stopPropagation();editProject.emit()" nz-tooltip="重命名">
+            <button nz-button nzType="primary" (click)="$event.stopPropagation();editProject.emit()" nz-tooltip="编辑">
               <nz-icon nzType="edit" nzTheme="outline"/>
             </button>
             <button nz-button nzType="primary" (click)="$event.stopPropagation();del()" nz-tooltip="删除">

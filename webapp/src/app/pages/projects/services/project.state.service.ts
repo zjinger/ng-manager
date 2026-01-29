@@ -20,6 +20,7 @@ export class ProjectStateService {
   isEditSaving = signal(false);
   editingProjectId = signal<string | null>(null);
   editingProjectName = signal<string>('');
+  editingProjectDescription = signal<string>('');
 
   /* ----------------- list computed ----------------- */
   favoriteProjects = computed(() => this.projects().filter(p => p.isFavorite));
@@ -122,14 +123,16 @@ export class ProjectStateService {
   openEditModal(project: Project) {
     this.editingProjectId.set(project.id);
     this.editingProjectName.set(project.name ?? '');
+    this.editingProjectDescription.set(project.description ?? '');
     this.isEditModalVisible.set(true);
   }
 
   closeEditModal() {
-    if (this.isEditSaving()) return; // 防止保存中被关掉
+    if (this.isEditSaving()) return; 
     this.isEditModalVisible.set(false);
     this.editingProjectId.set(null);
     this.editingProjectName.set('');
+    this.editingProjectDescription.set('');
   }
 
   confirmEditProject() {
@@ -141,23 +144,23 @@ export class ProjectStateService {
       return;
     }
     if (!name) return;
-
+    const desc = this.editingProjectDescription().trim();
     const current = this.getProjectById(id);
-    if (current && current.name === name) {
+    if (current && current.name === name && current.description === desc) {
       this.closeEditModal();
       return;
     }
 
     this.isEditSaving.set(true);
-    this.projectService.rename(id, name).subscribe({
+    this.projectService.edit(id, { name, desc }).subscribe({
       next: (updated) => {
         this.isEditSaving.set(false);
         this.patchProject(updated);
-        this.notify.success('重命名成功');
+        this.notify.success('修改成功');
         this.closeEditModal();
       },
       error: (err) => {
-        this.notify.error(err?.message || '重命名失败');
+        this.notify.error(err?.message || '修改失败');
         this.isEditSaving.set(false);
       },
       complete: () => {

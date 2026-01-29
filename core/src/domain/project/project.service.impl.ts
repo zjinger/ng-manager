@@ -210,4 +210,13 @@ export class ProjectServiceImpl implements ProjectService {
         const next = !p.isFavorite;
         return this.setFavorite(id, next);
     }
+
+    async edit(id: string, data: { name: string; desc?: string }): Promise<Project> {
+        // 确保存在
+        await this.get(id);
+        return this.update(id, {
+            name: data.name.trim(),
+            description: data.desc?.trim(),
+        } as any);
+    }
 }
