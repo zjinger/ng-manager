@@ -1,7 +1,6 @@
-import type { WsClientMsg, WsServerMsg } from "@core/protocol";
+import type { WsClientMsg, WsServerMsg, LogLine } from "@core";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
-import { LogLine } from "@core";
 const KEY_ALL = "syslog:all";
 export type SyslogWsDeps = {
     getSyslogTail: (tail: number) => LogLine[];

@@ -1,5 +1,5 @@
 // server/src/plugins/ws/ws.plugin.ts
-import { Events, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "@core";
+import { Events } from "@core";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";

@@ -1,4 +1,4 @@
-import type { WsServerMsg, WsTopic } from "@core/protocol";
+import type { WsServerMsg, WsTopic } from "@core";
 export class WsContext {
     readonly connId: string;
     private subs = new Map<WsTopic, Set<string>>();

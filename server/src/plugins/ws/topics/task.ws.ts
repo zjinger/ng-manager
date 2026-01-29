@@ -1,7 +1,6 @@
-import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg } from "@core/protocol";
+import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg, LogLine, TaskRuntime } from "@core";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
-import { LogLine, TaskRuntime } from "@core";
 
 const keyOfTask = (taskId: string) => `task:${taskId}`;
 

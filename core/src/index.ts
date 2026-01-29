@@ -1,25 +1,23 @@
 // src/core/index.ts
 
-export * from "./app/core-app";
-export * from "./app/types";
+export { createCoreApp, } from "./app/core-app";
+export { type CoreApp } from "./app/types";
 
-export * from "./common/errors";
+export { type ErrorCode, AppError } from "./common/errors";
 
-export * from "./infra/event/events";
-export * from "./infra/event/event-bus";
-export * from "./infra/event/memory-event-bus";
+export type { LogLine } from "./infra/log";
 
-export * from "./infra/log/log.types";
-export * from "./infra/log/log.store";
-export * from "./infra/log/ring-log-store";
+export { Events } from './infra/event'
 
-export * from "./domain/task/task.types";
-export * from "./domain/task/task.service";
+export type { TaskRuntime } from "./domain/task/task.types";
+export type { DashboardDocV1 } from './domain/dashboard'
 
-export * from "./domain/project/project.types";
-export * from "./domain/project/project.service";
-export * from "./domain/project/project.scanner";
-
-export * from "./domain/fs";
-
-export * from "./protocol"
+export type {
+    WsTopic,
+    WsState,
+    WsConn,
+    WsServerMsg,
+    WsClientMsg,
+    TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg,
+    TaskStartedPayload, TaskStopRequestedPayload
+} from "./protocol"

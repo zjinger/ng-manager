@@ -1,6 +1,5 @@
-import { WsClientMsg, WsServerMsg, WsTopic } from "@core/protocol";
+import { WsClientMsg, WsServerMsg, WsTopic, ErrorCode } from "@core";
 import { WsContext } from "./ws.context";
-import { ErrorCode } from "@core";
 
 export type TopicHandler = {
     topic: WsTopic;
