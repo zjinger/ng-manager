@@ -15,6 +15,8 @@ export class ProjectStateService {
   currentProject = signal<Project | null>(null);
   projects = signal<Project[]>([]);
 
+  keyword = signal<string>('');
+
   /* ----------------- edit modal state ----------------- */
   isEditModalVisible = signal(false);
   isEditSaving = signal(false);
@@ -23,8 +25,13 @@ export class ProjectStateService {
   editingProjectDescription = signal<string>('');
 
   /* ----------------- list computed ----------------- */
-  favoriteProjects = computed(() => this.projects().filter(p => p.isFavorite));
-  moreProjects = computed(() => this.projects().filter(p => !p.isFavorite));
+  filteredProjects = computed(() => {
+    const kw = this.keyword().trim().toLowerCase();
+    if (!kw) return this.projects();
+    return this.projects().filter(p => p.name.toLowerCase().includes(kw));
+  });
+  favoriteProjects = computed(() => this.filteredProjects().filter(p => p.isFavorite));
+  moreProjects = computed(() => this.filteredProjects().filter(p => !p.isFavorite));
   recentProjects = computed(() =>
     this.projects()
       .slice()
@@ -128,7 +135,7 @@ export class ProjectStateService {
   }
 
   closeEditModal() {
-    if (this.isEditSaving()) return; 
+    if (this.isEditSaving()) return;
     this.isEditModalVisible.set(false);
     this.editingProjectId.set(null);
     this.editingProjectName.set('');

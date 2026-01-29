@@ -5,12 +5,26 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { ProjectStateService } from '../services/project.state.service';
 import { ProjectItem } from './project-item.component';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-project-list',
-  imports: [CommonModule, NzCardModule, NzGridModule, ProjectItem, NzEmptyModule],
+  imports: [CommonModule, FormsModule, NzCardModule, NzGridModule, ProjectItem, NzEmptyModule, NzInputModule, NzIconModule],
   template: `
   <div nz-row class="page">
     <div nz-col nzSpan="16" nzOffset="4" class="col">
+      <div nz-col class="topbar">
+        <nz-input-wrapper>
+          <nz-icon class="search-icon" nzInputPrefix nzType="search" />
+          <input
+            nz-input
+            placeholder="搜索项目"
+            [ngModel]="projectState.keyword()"
+            (ngModelChange)="projectState.keyword.set($event)"
+          />
+        </nz-input-wrapper>
+      </div>
       @if(projectState.favoriteProjects().length > 0){
         <div class="header">
           <h2>收藏的项目</h2>
@@ -55,6 +69,16 @@ import { ProjectItem } from './project-item.component';
     .page {
       height:100%;
       overflow-y: auto;
+      .topbar{
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 12px;
+        nz-input-wrapper{
+          width:25%;
+          min-width:200px;
+        }
+      }
       .col{
         display: flex;
         flex-direction: column;
