@@ -1,0 +1,29 @@
+{
+  "name": "@ng-manager/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "ngm": "dist/bin/ngm.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/bin/ngm.ts --format esm --platform node --target node20 --outDir dist/bin --clean",
+    "dev": "tsx src/bin/ngm.ts ui",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "env-paths": "^3.0.0",
+    "execa": "^9.0.0",
+    "get-port": "^7.0.0",
+    "open": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
