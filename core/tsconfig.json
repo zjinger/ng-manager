@@ -3,6 +3,8 @@
     "composite": true,
     "declaration": true,
     "declarationMap": true,
+    "removeComments": true,
+    "sourceMap": false,
     "outDir": "./dist",
     "rootDir": "./src",
     "target": "ES2020",

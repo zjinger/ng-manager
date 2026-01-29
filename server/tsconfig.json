@@ -13,5 +13,5 @@
     "allowSyntheticDefaultImports": true
   },
   "references": [{ "path": "../core" }],
-  "include": ["src"]
+  "include": ["src/**/*"]
 }

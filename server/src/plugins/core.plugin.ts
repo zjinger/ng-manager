@@ -23,7 +23,6 @@ export default fp(async function corePlugin(
     fastify: FastifyInstance
 ) {
     const coreApp = await createCoreApp({
-        taskLogCapacity: 3000,
         sysLogCapacity: 3000,
         // dataDir: "./ng-manager", // 可选: 自定义数据目录
     });
