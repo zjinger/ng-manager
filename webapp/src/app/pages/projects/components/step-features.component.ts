@@ -14,7 +14,7 @@ import { CreateProjectDraft } from '../models/project-draft';
   imports: [CommonModule, FormsModule, NzCardModule, NzSwitchModule],
   template: `
   <nz-card nzTitle="功能开关（Project Scope）">
-    <div class="row">
+    <!-- <div class="row">
       <div class="label">Tasks（必选）</div>
       <nz-switch [(ngModel)]="draft.featureTasks" [ngModelOptions]="{standalone:true}" [nzDisabled]="true"></nz-switch>
     </div>
@@ -32,7 +32,7 @@ import { CreateProjectDraft } from '../models/project-draft';
     <div class="row">
       <div class="label">Terminal（后续）</div>
       <nz-switch [(ngModel)]="draft.featureTerminal" (ngModelChange)="emit()" [nzDisabled]="true"></nz-switch>
-    </div>
+    </div> -->
   </nz-card>
   `,
   styles: [`

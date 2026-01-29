@@ -22,11 +22,11 @@ import { CreateProjectDraft } from '../models/project-draft';
     </div>
 
     <div class="row col">
-      <div class="label">创建后默认打开</div>
+      <!-- <div class="label">创建后默认打开</div>
       <nz-radio-group [(ngModel)]="draft.openAfterCreate" (ngModelChange)="emit()">
         <label nz-radio nzValue="tasks">Tasks</label>
         <label nz-radio nzValue="home">Home</label>
-      </nz-radio-group>
+      </nz-radio-group> -->
     </div>
 
     <div class="row col">

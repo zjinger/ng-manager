@@ -16,6 +16,9 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "less",
+            "allowedCommonJsDependencies": [
+              "lodash"
+            ],
             "assets": [
               {
                 "glob": "**/*",
