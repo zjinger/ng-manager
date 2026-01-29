@@ -53,6 +53,7 @@ import { ProjectImportState } from './services/project-import.state.service';
       align-items:center;
       justify-content:center;
       flex:0 0 auto;
+      padding:16px 0;
       h2{
         margin:0;
       }

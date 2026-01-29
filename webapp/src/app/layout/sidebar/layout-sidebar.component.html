@@ -6,16 +6,38 @@
   [(nzCollapsed)]="isCollapsed"
   [nzTrigger]="null"
 >
-  <!-- <div class="sidebar-logo">
-    <a href="https://ng.ant.design/" target="_blank">
-      <img src="https://ng.ant.design/assets/img/logo.svg" alt="logo" />
-      <h1>Ant Design Of Angular</h1>
-    </a>
-  </div> -->
   <div class="header">
     <ngm-project-nav [isCollapsed]="isCollapsed()"></ngm-project-nav>
   </div>
   <div class="content">
     <ngm-menu [isCollapsed]="isCollapsed()"></ngm-menu>
+    <button
+      nz-button
+      nzType="link"
+      nz-dropdown
+      [nzDropdownMenu]="menu"
+      nzPlacement="bottomRight"
+      nzTrigger="click"
+      class="more-btn"
+    >
+      <nz-icon nzType="more"></nz-icon>
+    </button>
   </div>
 </nz-sider>
+
+<nz-dropdown-menu #menu="nzDropdownMenu">
+  <ul nz-menu>
+    <li nz-menu-item class="item">
+      <a routerLink="/projects">
+        <nz-icon nzType="project" nzTheme="outline" />
+        <span>项目管理</span>
+      </a>
+    </li>
+    <li nz-menu-item class="item">
+      <a routerLink="/about">
+        <nz-icon nzType="info-circle" nzTheme="outline" />
+        <span>关于</span>
+      </a>
+    </li>
+  </ul>
+</nz-dropdown-menu>

@@ -29,5 +29,13 @@ export const routes: Routes = [
     {
         path: 'dependencies',
         loadChildren: () => import('./pages/dependencies/dependencies.module').then(m => m.DependenciesModule)
+    },
+    {
+        path: 'about',
+        loadChildren: () => import('./pages/about/about-routing-module').then(m => m.AboutRoutingModule)
+    },
+    {
+        path: '**',
+        redirectTo: 'dashboard'
     }
 ];
