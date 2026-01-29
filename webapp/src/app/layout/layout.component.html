@@ -1,5 +1,19 @@
 <nz-layout class="app-layout">
-  <ngm-header></ngm-header>
+  @if (visible()) {
+    <div
+      class="ws-banner-wrap"
+      [class.leaving]="leaving()"
+      (transitionend)="onWrapTransitionEnd($event)"
+    >
+      <div
+        class="ws-banner-inner"
+        [class.leaving]="leaving()"
+        (animationend)="onInnerAnimationEnd($event)"
+      >
+        <ngm-header></ngm-header>
+      </div>
+    </div>
+  }
   <nz-layout class="app-content">
     <ngm-sidebar></ngm-sidebar>
     <nz-layout>
@@ -10,5 +24,6 @@
       </nz-content>
     </nz-layout>
   </nz-layout>
+
   <ngm-footer></ngm-footer>
 </nz-layout>

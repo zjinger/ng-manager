@@ -17,6 +17,10 @@
   .app-layout {
     height: 100vh;
     width: 100%;
+
+    ngm-header {
+      width: 100%;
+    }
   }
 
   .app-content {
@@ -34,5 +38,42 @@
 
   nz-footer {
     text-align: center;
+  }
+}
+
+
+/* banner 容器：负责占位高度的平滑回收 */
+.ws-banner-wrap {
+  height: 48px;
+  overflow: hidden;
+  transition: height 0.35s ease;
+}
+
+/* 离场：高度从 48 -> 0，内容区自然平滑上移 */
+.ws-banner-wrap.leaving {
+  height: 0;
+}
+
+/* banner 内容：负责淡出+上移 */
+.ws-banner-inner {
+  height: 48px;
+  display: flex;
+  align-items: stretch;
+}
+
+/* 离场动画 */
+.ws-banner-inner.leaving {
+  animation: fadeOutUpSoft 0.35s ease forwards;
+}
+
+@keyframes fadeOutUpSoft {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-30%);
   }
 }
