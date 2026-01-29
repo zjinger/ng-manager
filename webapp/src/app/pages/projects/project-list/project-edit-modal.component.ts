@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -20,33 +20,45 @@ import { ProjectStateService } from '../services/project.state.service';
       (nzOnCancel)="projectState.closeEditModal()"
     >
       <ng-container *nzModalContent>
-        <div class="modal-body">
-          <label class="label">名称</label>
-          <nz-input-wrapper >
-            <input
-              nz-input
-              [ngModel]="projectState.editingProjectName()"
-              (ngModelChange)="projectState.editingProjectName.set($event)"
-              placeholder="请输入新名称"
-              (keydown.enter)="projectState.confirmEditProject()"
-              autofocus
-            />
-            <nz-icon nzInputPrefix nzType="folder" nzTheme="fill" />
-          </nz-input-wrapper>
-          <div class="hint">输入新名称，将同步更新项目显示名称（不会重命名磁盘目录）。</div>
-          <label class="label">描述</label>
-          <nz-input-wrapper>
-            <textarea
-              nz-input
-              rows="3"
-              style="resize: none;"
-              [ngModel]="projectState.editingProjectDescription()"
-              (ngModelChange)="projectState.editingProjectDescription.set($event)"
-              placeholder="请输入新描述"
-              (keydown.enter)="projectState.confirmEditProject()"
-            ></textarea>
-          </nz-input-wrapper>
-        </div>
+        @if(editingProject()){
+          <div class="modal-body">
+            <label class="label">名称</label>
+            <nz-input-wrapper >
+              <input
+                nz-input
+                [ngModel]="editingProject()!.name"
+                (ngModelChange)="projectState.editingProject()!.name = $event"
+                placeholder="请输入新名称"
+                (keydown.enter)="projectState.confirmEditProject()"
+                autofocus
+              />
+              <nz-icon nzInputPrefix nzType="folder" nzTheme="fill" />
+            </nz-input-wrapper>
+            <div class="hint">输入新名称，将同步更新项目显示名称（不会重命名磁盘目录）。</div>
+            <label class="label">仓库网页地址</label>
+            <nz-input-wrapper >
+              <input
+                nz-input
+                [ngModel]="editingProject()!.repoPageUrl"
+                (ngModelChange)="projectState.editingProject()!.repoPageUrl = $event"
+                placeholder="仓库网页地址"
+              />
+              <nz-icon nzInputPrefix nzType="global" nzTheme="outline" />
+            </nz-input-wrapper>
+            <label class="label">描述</label>
+            <nz-input-wrapper>
+              <textarea
+                nz-input
+                rows="3"
+                style="resize: none;"
+                [ngModel]="editingProject()!.description"
+                (ngModelChange)="projectState.editingProject()!.description = $event"
+                placeholder="请输入新描述"
+                (keydown.enter)="projectState.confirmEditProject()"
+              ></textarea>
+            </nz-input-wrapper>
+          </div>
+        }
       </ng-container>
 
       <ng-container *nzModalFooter>
@@ -55,7 +67,7 @@ import { ProjectStateService } from '../services/project.state.service';
           nz-button
           nzType="primary"
           (click)="projectState.confirmEditProject()"
-          [disabled]="!projectState.editingProjectName().trim() || projectState.isEditSaving()"
+          [disabled]="!projectState.editingProject()!.name.trim() || projectState.isEditSaving()"
           [nzLoading]="projectState.isEditSaving()"
         >
           确定
@@ -69,5 +81,7 @@ import { ProjectStateService } from '../services/project.state.service';
   `],
 })
 export class ProjectEditModalComponent {
-  constructor(public projectState: ProjectStateService) { }
+  projectState = inject(ProjectStateService)
+  editingProject = this.projectState.editingProject;
+
 }

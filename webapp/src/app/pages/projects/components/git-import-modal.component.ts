@@ -28,7 +28,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
               placeholder="请输入Git仓库地址"
               autofocus
             />
-            <nz-icon nzInputPrefix nzType="global" nzTheme="outline" />
+            <nz-icon nzInputPrefix nzType="github" nzTheme="outline" />
           </nz-input-wrapper>
           <div class="hint">
             Git 仓库地址, 如 'username/repo'. 可以使用前缀如 'gitlab:' 或 'bitbucket:'.

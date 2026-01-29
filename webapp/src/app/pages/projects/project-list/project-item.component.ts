@@ -16,14 +16,14 @@ import { UiNotifierService } from '@app/core';
   selector: 'app-project-item',
   imports: [CommonModule, FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzPopoverModule, NzBadgeModule, NzSpaceModule, ProjectItemPopoverComponent, NzTooltipDirective],
   template: `
-    <div nz-row class="project-item" [class.open]="open" (click)="selectProject.emit()">
+    <div nz-row class="project-item" [class.open]="open">
       <div nz-col nzSpan="24" class="content">
         <div class="favorite">
           <button nz-button nzType="primary" (click)="$event.stopPropagation();toggleFavorite.emit()">
             <nz-icon nzType="star" [nzTheme]="project?.isFavorite ? 'fill' : 'outline'"></nz-icon>
           </button>
         </div>
-        <div class="info">
+        <div class="info"  (click)="selectProject.emit()">
           <div class="list-item-info">
             <div class="name">
               <span>{{ project?.name }}</span>
@@ -49,14 +49,19 @@ import { UiNotifierService } from '@app/core';
         </div>
         <div class="actions">
           <nz-space nzSize="large">
-            <button nz-button nzType="primary" (click)="$event.stopPropagation();openInEditor.emit()">
+            <button nz-button nzType="primary" (click)="openInEditor.emit()">
               <nz-icon nzType="code" nzTheme="outline"/>
               <span>在编辑器中打开</span>
             </button>
-            <button nz-button nzType="primary" (click)="$event.stopPropagation();editProject.emit()" nz-tooltip="编辑">
+            <button nz-button nzType="primary" (click)="editProject.emit()" nz-tooltip="编辑">
               <nz-icon nzType="edit" nzTheme="outline"/>
             </button>
-            <button nz-button nzType="primary" (click)="$event.stopPropagation();del()" nz-tooltip="删除">
+            @if(project?.repoPageUrl){
+              <button nz-button nzType="primary" (click)="openPageUrl(project?.repoPageUrl)" nz-tooltip="打开仓库地址">
+                <nz-icon nzType="global" nzTheme="outline"/>
+              </button>
+            }
+            <button nz-button nzType="primary" (click)="del()" nz-tooltip="删除">
               <nz-icon nzType="delete" nzTheme="outline"/>
             </button>
           </nz-space>
@@ -97,6 +102,7 @@ import { UiNotifierService } from '@app/core';
         }
         .info{
           grid-area: info;
+          user-select: none;
           .list-item-info {
             display: flex;
             flex-direction: column;
@@ -105,7 +111,14 @@ import { UiNotifierService } from '@app/core';
             gap: 4px;
             .name{
               flex: auto 0 0;
-              nz-badge{ margin-left:8px;}
+              .task-popover-trigger{
+                display: inline-block;
+                margin-left: 8px;
+                cursor: pointer;
+                nz-badge {
+                  font-size:18px;
+                }
+              }
             }
             .root-path{
               flex:auto 0 0;
@@ -156,5 +169,11 @@ export class ProjectItem {
       return;
     }
     this.deleteProject.emit();
+  }
+
+  openPageUrl(url?: string) {
+    if (url) {
+      window.open(url, '_blank');
+    }
   }
 }

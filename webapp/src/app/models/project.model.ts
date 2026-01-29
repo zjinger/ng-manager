@@ -19,6 +19,9 @@ export interface Project {
     // 可选：环境变量
     env?: Record<string, string>;
     lastOpened?: number;    // 上次打开时间戳
+
+    repoPageUrl?: string; // git 仓库网页地址
+    repoUrl?: string;     // git 仓库url
 }
 
 export interface CheckRootResult {

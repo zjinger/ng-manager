@@ -24,8 +24,6 @@ export interface ProjectService {
     toggleFavorite(id: string): Promise<Project>;
 
     setLastOpened(id: string, timestamp: number): Promise<Project>;
-
     rename(id: string, name: string): Promise<Project>;
-
-    edit(id: string, data: { name: string; desc?: string }): Promise<Project>;
+    edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; }): Promise<Project>;
 }

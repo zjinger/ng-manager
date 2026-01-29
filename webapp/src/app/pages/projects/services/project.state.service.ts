@@ -20,9 +20,8 @@ export class ProjectStateService {
   /* ----------------- edit modal state ----------------- */
   isEditModalVisible = signal(false);
   isEditSaving = signal(false);
-  editingProjectId = signal<string | null>(null);
-  editingProjectName = signal<string>('');
-  editingProjectDescription = signal<string>('');
+  /* 正在编辑的项目 */
+  editingProject = signal<{ id: string; name: string; repoPageUrl?: string; description?: string } | null>(null);
 
   /* ----------------- list computed ----------------- */
   filteredProjects = computed(() => {
@@ -128,38 +127,40 @@ export class ProjectStateService {
   /* ----------------- rename modal ----------------- */
   /** 打开重命名弹窗：默认带入当前名称 */
   openEditModal(project: Project) {
-    this.editingProjectId.set(project.id);
-    this.editingProjectName.set(project.name ?? '');
-    this.editingProjectDescription.set(project.description ?? '');
+    this.editingProject.set({
+      id: project.id,
+      name: project.name ?? '',
+      repoPageUrl: project.repoPageUrl ?? '',
+      description: project.description ?? '',
+    });
     this.isEditModalVisible.set(true);
   }
 
   closeEditModal() {
     if (this.isEditSaving()) return;
     this.isEditModalVisible.set(false);
-    this.editingProjectId.set(null);
-    this.editingProjectName.set('');
-    this.editingProjectDescription.set('');
+    this.editingProject.set(null);
   }
 
   confirmEditProject() {
-    const id = this.editingProjectId();
-    const name = this.editingProjectName().trim();
+    if (this.isEditSaving() || !this.editingProject()) return;
+    const { id, name, description, repoPageUrl } = this.editingProject()!;
 
     if (!id) {
       this.notify.error('未选中需要重命名的项目');
       return;
     }
     if (!name) return;
-    const desc = this.editingProjectDescription().trim();
+    const desc = description?.trim();
+    const repoPUrl = repoPageUrl?.trim();
     const current = this.getProjectById(id);
-    if (current && current.name === name && current.description === desc) {
+    if (current && current.name === name && current.description === desc && current.repoPageUrl === repoPUrl) {
       this.closeEditModal();
       return;
     }
 
     this.isEditSaving.set(true);
-    this.projectService.edit(id, { name, desc }).subscribe({
+    this.projectService.edit(id, { name, description: desc, repoPageUrl: repoPUrl }).subscribe({
       next: (updated) => {
         this.isEditSaving.set(false);
         this.patchProject(updated);

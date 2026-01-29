@@ -150,7 +150,6 @@ export class ProjectServiceImpl implements ProjectService {
     }
 
     async update(id: string, patch: Partial<Omit<Project, "id" | "createdAt">>): Promise<Project> {
-        // 先确保存在
         await this.get(id);
         const now = Date.now();
         const updated = await this.repo.update(id, {
@@ -162,7 +161,6 @@ export class ProjectServiceImpl implements ProjectService {
     }
 
     async remove(id: string): Promise<void> {
-        // 先确保存在
         await this.get(id);
         await this.repo.remove(id);
     }
@@ -182,24 +180,18 @@ export class ProjectServiceImpl implements ProjectService {
     }
 
     async setFavorite(id: string, isFavorite: boolean): Promise<Project> {
-        // 确保存在
-        await this.get(id);
         return this.update(id, {
             isFavorite: !!isFavorite,
         } as any);
     }
 
     async setLastOpened(id: string, timestamp: number): Promise<Project> {
-        // 确保存在
-        await this.get(id);
         return this.update(id, {
             lastOpened: timestamp,
         } as any);
     }
 
     async rename(id: string, name: string): Promise<Project> {
-        // 确保存在
-        await this.get(id);
         return this.update(id, {
             name: name.trim(),
         } as any);
@@ -211,12 +203,11 @@ export class ProjectServiceImpl implements ProjectService {
         return this.setFavorite(id, next);
     }
 
-    async edit(id: string, data: { name: string; desc?: string }): Promise<Project> {
-        // 确保存在
-        await this.get(id);
+    async edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; }): Promise<Project> {
         return this.update(id, {
             name: data.name.trim(),
-            description: data.desc?.trim(),
+            description: data.description?.trim(),
+            repoPageUrl: data.repoPageUrl?.trim(),
         } as any);
     }
 }

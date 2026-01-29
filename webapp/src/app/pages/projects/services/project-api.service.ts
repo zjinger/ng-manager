@@ -109,7 +109,7 @@ export class ProjectApiService {
     return this.api.post<{ ok: boolean }>(`/api/projects/openInEditor/${id}`, { editor });
   }
 
-  edit(projectId: string, data: { name: string, desc?: string }): Observable<Project> {
+  edit(projectId: string, data: { name: string, description?: string, repoPageUrl?: string }): Observable<Project> {
     return this.api.post<Project>(`/api/projects/edit/${projectId}`, data);
   }
 

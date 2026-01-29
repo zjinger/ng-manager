@@ -16,6 +16,10 @@ export interface Project {
     isFavorite?: boolean; // default false
     // 上次打开时间戳
     lastOpened?: number;
+    // git 仓库url
+    repoUrl?: string;
+    // git 仓库网页地址
+    repoPageUrl?: string;
 }
 
 export interface CreateProjectInput {
