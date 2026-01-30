@@ -27,7 +27,7 @@ function withServerOptions(cmd: Command) {
         .option("-p, --port <number>", "server port", (v) => Number(v))
         .option("--host <host>", "server host", "127.0.0.1")
         .option("--data-dir <dir>", "data directory")
-        .option("--log-level <level>", "log level", "info")
+        .option("--log-level <level>", "log level", "silent")
         .option("--no-open", "do not open browser");
 }
 

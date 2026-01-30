@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { FastifyBaseLogger } from "fastify";
 import corePlugin from "./plugins/core.plugin";
 import { errorHandlerPlugin } from "./plugins/error-handler.plugin";
 import requestIdPlugin from "./plugins/request-id.plugin";
@@ -6,10 +6,41 @@ import routesPlugin from "./plugins/routes.plugin";
 import staticPlugin from "./plugins/static.plugin";
 import successHandlerPlugin from "./plugins/success-handle.plugin";
 import wsPlugin from "./plugins/ws/ws.plugin";
+function normalizeLogLevel(v?: string) {
+    // pino levels: fatal error warn info debug trace silent
+    const lv = (v ?? "").toLowerCase().trim();
+    if (!lv) return undefined;
+    if (["fatal", "error", "warn", "info", "debug", "trace", "silent"].includes(lv)) return lv;
+    return "info";
+}
+function createFastifyLogger(): false | FastifyBaseLogger | undefined {
+    const level = normalizeLogLevel(process.env.NGM_LOG_LEVEL);
 
+    // 1) 未指定级别 => 默认关闭（安静）
+    if (!level) return false;
+
+    // 2) dev 下可读输出（需要安装 pino-pretty）
+    const isDev = process.env.NODE_ENV !== "production";
+    if (isDev) {
+        return {
+            level,
+            transport: {
+                target: "pino-pretty",
+                options: {
+                    colorize: true,
+                    translateTime: "HH:MM:ss.l",
+                    ignore: "pid,hostname",
+                },
+            },
+        } as any;
+    }
+
+    // 3) prod 下输出 JSON（结构化）
+    return { level } as any;
+}
 export async function createServer() {
     const fastify = Fastify({
-        logger: false,
+        logger: createFastifyLogger(),
         genReqId: (req) => {
             // 优先使用前端传入的 X-Request-Id
             const hdr = req.headers["x-request-id"];
