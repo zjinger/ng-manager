@@ -3,6 +3,7 @@ import corePlugin from "./plugins/core.plugin";
 import { errorHandlerPlugin } from "./plugins/error-handler.plugin";
 import requestIdPlugin from "./plugins/request-id.plugin";
 import routesPlugin from "./plugins/routes.plugin";
+import staticPlugin from "./plugins/static.plugin";
 import successHandlerPlugin from "./plugins/success-handle.plugin";
 import wsPlugin from "./plugins/ws/ws.plugin";
 
@@ -28,6 +29,10 @@ export async function createServer() {
     await fastify.register(wsPlugin);
     // routes
     await fastify.register(routesPlugin);
+
+    // www
+    await fastify.register(staticPlugin)
+
 
     fastify.addHook('onClose', async () => {
         // 在这里执行任何需要在服务器关闭时完成的异步操作

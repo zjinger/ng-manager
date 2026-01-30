@@ -36,7 +36,22 @@ export function startServerOnly(opts: ServerOptions) {
 
 /** commander action：必须返回 void 或 Promise<void> */
 export async function startServerAction(opts: ServerOptions): Promise<void> {
-    startServerOnly(opts);
+    const child = startServerOnly(opts);
+    try {
+        await child;
+    } catch (err: any) {
+        // Ctrl+C / SIGINT / SIGKILL：忽略
+        if (
+            err?.isCanceled ||
+            err?.signal === "SIGINT" ||
+            err?.signal === "SIGKILL" ||
+            err?.exitCode === 3221225786 // Windows 强杀
+        ) {
+            return;
+        }
+        throw err; // 真错误才抛
+    }
+
     // 保持进程不退出：等待子进程结束
     // execa 的 child 本身是 Promise-like
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
