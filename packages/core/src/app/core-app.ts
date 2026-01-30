@@ -27,7 +27,7 @@ import { SystemLogServiceImpl } from "../domain/logger";
  * - 所有核心能力的装配入口
  */
 export async function createCoreApp(
-    opts: CreateCoreAppOptions = {}
+    opts: CreateCoreAppOptions
 ): Promise<CoreApp> {
     /* ------------------ infra ------------------ */
     // 事件总线（内存）
@@ -38,9 +38,7 @@ export async function createCoreApp(
     // 任务流日志存储（ring buffer）
     const taskStreamLogStore = new RingLogStore(5000);
     // 数据目录
-    const dataDir =
-        opts.dataDir ??
-        path.join(os.homedir(), ".ng-manager"); // 非 Electron 场景默认落这里
+    const dataDir = opts.dataDir // 非 Electron 场景默认落这里
     /* ------------------ process ------------------ */
     // 进程驱动（Node spawn）
     const processDriver = new PtyProcessDriver();

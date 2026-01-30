@@ -18,7 +18,7 @@ export interface CreateCoreAppOptions {
     /** 系统日志最大条数 */
     sysLogCapacity?: number;
     /** 数据目录（存储项目列表等） */
-    dataDir?: string;
+    dataDir: string;
 }
 
 /**

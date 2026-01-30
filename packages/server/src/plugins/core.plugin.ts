@@ -1,9 +1,10 @@
 // src/server/plugins/core.plugin.ts
 
-import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
+import fp from "fastify-plugin";
 
 import { createCoreApp, type CoreApp } from "@ngm/core";
+import { env } from "../env";
 
 /**
  * Fastify 装饰器类型扩展
@@ -23,8 +24,8 @@ export default fp(async function corePlugin(
     fastify: FastifyInstance
 ) {
     const coreApp = await createCoreApp({
-        sysLogCapacity: 3000,
-        // dataDir: "./ng-manager", // 可选: 自定义数据目录
+        sysLogCapacity: env.sysLogCapacity,
+        dataDir: env.dataDir, // 可选: 自定义数据目录
     });
 
     fastify.decorate("core", coreApp);

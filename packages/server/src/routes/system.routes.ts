@@ -7,8 +7,8 @@ export default async function systemRoutes(fastify: FastifyInstance) {
       name: "ngm-server",
       pid: process.pid,
       uptime: process.uptime(),
-      // version: process.env.npm_package_version,
-      // dataDir: process.env.NGM_DATA_DIR || null
+      version: process.env.npm_package_version,
+      dataDir: process.env.NGM_DATA_DIR || null
     }
   ));
 }
