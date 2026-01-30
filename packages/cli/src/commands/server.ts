@@ -1,5 +1,6 @@
 import path from "path";
 import { execa } from "execa";
+import { getDataDir } from "./lock";
 
 export function startServerOnly(opts?: { port?: number }) {
     const port = String(opts?.port ?? process.env.NGM_SERVER_PORT ?? 3210);
@@ -11,14 +12,18 @@ export function startServerOnly(opts?: { port?: number }) {
 
     const child = execa(process.execPath, [entry], {
         stdio: "inherit",
-        env: { ...process.env, NGM_SERVER_PORT: port }
+        env: {
+            ...process.env,
+            NGM_SERVER_PORT: port,
+            NGM_DATA_DIR: getDataDir()
+        }
     });
     const kill = () => {
         child.kill("SIGINT");
-        setTimeout(() => {
-            child.kill("SIGKILL");
-        }, 2000);
+        setTimeout(() => child.kill("SIGKILL"), 2000);
     };
     process.on("SIGINT", kill);
     process.on("SIGTERM", kill);
+
+    return child;
 }

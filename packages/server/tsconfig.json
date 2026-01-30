@@ -4,7 +4,6 @@
     "rootDir": "src",
     "outDir": "lib",
     "baseUrl": ".",
-    "esModuleInterop": true,
     "paths": {
       "@core": ["core/src/index.ts"],
       "@core/*": ["core/src/*"]
