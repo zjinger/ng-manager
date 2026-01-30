@@ -3,5 +3,9 @@
   // list, TS won't automatically include all sources below root (the default).
   "files": [],
   // Building this project will build all of the following:
-  "references": [{ "path": "./core" }, { "path": "./server" }]
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/server" },
+    { "path": "packages/cli" }
+  ]
 }

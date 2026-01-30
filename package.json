@@ -3,8 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "clean": "rimraf -g \"core/lib\" \"server/dist\" \"/**/*.tsbuildinfo\"",
-    "build": "tsc -b",
+    "clean": "rimraf -g \"packages/**/lib\" \"packages/**/*.tsbuildinfo\"",
     "compile": "tsc -b tsconfig.build.json",
     "build:core": "tsc -b core",
     "build:server": "tsc -b server",
@@ -15,5 +14,8 @@
   "devDependencies": {
     "rimraf": "^6.1.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }
