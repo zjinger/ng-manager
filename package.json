@@ -5,6 +5,8 @@
   "scripts": {
     "clean": "rimraf -g \"packages/**/lib\" \"packages/**/dist\" \"packages/**/*.tsbuildinfo\"",
     "compile": "tsc -b tsconfig.build.json",
+    "publish:all": "npm run compile && npm publish -w @yinuo-ngm/core --access public && npm publish -w @yinuo-ngm/server --access public && npm publish -w @yinuo-ngm/cli --access public",
+    "pack:all": "npm pack ./packages/core && npm pack ./packages/server && npm pack ./packages/cli",
     "build:core": "tsc -b core",
     "build:server": "tsc -b server",
     "build:desktop": "tsc -b desktop",

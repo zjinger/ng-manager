@@ -1,4 +1,4 @@
-import type { WsClientMsg, WsServerMsg, LogLine } from "@ngm/core";
+import type { WsClientMsg, WsServerMsg, LogLine } from "@yinuo-ngm/core";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 const KEY_ALL = "syslog:all";

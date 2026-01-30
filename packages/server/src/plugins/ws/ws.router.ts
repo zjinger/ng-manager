@@ -1,4 +1,4 @@
-import { WsClientMsg, WsServerMsg, WsTopic, ErrorCode } from "@ngm/core";
+import { WsClientMsg, WsServerMsg, WsTopic, ErrorCode } from "@yinuo-ngm/core";
 import { WsContext } from "./ws.context";
 
 export type TopicHandler = {

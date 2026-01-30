@@ -1,4 +1,4 @@
-import type { WsServerMsg, WsTopic } from "@ngm/core";
+import type { WsServerMsg, WsTopic } from "@yinuo-ngm/core";
 export class WsContext {
     readonly connId: string;
     private subs = new Map<WsTopic, Set<string>>();

@@ -1,4 +1,4 @@
-import { AppError } from "@ngm/core";
+import { AppError } from "@yinuo-ngm/core";
 import launchEditor from "launch-editor";
 import * as path from "path";
 

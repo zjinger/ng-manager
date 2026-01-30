@@ -1,4 +1,4 @@
-import { AppError } from "@ngm/core";
+import { AppError } from "@yinuo-ngm/core";
 import { type FastifyInstance } from "fastify";
 import * as path from "path";
 import { openFolder } from "../common/editor";

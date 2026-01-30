@@ -64,3 +64,5 @@ Thumbs.db
 .cache/
 .tmp/
 .temp/
+*.tgz
+test-ngm/

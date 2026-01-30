@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyPluginAsync } from "fastify";
-import { AppError, type ErrorCode } from "@ngm/core";
+import { AppError, type ErrorCode } from "@yinuo-ngm/core";
 
 /**
  * ErrorCode → HTTP Status 映射

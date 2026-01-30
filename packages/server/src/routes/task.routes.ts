@@ -1,4 +1,4 @@
-import { AppError } from "@ngm/core";
+import { AppError } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 /** 判断该项目是否已有 specs（用于懒加载） */
 async function ensureSpecs(fastify: FastifyInstance, projectId: string) {

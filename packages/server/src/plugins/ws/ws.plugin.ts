@@ -1,5 +1,5 @@
 // server/src/plugins/ws/ws.plugin.ts
-import { Events } from "@ngm/core";
+import { Events } from "@yinuo-ngm/core";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";

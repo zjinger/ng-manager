@@ -9,7 +9,7 @@ const program = new Command();
 
 program
     .name("ngm")
-    .description("ng-manager local control plane")
+    .description("yinuo-ngm · ng-manager local control plane")
     .version("0.1.0");
 
 program

@@ -1,4 +1,4 @@
-import type { DashboardDocV1 } from "@ngm/core";
+import type { DashboardDocV1 } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {

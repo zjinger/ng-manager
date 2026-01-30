@@ -3,7 +3,7 @@
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 
-import { createCoreApp, type CoreApp } from "@ngm/core";
+import { createCoreApp, type CoreApp } from "@yinuo-ngm/core";
 import { env } from "../env";
 
 /**

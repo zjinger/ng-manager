@@ -9,7 +9,7 @@ export type ServerOptions = {
 };
 
 export function startServer(opts: ServerOptions) {
-    const serverPkgJson = require.resolve("@ngm/server/package.json");
+    const serverPkgJson = require.resolve("@yinuo-ngm/server/package.json");
     const serverDir = path.dirname(serverPkgJson);
     const entry = path.join(serverDir, "lib", "index.js");
 
