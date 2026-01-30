@@ -1,8 +1,10 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
     "baseUrl": ".",
+    "esModuleInterop": true,
     "paths": {
       "@core": ["core/src/index.ts"],
       "@core/*": ["core/src/*"]
