@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "clean": "rimraf -g \"packages/**/lib\" \"packages/**/*.tsbuildinfo\"",
+    "clean": "rimraf -g \"packages/**/lib\" \"packages/**/dist\" \"packages/**/*.tsbuildinfo\"",
     "compile": "tsc -b tsconfig.build.json",
     "build:core": "tsc -b core",
     "build:server": "tsc -b server",
