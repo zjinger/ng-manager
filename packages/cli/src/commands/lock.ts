@@ -5,7 +5,9 @@ export type LockInfo = {
     pid: number;
     port: number;
     startedAt: number;
+    host?: string; // 可选，默认 127.0.0.1
 };
+
 
 export function getDataDir(): string {
     return process.env.NGM_DATA_DIR || path.join(process.env.USERPROFILE || "", ".ng-manager");

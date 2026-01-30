@@ -1,9 +1,16 @@
-export async function isHealthy(port: number): Promise<boolean> {
+
+export async function getHealth(port: number, host = "127.0.0.1") {
+    const r = await fetch(`http://${host}:${port}/health`);
+    if (!r.ok) return null;
+    return (await r.json()) as any;
+}
+
+export async function isHealthy(port: number, host = "127.0.0.1"): Promise<boolean> {
     try {
-        const r = await fetch(`http://127.0.0.1:${port}/health`);
-        if (!r.ok) return false;
-        const data: any = await r.json();
-        return data?.ok === true && data?.data?.name === "ngm-server";
+        const h = await getHealth(port, host);
+        if (!h || !h.ok) return false;
+        const { name, pid } = h.data || {};
+        return name === "ngm-server" && typeof pid === "number";
     } catch {
         return false;
     }

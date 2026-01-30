@@ -1,12 +1,12 @@
 import { Injectable, NgZone } from "@angular/core";
 import { BehaviorSubject, Observable, Subject, Subscription, timer } from "rxjs";
 import { WsClientMsg, WsServerMsg, WsState } from "./ws.types";
-
+import { APP_CONFIG } from "@env/environment";
 
 @Injectable({ providedIn: "root" })
 export class WsClientService {
   private ws?: WebSocket;
-  private readonly url = `ws://127.0.0.1:3210/ws`;
+  private readonly url = APP_CONFIG.production === true ? `ws:${window.location.host}/ws` : `ws://127.0.0.1:3210/ws`;
   private pending: WsClientMsg[] = [];
 
   private state$ = new BehaviorSubject<WsState>("idle");
@@ -80,6 +80,7 @@ export class WsClientService {
     this.cancelReconnect();
 
     this.zone.runOutsideAngular(() => {
+
       const ws = new WebSocket(this.url);
       this.ws = ws;
 
