@@ -3,7 +3,7 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
 
-import { createCoreApp, type CoreApp } from "@core";
+import { createCoreApp, type CoreApp } from "@ngm/core";
 
 /**
  * Fastify 装饰器类型扩展

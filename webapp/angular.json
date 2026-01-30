@@ -16,9 +16,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "less",
-            "allowedCommonJsDependencies": [
-              "lodash"
-            ],
+            "allowedCommonJsDependencies": ["lodash"],
             "assets": [
               {
                 "glob": "**/*",
@@ -132,7 +130,9 @@
             },
             "web": {
               "buildTarget": "webapp:build:web",
-              "proxyConfig": "proxy.config.json"
+              "proxyConfig": "proxy.config.json",
+              "host": "localhost",
+              "port": 5180
             },
             "web-production": {
               "buildTarget": "webapp:build:web-production"

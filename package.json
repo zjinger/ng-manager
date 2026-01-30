@@ -3,11 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "clean": "rimraf -g \"core/lib\" \"server/dist\" \"/**/*.tsbuildinfo\"",
     "build": "tsc -b",
+    "compile": "tsc -b tsconfig.build.json",
     "build:core": "tsc -b core",
     "build:server": "tsc -b server",
     "build:desktop": "tsc -b desktop",
     "dev:server": "tsx watch server/src/index.ts",
     "dev:desktop": "tsx watch desktop/src/main/index.ts"
+  },
+  "devDependencies": {
+    "rimraf": "^6.1.2",
+    "typescript": "^5.9.3"
   }
 }

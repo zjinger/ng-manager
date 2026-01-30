@@ -1,9 +1,15 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./core" },
-    { "path": "./server" },
-    { "path": "./desktop" },
-    { "path": "./cli" }
-  ]
+  "compilerOptions": {
+    "incremental": true,
+    "target": "es2020",
+    "module": "commonjs",
+    "declaration": true,
+    "sourceMap": true,
+    "composite": true,
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
 }

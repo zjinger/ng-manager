@@ -1,4 +1,4 @@
-import type { DashboardDocV1 } from "@core";
+import type { DashboardDocV1 } from "@ngm/core";
 import type { FastifyInstance } from "fastify";
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {

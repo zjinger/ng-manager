@@ -1,2 +1,4 @@
 core/tsconfig.tsbuildinfo
 server/tsconfig.tsbuildinfo
+node_modules/
+dist/

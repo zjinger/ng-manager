@@ -1,4 +1,4 @@
-import { AppError } from "@core";
+import { AppError } from "@ngm/core";
 import type { FastifyInstance } from "fastify";
 import { openFolder } from "../common/editor";
 

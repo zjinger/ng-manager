@@ -20,3 +20,4 @@ coverage/
 # output
 dist/
 build/
+lib/

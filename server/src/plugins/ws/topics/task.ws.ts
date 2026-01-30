@@ -1,4 +1,4 @@
-import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg, LogLine, TaskRuntime } from "@core";
+import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg, LogLine, TaskRuntime } from "@ngm/core";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 
