@@ -7,11 +7,12 @@ import { catchError, throwError } from "rxjs";
 import { ErrorDispatcher, ErrorPolicyCode } from "../error";
 import { ApiBizError } from "../api/api-biz-error";
 import { APP_CONFIG } from "@env/environment";
+import * as _ from "lodash";
 
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
     const dispatcher = inject(ErrorDispatcher);
     // 注入 requestId
-    const requestId = crypto.randomUUID();
+    const requestId = _.uniqueId("req-");
     req = req.clone({
         setHeaders: { "X-Request-Id": requestId }
     });

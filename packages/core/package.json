@@ -1,11 +1,14 @@
 {
   "name": "@yinuo-ngm/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
+  "files": [
+    "lib"
+  ],
   "devDependencies": {
     "@types/js-yaml": "^4.0.9"
   },

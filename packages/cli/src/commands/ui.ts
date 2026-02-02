@@ -5,17 +5,20 @@ import { isHealthy } from "./health";
 import { writeLock, readLock, clearLock } from "./lock";
 
 export async function startUi(opts: any): Promise<void> {
+    console.log(`Checking for existing ngm-server...`);
+    console.log(`opts:`, opts);
     // 1) lock 复用
     const lock = readLock();
-    if (lock?.port && (await isHealthy(lock.port))) {
+    const lockHost = lock?.host || "127.0.0.1";
+    const lockPort = lock?.port;
+    if (lockPort && (await isHealthy(lockPort, lockHost))) {
         if (opts.open !== false) {
-            const host = opts.host || "127.0.0.1";
-            await open(`http://${host}:${lock.port}`);
+            await open(`http://${lockHost}:${lockPort}`);
         }
         return;
     }
     clearLock();
-
+    const host = opts.host || "127.0.0.1";
     // 2) port 决策
     const port = opts.port ?? (await getPort({ port: [3210, 3211, 3212, 0] }));
 
@@ -55,11 +58,10 @@ export async function startUi(opts: any): Promise<void> {
     // 4) 等待健康
     const deadline = Date.now() + 6000;
     while (Date.now() < deadline) {
-        if (await isHealthy(port)) {
-            writeLock({ pid: child.pid ?? -1, port, startedAt: Date.now() });
+        if (await isHealthy(port, host)) {
+            writeLock({ pid: child.pid ?? -1, port, host, startedAt: Date.now() });
 
             if (opts.open !== false) {
-                const host = opts.host || "127.0.0.1";
                 await open(`http://${host}:${port}`);
                 console.log(`🎉  Ready on http://${host}:${port}`);
             }
@@ -90,7 +92,7 @@ export async function startUi(opts: any): Promise<void> {
     } catch {
         // ignore
     }
-    throw new Error(`Server did not become healthy on port ${port}`);
+    throw new Error(`Server did not become healthy at http://${host}:${port} within 6 seconds.`);
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
