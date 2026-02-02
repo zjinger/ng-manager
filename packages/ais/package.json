@@ -1,10 +1,13 @@
 {
   "name": "@yinuo-ngm/ais",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "authors": "ZhangJing",
   "description": "",
+  "files": [
+    "lib"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
