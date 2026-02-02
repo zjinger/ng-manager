@@ -1,0 +1,22 @@
+{
+  "name": "@yinuo-ngm/sprite",
+  "version": "0.1.0",
+  "description": "a sprite generation tool",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "keywords": [],
+  "author": "ZhangJing",
+  "license": "ISC",
+  "type": "commonjs",
+  "files": [
+    "lib"
+  ],
+  "devDependencies": {
+    "@types/spritesmith": "^3.4.5"
+  },
+  "dependencies": {
+    "spritesmith": "^3.5.1"
+  }
+}

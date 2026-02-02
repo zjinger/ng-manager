@@ -10,9 +10,11 @@
     "build:core": "tsc -b packages/core",
     "build:server": "tsc -b packages/server",
     "build:ais": "tsc -b packages/ais",
+    "build:sprite": "tsc -b packages/sprite",
     "dev:server": "tsx watch packages/server/src/index.ts"
   },
   "devDependencies": {
+    "@types/node": "^25.2.0",
     "rimraf": "^6.1.2",
     "typescript": "^5.9.3"
   },

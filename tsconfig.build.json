@@ -7,6 +7,7 @@
     { "path": "packages/core" },
     { "path": "packages/server" },
     { "path": "packages/cli" },
-    { "path": "packages/ais" }
+    { "path": "packages/ais" },
+    { "path": "packages/sprite" }
   ]
 }
