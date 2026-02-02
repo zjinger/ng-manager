@@ -1,18 +1,16 @@
 
+import { ConfigService } from "../domain/config";
+import { DashboardService } from "../domain/dashboard";
+import { DepsService } from "../domain/deps";
+import { FsService } from "../domain/fs";
+import { SystemLogService } from "../domain/logger";
+import { ProjectBootstrapService, ProjectService } from "../domain/project";
+import { TaskService } from "../domain/task";
 import type { IEventBus } from "../infra/event/event-bus";
 import type { CoreEventMap } from "../infra/event/events";
-import type { ILogStore } from "../infra/log/log.store";
-import { ProjectService, ProjectBootstrapService } from "../domain/project";
-import { TaskService } from "../domain/task";
-import { FsService } from "../domain/fs";
-import { DepsService } from "../domain/deps";
-import { DashboardService } from "../domain/dashboard";
-import { ConfigService } from "../domain/config";
-import { SystemLogService } from "../domain/logger";
 
 /**
  * 创建 CoreApp 的参数
- * - 后续可以逐步扩展（dataDir / workspaceDir / storageType 等）
  */
 export interface CreateCoreAppOptions {
     /** 系统日志最大条数 */
