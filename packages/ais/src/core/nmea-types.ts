@@ -1,4 +1,4 @@
-// packages/ais-core/src/core/nmea-types.ts
+// packages/ais/src/core/nmea-types.ts
 
 import { CoreLatLng } from "./latlng";
 

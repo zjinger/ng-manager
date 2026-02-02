@@ -1,4 +1,4 @@
-// packages/ais-core/src/core/transport.ts
+// packages/ais/src/core/transport.ts
 
 import { buildAABSentences } from './nmea-aab';
 import { buildABBSentences } from './nmea-abb';

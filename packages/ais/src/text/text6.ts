@@ -1,4 +1,4 @@
-// packages/ais-core/src/text/text6.ts
+// packages/ais/src/text/text6.ts
 
 /** ITU-R M.1371-5 Table 44：6-bit ASCII 映射 */
 const ITU6_TABLE = [

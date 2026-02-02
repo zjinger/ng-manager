@@ -1,4 +1,4 @@
-// packages/ais-core/src/core/sixbit.ts
+// packages/ais/src/core/sixbit.ts
 import { BitBuffer } from './bit-buffer';
 
 /**

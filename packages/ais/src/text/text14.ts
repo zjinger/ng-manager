@@ -1,4 +1,4 @@
-// packages/ais-core/src/text/text14.ts
+// packages/ais/src/text/text14.ts
 
 // “14位中文字符编码规范（B.2）”编码 / 解码
 // 作用：把“中英文混排文本”编码成一串 7bit/14bit 的比特串（其实是 7bit 一段一段），供 ASM 描述性补充片段等字段使用

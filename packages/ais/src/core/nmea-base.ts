@@ -1,4 +1,4 @@
-// packages/ais-core/src/core/nmea-base.ts
+// packages/ais/src/core/nmea-base.ts
 
 import type { NmeaSentence, AisTalker, AisFormatter, AISChannelSel, ASMChannelSel } from './nmea-types';
 

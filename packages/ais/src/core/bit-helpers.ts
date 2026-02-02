@@ -1,4 +1,4 @@
-// packages/ais-core/src/core/bit-helpers.ts
+// packages/ais/src/core/bit-helpers.ts
 
 import { BitBuffer, WriteMode } from './bit-buffer';
 

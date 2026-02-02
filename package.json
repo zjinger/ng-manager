@@ -4,14 +4,13 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf -g \"packages/**/lib\" \"packages/**/dist\" \"packages/**/*.tsbuildinfo\"",
-    "compile": "tsc -b tsconfig.build.json",
-    "publish:all": "npm run compile && npm publish -w @yinuo-ngm/core --access public && npm publish -w @yinuo-ngm/server --access public && npm publish -w @yinuo-ngm/cli --access public",
-    "pack:all": "npm pack ./packages/core && npm pack ./packages/server && npm pack ./packages/cli",
-    "build:core": "tsc -b core",
-    "build:server": "tsc -b server",
-    "build:desktop": "tsc -b desktop",
-    "dev:server": "tsx watch server/src/index.ts",
-    "dev:desktop": "tsx watch desktop/src/main/index.ts"
+    "build": "tsc -b tsconfig.build.json",
+    "publish:all": "npm run clean && npm run build && npm publish -w @yinuo-ngm/core --access public && npm publish -w @yinuo-ngm/server --access public && npm publish -w @yinuo-ngm/cli --access public && npm publish -w @yinuo-ngm/ais --access public",
+    "pack:all": "npm pack ./packages/core && npm pack ./packages/server && npm pack ./packages/cli && npm pack ./packages/ais",
+    "build:core": "tsc -b packages/core",
+    "build:server": "tsc -b packages/server",
+    "build:ais": "tsc -b packages/ais",
+    "dev:server": "tsx watch packages/server/src/index.ts"
   },
   "devDependencies": {
     "rimraf": "^6.1.2",

@@ -1,4 +1,4 @@
-// packages/ais-core/src/text/text13.ts
+// packages/ais/src/text/text13.ts
 
 // “13位中文字符编码规范（B.3）”编码 / 解码
 // 依赖：iconv-lite（解码 GB2312 → UTF-8 字符串时用）
