@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": "ZhangJing",
   "bin": {
     "ngm": "lib/bin/ngm.js"
@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@types/node": "^25.1.0",
-    "@yinuo-ngm/server": "^1.0.2",
+    "@yinuo-ngm/server": "^1.0.3",
     "commander": "^12.0.0",
     "env-paths": "^3.0.0",
     "execa": "^9.0.0",
