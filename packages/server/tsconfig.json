@@ -9,5 +9,5 @@
       "@core/*": ["core/src/*"]
     }
   },
-  "references": [{ "path": "../core" }]
+  "references": [{ "path": "../core" }, { "path": "../sprite" }]
 }

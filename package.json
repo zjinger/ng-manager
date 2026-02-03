@@ -1,10 +1,21 @@
 {
   "name": "ng-manager",
   "private": true,
-  "type": "module",
   "scripts": {
+    "清除产物": "",
     "clean": "rimraf -g \"packages/**/lib\" \"packages/**/dist\" \"packages/**/*.tsbuildinfo\"",
+    "全量：TS references 最稳": "",
     "build": "tsc -b tsconfig.build.json",
+    "增量：只构建变更包（CI/日常提速）": "",
+    "build:since": "lerna run build --since --stream",
+    "看看 since 会命中哪些包（排错很有用）": "",
+    "since": "lerna ls --since --json",
+    "dev 编排（你现在只有 server dev，也可以先这样）": "",
+    "dev": "lerna run dev --stream --parallel",
+    "版本管理（Lerna 管理版本号和 changelog）": "",
+    "version": "lerna version",
+    "发布：Lerna 接管发布流程": "",
+    "publish": "npm run clean && npm run build && lerna publish from-git",
     "publish:all": "npm run clean && npm run build && npm publish -w @yinuo-ngm/core --access public && npm publish -w @yinuo-ngm/server --access public && npm publish -w @yinuo-ngm/cli --access public && npm publish -w @yinuo-ngm/ais --access public",
     "pack:all": "npm pack ./packages/core && npm pack ./packages/server && npm pack ./packages/cli && npm pack ./packages/ais",
     "build:core": "tsc -b packages/core",
@@ -15,10 +26,14 @@
   },
   "devDependencies": {
     "@types/node": "^25.2.0",
+    "lerna": "^9.0.3",
     "rimraf": "^6.1.2",
     "typescript": "^5.9.3"
   },
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "engines": {
+    "node": ">=18"
+  }
 }

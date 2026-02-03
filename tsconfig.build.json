@@ -5,9 +5,9 @@
   // Building this project will build all of the following:
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/server" },
-    { "path": "packages/cli" },
+    { "path": "packages/sprite" },
     { "path": "packages/ais" },
-    { "path": "packages/sprite" }
+    { "path": "packages/server" },
+    { "path": "packages/cli" }
   ]
 }
