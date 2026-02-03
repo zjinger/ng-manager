@@ -1,30 +1,67 @@
 import fp from "fastify-plugin";
 import path from "path";
 import fastifyStatic from "@fastify/static";
+import { env } from "../env";
+import fs from "fs";
 
 export default fp(async function staticPlugin(fastify) {
     /**
      * __dirname === packages/server/lib/plugins
-     * 回到 monorepo 根，再进 www/browser
      */
     const webRoot = path.resolve(__dirname, "../../www/browser");
 
-    fastify.log.info(`[static] serving webapp from ${webRoot}`);
+    // 统一数据目录（支持 NGM_DATA_DIR 覆盖）
+    const dataDir = env.dataDir;
+    const spritesRoot = path.join(dataDir, "sprites");
+    const spriteCssRoot = path.join(dataDir, "sprite-css");
 
+    // 确保目录存在
+    for (const dir of [dataDir, spritesRoot, spriteCssRoot]) {
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    }
+
+    fastify.log.info(`[static] serving webapp from ${webRoot}`);
+    fastify.log.info(`[static] dataDir=${dataDir}`);
+    fastify.log.info(`[static] serving sprites from ${spritesRoot} at /sprites/`);
+    fastify.log.info(`[static] serving sprite-css from ${spriteCssRoot} at /sprite-css/`);
+
+    // 1 webapp 静态资源（无 prefix = /）
     await fastify.register(fastifyStatic, {
         root: webRoot,
         index: "index.html",
+        decorateReply: true, // 需要 reply.sendFile
     });
 
-    // SPA fallback（非 API 请求 → index.html）
+    // 2 sprites：/sprites/{projectId}/{group}.png
+    await fastify.register(fastifyStatic, {
+        root: spritesRoot,
+        prefix: "/sprites/",
+        decorateReply: false,
+    });
+
+    // 3 sprite-css：/sprite-css/{projectId}.less
+    await fastify.register(fastifyStatic, {
+        root: spriteCssRoot,
+        prefix: "/sprite-css/",
+        decorateReply: false,
+    });
+
+    // SPA fallback（非 API / WS / 静态资源 → index.html）
     fastify.setNotFoundHandler((req, reply) => {
-        if (
+        const url = req.url || "";
+
+        const isSpaFallbackCandidate =
             req.method === "GET" &&
-            !req.url.startsWith("/api") &&
-            !req.url.startsWith("/ws")
-        ) {
+            !url.startsWith("/api") &&
+            !url.startsWith("/ws") &&
+            !url.startsWith("/sprites/") &&
+            !url.startsWith("/sprite-css/");
+
+        if (isSpaFallbackCandidate) {
             return reply.sendFile("index.html");
         }
+
         reply.code(404).send({ ok: false, message: "Not Found" });
     });
+
 });
