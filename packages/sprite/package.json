@@ -19,5 +19,6 @@
   },
   "dependencies": {
     "spritesmith": "^3.5.1"
-  }
+  },
+  "gitHead": "ebfaab3c1457d597f904b5d121292f5a84486609"
 }
