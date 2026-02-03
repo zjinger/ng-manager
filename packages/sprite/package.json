@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/sprite",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "a sprite generation tool",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
