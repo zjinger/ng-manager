@@ -1,12 +1,12 @@
 {
   "name": "@yinuo-ngm/server",
   "version": "1.0.4",
-  "description": "",
-  "main": "lib/index.js",
-  "keywords": [],
-  "author": "ZhangJing",
+  "description": "a server package for Yinuo NG Manager",
+  "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
+  "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "keywords": [],
   "files": [
     "lib",
     "www"

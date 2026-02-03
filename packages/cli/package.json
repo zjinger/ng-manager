@@ -1,7 +1,8 @@
 {
   "name": "@yinuo-ngm/cli",
   "version": "0.1.4",
-  "author": "ZhangJing",
+  "description": "a CLI tool for Yinuo NG Manager",
+  "author": "ZhangJing <892295834@qq.com>",
   "bin": {
     "ngm": "lib/bin/ngm.js"
   },

@@ -1,6 +1,7 @@
 {
   "name": "@yinuo-ngm/core",
   "version": "0.1.3",
+  "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [

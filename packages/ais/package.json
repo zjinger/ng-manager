@@ -3,7 +3,7 @@
   "version": "0.1.2",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "authors": "ZhangJing",
+  "author": "ZhangJing <892295834@qq.com>",
   "description": "",
   "files": [
     "lib"
