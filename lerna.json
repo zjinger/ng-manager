@@ -4,6 +4,9 @@
   "npmClient": "npm",
   "packages": ["packages/*"],
   "command": {
-    "run": { "stream": true }
+    "run": { "stream": true },
+    "version": {
+      "push": false
+    }
   }
 }
