@@ -1,0 +1,20 @@
+{
+  "name": "@yinuo-ngm/storage",
+  "version": "0.1.0",
+  "description": "a storage solution supporting json and sqlite",
+  "keywords": [
+    "json",
+    "storage",
+    "sqlite"
+  ],
+  "license": "ISC",
+  "author": "zhangjing <892295834@qq.com>",
+  "main": "lib/storage.js",
+  "types": "lib/storage.d.ts",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}
