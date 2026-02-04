@@ -6,14 +6,7 @@ import fp from "fastify-plugin";
 import { createCoreApp, type CoreApp } from "@yinuo-ngm/core";
 import { env } from "../env";
 
-/**
- * Fastify 装饰器类型扩展
- */
-declare module "fastify" {
-    interface FastifyInstance {
-        core: CoreApp;
-    }
-}
+
 
 /**
  * Core Plugin

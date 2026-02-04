@@ -1,0 +1,23 @@
+{
+  "name": "@yinuo-ngm/api",
+  "version": "0.1.0",
+  "description": "an API client supporting Postman and Apifox formats",
+  "keywords": [
+    "api",
+    "postman",
+    "apifox"
+  ],
+  "license": "ISC",
+  "author": "ZhangJing <892295834@qq.com>",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@yinuo-ngm/storage": "^0.1.0"
+  }
+}

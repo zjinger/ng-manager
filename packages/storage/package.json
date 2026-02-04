@@ -7,10 +7,10 @@
     "storage",
     "sqlite"
   ],
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "license": "ISC",
   "author": "zhangjing <892295834@qq.com>",
-  "main": "lib/storage.js",
-  "types": "lib/storage.d.ts",
   "files": [
     "lib"
   ],

@@ -6,6 +6,7 @@ import routesPlugin from "./plugins/routes.plugin";
 import staticPlugin from "./plugins/static.plugin";
 import successHandlerPlugin from "./plugins/success-handle.plugin";
 import wsPlugin from "./plugins/ws/ws.plugin";
+import apiClientPlugin from "./plugins/api-client.plugin";
 function normalizeLogLevel(v?: string) {
     // pino levels: fatal error warn info debug trace silent
     const lv = (v ?? "").toLowerCase().trim();
@@ -56,15 +57,20 @@ export async function createServer() {
 
     // core
     await fastify.register(corePlugin);
-    // 先 websocket，再 routes（尤其 ws 路由）
+
+    // websocket
     await fastify.register(wsPlugin);
+
+    // api client
+    await fastify.register(apiClientPlugin);
+
     // routes
     await fastify.register(routesPlugin);
 
     // www
-    await fastify.register(staticPlugin)
+    await fastify.register(staticPlugin);
 
-
+    // 关闭钩子
     fastify.addHook('onClose', async () => {
         // 在这里执行任何需要在服务器关闭时完成的异步操作
         // 例如，关闭数据库连接、清理资源等
