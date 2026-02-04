@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { HttpMethod, ApiRequestEntity } from "../../domain/models/api-request";
+import type { HttpMethod } from "../../domain/models";
 
 export type NodeHttpSendInput = {
     method: HttpMethod;
@@ -52,49 +52,6 @@ function applyAuth(headers: Record<string, string>, auth: any) {
     }
 }
 
-function buildBody(input: NodeHttpSendInput, headers: Record<string, string>) {
-    const b = input.body;
-    if (!b || b.mode === "none") return undefined;
-
-    const contentType = b.contentType?.trim();
-
-    if (b.mode === "json") {
-        const text = JSON.stringify(b.content ?? null);
-        if (contentType) headers["content-type"] = contentType;
-        else if (!headers["content-type"]) headers["content-type"] = "application/json; charset=utf-8";
-        return text;
-    }
-
-    if (b.mode === "text") {
-        const text = String(b.content ?? "");
-        if (contentType) headers["content-type"] = contentType;
-        else if (!headers["content-type"]) headers["content-type"] = "text/plain; charset=utf-8";
-        return text;
-    }
-
-    if (b.mode === "urlencoded") {
-        const sp = new URLSearchParams();
-        const obj = b.content ?? {};
-        for (const [k, v] of Object.entries(obj)) sp.append(k, String(v ?? ""));
-        if (contentType) headers["content-type"] = contentType;
-        else if (!headers["content-type"]) headers["content-type"] = "application/x-www-form-urlencoded; charset=utf-8";
-        return sp.toString();
-    }
-
-    if (b.mode === "form") {
-        // MVP：用 urlencoded 表达（避免引入 multipart 复杂度）
-        const sp = new URLSearchParams();
-        const obj = b.content ?? {};
-        for (const [k, v] of Object.entries(obj)) sp.append(k, String(v ?? ""));
-        if (contentType) headers["content-type"] = contentType;
-        else if (!headers["content-type"]) headers["content-type"] = "application/x-www-form-urlencoded; charset=utf-8";
-        return sp.toString();
-    }
-
-    // binary：MVP 不支持
-    return undefined;
-}
-
 /**
  * Node HTTP Client Adapter
  * - 默认使用 global fetch
@@ -109,7 +66,7 @@ export class NodeHttpClient {
         const headers: Record<string, string> = { ...input.headers };
         applyAuth(headers, input.auth);
 
-        const body = buildBody(input, headers);
+        const body = buildBodyTextForSend(input.body, headers);
 
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -159,3 +116,32 @@ export function newId(prefix: string) {
     const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
     return `${prefix}_${rand}`;
 }
+
+export function buildBodyTextForSend(
+    body: NodeHttpSendInput["body"],
+    headers: Record<string, string>
+): string | undefined {
+    // 逻辑复制自 buildBody，但只返回 string，不修改 headers 也行
+    if (!body || body.mode === "none") return undefined;
+
+    const contentType = body.contentType?.trim();
+    if (contentType && !headers["content-type"]) headers["content-type"] = contentType;
+
+    if (body.mode === "json") {
+        if (!headers["content-type"]) headers["content-type"] = "application/json; charset=utf-8";
+        return JSON.stringify(body.content ?? null);
+    }
+    if (body.mode === "text") {
+        if (!headers["content-type"]) headers["content-type"] = "text/plain; charset=utf-8";
+        return String(body.content ?? "");
+    }
+    if (body.mode === "urlencoded" || body.mode === "form") {
+        if (!headers["content-type"]) headers["content-type"] = "application/x-www-form-urlencoded; charset=utf-8";
+        const sp = new URLSearchParams();
+        const obj = body.content ?? {};
+        for (const [k, v] of Object.entries(obj)) sp.append(k, String(v ?? ""));
+        return sp.toString();
+    }
+    return undefined;
+}
+

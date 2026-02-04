@@ -6,7 +6,7 @@ import type { RequestRepo } from "./request-repo";
 import type { EnvRepo } from "./env-repo";
 
 import { VariableResolver, type ResolveContext } from "./variable-resolver";
-import { NodeHttpClient, newId } from "../../infra/http/node-http-client";
+import { NodeHttpClient, newId, buildBodyTextForSend, toCurl } from "../../infra";
 import { ApiCollectionScope } from "..";
 
 export type SendDto = {
@@ -28,6 +28,10 @@ export type SendResult = {
     response?: ApiHistoryEntity["response"];
     error?: ApiHistoryEntity["error"];
     metrics: ApiHistoryEntity["metrics"];
+    curl?: {
+        bash: string;
+        powershell: string;
+    };
 };
 
 function buildFinalUrl(baseUrl: string, query: Array<{ key: string; value: string }>, auth: any): string {
@@ -94,8 +98,23 @@ export class ApiSendService {
             },
             createdAt: startedAt,
         };
-
+        const curlOpts = {
+            followRedirects: req.options?.followRedirects ?? true,
+            insecureTLS: req.options?.insecureTLS ?? false,
+            compressed: true, // 默认 true；否则可以跟随 UI 开关
+        };
         try {
+            const bodyTextForCurl = buildBodyTextForSend(resolved.body, headersLower);
+            const toCurlInput = {
+                method: req.method,
+                url: finalUrl,
+                headers: headersLower,
+                bodyText: bodyTextForCurl,
+                options: curlOpts,
+            }
+            const curlBash = toCurl(toCurlInput, { style: "bash", pretty: true });
+            const curlPs = toCurl(toCurlInput, { style: "powershell", pretty: true });
+
             const out = await this.http.send({
                 method: req.method,
                 url: finalUrl,
@@ -108,6 +127,14 @@ export class ApiSendService {
             const endedAt = Date.now();
             history = {
                 ...history,
+                resolved: {
+                    url: finalUrl,
+                    headers: headersLower,
+                    curl: {
+                        bash: curlBash,
+                        powershell: curlPs,
+                    },
+                },
                 response: {
                     status: out.status,
                     statusText: out.statusText,
@@ -128,6 +155,7 @@ export class ApiSendService {
                 historyId,
                 response: history.response,
                 metrics: history.metrics,
+                curl: { bash: curlBash, powershell: curlPs },
             };
         } catch (e: any) {
             const endedAt = Date.now();

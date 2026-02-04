@@ -10,6 +10,10 @@ export interface ApiHistoryEntity {
     resolved: {
         url: string;
         headers: Record<string, string>;
+        curl?: {
+            bash: string;
+            powershell: string;
+        }
     };
 
     response?: {

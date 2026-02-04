@@ -3,13 +3,7 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib",
-    "baseUrl": ".",
-    "paths": {
-      "@core": ["core/src/index.ts"],
-      "@core/*": ["core/src/*"],
-      "@api": ["api/src/index.ts"],
-      "@api/*": ["api/src/*"]
-    }
+    "baseUrl": "."
   },
   "references": [
     { "path": "../core" },
