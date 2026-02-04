@@ -14,10 +14,11 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
         <nz-tab nzTitle="Params">
           <div class="tab">
             <app-kv-table
-              [rows]="req?.query || []"
+              [rows]="req?.query??[]"
               (rowsChange)="patch.emit({ query: $event })"
               keyLabel="参数名"
               valueLabel="参数值"
+              descriptionLabel="说明"
               keyPlaceholder="param"
               valuePlaceholder="value"
             />
@@ -26,7 +27,7 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
         <nz-tab nzTitle="Headers">
           <div class="tab">
             <app-kv-table
-              [rows]="req?.headers || []"
+              [rows]="req?.headers?? []"
               (rowsChange)="patch.emit({ headers: $event })"
               keyLabel="Header"
               valueLabel="Value"
@@ -64,8 +65,25 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
   styles: [
     `
       :host{ display:flex; flex-direction:column; height:100%; min-height:0; }
+      app-kv-table{
+        display: block;
+        height: 100%;
+      }
+      .tabs  {
+          flex: 1 1 auto;
+          overflow: hidden;
+          height: 100%;
+      }
       .tab{
-        min-height: 260px;
+        height: 100%;
+      }
+      ::ng-deep nz-tabs.tabs{
+        .ant-tabs-content{
+          height: 100%;
+          .ant-tabs-tabpane{
+            height:100%;
+          }
+        }
       }
     `
   ],

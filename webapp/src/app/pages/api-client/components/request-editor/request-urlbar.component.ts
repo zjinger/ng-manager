@@ -24,7 +24,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
       <input
         nz-input
         class="url"
-        placeholder="https://..."
+        placeholder="http://..."
         [ngModel]="url"
         (ngModelChange)="urlChange.emit($event)"
       />

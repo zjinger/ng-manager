@@ -70,10 +70,6 @@ import { PageLayoutComponent } from '@app/shared';
       gap: 16px;
       padding:0 16px;
     }
-    app-task-list {
-      flex: 0 0 320px;
-      width: 320px;
-    }
     .content{
       flex: 1 1 auto;
       width: 0;

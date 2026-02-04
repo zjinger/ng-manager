@@ -11,6 +11,8 @@ import { ApiEnvEntity } from '@models/api-environment.model';
 import { KvRow } from '@models/api-request.model';
 import { envVarsToRows, rowsToEnvVars } from '@pages/api-client/utils/env-mapper';
 import { KvTableComponent, } from './kv-table.component';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 function now() { return Date.now(); }
 function newId(prefix: string) {
@@ -27,6 +29,8 @@ function newId(prefix: string) {
     NzButtonModule,
     NzDrawerModule,
     NzInputModule,
+    NzTooltipModule,
+    NzIconModule,
     NzPopconfirmModule,
     KvTableComponent
   ],
@@ -43,7 +47,9 @@ function newId(prefix: string) {
           <nz-option [nzValue]="e.id" [nzLabel]="e.name"></nz-option>
         }
       </nz-select>
-      <button nz-button  nzType="default" (click)="openDrawer()">管理</button>
+      <button nz-button  nzType="text" (click)="openDrawer()" nz-tooltip nzTooltipTitle="管理环境变量">
+        <nz-icon nzType="setting" nzTheme="outline"></nz-icon>
+      </button>
     </div>
 
     <nz-drawer

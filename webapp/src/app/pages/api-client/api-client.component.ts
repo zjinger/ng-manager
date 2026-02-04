@@ -8,6 +8,8 @@ import { RequestCollectionsComponent } from './components/request-collections';
 import { EnvPickerComponent, RequestEditorComponent } from './components/request-editor';
 import { ResponseViewerComponent } from './components/response-viewer';
 import { ApiClientStateService } from './services';
+import { NzLayoutModule } from 'ng-zorro-antd/layout';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-api-client.component',
@@ -16,6 +18,8 @@ import { ApiClientStateService } from './services';
     PageLayoutComponent,
     NzButtonModule,
     NzIconModule,
+    NzLayoutModule,
+    NzTooltipModule,
     RequestCollectionsComponent,
     RequestEditorComponent,
     ResponseViewerComponent,
@@ -24,66 +28,72 @@ import { ApiClientStateService } from './services';
   ],
   styles: [
     `
-    .api-grid{
-      display:grid;
-      grid-template-columns: 280px 1fr 420px;
-      gap: 12px;
-      height: calc(100vh - 64px - 32px);
-      min-height: 520px;
-    }
-    .col{
-      border-radius: 8px;
+    .page{
+      height: 100%;
+      display: flex;
+      flex-direction: row;
       overflow: hidden;
-      display:flex;
-      flex-direction:column;
-      min-width:0;
+      gap: 16px;
+      padding:0 16px;
     }
-    .left,
-    .mid,
-    .right {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
+    .content {
+      flex: 1 1 auto;
+      width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      height: 100%;
+      overflow: hidden;
+    }
+    app-request-editor {
+      flex: 0 0 auto;
+      height:50%;
+    }
+    app-response-viewer {
+      flex: 0 0 auto;
+      height:50%;
+      overflow: auto;
     }
     `
   ],
   template: `
       <app-page-layout [title]="'API 请求'" [loading]="store.loading()" [isFullscreen]="true">
-      <ng-container ngProjectAs="actions">
-         <app-env-picker
-          [(drawerOpen)]="store.envDrawerOpen"
-          [envs]="store.envs()"
-          [envId]="store.activeEnvId()"
-          (envChange)="store.setActiveEnv($event)"
-          [saveEnv]="store.saveEnv.bind(store)"
-          [deleteEnv]="store.deleteEnv.bind(store)"
-        />
-        <button nz-button nzType="primary" (click)="store.newRequest()">新建请求</button>
-        <button nz-button nzType="default" (click)="store.loadRequests()">刷新</button>
-        <button nz-button nzType="default" (click)="store.openHistory()">历史</button>
-      </ng-container>
-
-      <div class="api-grid">
-        <div class="col left">
-          <app-request-collections />
-        </div>
-
-        <div class="col mid">
-          <app-request-editor
-            [req]="store.activeRequest()"
-            [sending]="store.sending()"
-            [envVars]="store.envVarRecord()"
-            [openEnv]="openEnv"
-            (patch)="store.patchActive($event)"
-            (save)="store.saveActive()"
-            (send)="store.sendActive()"
+        <ng-container ngProjectAs="actions">
+          <app-env-picker
+            [(drawerOpen)]="store.envDrawerOpen"
+            [envs]="store.envs()"
+            [envId]="store.activeEnvId()"
+            (envChange)="store.setActiveEnv($event)"
+            [saveEnv]="store.saveEnv.bind(store)"
+            [deleteEnv]="store.deleteEnv.bind(store)"
           />
-        </div>
-
-        <div class="col right">
-          <app-response-viewer [result]="store.lastResult()" />
-        </div>
-      </div>
+          <button nz-button nzType="text" (click)="store.openHistory()" nz-tooltip nzTooltipTitle="历史记录">
+            <nz-icon nzType="history" nzTheme="outline" />
+          </button>
+        </ng-container>
+        <nz-layout class="page">
+          <app-request-collections
+            [requests]="store.requests()"
+            [activeId]="store.activeRequestId()"
+            (select)="store.selectRequest($event)"
+            (create)="store.newRequest()"
+          />
+          <div class="content">
+            @if(store.activeRequest()){
+              <app-request-editor
+                [req]="store.activeRequest()!"
+                [sending]="store.sending()"
+                [envVars]="store.envVarRecord()"
+                [openEnv]="openEnv"
+                (patch)="store.patchActive($event)"
+                (save)="store.saveActive()"
+                (send)="store.sendActive()"
+              />
+              <app-response-viewer [result]="store.lastResult()" />
+            }
+            
+          </div>
+        </nz-layout>
     </app-page-layout>
     @if (store.historyOpen()) {
       <app-api-history-drawer
@@ -94,7 +104,6 @@ import { ApiClientStateService } from './services';
         (replay)="store.replayHistory($event)"
       />
     }
-
   `,
 })
 export class ApiClientComponent {

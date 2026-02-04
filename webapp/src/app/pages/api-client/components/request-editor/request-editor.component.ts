@@ -24,39 +24,32 @@ import { RequestUrlbarComponent } from './request-urlbar.component';
     RequestUrlbarComponent
   ],
   template: `
-      <app-request-urlbar
-        class="bar"
-        [method]="req?.method || 'GET'"
-        [envVars]="envVars"
-        [openEnv]="openEnv"
-        [url]="req?.url || ''"
-        [sending]="sending"
-        (methodChange)="patch.emit({method:$event})"
-        (urlChange)="patch.emit({url:$event})"
-        (send)="send.emit()"
-        (save)="save.emit()"
-      />
-      <div class="name">
-        <input nz-input placeholder="请求名称" [ngModel]="req?.name" (ngModelChange)="patch.emit({name:$event})" />
-      </div>
-      <app-request-tabs class="tabs" [req]="req" (patch)="patch.emit($event)" />
+    <app-request-urlbar
+      [method]="req.method"
+      [envVars]="envVars"
+      [openEnv]="openEnv"
+      [url]="req.url"
+      [sending]="sending"
+      (methodChange)="patch.emit({method:$event})"
+      (urlChange)="patch.emit({url:$event})"
+      (send)="send.emit()"
+      (save)="save.emit()"
+    />
+    <div class="name">
+      <input nz-input placeholder="未命名接口名称" [ngModel]="req.name" (ngModelChange)="patch.emit({name:$event})" />
+    </div>
+    <app-request-tabs class="tabs" [req]="req" (patch)="patch.emit($event)" />
+      
   `,
   styles: [`
-    .empty{ padding:16px; opacity:.6; }
-    .bar{
-      display:flex; gap:10px; padding:10px;
-      border-bottom:1px solid #f0f0f0;
-      align-items:center;
-    }
-    .method{ width:120px; }
-    .url{ flex:1 1 auto; }
+    :host{ display: flex; flex-direction: column;}
     .name{ padding:10px; border-bottom:1px solid #f0f0f0; }
     .tabs{ flex:1 1 auto; overflow:hidden; padding:0 10px; }
-    .tip{ padding:12px; opacity:.7; }
+    app-request-tabs{flex:1 1 auto; height:0;}
   `],
 })
 export class RequestEditorComponent {
-  @Input() req: ApiRequestEntity | null = null;
+  @Input() req!: ApiRequestEntity;
   @Input() sending = false;
   @Input() envVars: Record<string, string> = {};
   @Input() openEnv!: () => void; // 点击提示时打开 Env 管理

@@ -1,5 +1,5 @@
-<div class="list-card">
-  <div class="topbar">
+<div class="wrap">
+  <div class="header">
     <nz-input-wrapper>
       <nz-icon class="search-icon" nzInputPrefix nzType="search" />
       <input
@@ -13,7 +13,7 @@
       <span nz-icon nzType="reload"></span>
     </button>
   </div>
-  <div class="items-container">
+  <div class="body">
     @if (loading()) {
     <div class="hint">Loading...</div>
     } @else { @if (list().length === 0) {

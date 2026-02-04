@@ -132,7 +132,7 @@ export class ApiClientStateService {
     const t = now();
     const req: ApiRequestEntity = {
       id: newLocalId('req'),
-      name: 'New Request',
+      name: '',
       method: 'GET',
       url: '',
       query: [],
@@ -154,6 +154,7 @@ export class ApiClientStateService {
    * 更新当前请求字段
    */
   patchActive(patch: Partial<ApiRequestEntity>) {
+    console.log('ApiClientStateService patchActive', patch);
     const id = this.activeRequestId();
     if (!id) return;
 
@@ -165,6 +166,7 @@ export class ApiClientStateService {
         updatedAt: now(),
       };
     });
+    console.log('ApiClientStateService patchActive', id, patch, list);
     this.requests.set(list);
   }
 

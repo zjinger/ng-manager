@@ -8,7 +8,7 @@ export type HttpMethod =
     | "OPTIONS";
 export type ApiScope = "global" | "project";
 
-export type KvRow = { key: string; value: string; enabled: boolean };
+export type KvRow = { key: string; value: string; enabled: boolean; description?: string };
 export interface ApiRequestEntity {
     id: string;
     name: string;
