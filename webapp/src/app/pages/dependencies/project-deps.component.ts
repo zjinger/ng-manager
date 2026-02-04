@@ -37,8 +37,119 @@ import { PageLayoutComponent } from "@app/shared";
     NgDevtoolComponent,
     PageLayoutComponent
   ],
-  templateUrl: './project-deps.component.html',
   styleUrl: './project-deps.component.less',
+  template:`
+    <app-page-layout [title]="'项目配置'" [loading]="loading()">
+      <ng-container ngProjectAs="actions">
+        <app-ng-devtool></app-ng-devtool>
+        <nz-input-wrapper>
+          <input
+            nz-input
+            class="search"
+            placeholder="搜索"
+            [(ngModel)]="keyword"
+            (ngModelChange)="keyword.set($event)"
+          />
+          <nz-icon nzType="search" nzInputPrefix />
+        </nz-input-wrapper>
+        <!-- <button nz-button nzType="primary">
+          <span nz-icon nzType="plus"></span>
+          安装依赖
+        </button> -->
+      </ng-container>
+      <div class="panel">
+        <!-- Runtime deps -->
+        <ng-container
+          *ngTemplateOutlet="contentTemplate; context: { $implicit: runtimeItems(), title: '运行依赖' }"
+        ></ng-container>
+        <nz-divider></nz-divider>
+        <!-- Dev deps -->
+        <ng-container
+          *ngTemplateOutlet="contentTemplate; context: { $implicit: devItems(), title: '开发依赖' }"
+        ></ng-container>
+      </div>
+    </app-page-layout>
+    <ng-template #contentTemplate let-items let-title="title">
+      <div class="group-title">{{ title }}</div>
+      <div class="list">
+        @for (item of items; track trackByName($index, item)) {
+          <div class="row">
+            <div nz-row nzAlign="middle" class="row-inner">
+              <!-- left -->
+              <div nz-col nzFlex="400px" class="left">
+                <div class="pkg-icon">
+                  <span nz-icon nzType="appstore"></span>
+                </div>
+                <div class="pkg">
+                  <div class="name">{{ item.name }}</div>
+                  <div class="sub">
+                    <span>版本 {{ item.current || '-' }}</span>
+                    <span class="sep">·</span>
+                    <span>要求 {{ item.required || '-' }}</span>
+                    <span class="sep">·</span>
+                    <span>最新 {{ item.latest || '-' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- middle -->
+              <div nz-col nzFlex="auto" class="mid">
+                @if (item.installed) {
+                  <nz-tag nzColor="success">已安装</nz-tag>
+                } @else {
+                  <nz-tag nzColor="warning">未安装</nz-tag>
+                }
+                <!-- @if(item.hasUpdate){
+              <nz-tag nzColor="warning">可更新</nz-tag>
+              } -->
+                <a class="detail" (click)="openDetail(item)">
+                  <span nz-icon nzType="link"></span>
+                  查看详情
+                </a>
+              </div>
+
+              <!-- right -->
+              <div nz-col nzFlex="180px" class="right">
+                <!-- <button
+                nz-button
+                nzType="default"
+                [nzLoading]="installing()[item.name]"
+                (click)="installOrUpdate(item)"
+              >
+                {{ item.hasUpdate ? '更新' : item.installed ? '重装' : '安装' }}
+              </button> -->
+                @if (item.hasUpdate || !item.installed) {
+                  <button
+                    nz-button
+                    nzType="text"
+                    [nzLoading]="installing()[item.name]"
+                    (click)="installOrUpdate(item)"
+                    [nz-tooltip]="item.hasUpdate ? '更新到最新版本' : '安装依赖'"
+                  >
+                    <nz-icon nzType="download" />
+                  </button>
+                }
+                @if (item.installed) {
+                  <button
+                    nz-button
+                    nzType="text"
+                    nz-popconfirm
+                    nzPopconfirmTitle="确定卸载 {{ item.name }}？"
+                    (nzOnConfirm)="uninstall(item)"
+                  >
+                    <nz-icon nzType="delete" nzTheme="fill" [nz-tooltip]="'卸载' + item.name" />
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        }
+        @if (items.length === 0) {
+          <div class="empty">无数据</div>
+        }
+      </div>
+    </ng-template>
+  `
 })
 export class ProjectDepsComponent {
   private api = inject(DepsApiService);

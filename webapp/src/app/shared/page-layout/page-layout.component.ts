@@ -5,7 +5,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
 @Component({
-  selector: 'page-layout',
+  selector: 'app-page-layout',
   imports: [
     CommonModule,
     NzGridModule,

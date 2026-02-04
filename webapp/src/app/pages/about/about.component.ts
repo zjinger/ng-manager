@@ -7,7 +7,7 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
   selector: 'app-about.component',
   imports: [CommonModule, NzGridModule, PageLayoutComponent],
   template: `
-    <page-layout [title]="'关于'" >
+    <app-page-layout [title]="'关于'" >
         <div class="header">
           <h2>关于 Ng-Manager</h2>
         </div>
@@ -28,7 +28,7 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
           <p>版本：1.0.0</p>
           <p>官方网站：<a href="https://ng-manager.example.com" target="_blank">https://ng-manager.example.com</a></p>
         </div>
-    </page-layout>
+    </app-page-layout>
   `,
 })
 export class AboutComponent {

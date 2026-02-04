@@ -39,7 +39,7 @@ import { PageLayoutComponent } from '@app/shared';
     PageLayoutComponent
   ],
   template: `
-  <page-layout [title]="'任务'" [isFullscreen]="true">
+  <app-page-layout [title]="'任务'" [isFullscreen]="true">
     <nz-layout class="page">
       <app-task-list></app-task-list>
       <nz-content class="content">
@@ -58,7 +58,7 @@ import { PageLayoutComponent } from '@app/shared';
         <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
       </nz-content>
     </nz-layout>
-  </page-layout>
+  </app-page-layout>
   `,
   styles: [
     `

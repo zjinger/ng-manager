@@ -35,7 +35,7 @@ import { DashboardLayoutService } from './services/dashboard-layout.service';
     '[class.collapsed]': 'editMode()',
   },
   template: `
-    <page-layout [title]="'项目仪表盘'" [isFullscreen]="true">
+    <app-page-layout [title]="'项目仪表盘'" [isFullscreen]="true">
       <ng-container ngProjectAs="actions">
         <button nz-button nzType="primary" (click)="toggleEdit()">
           <nz-icon [nzType]="editMode() ? 'check' : 'edit'" nzTheme="outline"></nz-icon>
@@ -49,7 +49,7 @@ import { DashboardLayoutService } from './services/dashboard-layout.service';
         (itemsChange)="onItemsChange($event)"
         (remove)="layout.remove($event)"
       ></app-dashboard-canvas>
-    </page-layout>
+    </app-page-layout>
     <div class="side-panel" [class.open]="editMode()">
       <div class="side-header">
         <div class="title">添加部件</div>
