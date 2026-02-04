@@ -31,6 +31,10 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/dependencies/dependencies.module').then(m => m.DependenciesModule)
     },
     {
+        path: 'rquest',
+        loadChildren: () => import('./pages/api-client/api-client.module').then(m => m.ApiClientModule)
+    },
+    {
         path: 'about',
         loadChildren: () => import('./pages/about/about-routing-module').then(m => m.AboutRoutingModule)
     },

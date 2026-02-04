@@ -1,9 +1,9 @@
-import { ApiCollectionScope } from "./api-collection";
+import { ApiScope } from "./types";
 
 export interface ApiEnvironmentEntity {
     id: string;
     name: string;
-    scope: ApiCollectionScope;
+    scope: ApiScope;
     projectId?: string;
     variables: Array<{
         key: string;

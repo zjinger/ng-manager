@@ -1,4 +1,4 @@
-import { type ApiCollectionScope, ApiEnvironmentEntity, ApiHistoryEntity, ApiRequestEntity } from "../domain/models";
+import { type ApiScope, ApiEnvironmentEntity, ApiHistoryEntity, ApiRequestEntity } from "../domain/models";
 import { RequestRepo, EnvRepo, HistoryRepo, ApiSendService, SendDto, SendResult } from "../domain/services";
 
 export class ApiClient {
@@ -11,45 +11,45 @@ export class ApiClient {
     ) { }
 
     // -------- requests --------
-    listRequests(scope: ApiCollectionScope, projectId?: string) {
+    listRequests(scope: ApiScope, projectId?: string) {
         return this.requestRepo.list(scope, projectId);
     }
 
-    getRequest(id: string, scope: ApiCollectionScope, projectId?: string) {
+    getRequest(id: string, scope: ApiScope, projectId?: string) {
         return this.requestRepo.get(id, scope, projectId);
     }
 
-    saveRequest(req: ApiRequestEntity, scope: ApiCollectionScope, projectId?: string) {
+    saveRequest(req: ApiRequestEntity, scope: ApiScope, projectId?: string) {
         return this.requestRepo.save(req, scope, projectId);
     }
 
-    deleteRequest(id: string, scope: ApiCollectionScope, projectId?: string) {
+    deleteRequest(id: string, scope: ApiScope, projectId?: string) {
         return this.requestRepo.remove(id, scope, projectId);
     }
 
 
     // -------- envs --------
-    listEnvs(scope: ApiCollectionScope, projectId?: string) {
+    listEnvs(scope: ApiScope, projectId?: string) {
         return this.envRepo.list(scope, projectId);
     }
-    getEnv(id: string, scope: ApiCollectionScope, projectId?: string) {
+    getEnv(id: string, scope: ApiScope, projectId?: string) {
         return this.envRepo.get(id, scope, projectId);
     }
-    saveEnv(env: ApiEnvironmentEntity, scope: ApiCollectionScope, projectId?: string) {
+    saveEnv(env: ApiEnvironmentEntity, scope: ApiScope, projectId?: string) {
         return this.envRepo.save(env, scope, projectId);
     }
-    deleteEnv(id: string, scope: ApiCollectionScope, projectId?: string) {
+    deleteEnv(id: string, scope: ApiScope, projectId?: string) {
         return this.envRepo.remove(id, scope, projectId);
     }
 
     // -------- history --------
-    addHistory(h: ApiHistoryEntity, scope: ApiCollectionScope, projectId?: string) {
+    addHistory(h: ApiHistoryEntity, scope: ApiScope, projectId?: string) {
         return this.historyRepo.add(h, scope, projectId);
     }
-    listHistory(query: { scope: ApiCollectionScope; projectId?: string; limit: number; offset: number }) {
+    listHistory(query: { scope: ApiScope; projectId?: string; limit: number; offset: number }) {
         return this.historyRepo.list(query);
     }
-    purgeHistory(query: { scope: ApiCollectionScope; projectId?: string; olderThan?: number; maxCount?: number }) {
+    purgeHistory(query: { scope: ApiScope; projectId?: string; olderThan?: number; maxCount?: number }) {
         return this.historyRepo.purge(query);
     }
 

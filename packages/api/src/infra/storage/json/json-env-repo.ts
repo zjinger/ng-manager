@@ -1,6 +1,6 @@
 import { JsonFileKvRepo } from "@yinuo-ngm/storage";
 import * as path from "node:path";
-import { ApiCollectionScope, ApiEnvironmentEntity } from "../../../domain/models";
+import { ApiScope, ApiEnvironmentEntity } from "../../../domain/models";
 import type { EnvRepo } from "../../../domain/services";
 
 export interface JsonEnvRepoOptions {
@@ -24,30 +24,30 @@ export class JsonEnvRepo implements EnvRepo {
         this.fileName = opts.fileName ?? "envs.kv.json";
     }
 
-    list(scope: ApiCollectionScope, projectId?: string): Promise<ApiEnvironmentEntity[]> {
+    list(scope: ApiScope, projectId?: string): Promise<ApiEnvironmentEntity[]> {
         return this.kv(scope, projectId).list();
     }
 
-    get(id: string, scope: ApiCollectionScope, projectId?: string): Promise<ApiEnvironmentEntity | null> {
+    get(id: string, scope: ApiScope, projectId?: string): Promise<ApiEnvironmentEntity | null> {
         return this.kv(scope, projectId).get(id);
     }
 
-    async save(env: ApiEnvironmentEntity, scope: ApiCollectionScope, projectId?: string): Promise<void> {
+    async save(env: ApiEnvironmentEntity, scope: ApiScope, projectId?: string): Promise<void> {
         if (!env?.id) throw new Error("env.id is required");
         const repo = this.kv(scope, projectId);
         await repo.set(env.id, env);
     }
 
-    remove(id: string, scope: ApiCollectionScope, projectId?: string): Promise<void> {
+    remove(id: string, scope: ApiScope, projectId?: string): Promise<void> {
         return this.kv(scope, projectId).delete(id);
     }
 
-    private kv(scope: ApiCollectionScope, projectId?: string) {
+    private kv(scope: ApiScope, projectId?: string) {
         const file = this.filePath(scope, projectId);
         return new JsonFileKvRepo<ApiEnvironmentEntity>(file);
     }
 
-    private filePath(scope: ApiCollectionScope, projectId?: string) {
+    private filePath(scope: ApiScope, projectId?: string) {
         if (scope === "global") return path.join(this.rootDir, "global", this.fileName);
         if (!projectId) throw new Error("projectId is required when scope=project");
         return path.join(this.rootDir, "projects", projectId, this.fileName);

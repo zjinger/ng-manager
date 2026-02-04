@@ -7,10 +7,10 @@ import type { EnvRepo } from "./env-repo";
 
 import { VariableResolver, type ResolveContext } from "./variable-resolver";
 import { NodeHttpClient, newId, buildBodyTextForSend, toCurl } from "../../infra";
-import { ApiCollectionScope } from "..";
+import { ApiScope } from "../models/types";
 
 export type SendDto = {
-    scope: ApiCollectionScope;
+    scope: ApiScope;
     projectId?: string;
 
     // 二选一：requestId 或 request
@@ -183,7 +183,7 @@ export class ApiSendService {
 
     // ---------------- private ----------------
 
-    private async loadRequest(dto: SendDto, scope: ApiCollectionScope): Promise<ApiRequestEntity> {
+    private async loadRequest(dto: SendDto, scope: ApiScope): Promise<ApiRequestEntity> {
         if (dto.request?.id) return dto.request;
 
         if (dto.requestId) {
@@ -195,7 +195,7 @@ export class ApiSendService {
         throw new Error("request or requestId is required");
     }
 
-    private async loadEnv(dto: SendDto, scope: ApiCollectionScope): Promise<ApiEnvironmentEntity | null> {
+    private async loadEnv(dto: SendDto, scope: ApiScope): Promise<ApiEnvironmentEntity | null> {
         if (!dto.envId) return null;
         const env = await this.envRepo.get(dto.envId, scope, dto.projectId);
         if (!env) throw new Error(`env not found: ${dto.envId}`);

@@ -1,7 +1,7 @@
 // packages/api-client/src/infra/storage/json/json-request-repo.ts
 import { JsonFileKvRepo } from "@yinuo-ngm/storage";
 import * as path from "node:path";
-import type { ApiCollectionScope, ApiRequestEntity } from "../../../domain/models";
+import type { ApiScope, ApiRequestEntity } from "../../../domain/models";
 import type { RequestRepo } from "../../../domain/services";
 
 export interface JsonRequestRepoOptions {
@@ -37,36 +37,36 @@ export class JsonRequestRepo implements RequestRepo {
         this.fileName = opts.fileName ?? "requests.kv.json";
     }
 
-    async list(scope: ApiCollectionScope, projectId?: string): Promise<ApiRequestEntity[]> {
+    async list(scope: ApiScope, projectId?: string): Promise<ApiRequestEntity[]> {
         const repo = this.kv(scope, projectId);
         return repo.list();
     }
 
-    async get(id: string, scope: ApiCollectionScope, projectId?: string): Promise<ApiRequestEntity | null> {
+    async get(id: string, scope: ApiScope, projectId?: string): Promise<ApiRequestEntity | null> {
         const repo = this.kv(scope, projectId);
         return repo.get(id);
     }
 
-    async save(req: ApiRequestEntity, scope: ApiCollectionScope, projectId?: string): Promise<void> {
+    async save(req: ApiRequestEntity, scope: ApiScope, projectId?: string): Promise<void> {
         // 可选：做一些轻量校验，避免写入脏数据
         if (!req?.id) throw new Error("request.id is required");
         const repo = this.kv(scope, projectId);
         await repo.set(req.id, req);
     }
 
-    async remove(id: string, scope: ApiCollectionScope, projectId?: string): Promise<void> {
+    async remove(id: string, scope: ApiScope, projectId?: string): Promise<void> {
         const repo = this.kv(scope, projectId);
         await repo.delete(id);
     }
 
     // ---------------- private ----------------
 
-    private kv(scope: ApiCollectionScope, projectId?: string) {
+    private kv(scope: ApiScope, projectId?: string) {
         const file = this.filePath(scope, projectId);
         return new JsonFileKvRepo<ApiRequestEntity>(file);
     }
 
-    private filePath(scope: ApiCollectionScope, projectId?: string) {
+    private filePath(scope: ApiScope, projectId?: string) {
         if (scope === "global") {
             return path.join(this.rootDir, "global", this.fileName);
         }

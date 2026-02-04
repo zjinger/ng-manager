@@ -1,3 +1,5 @@
+import { ApiScope } from "./types";
+
 export type CollectionNode =
     | { id: string; type: "folder"; name: string; parentId?: string; order: number }
     | {
@@ -9,12 +11,12 @@ export type CollectionNode =
         requestId: string;
     };
 
-export type ApiCollectionScope = "global" | "project";
+
 
 export interface ApiCollectionEntity {
     id: string;
     name: string;
-    scope: ApiCollectionScope;
+    scope: ApiScope;
     projectId?: string;
     nodes: CollectionNode[];
     createdAt: number;

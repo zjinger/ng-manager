@@ -1,8 +1,7 @@
-import { ApiCollectionScope } from "../models/api-collection";
-import type { ApiHistoryEntity } from "../models/api-history";
+import type { ApiScope, ApiHistoryEntity } from "../models";
 
 export interface HistoryRepo {
-    add(h: ApiHistoryEntity, scope: ApiCollectionScope, projectId?: string): Promise<void>;
-    list(query: { scope: ApiCollectionScope; projectId?: string; limit: number; offset: number }): Promise<ApiHistoryEntity[]>;
-    purge(query: { scope: ApiCollectionScope; projectId?: string; olderThan?: number; maxCount?: number }): Promise<number>;
+    add(h: ApiHistoryEntity, scope: ApiScope, projectId?: string): Promise<void>;
+    list(query: { scope: ApiScope; projectId?: string; limit: number; offset: number }): Promise<ApiHistoryEntity[]>;
+    purge(query: { scope: ApiScope; projectId?: string; olderThan?: number; maxCount?: number }): Promise<number>;
 }
