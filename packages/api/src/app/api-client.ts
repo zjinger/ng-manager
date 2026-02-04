@@ -1,11 +1,12 @@
 import { type ApiCollectionScope, ApiEnvironmentEntity, ApiHistoryEntity, ApiRequestEntity } from "../domain/models";
-import { RequestRepo, EnvRepo, HistoryRepo } from "../domain/services";
+import { RequestRepo, EnvRepo, HistoryRepo, ApiSendService, SendDto, SendResult } from "../domain/services";
 
 export class ApiClient {
     constructor(
         private readonly requestRepo: RequestRepo,
         private readonly envRepo: EnvRepo,
-        private readonly historyRepo: HistoryRepo
+        private readonly historyRepo: HistoryRepo,
+        private readonly sendService: ApiSendService
 
     ) { }
 
@@ -50,5 +51,10 @@ export class ApiClient {
     }
     purgeHistory(query: { scope: ApiCollectionScope; projectId?: string; olderThan?: number; maxCount?: number }) {
         return this.historyRepo.purge(query);
+    }
+
+    // -------- send --------
+    send(dto: SendDto): Promise<SendResult> {
+        return this.sendService.send(dto);
     }
 }

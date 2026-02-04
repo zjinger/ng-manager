@@ -2,12 +2,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
 
-import type { ApiHistoryEntity } from "../../domain/models/api-history";
-import type { HistoryRepo } from "../../domain/services/history-repo";
-import { FileLock, ensureDir, atomicWrite } from "@yinuo-ngm/storage";
+import { FileLock, atomicWrite, ensureDir } from "@yinuo-ngm/storage";
+import type { ApiHistoryEntity } from "../../../domain/models";
+import type { HistoryRepo } from "../../../domain/services";
 
 export interface JsonHistoryRepoOptions {
-    rootDir: string;          // <data>/api-client
+    rootDir: string;          // <data>/api
     fileName?: string;        // default: history.jsonl
     bodyMaxChars?: number;    // default: 200_000
 }

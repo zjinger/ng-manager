@@ -1,3 +1,3 @@
 export * from './app';
 export * from './domain';
-export * from './storage';
+export * from './infra';

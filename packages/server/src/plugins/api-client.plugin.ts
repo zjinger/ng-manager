@@ -1,10 +1,16 @@
+import {
+    ApiClient,
+    JsonEnvRepo,
+    JsonHistoryRepo,
+    JsonRequestRepo,
+    NodeHttpClient,
+    VariableResolver,
+    ApiSendService
+} from "@yinuo-ngm/api";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 import * as path from "path";
-
-import { ApiClient, JsonHistoryRepo, JsonRequestRepo } from "@yinuo-ngm/api";
 import { env } from "../env";
-import { JsonEnvRepo } from "@yinuo-ngm/api/src/storage/json/json-env-repo";
 
 export default fp(async function apiClientPlugin(fastify: FastifyInstance) {
     const rootDir = path.join(env.dataDir, "api");
@@ -12,7 +18,10 @@ export default fp(async function apiClientPlugin(fastify: FastifyInstance) {
     const envRepo = new JsonEnvRepo({ rootDir });
     const historyRepo = new JsonHistoryRepo({ rootDir });
 
-    const apiClient = new ApiClient(repo, envRepo, historyRepo);
+    const http = new NodeHttpClient();
+    const resolver = new VariableResolver();
+    const sendService = new ApiSendService(repo, envRepo, historyRepo, http, resolver);
+    const apiClient = new ApiClient(repo, envRepo, historyRepo, sendService);
 
     fastify.decorate("api", apiClient);
 

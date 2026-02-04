@@ -1,7 +1,7 @@
 import { JsonFileKvRepo } from "@yinuo-ngm/storage";
 import * as path from "node:path";
-import { ApiCollectionScope, ApiEnvironmentEntity } from "../../domain/models";
-import type { EnvRepo } from "../../domain/services/env-repo";
+import { ApiCollectionScope, ApiEnvironmentEntity } from "../../../domain/models";
+import type { EnvRepo } from "../../../domain/services";
 
 export interface JsonEnvRepoOptions {
     rootDir: string;      // <data>/api
