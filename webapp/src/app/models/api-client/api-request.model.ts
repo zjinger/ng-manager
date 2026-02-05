@@ -1,6 +1,6 @@
 import { ApiHttpMethod } from "./api-types.model";
 
-export type ApiRequestKvRow = { key: string; value: string; enabled: boolean; description?: string };
+export type ApiRequestKvRow = { id: string; key: string; value: string; enabled: boolean; description?: string };
 
 export type ApiRequestEntityBodyMode = "none" | "json" | "text" | "form" | "urlencoded" | "binary";
 

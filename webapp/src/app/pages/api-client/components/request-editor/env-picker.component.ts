@@ -50,10 +50,10 @@ function newId(prefix: string) {
         <nz-icon nzType="setting" nzTheme="outline"></nz-icon>
       </button>
     </div>
-
-    <nz-drawer
+    @if(drawerOpen()){
+      <nz-drawer
       nzTitle="环境变量"
-      [nzVisible]="drawerOpen()"
+      [nzVisible]="true"
       nzPlacement="right"
       [nzWidth]="520"
       (nzOnClose)="drawerOpen.set(false)"
@@ -119,6 +119,8 @@ function newId(prefix: string) {
       </div>
       </ng-container>
     </nz-drawer>
+    }
+    
   `,
   styles: [`
     .picker{ display:flex; gap:8px; align-items:center; }

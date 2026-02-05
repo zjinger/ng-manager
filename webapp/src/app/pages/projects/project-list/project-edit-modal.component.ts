@@ -67,7 +67,7 @@ import { ProjectStateService } from '../services/project.state.service';
           nz-button
           nzType="primary"
           (click)="projectState.confirmEditProject()"
-          [disabled]="!projectState.editingProject()!.name.trim() || projectState.isEditSaving()"
+          [disabled]="!projectState.editingProject()?.name?.trim() || projectState.isEditSaving()"
           [nzLoading]="projectState.isEditSaving()"
         >
           确定

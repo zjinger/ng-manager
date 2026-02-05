@@ -10,6 +10,7 @@ import { RequestCollectionsComponent } from './components/request-collections';
 import { EnvPickerComponent, RequestEditorComponent } from './components/request-editor';
 import { ResponseViewerComponent } from './components/response-viewer';
 import { ApiClientStateService } from './services';
+import { ApiClientHandleService } from './services/api-client-handle.service';
 
 @Component({
   selector: 'app-api-client.component',
@@ -72,7 +73,7 @@ import { ApiClientStateService } from './services';
         </ng-container>
         <nz-layout class="page">
           <app-request-collections
-            [requests]="store.cachedRequests()"
+            [requests]="store.requests()"
             [activeId]="store.activeRequestId()"
             (select)="store.selectRequest($event)"
             (create)="store.newRequest()"
@@ -90,7 +91,6 @@ import { ApiClientStateService } from './services';
                 (save)="store.saveActive()"
                 (send)="store.sendActive()"
               />
-              <!-- <app-response-viewer [result]="store.lastResult()" /> -->
               <app-response-viewer
                 [sending]="store.sending()"
                 [result]="store.lastResult()"
@@ -102,7 +102,6 @@ import { ApiClientStateService } from './services';
     </app-page-layout>
     @if (store.historyOpen()) {
       <app-api-history-drawer
-        [open]="true"
         [loading]="store.historyLoading()"
         [histories]="store.histories()"
         (close)="store.closeHistory()"
@@ -113,7 +112,6 @@ import { ApiClientStateService } from './services';
 })
 export class ApiClientComponent {
   store = inject(ApiClientStateService);
-
   openEnv = () => {
     this.store.envDrawerOpen.set(true);
   }

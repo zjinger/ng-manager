@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { ApiEnvironmentEntity } from "../models/api-environment";
-import type { ApiRequestEntity } from "../models/api-request";
+import type { ApiRequestEntity, ApiRequestKv } from "../models/api-request";
 
 export type ResolveContext = {
     env?: ApiEnvironmentEntity | null;
@@ -48,15 +48,12 @@ function resolveString(input: string, vars: VarMap): string {
 
 function resolveAny(value: any, vars: VarMap): any {
     if (value == null) return value;
-
     if (typeof value === "string") {
         return resolveString(value, vars);
     }
-
     if (Array.isArray(value)) {
         return value.map((x) => resolveAny(x, vars));
     }
-
     if (typeof value === "object") {
         const out: any = {};
         for (const [k, v] of Object.entries(value)) {
@@ -66,31 +63,43 @@ function resolveAny(value: any, vars: VarMap): any {
         }
         return out;
     }
-
     return value;
 }
 
+function normalizeKvRows(rows: ApiRequestKv[] | undefined | null): Array<{ key: string; value: string }> {
+    const list = Array.isArray(rows) ? rows : [];
+    return list
+        .filter((r) => (r?.enabled ?? true) && String(r?.key ?? "").trim())
+        .map((r) => ({
+            key: String(r.key ?? "").trim(),
+            value: String(r.value ?? ""),
+        }));
+}
 /**
  * 变量解析器
  * 支持 {{var}} + 内建变量 + 深度替换 JSON body
  * 
  */
 export class VariableResolver {
+
     resolveRequest(req: ApiRequestEntity, ctx: ResolveContext) {
         const vars = buildVarMap(ctx);
-
         const url = resolveString(req.url ?? "", vars);
-
-        const headersArr = (req.headers ?? []).filter((h) => h.enabled && h.key);
+        // headers
         const headers: Record<string, string> = {};
-        for (const h of headersArr) headers[resolveString(h.key, vars)] = resolveString(h.value ?? "", vars);
-
-        const queryArr = (req.query ?? []).filter((q) => q.enabled && q.key);
-        const query: Array<{ key: string; value: string }> = queryArr.map((q) => ({
+        for (const h of normalizeKvRows(req.headers)) {
+            headers[resolveString(h.key, vars)] = resolveString(h.value ?? "", vars);
+        }
+        // query
+        const query = normalizeKvRows(req.query).map((q) => ({
             key: resolveString(q.key, vars),
             value: resolveString(q.value ?? "", vars),
         }));
-
+        // path params
+        const pathParams = normalizeKvRows(req.pathParams).map((p) => ({
+            key: resolveString(p.key, vars),
+            value: resolveString(p.value ?? "", vars),
+        }));
         // body
         const body = req.body
             ? {
@@ -99,15 +108,10 @@ export class VariableResolver {
                 contentType: req.body.contentType ? resolveString(req.body.contentType, vars) : req.body.contentType,
             }
             : undefined;
-
         // auth
-        const auth = req.auth
-            ? resolveAny(req.auth, vars)
-            : undefined;
-
-        return { url, headers, query, body, auth, vars };
+        const auth = req.auth ? resolveAny(req.auth, vars) : undefined;
+        return { url, headers, query, pathParams, body, auth, vars };
     }
-
     resolveText(text: string, ctx: ResolveContext) {
         const vars = buildVarMap(ctx);
         return resolveString(text, vars);

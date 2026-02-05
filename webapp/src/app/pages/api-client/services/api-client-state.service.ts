@@ -2,10 +2,11 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ApiClientService } from './api-client.service';
-import { ApiRequestEntity, ApiScope, SendResponse } from '@models/api-client';
+import { ApiRequestEntity, ApiRequestKvRow, ApiScope, SendResponse } from '@models/api-client';
 import { ApiHistoryEntity } from '@models/api-client/api-history.model';
 import { ApiEnvEntity } from '@models/api-client/api-environment.model';
 import { envVarsToRecord } from '../utils';
+import { uniqueId } from 'lodash';
 
 function now() {
   return Date.now();
@@ -26,9 +27,9 @@ export class ApiClientStateService {
   // request state
   scope = signal<ApiScope>('project');
   loading = signal(false);
+
   sending = signal(false);
   requests = signal<ApiRequestEntity[]>([]); // 全部请求列表
-  cachedRequests = signal<ApiRequestEntity[]>([]); // 缓存的请求列表，用于对比变更
 
   // 当前选中请求 ID
   activeRequestId = signal<string | null>(null);
@@ -52,12 +53,13 @@ export class ApiClientStateService {
     const p = this.projectState.currentProject();
     return p?.id ?? '';
   });
+  activeRequest = signal<ApiRequestEntity | null>(null);
 
-  activeRequest = computed(() => {
-    const id = this.activeRequestId();
-    if (!id) return null;
-    return this.requests().find(r => r.id === id) ?? null;
-  });
+  // activeRequest = computed(() => {
+  //   const id = this.activeRequestId();
+  //   if (!id) return null;
+  //   return this.requests().find(r => r.id === id) ?? null;
+  // });
 
   activeEnv = computed(() => {
     const id = this.activeEnvId();
@@ -100,15 +102,12 @@ export class ApiClientStateService {
     this.loading.set(true);
     try {
       const list = await this.api.listRequests(scope, pid);
-
       this.requests.set(list);
-      this.cachedRequests.set(list);
       // 默认选中第一个；如果已有 active 且存在则保留
       const active = this.activeRequestId();
       if (active && list.some((x) => x.id === active)) return;
       if (list.length) {
-        this.activeRequestId.set(list[0].id)
-        this.lastResult.set(null);
+        this.setActive(list[0]);
       };
     } catch (e: any) {
       this.msg.error(e?.message ?? '加载请求失败');
@@ -121,8 +120,8 @@ export class ApiClientStateService {
    * 选择请求
    */
   selectRequest(id: string) {
-    this.activeRequestId.set(id);
-    this.lastResult.set(null);
+    const req = this.requests().find((x) => x.id === id) || null;
+    this.setActive(req);
   }
 
   /**
@@ -151,30 +150,17 @@ export class ApiClientStateService {
       createdAt: t,
       updatedAt: t,
     };
-
-    this.requests.set([req, ...this.requests()]);
-    this.activeRequestId.set(req.id);
-    this.lastResult.set(null);
+    this.setActive(req);
   }
 
   /**
    * 更新当前请求字段
    */
   patchActive(patch: Partial<ApiRequestEntity>) {
-    console.log('ApiClientStateService patchActive', patch);
-    const id = this.activeRequestId();
-    if (!id) return;
-
-    const list = this.requests().map((x) => {
-      if (x.id !== id) return x;
-      return {
-        ...x,
-        ...patch,
-        updatedAt: now(),
-      };
-    });
-    console.log('ApiClientStateService patchActive', id, patch, list);
-    this.requests.set(list);
+    const req = this.activeRequest();
+    if (!req) return;
+    const updated = { ...req, ...patch, updatedAt: Date.now() };
+    this.activeRequest.set(updated);
   }
 
   /**
@@ -201,6 +187,8 @@ export class ApiClientStateService {
     try {
       await this.api.saveRequest(scope, pid, req);
       this.msg.success('已保存');
+      this.activeRequest.set({ ...req }); // 更新引用
+      await this.loadRequests(); // 重新加载列表
     } catch (e: any) {
       this.msg.error(e?.message ?? '保存失败');
     } finally {
@@ -228,6 +216,31 @@ export class ApiClientStateService {
       const next = list[0]?.id ?? null;
       this.activeRequestId.set(next);
     }
+  }
+
+  private setActive(request: ApiRequestEntity | null) {
+    if (!request || !request.id || request.id === this.activeRequestId()) return;
+    if (request.headers.length) {
+      request.headers = this.ensureKvId(request.headers);
+    }
+    if (request.query.length) {
+      request.query = this.ensureKvId(request.query);
+    }
+    if (request.pathParams.length) {
+      request.pathParams = this.ensureKvId(request.pathParams);
+    }
+    this.activeRequest.set(request);
+    this.activeRequestId.set(request.id);
+    this.lastResult.set(null);
+  }
+
+  private ensureKvId(rows: ApiRequestKvRow[]): ApiRequestKvRow[] {
+    return rows.map(ele => {
+      if (!ele.id) {
+        ele.id = uniqueId();
+      }
+      return ele;
+    })
   }
 
   /**

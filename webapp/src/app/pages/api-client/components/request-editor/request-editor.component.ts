@@ -9,6 +9,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import type { ApiRequestEntity, ApiHttpMethod } from '@models/api-client';
 import { RequestTabsComponent } from './request-tabs.component';
 import { RequestUrlbarComponent } from './request-urlbar.component';
+import { extractPathParamKeys, syncPathParamsByUrl } from '@pages/api-client/utils';
 @Component({
   selector: 'app-request-editor',
   standalone: true,
@@ -31,7 +32,8 @@ import { RequestUrlbarComponent } from './request-urlbar.component';
       [url]="request.url"
       [sending]="sending"
       (methodChange)="patch.emit({method:$event})"
-      (urlChange)="patch.emit({url:$event})"
+      (urlChange)="onUrlChange($event)"
+       (urlCommit)="onUrlCommit($event)"
       (send)="send.emit()"
       (save)="save.emit()"
     />
@@ -59,5 +61,46 @@ export class RequestEditorComponent {
   @Output() save = new EventEmitter<void>();
 
   methods: ApiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+  onUrlCommit(nextUrl: string) {
+    const cur = this.request;
+    if (!cur) return;
+
+    const nextPathParams = syncPathParamsByUrl(nextUrl, cur.pathParams);
+    console.log('onUrlCommit', nextUrl, nextPathParams);
+
+    // keys 变化才 patch，避免无意义写入
+    const curKeys = extractPathParamKeys(cur.url ?? "");
+    const nextKeys = extractPathParamKeys(nextUrl ?? "");
+    const keysChanged =
+      curKeys.length !== nextKeys.length || curKeys.some((k, i) => k !== nextKeys[i]);
+
+    if (keysChanged) {
+      this.patch.emit({ pathParams: nextPathParams });
+    }
+  }
+
+  onUrlChange(nextUrl: string) {
+    const cur = this.request;
+    if (!cur) {
+      this.patch.emit({ url: nextUrl });
+      return;
+    }
+
+    const nextPathParams = syncPathParamsByUrl(nextUrl, cur.pathParams);
+
+    // 合并 patch：url + pathParams
+    // 只有当 path keys 发生变化时才带上 pathParams，减少无意义 patch
+    const curKeys = extractPathParamKeys(cur.url ?? "");
+    const nextKeys = extractPathParamKeys(nextUrl ?? "");
+    const keysChanged =
+      curKeys.length !== nextKeys.length || curKeys.some((k, i) => k !== nextKeys[i]);
+
+    if (keysChanged) {
+      this.patch.emit({ url: nextUrl, pathParams: nextPathParams });
+    } else {
+      this.patch.emit({ url: nextUrl });
+    }
+  }
 
 }

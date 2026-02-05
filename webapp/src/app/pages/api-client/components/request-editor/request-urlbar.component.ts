@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, EventEmitter, Input, Output } from '@angular/core';
+import { Component, computed, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -25,8 +25,10 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
         nz-input
         class="url"
         placeholder="http://..."
-        [ngModel]="url"
-        (ngModelChange)="urlChange.emit($event)"
+        [ngModel]="draftUrl"
+        (ngModelChange)="onDraftChange($event)"
+        (blur)="commit()"
+        (keydown.enter)="commit()"
       />
 
       <button nz-button nzType="primary" [nzLoading]="sending" (click)="send.emit()">发送</button>
@@ -60,7 +62,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
     }
   `],
 })
-export class RequestUrlbarComponent {
+export class RequestUrlbarComponent implements OnChanges {
   @Input() envVars: Record<string, string> = {};
   @Input() openEnv!: () => void; // 点击提示时打开 Env 管理
   @Input() method: ApiHttpMethod = 'GET';
@@ -68,13 +70,45 @@ export class RequestUrlbarComponent {
   @Input() sending = false;
 
   @Output() methodChange = new EventEmitter<ApiHttpMethod>();
+  /** 输入过程中（debounce）持续更新 url（只改文本，不同步 path params） */
   @Output() urlChange = new EventEmitter<string>();
+  /** 用户确认（blur/enter）后的提交：用于同步 path params */
+  @Output() urlCommit = new EventEmitter<string>();
   @Output() send = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
 
   methods: ApiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
-  missingVars = computed(() => {
-    return collectMissingFromStrings([this.url], this.envVars);
-  });
+  missingVars = computed(() => collectMissingFromStrings([this.draftUrl], this.envVars));
+
+
+  draftUrl = '';
+  private t?: number;
+
+  ngOnChanges(changes: SimpleChanges) {
+    // 外部 url 变化时（切换 request / replay history / reset），同步到 draft
+    if (changes['url']) {
+      this.draftUrl = this.url ?? '';
+    }
+  }
+
+  onDraftChange(v: string) {
+    this.draftUrl = v ?? '';
+    // debounce 发 urlChange，避免每键都 patch store
+    if (this.t) window.clearTimeout(this.t);
+    this.t = window.setTimeout(() => {
+      this.urlChange.emit(this.draftUrl);
+    }, 250);
+  }
+
+  commit() {
+    // 先把最后一次输入也 push 掉（避免 blur 时 draft 未下发）
+    if (this.t) {
+      window.clearTimeout(this.t);
+      this.t = undefined;
+    }
+    this.urlChange.emit(this.draftUrl);
+    this.urlCommit.emit(this.draftUrl);
+  }
+
 }

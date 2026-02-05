@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ApiRequestKvRow } from '@models/api-client';
+import { uniqueId } from 'lodash';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
-import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { ApiRequestKvRow } from '@models/api-client';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-kv-table',
@@ -17,13 +19,14 @@ import { ApiRequestKvRow } from '@models/api-client';
     NzCheckboxModule,
     NzInputModule,
     NzIconModule,
+    NzTooltipModule
   ],
   template: `
     <div class="kv-wrap">
       <div class="kv-head">
         <div class="c-check">
-          @if(isCheckBoxAllowed){
-            <label  nz-checkbox [ngModel]="isAllEnabled()"
+          @if(keepTrailingBlank){
+            <label nz-checkbox [ngModel]="isAllEnabled()"
               (ngModelChange)="toggleEnabled($event); "
             ></label>
           }
@@ -34,17 +37,18 @@ import { ApiRequestKvRow } from '@models/api-client';
         <div class="c-op"></div>
       </div>
       <div class="kv-body">
-        @for (r of rows; track $index) {
+        @for (r of rows;let idx = $index; track r.id;) {
           <div class="kv-row">
             <div class="c-check">
-              <label nz-checkbox [ngModel]="r.enabled" [nzDisabled]="!isCheckBoxAllowed" (ngModelChange)="setEnabled($index, $event)"></label>
+              <label nz-checkbox [ngModel]="r.enabled" [nzDisabled]="!keepTrailingBlank" (ngModelChange)="setEnabled($index, $event)"></label>
             </div>
-            <div class="c-key">
+            <div class="c-key" [nz-tooltip]="!keepTrailingBlank ? '自动提取Url 中的 Path 参数，支持{param} 与 :param' : ''">
               <input
                 nz-input
+                [readonly]="!keepTrailingBlank"
                 [placeholder]="keyPlaceholder"
                 [ngModel]="r.key"
-                (ngModelChange)="setKey($index, $event)"
+                (ngModelChange)="setKey(idx, $event)"
               />
             </div>
             <div class="c-val">
@@ -52,7 +56,7 @@ import { ApiRequestKvRow } from '@models/api-client';
                 nz-input
                 [placeholder]="valuePlaceholder"
                 [ngModel]="r.value"
-                (ngModelChange)="setValue($index, $event)"
+                (ngModelChange)="setValue(idx, $event)"
               />
             </div>
             <div class="c-des">
@@ -60,11 +64,11 @@ import { ApiRequestKvRow } from '@models/api-client';
                 nz-input
                 [placeholder]="descriptionLabel"
                 [ngModel]="r.description"
-                (ngModelChange)="setDescription($index, $event)"
+                (ngModelChange)="setDescription(idx, $event)"
               />
             </div>
             <div class="c-op">
-              <button nz-button nzType="text" (click)="removeRow($index)">
+              <button nz-button nzType="text" (click)="removeRow(idx)" nz-tooltip nzTooltipTitle="删除">
                 <nz-icon nzType="minus-circle" nzTheme="outline" />
               </button>
             </div>
@@ -129,6 +133,11 @@ import { ApiRequestKvRow } from '@models/api-client';
   `],
 })
 export class KvTableComponent implements OnChanges {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['rows']) {
+      this.rows = this.withTrailingBlank(this.rows);
+    }
+  }
   @Input() rows: ApiRequestKvRow[] = [];
   @Output() rowsChange = new EventEmitter<ApiRequestKvRow[]>();
 
@@ -137,7 +146,8 @@ export class KvTableComponent implements OnChanges {
   @Input() keyPlaceholder = 'key';
   @Input() valuePlaceholder = 'value';
   @Input() descriptionLabel = 'Description';
-  @Input() isCheckBoxAllowed = true;
+
+  @Input() keepTrailingBlank = true;
 
   enabledCount = computed(() => this.rows.filter(x => x.enabled).length);
 
@@ -145,17 +155,6 @@ export class KvTableComponent implements OnChanges {
     return this.rows.length > 0 && this.rows.every(x => x.enabled);
   }
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['rows']) {
-      const next = this.ensureTrailingBlank(this.rows);
-      const curRows = changes['rows'].currentValue as ApiRequestKvRow[];
-      // 只有在内容不同时才 emit，避免死循环
-      const isSameRow = this.sameRowsRefOrContent(curRows, next);
-      if (!isSameRow) {
-        this.emit(next);
-      }
-    }
-  }
   toggleEnabled(checked: boolean) {
     const next = this.rows.map(r => ({ ...r, enabled: checked }));
     this.emit(next);
@@ -164,8 +163,12 @@ export class KvTableComponent implements OnChanges {
     this.rowsChange.emit(next);
   }
 
+  private withTrailingBlank(rows: ApiRequestKvRow[]) {
+    return this.keepTrailingBlank ? this.ensureTrailingBlank(rows) : rows;
+  }
+
   private createBlankRow(): ApiRequestKvRow {
-    return { key: '', value: '', description: '', enabled: true };
+    return { id: uniqueId(), key: '', value: '', description: '', enabled: true };
   }
 
   private isBlankRow(r: ApiRequestKvRow | undefined | null): boolean {
@@ -196,11 +199,9 @@ export class KvTableComponent implements OnChanges {
     return aLastBlank === bLastBlank;
   }
 
-
   removeRow(i: number) {
     const base = this.rows.filter((_, idx) => idx !== i);
-    const next = this.ensureTrailingBlank(base);
-    this.emit(next);
+    this.emit(this.withTrailingBlank(base));
   }
 
   setEnabled(i: number, enabled: boolean) {
@@ -222,20 +223,17 @@ export class KvTableComponent implements OnChanges {
 
   private patchRow(i: number, partial: Partial<ApiRequestKvRow>) {
     const base = this.rows.map((r, idx) => idx === i ? { ...r, ...partial } : r);
-    const next = this.ensureTrailingBlank(base);
-    this.emit(next);
+    this.emit(this.withTrailingBlank(base));
   }
 
   addRow() {
     const base = [...this.rows, this.createBlankRow()];
-    const next = this.ensureTrailingBlank(base);
-    this.emit(next);
+    this.emit(this.withTrailingBlank(base));
   }
 
   clearDisabled() {
     const base = this.rows.filter(x => x.enabled);
-    const next = this.ensureTrailingBlank(base);
-    this.emit(next);
+    this.emit(this.withTrailingBlank(base));
   }
 
 }

@@ -20,7 +20,7 @@ import type { ApiHistoryEntity } from '@models/api-client/api-history.model';
   template: `
     <nz-drawer
       nzTitle="请求历史"
-      [nzVisible]="open"
+      [nzVisible]="true"
       nzPlacement="right"
       [nzWidth]="520"
       (nzOnClose)="close.emit()"
@@ -107,7 +107,6 @@ import type { ApiHistoryEntity } from '@models/api-client/api-history.model';
   `],
 })
 export class ApiHistoryDrawerComponent {
-  @Input() open = false;
   @Input() loading = false;
   @Input() histories: ApiHistoryEntity[] = [];
 

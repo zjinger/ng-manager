@@ -8,6 +8,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import type { ApiRequestEntityBody, ApiRequestEntityBodyMode, ApiRequestKvRow } from '@models/api-client/api-request.model';
 import { KvTableComponent } from './kv-table.component';
+import { uniqueId } from 'lodash';
 
 
 @Component({
@@ -128,7 +129,7 @@ export class BodyEditorComponent implements OnChanges {
     const c = this.body?.content;
     // 约定：urlencoded content 用 Record<string,string>
     if (!c || typeof c !== 'object' || Array.isArray(c)) return [];
-    return Object.entries(c).map(([k, v]) => ({ key: k, value: String(v ?? ''), enabled: true }));
+    return Object.entries(c).map(([k, v]) => ({ key: k, value: String(v ?? ''), enabled: true, id: uniqueId() }));
   });
 
   setMode(m: ApiRequestEntityBodyMode) {

@@ -10,13 +10,45 @@ import { NodeHttpClient, newId, buildBodyTextForSend, toCurl } from "../../infra
 import { ApiScope } from "../models/types";
 import { SendDto, SendResult } from "../models";
 
+function escapeRegExp(s: string) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
-function buildFinalUrl(baseUrl: string, query: Array<{ key: string; value: string }>, auth: any): string {
-    const u = new URL(baseUrl);
+/**
+ * 支持两种占位符：
+ * - :id   (REST 风格)
+ * - {id}  (Postman/OpenAPI 风格)
+ *
+ * value 默认 encodeURIComponent，避免破坏 URL。
+ */
+function applyPathParams(url: string, pathParams: Array<{ key: string; value: string }>): string {
+    let out = url;
 
+    for (const p of pathParams ?? []) {
+        const k = String(p.key ?? "").trim();
+        if (!k) continue;
+        const v = encodeURIComponent(String(p.value ?? ""));
+        // :id（仅在 path segment 结束处替换，避免误伤 :8080 之类）
+        out = out.replace(new RegExp(`:${escapeRegExp(k)}(?=/|$|\\?|#)`, "g"), v);
+        // {id}
+        out = out.replace(new RegExp(`\\{${escapeRegExp(k)}\\}`, "g"), v);
+    }
+    return out;
+}
+
+function buildFinalUrl(
+    baseUrl: string,
+    pathParams: Array<{ key: string; value: string }>,
+    query: Array<{ key: string; value: string }>,
+    auth: any
+): string {
+    const urlWithPath = applyPathParams(baseUrl, pathParams);
+    const u = new URL(urlWithPath);
     // query
-    for (const q of query) {
-        u.searchParams.append(q.key, q.value);
+    for (const q of query ?? []) {
+        const k = String(q.key ?? "").trim();
+        if (!k) continue;
+        u.searchParams.append(k, String(q.value ?? ""));
     }
 
     // apikey in query
@@ -44,7 +76,6 @@ export class ApiSendService {
         const env = await this.loadEnv(dto, scope);
 
         const startedAt = Date.now();
-
         const ctx: ResolveContext = {
             env,
             project: { id: dto.projectId, root: dto.projectRoot },
@@ -52,14 +83,13 @@ export class ApiSendService {
 
         // resolve variables
         const resolved = this.resolver.resolveRequest(req, ctx);
-        const finalUrl = buildFinalUrl(resolved.url, resolved.query, resolved.auth);
+        const finalUrl = buildFinalUrl(resolved.url, resolved.pathParams ?? [], resolved.query ?? [], resolved.auth);
 
         const headersLower: Record<string, string> = {};
         // 规范化为小写 key（node fetch 更一致）
         for (const [k, v] of Object.entries(resolved.headers)) headersLower[k.toLowerCase()] = String(v ?? "");
-
+        
         const historyId = newId("hist");
-
         let history: ApiHistoryEntity = {
             id: historyId,
             projectId: scope === "project" ? dto.projectId : undefined,

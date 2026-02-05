@@ -1,10 +1,10 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { NzTabsModule } from 'ng-zorro-antd/tabs';
-import { KvTableComponent } from './kv-table.component';
 import { ApiRequestEntity } from '@models/api-client/api-request.model';
-import { BodyEditorComponent } from './body-editor.component';
-import { AuthEditorComponent } from './auth-editor.component';
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { AdvancedEditorComponent } from './advanced-editor.component';
+import { AuthEditorComponent } from './auth-editor.component';
+import { BodyEditorComponent } from './body-editor.component';
+import { KvTableComponent } from './kv-table.component';
 
 @Component({
   selector: 'app-request-tabs',
@@ -16,7 +16,7 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
             <div class="item">
               <div class="title">Query 参数</div>
               <app-kv-table
-                [rows]="req?.query??[]"
+                [rows]="req?.query || []"
                 (rowsChange)="patch.emit({ query: $event })"
                 keyLabel="参数名"
                 valueLabel="参数值"
@@ -25,11 +25,12 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
                 valuePlaceholder="value"
               />
             </div>
-            <div class="item">
+            @if(req?.pathParams?.length){
+              <div class="item">
               <div class="title">Path 参数</div>
               <app-kv-table
-                [isCheckBoxAllowed]="false"
-                [rows]="req?.pathParams??[]"
+                [keepTrailingBlank]="false"
+                [rows]="req?.pathParams || []"
                 (rowsChange)="patch.emit({ pathParams: $event })"
                 keyLabel="参数名"
                 valueLabel="参数值"
@@ -38,12 +39,13 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
                 valuePlaceholder="value"
               />
             </div>
+            }
           </div>
         </nz-tab>
         <nz-tab nzTitle="Headers">
           <div class="tab">
             <app-kv-table
-              [rows]="req?.headers?? []"
+              [rows]="req?.headers || []"
               (rowsChange)="patch.emit({ headers: $event })"
               keyLabel="Header"
               valueLabel="Value"
@@ -106,6 +108,8 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
   ],
 })
 export class RequestTabsComponent {
+
   @Input() req: ApiRequestEntity | null = null;
   @Output() patch = new EventEmitter<Partial<ApiRequestEntity>>();
 }
+
