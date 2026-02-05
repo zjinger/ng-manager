@@ -13,15 +13,31 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
     <nz-tabs class="tabs">
         <nz-tab nzTitle="Params">
           <div class="tab">
-            <app-kv-table
-              [rows]="req?.query??[]"
-              (rowsChange)="patch.emit({ query: $event })"
-              keyLabel="参数名"
-              valueLabel="参数值"
-              descriptionLabel="说明"
-              keyPlaceholder="param"
-              valuePlaceholder="value"
-            />
+            <div class="item">
+              <div class="title">Query 参数</div>
+              <app-kv-table
+                [rows]="req?.query??[]"
+                (rowsChange)="patch.emit({ query: $event })"
+                keyLabel="参数名"
+                valueLabel="参数值"
+                descriptionLabel="说明"
+                keyPlaceholder="param"
+                valuePlaceholder="value"
+              />
+            </div>
+            <div class="item">
+              <div class="title">Path 参数</div>
+              <app-kv-table
+                [isCheckBoxAllowed]="false"
+                [rows]="req?.pathParams??[]"
+                (rowsChange)="patch.emit({ pathParams: $event })"
+                keyLabel="参数名"
+                valueLabel="参数值"
+                descriptionLabel="说明"
+                keyPlaceholder="param"
+                valuePlaceholder="value"
+              />
+            </div>
           </div>
         </nz-tab>
         <nz-tab nzTitle="Headers">

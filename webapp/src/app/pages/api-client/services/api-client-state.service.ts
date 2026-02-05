@@ -6,6 +6,7 @@ import { ApiRequestEntity, ApiScope } from '@models/api-request.model';
 import { ApiHistoryEntity } from '@models/api-history.model';
 import { ApiEnvEntity } from '@models/api-environment.model';
 import { envVarsToRecord } from '../utils';
+
 function now() {
   return Date.now();
 }
@@ -26,7 +27,10 @@ export class ApiClientStateService {
   scope = signal<ApiScope>('project');
   loading = signal(false);
   sending = signal(false);
-  requests = signal<ApiRequestEntity[]>([]);
+  requests = signal<ApiRequestEntity[]>([]); // 全部请求列表
+  cachedRequests = signal<ApiRequestEntity[]>([]); // 缓存的请求列表，用于对比变更
+
+  // 当前选中请求 ID
   activeRequestId = signal<string | null>(null);
 
   // history state
@@ -40,6 +44,9 @@ export class ApiClientStateService {
   activeEnvId = signal<string | null>(null);
   envDrawerOpen = signal(false); // 是否打开 env 面板
 
+  // send result
+  lastResult = signal<SendResponse | null>(null);
+
 
   // project info
   projectId = computed(() => {
@@ -50,12 +57,8 @@ export class ApiClientStateService {
   activeRequest = computed(() => {
     const id = this.activeRequestId();
     if (!id) return null;
-    return this.requests().find((x) => x.id === id) ?? null;
+    return this.requests().find(r => r.id === id) ?? null;
   });
-
-  // send result
-  lastResult = signal<SendResponse | null>(null);
-
 
   activeEnv = computed(() => {
     const id = this.activeEnvId();
@@ -98,12 +101,16 @@ export class ApiClientStateService {
     this.loading.set(true);
     try {
       const list = await this.api.listRequests(scope, pid);
-      this.requests.set(list);
 
+      this.requests.set(list);
+      this.cachedRequests.set(list);
       // 默认选中第一个；如果已有 active 且存在则保留
       const active = this.activeRequestId();
       if (active && list.some((x) => x.id === active)) return;
-      if (list.length) this.activeRequestId.set(list[0].id);
+      if (list.length) {
+        this.activeRequestId.set(list[0].id)
+        this.lastResult.set(null);
+      };
     } catch (e: any) {
       this.msg.error(e?.message ?? '加载请求失败');
     } finally {
@@ -134,8 +141,9 @@ export class ApiClientStateService {
       id: newLocalId('req'),
       name: '',
       method: 'GET',
-      url: '',
+      url: 'http://127.0.0.1:3210/health',
       query: [],
+      pathParams: [],
       headers: [],
       body: { mode: 'none' },
       auth: { type: 'none' },
@@ -209,6 +217,20 @@ export class ApiClientStateService {
     if (!req) return;
     await this.sendResolvedRequest(req);
   }
+
+  /**
+   * 删除请求
+   */
+  async removeRequest(id: string) {
+    await this.api.deleteRequest(id);
+    const list = this.requests().filter(r => r.id !== id);
+    this.requests.set(list);
+    if (this.activeRequestId() === id) {
+      const next = list[0]?.id ?? null;
+      this.activeRequestId.set(next);
+    }
+  }
+
 
   /**
    * 打开历史记录面板

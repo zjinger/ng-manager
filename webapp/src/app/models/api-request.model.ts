@@ -15,6 +15,7 @@ export interface ApiRequestEntity {
     method: HttpMethod;
     url: string;
     query: KvRow[];
+    pathParams: KvRow[];
     headers: KvRow[];
     body?: {
         mode: "none" | "json" | "text" | "form" | "urlencoded" | "binary";

@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
 
 import type { ApiRequestEntity } from '@app/models/api-request.model';
 import { RequestListComponent } from './request-list.component';
@@ -24,6 +24,9 @@ import { RequestListComponent } from './request-list.component';
             (ngModelChange)="keyword.set($event)"
           />
         </nz-input-wrapper>
+        <button nz-button (click)="reload.emit()" nzType="text">
+          <nz-icon [nzType]="loading ? 'loading' : 'reload'" nzTheme="outline" />
+        </button>
         <button nz-button (click)="create.emit()" nzType="text">
           <nz-icon nzType="plus" nzTheme="outline" />
         </button>
@@ -64,22 +67,26 @@ import { RequestListComponent } from './request-list.component';
   `],
 })
 export class RequestCollectionsComponent {
-  @Input() requests: ApiRequestEntity[] = [];
+  requests = input<ApiRequestEntity[]>([])
+
   @Input() activeId: string | null = null;
+  @Input() loading: boolean = false;
 
   @Output() select = new EventEmitter<string>();
   @Output() create = new EventEmitter<void>();
+  @Output() reload = new EventEmitter<void>();
 
   keyword = signal('');
 
   filtered = computed(() => {
     const kw = this.keyword().trim().toLowerCase();
-    if (!kw) return this.requests;
+    if (!kw) return this.requests();
 
-    return (this.requests ?? []).filter(r => {
+    return (this.requests() ?? []).filter(r => {
       const name = (r.name ?? '').toLowerCase();
       const url = (r.url ?? '').toLowerCase();
       return name.includes(kw) || url.includes(kw);
     });
   });
+
 }

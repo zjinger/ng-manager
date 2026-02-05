@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -9,7 +9,6 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import type { ApiRequestEntity, HttpMethod } from '@app/models/api-request.model';
 import { RequestTabsComponent } from './request-tabs.component';
 import { RequestUrlbarComponent } from './request-urlbar.component';
-
 @Component({
   selector: 'app-request-editor',
   standalone: true,
@@ -24,11 +23,12 @@ import { RequestUrlbarComponent } from './request-urlbar.component';
     RequestUrlbarComponent
   ],
   template: `
+  @if(request){
     <app-request-urlbar
-      [method]="req.method"
+      [method]="request.method"
       [envVars]="envVars"
       [openEnv]="openEnv"
-      [url]="req.url"
+      [url]="request.url"
       [sending]="sending"
       (methodChange)="patch.emit({method:$event})"
       (urlChange)="patch.emit({url:$event})"
@@ -36,10 +36,10 @@ import { RequestUrlbarComponent } from './request-urlbar.component';
       (save)="save.emit()"
     />
     <div class="name">
-      <input nz-input placeholder="未命名接口名称" [ngModel]="req.name" (ngModelChange)="patch.emit({name:$event})" />
+      <input nz-input placeholder="未命名接口名称" [ngModel]="request.name" (ngModelChange)="patch.emit({name:$event})" />
     </div>
-    <app-request-tabs class="tabs" [req]="req" (patch)="patch.emit($event)" />
-      
+    <app-request-tabs class="tabs" [req]="request" (patch)="patch.emit($event)" />
+  }    
   `,
   styles: [`
     :host{ display: flex; flex-direction: column;}
@@ -49,17 +49,15 @@ import { RequestUrlbarComponent } from './request-urlbar.component';
   `],
 })
 export class RequestEditorComponent {
-  @Input() req!: ApiRequestEntity;
+  @Input() request: ApiRequestEntity | null = null;
   @Input() sending = false;
   @Input() envVars: Record<string, string> = {};
   @Input() openEnv!: () => void; // 点击提示时打开 Env 管理
-
 
   @Output() patch = new EventEmitter<Partial<ApiRequestEntity>>();
   @Output() send = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
 
-  @ViewChild('urlbar') urlbar!: RequestUrlbarComponent;
-
   methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
 }

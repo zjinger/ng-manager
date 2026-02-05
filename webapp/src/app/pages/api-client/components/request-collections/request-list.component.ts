@@ -4,30 +4,17 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import type { ApiRequestEntity } from '@app/models/api-request.model';
+import { RequestListItemComponent } from './request-list-item.component';
 
 @Component({
   selector: 'app-request-list',
   standalone: true,
-  imports: [CommonModule, NzTagModule, NzIconModule],
+  imports: [CommonModule, NzTagModule, NzIconModule, RequestListItemComponent],
   template: `
     <div class="list">
       @for (r of requests; track r.id) {
-        <div class="item" [class.active]="r.id===activeId" (click)="select.emit(r.id)">
-          <div class="row1">
-            <nz-tag class="method">{{r.method}}</nz-tag>
-            <span class="name">{{r.name || 'Untitled'}}</span>
-          </div>
-
-          <div class="row2">
-            <span class="url">{{r.url}}</span>
-          </div>
-
-          <div class="row3">
-            <span class="time">{{r.updatedAt ? (r.updatedAt | date:'MM-dd HH:mm') : ''}}</span>
-          </div>
-        </div>
+        <app-request-list-item [r]="r" [activeId]="activeId" (select)="select.emit($event)" />
       }
-
       @if(!requests.length){
         <div class="empty">暂无请求</div>
       }
@@ -35,17 +22,7 @@ import type { ApiRequestEntity } from '@app/models/api-request.model';
   `,
   styles: [`
     .list{ display:flex; flex-direction:column; gap:8px; padding:10px; }
-    .item{
-      border:1px solid #f0f0f0;
-      border-radius:10px;
-      padding:10px;
-      cursor:pointer;
-      transition: background .15s, border-color .15s;
-    }
-    .item.active{
-      background:#f5f5f5;
-      border-color:#d9d9d9;
-    }
+    
     .row1{ display:flex; gap:8px; align-items:center; }
     .method{ margin:0; }
     .name{

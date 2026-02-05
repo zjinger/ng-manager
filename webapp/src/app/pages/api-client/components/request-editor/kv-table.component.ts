@@ -22,9 +22,11 @@ import { KvRow } from '@models/api-request.model';
     <div class="kv-wrap">
       <div class="kv-head">
         <div class="c-check">
-          <label nz-checkbox [ngModel]="isAllEnabled()"
-            (ngModelChange)="toggleEnabled($event); "
-          ></label>
+          @if(isCheckBoxAllowed){
+            <label  nz-checkbox [ngModel]="isAllEnabled()"
+              (ngModelChange)="toggleEnabled($event); "
+            ></label>
+          }
         </div>
         <div class="c-key">{{keyLabel}}</div>
         <div class="c-val">{{valueLabel}}</div>
@@ -35,7 +37,7 @@ import { KvRow } from '@models/api-request.model';
         @for (r of rows; track $index) {
           <div class="kv-row">
             <div class="c-check">
-              <label nz-checkbox [ngModel]="r.enabled" (ngModelChange)="setEnabled($index, $event)"></label>
+              <label nz-checkbox [ngModel]="r.enabled" [nzDisabled]="!isCheckBoxAllowed" (ngModelChange)="setEnabled($index, $event)"></label>
             </div>
             <div class="c-key">
               <input
@@ -135,7 +137,7 @@ export class KvTableComponent implements OnChanges {
   @Input() keyPlaceholder = 'key';
   @Input() valuePlaceholder = 'value';
   @Input() descriptionLabel = 'Description';
-
+  @Input() isCheckBoxAllowed = true;
 
   enabledCount = computed(() => this.rows.filter(x => x.enabled).length);
 

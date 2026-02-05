@@ -73,15 +73,17 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         </ng-container>
         <nz-layout class="page">
           <app-request-collections
-            [requests]="store.requests()"
+            [requests]="store.cachedRequests()"
             [activeId]="store.activeRequestId()"
             (select)="store.selectRequest($event)"
             (create)="store.newRequest()"
+            (reload)="store.loadRequests()"
+            [loading]="store.loading()"
           />
           <div class="content">
             @if(store.activeRequest()){
               <app-request-editor
-                [req]="store.activeRequest()!"
+                [request]="store.activeRequest()"
                 [sending]="store.sending()"
                 [envVars]="store.envVarRecord()"
                 [openEnv]="openEnv"

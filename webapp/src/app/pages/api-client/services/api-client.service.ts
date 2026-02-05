@@ -47,6 +47,12 @@ export class ApiClientService {
     );
   }
 
+  async deleteRequest(id: string) {
+    return await firstValueFrom(
+      this.http.delete<{ ok: true }>(`${this.base}/requests/${id}`)
+    );
+  }
+
   async send(body: SendRequestBody) {
     return await firstValueFrom(this.http.post<SendResponse>(`${this.base}/send`, body));
   }
@@ -74,4 +80,7 @@ export class ApiClientService {
   async deleteEnv(id: string) {
     return await firstValueFrom(this.http.delete<{ ok: true }>(`${this.base}/envs/${id}`));
   }
+
+
+
 }
