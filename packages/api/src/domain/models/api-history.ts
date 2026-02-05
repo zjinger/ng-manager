@@ -1,43 +1,22 @@
+import { ApiCurlEntity } from "./api-curl";
 import type { ApiRequestEntity } from "./api-request";
-
+import { ApiResponseEntity, ApiResponseError, ApiResponseMetrics } from "./api-response";
 export interface ApiHistoryEntity {
     id: string; // hist_xxx
     projectId?: string;
     collectionId?: string;
-
     requestSnapshot: ApiRequestEntity;
-
     resolved: {
         url: string;
         headers: Record<string, string>;
-        curl?: {
-            bash: string;
-            powershell: string;
-        }
+        curl?: ApiCurlEntity
     };
 
-    response?: {
-        status: number;
-        statusText?: string;
-        headers: Record<string, string>;
-        bodyText?: string;
-        bodySize?: number;
-    };
+    response?: ApiResponseEntity;
 
-    error?: {
-        code: string;
-        message: string;
-    };
+    error?: ApiResponseError;
 
-    metrics: {
-        startedAt: number;
-        endedAt: number;
-        durationMs: number;
-        dnsMs?: number;
-        tcpMs?: number;
-        tlsMs?: number;
-        ttfbMs?: number;
-    };
+    metrics: ApiResponseMetrics;
 
     createdAt: number;
 }

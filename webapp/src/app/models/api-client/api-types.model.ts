@@ -7,5 +7,3 @@ export type ApiHttpMethod =
     | "HEAD"
     | "OPTIONS";
 export type ApiScope = "global" | "project";
-
-export type CurlStyle = "bash" | "powershell";

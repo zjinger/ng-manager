@@ -91,6 +91,7 @@ export class ApiSendService {
             }
             const curlBash = toCurl(toCurlInput, { style: "bash", pretty: true });
             const curlPs = toCurl(toCurlInput, { style: "powershell", pretty: true });
+            const curlCmd = toCurl(toCurlInput, { style: "cmd", pretty: false });
 
             const out = await this.http.send({
                 method: req.method,
@@ -100,17 +101,14 @@ export class ApiSendService {
                 auth: resolved.auth,
                 options: req.options,
             });
-
+            const curl = { bash: curlBash, powershell: curlPs, cmd: curlCmd };
             const endedAt = Date.now();
             history = {
                 ...history,
                 resolved: {
                     url: finalUrl,
                     headers: headersLower,
-                    curl: {
-                        bash: curlBash,
-                        powershell: curlPs,
-                    },
+                    curl,
                 },
                 response: {
                     status: out.status,
@@ -127,7 +125,7 @@ export class ApiSendService {
             };
 
             await this.historyRepo.add(history, scope, dto.projectId);
-            const curl = { bash: curlBash, powershell: curlPs }
+
             return {
                 historyId,
                 response: history.response,

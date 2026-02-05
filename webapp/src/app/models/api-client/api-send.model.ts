@@ -16,5 +16,5 @@ export type SendResponse = {
     response?: ApiResponseEntity;
     error?: { code: string; message: string };
     metrics: { startedAt: number; endedAt: number; durationMs: number };
-    curl?: { bash: string; powershell: string };
+    curl?: { bash: string; powershell: string; cmd: string };
 };
