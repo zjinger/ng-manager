@@ -5,7 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import type { ApiRequestEntity } from '@app/models/api-request.model';
+import type { ApiRequestEntity } from '@models/api-client/api-request.model';
 import { RequestListComponent } from './request-list.component';
 
 @Component({

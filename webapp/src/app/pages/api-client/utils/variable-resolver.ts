@@ -1,4 +1,4 @@
-import type { ApiEnvVariable } from '@app/models/api-environment.model';
+import type { ApiEnvVariable } from '@models/api-client/api-environment.model';
 
 const VAR_RE = /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g;
 

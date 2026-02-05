@@ -3,7 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import type { ApiRequestEntity } from '@app/models/api-request.model';
+import type { ApiRequestEntity } from '@models/api-client/api-request.model';
 import { RequestListItemComponent } from './request-list-item.component';
 
 @Component({

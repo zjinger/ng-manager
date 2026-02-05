@@ -7,9 +7,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { ApiEnvEntity } from '@models/api-environment.model';
-import { KvRow } from '@models/api-request.model';
-import { envVarsToRows, rowsToEnvVars } from '@pages/api-client/utils/env-mapper';
+import { ApiRequestKvRow, ApiEnvEntity } from '@models/api-client';
+import { envVarsToRows, rowsToEnvVars, } from '@pages/api-client/utils/env-mapper';
 import { KvTableComponent, } from './kv-table.component';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -161,7 +160,7 @@ export class EnvPickerComponent {
 
   // 编辑缓存
   draft = signal<ApiEnvEntity | null>(null);
-  varsRows = signal<KvRow[]>([]);
+  varsRows = signal<ApiRequestKvRow[]>([]);
 
   openDrawer() {
     this.drawerOpen.set(true);

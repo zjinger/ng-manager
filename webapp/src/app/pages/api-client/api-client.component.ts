@@ -1,15 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { PageLayoutComponent } from '@app/shared';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzLayoutModule } from 'ng-zorro-antd/layout';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { ApiHistoryDrawerComponent } from './components/history';
 import { RequestCollectionsComponent } from './components/request-collections';
 import { EnvPickerComponent, RequestEditorComponent } from './components/request-editor';
 import { ResponseViewerComponent } from './components/response-viewer';
 import { ApiClientStateService } from './services';
-import { NzLayoutModule } from 'ng-zorro-antd/layout';
-import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-api-client.component',
@@ -41,7 +41,6 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       width: 0;
       display: flex;
       flex-direction: column;
-      gap: 16px;
       height: 100%;
       overflow: hidden;
     }
@@ -57,7 +56,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     `
   ],
   template: `
-      <app-page-layout [title]="'API 请求'" [loading]="store.loading()" [isFullscreen]="true">
+      <app-page-layout [title]="'API 请求'" [loading]="store.loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
         <ng-container ngProjectAs="actions">
           <app-env-picker
             [(drawerOpen)]="store.envDrawerOpen"
@@ -91,7 +90,11 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
                 (save)="store.saveActive()"
                 (send)="store.sendActive()"
               />
-              <app-response-viewer [result]="store.lastResult()" />
+              <!-- <app-response-viewer [result]="store.lastResult()" /> -->
+              <app-response-viewer
+                [sending]="store.sending()"
+                [result]="store.lastResult()"
+              />
             }
             
           </div>

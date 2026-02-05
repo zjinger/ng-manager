@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { KvTableComponent } from './kv-table.component';
-import { ApiRequestEntity } from '@models/api-request.model';
+import { ApiRequestEntity } from '@models/api-client/api-request.model';
 import { BodyEditorComponent } from './body-editor.component';
 import { AuthEditorComponent } from './auth-editor.component';
 import { AdvancedEditorComponent } from './advanced-editor.component';
@@ -92,6 +92,7 @@ import { AdvancedEditorComponent } from './advanced-editor.component';
       }
       .tab{
         height: 100%;
+        overflow: hidden auto;
       }
       ::ng-deep nz-tabs.tabs{
         .ant-tabs-content{

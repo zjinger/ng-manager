@@ -5,7 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import type { HttpMethod } from '@app/models/api-request.model';
+import type { ApiHttpMethod } from '@models/api-client';
 import { collectMissingFromStrings } from '@pages/api-client/utils';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
@@ -63,16 +63,16 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 export class RequestUrlbarComponent {
   @Input() envVars: Record<string, string> = {};
   @Input() openEnv!: () => void; // 点击提示时打开 Env 管理
-  @Input() method: HttpMethod = 'GET';
+  @Input() method: ApiHttpMethod = 'GET';
   @Input() url = '';
   @Input() sending = false;
 
-  @Output() methodChange = new EventEmitter<HttpMethod>();
+  @Output() methodChange = new EventEmitter<ApiHttpMethod>();
   @Output() urlChange = new EventEmitter<string>();
   @Output() send = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
 
-  methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+  methods: ApiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
   missingVars = computed(() => {
     return collectMissingFromStrings([this.url], this.envVars);

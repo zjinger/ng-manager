@@ -1,33 +1,12 @@
 import { HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
-import { ApiHistoryEntity } from '@models/api-history.model';
-import { ApiRequestEntity, ApiScope } from '@models/api-request.model';
-import { ApiEnvEntity } from '@models/api-environment.model';
+import { ApiHistoryEntity } from '@models/api-client/api-history.model';
+import { ApiRequestEntity, ApiScope, SendRequestBody, SendResponse } from '@models/api-client';
+import { ApiEnvEntity } from '@models/api-client/api-environment.model';
 import { firstValueFrom } from 'rxjs';
 
-export type SendRequestBody = {
-  scope: ApiScope;
-  projectId?: string;
-  requestId?: string;
-  request?: ApiRequestEntity;
-  envId?: string;
-  projectRoot?: string;
-};
 
-export type SendResponse = {
-  historyId: string;
-  response?: {
-    status: number;
-    statusText?: string;
-    headers: Record<string, string>;
-    bodyText: string;
-    bodySize: number;
-  };
-  error?: { code: string; message: string };
-  metrics: { startedAt: number; endedAt: number; durationMs: number };
-  curl?: { bash: string; powershell: string };
-};
 @Injectable({
   providedIn: 'root',
 })

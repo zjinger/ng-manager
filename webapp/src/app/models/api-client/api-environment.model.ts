@@ -1,4 +1,4 @@
-import { ApiScope } from "./api-request.model";
+import { ApiScope } from "./api-types.model";
 
 export interface ApiEnvVariable {
     key: string;

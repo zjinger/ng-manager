@@ -31,8 +31,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
           </div>
       </div>
     </div>
-    <div nz-row nzJustify="center" class="page-content" [class.fullscreen]="isFullscreen">
-      <div nz-col nzXs="24" nzSm="24"  [nzMd]="isFullscreen?24:18" [nzLg]="isFullscreen?24:12" [nzXl]="isFullscreen?24:12" >
+    <div nz-row nzJustify="center" class="page-content" [class.fullscreen]="isFullscreen" [class.overflow-y-auto]="isOverflowYAuto">
+      <div nz-col nzXs="24" nzSm="24"  [nzMd]="isFullscreen?24:18" [nzLg]="isFullscreen?24:12" [nzXl]="isFullscreen?24:12" [style.height.%]="!isOverflowYAuto ? 100 : null">
         <ng-content></ng-content>
       </div>
     </div>
@@ -69,7 +69,10 @@ import { NzInputModule } from 'ng-zorro-antd/input';
     }
     .page-content {
       flex: 1 1 auto;
-      overflow: hidden auto;
+      overflow: hidden;
+      &.overflow-y-auto {
+        overflow-y: auto;
+      }
       height: 0;
       &:not(.fullscreen){
         padding: 16px 0;
@@ -82,4 +85,5 @@ export class PageLayoutComponent {
   @Input() loading: boolean = false;
   @Input() title: string = '';
   @Input() isFullscreen: boolean = false;
+  @Input() isOverflowYAuto: boolean = true;
 }

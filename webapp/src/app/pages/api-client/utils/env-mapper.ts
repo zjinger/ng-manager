@@ -1,7 +1,7 @@
-import type { ApiEnvVariable } from '@app/models/api-environment.model';
-import { KvRow } from '@models/index';
+import type { ApiEnvVariable, ApiRequestKvRow } from '@models/api-client';
+import { } from '@models/index';
 
-export function envVarsToRows(vars: ApiEnvVariable[]): KvRow[] {
+export function envVarsToRows(vars: ApiEnvVariable[]): ApiRequestKvRow[] {
     return (vars ?? []).map(v => ({
         key: v.key,
         value: v.value,
@@ -10,7 +10,7 @@ export function envVarsToRows(vars: ApiEnvVariable[]): KvRow[] {
 }
 
 export function rowsToEnvVars(
-    rows: KvRow[],
+    rows: ApiRequestKvRow[],
     prev?: ApiEnvVariable[]
 ): ApiEnvVariable[] {
     const prevMap = new Map(prev?.map(v => [v.key, v]));
@@ -20,6 +20,6 @@ export function rowsToEnvVars(
             key: r.key.trim(),
             value: String(r.value ?? ''),
             enabled: r.enabled !== false,
-            secret: prevMap.get(r.key)?.secret, 
+            secret: prevMap.get(r.key)?.secret,
         }));
 }

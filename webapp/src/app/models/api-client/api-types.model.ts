@@ -6,7 +6,6 @@ export type ApiHttpMethod =
     | "DELETE"
     | "HEAD"
     | "OPTIONS";
-
 export type ApiScope = "global" | "project";
 
 export type CurlStyle = "bash" | "powershell";

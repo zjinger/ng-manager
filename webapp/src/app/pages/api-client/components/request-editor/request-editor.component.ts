@@ -6,7 +6,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 
-import type { ApiRequestEntity, HttpMethod } from '@app/models/api-request.model';
+import type { ApiRequestEntity, ApiHttpMethod } from '@models/api-client';
 import { RequestTabsComponent } from './request-tabs.component';
 import { RequestUrlbarComponent } from './request-urlbar.component';
 @Component({
@@ -58,6 +58,6 @@ export class RequestEditorComponent {
   @Output() send = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
 
-  methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+  methods: ApiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 }

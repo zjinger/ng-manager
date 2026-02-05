@@ -1,16 +1,10 @@
-export type HttpMethod =
-    | "GET"
-    | "POST"
-    | "PUT"
-    | "PATCH"
-    | "DELETE"
-    | "HEAD"
-    | "OPTIONS";
+import { ApiHttpMethod } from "./types";
+
 
 export interface ApiRequestEntity {
     id: string;
     name: string;
-    method: HttpMethod;
+    method: ApiHttpMethod;
     url: string;
     query: Array<{ key: string; value: string; enabled: boolean }>;
     headers: Array<{ key: string; value: string; enabled: boolean }>;

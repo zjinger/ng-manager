@@ -8,31 +8,8 @@ import type { EnvRepo } from "./env-repo";
 import { VariableResolver, type ResolveContext } from "./variable-resolver";
 import { NodeHttpClient, newId, buildBodyTextForSend, toCurl } from "../../infra";
 import { ApiScope } from "../models/types";
+import { SendDto, SendResult } from "../models";
 
-export type SendDto = {
-    scope: ApiScope;
-    projectId?: string;
-
-    // 二选一：requestId 或 request
-    requestId?: string;
-    request?: ApiRequestEntity;
-
-    envId?: string;
-
-    // 可选：提供 projectRoot 等上下文
-    projectRoot?: string;
-};
-
-export type SendResult = {
-    historyId: string;
-    response?: ApiHistoryEntity["response"];
-    error?: ApiHistoryEntity["error"];
-    metrics: ApiHistoryEntity["metrics"];
-    curl?: {
-        bash: string;
-        powershell: string;
-    };
-};
 
 function buildFinalUrl(baseUrl: string, query: Array<{ key: string; value: string }>, auth: any): string {
     const u = new URL(baseUrl);
@@ -150,12 +127,12 @@ export class ApiSendService {
             };
 
             await this.historyRepo.add(history, scope, dto.projectId);
-
+            const curl = { bash: curlBash, powershell: curlPs }
             return {
                 historyId,
                 response: history.response,
                 metrics: history.metrics,
-                curl: { bash: curlBash, powershell: curlPs },
+                curl,
             };
         } catch (e: any) {
             const endedAt = Date.now();

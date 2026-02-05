@@ -1,7 +1,3 @@
-export class ApiClientModel {
-}
-
-
 export type ApiRequestDraft = {
     id: string;
     name: string;

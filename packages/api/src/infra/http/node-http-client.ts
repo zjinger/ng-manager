@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import type { HttpMethod } from "../../domain/models";
+import type { ApiHttpMethod } from "../../domain/models";
 
 export type NodeHttpSendInput = {
-    method: HttpMethod;
+    method: ApiHttpMethod;
     url: string;
     headers: Record<string, string>;
     body?: { mode: "none" | "json" | "text" | "form" | "urlencoded" | "binary"; content?: any; contentType?: string };

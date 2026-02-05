@@ -1,5 +1,5 @@
-import { type ApiScope, ApiEnvironmentEntity, ApiHistoryEntity, ApiRequestEntity } from "../domain/models";
-import { RequestRepo, EnvRepo, HistoryRepo, ApiSendService, SendDto, SendResult } from "../domain/services";
+import { type ApiScope, ApiEnvironmentEntity, ApiHistoryEntity, ApiRequestEntity, SendDto, SendResult } from "../domain/models";
+import { RequestRepo, EnvRepo, HistoryRepo, ApiSendService, } from "../domain/services";
 
 export class ApiClient {
     constructor(

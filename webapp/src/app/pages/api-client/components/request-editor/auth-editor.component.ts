@@ -5,7 +5,7 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import type { ApiRequestEntity } from '@app/models/api-request.model';
+import type { ApiRequestEntity } from '@models/api-client/api-request.model';
 
 type Auth = ApiRequestEntity['auth'];
 type AuthType = NonNullable<Auth>['type'];

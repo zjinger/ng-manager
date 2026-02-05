@@ -1,5 +1,5 @@
 // packages/api-client/src/infra/curl/curl-gen.ts
-export type CurlStyle = "bash" | "powershell";
+import { CurlStyle } from "../../domain/models";
 
 export function toCurl(
     input: {

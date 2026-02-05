@@ -5,7 +5,7 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import type { ApiRequestEntity } from '@app/models/api-request.model';
+import type { ApiRequestEntity } from '@models/api-client/api-request.model';
 
 type Options = ApiRequestEntity['options'];
 

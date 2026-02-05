@@ -1,10 +1,10 @@
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { ApiClientService, SendResponse } from './api-client.service';
-import { ApiRequestEntity, ApiScope } from '@models/api-request.model';
-import { ApiHistoryEntity } from '@models/api-history.model';
-import { ApiEnvEntity } from '@models/api-environment.model';
+import { ApiClientService } from './api-client.service';
+import { ApiRequestEntity, ApiScope, SendResponse } from '@models/api-client';
+import { ApiHistoryEntity } from '@models/api-client/api-history.model';
+import { ApiEnvEntity } from '@models/api-client/api-environment.model';
 import { envVarsToRecord } from '../utils';
 
 function now() {
@@ -46,7 +46,6 @@ export class ApiClientStateService {
 
   // send result
   lastResult = signal<SendResponse | null>(null);
-
 
   // project info
   projectId = computed(() => {
@@ -230,7 +229,6 @@ export class ApiClientStateService {
       this.activeRequestId.set(next);
     }
   }
-
 
   /**
    * 打开历史记录面板

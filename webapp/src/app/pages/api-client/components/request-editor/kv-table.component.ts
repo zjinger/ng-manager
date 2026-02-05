@@ -5,7 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { KvRow } from '@models/api-request.model';
+import { ApiRequestKvRow } from '@models/api-client';
 
 @Component({
   selector: 'app-kv-table',
@@ -129,8 +129,8 @@ import { KvRow } from '@models/api-request.model';
   `],
 })
 export class KvTableComponent implements OnChanges {
-  @Input() rows: KvRow[] = [];
-  @Output() rowsChange = new EventEmitter<KvRow[]>();
+  @Input() rows: ApiRequestKvRow[] = [];
+  @Output() rowsChange = new EventEmitter<ApiRequestKvRow[]>();
 
   @Input() keyLabel = 'Key';
   @Input() valueLabel = 'Value';
@@ -148,7 +148,7 @@ export class KvTableComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['rows']) {
       const next = this.ensureTrailingBlank(this.rows);
-      const curRows = changes['rows'].currentValue as KvRow[];
+      const curRows = changes['rows'].currentValue as ApiRequestKvRow[];
       // 只有在内容不同时才 emit，避免死循环
       const isSameRow = this.sameRowsRefOrContent(curRows, next);
       if (!isSameRow) {
@@ -160,15 +160,15 @@ export class KvTableComponent implements OnChanges {
     const next = this.rows.map(r => ({ ...r, enabled: checked }));
     this.emit(next);
   }
-  private emit(next: KvRow[]) {
+  private emit(next: ApiRequestKvRow[]) {
     this.rowsChange.emit(next);
   }
 
-  private createBlankRow(): KvRow {
+  private createBlankRow(): ApiRequestKvRow {
     return { key: '', value: '', description: '', enabled: true };
   }
 
-  private isBlankRow(r: KvRow | undefined | null): boolean {
+  private isBlankRow(r: ApiRequestKvRow | undefined | null): boolean {
     if (!r) return true;
     const k = (r.key ?? '').trim();
     const v = (r.value ?? '').trim();
@@ -176,7 +176,7 @@ export class KvTableComponent implements OnChanges {
     return !k && !v && !d;
   }
   /** 核心：保证末尾永远有一行空白行 */
-  private ensureTrailingBlank(rows: KvRow[]): KvRow[] {
+  private ensureTrailingBlank(rows: ApiRequestKvRow[]): ApiRequestKvRow[] {
     const list = Array.isArray(rows) ? rows : [];
     if (list.length === 0) return [this.createBlankRow()];
 
@@ -187,7 +187,7 @@ export class KvTableComponent implements OnChanges {
   }
 
   /** 轻量比较：同引用直接认为相同；否则只比较长度+最后一行是否空白（避免频繁 emit） */
-  private sameRowsRefOrContent(a: KvRow[], b: KvRow[]): boolean {
+  private sameRowsRefOrContent(a: ApiRequestKvRow[], b: ApiRequestKvRow[]): boolean {
     if (a === b) return true;
     if (a.length !== b.length) return false;
     // 只用来阻止 ngOnChanges 的兜底 emit 抖动
@@ -220,7 +220,7 @@ export class KvTableComponent implements OnChanges {
     this.patchRow(i, { description });
   }
 
-  private patchRow(i: number, partial: Partial<KvRow>) {
+  private patchRow(i: number, partial: Partial<ApiRequestKvRow>) {
     const base = this.rows.map((r, idx) => idx === i ? { ...r, ...partial } : r);
     const next = this.ensureTrailingBlank(base);
     this.emit(next);

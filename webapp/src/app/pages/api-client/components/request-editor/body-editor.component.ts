@@ -1,18 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { inject } from '@angular/core';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
+import type { ApiRequestEntityBody, ApiRequestEntityBodyMode, ApiRequestKvRow } from '@models/api-client/api-request.model';
 import { KvTableComponent } from './kv-table.component';
-import type { ApiRequestEntity, KvRow } from '@app/models/api-request.model';
 
-type BodyMode = ApiRequestEntity['body'] extends infer B
-  ? B extends { mode: infer M } ? M : never
-  : never;
 
 @Component({
   selector: 'app-body-editor',
@@ -36,7 +32,7 @@ type BodyMode = ApiRequestEntity['body'] extends infer B
         />
 
         @if(mode()==='json'){
-          <button nz-button nzType="default" nzSize="small" (click)="formatJson()">格式化 JSON</button>
+          <button nz-button nzType="default" (click)="formatJson()">格式化 JSON</button>
         }
       </div>
 
@@ -97,19 +93,22 @@ type BodyMode = ApiRequestEntity['body'] extends infer B
     .err{ margin-top:8px; color:#a8071a; font-size:12px; }
   `],
 })
-export class BodyEditorComponent {
+export class BodyEditorComponent implements OnChanges {
+
   private msg = inject(NzMessageService);
 
-  @Input() body: ApiRequestEntity['body'] | undefined;
-  @Output() bodyChange = new EventEmitter<ApiRequestEntity['body'] | undefined>();
+  @Input() body: ApiRequestEntityBody | undefined;
+  @Output() bodyChange = new EventEmitter<ApiRequestEntityBody | undefined>();
+  //用 signal 承载输入
+  private bodySig = signal<ApiRequestEntityBody | undefined>(undefined);
 
-  modes: Array<BodyMode> = ['none', 'json', 'text', 'urlencoded', 'form', 'binary'] as any;
+  modes: Array<ApiRequestEntityBodyMode> = ['none', 'json', 'text', 'urlencoded', 'form', 'binary'];
 
   // local json text buffer（避免用户输入过程中频繁 JSON.parse 崩）
   private _jsonText = signal('');
 
-  mode = computed(() => (this.body?.mode ?? 'none') as BodyMode);
-  contentType = computed(() => this.body?.contentType ?? '');
+  mode = computed(() => (this.bodySig()?.mode ?? 'none') as ApiRequestEntityBodyMode);
+  contentType = computed(() => this.bodySig()?.contentType ?? '');
 
   jsonText = computed(() => {
     if (this.mode() !== 'json') return '';
@@ -124,7 +123,7 @@ export class BodyEditorComponent {
 
   textBody = computed(() => (this.body?.mode === 'text' ? String(this.body?.content ?? '') : ''));
 
-  urlRows = computed<KvRow[]>(() => {
+  urlRows = computed<ApiRequestKvRow[]>(() => {
     if (this.body?.mode !== 'urlencoded') return [];
     const c = this.body?.content;
     // 约定：urlencoded content 用 Record<string,string>
@@ -132,7 +131,7 @@ export class BodyEditorComponent {
     return Object.entries(c).map(([k, v]) => ({ key: k, value: String(v ?? ''), enabled: true }));
   });
 
-  setMode(m: BodyMode) {
+  setMode(m: ApiRequestEntityBodyMode) {
     // 切换 mode 时给一个合理的默认 contentType（只在未填写时）
     const prev = this.body;
     const next: any = { ...(prev ?? {}), mode: m };
@@ -155,6 +154,18 @@ export class BodyEditorComponent {
     if (m === 'urlencoded' && (prev?.mode !== 'urlencoded')) next.content = {};
 
     this.bodyChange.emit(next);
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['body']) {
+      const b = changes['body'].currentValue as ApiRequestEntityBody | undefined;
+      this.bodySig.set(b);
+      if (b?.mode === 'json') {
+        if (typeof b.content === 'string') this._jsonText.set(b.content);
+        else this._jsonText.set(b.content ? JSON.stringify(b.content, null, 2) : '');
+        this.jsonError.set('');
+      }
+    }
   }
 
   setContentType(v: string) {
@@ -200,7 +211,7 @@ export class BodyEditorComponent {
     }
   }
 
-  setUrlRows(rows: KvRow[]) {
+  setUrlRows(rows: ApiRequestKvRow[]) {
     // enabled=false 的不写入 content（更贴近 urlencoded 语义）
     const obj: Record<string, string> = {};
     for (const r of rows) {

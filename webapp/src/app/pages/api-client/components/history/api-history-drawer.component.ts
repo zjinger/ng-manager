@@ -5,7 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
-import type { ApiHistoryEntity } from '@app/models/api-history.model';
+import type { ApiHistoryEntity } from '@models/api-client/api-history.model';
 
 @Component({
   selector: 'app-api-history-drawer',
