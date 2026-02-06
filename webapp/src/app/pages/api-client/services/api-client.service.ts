@@ -56,10 +56,10 @@ export class ApiClientService {
     );
   }
 
-  async deleteEnv(id: string) {
-    return await firstValueFrom(this.http.delete<{ ok: true }>(`${this.base}/envs/${id}`));
+  async deleteEnv(id: string, scope: ApiScope, projectId?: string) {
+    let params = new HttpParams().set('scope', scope);
+    if (projectId) params = params.set('projectId', projectId);
+    return await firstValueFrom(this.http.delete<{ ok: true }>(`${this.base}/envs/${id}`, params));
   }
-
-
 
 }

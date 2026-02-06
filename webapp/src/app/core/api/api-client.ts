@@ -19,9 +19,9 @@ export class ApiClient {
             .pipe(unwrapApi<T>());
     }
 
-    delete<T>(url: string) {
+    delete<T>(url: string, params?: HttpParams) {
         return this.http
-            .get<ApiSuccess<T>>(url)
+            .delete<ApiSuccess<T>>(url, { params })
             .pipe(unwrapApi<T>());
     }
 }

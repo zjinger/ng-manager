@@ -8,6 +8,7 @@ export function envVarsToRows(vars: ApiEnvVariable[]): ApiRequestKvRow[] {
         value: v.value,
         enabled: v.enabled,
         id: uniqueId(),
+        description: v.description,
     }));
 }
 

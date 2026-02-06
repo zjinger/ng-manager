@@ -67,7 +67,7 @@ export class RequestEditorComponent {
     if (!cur) return;
 
     const nextPathParams = syncPathParamsByUrl(nextUrl, cur.pathParams);
-    console.log('onUrlCommit', nextUrl, nextPathParams);
+    // console.log('onUrlCommit', nextUrl, nextPathParams);
 
     // keys 变化才 patch，避免无意义写入
     const curKeys = extractPathParamKeys(cur.url ?? "");

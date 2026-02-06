@@ -5,6 +5,7 @@ export interface ApiEnvVariable {
     value: string;
     secret?: boolean;
     enabled: boolean;
+    description?: string;
 }
 
 export interface ApiEnvEntity {

@@ -43,7 +43,6 @@ export class ApiClientStateService {
   envs = signal<ApiEnvEntity[]>([]);
   envLoading = signal(false);
   activeEnvId = signal<string | null>(null);
-  envDrawerOpen = signal(false); // 是否打开 env 面板
 
   // send result
   lastResult = signal<SendResponse | null>(null);
@@ -345,7 +344,10 @@ export class ApiClientStateService {
   }
 
   async deleteEnv(id: string) {
-    await this.api.deleteEnv(id);
+    await this.api.deleteEnv(id, this.scope(), this.projectId());
+    if (this.activeEnvId() === id) {
+      this.activeEnvId.set(null);
+    }
     await this.loadEnvs();
   }
 }

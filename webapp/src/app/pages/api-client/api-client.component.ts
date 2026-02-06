@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { PageLayoutComponent } from '@app/shared';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -59,14 +59,7 @@ import { ApiClientHandleService } from './services/api-client-handle.service';
   template: `
       <app-page-layout [title]="'API 请求'" [loading]="store.loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
         <ng-container ngProjectAs="actions">
-          <app-env-picker
-            [(drawerOpen)]="store.envDrawerOpen"
-            [envs]="store.envs()"
-            [envId]="store.activeEnvId()"
-            (envChange)="store.setActiveEnv($event)"
-            [saveEnv]="store.saveEnv.bind(store)"
-            [deleteEnv]="store.deleteEnv.bind(store)"
-          />
+          <app-env-picker/>
           <button nz-button nzType="text" (click)="store.openHistory()" nz-tooltip nzTooltipTitle="历史记录">
             <nz-icon nzType="history" nzTheme="outline" />
           </button>
@@ -112,7 +105,10 @@ import { ApiClientHandleService } from './services/api-client-handle.service';
 })
 export class ApiClientComponent {
   store = inject(ApiClientStateService);
+
+  @ViewChild('envPicker') envPicker!: EnvPickerComponent;
+
   openEnv = () => {
-    this.store.envDrawerOpen.set(true);
+    this.envPicker.openEnvModal();
   }
 }

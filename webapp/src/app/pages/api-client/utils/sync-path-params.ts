@@ -59,7 +59,7 @@ export function syncPathParamsByUrl(
     current: ApiRequestKvRow[] | undefined | null
 ): ApiRequestKvRow[] {
     const keys = extractPathParamKeys(url);
-    console.log('syncPathParamsByUrl', url, keys);
+    // console.log('syncPathParamsByUrl', url, keys);
     const list = Array.isArray(current) ? current : [];
 
     // 建索引：只拿有效 key 的行（忽略 kv-table 尾行空白）
