@@ -10,6 +10,18 @@ import { NodeHttpClient, newId, buildBodyTextForSend, toCurl } from "../../infra
 import { ApiScope } from "../models/types";
 import { SendDto, SendResult } from "../models";
 
+function isAbsoluteUrl(u: string) {
+    return /^(https?|wss?):\/\//i.test(u);
+}
+
+function isAbsWsUrl(u: string) {
+    return /^wss?:\/\//i.test(u);
+}
+
+function isAbsHttpUrl(u: string) {
+    return /^https?:\/\//i.test(u);
+}
+
 function escapeRegExp(s: string) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -83,12 +95,18 @@ export class ApiSendService {
 
         // resolve variables
         const resolved = this.resolver.resolveRequest(req, ctx);
-        const finalUrl = buildFinalUrl(resolved.url, resolved.pathParams ?? [], resolved.query ?? [], resolved.auth);
+        const rawUrl = resolved.url;
+        const baseUrl = env?.baseUrl;
+        const urlWithBase = isAbsoluteUrl(rawUrl) ? rawUrl : baseUrl
+            ? new URL(rawUrl, baseUrl).toString()
+            : rawUrl;
+
+        const finalUrl = buildFinalUrl(urlWithBase, resolved.pathParams ?? [], resolved.query ?? [], resolved.auth);
 
         const headersLower: Record<string, string> = {};
         // 规范化为小写 key（node fetch 更一致）
         for (const [k, v] of Object.entries(resolved.headers)) headersLower[k.toLowerCase()] = String(v ?? "");
-        
+
         const historyId = newId("hist");
         let history: ApiHistoryEntity = {
             id: historyId,

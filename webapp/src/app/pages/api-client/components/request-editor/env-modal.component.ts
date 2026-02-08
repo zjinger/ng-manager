@@ -47,7 +47,10 @@ function newId(prefix: string) {
                 <div class="label">名称</div>
                 <input nz-input [ngModel]="draft()!.name" (ngModelChange)="setName($event)" />
               </div>
-
+              <div class="row">
+                <div class="label">前置URL</div>
+                <input nz-input [ngModel]="draft()!.baseUrl" (ngModelChange)="setBaseUrl($event)" />
+              </div>
               <div class="vars">
                 <app-kv-table
                   [rows]="varsRows()"
@@ -90,7 +93,7 @@ function newId(prefix: string) {
     .right{ min-width:0; }
     .empty{ padding:12px; opacity:.7; }
     .row{ display:grid; grid-template-columns: 70px 1fr; gap:10px; align-items:center; margin-bottom:10px; }
-    .label{ font-size:12px; opacity:.8; }
+    .label{ font-size:14px; opacity:.8; }
     .vars{ height: 420px; }
     .actions{ display:flex; gap:8px; margin-top:12px; }
   `,
@@ -134,6 +137,12 @@ export class EnvModalComponent {
     const d = this.draft();
     if (!d) return;
     this.draft.set({ ...d, name });
+  }
+
+  setBaseUrl(baseUrl: string) {
+    const d = this.draft();
+    if (!d) return;
+    this.draft.set({ ...d, baseUrl });
   }
 
   async save() {

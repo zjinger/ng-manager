@@ -69,6 +69,10 @@ export class RequestUrlbarComponent implements OnChanges {
   @Input() url = '';
   @Input() sending = false;
 
+  // env meta
+  @Input() envName: string | null = null;
+  @Input() baseUrl: string | null = null;
+
   @Output() methodChange = new EventEmitter<ApiHttpMethod>();
   /** 输入过程中（debounce）持续更新 url（只改文本，不同步 path params） */
   @Output() urlChange = new EventEmitter<string>();
@@ -111,4 +115,30 @@ export class RequestUrlbarComponent implements OnChanges {
     this.urlCommit.emit(this.draftUrl);
   }
 
+  placeholder = computed(() => {
+    // 有 baseUrl 时引导用户写相对路径
+    return this.baseUrl ? '/path (相对路径，将拼接 Base URL)' : 'https://... 或 /path';
+  });
+
+  previewUrl = computed(() => {
+    const raw = (this.url ?? '').trim();
+    if (!raw) return '';
+
+    // absolute url → 不展示 preview（本身就是最终）
+    if (isAbsoluteUrl(raw)) return '';
+
+    // relative url + baseUrl → 展示 resolved
+    const base = (this.baseUrl ?? '').trim();
+    if (!base) return '';
+
+    try {
+      return new URL(raw, base).toString();
+    } catch {
+      return '';
+    }
+  });
+}
+
+function isAbsoluteUrl(u: string) {
+  return /^https?:\/\//i.test(u);
 }

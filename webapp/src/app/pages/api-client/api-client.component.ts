@@ -10,7 +10,6 @@ import { RequestCollectionsComponent } from './components/request-collections';
 import { EnvPickerComponent, RequestEditorComponent } from './components/request-editor';
 import { ResponseViewerComponent } from './components/response-viewer';
 import { ApiClientStateService } from './services';
-import { ApiClientHandleService } from './services/api-client-handle.service';
 
 @Component({
   selector: 'app-api-client.component',
@@ -76,6 +75,7 @@ import { ApiClientHandleService } from './services/api-client-handle.service';
           <div class="content">
             @if(store.activeRequest()){
               <app-request-editor
+                [baseUrl]="store.activeEnv()?.baseUrl ?? null"
                 [request]="store.activeRequest()"
                 [sending]="store.sending()"
                 [envVars]="store.envVarRecord()"

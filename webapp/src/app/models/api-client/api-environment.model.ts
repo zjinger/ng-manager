@@ -13,6 +13,7 @@ export interface ApiEnvEntity {
     name: string;
     scope: ApiScope;
     projectId?: string;
+    baseUrl?: string; // 前置URL
     variables: Array<ApiEnvVariable>;
     createdAt: number;
     updatedAt: number;

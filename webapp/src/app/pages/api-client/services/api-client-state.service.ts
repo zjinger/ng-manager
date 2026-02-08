@@ -107,7 +107,12 @@ export class ApiClientStateService {
       if (active && list.some((x) => x.id === active)) return;
       if (list.length) {
         this.setActive(list[0]);
-      };
+      } else {
+        this.setActive(null);
+        this.activeRequestId.set(null);
+        this.lastResult.set(null);
+        this.newRequest();
+      }
     } catch (e: any) {
       this.msg.error(e?.message ?? '加载请求失败');
     } finally {
@@ -132,13 +137,12 @@ export class ApiClientStateService {
       this.msg.warning('请先选择项目');
       return;
     }
-
     const t = now();
     const req: ApiRequestEntity = {
       id: newLocalId('req'),
       name: '',
       method: 'GET',
-      url: 'http://127.0.0.1:3210/health',
+      url: '',
       query: [],
       pathParams: [],
       headers: [],

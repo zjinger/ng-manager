@@ -27,6 +27,7 @@ import { extractPathParamKeys, syncPathParamsByUrl } from '@pages/api-client/uti
   @if(request){
     <app-request-urlbar
       [method]="request.method"
+      [baseUrl]="baseUrl"
       [envVars]="envVars"
       [openEnv]="openEnv"
       [url]="request.url"
@@ -55,7 +56,8 @@ export class RequestEditorComponent {
   @Input() sending = false;
   @Input() envVars: Record<string, string> = {};
   @Input() openEnv!: () => void; // 点击提示时打开 Env 管理
-
+  @Input() baseUrl: string | null = null;
+  
   @Output() patch = new EventEmitter<Partial<ApiRequestEntity>>();
   @Output() send = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
