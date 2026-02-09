@@ -32,7 +32,7 @@ export class JsonCollectionRepo implements CollectionRepo {
     private readonly rootDir: string;
     private readonly fileName: string;
 
-    constructor(private readonly opts: JsonCollectionRepoOptions) {
+    constructor(opts: JsonCollectionRepoOptions) {
         this.rootDir = opts.rootDir;
         this.fileName = opts.fileName ?? "collections.kv.json";
     }
