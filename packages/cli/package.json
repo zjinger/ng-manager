@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/cli",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "description": "a CLI tool for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "bin": {
@@ -27,5 +27,5 @@
     "get-port": "^7.0.0",
     "open": "^10.0.0"
   },
-  "gitHead": "7dd299170442e4d1d2a8f855ff93b08635450fb9"
+  "gitHead": "d1e66d9eebe8b408c14903105d9537515e764b31"
 }

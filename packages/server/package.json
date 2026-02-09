@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/server",
-  "version": "1.0.8",
+  "version": "1.0.10",
   "description": "a server package for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
@@ -34,5 +34,5 @@
   "devDependencies": {
     "tsx": "^4.21.0"
   },
-  "gitHead": "7dd299170442e4d1d2a8f855ff93b08635450fb9"
+  "gitHead": "d1e66d9eebe8b408c14903105d9537515e764b31"
 }

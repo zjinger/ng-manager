@@ -5,13 +5,13 @@ import {
     JsonRequestRepo,
     NodeHttpClient,
     VariableResolver,
-    ApiSendService
+    ApiSendService,
+    JsonCollectionRepo
 } from "@yinuo-ngm/api";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 import * as path from "path";
 import { env } from "../env";
-import { JsonCollectionRepo } from "@yinuo-ngm/api/src/infra/storage/json/json-collection-repo";
 
 export default fp(async function apiClientPlugin(fastify: FastifyInstance) {
     const rootDir = path.join(env.dataDir, "api");
