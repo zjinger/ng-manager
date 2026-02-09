@@ -21,7 +21,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/storage": "^0.1.1",
+    "@yinuo-ngm/storage": "*",
     "undici": "^7.20.0"
   }
 }
