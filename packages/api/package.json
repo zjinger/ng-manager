@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/api",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "an API client supporting Postman and Apifox formats",
   "keywords": [
     "api",
@@ -18,7 +18,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/storage": "^0.1.0",
+    "@yinuo-ngm/storage": "^0.1.1",
     "undici": "^7.20.0"
   }
 }
