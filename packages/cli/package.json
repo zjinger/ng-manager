@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/cli",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "a CLI tool for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "bin": {
@@ -20,7 +20,7 @@
     "dev": "node lib/bin/ngm.js ui"
   },
   "dependencies": {
-    "@yinuo-ngm/server": "*",
+    "@yinuo-ngm/server": "^1.0.7",
     "commander": "^12.0.0",
     "env-paths": "^3.0.0",
     "execa": "^9.0.0",
