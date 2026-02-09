@@ -48,8 +48,7 @@ export class ApiClientStateService {
 
   filteredNodes = computed(() => {
     const q = this.q().toLowerCase();
-    if (!q) return this.nodes();
-    return genCollectionTreeNodes(this.collections(), this.requests(), q);
+    return genCollectionTreeNodes(this.collections(), this.requests(), q ?? '');
   })
 
   // history state

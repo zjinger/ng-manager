@@ -32,11 +32,37 @@ export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
         const q = req.query as ListQuery;
         const scope: ApiScope = (q.scope ?? "project") as ApiScope;
         assertProjectScope(scope, q.projectId);
-
-        const items = await api.listCollections(scope, q.projectId);
+        const collections = await api.listCollections(scope, q.projectId);
         // 保证排序稳定
-        return items.sort((a, b) => (a.parentId ?? "").localeCompare(b.parentId ?? "") || a.order - b.order || a.name.localeCompare(b.name));
+        return collections.sort((a, b) => (a.parentId ?? "").localeCompare(b.parentId ?? "") || a.order - b.order || a.name.localeCompare(b.name));
     });
+
+    // GET /api/collections/bundle?scope=project&projectId=xxx
+    fastify.get("/bundle", async (req) => {
+        const q = req.query as ListQuery;
+        const scope: ApiScope = (q.scope ?? "project") as ApiScope;
+        assertProjectScope(scope, q.projectId);
+
+        const [collections, requests] = await Promise.all([
+            api.listCollections(scope, q.projectId),
+            api.listRequests(scope, q.projectId),
+        ]);
+
+        // 保证排序稳定（collections / requests 都做）
+        const cols = (collections ?? []).sort(
+            (a, b) =>
+                (a.parentId ?? "").localeCompare(b.parentId ?? "") ||
+                a.order - b.order ||
+                (a.name ?? "").localeCompare(b.name ?? "")
+        );
+        const reqs = (requests ?? []).sort(
+            (a, b) =>
+                (a.collectionId ?? "").localeCompare(b.collectionId ?? "") ||
+                (a.order ?? 0) - (b.order ?? 0) ||
+                (a.name ?? "").localeCompare(b.name ?? "")
+        );
+        return { collections: cols, requests: reqs };
+    })
 
     // POST /api/collections
     fastify.post("/", async (req) => {

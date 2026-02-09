@@ -1,3 +1,4 @@
+import { KillPortResult } from "../../infra/process";
 import { DashboardDocV1, WidgetKey, } from "./dashboard.types";
 import { DashboardItemConfig, WidgetMeta } from "./dashboard.widgets";
 export interface DashboardService {
@@ -7,4 +8,5 @@ export interface DashboardService {
     saveWithConflictCheck(projectId: string, incoming: DashboardDocV1): Promise<DashboardDocV1>;
     getAvailableWidgets(projectId: string): Promise<WidgetMeta[]>;
     updateItemConfig(projectId: string, widgetId: string, config: DashboardItemConfig): Promise<DashboardDocV1>;
+    killPort(port: number): Promise<KillPortResult>;
 }

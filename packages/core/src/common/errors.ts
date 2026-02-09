@@ -82,6 +82,10 @@ export type ErrorCode =
     | "DASHBOARD_CONFLICT"
     | "WIDGET_NOT_FOUND"
     | "WIDGET_LOCKED"
+    
+    // Port Killer
+    | 'KILL_PORT_FAILED'
+    | 'INVALID_PORT'
 
     // Dashboard RSS
     | "RSS_FETCH_FAILED"

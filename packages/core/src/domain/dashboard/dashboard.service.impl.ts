@@ -4,8 +4,7 @@ import { defaultDashboard } from "./dashboard.defaults";
 import { AppError } from "../../common/errors";
 import { DashboardRepo } from "./dashboard.repo";
 import { DashboardItemConfig, makeWidgetItem, WidgetMeta, WIDGETS } from "./dashboard.widgets";
-import { findFirstFit } from "./dashboard.layout";
-
+import { killPort, KillPortResult } from "../../infra/process";
 
 export class DashboardServiceImpl implements DashboardService {
     constructor(private repo: DashboardRepo) { }
@@ -130,5 +129,14 @@ export class DashboardServiceImpl implements DashboardService {
         };
         await this.repo.save(projectId, next);
         return next;
+    }
+
+    /**
+     * 杀掉占用端口的进程
+     *  -（MVP：只 kill LISTEN 的占用者；Windows 用 netstat，Unix 用 lsof/ss/netstat）
+     */
+    async killPort(port: number): Promise<KillPortResult> {
+        return await killPort(port);
+
     }
 }

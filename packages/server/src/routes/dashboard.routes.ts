@@ -46,4 +46,9 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
         const config = req.body as any;
         return await fastify.core.dashboard.updateItemConfig(projectId, widgetId, config);
     });
+
+    fastify.get("/killPort/:port", async (req,) => {
+        const { port } = req.params as { port: string };
+        return await fastify.core.dashboard.killPort(Number(port));
+    })
 }

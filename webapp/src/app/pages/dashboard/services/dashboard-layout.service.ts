@@ -1,12 +1,9 @@
 import { computed, inject, Injectable, signal } from "@angular/core";
-import { LocalStateStore, LS_KEYS } from "@core/local-state";
 import { firstValueFrom } from "rxjs/internal/firstValueFrom";
 import { DashboardDocV1, DashboardItem, DashboardItemConfig } from "../dashboard.model";
 import { DashboardApiService } from "./dashboard-api.service";
 @Injectable({ providedIn: "root" })
 export class DashboardLayoutService {
-  // private localKey(projectId: string) { return `${LS_KEYS.dashboard.layout}.${projectId}`; }
-  // private local: LocalStateStore = inject(LocalStateStore);
   private api: DashboardApiService = inject(DashboardApiService);
 
   private _doc = signal<DashboardDocV1 | null>(null);
@@ -21,16 +18,11 @@ export class DashboardLayoutService {
   private saveTimer: any = null;
 
   async load(projectId: string) {
-    // 1) server first
     try {
       const doc = await firstValueFrom(
         this.api.getInfo(projectId)
       );
-      console.log('loaded dashboard layout from server', doc);
-
       this._doc.set(doc);
-      // 同步一份到 local，作为兜底缓存
-      // this.local.set(this.localKey(projectId), doc);
       return;
     } catch {
       this._doc.set({
@@ -109,6 +101,12 @@ export class DashboardLayoutService {
         this.getWidgets();
       },
     );
+  }
+
+  killProcess(port: string) {
+    this.api.killPort(Number(port)).subscribe(res => {
+      console.log('Killed port', port);
+    });
   }
 
   getWidgets() {

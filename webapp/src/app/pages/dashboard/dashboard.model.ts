@@ -54,3 +54,11 @@ export interface RssFeed {
     items: RssFeedItem[];
     fetchedAt: string; // ISO
 }
+
+export interface KillPortResult {
+    port: number;
+    pids: number[];
+    killed: number[];
+    failed: { pid: number; reason: string }[];
+    note?: string; // 比如提示“可能需要管理员权限”
+}

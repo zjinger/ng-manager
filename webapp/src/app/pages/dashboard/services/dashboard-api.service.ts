@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@core/api';
 import { Observable } from 'rxjs';
-import { DashboardDocV1, DashboardItem, DashboardItemConfig, WidgetKey } from '../dashboard.model';
+import { DashboardDocV1, DashboardItem, DashboardItemConfig, KillPortResult, WidgetKey } from '../dashboard.model';
 
 @Injectable({
   providedIn: 'root',
@@ -32,5 +32,9 @@ export class DashboardApiService {
 
   updateItemConfig(projectId: string, widgetId: string, config: DashboardItemConfig): Observable<DashboardDocV1> {
     return this.api.post<DashboardDocV1>(`/api/dashboard/updateItemConfig/${projectId}/${widgetId}`, config);
+  }
+
+  killPort(port: number): Observable<KillPortResult> {
+    return this.api.get<KillPortResult>(`/api/dashboard/killPort/${port}`);
   }
 }

@@ -106,6 +106,8 @@ export class DashboardCanvasComponent implements OnChanges {
   @Input() items: DashboardItem[] = [];
   @Output() itemsChange = new EventEmitter<DashboardItem[]>();
   @Output() remove = new EventEmitter<string>();
+  @Output() kill = new EventEmitter<string>();
+
   private patch = new Map<string, Partial<DashboardItem>>();
   itemChange = (item: GridsterItem, itemComp: GridsterItemComponentInterface) => {
     const id = (itemComp.item as DashboardItem).id as string;

@@ -74,6 +74,10 @@ export const enum ErrorPolicyCode {
     WIDGET_NOT_FOUND = "WIDGET_NOT_FOUND",
     WIDGET_LOCKED = "WIDGET_LOCKED",
 
+    /* ---------- Port Killer ---------- */
+    KILL_PORT_FAILED = "KILL_PORT_FAILED",
+    INVALID_PORT = "INVALID_PORT",
+
     /* ---------- dashboard rss---------- */
     RSS_FETCH_FAILED = "RSS_FETCH_FAILED",
     INVALID_RSS_URL = "INVALID_RSS_URL",
@@ -346,6 +350,16 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     INVALID_RSS_URL: {
         level: "toast",
         message: "无效的 RSS 源地址",
+    },
+
+    /* ---------- port killer ---------- */
+    KILL_PORT_FAILED: {
+        level: "toast",
+        message: "端口释放失败",
+    },
+    INVALID_PORT: {
+        level: "toast",
+        message: "无效的端口号",
     },
 
     /* ---------- api client ---------- */

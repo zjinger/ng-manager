@@ -95,6 +95,9 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     DASHBOARD_CONFLICT: 409,
     WIDGET_NOT_FOUND: 404,
     WIDGET_LOCKED: 423,
+    /* ---------------- Port Killer ---------------- */
+    KILL_PORT_FAILED: 500,
+    INVALID_PORT: 400,
 
     /* ---------------- Dashboard RSS ---------------- */
     RSS_FETCH_FAILED: 500,

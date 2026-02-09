@@ -48,6 +48,7 @@ import { DashboardLayoutService } from './services/dashboard-layout.service';
         [items]="items()"
         (itemsChange)="onItemsChange($event)"
         (remove)="layout.remove($event)"
+        (kill)="layout.killProcess($event)"
       ></app-dashboard-canvas>
     </app-page-layout>
     <div class="side-panel" [class.open]="editMode()">

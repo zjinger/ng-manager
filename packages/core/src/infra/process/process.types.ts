@@ -42,3 +42,13 @@ export type ProcHandle = {
     kill: (s?: NodeJS.Signals) => void;
     resize?: (cols: number, rows: number) => void;
 };
+
+
+export interface KillPortResult {
+    port: number;
+    pids: number[];
+    killed: number[];
+    failed: { pid: number; reason: string }[];
+    note?: string; // 比如提示“可能需要管理员权限”
+}
+
