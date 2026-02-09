@@ -30,6 +30,8 @@ export class ApiClientStateService {
   scope = signal<ApiScope>('project');
   loading = signal(false);
 
+  q = signal(''); // 搜索关键词
+
   sending = signal(false);
   requests = signal<ApiRequestEntity[]>([]); // 全部请求列表
 
@@ -43,6 +45,12 @@ export class ApiClientStateService {
   readonly nodes = computed<ApiCollectionTreeNode[]>(() => {
     return genCollectionTreeNodes(this.collections(), this.requests(), '').filter(n => n.kind !== 'request');
   });
+
+  filteredNodes = computed(() => {
+    const q = this.q().toLowerCase();
+    if (!q) return this.nodes();
+    return genCollectionTreeNodes(this.collections(), this.requests(), q);
+  })
 
   // history state
   historyOpen = signal(false); // 是否打开 history 面板

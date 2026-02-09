@@ -65,8 +65,8 @@ import { ApiClientStateService } from './services';
         </ng-container>
         <nz-layout class="page">
           <app-request-collections
-            [requests]="store.requests()"
-            [collections]="store.collections()"
+            [nodes]="store.filteredNodes()"
+            [(q)]="store.q"
             [activeId]="store.activeRequestId()"
             (select)="store.selectRequest($event)"
             (createRequest)="store.newRequest({collectionId: $event.collectionId})"

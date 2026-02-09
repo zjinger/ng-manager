@@ -1,16 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, computed, input, signal } from '@angular/core';
+import { Component, EventEmitter, input, Input, model, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import { ApiCollectionEntity, ApiCollectionKind, ApiCollectionTreeNode } from '@models/api-client';
-import type { ApiRequestEntity } from '@models/api-client/api-request.model';
-import { genCollectionTreeNodes } from '@pages/api-client/utils';
+import { ApiCollectionKind, ApiCollectionTreeNode } from '@models/api-client';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
-import { CollectionTreeComponent } from './collection-tree.component';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
+import { CollectionTreeComponent } from './collection-tree.component';
 
 @Component({
   selector: 'app-request-collections',
@@ -31,8 +29,7 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
           <input
             nz-input
             placeholder="搜索"
-            [ngModel]="q()"
-            (ngModelChange)="q.set($event)"
+            [(ngModel)]="q"
           />
         </nz-input-wrapper>
         <button nz-button (click)="reload.emit()" nzType="text">
@@ -59,7 +56,7 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
         /> -->
         <app-collection-tree
           [nodes]="nodes()"
-          [activeRequestId]="activeId"
+          [activeRequestId]="activeId()"
           (selectRequest)="select.emit($event)"
           (createRequest)="createRequest.emit({ collectionId: $event.collectionId })"
           (createFolder)="createFolder.emit({ collectionId: $event.collectionId ?? null })"
@@ -110,10 +107,11 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
   `],
 })
 export class RequestCollectionsComponent {
-  requests = input<ApiRequestEntity[]>([])
-  collections = input<ApiCollectionEntity[]>([])
 
-  @Input() activeId: string | null = null;
+  nodes = input<ApiCollectionTreeNode[]>([]);
+  q = model<string>('');
+
+  activeId = input<string | null>(null);
   @Input() loading: boolean = false;
 
   @Output() select = new EventEmitter<string>();
@@ -128,14 +126,12 @@ export class RequestCollectionsComponent {
 
   visible = false;
 
-  q = signal('');
-
-  nodes = computed<ApiCollectionTreeNode[]>(() => {
-    const kw = this.q()
-    const collections = this.collections()
-    const requests = this.requests()
-    return genCollectionTreeNodes(collections, requests, kw);
-  });
+  // nodes = computed<ApiCollectionTreeNode[]>(() => {
+  //   const kw = this.q()
+  //   const collections = this.collections()
+  //   const requests = this.requests()
+  //   return genCollectionTreeNodes(collections, requests, kw);
+  // });
 
   // filtered = computed(() => {
   //   const kw = this.q().trim().toLowerCase();

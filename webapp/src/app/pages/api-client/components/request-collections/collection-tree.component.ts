@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, computed, EventEmitter, input, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiCollectionKind, ApiCollectionTreeNode } from '@models/api-client';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -51,7 +51,7 @@ export class CollectionTreeComponent {
 
   @Input() nodes: ApiCollectionTreeNode[] = [];
 
-  @Input() activeRequestId: string | null = null;
+  activeRequestId = input<string | null>(null);
 
   @Output() selectRequest = new EventEmitter<string>();
   @Output() selectCollection = new EventEmitter<string>();
@@ -68,7 +68,9 @@ export class CollectionTreeComponent {
   @Output() delete = new EventEmitter<{ id: string, kind: ApiCollectionKind }>();
 
   // activeKey：给选中样式用（request 优先）
-  activeKey = computed(() => (this.activeRequestId ? `r:${this.activeRequestId}` : null));
+  activeKey = computed(() => {
+    return (this.activeRequestId() ? `r:${this.activeRequestId()}` : null)
+  });
 
   // 当前选中的 collection（用于“新建请求”默认归属）
   private _activeCollectionId = signal<string | null>(null);
