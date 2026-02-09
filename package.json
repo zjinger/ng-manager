@@ -24,7 +24,7 @@
     "publish:all": "npm run clean && npm run build && npm publish -w @yinuo-ngm/core --access public && npm publish -w @yinuo-ngm/server --access public && npm publish -w @yinuo-ngm/cli --access public && npm publish -w @yinuo-ngm/ais --access public",
     "pack:all": "npm pack ./packages/storage && npm pack ./packages/core &&npm pack ./packages/api && npm pack ./packages/sprite && npm pack ./packages/server && npm pack ./packages/cli && npm pack ./packages/ais",
     "build:core": "tsc -b packages/core",
-    "build:server": "tsc -b packages/server",
+    "build:server": "tsc -b packages/server && cd webapp && npm run web:build",
     "build:ais": "tsc -b packages/ais",
     "build:sprite": "tsc -b packages/sprite",
     "dev:server": "tsx watch packages/server/src/index.ts"
