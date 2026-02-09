@@ -27,7 +27,7 @@ import { CommonModule } from '@angular/common';
         </div>
         <h3>准备好终止</h3>
       </div>
-      <nz-space>
+      <nz-space style="padding: 12px 24px;">
         <input nz-input placeholder="输入一个网络端口" name="port" [(ngModel)]="port" />
         <button nz-button nzType="primary">
           <nz-icon nzType="thunderbolt" nzTheme="outline" />
@@ -42,7 +42,7 @@ import { CommonModule } from '@angular/common';
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 16px 0;
+        padding: 12px 24px;
         .icon-wrapper{
           width: 32px;
           height: 32px;

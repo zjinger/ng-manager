@@ -5,8 +5,8 @@ import { DashboardDocV1, DashboardItem, DashboardItemConfig } from "../dashboard
 import { DashboardApiService } from "./dashboard-api.service";
 @Injectable({ providedIn: "root" })
 export class DashboardLayoutService {
-  private localKey(projectId: string) { return `${LS_KEYS.dashboard.layout}.${projectId}`; }
-  private local: LocalStateStore = inject(LocalStateStore);
+  // private localKey(projectId: string) { return `${LS_KEYS.dashboard.layout}.${projectId}`; }
+  // private local: LocalStateStore = inject(LocalStateStore);
   private api: DashboardApiService = inject(DashboardApiService);
 
   private _doc = signal<DashboardDocV1 | null>(null);
@@ -26,18 +26,13 @@ export class DashboardLayoutService {
       const doc = await firstValueFrom(
         this.api.getInfo(projectId)
       );
+      console.log('loaded dashboard layout from server', doc);
+
       this._doc.set(doc);
       // 同步一份到 local，作为兜底缓存
-      this.local.set(this.localKey(projectId), doc);
+      // this.local.set(this.localKey(projectId), doc);
       return;
     } catch {
-      // 2) fallback local
-      const cached = this.local.get<DashboardDocV1>(this.localKey(projectId), null as any);
-      if (cached) {
-        this._doc.set(cached);
-        return;
-      }
-      // 3) 什么都没有：给一个最小默认（理论上不会到这，server 会 getOrCreate）
       this._doc.set({
         version: 1,
         projectId,
@@ -74,20 +69,23 @@ export class DashboardLayoutService {
     }
     const doc = this._doc();
     if (!doc) return;
-    // 先写本地兜底（即使 server 失败也能保留）
-    this.local.set(this.localKey(projectId), doc);
     const saved = await firstValueFrom(
       this.api.update(projectId, doc)
     );
     this._doc.set(saved);
-    this.local.set(this.localKey(projectId), saved);
     return;
   }
 
   add(widget: DashboardItem) {
-    // console.log('add widget', widget);
+    console.log('add widget', widget);
     const cur = this._doc();
     if (!cur) return;
+
+    this._doc.set({
+      ...cur,
+      items: [...cur.items, widget],
+    });
+
     setTimeout(() => {
       const { x, y } = widget;
       this.api.addWidget(cur.projectId, {
@@ -96,7 +94,6 @@ export class DashboardLayoutService {
         y,
       }).subscribe(doc => {
         this._doc.set(doc);
-        this.local.set(this.localKey(cur.projectId), doc);
         this.getWidgets();
       });
     }, 0);
@@ -109,7 +106,6 @@ export class DashboardLayoutService {
     this.api.removeWidget(cur.projectId, widgetId).subscribe(
       doc => {
         this._doc.set(doc);
-        this.local.set(this.localKey(cur.projectId), doc);
         this.getWidgets();
       },
     );
@@ -130,7 +126,6 @@ export class DashboardLayoutService {
     this.api.updateItemConfig(projectId, widgetId, config).subscribe(
       doc => {
         this._doc.set(doc);
-        this.local.set(this.localKey(cur.projectId), doc);
       },
     );
   }

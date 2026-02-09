@@ -46,7 +46,7 @@ import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
               </button>
             }
             <div class="card-body">
-              <app-widget-host [item]="it" [editMode]="editMode"></app-widget-host>
+              <app-widget-host [item]="it" [editMode]="editMode" (remove)="remove.emit($event.id)"></app-widget-host>
             </div>
           </div>
         </gridster-item>
