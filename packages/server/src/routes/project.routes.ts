@@ -58,7 +58,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     /**
      * 删除项目
      */
-    fastify.get("/delete/:id", async (req) => {
+    fastify.delete("/delete/:id", async (req) => {
         const { id } = req.params as { id: string };
         await fastify.core.project.remove(id);
         return { id };
