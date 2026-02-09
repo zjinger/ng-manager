@@ -21,7 +21,7 @@
     "3.按package.json 发布：from-package": "",
     "release:publish:pkg": "lerna publish from-package",
     "不用 lerna，一条命令发布所有包": "",
-    "publish:all": "npm run clean && npm run build && npm publish -w @yinuo-ngm/core --access public && npm publish -w @yinuo-ngm/server --access public && npm publish -w @yinuo-ngm/cli --access public && npm publish -w @yinuo-ngm/ais --access public",
+    "publish:all": "npm run clean && npm run build && npm publish -w @yinuo-ngm/core  && npm publish -w @yinuo-ngm/server  && npm publish -w @yinuo-ngm/cli  && npm publish -w @yinuo-ngm/ais  && npm publish -w @yinuo-ngm/sprite  && npm publish -w @yinuo-ngm/api  && npm publish -w @yinuo-ngm/storage  ",
     "pack:all": "npm pack ./packages/storage && npm pack ./packages/core &&npm pack ./packages/api && npm pack ./packages/sprite && npm pack ./packages/server && npm pack ./packages/cli && npm pack ./packages/ais",
     "build:core": "tsc -b packages/core",
     "build:server": "tsc -b packages/server && cd webapp && npm run web:build",

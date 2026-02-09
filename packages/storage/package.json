@@ -19,5 +19,6 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
-  }
+  },
+  "gitHead": "093ce06f3e090c2ff0e0bbbdfc3b7915e21ad17c"
 }

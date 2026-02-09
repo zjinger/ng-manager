@@ -23,5 +23,6 @@
   "dependencies": {
     "@yinuo-ngm/storage": "^0.1.2",
     "undici": "^7.20.0"
-  }
+  },
+  "gitHead": "093ce06f3e090c2ff0e0bbbdfc3b7915e21ad17c"
 }
