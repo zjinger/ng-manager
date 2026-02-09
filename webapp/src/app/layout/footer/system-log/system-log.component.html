@@ -1,14 +1,25 @@
 <div class="status-bar">
   <div class="project-path">
-    <div class="home">
-      <nz-icon class="icon" nzType="home" nzTheme="outline"></nz-icon>
-    </div>
-    <div class="pos-path">
-      <nz-icon nzType="folder" class="icon" nzTheme="outline"></nz-icon>
-      <span>
-        {{ curProjectPath() }}
-      </span>
-    </div>
+    <a
+      nz-button
+      class="home"
+      nzType="text"
+      routerLink="/projects"
+      nz-tooltip="项目管理"
+      nzTooltipPlacement="top"
+    >
+      <nz-icon class="icon" nzType="home" nzTheme="outline" />
+    </a>
+    <button
+      nz-button
+      class="path"
+      nzType="text"
+      [nz-tooltip]="curProjectPath()"
+      nzTooltipPlacement="top"
+    >
+      <nz-icon nzType="folder" class="icon" nzTheme="outline" />
+      <span>{{ curProjectPath() }}</span>
+    </button>
   </div>
   <div class="last-log" (click)="openLog()" nz-tooltip="打开日志">
     <nz-icon nzType="profile" class="icon" nzTheme="outline" />

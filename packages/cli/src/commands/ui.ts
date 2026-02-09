@@ -5,8 +5,6 @@ import { isHealthy } from "./health";
 import { writeLock, readLock, clearLock } from "./lock";
 
 export async function startUi(opts: any): Promise<void> {
-    console.log(`Checking for existing ngm-server...`);
-    console.log(`opts:`, opts);
     // 1) lock 复用
     const lock = readLock();
     const lockHost = lock?.host || "127.0.0.1";

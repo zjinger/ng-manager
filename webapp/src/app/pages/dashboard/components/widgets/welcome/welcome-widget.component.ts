@@ -20,7 +20,7 @@ import { WidgetBaseComponent } from '../widget-base.component';
         <h2>欢迎来到新项目！</h2>
         <div class="item">
           <div class="icon-wrapper">
-            <nz-icon nzType="appstore" nzTheme="outline" />
+            <nz-icon nzType="dashboard" nzTheme="outline" />
           </div>
           <p>这里是项目仪表盘，你可以点击右上方的“自定义”按钮来添加部件。你的改动将会自动保存。</p>
         </div>

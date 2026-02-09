@@ -4,12 +4,14 @@ import { ProjectApiService } from './project-api.service';
 import { UiNotifierService } from '@core/ui-notifier.service';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { LocalStateStore, LS_KEYS } from '@core/local-state';
+import { Router } from '@angular/router';
 @Injectable({ providedIn: 'root' })
 export class ProjectStateService {
   private modal = inject(NzModalService);
   private notify = inject(UiNotifierService);
   private projectService = inject(ProjectApiService);
   private ls = inject(LocalStateStore);
+  private router = inject(Router);
 
   currentProjectId = signal<string | null>(null);
   currentProject = signal<Project | null>(null);
@@ -52,6 +54,8 @@ export class ProjectStateService {
     this.currentProject.update(p => (p ? { ...p, lastOpened } : p));
     // 异步落库
     this.projectService.setLastOpened(project.id, lastOpened).subscribe();
+
+    this.router.navigate(['/dashboard']);
   }
 
   /** 用于服务端返回的更新（比如 toggleFavorite） */

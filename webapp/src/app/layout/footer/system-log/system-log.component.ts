@@ -10,6 +10,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { SyslogStreamService } from '@app/core/log/syslog-stream.service';
 import { LogLevel } from '@models/log.model';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-system-log',
@@ -22,6 +23,7 @@ import { ProjectStateService } from '@pages/projects/services/project.state.serv
     NzSpaceModule,
     NzIconModule,
     NzTooltipModule,
+    RouterModule
   ],
   templateUrl: './system-log.component.html',
   styleUrl: './system-log.component.less',
@@ -92,7 +94,7 @@ export class SystemLogDrawerComponent implements OnInit {
   getColor(level?: LogLevel): string {
     if (!level) return "#000000";
     switch (level) {
-      case 'success': return "#22c55e"; 
+      case 'success': return "#22c55e";
       case 'info': return "#18bdfd";
       case 'debug': return "#94a3b8";
       case "error": return "#ef4444";
