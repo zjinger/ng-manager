@@ -78,9 +78,14 @@ export const enum ErrorPolicyCode {
     RSS_FETCH_FAILED = "RSS_FETCH_FAILED",
     INVALID_RSS_URL = "INVALID_RSS_URL",
 
+    /* ---------- API client---------- */
+    COLLECTION_NOT_EMPTY = "COLLECTION_NOT_EMPTY", // 409 - collection has child collections/requests
     /* ---------- protocol / dev ---------- */
     INVALID_JSON = "INVALID_JSON",
     INVALID_MSG = "INVALID_MSG",
+
+
+
 }
 
 
@@ -341,6 +346,12 @@ export const ERROR_POLICY: Record<ErrorPolicyCode, ErrorPolicyItem> = {
     INVALID_RSS_URL: {
         level: "toast",
         message: "无效的 RSS 源地址",
+    },
+
+    /* ---------- api client ---------- */
+    COLLECTION_NOT_EMPTY: {
+        level: "toast",
+        message: "集合不为空，无法删除",
     },
 
     /* ---------- protocol / dev ---------- */

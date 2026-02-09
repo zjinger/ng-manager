@@ -7,7 +7,7 @@ import rssRoutes from './rss.routes';
 import { spriteRoutes } from './sprite.routes';
 import systemRoutes from './system.routes';
 import taskRoutes from './task.routes';
-import { apiClientEnvsRoutes, apiClientHistoryRoutes, apiClientRequestsRoutes, apiClientSendRoutes } from './api-client';
+import { apiClientCollectionsRoutes, apiClientEnvsRoutes, apiClientHistoryRoutes, apiClientRequestsRoutes, apiClientSendRoutes } from './api-client';
 import { FastifyInstance } from 'fastify';
 
 export default async function routes(fastify: FastifyInstance) {
@@ -34,4 +34,5 @@ export default async function routes(fastify: FastifyInstance) {
     await fastify.register(apiClientRequestsRoutes, { prefix: '/api/client/requests' });
     await fastify.register(apiClientHistoryRoutes, { prefix: '/api/client/history' });
     await fastify.register(apiClientSendRoutes, { prefix: '/api/client/send' });
+    await fastify.register(apiClientCollectionsRoutes, { prefix: '/api/client/collections' });
 }

@@ -66,15 +66,22 @@ import { ApiClientStateService } from './services';
         <nz-layout class="page">
           <app-request-collections
             [requests]="store.requests()"
+            [collections]="store.collections()"
             [activeId]="store.activeRequestId()"
             (select)="store.selectRequest($event)"
-            (create)="store.newRequest()"
-            (reload)="store.loadRequests()"
+            (createRequest)="store.newRequest({collectionId: $event.collectionId})"
+            (createCollection)="store.newCollection({kind:'collection'})"
+            (createFolder)="store.newCollection({kind:'folder', parentId: $event.collectionId})"
+            (reload)="store.loadAll()"
+            (delete)="store.deleteCollection($event.id, $event.kind)"
+            (rename)="store.renameCollection($event.id, $event.kind)"
+            (move)="store.moveCollection($event.id, $event.kind)"
             [loading]="store.loading()"
           />
           <div class="content">
             @if(store.activeRequest()){
               <app-request-editor
+                [collectionPath]="store.collectionPath()"
                 [baseUrl]="store.activeEnv()?.baseUrl ?? null"
                 [request]="store.activeRequest()"
                 [sending]="store.sending()"

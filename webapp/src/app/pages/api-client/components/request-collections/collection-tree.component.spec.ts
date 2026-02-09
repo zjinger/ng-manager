@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ConnectionTreeComponent } from './connection-tree.component';
+import { CollectionTreeComponent } from './collection-tree.component';
 
-describe('ConnectionTreeComponent', () => {
-  let component: ConnectionTreeComponent;
-  let fixture: ComponentFixture<ConnectionTreeComponent>;
+describe('CollectionTreeComponent', () => {
+  let component: CollectionTreeComponent;
+  let fixture: ComponentFixture<CollectionTreeComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ConnectionTreeComponent]
+      imports: [CollectionTreeComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(ConnectionTreeComponent);
+    fixture = TestBed.createComponent(CollectionTreeComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

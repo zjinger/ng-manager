@@ -47,6 +47,10 @@ export interface ApiRequestEntity {
     body?: ApiRequestBody;
     auth?: ApiRequestAuth;
     options?: ApiRequestOptions;
+
+    collectionId?: string | null; // null = 未归类（或默认集合）
+    order?: number;               // 同 collection 内排序
+
     tags?: string[];
     createdAt: number;
     updatedAt: number;

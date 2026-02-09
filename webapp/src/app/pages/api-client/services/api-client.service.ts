@@ -2,7 +2,7 @@ import { HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
 import { ApiHistoryEntity } from '@models/api-client/api-history.model';
-import { ApiRequestEntity, ApiScope, SendRequestBody, SendResponse } from '@models/api-client';
+import { ApiCollectionCreateBody, ApiCollectionEntity, ApiCollectionUpdateBody, ApiRequestEntity, ApiScope, SendRequestBody, SendResponse } from '@models/api-client';
 import { ApiEnvEntity } from '@models/api-client/api-environment.model';
 import { firstValueFrom } from 'rxjs';
 
@@ -26,9 +26,18 @@ export class ApiClientService {
     );
   }
 
-  async deleteRequest(id: string) {
+  async updateRequest(scope: ApiScope, projectId: string | undefined, request: Partial<ApiRequestEntity>) {
     return await firstValueFrom(
-      this.http.delete<{ ok: true }>(`${this.base}/requests/${id}`)
+      this.http.post<{ id: string }>(`${this.base}/requests/update`, { scope, projectId, request })
+    );
+  }
+
+
+  async deleteRequest(id: string, scope: ApiScope, projectId?: string) {
+    let params = new HttpParams().set('scope', scope);
+    if (projectId) params = params.set('projectId', projectId);
+    return await firstValueFrom(
+      this.http.delete<{ ok: true }>(`${this.base}/requests/${id}`, params)
     );
   }
 
@@ -60,6 +69,33 @@ export class ApiClientService {
     let params = new HttpParams().set('scope', scope);
     if (projectId) params = params.set('projectId', projectId);
     return await firstValueFrom(this.http.delete<{ ok: true }>(`${this.base}/envs/${id}`, params));
+  }
+
+  // Collection APIs
+  async listCollections(scope: ApiScope, projectId?: string) {
+    let params = new HttpParams().set('scope', scope);
+    if (projectId) params = params.set('projectId', projectId);
+    return await firstValueFrom(this.http.get<ApiCollectionEntity[]>(`${this.base}/collections`, params));
+  }
+
+  async createCollection(body: ApiCollectionCreateBody) {
+    return await firstValueFrom(
+      this.http.post<ApiCollectionEntity>(`${this.base}/collections`, body)
+    );
+  }
+
+  async updateCollection(id: string, body: Partial<ApiCollectionUpdateBody>, scope: ApiScope, projectId?: string) {
+    const params = new HttpParams().set('scope', scope).set('projectId', projectId ?? '');
+    return await firstValueFrom(
+      this.http.post<ApiCollectionEntity>(`${this.base}/collections/${id}`, body, params)
+    );
+  }
+
+  async deleteCollection(id: string, scope: ApiScope, projectId?: string) {
+    const params = new HttpParams().set('scope', scope).set('projectId', projectId ?? '');
+    return await firstValueFrom(
+      this.http.delete<{ ok: true }>(`${this.base}/collections/${id}`, params)
+    );
   }
 
 }

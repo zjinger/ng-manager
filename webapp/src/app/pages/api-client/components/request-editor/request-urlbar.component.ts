@@ -17,20 +17,19 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
     <div class="bar">
       <nz-select class="method" [ngModel]="method" (ngModelChange)="methodChange.emit($event)">
         @for (m of methods; track m) {
-          <nz-option [nzValue]="m" [nzLabel]="m"></nz-option>
+          <nz-option [nzValue]="m" [nzLabel]="m" class="m"></nz-option>
         }
       </nz-select>
-
-      <input
-        nz-input
-        class="url"
-        placeholder="http://..."
-        [ngModel]="draftUrl"
-        (ngModelChange)="onDraftChange($event)"
-        (blur)="commit()"
-        (keydown.enter)="commit()"
-      />
-
+      <nz-input-wrapper class="url" [nzAddonBefore]="baseUrl ? baseUrl + '  ' : undefined" >
+        <input
+          nz-input
+          [placeholder]="placeholder()"
+          [ngModel]="draftUrl"
+          (ngModelChange)="onDraftChange($event)"
+          (blur)="commit()"
+          (keydown.enter)="commit()"
+        />
+      </nz-input-wrapper>
       <button nz-button nzType="primary" [nzLoading]="sending" (click)="send.emit()">发送</button>
       <button nz-button nzType="default" (click)="save.emit()">保存</button>
     </div>
@@ -72,6 +71,7 @@ export class RequestUrlbarComponent implements OnChanges {
   // env meta
   @Input() envName: string | null = null;
   @Input() baseUrl: string | null = null;
+  
 
   @Output() methodChange = new EventEmitter<ApiHttpMethod>();
   /** 输入过程中（debounce）持续更新 url（只改文本，不同步 path params） */
@@ -117,7 +117,7 @@ export class RequestUrlbarComponent implements OnChanges {
 
   placeholder = computed(() => {
     // 有 baseUrl 时引导用户写相对路径
-    return this.baseUrl ? '/path (相对路径，将拼接 Base URL)' : 'https://... 或 /path';
+    return this.baseUrl ? `"/"开头` : 'http://...';
   });
 
   previewUrl = computed(() => {

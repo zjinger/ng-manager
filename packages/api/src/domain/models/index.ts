@@ -3,6 +3,7 @@ export * from './api-request';
 export * from './api-response';
 export * from './api-history';
 export * from './api-environment';
+export * from './api-collection';
 export * from './api-curl';
 export * from './api-send';
 export * from './types';

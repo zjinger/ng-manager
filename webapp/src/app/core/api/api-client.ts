@@ -13,9 +13,9 @@ export class ApiClient {
             .pipe(unwrapApi<T>());
     }
 
-    post<T>(url: string, body?: any) {
+    post<T>(url: string, body?: any, params?: HttpParams) {
         return this.http
-            .post<ApiSuccess<T>>(url, body)
+            .post<ApiSuccess<T>>(url, body, { params })
             .pipe(unwrapApi<T>());
     }
 

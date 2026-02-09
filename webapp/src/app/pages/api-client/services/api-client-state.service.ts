@@ -2,11 +2,12 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ApiClientService } from './api-client.service';
-import { ApiRequestEntity, ApiRequestKvRow, ApiScope, SendResponse } from '@models/api-client';
+import { ApiCollectionCreateBody, ApiCollectionEntity, ApiCollectionKind, ApiCollectionTreeNode, ApiCollectionUpdateBody, ApiRequestEntity, ApiRequestKvRow, ApiScope, SendResponse } from '@models/api-client';
 import { ApiHistoryEntity } from '@models/api-client/api-history.model';
 import { ApiEnvEntity } from '@models/api-client/api-environment.model';
-import { envVarsToRecord } from '../utils';
+import { envVarsToRecord, genCollectionTreeNodes } from '../utils';
 import { uniqueId } from 'lodash';
+import { CollectionModalService } from './collection-modal.service';
 
 function now() {
   return Date.now();
@@ -23,6 +24,7 @@ export class ApiClientStateService {
   private api = inject(ApiClientService);
   private msg = inject(NzMessageService);
   private projectState = inject(ProjectStateService);
+  private collectionModal = inject(CollectionModalService);
 
   // request state
   scope = signal<ApiScope>('project');
@@ -33,6 +35,14 @@ export class ApiClientStateService {
 
   // 当前选中请求 ID
   activeRequestId = signal<string | null>(null);
+
+  readonly collections = signal<ApiCollectionEntity[]>([]);
+
+  readonly activeCollectionId = signal<string | null>(null);
+
+  readonly nodes = computed<ApiCollectionTreeNode[]>(() => {
+    return genCollectionTreeNodes(this.collections(), this.requests(), '').filter(n => n.kind !== 'request');
+  });
 
   // history state
   historyOpen = signal(false); // 是否打开 history 面板
@@ -54,12 +64,6 @@ export class ApiClientStateService {
   });
   activeRequest = signal<ApiRequestEntity | null>(null);
 
-  // activeRequest = computed(() => {
-  //   const id = this.activeRequestId();
-  //   if (!id) return null;
-  //   return this.requests().find(r => r.id === id) ?? null;
-  // });
-
   activeEnv = computed(() => {
     const id = this.activeEnvId();
     if (!id) return null;
@@ -72,13 +76,44 @@ export class ApiClientStateService {
     return envVarsToRecord(env.variables);
   });
 
+  collectionPath = computed(() => {
+    const colId = this.activeCollectionId();
+    if (!colId) return null;
+    const col = this.collections().find(c => c.id === colId);
+    if (!col) return null;
+    const pathNames: string[] = [];
+    let parentKey: string | null = `${col.id}`;
+    while (parentKey) {
+      const parentNode = this.collections().find(n => n.id === parentKey);
+      if (parentNode) {
+        pathNames.unshift(parentNode.name || '未命名');
+        parentKey = parentNode.parentId ? `${parentNode.parentId}` : null;
+      } else {
+        parentKey = null;
+      }
+    }
+    return pathNames.join(' / ');
+
+  });
+
+  private projectCtx = computed(() => {
+    const p = this.projectState.currentProject();
+    if (!p) return null;
+    return {
+      scope: 'project' as const,
+      projectId: p.id,
+    };
+  });
+
+
   constructor() {
     // project 变化时自动 reload
     effect(() => {
       if (this.scope() !== 'project') return;
       const pid = this.projectId();
       if (!pid) return;
-      void this.loadRequests();
+      // void this.loadRequests();
+      void this.loadAll();
     });
 
     effect(() => {
@@ -90,17 +125,46 @@ export class ApiClientStateService {
     });
   }
 
+  async loadAll() {
+    const ctx = this.projectCtx();
+    if (!ctx) return;
+
+    this.loading.set(true);
+    try {
+      const [cols, reqs] = await Promise.all([
+        this.api.listCollections(ctx.scope, ctx.projectId),
+        this.api.listRequests(ctx.scope, ctx.projectId),
+      ]);
+      this.collections.set(cols ?? []);
+      this.requests.set(reqs ?? []);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async reloadCollections() {
+    const ctx = this.projectCtx();
+    if (!ctx) return;
+    const cols = await this.api.listCollections(ctx.scope, ctx.projectId);
+    this.collections.set(cols ?? []);
+  }
+
+  async reloadRequests() {
+    const ctx = this.projectCtx();
+    if (!ctx) return;
+    const reqs = await this.api.listRequests(ctx.scope, ctx.projectId);
+    this.requests.set(reqs ?? []);
+  }
+
   /**
    * 加载请求列表
    */
   async loadRequests() {
-    const scope = this.scope();
-    const pid = scope === 'project' ? this.projectId() : undefined;
-    if (scope === 'project' && !pid) return;
-
+    const ctx = this.projectCtx();
+    if (!ctx) return;
     this.loading.set(true);
     try {
-      const list = await this.api.listRequests(scope, pid);
+      const list = await this.api.listRequests(ctx.scope, ctx.projectId);
       this.requests.set(list);
       // 默认选中第一个；如果已有 active 且存在则保留
       const active = this.activeRequestId();
@@ -126,12 +190,161 @@ export class ApiClientStateService {
   selectRequest(id: string) {
     const req = this.requests().find((x) => x.id === id) || null;
     this.setActive(req);
+    this.activeCollectionId.set(req?.collectionId ?? null);
+
+  }
+
+  /**
+   * 选择集合
+   */
+  selectCollection(id: string) {
+    this.activeCollectionId.set(id);
+  }
+
+  /**
+   * 新建集合 / 文件夹
+   */
+  async newCollection(input: {
+    name?: string;
+    parentId?: string | null;
+    kind?: 'collection' | 'folder';
+  }) {
+    const ctx = this.projectCtx();
+    if (!ctx) return;
+    const body: ApiCollectionCreateBody = {
+      scope: ctx.scope,
+      projectId: ctx.projectId,
+      name: input.name ?? '',
+      kind: input.kind ?? 'collection',
+      parentId: input.parentId ?? null,
+    };
+    const nodes = this.nodes(); // 全量生成树，拿到最新的 collection list
+    const createdBody = await this.collectionModal.createCollection({ createBody: body, nodes, kind: body.kind as 'collection' | 'folder', initialParentId: body.parentId ?? null });
+    if (createdBody) {
+      const newCol = await this.api.createCollection(createdBody);
+      this.msg.success('创建成功');
+      this.collections.update(list => [...list, newCol]);
+      this.activeCollectionId.set(newCol.id);
+    }
+  }
+
+  // 删除集合/文件夹
+  async deleteCollection(id: string, kind: ApiCollectionKind) {
+    if (kind === 'request') {
+      this.removeRequest(id);
+      return;
+    }
+    await this.api.deleteCollection(id, this.scope(), this.projectId());
+    this.msg.success('已删除');
+    // await this.loadAll();
+    // 乐观更新
+    this.collections.update(list => list.filter(c => c.id !== id));
+    // 如果当前 active collection 是被删的，重置 active collection
+    if (this.activeCollectionId() === id) {
+      const firstCol = this.collections()[0];
+      this.activeCollectionId.set(firstCol?.id ?? null);
+    }
+  }
+
+  /**
+   * 移动集合/文件夹/请求
+   */
+  async moveCollection(id: string, kind: ApiCollectionKind) {
+    let initialParentId = '';
+    if (kind == 'request') {
+      const req = this.requests().find(r => r.id === id);
+      if (!req) {
+        this.msg.error('请求不存在');
+        return;
+      }
+      initialParentId = req.collectionId ?? '';
+    } else {
+      const col = this.collections().find(c => c.id === id);
+      if (!col) {
+        this.msg.error('集合不存在');
+        return;
+      }
+      initialParentId = col.parentId ?? '';
+    }
+    const nodes = this.nodes();
+    const { parentId } = await this.collectionModal.moveTarget({
+      nodes,
+      target: { kind, id },
+      initialParentId,
+    }) || {};
+    if (parentId === undefined) return;
+
+    if (kind === 'request') {
+      const req = this.requests().find(r => r.id === id);
+      if (!req) {
+        this.msg.error('请求不存在');
+        return;
+      }
+      const updated: Partial<ApiRequestEntity> = {
+        collectionId: parentId ?? null,
+        id: req.id,
+      };
+      req.collectionId = parentId ?? null;
+      await this.api.updateRequest(this.scope(), this.projectId(), updated);
+      this.requests.update(list => list.map(r => r.id === id ? { ...r, collectionId: parentId ?? null } : r));
+      this.setActive(req.id === this.activeRequestId() ? { ...req, collectionId: parentId ?? null } : req);
+      this.msg.success('修改成功');
+    } else {
+      const updated: ApiCollectionUpdateBody = {
+        parentId: parentId ?? null,
+      }
+      const newCol = await this.api.updateCollection(id, updated, this.scope(), this.projectId());
+      this.collections.update(list => list.map(c => c.id === id ? newCol : c));
+      this.activeCollectionId.set(newCol.id);
+      this.msg.success('修改成功');
+    }
+  }
+
+  /**
+   * 重命名集合/文件夹/请求
+   */
+  async renameCollection(id: string, kind: ApiCollectionKind) {
+    let name = '';
+    if (kind == 'request') {
+      const req = this.requests().find(r => r.id === id);
+      if (!req) {
+        this.msg.error('请求不存在');
+        return;
+      }
+      name = req.name ?? '';
+    } else {
+      const col = this.collections().find(c => c.id === id);
+      if (!col) {
+        this.msg.error('集合不存在');
+        return;
+      }
+      name = col.name ?? '';
+    }
+    const nodes = this.nodes(); // 全量生成树，拿到最新的 collection list
+    const updated = await this.collectionModal.renameCollection({
+      nodes,
+      kind,
+      targetId: id,
+      initialName: name,
+    })
+    if (!updated) return;
+    if (kind === 'request') {
+      await this.api.updateRequest(this.scope(), this.projectId(), { id, name: updated.name });
+      this.requests.update(list => list.map(r => r.id === id ? { ...r, name: updated.name ?? r.name } : r));
+      this.msg.success('修改成功');
+      this.reloadRequests();
+    } else {
+      const newCol = await this.api.updateCollection(id, updated, this.scope(), this.projectId());
+      this.collections.update(list => list.map(c => c.id === id ? newCol : c));
+      this.msg.success('修改成功');
+      this.reloadCollections();
+    }
   }
 
   /**
    * 新建请求
    */
-  newRequest() {
+  newRequest(input: { collectionId?: string | null } = {}) {
     const pid = this.projectId();
     if (this.scope() === 'project' && !pid) {
       this.msg.warning('请先选择项目');
@@ -143,6 +356,7 @@ export class ApiClientStateService {
       name: '',
       method: 'GET',
       url: '',
+      collectionId: input.collectionId ?? null,
       query: [],
       pathParams: [],
       headers: [],
@@ -154,6 +368,7 @@ export class ApiClientStateService {
       updatedAt: t,
     };
     this.setActive(req);
+    this.activeCollectionId.set(input.collectionId ?? null);
   }
 
   /**
@@ -186,6 +401,15 @@ export class ApiClientStateService {
       return;
     }
 
+    // 新请求提示保存到集合
+    if (!req.collectionId) {
+      const nodes = this.nodes();
+      const { parentId } = await this.collectionModal.pickCollection({
+        nodes,
+      }) || {};
+      req.collectionId = parentId ?? null;
+    }
+
     this.loading.set(true);
     try {
       await this.api.saveRequest(scope, pid, req);
@@ -212,7 +436,8 @@ export class ApiClientStateService {
    * 删除请求
    */
   async removeRequest(id: string) {
-    await this.api.deleteRequest(id);
+    await this.api.deleteRequest(id, this.scope(), this.projectId());
+    this.msg.success('已删除');
     const list = this.requests().filter(r => r.id !== id);
     this.requests.set(list);
     if (this.activeRequestId() === id) {

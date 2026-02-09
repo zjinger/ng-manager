@@ -1,11 +1,12 @@
-import { type ApiScope, ApiEnvironmentEntity, ApiHistoryEntity, ApiRequestEntity, SendDto, SendResult } from "../domain/models";
-import { RequestRepo, EnvRepo, HistoryRepo, ApiSendService, } from "../domain/services";
+import { type ApiScope, ApiCollectionEntity, ApiEnvironmentEntity, ApiHistoryEntity, ApiRequestEntity, SendDto, SendResult } from "../domain/models";
+import { RequestRepo, EnvRepo, HistoryRepo, ApiSendService, CollectionRepo, } from "../domain/services";
 
 export class ApiClient {
     constructor(
         private readonly requestRepo: RequestRepo,
         private readonly envRepo: EnvRepo,
         private readonly historyRepo: HistoryRepo,
+        private readonly collectionRepo: CollectionRepo,
         private readonly sendService: ApiSendService
 
     ) { }
@@ -51,6 +52,24 @@ export class ApiClient {
     }
     purgeHistory(query: { scope: ApiScope; projectId?: string; olderThan?: number; maxCount?: number }) {
         return this.historyRepo.purge(query);
+    }
+
+    // -------- collections --------
+
+    getCollection(id: string, scope: ApiScope, projectId?: string) {
+        return this.collectionRepo.get(id, scope, projectId);
+    }
+
+    listCollections(scope: ApiScope, projectId?: string) {
+        return this.collectionRepo.list(scope, projectId);
+    }
+
+    saveCollection(entity: ApiCollectionEntity, scope: ApiScope, projectId?: string) {
+        return this.collectionRepo.save(entity, scope, projectId);
+    }
+
+    deleteCollection(id: string, scope: ApiScope, projectId?: string) {
+        return this.collectionRepo.delete(id, scope, projectId);
     }
 
     // -------- send --------

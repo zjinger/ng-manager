@@ -34,12 +34,14 @@ import { extractPathParamKeys, syncPathParamsByUrl } from '@pages/api-client/uti
       [sending]="sending"
       (methodChange)="patch.emit({method:$event})"
       (urlChange)="onUrlChange($event)"
-       (urlCommit)="onUrlCommit($event)"
+      (urlCommit)="onUrlCommit($event)"
       (send)="send.emit()"
       (save)="save.emit()"
     />
     <div class="name">
-      <input nz-input placeholder="未命名接口名称" [ngModel]="request.name" (ngModelChange)="patch.emit({name:$event})" />
+      <nz-input-wrapper [nzAddonBefore]=" (collectionPath || '未分类')">
+        <input nz-input placeholder="未命名接口名称" [ngModel]="request.name" (ngModelChange)="patch.emit({name:$event})" />
+      </nz-input-wrapper>
     </div>
     <app-request-tabs class="tabs" [req]="request" (patch)="patch.emit($event)" />
   }    
@@ -57,10 +59,11 @@ export class RequestEditorComponent {
   @Input() envVars: Record<string, string> = {};
   @Input() openEnv!: () => void; // 点击提示时打开 Env 管理
   @Input() baseUrl: string | null = null;
-  
+
   @Output() patch = new EventEmitter<Partial<ApiRequestEntity>>();
   @Output() send = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
+  @Input() collectionPath: string | null = null; // 分类路径
 
   methods: ApiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 

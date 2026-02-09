@@ -14,12 +14,6 @@ function parseScope(q: any): { scope: Scope; projectId?: string } {
 
 export async function apiClientRequestsRoutes(fastify: FastifyInstance) {
     const api = fastify.api
-    //  as {
-    //     listRequests(scope: Scope, projectId?: string): Promise<any[]>;
-    //     getRequest(id: string, scope: Scope, projectId?: string): Promise<any | null>;
-    //     saveRequest(req: any, scope: Scope, projectId?: string): Promise<void>;
-    //     deleteRequest(id: string, scope: Scope, projectId?: string): Promise<void>;
-    // };
 
     fastify.get("/", async (req) => {
         const { scope, projectId } = parseScope((req as any).query);
@@ -49,8 +43,26 @@ export async function apiClientRequestsRoutes(fastify: FastifyInstance) {
         const scope = body?.scope ?? "project";
         if (scope === "project" && !body.projectId) throw new Error("projectId is required when scope=project");
         if (!body?.request?.id) throw new Error("request.id is required");
-
         await api.saveRequest(body.request, scope, body.projectId);
+        return { id: body.request.id };
+    });
+
+    fastify.post("/update", async (req) => {
+        const body = (req as any).body as {
+            scope: Scope;
+            projectId?: string;
+            request: any;
+        };
+        const scope = body?.scope ?? "project";
+        if (scope === "project" && !body.projectId) throw new Error("projectId is required when scope=project");
+        if (!body?.request?.id) throw new Error("request.id is required");
+        const old = await api.getRequest(body.request.id, scope, body.projectId);
+        if (!old) throw new Error("request not found: " + body.request.id);
+        const updated = {
+            ...old,
+            ...body.request,
+        };
+        await api.saveRequest(updated, scope, body.projectId);
         return { id: body.request.id };
     });
 

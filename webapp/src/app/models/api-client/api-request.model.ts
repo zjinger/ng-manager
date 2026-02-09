@@ -30,6 +30,8 @@ export interface ApiRequestEntity {
     name: string;
     method: ApiHttpMethod;
     url: string;
+    collectionId?: string | null;
+    order?: number;
     query: ApiRequestKvRow[];
     pathParams: ApiRequestKvRow[];
     headers: ApiRequestKvRow[];

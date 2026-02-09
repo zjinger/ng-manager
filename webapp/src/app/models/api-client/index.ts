@@ -1,6 +1,7 @@
 export * from './api-history.model'
 export * from './api-request.model'
 export * from './api-environment.model'
+export * from './api-collection.model'
 export * from './api-response.model'
 export * from './api-send.model'
 export * from './api-types.model'

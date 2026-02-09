@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ConnectionModalComponent } from './connection-modal.component';
+import { CollectionModalComponent } from './collection-modal.component';
 
-describe('ConnectionModalComponent', () => {
-  let component: ConnectionModalComponent;
-  let fixture: ComponentFixture<ConnectionModalComponent>;
+describe('CollectionModalComponent', () => {
+  let component: CollectionModalComponent;
+  let fixture: ComponentFixture<CollectionModalComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ConnectionModalComponent]
+      imports: [CollectionModalComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(ConnectionModalComponent);
+    fixture = TestBed.createComponent(CollectionModalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
