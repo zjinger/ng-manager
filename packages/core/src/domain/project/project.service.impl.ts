@@ -203,11 +203,13 @@ export class ProjectServiceImpl implements ProjectService {
         return this.setFavorite(id, next);
     }
 
-    async edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; }): Promise<Project> {
+    async edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; iconsRepoUrl?: string; otherImageUrl?: string }): Promise<Project> {
         return this.update(id, {
             name: data.name.trim(),
             description: data.description?.trim(),
             repoPageUrl: data.repoPageUrl?.trim(),
+            iconsRepoUrl: data.iconsRepoUrl?.trim(),
+            otherImageUrl: data.otherImageUrl?.trim(),
         } as any);
     }
 }

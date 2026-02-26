@@ -22,6 +22,10 @@ export interface Project {
 
     repoPageUrl?: string; // git 仓库网页地址
     repoUrl?: string;     // git 仓库url
+
+    iconsRepoUrl?: string; // 原尺寸图标SVN地址
+    otherImageUrl?: string; // 其他图片地址（如UI设计效果图SVN地址）
+
 }
 
 export interface CheckRootResult {

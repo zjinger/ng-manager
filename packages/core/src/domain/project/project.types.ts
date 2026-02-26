@@ -20,6 +20,11 @@ export interface Project {
     repoUrl?: string;
     // git 仓库网页地址
     repoPageUrl?: string;
+
+    // 原尺寸图标SVN地址
+    iconsRepoUrl?: string;
+    // 其他图片地址（如UI设计效果图SVN地址）
+    otherImageUrl?: string;
 }
 
 export interface CreateProjectInput {

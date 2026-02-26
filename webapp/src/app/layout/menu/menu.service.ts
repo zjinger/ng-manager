@@ -15,6 +15,7 @@ export class MenuService {
     { title: '任务', path: '/tasks', icon: 'schedule', level: 1, taskCountBadge: true },
     { title: '配置', path: '/configuration', icon: 'setting', level: 1 },
     { title: 'API', path: '/rquest', icon: 'api', level: 1 },
+    { title: '雪碧图', path: '/sprite', icon: 'smile', level: 1 },
     // { title: '系统设置', path: '/settings', icon: 'setting', level: 1 },
   ];
 

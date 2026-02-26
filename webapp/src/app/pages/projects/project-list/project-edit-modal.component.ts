@@ -35,16 +35,29 @@ import { ProjectStateService } from '../services/project.state.service';
               <nz-icon nzInputPrefix nzType="folder" nzTheme="fill" />
             </nz-input-wrapper>
             <div class="hint">输入新名称，将同步更新项目显示名称（不会重命名磁盘目录）。</div>
-            <label class="label">仓库网页地址</label>
+            <label class="label">Git仓库地址</label>
             <nz-input-wrapper >
               <input
                 nz-input
                 [ngModel]="editingProject()!.repoPageUrl"
                 (ngModelChange)="projectState.editingProject()!.repoPageUrl = $event"
-                placeholder="仓库网页地址"
+                placeholder="Git仓库地址"
               />
-              <nz-icon nzInputPrefix nzType="global" nzTheme="outline" />
+              <nz-icon nzInputPrefix nzType="github" nzTheme="outline" />
             </nz-input-wrapper>
+            <label class="label">原尺寸图标SVN地址</label>
+            <nz-input-wrapper >
+              <input
+                nz-input
+                [ngModel]="editingProject()!.iconsRepoUrl"
+                (ngModelChange)="projectState.editingProject()!.iconsRepoUrl = $event"
+                placeholder="原尺寸图标SVN地址"
+              />
+              <nz-icon nzInputPrefix nzType="proj:svn" nzTheme="outline" />
+            </nz-input-wrapper>
+            <div class="hint">输入项目的原尺寸图标SVN地址，用于制作项目所需雪碧图。</div>
+            <div class="hint">示例：svn://192.168.1.10/项目管理/xx项目/02.项目文档/05.系统设计/02-原型设计/02-UI设计效果图&切图/3-原尺寸图标</div>
+
             <label class="label">描述</label>
             <nz-input-wrapper>
               <textarea

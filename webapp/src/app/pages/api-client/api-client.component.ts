@@ -10,6 +10,7 @@ import { RequestCollectionsComponent } from './components/request-collections';
 import { EnvPickerComponent, RequestEditorComponent } from './components/request-editor';
 import { ResponseViewerComponent } from './components/response-viewer';
 import { ApiClientStateService } from './services';
+import { NzEmptyModule } from 'ng-zorro-antd/empty';
 
 @Component({
   selector: 'app-api-client.component',
@@ -24,7 +25,8 @@ import { ApiClientStateService } from './services';
     RequestEditorComponent,
     ResponseViewerComponent,
     ApiHistoryDrawerComponent,
-    EnvPickerComponent
+    EnvPickerComponent,
+    NzEmptyModule
   ],
   styles: [
     `
@@ -43,6 +45,9 @@ import { ApiClientStateService } from './services';
       flex-direction: column;
       height: 100%;
       overflow: hidden;
+    }
+    .content.empty {
+      justify-content: center;
     }
     app-request-editor {
       flex: 0 0 auto;
@@ -78,7 +83,7 @@ import { ApiClientStateService } from './services';
             (move)="store.moveCollection($event.id, $event.kind)"
             [loading]="store.loading()"
           />
-          <div class="content">
+          <div class="content" [ngClass]="{'empty': !store.activeRequest()}">
             @if(store.activeRequest()){
               <app-request-editor
                 [collectionPath]="store.collectionPath()"
@@ -95,8 +100,18 @@ import { ApiClientStateService } from './services';
                 [sending]="store.sending()"
                 [result]="store.lastResult()"
               />
+            }@else{
+              <nz-empty  
+            [nzNotFoundContent]="contentTpl"
+            [nzNotFoundFooter]="footerTpl">
+          </nz-empty>
             }
-            
+            <ng-template #contentTpl>
+              <span>暂无请求，点击左侧面板右上角“<nz-icon nzType="plus" nzTheme="outline"></nz-icon>” 创建请求</span>
+            </ng-template>
+            <ng-template #footerTpl>
+              <button nz-button nzType="primary" (click)="store.newRequest({collectionId: null})">立即新增</button>
+            </ng-template>
           </div>
         </nz-layout>
     </app-page-layout>

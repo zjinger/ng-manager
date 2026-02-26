@@ -44,7 +44,8 @@ import { ProjectStateService } from '../services/project.state.service';
     CreateSummaryAsideComponent,
   ],
   template: `
-      <div nz-col nzSpan="24" class="modal-container">
+    <div nz-row nzJustify="start">
+      <div nz-col nzSpan="24">
         <nz-steps [nzCurrent]="step()" >
             <nz-step nzTitle="详情"></nz-step>
             <nz-step nzTitle="预设"></nz-step>
@@ -102,6 +103,7 @@ import { ProjectStateService } from '../services/project.state.service';
         </div>
       
       </div>
+    </div>
   `,
   styles: [
     `

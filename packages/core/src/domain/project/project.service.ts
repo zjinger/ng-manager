@@ -25,5 +25,5 @@ export interface ProjectService {
 
     setLastOpened(id: string, timestamp: number): Promise<Project>;
     rename(id: string, name: string): Promise<Project>;
-    edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; }): Promise<Project>;
+    edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; iconsRepoUrl?: string; otherImageUrl?: string }): Promise<Project>;
 }

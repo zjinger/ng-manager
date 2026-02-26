@@ -35,6 +35,10 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/api-client/api-client.module').then(m => m.ApiClientModule)
     },
     {
+        path: 'sprite',
+        loadChildren: () => import('./pages/sprite/sprite.module').then(m => m.SpriteModule)
+    },
+    {
         path: 'about',
         loadChildren: () => import('./pages/about/about-routing-module').then(m => m.AboutRoutingModule)
     },

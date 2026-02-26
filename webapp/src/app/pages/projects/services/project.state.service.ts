@@ -23,7 +23,7 @@ export class ProjectStateService {
   isEditModalVisible = signal(false);
   isEditSaving = signal(false);
   /* 正在编辑的项目 */
-  editingProject = signal<{ id: string; name: string; repoPageUrl?: string; description?: string } | null>(null);
+  editingProject = signal<{ id: string; name: string; repoPageUrl?: string; description?: string; iconsRepoUrl?: string; otherImageUrl?: string } | null>(null);
 
   /* ----------------- list computed ----------------- */
   filteredProjects = computed(() => {
@@ -135,6 +135,8 @@ export class ProjectStateService {
       id: project.id,
       name: project.name ?? '',
       repoPageUrl: project.repoPageUrl ?? '',
+      iconsRepoUrl: project.iconsRepoUrl ?? '',
+      otherImageUrl: project.otherImageUrl ?? '',
       description: project.description ?? '',
     });
     this.isEditModalVisible.set(true);
@@ -148,7 +150,7 @@ export class ProjectStateService {
 
   confirmEditProject() {
     if (this.isEditSaving() || !this.editingProject()) return;
-    const { id, name, description, repoPageUrl } = this.editingProject()!;
+    const { id, name, description, repoPageUrl, iconsRepoUrl } = this.editingProject()!;
 
     if (!id) {
       this.notify.error('未选中需要重命名的项目');
@@ -157,14 +159,15 @@ export class ProjectStateService {
     if (!name) return;
     const desc = description?.trim();
     const repoPUrl = repoPageUrl?.trim();
+    const iconsUrl = iconsRepoUrl?.trim();
     const current = this.getProjectById(id);
-    if (current && current.name === name && current.description === desc && current.repoPageUrl === repoPUrl) {
+    if (current && current.name === name && current.description === desc && current.repoPageUrl === repoPUrl && current.iconsRepoUrl === iconsUrl) {
       this.closeEditModal();
       return;
     }
 
     this.isEditSaving.set(true);
-    this.projectService.edit(id, { name, description: desc, repoPageUrl: repoPUrl }).subscribe({
+    this.projectService.edit(id, { name, description: desc, repoPageUrl: repoPUrl, iconsRepoUrl: iconsUrl }).subscribe({
       next: (updated) => {
         this.isEditSaving.set(false);
         this.patchProject(updated);
