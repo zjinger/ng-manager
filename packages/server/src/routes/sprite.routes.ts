@@ -76,8 +76,8 @@ function ensureDir(dir: string) {
 }
 
 export function computeSpriteDefaults(projectId: string, projectRoot: string) {
-    const localDir = path.join(env.dataDir, "icons", projectId, "svn");
-    const spriteCacheDir = path.join(env.dataDir, "sprites", projectId);
+    const localDir = path.join(env.dataDir, "svn", projectId);
+    const spriteCacheDir = path.join(env.dataDir, "cache", "sprites", projectId);
 
     ensureDir(localDir);
     ensureDir(spriteCacheDir);
@@ -141,6 +141,14 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         const cfg = await fastify.core.sprite.createConfig(projectId, nextCfg);
         return { cfg, projectId };
     });
+
+    // 根据 projectId  生成雪碧图
+    fastify.post("/generate/:projectId", async (req) => { })
+
+    // 根据 projectId 从SVN拉取原尺寸图标和其他切图等资源文件
+    fastify.post("/checkout/:projectId", async (req) => {
+
+    })
 
     /**
      * 约定：

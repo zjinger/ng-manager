@@ -2,7 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core/api';
 import { ProjectAssets } from '@models/project.model';
 import { SpriteConfig } from '@models/sprite.model';
-import { GenerateSpriteOptions } from '../models';
+import { GenerateSpriteOptions, SvnCheckoutOptions } from '../models';
+import { SvnSyncResult } from '@models/svn.model';
 
 @Injectable({
   providedIn: 'root',
@@ -21,4 +22,9 @@ export class SpriteApiService {
   createConfig(projectId: string, assets: ProjectAssets, config: Omit<SpriteConfig, "projectId" | "updatedAt">) {
     return this.api.post<{ cfg: SpriteConfig | null, projectId: string }>(`/api/sprite/config/${projectId}`, { config, assets });
   }
+
+  checkout(projectId: string, options: SvnCheckoutOptions) {
+    return this.api.post<SvnSyncResult[]>(`/api/svn/sync/${projectId}`, options);
+  }
+
 }

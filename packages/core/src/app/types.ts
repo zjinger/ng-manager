@@ -6,6 +6,7 @@ import { FsService } from "../domain/fs";
 import { SystemLogService } from "../domain/logger";
 import { ProjectBootstrapService, ProjectService } from "../domain/project";
 import { SpriteService } from "../domain/sprite";
+import { SvnSyncService } from "../domain/svn";
 import { TaskService } from "../domain/task";
 import type { IEventBus } from "../infra/event/event-bus";
 import type { CoreEventMap } from "../infra/event/events";
@@ -48,6 +49,9 @@ export interface CoreApp {
 
     /** 雪碧图管理 */
     sprite: SpriteService;
+
+    /* SVN 运行时数据管理 */
+    svnSync: SvnSyncService
 
     /** 关闭应用/服务前调用，做一些清理工作 */
     dispose(): Promise<void>;

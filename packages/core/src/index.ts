@@ -14,7 +14,7 @@ export type { DashboardDocV1 } from './domain/dashboard'
 
 export type { SpriteConfig } from "./domain/sprite";
 
-export type { ProjectAssets } from "./domain/project";
+export type { ProjectAssets, ProjectAssetSourceSvn } from "./domain/project";
 
 export type {
     WsTopic,

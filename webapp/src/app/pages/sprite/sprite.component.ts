@@ -39,6 +39,16 @@ import { SpriteConfModalComponent } from './sprite-conf-modal.component';
   template: `
     <app-page-layout [title]="'雪碧图'" [loading]="loading()">
       <ng-container ngProjectAs="actions">
+        @if(!isEmpty()){
+          <button nz-button  nzType="primary" (click)="generate()" nz-tooltip nzTooltipTitle="生成雪碧图">
+            <nz-icon nzType="play-circle" nzTheme="outline"></nz-icon>
+            <span>生成雪碧图</span>
+          </button>
+          <button nz-button  nzType="primary" (click)="checkout()" nz-tooltip nzTooltipTitle="从svn更新资源">
+            <nz-icon nzType="sync" nzTheme="outline"></nz-icon>
+            <span>更新资源</span>
+          </button>
+        }
         <button nz-button  nzType="text" (click)="openSettingModal()" nz-tooltip nzTooltipTitle="">
           <nz-icon nzType="setting" nzTheme="outline"></nz-icon>
         </button>
@@ -105,6 +115,15 @@ export class SpriteComponent implements OnInit {
     this.loading.set(true);
     const cfg = await this.state.loadConfig();
     this.cfg.set(cfg);
+    this.loading.set(false);
+  }
+
+  generate() { }
+
+  async checkout() {
+    this.loading.set(true);
+    const results = await this.state.checkout()
+    console.log('SVN Sync Results:', results);
     this.loading.set(false);
   }
 

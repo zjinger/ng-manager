@@ -30,6 +30,7 @@ export type ErrorCode =
     | "PROJECT_VUE_CONFIG_NOT_FOUND"
 
     // Project Assets
+    | "ASSET_NOT_FOUND"
     | "ASSET_KIND_NOT_SUPPORTED"
     | "ASSET_URL_REQUIRED"
     | "ASSET_LABEL_REQUIRED"

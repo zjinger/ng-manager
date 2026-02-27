@@ -21,6 +21,8 @@ import { ConfigServiceImpl } from "../domain/config";
 import { SystemLogServiceImpl } from "../domain/logger";
 import { JsonSpriteRepo } from "../infra/sprite";
 import { SpriteServiceImpl } from "../domain/sprite";
+import { SvnSyncServiceImpl } from "../domain/svn";
+import { JsonSvnRuntimeRepo } from "../infra/svn";
 
 /**
  * 创建 CoreApp
@@ -126,6 +128,10 @@ export async function createCoreApp(
     const spriteRepo = new JsonSpriteRepo(dataDir);
     const sprite = new SpriteServiceImpl(spriteRepo);
 
+    /* ------------------ svn ------------------ */
+    const svnRepo = new JsonSvnRuntimeRepo(path.join(dataDir, "runtime", "svn.runtime.json"));
+    const svnSync = new SvnSyncServiceImpl(svnRepo);
+
     /* ------------------ core app ------------------ */
     return {
         events,
@@ -138,6 +144,7 @@ export async function createCoreApp(
         dashboard,
         config,
         sprite,
+        svnSync,
         async dispose() {
             // 停止定时器
             latestCache.stopPruneTimer();

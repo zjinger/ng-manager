@@ -9,6 +9,7 @@ import systemRoutes from './system.routes';
 import taskRoutes from './task.routes';
 import { apiClientCollectionsRoutes, apiClientEnvsRoutes, apiClientHistoryRoutes, apiClientRequestsRoutes, apiClientSendRoutes } from './api-client';
 import { FastifyInstance } from 'fastify';
+import svnRoutes from './svn.routes';
 
 export default async function routes(fastify: FastifyInstance) {
     // system
@@ -29,6 +30,9 @@ export default async function routes(fastify: FastifyInstance) {
     await fastify.register(rssRoutes, { prefix: '/api/rss' });
     // sprite
     await fastify.register(spriteRoutes, { prefix: '/api/sprite' });
+    // svn
+    await fastify.register(svnRoutes, { prefix: '/api/svn' });
+
     // api-client
     await fastify.register(apiClientEnvsRoutes, { prefix: '/api/client/envs' });
     await fastify.register(apiClientRequestsRoutes, { prefix: '/api/client/requests' });
