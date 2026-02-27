@@ -1,4 +1,3 @@
-import * as os from "os";
 import * as path from "path";
 
 import { ProcessService } from "../domain/process";
@@ -20,6 +19,8 @@ import { JsonDashboardRepo } from "../infra/dashboard";
 import { DashboardServiceImpl } from "../domain/dashboard";
 import { ConfigServiceImpl } from "../domain/config";
 import { SystemLogServiceImpl } from "../domain/logger";
+import { JsonSpriteRepo } from "../infra/sprite";
+import { SpriteServiceImpl } from "../domain/sprite";
 
 /**
  * 创建 CoreApp
@@ -121,6 +122,10 @@ export async function createCoreApp(
     /* ------------------ config ------------------ */
     const config = new ConfigServiceImpl(project);
 
+    /* ------------------ sprite ------------------ */
+    const spriteRepo = new JsonSpriteRepo(dataDir);
+    const sprite = new SpriteServiceImpl(spriteRepo);
+
     /* ------------------ core app ------------------ */
     return {
         events,
@@ -132,11 +137,12 @@ export async function createCoreApp(
         deps,
         dashboard,
         config,
+        sprite,
         async dispose() {
             // 停止定时器
             latestCache.stopPruneTimer();
             // 强制落盘（把 debounce 没来得及写的写进去）
             await latestCache.flush();
         }
-    };
+    }
 }

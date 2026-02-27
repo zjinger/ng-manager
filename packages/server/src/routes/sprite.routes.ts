@@ -8,6 +8,9 @@ import {
     generateSvgGroup,
     type GenerateGroupResult,
 } from "@yinuo-ngm/sprite";
+
+import { AppError, type ProjectAssets, type SpriteConfig } from "@yinuo-ngm/core";
+
 import { FastifyInstance } from "fastify";
 
 type GenerateSpriteBody = {
@@ -28,11 +31,62 @@ type GenerateSpriteBody = {
     persistLess?: boolean;
     // svg：自定义 url 规则
 };
+// function exists(p: string) {
+//     try { return fs.existsSync(p); } catch { return false; }
+// }
 
+// function findGitRoot(start: string): string {
+//     let cur = path.resolve(start);
+//     while (true) {
+//         const gitDir = path.join(cur, ".git");
+//         if (exists(gitDir)) {
+//             return cur;
+//         }
+//         const parent = path.dirname(cur);
+//         if (parent === cur) break;
+//         cur = parent;
+//     }
+//     return path.resolve(start);
+// }
 
+// export function computeSpriteDefaults(projectRoot: string,) {
+//     const root = path.resolve(projectRoot);
+//     const repoRoot = findGitRoot(root);
+//     const parent = path.dirname(repoRoot);
+//     let localDir: string;
+//     // 随机数
+//     const rand = Math.random().toString(36).substring(2, 8);
+//     // 防止极端情况 parent === repoRoot（例如在盘符根）
+//     if (parent === repoRoot) {
+//         localDir = path.join(repoRoot, rand);
+//     } else {
+//         localDir = path.join(parent, rand);
+//     }
+//     const spriteExportDir = path.join(projectRoot, "assets", "icons")
+//     const lessExportDir = path.join(projectRoot, "src", "styles", "icons")
+//     return {
+//         localDir,
+//         spriteExportDir,
+//         lessExportDir,
+//     }
+// }
 
 function ensureDir(dir: string) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+export function computeSpriteDefaults(projectId: string, projectRoot: string) {
+    const localDir = path.join(env.dataDir, "icons", projectId, "svn");
+    const spriteCacheDir = path.join(env.dataDir, "sprites", projectId);
+
+    ensureDir(localDir);
+    ensureDir(spriteCacheDir);
+
+    return {
+        localDir,
+        spriteExportDir: path.join(projectRoot, "assets", "icons"),
+        lessExportDir: path.join(projectRoot, "src", "styles", "icons"),
+    };
 }
 
 /**
@@ -40,6 +94,54 @@ function ensureDir(dir: string) {
  * prefix: /api/sprite
  */
 export async function spriteRoutes(fastify: FastifyInstance) {
+    /**
+    * GET config 
+    */
+    fastify.get("/config/:projectId", async (req) => {
+        const { projectId } = req.params as { projectId: string };
+        const p = await fastify.core.project.get(projectId);
+        const cfg = await fastify.core.sprite.getConfig(projectId);
+        // 如果配置里缺少导出目录，计算默认值返回（但不更新配置文件）
+        if (cfg && (!cfg.spriteExportDir || !cfg.lessExportDir || !cfg.localDir)) {
+            const { localDir, spriteExportDir, lessExportDir } = computeSpriteDefaults(p.id, p.root);
+            cfg.spriteExportDir = cfg.spriteExportDir || spriteExportDir;
+            cfg.lessExportDir = cfg.lessExportDir || lessExportDir;
+            cfg.localDir = cfg.localDir || localDir;
+        }
+        return { cfg, projectId };
+    });
+
+    /**
+     * POST config
+     * 约定：如果已存在配置，则覆盖更新（不区分 create/update）
+     */
+    fastify.post("/config/:projectId", async (req) => {
+        const { projectId } = req.params as { projectId: string };
+        const body = req.body as { config: Omit<SpriteConfig, "updatedAt" | "projectId">, assets: ProjectAssets };
+        if (!body || !body.config || !body.assets) {
+            throw new AppError('BAD_REQUEST', 'Missing config or assets in request body');
+        }
+        const nextCfg = body.config;
+        const nextAssets = body.assets;
+        if (!nextAssets.iconsSvn) {
+            throw new AppError('BAD_REQUEST', 'iconsSvn asset is required');
+        }
+        if (nextCfg.localDir) {
+            nextAssets.iconsSvn.localDir = path.join(nextCfg.localDir, nextAssets.iconsSvn.label || 'icons');
+            if (nextAssets.cutImageSvn) {
+                nextAssets.cutImageSvn.localDir = path.join(nextCfg.localDir, nextAssets.cutImageSvn.label || 'images');
+            }
+        }
+        const p = await fastify.core.project.updateAssets(projectId, nextAssets);
+
+        // 先创建/更新配置，再关联 sourceId（因为 sourceId 可能是新创建的）
+        if (p.assets?.iconsSvn) {
+            nextCfg.sourceId = p.assets.iconsSvn.id;
+        }
+        const cfg = await fastify.core.sprite.createConfig(projectId, nextCfg);
+        return { cfg, projectId };
+    });
+
     /**
      * 约定：
      * icons:  {env.dataDir}/icons/{projectId}/icons/{group}/...

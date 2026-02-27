@@ -14,10 +14,13 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
   template: `
     <nz-card nzTitle="摘要" nzSize="small">
     <div class="item"><span class="k">项目名称</span><span class="v">{{draft.name || '-'}}</span></div>
-    <div class="item"><span class="k">雪碧图</span><span class="v mono">{{draft.iconSvnPath || '-'}}</span></div>
-    <div class="item"><span class="k">其他图片</span><span class="v">{{draft.otherImagesSvnPath || '-'}}</span></div>
+    <div class="item"><span class="k">原尺寸图标</span><span class="v mono" [nz-tooltip]="draft.iconSvnPath">{{draft.iconSvnPath || '-'}}</span></div>
+    <div class="item"><span class="k">其他切图</span><span class="v" [nz-tooltip]="draft.otherImagesSvnPath">{{draft.otherImagesSvnPath || '-'}}</span></div>
     <div class="sep"></div>
-
+    <div class="item"><span class="k">本地目录</span><span class="v" [nz-tooltip]="draft.localDir">{{draft.localDir ?? '-'}}</span></div>
+    <div class="item"><span class="k">雪碧图导出</span><span class="v" [nz-tooltip]="draft.spriteExportDir">{{draft.spriteExportDir ?? '-'}}</span></div>
+    <div class="item"><span class="k">Less 导出目录</span><span class="v" [nz-tooltip]="draft.lessExportDir">{{draft.lessExportDir ?? '-'}}</span></div>
+    <div class="sep"></div>
     <div class="item"><span class="k">CSS前缀</span><span class="v">{{draft.cssPrefix ?? '-'}}</span></div>
     <div class="item"><span class="k">雪碧图 URL</span><span class="v">{{draft.spriteUrl ?? '-'}}</span></div>
     <div class="item"><span class="k">复制模板</span><span class="v">{{draft.template ?? '-'}}</span></div> 

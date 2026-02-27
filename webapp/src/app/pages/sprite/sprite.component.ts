@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PageLayoutComponent } from '@app/shared';
+import { SpriteConfig } from '@models/sprite.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -13,8 +15,8 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { SpriteStateService } from './services/sprite-state.service';
 import { SpriteConfModalComponent } from './sprite-conf-modal.component';
-import { NzEmptyModule } from 'ng-zorro-antd/empty';
 
 @Component({
   selector: 'app-sprite',
@@ -42,11 +44,13 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
         </button>
       </ng-container>
       <div class="page">
-        <div class="content empty">
-          <nz-empty  
+        <div class="content" [class.empty]="isEmpty()">
+          @if(isEmpty()){
+            <nz-empty  
             [nzNotFoundContent]="contentTpl"
             [nzNotFoundFooter]="footerTpl">
           </nz-empty>
+        }
         </div>
       </div>
     </app-page-layout>
@@ -81,9 +85,29 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
     `
   ],
 })
-export class SpriteComponent {
+export class SpriteComponent implements OnInit {
   loading = signal(false);
-  constructor(private modal: NzModalService) { }
+  cfg = signal<SpriteConfig | null>(null);
+  private state = inject(SpriteStateService);
+  private modal = inject(NzModalService);
+
+  ngOnInit(): void {
+    this.loadConfig();
+  }
+
+  isEmpty = computed(() => {
+    const cfg = this.cfg();
+    const p = this.state.project();
+    return (cfg && p?.assets?.iconsSvn) ? false : true;
+  });
+
+  private async loadConfig() {
+    this.loading.set(true);
+    const cfg = await this.state.loadConfig();
+    this.cfg.set(cfg);
+    this.loading.set(false);
+  }
+
   openSettingModal() {
     const modal = this.modal.create({
       nzTitle: '雪碧图配置',
@@ -92,6 +116,9 @@ export class SpriteComponent {
       nzMaskClosable: false,
       nzClosable: false,
       nzContent: SpriteConfModalComponent,
+      nzData: {
+        cfg: this.cfg(),
+      },
       nzWidth: '1020px',
       nzCentered: true,
     })
@@ -100,6 +127,7 @@ export class SpriteComponent {
     modal.afterClose.subscribe((data) => {
       if (data?.ok) {
         // 创建成功
+        this.loadConfig();
       }
     })
   }

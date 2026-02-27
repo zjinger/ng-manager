@@ -2,6 +2,7 @@ import { AppError } from "@yinuo-ngm/core";
 import { type FastifyInstance } from "fastify";
 import * as path from "path";
 import { openFolder } from "../common/editor";
+import { ProjectAssets } from "@yinuo-ngm/core";
 
 /**
  * Project routes
@@ -131,31 +132,6 @@ export default async function projectRoutes(fastify: FastifyInstance) {
      * 创建新项目（暂不接 scaffold） 
      */
     fastify.post("/create", async (req) => {
-        // const body = req.body as {
-        //     name: string;
-        //     root: string;
-        //     scripts?: Record<string, string>;
-        //     syncTasks?: boolean;
-        // };
-
-        // const chk = await fastify.core.project.checkRoot(body.root);
-        // if (!chk.ok) return chk;
-
-        // const project = await fastify.core.project.create({
-        //     name: body.name,
-        //     root: chk.root,
-        //     scripts: body.scripts,
-        // });
-
-        // let syncedSpecs: any[] | undefined;
-        // if (body.syncTasks === true) {
-        //     syncedSpecs = await fastify.core.task.syncSpecsFromProjectScripts(
-        //         project.id,
-        //         project.root,
-        //         project.scripts ?? {}
-        //     );
-        // }
-        // return { id: project.id, syncedSpecs };
         const body = req.body as {
             name: string;
             root: string;
@@ -215,7 +191,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     })
     fastify.post("/edit/:id", async (req) => {
         const { id } = req.params as { id: string };
-        const body = req.body as { name: string; description?: string; repoPageUrl?: string; iconsRepoUrl?: string; otherImageUrl?: string };
+        const body = req.body as { name: string; description?: string; repoPageUrl?: string; };
         if (typeof body?.name !== "string" || body.name.trim() === "") {
             throw new AppError("INVALID_NAME", "name must be a non-empty string");
         }
@@ -223,12 +199,20 @@ export default async function projectRoutes(fastify: FastifyInstance) {
             name: body.name.trim(),
             description: body.description?.trim(),
             repoPageUrl: body.repoPageUrl?.trim(),
-            iconsRepoUrl: body.iconsRepoUrl?.trim(),
-            otherImageUrl: body.otherImageUrl?.trim(),
         });
         return updated;
     })
 
+    fastify.post("/updateAssets/:id", async (req) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as { assets: ProjectAssets };
+        const assets = body?.assets;
+        if (!assets || !assets.iconsSvn) {
+            throw new AppError("BAD_REQUEST", "参数错误，assets.iconsSvn 是必需的");
+        }
+        const updated = await fastify.core.project.updateAssets(id, assets);
+        return updated;
+    });
 
     /**
      * 在编辑器打开项目

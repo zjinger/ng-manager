@@ -5,6 +5,7 @@ import { DepsService } from "../domain/deps";
 import { FsService } from "../domain/fs";
 import { SystemLogService } from "../domain/logger";
 import { ProjectBootstrapService, ProjectService } from "../domain/project";
+import { SpriteService } from "../domain/sprite";
 import { TaskService } from "../domain/task";
 import type { IEventBus } from "../infra/event/event-bus";
 import type { CoreEventMap } from "../infra/event/events";
@@ -44,6 +45,9 @@ export interface CoreApp {
 
     /** 仪表盘管理 */
     dashboard: DashboardService;
+
+    /** 雪碧图管理 */
+    sprite: SpriteService;
 
     /** 关闭应用/服务前调用，做一些清理工作 */
     dispose(): Promise<void>;

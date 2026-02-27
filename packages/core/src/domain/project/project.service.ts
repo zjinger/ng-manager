@@ -1,5 +1,5 @@
 import { ProjectMeta } from "./project.meta";
-import { CheckRootResult, CreateProjectInput, ImportCheckResult, Project } from "./project.types";
+import { CheckRootResult, CreateProjectInput, ImportCheckResult, Project, ProjectAssets } from "./project.types";
 
 export interface ProjectService {
     list(): Promise<Project[]>;
@@ -25,5 +25,10 @@ export interface ProjectService {
 
     setLastOpened(id: string, timestamp: number): Promise<Project>;
     rename(id: string, name: string): Promise<Project>;
-    edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; iconsRepoUrl?: string; otherImageUrl?: string }): Promise<Project>;
+    edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; }): Promise<Project>;
+    // 更新项目的 assets 信息
+    updateAssets(id: string, assets: ProjectAssets): Promise<Project>;
+
+    getAssets(id: string): Promise<ProjectAssets | null>;
+
 }

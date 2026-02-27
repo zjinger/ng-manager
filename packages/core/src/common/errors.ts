@@ -29,6 +29,13 @@ export type ErrorCode =
     | "PROJECT_VITE_CONFIG_INVALID"
     | "PROJECT_VUE_CONFIG_NOT_FOUND"
 
+    // Project Assets
+    | "ASSET_KIND_NOT_SUPPORTED"
+    | "ASSET_URL_REQUIRED"
+    | "ASSET_LABEL_REQUIRED"
+    | "ASSET_URL_INVALID"
+    | "ASSET_MODE_INVALID"
+
     // Config
     | "CONFIG_BACKUP_NOT_FOUND"
     | "CONFIG_READ_FAILED"
@@ -82,7 +89,7 @@ export type ErrorCode =
     | "DASHBOARD_CONFLICT"
     | "WIDGET_NOT_FOUND"
     | "WIDGET_LOCKED"
-    
+
     // Port Killer
     | 'KILL_PORT_FAILED'
     | 'INVALID_PORT'
@@ -104,7 +111,6 @@ export class AppError extends Error {
         public meta?: Record<string, any>
     ) {
         super(message);
-        // fix:现在的 AppError 没有设置 this.name、也没修正原型链（在某些 TS 编译目标下可能怪异）
         this.name = "AppError";
         Object.setPrototypeOf(this, new.target.prototype);
     }

@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@core/api';
-import { CheckRootResult, DetectResult, ImportCheckResult, Project } from '@models/project.model';
+import { CheckRootResult, DetectResult, ImportCheckResult, Project, ProjectAssets } from '@models/project.model';
 import { lastValueFrom, Observable } from 'rxjs';
 import { FsExplorerApiService } from '../components/fs-explorer';
 import { CreateProjectDraft } from '../models/project-draft';
@@ -109,8 +109,12 @@ export class ProjectApiService {
     return this.api.post<{ ok: boolean }>(`/api/projects/openInEditor/${id}`, { editor });
   }
 
-  edit(projectId: string, data: { name: string; description?: string; repoPageUrl?: string; iconsRepoUrl?: string; otherImageUrl?: string }): Observable<Project> {
+  edit(projectId: string, data: { name: string; description?: string; repoPageUrl?: string; }): Observable<Project> {
     return this.api.post<Project>(`/api/projects/edit/${projectId}`, data);
+  }
+
+  updateAssets(projectId: string, assets: ProjectAssets): Observable<Project> {
+    return this.api.post<Project>(`/api/projects/updateAssets/${projectId}`, { assets });
   }
 
 }

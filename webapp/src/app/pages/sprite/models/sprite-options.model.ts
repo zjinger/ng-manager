@@ -1,3 +1,5 @@
+import { SpritesmithOptionsAlgorithm } from "@models/sprite.model";
+
 export type GenerateSpriteOptions = {
     group: string;                 // "10-10"
     // 如果不传 prefix，默认 "sl"
@@ -11,7 +13,7 @@ export type GenerateSpriteOptions = {
      * left-right: 从左到右排列图标，适用于图标尺寸相似的情况。
      * diagonal: 对角线排列图标，适用于图标尺寸差异较大的情况，但可能会浪费一些空间。
      */
-    algorithm?: "binary-tree" | "top-down" | "left-right" | "diagonal";
+    algorithm?: SpritesmithOptionsAlgorithm;
     // 仅 png：是否写 group.less 到磁盘（默认 true）
     persistLess?: boolean;
     // svg：自定义 url 规则

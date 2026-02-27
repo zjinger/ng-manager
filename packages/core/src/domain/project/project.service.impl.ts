@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { AppError } from "../../common/errors";
 import { uid } from "../../common/id";
 import type { ProjectRepo } from "./project.repo";
-import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, CheckRootResult } from "./project.types";
+import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, CheckRootResult, ProjectAssets, ProjectAssetSourceSvn } from "./project.types";
 import { scanProject } from "./project.scanner";
 import { ProjectMeta } from "./project.meta";
 import { ProjectService } from "./project.service";
@@ -203,13 +203,63 @@ export class ProjectServiceImpl implements ProjectService {
         return this.setFavorite(id, next);
     }
 
-    async edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; iconsRepoUrl?: string; otherImageUrl?: string }): Promise<Project> {
+    async edit(id: string, data: { name: string; description?: string; repoPageUrl?: string; }): Promise<Project> {
         return this.update(id, {
             name: data.name.trim(),
             description: data.description?.trim(),
             repoPageUrl: data.repoPageUrl?.trim(),
-            iconsRepoUrl: data.iconsRepoUrl?.trim(),
-            otherImageUrl: data.otherImageUrl?.trim(),
         } as any);
+    }
+
+    async updateAssets(id: string, assets: ProjectAssets): Promise<Project> {
+        const { iconsSvn, cutImageSvn } = assets;
+        // 仅支持 svn（MVP）
+        const normalizedIconsSources = this.normalizeAssetsSource(iconsSvn);
+        const normalizedCutImageSources = cutImageSvn ? this.normalizeAssetsSource(cutImageSvn) : undefined;
+
+        return await this.update(id, {
+            assets: { iconsSvn: normalizedIconsSources, cutImageSvn: normalizedCutImageSources }
+        });
+    }
+
+    async getAssets(id: string): Promise<ProjectAssets | null> {
+        const p = await this.get(id);
+        return p.assets || null;
+    }
+
+    private normalizeAssetsSource(source: ProjectAssetSourceSvn): ProjectAssetSourceSvn {
+        const url = String(source.url || "").trim();
+        const kind = String(source.kind || "svn").trim();
+        const mode = (String(source.mode || "manual").trim() as any) || "manual";
+        if (!["manual", "export", "checkout"].includes(mode)) {
+            throw new AppError("ASSET_MODE_INVALID", `source.mode invalid: ${mode}`);
+        }
+        if (kind !== "svn") {
+            throw new AppError("ASSET_KIND_NOT_SUPPORTED", `source.kind not supported: ${kind}`);
+        }
+        if (!url) {
+            throw new AppError("ASSET_URL_REQUIRED", "source.url is required");
+        }
+        if (!url.startsWith("svn://")) {
+            throw new AppError("ASSET_URL_INVALID", `source.url must start with svn://: ${url}`);
+        }
+        const label = String(source.label).trim();
+        if (!label) {
+            throw new AppError("ASSET_LABEL_REQUIRED", "source.label is required");
+        }
+
+        const sourceId = String(source.id || "").trim() || uid("svn");
+
+        // localDir 在 manual 模式下通常必填，但为了允许“先填 url，后填本地目录”，这里先不强制
+        const localDir = source.localDir ? String(source.localDir).trim() : undefined;
+
+        return {
+            id: sourceId,
+            kind: "svn" as const,
+            label,
+            url,
+            localDir,
+            mode,
+        };
     }
 }

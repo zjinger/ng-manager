@@ -12,6 +12,10 @@ export { Events } from './infra/event'
 export type { TaskRuntime } from "./domain/task/task.types";
 export type { DashboardDocV1 } from './domain/dashboard'
 
+export type { SpriteConfig } from "./domain/sprite";
+
+export type { ProjectAssets } from "./domain/project";
+
 export type {
     WsTopic,
     WsState,

@@ -1,16 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ProjectAssets, ProjectAssetSourceSvn } from '@models/project.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzModalModule, NzModalRef, NzModalService } from 'ng-zorro-antd/modal';
+import { NZ_MODAL_DATA, NzModalModule, NzModalRef, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { StepAdvanceComponent, StepBasicComponent, StepSummaryAsideComponent } from './components';
 import { SpriteDraft } from './models/sprite-draft.model';
+import { SpriteStateService } from './services/sprite-state.service';
+import { SpriteConfig } from '@models/sprite.model';
+import { UiNotifierService } from '@app/core';
 
 @Component({
   selector: 'app-sprite-conf-modal',
@@ -114,16 +118,38 @@ import { SpriteDraft } from './models/sprite-draft.model';
 export class SpriteConfModalComponent {
   step = signal(0);
   creating = signal(false);
-  draft = signal<SpriteDraft>({ name: '', iconSvnPath: '', otherImagesSvnPath: '', cssPrefix: 'sl', spriteUrl: '/assets/icons/{group}.png', template: '<i class="{base} {class}" ></i>' });
-
+  draft = signal<SpriteDraft>({ name: '', iconSvnPath: '', otherImagesSvnPath: '', localDir: '' });
+  readonly nzModalData = inject<{ cfg: SpriteConfig }>(NZ_MODAL_DATA);
   readonly modalRef = inject(NzModalRef);
   private modal = inject(NzModalService);
-
+  private state = inject(SpriteStateService);
+  private notify = inject(UiNotifierService);
+  constructor() {
+    const p = this.state.project();
+    if (p) {
+      const iconsRepoUrl = p.assets?.iconsSvn?.url || '';
+      const sourceId = p.assets?.iconsSvn?.id || '';
+      const otherImageUrl = p.assets?.cutImageSvn?.url || '';
+      const cfg = this.nzModalData.cfg;
+      this.draft.update((d) => {
+        d.name = p.name;
+        d.sourceId = sourceId;
+        d.iconSvnPath = iconsRepoUrl;
+        d.otherImagesSvnPath = otherImageUrl;
+        d.localDir = cfg?.localDir || '';
+        d.cssPrefix = cfg?.prefix || 'sl';
+        d.spriteUrl = cfg?.spriteUrl || '/assets/icons/{group}.png';
+        d.template = cfg?.template || '<i class="{base} {class}" ></i>';
+        d.spriteExportDir = cfg?.spriteExportDir || '';
+        d.lessExportDir = cfg?.lessExportDir || '';
+        return d;
+      });
+    }
+  }
   canNext() {
     const s = this.step();
     const d = this.draft();
     if (s === 0) {
-      // if (!d.name?.trim()) return false;
       if (!d.iconSvnPath?.trim()) return false;
       return true;
     }
@@ -142,13 +168,34 @@ export class SpriteConfModalComponent {
     return this.step() === 1;
   }
 
-  create() {
+  async create() {
     if (this.creating()) return;
     this.creating.set(true);
-    setTimeout(() => {
-      this.creating.set(false);
-      this.modalRef.close(this.draft()); 
-    }, 2000);
+    const d = this.draft();
+    const assets: ProjectAssets = {
+      iconsSvn: { kind: 'svn', url: d.iconSvnPath, label: 'icons', mode: 'manual', localDir: d.localDir, id: d.sourceId },
+    };
+    if (d.otherImagesSvnPath) {
+      const cutImageId = this.state.project()?.assets?.cutImageSvn?.id || '';
+      assets.cutImageSvn = { kind: 'svn', url: d.otherImagesSvnPath, label: 'images', mode: 'manual', localDir: d.localDir, id: cutImageId };
+    }
+    const nextCfg: Omit<SpriteConfig, "projectId" | "updatedAt"> = {
+      enabled: true,
+      persistLess: true,
+      localDir: d.localDir,
+      template: d.template || '<i class="{base} {class}" ></i>',
+      prefix: d.cssPrefix || 'sl',
+      sourceId: d.sourceId || '',
+      spriteUrl: d.spriteUrl || '/assets/icons/{group}.png',
+      algorithm: 'binary-tree',
+      spriteExportDir: d.spriteExportDir || '',
+      lessExportDir: d.lessExportDir || '',
+    }
+
+    const cfg = await this.state.createConfig(assets, nextCfg);
+    this.creating.set(false);
+    this.notify.success("配置已保存");
+    this.modalRef.close({ ok: true, cfg });
   }
 
   cancel() {
