@@ -125,6 +125,12 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     SVN_SYNC_ALREADY_RUNNING: 409,
     SVN_SYNC_FAILED: 500,
     SVN_SOURCE_ID_REQUIRED: 400,
+
+    /* ---------------- Sprite ---------------- */
+    SPRITE_CONFIG_NOT_FOUND: 404,
+    SPRITE_ICONS_ROOT_NOT_FOUND: 404,
+    SPRITE_GROUP_NOT_FOUND: 404,
+
 };
 
 export function mapStatus(code: ErrorCode): number {

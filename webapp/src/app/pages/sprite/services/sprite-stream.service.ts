@@ -12,9 +12,8 @@ import type {
   SvnSyncStartedPayload,
   SvnTaskStatus,
 } from "@core/ws/ws.svn.types";
-import { BehaviorSubject, firstValueFrom, Observable, Subject, Subscription } from "rxjs";
+import { BehaviorSubject, Observable, Subject, Subscription } from "rxjs";
 import { distinctUntilChanged } from "rxjs/operators";
-import { SpriteApiService } from "./sprite-api.service";
 
 /**
  * UI 侧运行态（基于 SvnSyncRuntimePayload 扩展一些便于展示的字段）
@@ -58,7 +57,6 @@ export class SpriteStreamService {
   private outputByKey = new Map<string, Subject<SvnOutputChunk>>();
 
   constructor(
-    private api: SpriteApiService,
     private ws: WsClientService
   ) {
     this.ws.messages().subscribe((msg) => this.onMessage(msg));

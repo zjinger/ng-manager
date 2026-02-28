@@ -125,3 +125,61 @@ export interface GenerateGroupOptions {
     spritesmith?: SpritesmithOptions;
     svg?: Omit<GenerateSvgGroupOptions, "group" | "groupDir">;
 }
+
+
+/** 单个 group 的执行结果 */
+export type GenerateGroupBatchItem =
+    | {
+        ok: true;
+        group: string;
+        type: Exclude<IconGroupType, "mixed" | "empty">; // png | svg
+        result: GenerateGroupResult;
+    }
+    | {
+        ok: false;
+        group: string;
+        error: string;
+    };
+
+export type GenerateGroupBatchOptions = {
+    /** 源目录：包含多个 group 子目录 */
+    iconsRoot: string;
+
+    /** 输出目录：png 的 sprite/meta/less 等写到这里（可作为缓存目录） */
+    outDir: string;
+
+    /** spriteUrl 模板：用于 less 里的 background-image，支持 {group} 替换 */
+    spriteUrlTemplate: string;
+
+    /** 指定生成哪些 group；不传则扫描 iconsRoot 下的子目录 */
+    groups?: string[];
+
+    /** css prefix，默认 "sl" */
+    prefix?: string;
+
+    /** spritesmith algorithm，默认 "binary-tree" */
+    algorithm?: SpritesmithOptionsAlgorithm;
+
+    /** cache 行为：透传到 generatePngGroup */
+    cache?: CacheOptions;
+
+    /** 并发数，默认 1（png 生成吃 CPU） */
+    concurrency?: number;
+
+    /** 是否遇到错误继续处理后续 group，默认 true */
+    continueOnError?: boolean;
+
+    /** svg urlResolver：生成 svg result 时每个 icon 的 url 映射 */
+    svgUrlResolver?: GenerateSvgGroupOptions["urlResolver"];
+
+    /** 自定义 group 目录过滤：默认只取目录 */
+    groupFilter?: (groupName: string) => boolean;
+};
+
+export type GenerateGroupBatchResult = {
+    ok: boolean;
+    total: number;
+    success: number;
+    failed: number;
+    items: GenerateGroupBatchItem[];
+};

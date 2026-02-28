@@ -104,6 +104,11 @@ export type ErrorCode =
     | "SVN_SYNC_FAILED"
     | "SVN_SOURCE_ID_REQUIRED"
 
+    // Sprite Generation
+    | "SPRITE_CONFIG_NOT_FOUND"
+    | "SPRITE_GROUP_NOT_FOUND"
+    | "SPRITE_ICONS_ROOT_NOT_FOUND"
+
     // Fallback
     | "UNKNOWN_ERROR"
     // Generic

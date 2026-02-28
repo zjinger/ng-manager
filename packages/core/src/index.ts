@@ -12,11 +12,11 @@ export { Events } from './infra/event'
 export type { TaskRuntime } from "./domain/task/task.types";
 export type { DashboardDocV1 } from './domain/dashboard'
 
-export type { SpriteConfig } from "./domain/sprite";
+export type { SpriteConfig, GenerateSpriteOptions } from "./domain/sprite";
 
 export type { SvnRuntime } from "./domain/svn";
 
-export type { ProjectAssets, ProjectAssetSourceSvn } from "./domain/project";
+export type { ProjectAssets, ProjectAssetSourceSvn, Project } from "./domain/project";
 
 export type {
     WsTopic,

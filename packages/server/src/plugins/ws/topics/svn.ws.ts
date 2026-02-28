@@ -20,9 +20,10 @@ export function createSvnSyncTopicHandler(
                 ctx.send({ op: "error", code: "PROJECT_ID_REQUIRED", message: "projectId is required", ts: Date.now() });
                 return;
             }
+            const t = Number(msg?.tail ?? 0) || 0;
             ctx.addSub("svn", keyOf(projectId));
             if (deps.getSvnRuntimeByProjectId) {
-                const runtimes = await deps.getSvnRuntimeByProjectId(projectId, 1000);
+                const runtimes = await deps.getSvnRuntimeByProjectId(projectId, t);
                 if (runtimes?.length) {
                     runtimes.forEach(runtime => {
                         const m: WsServerMsg = {

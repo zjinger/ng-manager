@@ -42,6 +42,7 @@ export async function createCoreApp(
     const taskStreamLogStore = new RingLogStore(5000);
     // 数据目录
     const dataDir = opts.dataDir // 非 Electron 场景默认落这里
+    const cacheDir = path.join(dataDir, "cache");
     /* ------------------ process ------------------ */
     // 进程驱动（Node spawn）
     const processDriver = new PtyProcessDriver();
@@ -82,7 +83,7 @@ export async function createCoreApp(
 
     /* ------------------ deps ------------------ */
     // latest cache snapshot 用 KV repo 存在一个文件里
-    const cacheDir = path.join(dataDir, "cache");
+
     const latestRepo = new JsonFileKvRepo<LatestCacheSnapshot>(
         path.join(cacheDir, "npm-latest.kv.json")
     );
@@ -126,12 +127,12 @@ export async function createCoreApp(
 
     /* ------------------ sprite ------------------ */
     const spriteRepo = new JsonSpriteRepo(dataDir);
-    const sprite = new SpriteServiceImpl(spriteRepo);
+    const sprite = new SpriteServiceImpl(spriteRepo, project, sysLog, cacheDir);
 
     /* ------------------ svn ------------------ */
     const svnRepo = new JsonSvnRuntimeRepo(path.join(dataDir, "runtime", "svn.runtime.json"));
     const svnTaskManager = new SvnTaskManager();
-    const svnSync = new SvnSyncServiceImpl(svnRepo, events, sysLog, svnTaskManager,project);
+    const svnSync = new SvnSyncServiceImpl(svnRepo, events, sysLog, svnTaskManager, project);
 
     /* ------------------ core app ------------------ */
     return {

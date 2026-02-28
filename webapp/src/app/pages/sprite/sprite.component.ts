@@ -133,16 +133,26 @@ export class SpriteComponent implements OnInit, OnDestroy {
     if (this.isEmpty()) return;
     const projectId = this.state.project()?.id;
     if (!projectId) return;
+    const runtimes = await this.state.getSvnRuntimes();
+    if (runtimes?.length) {
+      runtimes.forEach(runtime => {
+        const lastSyncAt = runtime.lastSyncAt ? new Date(runtime.lastSyncAt).toDateString() : 'N/A';
+        const lastStatus = runtime.lastStderr ? '失败' : '成功';
+        const desiredUrl = runtime.desiredUrl ? `${runtime.desiredUrl}` : 'No desired URL';
+        this.term?.writeln(`[更新时间]: ${lastSyncAt}`);
+        this.term?.writeln(`[更新状态]: ${lastStatus}`);
+        this.term?.writeln(`[SVN 路径]: ${desiredUrl}`);
+        this.term?.writeln(`-----------------------------`);
+      })
+    }
 
     this.sub.add(this.svnStream.watchProject(projectId, 1000));
-    // this.sub.add(
-    //   this.svnStream.runtimes$(projectId).subscribe(list => {
-    //     console.log('SVN Runtimes updated:', list);
-    //     list.forEach(runtime => {
-    //       console.log(`Runtime ${runtime.sourceId} - Status: ${runtime.status}, Progress: ${runtime.percent}%`);
-    //     })
-    //   })
-    // );
+    this.sub.add(
+      this.svnStream.runtimes$(projectId).subscribe(list => {
+        console.log('SVN Runtimes updated:', list);
+
+      })
+    );
     this.sub.add(this.svnStream.output$(projectId).subscribe(chunk => {
       if (this.term) {
         this.term.write(chunk.text);
@@ -150,6 +160,9 @@ export class SpriteComponent implements OnInit, OnDestroy {
     }));
   }
   ngOnDestroy(): void {
+    if (this.term) {
+      this.term.clear();
+    }
     this.sub.unsubscribe();
   }
   isEmpty = computed(() => {
@@ -171,7 +184,12 @@ export class SpriteComponent implements OnInit, OnDestroy {
 
   }
 
-  generate() { }
+  async generate() {
+    this.loading.set(true);
+    const results = await this.state.generate();
+    console.log('Sprite generation results:', results);
+    this.loading.set(false);
+  }
 
   async checkout() {
     this.loading.set(true);

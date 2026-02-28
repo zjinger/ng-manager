@@ -38,28 +38,31 @@ export class SpriteStateService {
   }
 
   async checkout(options: SvnCheckoutOptions = {}): Promise<SvnSyncResult[]> {
-    if (!this.project()) {
-      throw new Error("No project selected");
-    }
-    const projectId = this.project()!.id;
+    const projectId = this.ensureProjectId();
     return await firstValueFrom(this.api.checkout(projectId, options));
   }
 
   async streamCheckout(options: SvnCheckoutOptions = {}): Promise<void> {
-    if (!this.project()) {
-      throw new Error("No project selected");
-    }
-    const projectId = this.project()!.id;
+    const projectId = this.ensureProjectId();
     return await firstValueFrom(this.api.streamCheckout(projectId, options));
   }
 
   async getSvnRuntimes(): Promise<SvnRuntime[]> {
-    if (!this.project()) {
-      throw new Error("No project selected");
-    }
-    const projectId = this.project()!.id;
+    const projectId = this.ensureProjectId();
     return await firstValueFrom(this.api.getRuntimes(projectId));
   }
 
+  async generate() {
+    const projectId = this.ensureProjectId();
+    return await firstValueFrom(this.api.generate(projectId));
+  }
+
+  private ensureProjectId(): string {
+    const project = this.project();
+    if (!project) {
+      throw new Error("No project selected");
+    }
+    return project.id;
+  }
 
 }

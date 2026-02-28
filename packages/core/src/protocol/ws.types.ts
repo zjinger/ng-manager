@@ -36,5 +36,5 @@ export type WsClientMsg =
     | { op: "resize"; topic: "task"; taskId: string; cols: number; rows: number }
     | { op: "sub"; topic: "syslog"; tail?: number }
     | { op: "unsub"; topic: "syslog" }
-    | { op: "sub"; topic: "svn"; projectId: string; }
+    | { op: "sub"; topic: "svn"; projectId: string; tail?: number }
     | { op: "unsub"; topic: "svn"; projectId: string; };

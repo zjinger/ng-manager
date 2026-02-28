@@ -11,7 +11,7 @@ import { SvnRuntime, SvnSyncResult } from '@models/svn.model';
 export class SpriteApiService {
   private api = inject(ApiClient);
 
-  generate(projectId: string, options: GenerateSpriteOptions) {
+  generate(projectId: string, options: GenerateSpriteOptions = {}) {
     return this.api.post(`/api/sprite/generate/${projectId}`, options);
   }
 

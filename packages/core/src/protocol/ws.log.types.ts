@@ -5,6 +5,7 @@ export type SystemLogScope =
     | "project"
     | "git"
     | "svn"
+    | "sprite"
     | "fs"
     | "terminal"
     | "ai";
