@@ -1,9 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core/api';
-import { ProjectAssets } from '@models/project.model';
+import { Project, ProjectAssets } from '@models/project.model';
 import { SpriteConfig } from '@models/sprite.model';
 import { GenerateSpriteOptions, SvnCheckoutOptions } from '../models';
-import { SvnSyncResult } from '@models/svn.model';
+import { SvnRuntime, SvnSyncResult } from '@models/svn.model';
 
 @Injectable({
   providedIn: 'root',
@@ -20,11 +20,18 @@ export class SpriteApiService {
   }
 
   createConfig(projectId: string, assets: ProjectAssets, config: Omit<SpriteConfig, "projectId" | "updatedAt">) {
-    return this.api.post<{ cfg: SpriteConfig | null, projectId: string }>(`/api/sprite/config/${projectId}`, { config, assets });
+    return this.api.post<{ cfg: SpriteConfig | null, project: Project }>(`/api/sprite/config/${projectId}`, { config, assets });
   }
 
-  checkout(projectId: string, options: SvnCheckoutOptions) {
+  checkout(projectId: string, options: SvnCheckoutOptions = {}) {
     return this.api.post<SvnSyncResult[]>(`/api/svn/sync/${projectId}`, options);
   }
 
+  streamCheckout(projectId: string, options: SvnCheckoutOptions = {}) {
+    return this.api.post<void>(`/api/svn/sync/stream/${projectId}`, options);
+  }
+
+  getRuntimes(projectId: string) {
+    return this.api.get<SvnRuntime[]>(`/api/svn/runtime/${projectId}`);
+  }
 }

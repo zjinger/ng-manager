@@ -2,7 +2,6 @@ import { uid } from "../../common/id";
 import { Events, type IEventBus, type CoreEventMap } from "../../infra/event";
 import type { ILogStore, LogLine, LogTailFilter } from "../../infra/log";
 import type {
-    SystemLogAppendInput,
     SystemLogFilter,
     SystemLogQueryOptions,
     SystemLogService,
@@ -10,7 +9,7 @@ import type {
     SystemLogSubscriber,
     Unsubscribe,
 } from "./system-log.service";
-import type { SystemLogEntry, SystemLogSource } from "./system-log.types";
+import type { LogOutputPayload, SystemLogEntry, SystemLogSource } from "../../protocol";
 
 /**
  * SystemLogServiceImpl
@@ -24,36 +23,36 @@ export class SystemLogServiceImpl implements SystemLogService {
         private readonly defaultSource: SystemLogSource = "system"
     ) { }
 
-    append(input: SystemLogAppendInput): SystemLogEntry {
+    append(payload: LogOutputPayload): SystemLogEntry {
         const line: LogLine = {
             id: `log:${uid()}`,
             ts: Date.now(),
-            level: input.level,
-            source: input.source ?? this.defaultSource,
-            scope: input.scope,
-            refId: input.refId,
-            text: input.text,
-            data: input.data,
+            level: payload.level,
+            source: payload.source ?? this.defaultSource,
+            scope: payload.scope,
+            refId: payload.refId,
+            text: payload.text,
+            data: payload.data,
         };
         this.store.append(line);
         this.events.emit(Events.SYSLOG_APPENDED, { entry: line });
         return line as SystemLogEntry;
     }
 
-    debug(input: Omit<SystemLogAppendInput, "level">) {
-        return this.append({ ...input, level: "debug" });
+    debug(payload: Omit<LogOutputPayload, "level">) {
+        return this.append({ ...payload, level: "debug" });
     }
-    info(input: Omit<SystemLogAppendInput, "level">) {
-        return this.append({ ...input, level: "info" });
+    info(payload: Omit<LogOutputPayload, "level">) {
+        return this.append({ ...payload, level: "info" });
     }
-    warn(input: Omit<SystemLogAppendInput, "level">) {
-        return this.append({ ...input, level: "warn" });
+    warn(payload: Omit<LogOutputPayload, "level">) {
+        return this.append({ ...payload, level: "warn" });
     }
-    error(input: Omit<SystemLogAppendInput, "level">) {
-        return this.append({ ...input, level: "error" });
+    error(payload: Omit<LogOutputPayload, "level">) {
+        return this.append({ ...payload, level: "error" });
     }
-    success(input: Omit<SystemLogAppendInput, "level">) {
-        return this.append({ ...input, level: "success" });
+    success(payload: Omit<LogOutputPayload, "level">) {
+        return this.append({ ...payload, level: "success" });
     }
     tail(limit: number, filter?: SystemLogFilter): SystemLogEntry[] {
         const lines = this.store.tail(Math.max(0, limit | 0), this.toStoreFilter(filter));

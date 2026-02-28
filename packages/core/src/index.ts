@@ -14,6 +14,8 @@ export type { DashboardDocV1 } from './domain/dashboard'
 
 export type { SpriteConfig } from "./domain/sprite";
 
+export type { SvnRuntime } from "./domain/svn";
+
 export type { ProjectAssets, ProjectAssetSourceSvn } from "./domain/project";
 
 export type {
@@ -23,5 +25,6 @@ export type {
     WsServerMsg,
     WsClientMsg,
     TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg,
-    TaskStartedPayload, TaskStopRequestedPayload
+    TaskStartedPayload, TaskStopRequestedPayload,
+    SvnEventType, SvnTaskStatus, SvnSyncOutputPayload, SvnSyncDonePayload, SvnSyncProgressPayload, SvnSyncStartedPayload, SvnSyncFailedPayload, SvnEventPayloadMap, SvnEventMsg
 } from "./protocol"

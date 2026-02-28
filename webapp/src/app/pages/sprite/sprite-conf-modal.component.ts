@@ -199,16 +199,17 @@ export class SpriteConfModalComponent {
   }
 
   cancel() {
-    this.modal.confirm({
-      nzTitle: '取消',
-      nzContent: '暂未保存，确定要取消吗',
-      nzOkDanger: true,
-      nzOkText: '是',
-      nzCancelText: '否',
-      nzCentered: true,
-      nzOnOk: () => {
-        this.modalRef.close();
-      }
-    })
+    this.modalRef.close();
+    // this.modal.confirm({
+    //   nzTitle: '取消',
+    //   nzContent: '暂未保存，确定要取消吗',
+    //   nzOkDanger: true,
+    //   nzOkText: '是',
+    //   nzCancelText: '否',
+    //   nzCentered: true,
+    //   nzOnOk: () => {
+    //     this.modalRef.close();
+    //   }
+    // })
   }
 }

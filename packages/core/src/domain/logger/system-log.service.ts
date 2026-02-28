@@ -1,20 +1,6 @@
 // core/src/domain/log/system-log.service.ts
 
-import type { SystemLogEntry, SystemLogLevel, SystemLogScope, SystemLogSource } from "./system-log.types";
-
-export interface SystemLogAppendInput {
-    level: SystemLogLevel;
-    scope: SystemLogScope;
-
-    /** 默认 "system" */
-    source?: SystemLogSource;
-
-    refId?: string;
-    text: string;
-
-    /** 结构化字段（stream/taskId/projectId/sourceKey...） */
-    data?: Record<string, any>;
-}
+import type { SystemLogEntry, SystemLogLevel, SystemLogScope, SystemLogSource, LogOutputPayload } from "../../protocol";
 
 /**
  * 用于 tail/query 的过滤器
@@ -56,14 +42,14 @@ export interface Unsubscribe { (): void; }
  */
 export interface SystemLogService {
     /** 追加一条日志，返回最终 entry（包含 id/ts 等） */
-    append(input: SystemLogAppendInput): SystemLogEntry;
+    append(payload: LogOutputPayload): SystemLogEntry;
 
     /** 便捷方法 */
-    debug(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
-    info(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
-    warn(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
-    error(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
-    success(input: Omit<SystemLogAppendInput, "level">): SystemLogEntry;
+    debug(payload: Omit<LogOutputPayload, "level">): SystemLogEntry;
+    info(payload: Omit<LogOutputPayload, "level">): SystemLogEntry;
+    warn(payload: Omit<LogOutputPayload, "level">): SystemLogEntry;
+    error(payload: Omit<LogOutputPayload, "level">): SystemLogEntry;
+    success(payload: Omit<LogOutputPayload, "level">): SystemLogEntry;
 
     /**
      *  最近 N 条（最新在后）

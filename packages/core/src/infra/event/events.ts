@@ -1,4 +1,4 @@
-import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "../../protocol";
+import { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "../../protocol";
 import { LogLine } from "../log/log.types";
 
 export const Events = {
@@ -19,9 +19,16 @@ export const Events = {
     SYSLOG_APPENDED: "syslog.appended",
 
     // bootstrap
-    PROJECT_BOOTSTRAP_DONE: "PROJECT_BOOTSTRAP_DONE", // 创建成功
-    PROJECT_BOOTSTRAP_FAILED: "PROJECT_BOOTSTRAP_FAILED", // 创建失败
-    PROJECT_BOOTSTRAP_NEED_PICK_ROOT: "PROJECT_BOOTSTRAP_NEED_PICK_ROOT",  // 需要用户选择根目录
+    PROJECT_BOOTSTRAP_DONE: "project.bootstrap.done", // 创建成功
+    PROJECT_BOOTSTRAP_FAILED: "project.bootstrap.failed", // 创建失败
+    PROJECT_BOOTSTRAP_NEED_PICK_ROOT: "project.bootstrap.needPickRoot",  // 需要用户选择根目录
+
+    // svn
+    SVN_SYNC_STARTED: "svn.sync.started",
+    SVN_SYNC_OUTPUT: "svn.sync.output",
+    SVN_SYNC_FAILED: "svn.sync.failed",
+    SVN_SYNC_DONE: "svn.sync.done",
+    SVN_SYNC_PROGRESS: "svn.sync.progress",
 
 } as const;
 
@@ -46,4 +53,11 @@ export type CoreEventMap = {
     [Events.PROJECT_BOOTSTRAP_DONE]: TaskBootstrapDonePayload;// { taskId: string; runId: string; projectId: string; rootPath: string };
     [Events.PROJECT_BOOTSTRAP_FAILED]: TaskBootstrapFailedPayload;// { taskId: string; runId: string; rootPath: string; reason: string };
     [Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT]: TaskBootstrapNeedPickRootPayload;
+
+    // svn sync 相关事件
+    [Events.SVN_SYNC_STARTED]: SvnSyncStartedPayload;
+    [Events.SVN_SYNC_OUTPUT]: SvnSyncOutputPayload;
+    [Events.SVN_SYNC_FAILED]: SvnSyncFailedPayload;
+    [Events.SVN_SYNC_DONE]: SvnSyncDonePayload;
+    [Events.SVN_SYNC_PROGRESS]: SvnSyncProgressPayload;
 };

@@ -14,6 +14,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     PROJECT_NOT_FOUND: 404,
     PROJECT_ROOT_INVALID: 400,
     PROJECT_ALREADY_EXISTS: 409,
+    PROJECT_ID_REQUIRED: 400,
 
     /* ---------------- Project Import ---------------- */
     PROJECT_IMPORT_NOT_EXISTS: 404, // 路径不存在
@@ -22,7 +23,13 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     PROJECT_IMPORT_NOT_RECOGNIZED: 422, // 不像项目（语义错误）
     PROJECT_IMPORT_SCAN_FAILED: 500, // 扫描失败（IO/解析）
 
-
+    /* ---------------- Project Assets ---------------- */
+    ASSET_NOT_FOUND: 404,
+    ASSET_KIND_NOT_SUPPORTED: 400,
+    ASSET_URL_REQUIRED: 400,
+    ASSET_LABEL_REQUIRED: 400,
+    ASSET_URL_INVALID: 400,
+    ASSET_MODE_INVALID: 400,
 
     /* ---------------- Project Creation ---------------- */
     INVALID_NAME: 400, // 无效的项目名称
@@ -35,11 +42,13 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     BOOTSTRAP_INVALID_PICKED_ROOT: 400, // 选择的根目录无效
     BOOTSTRAP_NOT_WAITING_PICK: 400, // 引导未处于等待选择状态
 
+
     /* ---------------- Project Analysis ---------------- */
     PROJECT_ANGULAR_JSON_INVALID: 400, // angular.json 无效
     PROJECT_ANGULAR_JSON_NOT_FOUND: 404, // angular.json 未找到
     PROJECT_VITE_CONFIG_INVALID: 400, // vite 配置无效
     PROJECT_VUE_CONFIG_NOT_FOUND: 404, // vite 配置未找到
+
 
     /* ---------------- Config ---------------- */
     CONFIG_BACKUP_NOT_FOUND: 404, // 配置备份不存在
@@ -50,6 +59,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     CONFIG_SCHEMA_NOT_FOUND: 404, // 配置 schema 未找到
     CONFIG_DOMAIN_NOT_FOUND: 404, // 配置 domain 未找到
     CONFIG_DOC_NOT_FOUND: 404, // 配置 doc 未找到
+
 
     /* ---------------- Task / Process ---------------- */
     TASK_NOT_FOUND: 404,
@@ -86,6 +96,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     INVALID_TIMESTAMP: 400, // 时间戳无效
 
 
+
     /* ---------------- Deps ---------------- */
     DEP_INSTALL_FAILED: 500,
     DEP_UNINSTALL_FAILED: 500,
@@ -109,6 +120,11 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     /* ---------------- Generic ---------------- */
     BAD_REQUEST: 400,
     NOT_IMPLEMENTED: 501,
+
+    /* ---------------- SVN Sync ---------------- */
+    SVN_SYNC_ALREADY_RUNNING: 409,
+    SVN_SYNC_FAILED: 500,
+    SVN_SOURCE_ID_REQUIRED: 400,
 };
 
 export function mapStatus(code: ErrorCode): number {

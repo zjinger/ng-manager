@@ -21,7 +21,7 @@ import { ConfigServiceImpl } from "../domain/config";
 import { SystemLogServiceImpl } from "../domain/logger";
 import { JsonSpriteRepo } from "../infra/sprite";
 import { SpriteServiceImpl } from "../domain/sprite";
-import { SvnSyncServiceImpl } from "../domain/svn";
+import { SvnSyncServiceImpl, SvnTaskManager } from "../domain/svn";
 import { JsonSvnRuntimeRepo } from "../infra/svn";
 
 /**
@@ -130,7 +130,8 @@ export async function createCoreApp(
 
     /* ------------------ svn ------------------ */
     const svnRepo = new JsonSvnRuntimeRepo(path.join(dataDir, "runtime", "svn.runtime.json"));
-    const svnSync = new SvnSyncServiceImpl(svnRepo);
+    const svnTaskManager = new SvnTaskManager();
+    const svnSync = new SvnSyncServiceImpl(svnRepo, events, sysLog, svnTaskManager,project);
 
     /* ------------------ core app ------------------ */
     return {

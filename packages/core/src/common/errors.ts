@@ -4,7 +4,7 @@ export type ErrorCode =
     | "PROJECT_NOT_FOUND"
     | "PROJECT_ROOT_INVALID"
     | "PROJECT_ALREADY_EXISTS"
-
+    | "PROJECT_ID_REQUIRED"
     // Project Import
     | "PROJECT_IMPORT_NOT_EXISTS"
     | "PROJECT_IMPORT_NOT_DIR"
@@ -98,6 +98,11 @@ export type ErrorCode =
     // Dashboard RSS
     | "RSS_FETCH_FAILED"
     | "INVALID_RSS_URL"
+
+    // SVN Sync
+    | "SVN_SYNC_ALREADY_RUNNING"
+    | "SVN_SYNC_FAILED"
+    | "SVN_SOURCE_ID_REQUIRED"
 
     // Fallback
     | "UNKNOWN_ERROR"

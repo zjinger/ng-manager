@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PageLayoutComponent } from '@app/shared';
 import { SpriteConfig } from '@models/sprite.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -15,9 +16,11 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { Subscription } from 'rxjs';
 import { SpriteStateService } from './services/sprite-state.service';
+import { SpriteStreamService } from './services/sprite-stream.service';
 import { SpriteConfModalComponent } from './sprite-conf-modal.component';
-
+import { TerminalViewComponent } from '@app/shared';
 @Component({
   selector: 'app-sprite',
   imports: [
@@ -34,34 +37,42 @@ import { SpriteConfModalComponent } from './sprite-conf-modal.component';
     NzPopconfirmModule,
     NzPopoverModule,
     PageLayoutComponent,
-    NzEmptyModule
+    NzEmptyModule,
+    NzDrawerModule,
+    TerminalViewComponent
   ],
   template: `
-    <app-page-layout [title]="'雪碧图'" [loading]="loading()">
+    <app-page-layout [title]="'雪碧图'" [loading]="loading()" [isFullscreen]="true">
       <ng-container ngProjectAs="actions">
         @if(!isEmpty()){
           <button nz-button  nzType="primary" (click)="generate()" nz-tooltip nzTooltipTitle="生成雪碧图">
             <nz-icon nzType="play-circle" nzTheme="outline"></nz-icon>
             <span>生成雪碧图</span>
           </button>
-          <button nz-button  nzType="primary" (click)="checkout()" nz-tooltip nzTooltipTitle="从svn更新资源">
+          <button nz-button  nzType="primary" (click)="streamCheckout()" nz-tooltip nzTooltipTitle="从svn更新资源">
             <nz-icon nzType="sync" nzTheme="outline"></nz-icon>
             <span>更新资源</span>
           </button>
         }
-        <button nz-button  nzType="text" (click)="openSettingModal()" nz-tooltip nzTooltipTitle="">
+        <button nz-button nzType="text" (click)="isDrawerOpen = !isDrawerOpen" nz-tooltip nzTooltipTitle="查看日志">
+          <nz-icon nzType="desktop" nzTheme="outline"></nz-icon>
+        </button>
+        <button nz-button  nzType="text" (click)="openSettingModal()" nz-tooltip nzTooltipTitle="配置雪碧图">
           <nz-icon nzType="setting" nzTheme="outline"></nz-icon>
         </button>
       </ng-container>
       <div class="page">
         <div class="content" [class.empty]="isEmpty()">
-          @if(isEmpty()){
-            <nz-empty  
-            [nzNotFoundContent]="contentTpl"
-            [nzNotFoundFooter]="footerTpl">
-          </nz-empty>
-        }
-        </div>
+            @if(isEmpty()){
+              <nz-empty  
+              [nzNotFoundContent]="contentTpl"
+              [nzNotFoundFooter]="footerTpl">
+              </nz-empty>
+            }
+          </div>
+          <div class="aside" [class.open]="isDrawerOpen">
+            <app-terminal-view  [style.height.%]="100"></app-terminal-view>
+          </div>
       </div>
     </app-page-layout>
     <ng-template #contentTpl>
@@ -92,30 +103,72 @@ import { SpriteConfModalComponent } from './sprite-conf-modal.component';
     .content.empty {
       justify-content: center;
     }
+    .aside {
+      width: 0;
+      flex: 0 0 auto;
+      height: 100%;
+      padding: 16px;
+      background: #000;
+      transition: transform 0.2s ease;
+      transform: translateX(110%);
+    }
+    .aside.open {
+      width: 400px;
+      transform: translateX(0);
+    }
     `
   ],
 })
-export class SpriteComponent implements OnInit {
+export class SpriteComponent implements OnInit, OnDestroy {
+  isDrawerOpen = false
   loading = signal(false);
   cfg = signal<SpriteConfig | null>(null);
+  private sub = new Subscription();
   private state = inject(SpriteStateService);
   private modal = inject(NzModalService);
+  private svnStream = inject(SpriteStreamService);
+  @ViewChild(TerminalViewComponent) term?: TerminalViewComponent;
+  async ngOnInit() {
+    await this.loadConfig();
+    if (this.isEmpty()) return;
+    const projectId = this.state.project()?.id;
+    if (!projectId) return;
 
-  ngOnInit(): void {
-    this.loadConfig();
+    this.sub.add(this.svnStream.watchProject(projectId, 1000));
+    // this.sub.add(
+    //   this.svnStream.runtimes$(projectId).subscribe(list => {
+    //     console.log('SVN Runtimes updated:', list);
+    //     list.forEach(runtime => {
+    //       console.log(`Runtime ${runtime.sourceId} - Status: ${runtime.status}, Progress: ${runtime.percent}%`);
+    //     })
+    //   })
+    // );
+    this.sub.add(this.svnStream.output$(projectId).subscribe(chunk => {
+      if (this.term) {
+        this.term.write(chunk.text);
+      }
+    }));
   }
-
+  ngOnDestroy(): void {
+    this.sub.unsubscribe();
+  }
   isEmpty = computed(() => {
     const cfg = this.cfg();
     const p = this.state.project();
-    return (cfg && p?.assets?.iconsSvn) ? false : true;
+    return (cfg && p?.assets?.iconsSvn || cfg?.sourceId) ? false : true;
   });
 
   private async loadConfig() {
-    this.loading.set(true);
-    const cfg = await this.state.loadConfig();
-    this.cfg.set(cfg);
-    this.loading.set(false);
+    try {
+      this.loading.set(true);
+      const cfg = await this.state.loadConfig();
+      this.cfg.set(cfg);
+      this.loading.set(false);
+    } catch (e) {
+      console.error('Failed to load sprite config:', e);
+      this.loading.set(false);
+    }
+
   }
 
   generate() { }
@@ -123,7 +176,14 @@ export class SpriteComponent implements OnInit {
   async checkout() {
     this.loading.set(true);
     const results = await this.state.checkout()
-    console.log('SVN Sync Results:', results);
+    // console.log('SVN Sync Results:', results);
+    this.loading.set(false);
+  }
+
+  async streamCheckout() {
+    this.loading.set(true);
+    this.isDrawerOpen = true
+    await this.state.streamCheckout();
     this.loading.set(false);
   }
 
@@ -133,7 +193,7 @@ export class SpriteComponent implements OnInit {
       nzFooter: null,
       nzKeyboard: false,
       nzMaskClosable: false,
-      nzClosable: false,
+      nzClosable: true,
       nzContent: SpriteConfModalComponent,
       nzData: {
         cfg: this.cfg(),

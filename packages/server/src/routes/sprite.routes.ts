@@ -102,13 +102,21 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         const p = await fastify.core.project.get(projectId);
         const cfg = await fastify.core.sprite.getConfig(projectId);
         // 如果配置里缺少导出目录，计算默认值返回（但不更新配置文件）
-        if (cfg && (!cfg.spriteExportDir || !cfg.lessExportDir || !cfg.localDir)) {
-            const { localDir, spriteExportDir, lessExportDir } = computeSpriteDefaults(p.id, p.root);
-            cfg.spriteExportDir = cfg.spriteExportDir || spriteExportDir;
-            cfg.lessExportDir = cfg.lessExportDir || lessExportDir;
-            cfg.localDir = cfg.localDir || localDir;
+        if (cfg) {
+            if ((!cfg.spriteExportDir || !cfg.lessExportDir || !cfg.localDir)) {
+                const { localDir, spriteExportDir, lessExportDir } = computeSpriteDefaults(p.id, p.root);
+                cfg.spriteExportDir = cfg.spriteExportDir || spriteExportDir;
+                cfg.lessExportDir = cfg.lessExportDir || lessExportDir;
+                cfg.localDir = cfg.localDir || localDir;
+            }
+            return { cfg, projectId };
+        } else {
+            return {
+                cfg: {
+                    ...computeSpriteDefaults(p.id, p.root),
+                }, projectId
+            };
         }
-        return { cfg, projectId };
     });
 
     /**
@@ -139,7 +147,7 @@ export async function spriteRoutes(fastify: FastifyInstance) {
             nextCfg.sourceId = p.assets.iconsSvn.id;
         }
         const cfg = await fastify.core.sprite.createConfig(projectId, nextCfg);
-        return { cfg, projectId };
+        return { cfg, project: p };
     });
 
     // 根据 projectId  生成雪碧图
