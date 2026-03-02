@@ -1,73 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
-import { env } from "../env";
 
 import { AppError, GenerateSpriteOptions, Project, type ProjectAssets, type SpriteConfig } from "@yinuo-ngm/core";
 
 import { FastifyInstance } from "fastify";
-
-function ensureDir(dir: string) {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-
-function genCacheDir(projectId: string) {
-    const cacheDir = path.join(env.dataDir, "cache", "sprites", projectId);
-    ensureDir(cacheDir);
-    return cacheDir;
-}
-
-function computeSpriteDefaults(projectId: string, projectRoot: string) {
-    const localDir = path.join(env.dataDir, "svn", projectId);
-    ensureDir(localDir);
-    return {
-        localDir,
-        spriteExportDir: path.join(projectRoot, "assets", "icons"),
-        lessExportDir: path.join(projectRoot, "src", "styles", "icons"),
-    };
-}
-
-/**
- * 决定 iconsRoot：
- * 1) spriteConfig.localDir（如果配置了）
- * 2) project.assets 中 id==sourceId 的 localDir
- * 3) fallback project.assets.iconsSvn.localDir
- */
-function resolveIconsRoot(project: Project, cfg: SpriteConfig): string {
-    const cfgLocal = String((cfg as any).localDir ?? "").trim();
-    if (cfgLocal) return cfgLocal;
-
-    const bySource = resolveAssetLocalDir(project, (cfg as any).sourceId);
-    if (bySource) return bySource;
-
-    const iconsSvnLocal = String(project?.assets?.iconsSvn?.localDir ?? "").trim();
-    if (iconsSvnLocal) return iconsSvnLocal;
-
-    throw new AppError("SPRITE_ICONS_ROOT_NOT_FOUND", "Cannot resolve icons root for sprite generation");
-}
-
-/**
- * 按 projectId + spriteConfig.sourceId 找到对应 asset.localDir
- * - assets 结构：iconsSvn/cutImageSvn/... 每个都有 id/kind/localDir
- */
-function resolveAssetLocalDir(project: any, sourceId: string): string | null {
-    const assets = project?.assets;
-    if (!assets) return null;
-
-    const arr = Object.values(assets).filter(Boolean) as any[];
-    const hit = arr.find((a) => a?.id === sourceId && a?.kind === "svn");
-    return hit?.localDir ? String(hit.localDir) : null;
-}
-
-// 列出 iconsRoot 下的一级目录，作为分组
-function listGroupDirs(root: string): string[] {
-    if (!fs.existsSync(root)) return [];
-    return fs
-        .readdirSync(root, { withFileTypes: true })
-        .filter((d) => d.isDirectory())
-        .map((d) => d.name);
-}
-
-
 /**
  * Sprite routes
  * prefix: /api/sprite
@@ -78,24 +13,7 @@ export async function spriteRoutes(fastify: FastifyInstance) {
     */
     fastify.get("/config/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
-        const p = await fastify.core.project.get(projectId);
-        const cfg = await fastify.core.sprite.getConfig(projectId);
-        // 如果配置里缺少导出目录，计算默认值返回（但不更新配置文件）
-        if (cfg) {
-            if ((!cfg.spriteExportDir || !cfg.lessExportDir || !cfg.localDir)) {
-                const { localDir, spriteExportDir, lessExportDir } = computeSpriteDefaults(p.id, p.root);
-                cfg.spriteExportDir = cfg.spriteExportDir || spriteExportDir;
-                cfg.lessExportDir = cfg.lessExportDir || lessExportDir;
-                cfg.localDir = cfg.localDir || localDir;
-            }
-            return { cfg, projectId };
-        } else {
-            return {
-                cfg: {
-                    ...computeSpriteDefaults(p.id, p.root),
-                }, projectId
-            };
-        }
+        return await fastify.core.sprite.getConfig(projectId);
     });
 
     /**
@@ -144,6 +62,12 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         });
         return result;
     })
+
+    fastify.get("/list/:projectId", async (req) => { 
+        const { projectId } = req.params as { projectId: string };
+        return await fastify.core.sprite.getSprites(projectId);
+    })
+
     /**
      * 约定：
      * icons:  {env.dataDir}/icons/{projectId}/icons/{group}/...

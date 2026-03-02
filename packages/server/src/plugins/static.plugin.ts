@@ -12,18 +12,17 @@ export default fp(async function staticPlugin(fastify) {
 
     // 统一数据目录（支持 NGM_DATA_DIR 覆盖）
     const dataDir = env.dataDir;
-    const spritesRoot = path.join(dataDir, "sprites");
-    const spriteCssRoot = path.join(dataDir, "sprite-css");
+    const spritesRoot = path.join(env.dataDir, "cache", "sprites");
 
     // 确保目录存在
-    for (const dir of [dataDir, spritesRoot, spriteCssRoot]) {
+    for (const dir of [dataDir]) {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     }
 
     fastify.log.info(`[static] serving webapp from ${webRoot}`);
     fastify.log.info(`[static] dataDir=${dataDir}`);
-    fastify.log.info(`[static] serving sprites from ${spritesRoot} at /sprites/`);
-    fastify.log.info(`[static] serving sprite-css from ${spriteCssRoot} at /sprite-css/`);
+    fastify.log.info(`[static] serving sprites from ${spritesRoot} `);
+    // fastify.log.inof(`[static] serving sprite-css from ${spriteCssRoot} at /sprite-css/`);
 
     // 1 webapp 静态资源（无 prefix = /）
     await fastify.register(fastifyStatic, {
@@ -31,18 +30,10 @@ export default fp(async function staticPlugin(fastify) {
         index: "index.html",
         decorateReply: true, // 需要 reply.sendFile
     });
-
     // 2 sprites：/sprites/{projectId}/{group}.png
     await fastify.register(fastifyStatic, {
         root: spritesRoot,
         prefix: "/sprites/",
-        decorateReply: false,
-    });
-
-    // 3 sprite-css：/sprite-css/{projectId}.less
-    await fastify.register(fastifyStatic, {
-        root: spriteCssRoot,
-        prefix: "/sprite-css/",
         decorateReply: false,
     });
 
@@ -54,8 +45,7 @@ export default fp(async function staticPlugin(fastify) {
             req.method === "GET" &&
             !url.startsWith("/api") &&
             !url.startsWith("/ws") &&
-            !url.startsWith("/sprites/") &&
-            !url.startsWith("/sprite-css/");
+            !url.startsWith("/sprites/")
 
         if (isSpaFallbackCandidate) {
             return reply.sendFile("index.html");

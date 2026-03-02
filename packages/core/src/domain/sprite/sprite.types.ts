@@ -1,4 +1,10 @@
+import { GenerateGroupResult, SpriteMetaFile } from "@yinuo-ngm/sprite";
+
 export type SpritesmithOptionsAlgorithm = "binary-tree" | "top-down" | "left-right" | "diagonal";
+
+export type SpriteGroupStatus = "ok" | "error";
+
+
 /**
  * 工程项目雪碧图配置
  * - 绑定到 Project.assets.sources[].id
@@ -44,33 +50,32 @@ export type SpriteExportedPaths = {
     lessOutPath?: string;   // png/svg 都可能
 };
 
-export type SpriteGenerateItemResult =
-    | {
-        group: string;
-        kind: "png" | "svg";
-        spriteUrl?: string;              // png 才有意义
-        exported?: SpriteExportedPaths;  // 如果执行导出
-        // 这里不把 GenerateGroupResult 整个抛出去也行；但用于 UI 预览 classes/lessText 很有用
-        result: any;
-    }
-    | { group: string; error: string };
+export type SpriteGroupItem = {
+    group: string;
+    kind?: "png" | "svg";                 // 从 generate 可得；仅 getSprites 时可通过 meta 推断/留空
+    /** 用于 ng-manager 内部预览（永远可访问） */
+    previewSpriteUrl?: string;
+    spriteUrl?: string;                   // cfg.spriteUrl 模板替换
+    meta?: SpriteMetaFile;                // 直接返回 meta（或者拆开成 tileWidth/classes...）
+    lessText?: string;                    // 代码区
+    exported?: SpriteExportedPaths;        // generate 时才有
+    status?: SpriteGroupStatus;            // generate 时才有
+    error?: string;                        // status=error 时才有
 
-export type SpriteGenerateResult = {
-    code: 0 | 1; // 0 失败，1 成功
+    // 可选：仅用于调试/高级预览（不建议 UI 强依赖）
+    // result?: GenerateGroupResult;
+};
+
+export type SpriteSnapshot = {
     projectId: string;
     sourceId: string;
-    iconsRoot: string;
+    iconsRoot?: string;                   // generate 才一定有（getSprites 可以不返回）
     cacheOutDir: string;
-    export: {
-        enabled: boolean;
-        spriteExportDir: string;
-        lessExportDir: string;
-        persistLess: boolean;
-    };
+
+    config: SpriteConfig;                 // 快照（两者都能返回）
     total: number;
-    success: number;
-    failed: number;
-    items: SpriteGenerateItemResult[];
-    /** 生成使用的 config 快照 */
-    config: SpriteConfig;
+    success?: number;                     // getSprites 可不填或等于 total（无错误信息）
+    failed?: number;                      // getSprites 可不填或 0
+
+    groups: SpriteGroupItem[];
 };

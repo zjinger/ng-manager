@@ -95,11 +95,7 @@ export async function generatePngGroup(opts: GeneratePngGroupOptions): Promise<G
             lessText: "",
         };
 
-        const lessText = buildLessForSprite(
-            { group, spriteUrl, classes: meta.classes } as any,
-            css,
-        );
-
+        const lessText = buildLessForSprite({ group, spriteUrl, classes: meta.classes }, css);
         if (persistLess && lessPath) fs.writeFileSync(lessPath, lessText, "utf-8");
 
         return { ...resultBase, lessText };
@@ -125,11 +121,10 @@ export async function generatePngGroup(opts: GeneratePngGroupOptions): Promise<G
 
     const { width: tileWidth, height: tileHeight } = parseGroupSize(group);
     const prefix = css?.prefix || "sl";
-    const { size } = parseGroupSize(group);
-
     const classes = Object.entries(res.coordinates).map(([filePath, info]) => {
         const base = path.basename(filePath, ".png");
-        const className = `${prefix}-${size}-${base}`;
+        const sizeStr = info.width === info.height ? `${info.width}` : `${info.width}-${info.height}`;
+        const className = `${prefix}-${sizeStr}-${base}`;
         return {
             name: base,
             className,
@@ -153,10 +148,7 @@ export async function generatePngGroup(opts: GeneratePngGroupOptions): Promise<G
 
     writeMeta(metaPath, meta);
 
-    const lessText = buildLessForSprite(
-        { group, spriteUrl, classes } as any,
-        css,
-    );
+    const lessText = buildLessForSprite({ group, spriteUrl, classes }, css);
 
     if (persistLess && lessPath) fs.writeFileSync(lessPath, lessText, "utf-8");
 

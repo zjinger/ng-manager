@@ -94,7 +94,6 @@ export async function generateGroupBatch(opts: GenerateGroupBatchOptions): Promi
     const groups = (opts.groups?.length ? opts.groups : listGroupDirs(iconsRoot, opts.groupFilter))
         .map((g) => String(g ?? "").trim())
         .filter(Boolean);
-
     if (!groups.length) {
         return { ok: true, total: 0, success: 0, failed: 0, items: [] };
     }

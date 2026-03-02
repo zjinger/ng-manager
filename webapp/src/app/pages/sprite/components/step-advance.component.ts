@@ -65,6 +65,6 @@ import { SpriteDraft } from '../models/sprite-draft.model';
 export class StepAdvanceComponent {
   @Input({ required: true }) draft!: SpriteDraft;
   spriteUrlHint = `项目中实际雪碧图路径，默认：/assets/icons/{group}.png，如：/assets/icons/16-16.png。支持占位符： {group} 分组名（如 16-16）， {size} 尺寸前缀（如 16）。`
-  templatePlaceholder = `输入复制模板,默认：<i class="{base} {class}" ></i>`;
+  templatePlaceholder = `输入复制模板,默认：<i class="{base} {class}"></i>`;
   templateHint = `实际复制的文本，默认：<i class="{base} {class}" ></i>，如：<i class="sl-16 sl-16-1"></i>。支持占位符：{base} 基类名，{class} CSS 类名；{name} 图标名称；支持使用自定义组件，如小程序中用法：<SlIcon name="16-16-1" size="16" />，则模板为：<SlIcon name="{name}" size="{size}"/>。`
 }

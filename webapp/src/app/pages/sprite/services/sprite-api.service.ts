@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core/api';
 import { Project, ProjectAssets } from '@models/project.model';
-import { SpriteConfig } from '@models/sprite.model';
+import { SpriteConfig, SpriteSnapshot } from '@models/sprite.model';
 import { GenerateSpriteOptions, SvnCheckoutOptions } from '../models';
 import { SvnRuntime, SvnSyncResult } from '@models/svn.model';
 
@@ -12,11 +12,11 @@ export class SpriteApiService {
   private api = inject(ApiClient);
 
   generate(projectId: string, options: GenerateSpriteOptions = {}) {
-    return this.api.post(`/api/sprite/generate/${projectId}`, options);
+    return this.api.post<SpriteSnapshot>(`/api/sprite/generate/${projectId}`, options);
   }
 
   getConfig(projectId: string) {
-    return this.api.get<{ cfg: SpriteConfig | null, projectId: string }>(`/api/sprite/config/${projectId}`);
+    return this.api.get<SpriteConfig>(`/api/sprite/config/${projectId}`);
   }
 
   createConfig(projectId: string, assets: ProjectAssets, config: Omit<SpriteConfig, "projectId" | "updatedAt">) {
@@ -33,5 +33,9 @@ export class SpriteApiService {
 
   getRuntimes(projectId: string) {
     return this.api.get<SvnRuntime[]>(`/api/svn/runtime/${projectId}`);
+  }
+
+  getSprites(projectId: string) {
+    return this.api.get<SpriteSnapshot>(`/api/sprite/list/${projectId}`);
   }
 }

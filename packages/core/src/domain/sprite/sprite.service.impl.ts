@@ -1,18 +1,19 @@
+import { generateGroupBatch, GenerateSpriteResult, SpriteMetaFile } from "@yinuo-ngm/sprite";
 import fs from "node:fs";
 import path from "node:path";
 import { AppError } from "../../common/errors";
+import { SystemLogService } from "../logger";
 import { Project, ProjectAssetSourceSvn, ProjectService } from "../project";
 import { SpriteRepo } from "./sprite.repo";
 import { SpriteService } from "./sprite.service";
-import { GenerateSpriteOptions, SpriteConfig, SpriteGenerateItemResult, SpriteGenerateResult } from "./sprite.types";
-import { generateGroupBatch, GenerateGroupBatchItem } from "@yinuo-ngm/sprite";
-import { SystemLogService } from "../logger";
+import { GenerateSpriteOptions, SpriteConfig, SpriteGroupItem, SpriteSnapshot } from "./sprite.types";
 export class SpriteServiceImpl implements SpriteService {
     constructor(
         private spriteRepo: SpriteRepo,
         private project: ProjectService,
         private sysLog: SystemLogService,
-        private cacheDir: string
+        private cacheDir: string,
+        private dataDir: string,
     ) {
     }
 
@@ -23,7 +24,24 @@ export class SpriteServiceImpl implements SpriteService {
     }
 
     async getConfig(projectId: string): Promise<SpriteConfig | null> {
-        return this.spriteRepo.getByProjectId(projectId);
+        const p = await this.project.get(projectId);
+        const cfg = await this.spriteRepo.getByProjectId(projectId);
+        if (cfg) {
+            if ((!cfg.spriteExportDir || !cfg.lessExportDir || !cfg.localDir)) {
+                const { localDir, spriteExportDir, lessExportDir } = computeSpriteDefaults(this.dataDir, p.id, p.root);
+                cfg.spriteExportDir = cfg.spriteExportDir || spriteExportDir;
+                cfg.lessExportDir = cfg.lessExportDir || lessExportDir;
+                cfg.localDir = cfg.localDir || localDir;
+            }
+            return cfg;
+        }
+        const defaults = computeSpriteDefaults(this.dataDir, p.id, p.root);
+        return {
+            projectId,
+            localDir: defaults.localDir,
+            spriteExportDir: defaults.spriteExportDir,
+            lessExportDir: defaults.lessExportDir,
+        } as SpriteConfig;
     }
     async createConfig(projectId: string, config: Omit<SpriteConfig, "projectId" | "updatedAt">): Promise<SpriteConfig> {
         return this.spriteRepo.create(projectId, config);
@@ -35,19 +53,17 @@ export class SpriteServiceImpl implements SpriteService {
         return this.spriteRepo.remove(projectId);
     }
 
-    async generate(projectId: string, options?: GenerateSpriteOptions): Promise<SpriteGenerateResult> {
+
+    async generate(projectId: string, options?: GenerateSpriteOptions): Promise<SpriteSnapshot> {
         const cfg = await this.spriteRepo.getByProjectId(projectId);
         if (!cfg) throw new AppError("SPRITE_CONFIG_NOT_FOUND", `Sprite config not found for project ${projectId}`);
+
         const project = await this.project.get(projectId);
         if (!project) throw new AppError("PROJECT_NOT_FOUND", `Project not found: ${projectId}`);
 
-        // 校验 icons 目录是否存在
         const iconsRoot = resolveIconsRoot(project, cfg);
-        if (!fs.existsSync(iconsRoot)) {
-            throw new AppError("SPRITE_ICONS_ROOT_NOT_FOUND", `iconsRoot not found: ${iconsRoot}`);
-        }
+        if (!fs.existsSync(iconsRoot)) throw new AppError("SPRITE_ICONS_ROOT_NOT_FOUND", `iconsRoot not found: ${iconsRoot}`);
 
-        // cache outDir（只做中间产物/缓存）
         const cacheOutDir = this.ensureCacheDir(projectId);
 
         const concurrency = options?.concurrency ?? 1;
@@ -58,8 +74,6 @@ export class SpriteServiceImpl implements SpriteService {
         const algorithm = cfg.algorithm || "binary-tree";
         const persistLess = cfg.persistLess ?? true;
         const spriteUrlTpl = String(cfg.spriteUrl ?? "").trim();
-
-        // 批量生成（只负责得到 result + lessText，不负责导出路径策略）
         const batch = await generateGroupBatch({
             iconsRoot,
             outDir: cacheOutDir,
@@ -70,84 +84,158 @@ export class SpriteServiceImpl implements SpriteService {
             cache: {
                 enabled: true,
                 forceRefresh,
-                // 注意：这里让 sprite 包生成时也可产出 lessText，但不落盘到 cacheOutDir
-                // 在 sprite 包里可以把 persistLess 设为 false，避免 cache 写 less；这里不强依赖
-                persistLess: false,
+                persistLess,
             },
             concurrency,
             continueOnError,
-            // svg 的 urlResolver：core 不一定知道 server 的静态映射，这里给个默认即可（需要时再替换）
-            svgUrlResolver: ({ group, file }) => `/assets/icons/${encodeURIComponent(group)}/${encodeURIComponent(file)}`,
+            svgUrlResolver: ({ group, file }) =>
+                `/assets/icons/${encodeURIComponent(group)}/${encodeURIComponent(file)}`,
         });
 
-        const items: SpriteGenerateItemResult[] = batch.items.map((it: GenerateGroupBatchItem) => {
-            if (!it.ok) { return it as SpriteGenerateItemResult }
-            const group = it.group;
-            const kind = it.type === "png" ? "png" : "svg";
-            const result = it.result;
-            try {
-                const lessText = result?.lessText ?? "";
-                let spriteUrl: string | undefined;
-                let spriteOutPath: string | undefined;
+        const outGroups: SpriteGroupItem[] = batch.items.map((it) => {
+            if (!it.ok) {
+                return { group: it.group, status: "error", error: it.error };
+            }
 
-                if (kind === "png") {
-                    // png 的 spriteUrl 是模板替换后的
-                    spriteUrl = applyGroupTemplate(spriteUrlTpl, group);
-                    spriteOutPath = exportPng(cfg, group, result);
+            const group = it.group;
+            const kind: "png" | "svg" = it.type === "png" ? "png" : "svg";
+            const result = it.result;
+
+            let meta: SpriteMetaFile | undefined;
+            let spriteUrl: string | undefined;
+            let previewSpriteUrl: string | undefined;
+            if (kind === 'png') {
+                const r = result as GenerateSpriteResult;
+                if (r?.metaPath && fs.existsSync(r.metaPath)) {
+                    meta = safeReadJson(r.metaPath) as SpriteMetaFile;
                 }
+                spriteUrl = r?.spriteUrl;
+                previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
+            }
+            const lessText = String(result?.lessText ?? "");
+            // 导出：失败只影响该 group 状态，不影响其他 group
+            try {
+                let spriteOutPath: string | undefined;
+                if (kind === "png") spriteOutPath = exportPng(cfg, group, result);
 
                 const lessOutPath = exportLess(cfg, group, lessText);
+
                 return {
-                    ok: true,
                     group,
                     kind,
                     spriteUrl,
+                    previewSpriteUrl,
+                    meta,
+                    lessText,
                     exported: { spriteOutPath, lessOutPath },
-                    result,
+                    status: "ok",
                 };
             } catch (e: any) {
-                // 导出失败：也作为 item 失败返回（不影响 batch 内部生成结果）
-                return { ok: false, group, error: e?.message || String(e) } as SpriteGenerateItemResult;
+                return {
+                    group,
+                    kind,
+                    previewSpriteUrl,
+                    spriteUrl,
+                    meta,
+                    lessText,
+                    status: "error",
+                    error: e?.message || String(e),
+                };
             }
+        });
 
+        const success = outGroups.filter((g) => g.status !== "error").length;
+        const failed = outGroups.length - success;
 
+        this.sysLog.info({
+            refId: projectId,
+            scope: "sprite",
+            source: "system",
+            text: `Sprite generation completed: ${success} success, ${failed} failed`,
         })
 
-        const success = items.filter((x: any) => x.ok).length;
-        const failed = items.length - success;
-        const projectName = project.name;
-        if (failed === 0) {
-            this.sysLog.success({
-                refId: projectId,
-                scope: "sprite",
-                source: "system",
-                text: `Sprite generation completed for project ${projectName}: ${success} success`
-            })
-        } else {
-            this.sysLog.error({
-                refId: projectId,
-                scope: "sprite",
-                source: "system",
-                text: `Sprite generation completed for project ${projectName} with errors:  ${failed} failed`
-            })
-        }
         return {
-            code: failed === 0 ? 1 : 0, // 0 失败，1 成功
             projectId,
-            sourceId: String((cfg as any).sourceId ?? ""),
+            sourceId: String(cfg.sourceId ?? ""),
             iconsRoot,
             cacheOutDir,
-            export: {
-                enabled: true,
-                spriteExportDir: String((cfg as any).spriteExportDir ?? ""),
-                lessExportDir: String((cfg as any).lessExportDir ?? ""),
-                persistLess,
-            },
-            total: items.length,
+            config: cfg,
+            total: outGroups.length,
             success,
             failed,
-            items,
+            groups: outGroups,
+        };
+    }
+
+    async getSprites(projectId: string): Promise<SpriteSnapshot> {
+        const cfg = await this.getConfig(projectId);
+        if (!cfg) throw new AppError("SPRITE_CONFIG_NOT_FOUND", `Sprite config not found for project ${projectId}`);
+
+        const cacheOutDir = this.ensureCacheDir(projectId);
+
+        if (!fs.existsSync(cacheOutDir)) {
+            return {
+                projectId,
+                sourceId: String(cfg.sourceId ?? ""),
+                cacheOutDir,
+                config: cfg,
+                total: 0,
+                success: 0,
+                failed: 0,
+                groups: [],
+            };
+        }
+
+        const spriteUrlTpl = String(cfg.spriteUrl ?? "").trim();
+        const metaSuffix = ".meta.json";
+
+        const files = fs.readdirSync(cacheOutDir).filter((f) => f.endsWith(metaSuffix));
+
+        const groups = files
+            .map((f) => f.slice(0, -metaSuffix.length))
+            .map((group) => {
+                const metaPath = path.join(cacheOutDir, `${group}${metaSuffix}`);
+                const meta = safeReadJson(metaPath) as SpriteMetaFile;
+
+                const spriteUrl = spriteUrlTpl ? applyGroupTpl(spriteUrlTpl, group) : undefined;
+                const previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
+
+                let lessText = "";
+                const lessPath = path.join(cacheOutDir, `${group}.less`);
+
+                if (fs.existsSync(lessPath)) {
+                    try { lessText = fs.readFileSync(lessPath, "utf-8"); } catch {
+                        /* ignore */
+                        console.warn(`Failed to read less file for group ${group}: ${lessPath}`);
+                    }
+                }
+                return {
+                    group,
+                    kind: "png" as const, // meta.json 只属于 png 组；svg 没 meta.json
+                    spriteUrl,
+                    previewSpriteUrl,
+                    meta,
+                    lessText,
+                    status: "ok" as const,
+                };
+            });
+
+        groups.sort((a, b) => {
+            const na = Number(String(a.group).split("-")[0]);
+            const nb = Number(String(b.group).split("-")[0]);
+            if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+            return a.group.localeCompare(b.group, "zh-Hans-CN", { numeric: true });
+        });
+
+        return {
+            projectId,
+            sourceId: String(cfg.sourceId ?? ""),
+            cacheOutDir,
             config: cfg,
+            total: groups.length,
+            success: groups.length,
+            failed: 0,
+            groups,
         };
     }
 }
@@ -183,12 +271,20 @@ function resolveAssetLocalDir(project: Project, sourceId: string): string | null
     return hit?.localDir ? String(hit.localDir) : null;
 }
 
-function applyGroupTemplate(tpl: string, group: string) {
-    return String(tpl || "").replace(/{group}/g, group);
-}
 function ensureDir(dir: string) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
+
+function computeSpriteDefaults(dataDir: string, projectId: string, projectRoot: string) {
+    const localDir = path.join(dataDir, "svn", projectId);
+    ensureDir(localDir);
+    return {
+        localDir,
+        spriteExportDir: path.join(projectRoot, "src", "assets", "icons"),
+        lessExportDir: path.join(projectRoot, "src", "styles", "icons"),
+    };
+}
+
 function exportPng(cfg: SpriteConfig, group: string, pngResult: any) {
     const spriteExportDir = String(cfg.spriteExportDir ?? "").trim();
     if (!spriteExportDir) throw new Error("spriteExportDir is required");
@@ -210,4 +306,14 @@ function exportLess(cfg: SpriteConfig, group: string, lessText: string) {
     const lessOutPath = path.join(lessExportDir, `${group}.less`);
     fs.writeFileSync(lessOutPath, lessText ?? "", "utf-8");
     return lessOutPath;
+}
+
+function safeReadJson(file: string) {
+    const raw = fs.readFileSync(file, "utf-8");
+    return JSON.parse(raw);
+}
+
+function applyGroupTpl(tpl: string, group: string) {
+    // return String(tpl || "").replaceAll("{group}", group);
+    return String(tpl || "").replace(/{group}/g, group);
 }

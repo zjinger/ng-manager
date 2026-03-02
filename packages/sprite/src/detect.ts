@@ -13,13 +13,19 @@ export function detectGroupType(groupDir: string): IconGroupType {
     return hasSvg ? "svg" : "png";
 }
 
-/** parse "10-10" => tile size 10x10; "12-16" => 12 (use w||h for size naming) */
+/**
+ *  parse "10-10" => tile size 10x10; "12-16" => tile size 12x16; "20" => tile size 20x20
+ *  group
+ *   - 10 单个数字表示宽高相等的正方形图标，例如 10 表示 10x10 的图标
+ *   - 10-10 表示宽高分别为 10 和 10 的图标，即 10x10 的图标
+ *   - 12-16 表示宽为 12、高为 16 的图标
+ */
 export function parseGroupSize(group: string) {
     const [w, h] = group.split("-").map((n) => Number(n) || 0);
     const size = w || h || 0;
-    const width = size;
-    const height = size;
-    return { size, width, height };
+    const width = w || size;
+    const height = h || size;
+    return { size: w === h ? `${width}` : `${width}-${height}`, width, height };
 }
 
 export function defaultFileSort(a: string, b: string) {

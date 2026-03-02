@@ -11,9 +11,9 @@ export function buildLessForSprite(
     const resolvedUrl = css.spriteUrlResolver
         ? css.spriteUrlResolver({ spriteUrl: r.spriteUrl, group: r.group })
         : r.spriteUrl;
-
+    const baseClass = `${prefix}-${size}`;
     // base class: .sl-12
-    const baseClass = [
+    const baseClassLines = [
         `.${prefix}-${size} {`,
         `  background-image: url("${resolvedUrl}");`,
         `  background-repeat: no-repeat;`,
@@ -24,7 +24,7 @@ export function buildLessForSprite(
         ``,
     ];
 
-    const lines: string[] = [...baseClass];
+    const lines: string[] = [...baseClassLines];
 
     for (const c of r.classes) {
         lines.push(

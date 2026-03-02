@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PageLayoutComponent } from '@app/shared';
-import { SpriteConfig } from '@models/sprite.model';
+import { PageLayoutComponent, TerminalViewComponent } from '@app/shared';
+import { SpriteConfig, SpriteSnapshot, } from '@models/sprite.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -20,7 +20,9 @@ import { Subscription } from 'rxjs';
 import { SpriteStateService } from './services/sprite-state.service';
 import { SpriteStreamService } from './services/sprite-stream.service';
 import { SpriteConfModalComponent } from './sprite-conf-modal.component';
-import { TerminalViewComponent } from '@app/shared';
+import { SpriteResultTabsComponent } from './sprite-result-tabs.component';
+import dayjs from 'dayjs';
+
 @Component({
   selector: 'app-sprite',
   imports: [
@@ -39,7 +41,8 @@ import { TerminalViewComponent } from '@app/shared';
     PageLayoutComponent,
     NzEmptyModule,
     NzDrawerModule,
-    TerminalViewComponent
+    TerminalViewComponent,
+    SpriteResultTabsComponent,
   ],
   template: `
     <app-page-layout [title]="'雪碧图'" [loading]="loading()" [isFullscreen]="true">
@@ -51,7 +54,7 @@ import { TerminalViewComponent } from '@app/shared';
           </button>
           <button nz-button  nzType="primary" (click)="streamCheckout()" nz-tooltip nzTooltipTitle="从svn更新资源">
             <nz-icon nzType="sync" nzTheme="outline"></nz-icon>
-            <span>更新资源</span>
+            <span>同步 {{lastSyncAt()}}</span>
           </button>
         }
         <button nz-button nzType="text" (click)="isDrawerOpen = !isDrawerOpen" nz-tooltip nzTooltipTitle="查看日志">
@@ -68,7 +71,10 @@ import { TerminalViewComponent } from '@app/shared';
               [nzNotFoundContent]="contentTpl"
               [nzNotFoundFooter]="footerTpl">
               </nz-empty>
+            }@else{
+              <app-sprite-result-tabs [sprite]="sprite()"></app-sprite-result-tabs>
             }
+
           </div>
           <div class="aside" [class.open]="isDrawerOpen">
             <app-terminal-view  [style.height.%]="100"></app-terminal-view>
@@ -110,7 +116,7 @@ import { TerminalViewComponent } from '@app/shared';
       padding: 16px;
       background: #000;
       transition: transform 0.2s ease;
-      transform: translateX(110%);
+      transform: translateX(150%);
     }
     .aside.open {
       width: 400px;
@@ -123,11 +129,13 @@ export class SpriteComponent implements OnInit, OnDestroy {
   isDrawerOpen = false
   loading = signal(false);
   cfg = signal<SpriteConfig | null>(null);
+  lastSyncAt = signal<string>('N/A');
   private sub = new Subscription();
   private state = inject(SpriteStateService);
   private modal = inject(NzModalService);
   private svnStream = inject(SpriteStreamService);
   @ViewChild(TerminalViewComponent) term?: TerminalViewComponent;
+  sprite = signal<SpriteSnapshot | null>(null);
   async ngOnInit() {
     await this.loadConfig();
     if (this.isEmpty()) return;
@@ -136,23 +144,28 @@ export class SpriteComponent implements OnInit, OnDestroy {
     const runtimes = await this.state.getSvnRuntimes();
     if (runtimes?.length) {
       runtimes.forEach(runtime => {
-        const lastSyncAt = runtime.lastSyncAt ? new Date(runtime.lastSyncAt).toDateString() : 'N/A';
+        const lastSyncAt = runtime.lastSyncAt ? dayjs(runtime.lastSyncAt).format('YYYY-MM-DD HH:mm:ss') : 'N/A';
         const lastStatus = runtime.lastStderr ? '失败' : '成功';
         const desiredUrl = runtime.desiredUrl ? `${runtime.desiredUrl}` : 'No desired URL';
         this.term?.writeln(`[更新时间]: ${lastSyncAt}`);
         this.term?.writeln(`[更新状态]: ${lastStatus}`);
         this.term?.writeln(`[SVN 路径]: ${desiredUrl}`);
         this.term?.writeln(`-----------------------------`);
+        // 雪碧图匹配
+        if (runtime.sourceId === this.cfg()?.sourceId && runtime.lastSyncAt) {
+          this.lastSyncAt.set(dayjs(runtime.lastSyncAt).format('YYYY-MM-DD HH:mm:ss'));
+        }
       })
     }
+    const sprite = await this.state.getSprites();
+    this.sprite.set(sprite);
 
     this.sub.add(this.svnStream.watchProject(projectId, 1000));
-    this.sub.add(
-      this.svnStream.runtimes$(projectId).subscribe(list => {
-        console.log('SVN Runtimes updated:', list);
-
-      })
-    );
+    // this.sub.add(
+    //   this.svnStream.runtimes$(projectId).subscribe(list => {
+    //     console.log('SVN Runtimes updated:', list);
+    //   })
+    // );
     this.sub.add(this.svnStream.output$(projectId).subscribe(chunk => {
       if (this.term) {
         this.term.write(chunk.text);
@@ -178,16 +191,14 @@ export class SpriteComponent implements OnInit, OnDestroy {
       this.cfg.set(cfg);
       this.loading.set(false);
     } catch (e) {
-      console.error('Failed to load sprite config:', e);
       this.loading.set(false);
     }
-
   }
 
   async generate() {
     this.loading.set(true);
-    const results = await this.state.generate();
-    console.log('Sprite generation results:', results);
+    const sprite = await this.state.generate();
+    this.sprite.set(sprite);
     this.loading.set(false);
   }
 

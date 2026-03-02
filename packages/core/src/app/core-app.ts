@@ -127,7 +127,7 @@ export async function createCoreApp(
 
     /* ------------------ sprite ------------------ */
     const spriteRepo = new JsonSpriteRepo(dataDir);
-    const sprite = new SpriteServiceImpl(spriteRepo, project, sysLog, cacheDir);
+    const sprite = new SpriteServiceImpl(spriteRepo, project, sysLog, cacheDir, dataDir);
 
     /* ------------------ svn ------------------ */
     const svnRepo = new JsonSvnRuntimeRepo(path.join(dataDir, "runtime", "svn.runtime.json"));

@@ -5,6 +5,12 @@
     "changeOrigin": true,
     "logLevel": "debug"
   },
+  "/sprites": {
+    "target": "http://localhost:3210",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
   "/ws": {
     "target": "ws://localhost:3210",
     "ws": true,

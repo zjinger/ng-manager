@@ -29,38 +29,3 @@ export type SvnCheckoutOptions = {
 
 }
 
-export type SpriteExportedPaths = {
-    spriteOutPath?: string; // only png
-    lessOutPath?: string;   // png/svg 都可能
-};
-export type SpriteGenerateItemResult =
-    | {
-        group: string;
-        kind: "png" | "svg";
-        spriteUrl?: string;              // png 才有意义
-        exported?: SpriteExportedPaths;  // 如果执行导出
-        // 这里不把 GenerateGroupResult 整个抛出去也行；但用于 UI 预览 classes/lessText 很有用
-        result: any;
-    }
-    | { group: string; error: string };
-
-
-export type SpriteGenerateResult = {
-    code: 0 | 1; // 0 失败，1 成功
-    projectId: string;
-    sourceId: string;
-    iconsRoot: string;
-    cacheOutDir: string;
-    export: {
-        enabled: boolean;
-        spriteExportDir: string;
-        lessExportDir: string;
-        persistLess: boolean;
-    };
-    total: number;
-    success: number;
-    failed: number;
-    items: SpriteGenerateItemResult[];
-    /** 生成使用的 config 快照 */
-    config: SpriteConfig;
-};

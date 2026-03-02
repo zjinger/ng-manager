@@ -1,11 +1,11 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { ProjectAssets } from '@models/project.model';
-import { SpriteConfig } from '@models/sprite.model';
+import { SpriteConfig, SpriteSnapshot } from '@models/sprite.model';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { firstValueFrom } from 'rxjs';
 import { SpriteApiService } from './sprite-api.service';
-import { SvnCheckoutOptions } from '../models';
 import { SvnRuntime, SvnSyncResult } from '@models/svn.model';
+import { SvnCheckoutOptions } from '../models';
 
 @Injectable({
   providedIn: 'root',
@@ -23,8 +23,7 @@ export class SpriteStateService {
       throw new Error("No project selected");
     }
     const projectId = this.project()!.id;
-    const data = await firstValueFrom(this.api.getConfig(projectId));
-    return data.cfg;
+    return await firstValueFrom(this.api.getConfig(projectId));
   }
 
   async createConfig(assets: ProjectAssets, config: Omit<SpriteConfig, "projectId" | "updatedAt">): Promise<SpriteConfig | null> {
@@ -52,9 +51,14 @@ export class SpriteStateService {
     return await firstValueFrom(this.api.getRuntimes(projectId));
   }
 
-  async generate() {
+  async generate(): Promise<SpriteSnapshot> {
     const projectId = this.ensureProjectId();
     return await firstValueFrom(this.api.generate(projectId));
+  }
+
+  async getSprites(): Promise<SpriteSnapshot> {
+    const projectId = this.ensureProjectId();
+    return await firstValueFrom(this.api.getSprites(projectId));
   }
 
   private ensureProjectId(): string {
