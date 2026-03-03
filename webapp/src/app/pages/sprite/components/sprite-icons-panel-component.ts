@@ -61,7 +61,7 @@ import { NzImageModule } from 'ng-zorro-antd/image';
             <div class="panel-header">
                <div class="panel-title column">
                 <div class="text">图标预览</div>
-                <div class="sub-text">共12个图标</div>
+                <div class="sub-text">共{{icons().length + iconClasses().length}}个图标</div>
               </div>
               <div class="search">
                 <input type="text" placeholder="搜索图标名称或类名" nz-input />
@@ -192,6 +192,10 @@ import { NzImageModule } from 'ng-zorro-antd/image';
       display:flex;
       align-items:center;
       justify-content:center;
+    }
+    .thumb img{
+      min-width:32px;
+      min-height:32px;
     }
     .meta .name{ font-size:12px; opacity:.9; }
     .meta .cls{ font-size:12px; opacity:.65; }
