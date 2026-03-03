@@ -9,7 +9,16 @@ export interface SpriteClassMeta {
     height: number;
 }
 
+export interface SvgIconMeta {
+    name: string;
+    className: string;
+    file: string;
+    url: string;
+    previewUrl?: string; // for UI preview, may be same as url or different (e.g. via cdn)
+}
+
 export interface SpriteMetaFile {
+    mode: "png";
     group: string;
     // tile size from group name, e.g. 10-10
     tileWidth: number;
@@ -20,6 +29,16 @@ export interface SpriteMetaFile {
     spriteHeight: number;
 
     classes: SpriteClassMeta[];
+}
+
+export interface SvgMetaFile {
+    mode: "svg";
+    group: string;
+    tileWidth: number;
+    tileHeight: number;
+    prefix: string;
+    size: string;
+    icons: Array<SvgIconMeta>;
 }
 
 export interface GenerateSpriteResult {
@@ -41,19 +60,14 @@ export interface GenerateSpriteResult {
     lessPath?: string; // if persisted
 }
 
-export interface SvgIconMeta {
-    name: string;
-    className: string;
-    file: string;
-    url: string;
-}
-
 export interface GenerateSvgGroupResult {
     mode: "svg";
     group: string;
     type: IconGroupType; // svg/mixed/empty
     icons: SvgIconMeta[];
-    lessText: string; // hint less (can be empty)
+    lessText?: string; // hint less (can be empty)
+
+    metaPath: string;
 }
 
 export type GenerateGroupResult = GenerateSpriteResult | GenerateSvgGroupResult;
@@ -109,6 +123,8 @@ export interface GeneratePngGroupOptions {
 export interface GenerateSvgGroupOptions {
     group: string;
     groupDir: string;
+    outDir: string;        // absolute output dir for this group (for meta/less)
+    cache?: CacheOptions;
     /** cssPrefix like "sl" */
     prefix?: string;
     /** map a file name to public url used by UI */

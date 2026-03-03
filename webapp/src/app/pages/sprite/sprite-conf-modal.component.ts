@@ -139,7 +139,7 @@ export class SpriteConfModalComponent {
         d.localDir = cfg?.localDir || '';
         d.cssPrefix = cfg?.prefix || 'sl';
         d.spriteUrl = cfg?.spriteUrl || '/assets/icons/{group}.png';
-        d.template = cfg?.template || '<i class="{base} {class}" ></i>';
+        d.template = cfg?.template || '<i class="{base} {class}"></i>';
         d.spriteExportDir = cfg?.spriteExportDir || '';
         d.lessExportDir = cfg?.lessExportDir || '';
         return d;
@@ -183,7 +183,7 @@ export class SpriteConfModalComponent {
       enabled: true,
       persistLess: true,
       localDir: d.localDir,
-      template: d.template || '<i class="{base} {class}" ></i>',
+      template: d.template || '<i class="{base} {class}"></i>',
       prefix: d.cssPrefix || 'sl',
       sourceId: d.sourceId || '',
       spriteUrl: d.spriteUrl || '/assets/icons/{group}.png',

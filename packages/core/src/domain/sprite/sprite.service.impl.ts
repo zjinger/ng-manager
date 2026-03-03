@@ -1,4 +1,4 @@
-import { generateGroupBatch, GenerateSpriteResult, SpriteMetaFile } from "@yinuo-ngm/sprite";
+import { generateGroupBatch, GenerateSpriteResult, SpriteMetaFile, SvgMetaFile } from "@yinuo-ngm/sprite";
 import fs from "node:fs";
 import path from "node:path";
 import { AppError } from "../../common/errors";
@@ -17,7 +17,7 @@ export class SpriteServiceImpl implements SpriteService {
     ) {
     }
 
-    private ensureCacheDir(projectId: string) {
+    ensureCacheDir(projectId: string) {
         const dir = path.join(this.cacheDir, "sprites", projectId);
         ensureDir(dir);
         return dir;
@@ -96,7 +96,6 @@ export class SpriteServiceImpl implements SpriteService {
             if (!it.ok) {
                 return { group: it.group, status: "error", error: it.error };
             }
-
             const group = it.group;
             const kind: "png" | "svg" = it.type === "png" ? "png" : "svg";
             const result = it.result;
@@ -104,22 +103,25 @@ export class SpriteServiceImpl implements SpriteService {
             let meta: SpriteMetaFile | undefined;
             let spriteUrl: string | undefined;
             let previewSpriteUrl: string | undefined;
-            if (kind === 'png') {
-                const r = result as GenerateSpriteResult;
-                if (r?.metaPath && fs.existsSync(r.metaPath)) {
-                    meta = safeReadJson(r.metaPath) as SpriteMetaFile;
-                }
-                spriteUrl = r?.spriteUrl;
-                previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
+            let lessText = "";
+            const r = result;
+            if (r?.metaPath && fs.existsSync(r.metaPath)) {
+                meta = safeReadJson(r.metaPath) as SpriteMetaFile;
             }
-            const lessText = String(result?.lessText ?? "");
+            if (kind === 'png') {
+                spriteUrl = (r as GenerateSpriteResult)?.spriteUrl;
+                previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
+                lessText = String(result?.lessText ?? "");
+            }
+
             // 导出：失败只影响该 group 状态，不影响其他 group
             try {
                 let spriteOutPath: string | undefined;
-                if (kind === "png") spriteOutPath = exportPng(cfg, group, result);
-
-                const lessOutPath = exportLess(cfg, group, lessText);
-
+                let lessOutPath: string | undefined;
+                if (kind === "png") {
+                    spriteOutPath = exportPng(cfg, group, result);
+                    lessOutPath = exportLess(cfg, group, lessText);
+                }
                 return {
                     group,
                     kind,
@@ -153,7 +155,12 @@ export class SpriteServiceImpl implements SpriteService {
             source: "system",
             text: `Sprite generation completed: ${success} success, ${failed} failed`,
         })
-
+        outGroups.sort((a, b) => {
+            const na = Number(String(a.group).split("-")[0]);
+            const nb = Number(String(b.group).split("-")[0]);
+            if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+            return a.group.localeCompare(b.group, "zh-Hans-CN", { numeric: true });
+        });
         return {
             projectId,
             sourceId: String(cfg.sourceId ?? ""),
@@ -185,7 +192,6 @@ export class SpriteServiceImpl implements SpriteService {
                 groups: [],
             };
         }
-
         const spriteUrlTpl = String(cfg.spriteUrl ?? "").trim();
         const metaSuffix = ".meta.json";
 
@@ -195,23 +201,28 @@ export class SpriteServiceImpl implements SpriteService {
             .map((f) => f.slice(0, -metaSuffix.length))
             .map((group) => {
                 const metaPath = path.join(cacheOutDir, `${group}${metaSuffix}`);
-                const meta = safeReadJson(metaPath) as SpriteMetaFile;
-
-                const spriteUrl = spriteUrlTpl ? applyGroupTpl(spriteUrlTpl, group) : undefined;
-                const previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
-
-                let lessText = "";
-                const lessPath = path.join(cacheOutDir, `${group}.less`);
-
-                if (fs.existsSync(lessPath)) {
-                    try { lessText = fs.readFileSync(lessPath, "utf-8"); } catch {
-                        /* ignore */
-                        console.warn(`Failed to read less file for group ${group}: ${lessPath}`);
+                const meta = safeReadJson(metaPath) as SpriteMetaFile | SvgMetaFile;
+                let lessText = "", spriteUrl, previewSpriteUrl;
+                if (meta.mode === 'png') {
+                    spriteUrl = spriteUrlTpl ? applyGroupTpl(spriteUrlTpl, group) : undefined;
+                    previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
+                    const lessPath = path.join(cacheOutDir, `${group}.less`);
+                    if (fs.existsSync(lessPath)) {
+                        try { lessText = fs.readFileSync(lessPath, "utf-8"); } catch {
+                            /* ignore */
+                            console.warn(`Failed to read less file for group ${group}: ${lessPath}`);
+                        }
                     }
+                } else if (meta.mode === 'svg') {
+                    // svg 的 previewUrl 直接指向原 svg 文件（不经过 spriteUrl 模板）
+                    // const m = meta as SvgMetaFile;
+                    // m.icons.forEach((icon) => { 
+                    //     icon.previewUrl = `/assets/icons/${encodeURIComponent(group)}/${encodeURIComponent(icon.file)}`;
+                    // })
                 }
                 return {
                     group,
-                    kind: "png" as const, // meta.json 只属于 png 组；svg 没 meta.json
+                    kind: meta.mode,
                     spriteUrl,
                     previewSpriteUrl,
                     meta,

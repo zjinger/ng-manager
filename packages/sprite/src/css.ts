@@ -5,6 +5,9 @@ export function buildLessForSprite(
     r: Pick<GenerateSpriteResult, "group" | "spriteUrl" | "classes">,
     css: SpriteCssOptions = {},
 ): string {
+    if (r.classes.length === 0) {
+        return ''
+    }
     const { size, width, height } = parseGroupSize(r.group);
     const prefix = css.prefix || "sl";
 
@@ -14,7 +17,7 @@ export function buildLessForSprite(
     const baseClass = `${prefix}-${size}`;
     // base class: .sl-12
     const baseClassLines = [
-        `.${prefix}-${size} {`,
+        `.${baseClass} {`,
         `  background-image: url("${resolvedUrl}");`,
         `  background-repeat: no-repeat;`,
         `  display: inline-block;`,

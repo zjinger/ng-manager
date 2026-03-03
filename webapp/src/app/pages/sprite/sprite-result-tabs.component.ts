@@ -33,14 +33,33 @@ import { SpriteIconsPanelComponent, SpriteImagesPanelComponent } from './compone
 
         <nz-tab nzTitle="图片">
           <ng-template nz-tab>
-            <app-sprite-images-panel
+            <app-sprite-images-panel [sprite]="sprite()"
             />
           </ng-template>
         </nz-tab> 
       </nz-tabs>
     <!-- } -->
   `,
-  styles: ``,
+  styles: [
+    `
+    :host{
+      display: block;
+      height: 100%;
+      nz-tabs{
+        height: 100%;
+        &::ng-deep .ant-tabs-content-holder{
+          height: 100%;
+          .ant-tabs-content{
+            height: 100%;
+            .ant-tabs-tabpane{
+              height: 100%;
+            }
+          }
+        }
+      }
+    }
+    `
+  ],
 })
 export class SpriteResultTabsComponent {
   sprite = input<SpriteSnapshot | null>(null);

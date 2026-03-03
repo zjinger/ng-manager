@@ -7,6 +7,7 @@ import staticPlugin from "./plugins/static.plugin";
 import successHandlerPlugin from "./plugins/success-handle.plugin";
 import wsPlugin from "./plugins/ws/ws.plugin";
 import apiClientPlugin from "./plugins/api-client.plugin";
+import { env } from './env'
 function normalizeLogLevel(v?: string) {
     // pino levels: fatal error warn info debug trace silent
     const lv = (v ?? "").toLowerCase().trim();
@@ -15,8 +16,8 @@ function normalizeLogLevel(v?: string) {
     return "info";
 }
 function createFastifyLogger(): false | FastifyBaseLogger | undefined {
-    const level = normalizeLogLevel(process.env.NGM_LOG_LEVEL);
-
+    const level = normalizeLogLevel(env.logLevel);
+    console.log(`Logger initialized with level: ${level || "silent (disabled)"}`);
     // 1) 未指定级别 => 默认关闭（安静）
     if (!level) return false;
 

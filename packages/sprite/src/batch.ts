@@ -110,6 +110,7 @@ export async function generateGroupBatch(opts: GenerateGroupBatchOptions): Promi
                     groupDir,
                     prefix,
                     urlResolver: opts.svgUrlResolver,
+                    outDir, // svg 的 meta 输出到 outDir/{group}/
                 });
                 return { ok: true, group, type, result } as GenerateGroupBatchItem;
             }

@@ -26,7 +26,7 @@ export class JsonSpriteRepo implements SpriteRepo {
             localDir: cfg.localDir,
             enabled: cfg.enabled,
             sourceId: cfg.sourceId,
-            template: cfg.template.trim() || '<i class="{base} {class}" ></i>',
+            template: cfg.template.trim() || '<i class="{base} {class}"></i>',
             spriteUrl: cfg.spriteUrl.trim() || '/assets/icons/{group}.png',
             spriteExportDir: cfg.spriteExportDir?.trim() || '',
             lessExportDir: cfg.lessExportDir?.trim() || '',

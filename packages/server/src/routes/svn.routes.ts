@@ -1,6 +1,9 @@
 import { AppError, ProjectAssetSourceSvn } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
+import mime from "mime-types";
+import fs, { createReadStream } from "node:fs";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { env } from "../env";
 export default async function svnRoutes(fastify: FastifyInstance) {
 
@@ -55,3 +58,4 @@ export default async function svnRoutes(fastify: FastifyInstance) {
         return { message: "SVN sync started" };
     })
 }
+

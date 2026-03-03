@@ -9,4 +9,6 @@ export interface SpriteService {
     /** 读取 cacheOutDir 下的各 group meta.json，组装成 UI 需要的结构 */
     getSprites(projectId: string): Promise<SpriteSnapshot>;
 
+    ensureCacheDir(projectId: string): string;
+
 }

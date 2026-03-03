@@ -9,6 +9,7 @@ import type {
 } from "./types";
 import { detectGroupType, parseGroupSize, defaultFileSort, sortSpriteClasses } from "./detect";
 import { buildLessForSprite } from "./css";
+import { ensureDir, readMeta, writeMeta } from "./file";
 
 type SpritesmithResult = {
     image: Buffer;
@@ -16,18 +17,7 @@ type SpritesmithResult = {
     properties: { width: number; height: number };
 };
 
-function ensureDir(dir: string) {
-    fs.mkdirSync(dir, { recursive: true });
-}
 
-function readMeta(metaPath: string): SpriteMetaFile {
-    const raw = fs.readFileSync(metaPath, "utf-8");
-    return JSON.parse(raw) as SpriteMetaFile;
-}
-
-function writeMeta(metaPath: string, meta: SpriteMetaFile) {
-    fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), "utf-8");
-}
 
 async function runSpritesmith(srcFiles: string[], algorithm: SpritesmithOptionsAlgorithm): Promise<SpritesmithResult> {
     return await new Promise((resolve, reject) => {
@@ -76,7 +66,7 @@ export async function generatePngGroup(opts: GeneratePngGroupOptions): Promise<G
     const cacheEnabled = cache?.enabled ?? true;
 
     if (cacheEnabled && !forceRefresh && fs.existsSync(spritePath) && fs.existsSync(metaPath)) {
-        const meta = readMeta(metaPath);
+        const meta = readMeta(metaPath) as SpriteMetaFile;
         sortSpriteClasses(meta.classes);
 
         const resultBase = {
@@ -138,6 +128,7 @@ export async function generatePngGroup(opts: GeneratePngGroupOptions): Promise<G
     sortSpriteClasses(classes);
 
     const meta: SpriteMetaFile = {
+        mode: "png",
         group,
         tileWidth,
         tileHeight,

@@ -114,6 +114,7 @@ export type ErrorCode =
     // Generic
     | "BAD_REQUEST" // 通用的请求错误
     | "NOT_IMPLEMENTED" // 通用的未实现错误
+    | "NOT_FOUND" // 通用的未找到错误
 
 export class AppError extends Error {
     constructor(

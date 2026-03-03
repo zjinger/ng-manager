@@ -1,4 +1,4 @@
-import { GenerateGroupResult, SpriteMetaFile } from "@yinuo-ngm/sprite";
+import { GenerateGroupResult, SpriteMetaFile, SvgMetaFile } from "@yinuo-ngm/sprite";
 
 export type SpritesmithOptionsAlgorithm = "binary-tree" | "top-down" | "left-right" | "diagonal";
 
@@ -15,7 +15,7 @@ export interface SpriteConfig {
     sourceId: string;     // 绑定 Project.assets.sources[].id
     localDir: string;      // 存放原始图标的本地目录，绝对路径
     prefix: string;       // "sl"
-    template: string;     // 模板字符串，生成 less 文件用，例如 '<i class="{base} {class}" ></i>'
+    template: string;     // 模板字符串，生成 less 文件用，例如 '<i class="{base} {class}"></i>'
     spriteUrl: string;    // 生成的雪碧图访问 URL，例如 '/assets/icons/{group}.png'，其中 {group} 会被替换为分组名
     spriteExportDir?: string; // 可选：雪碧图导出目录，优先级高于全局配置
     lessExportDir?: string; // 可选：less 导出目录，优先级高于全局配置
@@ -56,7 +56,7 @@ export type SpriteGroupItem = {
     /** 用于 ng-manager 内部预览（永远可访问） */
     previewSpriteUrl?: string;
     spriteUrl?: string;                   // cfg.spriteUrl 模板替换
-    meta?: SpriteMetaFile;                // 直接返回 meta（或者拆开成 tileWidth/classes...）
+    meta?: SpriteMetaFile | SvgMetaFile;                // 直接返回 meta（或者拆开成 tileWidth/classes...）
     lessText?: string;                    // 代码区
     exported?: SpriteExportedPaths;        // generate 时才有
     status?: SpriteGroupStatus;            // generate 时才有

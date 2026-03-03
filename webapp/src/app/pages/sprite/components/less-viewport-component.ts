@@ -21,7 +21,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     NzTooltipModule
   ],
   template: `
-    <div class="view-card">
+    <div class="view-card bg-fx">
       <div class="view-header">
         <div class="text">样式代码</div>
         <div class="actions">
@@ -31,28 +31,65 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         </div>
       </div>
       <div class="viewport">
-        <pre><code>{{cssText}}</code></pre>
+          <pre><code>{{cssText}}</code></pre>
       </div>
     </div>
   `,
   styles: [`
+      :host{
+        display: block;
+        height: 100%;
+      }
+      /* 微弱噪点 + 渐变背景 */
+      .bg-fx {
+          background:
+              radial-gradient(1200px 650px at 20% 10%, rgba(34, 211, 238, .14), transparent 55%),
+              radial-gradient(900px 520px at 80% 35%, rgba(124, 58, 237, .16), transparent 55%),
+              radial-gradient(900px 520px at 40% 90%, rgba(52, 211, 153, .10), transparent 55%),
+              linear-gradient(180deg, #050816 0%, #070B18 40%, #050816 100%);
+          position: relative;
+      }
       .view-card{
         border: 1px solid rgba(15, 23, 42, 0.12);
         position:relative;
         border-radius: 12px;
+        display:flex;
+        flex-direction:column;
+        height: 100%;
+        overflow: hidden;
+
       }
       .view-header{
         padding:8px 12px;
         display:flex;
         align-items:center;
         justify-content:space-between;
+        flex: 0 0 auto;
+        .text{
+          font-size: 14px;
+          font-weight: 500;
+          color: rgba(255,255,255,.85);
+        }
+        .actions{
+          display:flex;
+          align-items:center;
+          gap:8px;
+          button[nz-button]{
+           color: rgba(255,255,255,.85);
+          }
+        }
+
       }
       .viewport{
+        flex:1 1 auto;
+        min-height:0;
         cursor: default;
         background-color: rgb(5, 8, 21);
         position:relative;
         color: #fff;
         padding-left: 12px;
+        overflow-x: hidden;
+        overflow-y: auto;
       }
     `],
 })

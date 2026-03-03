@@ -2,7 +2,7 @@ import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { CommonModule } from "@angular/common";
 import { Component, OnChanges, SimpleChanges, computed, inject, input, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import type { SpriteClassMeta, SpriteGroupItem, SpriteSnapshot } from "@models/sprite.model";
+import type { SpriteBrowseEntry, SpriteClassMeta, SpriteGroupItem, SpriteMetaFile, SpriteSnapshot, SvgMetaFile } from "@models/sprite.model";
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzCodeEditorModule } from "ng-zorro-antd/code-editor";
@@ -14,6 +14,8 @@ import { NzMessageService } from "ng-zorro-antd/message";
 import { NzSelectModule } from "ng-zorro-antd/select";
 import { LessViewportComponent } from "./less-viewport-component";
 import { SpriteViewportComponent } from "./sprite-viewport-component";
+import { SpriteApiService } from '../services/sprite-api.service';
+import { NzImageModule } from 'ng-zorro-antd/image';
 @Component({
   selector: "app-sprite-icons-panel",
   standalone: true,
@@ -31,6 +33,7 @@ import { SpriteViewportComponent } from "./sprite-viewport-component";
     SpriteViewportComponent,
     LessViewportComponent,
     NzBadgeModule,
+    NzImageModule
   ],
   template: `
     <div class="wrap">
@@ -40,7 +43,7 @@ import { SpriteViewportComponent } from "./sprite-viewport-component";
           <nz-select
             style="width: 220px"
             [ngModel]="group()"
-            (ngModelChange)="group.set($event)"
+            (ngModelChange)="group.set($event); groupChange($event)"
             nzPlaceHolder="请选择"
           >
             @for (opt of groups(); track opt.group) {
@@ -65,12 +68,26 @@ import { SpriteViewportComponent } from "./sprite-viewport-component";
               </div>
             </div>
 
-            @if(iconClasses().length === 0){
+            @if(iconClasses().length === 0 && icons().length === 0){
               <nz-empty nzNotFoundContent="该分组没有可用图标"></nz-empty>
             } @else {
               <div class="icon-grid">
-                @for (c of iconClasses(); track c.className) {
-                  <div class="icon-card" (click)="copyClass(c.className)">
+                @if(mode() === 'svg'){
+                  @for (c of icons(); track c.name) {
+                    <div class="icon-card" (click)="copySvg(c)">
+                      <div class="thumb">
+                        @if(c.kind === 'file' && c.url){
+                          <img  nz-image [nzSrc]="c.url" [alt]="c.name" loading="lazy" />
+                        }
+                      </div>
+                      <div class="meta">
+                        <div class="name">{{c.name}}</div>
+                      </div>
+                    </div>
+                  }
+                }@else{
+                  @for (c of iconClasses(); track c.className) {
+                  <div class="icon-card" (click)="copySpriteClass(c.className)">
                     <div class="thumb">
                       <div class="sprite" [ngStyle]="spriteStyle(c)"></div>
                     </div>
@@ -80,6 +97,7 @@ import { SpriteViewportComponent } from "./sprite-viewport-component";
                       <nz-badge [nzStatus]="activeClassName() === c.className ? 'processing' : 'default'" />
                     </div>
                   </div>
+                }
                 }
               </div>
             }
@@ -191,39 +209,63 @@ import { SpriteViewportComponent } from "./sprite-viewport-component";
     .css-content{
       padding:12px;
       line-height: 1.5;
-      overflow:auto;
       flex:1 1 auto;
+      overflow:hidden;
     }
   `]
 })
 export class SpriteIconsPanelComponent implements OnChanges {
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes["sprite"]) {
-      const firstGroup = this.sprite()?.groups?.[0]?.group ?? "";
-      this.group.set(firstGroup);
-    }
-  }
-  sprite = input<SpriteSnapshot | null>(null);
-  group = signal<string>("");
-
   private clipboard = inject(Clipboard);
   private msg = inject(NzMessageService);
+  private api = inject(SpriteApiService);
+
+
+  sprite = input<SpriteSnapshot | null>(null);
 
   groups = computed<SpriteGroupItem[]>(() => {
     return this.sprite()?.groups ?? [];
   });
-
+  group = signal<string>("");
   activeItem = computed(() => {
     const g = this.group();
     return this.groups().find((x) => x.group === g) ?? null;
   });
-
+  mode = computed<"svg" | "png">(() => {
+    return this.activeItem()?.kind === "svg" ? "svg" : "png";
+  })
   activeClassName = signal<string>("");
 
   activePreviewSpriteUrl = computed(() => {
     const it = this.activeItem();
     return it?.previewSpriteUrl ?? null;
   });
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes["sprite"]) {
+      const firstItem = this.sprite()?.groups?.[0];
+      if (firstItem) {
+        const firstGroup = firstItem.group ?? "";
+        this.group.set(firstGroup);
+        this.groupChange(firstGroup);
+      }
+    }
+  }
+
+  groupChange(group: string) {
+    if (this.activeItem()?.kind === 'svg') {
+      this.loadImages(group);
+    }
+  }
+
+  loadImages(group: string) {
+    const id = this.sprite()?.projectId ?? ''
+    if (!id) return;
+    this.api.browseIconFiles(id, group)
+      .subscribe(res => {
+        const icons = res.entries ?? [];
+        this.icons.set(icons);
+      });
+  }
 
   private baseClass = computed(() => {
     const prefix = this.sprite()?.config?.prefix || "sl";
@@ -242,23 +284,42 @@ export class SpriteIconsPanelComponent implements OnChanges {
 
   iconClasses = computed(() => {
     const it = this.activeItem();
-    const classes = (it?.meta?.classes ?? []);
+    const meta = it?.meta as SpriteMetaFile
+    const classes = (meta?.classes ?? []);
     return classes
       .filter((x) => !!x.className);
   });
+
+  icons = signal<SpriteBrowseEntry[]>([]);
 
   cssText = computed(() => {
     const it = this.activeItem();
     return String(it?.lessText ?? "");
   });
 
-  async copyClass(className: string) {
+  async copySpriteClass(className: string) {
     const tpl = this.sprite()?.config?.template || `<i class="{base} {class}"></i>`;
     const html = tpl
       .replaceAll("{base}", this.baseClass())
       .replaceAll("{class}", className);
 
     this.activeClassName.set(className);
+    this.clipboard.copy(html);
+    const safe = escapeHtmlText(html);
+    const tip = `已复制：${safe}`
+    this.msg.success(tip);
+  }
+
+  async copySvg(c: SpriteBrowseEntry) {
+    const tpl = this.sprite()?.config?.template;
+    if (!tpl) return;
+    const item = this.activeItem();
+    const meta = item?.meta as SvgMetaFile;
+    if (!meta) return;
+    const size = meta?.size
+    const svgMeta = meta.icons.find(i => i.file === c.name);
+    if (!svgMeta) return;
+    const html = tpl.replaceAll("{name}", svgMeta.name).replaceAll("{size}", size).replaceAll("{base}", svgMeta.className).replaceAll("{group}", meta.group);
     this.clipboard.copy(html);
     const safe = escapeHtmlText(html);
     const tip = `已复制：${safe}`
@@ -276,10 +337,11 @@ export class SpriteIconsPanelComponent implements OnChanges {
     const item = this.activeItem(); // SpriteGroupItem
     const url = item?.previewSpriteUrl; // 推荐用 previewSpriteUrl
     if (!url) return {};
+    const meta = item?.meta as SpriteMetaFile;
     return {
       backgroundImage: `url("${url}")`,
       backgroundRepeat: "no-repeat",
-      backgroundSize: item?.meta ? `${item.meta.spriteWidth}px ${item.meta.spriteHeight}px` : "initial",
+      backgroundSize: meta ? `${meta.spriteWidth}px ${meta.spriteHeight}px` : "initial",
     };
   }
 

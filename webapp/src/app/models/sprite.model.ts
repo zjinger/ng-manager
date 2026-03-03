@@ -12,7 +12,7 @@ export interface SpriteConfig {
     sourceId: string;     // 绑定 Project.assets.sources[] 的 id，表示雪碧图的资源来源
     localDir: string;      // 存放原始图标的本地目录，绝对路径
     prefix: string;       // "sl"
-    template: string;     // 模板字符串，生成 less 文件用，例如 '<i class="{base} {class}" ></i>'
+    template: string;     // 模板字符串，生成 less 文件用，例如 '<i class="{base} {class}"></i>'
     spriteUrl: string;    // 生成的雪碧图访问 URL，例如 '/assets/icons/{group}.png'，其中 {group} 会被替换为分组名
     spriteExportDir?: string; // 可选：雪碧图导出目录，优先级高于全局配置
     lessExportDir?: string; // 可选：less 导出目录，优先级高于全局配置
@@ -87,9 +87,8 @@ export type SpriteExportedPaths = {
     spriteOutPath?: string; // only png
     lessOutPath?: string;   // png/svg 都可能
 };
-
-
 export interface SpriteMetaFile {
+    mode: "png";
     group: string;
     // tile size from group name, e.g. 10-10
     tileWidth: number;
@@ -101,13 +100,22 @@ export interface SpriteMetaFile {
 
     classes: SpriteClassMeta[];
 }
+export interface SvgMetaFile {
+    mode: "svg";
+    group: string;
+    tileWidth: number;
+    tileHeight: number;
+    prefix: string;
+    size: string;
+    icons: Array<SvgIconMeta>;
+}
 
 export type SpriteGroupItem = {
     group: string;
     kind?: "png" | "svg";                 // 从 generate 可得；仅 getSprites 时可通过 meta 推断/留空
     spriteUrl?: string;                   // cfg.spriteUrl 模板替换
     previewSpriteUrl?: string;            // 用于 ng-manager 内部预览（永远可访问）
-    meta?: SpriteMetaFile;                // 直接返回 meta（或者拆开成 tileWidth/classes...）
+    meta?: SpriteMetaFile | SvgMetaFile; // 直接返回 meta（或者拆开成 tileWidth/classes...）
     lessText?: string;                    // 代码区
     exported?: SpriteExportedPaths;        // generate 时才有
     status?: SpriteGroupStatus;            // generate 时才有
@@ -129,4 +137,17 @@ export type SpriteSnapshot = {
     failed?: number;                      // getSprites 可不填或 0
 
     groups: SpriteGroupItem[];
+};
+
+export type SpriteBrowseEntry = {
+    name: string;
+    kind: "file" | "dir";
+    ext?: string;
+    url?: string;
+    fileCount?: number; // 仅目录有效，表示该目录下的文件数量（不递归）
+};
+
+export type SpriteBrowseResult = {
+    root: string;
+    entries: SpriteBrowseEntry[];
 };

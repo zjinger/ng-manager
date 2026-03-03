@@ -120,6 +120,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     /* ---------------- Generic ---------------- */
     BAD_REQUEST: 400,
     NOT_IMPLEMENTED: 501,
+    NOT_FOUND: 404,
 
     /* ---------------- SVN Sync ---------------- */
     SVN_SYNC_ALREADY_RUNNING: 409,

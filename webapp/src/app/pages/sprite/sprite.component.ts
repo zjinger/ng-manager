@@ -45,7 +45,7 @@ import dayjs from 'dayjs';
     SpriteResultTabsComponent,
   ],
   template: `
-    <app-page-layout [title]="'雪碧图'" [loading]="loading()" [isFullscreen]="true">
+    <app-page-layout [title]="'雪碧图'" [loading]="loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
       <ng-container ngProjectAs="actions">
         @if(!isEmpty()){
           <button nz-button  nzType="primary" (click)="generate()" nz-tooltip nzTooltipTitle="生成雪碧图">

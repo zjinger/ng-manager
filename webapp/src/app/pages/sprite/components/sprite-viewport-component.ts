@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, ElementRef, input, Input, model, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SpriteClassMeta, SpriteGroupItem } from '@models/sprite.model';
+import { SpriteClassMeta, SpriteGroupItem, SpriteMetaFile } from '@models/sprite.model';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
@@ -27,16 +27,18 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
             <nz-badge nzColor="geekblue"/>
             拖拽移动
           </div>
+          
         </nz-space>
         <div class="actions">
           <nz-space>
+            <a href="javascript:;" class="tip" (click)="resetView()">重置视图</a>
             <label nz-checkbox [(ngModel)]="showGrid">像素网格</label>
             <label nz-checkbox [(ngModel)]="showBoxes">切片框</label>
           </nz-space>
         </div>
       </div>
       <div class="viewport" #viewport 
-        [style.height.px]="(item?.meta?.spriteHeight ?? 0) + 48"
+        [style.height.px]="(meta?.spriteHeight ?? 0) + 48"
         [class.grid-fx]="showGrid"
         (mousedown)="onMouseDown($event)"
         (mousemove)="onMouseMove($event)"
@@ -46,7 +48,7 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
         (click)="clearActiveIfBlank($event)"
       >
         <div class="stage abs inset-0"  [style.transform]="stageTransform()" style="transform-origin: 0 0;">
-          <div class="sprite abs" [style.width.px]="item?.meta?.spriteWidth" [style.height.px]="item?.meta?.spriteHeight">
+          <div class="sprite abs" [style.width.px]="meta?.spriteWidth" [style.height.px]="meta?.spriteHeight">
             <div class="abs inset-0"  [style.backgroundImage]="'url(' + previewSpriteUrl + ')'"
                     style="background-repeat:no-repeat;background-position:0 0;background-size:100% 100%;opacity:.95;" ></div>
             <div class="abs inset-0 abs2"></div>
@@ -216,7 +218,11 @@ export class SpriteViewportComponent {
   });
 
   get classes() {
-    return this.item?.meta?.classes ?? [];
+    return this.meta?.classes ?? [];
+  }
+
+  get meta() {
+    return this.item?.meta as SpriteMetaFile | undefined;
   }
 
   get previewSpriteUrl() {
@@ -295,6 +301,12 @@ export class SpriteViewportComponent {
     // 点击空白处清空选中（注意：boxes 会 stopPropagation）
     const target = e.target as HTMLElement;
     if (target.id === 'viewport') this.setActive("");
+  }
+
+  resetView() {
+    this.scale.set(1);
+    this.tx.set(0);
+    this.ty.set(0);
   }
 
   private clamp(v: number, min: number, max: number) {
