@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json",
-    "test": "npm run build && node --test test/local-server-runtime.test.js"
+    "test": "npm run build"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9"

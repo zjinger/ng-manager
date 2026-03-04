@@ -2,20 +2,6 @@
 
 export { createCoreApp, } from "./app/core-app";
 export { type CoreApp } from "./app/types";
-export {
-    createLocalServerRuntime,
-    type LocalServerLockInfo,
-    type ManagedServerInfo,
-    type ManagedServerProcess,
-} from "./app/local-server-runtime";
-export {
-    getLocalServerDataDir,
-    getLocalServerLockPath,
-    readLocalServerLock,
-    writeLocalServerLock,
-    clearLocalServerLock,
-} from "./app/local-server-lock";
-
 export { type ErrorCode, AppError } from "./common/errors";
 
 export type { LogLine } from "./infra/log";

@@ -5,7 +5,7 @@ import {
     readLocalServerLock,
     writeLocalServerLock,
     type LocalServerLockInfo,
-} from "@yinuo-ngm/core";
+} from "@yinuo-ngm/runtime";
 
 export type LockInfo = LocalServerLockInfo;
 

@@ -3,7 +3,8 @@ import {
     createLocalServerRuntime,
     type LocalServerLockInfo,
     type ManagedServerProcess,
-} from "@yinuo-ngm/core";
+} from "@yinuo-ngm/runtime";
+
 import { startServer, type ServerOptions } from "./server";
 import { isHealthy } from "./health";
 import { readLock, writeLock, clearLock } from "./lock";

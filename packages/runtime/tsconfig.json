@@ -2,11 +2,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib"
+    "outDir": "lib",
+    "composite": true
   },
-  "references": [
-    { "path": "../runtime" },
-    { "path": "../server" }
-  ],
   "include": ["src/**/*.ts"]
 }

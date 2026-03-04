@@ -21,7 +21,7 @@
     "test": "npm run build && node --test test/commands.test.js"
   },
   "dependencies": {
-    "@yinuo-ngm/core": "*",
+    "@yinuo-ngm/runtime": "*",
     "@yinuo-ngm/server": "*",
     "commander": "^12.0.0",
     "env-paths": "^3.0.0",

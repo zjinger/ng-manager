@@ -5,6 +5,7 @@
   // Building this project will build all of the following:
   "references": [
     { "path": "packages/storage" },
+    { "path": "packages/runtime" },
     { "path": "packages/core" },
     { "path": "packages/sprite" },
     { "path": "packages/ais" },
