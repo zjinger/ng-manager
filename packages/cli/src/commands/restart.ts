@@ -1,6 +1,6 @@
 import { stopCmd } from "./stop";
 import { startUi } from "./ui";
-import { startServer } from "./server";
+import { startServerAction } from "./server";
 
 type RestartOpts = {
     ui?: boolean;
@@ -20,6 +20,6 @@ export async function restartCmd(opts: RestartOpts) {
     if (opts.ui !== false) {
         await startUi(opts);
     } else {
-        await startServer(opts);
+        await startServerAction(opts);
     }
 }
