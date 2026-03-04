@@ -17,7 +17,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "node lib/bin/ngm.js ui"
+    "dev": "node lib/bin/ngm.js ui",
+    "test": "npm run build && node --test test/runtime.test.js"
   },
   "dependencies": {
     "@yinuo-ngm/server": "^1.0.8",
