@@ -8,6 +8,13 @@ export {
     type ManagedServerInfo,
     type ManagedServerProcess,
 } from "./app/local-server-runtime";
+export {
+    getLocalServerDataDir,
+    getLocalServerLockPath,
+    readLocalServerLock,
+    writeLocalServerLock,
+    clearLocalServerLock,
+} from "./app/local-server-lock";
 
 export { type ErrorCode, AppError } from "./common/errors";
 

@@ -1,9 +1,20 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
+import { createRequire } from "node:module";
 import { join } from "node:path";
+import {
+    clearLocalServerLock,
+    createLocalServerRuntime,
+    readLocalServerLock,
+    writeLocalServerLock,
+    type LocalServerLockInfo,
+    type ManagedServerProcess,
+} from "@yinuo-ngm/core";
 
 function delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+const require = createRequire(import.meta.url);
 
 export type ServerMode = "dev" | "prod";
 
@@ -20,108 +31,43 @@ export interface ServerManagerOptions {
 
 export class ServerManager {
     private proc: ChildProcessWithoutNullStreams | null = null;
+    private ownsProcess = false;
+    private runtime: ReturnType<typeof createLocalServerRuntime<DesktopServerProcess, { host?: string; port?: number }>>;
 
-    constructor(private opts: ServerManagerOptions) { }
+    constructor(private opts: ServerManagerOptions) {
+        this.runtime = createLocalServerRuntime<DesktopServerProcess, { host?: string; port?: number }>({
+            startServer: (opts) => this.spawnServerProcess(opts),
+            isHealthy: (port, host) => this.isHealthy(port, host),
+            readLock: () => this.readDesktopLock(),
+            writeLock: (info) => writeLocalServerLock(info),
+            clearLock: () => clearLocalServerLock(),
+            pickPort: async () => this.opts.port,
+            tryHttpShutdown: (port, host) => this.tryHttpShutdown(port, host),
+            pidExists: (pid) => this.pidExists(pid),
+            sleep: delay,
+            startupTimeoutMs: this.opts.startupTimeoutMs ?? 30_000,
+        });
+    }
 
     get baseUrl() {
         return `http://${this.opts.host}:${this.opts.port}`;
     }
 
     async start(): Promise<void> {
-        if (this.proc) return;
+        if (this.proc || this.ownsProcess) return;
 
-        // 启动前探测端口，如果已有 server，先杀
-        try {
-            const res = await fetch(`${this.baseUrl}${this.opts.healthPath ?? "/health"}`);
-            if (res.ok) {
-                await this.stop();
-                await delay(300);
-            }
-        } catch {
-            // ignore
-        }
-
-        const { mode, serverDir, host, port, onLog } = this.opts;
-
-        const env = {
-            ...process.env,
-            NGM_SERVER_HOST: host,
-            NGM_SERVER_PORT: String(port),
-            FORCE_COLOR: "1",
-        };
-
-        const isWin = process.platform === "win32";
-
-        let cmd: string;
-        let args: string[] = [];
-        let cwd = serverDir;
-
-        if (mode === "dev") {
-            const tsxBin = join(
-                serverDir,
-                "node_modules",
-                "tsx",
-                "dist",
-                "cli.mjs"
-            );
-            // ✅ dev：直接用 node 跑 tsx（不走 npm，不依赖 prefix）
-            // 要求：server/package.json 里有 devDependencies: tsx
-            cmd = isWin ? "node.exe" : "node";
-            args = [tsxBin, join(serverDir, "src", "index.ts")];
-            // cmd = isWin ? "cmd" : "node";
-            // args = isWin
-            //     ? ["/c", "npm", "run", "start:dev"]
-            //     : ["run", "start:dev"];
-
-            // if (isWin) {
-            //     args = [
-            //         "/c",
-            //         "node",
-            //         join(serverDir, "node_modules", "tsx", "dist", "cli.mjs"),
-            //         join(serverDir, "src", "index.ts"),
-            //     ];
-            // } else {
-            //     args = [
-            //         join(serverDir, "node_modules", "tsx", "dist", "cli.mjs"),
-            //         join(serverDir, "src", "index.ts"),
-            //     ];
-            // }
-        } else {
-            // ✅ prod：直接 node dist
-            cmd = isWin ? "node.exe" : "node";
-            // args = [join(serverDir, "dist", "index.js")];
-            args = ["dist/index.js"];
-        }
-
-        // const p = spawn(cmd, args, {
-        //     cwd: serverDir,   // ✅ 关键：在 serverDir 内执行
-        //     env,
-        //     stdio: "pipe",
-        //     windowsHide: true,
-        // });
-
-        const p = spawn(cmd, args, {
-            cwd: serverDir,
-            env,
-            stdio: "pipe",
-            windowsHide: true,
-            detached: process.platform !== "win32", // *nix 用进程组
+        const server = await this.runtime.ensureServer({
+            host: this.opts.host,
+            port: this.opts.port,
         });
 
-        this.proc = p;
-
-        p.stdout.on("data", (buf) => onLog?.(String(buf)));
-        p.stderr.on("data", (buf) => onLog?.(String(buf)));
-
-        p.on("exit", (code, signal) => {
-            onLog?.(`[server] exited code=${code} signal=${signal}\n`);
-            this.proc = null;
-        });
-
-        await this.waitUntilHealthy();
+        this.ownsProcess = !server.reused;
+        this.proc = server.child?.raw ?? null;
     }
 
     async stop(): Promise<void> {
+        if (!this.ownsProcess) return;
+
         const p = this.proc;
         if (!p) return;
 
@@ -136,6 +82,7 @@ export class ServerManager {
                 killer.on("error", () => resolve());
             });
             this.proc = null;
+            clearLocalServerLock();
             return;
         }
 
@@ -146,35 +93,117 @@ export class ServerManager {
             p.kill("SIGKILL");
         }
         this.proc = null;
+        clearLocalServerLock();
+        this.ownsProcess = false;
     }
 
-    private async waitUntilHealthy(): Promise<void> {
-        const {
-            healthPath = "/health",
-            startupTimeoutMs = 15_000,
-            healthIntervalMs = 300,
-            onLog,
-        } = this.opts;
+    private async isHealthy(port: number, host = this.opts.host): Promise<boolean> {
+        try {
+            const res = await fetch(`http://${host}:${port}${this.opts.healthPath ?? "/health"}`);
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
 
-        const url = `${this.baseUrl}${healthPath}`;
-        const start = Date.now();
+    private async tryHttpShutdown(port: number, host = this.opts.host): Promise<boolean> {
+        try {
+            const res = await fetch(`http://${host}:${port}/shutdown`, { method: "POST" });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
 
-        while (Date.now() - start < startupTimeoutMs) {
-            // 如果进程已经挂了，直接失败
-            if (!this.proc) {
-                throw new Error("Local server process exited before becoming healthy.");
+    private pidExists(pid: number): boolean {
+        if (!pid || pid <= 0) return false;
+        try {
+            process.kill(pid, 0);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private spawnServerProcess(opts: { host?: string; port?: number }): DesktopServerProcess {
+        const { mode, serverDir, onLog } = this.opts;
+        const env = {
+            ...process.env,
+            NGM_SERVER_HOST: opts.host ?? this.opts.host,
+            NGM_SERVER_PORT: String(opts.port ?? this.opts.port),
+            FORCE_COLOR: "1",
+        };
+        const isWin = process.platform === "win32";
+
+        let cmd = isWin ? "node.exe" : "node";
+        let args: string[];
+
+        if (mode === "dev") {
+            const tsxBin = require.resolve("tsx/dist/cli.mjs", { paths: [serverDir] });
+            args = [tsxBin, join(serverDir, "src", "index.ts")];
+        } else {
+            args = [join(serverDir, "lib", "index.js")];
+        }
+
+        const raw = spawn(cmd, args, {
+            cwd: serverDir,
+            env,
+            stdio: "pipe",
+            windowsHide: true,
+            detached: process.platform !== "win32",
+        });
+
+        raw.stdout.on("data", (buf) => onLog?.(String(buf)));
+        raw.stderr.on("data", (buf) => onLog?.(String(buf)));
+
+        raw.on("exit", (code, signal) => {
+            onLog?.(`[server] exited code=${code} signal=${signal}\n`);
+            this.proc = null;
+            if (this.ownsProcess) {
+                clearLocalServerLock();
             }
-            try {
-                const res = await fetch(url, { method: "GET" });
-                if (res.ok) {
-                    onLog?.(`[server] healthy: ${url}\n`);
+            this.ownsProcess = false;
+        });
+
+        const exitPromise = new Promise<void>((resolve, reject) => {
+            raw.once("exit", (code, signal) => {
+                if (code === 0 || signal === "SIGINT" || signal === "SIGTERM") {
+                    resolve();
                     return;
                 }
-            } catch {
-                // ignore
-            }
-            await delay(healthIntervalMs);
-        }
-        throw new Error(`Local server did not become healthy within ${startupTimeoutMs}ms: ${url}`);
+                reject(new Error(`Local server exited before startup completed: code=${code} signal=${signal}`));
+            });
+            raw.once("error", (error) => {
+                reject(error);
+            });
+        });
+
+        return {
+            raw,
+            pid: raw.pid,
+            kill(signal?: string) {
+                raw.kill(signal as NodeJS.Signals | undefined);
+            },
+            once(event: "exit", listener: (...args: any[]) => void) {
+                raw.once(event, listener);
+            },
+            then: exitPromise.then.bind(exitPromise),
+        };
+    }
+
+    private readDesktopLock(): LocalServerLockInfo | null {
+        const lock = readLocalServerLock();
+        if (lock) return lock;
+
+        return {
+            pid: -1,
+            port: this.opts.port,
+            host: this.opts.host,
+            startedAt: 0,
+        };
     }
 }
+
+type DesktopServerProcess = ManagedServerProcess & {
+    raw: ChildProcessWithoutNullStreams;
+};

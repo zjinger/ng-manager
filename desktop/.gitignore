@@ -15,6 +15,7 @@ out/
 release/
 app/dist/
 renderer/dist/
+app/main
 
 # Electron
 *.asar

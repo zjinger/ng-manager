@@ -1,44 +1,30 @@
-import fs from "fs";
-import path from "path";
+import {
+    clearLocalServerLock,
+    getLocalServerDataDir,
+    getLocalServerLockPath,
+    readLocalServerLock,
+    writeLocalServerLock,
+    type LocalServerLockInfo,
+} from "@yinuo-ngm/core";
 
-export type LockInfo = {
-    pid: number;
-    port: number;
-    startedAt: number;
-    host?: string; // 可选，默认 127.0.0.1
-};
-
+export type LockInfo = LocalServerLockInfo;
 
 export function getDataDir(): string {
-    return process.env.NGM_DATA_DIR || path.join(process.env.USERPROFILE || "", ".ng-manager");
+    return getLocalServerDataDir();
 }
 
 export function getLockPath(): string {
-    return path.join(getDataDir(), "ngm.lock.json");
+    return getLocalServerLockPath();
 }
 
 export function readLock(): LockInfo | null {
-    const p = getLockPath();
-    if (!fs.existsSync(p)) return null;
-    try {
-        const raw = fs.readFileSync(p, "utf-8");
-        return JSON.parse(raw) as LockInfo;
-    } catch {
-        return null;
-    }
+    return readLocalServerLock();
 }
 
-export function writeLock(info: LockInfo) {
-    const dir = getDataDir();
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(getLockPath(), JSON.stringify(info, null, 2), "utf-8");
+export function writeLock(info: LockInfo): void {
+    writeLocalServerLock(info);
 }
 
-export function clearLock() {
-    const p = getLockPath();
-    try {
-        if (fs.existsSync(p)) fs.unlinkSync(p);
-    } catch {
-        // ignore
-    }
+export function clearLock(): void {
+    clearLocalServerLock();
 }

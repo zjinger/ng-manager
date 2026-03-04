@@ -17,7 +17,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     <div class="item"><span class="k">原尺寸图标</span><span class="v mono" [nz-tooltip]="draft.iconSvnPath">{{draft.iconSvnPath || '-'}}</span></div>
     <div class="item"><span class="k">其他切图</span><span class="v" [nz-tooltip]="draft.otherImagesSvnPath">{{draft.otherImagesSvnPath || '-'}}</span></div>
     <div class="sep"></div>
-    <div class="item"><span class="k">本地目录</span><span class="v" [nz-tooltip]="draft.localDir">{{draft.localDir ?? '-'}}</span></div>
+    <div class="item"><span class="k">本地目录</span><span class="v" [nz-tooltip]="draft.localDir">{{draft.localDir || '-'}}</span></div>
     <div class="item"><span class="k">雪碧图导出</span><span class="v" [nz-tooltip]="draft.spriteExportDir">{{draft.spriteExportDir ?? '-'}}</span></div>
     <div class="item"><span class="k">Less 导出目录</span><span class="v" [nz-tooltip]="draft.lessExportDir">{{draft.lessExportDir ?? '-'}}</span></div>
     <div class="sep"></div>

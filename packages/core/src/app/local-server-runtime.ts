@@ -29,6 +29,7 @@ type RuntimeDeps<TChild extends ManagedServerProcess, TOptions extends { host?: 
     tryHttpShutdown: (port: number, host?: string) => Promise<boolean>;
     pidExists: (pid: number) => boolean;
     sleep: (ms: number) => Promise<void>;
+    startupTimeoutMs?: number;
 };
 
 export function createLocalServerRuntime<
@@ -58,7 +59,7 @@ export function createLocalServerRuntime<
         const child = deps.startServer({ ...opts, host, port });
 
         try {
-            await waitUntilHealthyOrThrow(port, host, 6000);
+            await waitUntilHealthyOrThrow(port, host, deps.startupTimeoutMs ?? 6000);
         } catch (error) {
             try {
                 child.kill("SIGINT");
