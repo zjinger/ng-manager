@@ -16,12 +16,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json",
     "dev": "node lib/bin/ngm.js ui",
-    "test": "npm run build && node --test test/runtime.test.js"
+    "test": "npm run build && node --test test/commands.test.js"
   },
   "dependencies": {
-    "@yinuo-ngm/server": "^1.0.8",
+    "@yinuo-ngm/core": "*",
+    "@yinuo-ngm/server": "*",
     "commander": "^12.0.0",
     "env-paths": "^3.0.0",
     "execa": "^9.0.0",

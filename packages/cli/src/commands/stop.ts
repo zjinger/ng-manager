@@ -1,17 +1,30 @@
 import { readLock } from "./lock";
 import { stopManagedServer } from "./runtime";
 
-export async function stopCmd(): Promise<void> {
-    const lock = readLock();
-    if (!lock) {
-        console.log("ngm-server: not running");
-        return;
-    }
+type StopDeps = {
+    readLock: typeof readLock;
+    stopManagedServer: typeof stopManagedServer;
+    log: (line: string) => void;
+};
 
-    // const host = lock.host ?? "127.0.0.1";
-    // const port = lock.port;
+export function createStopCmd(deps: StopDeps = defaultStopDeps) {
+    return async function stopCmd(): Promise<void> {
+        const lock = deps.readLock();
+        if (!lock) {
+            deps.log("ngm-server: not running");
+            return;
+        }
 
-    console.log(`Stopping ngm-server (pid=${lock.pid}) ...`);
-    await stopManagedServer(lock);
-    console.log("ngm-server stopped");
+        deps.log(`Stopping ngm-server (pid=${lock.pid}) ...`);
+        await deps.stopManagedServer(lock);
+        deps.log("ngm-server stopped");
+    };
 }
+
+const defaultStopDeps: StopDeps = {
+    readLock,
+    stopManagedServer,
+    log: (line) => console.log(line),
+};
+
+export const stopCmd = createStopCmd();

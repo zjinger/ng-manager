@@ -11,7 +11,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -b tsconfig.json",
+    "test": "npm run build && node --test test/local-server-runtime.test.js"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9"

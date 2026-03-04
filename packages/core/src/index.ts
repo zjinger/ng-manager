@@ -2,6 +2,12 @@
 
 export { createCoreApp, } from "./app/core-app";
 export { type CoreApp } from "./app/types";
+export {
+    createLocalServerRuntime,
+    type LocalServerLockInfo,
+    type ManagedServerInfo,
+    type ManagedServerProcess,
+} from "./app/local-server-runtime";
 
 export { type ErrorCode, AppError } from "./common/errors";
 

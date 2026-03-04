@@ -1,13 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { createRuntime } = require("../lib/commands/runtime.js");
+const { createLocalServerRuntime } = require("../lib/index.js");
 
-test("ensureManagedServer reuses an existing healthy lock", async () => {
+test("ensureServer reuses an existing healthy lock", async () => {
     let startCalls = 0;
     let clearCalls = 0;
 
-    const runtime = createRuntime({
+    const runtime = createLocalServerRuntime({
         startServer: () => {
             startCalls += 1;
             return { pid: 1001, kill() {}, once() {} };
@@ -26,7 +26,7 @@ test("ensureManagedServer reuses an existing healthy lock", async () => {
         sleep: async () => {},
     });
 
-    const result = await runtime.ensureManagedServer({});
+    const result = await runtime.ensureServer({});
 
     assert.equal(result.reused, true);
     assert.equal(result.url, "http://127.0.0.1:3210");
@@ -34,11 +34,11 @@ test("ensureManagedServer reuses an existing healthy lock", async () => {
     assert.equal(clearCalls, 0);
 });
 
-test("ensureManagedServer starts a new server and writes lock when needed", async () => {
+test("ensureServer starts a new server and writes lock when needed", async () => {
     let startedWith = null;
     let writtenLock = null;
 
-    const runtime = createRuntime({
+    const runtime = createLocalServerRuntime({
         startServer: (opts) => {
             startedWith = opts;
             return { pid: 2002, kill() {}, once() {} };
@@ -55,7 +55,7 @@ test("ensureManagedServer starts a new server and writes lock when needed", asyn
         sleep: async () => {},
     });
 
-    const result = await runtime.ensureManagedServer({});
+    const result = await runtime.ensureServer({});
 
     assert.equal(result.reused, false);
     assert.equal(result.url, "http://127.0.0.1:3211");
@@ -65,11 +65,11 @@ test("ensureManagedServer starts a new server and writes lock when needed", asyn
     assert.equal(writtenLock.host, "127.0.0.1");
 });
 
-test("stopManagedServer clears lock after graceful shutdown", async () => {
+test("stopServer clears lock after graceful shutdown", async () => {
     let clearCalls = 0;
     let healthChecks = 0;
 
-    const runtime = createRuntime({
+    const runtime = createLocalServerRuntime({
         startServer: () => ({ pid: 0, kill() {}, once() {} }),
         isHealthy: async () => {
             healthChecks += 1;
@@ -86,7 +86,7 @@ test("stopManagedServer clears lock after graceful shutdown", async () => {
         sleep: async () => {},
     });
 
-    const stopped = await runtime.stopManagedServer({
+    const stopped = await runtime.stopServer({
         pid: 3003,
         port: 3210,
         host: "127.0.0.1",

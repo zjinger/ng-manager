@@ -1,17 +1,35 @@
 import open from "open";
 import { ensureManagedServer, waitForManagedServerExit } from "./runtime";
 
-export async function startUi(opts: any): Promise<void> {
-    console.log(`🚀  Preparing local UI ...`);
-    const server = await ensureManagedServer(opts);
+type UiDeps = {
+    ensureManagedServer: typeof ensureManagedServer;
+    openUrl: (url: string) => Promise<unknown>;
+    waitForManagedServerExit: typeof waitForManagedServerExit;
+    log: (line: string) => void;
+};
 
-    if (opts.open !== false) {
-        await open(server.url);
-    }
+export function createStartUi(deps: UiDeps = defaultUiDeps) {
+    return async function startUi(opts: any): Promise<void> {
+        deps.log(`🚀  Preparing local UI ...`);
+        const server = await deps.ensureManagedServer(opts);
 
-    console.log(`🎉  Ready on ${server.url}`);
+        if (opts.open !== false) {
+            await deps.openUrl(server.url);
+        }
 
-    if (server.child) {
-        await waitForManagedServerExit(server.child);
-    }
+        deps.log(`🎉  Ready on ${server.url}`);
+
+        if (server.child) {
+            await deps.waitForManagedServerExit(server.child);
+        }
+    };
 }
+
+const defaultUiDeps: UiDeps = {
+    ensureManagedServer,
+    openUrl: open,
+    waitForManagedServerExit,
+    log: (line) => console.log(line),
+};
+
+export const startUi = createStartUi();

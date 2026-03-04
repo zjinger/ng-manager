@@ -5,6 +5,7 @@
     "outDir": "lib"
   },
   "references": [
+    { "path": "../core" },
     { "path": "../server" }
   ],
   "include": ["src/**/*.ts"]
