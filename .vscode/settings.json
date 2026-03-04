@@ -13,5 +13,6 @@
             "skipChangeDetectionOnPush": true,
             "skipPathSubfolder": true
         }
-    }
+    },
+    "angular.enable-strict-mode-prompt": false
 }

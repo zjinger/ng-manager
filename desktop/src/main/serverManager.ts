@@ -2,13 +2,15 @@ import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import {
-    clearLocalServerLock,
     createLocalServerRuntime,
-    readLocalServerLock,
-    writeLocalServerLock,
     type LocalServerLockInfo,
     type ManagedServerProcess,
-} from "@yinuo-ngm/core";
+} from "./localServerRuntime.js";
+import {
+    clearLocalServerLock,
+    readLocalServerLock,
+    writeLocalServerLock,
+} from "./localServerLock.js";
 
 function delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

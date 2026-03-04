@@ -1,16 +1,114 @@
-import { app, BrowserWindow, dialog } from "electron";
-import { dirname, resolve } from "node:path";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ServerManager } from "./serverManager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const IPC_CHANNELS = {
+    WINDOW_MINIMIZE: "desktop:window:minimize",
+    WINDOW_MAXIMIZE: "desktop:window:maximize",
+    WINDOW_CLOSE: "desktop:window:close",
+    WINDOW_STATUS: "desktop:window:status",
+    APP_INFO: "desktop:app:info",
+} as const;
+
 function isServe() {
     return process.argv.includes("--serve");
 }
-const isDev = isServe();
+const isDev = isServe() || !app.isPackaged;
+let win: BrowserWindow | null = null;
 let serverMgr: ServerManager | null = null;
+let isQuitting = false;
+let isStoppingServer = false;
+
+function getPreloadPath() {
+    return join(__dirname, "preload.js");
+}
+
+function isAllowedNavigation(targetUrl: string, baseUrl: string) {
+    try {
+        const target = new URL(targetUrl);
+        const base = new URL(baseUrl);
+
+        return target.origin === base.origin;
+    } catch {
+        return false;
+    }
+}
+
+function isSafeExternalUrl(targetUrl: string) {
+    try {
+        const parsed = new URL(targetUrl);
+
+        return parsed.protocol === "https:" || parsed.protocol === "mailto:";
+    } catch {
+        return false;
+    }
+}
+
+async function stopServer() {
+    if (isStoppingServer) {
+        return;
+    }
+
+    isStoppingServer = true;
+    try {
+        await serverMgr?.stop();
+    } catch {
+        // ignore
+    } finally {
+        isStoppingServer = false;
+    }
+}
+
+function registerIpcHandlers() {
+    ipcMain.removeHandler(IPC_CHANNELS.APP_INFO);
+    ipcMain.removeHandler(IPC_CHANNELS.WINDOW_STATUS);
+    ipcMain.removeAllListeners(IPC_CHANNELS.WINDOW_MINIMIZE);
+    ipcMain.removeAllListeners(IPC_CHANNELS.WINDOW_MAXIMIZE);
+    ipcMain.removeAllListeners(IPC_CHANNELS.WINDOW_CLOSE);
+
+    ipcMain.on(IPC_CHANNELS.WINDOW_MINIMIZE, () => {
+        win?.minimize();
+    });
+
+    ipcMain.on(IPC_CHANNELS.WINDOW_MAXIMIZE, () => {
+        if (!win) {
+            return;
+        }
+        if (win.isMaximized()) {
+            win.unmaximize();
+            return;
+        }
+        win.maximize();
+    });
+
+    ipcMain.on(IPC_CHANNELS.WINDOW_CLOSE, () => {
+        isQuitting = true;
+        void app.quit();
+    });
+
+    ipcMain.handle(IPC_CHANNELS.WINDOW_STATUS, async () => {
+        return {
+            isMaximized: win?.isMaximized() ?? false,
+            isMinimized: win?.isMinimized() ?? false,
+            isFocused: win?.isFocused() ?? false,
+        };
+    });
+
+    ipcMain.handle(IPC_CHANNELS.APP_INFO, async () => {
+        return {
+            name: app.getName(),
+            version: app.getVersion(),
+            isPackaged: app.isPackaged,
+            isDev,
+            baseUrl: serverMgr?.baseUrl ?? null,
+        };
+    });
+}
+
 async function createWindow(baseUrl: string) {
     console.log('[desktop] main started', {
         pid: process.pid,
@@ -18,43 +116,80 @@ async function createWindow(baseUrl: string) {
         node: process.versions.node,
         electron: process.versions.electron,
     });
-    const win = new BrowserWindow({
-        width: 800,
-        height:640,
+    win = new BrowserWindow({
+        width: 1280,
+        height: 800,
+        minWidth: 1100,
+        minHeight: 720,
         title: "Ng-Manager",
+        show: false,
         webPreferences: {
+            preload: getPreloadPath(),
             nodeIntegration: false,
             contextIsolation: true,
+            sandbox: true,
+            devTools: isDev,
         },
     });
+
+    win.once("ready-to-show", () => {
+        win?.show();
+    });
+
+    win.on("closed", () => {
+        win = null;
+    });
+
+    win.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
+        if (isSafeExternalUrl(targetUrl)) {
+            void shell.openExternal(targetUrl);
+        }
+
+        return { action: "deny" };
+    });
+
+    win.webContents.on("will-navigate", (event, targetUrl) => {
+        if (!isAllowedNavigation(targetUrl, baseUrl)) {
+            event.preventDefault();
+
+            if (isSafeExternalUrl(targetUrl)) {
+                void shell.openExternal(targetUrl);
+            }
+        }
+    });
+
     if (isDev) {
         import("electron-debug").then((debug) => {
             debug.default({ isEnabled: true, showDevTools: true });
         });
-        // import("electron-reloader").then((reloader) => {
-        //     const reloaderFn = (reloader as any).default || reloader;
-        //     reloaderFn(module);
-        // });
 
         await win.loadURL("http://localhost:4200");
     } else {
-        // 生产模式：这里后续接 webapp build 输出
-        // await win.loadFile(path.join(__dirname, "../../webapp/index.html"));
-        await win.loadURL("http://localhost:4200"); // 暂时占位，先跑通闭环
+        await win.loadURL(baseUrl);
     }
-    // 先不做复杂注入，先把 baseUrl 留给后续 IPC
+
     console.log("[desktop] server baseUrl:", baseUrl);
+
+    return win;
 }
 
 function resolveServerDir() {
-    // dev：dist/main/main.js => desktop/dist/main
-    // 回到 desktop 根，再回到仓库根，再到 server
-    return resolve(__dirname, "..", "..", "..", "server");
+    if (app.isPackaged) {
+        return resolve(
+            process.resourcesPath,
+            "app.asar.unpacked",
+            "runtime",
+            "node_modules",
+            "@yinuo-ngm",
+            "server",
+        );
+    }
+
+    return resolve(__dirname, "..", "..", "..", "packages", "server");
 }
 async function boot() {
-    const mode = "dev" as const; // 当前阶段先固定 dev。后面 build 时再切 prod
+    const mode = isDev ? "dev" : "prod";
     const serverDir = resolveServerDir();
-    // ⚠️ dist 输出目录若不同，这里按实际改
     console.log("[desktop] serverDir:", serverDir);
     serverMgr = new ServerManager({
         mode,
@@ -66,6 +201,7 @@ async function boot() {
 
     try {
         await serverMgr.start();
+        registerIpcHandlers();
         await createWindow(serverMgr.baseUrl);
     } catch (e: any) {
         console.error(e);
@@ -75,12 +211,55 @@ async function boot() {
     }
 }
 
-app.whenReady().then(boot);
+const gotLock = app.requestSingleInstanceLock();
+
+if (!gotLock) {
+    app.quit();
+} else {
+    app.on("second-instance", () => {
+        if (!win) {
+            return;
+        }
+
+        if (win.isMinimized()) {
+            win.restore();
+        }
+
+        win.show();
+        win.focus();
+    });
+
+    app.whenReady().then(boot);
+}
+
+app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+        isQuitting = true;
+        void app.quit();
+    }
+});
+
+app.on("activate", async () => {
+    if (win || !serverMgr) {
+        return;
+    }
+
+    await createWindow(serverMgr.baseUrl);
+});
 
 app.on("before-quit", async () => {
-    try {
-        await serverMgr?.stop();
-    } catch {
-        // ignore
-    }
+    isQuitting = true;
+    await stopServer();
+});
+
+process.on("SIGINT", async () => {
+    isQuitting = true;
+    await stopServer();
+    app.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+    isQuitting = true;
+    await stopServer();
+    app.exit(0);
 });
