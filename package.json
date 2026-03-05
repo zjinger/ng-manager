@@ -4,6 +4,7 @@
   "scripts": {
     "清除产物": "",
     "clean": "rimraf -g \"packages/**/lib\" \"packages/**/dist\" \"packages/**/*.tsbuildinfo\"",
+    "clean:githead": "node -e \"const fs=require('fs');const path=require('path');for(const d of fs.readdirSync('packages',{withFileTypes:true}).filter(x=>x.isDirectory()).map(x=>x.name)){const p=path.join('packages',d,'package.json');if(!fs.existsSync(p)) continue;const raw=fs.readFileSync(p,'utf8').replace(/^\\uFEFF/,'');const j=JSON.parse(raw);if(Object.prototype.hasOwnProperty.call(j,'gitHead')){delete j.gitHead;fs.writeFileSync(p,JSON.stringify(j,null,2)+'\\n');}}\"",
     "clean:pack": "rimraf .artifacts/npm",
     "prepare:pack-dir": "node -e \"require('fs').mkdirSync('.artifacts/npm',{recursive:true})\"",
     "全量：TS references ": "",
