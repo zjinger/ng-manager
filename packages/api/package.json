@@ -21,6 +21,8 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/storage": "^0.1.3",
+    "@yinuo-ngm/storage": "^0.1.4",
     "undici": "^7.20.0"
-  }}
+  },
+  "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"
+}

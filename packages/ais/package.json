@@ -23,4 +23,6 @@
   "license": "ISC",
   "dependencies": {
     "iconv-lite": "^0.7.2"
-  }}
+  },
+  "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"
+}

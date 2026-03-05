@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/sprite",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "a sprite generation tool",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
@@ -13,9 +13,14 @@
   "files": [
     "lib"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/spritesmith": "^3.4.5"
   },
   "dependencies": {
     "spritesmith": "^3.5.1"
-  }}
+  },
+  "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"
+}
