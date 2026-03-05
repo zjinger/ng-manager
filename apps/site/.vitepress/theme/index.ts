@@ -3,7 +3,7 @@ import type { Theme } from 'vitepress'
 import './style.css'
 
 const paletteStorageKey = 'ngm-docs-palette'
-const defaultPalette = 'default'
+const defaultPalette = 'product'
 
 function applyPaletteClass() {
   if (typeof document === 'undefined') {

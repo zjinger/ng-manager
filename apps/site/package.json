@@ -5,7 +5,9 @@
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "docs:preview": "vitepress preview",
+    "deploy:intranet": "node ./scripts/deploy-intranet.mjs",
+    "deploy:intranet:ps1": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-intranet.ps1"
   },
   "devDependencies": {
     "vitepress": "^2.0.0-alpha.16"
