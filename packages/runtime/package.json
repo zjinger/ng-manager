@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/runtime",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "local server runtime helpers for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
