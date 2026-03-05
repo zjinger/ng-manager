@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/cli",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "a CLI tool for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "bin": {

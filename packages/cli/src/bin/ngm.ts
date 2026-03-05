@@ -6,11 +6,12 @@ import { statusCmd } from "../commands/status";
 import { stopCmd } from "../commands/stop";
 import { restartCmd } from "../commands/restart";
 const program = new Command();
+const { version } = require("../../package.json") as { version: string };
 
 program
     .name("ngm")
     .description("yinuo-ngm · ng-manager local control plane")
-    .version("0.1.10");
+    .version(version);
 
 program
     .command("status")

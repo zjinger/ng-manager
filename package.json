@@ -30,7 +30,8 @@
     "build:server": "tsc -b packages/server && cd webapp && npm run web:build",
     "build:ais": "tsc -b packages/ais",
     "build:sprite": "tsc -b packages/sprite",
-    "dev:server": "tsx watch packages/server/src/index.ts"
+    "dev:server": "tsx watch packages/server/src/index.ts",
+    "test:cli:ui": "node packages/cli/lib/bin/ngm.js ui"
   },
   "devDependencies": {
     "@types/node": "^25.2.0",
