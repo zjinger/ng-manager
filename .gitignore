@@ -64,4 +64,4 @@ Thumbs.db
 .cache/
 .tmp/
 .temp/
-*.tgz
+.artifacts/
