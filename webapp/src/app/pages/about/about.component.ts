@@ -25,8 +25,8 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
               <li>集成常用开发工具</li>
             </ul>
           </div>
-          <p>版本：1.0.0</p>
-          <p>官方网站：<a href="https://ng-manager.example.com" target="_blank">https://ng-manager.example.com</a></p>
+          <p>版本：0.1.12</p>
+          <p>官方网站：<a href="http://192.168.1.31:7006" target="_blank">http://192.168.1.31:7006</a></p>
         </div>
     </app-page-layout>
   `,
