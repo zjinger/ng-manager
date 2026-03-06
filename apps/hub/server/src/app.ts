@@ -8,6 +8,8 @@ import { FeedbackRepo } from "./modules/feedback/feedback.repo";
 import { FeedbackService } from "./modules/feedback/feedback.service";
 import { AnnouncementService } from "./modules/announcement/announcement.service";
 import { AnnouncementRepo } from "./modules/announcement/announcement.repo";
+import { DocumentService } from "./modules/document/document.service";
+import { DocumentRepo } from "./modules/document/document.repo";
 
 export async function createApp() {
     const app = Fastify({
@@ -30,9 +32,13 @@ export async function createApp() {
     const announcementRepo = new AnnouncementRepo(app.db);
     const announcementService = new AnnouncementService(announcementRepo);
 
+    const documentRepo = new DocumentRepo(app.db);
+    const documentService = new DocumentService(documentRepo);
+
     app.decorate("services", {
         feedback: feedbackService,
-        announcement: announcementService
+        announcement: announcementService,
+        document: documentService
     });
 
     await app.register(routesPlugin);

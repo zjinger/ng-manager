@@ -38,3 +38,24 @@ CREATE INDEX IF NOT EXISTS idx_announcements_scope ON announcements(scope);
 CREATE INDEX IF NOT EXISTS idx_announcements_pinned ON announcements(pinned DESC);
 CREATE INDEX IF NOT EXISTS idx_announcements_publish_at ON announcements(publish_at DESC);
 CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS documents (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  summary TEXT,
+  content_md TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft',
+  version TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_slug ON documents(slug);
+CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category);
+CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON documents(updated_at DESC);
+

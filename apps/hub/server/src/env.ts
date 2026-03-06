@@ -23,5 +23,13 @@ export const env = {
   logLevel: (process.env.LOG_LEVEL || "info") as "trace" | "debug" | "info" | "warn" | "error",
   dataDir,
   dbPath,
-  isDev: (process.env.NODE_ENV || "development") !== "production"
+  isDev: (process.env.NODE_ENV || "development") !== "production",
+
+  jwtSecret: process.env.JWT_SECRET || "ngm_hub_sk_123456",
+  authCookieName: process.env.AUTH_COOKIE_NAME || "ngm_hub_token",
+  authTokenExpiresIn: process.env.AUTH_TOKEN_EXPIRES_IN || "7d",
+
+  initAdminUsername: process.env.INIT_ADMIN_USERNAME || "admin",
+  initAdminPassword: process.env.INIT_ADMIN_PASSWORD || "Ad@_2o26",
+  initAdminNickname: process.env.INIT_ADMIN_NICKNAME || "Administrator"
 };
