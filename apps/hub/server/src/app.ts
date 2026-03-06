@@ -10,6 +10,9 @@ import { AnnouncementService } from "./modules/announcement/announcement.service
 import { AnnouncementRepo } from "./modules/announcement/announcement.repo";
 import { DocumentService } from "./modules/document/document.service";
 import { DocumentRepo } from "./modules/document/document.repo";
+import { AuthRepo } from "./modules/auth/auth.repo";
+import { AuthService } from "./modules/auth/auth.service";
+import authPlugin from "./plugins/auth.plugin";
 
 export async function createApp() {
     const app = Fastify({
@@ -35,11 +38,19 @@ export async function createApp() {
     const documentRepo = new DocumentRepo(app.db);
     const documentService = new DocumentService(documentRepo);
 
+    const authRepo = new AuthRepo(app.db);
+    const authService = new AuthService(authRepo);
+
     app.decorate("services", {
         feedback: feedbackService,
         announcement: announcementService,
-        document: documentService
+        document: documentService,
+        auth: authService
     });
+
+    await app.register(authPlugin);
+
+    await authService.ensureDefaultAdmin();
 
     await app.register(routesPlugin);
 
