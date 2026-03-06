@@ -22,12 +22,15 @@
   },
   "private": true,
   "dependencies": {
+    "@angular/animations": "^20.3.17",
     "@angular/common": "^20.3.0",
     "@angular/compiler": "^20.3.0",
     "@angular/core": "^20.3.0",
     "@angular/forms": "^20.3.0",
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
+    "@ant-design/icons-angular": "^20.0.0",
+    "ng-zorro-antd": "^20.4.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

@@ -1,0 +1,173 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.app-shell {
+  min-height: 100vh;
+  height: 100%;
+  background: #f5f7fa;
+}
+
+.app-header {
+  height: 64px;
+  padding: 0 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      display: block;
+    }
+  }
+
+  .title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f1f1f;
+    letter-spacing: 0.2px;
+  }
+}
+
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #595959;
+}
+
+.notify-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #595959;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &.offline {
+    color: #bfbfbf;
+  }
+
+  .anticon {
+    font-size: 16px;
+  }
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1677ff;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.user-name {
+  font-size: 14px;
+  color: #262626;
+}
+
+.down-icon {
+  font-size: 12px;
+  color: #8c8c8c;
+  cursor: pointer;
+}
+
+.shell-body {
+  min-height: calc(100vh - 64px);
+}
+
+.app-sider {
+  background: #FFFFFF;
+  border-right: 1px solid #E5E7EB;
+  overflow: auto;
+}
+
+.sider-title {
+  height: 72px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f1f1f;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.main-menu {
+  padding: 12px 8px;
+  background: transparent;
+  border-right: none;
+
+  .ant-menu-item {
+    height: 40px;
+    line-height: 40px;
+    margin: 4px 0;
+    border-radius: 8px;
+    color: #262626;
+    transition: all 0.2s ease;
+
+    .anticon {
+      font-size: 15px;
+    }
+
+    &:hover {
+      background: #f5f8ff;
+      color: #1677ff;
+    }
+  }
+
+  .ant-menu-item-selected {
+    background: #e6f4ff;
+    color: #1677ff;
+    font-weight: 500;
+
+    &::after {
+      display: none;
+    }
+  }
+}
+
+.app-content {
+  padding: 0;
+  background: #F5F5F5;
+  min-width: 0;
+  overflow: auto;
+}

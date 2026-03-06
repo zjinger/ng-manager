@@ -1,0 +1,62 @@
+<nz-layout class="app-shell">
+  <nz-header class="app-header">
+    <div class="brand">
+      <div class="logo">
+        <img src="/favicon.ico" alt="logo" class="logo" />
+      </div>
+      <span class="title">{{ title() }}</span>
+    </div>
+
+    <div class="header-actions">
+      <span class="notify-btn" [class.offline]="!ws.connected()">
+        <nz-badge [nzCount]="unreadCount()">
+          <span nz-icon nzType="bell"></span>
+        </nz-badge>
+      </span>
+
+      <span class="avatar">AD</span>
+      <span class="user-name">管理员</span>
+      <span nz-icon nzType="down" class="down-icon"></span>
+    </div>
+  </nz-header>
+
+  <nz-layout class="shell-body">
+    <nz-sider [nzWidth]="256" class="app-sider">
+      <ul nz-menu nzMode="inline" class="main-menu">
+        <li
+          nz-menu-item
+          routerLink="/dashboard"
+          routerLinkActive="ant-menu-item-selected"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          <span nz-icon nzType="dashboard"></span>
+          <span>仪表盘</span>
+        </li>
+
+        <li nz-menu-item routerLink="/announcements" routerLinkActive="ant-menu-item-selected">
+          <span nz-icon nzType="notification"></span>
+          <span>公告管理</span>
+        </li>
+
+        <li nz-menu-item routerLink="/docs" routerLinkActive="ant-menu-item-selected">
+          <span nz-icon nzType="file-text"></span>
+          <span>文档管理</span>
+        </li>
+
+        <li nz-menu-item routerLink="/feedback" routerLinkActive="ant-menu-item-selected">
+          <span nz-icon nzType="message"></span>
+          <span>反馈管理</span>
+        </li>
+
+        <li nz-menu-item routerLink="/releases" routerLinkActive="ant-menu-item-selected">
+          <span nz-icon nzType="branches"></span>
+          <span>版本管理</span>
+        </li>
+      </ul>
+    </nz-sider>
+
+    <nz-content class="app-content">
+      <router-outlet></router-outlet>
+    </nz-content>
+  </nz-layout>
+</nz-layout>

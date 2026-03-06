@@ -1,0 +1,89 @@
+<div class="page">
+  <div class="header">
+    <div class="header-row">
+      <h1 class="header-title">{{ pageTitle() }}</h1>
+      <div class="header-desc">{{ pageDesc() }}</div>
+    </div>
+  </div>
+  <div class="stats-grid">
+    @for (item of stats(); track item.key) {
+      <nz-card nzBordered="true" class="stat-card">
+        <div class="stat-card__inner">
+          <div class="stat-icon" [class]="item.colorClass">
+            <span nz-icon [nzType]="item.icon" nzTheme="outline"></span>
+          </div>
+
+          <div class="stat-content">
+            <div class="stat-label">{{ item.label }}</div>
+            <div class="stat-value">{{ item.value }}</div>
+          </div>
+        </div>
+      </nz-card>
+    }
+  </div>
+
+  <div class="content-grid">
+    <nz-card nzBordered="true" class="panel-card" [nzTitle]="feedbackTitle">
+      <ng-template #feedbackTitle>
+        <div class="panel-title-row">
+          <span class="panel-title">最近反馈</span>
+          <button nz-button nzType="link" class="panel-link" (click)="onViewAllFeedback()">
+            查看全部反馈
+          </button>
+        </div>
+      </ng-template>
+      <div class="panel-list">
+        @for (item of recentFeedbacks(); track trackById($index, item)) {
+          <div class="list-item feedback-item">
+            <div class="item-main">
+              <div class="item-title-row">
+                <nz-tag [nzColor]="feedbackTag(item.type).color">
+                  {{ feedbackTag(item.type).text }}
+                </nz-tag>
+                <span class="item-title">{{ item.title }}</span>
+              </div>
+
+              <div class="item-content">
+                {{ item.content }}
+              </div>
+            </div>
+
+            <div class="item-extra">
+              {{ item.timeText }}
+            </div>
+          </div>
+        }
+      </div>
+    </nz-card>
+
+    <nz-card nzBordered="true" class="panel-card" [nzTitle]="announcementTitle">
+      <ng-template #announcementTitle>
+        <div class="panel-title-row">
+          <span class="panel-title">重要公告</span>
+          <button nz-button nzType="link" class="panel-link" (click)="onViewAllAnnouncements()">
+            查看全部公告
+          </button>
+        </div>
+      </ng-template>
+
+      <div class="panel-list">
+        @for (item of importantAnnouncements(); track trackById($index, item)) {
+          <div class="list-item announcement-item">
+            <div class="announcement-top">
+              <div class="item-title strong">{{ item.title }}</div>
+              <nz-tag [nzColor]="announcementTag(item.status).color">
+                {{ announcementTag(item.status).text }}
+              </nz-tag>
+            </div>
+
+            <div class="item-content">
+              {{ item.content }}
+            </div>
+
+            <div class="item-date">{{ item.publishDate }} 发布</div>
+          </div>
+        }
+      </div>
+    </nz-card>
+  </div>
+</div>

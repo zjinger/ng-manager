@@ -1,1 +1,60 @@
-/* You can add global styles to this file, and also import other style files */
+@import '../node_modules/ng-zorro-antd/ng-zorro-antd.less';
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family:
+    'Segoe UI',
+    -apple-system,
+    BlinkMacSystemFont,
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+  background: #f5f7fb;
+  height: 100%;
+}
+
+.page {
+  padding: 24px;
+  background: #f5f7fa;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.page .header {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page .header .hdeader-row {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.page .header .actions {
+  display: flex;
+  gap: 16px;
+}
+
+.page .header .header-title {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.page .header .header-desc {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.ant-card {
+  border-radius: 12px;
+}
