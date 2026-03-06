@@ -15,6 +15,8 @@ import authPlugin from "./plugins/auth.plugin";
 import dbPlugin from "./plugins/db.plugin";
 import errorHandlerPlugin from "./plugins/error-handler.plugin";
 import routesPlugin from "./plugins/routes.plugin";
+import { ProjectRepo } from "./modules/project/project.repo";
+import { ProjectService } from "./modules/project/project.service";
 
 export async function createApp() {
     const app = Fastify({
@@ -46,12 +48,16 @@ export async function createApp() {
     const sharedConfigRepo = new SharedConfigRepo(app.db);
     const sharedConfigService = new SharedConfigService(sharedConfigRepo);
 
+    const projectRepo = new ProjectRepo(app.db);
+    const preojectService = new ProjectService(projectRepo);
+
     app.decorate("services", {
         feedback: feedbackService,
         announcement: announcementService,
         document: documentService,
         auth: authService,
-        sharedConfig: sharedConfigService
+        sharedConfig: sharedConfigService,
+        project: preojectService
     });
 
     await app.register(authPlugin);

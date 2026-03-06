@@ -7,6 +7,7 @@ import publicFeedbackRoutes from "../routes/public/feedback.routes";
 import healthRoutes from "../routes/public/health.routes";
 import publicSharedConfigRoutes from "../routes/public/shared-config.routes";
 import adminProtectedRoutesPlugin from "./admin-protected-routes.plugin";
+import publicProjectRoutes from "../routes/public/project.routes";
 
 export default fp(async function routesPlugin(fastify: FastifyInstance) {
     await fastify.register(healthRoutes, { prefix: "/api/public" });
@@ -18,8 +19,12 @@ export default fp(async function routesPlugin(fastify: FastifyInstance) {
     await fastify.register(publicDocumentRoutes, { prefix: "/api/public" });
     // 共享配置
     await fastify.register(publicSharedConfigRoutes, { prefix: "/api/public" });
+    // 项目
+    await fastify.register(publicProjectRoutes, { prefix: "/api/public" });
     // auth
     await fastify.register(adminAuthRoutes, { prefix: "/api/admin" });
+
+
     // 管理员受保护的路由
     await fastify.register(adminProtectedRoutesPlugin, {
         prefix: "/api/admin"
