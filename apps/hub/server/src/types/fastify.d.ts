@@ -3,6 +3,7 @@ import type { FeedbackService } from "../modules/feedback/feedback.service";
 import type { AnnouncementService } from "../modules/announcement/announcement.service";
 import type { DocumentService } from "../modules/document/document.service";
 import type { AuthService } from "../modules/auth/auth.service";
+import type { SharedConfigService } from "../modules/shared-config/shared-config.service";
 import type { AdminUserProfile } from "../modules/auth/auth.types";
 declare module "fastify" {
     interface FastifyInstance {
@@ -12,6 +13,7 @@ declare module "fastify" {
             announcement: AnnouncementService;
             document: DocumentService;
             auth: AuthService;
+            sharedConfig: SharedConfigService;
         };
         verifyAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void>;
     }
