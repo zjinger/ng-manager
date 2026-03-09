@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { adminAuthGuard, loginPageGuard } from './core/guards/auth.guards';
 import { AnnouncementsPageComponent } from './pages/announcements/announcements.component';
 import { DashboardPageComponent } from './pages/dashboard/dashboard-page.component';
-import { DocsPageComponent } from './pages/docs/docs.page';
+import { DocsPageComponent } from './pages/docs/docs.component';
 import { FeedbackPageComponent } from './pages/feedback/feedback.component';
 import { LoginComponent } from './pages/login/login.component';
 import { ReleasesPageComponent } from './pages/releases/releases.component';
