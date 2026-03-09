@@ -7,6 +7,7 @@ const optionalDateTime = z.string().datetime().optional();
 const nullableDateTime = z.string().datetime().nullable().optional();
 
 export const createAnnouncementSchema = z.object({
+  projectId: z.string().trim().min(1).max(40).nullable().optional(),
   title: z.string().trim().min(1).max(160),
   summary: z.string().trim().max(500).optional(),
   contentMd: z.string().trim().min(1).max(50000),
@@ -18,6 +19,7 @@ export const createAnnouncementSchema = z.object({
 });
 
 export const updateAnnouncementSchema = z.object({
+  projectId: z.string().trim().min(1).max(40).nullable().optional(),
   title: z.string().trim().min(1).max(160).optional(),
   summary: z.string().trim().max(500).optional(),
   contentMd: z.string().trim().min(1).max(50000).optional(),
@@ -32,6 +34,7 @@ export const publishAnnouncementSchema = z.object({
 });
 
 export const listAnnouncementQuerySchema = z.object({
+  projectId: z.string().trim().min(1).max(40).optional(),
   status: statusEnum.optional(),
   scope: scopeEnum.optional(),
   pinned: z.coerce.boolean().optional(),
@@ -40,7 +43,21 @@ export const listAnnouncementQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20)
 });
 
+export const publicListAnnouncementQuerySchema = z.object({
+  projectKey: z.string().trim().min(1).max(80).optional(),
+  includeGlobal: z.coerce.boolean().default(true),
+  scope: scopeEnum.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(10)
+});
+
+export const publicAnnouncementDetailQuerySchema = z.object({
+  projectKey: z.string().trim().min(1).max(80).optional(),
+  scope: scopeEnum.optional()
+});
+
 export type CreateAnnouncementDto = z.infer<typeof createAnnouncementSchema>;
 export type UpdateAnnouncementDto = z.infer<typeof updateAnnouncementSchema>;
 export type PublishAnnouncementDto = z.infer<typeof publishAnnouncementSchema>;
 export type ListAnnouncementQueryDto = z.infer<typeof listAnnouncementQuerySchema>;
+export type PublicListAnnouncementQueryDto = z.infer<typeof publicListAnnouncementQuerySchema>;
+export type PublicAnnouncementDetailQueryDto = z.infer<typeof publicAnnouncementDetailQuerySchema>;

@@ -40,7 +40,7 @@ export async function createApp() {
     const feedbackService = new FeedbackService(feedbackRepo);
 
     const announcementRepo = new AnnouncementRepo(app.db);
-    const announcementService = new AnnouncementService(announcementRepo);
+    const announcementService = new AnnouncementService(announcementRepo, projectRepo);
 
     const documentRepo = new DocumentRepo(app.db);
     const documentService = new DocumentService(documentRepo, projectRepo);

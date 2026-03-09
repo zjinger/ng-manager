@@ -1,13 +1,16 @@
 import type Database from "better-sqlite3";
 import type {
   AnnouncementEntity,
+  AnnouncementListItem,
   AnnouncementListResult,
   ListAnnouncementQuery,
+  PublicListAnnouncementQuery,
   UpdateAnnouncementInput
 } from "./announcement.types";
 
 type AnnouncementRow = {
   id: string;
+  project_id: string | null;
   title: string;
   summary: string | null;
   content_md: string;
@@ -22,21 +25,22 @@ type AnnouncementRow = {
 };
 
 export class AnnouncementRepo {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database) { }
 
   create(entity: AnnouncementEntity): void {
     const stmt = this.db.prepare(`
       INSERT INTO announcements (
-        id, title, summary, content_md, scope, pinned, status,
+        id, project_id, title, summary, content_md, scope, pinned, status,
         publish_at, expire_at, created_by, created_at, updated_at
       ) VALUES (
-        @id, @title, @summary, @content_md, @scope, @pinned, @status,
+        @id, @project_id, @title, @summary, @content_md, @scope, @pinned, @status,
         @publish_at, @expire_at, @created_by, @created_at, @updated_at
       )
     `);
 
     stmt.run({
       id: entity.id,
+      project_id: entity.projectId ?? null,
       title: entity.title,
       summary: entity.summary ?? null,
       content_md: entity.contentMd,
@@ -59,9 +63,77 @@ export class AnnouncementRepo {
     return row ? this.toEntity(row) : null;
   }
 
+  findPublicVisibleById(
+    id: string,
+    scope: "desktop" | "cli" | "all",
+    now: string
+  ): AnnouncementEntity | null {
+    let sql = `
+      SELECT *
+      FROM announcements
+      WHERE id = ?
+        AND status = 'published'
+        AND project_id IS NULL
+        AND (expire_at IS NULL OR expire_at > ?)
+    `;
+    const params: unknown[] = [id, now];
+
+    if (scope === "all") {
+      sql += ` AND scope = 'all' `;
+    } else {
+      sql += ` AND (scope = 'all' OR scope = ?) `;
+      params.push(scope);
+    }
+
+    const row = this.db.prepare(sql).get(...params) as AnnouncementRow | undefined;
+    return row ? this.toEntity(row) : null;
+  }
+
+  findPublicVisibleByIdWithProjectFallback(
+    id: string,
+    projectId: string,
+    scope: "desktop" | "cli" | "all",
+    now: string
+  ): AnnouncementEntity | null {
+    let sql = `
+      SELECT *
+      FROM announcements
+      WHERE id = ?
+        AND status = 'published'
+        AND (project_id = ? OR project_id IS NULL)
+        AND (expire_at IS NULL OR expire_at > ?)
+    `;
+    const params: unknown[] = [id, projectId, now];
+
+    if (scope === "all") {
+      sql += ` AND scope = 'all' `;
+    } else {
+      sql += ` AND (scope = 'all' OR scope = ?) `;
+      params.push(scope);
+    }
+
+    sql += `
+      ORDER BY
+        CASE WHEN project_id = ? THEN 0 ELSE 1 END,
+        pinned DESC,
+        COALESCE(publish_at, created_at) DESC,
+        created_at DESC
+      LIMIT 1
+    `;
+    params.push(projectId);
+
+    const row = this.db.prepare(sql).get(...params) as AnnouncementRow | undefined;
+    return row ? this.toEntity(row) : null;
+  }
+
   update(id: string, patch: UpdateAnnouncementInput & { updatedAt: string }): boolean {
     const fields: string[] = [];
     const params: unknown[] = [];
+
+    if (patch.projectId !== undefined) {
+      fields.push("project_id = ?");
+      params.push(patch.projectId ?? null);
+    }
 
     if (patch.title !== undefined) {
       fields.push("title = ?");
@@ -126,6 +198,15 @@ export class AnnouncementRepo {
     const where: string[] = [];
     const params: unknown[] = [];
 
+    if (query.projectId !== undefined) {
+      if (query.projectId === null) {
+        where.push("project_id IS NULL");
+      } else {
+        where.push("project_id = ?");
+        params.push(query.projectId);
+      }
+    }
+
     if (query.status) {
       where.push("status = ?");
       params.push(query.status);
@@ -169,14 +250,17 @@ export class AnnouncementRepo {
       .all(...params, query.pageSize, offset) as AnnouncementRow[];
 
     return {
-      items: rows.map((row) => this.toEntity(row)),
+      items: rows.map((row) => this.toListItem(row)),
       page: query.page,
       pageSize: query.pageSize,
       total: totalRow.total
     };
   }
 
-  listPublicVisible(scope: "desktop" | "cli" | "all", limit: number, now: string): AnnouncementEntity[] {
+  listPublicVisible(
+    query: PublicListAnnouncementQuery,
+    now: string
+  ): AnnouncementEntity[] {
     let sql = `
       SELECT *
       FROM announcements
@@ -185,53 +269,66 @@ export class AnnouncementRepo {
     `;
     const params: unknown[] = [now];
 
-    if (scope === "all") {
-      sql += ` AND scope = 'all' `;
+    if (query.projectId === undefined || query.projectId === null) {
+      sql += ` AND project_id IS NULL `;
+    } else if (query.includeGlobal) {
+      sql += ` AND (project_id = ? OR project_id IS NULL) `;
+      params.push(query.projectId);
     } else {
-      sql += ` AND (scope = 'all' OR scope = ?) `;
-      params.push(scope);
+      sql += ` AND project_id = ? `;
+      params.push(query.projectId);
+    }
+
+    if (query.scope) {
+      if (query.scope === "all") {
+        sql += ` AND scope = 'all' `;
+      } else {
+        sql += ` AND (scope = 'all' OR scope = ?) `;
+        params.push(query.scope);
+      }
     }
 
     sql += `
-      ORDER BY pinned DESC, COALESCE(publish_at, created_at) DESC, created_at DESC
+      ORDER BY
+        CASE WHEN project_id IS NULL THEN 1 ELSE 0 END,
+        pinned DESC,
+        COALESCE(publish_at, created_at) DESC,
+        created_at DESC
       LIMIT ?
     `;
-    params.push(limit);
+    params.push(query.limit ?? 10);
 
     const rows = this.db.prepare(sql).all(...params) as AnnouncementRow[];
     return rows.map((row) => this.toEntity(row));
   }
 
-  findPublicVisibleById(id: string, scope: "desktop" | "cli" | "all", now: string): AnnouncementEntity | null {
-    let sql = `
-      SELECT *
-      FROM announcements
-      WHERE id = ?
-        AND status = 'published'
-        AND (expire_at IS NULL OR expire_at > ?)
-    `;
-    const params: unknown[] = [id, now];
-
-    if (scope === "all") {
-      sql += ` AND scope = 'all' `;
-    } else {
-      sql += ` AND (scope = 'all' OR scope = ?) `;
-      params.push(scope);
-    }
-
-    const row = this.db.prepare(sql).get(...params) as AnnouncementRow | undefined;
-    return row ? this.toEntity(row) : null;
-  }
-
   private toEntity(row: AnnouncementRow): AnnouncementEntity {
     return {
       id: row.id,
+      projectId: row.project_id,
       title: row.title,
       summary: row.summary,
       contentMd: row.content_md,
       scope: row.scope as AnnouncementEntity["scope"],
       pinned: row.pinned === 1,
       status: row.status as AnnouncementEntity["status"],
+      publishAt: row.publish_at,
+      expireAt: row.expire_at,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private toListItem(row: AnnouncementRow): AnnouncementListItem {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      title: row.title,
+      summary: row.summary,
+      scope: row.scope as AnnouncementListItem["scope"],
+      pinned: row.pinned === 1,
+      status: row.status as AnnouncementListItem["status"],
       publishAt: row.publish_at,
       expireAt: row.expire_at,
       createdBy: row.created_by,

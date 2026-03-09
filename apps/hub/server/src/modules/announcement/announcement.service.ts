@@ -1,24 +1,32 @@
 import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
+import { ProjectRepo } from "../project/project.repo";
 import type {
   AnnouncementEntity,
   AnnouncementListResult,
   CreateAnnouncementInput,
   ListAnnouncementQuery,
   PublishAnnouncementInput,
+  PublicListAnnouncementQuery,
   UpdateAnnouncementInput
 } from "./announcement.types";
 import { AnnouncementRepo } from "./announcement.repo";
 
 export class AnnouncementService {
-  constructor(private readonly repo: AnnouncementRepo) {}
+  constructor(
+    private readonly repo: AnnouncementRepo,
+    private readonly projectRepo: ProjectRepo
+  ) { }
 
   create(input: CreateAnnouncementInput): AnnouncementEntity {
     const now = nowIso();
 
+    this.assertProjectExists(input.projectId);
+
     const entity: AnnouncementEntity = {
       id: genId("ann"),
+      projectId: input.projectId ?? null,
       title: input.title.trim(),
       summary: input.summary?.trim() || null,
       contentMd: input.contentMd.trim(),
@@ -45,27 +53,72 @@ export class AnnouncementService {
     return item;
   }
 
-  getPublicById(id: string, scope: "desktop" | "cli" | "all"): AnnouncementEntity {
-    const item = this.repo.findPublicVisibleById(id, scope, nowIso());
+  getPublicById(id: string, scope: "desktop" | "cli" | "all", projectKey?: string): AnnouncementEntity {
+    if (!projectKey) {
+      const item = this.repo.findPublicVisibleById(id, scope, nowIso());
+      if (!item) {
+        throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
+      }
+      return item;
+    }
+
+    const project = this.projectRepo.findPublicByKey(projectKey);
+    if (!project) {
+      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectKey}`, 404);
+    }
+
+    const item = this.repo.findPublicVisibleByIdWithProjectFallback(id, project.id, scope, nowIso());
     if (!item) {
       throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
     }
+
     return item;
   }
 
   list(query: ListAnnouncementQuery): AnnouncementListResult {
+    if (query.projectId) {
+      this.assertProjectExists(query.projectId);
+    }
+
     return this.repo.list(query);
   }
 
-  listPublic(scope: "desktop" | "cli" | "all", limit: number): AnnouncementEntity[] {
-    const safeLimit = Math.max(1, Math.min(limit, 100));
-    return this.repo.listPublicVisible(scope, safeLimit, nowIso());
+  listPublic(query: {
+    projectKey?: string;
+    includeGlobal?: boolean;
+    scope?: "desktop" | "cli" | "all";
+    limit: number;
+  }): AnnouncementEntity[] {
+    let projectId: string | null | undefined = undefined;
+
+    if (query.projectKey) {
+      const project = this.projectRepo.findPublicByKey(query.projectKey);
+      if (!project) {
+        throw new AppError("PROJECT_NOT_FOUND", `project not found: ${query.projectKey}`, 404);
+      }
+      projectId = project.id;
+    } else {
+      projectId = null;
+    }
+
+    const publicQuery: PublicListAnnouncementQuery = {
+      projectId,
+      includeGlobal: query.includeGlobal ?? true,
+      scope: query.scope,
+      limit: Math.max(1, Math.min(query.limit, 100))
+    };
+
+    return this.repo.listPublicVisible(publicQuery, nowIso());
   }
 
   update(id: string, input: UpdateAnnouncementInput): AnnouncementEntity {
     const existing = this.repo.findById(id);
     if (!existing) {
       throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
+    }
+
+    if (input.projectId !== undefined) {
+      this.assertProjectExists(input.projectId);
     }
 
     const nextPublishAt = input.publishAt !== undefined ? input.publishAt ?? null : existing.publishAt ?? null;
@@ -75,6 +128,7 @@ export class AnnouncementService {
 
     const patch: UpdateAnnouncementInput & { updatedAt: string } = {
       ...input,
+      projectId: input.projectId,
       title: input.title?.trim(),
       summary: input.summary?.trim(),
       contentMd: input.contentMd?.trim(),
@@ -118,6 +172,15 @@ export class AnnouncementService {
     }
 
     return this.getById(id);
+  }
+
+  private assertProjectExists(projectId?: string | null) {
+    if (projectId === undefined || projectId === null) return;
+
+    const project = this.projectRepo.findById(projectId);
+    if (!project) {
+      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 400);
+    }
   }
 
   private validateTimeRange(publishAt?: string, expireAt?: string) {
