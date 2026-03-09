@@ -7,6 +7,7 @@ export default async function healthRoutes(fastify: FastifyInstance) {
       ok: true,
       service: "ngm-hub-server",
       version: "0.1.0",
+      wsEnabled: true,
       time: new Date().toISOString()
     });
   });
