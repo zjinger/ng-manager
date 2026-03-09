@@ -16,6 +16,7 @@ import adminProtectedRoutesPlugin from "./admin-protected-routes.plugin";
 
 // public 路由不需要验证身份，admin 路由需要验证管理员身份
 export default fp(async function routesPlugin(fastify: FastifyInstance) {
+    // 健康检查
     await fastify.register(healthRoutes, { prefix: "/api/public" });
     // 反馈
     await fastify.register(publicFeedbackRoutes, { prefix: "/api/public" });

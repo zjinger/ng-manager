@@ -1,5 +1,8 @@
-import { Component, computed, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { debounceTime, firstValueFrom } from 'rxjs';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
@@ -8,24 +11,34 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzTypographyModule } from 'ng-zorro-antd/typography';
+import { HubApiError } from '../../core/http/api-error.interceptor';
+import { HubApiService } from '../../core/http/hub-api.service';
 
-type FeedbackStatus = 'new' | 'in_progress' | 'resolved';
-type FeedbackType = 'bug' | 'feature' | 'question';
-type FeedbackSource = 'CLI' | 'Desktop';
+type FeedbackStatus = 'open' | 'processing' | 'resolved' | 'closed';
+type FeedbackCategory = 'bug' | 'suggestion' | 'feature' | 'other';
+type FeedbackSource = 'desktop' | 'cli' | 'web';
 
 interface FeedbackItem {
   id: string;
-  type: FeedbackType;
-  title: string;
-  status: FeedbackStatus;
+  projectKey?: string | null;
   source: FeedbackSource;
-  projectName: string;
-  createdAt: string;
+  category: FeedbackCategory;
+  title: string;
   content: string;
-  environment: string;
-  attachments: string[];
-  adminNote: string;
+  contact?: string | null;
+  clientName?: string | null;
+  clientVersion?: string | null;
+  osInfo?: string | null;
+  status: FeedbackStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface FeedbackListResult {
+  items: FeedbackItem[];
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 @Component({
@@ -33,6 +46,7 @@ interface FeedbackItem {
   imports: [
     FormsModule,
     ReactiveFormsModule,
+    NzAlertModule,
     NzButtonModule,
     NzCardModule,
     NzDescriptionsModule,
@@ -40,8 +54,7 @@ interface FeedbackItem {
     NzInputModule,
     NzSelectModule,
     NzTableModule,
-    NzTagModule,
-    NzTypographyModule
+    NzTagModule
   ],
   template: `
     <section class="page">
@@ -55,54 +68,61 @@ interface FeedbackItem {
       <nz-card nzTitle="筛选条件">
         <form nz-form [formGroup]="filters" class="filter-grid">
           <nz-form-item>
+            <nz-form-label>项目 Key</nz-form-label>
+            <nz-form-control>
+              <input nz-input formControlName="projectKey" placeholder="可选" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
             <nz-form-label>状态</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="status" nzAllowClear>
-                <nz-option nzValue="new" nzLabel="new"></nz-option>
-                <nz-option nzValue="in_progress" nzLabel="in_progress"></nz-option>
+                <nz-option nzValue="open" nzLabel="open"></nz-option>
+                <nz-option nzValue="processing" nzLabel="processing"></nz-option>
                 <nz-option nzValue="resolved" nzLabel="resolved"></nz-option>
+                <nz-option nzValue="closed" nzLabel="closed"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
           <nz-form-item>
             <nz-form-label>类型</nz-form-label>
             <nz-form-control>
-              <nz-select formControlName="type" nzAllowClear>
+              <nz-select formControlName="category" nzAllowClear>
                 <nz-option nzValue="bug" nzLabel="bug"></nz-option>
+                <nz-option nzValue="suggestion" nzLabel="suggestion"></nz-option>
                 <nz-option nzValue="feature" nzLabel="feature"></nz-option>
-                <nz-option nzValue="question" nzLabel="question"></nz-option>
-              </nz-select>
-            </nz-form-control>
-          </nz-form-item>
-          <nz-form-item>
-            <nz-form-label>来源</nz-form-label>
-            <nz-form-control>
-              <nz-select formControlName="source" nzAllowClear>
-                <nz-option nzValue="CLI" nzLabel="CLI"></nz-option>
-                <nz-option nzValue="Desktop" nzLabel="Desktop"></nz-option>
+                <nz-option nzValue="other" nzLabel="other"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
           <nz-form-item>
             <nz-form-label>关键词</nz-form-label>
             <nz-form-control>
-              <input nz-input formControlName="keyword" placeholder="标题 / 项目名" />
+              <input nz-input formControlName="keyword" placeholder="标题 / 内容" />
             </nz-form-control>
           </nz-form-item>
         </form>
       </nz-card>
 
-      <div class="content-grid">
+      @if (listError()) {
+        <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
+      }
+
+      <div class="content-grid section">
         <nz-card nzTitle="反馈列表">
-          <nz-table #table [nzData]="filteredFeedback()" [nzFrontPagination]="false">
+          <div class="table-head">
+            <span>共 {{ total() }} 条</span>
+            <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">刷新</button>
+          </div>
+          <nz-table #table [nzData]="feedback()" [nzFrontPagination]="false" [nzLoading]="listLoading()">
             <thead>
               <tr>
                 <th>ID</th>
+                <th>项目</th>
                 <th>类型</th>
                 <th>标题</th>
                 <th>状态</th>
                 <th>来源</th>
-                <th>项目名称</th>
                 <th>创建时间</th>
               </tr>
             </thead>
@@ -110,11 +130,11 @@ interface FeedbackItem {
               @for (item of table.data; track item.id) {
                 <tr (click)="selectFeedback(item)" [class.selected]="selected()?.id === item.id">
                   <td>{{ item.id }}</td>
-                  <td>{{ item.type }}</td>
+                  <td>{{ item.projectKey || '-' }}</td>
+                  <td>{{ item.category }}</td>
                   <td>{{ item.title }}</td>
                   <td><nz-tag [nzColor]="statusColor(item.status)">{{ item.status }}</nz-tag></td>
                   <td>{{ item.source }}</td>
-                  <td>{{ item.projectName }}</td>
                   <td>{{ item.createdAt }}</td>
                 </tr>
               }
@@ -126,20 +146,22 @@ interface FeedbackItem {
           @if (selected(); as item) {
             <nz-descriptions nzBordered nzSize="small" [nzColumn]="1">
               <nz-descriptions-item nzTitle="反馈内容">{{ item.content }}</nz-descriptions-item>
-              <nz-descriptions-item nzTitle="客户端环境信息">{{ item.environment }}</nz-descriptions-item>
-              <nz-descriptions-item nzTitle="附件">{{ item.attachments.join(', ') || '无' }}</nz-descriptions-item>
+              <nz-descriptions-item nzTitle="客户端信息">{{ environmentText(item) }}</nz-descriptions-item>
+              <nz-descriptions-item nzTitle="联系方式">{{ item.contact || '-' }}</nz-descriptions-item>
+              <nz-descriptions-item nzTitle="更新时间">{{ item.updatedAt }}</nz-descriptions-item>
             </nz-descriptions>
 
-            <div class="note-editor">
-              <label>管理员备注</label>
-              <textarea
-                nz-input
-                rows="5"
-                [ngModel]="item.adminNote"
-                (ngModelChange)="updateNote($event)"
-                [ngModelOptions]="{ standalone: true }"
-              ></textarea>
-              <button nz-button nzType="primary" (click)="saveNote()">保存备注</button>
+            <div class="status-editor">
+              <label>状态</label>
+              <nz-select [(ngModel)]="pendingStatus" [ngModelOptions]="{ standalone: true }">
+                <nz-option nzValue="open" nzLabel="open"></nz-option>
+                <nz-option nzValue="processing" nzLabel="processing"></nz-option>
+                <nz-option nzValue="resolved" nzLabel="resolved"></nz-option>
+                <nz-option nzValue="closed" nzLabel="closed"></nz-option>
+              </nz-select>
+              <button nz-button nzType="primary" (click)="saveStatus()" [disabled]="statusSaving()">
+                保存状态
+              </button>
             </div>
           } @else {
             <div class="empty-tip">请选择一条反馈查看详情</div>
@@ -150,115 +172,128 @@ interface FeedbackItem {
   `,
   styles: `
     .page { background: #fff; border-radius: 10px; padding: 20px; }
+    .section { margin-top: 16px; }
     .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-    .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 16px; }
+    .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .selected { background: #e6f4ff; }
-    .note-editor { margin-top: 16px; display: grid; gap: 8px; }
+    .status-editor { margin-top: 16px; display: grid; gap: 8px; }
     .empty-tip { color: #6b7280; }
   `
 })
 export class FeedbackPageComponent {
-  private readonly fb = new FormBuilder();
-  private pendingNote = '';
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(HubApiService);
 
-  protected readonly feedback = signal<FeedbackItem[]>([
-    {
-      id: 'FB-2031',
-      type: 'bug',
-      title: 'CLI init 在 monorepo 下报错',
-      status: 'new',
-      source: 'CLI',
-      projectName: 'workspace-a',
-      createdAt: '2026-03-06 10:00',
-      content: '执行 ngm init 时，提示 cannot resolve workspace config。',
-      environment: 'Windows 11 / Node 20.19 / npm 10.8',
-      attachments: ['error-log.txt'],
-      adminNote: ''
-    },
-    {
-      id: 'FB-2028',
-      type: 'feature',
-      title: 'Desktop 希望支持代理配置',
-      status: 'in_progress',
-      source: 'Desktop',
-      projectName: 'ngm-client',
-      createdAt: '2026-03-05 17:20',
-      content: '企业内网环境下载资源超时，希望支持代理设置。',
-      environment: 'macOS 15 / Desktop 2.6.0',
-      attachments: [],
-      adminNote: '已安排到 2.7 迭代评估。'
-    },
-    {
-      id: 'FB-2010',
-      type: 'question',
-      title: '如何切换 release channel',
-      status: 'resolved',
-      source: 'CLI',
-      projectName: 'docs-site',
-      createdAt: '2026-03-02 08:30',
-      content: '请问 beta 渠道如何回到 stable？',
-      environment: 'Ubuntu 24.04 / Node 20.18',
-      attachments: [],
-      adminNote: '已通过文档回复。'
-    }
-  ]);
-
+  protected readonly feedback = signal<FeedbackItem[]>([]);
   protected readonly selected = signal<FeedbackItem | null>(null);
+  protected readonly total = signal(0);
+
+  protected readonly listLoading = signal(false);
+  protected readonly listError = signal<string | null>(null);
+  protected readonly statusSaving = signal(false);
+
+  protected pendingStatus: FeedbackStatus = 'open';
 
   protected readonly filters = this.fb.nonNullable.group({
+    projectKey: [''],
     status: [''],
-    type: [''],
-    source: [''],
+    category: [''],
     keyword: ['']
   });
 
-  protected readonly filteredFeedback = computed<FeedbackItem[]>(() => {
-    const filter = this.filters.getRawValue();
-    const keyword = filter.keyword.trim().toLowerCase();
-
-    return this.feedback().filter((item) => {
-      const matchesStatus = !filter.status || item.status === filter.status;
-      const matchesType = !filter.type || item.type === filter.type;
-      const matchesSource = !filter.source || item.source === filter.source;
-      const matchesKeyword =
-        keyword.length === 0 ||
-        item.title.toLowerCase().includes(keyword) ||
-        item.projectName.toLowerCase().includes(keyword);
-      return matchesStatus && matchesType && matchesSource && matchesKeyword;
+  public constructor() {
+    this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
+      void this.loadFeedbacks();
     });
-  });
+
+    void this.loadFeedbacks();
+  }
+
+  protected async reload(): Promise<void> {
+    await this.loadFeedbacks();
+  }
 
   protected selectFeedback(item: FeedbackItem): void {
-    this.selected.set({ ...item });
-    this.pendingNote = item.adminNote;
+    this.selected.set(item);
+    this.pendingStatus = item.status;
   }
 
-  protected updateNote(note: string): void {
+  protected async saveStatus(): Promise<void> {
     const current = this.selected();
-    if (current === null) {
+    if (!current) {
       return;
     }
-    this.pendingNote = note;
-    this.selected.set({ ...current, adminNote: note });
-  }
 
-  protected saveNote(): void {
-    const selected = this.selected();
-    if (selected === null) {
-      return;
+    this.statusSaving.set(true);
+    this.listError.set(null);
+
+    try {
+      const updated = await firstValueFrom(
+        this.api.put<FeedbackItem, { status: FeedbackStatus }>(
+          `/api/admin/feedbacks/${current.id}/status`,
+          { status: this.pendingStatus }
+        )
+      );
+
+      this.feedback.update((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      this.selected.set(updated);
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '更新状态失败'));
+    } finally {
+      this.statusSaving.set(false);
     }
-    this.feedback.update((list) =>
-      list.map((item) => (item.id === selected.id ? { ...item, adminNote: this.pendingNote } : item))
-    );
   }
 
   protected statusColor(status: FeedbackStatus): string {
-    if (status === 'resolved') {
-      return 'green';
-    }
-    if (status === 'in_progress') {
-      return 'blue';
-    }
+    if (status === 'resolved') return 'green';
+    if (status === 'processing') return 'blue';
+    if (status === 'closed') return 'default';
     return 'orange';
+  }
+
+  protected environmentText(item: FeedbackItem): string {
+    const parts = [item.clientName, item.clientVersion, item.osInfo].filter(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0
+    );
+
+    return parts.length > 0 ? parts.join(' / ') : '-';
+  }
+
+  private async loadFeedbacks(): Promise<void> {
+    this.listLoading.set(true);
+    this.listError.set(null);
+
+    try {
+      const filter = this.filters.getRawValue();
+      const params: Record<string, string | number | boolean> = { page: 1, pageSize: 50 };
+
+      if (filter.projectKey.trim()) params['projectKey'] = filter.projectKey.trim();
+      if (filter.status) params['status'] = filter.status;
+      if (filter.category) params['category'] = filter.category;
+      if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
+
+      const result = await firstValueFrom(this.api.get<FeedbackListResult>('/api/admin/feedbacks', { params }));
+
+      this.feedback.set(result.items);
+      this.total.set(result.total);
+
+      const selectedId = this.selected()?.id;
+      if (selectedId) {
+        const nextSelected = result.items.find((item) => item.id === selectedId) ?? null;
+        this.selected.set(nextSelected);
+        if (nextSelected) this.pendingStatus = nextSelected.status;
+      }
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '加载反馈失败'));
+    } finally {
+      this.listLoading.set(false);
+    }
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
+    if (error instanceof Error) return `${fallback}: ${error.message}`;
+    return fallback;
   }
 }

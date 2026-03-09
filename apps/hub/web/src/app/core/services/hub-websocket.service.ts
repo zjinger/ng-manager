@@ -28,7 +28,7 @@ export class HubWebsocketService {
     @Inject(HUB_WS_URL) private readonly wsUrl: string,
     destroyRef: DestroyRef
   ) {
-    this.connect();
+    // this.connect();
     destroyRef.onDestroy(() => this.dispose());
   }
 

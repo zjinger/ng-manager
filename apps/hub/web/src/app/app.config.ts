@@ -12,6 +12,8 @@ import {
   ClockCircleOutline,
   DashboardOutline,
   DownOutline,
+  EyeInvisibleOutline,
+  EyeOutline,
   FileTextOutline,
   MessageOutline,
   NotificationOutline,
@@ -24,6 +26,7 @@ import { HUB_WS_URL } from './core/services/hub-websocket.service';
 import { HUB_API_BASE_URL } from './core/http/api-base-url.token';
 import { apiUrlInterceptor } from './core/http/api-url.interceptor';
 import { apiErrorInterceptor } from './core/http/api-error.interceptor';
+import { authRedirectInterceptor } from './core/http/auth-redirect.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -31,7 +34,7 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes),
     provideAnimations(),
-    provideHttpClient(withInterceptors([apiUrlInterceptor, apiErrorInterceptor])),
+    provideHttpClient(withInterceptors([apiUrlInterceptor, apiErrorInterceptor, authRedirectInterceptor])),
     provideNzIcons([
       DashboardOutline,
       NotificationOutline,
@@ -41,9 +44,11 @@ export const appConfig: ApplicationConfig = {
       BellOutline,
       DownOutline,
       ClockCircleOutline,
-      BranchesOutline
+      BranchesOutline,
+      EyeOutline,
+      EyeInvisibleOutline
     ]),
     { provide: HUB_API_BASE_URL, useValue: '' },
-    { provide: HUB_WS_URL, useValue: '' }
+    { provide: HUB_WS_URL, useValue: 'ws://localhost:19527/ws' }
   ]
 };
