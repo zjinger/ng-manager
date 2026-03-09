@@ -33,6 +33,9 @@ export async function createApp() {
     await app.register(dbPlugin);
     await app.register(errorHandlerPlugin);
 
+    const projectRepo = new ProjectRepo(app.db);
+    const preojectService = new ProjectService(projectRepo);
+
     const feedbackRepo = new FeedbackRepo(app.db);
     const feedbackService = new FeedbackService(feedbackRepo);
 
@@ -40,7 +43,7 @@ export async function createApp() {
     const announcementService = new AnnouncementService(announcementRepo);
 
     const documentRepo = new DocumentRepo(app.db);
-    const documentService = new DocumentService(documentRepo);
+    const documentService = new DocumentService(documentRepo, projectRepo);
 
     const authRepo = new AuthRepo(app.db);
     const authService = new AuthService(authRepo);
@@ -48,8 +51,7 @@ export async function createApp() {
     const sharedConfigRepo = new SharedConfigRepo(app.db);
     const sharedConfigService = new SharedConfigService(sharedConfigRepo);
 
-    const projectRepo = new ProjectRepo(app.db);
-    const preojectService = new ProjectService(projectRepo);
+
 
     app.decorate("services", {
         feedback: feedbackService,

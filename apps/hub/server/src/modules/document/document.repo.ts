@@ -4,11 +4,13 @@ import type {
   DocumentListItem,
   DocumentListResult,
   ListDocumentQuery,
+  PublicListDocumentQuery,
   UpdateDocumentInput
 } from "./document.types";
 
 type DocumentRow = {
   id: string;
+  project_id: string | null;
   slug: string;
   title: string;
   category: string;
@@ -22,21 +24,22 @@ type DocumentRow = {
 };
 
 export class DocumentRepo {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database) { }
 
   create(entity: DocumentEntity): void {
     const stmt = this.db.prepare(`
       INSERT INTO documents (
-        id, slug, title, category, summary, content_md,
+        id, project_id, slug, title, category, summary, content_md,
         status, version, created_by, created_at, updated_at
       ) VALUES (
-        @id, @slug, @title, @category, @summary, @content_md,
+        @id, @project_id, @slug, @title, @category, @summary, @content_md,
         @status, @version, @created_by, @created_at, @updated_at
       )
     `);
 
     stmt.run({
       id: entity.id,
+      project_id: entity.projectId ?? null,
       slug: entity.slug,
       title: entity.title,
       category: entity.category,
@@ -74,9 +77,30 @@ export class DocumentRepo {
     return row ? this.toEntity(row) : null;
   }
 
+  findPublishedBySlugWithProjectFallback(slug: string, projectId: string): DocumentEntity | null {
+    const row = this.db
+      .prepare(`
+        SELECT *
+        FROM documents
+        WHERE slug = ?
+          AND status = 'published'
+          AND (project_id = ? OR project_id IS NULL)
+        ORDER BY CASE WHEN project_id = ? THEN 0 ELSE 1 END
+        LIMIT 1
+      `)
+      .get(slug, projectId, projectId) as DocumentRow | undefined;
+
+    return row ? this.toEntity(row) : null;
+  }
+
   update(id: string, patch: UpdateDocumentInput & { updatedAt: string }): boolean {
     const fields: string[] = [];
     const params: unknown[] = [];
+
+    if (patch.projectId !== undefined) {
+      fields.push("project_id = ?");
+      params.push(patch.projectId ?? null);
+    }
 
     if (patch.slug !== undefined) {
       fields.push("slug = ?");
@@ -140,6 +164,15 @@ export class DocumentRepo {
     const where: string[] = [];
     const params: unknown[] = [];
 
+    if (query.projectId !== undefined) {
+      if (query.projectId === null) {
+        where.push("project_id IS NULL");
+      } else {
+        where.push("project_id = ?");
+        params.push(query.projectId);
+      }
+    }
+
     if (query.status) {
       where.push("status = ?");
       params.push(query.status);
@@ -169,7 +202,7 @@ export class DocumentRepo {
 
     const rows = this.db
       .prepare(`
-        SELECT id, slug, title, category, summary, status, version, created_by, created_at, updated_at
+        SELECT id, project_id, slug, title, category, summary, status, version, created_by, created_at, updated_at
         FROM documents
         ${whereSql}
         ORDER BY updated_at DESC, created_at DESC
@@ -187,9 +220,19 @@ export class DocumentRepo {
     };
   }
 
-  listPublished(query: Omit<ListDocumentQuery, "status">): DocumentListResult {
+  listPublished(query: PublicListDocumentQuery): DocumentListResult {
     const where: string[] = ["status = 'published'"];
     const params: unknown[] = [];
+
+    if (query.projectId === undefined || query.projectId === null) {
+      where.push("project_id IS NULL");
+    } else if (query.includeGlobal) {
+      where.push("(project_id = ? OR project_id IS NULL)");
+      params.push(query.projectId);
+    } else {
+      where.push("project_id = ?");
+      params.push(query.projectId);
+    }
 
     if (query.category) {
       where.push("category = ?");
@@ -215,10 +258,13 @@ export class DocumentRepo {
 
     const rows = this.db
       .prepare(`
-        SELECT id, slug, title, category, summary, status, version, created_by, created_at, updated_at
+        SELECT id, project_id, slug, title, category, summary, status, version, created_by, created_at, updated_at
         FROM documents
         ${whereSql}
-        ORDER BY updated_at DESC, created_at DESC
+        ORDER BY 
+          CASE WHEN project_id IS NULL THEN 1 ELSE 0 END,
+          updated_at DESC,
+          created_at DESC
         LIMIT ? OFFSET ?
       `)
       .all(...params, query.pageSize, offset) as Array<
@@ -236,6 +282,7 @@ export class DocumentRepo {
   private toEntity(row: DocumentRow): DocumentEntity {
     return {
       id: row.id,
+      projectId: row.project_id,
       slug: row.slug,
       title: row.title,
       category: row.category as DocumentEntity["category"],
@@ -254,6 +301,7 @@ export class DocumentRepo {
   ): DocumentListItem {
     return {
       id: row.id,
+      projectId: row.project_id,
       slug: row.slug,
       title: row.title,
       category: row.category as DocumentListItem["category"],

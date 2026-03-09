@@ -10,6 +10,7 @@ export type DocumentStatus = "draft" | "published" | "archived";
 
 export interface DocumentEntity {
   id: string;
+  projectId?: string | null;
   slug: string;
   title: string;
   category: DocumentCategory;
@@ -24,6 +25,7 @@ export interface DocumentEntity {
 
 export interface DocumentListItem {
   id: string;
+  projectId?: string | null;
   slug: string;
   title: string;
   category: DocumentCategory;
@@ -36,6 +38,7 @@ export interface DocumentListItem {
 }
 
 export interface CreateDocumentInput {
+  projectId?: string | null;
   slug: string;
   title: string;
   category: DocumentCategory;
@@ -46,6 +49,7 @@ export interface CreateDocumentInput {
 }
 
 export interface UpdateDocumentInput {
+  projectId?: string | null;
   slug?: string;
   title?: string;
   category?: DocumentCategory;
@@ -55,7 +59,17 @@ export interface UpdateDocumentInput {
 }
 
 export interface ListDocumentQuery {
+  projectId?: string | null;
   status?: DocumentStatus;
+  category?: DocumentCategory;
+  keyword?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface PublicListDocumentQuery {
+  projectId?: string | null;
+  includeGlobal?: boolean;
   category?: DocumentCategory;
   keyword?: string;
   page: number;

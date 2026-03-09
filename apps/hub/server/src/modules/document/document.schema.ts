@@ -12,6 +12,7 @@ const categoryEnum = z.enum([
 const statusEnum = z.enum(["draft", "published", "archived"]);
 
 export const createDocumentSchema = z.object({
+  projectId: z.string().trim().min(1).max(40).nullable().optional(),
   slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
     message: "slug must be kebab-case"
   }),
@@ -24,6 +25,7 @@ export const createDocumentSchema = z.object({
 });
 
 export const updateDocumentSchema = z.object({
+  projectId: z.string().trim().min(1).max(40).nullable().optional(),
   slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
     message: "slug must be kebab-case"
   }).optional(),
@@ -35,6 +37,7 @@ export const updateDocumentSchema = z.object({
 });
 
 export const listDocumentQuerySchema = z.object({
+  projectId: z.string().trim().min(1).max(40).optional(),
   status: statusEnum.optional(),
   category: categoryEnum.optional(),
   keyword: z.string().trim().max(100).optional(),
@@ -42,9 +45,24 @@ export const listDocumentQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20)
 });
 
+export const publicListDocumentQuerySchema = z.object({
+  projectKey: z.string().trim().min(1).max(80).optional(),
+  includeGlobal: z.coerce.boolean().default(true),
+  category: categoryEnum.optional(),
+  keyword: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20)
+});
+
+export const publicDocumentDetailQuerySchema = z.object({
+  projectKey: z.string().trim().min(1).max(80).optional()
+});
+
 export const publishDocumentSchema = z.object({});
 
 export type CreateDocumentDto = z.infer<typeof createDocumentSchema>;
 export type UpdateDocumentDto = z.infer<typeof updateDocumentSchema>;
 export type ListDocumentQueryDto = z.infer<typeof listDocumentQuerySchema>;
+export type PublicListDocumentQueryDto = z.infer<typeof publicListDocumentQuerySchema>;
+export type PublicDocumentDetailQueryDto = z.infer<typeof publicDocumentDetailQuerySchema>;
 export type PublishDocumentDto = z.infer<typeof publishDocumentSchema>;
