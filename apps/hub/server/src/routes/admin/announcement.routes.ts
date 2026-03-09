@@ -7,6 +7,16 @@ import {
 } from "../../modules/announcement/announcement.schema";
 import { ok } from "../../utils/response";
 
+function isPublishedAnnouncement(item: any): boolean {
+  if (!item) return false;
+
+  if (item.status === "published") return true;
+  if (item.isPublished === true) return true;
+  if (item.published === true) return true;
+
+  return false;
+}
+
 export default async function adminAnnouncementRoutes(fastify: FastifyInstance) {
   fastify.get("/announcements", async (request) => {
     const query = listAnnouncementQuerySchema.parse(request.query);
@@ -41,6 +51,7 @@ export default async function adminAnnouncementRoutes(fastify: FastifyInstance) 
       expireAt: body.expireAt,
       createdBy: body.createdBy
     });
+
     return reply.status(201).send(ok(item, "announcement created"));
   });
 
@@ -57,6 +68,26 @@ export default async function adminAnnouncementRoutes(fastify: FastifyInstance) 
       publishAt: body.publishAt,
       expireAt: body.expireAt
     });
+
+    if (isPublishedAnnouncement(item)) {
+      fastify.log.info(
+        {
+          event: "announcement.updated",
+          id: item.id,
+          title: item.title,
+          projectId: item.projectId ?? null
+        },
+        "[hub-ws] emit announcement updated"
+      );
+
+      fastify.hubWsEvents.announcementUpdated({
+        id: item.id,
+        title: item.title,
+        level: "info",
+        projectId: item.projectId ?? null
+      });
+    }
+
     return ok(item, "announcement updated");
   });
 
@@ -64,6 +95,24 @@ export default async function adminAnnouncementRoutes(fastify: FastifyInstance) 
     const params = request.params as { id: string };
     const body = publishAnnouncementSchema.parse(request.body ?? {});
     const item = fastify.services.announcement.publish(params.id, body);
+
+    fastify.log.info(
+      {
+        event: "announcement.published",
+        id: item.id,
+        title: item.title,
+        projectId: item.projectId ?? null
+      },
+      "[hub-ws] emit announcement published"
+    );
+
+    fastify.hubWsEvents.announcementPublished({
+      id: item.id,
+      title: item.title,
+      level: "info",
+      projectId: item.projectId ?? null
+    });
+
     return ok(item, "announcement published");
   });
 
