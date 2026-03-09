@@ -1,6 +1,7 @@
 import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
+import { ProjectRepo } from "../project/project.repo";
 import type {
   CreateFeedbackInput,
   FeedbackEntity,
@@ -11,13 +12,19 @@ import type {
 import { FeedbackRepo } from "./feedback.repo";
 
 export class FeedbackService {
-  constructor(private readonly repo: FeedbackRepo) {}
+  constructor(
+    private readonly repo: FeedbackRepo,
+    private readonly projectRepo: ProjectRepo
+  ) {}
 
   submit(input: CreateFeedbackInput): FeedbackEntity {
     const now = nowIso();
 
+    this.assertProjectKeyExists(input.projectKey);
+
     const entity: FeedbackEntity = {
       id: genId("fb"),
+      projectKey: input.projectKey?.trim() || null,
       source: input.source,
       category: input.category,
       title: input.title.trim(),
@@ -44,6 +51,9 @@ export class FeedbackService {
   }
 
   list(query: ListFeedbackQuery): FeedbackListResult {
+    if (query.projectKey) {
+      this.assertProjectKeyExists(query.projectKey);
+    }
     return this.repo.list(query);
   }
 
@@ -59,5 +69,18 @@ export class FeedbackService {
     }
 
     return this.getById(id);
+  }
+
+  private assertProjectKeyExists(projectKey?: string | null) {
+    if (!projectKey) return;
+
+    const project = this.projectRepo.findByKey(projectKey.trim());
+    if (!project) {
+      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectKey}`, 400);
+    }
+
+    if (project.status !== "active") {
+      throw new AppError("PROJECT_INACTIVE", `project is not active: ${projectKey}`, 400);
+    }
   }
 }

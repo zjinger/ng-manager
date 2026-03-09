@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const createFeedbackSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80).nullable().optional(),
   source: z.enum(["desktop", "cli", "web"]),
   category: z.enum(["bug", "suggestion", "feature", "other"]),
   title: z.string().trim().min(1).max(120),
@@ -16,6 +17,7 @@ export const updateFeedbackStatusSchema = z.object({
 });
 
 export const listFeedbackQuerySchema = z.object({
+  projectKey: z.string().trim().min(1).max(80).optional(),
   status: z.enum(["open", "processing", "resolved", "closed"]).optional(),
   category: z.enum(["bug", "suggestion", "feature", "other"]).optional(),
   keyword: z.string().trim().max(100).optional(),

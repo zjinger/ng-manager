@@ -37,7 +37,7 @@ export async function createApp() {
     const preojectService = new ProjectService(projectRepo);
 
     const feedbackRepo = new FeedbackRepo(app.db);
-    const feedbackService = new FeedbackService(feedbackRepo);
+    const feedbackService = new FeedbackService(feedbackRepo, projectRepo);
 
     const announcementRepo = new AnnouncementRepo(app.db);
     const announcementService = new AnnouncementService(announcementRepo, projectRepo);

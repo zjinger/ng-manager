@@ -1,6 +1,5 @@
 import type Database from "better-sqlite3";
 import type {
-  CreateFeedbackInput,
   FeedbackEntity,
   FeedbackListResult,
   ListFeedbackQuery,
@@ -9,6 +8,7 @@ import type {
 
 type FeedbackRow = {
   id: string;
+  project_key: string | null;
   source: string;
   category: string;
   title: string;
@@ -28,16 +28,17 @@ export class FeedbackRepo {
   create(input: FeedbackEntity): void {
     const stmt = this.db.prepare(`
       INSERT INTO feedbacks (
-        id, source, category, title, content, contact,
+        id, project_key, source, category, title, content, contact,
         client_name, client_version, os_info, status, created_at, updated_at
       ) VALUES (
-        @id, @source, @category, @title, @content, @contact,
+        @id, @project_key, @source, @category, @title, @content, @contact,
         @client_name, @client_version, @os_info, @status, @created_at, @updated_at
       )
     `);
 
     stmt.run({
       id: input.id,
+      project_key: input.projectKey ?? null,
       source: input.source,
       category: input.category,
       title: input.title,
@@ -71,6 +72,11 @@ export class FeedbackRepo {
   list(query: ListFeedbackQuery): FeedbackListResult {
     const where: string[] = [];
     const params: unknown[] = [];
+
+    if (query.projectKey) {
+      where.push("project_key = ?");
+      params.push(query.projectKey);
+    }
 
     if (query.status) {
       where.push("status = ?");
@@ -115,6 +121,7 @@ export class FeedbackRepo {
   private toEntity(row: FeedbackRow): FeedbackEntity {
     return {
       id: row.id,
+      projectKey: row.project_key,
       source: row.source as FeedbackEntity["source"],
       category: row.category as FeedbackEntity["category"],
       title: row.title,

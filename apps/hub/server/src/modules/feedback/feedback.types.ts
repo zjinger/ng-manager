@@ -4,6 +4,7 @@ export type FeedbackStatus = "open" | "processing" | "resolved" | "closed";
 
 export interface FeedbackEntity {
   id: string;
+  projectKey?: string | null;
   source: FeedbackSource;
   category: FeedbackCategory;
   title: string;
@@ -18,6 +19,7 @@ export interface FeedbackEntity {
 }
 
 export interface CreateFeedbackInput {
+  projectKey?: string | null;
   source: FeedbackSource;
   category: FeedbackCategory;
   title: string;
@@ -33,6 +35,7 @@ export interface UpdateFeedbackStatusInput {
 }
 
 export interface ListFeedbackQuery {
+  projectKey?: string;
   status?: FeedbackStatus;
   category?: FeedbackCategory;
   keyword?: string;

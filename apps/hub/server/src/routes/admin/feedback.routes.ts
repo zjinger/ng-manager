@@ -8,7 +8,16 @@ import { ok } from "../../utils/response";
 export default async function adminFeedbackRoutes(fastify: FastifyInstance) {
   fastify.get("/feedbacks", async (request) => {
     const query = listFeedbackQuerySchema.parse(request.query);
-    const result = fastify.services.feedback.list(query);
+
+    const result = fastify.services.feedback.list({
+      projectKey: query.projectKey,
+      status: query.status,
+      category: query.category,
+      keyword: query.keyword,
+      page: query.page,
+      pageSize: query.pageSize
+    });
+
     return ok(result);
   });
 
