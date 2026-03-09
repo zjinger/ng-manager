@@ -17,9 +17,17 @@
           </nz-badge>
         </span>
 
-        <span class="avatar">AD</span>
-        <span class="user-name">管理员</span>
-        <span nz-icon nzType="down" class="down-icon"></span>
+        <a nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="click" class="user-trigger">
+          <span class="avatar">{{ avatarText() }}</span>
+          <span class="user-name">{{ displayName() }}</span>
+          <span nz-icon nzType="down" class="down-icon"></span>
+        </a>
+
+        <nz-dropdown-menu #userMenu="nzDropdownMenu">
+          <ul nz-menu>
+            <li nz-menu-item [nzDisabled]="loggingOut()" (click)="logout()">退出登录</li>
+          </ul>
+        </nz-dropdown-menu>
       </div>
     </nz-header>
 
