@@ -1,17 +1,12 @@
 import type { FastifyInstance } from "fastify";
+import { ok } from "../../utils/response";
 
 export default async function adminWsRoutes(fastify: FastifyInstance) {
     fastify.get("/ws/stats", async () => {
-        return {
-            ok: true,
-            data: fastify.wsManager.stats(),
-        };
+        return ok(fastify.wsManager.stats());
     });
 
     fastify.get("/ws/clients", async () => {
-        return {
-            ok: true,
-            data: fastify.wsManager.listClients(),
-        };
+        return ok(fastify.wsManager.listClients());
     });
 }

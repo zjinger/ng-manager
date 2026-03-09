@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { fail, ok } from "../../utils/response";
 
 type BroadcastBody = {
     title: string;
@@ -17,19 +18,11 @@ export default async function adminBroadcastRoutes(fastify: FastifyInstance) {
         const projectId = body?.projectId ? String(body.projectId).trim() : null;
 
         if (!title) {
-            return reply.code(400).send({
-                ok: false,
-                code: "INVALID_TITLE",
-                message: "title is required",
-            });
+            return reply.code(400).send(fail("INVALID_TITLE", "title is required"));
         }
 
         if (!content) {
-            return reply.code(400).send({
-                ok: false,
-                code: "INVALID_CONTENT",
-                message: "content is required",
-            });
+            return reply.code(400).send(fail("INVALID_CONTENT", "content is required"));
         }
 
         fastify.hubWsEvents.broadcast({
@@ -39,15 +32,14 @@ export default async function adminBroadcastRoutes(fastify: FastifyInstance) {
             projectId,
         });
 
-        return {
-            ok: true,
-            message: "broadcast sent",
-            data: {
+        return ok(
+            {
                 title,
                 content,
                 level,
                 projectId,
             },
-        };
+            "broadcast sent"
+        );
     });
 }
