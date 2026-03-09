@@ -30,10 +30,19 @@ export interface CreateAdminUserInput {
     mustChangePassword?: boolean;
 }
 
-export interface LoginInput {
+export interface EncryptedLoginInput {
+    username: string;
+    nonce: string;
+    iv: string;
+    cipherText: string;
+}
+
+export interface PlainLoginInput {
     username: string;
     password: string;
 }
+
+export type LoginInput = EncryptedLoginInput | PlainLoginInput;
 
 export interface ChangePasswordInput {
     oldPassword: string;
@@ -43,4 +52,9 @@ export interface ChangePasswordInput {
 export interface JwtAdminPayload {
     sub: string;
     username: string;
+}
+
+export interface LoginChallenge {
+    nonce: string;
+    expiresAt: string;
 }

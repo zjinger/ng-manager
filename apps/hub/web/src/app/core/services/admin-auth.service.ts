@@ -1,7 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { HubApiService } from '../http/hub-api.service';
 import { HubApiError } from '../http/api-error.interceptor';
+import { HUB_LOGIN_AES_KEY, encryptLoginPassword } from '../utils/crypto.util';
 
 export type AdminUserStatus = 'active' | 'disabled';
 
@@ -16,6 +17,11 @@ export interface AdminProfile {
   updatedAt: string;
 }
 
+interface LoginChallenge {
+  nonce: string;
+  expiresAt: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminAuthService {
   public readonly profile = signal<AdminProfile | null>(null);
@@ -24,7 +30,10 @@ export class AdminAuthService {
   private hasCheckedSession = false;
   private refreshPromise: Promise<AdminProfile | null> | null = null;
 
-  public constructor(private readonly api: HubApiService) {}
+  public constructor(
+    private readonly api: HubApiService,
+    @Inject(HUB_LOGIN_AES_KEY) private readonly loginAesKey: string
+  ) {}
 
   public async ensureSession(force = false): Promise<AdminProfile | null> {
     if (!force && this.hasCheckedSession) {
@@ -63,10 +72,21 @@ export class AdminAuthService {
   }
 
   public async login(username: string, password: string): Promise<AdminProfile> {
+    const challenge = await firstValueFrom(
+      this.api.get<LoginChallenge>('/api/admin/auth/login/challenge')
+    );
+
+    const encrypted = await encryptLoginPassword(`${challenge.nonce}:${password}`, this.loginAesKey);
+
     const profile = await firstValueFrom(
-      this.api.post<AdminProfile, { username: string; password: string }>('/api/admin/auth/login', {
+      this.api.post<
+        AdminProfile,
+        { username: string; nonce: string; iv: string; cipherText: string }
+      >('/api/admin/auth/login', {
         username,
-        password
+        nonce: challenge.nonce,
+        iv: encrypted.iv,
+        cipherText: encrypted.cipherText
       })
     );
 

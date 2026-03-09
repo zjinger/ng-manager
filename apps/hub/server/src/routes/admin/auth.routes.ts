@@ -4,6 +4,11 @@ import { changePasswordSchema, loginSchema } from "../../modules/auth/auth.schem
 import { ok } from "../../utils/response";
 
 export default async function adminAuthRoutes(fastify: FastifyInstance) {
+    fastify.get("/auth/login/challenge", async () => {
+        const challenge = fastify.services.auth.issueLoginChallenge();
+        return ok(challenge, "challenge issued");
+    });
+
     fastify.post("/auth/login", async (request, reply) => {
         const body = loginSchema.parse(request.body);
         const profile = await fastify.services.auth.login(body);
@@ -60,5 +65,4 @@ export default async function adminAuthRoutes(fastify: FastifyInstance) {
             return ok({ ok: true }, "logout success");
         }
     );
-
 }

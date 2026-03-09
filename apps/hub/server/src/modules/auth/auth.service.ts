@@ -1,3 +1,4 @@
+import { createDecipheriv, createHash, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import Database from "better-sqlite3";
 import { env } from "../../env";
@@ -8,11 +9,18 @@ import type {
     AdminUserEntity,
     AdminUserProfile,
     ChangePasswordInput,
+    LoginChallenge,
     LoginInput
 } from "./auth.types";
 import { AuthRepo } from "./auth.repo";
 
+interface ChallengeState {
+    expiresAt: number;
+}
+
 export class AuthService {
+    private readonly challenges = new Map<string, ChallengeState>();
+
     constructor(private readonly repo: AuthRepo) { }
 
     async ensureDefaultAdmin(): Promise<void> {
@@ -47,6 +55,20 @@ export class AuthService {
         }
     }
 
+    issueLoginChallenge(): LoginChallenge {
+        this.cleanupChallenges();
+
+        const nonce = randomUUID();
+        const expiresAt = Date.now() + env.loginChallengeTtlMs;
+
+        this.challenges.set(nonce, { expiresAt });
+
+        return {
+            nonce,
+            expiresAt: new Date(expiresAt).toISOString()
+        };
+    }
+
     async login(input: LoginInput): Promise<AdminUserProfile> {
         const username = input.username.trim();
         const user = this.repo.findByUsername(username);
@@ -59,7 +81,9 @@ export class AuthService {
             throw new AppError("AUTH_USER_DISABLED", "admin user is disabled", 403);
         }
 
-        const matched = await bcrypt.compare(input.password, user.passwordHash);
+        const rawPassword = this.resolvePassword(input);
+
+        const matched = await bcrypt.compare(rawPassword, user.passwordHash);
         if (!matched) {
             throw new AppError("AUTH_INVALID_CREDENTIALS", "invalid username or password", 401);
         }
@@ -110,6 +134,68 @@ export class AuthService {
         }
 
         return this.getProfileById(user.id);
+    }
+
+    private resolvePassword(input: LoginInput): string {
+        if ("password" in input) {
+            return input.password;
+        }
+
+        const nonceState = this.challenges.get(input.nonce);
+        this.challenges.delete(input.nonce);
+
+        if (!nonceState) {
+            throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+        }
+
+        if (Date.now() > nonceState.expiresAt) {
+            throw new AppError("AUTH_CHALLENGE_EXPIRED", "login challenge expired", 401);
+        }
+
+        const decoded = this.decryptLoginPassword(input.iv, input.cipherText);
+        const prefix = `${input.nonce}:`;
+        if (!decoded.startsWith(prefix)) {
+            throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+        }
+
+        return decoded.slice(prefix.length);
+    }
+
+    private decryptLoginPassword(ivBase64: string, cipherTextBase64: string): string {
+        try {
+            const iv = Buffer.from(ivBase64, "base64");
+            const encrypted = Buffer.from(cipherTextBase64, "base64");
+
+            if (iv.length !== 12 || encrypted.length <= 16) {
+                throw new Error("invalid cipher payload");
+            }
+
+            const key = createHash("sha256").update(env.loginAesKey, "utf8").digest();
+            const authTag = encrypted.subarray(encrypted.length - 16);
+            const data = encrypted.subarray(0, encrypted.length - 16);
+
+            const decipher = createDecipheriv("aes-256-gcm", key, iv);
+            decipher.setAuthTag(authTag);
+
+            const plain = Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
+
+            if (plain.length === 0) {
+                throw new Error("empty plain password");
+            }
+
+            return plain;
+        } catch {
+            throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "invalid encrypted password", 401);
+        }
+    }
+
+    private cleanupChallenges(): void {
+        const now = Date.now();
+        for (const [nonce, state] of this.challenges.entries()) {
+            if (state.expiresAt <= now) {
+                this.challenges.delete(nonce);
+            }
+        }
     }
 
     private toProfile(user: AdminUserEntity): AdminUserProfile {

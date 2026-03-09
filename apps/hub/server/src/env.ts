@@ -29,6 +29,9 @@ export const env = {
   authCookieName: process.env.AUTH_COOKIE_NAME || "ngm_hub_token",
   authTokenExpiresIn: process.env.AUTH_TOKEN_EXPIRES_IN || "7d",
 
+  loginAesKey: process.env.LOGIN_AES_KEY || "ngm_hub_login_aes_2026",
+  loginChallengeTtlMs: Number(process.env.LOGIN_CHALLENGE_TTL_MS || 120000),
+
   initAdminUsername: process.env.INIT_ADMIN_USERNAME || "admin",
   initAdminPassword: process.env.INIT_ADMIN_PASSWORD || "Ad@_2o26",
   initAdminNickname: process.env.INIT_ADMIN_NICKNAME || "Administrator"

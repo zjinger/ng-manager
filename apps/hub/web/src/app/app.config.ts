@@ -27,6 +27,7 @@ import { HUB_API_BASE_URL } from './core/http/api-base-url.token';
 import { apiUrlInterceptor } from './core/http/api-url.interceptor';
 import { apiErrorInterceptor } from './core/http/api-error.interceptor';
 import { authRedirectInterceptor } from './core/http/auth-redirect.interceptor';
+import { HUB_LOGIN_AES_KEY } from './core/utils/crypto.util';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -49,6 +50,7 @@ export const appConfig: ApplicationConfig = {
       EyeInvisibleOutline
     ]),
     { provide: HUB_API_BASE_URL, useValue: '' },
+    { provide: HUB_LOGIN_AES_KEY, useValue: 'ngm_hub_login_aes_2026' },
     { provide: HUB_WS_URL, useValue: 'ws://localhost:19527/ws' }
   ]
 };
