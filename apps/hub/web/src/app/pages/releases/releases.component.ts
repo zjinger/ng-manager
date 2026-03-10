@@ -1,32 +1,49 @@
-import { Component, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { debounceTime, firstValueFrom } from 'rxjs';
+import { HubApiError } from '../../core/http/api-error.interceptor';
+import { HubApiService } from '../../core/http/hub-api.service';
 
-type ReleaseChannel = 'CLI' | 'Desktop';
+type ReleaseChannel = 'desktop' | 'cli';
 type ReleaseStatus = 'draft' | 'published' | 'deprecated';
 
 interface ReleaseItem {
   id: string;
+  projectId?: string | null;
   channel: ReleaseChannel;
   version: string;
   title: string;
-  notes: string;
-  downloadUrl: string;
+  notes?: string | null;
+  downloadUrl?: string | null;
   status: ReleaseStatus;
-  publishedAt: string;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ReleaseListResult {
+  items: ReleaseItem[];
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 @Component({
   selector: 'app-releases-page',
   imports: [
     ReactiveFormsModule,
+    NzAlertModule,
     NzButtonModule,
     NzIconModule,
     NzCardModule,
@@ -35,6 +52,7 @@ interface ReleaseItem {
     NzSelectModule,
     NzTableModule,
     NzTagModule,
+    NzModalModule
   ],
   template: `
     <section class="page">
@@ -43,22 +61,69 @@ interface ReleaseItem {
           <h1 class="header-title">版本管理</h1>
           <div class="header-desc">客户端版本发布管理</div>
         </div>
-        <!-- <div class="actions">
+        <div class="actions">
           <button nz-button nzType="primary" (click)="createRelease()">
             <nz-icon nzType="plus" nzTheme="outline" />
             <span>新增版本</span>
           </button>
-        </div> -->
+        </div>
       </div>
-      <nz-card nzTitle="发布列表">
-        <nz-table #table [nzData]="releases()" [nzFrontPagination]="false">
+
+      <nz-card nzTitle="筛选条件" class="section">
+        <form nz-form [formGroup]="filters" class="filter-grid">
+          <nz-form-item>
+            <nz-form-label>项目 ID</nz-form-label>
+            <nz-form-control>
+              <input nz-input formControlName="projectId" placeholder="可选" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>渠道</nz-form-label>
+            <nz-form-control>
+              <nz-select formControlName="channel" nzAllowClear>
+                <nz-option nzValue="desktop" nzLabel="desktop"></nz-option>
+                <nz-option nzValue="cli" nzLabel="cli"></nz-option>
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>状态</nz-form-label>
+            <nz-form-control>
+              <nz-select formControlName="status" nzAllowClear>
+                <nz-option nzValue="draft" nzLabel="draft"></nz-option>
+                <nz-option nzValue="published" nzLabel="published"></nz-option>
+                <nz-option nzValue="deprecated" nzLabel="deprecated"></nz-option>
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label>关键词</nz-form-label>
+            <nz-form-control>
+              <input nz-input formControlName="keyword" placeholder="版本号 / 标题 / 说明" />
+            </nz-form-control>
+          </nz-form-item>
+        </form>
+      </nz-card>
+
+      @if (listError()) {
+        <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
+      }
+
+      <nz-card nzTitle="发布列表" class="section">
+        <div class="table-head">
+          <span>共 {{ total() }} 条</span>
+          <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">刷新</button>
+        </div>
+
+        <nz-table #table [nzData]="releases()" [nzFrontPagination]="false" [nzLoading]="listLoading()">
           <thead>
             <tr>
               <th>渠道</th>
               <th>版本号</th>
+              <th>标题</th>
               <th>状态</th>
               <th>发布时间</th>
-              <!-- <th>操作</th> -->
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -66,197 +131,308 @@ interface ReleaseItem {
               <tr>
                 <td>{{ item.channel }}</td>
                 <td>{{ item.version }}</td>
+                <td>{{ item.title }}</td>
                 <td><nz-tag [nzColor]="statusColor(item.status)">{{ item.status }}</nz-tag></td>
-                <td>{{ item.publishedAt }}</td>
-                <!-- <td><a (click)="edit(item)">编辑</a></td> -->
+                <td>{{ item.publishedAt || '-' }}</td>
+                <td>
+                  <a nz-button nzType="link" (click)="edit(item)">编辑</a>
+                  @if (item.status !== 'published') {
+                    <a nz-button nzType="link" (click)="publish(item)">发布</a>
+                  }
+                  @if (item.status !== 'deprecated') {
+                    <a nz-button nzType="link" nzDanger (click)="deprecate(item)">废弃</a>
+                  }
+                  <a nz-button nzType="link" nzDanger (click)="remove(item)">删除</a>
+                </td>
               </tr>
             }
           </tbody>
         </nz-table>
       </nz-card>
 
-      <!-- <nz-card [nzTitle]="editingId() ? '编辑版本' : '新建版本'" class="section">
-        <form nz-form [formGroup]="form" nzLayout="vertical">
-          <div class="grid-2">
+      <nz-modal
+        [nzTitle]="editingId() ? '编辑版本' : '新建版本'"
+        [(nzVisible)]="visible"
+        [nzMaskClosable]="false"
+        [nzWidth]="720"
+        [nzFooter]="null"
+        (nzOnCancel)="visible.set(false)"
+      >
+        <ng-container *nzModalContent>
+          @if (formError()) {
+            <nz-alert nzType="error" [nzMessage]="formError()!" nzShowIcon></nz-alert>
+          }
+
+          <form nz-form [formGroup]="form" nzLayout="vertical" class="form">
+            <div class="grid-2">
+              <nz-form-item>
+                <nz-form-label>项目 ID（可选）</nz-form-label>
+                <nz-form-control>
+                  <input nz-input formControlName="projectId" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label nzRequired>渠道</nz-form-label>
+                <nz-form-control>
+                  <nz-select formControlName="channel">
+                    <nz-option nzValue="desktop" nzLabel="desktop"></nz-option>
+                    <nz-option nzValue="cli" nzLabel="cli"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+
+            <div class="grid-2">
+              <nz-form-item>
+                <nz-form-label nzRequired>版本号</nz-form-label>
+                <nz-form-control>
+                  <input nz-input formControlName="version" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label>目标状态</nz-form-label>
+                <nz-form-control>
+                  <nz-select formControlName="status">
+                    <nz-option nzValue="draft" nzLabel="draft"></nz-option>
+                    <nz-option nzValue="published" nzLabel="published"></nz-option>
+                    <nz-option nzValue="deprecated" nzLabel="deprecated"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+
             <nz-form-item>
-              <nz-form-label>渠道</nz-form-label>
+              <nz-form-label nzRequired>标题</nz-form-label>
               <nz-form-control>
-                <nz-select formControlName="channel">
-                  <nz-option nzValue="CLI" nzLabel="CLI"></nz-option>
-                  <nz-option nzValue="Desktop" nzLabel="Desktop"></nz-option>
-                </nz-select>
+                <input nz-input formControlName="title" />
               </nz-form-control>
             </nz-form-item>
+
             <nz-form-item>
-              <nz-form-label>版本号</nz-form-label>
+              <nz-form-label>下载地址</nz-form-label>
               <nz-form-control>
-                <input nz-input formControlName="version" />
+                <input nz-input formControlName="downloadUrl" />
               </nz-form-control>
             </nz-form-item>
-          </div>
 
-          <nz-form-item>
-            <nz-form-label>标题</nz-form-label>
-            <nz-form-control>
-              <input nz-input formControlName="title" />
-            </nz-form-control>
-          </nz-form-item>
+            <nz-form-item>
+              <nz-form-label>更新说明</nz-form-label>
+              <nz-form-control>
+                <textarea nz-input rows="6" formControlName="notes"></textarea>
+              </nz-form-control>
+            </nz-form-item>
 
-          <nz-form-item>
-            <nz-form-label>更新说明</nz-form-label>
-            <nz-form-control>
-              <textarea nz-input rows="6" formControlName="notes"></textarea>
-            </nz-form-control>
-          </nz-form-item>
-
-          <nz-form-item>
-            <nz-form-label>下载地址</nz-form-label>
-            <nz-form-control>
-              <input nz-input formControlName="downloadUrl" />
-            </nz-form-control>
-          </nz-form-item>
-
-          <nz-form-item>
-            <nz-form-label>状态</nz-form-label>
-            <nz-form-control>
-              <nz-select formControlName="status">
-                <nz-option nzValue="draft" nzLabel="draft"></nz-option>
-                <nz-option nzValue="published" nzLabel="published"></nz-option>
-                <nz-option nzValue="deprecated" nzLabel="deprecated"></nz-option>
-              </nz-select>
-            </nz-form-control>
-          </nz-form-item>
-
-          <button nz-button nzType="primary" (click)="save()" [disabled]="form.invalid">保存版本</button>
-        </form>
-      </nz-card> -->
-
-      <!-- <nz-card nzTitle="客户端接口" class="section">
-        <pre class="api-block">GET /api/client/releases/latest</pre>
-      </nz-card> -->
+            <button nz-button nzType="primary" (click)="save()" [disabled]="form.invalid || saving()">
+              保存版本
+            </button>
+          </form>
+        </ng-container>
+      </nz-modal>
     </section>
   `,
   styles: `
     .page { background: #fff; border-radius: 10px; padding: 20px; }
-    .subtitle { margin-bottom: 16px; color: #6b7280; }
     .section { margin-top: 16px; }
+    .actions { display: flex; justify-content: flex-end; }
+    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .form { display: grid; gap: 4px; }
     .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .api-block {
-      margin: 0;
-      padding: 12px;
-      border-radius: 8px;
-      background: #0f172a;
-      color: #f8fafc;
-      font-family: Consolas, Monaco, 'Courier New', monospace;
-    }
   `
 })
 export class ReleasesPageComponent {
-  private readonly fb = new FormBuilder();
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(HubApiService);
 
+  protected readonly visible = signal(false);
+  protected readonly saving = signal(false);
+  protected readonly listLoading = signal(false);
+  protected readonly listError = signal<string | null>(null);
+  protected readonly formError = signal<string | null>(null);
+
+  protected readonly releases = signal<ReleaseItem[]>([]);
+  protected readonly total = signal(0);
   protected readonly editingId = signal<string | null>(null);
-  protected readonly releases = signal<ReleaseItem[]>([
-    {
-      id: 'rel-1',
-      channel: 'Desktop',
-      version: '2.6.1',
-      title: 'Desktop 稳定版',
-      notes: '- 修复缓存失效\n- 优化下载重试',
-      downloadUrl: 'https://cdn.example.com/ngm/desktop/2.6.1',
-      status: 'published',
-      publishedAt: '2026-03-05 14:20'
-    },
-    {
-      id: 'rel-2',
-      channel: 'CLI',
-      version: '1.9.0-beta.2',
-      title: 'CLI Beta',
-      notes: '- 新增 release channel 切换',
-      downloadUrl: 'https://cdn.example.com/ngm/cli/1.9.0-beta.2',
-      status: 'draft',
-      publishedAt: '-'
-    }
-  ]);
+
+  protected readonly filters = this.fb.nonNullable.group({
+    projectId: [''],
+    channel: [''],
+    status: [''],
+    keyword: ['']
+  });
 
   protected readonly form = this.fb.nonNullable.group({
-    channel: ['CLI' as ReleaseChannel, [Validators.required]],
+    projectId: [''],
+    channel: ['desktop' as ReleaseChannel, [Validators.required]],
     version: ['', [Validators.required]],
     title: ['', [Validators.required]],
     notes: [''],
-    downloadUrl: ['', [Validators.required]],
-    status: ['draft' as ReleaseStatus, [Validators.required]]
+    downloadUrl: [''],
+    status: ['draft' as ReleaseStatus]
   });
+
+  public constructor() {
+    this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
+      void this.loadReleases();
+    });
+
+    void this.loadReleases();
+  }
+
+  protected async reload(): Promise<void> {
+    await this.loadReleases();
+  }
 
   protected createRelease(): void {
     this.editingId.set(null);
+    this.formError.set(null);
     this.form.reset({
-      channel: 'CLI',
+      projectId: '',
+      channel: 'desktop',
       version: '',
       title: '',
       notes: '',
       downloadUrl: '',
       status: 'draft'
     });
+    this.visible.set(true);
   }
 
   protected edit(item: ReleaseItem): void {
     this.editingId.set(item.id);
+    this.formError.set(null);
     this.form.reset({
+      projectId: item.projectId || '',
       channel: item.channel,
       version: item.version,
       title: item.title,
-      notes: item.notes,
-      downloadUrl: item.downloadUrl,
+      notes: item.notes || '',
+      downloadUrl: item.downloadUrl || '',
       status: item.status
     });
+    this.visible.set(true);
   }
 
-  protected save(): void {
+  protected async save(): Promise<void> {
     if (this.form.invalid) {
       return;
     }
-    const value = this.form.getRawValue();
-    const now = this.formatNow();
-    if (this.editingId() !== null) {
-      this.releases.update((list) =>
-        list.map((item) =>
-          item.id === this.editingId()
-            ? {
-              ...item,
-              ...value,
-              publishedAt: value.status === 'published' ? item.publishedAt : '-'
-            }
-            : item
-        )
-      );
-      return;
-    }
 
-    const id = `rel-${Date.now()}`;
-    this.releases.update((list) => [
-      { id, ...value, publishedAt: value.status === 'published' ? now : '-' },
-      ...list
-    ]);
-    this.editingId.set(id);
+    this.saving.set(true);
+    this.formError.set(null);
+
+    try {
+      const value = this.form.getRawValue();
+      const basePayload = {
+        projectId: value.projectId.trim() ? value.projectId.trim() : null,
+        channel: value.channel,
+        version: value.version,
+        title: value.title,
+        notes: value.notes,
+        downloadUrl: value.downloadUrl
+      };
+
+      let item: ReleaseItem;
+      if (this.editingId()) {
+        item = await firstValueFrom(
+          this.api.put<ReleaseItem, typeof basePayload>(`/api/admin/releases/${this.editingId()!}`, basePayload)
+        );
+      } else {
+        item = await firstValueFrom(
+          this.api.post<ReleaseItem, typeof basePayload>('/api/admin/releases', basePayload)
+        );
+      }
+
+      if (value.status === 'published' && item.status !== 'published') {
+        item = await firstValueFrom(
+          this.api.post<ReleaseItem, Record<string, never>>(`/api/admin/releases/${item.id}/publish`, {})
+        );
+      }
+
+      if (value.status === 'deprecated' && item.status !== 'deprecated') {
+        await firstValueFrom(
+          this.api.post<ReleaseItem, Record<string, never>>(`/api/admin/releases/${item.id}/deprecate`, {})
+        );
+      }
+
+      this.visible.set(false);
+      await this.loadReleases();
+    } catch (error) {
+      this.formError.set(this.getErrorMessage(error, '保存版本失败'));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  protected async publish(item: ReleaseItem): Promise<void> {
+    this.listError.set(null);
+
+    try {
+      await firstValueFrom(this.api.post<ReleaseItem, Record<string, never>>(`/api/admin/releases/${item.id}/publish`, {}));
+      await this.loadReleases();
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '发布版本失败'));
+    }
+  }
+
+  protected async deprecate(item: ReleaseItem): Promise<void> {
+    this.listError.set(null);
+
+    try {
+      await firstValueFrom(this.api.post<ReleaseItem, Record<string, never>>(`/api/admin/releases/${item.id}/deprecate`, {}));
+      await this.loadReleases();
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '废弃版本失败'));
+    }
+  }
+
+  protected async remove(item: ReleaseItem): Promise<void> {
+    this.listError.set(null);
+
+    try {
+      await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/releases/${item.id}`));
+      await this.loadReleases();
+      if (this.editingId() === item.id) {
+        this.visible.set(false);
+        this.editingId.set(null);
+      }
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '删除版本失败'));
+    }
   }
 
   protected statusColor(status: ReleaseStatus): string {
-    if (status === 'published') {
-      return 'green';
-    }
-    if (status === 'deprecated') {
-      return 'default';
-    }
+    if (status === 'published') return 'green';
+    if (status === 'deprecated') return 'default';
     return 'orange';
   }
 
-  private formatNow(): string {
-    const date = new Date();
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    const hh = String(date.getHours()).padStart(2, '0');
-    const min = String(date.getMinutes()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  private async loadReleases(): Promise<void> {
+    this.listLoading.set(true);
+    this.listError.set(null);
+
+    try {
+      const filter = this.filters.getRawValue();
+      const params: Record<string, string | number | boolean> = { page: 1, pageSize: 50 };
+
+      if (filter.projectId.trim()) params['projectId'] = filter.projectId.trim();
+      if (filter.channel) params['channel'] = filter.channel;
+      if (filter.status) params['status'] = filter.status;
+      if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
+
+      const result = await firstValueFrom(this.api.get<ReleaseListResult>('/api/admin/releases', { params }));
+      this.releases.set(result.items);
+      this.total.set(result.total);
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '加载版本列表失败'));
+    } finally {
+      this.listLoading.set(false);
+    }
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
+    if (error instanceof Error) return `${fallback}: ${error.message}`;
+    return fallback;
   }
 }

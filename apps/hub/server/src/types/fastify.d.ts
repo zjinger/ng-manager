@@ -4,10 +4,12 @@ import type { AuthService } from "../modules/auth/auth.service";
 import type { AdminUserProfile } from "../modules/auth/auth.types";
 import type { DocumentService } from "../modules/document/document.service";
 import type { FeedbackService } from "../modules/feedback/feedback.service";
-import { ProjectService } from "../modules/project/project.service";
+import type { ProjectService } from "../modules/project/project.service";
+import type { ReleaseService } from "../modules/release/release.service";
 import type { SharedConfigService } from "../modules/shared-config/shared-config.service";
 import { HubWsEvents } from "../modules/ws/ws.events";
 import { HubWsManager } from "../modules/ws/ws.manager";
+
 declare module "fastify" {
     interface FastifyInstance {
         db: Database.Database;
@@ -17,7 +19,8 @@ declare module "fastify" {
             document: DocumentService;
             auth: AuthService;
             sharedConfig: SharedConfigService;
-            project: ProjectService
+            project: ProjectService;
+            release: ReleaseService;
         };
         verifyAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void>;
         wsManager: HubWsManager;

@@ -9,14 +9,16 @@ import { DocumentRepo } from "./modules/document/document.repo";
 import { DocumentService } from "./modules/document/document.service";
 import { FeedbackRepo } from "./modules/feedback/feedback.repo";
 import { FeedbackService } from "./modules/feedback/feedback.service";
+import { ProjectRepo } from "./modules/project/project.repo";
+import { ProjectService } from "./modules/project/project.service";
+import { ReleaseRepo } from "./modules/release/release.repo";
+import { ReleaseService } from "./modules/release/release.service";
 import { SharedConfigRepo } from "./modules/shared-config/shared-config.repo";
 import { SharedConfigService } from "./modules/shared-config/shared-config.service";
 import authPlugin from "./plugins/auth.plugin";
 import dbPlugin from "./plugins/db.plugin";
 import errorHandlerPlugin from "./plugins/error-handler.plugin";
 import routesPlugin from "./plugins/routes.plugin";
-import { ProjectRepo } from "./modules/project/project.repo";
-import { ProjectService } from "./modules/project/project.service";
 import wsPlugin from "./plugins/ws.plugin";
 
 export async function createApp() {
@@ -36,7 +38,7 @@ export async function createApp() {
     await app.register(wsPlugin);
 
     const projectRepo = new ProjectRepo(app.db);
-    const preojectService = new ProjectService(projectRepo);
+    const projectService = new ProjectService(projectRepo);
 
     const feedbackRepo = new FeedbackRepo(app.db);
     const feedbackService = new FeedbackService(feedbackRepo, projectRepo);
@@ -53,15 +55,19 @@ export async function createApp() {
     const sharedConfigRepo = new SharedConfigRepo(app.db);
     const sharedConfigService = new SharedConfigService(sharedConfigRepo);
 
+    const releaseRepo = new ReleaseRepo(app.db);
+    const releaseService = new ReleaseService(releaseRepo, projectRepo, app.hubWsEvents);
+
     app.decorate("services", {
         feedback: feedbackService,
         announcement: announcementService,
         document: documentService,
         auth: authService,
         sharedConfig: sharedConfigService,
-        project: preojectService
+        project: projectService,
+        release: releaseService
     });
-    
+
     await app.register(authPlugin);
     await authService.ensureDefaultAdmin();
     await app.register(routesPlugin);
