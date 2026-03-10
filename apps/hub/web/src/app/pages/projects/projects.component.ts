@@ -67,8 +67,8 @@ interface ProjectListResult {
             <nz-form-label>状态</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="status" nzAllowClear>
-                <nz-option nzValue="active" nzLabel="active"></nz-option>
-                <nz-option nzValue="archived" nzLabel="archived"></nz-option>
+                <nz-option nzValue="active" nzLabel="启用"></nz-option>
+                <nz-option nzValue="archived" nzLabel="归档"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -76,8 +76,8 @@ interface ProjectListResult {
             <nz-form-label>可见性</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="visibility" nzAllowClear>
-                <nz-option nzValue="internal" nzLabel="internal"></nz-option>
-                <nz-option nzValue="public" nzLabel="public"></nz-option>
+                <nz-option nzValue="internal" nzLabel="内部"></nz-option>
+                <nz-option nzValue="public" nzLabel="公开"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -115,8 +115,8 @@ interface ProjectListResult {
               <tr>
                 <td>{{ item.projectKey }}</td>
                 <td>{{ item.name }}</td>
-                <td><nz-tag [nzColor]="statusColor(item.status)">{{ item.status }}</nz-tag></td>
-                <td>{{ item.visibility }}</td>
+                <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
+                <td>{{ visibilityLabel(item.visibility) }}</td>
                 <td>{{ item.updatedAt }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="editProject(item)">编辑</a>
@@ -180,8 +180,8 @@ interface ProjectListResult {
                 <nz-form-label>可见性</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="visibility">
-                    <nz-option nzValue="internal" nzLabel="internal"></nz-option>
-                    <nz-option nzValue="public" nzLabel="public"></nz-option>
+                    <nz-option nzValue="internal" nzLabel="内部"></nz-option>
+                    <nz-option nzValue="public" nzLabel="公开"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -340,6 +340,13 @@ export class ProjectsPageComponent {
     return status === 'active' ? 'green' : 'default';
   }
 
+  protected statusLabel(status: ProjectStatus): string {
+    return status === 'active' ? '启用' : '归档';
+  }
+
+  protected visibilityLabel(visibility: ProjectVisibility): string {
+    return visibility === 'public' ? '公开' : '内部';
+  }
   private async updateStatus(item: ProjectItem, status: ProjectStatus, fallback: string): Promise<void> {
     this.listError.set(null);
     try {
@@ -381,3 +388,6 @@ export class ProjectsPageComponent {
     return fallback;
   }
 }
+
+
+

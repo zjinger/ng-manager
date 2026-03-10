@@ -1,4 +1,4 @@
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -39,6 +39,12 @@ interface ReleaseListResult {
   total: number;
 }
 
+interface ProjectOption {
+  id: string;
+  name: string;
+  projectKey: string;
+}
+
 @Component({
   selector: 'app-releases-page',
   imports: [
@@ -72,17 +78,21 @@ interface ReleaseListResult {
       <nz-card nzTitle="筛选条件" class="section">
         <form nz-form [formGroup]="filters" class="filter-grid">
           <nz-form-item>
-            <nz-form-label>项目 ID</nz-form-label>
+            <nz-form-label>项目</nz-form-label>
             <nz-form-control>
-              <input nz-input formControlName="projectId" placeholder="可选" />
+              <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
+                @for (project of projectOptions(); track project.id) {
+                  <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                }
+              </nz-select>
             </nz-form-control>
           </nz-form-item>
           <nz-form-item>
             <nz-form-label>渠道</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="channel" nzAllowClear>
-                <nz-option nzValue="desktop" nzLabel="desktop"></nz-option>
-                <nz-option nzValue="cli" nzLabel="cli"></nz-option>
+                <nz-option nzValue="desktop" nzLabel="桌面端"></nz-option>
+                <nz-option nzValue="cli" nzLabel="CLI"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -90,9 +100,9 @@ interface ReleaseListResult {
             <nz-form-label>状态</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="status" nzAllowClear>
-                <nz-option nzValue="draft" nzLabel="draft"></nz-option>
-                <nz-option nzValue="published" nzLabel="published"></nz-option>
-                <nz-option nzValue="deprecated" nzLabel="deprecated"></nz-option>
+                <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
+                <nz-option nzValue="published" nzLabel="已发布"></nz-option>
+                <nz-option nzValue="deprecated" nzLabel="已废弃"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -129,10 +139,10 @@ interface ReleaseListResult {
           <tbody>
             @for (item of table.data; track item.id) {
               <tr>
-                <td>{{ item.channel }}</td>
+                <td>{{ channelLabel(item.channel) }}</td>
                 <td>{{ item.version }}</td>
                 <td>{{ item.title }}</td>
-                <td><nz-tag [nzColor]="statusColor(item.status)">{{ item.status }}</nz-tag></td>
+                <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
                 <td>{{ item.publishedAt || '-' }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="edit(item)">编辑</a>
@@ -166,17 +176,21 @@ interface ReleaseListResult {
           <form nz-form [formGroup]="form" nzLayout="vertical" class="form">
             <div class="grid-2">
               <nz-form-item>
-                <nz-form-label>项目 ID（可选）</nz-form-label>
+                <nz-form-label>项目（可选）</nz-form-label>
                 <nz-form-control>
-                  <input nz-input formControlName="projectId" />
+                  <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="不关联项目">
+                    @for (project of projectOptions(); track project.id) {
+                      <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                    }
+                  </nz-select>
                 </nz-form-control>
               </nz-form-item>
               <nz-form-item>
                 <nz-form-label nzRequired>渠道</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="channel">
-                    <nz-option nzValue="desktop" nzLabel="desktop"></nz-option>
-                    <nz-option nzValue="cli" nzLabel="cli"></nz-option>
+                    <nz-option nzValue="desktop" nzLabel="桌面端"></nz-option>
+                    <nz-option nzValue="cli" nzLabel="CLI"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -193,9 +207,9 @@ interface ReleaseListResult {
                 <nz-form-label>目标状态</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="status">
-                    <nz-option nzValue="draft" nzLabel="draft"></nz-option>
-                    <nz-option nzValue="published" nzLabel="published"></nz-option>
-                    <nz-option nzValue="deprecated" nzLabel="deprecated"></nz-option>
+                    <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
+                    <nz-option nzValue="published" nzLabel="已发布"></nz-option>
+                    <nz-option nzValue="deprecated" nzLabel="已废弃"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -253,6 +267,7 @@ export class ReleasesPageComponent {
   protected readonly releases = signal<ReleaseItem[]>([]);
   protected readonly total = signal(0);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly projectOptions = signal<ProjectOption[]>([]);
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -276,6 +291,7 @@ export class ReleasesPageComponent {
       void this.loadReleases();
     });
 
+    void this.loadProjectOptions();
     void this.loadReleases();
   }
 
@@ -324,7 +340,7 @@ export class ReleasesPageComponent {
     try {
       const value = this.form.getRawValue();
       const basePayload = {
-        projectId: value.projectId.trim() ? value.projectId.trim() : null,
+        projectId: value.projectId || null,
         channel: value.channel,
         version: value.version,
         title: value.title,
@@ -407,6 +423,15 @@ export class ReleasesPageComponent {
     return 'orange';
   }
 
+  protected statusLabel(status: ReleaseStatus): string {
+    if (status === 'published') return '已发布';
+    if (status === 'deprecated') return '已废弃';
+    return '草稿';
+  }
+
+  protected channelLabel(channel: ReleaseChannel): string {
+    return channel === 'cli' ? 'CLI' : '桌面端';
+  }
   private async loadReleases(): Promise<void> {
     this.listLoading.set(true);
     this.listError.set(null);
@@ -415,7 +440,7 @@ export class ReleasesPageComponent {
       const filter = this.filters.getRawValue();
       const params: Record<string, string | number | boolean> = { page: 1, pageSize: 50 };
 
-      if (filter.projectId.trim()) params['projectId'] = filter.projectId.trim();
+      if (filter.projectId) params['projectId'] = filter.projectId;
       if (filter.channel) params['channel'] = filter.channel;
       if (filter.status) params['status'] = filter.status;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
@@ -430,9 +455,25 @@ export class ReleasesPageComponent {
     }
   }
 
+  private async loadProjectOptions(): Promise<void> {
+    try {
+      const result = await firstValueFrom(
+        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
+          params: { status: 'active', page: 1, pageSize: 100 }
+        })
+      );
+      this.projectOptions.set(result.items);
+    } catch {
+      this.projectOptions.set([]);
+    }
+  }
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
     if (error instanceof Error) return `${fallback}: ${error.message}`;
     return fallback;
   }
 }
+
+
+

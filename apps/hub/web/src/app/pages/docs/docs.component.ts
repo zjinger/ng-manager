@@ -1,4 +1,4 @@
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -43,6 +43,12 @@ interface DocListResult {
   total: number;
 }
 
+interface ProjectOption {
+  id: string;
+  name: string;
+  projectKey: string;
+}
+
 @Component({
   selector: 'app-docs-page',
   imports: [
@@ -73,18 +79,22 @@ interface DocListResult {
       <nz-card nzTitle="筛选条件" class="section">
         <form nz-form [formGroup]="filters" class="filter-grid">
           <nz-form-item>
-            <nz-form-label>项目 ID</nz-form-label>
+            <nz-form-label>项目</nz-form-label>
             <nz-form-control>
-              <input nz-input formControlName="projectId" placeholder="可选" />
+              <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
+                @for (project of projectOptions(); track project.id) {
+                  <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                }
+              </nz-select>
             </nz-form-control>
           </nz-form-item>
           <nz-form-item>
             <nz-form-label>状态</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="status" nzAllowClear>
-                <nz-option nzValue="draft" nzLabel="draft"></nz-option>
-                <nz-option nzValue="published" nzLabel="published"></nz-option>
-                <nz-option nzValue="archived" nzLabel="archived"></nz-option>
+                <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
+                <nz-option nzValue="published" nzLabel="已发布"></nz-option>
+                <nz-option nzValue="archived" nzLabel="已归档"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -92,12 +102,12 @@ interface DocListResult {
             <nz-form-label>分类</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="category" nzAllowClear>
-                <nz-option nzValue="guide" nzLabel="guide"></nz-option>
-                <nz-option nzValue="faq" nzLabel="faq"></nz-option>
-                <nz-option nzValue="release-note" nzLabel="release-note"></nz-option>
-                <nz-option nzValue="spec" nzLabel="spec"></nz-option>
-                <nz-option nzValue="policy" nzLabel="policy"></nz-option>
-                <nz-option nzValue="other" nzLabel="other"></nz-option>
+                <nz-option nzValue="guide" nzLabel="指南"></nz-option>
+                <nz-option nzValue="faq" nzLabel="常见问题"></nz-option>
+                <nz-option nzValue="release-note" nzLabel="发布说明"></nz-option>
+                <nz-option nzValue="spec" nzLabel="规范"></nz-option>
+                <nz-option nzValue="policy" nzLabel="策略"></nz-option>
+                <nz-option nzValue="other" nzLabel="其他"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -135,8 +145,8 @@ interface DocListResult {
               <tr>
                 <td>{{ item.slug }}</td>
                 <td>{{ item.title }}</td>
-                <td>{{ item.category }}</td>
-                <td><nz-tag [nzColor]="statusColor(item.status)">{{ item.status }}</nz-tag></td>
+                <td>{{ categoryLabel(item.category) }}</td>
+                <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
                 <td>{{ item.updatedAt }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="editDoc(item)">编辑</a>
@@ -167,9 +177,13 @@ interface DocListResult {
           <form nz-form [formGroup]="form" nzLayout="vertical" class="form">
             <div class="grid-2">
               <nz-form-item>
-                <nz-form-label>项目 ID（可选）</nz-form-label>
+                <nz-form-label>项目（可选）</nz-form-label>
                 <nz-form-control>
-                  <input nz-input formControlName="projectId" />
+                  <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="不关联项目">
+                    @for (project of projectOptions(); track project.id) {
+                      <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                    }
+                  </nz-select>
                 </nz-form-control>
               </nz-form-item>
               <nz-form-item>
@@ -192,12 +206,12 @@ interface DocListResult {
                 <nz-form-label nzRequired>分类</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="category">
-                    <nz-option nzValue="guide" nzLabel="guide"></nz-option>
-                    <nz-option nzValue="faq" nzLabel="faq"></nz-option>
-                    <nz-option nzValue="release-note" nzLabel="release-note"></nz-option>
-                    <nz-option nzValue="spec" nzLabel="spec"></nz-option>
-                    <nz-option nzValue="policy" nzLabel="policy"></nz-option>
-                    <nz-option nzValue="other" nzLabel="other"></nz-option>
+                    <nz-option nzValue="guide" nzLabel="指南"></nz-option>
+                    <nz-option nzValue="faq" nzLabel="常见问题"></nz-option>
+                    <nz-option nzValue="release-note" nzLabel="发布说明"></nz-option>
+                    <nz-option nzValue="spec" nzLabel="规范"></nz-option>
+                    <nz-option nzValue="policy" nzLabel="策略"></nz-option>
+                    <nz-option nzValue="other" nzLabel="其他"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -206,9 +220,9 @@ interface DocListResult {
                 <nz-form-label>目标状态</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="status">
-                    <nz-option nzValue="draft" nzLabel="draft"></nz-option>
-                    <nz-option nzValue="published" nzLabel="published"></nz-option>
-                    <nz-option nzValue="archived" nzLabel="archived"></nz-option>
+                    <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
+                    <nz-option nzValue="published" nzLabel="已发布"></nz-option>
+                    <nz-option nzValue="archived" nzLabel="已归档"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -268,6 +282,7 @@ export class DocsPageComponent {
   protected readonly docs = signal<DocListItem[]>([]);
   protected readonly total = signal(0);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly projectOptions = signal<ProjectOption[]>([]);
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -292,6 +307,7 @@ export class DocsPageComponent {
       void this.loadDocs();
     });
 
+    void this.loadProjectOptions();
     void this.loadDocs();
   }
 
@@ -375,7 +391,7 @@ export class DocsPageComponent {
     try {
       const value = this.form.getRawValue();
       const basePayload = {
-        projectId: value.projectId.trim() ? value.projectId.trim() : null,
+        projectId: value.projectId || null,
         slug: value.slug,
         title: value.title,
         category: value.category,
@@ -422,6 +438,20 @@ export class DocsPageComponent {
     return 'orange';
   }
 
+  protected statusLabel(status: DocStatus): string {
+    if (status === 'published') return '已发布';
+    if (status === 'archived') return '已归档';
+    return '草稿';
+  }
+
+  protected categoryLabel(category: DocCategory): string {
+    if (category === 'guide') return '指南';
+    if (category === 'faq') return '常见问题';
+    if (category === 'release-note') return '发布说明';
+    if (category === 'spec') return '规范';
+    if (category === 'policy') return '策略';
+    return '其他';
+  }
   private async loadDocs(): Promise<void> {
     this.listLoading.set(true);
     this.listError.set(null);
@@ -430,7 +460,7 @@ export class DocsPageComponent {
       const filter = this.filters.getRawValue();
       const params: Record<string, string | number | boolean> = { page: 1, pageSize: 50 };
 
-      if (filter.projectId.trim()) params['projectId'] = filter.projectId.trim();
+      if (filter.projectId) params['projectId'] = filter.projectId;
       if (filter.status) params['status'] = filter.status;
       if (filter.category) params['category'] = filter.category;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
@@ -445,9 +475,25 @@ export class DocsPageComponent {
     }
   }
 
+  private async loadProjectOptions(): Promise<void> {
+    try {
+      const result = await firstValueFrom(
+        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
+          params: { status: 'active', page: 1, pageSize: 100 }
+        })
+      );
+      this.projectOptions.set(result.items);
+    } catch {
+      this.projectOptions.set([]);
+    }
+  }
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
     if (error instanceof Error) return `${fallback}: ${error.message}`;
     return fallback;
   }
 }
+
+
+

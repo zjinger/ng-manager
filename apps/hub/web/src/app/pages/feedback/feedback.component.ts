@@ -1,4 +1,4 @@
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, firstValueFrom } from 'rxjs';
@@ -77,10 +77,10 @@ interface FeedbackListResult {
             <nz-form-label>状态</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="status" nzAllowClear>
-                <nz-option nzValue="open" nzLabel="open"></nz-option>
-                <nz-option nzValue="processing" nzLabel="processing"></nz-option>
-                <nz-option nzValue="resolved" nzLabel="resolved"></nz-option>
-                <nz-option nzValue="closed" nzLabel="closed"></nz-option>
+                <nz-option nzValue="open" nzLabel="待处理"></nz-option>
+                <nz-option nzValue="processing" nzLabel="处理中"></nz-option>
+                <nz-option nzValue="resolved" nzLabel="已解决"></nz-option>
+                <nz-option nzValue="closed" nzLabel="已关闭"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -88,10 +88,10 @@ interface FeedbackListResult {
             <nz-form-label>类型</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="category" nzAllowClear>
-                <nz-option nzValue="bug" nzLabel="bug"></nz-option>
-                <nz-option nzValue="suggestion" nzLabel="suggestion"></nz-option>
-                <nz-option nzValue="feature" nzLabel="feature"></nz-option>
-                <nz-option nzValue="other" nzLabel="other"></nz-option>
+                <nz-option nzValue="bug" nzLabel="缺陷"></nz-option>
+                <nz-option nzValue="suggestion" nzLabel="建议"></nz-option>
+                <nz-option nzValue="feature" nzLabel="功能需求"></nz-option>
+                <nz-option nzValue="other" nzLabel="其他"></nz-option>
               </nz-select>
             </nz-form-control>
           </nz-form-item>
@@ -131,10 +131,10 @@ interface FeedbackListResult {
                 <tr (click)="selectFeedback(item)" [class.selected]="selected()?.id === item.id">
                   <td>{{ item.id }}</td>
                   <td>{{ item.projectKey || '-' }}</td>
-                  <td>{{ item.category }}</td>
+                  <td>{{ categoryLabel(item.category) }}</td>
                   <td>{{ item.title }}</td>
-                  <td><nz-tag [nzColor]="statusColor(item.status)">{{ item.status }}</nz-tag></td>
-                  <td>{{ item.source }}</td>
+                  <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
+                  <td>{{ sourceLabel(item.source) }}</td>
                   <td>{{ item.createdAt }}</td>
                 </tr>
               }
@@ -154,10 +154,10 @@ interface FeedbackListResult {
             <div class="status-editor">
               <label>状态</label>
               <nz-select [(ngModel)]="pendingStatus" [ngModelOptions]="{ standalone: true }">
-                <nz-option nzValue="open" nzLabel="open"></nz-option>
-                <nz-option nzValue="processing" nzLabel="processing"></nz-option>
-                <nz-option nzValue="resolved" nzLabel="resolved"></nz-option>
-                <nz-option nzValue="closed" nzLabel="closed"></nz-option>
+                <nz-option nzValue="open" nzLabel="待处理"></nz-option>
+                <nz-option nzValue="processing" nzLabel="处理中"></nz-option>
+                <nz-option nzValue="resolved" nzLabel="已解决"></nz-option>
+                <nz-option nzValue="closed" nzLabel="已关闭"></nz-option>
               </nz-select>
               <button nz-button nzType="primary" (click)="saveStatus()" [disabled]="statusSaving()">
                 保存状态
@@ -252,6 +252,25 @@ export class FeedbackPageComponent {
     return 'orange';
   }
 
+  protected statusLabel(status: FeedbackStatus): string {
+    if (status === 'processing') return '处理中';
+    if (status === 'resolved') return '已解决';
+    if (status === 'closed') return '已关闭';
+    return '待处理';
+  }
+
+  protected categoryLabel(category: FeedbackCategory): string {
+    if (category === 'bug') return '缺陷';
+    if (category === 'suggestion') return '建议';
+    if (category === 'feature') return '功能需求';
+    return '其他';
+  }
+
+  protected sourceLabel(source: FeedbackSource): string {
+    if (source === 'desktop') return '桌面端';
+    if (source === 'cli') return 'CLI';
+    return 'Web';
+  }
   protected environmentText(item: FeedbackItem): string {
     const parts = [item.clientName, item.clientVersion, item.osInfo].filter(
       (value): value is string => typeof value === 'string' && value.trim().length > 0
@@ -297,3 +316,5 @@ export class FeedbackPageComponent {
     return fallback;
   }
 }
+
+

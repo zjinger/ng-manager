@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -38,6 +38,12 @@ interface AnnouncementListResult {
   page: number;
   pageSize: number;
   total: number;
+}
+
+interface ProjectOption {
+  id: string;
+  name: string;
+  projectKey: string;
 }
 
 @Component({
@@ -123,9 +129,13 @@ interface AnnouncementListResult {
             </nz-form-item>
 
             <nz-form-item>
-              <nz-form-label>项目 ID（可选）</nz-form-label>
+              <nz-form-label>项目（可选）</nz-form-label>
               <nz-form-control>
-                <input nz-input formControlName="projectId" />
+                <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="不关联项目">
+                  @for (project of projectOptions(); track project.id) {
+                    <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                  }
+                </nz-select>
               </nz-form-control>
             </nz-form-item>
 
@@ -148,9 +158,9 @@ interface AnnouncementListResult {
                 <nz-form-label>范围</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="scope">
-                    <nz-option nzValue="all" nzLabel="all"></nz-option>
-                    <nz-option nzValue="desktop" nzLabel="desktop"></nz-option>
-                    <nz-option nzValue="cli" nzLabel="cli"></nz-option>
+                    <nz-option nzValue="all" nzLabel="全部端"></nz-option>
+                    <nz-option nzValue="desktop" nzLabel="桌面端"></nz-option>
+                    <nz-option nzValue="cli" nzLabel="CLI"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -159,9 +169,9 @@ interface AnnouncementListResult {
                 <nz-form-label>目标状态</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="status">
-                    <nz-option nzValue="draft" nzLabel="draft"></nz-option>
-                    <nz-option nzValue="published" nzLabel="published"></nz-option>
-                    <nz-option nzValue="archived" nzLabel="archived"></nz-option>
+                    <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
+                    <nz-option nzValue="published" nzLabel="已发布"></nz-option>
+                    <nz-option nzValue="archived" nzLabel="已归档"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -200,6 +210,7 @@ export class AnnouncementsPageComponent {
   protected readonly formError = signal<string | null>(null);
   protected readonly editingId = signal<string | null>(null);
   protected readonly announcements = signal<AnnouncementListItem[]>([]);
+  protected readonly projectOptions = signal<ProjectOption[]>([]);
 
   protected readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required]],
@@ -212,6 +223,7 @@ export class AnnouncementsPageComponent {
   });
 
   public constructor() {
+    void this.loadProjectOptions();
     void this.loadAnnouncements();
   }
 
@@ -284,7 +296,7 @@ export class AnnouncementsPageComponent {
     try {
       const value = this.form.getRawValue();
       const basePayload = {
-        projectId: value.projectId.trim() ? value.projectId.trim() : null,
+        projectId: value.projectId || null,
         title: value.title,
         summary: value.summary,
         contentMd: value.contentMd,
@@ -331,9 +343,23 @@ export class AnnouncementsPageComponent {
     }
   }
 
+  private async loadProjectOptions(): Promise<void> {
+    try {
+      const result = await firstValueFrom(
+        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
+          params: { status: 'active', page: 1, pageSize: 100 }
+        })
+      );
+      this.projectOptions.set(result.items);
+    } catch {
+      this.projectOptions.set([]);
+    }
+  }
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
     if (error instanceof Error) return `${fallback}: ${error.message}`;
     return fallback;
   }
 }
+
