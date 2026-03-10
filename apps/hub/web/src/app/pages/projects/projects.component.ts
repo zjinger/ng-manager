@@ -265,7 +265,7 @@ interface ProjectListResult {
       .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
       .form { display: grid; gap: 4px; }
       .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-      .project-key-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+      .project-key-row { display: grid; grid-template-columns: 200px 1fr;  gap: 8px; align-items: center; }
     `
   ]
 })

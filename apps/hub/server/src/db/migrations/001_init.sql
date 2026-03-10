@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS feedbacks (
   contact TEXT,
   client_name TEXT,
   client_version TEXT,
+  client_ip TEXT,
   os_info TEXT,
   project_key TEXT,
   status TEXT NOT NULL DEFAULT 'open',

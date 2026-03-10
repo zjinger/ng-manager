@@ -1,9 +1,9 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { AboutComponent } from './about.component';
 
 const routes: Routes = [
-  { path: '', component: AboutComponent }
+  { path: '', loadComponent: () => import('./about.component').then(m => m.AboutComponent) },
+  { path: 'feedback', loadComponent: () => import('./feedback.component').then(m => m.FeedbackComponent) }
 ];
 
 @NgModule({

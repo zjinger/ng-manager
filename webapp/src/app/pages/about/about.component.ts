@@ -1,36 +1,53 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { PageLayoutComponent } from '@app/shared';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
 @Component({
   selector: 'app-about.component',
-  imports: [CommonModule, NzGridModule, PageLayoutComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzGridModule,
+    NzFormModule,
+    NzInputModule,
+    NzSelectModule,
+    NzButtonModule,
+    PageLayoutComponent,
+  ],
   template: `
-    <app-page-layout [title]="'关于'" >
-        <div class="header">
-          <h2>关于 Ng-Manager</h2>
+    <app-page-layout [title]="'关于'">
+      <div class="header">
+        <h2>关于 Ng-Manager</h2>
+      </div>
+      <div class="content">
+        <p>Ng-Manager 是一个开源的 Angular 项目管理工具，旨在帮助开发者更高效地管理和组织他们的 Angular/Vue 项目。</p>
+        <p>它提供了一个直观的界面，允许用户轻松创建、导入和管理多个 Angular/Vue 项目，同时集成了常用的开发工具和功能。</p>
+        <div>
+          <p>主要功能包括：</p>
+          <ul>
+            <li>项目创建与导入</li>
+            <li>项目仪表盘自定义</li>
+            <li>依赖管理</li>
+            <li>项目任务管理</li>
+            <li>多项目支持</li>
+            <li>集成常用开发工具</li>
+          </ul>
         </div>
-        <div class="content">
-          <p>Ng-Manager 是一个开源的 Angular 项目管理工具，旨在帮助开发者更高效地管理和组织他们的 Angular/Vue 项目。</p>
-          <p>它提供了一个直观的界面，允许用户轻松创建、导入和管理多个 Angular/Vue 项目，同时集成了常用的开发工具和功能。</p>
-          <div>
-            <p>主要功能包括：</p>
-            <ul>
-              <li>项目创建与导入</li>
-              <li>项目仪表盘自定义</li>
-              <li>依赖管理</li>
-              <li>项目任务管理</li>
-              <li>多项目支持</li>
-              <li>集成常用开发工具</li>
-            </ul>
-          </div>
-          <p>版本：0.1.12</p>
-          <p>官方网站：<a href="http://192.168.1.31:7006" target="_blank">http://192.168.1.31:7006</a></p>
-        </div>
+        <p>版本：{{ version }}</p>
+        <p>
+          官方网站：<a href="http://192.168.1.31:7006" target="_blank">http://192.168.1.31:7006</a>
+        </p>
+      </div>
     </app-page-layout>
   `,
+  styles: [],
 })
 export class AboutComponent {
-
+  readonly version = '0.1.12';
 }

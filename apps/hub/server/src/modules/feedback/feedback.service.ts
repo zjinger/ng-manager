@@ -33,6 +33,7 @@ export class FeedbackService {
       clientName: input.clientName?.trim() || null,
       clientVersion: input.clientVersion?.trim() || null,
       osInfo: input.osInfo?.trim() || null,
+      clientIp: input.clientIp?.trim() || null,
       status: "open",
       createdAt: now,
       updatedAt: now

@@ -17,6 +17,7 @@ type FeedbackRow = {
   client_name: string | null;
   client_version: string | null;
   os_info: string | null;
+  client_ip: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -29,10 +30,10 @@ export class FeedbackRepo {
     const stmt = this.db.prepare(`
       INSERT INTO feedbacks (
         id, project_key, source, category, title, content, contact,
-        client_name, client_version, os_info, status, created_at, updated_at
+        client_name, client_version, os_info, client_ip, status, created_at, updated_at
       ) VALUES (
         @id, @project_key, @source, @category, @title, @content, @contact,
-        @client_name, @client_version, @os_info, @status, @created_at, @updated_at
+        @client_name, @client_version, @os_info, @client_ip, @status, @created_at, @updated_at
       )
     `);
 
@@ -47,6 +48,7 @@ export class FeedbackRepo {
       client_name: input.clientName ?? null,
       client_version: input.clientVersion ?? null,
       os_info: input.osInfo ?? null,
+      client_ip: input.clientIp ?? null,
       status: input.status,
       created_at: input.createdAt,
       updated_at: input.updatedAt
@@ -130,6 +132,7 @@ export class FeedbackRepo {
       clientName: row.client_name,
       clientVersion: row.client_version,
       osInfo: row.os_info,
+      clientIp: row.client_ip,
       status: row.status as FeedbackEntity["status"],
       createdAt: row.created_at,
       updatedAt: row.updated_at

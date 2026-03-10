@@ -9,7 +9,8 @@ export const createFeedbackSchema = z.object({
   contact: z.string().trim().max(120).optional(),
   clientName: z.string().trim().max(120).optional(),
   clientVersion: z.string().trim().max(60).optional(),
-  osInfo: z.string().trim().max(200).optional()
+  osInfo: z.string().trim().max(200).optional(),
+  clientIp: z.string().trim().max(80).optional()
 });
 
 export const updateFeedbackStatusSchema = z.object({

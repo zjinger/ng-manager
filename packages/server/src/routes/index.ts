@@ -12,6 +12,7 @@ import { FastifyInstance } from 'fastify';
 import svnRoutes from './svn.routes';
 import spriteBrowseRoutes from './sprite-browse.routes';
 import staticFileRoutes from './static-files.routes';
+import hubRoutes from './hub.routes';
 
 export default async function routes(fastify: FastifyInstance) {
     // system
@@ -40,6 +41,9 @@ export default async function routes(fastify: FastifyInstance) {
 
     // static files 访问接口（cache sprites + svn files）
     await fastify.register(staticFileRoutes, { prefix: '/api/static' });
+
+    // hub
+    await fastify.register(hubRoutes, { prefix: '/api/hub' });
 
     // api-client
     await fastify.register(apiClientEnvsRoutes, { prefix: '/api/client/envs' });
