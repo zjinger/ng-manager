@@ -1,37 +1,45 @@
 import { z } from "zod";
 
-const valueTypeEnum = z.enum(["string", "json", "number", "boolean"]);
-const scopeEnum = z.enum(["public", "admin"]);
+export const sharedConfigScopeSchema = z.enum(["global", "project"]);
+export const sharedConfigStatusSchema = z.enum(["active", "disabled"]);
+export const sharedConfigValueTypeSchema = z.enum(["json", "text", "number", "boolean"]);
 
 export const createSharedConfigSchema = z.object({
-  configKey: z
-    .string()
-    .trim()
-    .min(1)
-    .max(120)
-    .regex(/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/, {
-      message: "configKey must be lowercase and use dot/underscore/hyphen separators"
-    }),
-  configValue: z.string().min(1).max(200000),
-  valueType: valueTypeEnum,
-  scope: scopeEnum.default("public"),
-  description: z.string().trim().max(500).optional()
+  projectId: z.string().trim().min(1).nullable().optional(),
+  scope: sharedConfigScopeSchema.optional(),
+  configKey: z.string().trim().min(1).max(100),
+  configName: z.string().trim().min(1).max(100),
+  category: z.string().trim().min(1).max(50),
+  valueType: sharedConfigValueTypeSchema.optional().default("json"),
+  configValue: z.string(),
+  description: z.string().trim().max(500).optional().default(""),
+  isEncrypted: z.boolean().optional().default(false),
+  priority: z.coerce.number().int().optional().default(0),
+  status: sharedConfigStatusSchema.optional().default("active")
 });
 
 export const updateSharedConfigSchema = z.object({
-  configValue: z.string().min(1).max(200000).optional(),
-  valueType: valueTypeEnum.optional(),
-  scope: scopeEnum.optional(),
-  description: z.string().trim().max(500).nullable().optional()
+  configName: z.string().trim().min(1).max(100).optional(),
+  category: z.string().trim().min(1).max(50).optional(),
+  valueType: sharedConfigValueTypeSchema.optional(),
+  configValue: z.string().optional(),
+  description: z.string().trim().max(500).optional(),
+  isEncrypted: z.boolean().optional(),
+  priority: z.coerce.number().int().optional(),
+  status: sharedConfigStatusSchema.optional()
 });
 
 export const listSharedConfigQuerySchema = z.object({
-  scope: scopeEnum.optional(),
-  keyword: z.string().trim().max(100).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20)
+  projectId: z.string().trim().min(1).optional(),
+  scope: sharedConfigScopeSchema.optional(),
+  category: z.string().trim().min(1).optional(),
+  keyword: z.string().trim().min(1).optional(),
+  status: sharedConfigStatusSchema.optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20)
 });
 
-export type CreateSharedConfigDto = z.infer<typeof createSharedConfigSchema>;
-export type UpdateSharedConfigDto = z.infer<typeof updateSharedConfigSchema>;
-export type ListSharedConfigQueryDto = z.infer<typeof listSharedConfigQuerySchema>;
+export const resolveSharedConfigQuerySchema = z.object({
+  projectId: z.string().trim().min(1).optional(),
+  category: z.string().trim().min(1).optional()
+});

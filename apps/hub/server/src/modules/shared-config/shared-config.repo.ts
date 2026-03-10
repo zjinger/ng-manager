@@ -1,191 +1,273 @@
+import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type {
+  CreateSharedConfigInput,
   ListSharedConfigQuery,
-  SharedConfigEntity
+  SharedConfigEntity,
+  SharedConfigListResult,
+  SharedConfigScope,
+  UpdateSharedConfigInput
 } from "./shared-config.types";
 
-type SharedConfigRow = {
-  id: string;
-  config_key: string;
-  config_value: string;
-  value_type: string;
-  scope: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-};
+function mapRow(row: any): SharedConfigEntity {
+  return {
+    id: row.id,
+    projectId: row.project_id ?? null,
+    scope: row.scope,
+    configKey: row.config_key,
+    configName: row.config_name,
+    category: row.category,
+    valueType: row.value_type,
+    configValue: row.config_value,
+    description: row.description ?? "",
+    isEncrypted: !!row.is_encrypted,
+    priority: Number(row.priority ?? 0),
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
 
 export class SharedConfigRepo {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database) { }
 
-  create(entity: SharedConfigEntity): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO shared_configs (
-        id, config_key, config_value, value_type, scope, description, created_at, updated_at
+  create(input: Required<CreateSharedConfigInput> & { scope: SharedConfigScope; projectId: string | null }) {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.db.prepare(`
+      INSERT INTO shared_config (
+        id,
+        project_id,
+        scope,
+        config_key,
+        config_name,
+        category,
+        value_type,
+        config_value,
+        description,
+        is_encrypted,
+        priority,
+        status,
+        created_at,
+        updated_at
       ) VALUES (
-        @id, @config_key, @config_value, @value_type, @scope, @description, @created_at, @updated_at
+        @id,
+        @projectId,
+        @scope,
+        @configKey,
+        @configName,
+        @category,
+        @valueType,
+        @configValue,
+        @description,
+        @isEncrypted,
+        @priority,
+        @status,
+        @createdAt,
+        @updatedAt
       )
-    `);
-
-    stmt.run({
-      id: entity.id,
-      config_key: entity.configKey,
-      config_value: entity.configValue,
-      value_type: entity.valueType,
-      scope: entity.scope,
-      description: entity.description ?? null,
-      created_at: entity.createdAt,
-      updated_at: entity.updatedAt
+    `).run({
+      id,
+      projectId: input.projectId,
+      scope: input.scope,
+      configKey: input.configKey,
+      configName: input.configName,
+      category: input.category,
+      valueType: input.valueType,
+      configValue: input.configValue,
+      description: input.description,
+      isEncrypted: input.isEncrypted ? 1 : 0,
+      priority: input.priority,
+      status: input.status,
+      createdAt: now,
+      updatedAt: now
     });
+
+    return this.getById(id)!;
   }
 
-  findById(id: string): SharedConfigEntity | null {
-    const row = this.db
-      .prepare(`SELECT * FROM shared_configs WHERE id = ?`)
-      .get(id) as SharedConfigRow | undefined;
+  update(id: string, input: UpdateSharedConfigInput) {
+    const sets: string[] = [];
+    const params: Record<string, unknown> = {
+      id,
+      updatedAt: new Date().toISOString()
+    };
 
-    return row ? this.toEntity(row) : null;
-  }
-
-  findByKey(configKey: string): SharedConfigEntity | null {
-    const row = this.db
-      .prepare(`SELECT * FROM shared_configs WHERE config_key = ?`)
-      .get(configKey) as SharedConfigRow | undefined;
-
-    return row ? this.toEntity(row) : null;
-  }
-
-  findPublicByKey(configKey: string): SharedConfigEntity | null {
-    const row = this.db
-      .prepare(`SELECT * FROM shared_configs WHERE config_key = ? AND scope = 'public'`)
-      .get(configKey) as SharedConfigRow | undefined;
-
-    return row ? this.toEntity(row) : null;
-  }
-
-  update(
-    id: string,
-    patch: {
-      configValue?: string;
-      valueType?: SharedConfigEntity["valueType"];
-      scope?: SharedConfigEntity["scope"];
-      description?: string | null;
-      updatedAt: string;
+    if (input.configName !== undefined) {
+      sets.push("config_name = @configName");
+      params.configName = input.configName;
     }
-  ): boolean {
-    const fields: string[] = [];
-    const params: unknown[] = [];
-
-    if (patch.configValue !== undefined) {
-      fields.push("config_value = ?");
-      params.push(patch.configValue);
+    if (input.category !== undefined) {
+      sets.push("category = @category");
+      params.category = input.category;
     }
-
-    if (patch.valueType !== undefined) {
-      fields.push("value_type = ?");
-      params.push(patch.valueType);
+    if (input.valueType !== undefined) {
+      sets.push("value_type = @valueType");
+      params.valueType = input.valueType;
+    }
+    if (input.configValue !== undefined) {
+      sets.push("config_value = @configValue");
+      params.configValue = input.configValue;
+    }
+    if (input.description !== undefined) {
+      sets.push("description = @description");
+      params.description = input.description;
+    }
+    if (input.isEncrypted !== undefined) {
+      sets.push("is_encrypted = @isEncrypted");
+      params.isEncrypted = input.isEncrypted ? 1 : 0;
+    }
+    if (input.priority !== undefined) {
+      sets.push("priority = @priority");
+      params.priority = input.priority;
+    }
+    if (input.status !== undefined) {
+      sets.push("status = @status");
+      params.status = input.status;
     }
 
-    if (patch.scope !== undefined) {
-      fields.push("scope = ?");
-      params.push(patch.scope);
+    if (!sets.length) {
+      return this.getById(id);
     }
 
-    if (patch.description !== undefined) {
-      fields.push("description = ?");
-      params.push(patch.description ?? null);
+    sets.push("updated_at = @updatedAt");
+
+    this.db.prepare(`
+      UPDATE shared_config
+      SET ${sets.join(", ")}
+      WHERE id = @id
+    `).run(params);
+
+    return this.getById(id);
+  }
+
+  getById(id: string): SharedConfigEntity | null {
+    const row = this.db.prepare(`
+      SELECT *
+      FROM shared_config
+      WHERE id = ?
+      LIMIT 1
+    `).get(id);
+
+    return row ? mapRow(row) : null;
+  }
+
+  getByProjectAndKey(projectId: string | null, configKey: string): SharedConfigEntity | null {
+    const row = this.db.prepare(`
+      SELECT *
+      FROM shared_config
+      WHERE project_id IS ?
+        AND config_key = ?
+      LIMIT 1
+    `).get(projectId, configKey);
+
+    return row ? mapRow(row) : null;
+  }
+
+  list(query: ListSharedConfigQuery): SharedConfigListResult {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const offset = (page - 1) * pageSize;
+
+    const where: string[] = ["1 = 1"];
+    const params: Record<string, unknown> = {
+      limit: pageSize,
+      offset
+    };
+
+    if (query.projectId) {
+      where.push("project_id = @projectId");
+      params.projectId = query.projectId;
     }
-
-    fields.push("updated_at = ?");
-    params.push(patch.updatedAt);
-    params.push(id);
-
-    const result = this.db
-      .prepare(`UPDATE shared_configs SET ${fields.join(", ")} WHERE id = ?`)
-      .run(...params);
-
-    return result.changes > 0;
-  }
-
-  remove(id: string): boolean {
-    const result = this.db
-      .prepare(`DELETE FROM shared_configs WHERE id = ?`)
-      .run(id);
-
-    return result.changes > 0;
-  }
-
-  list(query: ListSharedConfigQuery): {
-    items: SharedConfigEntity[];
-    page: number;
-    pageSize: number;
-    total: number;
-  } {
-    const where: string[] = [];
-    const params: unknown[] = [];
 
     if (query.scope) {
-      where.push("scope = ?");
-      params.push(query.scope);
+      where.push("scope = @scope");
+      params.scope = query.scope;
+    }
+
+    if (query.category) {
+      where.push("category = @category");
+      params.category = query.category;
+    }
+
+    if (query.status) {
+      where.push("status = @status");
+      params.status = query.status;
     }
 
     if (query.keyword) {
-      where.push("(config_key LIKE ? OR description LIKE ? OR config_value LIKE ?)");
-      params.push(
-        `%${query.keyword}%`,
-        `%${query.keyword}%`,
-        `%${query.keyword}%`
-      );
+      where.push("(config_key LIKE @keyword OR config_name LIKE @keyword OR description LIKE @keyword)");
+      params.keyword = `%${query.keyword}%`;
     }
 
-    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-    const offset = (query.page - 1) * query.pageSize;
+    const totalRow = this.db.prepare(`
+      SELECT COUNT(*) as total
+      FROM shared_config
+      WHERE ${where.join(" AND ")}
+    `).get(params) as { total: number };
 
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(*) as total FROM shared_configs ${whereSql}`)
-      .get(...params) as { total: number };
-
-    const rows = this.db
-      .prepare(`
-        SELECT *
-        FROM shared_configs
-        ${whereSql}
-        ORDER BY updated_at DESC, created_at DESC
-        LIMIT ? OFFSET ?
-      `)
-      .all(...params, query.pageSize, offset) as SharedConfigRow[];
+    const rows = this.db.prepare(`
+      SELECT *
+      FROM shared_config
+      WHERE ${where.join(" AND ")}
+      ORDER BY
+        CASE scope WHEN 'project' THEN 0 ELSE 1 END,
+        priority DESC,
+        updated_at DESC
+      LIMIT @limit OFFSET @offset
+    `).all(params);
 
     return {
-      items: rows.map((row) => this.toEntity(row)),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: totalRow.total
+      list: rows.map(mapRow),
+      total: totalRow.total,
+      page,
+      pageSize
     };
   }
 
-  listPublic(): SharedConfigEntity[] {
-    const rows = this.db
-      .prepare(`
-        SELECT *
-        FROM shared_configs
-        WHERE scope = 'public'
-        ORDER BY config_key ASC
-      `)
-      .all() as SharedConfigRow[];
+  resolve(projectId?: string, category?: string): SharedConfigEntity[] {
+    const where: string[] = ["status = 'active'"];
+    const params: Record<string, unknown> = {};
 
-    return rows.map((row) => this.toEntity(row));
+    if (category) {
+      where.push("category = @category");
+      params.category = category;
+    }
+
+    let scopeSql = `scope = 'global'`;
+    if (projectId) {
+      scopeSql = `(scope = 'global' OR (scope = 'project' AND project_id = @projectId))`;
+      params.projectId = projectId;
+    }
+
+    const rows = this.db.prepare(`
+      SELECT *
+      FROM shared_config
+      WHERE ${where.join(" AND ")}
+        AND ${scopeSql}
+      ORDER BY
+        CASE scope WHEN 'project' THEN 0 ELSE 1 END,
+        priority DESC,
+        updated_at DESC
+    `).all(params);
+
+    const map = new Map<string, SharedConfigEntity>();
+
+    for (const row of rows) {
+      const item = mapRow(row);
+      if (!map.has(item.configKey)) {
+        map.set(item.configKey, item);
+      }
+    }
+
+    return Array.from(map.values());
   }
 
-  private toEntity(row: SharedConfigRow): SharedConfigEntity {
-    return {
-      id: row.id,
-      configKey: row.config_key,
-      configValue: row.config_value,
-      valueType: row.value_type as SharedConfigEntity["valueType"],
-      scope: row.scope as SharedConfigEntity["scope"],
-      description: row.description,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
+  remove(id: string) {
+    this.db.prepare(`
+      DELETE FROM shared_config
+      WHERE id = ?
+    `).run(id);
   }
 }

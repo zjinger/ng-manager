@@ -1,193 +1,103 @@
-import Database from "better-sqlite3";
+import type { ProjectRepo } from "../project/project.repo";
 import { AppError } from "../../utils/app-error";
-import { genId } from "../../utils/id";
-import { nowIso } from "../../utils/time";
+import { SharedConfigRepo } from "./shared-config.repo";
 import type {
     CreateSharedConfigInput,
     ListSharedConfigQuery,
-    SharedConfigEntity,
-    SharedConfigListResult,
-    SharedConfigViewItem,
+    ResolveSharedConfigQuery,
     UpdateSharedConfigInput
 } from "./shared-config.types";
-import { SharedConfigRepo } from "./shared-config.repo";
 
 export class SharedConfigService {
-    constructor(private readonly repo: SharedConfigRepo) { }
+    constructor(
+        private readonly repo: SharedConfigRepo,
+        private readonly projectRepo: ProjectRepo
+    ) { }
 
-    create(input: CreateSharedConfigInput): SharedConfigViewItem {
-        this.assertValueType(input.configValue, input.valueType);
+    create(input: CreateSharedConfigInput) {
+        const projectId = input.projectId ?? null;
+        const scope = input.scope ?? (projectId ? "project" : "global");
 
-        const now = nowIso();
-
-        const entity: SharedConfigEntity = {
-            id: genId("cfg"),
-            configKey: input.configKey.trim(),
-            configValue: input.configValue,
-            valueType: input.valueType,
-            scope: input.scope,
-            description: input.description?.trim() || null,
-            createdAt: now,
-            updatedAt: now
-        };
-
-        try {
-            this.repo.create(entity);
-            return this.toView(entity);
-        } catch (error) {
-            this.handleSqliteError(error, input.configKey);
-        }
-    }
-
-    getById(id: string): SharedConfigViewItem {
-        const item = this.repo.findById(id);
-        if (!item) {
-            throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${id}`, 404);
-        }
-        return this.toView(item);
-    }
-
-    getPublicByKey(configKey: string): SharedConfigViewItem {
-        const item = this.repo.findPublicByKey(configKey);
-        if (!item) {
-            throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${configKey}`, 404);
-        }
-        return this.toView(item);
-    }
-
-    list(query: ListSharedConfigQuery): SharedConfigListResult {
-        const result = this.repo.list(query);
-        return {
-            items: result.items.map((item) => this.toView(item)),
-            page: result.page,
-            pageSize: result.pageSize,
-            total: result.total
-        };
-    }
-
-    listPublic(): Record<string, SharedConfigViewItem> {
-        const items = this.repo.listPublic();
-        const result: Record<string, SharedConfigViewItem> = {};
-
-        for (const item of items) {
-            result[item.configKey] = this.toView(item);
+        if (scope === "global" && projectId) {
+            throw new AppError("INVALID_SCOPE", "global scope cannot bind projectId");
         }
 
-        return result;
-    }
-
-    update(id: string, input: UpdateSharedConfigInput): SharedConfigViewItem {
-        const existing = this.repo.findById(id);
-        if (!existing) {
-            throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${id}`, 404);
+        if (scope === "project" && !projectId) {
+            throw new AppError("PROJECT_ID_REQUIRED", "project scope requires projectId");
         }
 
-        const nextValue = input.configValue !== undefined ? input.configValue : existing.configValue;
-        const nextType = input.valueType !== undefined ? input.valueType : existing.valueType;
-
-        this.assertValueType(nextValue, nextType);
-
-        const patch: UpdateSharedConfigInput & { updatedAt: string } = {
-            ...input,
-            description: input.description === null ? null : input.description?.trim(),
-            updatedAt: nowIso()
-        };
-
-        const changed = this.repo.update(id, patch);
-        if (!changed) {
-            throw new AppError("SHARED_CONFIG_UPDATE_FAILED", "failed to update shared config", 500);
-        }
-
-        return this.getById(id);
-    }
-
-    remove(id: string): void {
-        const existing = this.repo.findById(id);
-        if (!existing) {
-            throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${id}`, 404);
-        }
-
-        const changed = this.repo.remove(id);
-        if (!changed) {
-            throw new AppError("SHARED_CONFIG_DELETE_FAILED", "failed to delete shared config", 500);
-        }
-    }
-
-    private assertValueType(rawValue: string, valueType: SharedConfigEntity["valueType"]) {
-        try {
-            switch (valueType) {
-                case "string":
-                    return;
-                case "json": {
-                    JSON.parse(rawValue);
-                    return;
-                }
-                case "number": {
-                    const n = Number(rawValue);
-                    if (!Number.isFinite(n)) {
-                        throw new Error("invalid number");
-                    }
-                    return;
-                }
-                case "boolean": {
-                    if (rawValue !== "true" && rawValue !== "false") {
-                        throw new Error("invalid boolean");
-                    }
-                    return;
-                }
+        if (projectId) {
+            const project = this.projectRepo.findById(projectId);
+            if (!project) {
+                throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`);
             }
-        } catch {
-            throw new AppError(
-                "SHARED_CONFIG_INVALID_VALUE",
-                `configValue does not match valueType: ${valueType}`,
-                400
-            );
         }
+
+        const exists = this.repo.getByProjectAndKey(projectId, input.configKey);
+        if (exists) {
+            throw new AppError("CONFIG_KEY_EXISTS", `config key already exists: ${input.configKey}`);
+        }
+
+        return this.repo.create({
+            projectId,
+            scope,
+            configKey: input.configKey,
+            configName: input.configName,
+            category: input.category,
+            valueType: input.valueType ?? "json",
+            configValue: input.configValue,
+            description: input.description ?? "",
+            isEncrypted: input.isEncrypted ?? false,
+            priority: input.priority ?? 0,
+            status: input.status ?? "active"
+        });
     }
 
-    private parseValue(entity: SharedConfigEntity): SharedConfigViewItem["value"] {
-        switch (entity.valueType) {
-            case "string":
-                return entity.configValue;
-            case "json":
-                return JSON.parse(entity.configValue);
-            case "number":
-                return Number(entity.configValue);
-            case "boolean":
-                return entity.configValue === "true";
+    update(id: string, input: UpdateSharedConfigInput) {
+        const exists = this.repo.getById(id);
+        if (!exists) {
+            throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${id}`);
         }
+
+        return this.repo.update(id, input);
     }
 
-    private toView(entity: SharedConfigEntity): SharedConfigViewItem {
-        return {
-            id: entity.id,
-            configKey: entity.configKey,
-            value: this.parseValue(entity),
-            rawValue: entity.configValue,
-            valueType: entity.valueType,
-            scope: entity.scope,
-            description: entity.description,
-            createdAt: entity.createdAt,
-            updatedAt: entity.updatedAt
-        };
+    getById(id: string) {
+        const item = this.repo.getById(id);
+        if (!item) {
+            throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${id}`);
+        }
+        return item;
     }
 
-    private handleSqliteError(error: unknown, configKey?: string): never {
-        if (error instanceof AppError) {
-            throw error;
+    list(query: ListSharedConfigQuery) {
+        if (query.projectId) {
+            const project = this.projectRepo.findById(query.projectId);
+            if (!project) {
+                throw new AppError("PROJECT_NOT_FOUND", `project not found: ${query.projectId}`);
+            }
         }
 
-        if (
-            error instanceof Database.SqliteError &&
-            error.code === "SQLITE_CONSTRAINT_UNIQUE"
-        ) {
-            throw new AppError(
-                "SHARED_CONFIG_KEY_EXISTS",
-                `shared config key already exists: ${configKey ?? "unknown"}`,
-                409
-            );
+        return this.repo.list(query);
+    }
+
+    resolve(query: ResolveSharedConfigQuery) {
+        if (query.projectId) {
+            const project = this.projectRepo.findById(query.projectId);
+            if (!project) {
+                throw new AppError("PROJECT_NOT_FOUND", `project not found: ${query.projectId}`);
+            }
         }
 
-        throw error;
+        return this.repo.resolve(query.projectId, query.category);
+    }
+
+    remove(id: string) {
+        const exists = this.repo.getById(id);
+        if (!exists) {
+            throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${id}`);
+        }
+
+        this.repo.remove(id);
     }
 }
