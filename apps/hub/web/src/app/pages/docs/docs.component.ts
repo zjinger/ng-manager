@@ -1,4 +1,4 @@
-﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -16,6 +16,7 @@ import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
+import { MarkdownEditorComponent } from '../../shared/markdown-editor/markdown-editor.component';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type DocStatus = 'draft' | 'published' | 'archived';
@@ -67,7 +68,8 @@ interface ProjectOption {
     NzTypographyModule,
     NzModalModule,
     PageHeaderComponent,
-    HubDateTimePipe
+    HubDateTimePipe,
+    MarkdownEditorComponent
   ],
   template: `
     <section class="page">
@@ -246,7 +248,7 @@ interface ProjectOption {
             <nz-form-item>
               <nz-form-label nzRequired>Markdown 内容</nz-form-label>
               <nz-form-control>
-                <textarea nz-input rows="12" formControlName="contentMd"></textarea>
+                <app-markdown-editor formControlName="contentMd"></app-markdown-editor>
               </nz-form-control>
             </nz-form-item>
 
@@ -491,6 +493,7 @@ export class DocsPageComponent {
     return fallback;
   }
 }
+
 
 
 
