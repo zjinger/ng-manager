@@ -13,6 +13,8 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type AnnouncementStatus = 'draft' | 'published' | 'archived';
 type AnnouncementScope = 'all' | 'desktop' | 'cli';
@@ -59,19 +61,14 @@ interface ProjectOption {
     NzSwitchModule,
     NzTableModule,
     NzTagModule,
-    NzModalModule
+    NzModalModule,
+    PageHeaderComponent
   ],
   template: `
     <div class="page">
-      <div class="header">
-        <div class="header-row">
-          <h1 class="header-title">公告管理</h1>
-          <div class="header-desc">创建和管理公告</div>
-        </div>
-        <div class="actions-row">
-          <button nz-button nzType="primary" (click)="createAnnouncement()">新建公告</button>
-        </div>
-      </div>
+      <app-page-header title="公告管理" subtitle="创建和管理公告">
+        <button page-header-actions nz-button nzType="primary" (click)="createAnnouncement()">新建公告</button>
+      </app-page-header>
 
       @if (listError()) {
         <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
@@ -192,12 +189,11 @@ interface ProjectOption {
       </nz-modal>
     </div>
   `,
-  styles: `
-    .section { margin-top: 12px; }
-    .actions-row { display: flex; gap: 8px; justify-content: flex-end; }
+  styles: [PAGE_SHELL_STYLES, `
+
     .split-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .form { display: grid; gap: 4px; }
-  `
+  `]
 })
 export class AnnouncementsPageComponent {
   private readonly fb = inject(FormBuilder);
@@ -362,4 +358,7 @@ export class AnnouncementsPageComponent {
     return fallback;
   }
 }
+
+
+
 

@@ -13,6 +13,8 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type FeedbackStatus = 'open' | 'processing' | 'resolved' | 'closed';
 type FeedbackCategory = 'bug' | 'suggestion' | 'feature' | 'other';
@@ -41,6 +43,12 @@ interface FeedbackListResult {
   total: number;
 }
 
+interface ProjectOption {
+  id: string;
+  name: string;
+  projectKey: string;
+}
+
 @Component({
   selector: 'app-feedback-page',
   imports: [
@@ -54,23 +62,24 @@ interface FeedbackListResult {
     NzInputModule,
     NzSelectModule,
     NzTableModule,
-    NzTagModule
+    NzTagModule,
+    PageHeaderComponent
   ],
   template: `
     <section class="page">
-      <div class="header">
-        <div class="header-row">
-          <h1 class="header-title">反馈</h1>
-          <div class="header-desc">查看和处理用户反馈</div>
-        </div>
-      </div>
+      <app-page-header title="反馈管理" subtitle="查看和处理用户反馈"></app-page-header>
 
       <nz-card nzTitle="筛选条件">
         <form nz-form [formGroup]="filters" class="filter-grid">
           <nz-form-item>
-            <nz-form-label>项目 Key</nz-form-label>
+            <nz-form-label>项目</nz-form-label>
             <nz-form-control>
-              <input nz-input formControlName="projectKey" placeholder="可选" />
+              <nz-select formControlName="projectKey" nzAllowClear nzPlaceHolder="全部项目">
+                @for (project of projectOptions(); track project.id) {
+                  <nz-option [nzValue]="project.projectKey" [nzLabel]="project.name + ' (' + project.projectKey + ')'">
+                  </nz-option>
+                }
+              </nz-select>
             </nz-form-control>
           </nz-form-item>
           <nz-form-item>
@@ -170,16 +179,21 @@ interface FeedbackListResult {
       </div>
     </section>
   `,
-  styles: `
-    .page { background: #fff; border-radius: 10px; padding: 20px; }
-    .section { margin-top: 16px; }
-    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-    .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-    .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .selected { background: #e6f4ff; }
-    .status-editor { margin-top: 16px; display: grid; gap: 8px; }
-    .empty-tip { color: #6b7280; }
-  `
+  styles: [
+    PAGE_SHELL_STYLES,
+    `
+      .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+      .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+      .selected { background: #e6f4ff; }
+      .status-editor { margin-top: 16px; display: grid; gap: 8px; }
+      .empty-tip { color: #6b7280; }
+    `
+  ]
 })
 export class FeedbackPageComponent {
   private readonly fb = inject(FormBuilder);
@@ -188,6 +202,7 @@ export class FeedbackPageComponent {
   protected readonly feedback = signal<FeedbackItem[]>([]);
   protected readonly selected = signal<FeedbackItem | null>(null);
   protected readonly total = signal(0);
+  protected readonly projectOptions = signal<ProjectOption[]>([]);
 
   protected readonly listLoading = signal(false);
   protected readonly listError = signal<string | null>(null);
@@ -203,6 +218,8 @@ export class FeedbackPageComponent {
   });
 
   public constructor() {
+    void this.loadProjectOptions();
+
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       void this.loadFeedbacks();
     });
@@ -271,6 +288,7 @@ export class FeedbackPageComponent {
     if (source === 'cli') return 'CLI';
     return 'Web';
   }
+
   protected environmentText(item: FeedbackItem): string {
     const parts = [item.clientName, item.clientVersion, item.osInfo].filter(
       (value): value is string => typeof value === 'string' && value.trim().length > 0
@@ -310,11 +328,22 @@ export class FeedbackPageComponent {
     }
   }
 
+  private async loadProjectOptions(): Promise<void> {
+    try {
+      const result = await firstValueFrom(
+        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
+          params: { status: 'active', page: 1, pageSize: 100 }
+        })
+      );
+      this.projectOptions.set(result.items);
+    } catch {
+      this.projectOptions.set([]);
+    }
+  }
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
     if (error instanceof Error) return `${fallback}: ${error.message}`;
     return fallback;
   }
 }
-
-

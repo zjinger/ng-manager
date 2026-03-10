@@ -14,6 +14,8 @@ import { NzTypographyModule } from 'ng-zorro-antd/typography';
 import { debounceTime, firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type DocStatus = 'draft' | 'published' | 'archived';
 type DocCategory = 'guide' | 'faq' | 'release-note' | 'spec' | 'policy' | 'other';
@@ -62,19 +64,14 @@ interface ProjectOption {
     NzTableModule,
     NzTagModule,
     NzTypographyModule,
-    NzModalModule
+    NzModalModule,
+    PageHeaderComponent
   ],
   template: `
     <section class="page">
-      <div class="header">
-        <div class="header-row">
-          <h1 class="header-title">文档管理</h1>
-          <div class="header-desc">管理产品文档与发布状态</div>
-        </div>
-        <div class="actions-row">
-          <button nz-button nzType="primary" (click)="createDoc()">新建文档</button>
-        </div>
-      </div>
+      <app-page-header title="文档管理" subtitle="管理产品文档与发布状态">
+        <button page-header-actions nz-button nzType="primary" (click)="createDoc()">新建文档</button>
+      </app-page-header>
 
       <nz-card nzTitle="筛选条件" class="section">
         <form nz-form [formGroup]="filters" class="filter-grid">
@@ -259,15 +256,13 @@ interface ProjectOption {
       </nz-modal>
     </section>
   `,
-  styles: `
-    .page { background: #fff; border-radius: 10px; padding: 20px; }
-    .section { margin-top: 16px; }
-    .actions-row { display: flex; justify-content: flex-end; }
+  styles: [PAGE_SHELL_STYLES, `
+
     .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .form { display: grid; gap: 4px; }
     .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  `
+  `]
 })
 export class DocsPageComponent {
   private readonly fb = inject(FormBuilder);
@@ -494,6 +489,9 @@ export class DocsPageComponent {
     return fallback;
   }
 }
+
+
+
 
 
 

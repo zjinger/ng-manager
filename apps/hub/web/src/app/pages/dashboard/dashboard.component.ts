@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -9,6 +9,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { firstValueFrom } from 'rxjs';
 import { HubApiService } from '../../core/http/hub-api.service';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 type FeedbackType = 'bug' | 'suggestion' | 'feature' | 'other';
 type AnnouncementStatus = 'draft' | 'published' | 'archived';
@@ -85,7 +86,8 @@ interface ProjectListResult {
     NzBadgeModule,
     NzTagModule,
     NzButtonModule,
-    NzGridModule
+    NzGridModule,
+    PageHeaderComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.less']
@@ -148,16 +150,16 @@ export class DashboardPageComponent {
     }
   }
 
-  announcementTag(status: AnnouncementStatus): { text: string; color: string } {
+  announcementTag(status: AnnouncementStatus): { text: string; className: string } {
     switch (status) {
       case 'published':
-        return { text: '已发布', color: 'success' };
+        return { text: '已发布', className: 'status-published' };
       case 'draft':
-        return { text: '草稿', color: 'warning' };
+        return { text: '草稿', className: 'status-draft' };
       case 'archived':
-        return { text: '已归档', color: 'default' };
+        return { text: '已归档', className: 'status-archived' };
       default:
-        return { text: '未知', color: 'default' };
+        return { text: '未知', className: 'status-archived' };
     }
   }
 
@@ -227,7 +229,7 @@ export class DashboardPageComponent {
         key: 'projectTotal',
         label: '项目总数',
         value: String(projectList.total),
-        icon: 'branches',
+        icon: 'appstore',
         colorClass: 'stat-orange'
       },
       {
@@ -289,3 +291,4 @@ export class DashboardPageComponent {
     return value.slice(0, 10);
   }
 }
+
