@@ -39,7 +39,7 @@
               </div>
               <div class="item-content">{{ item.content }}</div>
             </div>
-            <div class="item-extra">{{ item.timeText }}</div>
+            <div class="item-extra">{{ item.createdAt | hubTimeAgo }}</div>
           </div>
         }
       </div>
@@ -68,7 +68,7 @@
             </div>
 
             <div class="item-content">{{ item.content }}</div>
-            <div class="item-date">{{ item.publishDate }} 发布</div>
+            <div class="item-date">{{ item.publishAt | hubTimeAgo }} 发布</div>
           </div>
         }
       </div>
@@ -81,4 +81,5 @@
     </nz-card>
   </div>
 </div>
+
 

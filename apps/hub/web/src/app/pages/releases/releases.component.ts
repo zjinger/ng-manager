@@ -15,6 +15,7 @@ import { debounceTime, firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type ReleaseChannel = 'desktop' | 'cli';
@@ -61,7 +62,8 @@ interface ProjectOption {
     NzTableModule,
     NzTagModule,
     NzModalModule,
-    PageHeaderComponent
+    PageHeaderComponent,
+    HubDateTimePipe
   ],
   template: `
     <section class="page">
@@ -140,7 +142,7 @@ interface ProjectOption {
                 <td>{{ item.version }}</td>
                 <td>{{ item.title }}</td>
                 <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
-                <td>{{ item.publishedAt || '-' }}</td>
+                <td>{{ item.publishedAt | hubDateTime }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="edit(item)">编辑</a>
                   @if (item.status !== 'published') {
@@ -469,6 +471,7 @@ export class ReleasesPageComponent {
     return fallback;
   }
 }
+
 
 
 

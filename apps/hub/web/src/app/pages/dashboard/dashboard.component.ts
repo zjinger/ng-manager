@@ -1,15 +1,16 @@
 ﻿import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 import { firstValueFrom } from 'rxjs';
 import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { HubTimeAgoPipe } from '../../shared/pipes/time-ago.pipe';
 
 type FeedbackType = 'bug' | 'suggestion' | 'feature' | 'other';
 type AnnouncementStatus = 'draft' | 'published' | 'archived';
@@ -27,14 +28,14 @@ interface FeedbackItem {
   type: FeedbackType;
   title: string;
   content: string;
-  timeText: string;
+  createdAt: string;
 }
 
 interface AnnouncementItem {
   id: string;
   title: string;
   content: string;
-  publishDate: string;
+  publishAt: string;
   status: AnnouncementStatus;
 }
 
@@ -87,7 +88,8 @@ interface ProjectListResult {
     NzTagModule,
     NzButtonModule,
     NzGridModule,
-    PageHeaderComponent
+    PageHeaderComponent,
+    HubTimeAgoPipe
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.less']
@@ -247,7 +249,7 @@ export class DashboardPageComponent {
         type: item.category,
         title: item.title,
         content: item.content,
-        timeText: this.formatTimeText(item.createdAt)
+        createdAt: item.createdAt
       }))
     );
 
@@ -256,39 +258,9 @@ export class DashboardPageComponent {
         id: item.id,
         title: item.title,
         content: item.summary?.trim() ? item.summary : '无摘要',
-        publishDate: (item.publishAt || item.createdAt).slice(0, 10),
+        publishAt: item.publishAt || item.createdAt,
         status: item.status
       }))
     );
   }
-
-  private formatTimeText(value: string): string {
-    const target = Date.parse(value);
-    if (Number.isNaN(target)) {
-      return value;
-    }
-
-    const diffMs = Date.now() - target;
-    const minutes = Math.floor(diffMs / 60000);
-
-    if (minutes < 1) {
-      return '刚刚';
-    }
-    if (minutes < 60) {
-      return `${minutes}分钟前`;
-    }
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) {
-      return `${hours}小时前`;
-    }
-
-    const days = Math.floor(hours / 24);
-    if (days < 30) {
-      return `${days}天前`;
-    }
-
-    return value.slice(0, 10);
-  }
 }
-

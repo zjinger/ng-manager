@@ -14,6 +14,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type FeedbackStatus = 'open' | 'processing' | 'resolved' | 'closed';
@@ -63,7 +64,8 @@ interface ProjectOption {
     NzSelectModule,
     NzTableModule,
     NzTagModule,
-    PageHeaderComponent
+    PageHeaderComponent,
+    HubDateTimePipe
   ],
   template: `
     <section class="page">
@@ -144,7 +146,7 @@ interface ProjectOption {
                   <td>{{ item.title }}</td>
                   <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
                   <td>{{ sourceLabel(item.source) }}</td>
-                  <td>{{ item.createdAt }}</td>
+                  <td>{{ item.createdAt | hubDateTime }}</td>
                 </tr>
               }
             </tbody>
@@ -157,7 +159,7 @@ interface ProjectOption {
               <nz-descriptions-item nzTitle="反馈内容">{{ item.content }}</nz-descriptions-item>
               <nz-descriptions-item nzTitle="客户端信息">{{ environmentText(item) }}</nz-descriptions-item>
               <nz-descriptions-item nzTitle="联系方式">{{ item.contact || '-' }}</nz-descriptions-item>
-              <nz-descriptions-item nzTitle="更新时间">{{ item.updatedAt }}</nz-descriptions-item>
+              <nz-descriptions-item nzTitle="更新时间">{{ item.updatedAt | hubDateTime }}</nz-descriptions-item>
             </nz-descriptions>
 
             <div class="status-editor">
@@ -347,3 +349,4 @@ export class FeedbackPageComponent {
     return fallback;
   }
 }
+

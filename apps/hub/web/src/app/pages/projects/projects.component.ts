@@ -18,6 +18,7 @@ import { firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type ProjectStatus = 'active' | 'archived';
@@ -59,7 +60,8 @@ interface ProjectListResult {
     NzTagModule,
     NzIconModule,
     NzTooltipModule,
-    PageHeaderComponent
+    PageHeaderComponent,
+    HubDateTimePipe
   ],
   template: `
     <section class="page">
@@ -139,7 +141,7 @@ interface ProjectListResult {
                 <td>{{ item.name }}</td>
                 <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
                 <td>{{ visibilityLabel(item.visibility) }}</td>
-                <td>{{ item.updatedAt }}</td>
+                <td>{{ item.updatedAt | hubDateTime }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="editProject(item)">编辑</a>
                   @if (item.status === 'active') {
@@ -482,4 +484,5 @@ export class ProjectsPageComponent {
     return fallback;
   }
 }
+
 

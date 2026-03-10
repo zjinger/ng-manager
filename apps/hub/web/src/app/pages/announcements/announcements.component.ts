@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type AnnouncementStatus = 'draft' | 'published' | 'archived';
@@ -62,7 +63,8 @@ interface ProjectOption {
     NzTableModule,
     NzTagModule,
     NzModalModule,
-    PageHeaderComponent
+    PageHeaderComponent,
+    HubDateTimePipe
   ],
   template: `
     <div class="page">
@@ -90,8 +92,8 @@ interface ProjectOption {
               <tr>
                 <td>{{ item.title }}</td>
                 <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
-                <td>{{ item.publishAt || '-' }}</td>
-                <td>{{ item.updatedAt }}</td>
+                <td>{{ item.publishAt | hubDateTime }}</td>
+                <td>{{ item.updatedAt | hubDateTime }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="editAnnouncement(item)">编辑</a>
                   @if (item.status !== 'archived') {
@@ -358,6 +360,7 @@ export class AnnouncementsPageComponent {
     return fallback;
   }
 }
+
 
 
 
