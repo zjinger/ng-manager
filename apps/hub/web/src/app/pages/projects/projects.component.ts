@@ -1,14 +1,19 @@
-﻿import { Component, inject, signal } from '@angular/core';
+﻿import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
@@ -40,6 +45,7 @@ interface ProjectListResult {
 @Component({
   selector: 'app-projects-page',
   imports: [
+    ClipboardModule,
     ReactiveFormsModule,
     NzAlertModule,
     NzButtonModule,
@@ -47,9 +53,12 @@ interface ProjectListResult {
     NzFormModule,
     NzInputModule,
     NzModalModule,
+    NzPopconfirmModule,
     NzSelectModule,
     NzTableModule,
     NzTagModule,
+    NzIconModule,
+    NzTooltipModule,
     PageHeaderComponent
   ],
   template: `
@@ -110,7 +119,23 @@ interface ProjectListResult {
           <tbody>
             @for (item of table.data; track item.id) {
               <tr>
-                <td>{{ item.projectKey }}</td>
+                <td>
+                  <div class="project-key-row">
+                    <span>{{ item.projectKey }}</span>
+                    <button
+                      nz-button
+                      nzType="text"
+                      [disabled]="!item.projectKey"
+                      (click)="copyProjectKey(item.projectKey)"
+                    >
+                      @if (keyCopied() && curCopiedKey() === item.projectKey) {
+                        <nz-icon style="color: green;" nzType="check" nzTheme="outline" />
+                      } @else {
+                        <nz-icon nz-tooltip nzTooltipTitle="复制" nzType="copy" nzTheme="outline"></nz-icon>
+                      }
+                    </button>
+                  </div>
+                </td>
                 <td>{{ item.name }}</td>
                 <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
                 <td>{{ visibilityLabel(item.visibility) }}</td>
@@ -118,11 +143,35 @@ interface ProjectListResult {
                 <td>
                   <a nz-button nzType="link" (click)="editProject(item)">编辑</a>
                   @if (item.status === 'active') {
-                    <a nz-button nzType="link" nzDanger (click)="archiveProject(item)">归档</a>
+                    <a
+                      nz-button
+                      nzType="link"
+                      nzDanger
+                      nz-popconfirm
+                      [nzPopconfirmTitle]="'确认归档项目「' + item.name + '」吗？'"
+                      nzPopconfirmPlacement="topRight"
+                      nzPopconfirmOkText="确认"
+                      nzPopconfirmCancelText="取消"
+                      (nzOnConfirm)="archiveProject(item)"
+                    >
+                      归档
+                    </a>
                   } @else {
                     <a nz-button nzType="link" (click)="activateProject(item)">启用</a>
                   }
-                  <a nz-button nzType="link" nzDanger (click)="deleteProject(item)">删除</a>
+                  <a
+                    nz-button
+                    nzType="link"
+                    nzDanger
+                    nz-popconfirm
+                    [nzPopconfirmTitle]="'确认删除项目「' + item.name + '」吗？删除后不可恢复。'"
+                    nzPopconfirmPlacement="topRight"
+                    nzPopconfirmOkText="删除"
+                    nzPopconfirmCancelText="取消"
+                    (nzOnConfirm)="deleteProject(item)"
+                  >
+                    删除
+                  </a>
                 </td>
               </tr>
             }
@@ -146,9 +195,24 @@ interface ProjectListResult {
           <form nz-form [formGroup]="form" nzLayout="vertical" class="form">
             <div class="grid-2">
               <nz-form-item>
-                <nz-form-label nzRequired>项目 Key</nz-form-label>
+                <nz-form-label>项目 Key</nz-form-label>
                 <nz-form-control>
-                  <input nz-input formControlName="projectKey" placeholder="example-project" />
+                  <div class="project-key-row">
+                    <input nz-input [value]="editingProjectKey() || '由系统自动生成'" readonly />
+                    <button
+                      nz-button
+                      nzType="text"
+                      type="button"
+                      [disabled]="!editingProjectKey()"
+                      (click)="copyProjectKey(editingProjectKey()!)"
+                    >
+                      @if (keyCopied() && curCopiedKey() === editingProjectKey()) {
+                        <nz-icon style="color: green;" nzType="check" nzTheme="outline" />
+                      } @else {
+                        <nz-icon nz-tooltip nzTooltipTitle="复制" nzType="copy" nzTheme="outline"></nz-icon>
+                      }
+                    </button>
+                  </div>
                 </nz-form-control>
               </nz-form-item>
               <nz-form-item>
@@ -192,17 +256,22 @@ interface ProjectListResult {
       </nz-modal>
     </section>
   `,
-  styles: [PAGE_SHELL_STYLES, `
-
-    .filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .form { display: grid; gap: 4px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  `]
+  styles: [
+    PAGE_SHELL_STYLES,
+    `
+      .filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+      .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+      .form { display: grid; gap: 4px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .project-key-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    `
+  ]
 })
 export class ProjectsPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
+  private readonly clipboard = inject(Clipboard);
+  private readonly message = inject(NzMessageService);
 
   protected readonly visible = signal(false);
   protected readonly saving = signal(false);
@@ -212,6 +281,9 @@ export class ProjectsPageComponent {
   protected readonly projects = signal<ProjectItem[]>([]);
   protected readonly total = signal(0);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly editingProjectKey = signal<string | null>(null);
+  protected readonly keyCopied = signal(false);
+  protected readonly curCopiedKey = signal<string | null>(null);
 
   protected readonly filters = this.fb.nonNullable.group({
     status: [''],
@@ -220,7 +292,6 @@ export class ProjectsPageComponent {
   });
 
   protected readonly form = this.fb.nonNullable.group({
-    projectKey: ['', [Validators.required, Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]],
     name: ['', [Validators.required]],
     description: [''],
     icon: [''],
@@ -240,10 +311,11 @@ export class ProjectsPageComponent {
 
   protected createProject(): void {
     this.editingId.set(null);
+    this.editingProjectKey.set(null);
+    this.keyCopied.set(false);
+    this.curCopiedKey.set(null);
     this.formError.set(null);
-    this.form.enable();
     this.form.reset({
-      projectKey: '',
       name: '',
       description: '',
       icon: '',
@@ -254,34 +326,38 @@ export class ProjectsPageComponent {
 
   protected editProject(item: ProjectItem): void {
     this.editingId.set(item.id);
+    this.editingProjectKey.set(item.projectKey);
+    this.keyCopied.set(false);
+    this.curCopiedKey.set(null);
     this.formError.set(null);
     this.form.reset({
-      projectKey: item.projectKey,
       name: item.name,
       description: item.description || '',
       icon: item.icon || '',
       visibility: item.visibility
     });
-    this.form.controls.projectKey.disable();
     this.visible.set(true);
   }
 
   protected async archiveProject(item: ProjectItem): Promise<void> {
-    await this.updateStatus(item, 'archived', '归档项目失败');
+    await this.updateStatus(item, 'archived', '归档项目失败', `项目「${item.name}」已归档`);
   }
 
   protected async activateProject(item: ProjectItem): Promise<void> {
-    await this.updateStatus(item, 'active', '启用项目失败');
+    await this.updateStatus(item, 'active', '启用项目失败', `项目「${item.name}」已启用`);
   }
 
   protected async deleteProject(item: ProjectItem): Promise<void> {
     this.listError.set(null);
     try {
       await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${item.id}`));
+      this.message.success(`项目「${item.name}」已删除`);
       await this.loadProjects();
       if (this.editingId() === item.id) {
         this.visible.set(false);
         this.editingId.set(null);
+        this.editingProjectKey.set(null);
+        this.curCopiedKey.set(null);
       }
     } catch (error) {
       this.listError.set(this.getErrorMessage(error, '删除项目失败'));
@@ -313,7 +389,6 @@ export class ProjectsPageComponent {
       } else {
         await firstValueFrom(
           this.api.post<ProjectItem, Record<string, string | ProjectVisibility | undefined>>('/api/admin/projects', {
-            projectKey: value.projectKey.trim(),
             name: value.name.trim(),
             description: value.description.trim() || undefined,
             icon: value.icon.trim() || undefined,
@@ -331,6 +406,23 @@ export class ProjectsPageComponent {
     }
   }
 
+  protected async copyProjectKey(key: string): Promise<void> {
+    if (!key) {
+      return;
+    }
+    const copied = this.clipboard.copy(key);
+    if (!copied) {
+      return;
+    }
+
+    this.keyCopied.set(true);
+    this.curCopiedKey.set(key);
+    setTimeout(() => {
+      this.keyCopied.set(false);
+      this.curCopiedKey.set(null);
+    }, 1200);
+  }
+
   protected statusColor(status: ProjectStatus): string {
     return status === 'active' ? 'green' : 'default';
   }
@@ -342,7 +434,13 @@ export class ProjectsPageComponent {
   protected visibilityLabel(visibility: ProjectVisibility): string {
     return visibility === 'public' ? '公开' : '内部';
   }
-  private async updateStatus(item: ProjectItem, status: ProjectStatus, fallback: string): Promise<void> {
+
+  private async updateStatus(
+    item: ProjectItem,
+    status: ProjectStatus,
+    fallback: string,
+    successMessage: string
+  ): Promise<void> {
     this.listError.set(null);
     try {
       await firstValueFrom(
@@ -350,6 +448,7 @@ export class ProjectsPageComponent {
           status
         })
       );
+      this.message.success(successMessage);
       await this.loadProjects();
     } catch (error) {
       this.listError.set(this.getErrorMessage(error, fallback));
@@ -383,9 +482,4 @@ export class ProjectsPageComponent {
     return fallback;
   }
 }
-
-
-
-
-
 

@@ -1,17 +1,9 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 const statusEnum = z.enum(["active", "archived"]);
 const visibilityEnum = z.enum(["internal", "public"]);
 
 export const createProjectSchema = z.object({
-  projectKey: z
-    .string()
-    .trim()
-    .min(1)
-    .max(80)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-      message: "projectKey must be kebab-case"
-    }),
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional(),
   icon: z.string().trim().max(255).optional(),

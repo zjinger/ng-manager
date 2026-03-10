@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+﻿import type Database from "better-sqlite3";
 import type {
   ListProjectQuery,
   ProjectEntity,
@@ -55,6 +55,14 @@ export class ProjectRepo {
     const row = this.db
       .prepare(`SELECT * FROM projects WHERE project_key = ?`)
       .get(projectKey) as ProjectRow | undefined;
+
+    return row ? this.toEntity(row) : null;
+  }
+
+  findByName(name: string): ProjectEntity | null {
+    const row = this.db
+      .prepare(`SELECT * FROM projects WHERE lower(name) = lower(?) LIMIT 1`)
+      .get(name) as ProjectRow | undefined;
 
     return row ? this.toEntity(row) : null;
   }

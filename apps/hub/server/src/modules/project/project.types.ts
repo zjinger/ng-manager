@@ -1,4 +1,4 @@
-export type ProjectStatus = "active" | "archived";
+﻿export type ProjectStatus = "active" | "archived";
 export type ProjectVisibility = "internal" | "public";
 
 export interface ProjectEntity {
@@ -14,7 +14,6 @@ export interface ProjectEntity {
 }
 
 export interface CreateProjectInput {
-  projectKey: string;
   name: string;
   description?: string;
   icon?: string;
