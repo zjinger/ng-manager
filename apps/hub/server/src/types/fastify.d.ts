@@ -9,6 +9,7 @@ import type { ReleaseService } from "../modules/release/release.service";
 import type { SharedConfigService } from "../modules/shared-config/shared-config.service";
 import { HubWsEvents } from "../modules/ws/ws.events";
 import { HubWsManager } from "../modules/ws/ws.manager";
+import type { IssueService } from "../modules/issue/issue.service";
 
 declare module "fastify" {
     interface FastifyInstance {
@@ -21,6 +22,7 @@ declare module "fastify" {
             sharedConfig: SharedConfigService;
             project: ProjectService;
             release: ReleaseService;
+            issue: IssueService;
         };
         verifyAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void>;
         wsManager: HubWsManager;

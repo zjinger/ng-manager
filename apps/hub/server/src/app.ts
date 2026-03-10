@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
+import fastifyMultipart from "@fastify/multipart";
 import { env } from "./env";
 import { AnnouncementRepo } from "./modules/announcement/announcement.repo";
 import { AnnouncementService } from "./modules/announcement/announcement.service";
@@ -20,6 +21,8 @@ import dbPlugin from "./plugins/db.plugin";
 import errorHandlerPlugin from "./plugins/error-handler.plugin";
 import routesPlugin from "./plugins/routes.plugin";
 import wsPlugin from "./plugins/ws.plugin";
+import { IssueRepo } from "./modules/issue/issue.repo";
+import { IssueService } from "./modules/issue/issue.service";
 
 export async function createApp() {
     const app = Fastify({
@@ -36,6 +39,13 @@ export async function createApp() {
     await app.register(dbPlugin);
     await app.register(errorHandlerPlugin);
     await app.register(wsPlugin);
+    // 注册文件上传插件
+    await app.register(fastifyMultipart, {
+        limits: {
+            fileSize: env.uploadMaxFileSize, // 限制文件大小
+            files: env.uploadMaxFiles  // 限制同时上传文件数量
+        }
+    });
 
     const projectRepo = new ProjectRepo(app.db);
     const projectService = new ProjectService(projectRepo);
@@ -53,10 +63,13 @@ export async function createApp() {
     const authService = new AuthService(authRepo);
 
     const sharedConfigRepo = new SharedConfigRepo(app.db);
-    const sharedConfigService = new SharedConfigService(sharedConfigRepo);
+    const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectRepo);
 
     const releaseRepo = new ReleaseRepo(app.db);
     const releaseService = new ReleaseService(releaseRepo, projectRepo, app.hubWsEvents);
+
+    const issueRepo = new IssueRepo(app.db);
+    const issueService = new IssueService(issueRepo, projectRepo);
 
     app.decorate("services", {
         feedback: feedbackService,
@@ -65,7 +78,8 @@ export async function createApp() {
         auth: authService,
         sharedConfig: sharedConfigService,
         project: projectService,
-        release: releaseService
+        release: releaseService,
+        issue: issueService
     });
 
     await app.register(authPlugin);
