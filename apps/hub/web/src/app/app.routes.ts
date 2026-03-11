@@ -1,21 +1,15 @@
 ﻿import { Routes } from '@angular/router';
 import { adminAuthGuard, loginPageGuard } from './core/guards/auth.guards';
-import { AnnouncementsPageComponent } from './pages/announcements/announcements.component';
-import { DashboardPageComponent } from './pages/dashboard/dashboard.component';
-import { DocsPageComponent } from './pages/docs/docs.component';
-import { FeedbackPageComponent } from './pages/feedback/feedback.component';
 import { LoginComponent } from './pages/login/login.component';
-import { ProjectsPageComponent } from './pages/projects/projects.component';
-import { ReleasesPageComponent } from './pages/releases/releases.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, canActivate: [loginPageGuard] },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-  { path: 'dashboard', component: DashboardPageComponent, canActivate: [adminAuthGuard] },
-  { path: 'announcements', component: AnnouncementsPageComponent, canActivate: [adminAuthGuard] },
-  { path: 'projects', component: ProjectsPageComponent, canActivate: [adminAuthGuard] },
-  { path: 'docs', component: DocsPageComponent, canActivate: [adminAuthGuard] },
-  { path: 'feedback', component: FeedbackPageComponent, canActivate: [adminAuthGuard] },
-  { path: 'releases', component: ReleasesPageComponent, canActivate: [adminAuthGuard] },
+  { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardPageComponent), canActivate: [adminAuthGuard] },
+  { path: 'announcements', loadComponent: () => import('./pages/announcements/announcements.component').then(m => m.AnnouncementsPageComponent), canActivate: [adminAuthGuard] },
+  { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then(m => m.ProjectsPageComponent), canActivate: [adminAuthGuard] },
+  { path: 'docs', loadComponent: () => import('./pages/docs/docs.component').then(m => m.DocsPageComponent), canActivate: [adminAuthGuard] },
+  { path: 'feedback', loadComponent: () => import('./pages/feedback/feedback.component').then(m => m.FeedbackPageComponent), canActivate: [adminAuthGuard] },
+  { path: 'releases', loadComponent: () => import('./pages/releases/releases.component').then(m => m.ReleasesPageComponent), canActivate: [adminAuthGuard] },
   { path: '**', redirectTo: 'dashboard' }
 ];

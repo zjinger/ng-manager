@@ -161,7 +161,10 @@ export class AuthService {
         return decoded.slice(prefix.length);
     }
 
-    private decryptLoginPassword(ivBase64: string, cipherTextBase64: string): string {
+    /**
+     * GCM 模式解密，兼容之前版本加密的密码，新的加密方式改为 CBC 模式，原因是浏览器端 CryptoJS 的 GCM 模式在某些环境（如 Safari）存在兼容性问题，导致无法正确解密密码。
+     */
+    private decryptLoginPassword2(ivBase64: string, cipherTextBase64: string): string {
         try {
             const iv = Buffer.from(ivBase64, "base64");
             const encrypted = Buffer.from(cipherTextBase64, "base64");
@@ -188,6 +191,40 @@ export class AuthService {
             throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "invalid encrypted password", 401);
         }
     }
+
+    /**
+     *  CBC 模式解密，兼容新的加密方式
+     */
+    private decryptLoginPassword(ivBase64: string, cipherTextBase64: string): string {
+    try {
+        const iv = Buffer.from(ivBase64, "base64");
+        const encrypted = Buffer.from(cipherTextBase64, "base64");
+
+        if (iv.length !== 16 || encrypted.length === 0) {
+            throw new Error("invalid cipher payload");
+        }
+
+        const key = createHash("sha256")
+            .update(env.loginAesKey, "utf8")
+            .digest();
+
+        const decipher = createDecipheriv("aes-256-cbc", key, iv);
+        decipher.setAutoPadding(true);
+
+        const plain = Buffer.concat([
+            decipher.update(encrypted),
+            decipher.final()
+        ]).toString("utf8");
+
+        if (!plain) {
+            throw new Error("empty plain password");
+        }
+
+        return plain;
+    } catch {
+        throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "invalid encrypted password", 401);
+    }
+}
 
     private cleanupChallenges(): void {
         const now = Date.now();

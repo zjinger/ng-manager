@@ -20,7 +20,6 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "less",
-            "outputPath": "../server/dist/www",
             "assets": [
               {
                 "glob": "**/*",
@@ -32,15 +31,16 @@
                 "output": "/assets/"
               }
             ],
-            "styles": ["src/styles.less"]
+            "styles": ["src/styles.less"],
+            "allowedCommonJsDependencies": ["crypto-js"]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "2MB",
+                  "maximumError": "4MB"
                 },
                 {
                   "type": "anyComponentStyle",

@@ -23,6 +23,9 @@ import routesPlugin from "./plugins/routes.plugin";
 import wsPlugin from "./plugins/ws.plugin";
 import { IssueRepo } from "./modules/issue/issue.repo";
 import { IssueService } from "./modules/issue/issue.service";
+import fastifyStatic from "@fastify/static";
+
+
 
 export async function createApp() {
     const app = Fastify({
@@ -85,5 +88,36 @@ export async function createApp() {
     await app.register(authPlugin);
     await authService.ensureDefaultAdmin();
     await app.register(routesPlugin);
+
+    if (env.isProd && env.webRoot) {
+        const webRoot = env.webRoot;
+        app.log.info({ webRoot }, "[web] static assets enabled");
+        await app.register(fastifyStatic, {
+            root: webRoot,
+            prefix: "/",
+            index: ["index.html"]
+        });
+        app.setNotFoundHandler((request, reply) => {
+            const reqPath = request.raw.url || "";
+            // 后端 API 路由保持正常 404
+            if (reqPath.startsWith("/api/") || reqPath.startsWith("/ws/")) {
+                reply.code(404).send({
+                    code: "NOT_FOUND",
+                    message: "Route not found"
+                });
+                return;
+            }
+            // 只对 GET 做 SPA fallback
+            if (request.method !== "GET") {
+                reply.code(404).send({
+                    code: "NOT_FOUND",
+                    message: "Route not found"
+                });
+                return;
+            }
+            return reply.sendFile("index.html");
+        });
+    }
+
     return app;
 }

@@ -1,0 +1,10 @@
+{
+  "targets": {
+    "prod": {
+      "host": "192.168.1.31",
+      "user": "root",
+      "port": 22,
+      "dir": "/opt/ngm-hub"
+    }
+  }
+}

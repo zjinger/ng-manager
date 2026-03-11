@@ -21,9 +21,9 @@ export default async function adminAuthRoutes(fastify: FastifyInstance) {
         reply.setCookie(env.authCookieName, token, {
             httpOnly: true,
             sameSite: "lax",
-            secure: !env.isDev,
+            secure: env.authCookieSecure,
             path: "/",
-            maxAge: 7 * 24 * 60 * 60
+            maxAge: 7 * 24 * 60 * 60 // 7 days in seconds
         });
 
         return ok(profile, "login success");
