@@ -1,5 +1,12 @@
 ﻿export type ProjectStatus = "active" | "archived";
 export type ProjectVisibility = "internal" | "public";
+export type ProjectMemberRole =
+  | "product"
+  | "ui"
+  | "frontend_dev"
+  | "backend_dev"
+  | "qa"
+  | "ops";
 
 export interface ProjectEntity {
   id: string;
@@ -41,4 +48,26 @@ export interface ProjectListResult {
   page: number;
   pageSize: number;
   total: number;
+}
+
+export interface ProjectMemberEntity {
+  id: string;
+  projectId: string;
+  userId: string;
+  displayName: string;
+  roles: ProjectMemberRole[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProjectMemberInput {
+  projectId: string;
+  userId: string;
+  displayName: string;
+  roles: ProjectMemberRole[];
+}
+
+export interface UpdateProjectMemberInput {
+  displayName?: string;
+  roles?: ProjectMemberRole[];
 }

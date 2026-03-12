@@ -9,6 +9,7 @@ import { provideNzIcons } from 'ng-zorro-antd/icon';
 import {
   BellOutline,
   BranchesOutline,
+  BugOutline,
   ClockCircleOutline,
   DashboardOutline,
   DownOutline,
@@ -43,6 +44,7 @@ export const appConfig: ApplicationConfig = {
       MessageOutline,
       RocketOutline,
       BellOutline,
+      BugOutline,
       DownOutline,
       ClockCircleOutline,
       BranchesOutline,

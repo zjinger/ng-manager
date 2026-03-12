@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+﻿import type Database from "better-sqlite3";
 import type {
     IssueActionLogEntity,
     IssueCommentEntity,
@@ -23,6 +23,8 @@ type IssueRow = {
     reporter_name: string | null;
     assignee_id: string | null;
     assignee_name: string | null;
+    verifier_id: string | null;
+    verifier_name: string | null;
     reopen_count: number;
     module: string | null;
     version: string | null;
@@ -94,6 +96,8 @@ export class IssueRepo {
         reporter_name,
         assignee_id,
         assignee_name,
+        verifier_id,
+        verifier_name,
         reopen_count,
         module,
         version,
@@ -116,6 +120,8 @@ export class IssueRepo {
         @reporter_name,
         @assignee_id,
         @assignee_name,
+        @verifier_id,
+        @verifier_name,
         @reopen_count,
         @module,
         @version,
@@ -186,6 +192,16 @@ export class IssueRepo {
         if (patch.assigneeName !== undefined) {
             fields.push("assignee_name = ?");
             params.push(patch.assigneeName ?? null);
+        }
+
+        if (patch.verifierId !== undefined) {
+            fields.push("verifier_id = ?");
+            params.push(patch.verifierId ?? null);
+        }
+
+        if (patch.verifierName !== undefined) {
+            fields.push("verifier_name = ?");
+            params.push(patch.verifierName ?? null);
         }
 
         if (patch.reopenCount !== undefined) {
@@ -340,9 +356,7 @@ export class IssueRepo {
         FROM issue_action_logs
         WHERE issue_id = ?
         ORDER BY created_at ASC
-      `)
-            .all(issueId) as IssueActionLogRow[];
-
+      `).all(issueId) as IssueActionLogRow[];
         return rows.map((row) => this.toActionLogEntity(row));
     }
 
@@ -452,6 +466,8 @@ export class IssueRepo {
             reporter_name: entity.reporterName ?? null,
             assignee_id: entity.assigneeId ?? null,
             assignee_name: entity.assigneeName ?? null,
+            verifier_id: entity.verifierId ?? null,
+            verifier_name: entity.verifierName ?? null,
             reopen_count: entity.reopenCount,
             module: entity.module ?? null,
             version: entity.version ?? null,
@@ -478,6 +494,8 @@ export class IssueRepo {
             reporterName: row.reporter_name,
             assigneeId: row.assignee_id,
             assigneeName: row.assignee_name,
+            verifierId: row.verifier_id,
+            verifierName: row.verifier_name,
             reopenCount: row.reopen_count,
             module: row.module,
             version: row.version,
@@ -533,3 +551,6 @@ export class IssueRepo {
         };
     }
 }
+
+
+

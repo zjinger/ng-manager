@@ -1,0 +1,54 @@
+@if (items.length > 0) {
+  <nz-image-group class="attachment-grid">
+    @for (item of items; track item.id) {
+      <div class="attachment-card">
+        <div class="attachment-preview">
+          @if (isImage(item)) {
+            <img
+              nz-image
+              width="96px"
+              class="attachment-thumb"
+              [nzSrc]="getPreviewUrl(item) || ''"
+              [alt]="item.name"
+            />
+          } @else {
+            <div class="attachment-file">{{ item.name }}</div>
+          }
+        </div>
+        <div class="attachment-meta">
+          <span class="attachment-name">{{ item.name }}</span>
+          @if (item.size != null) {
+            <span class="muted">{{ item.size | hubFileSize }}</span>
+          }
+        </div>
+        <div class="attachment-overlay">
+          @if (showDownload && item.url) {
+            <button nz-button nzType="link" (click)="download(item)" nz-tooltip="下载">
+              <nz-icon nzType="download"></nz-icon>
+            </button>
+          }
+          @if (showRemove) {
+            <button
+              nz-button
+              nzType="link"
+              nzDanger
+              nz-popconfirm
+              nzPopconfirmTitle="确认删除该附件？"
+              nzPopconfirmOkText="删除"
+              nzPopconfirmCancelText="取消"
+              (nzOnConfirm)="onRemove(item.id)"
+              [disabled]="loading"
+              nz-tooltip="删除附件"
+            >
+              <nz-icon nzType="delete"></nz-icon>
+            </button>
+          }
+        </div>
+      </div>
+    }
+  </nz-image-group>
+} @else {
+  @if (showEmpty) {
+    <nz-empty nzNotFoundContent="暂无附件"></nz-empty>
+  }
+}

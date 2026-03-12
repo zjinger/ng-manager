@@ -1,16 +1,25 @@
 import { z } from "zod";
 
-const issueTypeEnum = z.enum(["bug", "task", "improvement", "test-record"]);
-const issueStatusEnum = z.enum([
-    "open",
-    "assigned",
-    "in_progress",
-    "fixed",
-    "verified",
-    "reopened",
-    "closed"
+const issueTypeEnum = z.enum([
+    "bug", // 缺陷
+    "requirement_change", //需求变更
+    "feature", // 新功能(新需求)
+    "improvement", // 改进
+    "task", // 任务
+    "test_record" // 测试记录
 ]);
+const issueStatusEnum = z.enum([
+    "open", // 待处理
+    "assigned", // 已分配
+    "in_progress", // 处理中
+    "fixed", // 已修复
+    "verified", // 已验证
+    "reopened", // 已重开
+    "closed" // 已关闭
+]);
+// 问题优先级
 const issuePriorityEnum = z.enum(["low", "medium", "high", "critical"]);
+// 问题关闭原因类型: 误报、重复、非问题
 const issueCloseReasonTypeEnum = z.enum(["mistaken", "duplicate", "not_issue"]);
 
 const actorSchema = z.object({
@@ -56,8 +65,7 @@ export const listIssueQuerySchema = z.object({
 });
 
 export const assignIssueSchema = z.object({
-    assigneeId: z.string().trim().max(64).nullable().optional(),
-    assigneeName: z.string().trim().min(1).max(120).nullable().optional(),
+    assigneeId: z.string().trim().min(1).max(64),
     operatorId: z.string().trim().max(64).nullable().optional(),
     operatorName: z.string().trim().min(1).max(120).nullable().optional(),
     comment: z.string().trim().max(2000).optional()

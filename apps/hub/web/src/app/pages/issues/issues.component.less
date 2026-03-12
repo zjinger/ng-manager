@@ -1,0 +1,316 @@
+﻿.filter-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+}
+
+.content-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+}
+
+.table-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+}
+
+.selected {
+      background: #e6f4ff;
+}
+
+.empty-tip {
+      color: #6b7280;
+}
+
+.action-box {
+      display: grid;
+      gap: 8px;
+}
+
+.action-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+}
+
+.action-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+}
+
+.timeline {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+}
+
+.timeline-item {
+      border: 1px solid #f0f0f0;
+      border-radius: 8px;
+      padding: 8px;
+}
+
+.timeline-head {
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 4px;
+}
+
+.attachment-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+}
+
+.attachment-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+}
+
+.attachment-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #f0f0f0;
+      flex-shrink: 0;
+}
+
+:host ::ng-deep .attachment-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+}
+
+.detail-upload {
+      margin-bottom: 8px;
+}
+
+.attachment-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+}
+
+.attachment-card {
+      border: 1px solid #f0f0f0;
+      border-radius: 8px;
+      overflow: hidden;
+}
+
+.attachment-preview {
+      position: relative;
+      background: #fafafa;
+      height: 96px;
+      display: grid;
+      place-items: center;
+}
+
+.attachment-preview .attachment-thumb {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 0;
+}
+
+.attachment-file {
+      padding: 8px;
+      font-size: 12px;
+      color: #4b5563;
+      text-align: center;
+      word-break: break-all;
+}
+
+.attachment-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: rgba(17, 24, 39, 0.55);
+      opacity: 0;
+      transition: opacity .2s ease;
+}
+
+.attachment-preview:hover .attachment-overlay {
+      opacity: 1;
+}
+
+.attachment-overlay :is(a, button) {
+      color: #fff;
+}
+
+.attachment-meta {
+      padding: 6px 8px;
+      display: grid;
+      gap: 2px;
+}
+
+.attachment-meta .attachment-name {
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+}
+
+.log-collapse {
+      border: 1px solid #f0f0f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+}
+
+.log-collapse summary {
+      cursor: pointer;
+      color: #374151;
+      user-select: none;
+}
+
+.log-collapse[open] summary {
+      margin-bottom: 8px;
+}
+
+:host ::ng-deep .detail-attachments .ant-upload-list-item-actions {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+}
+
+:host ::ng-deep .detail-attachments .ant-upload-list-item:hover .ant-upload-list-item-actions {
+      opacity: 1;
+}
+
+.muted {
+      color: #6b7280;
+      margin-left: 6px;
+}
+
+.form {
+      display: grid;
+      gap: 10px;
+}
+
+.row-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+}
+
+.row-three {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+}
+
+.create-attachments {
+      display: grid;
+      gap: 8px;
+}
+
+.create-attachments label {
+      font-weight: 500;
+}
+
+.create-submit {
+      display: flex;
+      justify-content: flex-end;
+}
+
+:host ::ng-deep .create-attachments .ant-upload-list {
+      max-height: 180px;
+      overflow-y: auto;
+}
+
+.issue-no-col {
+      width: 200px;
+      min-width: 200px;
+}
+
+.issue-ops-col {
+      width: 180px;
+      min-width: 180px;
+}
+
+.ops-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+}
+
+.ops-actions .ant-btn-link {
+      padding: 0;
+}
+:host {
+  --issues-panel-height: clamp(560px, calc(100vh - 250px), 860px);
+}
+
+.content-grid {
+  align-items: stretch;
+}
+
+.list-card,
+.detail-card {
+  height: var(--issues-panel-height);
+}
+
+:host ::ng-deep .list-card .ant-card-body,
+:host ::ng-deep .detail-card .ant-card-body {
+  height: calc(100% - 57px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.list-panel,
+.detail-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.loading-inline {
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+@media (max-width: 1200px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .list-card,
+  .detail-card {
+    height: auto;
+  }
+
+  :host ::ng-deep .list-card .ant-card-body,
+  :host ::ng-deep .detail-card .ant-card-body {
+    height: auto;
+  }
+
+  .list-panel,
+  .detail-panel {
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+:host ::ng-deep .detail-card .ant-descriptions-item-label {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  white-space: nowrap;
+}
+:host ::ng-deep .detail-card .ant-descriptions-item-content {
+  word-break: break-word;
+}
+

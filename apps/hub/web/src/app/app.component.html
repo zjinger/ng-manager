@@ -1,4 +1,4 @@
-﻿@if (isLoginPage()) {
+@if (isLoginPage()) {
   <router-outlet></router-outlet>
 } @else {
   <nz-layout class="app-shell">
@@ -62,6 +62,11 @@
           <li nz-menu-item routerLink="/feedback" routerLinkActive="ant-menu-item-selected">
             <span nz-icon nzType="message"></span>
             <span>反馈管理</span>
+          </li>
+
+          <li nz-menu-item routerLink="/issues" routerLinkActive="ant-menu-item-selected">
+            <span nz-icon nzType="bug"></span>
+            <span>问题管理</span>
           </li>
 
           <li nz-menu-item routerLink="/releases" routerLinkActive="ant-menu-item-selected">

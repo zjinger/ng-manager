@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+﻿import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../../env";
@@ -7,7 +7,9 @@ import { genId } from "../../utils/id";
 import { buildStoredFileName, ensureDirSync, getFileExt, safeBaseName } from "../../utils/storage";
 import { nowIso } from "../../utils/time";
 import { ProjectRepo } from "../project/project.repo";
+import type { ProjectMemberEntity, ProjectMemberRole } from "../project/project.types";
 import { IssueRepo } from "./issue.repo";
+import { isAllowedIssueAttachmentType } from "./issue.attachment-policy";
 import type {
     AddIssueCommentInput,
     AssignIssueInput,
@@ -42,7 +44,6 @@ const ISSUE_STATUS_TRANSITIONS: Record<IssueStatus, IssueStatus[]> = {
 };
 
 const MAX_ISSUE_NO_RETRY = 5;
-
 export class IssueService {
     constructor(
         private readonly repo: IssueRepo,
@@ -52,7 +53,7 @@ export class IssueService {
     create(input: CreateIssueInput): IssueEntity {
         const project = this.projectRepo.findById(input.projectId);
         if (!project) {
-            throw new AppError("PROJECT_NOT_FOUND", `project not found: ${input.projectId}`, 404);
+            throw new AppError("PROJECT_NOT_FOUND", `项目未找到: ${input.projectId}`, 404);
         }
 
         for (let attempt = 1; attempt <= MAX_ISSUE_NO_RETRY; attempt += 1) {
@@ -70,6 +71,7 @@ export class IssueService {
                 reporterName: input.reporterName?.trim() || null,
                 assigneeId: null,
                 assigneeName: null,
+                lastVerifiedResult: null,
                 reopenCount: 0,
                 module: input.module?.trim() || null,
                 version: input.version?.trim() || null,
@@ -92,7 +94,7 @@ export class IssueService {
                             toStatus: "open",
                             operatorId: entity.reporterId ?? null,
                             operatorName: entity.reporterName ?? null,
-                            summary: "create issue"
+                            summary: "创建问题"
                         })
                     );
                 });
@@ -105,13 +107,13 @@ export class IssueService {
             }
         }
 
-        throw new AppError("ISSUE_CREATE_FAILED", "failed to create issue", 500);
+        throw new AppError("ISSUE_CREATE_FAILED", "创建失败", 500);
     }
 
     getById(id: string): IssueEntity {
         const item = this.repo.findById(id);
         if (!item) {
-            throw new AppError("ISSUE_NOT_FOUND", `issue not found: ${id}`, 404);
+            throw new AppError("ISSUE_NOT_FOUND", `问题未找到: ${id}`, 404);
         }
         return item;
     }
@@ -119,7 +121,7 @@ export class IssueService {
     getDetail(id: string): IssueDetailResult {
         const detail = this.repo.getDetail(id);
         if (!detail) {
-            throw new AppError("ISSUE_NOT_FOUND", `issue not found: ${id}`, 404);
+            throw new AppError("ISSUE_NOT_FOUND", `问题未找到: ${id}`, 404);
         }
         return detail;
     }
@@ -144,7 +146,7 @@ export class IssueService {
         this.repo.runInTransaction(() => {
             const changed = this.repo.update(id, patch);
             if (!changed) {
-                throw new AppError("ISSUE_UPDATE_FAILED", "failed to update issue", 500);
+                throw new AppError("ISSUE_UPDATE_FAILED", "无法更新问题", 500);
             }
 
             this.repo.createActionLog(
@@ -166,11 +168,15 @@ export class IssueService {
         const nextStatus: IssueStatus = "assigned";
         this.assertTransition(issue.status, nextStatus);
 
+        const operatorId = this.requireOperatorId(input.operatorId, "assign");
+        this.requireProjectMember(issue.projectId, operatorId, "【指派】");
+
         const assigneeId = input.assigneeId?.trim() || null;
-        const assigneeName = input.assigneeName?.trim() || null;
-        if (!assigneeId || !assigneeName) {
-            throw new AppError("ISSUE_ASSIGNEE_REQUIRED", "assignee is required", 400);
+        if (!assigneeId) {
+            throw new AppError("ISSUE_ASSIGNEE_REQUIRED", "分配问题时需要提供负责人", 400);
         }
+        const assigneeMember = this.requireProjectMember(issue.projectId, assigneeId, "【指派】");
+        const assigneeName = assigneeMember.displayName;
 
         this.repo.runInTransaction(() => {
             const changed = this.repo.update(id, {
@@ -180,7 +186,7 @@ export class IssueService {
                 updatedAt: nowIso()
             });
             if (!changed) {
-                throw new AppError("ISSUE_ASSIGN_FAILED", "failed to assign issue", 500);
+                throw new AppError("ISSUE_ASSIGN_FAILED", "无法分配问题", 500);
             }
 
             this.repo.createActionLog(
@@ -189,9 +195,9 @@ export class IssueService {
                     actionType: "assign",
                     fromStatus: issue.status,
                     toStatus: nextStatus,
-                    operatorId: input.operatorId?.trim() || null,
+                    operatorId,
                     operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || `assign to ${assigneeName}`
+                    summary: input.comment?.trim() || `指派给 ${assigneeName}`
                 })
             );
         });
@@ -205,7 +211,11 @@ export class IssueService {
         this.assertTransition(issue.status, nextStatus);
 
         const operatorId = this.requireOperatorId(input.operatorId, "start progress");
-        this.assertAssigneeOperator(issue, operatorId, "start progress");
+        this.requireProjectMember(issue.projectId, operatorId, "【开始处理】");
+        this.assertAssigneeOperator(issue, operatorId, "【开始处理】");
+        if (issue.type === "bug") {
+            this.requireProjectMemberRoles(issue.projectId, operatorId, ["frontend_dev", "backend_dev"], "【开始处理】");
+        }
 
         this.repo.runInTransaction(() => {
             const changed = this.repo.update(id, {
@@ -214,7 +224,7 @@ export class IssueService {
             });
 
             if (!changed) {
-                throw new AppError("ISSUE_START_PROGRESS_FAILED", "failed to start progress", 500);
+                throw new AppError("ISSUE_START_PROGRESS_FAILED", "无法开始处理问题", 500);
             }
 
             this.repo.createActionLog(
@@ -225,7 +235,7 @@ export class IssueService {
                     toStatus: nextStatus,
                     operatorId,
                     operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "start progress"
+                    summary: input.comment?.trim() || "开始处理问题"
                 })
             );
         });
@@ -239,7 +249,11 @@ export class IssueService {
         this.assertTransition(issue.status, nextStatus);
 
         const operatorId = this.requireOperatorId(input.operatorId, "mark fixed");
-        this.assertAssigneeOperator(issue, operatorId, "mark fixed");
+        this.requireProjectMember(issue.projectId, operatorId, "【标记为已修复】");
+        this.assertAssigneeOperator(issue, operatorId, "【标记为已修复】");
+        if (issue.type === "bug") {
+            this.requireProjectMemberRoles(issue.projectId, operatorId, ["frontend_dev", "backend_dev"], "【标记为已修复】");
+        }
 
         this.repo.runInTransaction(() => {
             const now = nowIso();
@@ -247,12 +261,13 @@ export class IssueService {
                 status: nextStatus,
                 fixedAt: now,
                 verifiedAt: null,
+                lastVerifiedResult: null,
                 closedAt: null,
                 updatedAt: now
             });
 
             if (!changed) {
-                throw new AppError("ISSUE_MARK_FIXED_FAILED", "failed to mark fixed", 500);
+                throw new AppError("ISSUE_MARK_FIXED_FAILED", "无法标记为已修复", 500);
             }
 
             this.repo.createActionLog(
@@ -263,7 +278,7 @@ export class IssueService {
                     toStatus: nextStatus,
                     operatorId,
                     operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "mark issue fixed"
+                    summary: input.comment?.trim() || "标记为已修复"
                 })
             );
         });
@@ -277,19 +292,22 @@ export class IssueService {
         this.assertTransition(issue.status, nextStatus);
 
         const operatorId = this.requireOperatorId(input.operatorId, "verify");
-        this.assertReporterOperator(issue, operatorId, "verify");
+        const verifier = this.requireProjectMemberRoles(issue.projectId, operatorId, ["qa", "product"], "【验证】");
 
         this.repo.runInTransaction(() => {
             const now = nowIso();
             const changed = this.repo.update(id, {
                 status: nextStatus,
                 verifiedAt: now,
+                lastVerifiedResult: "pass",
+                verifierId: verifier.userId,
+                verifierName: verifier.displayName,
                 closedAt: null,
                 updatedAt: now
             });
 
             if (!changed) {
-                throw new AppError("ISSUE_VERIFY_FAILED", "failed to verify issue", 500);
+                throw new AppError("ISSUE_VERIFY_FAILED", "没有通过验证", 500);
             }
 
             this.repo.createActionLog(
@@ -300,7 +318,7 @@ export class IssueService {
                     toStatus: nextStatus,
                     operatorId,
                     operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "verify issue"
+                    summary: input.comment?.trim() || "验证通过"
                 })
             );
         });
@@ -314,19 +332,22 @@ export class IssueService {
         this.assertTransition(issue.status, nextStatus);
 
         const operatorId = this.requireOperatorId(input.operatorId, "reopen");
-        this.assertReporterOperator(issue, operatorId, "reopen");
+        const verifier = this.requireProjectMemberRoles(issue.projectId, operatorId, ["qa", "product"], "【重新打开】");
 
         this.repo.runInTransaction(() => {
             const changed = this.repo.update(id, {
                 status: nextStatus,
                 reopenCount: issue.reopenCount + 1,
+                lastVerifiedResult: "fail",
+                verifierId: verifier.userId,
+                verifierName: verifier.displayName,
                 verifiedAt: null,
                 closedAt: null,
                 updatedAt: nowIso()
             });
 
             if (!changed) {
-                throw new AppError("ISSUE_REOPEN_FAILED", "failed to reopen issue", 500);
+                throw new AppError("ISSUE_REOPEN_FAILED", "无法重开问题", 500);
             }
 
             this.repo.createActionLog(
@@ -337,7 +358,7 @@ export class IssueService {
                     toStatus: nextStatus,
                     operatorId,
                     operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "reopen issue"
+                    summary: input.comment?.trim() || "重新打开问题"
                 })
             );
         });
@@ -351,15 +372,15 @@ export class IssueService {
         this.assertTransition(issue.status, nextStatus);
 
         const operatorId = this.requireOperatorId(input.operatorId, "close");
-        this.assertReporterOperator(issue, operatorId, "close");
+        this.requireProjectMemberRoles(issue.projectId, operatorId, ["product", "qa"], "【关闭】");
 
         const closeComment = input.comment?.trim();
         if (issue.status === "open") {
             if (!input.closeReasonType) {
-                throw new AppError("ISSUE_CLOSE_REASON_REQUIRED", "closeReasonType is required when closing open issue", 400);
+                throw new AppError("ISSUE_CLOSE_REASON_REQUIRED", "关闭未解决的问题时需要提供关闭原因", 400);
             }
             if (!closeComment) {
-                throw new AppError("ISSUE_CLOSE_COMMENT_REQUIRED", "comment is required when closing open issue", 400);
+                throw new AppError("ISSUE_CLOSE_COMMENT_REQUIRED", "关闭未解决的问题时需要提供评论", 400);
             }
         }
 
@@ -372,7 +393,7 @@ export class IssueService {
             });
 
             if (!changed) {
-                throw new AppError("ISSUE_CLOSE_FAILED", "failed to close issue", 500);
+                throw new AppError("ISSUE_CLOSE_FAILED", "无法关闭问题", 500);
             }
 
             this.repo.createActionLog(
@@ -414,7 +435,7 @@ export class IssueService {
                     toStatus: issue.status,
                     operatorId: input.authorId?.trim() || null,
                     operatorName: input.authorName?.trim() || null,
-                    summary: "add comment"
+                    summary: "新增评论"
                 })
             );
         });
@@ -431,7 +452,7 @@ export class IssueService {
         const issue = this.getById(input.issueId);
 
         if (!fs.existsSync(input.tempFilePath)) {
-            throw new AppError("ISSUE_ATTACHMENT_TEMP_FILE_NOT_FOUND", "temp file not found", 400);
+            throw new AppError("ISSUE_ATTACHMENT_TEMP_FILE_NOT_FOUND", "没有找到临时文件", 400);
         }
 
         const issueDir = this.getIssueUploadDir(issue.id);
@@ -443,13 +464,19 @@ export class IssueService {
 
         const stat = fs.statSync(input.tempFilePath);
         const fileSize = input.fileSize || stat.size;
+        const mimeType = input.mimeType?.trim().toLowerCase() || "";
+        const fileExt = getFileExt(originalName)?.toLowerCase() ?? null;
 
         if (fileSize > env.uploadMaxFileSize) {
             throw new AppError(
                 "ISSUE_ATTACHMENT_TOO_LARGE",
-                `file too large, max ${env.uploadMaxFileSize} bytes`,
+                `文件太大, 最大支持 ${env.uploadMaxFileSize} bytes`,
                 400
             );
+        }
+
+        if (!isAllowedIssueAttachmentType(mimeType, fileExt)) {
+            throw new AppError("ISSUE_ATTACHMENT_INVALID_TYPE", "\u4ec5\u652f\u6301\u56fe\u7247\u548c\u89c6\u9891\u6587\u4ef6\u4e0a\u4f20", 400);
         }
 
         fs.copyFileSync(input.tempFilePath, targetPath);
@@ -459,8 +486,8 @@ export class IssueService {
             issueId: issue.id,
             fileName: storedFileName,
             originalName,
-            fileExt: getFileExt(originalName),
-            mimeType: input.mimeType ?? null,
+            fileExt,
+            mimeType: mimeType || null,
             fileSize,
             storagePath: targetPath,
             storageProvider: "local",
@@ -480,7 +507,7 @@ export class IssueService {
                         toStatus: issue.status,
                         operatorId: input.uploaderId?.trim() || null,
                         operatorName: input.uploaderName?.trim() || null,
-                        summary: `upload attachment: ${attachment.originalName}`
+                        summary: `上传附件: ${attachment.originalName}`
                     })
                 );
             });
@@ -501,7 +528,7 @@ export class IssueService {
 
         const attachment = this.repo.findAttachmentById(attachmentId);
         if (!attachment || attachment.issueId !== issue.id) {
-            throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", "attachment not found", 404);
+            throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", "附件未找到", 404);
         }
 
         if (attachment.storageProvider === "local" && attachment.storagePath) {
@@ -512,7 +539,7 @@ export class IssueService {
             } catch (_error) {
                 throw new AppError(
                     "ISSUE_ATTACHMENT_DELETE_FILE_FAILED",
-                    "failed to delete attachment file",
+                    "删除附件文件失败",
                     500
                 );
             }
@@ -521,7 +548,7 @@ export class IssueService {
         this.repo.runInTransaction(() => {
             const deleted = this.repo.deleteAttachment(attachmentId);
             if (!deleted) {
-                throw new AppError("ISSUE_ATTACHMENT_DELETE_FAILED", "failed to delete attachment record", 500);
+                throw new AppError("ISSUE_ATTACHMENT_DELETE_FAILED", "删除附件记录失败", 500);
             }
 
             this.repo.createActionLog(
@@ -532,7 +559,7 @@ export class IssueService {
                     toStatus: issue.status,
                     operatorId: operator?.operatorId?.trim() || null,
                     operatorName: operator?.operatorName?.trim() || null,
-                    summary: `remove attachment: ${attachment.originalName}`
+                    summary: `删除附件: ${attachment.originalName}`
                 })
             );
         });
@@ -545,11 +572,11 @@ export class IssueService {
         const attachment = this.repo.findAttachmentById(attachmentId);
 
         if (!attachment || attachment.issueId !== issue.id) {
-            throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", "attachment not found", 404);
+            throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", "附件未找到", 404);
         }
 
         if (attachment.storageProvider === "local" && !fs.existsSync(attachment.storagePath)) {
-            throw new AppError("ISSUE_ATTACHMENT_FILE_NOT_FOUND", "attachment file not found", 404);
+            throw new AppError("ISSUE_ATTACHMENT_FILE_NOT_FOUND", "附件文件未找到", 404);
         }
 
         return attachment;
@@ -564,7 +591,7 @@ export class IssueService {
         if (!allowed.includes(to)) {
             throw new AppError(
                 "ISSUE_INVALID_STATUS_TRANSITION",
-                `cannot change issue status from ${from} to ${to}`,
+                `无法将问题状态从 ${from} 更改为 ${to}`,
                 400
             );
         }
@@ -573,7 +600,7 @@ export class IssueService {
     private requireOperatorId(operatorId: string | null | undefined, action: string): string {
         const value = operatorId?.trim();
         if (!value) {
-            throw new AppError("ISSUE_OPERATOR_REQUIRED", `operatorId is required to ${action}`, 400);
+            throw new AppError("ISSUE_OPERATOR_REQUIRED", `执行 ${action} 操作时需要提供 operatorId`, 400);
         }
         return value;
     }
@@ -582,30 +609,50 @@ export class IssueService {
         if (issue.assigneeId && issue.assigneeId !== operatorId) {
             throw new AppError(
                 "ISSUE_FORBIDDEN_OPERATOR",
-                `only current assignee can ${action}`,
+                `只有当前负责人可以执行 ${action} 操作`,
                 403
             );
         }
     }
 
-    private assertReporterOperator(issue: IssueEntity, operatorId: string, action: string): void {
-        if (issue.reporterId && issue.reporterId !== operatorId) {
+    private requireProjectMember(projectId: string, userId: string, action: string): ProjectMemberEntity {
+        const member = this.projectRepo.findMemberByProjectAndUserId(projectId, userId);
+        if (!member) {
             throw new AppError(
                 "ISSUE_FORBIDDEN_OPERATOR",
-                `only issue reporter can ${action}`,
+                `${action} 操作人不是项目成员`,
                 403
             );
         }
+        return member;
+    }
+
+    private requireProjectMemberRoles(
+        projectId: string,
+        userId: string,
+        requiredRoles: readonly ProjectMemberRole[],
+        action: string
+    ): ProjectMemberEntity {
+        const member = this.requireProjectMember(projectId, userId, action);
+        const ok = member.roles.some((role) => requiredRoles.includes(role));
+        if (!ok) {
+            throw new AppError(
+                "ISSUE_FORBIDDEN_OPERATOR",
+                `${action} 操作人角色不符合要求`,
+                403
+            );
+        }
+        return member;
     }
 
     private buildCloseSummary(status: IssueStatus, reasonType?: IssueCloseReasonType, comment?: string): string {
         if (status === "open") {
             const reason = reasonType ?? "unknown";
             const text = comment ?? "";
-            return `close open issue (${reason}): ${text}`;
+            return `关闭未解决的问题 (${reason}): ${text}`;
         }
 
-        return comment || "close issue";
+        return comment || "关闭问题";
     }
 
     private buildActionLog(input: {
@@ -658,7 +705,7 @@ export class IssueService {
         if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
             throw new AppError(
                 "ISSUE_NO_EXISTS",
-                `issue no already exists: ${issueNo ?? "unknown"}`,
+                `问题编号已存在: ${issueNo ?? "未知"}`,
                 409
             );
         }
@@ -666,3 +713,8 @@ export class IssueService {
         throw error;
     }
 }
+
+
+
+
+

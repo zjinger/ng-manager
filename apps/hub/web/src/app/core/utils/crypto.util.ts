@@ -1,42 +1,28 @@
 import { InjectionToken } from '@angular/core';
+import CryptoJS from 'crypto-js';
 
 export const HUB_LOGIN_AES_KEY = new InjectionToken<string>('HUB_LOGIN_AES_KEY');
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-async function deriveAesKey(secret: string): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const secretBytes = encoder.encode(secret);
-  const keyBytes = await crypto.subtle.digest('SHA-256', secretBytes);
-
-  return crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
-}
 
 export interface EncryptedLoginPayload {
   iv: string;
   cipherText: string;
 }
 
-export async function encryptLoginPassword(
+export function encryptLoginPassword(
   passwordWithNonce: string,
   secret: string
-): Promise<EncryptedLoginPayload> {
-  const encoder = new TextEncoder();
-  const key = await deriveAesKey(secret);
+): EncryptedLoginPayload {
+  const key = CryptoJS.SHA256(secret);
+  const iv = CryptoJS.lib.WordArray.random(16);
 
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const plainBytes = encoder.encode(passwordWithNonce);
-
-  const encryptedBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plainBytes);
+  const encrypted = CryptoJS.AES.encrypt(passwordWithNonce, key, {
+    iv,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7
+  });
 
   return {
-    iv: bytesToBase64(iv),
-    cipherText: bytesToBase64(new Uint8Array(encryptedBuffer))
+    iv: CryptoJS.enc.Base64.stringify(iv),
+    cipherText: encrypted.ciphertext.toString(CryptoJS.enc.Base64)
   };
 }

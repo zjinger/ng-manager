@@ -1,8 +1,10 @@
-export type IssueType =
+﻿export type IssueType =
     | "bug"
-    | "task"
+    | "requirement_change"
+    | "feature"
     | "improvement"
-    | "test-record";
+    | "task"
+    | "test_record";
 
 export type IssueStatus =
     | "open"
@@ -50,12 +52,15 @@ export interface IssueEntity {
     reporterName?: string | null;
     assigneeId?: string | null;
     assigneeName?: string | null;
+    verifierId?: string | null;
+    verifierName?: string | null;
     reopenCount: number;
     module?: string | null;
     version?: string | null;
     environment?: string | null;
     fixedAt?: string | null;
     verifiedAt?: string | null;
+    lastVerifiedResult?: "pass" | "fail" | null;
     closedAt?: string | null;
     createdAt: string;
     updatedAt: string;
@@ -110,9 +115,12 @@ export type UpdateIssueRepoPatch = UpdateIssueInput & {
     status?: IssueStatus;
     assigneeId?: string | null;
     assigneeName?: string | null;
+    verifierId?: string | null;
+    verifierName?: string | null;
     reopenCount?: number;
     fixedAt?: string | null;
     verifiedAt?: string | null;
+    lastVerifiedResult?: "pass" | "fail" | null;
     closedAt?: string | null;
 };
 

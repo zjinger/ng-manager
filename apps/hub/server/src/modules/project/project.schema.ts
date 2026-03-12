@@ -2,6 +2,7 @@
 
 const statusEnum = z.enum(["active", "archived"]);
 const visibilityEnum = z.enum(["internal", "public"]);
+const memberRoleEnum = z.enum(["product", "ui", "frontend_dev", "backend_dev", "qa", "ops"]);
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -26,6 +27,20 @@ export const listProjectQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20)
 });
 
+export const createProjectMemberSchema = z.object({
+  userId: z.string().trim().min(1).max(64),
+  displayName: z.string().trim().min(1).max(120),
+  roles: z.array(memberRoleEnum).min(1).max(8)
+});
+
+export const updateProjectMemberSchema = z.object({
+  displayName: z.string().trim().min(1).max(120).optional(),
+  roles: z.array(memberRoleEnum).min(1).max(8).optional()
+});
+
 export type CreateProjectDto = z.infer<typeof createProjectSchema>;
 export type UpdateProjectDto = z.infer<typeof updateProjectSchema>;
 export type ListProjectQueryDto = z.infer<typeof listProjectQuerySchema>;
+export type CreateProjectMemberDto = z.infer<typeof createProjectMemberSchema>;
+export type UpdateProjectMemberDto = z.infer<typeof updateProjectMemberSchema>;
+

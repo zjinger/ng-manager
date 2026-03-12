@@ -18,6 +18,11 @@ import type {
     IssueDetailResult
 } from "../../modules/issue/issue.types";
 import { AppError } from "../../utils/app-error";
+import {
+    getIssueAttachmentAcceptString,
+    ISSUE_ATTACHMENT_EXT_ALLOWLIST,
+    ISSUE_ATTACHMENT_MIME_PREFIX_ALLOWLIST
+} from "../../modules/issue/issue.attachment-policy";
 import { cleanupTempFiles, parseMultipartUpload } from "../../utils/multipart";
 import { ok } from "../../utils/response";
 
@@ -70,6 +75,14 @@ function toIssueDetailDto(detail: IssueDetailResult) {
 }
 
 export default async function adminIssueRoutes(fastify: FastifyInstance) {
+    fastify.get("/issues/attachment-policy", async () => {
+        return ok({
+            accept: getIssueAttachmentAcceptString(),
+            mimePrefixes: [...ISSUE_ATTACHMENT_MIME_PREFIX_ALLOWLIST],
+            exts: [...ISSUE_ATTACHMENT_EXT_ALLOWLIST]
+        });
+    });
+
     fastify.get("/issues", async (request) => {
         const query = listIssueQuerySchema.parse(request.query);
         const result = fastify.services.issue.list(query);

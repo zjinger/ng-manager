@@ -23,6 +23,7 @@ import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type ProjectStatus = 'active' | 'archived';
 type ProjectVisibility = 'internal' | 'public';
+type ProjectMemberRole = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops';
 
 interface ProjectItem {
   id: string;
@@ -41,6 +42,16 @@ interface ProjectListResult {
   page: number;
   pageSize: number;
   total: number;
+}
+
+interface ProjectMemberItem {
+  id: string;
+  projectId: string;
+  userId: string;
+  displayName: string;
+  roles: ProjectMemberRole[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 @Component({
@@ -144,6 +155,7 @@ interface ProjectListResult {
                 <td>{{ item.updatedAt | hubDateTime }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="editProject(item)">编辑</a>
+                  <a nz-button nzType="link" (click)="openMemberConfig(item)">成员配置</a>
                   @if (item.status === 'active') {
                     <a
                       nz-button
@@ -256,6 +268,78 @@ interface ProjectListResult {
           </form>
         </ng-container>
       </nz-modal>
+
+      <nz-modal
+        [nzTitle]="'项目成员配置 - ' + memberProjectName()"
+        [(nzVisible)]="memberVisible"
+        [nzMaskClosable]="false"
+        [nzWidth]="920"
+        [nzFooter]="null"
+        (nzOnCancel)="memberVisible.set(false)"
+      >
+        <ng-container *nzModalContent>
+          @if (memberError()) {
+            <nz-alert nzType="error" [nzMessage]="memberError()!" nzShowIcon></nz-alert>
+          }
+
+          <form nz-form [formGroup]="memberForm" nzLayout="vertical" class="form section">
+            <div class="grid-3">
+              <nz-form-item>
+                <nz-form-label nzRequired>成员ID</nz-form-label>
+                <nz-form-control>
+                  <input nz-input formControlName="userId" [readonly]="!!editingMemberId()" placeholder="admin user id" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label nzRequired>显示名称</nz-form-label>
+                <nz-form-control>
+                  <input nz-input formControlName="displayName" placeholder="例如：张三" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label nzRequired>角色</nz-form-label>
+                <nz-form-control>
+                  <nz-select formControlName="roles" nzMode="multiple" nzPlaceHolder="至少选择一个角色">
+                    @for (role of memberRoleOptions; track role) {
+                      <nz-option [nzValue]="role" [nzLabel]="roleLabel(role)"></nz-option>
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="action-buttons">
+              <button nz-button nzType="primary" type="button" (click)="saveMember()" [disabled]="memberForm.invalid || memberSaving()">
+                {{ editingMemberId() ? '保存成员' : '添加成员' }}
+              </button>
+              <button nz-button nzType="default" type="button" (click)="resetMemberForm()" [disabled]="memberSaving()">清空</button>
+            </div>
+          </form>
+
+          <nz-table [nzData]="projectMembers()" [nzFrontPagination]="false" [nzLoading]="memberLoading()">
+            <thead>
+              <tr>
+                <th>成员ID</th>
+                <th>显示名称</th>
+                <th>角色</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (member of projectMembers(); track member.id) {
+                <tr>
+                  <td>{{ member.userId }}</td>
+                  <td>{{ member.displayName }}</td>
+                  <td>{{ member.roles.map(roleLabel).join('、') }}</td>
+                  <td>
+                    <a nz-button nzType="link" (click)="editMember(member)">编辑</a>
+                    <a nz-button nzType="link" nzDanger (click)="removeMember(member)">删除</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+        </ng-container>
+      </nz-modal>
     </section>
   `,
   styles: [
@@ -286,6 +370,16 @@ export class ProjectsPageComponent {
   protected readonly editingProjectKey = signal<string | null>(null);
   protected readonly keyCopied = signal(false);
   protected readonly curCopiedKey = signal<string | null>(null);
+  protected readonly memberVisible = signal(false);
+  protected readonly memberLoading = signal(false);
+  protected readonly memberSaving = signal(false);
+  protected readonly memberError = signal<string | null>(null);
+  protected readonly memberProjectId = signal<string>('');
+  protected readonly memberProjectName = signal<string>('');
+  protected readonly projectMembers = signal<ProjectMemberItem[]>([]);
+  protected readonly editingMemberId = signal<string | null>(null);
+
+  protected readonly memberRoleOptions: ProjectMemberRole[] = ['product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops'];
 
   protected readonly filters = this.fb.nonNullable.group({
     status: [''],
@@ -298,6 +392,12 @@ export class ProjectsPageComponent {
     description: [''],
     icon: [''],
     visibility: ['internal' as ProjectVisibility, [Validators.required]]
+  });
+
+  protected readonly memberForm = this.fb.nonNullable.group({
+    userId: ['', [Validators.required]],
+    displayName: ['', [Validators.required]],
+    roles: [[] as ProjectMemberRole[], [Validators.required]]
   });
 
   public constructor() {
@@ -425,6 +525,123 @@ export class ProjectsPageComponent {
     }, 1200);
   }
 
+
+  protected roleLabel(role: ProjectMemberRole): string {
+    if (role === 'product') return '产品';
+    if (role === 'frontend_dev') return '前端开发';
+    if (role === 'backend_dev') return '后端开发';
+    return '测试';
+  }
+
+  protected openMemberConfig(item: ProjectItem): void {
+    this.memberProjectId.set(item.id);
+    this.memberProjectName.set(item.name);
+    this.memberError.set(null);
+    this.memberVisible.set(true);
+    this.resetMemberForm();
+    void this.loadProjectMembers(item.id);
+  }
+
+  protected resetMemberForm(): void {
+    this.editingMemberId.set(null);
+    this.memberForm.reset({
+      userId: '',
+      displayName: '',
+      roles: []
+    });
+  }
+
+  protected editMember(item: ProjectMemberItem): void {
+    this.editingMemberId.set(item.id);
+    this.memberError.set(null);
+    this.memberForm.reset({
+      userId: item.userId,
+      displayName: item.displayName,
+      roles: [...item.roles]
+    });
+  }
+
+  protected async saveMember(): Promise<void> {
+    if (this.memberForm.invalid) {
+      return;
+    }
+
+    const projectId = this.memberProjectId();
+    if (!projectId) {
+      return;
+    }
+
+    this.memberSaving.set(true);
+    this.memberError.set(null);
+
+    try {
+      const value = this.memberForm.getRawValue();
+      if (this.editingMemberId()) {
+        await firstValueFrom(
+          this.api.put<ProjectMemberItem, { displayName: string; roles: ProjectMemberRole[] }>(
+            `/api/admin/projects/${projectId}/members/${this.editingMemberId()!}`,
+            {
+              displayName: value.displayName.trim(),
+              roles: value.roles
+            }
+          )
+        );
+      } else {
+        await firstValueFrom(
+          this.api.post<ProjectMemberItem, { userId: string; displayName: string; roles: ProjectMemberRole[] }>(
+            `/api/admin/projects/${projectId}/members`,
+            {
+              userId: value.userId.trim(),
+              displayName: value.displayName.trim(),
+              roles: value.roles
+            }
+          )
+        );
+      }
+
+      this.resetMemberForm();
+      await this.loadProjectMembers(projectId);
+    } catch (error) {
+      this.memberError.set(this.getErrorMessage(error, '保存项目成员失败'));
+    } finally {
+      this.memberSaving.set(false);
+    }
+  }
+
+  protected async removeMember(item: ProjectMemberItem): Promise<void> {
+    const projectId = this.memberProjectId();
+    if (!projectId) {
+      return;
+    }
+
+    this.memberError.set(null);
+    try {
+      await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/members/${item.id}`));
+      await this.loadProjectMembers(projectId);
+      if (this.editingMemberId() === item.id) {
+        this.resetMemberForm();
+      }
+    } catch (error) {
+      this.memberError.set(this.getErrorMessage(error, '删除项目成员失败'));
+    }
+  }
+
+  private async loadProjectMembers(projectId: string): Promise<void> {
+    this.memberLoading.set(true);
+    this.memberError.set(null);
+
+    try {
+      const result = await firstValueFrom(
+        this.api.get<{ items: ProjectMemberItem[] }>(`/api/admin/projects/${projectId}/members`)
+      );
+      this.projectMembers.set(result.items);
+    } catch (error) {
+      this.projectMembers.set([]);
+      this.memberError.set(this.getErrorMessage(error, '加载项目成员失败'));
+    } finally {
+      this.memberLoading.set(false);
+    }
+  }
   protected statusColor(status: ProjectStatus): string {
     return status === 'active' ? 'green' : 'default';
   }
@@ -484,5 +701,4 @@ export class ProjectsPageComponent {
     return fallback;
   }
 }
-
 

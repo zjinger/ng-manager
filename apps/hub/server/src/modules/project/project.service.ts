@@ -1,14 +1,18 @@
-﻿import Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import { customAlphabet } from "nanoid";
 import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
 import type {
   CreateProjectInput,
+  CreateProjectMemberInput,
   ListProjectQuery,
   ProjectEntity,
   ProjectListResult,
-  UpdateProjectInput
+  ProjectMemberEntity,
+  ProjectMemberRole,
+  UpdateProjectInput,
+  UpdateProjectMemberInput
 } from "./project.types";
 import { ProjectRepo } from "./project.repo";
 
@@ -117,6 +121,107 @@ export class ProjectService {
     if (!changed) {
       throw new AppError("PROJECT_DELETE_FAILED", "failed to delete project", 500);
     }
+  }
+
+  listMembers(projectId: string): ProjectMemberEntity[] {
+    this.getById(projectId);
+    return this.repo.listMembers(projectId);
+  }
+
+  addMember(projectId: string, input: Omit<CreateProjectMemberInput, "projectId">): ProjectMemberEntity {
+    this.getById(projectId);
+    const userId = input.userId.trim();
+    const displayName = input.displayName.trim();
+    const roles = this.normalizeRoles(input.roles);
+
+    if (!userId) {
+      throw new AppError("PROJECT_MEMBER_USER_REQUIRED", "userId is required", 400);
+    }
+    if (!displayName) {
+      throw new AppError("PROJECT_MEMBER_NAME_REQUIRED", "displayName is required", 400);
+    }
+    if (roles.length === 0) {
+      throw new AppError("PROJECT_MEMBER_ROLE_REQUIRED", "at least one role is required", 400);
+    }
+
+    const now = nowIso();
+    const memberId = genId("pm");
+
+    try {
+      this.repo.runInTransaction(() => {
+        this.repo.createMember({
+          id: memberId,
+          projectId,
+          userId,
+          displayName,
+          roles,
+          createdAt: now,
+          updatedAt: now
+        });
+      });
+    } catch (error) {
+      if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+        throw new AppError("PROJECT_MEMBER_EXISTS", `member already exists in project: ${userId}`, 409);
+      }
+      throw error;
+    }
+
+    return this.requireMember(projectId, memberId);
+  }
+
+  updateMember(projectId: string, memberId: string, input: UpdateProjectMemberInput): ProjectMemberEntity {
+    this.getById(projectId);
+    const existing = this.requireMember(projectId, memberId);
+
+    const nextDisplayName = input.displayName !== undefined ? input.displayName.trim() : undefined;
+    const nextRoles = input.roles !== undefined ? this.normalizeRoles(input.roles) : undefined;
+
+    if (nextDisplayName !== undefined && !nextDisplayName) {
+      throw new AppError("PROJECT_MEMBER_NAME_REQUIRED", "displayName is required", 400);
+    }
+    if (nextRoles !== undefined && nextRoles.length === 0) {
+      throw new AppError("PROJECT_MEMBER_ROLE_REQUIRED", "at least one role is required", 400);
+    }
+
+    const now = nowIso();
+    this.repo.runInTransaction(() => {
+      const changed = this.repo.updateMember(projectId, memberId, {
+        displayName: nextDisplayName,
+        updatedAt: now
+      });
+
+      if (!changed) {
+        throw new AppError("PROJECT_MEMBER_UPDATE_FAILED", "failed to update project member", 500);
+      }
+
+      if (nextRoles !== undefined) {
+        this.repo.replaceMemberRoles(memberId, nextRoles, now);
+      }
+    });
+
+    return this.requireMember(projectId, existing.id);
+  }
+
+  removeMember(projectId: string, memberId: string): void {
+    this.getById(projectId);
+    this.requireMember(projectId, memberId);
+
+    const changed = this.repo.deleteMember(projectId, memberId);
+    if (!changed) {
+      throw new AppError("PROJECT_MEMBER_DELETE_FAILED", "failed to remove project member", 500);
+    }
+  }
+
+  private requireMember(projectId: string, memberId: string): ProjectMemberEntity {
+    const member = this.repo.findMemberById(projectId, memberId);
+    if (!member) {
+      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `member not found: ${memberId}`, 404);
+    }
+    return member;
+  }
+
+  private normalizeRoles(roles: readonly ProjectMemberRole[]): ProjectMemberRole[] {
+    return Array.from(new Set(roles));
   }
 
   private assertNameUnique(name: string, excludeId?: string): void {
