@@ -1,0 +1,34 @@
+﻿import type { FastifyInstance } from "fastify";
+import { createUserSchema, listUserQuerySchema, updateUserSchema } from "../../modules/user/user.schema";
+import { ok } from "../../utils/response";
+
+export default async function adminUserRoutes(fastify: FastifyInstance) {
+  fastify.get("/users/titles", async () => {
+    return ok({ items: fastify.services.user.getTitles() });
+  });
+
+  fastify.get("/users", async (request) => {
+    const query = listUserQuerySchema.parse(request.query);
+    const result = fastify.services.user.list(query);
+    return ok(result);
+  });
+
+  fastify.get("/users/:id", async (request) => {
+    const params = request.params as { id: string };
+    const item = fastify.services.user.getById(params.id);
+    return ok(item);
+  });
+
+  fastify.post("/users", async (request, reply) => {
+    const body = createUserSchema.parse(request.body);
+    const item = fastify.services.user.create(body);
+    return reply.status(201).send(ok(item, "user created"));
+  });
+
+  fastify.put("/users/:id", async (request) => {
+    const params = request.params as { id: string };
+    const body = updateUserSchema.parse(request.body);
+    const item = fastify.services.user.update(params.id, body);
+    return ok(item, "user updated");
+  });
+}

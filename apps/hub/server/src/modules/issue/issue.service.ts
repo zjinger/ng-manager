@@ -1,4 +1,4 @@
-﻿import Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../../env";
@@ -6,6 +6,7 @@ import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { buildStoredFileName, ensureDirSync, getFileExt, safeBaseName } from "../../utils/storage";
 import { nowIso } from "../../utils/time";
+import { ProjectMemberService } from "../project/project-member.service";
 import { ProjectRepo } from "../project/project.repo";
 import type { ProjectMemberEntity, ProjectMemberRole } from "../project/project.types";
 import { IssueRepo } from "./issue.repo";
@@ -47,7 +48,8 @@ const MAX_ISSUE_NO_RETRY = 5;
 export class IssueService {
     constructor(
         private readonly repo: IssueRepo,
-        private readonly projectRepo: ProjectRepo
+        private readonly projectRepo: ProjectRepo,
+        private readonly projectMemberService: ProjectMemberService
     ) { }
 
     create(input: CreateIssueInput): IssueEntity {
@@ -616,7 +618,7 @@ export class IssueService {
     }
 
     private requireProjectMember(projectId: string, userId: string, action: string): ProjectMemberEntity {
-        const member = this.projectRepo.findMemberByProjectAndUserId(projectId, userId);
+        const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, userId);
         if (!member) {
             throw new AppError(
                 "ISSUE_FORBIDDEN_OPERATOR",
@@ -713,6 +715,10 @@ export class IssueService {
         throw error;
     }
 }
+
+
+
+
 
 
 

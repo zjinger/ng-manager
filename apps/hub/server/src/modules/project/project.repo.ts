@@ -1,11 +1,16 @@
 import type Database from "better-sqlite3";
 import type {
+  CreateProjectConfigItemInput,
+  CreateProjectVersionItemInput,
   ListProjectQuery,
+  ProjectConfigItemEntity,
   ProjectEntity,
+  ProjectListItem,
   ProjectListResult,
-  ProjectMemberEntity,
-  ProjectMemberRole,
-  UpdateProjectInput
+  ProjectVersionItemEntity,
+  UpdateProjectConfigItemInput,
+  UpdateProjectInput,
+  UpdateProjectVersionItemInput
 } from "./project.types";
 
 type ProjectRow = {
@@ -18,20 +23,29 @@ type ProjectRow = {
   visibility: string;
   created_at: string;
   updated_at: string;
+  member_count?: number;
 };
 
-type ProjectMemberRow = {
+type ProjectConfigRow = {
   id: string;
   project_id: string;
-  user_id: string;
-  display_name: string;
+  name: string;
+  code: string | null;
+  enabled: number;
+  sort: number;
   created_at: string;
   updated_at: string;
 };
 
-type ProjectMemberRoleRow = {
-  member_id: string;
-  role: string;
+type ProjectVersionRow = {
+  id: string;
+  project_id: string;
+  version: string;
+  code: string | null;
+  enabled: number;
+  sort: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export class ProjectRepo {
@@ -65,39 +79,28 @@ export class ProjectRepo {
   }
 
   findById(id: string): ProjectEntity | null {
-    const row = this.db
-      .prepare(`SELECT * FROM projects WHERE id = ?`)
-      .get(id) as ProjectRow | undefined;
-
+    const row = this.db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow | undefined;
     return row ? this.toEntity(row) : null;
   }
 
   findByKey(projectKey: string): ProjectEntity | null {
-    const row = this.db
-      .prepare(`SELECT * FROM projects WHERE project_key = ?`)
-      .get(projectKey) as ProjectRow | undefined;
-
+    const row = this.db.prepare(`SELECT * FROM projects WHERE project_key = ?`).get(projectKey) as ProjectRow | undefined;
     return row ? this.toEntity(row) : null;
   }
 
   findByName(name: string): ProjectEntity | null {
-    const row = this.db
-      .prepare(`SELECT * FROM projects WHERE lower(name) = lower(?) LIMIT 1`)
-      .get(name) as ProjectRow | undefined;
-
+    const row = this.db.prepare(`SELECT * FROM projects WHERE lower(name) = lower(?) LIMIT 1`).get(name) as ProjectRow | undefined;
     return row ? this.toEntity(row) : null;
   }
 
   findPublicByKey(projectKey: string): ProjectEntity | null {
-    const row = this.db
-      .prepare(`
-        SELECT *
-        FROM projects
-        WHERE project_key = ?
-          AND status = 'active'
-          AND visibility = 'public'
-      `)
-      .get(projectKey) as ProjectRow | undefined;
+    const row = this.db.prepare(`
+      SELECT *
+      FROM projects
+      WHERE project_key = ?
+        AND status = 'active'
+        AND visibility = 'public'
+    `).get(projectKey) as ProjectRow | undefined;
 
     return row ? this.toEntity(row) : null;
   }
@@ -110,22 +113,18 @@ export class ProjectRepo {
       fields.push("name = ?");
       params.push(patch.name);
     }
-
     if (patch.description !== undefined) {
       fields.push("description = ?");
       params.push(patch.description ?? null);
     }
-
     if (patch.icon !== undefined) {
       fields.push("icon = ?");
       params.push(patch.icon ?? null);
     }
-
     if (patch.status !== undefined) {
       fields.push("status = ?");
       params.push(patch.status);
     }
-
     if (patch.visibility !== undefined) {
       fields.push("visibility = ?");
       params.push(patch.visibility);
@@ -133,21 +132,14 @@ export class ProjectRepo {
 
     fields.push("updated_at = ?");
     params.push(patch.updatedAt);
-
     params.push(id);
 
-    const result = this.db
-      .prepare(`UPDATE projects SET ${fields.join(", ")} WHERE id = ?`)
-      .run(...params);
-
+    const result = this.db.prepare(`UPDATE projects SET ${fields.join(", ")} WHERE id = ?`).run(...params);
     return result.changes > 0;
   }
 
   remove(id: string): boolean {
-    const result = this.db
-      .prepare(`DELETE FROM projects WHERE id = ?`)
-      .run(id);
-
+    const result = this.db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
     return result.changes > 0;
   }
 
@@ -156,43 +148,35 @@ export class ProjectRepo {
     const params: unknown[] = [];
 
     if (query.status) {
-      where.push("status = ?");
+      where.push("p.status = ?");
       params.push(query.status);
     }
-
     if (query.visibility) {
-      where.push("visibility = ?");
+      where.push("p.visibility = ?");
       params.push(query.visibility);
     }
-
     if (query.keyword) {
-      where.push("(project_key LIKE ? OR name LIKE ? OR description LIKE ?)");
-      params.push(
-        `%${query.keyword}%`,
-        `%${query.keyword}%`,
-        `%${query.keyword}%`
-      );
+      where.push("(p.project_key LIKE ? OR p.name LIKE ? OR p.description LIKE ?)");
+      params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
     }
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const offset = (query.page - 1) * query.pageSize;
 
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(*) as total FROM projects ${whereSql}`)
-      .get(...params) as { total: number };
+    const totalRow = this.db.prepare(`SELECT COUNT(*) AS total FROM projects p ${whereSql}`).get(...params) as { total: number };
 
-    const rows = this.db
-      .prepare(`
-        SELECT *
-        FROM projects
-        ${whereSql}
-        ORDER BY updated_at DESC, created_at DESC
-        LIMIT ? OFFSET ?
-      `)
-      .all(...params, query.pageSize, offset) as ProjectRow[];
+    const rows = this.db.prepare(`
+      SELECT
+        p.*,
+        (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id) AS member_count
+      FROM projects p
+      ${whereSql}
+      ORDER BY p.updated_at DESC, p.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, query.pageSize, offset) as ProjectRow[];
 
     return {
-      items: rows.map((row) => this.toEntity(row)),
+      items: rows.map((row) => this.toListItem(row)),
       page: query.page,
       pageSize: query.pageSize,
       total: totalRow.total
@@ -200,136 +184,115 @@ export class ProjectRepo {
   }
 
   listPublicActive(): ProjectEntity[] {
-    const rows = this.db
-      .prepare(`
-        SELECT *
-        FROM projects
-        WHERE status = 'active'
-          AND visibility = 'public'
-        ORDER BY name ASC, created_at DESC
-      `)
-      .all() as ProjectRow[];
+    const rows = this.db.prepare(`
+      SELECT *
+      FROM projects
+      WHERE status = 'active' AND visibility = 'public'
+      ORDER BY name ASC, created_at DESC
+    `).all() as ProjectRow[];
 
     return rows.map((row) => this.toEntity(row));
   }
 
-  createMember(input: {
-    id: string;
-    projectId: string;
-    userId: string;
-    displayName: string;
-    roles: ProjectMemberRole[];
-    createdAt: string;
-    updatedAt: string;
-  }): void {
-    this.db.prepare(`
-      INSERT INTO project_members (
-        id, project_id, user_id, display_name, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      input.id,
-      input.projectId,
-      input.userId,
-      input.displayName,
-      input.createdAt,
-      input.updatedAt
-    );
-
-    for (const role of input.roles) {
-      this.db.prepare(`
-        INSERT INTO project_member_roles (
-          id, member_id, role, created_at
-        ) VALUES (?, ?, ?, ?)
-      `).run(
-        `${input.id}:${role}`,
-        input.id,
-        role,
-        input.createdAt
-      );
-    }
-  }
-
-  listMembers(projectId: string): ProjectMemberEntity[] {
-    const memberRows = this.db.prepare(`
+  listModules(projectId: string): ProjectConfigItemEntity[] {
+    const rows = this.db.prepare(`
       SELECT *
-      FROM project_members
+      FROM project_modules
       WHERE project_id = ?
-      ORDER BY updated_at DESC, created_at DESC
-    `).all(projectId) as ProjectMemberRow[];
+      ORDER BY sort ASC, updated_at DESC, created_at DESC
+    `).all(projectId) as ProjectConfigRow[];
 
-    if (memberRows.length === 0) {
-      return [];
-    }
-
-    const memberIds = memberRows.map((item) => item.id);
-    const placeholders = memberIds.map(() => "?").join(",");
-    const roleRows = this.db.prepare(`
-      SELECT member_id, role
-      FROM project_member_roles
-      WHERE member_id IN (${placeholders})
-    `).all(...memberIds) as ProjectMemberRoleRow[];
-
-    const rolesByMemberId = new Map<string, ProjectMemberRole[]>();
-    for (const row of roleRows) {
-      const list = rolesByMemberId.get(row.member_id) ?? [];
-      list.push(row.role as ProjectMemberRole);
-      rolesByMemberId.set(row.member_id, list);
-    }
-
-    return memberRows.map((row) => this.toMemberEntity(row, rolesByMemberId.get(row.id) ?? []));
+    return rows.map((row) => this.toConfigEntity(row));
   }
 
-  findMemberById(projectId: string, memberId: string): ProjectMemberEntity | null {
-    const row = this.db.prepare(`
+  addModule(projectId: string, input: CreateProjectConfigItemInput & { id: string; createdAt: string; updatedAt: string }): void {
+    this.db.prepare(`
+      INSERT INTO project_modules (id, project_id, name, code, enabled, sort, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(input.id, projectId, input.name, input.code ?? null, input.enabled === false ? 0 : 1, input.sort ?? 0, input.createdAt, input.updatedAt);
+  }
+
+  updateModule(projectId: string, moduleId: string, patch: UpdateProjectConfigItemInput & { updatedAt: string }): boolean {
+    return this.updateConfigTable("project_modules", projectId, moduleId, patch);
+  }
+
+  removeModule(projectId: string, moduleId: string): boolean {
+    const result = this.db.prepare(`DELETE FROM project_modules WHERE id = ? AND project_id = ?`).run(moduleId, projectId);
+    return result.changes > 0;
+  }
+
+  listEnvironments(projectId: string): ProjectConfigItemEntity[] {
+    const rows = this.db.prepare(`
       SELECT *
-      FROM project_members
-      WHERE id = ? AND project_id = ?
-      LIMIT 1
-    `).get(memberId, projectId) as ProjectMemberRow | undefined;
+      FROM project_environments
+      WHERE project_id = ?
+      ORDER BY sort ASC, updated_at DESC, created_at DESC
+    `).all(projectId) as ProjectConfigRow[];
 
-    if (!row) {
-      return null;
-    }
-
-    const roles = this.listMemberRoles(row.id);
-    return this.toMemberEntity(row, roles);
+    return rows.map((row) => this.toConfigEntity(row));
   }
 
-  findMemberByProjectAndUserId(projectId: string, userId: string): ProjectMemberEntity | null {
-    const row = this.db.prepare(`
+  addEnvironment(projectId: string, input: CreateProjectConfigItemInput & { id: string; createdAt: string; updatedAt: string }): void {
+    this.db.prepare(`
+      INSERT INTO project_environments (id, project_id, name, code, enabled, sort, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(input.id, projectId, input.name, input.code ?? null, input.enabled === false ? 0 : 1, input.sort ?? 0, input.createdAt, input.updatedAt);
+  }
+
+  updateEnvironment(projectId: string, environmentId: string, patch: UpdateProjectConfigItemInput & { updatedAt: string }): boolean {
+    return this.updateConfigTable("project_environments", projectId, environmentId, patch);
+  }
+
+  removeEnvironment(projectId: string, environmentId: string): boolean {
+    const result = this.db.prepare(`DELETE FROM project_environments WHERE id = ? AND project_id = ?`).run(environmentId, projectId);
+    return result.changes > 0;
+  }
+
+  listVersions(projectId: string): ProjectVersionItemEntity[] {
+    const rows = this.db.prepare(`
       SELECT *
-      FROM project_members
-      WHERE project_id = ? AND user_id = ?
-      LIMIT 1
-    `).get(projectId, userId) as ProjectMemberRow | undefined;
+      FROM project_versions
+      WHERE project_id = ?
+      ORDER BY sort ASC, updated_at DESC, created_at DESC
+    `).all(projectId) as ProjectVersionRow[];
 
-    if (!row) {
-      return null;
-    }
-
-    const roles = this.listMemberRoles(row.id);
-    return this.toMemberEntity(row, roles);
+    return rows.map((row) => this.toVersionEntity(row));
   }
 
-  updateMember(projectId: string, memberId: string, patch: {
-    displayName?: string;
-    updatedAt: string;
-  }): boolean {
+  addVersion(projectId: string, input: CreateProjectVersionItemInput & { id: string; createdAt: string; updatedAt: string }): void {
+    this.db.prepare(`
+      INSERT INTO project_versions (id, project_id, version, code, enabled, sort, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(input.id, projectId, input.version, input.code ?? null, input.enabled === false ? 0 : 1, input.sort ?? 0, input.createdAt, input.updatedAt);
+  }
+
+  updateVersion(projectId: string, versionId: string, patch: UpdateProjectVersionItemInput & { updatedAt: string }): boolean {
     const fields: string[] = [];
     const params: unknown[] = [];
 
-    if (patch.displayName !== undefined) {
-      fields.push("display_name = ?");
-      params.push(patch.displayName);
+    if (patch.version !== undefined) {
+      fields.push("version = ?");
+      params.push(patch.version);
+    }
+    if (patch.code !== undefined) {
+      fields.push("code = ?");
+      params.push(patch.code ?? null);
+    }
+    if (patch.enabled !== undefined) {
+      fields.push("enabled = ?");
+      params.push(patch.enabled ? 1 : 0);
+    }
+    if (patch.sort !== undefined) {
+      fields.push("sort = ?");
+      params.push(patch.sort);
     }
 
     fields.push("updated_at = ?");
     params.push(patch.updatedAt);
-
-    params.push(memberId, projectId);
+    params.push(versionId, projectId);
 
     const result = this.db.prepare(`
-      UPDATE project_members
+      UPDATE project_versions
       SET ${fields.join(", ")}
       WHERE id = ? AND project_id = ?
     `).run(...params);
@@ -337,40 +300,48 @@ export class ProjectRepo {
     return result.changes > 0;
   }
 
-  replaceMemberRoles(memberId: string, roles: ProjectMemberRole[], createdAt: string): void {
-    this.db.prepare(`DELETE FROM project_member_roles WHERE member_id = ?`).run(memberId);
-
-    for (const role of roles) {
-      this.db.prepare(`
-        INSERT INTO project_member_roles (
-          id, member_id, role, created_at
-        ) VALUES (?, ?, ?, ?)
-      `).run(
-        `${memberId}:${role}`,
-        memberId,
-        role,
-        createdAt
-      );
-    }
-  }
-
-  deleteMember(projectId: string, memberId: string): boolean {
-    const result = this.db.prepare(`
-      DELETE FROM project_members
-      WHERE id = ? AND project_id = ?
-    `).run(memberId, projectId);
-
+  removeVersion(projectId: string, versionId: string): boolean {
+    const result = this.db.prepare(`DELETE FROM project_versions WHERE id = ? AND project_id = ?`).run(versionId, projectId);
     return result.changes > 0;
   }
 
-  private listMemberRoles(memberId: string): ProjectMemberRole[] {
-    const rows = this.db.prepare(`
-      SELECT role
-      FROM project_member_roles
-      WHERE member_id = ?
-    `).all(memberId) as Array<{ role: string }>;
+  private updateConfigTable(
+    table: "project_modules" | "project_environments",
+    projectId: string,
+    itemId: string,
+    patch: UpdateProjectConfigItemInput & { updatedAt: string }
+  ): boolean {
+    const fields: string[] = [];
+    const params: unknown[] = [];
 
-    return rows.map((row) => row.role as ProjectMemberRole);
+    if (patch.name !== undefined) {
+      fields.push("name = ?");
+      params.push(patch.name);
+    }
+    if (patch.code !== undefined) {
+      fields.push("code = ?");
+      params.push(patch.code ?? null);
+    }
+    if (patch.enabled !== undefined) {
+      fields.push("enabled = ?");
+      params.push(patch.enabled ? 1 : 0);
+    }
+    if (patch.sort !== undefined) {
+      fields.push("sort = ?");
+      params.push(patch.sort);
+    }
+
+    fields.push("updated_at = ?");
+    params.push(patch.updatedAt);
+    params.push(itemId, projectId);
+
+    const result = this.db.prepare(`
+      UPDATE ${table}
+      SET ${fields.join(", ")}
+      WHERE id = ? AND project_id = ?
+    `).run(...params);
+
+    return result.changes > 0;
   }
 
   private toEntity(row: ProjectRow): ProjectEntity {
@@ -387,13 +358,34 @@ export class ProjectRepo {
     };
   }
 
-  private toMemberEntity(row: ProjectMemberRow, roles: ProjectMemberRole[]): ProjectMemberEntity {
+  private toListItem(row: ProjectRow): ProjectListItem {
+    return {
+      ...this.toEntity(row),
+      memberCount: row.member_count ?? 0
+    };
+  }
+
+  private toConfigEntity(row: ProjectConfigRow): ProjectConfigItemEntity {
     return {
       id: row.id,
       projectId: row.project_id,
-      userId: row.user_id,
-      displayName: row.display_name,
-      roles,
+      name: row.name,
+      code: row.code,
+      enabled: row.enabled === 1,
+      sort: row.sort,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private toVersionEntity(row: ProjectVersionRow): ProjectVersionItemEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      version: row.version,
+      code: row.code,
+      enabled: row.enabled === 1,
+      sort: row.sort,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

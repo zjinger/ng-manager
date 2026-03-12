@@ -4,15 +4,17 @@ import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
 import type {
+  CreateProjectConfigItemInput,
   CreateProjectInput,
-  CreateProjectMemberInput,
+  CreateProjectVersionItemInput,
   ListProjectQuery,
+  ProjectConfigItemEntity,
   ProjectEntity,
   ProjectListResult,
-  ProjectMemberEntity,
-  ProjectMemberRole,
+  ProjectVersionItemEntity,
+  UpdateProjectConfigItemInput,
   UpdateProjectInput,
-  UpdateProjectMemberInput
+  UpdateProjectVersionItemInput
 } from "./project.types";
 import { ProjectRepo } from "./project.repo";
 
@@ -123,105 +125,233 @@ export class ProjectService {
     }
   }
 
-  listMembers(projectId: string): ProjectMemberEntity[] {
+  listModules(projectId: string): ProjectConfigItemEntity[] {
     this.getById(projectId);
-    return this.repo.listMembers(projectId);
+    return this.repo.listModules(projectId);
   }
 
-  addMember(projectId: string, input: Omit<CreateProjectMemberInput, "projectId">): ProjectMemberEntity {
-    this.getById(projectId);
-    const userId = input.userId.trim();
-    const displayName = input.displayName.trim();
-    const roles = this.normalizeRoles(input.roles);
+  addModule(projectId: string, input: CreateProjectConfigItemInput): ProjectConfigItemEntity {
+    return this.addConfigItem(projectId, input, "module");
+  }
 
-    if (!userId) {
-      throw new AppError("PROJECT_MEMBER_USER_REQUIRED", "userId is required", 400);
+  updateModule(projectId: string, moduleId: string, input: UpdateProjectConfigItemInput): ProjectConfigItemEntity {
+    return this.updateConfigItem(projectId, moduleId, input, "module");
+  }
+
+  removeModule(projectId: string, moduleId: string): void {
+    this.getById(projectId);
+    const changed = this.repo.removeModule(projectId, moduleId);
+    if (!changed) {
+      throw new AppError("PROJECT_MODULE_NOT_FOUND", `module not found: ${moduleId}`, 404);
     }
-    if (!displayName) {
-      throw new AppError("PROJECT_MEMBER_NAME_REQUIRED", "displayName is required", 400);
+  }
+
+  listEnvironments(projectId: string): ProjectConfigItemEntity[] {
+    this.getById(projectId);
+    return this.repo.listEnvironments(projectId);
+  }
+
+  addEnvironment(projectId: string, input: CreateProjectConfigItemInput): ProjectConfigItemEntity {
+    return this.addConfigItem(projectId, input, "environment");
+  }
+
+  updateEnvironment(projectId: string, environmentId: string, input: UpdateProjectConfigItemInput): ProjectConfigItemEntity {
+    return this.updateConfigItem(projectId, environmentId, input, "environment");
+  }
+
+  removeEnvironment(projectId: string, environmentId: string): void {
+    this.getById(projectId);
+    const changed = this.repo.removeEnvironment(projectId, environmentId);
+    if (!changed) {
+      throw new AppError("PROJECT_ENVIRONMENT_NOT_FOUND", `environment not found: ${environmentId}`, 404);
     }
-    if (roles.length === 0) {
-      throw new AppError("PROJECT_MEMBER_ROLE_REQUIRED", "at least one role is required", 400);
+  }
+
+  listVersions(projectId: string): ProjectVersionItemEntity[] {
+    this.getById(projectId);
+    return this.repo.listVersions(projectId);
+  }
+
+  addVersion(projectId: string, input: CreateProjectVersionItemInput): ProjectVersionItemEntity {
+    this.getById(projectId);
+    const version = input.version.trim();
+    if (!version) {
+      throw new AppError("PROJECT_VERSION_REQUIRED", "version is required", 400);
     }
 
     const now = nowIso();
-    const memberId = genId("pm");
+    const id = genId("pv");
 
     try {
-      this.repo.runInTransaction(() => {
-        this.repo.createMember({
-          id: memberId,
-          projectId,
-          userId,
-          displayName,
-          roles,
-          createdAt: now,
-          updatedAt: now
-        });
+      this.repo.addVersion(projectId, {
+        id,
+        version,
+        code: input.code?.trim(),
+        enabled: input.enabled ?? true,
+        sort: input.sort ?? 0,
+        createdAt: now,
+        updatedAt: now
       });
     } catch (error) {
       if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
-        throw new AppError("PROJECT_MEMBER_EXISTS", `member already exists in project: ${userId}`, 409);
+        throw new AppError("PROJECT_VERSION_EXISTS", `version already exists: ${version}`, 409);
       }
       throw error;
     }
 
-    return this.requireMember(projectId, memberId);
+    const list = this.repo.listVersions(projectId);
+    const hit = list.find((item) => item.id === id);
+    if (!hit) {
+      throw new AppError("PROJECT_VERSION_CREATE_FAILED", "failed to create version", 500);
+    }
+
+    return hit;
   }
 
-  updateMember(projectId: string, memberId: string, input: UpdateProjectMemberInput): ProjectMemberEntity {
+  updateVersion(projectId: string, versionId: string, input: UpdateProjectVersionItemInput): ProjectVersionItemEntity {
     this.getById(projectId);
-    const existing = this.requireMember(projectId, memberId);
+    const patch: UpdateProjectVersionItemInput & { updatedAt: string } = {
+      version: input.version?.trim(),
+      code: input.code === undefined ? undefined : input.code?.trim() || null,
+      enabled: input.enabled,
+      sort: input.sort,
+      updatedAt: nowIso()
+    };
 
-    const nextDisplayName = input.displayName !== undefined ? input.displayName.trim() : undefined;
-    const nextRoles = input.roles !== undefined ? this.normalizeRoles(input.roles) : undefined;
-
-    if (nextDisplayName !== undefined && !nextDisplayName) {
-      throw new AppError("PROJECT_MEMBER_NAME_REQUIRED", "displayName is required", 400);
+    try {
+      const changed = this.repo.updateVersion(projectId, versionId, patch);
+      if (!changed) {
+        throw new AppError("PROJECT_VERSION_NOT_FOUND", `version not found: ${versionId}`, 404);
+      }
+    } catch (error) {
+      if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+        throw new AppError("PROJECT_VERSION_EXISTS", "version already exists", 409);
+      }
+      throw error;
     }
-    if (nextRoles !== undefined && nextRoles.length === 0) {
-      throw new AppError("PROJECT_MEMBER_ROLE_REQUIRED", "at least one role is required", 400);
+
+    const list = this.repo.listVersions(projectId);
+    const hit = list.find((item) => item.id === versionId);
+    if (!hit) {
+      throw new AppError("PROJECT_VERSION_NOT_FOUND", `version not found: ${versionId}`, 404);
+    }
+
+    return hit;
+  }
+
+  removeVersion(projectId: string, versionId: string): void {
+    this.getById(projectId);
+    const changed = this.repo.removeVersion(projectId, versionId);
+    if (!changed) {
+      throw new AppError("PROJECT_VERSION_NOT_FOUND", `version not found: ${versionId}`, 404);
+    }
+  }
+
+  private addConfigItem(
+    projectId: string,
+    input: CreateProjectConfigItemInput,
+    type: "module" | "environment"
+  ): ProjectConfigItemEntity {
+    this.getById(projectId);
+    const name = input.name.trim();
+    if (!name) {
+      throw new AppError(
+        type === "module" ? "PROJECT_MODULE_NAME_REQUIRED" : "PROJECT_ENVIRONMENT_NAME_REQUIRED",
+        "name is required",
+        400
+      );
     }
 
     const now = nowIso();
-    this.repo.runInTransaction(() => {
-      const changed = this.repo.updateMember(projectId, memberId, {
-        displayName: nextDisplayName,
-        updatedAt: now
-      });
+    const id = genId(type === "module" ? "pmod" : "penv");
+    const payload = {
+      id,
+      name,
+      code: input.code?.trim(),
+      enabled: input.enabled ?? true,
+      sort: input.sort ?? 0,
+      createdAt: now,
+      updatedAt: now
+    };
 
-      if (!changed) {
-        throw new AppError("PROJECT_MEMBER_UPDATE_FAILED", "failed to update project member", 500);
+    try {
+      if (type === "module") {
+        this.repo.addModule(projectId, payload);
+      } else {
+        this.repo.addEnvironment(projectId, payload);
       }
-
-      if (nextRoles !== undefined) {
-        this.repo.replaceMemberRoles(memberId, nextRoles, now);
+    } catch (error) {
+      if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+        throw new AppError(
+          type === "module" ? "PROJECT_MODULE_EXISTS" : "PROJECT_ENVIRONMENT_EXISTS",
+          `${type} already exists: ${name}`,
+          409
+        );
       }
-    });
+      throw error;
+    }
 
-    return this.requireMember(projectId, existing.id);
+    const list = type === "module" ? this.repo.listModules(projectId) : this.repo.listEnvironments(projectId);
+    const hit = list.find((item) => item.id === id);
+    if (!hit) {
+      throw new AppError(
+        type === "module" ? "PROJECT_MODULE_CREATE_FAILED" : "PROJECT_ENVIRONMENT_CREATE_FAILED",
+        `failed to create ${type}`,
+        500
+      );
+    }
+    return hit;
   }
 
-  removeMember(projectId: string, memberId: string): void {
+  private updateConfigItem(
+    projectId: string,
+    itemId: string,
+    input: UpdateProjectConfigItemInput,
+    type: "module" | "environment"
+  ): ProjectConfigItemEntity {
     this.getById(projectId);
-    this.requireMember(projectId, memberId);
+    const patch: UpdateProjectConfigItemInput & { updatedAt: string } = {
+      name: input.name?.trim(),
+      code: input.code === undefined ? undefined : input.code?.trim() || null,
+      enabled: input.enabled,
+      sort: input.sort,
+      updatedAt: nowIso()
+    };
 
-    const changed = this.repo.deleteMember(projectId, memberId);
-    if (!changed) {
-      throw new AppError("PROJECT_MEMBER_DELETE_FAILED", "failed to remove project member", 500);
+    try {
+      const changed =
+        type === "module"
+          ? this.repo.updateModule(projectId, itemId, patch)
+          : this.repo.updateEnvironment(projectId, itemId, patch);
+      if (!changed) {
+        throw new AppError(
+          type === "module" ? "PROJECT_MODULE_NOT_FOUND" : "PROJECT_ENVIRONMENT_NOT_FOUND",
+          `${type} not found: ${itemId}`,
+          404
+        );
+      }
+    } catch (error) {
+      if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+        throw new AppError(
+          type === "module" ? "PROJECT_MODULE_EXISTS" : "PROJECT_ENVIRONMENT_EXISTS",
+          `${type} already exists`,
+          409
+        );
+      }
+      throw error;
     }
-  }
 
-  private requireMember(projectId: string, memberId: string): ProjectMemberEntity {
-    const member = this.repo.findMemberById(projectId, memberId);
-    if (!member) {
-      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `member not found: ${memberId}`, 404);
+    const list = type === "module" ? this.repo.listModules(projectId) : this.repo.listEnvironments(projectId);
+    const hit = list.find((item) => item.id === itemId);
+    if (!hit) {
+      throw new AppError(
+        type === "module" ? "PROJECT_MODULE_NOT_FOUND" : "PROJECT_ENVIRONMENT_NOT_FOUND",
+        `${type} not found: ${itemId}`,
+        404
+      );
     }
-    return member;
-  }
 
-  private normalizeRoles(roles: readonly ProjectMemberRole[]): ProjectMemberRole[] {
-    return Array.from(new Set(roles));
+    return hit;
   }
 
   private assertNameUnique(name: string, excludeId?: string): void {

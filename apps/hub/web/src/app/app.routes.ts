@@ -8,6 +8,7 @@ export const routes: Routes = [
   { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardPageComponent), canActivate: [adminAuthGuard] },
   { path: 'announcements', loadComponent: () => import('./pages/announcements/announcements.component').then(m => m.AnnouncementsPageComponent), canActivate: [adminAuthGuard] },
   { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then(m => m.ProjectsPageComponent), canActivate: [adminAuthGuard] },
+  { path: 'users', loadComponent: () => import('./pages/users/users.component').then(m => m.UsersPageComponent), canActivate: [adminAuthGuard] },
   { path: 'docs', loadComponent: () => import('./pages/docs/docs.component').then(m => m.DocsPageComponent), canActivate: [adminAuthGuard] },
   { path: 'feedback', loadComponent: () => import('./pages/feedback/feedback.component').then(m => m.FeedbackPageComponent), canActivate: [adminAuthGuard] },
   { path: 'issues/new', loadComponent: () => import('./pages/issues/issue-create.component').then(m => m.IssueCreatePageComponent), canActivate: [adminAuthGuard] },
@@ -15,5 +16,6 @@ export const routes: Routes = [
   { path: 'releases', loadComponent: () => import('./pages/releases/releases.component').then(m => m.ReleasesPageComponent), canActivate: [adminAuthGuard] },
   { path: '**', redirectTo: 'dashboard' }
 ];
+
 
 

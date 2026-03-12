@@ -1,4 +1,5 @@
 import { Component, HostListener, OnDestroy, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -16,12 +17,12 @@ import { AttachmentCardItem, AttachmentCardListComponent } from '../../shared/co
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 export type IssueType =
-  | "bug" // 缺陷
-  | "requirement_change" //需求变更
-  | "feature" // 新功能(新需求)
-  | "improvement" // 改进
-  | "task" // 任务
-  | "test_record"; // 测试记录
+  | 'bug'
+  | 'requirement_change'
+  | 'feature'
+  | 'improvement'
+  | 'task'
+  | 'test_record';
 type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
 
 interface ProjectOption {
@@ -40,6 +41,13 @@ interface IssueItem {
 interface IssueAttachmentDto {
   id: string;
   originalName: string;
+}
+
+interface ProjectConfigItem {
+  id: string;
+  name?: string | null;
+  version?: string | null;
+  enabled: boolean;
 }
 
 interface AttachmentPolicyResult {
@@ -124,9 +132,21 @@ interface AttachmentPolicyResult {
           </div>
 
           <div class="row-three">
-            <input nz-input formControlName="module" placeholder="模块（可选）" />
-            <input nz-input formControlName="version" placeholder="版本（可选）" />
-            <input nz-input formControlName="environment" placeholder="环境（可选）" />
+            <nz-select formControlName="module" nzAllowClear nzPlaceHolder="模块（可选）">
+              @for (item of moduleOptions(); track item.id) {
+                <nz-option [nzValue]="item.name" [nzLabel]="item.name || '-'"> </nz-option>
+              }
+            </nz-select>
+            <nz-select formControlName="version" nzAllowClear nzPlaceHolder="版本（可选）">
+              @for (item of versionOptions(); track item.id) {
+                <nz-option [nzValue]="item.version" [nzLabel]="item.version || '-'"> </nz-option>
+              }
+            </nz-select>
+            <nz-select formControlName="environment" nzAllowClear nzPlaceHolder="环境（可选）">
+              @for (item of environmentOptions(); track item.id) {
+                <nz-option [nzValue]="item.name" [nzLabel]="item.name || '-'"> </nz-option>
+              }
+            </nz-select>
           </div>
 
           <textarea nz-input rows="7" formControlName="description" placeholder="问题描述 / 复现步骤"></textarea>
@@ -190,6 +210,9 @@ export class IssueCreatePageComponent implements OnDestroy {
   protected readonly submitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
   protected readonly projectOptions = signal<ProjectOption[]>([]);
+  protected readonly moduleOptions = signal<ProjectConfigItem[]>([]);
+  protected readonly environmentOptions = signal<ProjectConfigItem[]>([]);
+  protected readonly versionOptions = signal<ProjectConfigItem[]>([]);
   protected attachmentAccept = 'image/*,video/*';
   protected readonly createUploadFileList = signal<NzUploadFile[]>([]);
   protected readonly createAttachmentItems = signal<AttachmentCardItem[]>([]);
@@ -208,6 +231,12 @@ export class IssueCreatePageComponent implements OnDestroy {
   });
 
   public constructor() {
+    this.createForm.controls.projectId.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((projectId) => {
+        void this.loadProjectConfigs(projectId);
+      });
+
     void this.loadProjectOptions();
     void this.loadAttachmentPolicy();
   }
@@ -224,7 +253,7 @@ export class IssueCreatePageComponent implements OnDestroy {
     const raw = file.originFileObj as File | undefined;
     if (!raw) return false;
     if (!this.isAllowedAttachmentFile(raw)) {
-      this.submitError.set('\u4ec5\u652f\u6301\u56fe\u7247\u548c\u89c6\u9891\u6587\u4ef6\uff1a' + raw.name);
+      this.submitError.set('仅支持图片和视频文件：' + raw.name);
       return false;
     }
     this.submitError.set(null);
@@ -267,7 +296,7 @@ export class IssueCreatePageComponent implements OnDestroy {
     }
 
     if (pastedFiles.length === 0) {
-      this.submitError.set('\u7c98\u8d34\u5185\u5bb9\u4e2d\u6ca1\u6709\u53ef\u4e0a\u4f20\u7684\u56fe\u7247\u6216\u89c6\u9891');
+      this.submitError.set('粘贴内容中没有可上传的图片或视频');
       return;
     }
     this.submitError.set(null);
@@ -367,6 +396,33 @@ export class IssueCreatePageComponent implements OnDestroy {
       }
     } catch {
       // fallback to local defaults
+    }
+  }
+
+  private async loadProjectConfigs(projectId: string): Promise<void> {
+    this.createForm.patchValue({ module: '', version: '', environment: '' });
+
+    if (!projectId) {
+      this.moduleOptions.set([]);
+      this.environmentOptions.set([]);
+      this.versionOptions.set([]);
+      return;
+    }
+
+    try {
+      const [modules, environments, versions] = await Promise.all([
+        firstValueFrom(this.api.get<{ items: ProjectConfigItem[] }>(`/api/admin/projects/${projectId}/modules`)),
+        firstValueFrom(this.api.get<{ items: ProjectConfigItem[] }>(`/api/admin/projects/${projectId}/environments`)),
+        firstValueFrom(this.api.get<{ items: ProjectConfigItem[] }>(`/api/admin/projects/${projectId}/versions`))
+      ]);
+
+      this.moduleOptions.set((modules.items ?? []).filter((item) => item.enabled && !!item.name?.trim()));
+      this.environmentOptions.set((environments.items ?? []).filter((item) => item.enabled && !!item.name?.trim()));
+      this.versionOptions.set((versions.items ?? []).filter((item) => item.enabled && !!item.version?.trim()));
+    } catch {
+      this.moduleOptions.set([]);
+      this.environmentOptions.set([]);
+      this.versionOptions.set([]);
     }
   }
 

@@ -1,17 +1,21 @@
-﻿import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
+import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
+import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
-import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { firstValueFrom } from 'rxjs';
@@ -20,40 +24,8 @@ import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
-
-type ProjectStatus = 'active' | 'archived';
-type ProjectVisibility = 'internal' | 'public';
-type ProjectMemberRole = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops';
-
-interface ProjectItem {
-  id: string;
-  projectKey: string;
-  name: string;
-  description?: string | null;
-  icon?: string | null;
-  status: ProjectStatus;
-  visibility: ProjectVisibility;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ProjectListResult {
-  items: ProjectItem[];
-  page: number;
-  pageSize: number;
-  total: number;
-}
-
-interface ProjectMemberItem {
-  id: string;
-  projectId: string;
-  userId: string;
-  displayName: string;
-  roles: ProjectMemberRole[];
-  createdAt: string;
-  updatedAt: string;
-}
-
+import { ProjectConfigItem, ProjectItem, ProjectListResult, ProjectMemberItem, ProjectMemberRole, ProjectStatus, ProjectVersionItem, ProjectVisibility, UserOptionItem } from './projects.model';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 @Component({
   selector: 'app-projects-page',
   imports: [
@@ -62,296 +34,26 @@ interface ProjectMemberItem {
     NzAlertModule,
     NzButtonModule,
     NzCardModule,
+    NzDropDownModule,
     NzFormModule,
+    NzIconModule,
     NzInputModule,
+    NzInputNumberModule,
+    NzMenuModule,
     NzModalModule,
-    NzPopconfirmModule,
     NzSelectModule,
     NzTableModule,
+    NzTabsModule,
     NzTagModule,
-    NzIconModule,
     NzTooltipModule,
     PageHeaderComponent,
-    HubDateTimePipe
+    HubDateTimePipe,
+    NzSpaceModule,
+    NzPopconfirmModule
   ],
-  template: `
-    <section class="page">
-      <app-page-header title="项目管理" subtitle="维护项目基础信息与可见性">
-        <button page-header-actions nz-button nzType="primary" (click)="createProject()">新建项目</button>
-      </app-page-header>
-
-      <nz-card nzTitle="筛选条件" class="section">
-        <form nz-form [formGroup]="filters" class="filter-grid">
-          <nz-form-item>
-            <nz-form-label>状态</nz-form-label>
-            <nz-form-control>
-              <nz-select formControlName="status" nzAllowClear>
-                <nz-option nzValue="active" nzLabel="启用"></nz-option>
-                <nz-option nzValue="archived" nzLabel="归档"></nz-option>
-              </nz-select>
-            </nz-form-control>
-          </nz-form-item>
-          <nz-form-item>
-            <nz-form-label>可见性</nz-form-label>
-            <nz-form-control>
-              <nz-select formControlName="visibility" nzAllowClear>
-                <nz-option nzValue="internal" nzLabel="内部"></nz-option>
-                <nz-option nzValue="public" nzLabel="公开"></nz-option>
-              </nz-select>
-            </nz-form-control>
-          </nz-form-item>
-          <nz-form-item>
-            <nz-form-label>关键词</nz-form-label>
-            <nz-form-control>
-              <input nz-input formControlName="keyword" placeholder="projectKey / 名称 / 描述" />
-            </nz-form-control>
-          </nz-form-item>
-        </form>
-      </nz-card>
-
-      @if (listError()) {
-        <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
-      }
-
-      <nz-card nzTitle="项目列表" class="section">
-        <div class="table-head">
-          <span>共 {{ total() }} 条</span>
-          <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">刷新</button>
-        </div>
-        <nz-table #table [nzData]="projects()" [nzFrontPagination]="false" [nzLoading]="listLoading()">
-          <thead>
-            <tr>
-              <th>projectKey</th>
-              <th>名称</th>
-              <th>状态</th>
-              <th>可见性</th>
-              <th>更新时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of table.data; track item.id) {
-              <tr>
-                <td>
-                  <div class="project-key-row">
-                    <span>{{ item.projectKey }}</span>
-                    <button
-                      nz-button
-                      nzType="text"
-                      [disabled]="!item.projectKey"
-                      (click)="copyProjectKey(item.projectKey)"
-                    >
-                      @if (keyCopied() && curCopiedKey() === item.projectKey) {
-                        <nz-icon style="color: green;" nzType="check" nzTheme="outline" />
-                      } @else {
-                        <nz-icon nz-tooltip nzTooltipTitle="复制" nzType="copy" nzTheme="outline"></nz-icon>
-                      }
-                    </button>
-                  </div>
-                </td>
-                <td>{{ item.name }}</td>
-                <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
-                <td>{{ visibilityLabel(item.visibility) }}</td>
-                <td>{{ item.updatedAt | hubDateTime }}</td>
-                <td>
-                  <a nz-button nzType="link" (click)="editProject(item)">编辑</a>
-                  <a nz-button nzType="link" (click)="openMemberConfig(item)">成员配置</a>
-                  @if (item.status === 'active') {
-                    <a
-                      nz-button
-                      nzType="link"
-                      nzDanger
-                      nz-popconfirm
-                      [nzPopconfirmTitle]="'确认归档项目「' + item.name + '」吗？'"
-                      nzPopconfirmPlacement="topRight"
-                      nzPopconfirmOkText="确认"
-                      nzPopconfirmCancelText="取消"
-                      (nzOnConfirm)="archiveProject(item)"
-                    >
-                      归档
-                    </a>
-                  } @else {
-                    <a nz-button nzType="link" (click)="activateProject(item)">启用</a>
-                  }
-                  <a
-                    nz-button
-                    nzType="link"
-                    nzDanger
-                    nz-popconfirm
-                    [nzPopconfirmTitle]="'确认删除项目「' + item.name + '」吗？删除后不可恢复。'"
-                    nzPopconfirmPlacement="topRight"
-                    nzPopconfirmOkText="删除"
-                    nzPopconfirmCancelText="取消"
-                    (nzOnConfirm)="deleteProject(item)"
-                  >
-                    删除
-                  </a>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </nz-table>
-      </nz-card>
-
-      <nz-modal
-        [nzTitle]="editingId() ? '编辑项目' : '新建项目'"
-        [(nzVisible)]="visible"
-        [nzMaskClosable]="false"
-        [nzWidth]="680"
-        [nzFooter]="null"
-        (nzOnCancel)="visible.set(false)"
-      >
-        <ng-container *nzModalContent>
-          @if (formError()) {
-            <nz-alert nzType="error" [nzMessage]="formError()!" nzShowIcon></nz-alert>
-          }
-
-          <form nz-form [formGroup]="form" nzLayout="vertical" class="form">
-            <div class="grid-2">
-              <nz-form-item>
-                <nz-form-label>项目 Key</nz-form-label>
-                <nz-form-control>
-                  <div class="project-key-row">
-                    <input nz-input [value]="editingProjectKey() || '由系统自动生成'" readonly />
-                    <button
-                      nz-button
-                      nzType="text"
-                      type="button"
-                      [disabled]="!editingProjectKey()"
-                      (click)="copyProjectKey(editingProjectKey()!)"
-                    >
-                      @if (keyCopied() && curCopiedKey() === editingProjectKey()) {
-                        <nz-icon style="color: green;" nzType="check" nzTheme="outline" />
-                      } @else {
-                        <nz-icon nz-tooltip nzTooltipTitle="复制" nzType="copy" nzTheme="outline"></nz-icon>
-                      }
-                    </button>
-                  </div>
-                </nz-form-control>
-              </nz-form-item>
-              <nz-form-item>
-                <nz-form-label nzRequired>项目名称</nz-form-label>
-                <nz-form-control>
-                  <input nz-input formControlName="name" />
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-
-            <nz-form-item>
-              <nz-form-label>描述</nz-form-label>
-              <nz-form-control>
-                <textarea nz-input rows="3" formControlName="description"></textarea>
-              </nz-form-control>
-            </nz-form-item>
-
-            <div class="grid-2">
-              <nz-form-item>
-                <nz-form-label>图标 URL</nz-form-label>
-                <nz-form-control>
-                  <input nz-input formControlName="icon" />
-                </nz-form-control>
-              </nz-form-item>
-              <nz-form-item>
-                <nz-form-label>可见性</nz-form-label>
-                <nz-form-control>
-                  <nz-select formControlName="visibility">
-                    <nz-option nzValue="internal" nzLabel="内部"></nz-option>
-                    <nz-option nzValue="public" nzLabel="公开"></nz-option>
-                  </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-
-            <button nz-button nzType="primary" (click)="saveProject()" [disabled]="form.invalid || saving()">
-              保存项目
-            </button>
-          </form>
-        </ng-container>
-      </nz-modal>
-
-      <nz-modal
-        [nzTitle]="'项目成员配置 - ' + memberProjectName()"
-        [(nzVisible)]="memberVisible"
-        [nzMaskClosable]="false"
-        [nzWidth]="920"
-        [nzFooter]="null"
-        (nzOnCancel)="memberVisible.set(false)"
-      >
-        <ng-container *nzModalContent>
-          @if (memberError()) {
-            <nz-alert nzType="error" [nzMessage]="memberError()!" nzShowIcon></nz-alert>
-          }
-
-          <form nz-form [formGroup]="memberForm" nzLayout="vertical" class="form section">
-            <div class="grid-3">
-              <nz-form-item>
-                <nz-form-label nzRequired>成员ID</nz-form-label>
-                <nz-form-control>
-                  <input nz-input formControlName="userId" [readonly]="!!editingMemberId()" placeholder="admin user id" />
-                </nz-form-control>
-              </nz-form-item>
-              <nz-form-item>
-                <nz-form-label nzRequired>显示名称</nz-form-label>
-                <nz-form-control>
-                  <input nz-input formControlName="displayName" placeholder="例如：张三" />
-                </nz-form-control>
-              </nz-form-item>
-              <nz-form-item>
-                <nz-form-label nzRequired>角色</nz-form-label>
-                <nz-form-control>
-                  <nz-select formControlName="roles" nzMode="multiple" nzPlaceHolder="至少选择一个角色">
-                    @for (role of memberRoleOptions; track role) {
-                      <nz-option [nzValue]="role" [nzLabel]="roleLabel(role)"></nz-option>
-                    }
-                  </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-            <div class="action-buttons">
-              <button nz-button nzType="primary" type="button" (click)="saveMember()" [disabled]="memberForm.invalid || memberSaving()">
-                {{ editingMemberId() ? '保存成员' : '添加成员' }}
-              </button>
-              <button nz-button nzType="default" type="button" (click)="resetMemberForm()" [disabled]="memberSaving()">清空</button>
-            </div>
-          </form>
-
-          <nz-table [nzData]="projectMembers()" [nzFrontPagination]="false" [nzLoading]="memberLoading()">
-            <thead>
-              <tr>
-                <th>成员ID</th>
-                <th>显示名称</th>
-                <th>角色</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (member of projectMembers(); track member.id) {
-                <tr>
-                  <td>{{ member.userId }}</td>
-                  <td>{{ member.displayName }}</td>
-                  <td>{{ member.roles.map(roleLabel).join('、') }}</td>
-                  <td>
-                    <a nz-button nzType="link" (click)="editMember(member)">编辑</a>
-                    <a nz-button nzType="link" nzDanger (click)="removeMember(member)">删除</a>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </nz-table>
-        </ng-container>
-      </nz-modal>
-    </section>
-  `,
-  styles: [
-    PAGE_SHELL_STYLES,
-    `
-      .filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-      .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-      .form { display: grid; gap: 4px; }
-      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-      .project-key-row { display: grid; grid-template-columns: 200px 1fr;  gap: 8px; align-items: center; }
-    `
-  ]
+  templateUrl: './projects.component.html',
+  styleUrls: ['./projects.component.less'],
+  styles: [PAGE_SHELL_STYLES]
 })
 export class ProjectsPageComponent {
   private readonly fb = inject(FormBuilder);
@@ -359,147 +61,105 @@ export class ProjectsPageComponent {
   private readonly clipboard = inject(Clipboard);
   private readonly message = inject(NzMessageService);
 
-  protected readonly visible = signal(false);
-  protected readonly saving = signal(false);
-  protected readonly listLoading = signal(false);
-  protected readonly listError = signal<string | null>(null);
-  protected readonly formError = signal<string | null>(null);
   protected readonly projects = signal<ProjectItem[]>([]);
   protected readonly total = signal(0);
+  protected readonly listLoading = signal(false);
+  protected readonly listError = signal<string | null>(null);
+  protected readonly saving = signal(false);
+  protected readonly formError = signal<string | null>(null);
+  protected readonly projectModalVisible = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly editingProjectKey = signal<string | null>(null);
-  protected readonly keyCopied = signal(false);
-  protected readonly curCopiedKey = signal<string | null>(null);
-  protected readonly memberVisible = signal(false);
-  protected readonly memberLoading = signal(false);
-  protected readonly memberSaving = signal(false);
-  protected readonly memberError = signal<string | null>(null);
-  protected readonly memberProjectId = signal<string>('');
-  protected readonly memberProjectName = signal<string>('');
+
+  protected readonly configVisible = signal(false);
+  protected configTabIndex = 0;
+  protected readonly configProjectId = signal<string>('');
+  protected readonly configProjectName = signal<string>('');
+  protected readonly configProjectKey = signal<string>('');
+  protected readonly configProjectDesc = signal<string | null>('');
+  protected readonly configProjectVisibility = signal<ProjectVisibility>('internal');
+
+  protected readonly createGuideVisible = signal(false);
+  private createdProjectForGuide: ProjectItem | null = null;
+  protected readonly menuProject = signal<ProjectItem | null>(null);
+
   protected readonly projectMembers = signal<ProjectMemberItem[]>([]);
-  protected readonly editingMemberId = signal<string | null>(null);
+  protected readonly projectUsers = signal<UserOptionItem[]>([]);
+  protected readonly memberSaving = signal(false);
+
+  protected readonly modules = signal<ProjectConfigItem[]>([]);
+  protected readonly environments = signal<ProjectConfigItem[]>([]);
+  protected readonly versions = signal<ProjectVersionItem[]>([]);
 
   protected readonly memberRoleOptions: ProjectMemberRole[] = ['product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops'];
 
-  protected readonly filters = this.fb.nonNullable.group({
-    status: [''],
-    visibility: [''],
-    keyword: ['']
-  });
-
-  protected readonly form = this.fb.nonNullable.group({
+  protected readonly projectForm = this.fb.nonNullable.group({
     name: ['', [Validators.required]],
     description: [''],
-    icon: [''],
     visibility: ['internal' as ProjectVisibility, [Validators.required]]
   });
 
   protected readonly memberForm = this.fb.nonNullable.group({
     userId: ['', [Validators.required]],
-    displayName: ['', [Validators.required]],
     roles: [[] as ProjectMemberRole[], [Validators.required]]
   });
 
+  protected readonly moduleForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required]],
+    enabled: [true],
+    sort: [0]
+  });
+
+  protected readonly environmentForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required]],
+    enabled: [true],
+    sort: [0]
+  });
+
+  protected readonly versionForm = this.fb.nonNullable.group({
+    version: ['', [Validators.required]],
+    enabled: [true],
+    sort: [0]
+  });
+
   public constructor() {
-    this.filters.valueChanges.subscribe(() => {
-      void this.loadProjects();
-    });
     void this.loadProjects();
   }
 
-  protected async reload(): Promise<void> {
-    await this.loadProjects();
-  }
+  protected async reload(): Promise<void> { await this.loadProjects(); }
+  protected setMenuProject(item: ProjectItem): void { this.menuProject.set(item); }
 
-  protected createProject(): void {
-    this.editingId.set(null);
-    this.editingProjectKey.set(null);
-    this.keyCopied.set(false);
-    this.curCopiedKey.set(null);
+  protected archiveFromMenu(): void { const item = this.menuProject(); if (item) void this.updateStatus(item, 'archived', '归档项目失败', `项目「${item.name}」已归档`); }
+
+  protected openProjectModal(item?: ProjectItem): void {
     this.formError.set(null);
-    this.form.reset({
-      name: '',
-      description: '',
-      icon: '',
-      visibility: 'internal'
-    });
-    this.visible.set(true);
-  }
-
-  protected editProject(item: ProjectItem): void {
-    this.editingId.set(item.id);
-    this.editingProjectKey.set(item.projectKey);
-    this.keyCopied.set(false);
-    this.curCopiedKey.set(null);
-    this.formError.set(null);
-    this.form.reset({
-      name: item.name,
-      description: item.description || '',
-      icon: item.icon || '',
-      visibility: item.visibility
-    });
-    this.visible.set(true);
-  }
-
-  protected async archiveProject(item: ProjectItem): Promise<void> {
-    await this.updateStatus(item, 'archived', '归档项目失败', `项目「${item.name}」已归档`);
-  }
-
-  protected async activateProject(item: ProjectItem): Promise<void> {
-    await this.updateStatus(item, 'active', '启用项目失败', `项目「${item.name}」已启用`);
-  }
-
-  protected async deleteProject(item: ProjectItem): Promise<void> {
-    this.listError.set(null);
-    try {
-      await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${item.id}`));
-      this.message.success(`项目「${item.name}」已删除`);
-      await this.loadProjects();
-      if (this.editingId() === item.id) {
-        this.visible.set(false);
-        this.editingId.set(null);
-        this.editingProjectKey.set(null);
-        this.curCopiedKey.set(null);
-      }
-    } catch (error) {
-      this.listError.set(this.getErrorMessage(error, '删除项目失败'));
+    if (!item) {
+      this.editingId.set(null);
+      this.editingProjectKey.set(null);
+      this.projectForm.reset({ name: '', description: '', visibility: 'internal' });
+    } else {
+      this.editingId.set(item.id);
+      this.editingProjectKey.set(item.projectKey);
+      this.projectForm.reset({ name: item.name, description: item.description || '', visibility: item.visibility });
     }
+    this.projectModalVisible.set(true);
   }
 
   protected async saveProject(): Promise<void> {
-    if (this.form.invalid) {
-      return;
-    }
-
+    if (this.projectForm.invalid) return;
     this.saving.set(true);
     this.formError.set(null);
 
     try {
-      const value = this.form.getRawValue();
+      const value = this.projectForm.getRawValue();
       if (this.editingId()) {
-        await firstValueFrom(
-          this.api.put<ProjectItem, Record<string, string | ProjectVisibility | null>>(
-            `/api/admin/projects/${this.editingId()!}`,
-            {
-              name: value.name.trim(),
-              description: value.description.trim() || null,
-              icon: value.icon.trim() || null,
-              visibility: value.visibility
-            }
-          )
-        );
+        await firstValueFrom(this.api.put<ProjectItem, { name: string; description: string | null; visibility: ProjectVisibility }>(`/api/admin/projects/${this.editingId()}`, { name: value.name.trim(), description: value.description.trim() || null, visibility: value.visibility }));
       } else {
-        await firstValueFrom(
-          this.api.post<ProjectItem, Record<string, string | ProjectVisibility | undefined>>('/api/admin/projects', {
-            name: value.name.trim(),
-            description: value.description.trim() || undefined,
-            icon: value.icon.trim() || undefined,
-            visibility: value.visibility
-          })
-        );
+        const created = await firstValueFrom(this.api.post<ProjectItem, { name: string; description?: string; visibility: ProjectVisibility }>('/api/admin/projects', { name: value.name.trim(), description: value.description.trim() || undefined, visibility: value.visibility }));
+        this.createdProjectForGuide = { ...created, memberCount: created.memberCount ?? 0 };
+        this.createGuideVisible.set(true);
       }
-
-      this.visible.set(false);
+      this.projectModalVisible.set(false);
       await this.loadProjects();
     } catch (error) {
       this.formError.set(this.getErrorMessage(error, '保存项目失败'));
@@ -508,165 +168,169 @@ export class ProjectsPageComponent {
     }
   }
 
-  protected async copyProjectKey(key: string): Promise<void> {
-    if (!key) {
-      return;
-    }
-    const copied = this.clipboard.copy(key);
-    if (!copied) {
-      return;
-    }
-
-    this.keyCopied.set(true);
-    this.curCopiedKey.set(key);
-    setTimeout(() => {
-      this.keyCopied.set(false);
-      this.curCopiedKey.set(null);
-    }, 1200);
+  protected enterConfigCenter(): void {
+    const item = this.createdProjectForGuide;
+    if (!item) return;
+    this.createGuideVisible.set(false);
+    this.openConfigCenter(item, 'base');
   }
 
+  protected openConfigCenter(item: ProjectItem, tab: 'base' | 'members' | 'modules' | 'environments' | 'versions'): void {
+    this.configProjectId.set(item.id);
+    this.configProjectName.set(item.name);
+    this.configProjectKey.set(item.projectKey);
+    this.configProjectDesc.set(item.description || '');
+    this.configProjectVisibility.set(item.visibility);
+    this.configTabIndex = tab === 'base' ? 0 : tab === 'members' ? 1 : tab === 'modules' ? 2 : tab === 'environments' ? 3 : 4;
+    this.configVisible.set(true);
+    void this.loadConfigData(item.id);
+  }
 
   protected roleLabel(role: ProjectMemberRole): string {
     if (role === 'product') return '产品';
+    if (role === 'ui') return 'UI/设计';
     if (role === 'frontend_dev') return '前端开发';
     if (role === 'backend_dev') return '后端开发';
-    return '测试';
-  }
-
-  protected openMemberConfig(item: ProjectItem): void {
-    this.memberProjectId.set(item.id);
-    this.memberProjectName.set(item.name);
-    this.memberError.set(null);
-    this.memberVisible.set(true);
-    this.resetMemberForm();
-    void this.loadProjectMembers(item.id);
-  }
-
-  protected resetMemberForm(): void {
-    this.editingMemberId.set(null);
-    this.memberForm.reset({
-      userId: '',
-      displayName: '',
-      roles: []
-    });
-  }
-
-  protected editMember(item: ProjectMemberItem): void {
-    this.editingMemberId.set(item.id);
-    this.memberError.set(null);
-    this.memberForm.reset({
-      userId: item.userId,
-      displayName: item.displayName,
-      roles: [...item.roles]
-    });
+    if (role === 'qa') return '测试';
+    if (role === 'ops') return '运维/环境支持';
+    return role;
   }
 
   protected async saveMember(): Promise<void> {
-    if (this.memberForm.invalid) {
-      return;
-    }
-
-    const projectId = this.memberProjectId();
-    if (!projectId) {
-      return;
-    }
+    if (this.memberForm.invalid) return;
+    const projectId = this.configProjectId();
+    if (!projectId) return;
 
     this.memberSaving.set(true);
-    this.memberError.set(null);
-
     try {
       const value = this.memberForm.getRawValue();
-      if (this.editingMemberId()) {
-        await firstValueFrom(
-          this.api.put<ProjectMemberItem, { displayName: string; roles: ProjectMemberRole[] }>(
-            `/api/admin/projects/${projectId}/members/${this.editingMemberId()!}`,
-            {
-              displayName: value.displayName.trim(),
-              roles: value.roles
-            }
-          )
-        );
-      } else {
-        await firstValueFrom(
-          this.api.post<ProjectMemberItem, { userId: string; displayName: string; roles: ProjectMemberRole[] }>(
-            `/api/admin/projects/${projectId}/members`,
-            {
-              userId: value.userId.trim(),
-              displayName: value.displayName.trim(),
-              roles: value.roles
-            }
-          )
-        );
-      }
-
-      this.resetMemberForm();
-      await this.loadProjectMembers(projectId);
+      await firstValueFrom(this.api.post<ProjectMemberItem, { userId: string; roles: ProjectMemberRole[] }>(`/api/admin/projects/${projectId}/members`, { userId: value.userId.trim(), roles: value.roles }));
+      this.memberForm.reset({ userId: '', roles: [] });
+      await this.loadMembers(projectId);
+      await this.loadProjects();
     } catch (error) {
-      this.memberError.set(this.getErrorMessage(error, '保存项目成员失败'));
+      this.message.error(this.getErrorMessage(error, '添加成员失败'));
     } finally {
       this.memberSaving.set(false);
     }
   }
 
   protected async removeMember(item: ProjectMemberItem): Promise<void> {
-    const projectId = this.memberProjectId();
-    if (!projectId) {
-      return;
-    }
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/members/${item.id}`));
+    await this.loadMembers(projectId);
+    await this.loadProjects();
+  }
 
-    this.memberError.set(null);
+  protected async addModule(): Promise<void> {
+    if (this.moduleForm.invalid) return;
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    const value = this.moduleForm.getRawValue();
+    await firstValueFrom(this.api.post<ProjectConfigItem, { name: string; enabled: boolean; sort: number }>(`/api/admin/projects/${projectId}/modules`, { name: value.name.trim(), enabled: value.enabled, sort: value.sort ?? 0 }));
+    this.moduleForm.reset({ name: '', enabled: true, sort: 0 });
+    await this.loadModules(projectId);
+  }
+
+  protected async toggleModuleEnabled(item: ProjectConfigItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await firstValueFrom(this.api.put<ProjectConfigItem, { enabled: boolean }>(`/api/admin/projects/${projectId}/modules/${item.id}`, { enabled: !item.enabled }));
+    await this.loadModules(projectId);
+  }
+
+  protected async removeModule(item: ProjectConfigItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/modules/${item.id}`));
+    await this.loadModules(projectId);
+  }
+
+  protected async addEnvironment(): Promise<void> {
+    if (this.environmentForm.invalid) return;
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    const value = this.environmentForm.getRawValue();
+    await firstValueFrom(this.api.post<ProjectConfigItem, { name: string; enabled: boolean; sort: number }>(`/api/admin/projects/${projectId}/environments`, { name: value.name.trim(), enabled: value.enabled, sort: value.sort ?? 0 }));
+    this.environmentForm.reset({ name: '', enabled: true, sort: 0 });
+    await this.loadEnvironments(projectId);
+  }
+
+  protected async toggleEnvironmentEnabled(item: ProjectConfigItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await firstValueFrom(this.api.put<ProjectConfigItem, { enabled: boolean }>(`/api/admin/projects/${projectId}/environments/${item.id}`, { enabled: !item.enabled }));
+    await this.loadEnvironments(projectId);
+  }
+
+  protected async removeEnvironment(item: ProjectConfigItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/environments/${item.id}`));
+    await this.loadEnvironments(projectId);
+  }
+
+  protected async addVersion(): Promise<void> {
+    if (this.versionForm.invalid) return;
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    const value = this.versionForm.getRawValue();
+    await firstValueFrom(this.api.post<ProjectVersionItem, { version: string; enabled: boolean; sort: number }>(`/api/admin/projects/${projectId}/versions`, { version: value.version.trim(), enabled: value.enabled, sort: value.sort ?? 0 }));
+    this.versionForm.reset({ version: '', enabled: true, sort: 0 });
+    await this.loadVersions(projectId);
+  }
+
+  protected async toggleVersionEnabled(item: ProjectVersionItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await firstValueFrom(this.api.put<ProjectVersionItem, { enabled: boolean }>(`/api/admin/projects/${projectId}/versions/${item.id}`, { enabled: !item.enabled }));
+    await this.loadVersions(projectId);
+  }
+
+  protected async removeVersion(item: ProjectVersionItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/versions/${item.id}`));
+    await this.loadVersions(projectId);
+  }
+
+  private async loadConfigData(projectId: string): Promise<void> {
+    await Promise.all([this.loadUsers(), this.loadMembers(projectId), this.loadModules(projectId), this.loadEnvironments(projectId), this.loadVersions(projectId)]);
+  }
+
+  private async loadUsers(): Promise<void> {
     try {
-      await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/members/${item.id}`));
-      await this.loadProjectMembers(projectId);
-      if (this.editingMemberId() === item.id) {
-        this.resetMemberForm();
-      }
-    } catch (error) {
-      this.memberError.set(this.getErrorMessage(error, '删除项目成员失败'));
+      const result = await firstValueFrom(this.api.get<{ items: UserOptionItem[] }>('/api/admin/users', { params: { page: 1, pageSize: 100, status: 'active' } }));
+      this.projectUsers.set(result.items);
+    } catch {
+      this.projectUsers.set([]);
     }
   }
 
-  private async loadProjectMembers(projectId: string): Promise<void> {
-    this.memberLoading.set(true);
-    this.memberError.set(null);
+  private async loadMembers(projectId: string): Promise<void> {
+    const result = await firstValueFrom(this.api.get<{ items: ProjectMemberItem[] }>(`/api/admin/projects/${projectId}/members`));
+    this.projectMembers.set(result.items);
+  }
 
+  private async loadModules(projectId: string): Promise<void> {
+    const result = await firstValueFrom(this.api.get<{ items: ProjectConfigItem[] }>(`/api/admin/projects/${projectId}/modules`));
+    this.modules.set(result.items);
+  }
+
+  private async loadEnvironments(projectId: string): Promise<void> {
+    const result = await firstValueFrom(this.api.get<{ items: ProjectConfigItem[] }>(`/api/admin/projects/${projectId}/environments`));
+    this.environments.set(result.items);
+  }
+
+  private async loadVersions(projectId: string): Promise<void> {
+    const result = await firstValueFrom(this.api.get<{ items: ProjectVersionItem[] }>(`/api/admin/projects/${projectId}/versions`));
+    this.versions.set(result.items);
+  }
+
+  private async updateStatus(item: ProjectItem, status: ProjectStatus, fallback: string, successMessage: string): Promise<void> {
     try {
-      const result = await firstValueFrom(
-        this.api.get<{ items: ProjectMemberItem[] }>(`/api/admin/projects/${projectId}/members`)
-      );
-      this.projectMembers.set(result.items);
-    } catch (error) {
-      this.projectMembers.set([]);
-      this.memberError.set(this.getErrorMessage(error, '加载项目成员失败'));
-    } finally {
-      this.memberLoading.set(false);
-    }
-  }
-  protected statusColor(status: ProjectStatus): string {
-    return status === 'active' ? 'green' : 'default';
-  }
-
-  protected statusLabel(status: ProjectStatus): string {
-    return status === 'active' ? '启用' : '归档';
-  }
-
-  protected visibilityLabel(visibility: ProjectVisibility): string {
-    return visibility === 'public' ? '公开' : '内部';
-  }
-
-  private async updateStatus(
-    item: ProjectItem,
-    status: ProjectStatus,
-    fallback: string,
-    successMessage: string
-  ): Promise<void> {
-    this.listError.set(null);
-    try {
-      await firstValueFrom(
-        this.api.put<ProjectItem, { status: ProjectStatus }>(`/api/admin/projects/${item.id}`, {
-          status
-        })
-      );
+      await firstValueFrom(this.api.put<ProjectItem, { status: ProjectStatus }>(`/api/admin/projects/${item.id}`, { status }));
       this.message.success(successMessage);
       await this.loadProjects();
     } catch (error) {
@@ -677,15 +341,8 @@ export class ProjectsPageComponent {
   private async loadProjects(): Promise<void> {
     this.listLoading.set(true);
     this.listError.set(null);
-
     try {
-      const filter = this.filters.getRawValue();
-      const params: Record<string, string | number> = { page: 1, pageSize: 100 };
-      if (filter.status) params['status'] = filter.status;
-      if (filter.visibility) params['visibility'] = filter.visibility;
-      if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
-
-      const result = await firstValueFrom(this.api.get<ProjectListResult>('/api/admin/projects', { params }));
+      const result = await firstValueFrom(this.api.get<ProjectListResult>('/api/admin/projects', { params: { page: 1, pageSize: 100 } }));
       this.projects.set(result.items);
       this.total.set(result.total);
     } catch (error) {
@@ -699,6 +356,11 @@ export class ProjectsPageComponent {
     if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
     if (error instanceof Error) return `${fallback}: ${error.message}`;
     return fallback;
+  }
+
+  protected copyProjectKey(projectKey: string): void {
+    this.clipboard.copy(projectKey);
+    this.message.success('projectKey 已复制');
   }
 }
 

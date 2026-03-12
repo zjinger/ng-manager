@@ -1,0 +1,53 @@
+﻿import type { UserTitleCode } from "./user.constants";
+
+export type UserStatus = "active" | "inactive";
+export type UserSource = "local" | "imported";
+
+export interface UserEntity {
+  id: string;
+  username: string;
+  displayName: string | null;
+  email: string | null;
+  mobile: string | null;
+  titleCode: UserTitleCode | null;
+  status: UserStatus;
+  source: UserSource;
+  remark: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateUserInput {
+  username: string;
+  displayName?: string | null;
+  email?: string;
+  mobile?: string;
+  titleCode?: UserTitleCode | null;
+  source?: UserSource;
+  remark?: string;
+}
+
+export interface UpdateUserInput {
+  username?: string;
+  displayName?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  titleCode?: UserTitleCode | null;
+  status?: UserStatus;
+  source?: UserSource;
+  remark?: string | null;
+}
+
+export interface ListUserQuery {
+  status?: UserStatus;
+  keyword?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface UserListResult {
+  items: UserEntity[];
+  page: number;
+  pageSize: number;
+  total: number;
+}

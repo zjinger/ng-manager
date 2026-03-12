@@ -23,6 +23,7 @@ import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 import { AttachmentPolicyResult, IssueActionType, IssueAttachmentDto, IssueCloseReasonType, IssueDetailResult, IssueItem, IssueListResult, IssuePriority, IssueStatus, IssueType, ProjectMemberItem, ProjectOption } from './issues.model';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-issues-page',
@@ -44,6 +45,7 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
     AttachmentCardListComponent,
     HubDateTimePipe,
     NzSpaceModule,
+    NzIconModule
   ],
   templateUrl: './issues.component.html',
   styles: [

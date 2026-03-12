@@ -1,0 +1,544 @@
+<section class="page">
+  <app-page-header title="项目管理" subtitle="维护项目与配置中心">
+    <button page-header-actions nz-button nzType="primary" (click)="openProjectModal()">
+      <i nz-icon nzType="plus"></i> 新建项目
+    </button>
+  </app-page-header>
+
+  @if (listError()) {
+    <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
+  }
+
+  <nz-card nzTitle="项目列表" class="section">
+    <div class="table-head">
+      <span>共 {{ total() }} 条</span>
+      <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">刷新</button>
+    </div>
+
+    <nz-table [nzData]="projects()" [nzFrontPagination]="false" [nzLoading]="listLoading()">
+      <thead>
+        <tr>
+          <th>项目</th>
+          <th>状态</th>
+          <th>可见性</th>
+          <th>成员数</th>
+          <th>更新时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of projects(); track item.id) {
+          <tr>
+            <td>
+              <span>{{ item.name }}</span>
+              <button
+                nz-button
+                nzType="text"
+                nz-tooltip
+                nzTooltipTitle="复制projectKey"
+                (click)="copyProjectKey(item.projectKey)"
+              >
+                <span nz-icon nzType="copy"></span>
+              </button>
+            </td>
+            <td>
+              <nz-tag [nzColor]="item.status === 'active' ? 'green' : 'default'">{{
+                item.status === 'active' ? '启用' : '归档'
+              }}</nz-tag>
+            </td>
+            <td>{{ item.visibility === 'public' ? '公开' : '内部' }}</td>
+            <td>{{ item.memberCount }}</td>
+            <td>{{ item.updatedAt | hubDateTime }}</td>
+            <td>
+              <nz-space>
+                <a nz-button nzType="primary" (click)="openProjectModal(item)" nz-tooltip="编辑">
+                  <nz-icon nzType="edit" theme="outline"></nz-icon>
+                </a>
+                <a
+                  nz-button
+                  nzType="primary"
+                  (click)="openConfigCenter(item, 'members')"
+                  nz-tooltip="成员管理"
+                >
+                  <nz-icon nzType="team" nzTheme="outline" />
+                </a>
+                <a
+                  nz-button
+                  nzType="primary"
+                  (click)="openConfigCenter(item, 'base')"
+                  nz-tooltip="基础配置"
+                >
+                  <nz-icon nzType="setting" theme="outline"></nz-icon>
+                </a>
+                <a
+                  nz-button
+                  nzType="primary"
+                  nz-dropdown
+                  [nzDropdownMenu]="moreMenu"
+                  nzTrigger="click"
+                  (click)="setMenuProject(item)"
+                  nz-tooltip="更多操作"
+                >
+                  <nz-icon nzType="more" theme="outline"></nz-icon>
+                </a>
+              </nz-space>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+
+    <nz-dropdown-menu #moreMenu="nzDropdownMenu" nzTrigger="click">
+      <ul nz-menu>
+        <li nz-menu-item (click)="archiveFromMenu()" nzDanger>归档</li>
+      </ul>
+    </nz-dropdown-menu>
+  </nz-card>
+
+  <nz-modal
+    [nzTitle]="editingId() ? '编辑项目' : '新建项目'"
+    [(nzVisible)]="projectModalVisible"
+    [nzMaskClosable]="false"
+    [nzWidth]="640"
+    [nzFooter]="null"
+    (nzOnCancel)="projectModalVisible.set(false)"
+  >
+    <ng-container *nzModalContent>
+      @if (formError()) {
+        <nz-alert nzType="error" [nzMessage]="formError()!" nzShowIcon></nz-alert>
+      }
+      <form nz-form [formGroup]="projectForm" nzLayout="vertical" class="form">
+        <nz-form-item
+          ><nz-form-label nzRequired>项目名称</nz-form-label
+          ><nz-form-control><input nz-input formControlName="name" /></nz-form-control
+        ></nz-form-item>
+        <nz-form-item
+          ><nz-form-label>项目 Key（系统自动生成）</nz-form-label
+          ><nz-form-control
+            ><input
+              nz-input
+              [value]="editingProjectKey() || '保存后生成'"
+              readonly /></nz-form-control
+        ></nz-form-item>
+        <nz-form-item
+          ><nz-form-label>描述</nz-form-label
+          ><nz-form-control>
+            <textarea nz-input rows="3" formControlName="description"></textarea></nz-form-control
+        ></nz-form-item>
+        <nz-form-item
+          ><nz-form-label>可见性</nz-form-label
+          ><nz-form-control
+            ><nz-select formControlName="visibility"
+              ><nz-option nzValue="internal" nzLabel="内部"></nz-option
+              ><nz-option nzValue="public" nzLabel="公开"></nz-option></nz-select></nz-form-control
+        ></nz-form-item>
+        <div class="actions">
+          <button nz-button nzType="default" type="button" (click)="projectModalVisible.set(false)">
+            取消</button
+          ><button
+            nz-button
+            nzType="primary"
+            type="button"
+            (click)="saveProject()"
+            [disabled]="projectForm.invalid || saving()"
+          >
+            保存项目
+          </button>
+        </div>
+      </form>
+    </ng-container>
+  </nz-modal>
+
+  <nz-modal
+    [nzTitle]="'项目：' + configProjectName()"
+    [(nzVisible)]="configVisible"
+    [nzMaskClosable]="false"
+    [nzWidth]="1080"
+    [nzFooter]="null"
+    (nzOnCancel)="configVisible.set(false)"
+  >
+    <ng-container *nzModalContent>
+      <nz-tabset [(nzSelectedIndex)]="configTabIndex">
+        <nz-tab nzTitle="基础信息">
+          <div class="tab-block">
+            <p><strong>项目名称：</strong>{{ configProjectName() }}</p>
+            <p><strong>项目Key：</strong>{{ configProjectKey() }}</p>
+            <p><strong>描述：</strong>{{ configProjectDesc() || '-' }}</p>
+            <p>
+              <strong>可见性：</strong
+              >{{ configProjectVisibility() === 'public' ? '公开' : '内部' }}
+            </p>
+          </div>
+        </nz-tab>
+
+        <nz-tab nzTitle="成员管理">
+          <div class="tab-block">
+            <form nz-form [formGroup]="memberForm" nzLayout="inline" class="inline-form">
+              <nz-form-item>
+                <nz-form-label>用户名</nz-form-label>
+                <nz-form-control>
+                  <nz-select
+                    formControlName="userId"
+                    nzShowSearch
+                    nzPlaceHolder="选择用户"
+                    style="width: 260px"
+                  >
+                    @for (user of projectUsers(); track user.id) {
+                      <nz-option
+                        [nzValue]="user.id"
+                        [nzLabel]="user.displayName || user.username"
+                      ></nz-option>
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label>角色</nz-form-label>
+                <nz-form-control>
+                  <nz-select
+                    formControlName="roles"
+                    nzMode="multiple"
+                    nzPlaceHolder="选择角色"
+                    style="width: 320px"
+                  >
+                    @for (role of memberRoleOptions; track role) {
+                      <nz-option [nzValue]="role" [nzLabel]="roleLabel(role)"></nz-option>
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+              <button
+                nz-button
+                nzType="primary"
+                (click)="saveMember()"
+                [disabled]="memberForm.invalid || memberSaving()"
+              >
+                添加成员
+              </button>
+            </form>
+            <nz-table [nzData]="projectMembers()" [nzFrontPagination]="false"
+              ><thead>
+                <tr>
+                  <th>用户名</th>
+                  <th>角色</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (member of projectMembers(); track member.id) {
+                  <tr>
+                    <td>{{ member.displayName }}</td>
+                    <td>{{ member.roles.map(roleLabel).join('、') }}</td>
+                    <td>
+                      <a
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        nz-popconfirm
+                        nzPopconfirmTitle="确定要移除改成员吗?"
+                        nzPopconfirmOkText="确定移除"
+                        (nzOnConfirm)="removeMember(member)"
+                        >移除</a
+                      >
+                    </td>
+                  </tr>
+                }
+              </tbody></nz-table
+            >
+          </div>
+        </nz-tab>
+
+        <nz-tab nzTitle="功能模块">
+          <div class="tab-block">
+            <form nz-form [formGroup]="moduleForm" nzLayout="inline" class="inline-form">
+              <nz-form-item
+                ><nz-form-control
+                  ><input
+                    nz-input
+                    formControlName="name"
+                    style="width: 260px"
+                    placeholder="模块名称，如登录模块" /></nz-form-control
+              ></nz-form-item>
+              <nz-form-item
+                ><nz-form-control
+                  ><nz-select formControlName="enabled" style="width: 110px"
+                    ><nz-option [nzValue]="true" nzLabel="启用"></nz-option
+                    ><nz-option
+                      [nzValue]="false"
+                      nzLabel="停用"
+                    ></nz-option></nz-select></nz-form-control
+              ></nz-form-item>
+              <nz-form-item
+                ><nz-form-control
+                  ><nz-input-number
+                    formControlName="sort"
+                    [nzMin]="0"
+                    nzPlaceHolder="排序"
+                  ></nz-input-number
+                ></nz-form-control>
+                <nz-icon
+                  style="margin-left: 6px; color: rgba(0, 0, 0, 0.45)"
+                  nzType="question-circle"
+                  nzTheme="outline"
+                  nz-tooltip="序号越小，显示越靠前"
+                />
+              </nz-form-item>
+              <button
+                nz-button
+                nzType="primary"
+                (click)="addModule()"
+                [disabled]="moduleForm.invalid"
+              >
+                新增模块
+              </button>
+            </form>
+            <nz-table [nzData]="modules()" [nzFrontPagination]="false"
+              ><thead>
+                <tr>
+                  <th>模块名称</th>
+                  <th>是否启用</th>
+                  <th>排序</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of modules(); track item.id) {
+                  <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.enabled ? '启用' : '停用' }}</td>
+                    <td>{{ item.sort }}</td>
+                    <td>
+                      <a
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        nz-popconfirm
+                        [nzPopconfirmTitle]="
+                          '确定要' + (item.enabled ? '停用' : '启用') + '该模块吗?'
+                        "
+                        nzPopconfirmOkText="确定"
+                        (nzOnConfirm)="toggleModuleEnabled(item)"
+                        >{{ item.enabled ? '停用' : '启用' }}</a
+                      ><a
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        nz-popconfirm
+                        nzPopconfirmTitle="确定要移除该模块吗?"
+                        nzPopconfirmOkText="确定移除"
+                        (nzOnConfirm)="removeModule(item)"
+                        >移除</a
+                      >
+                    </td>
+                  </tr>
+                }
+              </tbody></nz-table
+            >
+          </div>
+        </nz-tab>
+
+        <nz-tab nzTitle="项目环境">
+          <div class="tab-block">
+            <form nz-form [formGroup]="environmentForm" nzLayout="inline" class="inline-form">
+              <nz-form-item
+                ><nz-form-control
+                  ><input
+                    nz-input
+                    formControlName="name"
+                    style="width: 260px"
+                    placeholder="如19号机测试环境/生产环境" /></nz-form-control
+              ></nz-form-item>
+              <nz-form-item
+                ><nz-form-control
+                  ><nz-select formControlName="enabled" style="width: 110px"
+                    ><nz-option [nzValue]="true" nzLabel="启用"></nz-option
+                    ><nz-option
+                      [nzValue]="false"
+                      nzLabel="停用"
+                    ></nz-option></nz-select></nz-form-control
+              ></nz-form-item>
+              <nz-form-item
+                ><nz-form-control
+                  ><nz-input-number
+                    formControlName="sort"
+                    [nzMin]="0"
+                    nzPlaceHolder="排序"
+                  ></nz-input-number
+                ></nz-form-control>
+                <nz-icon
+                  style="margin-left: 6px; color: rgba(0, 0, 0, 0.45)"
+                  nzType="question-circle"
+                  nzTheme="outline"
+                  nz-tooltip="序号越小，显示越靠前"
+                />
+              </nz-form-item>
+              <button
+                nz-button
+                nzType="primary"
+                (click)="addEnvironment()"
+                [disabled]="environmentForm.invalid"
+              >
+                新增环境
+              </button>
+            </form>
+            <nz-table [nzData]="environments()" [nzFrontPagination]="false"
+              ><thead>
+                <tr>
+                  <th>环境名称</th>
+                  <th>是否启用</th>
+                  <th>排序</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of environments(); track item.id) {
+                  <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.enabled ? '启用' : '停用' }}</td>
+                    <td>{{ item.sort }}</td>
+                    <td>
+                      <a
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        nz-popconfirm
+                        [nzPopconfirmTitle]="
+                          '确定要' + (item.enabled ? '停用' : '启用') + '该环境吗?'
+                        "
+                        nzPopconfirmOkText="确定"
+                        (nzOnConfirm)="toggleEnvironmentEnabled(item)"
+                        >{{ item.enabled ? '停用' : '启用' }}</a
+                      ><a
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        nz-popconfirm
+                        nzPopconfirmTitle="确定要移除该环境吗?"
+                        nzPopconfirmOkText="确定移除"
+                        (nzOnConfirm)="removeEnvironment(item)"
+                        >移除</a
+                      >
+                    </td>
+                  </tr>
+                }
+              </tbody></nz-table
+            >
+          </div>
+        </nz-tab>
+
+        <nz-tab nzTitle="版本管理">
+          <div class="tab-block">
+            <form nz-form [formGroup]="versionForm" nzLayout="inline" class="inline-form">
+              <nz-form-item
+                ><nz-form-control
+                  ><input
+                    nz-input
+                    formControlName="version"
+                    style="width: 260px"
+                    placeholder="版本号，如 v1.0.0/v1.0.0beta" /></nz-form-control
+              ></nz-form-item>
+              <nz-form-item
+                ><nz-form-control
+                  ><nz-select formControlName="enabled" style="width: 110px"
+                    ><nz-option [nzValue]="true" nzLabel="启用"></nz-option
+                    ><nz-option
+                      [nzValue]="false"
+                      nzLabel="停用"
+                    ></nz-option></nz-select></nz-form-control
+              ></nz-form-item>
+              <nz-form-item
+                ><nz-form-control
+                  ><nz-input-number
+                    formControlName="sort"
+                    [nzMin]="0"
+                    nzPlaceHolder="排序"
+                  ></nz-input-number>
+                </nz-form-control>
+                <nz-icon
+                  style="margin-left: 6px; color: rgba(0, 0, 0, 0.45)"
+                  nzType="question-circle"
+                  nzTheme="outline"
+                  nz-tooltip="序号越小，显示越靠前"
+                />
+              </nz-form-item>
+              <button
+                nz-button
+                nzType="primary"
+                (click)="addVersion()"
+                [disabled]="versionForm.invalid"
+              >
+                新增版本
+              </button>
+            </form>
+            <nz-table [nzData]="versions()" [nzFrontPagination]="false"
+              ><thead>
+                <tr>
+                  <th>版本号</th>
+                  <th>是否启用</th>
+                  <th>排序</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of versions(); track item.id) {
+                  <tr>
+                    <td>{{ item.version }}</td>
+                    <td>{{ item.enabled ? '启用' : '停用' }}</td>
+                    <td>{{ item.sort }}</td>
+                    <td>
+                      <a
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        nz-popconfirm
+                        [nzPopconfirmTitle]="
+                          '确定要' + (item.enabled ? '停用' : '启用') + '该版本吗?'
+                        "
+                        nzPopconfirmOkText="确定"
+                        (nzOnConfirm)="toggleVersionEnabled(item)"
+                        >{{ item.enabled ? '停用' : '启用' }}</a
+                      ><a
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        nz-popconfirm
+                        nzPopconfirmTitle="确定要移除该版本吗?"
+                        nzPopconfirmOkText="确定移除"
+                        (nzOnConfirm)="removeVersion(item)"
+                        >移除</a
+                      >
+                    </td>
+                  </tr>
+                }
+              </tbody></nz-table
+            >
+          </div>
+        </nz-tab>
+      </nz-tabset>
+    </ng-container>
+  </nz-modal>
+
+  <nz-modal
+    nzTitle="项目创建成功 🎉"
+    [(nzVisible)]="createGuideVisible"
+    [nzMaskClosable]="false"
+    [nzFooter]="null"
+    (nzOnCancel)="createGuideVisible.set(false)"
+  >
+    <ng-container *nzModalContent>
+      <p>接下来可以继续完善项目配置：</p>
+      <ul class="guide-list">
+        <li><strong>成员管理</strong> 配置项目参与人员</li>
+        <li><strong>模块管理</strong> 维护系统功能模块</li>
+        <li><strong>环境管理</strong> 配置开发 / 测试 / 生产环境</li>
+        <li><strong>版本管理</strong> 维护发布版本</li>
+      </ul>
+      <div class="actions">
+        <button nz-button nzType="primary" (click)="enterConfigCenter()">进入项目配置中心</button>
+        <button nz-button nzType="default" (click)="createGuideVisible.set(false)">
+          返回项目列表
+        </button>
+      </div>
+    </ng-container>
+  </nz-modal>
+</section>

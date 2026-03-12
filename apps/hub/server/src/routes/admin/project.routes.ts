@@ -1,10 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import {
-  createProjectMemberSchema,
+  createProjectConfigItemSchema,
   createProjectSchema,
+  createProjectVersionItemSchema,
   listProjectQuerySchema,
-  updateProjectMemberSchema,
-  updateProjectSchema
+  updateProjectConfigItemSchema,
+  updateProjectSchema,
+  updateProjectVersionItemSchema
 } from "../../modules/project/project.schema";
 import { ok } from "../../utils/response";
 
@@ -40,29 +42,81 @@ export default async function adminProjectRoutes(fastify: FastifyInstance) {
     return ok({ id: params.id }, "project deleted");
   });
 
-  fastify.get("/projects/:id/members", async (request) => {
+  fastify.get("/projects/:id/modules", async (request) => {
     const params = request.params as { id: string };
-    const items = fastify.services.project.listMembers(params.id);
+    const items = fastify.services.project.listModules(params.id);
     return ok({ items });
   });
 
-  fastify.post("/projects/:id/members", async (request, reply) => {
+  fastify.post("/projects/:id/modules", async (request, reply) => {
     const params = request.params as { id: string };
-    const body = createProjectMemberSchema.parse(request.body);
-    const item = fastify.services.project.addMember(params.id, body);
-    return reply.status(201).send(ok(item, "project member created"));
+    const body = createProjectConfigItemSchema.parse(request.body);
+    const item = fastify.services.project.addModule(params.id, body);
+    return reply.status(201).send(ok(item, "project module created"));
   });
 
-  fastify.put("/projects/:id/members/:memberId", async (request) => {
-    const params = request.params as { id: string; memberId: string };
-    const body = updateProjectMemberSchema.parse(request.body);
-    const item = fastify.services.project.updateMember(params.id, params.memberId, body);
-    return ok(item, "project member updated");
+  fastify.put("/projects/:id/modules/:moduleId", async (request) => {
+    const params = request.params as { id: string; moduleId: string };
+    const body = updateProjectConfigItemSchema.parse(request.body);
+    const item = fastify.services.project.updateModule(params.id, params.moduleId, body);
+    return ok(item, "project module updated");
   });
 
-  fastify.delete("/projects/:id/members/:memberId", async (request) => {
-    const params = request.params as { id: string; memberId: string };
-    fastify.services.project.removeMember(params.id, params.memberId);
-    return ok({ id: params.memberId }, "project member deleted");
+  fastify.delete("/projects/:id/modules/:moduleId", async (request) => {
+    const params = request.params as { id: string; moduleId: string };
+    fastify.services.project.removeModule(params.id, params.moduleId);
+    return ok({ id: params.moduleId }, "project module deleted");
+  });
+
+  fastify.get("/projects/:id/environments", async (request) => {
+    const params = request.params as { id: string };
+    const items = fastify.services.project.listEnvironments(params.id);
+    return ok({ items });
+  });
+
+  fastify.post("/projects/:id/environments", async (request, reply) => {
+    const params = request.params as { id: string };
+    const body = createProjectConfigItemSchema.parse(request.body);
+    const item = fastify.services.project.addEnvironment(params.id, body);
+    return reply.status(201).send(ok(item, "project environment created"));
+  });
+
+  fastify.put("/projects/:id/environments/:environmentId", async (request) => {
+    const params = request.params as { id: string; environmentId: string };
+    const body = updateProjectConfigItemSchema.parse(request.body);
+    const item = fastify.services.project.updateEnvironment(params.id, params.environmentId, body);
+    return ok(item, "project environment updated");
+  });
+
+  fastify.delete("/projects/:id/environments/:environmentId", async (request) => {
+    const params = request.params as { id: string; environmentId: string };
+    fastify.services.project.removeEnvironment(params.id, params.environmentId);
+    return ok({ id: params.environmentId }, "project environment deleted");
+  });
+
+  fastify.get("/projects/:id/versions", async (request) => {
+    const params = request.params as { id: string };
+    const items = fastify.services.project.listVersions(params.id);
+    return ok({ items });
+  });
+
+  fastify.post("/projects/:id/versions", async (request, reply) => {
+    const params = request.params as { id: string };
+    const body = createProjectVersionItemSchema.parse(request.body);
+    const item = fastify.services.project.addVersion(params.id, body);
+    return reply.status(201).send(ok(item, "project version created"));
+  });
+
+  fastify.put("/projects/:id/versions/:versionId", async (request) => {
+    const params = request.params as { id: string; versionId: string };
+    const body = updateProjectVersionItemSchema.parse(request.body);
+    const item = fastify.services.project.updateVersion(params.id, params.versionId, body);
+    return ok(item, "project version updated");
+  });
+
+  fastify.delete("/projects/:id/versions/:versionId", async (request) => {
+    const params = request.params as { id: string; versionId: string };
+    fastify.services.project.removeVersion(params.id, params.versionId);
+    return ok({ id: params.versionId }, "project version deleted");
   });
 }

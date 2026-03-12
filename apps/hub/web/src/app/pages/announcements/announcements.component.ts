@@ -16,6 +16,7 @@ import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 type AnnouncementStatus = 'draft' | 'published' | 'archived';
 type AnnouncementScope = 'all' | 'desktop' | 'cli';
@@ -64,12 +65,15 @@ interface ProjectOption {
     NzTagModule,
     NzModalModule,
     PageHeaderComponent,
-    HubDateTimePipe
+    HubDateTimePipe,
+    NzIconModule
   ],
   template: `
     <div class="page">
       <app-page-header title="公告管理" subtitle="创建和管理公告">
-        <button page-header-actions nz-button nzType="primary" (click)="createAnnouncement()">新建公告</button>
+        <button page-header-actions nz-button nzType="primary" (click)="createAnnouncement()">
+          <i nz-icon nzType="plus"></i> 新建公告
+        </button>
       </app-page-header>
 
       @if (listError()) {

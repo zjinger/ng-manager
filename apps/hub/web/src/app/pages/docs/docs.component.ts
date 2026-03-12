@@ -18,6 +18,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { MarkdownEditorComponent } from '../../shared/markdown-editor/markdown-editor.component';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 type DocStatus = 'draft' | 'published' | 'archived';
 type DocCategory = 'guide' | 'faq' | 'release-note' | 'spec' | 'policy' | 'other';
@@ -69,12 +70,15 @@ interface ProjectOption {
     NzModalModule,
     PageHeaderComponent,
     HubDateTimePipe,
-    MarkdownEditorComponent
+    MarkdownEditorComponent,
+    NzIconModule
   ],
   template: `
     <section class="page">
       <app-page-header title="文档管理" subtitle="管理产品文档与发布状态">
-        <button page-header-actions nz-button nzType="primary" (click)="createDoc()">新建文档</button>
+        <button page-header-actions nz-button nzType="primary" (click)="createDoc()">
+          <i nz-icon nzType="plus"></i> 新建文档
+        </button>
       </app-page-header>
 
       <nz-card nzTitle="筛选条件" class="section">

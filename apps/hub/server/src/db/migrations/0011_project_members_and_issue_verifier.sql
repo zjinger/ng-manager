@@ -2,11 +2,11 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
-  display_name TEXT NOT NULL,
+  display_name TEXT,
   email TEXT,
   mobile TEXT,
-  title TEXT,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'deleted')),
+  title_code TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   source TEXT NOT NULL DEFAULT 'local' CHECK (source IN ('local', 'imported')),
   remark TEXT,
   created_at TEXT NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS project_members (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
-  display_name TEXT NOT NULL,
+  display_name TEXT,
   enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
   joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at TEXT NOT NULL,
@@ -95,3 +95,5 @@ ALTER TABLE issues ADD COLUMN last_verified_result TEXT CHECK (
 
 CREATE INDEX IF NOT EXISTS idx_issues_verifier_id ON issues(verifier_id);
 CREATE INDEX IF NOT EXISTS idx_issues_last_verified_result ON issues(last_verified_result);
+
+
