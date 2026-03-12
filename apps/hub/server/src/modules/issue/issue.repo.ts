@@ -4,6 +4,7 @@ import type {
     IssueCommentEntity,
     IssueCommentMentionEntity,
     IssueDetailResult,
+    IssueAssigneeEntity,
     IssueAttachmentEntity,
     IssueEntity,
     IssueListResult,
@@ -60,6 +61,13 @@ type IssueActionLogRow = {
     created_at: string;
 };
 
+type IssueAssigneeRow = {
+    id: string;
+    issue_id: string;
+    user_id: string;
+    user_name: string | null;
+    created_at: string;
+};
 type IssueAttachmentRow = {
     id: string;
     issue_id: string;
@@ -369,12 +377,64 @@ export class IssueRepo {
 
         return {
             issue,
+            assignees: this.listIssueAssignees(id),
             comments: this.listComments(id),
             logs: this.listActionLogs(id),
             attachments: this.listAttachments(id),
         };
     }
 
+    replaceIssueAssignees(issueId: string, assignees: Array<{ id: string; userId: string; userName?: string | null; createdAt: string }>): void {
+        this.db.prepare(`DELETE FROM issue_assignees WHERE issue_id = ?`).run(issueId);
+
+        if (assignees.length === 0) {
+            return;
+        }
+
+        const stmt = this.db.prepare(`
+      INSERT INTO issue_assignees (
+        id, issue_id, user_id, user_name, created_at
+      ) VALUES (
+        @id, @issue_id, @user_id, @user_name, @created_at
+      )
+    `);
+
+        for (const item of assignees) {
+            stmt.run({
+                id: item.id,
+                issue_id: issueId,
+                user_id: item.userId,
+                user_name: item.userName ?? null,
+                created_at: item.createdAt
+            });
+        }
+    }
+
+    listIssueAssignees(issueId: string): IssueAssigneeEntity[] {
+        const rows = this.db
+            .prepare(`
+      SELECT *
+      FROM issue_assignees
+      WHERE issue_id = ?
+      ORDER BY created_at ASC
+    `)
+            .all(issueId) as IssueAssigneeRow[];
+
+        return rows.map((row) => this.toIssueAssigneeEntity(row));
+    }
+
+    isIssueAssignee(issueId: string, userId: string): boolean {
+        const row = this.db
+            .prepare(`
+      SELECT 1 as matched
+      FROM issue_assignees
+      WHERE issue_id = ? AND user_id = ?
+      LIMIT 1
+    `)
+            .get(issueId, userId) as { matched: number } | undefined;
+
+        return !!row;
+    }
     createAttachment(entity: IssueAttachmentEntity): void {
         const stmt = this.db.prepare(`
     INSERT INTO issue_attachments (
@@ -558,6 +618,15 @@ export class IssueRepo {
         };
     }
 
+    private toIssueAssigneeEntity(row: IssueAssigneeRow): IssueAssigneeEntity {
+        return {
+            id: row.id,
+            issueId: row.issue_id,
+            userId: row.user_id,
+            userName: row.user_name,
+            createdAt: row.created_at
+        };
+    }
     private toAttachmentEntity(row: IssueAttachmentRow): IssueAttachmentEntity {
         return {
             id: row.id,

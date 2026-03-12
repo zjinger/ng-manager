@@ -168,28 +168,42 @@ export class IssueService {
     assign(id: string, input: AssignIssueInput): IssueEntity {
         const issue = this.getById(id);
         const nextStatus: IssueStatus = "assigned";
-        this.assertTransition(issue.status, nextStatus);
+        if (issue.status !== "assigned") {
+            this.assertTransition(issue.status, nextStatus);
+        }
 
         const operatorId = this.requireOperatorId(input.operatorId, "assign");
-        this.requireProjectMember(issue.projectId, operatorId, "【指派】");
 
-        const assigneeId = input.assigneeId?.trim() || null;
-        if (!assigneeId) {
+        const assigneeIds = this.normalizeAssigneeIds(input);
+        if (assigneeIds.length === 0) {
             throw new AppError("ISSUE_ASSIGNEE_REQUIRED", "分配问题时需要提供负责人", 400);
         }
-        const assigneeMember = this.requireProjectMember(issue.projectId, assigneeId, "【指派】");
-        const assigneeName = assigneeMember.displayName;
+
+        const assignees = assigneeIds.map((assigneeId) => this.requireProjectMember(issue.projectId, assigneeId, "【指派】"));
+        const primaryAssignee = assignees[0]!;
+        const assigneeName = assignees.map((item) => item.displayName).join("、");
 
         this.repo.runInTransaction(() => {
+            const now = nowIso();
             const changed = this.repo.update(id, {
-                assigneeId,
+                assigneeId: primaryAssignee.userId,
                 assigneeName,
                 status: nextStatus,
-                updatedAt: nowIso()
+                updatedAt: now
             });
             if (!changed) {
                 throw new AppError("ISSUE_ASSIGN_FAILED", "无法分配问题", 500);
             }
+
+            this.repo.replaceIssueAssignees(
+                id,
+                assignees.map((item) => ({
+                    id: genId("ias"),
+                    userId: item.userId,
+                    userName: item.displayName,
+                    createdAt: now
+                }))
+            );
 
             this.repo.createActionLog(
                 this.buildActionLog({
@@ -220,9 +234,10 @@ export class IssueService {
         }
 
         this.repo.runInTransaction(() => {
+            const now = nowIso();
             const changed = this.repo.update(id, {
                 status: nextStatus,
-                updatedAt: nowIso()
+                updatedAt: now
             });
 
             if (!changed) {
@@ -337,6 +352,7 @@ export class IssueService {
         const verifier = this.requireProjectMemberRoles(issue.projectId, operatorId, ["qa", "product"], "【重新打开】");
 
         this.repo.runInTransaction(() => {
+            const now = nowIso();
             const changed = this.repo.update(id, {
                 status: nextStatus,
                 reopenCount: issue.reopenCount + 1,
@@ -345,7 +361,7 @@ export class IssueService {
                 verifierName: verifier.displayName,
                 verifiedAt: null,
                 closedAt: null,
-                updatedAt: nowIso()
+                updatedAt: now
             });
 
             if (!changed) {
@@ -642,6 +658,10 @@ export class IssueService {
     }
 
     private assertAssigneeOperator(issue: IssueEntity, operatorId: string, action: string): void {
+        if (this.repo.isIssueAssignee(issue.id, operatorId)) {
+            return;
+        }
+
         if (issue.assigneeId && issue.assigneeId !== operatorId) {
             throw new AppError(
                 "ISSUE_FORBIDDEN_OPERATOR",
@@ -651,6 +671,23 @@ export class IssueService {
         }
     }
 
+    private normalizeAssigneeIds(input: AssignIssueInput): string[] {
+        const source = (input.assigneeIds && input.assigneeIds.length > 0)
+            ? input.assigneeIds
+            : (input.assigneeId ? [input.assigneeId] : []);
+
+        const seen = new Set<string>();
+        const normalized: string[] = [];
+        for (const raw of source) {
+            const id = raw?.trim();
+            if (!id || seen.has(id)) {
+                continue;
+            }
+            normalized.push(id);
+            seen.add(id);
+        }
+        return normalized;
+    }
     private requireProjectMember(projectId: string, userId: string, action: string): ProjectMemberEntity {
         const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, userId);
         if (!member) {

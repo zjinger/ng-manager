@@ -90,8 +90,16 @@ export interface IssueAttachmentDto {
     downloadUrl: string;
 }
 
+export interface IssueAssignee {
+    id: string;
+    issueId: string;
+    userId: string;
+    userName?: string | null;
+    createdAt: string;
+}
 export interface IssueDetailResult {
     issue: IssueItem;
+    assignees: IssueAssignee[];
     comments: IssueComment[];
     attachments: IssueAttachmentDto[];
     logs: IssueActionLog[];

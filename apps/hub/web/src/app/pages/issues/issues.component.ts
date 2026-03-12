@@ -106,7 +106,7 @@ export class IssuesPageComponent {
   });
 
   protected readonly assignForm = this.fb.nonNullable.group({
-    assigneeId: ['']
+    assigneeIds: [[] as string[]]
   });
 
   protected readonly actionForm = this.fb.nonNullable.group({
@@ -194,7 +194,7 @@ export class IssuesPageComponent {
   protected selectIssue(item: IssueItem): void {
     this.selectedIssueId.set(item.id);
     this.assignForm.reset({
-      assigneeId: item.assigneeId || ''
+      assigneeIds: item.assigneeId ? [item.assigneeId] : []
     });
     this.actionForm.reset({ comment: '', closeReasonType: '' });
     this.commentForm.reset({ content: '' });
@@ -227,13 +227,13 @@ export class IssuesPageComponent {
       const closeReasonType = this.actionForm.controls.closeReasonType.value;
 
       if (action === 'assign') {
-        const assigneeId = this.assignForm.controls.assigneeId.value.trim();
-        if (!assigneeId) {
-          throw new Error('指派时需要选择项目成员');
+        const assigneeIds = (this.assignForm.controls.assigneeIds.value ?? []).map((item) => item.trim()).filter((item) => !!item);
+        if (assigneeIds.length === 0) {
+          throw new Error('指派时需要选择至少一个项目成员');
         }
         await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/assign`, {
-            assigneeId,
+          this.api.post<IssueItem, { assigneeIds: string[]; comment: string }>(`/api/admin/issues/${detail.issue.id}/assign`, {
+            assigneeIds,
             comment
           })
         );
@@ -725,7 +725,7 @@ export class IssuesPageComponent {
       const result = await firstValueFrom(this.api.get<IssueDetailResult>(`/api/admin/issues/${issueId}`));
       this.selectedDetail.set(result);
       this.assignForm.patchValue({
-        assigneeId: result.issue.assigneeId || ''
+        assigneeIds: result.assignees?.length ? result.assignees.map((item) => item.userId) : (result.issue.assigneeId ? [result.issue.assigneeId] : [])
       });
       void this.loadProjectMembers(result.issue.projectId);
     } catch (error) {
@@ -740,7 +740,7 @@ export class IssuesPageComponent {
     if (this.selectedIssueId() !== item.id) {
       this.selectedIssueId.set(item.id);
       this.assignForm.reset({
-        assigneeId: item.assigneeId || ''
+        assigneeIds: item.assigneeId ? [item.assigneeId] : []
       });
       this.actionForm.reset({ comment: '', closeReasonType: '' });
       this.commentForm.reset({ content: '' });
@@ -766,8 +766,8 @@ export class IssuesPageComponent {
       return;
     }
 
-    const assigneeId = this.assignForm.controls.assigneeId.value.trim();
-    if (!assigneeId) {
+    const assigneeIds = (this.assignForm.controls.assigneeIds.value ?? []).filter((item) => !!item);
+    if (assigneeIds.length === 0) {
       this.detailError.set('请先在右侧选择项目成员，再执行快速指派');
       return;
     }

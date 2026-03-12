@@ -68,6 +68,7 @@ function toAttachmentDto(issueId: string, attachment: IssueAttachmentEntity): Is
 function toIssueDetailDto(detail: IssueDetailResult) {
     return {
         issue: detail.issue,
+        assignees: detail.assignees,
         comments: detail.comments,
         attachments: detail.attachments.map((item) => toAttachmentDto(detail.issue.id, item)),
         logs: detail.logs

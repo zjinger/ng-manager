@@ -13,7 +13,11 @@
         <nz-form-control>
           <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
             @for (project of projectOptions(); track project.id) {
-              <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'"> </nz-option>
+              <nz-option
+                [nzValue]="project.id"
+                [nzLabel]="project.name + ' (' + project.projectKey + ')'"
+              >
+              </nz-option>
             }
           </nz-select>
         </nz-form-control>
@@ -74,19 +78,27 @@
       <div class="list-panel">
         <div class="table-head">
           <span>共 {{ total() }} 条</span>
-          <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">刷新</button>
+          <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">
+            刷新
+          </button>
         </div>
 
-        <nz-table #table [nzData]="issues()" [nzFrontPagination]="false" [nzLoading]="listLoading()">
+        <nz-table
+          class="list-card-table"
+          #table
+          [nzData]="issues()"
+          [nzFrontPagination]="false"
+          [nzLoading]="listLoading()"
+        >
           <thead>
             <tr>
               <th class="issue-no-col">编号</th>
-              <th>标题</th>
+              <th class="issue-title-col">标题</th>
               <th>状态</th>
               <th>优先级</th>
               <th>类型</th>
               <th>模块</th>
-              <th>指派人</th>
+              <th>处理人</th>
               <th>提出人</th>
               <th>更新时间</th>
             </tr>
@@ -95,9 +107,17 @@
             @for (item of table.data; track item.id) {
               <tr (click)="selectIssue(item)" [class.selected]="selectedIssueId() === item.id">
                 <td class="issue-no-col">{{ item.issueNo }}</td>
-                <td>{{ item.title }}</td>
-                <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
-                <td><nz-tag [nzColor]="priorityColor(item.priority)">{{ priorityLabel(item.priority) }}</nz-tag></td>
+                <td class="issue-title-col">{{ item.title }}</td>
+                <td>
+                  <nz-tag [nzColor]="statusColor(item.status)">{{
+                    statusLabel(item.status)
+                  }}</nz-tag>
+                </td>
+                <td>
+                  <nz-tag [nzColor]="priorityColor(item.priority)">{{
+                    priorityLabel(item.priority)
+                  }}</nz-tag>
+                </td>
                 <td>{{ typeLabel(item.type) }}</td>
                 <td>{{ item.module || '-' }}</td>
                 <td>{{ item.assigneeName || '-' }}</td>
@@ -125,16 +145,36 @@
             <div class="detail-title">{{ detail.issue.title }}</div>
             <div class="detail-desc">{{ detail.issue.description || '-' }}</div>
             <div class="detail-meta-grid">
-              <div class="meta-item"><span>项目:</span><strong>{{ projectName(detail.issue.projectId) }}</strong></div>
-              <div class="meta-item"><span>类型:</span><strong>{{ typeLabel(detail.issue.type) }}</strong></div>
-              <div class="meta-item"><span>提出人:</span><strong>{{ detail.issue.reporterName || '-' }}</strong></div>
-              <div class="meta-item"><span>优先级:</span><strong>{{ priorityLabel(detail.issue.priority) }}</strong></div>
-              <div class="meta-item"><span>指派人:</span><strong>{{ detail.issue.assigneeName || '-' }}</strong></div>
-              <div class="meta-item"><span>状态:</span><strong>{{ statusLabel(detail.issue.status) }}</strong></div>
-              <div class="meta-item"><span>验证人:</span><strong>{{ detail.issue.verifierName || '-' }}</strong></div>
-              <div class="meta-item"><span>模块:</span><strong>{{ detail.issue.module || '-' }}</strong></div>
-              <div class="meta-item"><span>版本:</span><strong>{{ detail.issue.version || '-' }}</strong></div>
-              <div class="meta-item"><span>环境:</span><strong>{{ detail.issue.environment || '-' }}</strong></div>
+              <div class="meta-item">
+                <span>项目:</span><strong>{{ projectName(detail.issue.projectId) }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>类型:</span><strong>{{ typeLabel(detail.issue.type) }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>提出人:</span><strong>{{ detail.issue.reporterName || '-' }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>优先级:</span><strong>{{ priorityLabel(detail.issue.priority) }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>处理人:</span><strong>{{ detail.issue.assigneeName || '-' }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>状态:</span><strong>{{ statusLabel(detail.issue.status) }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>验证人:</span><strong>{{ detail.issue.verifierName || '-' }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>模块:</span><strong>{{ detail.issue.module || '-' }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>版本:</span><strong>{{ detail.issue.version || '-' }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>环境:</span><strong>{{ detail.issue.environment || '-' }}</strong>
+              </div>
             </div>
           </div>
 
@@ -142,33 +182,87 @@
             <div class="action-title">流转操作</div>
 
             @if (canAssign(detail.issue.status)) {
-              <nz-select [formControl]="assignForm.controls.assigneeId" nzPlaceHolder="选择项目成员作为处理人" [nzLoading]="memberLoading()" nzShowSearch>
+              <nz-select
+                [formControl]="assignForm.controls.assigneeIds"
+                nzMode="multiple"
+                nzPlaceHolder="选择项目成员作为处理人（可多选）"
+                [nzLoading]="memberLoading()"
+                nzShowSearch
+              >
                 @for (member of projectMembers(); track member.id) {
                   <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)"></nz-option>
                 }
               </nz-select>
             }
 
-            <textarea nz-input rows="3" [formControl]="actionForm.controls.comment" placeholder="操作说明（标记修复/测试不通过建议填写）"></textarea>
+            <textarea
+              nz-input
+              rows="3"
+              [formControl]="actionForm.controls.comment"
+              placeholder="操作说明（标记修复/测试不通过建议填写）"
+            ></textarea>
 
             <div class="action-buttons">
               @if (canAssign(detail.issue.status)) {
-                <button nz-button nzType="default" (click)="runAction('assign')" [disabled]="actionLoading()">{{ detail.issue.status === 'open' ? '指派处理人' : '重新指派' }}</button>
+                <button
+                  nz-button
+                  nzType="default"
+                  (click)="runAction('assign')"
+                  [disabled]="actionLoading()"
+                >
+                  {{ detail.issue.status === 'open' ? '指派处理人' : '重新指派' }}
+                </button>
               }
               @if (canStartProgress(detail.issue.status)) {
-                <button nz-button nzType="default" (click)="runAction('start-progress')" [disabled]="actionLoading()">开始处理</button>
+                <button
+                  nz-button
+                  nzType="default"
+                  (click)="runAction('start-progress')"
+                  [disabled]="actionLoading()"
+                >
+                  开始处理
+                </button>
               }
               @if (canMarkFixed(detail.issue.status)) {
-                <button nz-button nzType="primary" (click)="runAction('mark-fixed')" [disabled]="actionLoading()">标记修复</button>
+                <button
+                  nz-button
+                  nzType="primary"
+                  (click)="runAction('mark-fixed')"
+                  [disabled]="actionLoading()"
+                >
+                  标记修复
+                </button>
               }
               @if (canVerify(detail.issue.status)) {
-                <button nz-button nzType="primary" (click)="runAction('verify')" [disabled]="actionLoading()">测试通过</button>
+                <button
+                  nz-button
+                  nzType="primary"
+                  (click)="runAction('verify')"
+                  [disabled]="actionLoading()"
+                >
+                  测试通过
+                </button>
               }
               @if (canReopen(detail.issue.status)) {
-                <button nz-button nzType="default" nzDanger (click)="runAction('reopen')" [disabled]="actionLoading()">{{ detail.issue.status === 'fixed' ? '测试不通过' : '重新打开' }}</button>
+                <button
+                  nz-button
+                  nzType="default"
+                  nzDanger
+                  (click)="runAction('reopen')"
+                  [disabled]="actionLoading()"
+                >
+                  {{ detail.issue.status === 'fixed' ? '测试不通过' : '重新打开' }}
+                </button>
               }
               @if (canClose(detail.issue.status)) {
-                <button nz-button nzType="default" (click)="runAction('close')" [disabled]="actionLoading()">关闭</button>
+                <button
+                  nz-button
+                  nzType="default"
+                  (click)="runAction('close')"
+                  [disabled]="actionLoading()"
+                >
+                  关闭
+                </button>
               }
             </div>
           </div>
@@ -211,12 +305,21 @@
               }
             </div> -->
             <div class="action-buttons">
-              <button nz-button nzType="default" (click)="submitComment()" [disabled]="commentLoading()">提交评论</button>
+              <button
+                nz-button
+                nzType="default"
+                (click)="submitComment()"
+                [disabled]="commentLoading()"
+              >
+                提交评论
+              </button>
             </div>
             <div class="timeline">
               @for (item of detail.comments; track item.id) {
                 <div class="timeline-item">
-                  <div class="timeline-head">{{ item.authorName || '-' }} · {{ item.createdAt | hubDateTime }}</div>
+                  <div class="timeline-head">
+                    {{ item.authorName || '-' }} · {{ item.createdAt | hubDateTime }}
+                  </div>
                   <div class="comment-content">
                     @for (segment of commentSegments(item); track $index) {
                       @if (segment.mention) {
@@ -233,13 +336,28 @@
 
           <div class="section">
             <div class="action-title">附件</div>
-            <nz-upload class="detail-upload" nzListType="picture-card" [nzMultiple]="true" [nzAccept]="attachmentAccept" [nzShowUploadList]="false" [nzCustomRequest]="uploadDetailAttachmentRequest" [nzDisabled]="attachmentLoading()">
+            <nz-upload
+              class="detail-upload"
+              nzListType="picture-card"
+              [nzMultiple]="true"
+              [nzAccept]="attachmentAccept"
+              [nzShowUploadList]="false"
+              [nzCustomRequest]="uploadDetailAttachmentRequest"
+              [nzDisabled]="attachmentLoading()"
+            >
               <div class="upload-card-trigger">
                 <div class="plus">+</div>
                 <div>上传</div>
               </div>
             </nz-upload>
-            <app-attachment-card-list [showEmpty]="false" [items]="toAttachmentCardItems(detail.attachments)" [loading]="attachmentLoading()" [showDownload]="true" [showRemove]="true" (remove)="removeAttachment($event)"></app-attachment-card-list>
+            <app-attachment-card-list
+              [showEmpty]="false"
+              [items]="toAttachmentCardItems(detail.attachments)"
+              [loading]="attachmentLoading()"
+              [showDownload]="true"
+              [showRemove]="true"
+              (remove)="removeAttachment($event)"
+            ></app-attachment-card-list>
           </div>
 
           <div class="section">
@@ -248,9 +366,13 @@
               <div class="timeline">
                 @for (log of detail.logs; track log.id) {
                   <div class="timeline-item">
-                    <div class="timeline-head">{{ log.operatorName || '-' }} · {{ log.createdAt | hubDateTime }}</div>
+                    <div class="timeline-head">
+                      {{ log.operatorName || '-' }} · {{ log.createdAt | hubDateTime }}
+                    </div>
                     <div>
-                      <nz-tag [nzColor]="actionTypeColor(log.actionType)">{{ actionTypeLabel(log.actionType) }}</nz-tag>
+                      <nz-tag [nzColor]="actionTypeColor(log.actionType)">{{
+                        actionTypeLabel(log.actionType)
+                      }}</nz-tag>
                       {{ log.summary || '' }}
                     </div>
                   </div>

@@ -64,11 +64,18 @@ export const listIssueQuerySchema = z.object({
     pageSize: z.coerce.number().int().min(1).max(100).default(20)
 });
 
+const assigneeIdSchema = z.string().trim().min(1).max(64);
+
 export const assignIssueSchema = z.object({
-    assigneeId: z.string().trim().min(1).max(64),
+    assigneeId: assigneeIdSchema.optional(),
+    assigneeIds: z.array(assigneeIdSchema).min(1).max(20).optional(),
     operatorId: z.string().trim().max(64).nullable().optional(),
     operatorName: z.string().trim().min(1).max(120).nullable().optional(),
     comment: z.string().trim().max(2000).optional()
+}).refine((input) => {
+    return (input.assigneeIds?.length ?? 0) > 0 || !!input.assigneeId;
+}, {
+    message: "assigneeId or assigneeIds is required"
 });
 
 export const startProgressIssueSchema = actorSchema;

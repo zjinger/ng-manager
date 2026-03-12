@@ -74,18 +74,18 @@ export class AuthService {
         const user = this.repo.findByUsername(username);
 
         if (!user) {
-            throw new AppError("AUTH_INVALID_CREDENTIALS", "invalid username or password", 401);
+            throw new AppError("AUTH_INVALID_CREDENTIALS", "用户名或密码错误", 401);
         }
 
         if (user.status !== "active") {
-            throw new AppError("AUTH_USER_DISABLED", "admin user is disabled", 403);
+            throw new AppError("AUTH_USER_DISABLED", "用户已被禁用", 403);
         }
 
         const rawPassword = this.resolvePassword(input);
 
         const matched = await bcrypt.compare(rawPassword, user.passwordHash);
         if (!matched) {
-            throw new AppError("AUTH_INVALID_CREDENTIALS", "invalid username or password", 401);
+            throw new AppError("AUTH_INVALID_CREDENTIALS", "用户名或密码错误", 401);
         }
 
         const now = nowIso();

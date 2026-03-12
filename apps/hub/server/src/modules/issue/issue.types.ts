@@ -132,6 +132,7 @@ export type UpdateIssueRepoPatch = UpdateIssueInput & {
 
 export interface AssignIssueInput {
     assigneeId?: string | null;
+    assigneeIds?: string[];
     assigneeName?: string | null;
     operatorId?: string | null;
     operatorName?: string | null;
@@ -193,6 +194,14 @@ export interface IssueListResult {
     total: number;
 }
 
+export interface IssueAssigneeEntity {
+    id: string;
+    issueId: string;
+    userId: string;
+    userName?: string | null;
+    createdAt: string;
+}
+
 export interface IssueAttachmentEntity {
     id: string;
     issueId: string;
@@ -210,6 +219,7 @@ export interface IssueAttachmentEntity {
 
 export interface IssueDetailResult {
     issue: IssueEntity;
+    assignees: IssueAssigneeEntity[];
     comments: IssueCommentEntity[];
     attachments: IssueAttachmentEntity[];
     logs: IssueActionLogEntity[];
