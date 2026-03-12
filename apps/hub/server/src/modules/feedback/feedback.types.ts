@@ -1,11 +1,11 @@
-export type FeedbackSource = "desktop" | "cli" | "web";
+export type FeedbackSource = "desktop" | "cli" | "web" | "mobile" | "applet";
 export type FeedbackCategory = "bug" | "suggestion" | "feature" | "other";
 export type FeedbackStatus = "open" | "processing" | "resolved" | "closed";
 
 export interface FeedbackEntity {
   id: string;  // 反馈 ID
   projectKey?: string | null; // 反馈所属的项目，null 表示未关联项目
-  source: FeedbackSource; // 用户反馈的来源，例如桌面应用、命令行工具或网页
+  source: FeedbackSource; // 用户反馈的来源，例如桌面应用、命令行工具、网页、移动端或小程序
   category: FeedbackCategory; // 用户反馈的类别，例如 bug、suggestion、feature 或其他
   title: string; // 用户反馈的标题
   content: string; // 用户反馈的内容

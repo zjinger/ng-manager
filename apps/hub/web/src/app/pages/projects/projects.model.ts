@@ -32,6 +32,7 @@ export interface UserOptionItem {
   id: string;
   username: string;
   displayName: string | null;
+  titleCode: string | null;
 }
 
 export interface ProjectConfigItem {

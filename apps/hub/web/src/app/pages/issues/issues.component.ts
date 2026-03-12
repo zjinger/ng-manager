@@ -1,4 +1,4 @@
-﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subscription, debounceTime, firstValueFrom } from 'rxjs';
@@ -21,7 +21,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { AttachmentCardItem, AttachmentCardListComponent } from '../../shared/components';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
-import { AttachmentPolicyResult, IssueActionType, IssueAttachmentDto, IssueCloseReasonType, IssueDetailResult, IssueItem, IssueListResult, IssuePriority, IssueStatus, IssueType, ProjectMemberItem, ProjectOption } from './issues.model';
+import { AttachmentPolicyResult, IssueActionType, IssueAttachmentDto, IssueCloseReasonType, IssueComment, IssueCommentMention, IssueDetailResult, IssueItem, IssueListResult, IssuePriority, IssueStatus, IssueType, ProjectMemberItem, ProjectOption } from './issues.model';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
@@ -118,6 +118,12 @@ export class IssuesPageComponent {
     content: ['']
   });
 
+  protected readonly mentionPanelVisible = signal(false);
+  protected readonly mentionCandidates = signal<ProjectMemberItem[]>([]);
+  protected readonly mentionActiveIndex = signal(0);
+  private mentionTokenStart = -1;
+  private mentionTokenEnd = -1;
+
   public constructor() {
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       void this.loadIssues();
@@ -192,6 +198,7 @@ export class IssuesPageComponent {
     });
     this.actionForm.reset({ comment: '', closeReasonType: '' });
     this.commentForm.reset({ content: '' });
+    this.hideMentionPanel();
     void this.loadProjectMembers(item.projectId);
     void this.loadIssueDetail(item.id);
   }
@@ -303,18 +310,102 @@ export class IssuesPageComponent {
     this.detailError.set(null);
 
     try {
+      const mentions = this.extractMentionsFromContent(content);
       const result = await firstValueFrom(
-        this.api.post<IssueDetailResult, { content: string }>(`/api/admin/issues/${detail.issue.id}/comments`, {
-          content
+        this.api.post<IssueDetailResult, { content: string; mentions: IssueCommentMention[] }>(`/api/admin/issues/${detail.issue.id}/comments`, {
+          content,
+          mentions
         })
       );
       this.selectedDetail.set(result);
       this.commentForm.reset({ content: '' });
+      this.hideMentionPanel();
     } catch (error) {
       this.detailError.set(this.getErrorMessage(error, '评论失败'));
     } finally {
       this.commentLoading.set(false);
     }
+  }
+
+  protected appendMention(displayName: string): void {
+    const member = this.projectMembers().find((item) => item.displayName === displayName);
+    if (!member) {
+      return;
+    }
+    this.insertMentionMember(member);
+  }
+
+  protected onCommentEditorInput(event: Event): void {
+    const textarea = event.target as HTMLTextAreaElement | null;
+    if (!textarea) {
+      this.hideMentionPanel();
+      return;
+    }
+    this.updateMentionPanel(textarea);
+  }
+
+  protected onCommentEditorKeydown(event: KeyboardEvent): void {
+    if (!this.mentionPanelVisible()) {
+      return;
+    }
+
+    const candidates = this.mentionCandidates();
+    if (!candidates.length) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const next = (this.mentionActiveIndex() + 1) % candidates.length;
+      this.mentionActiveIndex.set(next);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = (this.mentionActiveIndex() - 1 + candidates.length) % candidates.length;
+      this.mentionActiveIndex.set(next);
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      const textarea = event.target as HTMLTextAreaElement | null;
+      this.insertMentionMember(candidates[this.mentionActiveIndex()], textarea ?? undefined);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.hideMentionPanel();
+    }
+  }
+
+  protected selectMentionCandidate(member: ProjectMemberItem, event: MouseEvent): void {
+    event.preventDefault();
+    const textarea = event.currentTarget instanceof HTMLElement
+      ? event.currentTarget.closest('.comment-editor')?.querySelector('textarea')
+      : null;
+    this.insertMentionMember(member, textarea instanceof HTMLTextAreaElement ? textarea : undefined);
+  }
+
+  protected commentSegments(comment: IssueComment): Array<{ text: string; mention: boolean }> {
+    const names = Array.from(new Set((comment.mentions ?? []).map((item) => item.displayName).filter((item) => !!item)));
+    if (!names.length) {
+      return [{ text: comment.content, mention: false }];
+    }
+
+    const sortedNames = [...names].sort((a, b) => b.length - a.length);
+    const pattern = sortedNames.map((name) => this.escapeRegExp(`@${name}`)).join('|');
+    const matcher = new RegExp(`(${pattern})`, 'g');
+    const chunks = comment.content.split(matcher);
+
+    return chunks
+      .filter((chunk) => chunk.length > 0)
+      .map((chunk) => ({
+        text: chunk,
+        mention: sortedNames.some((name) => chunk === `@${name}`)
+      }));
   }
 
   protected readonly beforeCreateUpload = (file: NzUploadFile): boolean => {
@@ -485,7 +576,7 @@ export class IssuesPageComponent {
   protected toAttachmentCardItems(attachments: IssueAttachmentDto[]): AttachmentCardItem[] {
     return attachments.map((attachment) => ({
       id: attachment.id,
-      name: attachment.originalName,
+      name: attachment.uploaderName ? (attachment.uploaderName + ' - ' + attachment.originalName) : attachment.originalName,
       size: attachment.fileSize,
       mimeType: attachment.mimeType ?? null,
       fileExt: attachment.fileExt ?? null,
@@ -532,11 +623,11 @@ export class IssuesPageComponent {
   }
 
   protected canAssign(status: IssueStatus): boolean {
-    return status === 'open' || status === 'reopened';
+    return status === 'open' || status === 'assigned' || status === 'reopened';
   }
 
   protected canStartProgress(status: IssueStatus): boolean {
-    return status === 'open' || status === 'assigned' || status === 'reopened';
+    return status === 'assigned' || status === 'reopened';
   }
 
   protected canMarkFixed(status: IssueStatus): boolean {
@@ -548,20 +639,18 @@ export class IssuesPageComponent {
   }
 
   protected canReopen(status: IssueStatus): boolean {
-    return status === 'fixed' || status === 'verified' || status === 'closed';
+    return status === 'fixed' || status === 'closed';
   }
 
   protected canClose(status: IssueStatus): boolean {
-    return status === 'open' || status === 'verified';
+    return status === 'verified';
   }
 
   protected statusColor(status: IssueStatus): string {
     if (status === 'closed') return 'default';
     if (status === 'verified') return 'green';
-    if (status === 'fixed') return 'blue';
-    if (status === 'reopened') return 'red';
-    if (status === 'in_progress') return 'processing';
-    if (status === 'assigned') return 'cyan';
+    if (status === 'fixed') return 'purple';
+    if (status === 'in_progress' || status === 'assigned') return 'blue';
     return 'orange';
   }
 
@@ -570,7 +659,7 @@ export class IssuesPageComponent {
     if (status === 'in_progress') return '处理中';
     if (status === 'fixed') return '待测试';
     if (status === 'verified') return '已验证';
-    if (status === 'reopened') return '已驳回';
+    if (status === 'reopened') return '已重开';
     if (status === 'closed') return '已关闭';
     return '新建';
   }
@@ -655,6 +744,7 @@ export class IssuesPageComponent {
       });
       this.actionForm.reset({ comment: '', closeReasonType: '' });
       this.commentForm.reset({ content: '' });
+      this.hideMentionPanel();
       await this.loadProjectMembers(item.projectId);
       await this.loadIssueDetail(item.id);
       return;
@@ -726,9 +816,14 @@ export class IssuesPageComponent {
   }
 
 
+  protected projectName(projectId: string): string {
+    const hit = this.projectOptions().find((item) => item.id === projectId);
+    return hit?.name ?? projectId;
+  }
+
   protected memberLabel(member: ProjectMemberItem): string {
     const roleText = member.roles.map((role) => this.roleLabel(role)).join('、');
-    return `${member.displayName} (${member.userId})${roleText ? ' - ' + roleText : ''}`;
+    return `${member.displayName} ${roleText ? ' - ' + roleText : ''}`;
   }
 
   protected roleLabel(role: ProjectMemberItem['roles'][number]): string {
@@ -758,11 +853,124 @@ export class IssuesPageComponent {
       this.memberLoading.set(false);
     }
   }
+  private hideMentionPanel(): void {
+    this.mentionPanelVisible.set(false);
+    this.mentionCandidates.set([]);
+    this.mentionActiveIndex.set(0);
+    this.mentionTokenStart = -1;
+    this.mentionTokenEnd = -1;
+  }
+
+  private updateMentionPanel(textarea: HTMLTextAreaElement): void {
+    const content = this.commentForm.controls.content.value ?? '';
+    const caret = textarea.selectionStart ?? content.length;
+    const context = this.findMentionContext(content, caret);
+    if (!context) {
+      this.hideMentionPanel();
+      return;
+    }
+
+    const query = context.query.toLowerCase();
+    const candidates = this.projectMembers().filter((member) => {
+      const byName = member.displayName.toLowerCase().includes(query);
+      const byUserId = member.userId.toLowerCase().includes(query);
+      return byName || byUserId;
+    });
+
+    if (!candidates.length) {
+      this.hideMentionPanel();
+      return;
+    }
+
+    this.mentionTokenStart = context.start;
+    this.mentionTokenEnd = caret;
+    this.mentionCandidates.set(candidates.slice(0, 8));
+    this.mentionActiveIndex.set(0);
+    this.mentionPanelVisible.set(true);
+  }
+
+  private findMentionContext(content: string, caret: number): { start: number; query: string } | null {
+    const prefix = content.slice(0, caret);
+    const at = prefix.lastIndexOf('@');
+    if (at < 0) {
+      return null;
+    }
+
+    if (at > 0) {
+      const prev = prefix.charAt(at - 1);
+      if (!/\s|[\(\[\{,，。:：]/.test(prev)) {
+        return null;
+      }
+    }
+
+    const query = prefix.slice(at + 1);
+    if (/\s|@/.test(query)) {
+      return null;
+    }
+
+    return { start: at, query };
+  }
+
+  private insertMentionMember(member: ProjectMemberItem, textarea?: HTMLTextAreaElement): void {
+    const current = this.commentForm.controls.content.value ?? '';
+    const input = textarea ?? (document.activeElement instanceof HTMLTextAreaElement ? document.activeElement : null);
+    const hasContext = this.mentionPanelVisible() && this.mentionTokenStart >= 0 && this.mentionTokenEnd >= this.mentionTokenStart;
+
+    if (!input || !hasContext) {
+      const suffix = current.length > 0 && !current.endsWith(' ') ? ' ' : '';
+      this.commentForm.controls.content.setValue(`${current}${suffix}@${member.displayName} `);
+      this.hideMentionPanel();
+      return;
+    }
+
+    const mentionText = `@${member.displayName} `;
+    const next = `${current.slice(0, this.mentionTokenStart)}${mentionText}${current.slice(this.mentionTokenEnd)}`;
+    const caret = this.mentionTokenStart + mentionText.length;
+
+    this.commentForm.controls.content.setValue(next);
+    this.hideMentionPanel();
+
+    queueMicrotask(() => {
+      input.focus();
+      input.setSelectionRange(caret, caret);
+    });
+  }
+
+  private extractMentionsFromContent(content: string): IssueCommentMention[] {
+    const members = this.projectMembers();
+    if (!members.length) {
+      return [];
+    }
+
+    const mentions: IssueCommentMention[] = [];
+    const seen = new Set<string>();
+
+    for (const member of members) {
+      const token = `@${member.displayName}`;
+      if (!content.includes(token)) {
+        continue;
+      }
+      if (seen.has(member.userId)) {
+        continue;
+      }
+      mentions.push({
+        userId: member.userId,
+        displayName: member.displayName
+      });
+      seen.add(member.userId);
+    }
+
+    return mentions;
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
   private syncDetailAttachmentFileList(attachments: IssueAttachmentDto[]): void {
     this.detailAttachmentFileList.set(
       attachments.map((attachment) => ({
         uid: attachment.id,
-        name: attachment.originalName,
+        name: attachment.uploaderName ? (attachment.uploaderName + ' - ' + attachment.originalName) : attachment.originalName,
         status: "done",
         url: attachment.downloadUrl,
         type: attachment.mimeType ?? undefined,
@@ -839,4 +1047,3 @@ export class IssuesPageComponent {
     return fallback;
   }
 }
-

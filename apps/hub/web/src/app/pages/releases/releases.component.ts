@@ -18,7 +18,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
-type ReleaseChannel = 'desktop' | 'cli';
+type ReleaseChannel = 'desktop' | 'cli' | 'web' | 'mobile' | 'applet';
 type ReleaseStatus = 'draft' | 'published' | 'deprecated';
 
 interface ReleaseItem {
@@ -81,7 +81,7 @@ interface ProjectOption {
             <nz-form-control>
               <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
                 @for (project of projectOptions(); track project.id) {
-                  <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                  <nz-option [nzValue]="project.id" [nzLabel]="project.name" />
                 }
               </nz-select>
             </nz-form-control>
@@ -90,7 +90,10 @@ interface ProjectOption {
             <nz-form-label>渠道</nz-form-label>
             <nz-form-control>
               <nz-select formControlName="channel" nzAllowClear>
+                <nz-option nzValue="web" nzLabel="Web"></nz-option>
                 <nz-option nzValue="desktop" nzLabel="桌面端"></nz-option>
+                <nz-option nzValue="mobile" nzLabel="移动端"></nz-option>
+                <nz-option nzValue="applet" nzLabel="小程序"></nz-option>
                 <nz-option nzValue="cli" nzLabel="CLI"></nz-option>
               </nz-select>
             </nz-form-control>
@@ -188,8 +191,11 @@ interface ProjectOption {
                 <nz-form-label nzRequired>渠道</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="channel">
+                    <nz-option nzValue="web" nzLabel="Web"></nz-option>
                     <nz-option nzValue="desktop" nzLabel="桌面端"></nz-option>
                     <nz-option nzValue="cli" nzLabel="CLI"></nz-option>
+                    <nz-option nzValue="mobile" nzLabel="移动端"></nz-option>
+                    <nz-option nzValue="applet" nzLabel="小程序"></nz-option>
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -427,7 +433,12 @@ export class ReleasesPageComponent {
   }
 
   protected channelLabel(channel: ReleaseChannel): string {
-    return channel === 'cli' ? 'CLI' : '桌面端';
+    if (channel === 'cli') return 'CLI';
+    if (channel === 'desktop') return '桌面端';
+    if (channel === 'web') return 'Web';
+    if (channel === 'mobile') return '移动端';
+    if (channel === 'applet') return '小程序';
+    return '';
   }
   private async loadReleases(): Promise<void> {
     this.listLoading.set(true);

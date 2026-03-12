@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS issue_comments (
 
   content TEXT NOT NULL,
 
+  mentions_json TEXT NOT NULL DEFAULT '[]',
+
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
 

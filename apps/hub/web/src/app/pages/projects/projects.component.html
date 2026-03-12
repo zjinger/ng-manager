@@ -182,6 +182,7 @@
                     nzShowSearch
                     nzPlaceHolder="选择用户"
                     style="width: 260px"
+                    (ngModelChange)="onUserSelectChange($event)"
                   >
                     @for (user of projectUsers(); track user.id) {
                       <nz-option

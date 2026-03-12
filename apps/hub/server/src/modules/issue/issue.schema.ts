@@ -82,7 +82,11 @@ export const closeIssueSchema = actorSchema.extend({
 export const addIssueCommentSchema = z.object({
     authorId: z.string().trim().max(64).nullable().optional(),
     authorName: z.string().trim().min(1).max(120).nullable().optional(),
-    content: z.string().trim().min(1).max(5000)
+    content: z.string().trim().min(1).max(5000),
+    mentions: z.array(z.object({
+        userId: z.string().trim().min(1).max(64),
+        displayName: z.string().trim().min(1).max(120)
+    })).max(30).optional()
 });
 
 export const removeIssueAttachmentSchema = z.object({

@@ -417,6 +417,7 @@ export class IssueService {
     addComment(id: string, input: AddIssueCommentInput) {
         const issue = this.getById(id);
         const now = nowIso();
+        const mentions = this.normalizeCommentMentions(issue.projectId, input.mentions);
 
         this.repo.runInTransaction(() => {
             this.repo.createComment({
@@ -425,6 +426,7 @@ export class IssueService {
                 authorId: input.authorId?.trim() || null,
                 authorName: input.authorName?.trim() || null,
                 content: input.content.trim(),
+                mentions,
                 createdAt: now,
                 updatedAt: now
             });
@@ -588,6 +590,38 @@ export class IssueService {
         return path.join(env.uploadRoot, "issues", issueId);
     }
 
+    private normalizeCommentMentions(
+        projectId: string,
+        mentions?: AddIssueCommentInput["mentions"]
+    ): Array<{ userId: string; displayName: string }> {
+        if (!mentions || mentions.length === 0) {
+            return [];
+        }
+
+        const normalized: Array<{ userId: string; displayName: string }> = [];
+        const seen = new Set<string>();
+
+        for (const item of mentions) {
+            const userId = item?.userId?.trim();
+            if (!userId || seen.has(userId)) {
+                continue;
+            }
+
+            const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, userId);
+            if (!member) {
+                continue;
+            }
+
+            normalized.push({
+                userId,
+                displayName: member.displayName
+            });
+            seen.add(userId);
+        }
+
+        return normalized;
+    }
+
     private assertTransition(from: IssueStatus, to: IssueStatus): void {
         const allowed = ISSUE_STATUS_TRANSITIONS[from] ?? [];
         if (!allowed.includes(to)) {
@@ -715,12 +749,3 @@ export class IssueService {
         throw error;
     }
 }
-
-
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
-export type ReleaseChannel = "desktop" | "cli";
+export type ReleaseChannel = "desktop" | "cli" | "web" | "mobile" | "applet";
 export type ReleaseStatus = "draft" | "published" | "deprecated";
 
 export interface ReleaseEntity {

@@ -88,7 +88,7 @@ interface ProjectOption {
             <nz-form-control>
               <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
                 @for (project of projectOptions(); track project.id) {
-                  <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                  <nz-option [nzValue]="project.id" [nzLabel]="project.name" />
                 }
               </nz-select>
             </nz-form-control>

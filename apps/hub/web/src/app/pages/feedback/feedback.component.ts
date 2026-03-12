@@ -19,7 +19,7 @@ import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 
 type FeedbackStatus = 'open' | 'processing' | 'resolved' | 'closed';
 type FeedbackCategory = 'bug' | 'suggestion' | 'feature' | 'other';
-type FeedbackSource = 'desktop' | 'cli' | 'web';
+type FeedbackSource = 'desktop' | 'cli' | 'web' | 'mobile' | 'applet';
 
 interface FeedbackItem {
   id: string;
@@ -78,7 +78,7 @@ interface ProjectOption {
             <nz-form-control>
               <nz-select formControlName="projectKey" nzAllowClear nzPlaceHolder="全部项目">
                 @for (project of projectOptions(); track project.id) {
-                  <nz-option [nzValue]="project.projectKey" [nzLabel]="project.name + ' (' + project.projectKey + ')'">
+                  <nz-option [nzValue]="project.projectKey" [nzLabel]="project.name">
                   </nz-option>
                 }
               </nz-select>
@@ -286,8 +286,11 @@ export class FeedbackPageComponent {
   }
 
   protected sourceLabel(source: FeedbackSource): string {
+    if (source === 'web') return 'Web';
     if (source === 'desktop') return '桌面端';
     if (source === 'cli') return 'CLI';
+    if (source === 'mobile') return '移动端';
+    if (source === 'applet') return '小程序';
     return 'Web';
   }
 

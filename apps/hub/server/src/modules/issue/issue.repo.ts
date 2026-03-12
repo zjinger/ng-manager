@@ -1,7 +1,8 @@
-﻿import type Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import type {
     IssueActionLogEntity,
     IssueCommentEntity,
+    IssueCommentMentionEntity,
     IssueDetailResult,
     IssueAttachmentEntity,
     IssueEntity,
@@ -42,6 +43,7 @@ type IssueCommentRow = {
     author_id: string | null;
     author_name: string | null;
     content: string;
+    mentions_json: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -297,9 +299,9 @@ export class IssueRepo {
     createComment(entity: IssueCommentEntity): void {
         const stmt = this.db.prepare(`
       INSERT INTO issue_comments (
-        id, issue_id, author_id, author_name, content, created_at, updated_at
+        id, issue_id, author_id, author_name, content, mentions_json, created_at, updated_at
       ) VALUES (
-        @id, @issue_id, @author_id, @author_name, @content, @created_at, @updated_at
+        @id, @issue_id, @author_id, @author_name, @content, @mentions_json, @created_at, @updated_at
       )
     `);
 
@@ -309,6 +311,7 @@ export class IssueRepo {
             author_id: entity.authorId ?? null,
             author_name: entity.authorName ?? null,
             content: entity.content,
+            mentions_json: JSON.stringify(entity.mentions ?? []),
             created_at: entity.createdAt,
             updated_at: entity.updatedAt
         });
@@ -515,11 +518,32 @@ export class IssueRepo {
             authorId: row.author_id,
             authorName: row.author_name,
             content: row.content,
+            mentions: this.parseMentionsJson(row.mentions_json),
             createdAt: row.created_at,
             updatedAt: row.updated_at
         };
     }
 
+    private parseMentionsJson(value: string | null): IssueCommentMentionEntity[] {
+        if (!value) {
+            return [];
+        }
+
+        try {
+            const parsed = JSON.parse(value);
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            return parsed
+                .map((item) => ({
+                    userId: typeof item?.userId === "string" ? item.userId.trim() : "",
+                    displayName: typeof item?.displayName === "string" ? item.displayName.trim() : ""
+                }))
+                .filter((item) => item.userId.length > 0 && item.displayName.length > 0);
+        } catch {
+            return [];
+        }
+    }
     private toActionLogEntity(row: IssueActionLogRow): IssueActionLogEntity {
         return {
             id: row.id,
@@ -551,6 +575,3 @@ export class IssueRepo {
         };
     }
 }
-
-
-

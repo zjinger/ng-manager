@@ -196,6 +196,14 @@ export class ProjectsPageComponent {
     return role;
   }
 
+  protected onUserSelectChange(userId: string): void {
+    const user = this.projectUsers().find(u => u.id === userId);
+    if (user && user.titleCode) {
+      // 设置默认的角色
+      this.memberForm.patchValue({ roles: [user.titleCode as ProjectMemberRole] });
+    }
+  }
+
   protected async saveMember(): Promise<void> {
     if (this.memberForm.invalid) return;
     const projectId = this.configProjectId();

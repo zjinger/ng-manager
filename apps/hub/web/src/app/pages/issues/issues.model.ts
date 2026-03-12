@@ -1,4 +1,4 @@
-﻿export type IssueType =
+export type IssueType =
     | "bug" // 缺陷
     | "requirement_change" //需求变更
     | "feature" // 新功能(新需求)
@@ -49,12 +49,18 @@ export interface IssueItem {
     updatedAt: string;
 }
 
+export interface IssueCommentMention {
+    userId: string;
+    displayName: string;
+}
+
 export interface IssueComment {
     id: string;
     issueId: string;
     authorId?: string | null;
     authorName?: string | null;
     content: string;
+    mentions: IssueCommentMention[];
     createdAt: string;
     updatedAt: string;
 }
@@ -109,4 +115,3 @@ export interface AttachmentPolicyResult {
     mimePrefixes: string[];
     exts: string[];
 }
-

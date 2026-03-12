@@ -162,7 +162,10 @@ interface ProjectOption {
                 <nz-form-control>
                   <nz-select formControlName="scope">
                     <nz-option nzValue="all" nzLabel="全部端"></nz-option>
+                    <nz-option nzValue="web" nzLabel="Web"></nz-option>
                     <nz-option nzValue="desktop" nzLabel="桌面端"></nz-option>
+                    <nz-option nzValue="mobile" nzLabel="移动端"></nz-option>
+                    <nz-option nzValue="applet" nzLabel="小程序"></nz-option>
                     <nz-option nzValue="cli" nzLabel="CLI"></nz-option>
                   </nz-select>
                 </nz-form-control>

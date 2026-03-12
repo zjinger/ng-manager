@@ -1,4 +1,4 @@
-﻿export type IssueType =
+export type IssueType =
     | "bug"
     | "requirement_change"
     | "feature"
@@ -66,12 +66,18 @@ export interface IssueEntity {
     updatedAt: string;
 }
 
+export interface IssueCommentMentionEntity {
+    userId: string;
+    displayName: string;
+}
+
 export interface IssueCommentEntity {
     id: string;
     issueId: string;
     authorId?: string | null;
     authorName?: string | null;
     content: string;
+    mentions: IssueCommentMentionEntity[];
     createdAt: string;
     updatedAt: string;
 }
@@ -167,6 +173,7 @@ export interface AddIssueCommentInput {
     authorId?: string | null;
     authorName?: string | null;
     content: string;
+    mentions?: IssueCommentMentionEntity[];
 }
 
 export interface ListIssueQuery {

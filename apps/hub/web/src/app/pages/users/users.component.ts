@@ -19,7 +19,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 
 type UserStatus = 'active' | 'inactive';
-type UserTitleCode = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'tester' | 'ops' | 'other';
+type UserTitleCode = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops' | 'other';
 
 interface UserItem {
   id: string;
