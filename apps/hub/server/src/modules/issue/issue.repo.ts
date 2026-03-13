@@ -4,10 +4,11 @@ import type {
     IssueCommentEntity,
     IssueCommentMentionEntity,
     IssueDetailResult,
-    IssueAssigneeEntity,
+    IssueParticipantEntity,
     IssueAttachmentEntity,
     IssueEntity,
     IssueListResult,
+    IssueWatcherEntity,
     ListIssueQuery,
     UpdateIssueRepoPatch,
 } from "./issue.types";
@@ -31,8 +32,11 @@ type IssueRow = {
     module: string | null;
     version: string | null;
     environment: string | null;
-    fixed_at: string | null;
+    resolved_at: string | null;
     verified_at: string | null;
+    last_verified_result: "pass" | "fail" | null;
+    close_reason_type: string | null;
+    close_reason_text: string | null;
     closed_at: string | null;
     created_at: string;
     updated_at: string;
@@ -58,19 +62,30 @@ type IssueActionLogRow = {
     operator_id: string | null;
     operator_name: string | null;
     summary: string | null;
+    meta_json: string | null;
     created_at: string;
 };
 
-type IssueAssigneeRow = {
+type IssueParticipantRow = {
     id: string;
     issue_id: string;
     user_id: string;
     user_name: string | null;
     created_at: string;
 };
+
+type IssueWatcherRow = {
+    id: string;
+    issue_id: string;
+    user_id: string;
+    user_name: string | null;
+    created_at: string;
+};
+
 type IssueAttachmentRow = {
     id: string;
     issue_id: string;
+    upload_id: string;
     file_name: string;
     original_name: string;
     file_ext: string | null;
@@ -112,8 +127,11 @@ export class IssueRepo {
         module,
         version,
         environment,
-        fixed_at,
+        resolved_at,
         verified_at,
+        last_verified_result,
+        close_reason_type,
+        close_reason_text,
         closed_at,
         created_at,
         updated_at
@@ -136,8 +154,11 @@ export class IssueRepo {
         @module,
         @version,
         @environment,
-        @fixed_at,
+        @resolved_at,
         @verified_at,
+        @last_verified_result,
+        @close_reason_type,
+        @close_reason_text,
         @closed_at,
         @created_at,
         @updated_at
@@ -148,10 +169,7 @@ export class IssueRepo {
     }
 
     findById(id: string): IssueEntity | null {
-        const row = this.db
-            .prepare(`SELECT * FROM issues WHERE id = ?`)
-            .get(id) as IssueRow | undefined;
-
+        const row = this.db.prepare(`SELECT * FROM issues WHERE id = ?`).get(id) as IssueRow | undefined;
         return row ? this.toEntity(row) : null;
     }
 
@@ -163,72 +181,70 @@ export class IssueRepo {
             fields.push("title = ?");
             params.push(patch.title);
         }
-
         if (patch.description !== undefined) {
             fields.push("description = ?");
             params.push(patch.description);
         }
-
         if (patch.priority !== undefined) {
             fields.push("priority = ?");
             params.push(patch.priority);
         }
-
         if (patch.module !== undefined) {
             fields.push("module = ?");
             params.push(patch.module ?? null);
         }
-
         if (patch.version !== undefined) {
             fields.push("version = ?");
             params.push(patch.version ?? null);
         }
-
         if (patch.environment !== undefined) {
             fields.push("environment = ?");
             params.push(patch.environment ?? null);
         }
-
         if (patch.status !== undefined) {
             fields.push("status = ?");
             params.push(patch.status);
         }
-
         if (patch.assigneeId !== undefined) {
             fields.push("assignee_id = ?");
             params.push(patch.assigneeId ?? null);
         }
-
         if (patch.assigneeName !== undefined) {
             fields.push("assignee_name = ?");
             params.push(patch.assigneeName ?? null);
         }
-
         if (patch.verifierId !== undefined) {
             fields.push("verifier_id = ?");
             params.push(patch.verifierId ?? null);
         }
-
         if (patch.verifierName !== undefined) {
             fields.push("verifier_name = ?");
             params.push(patch.verifierName ?? null);
         }
-
         if (patch.reopenCount !== undefined) {
             fields.push("reopen_count = ?");
             params.push(patch.reopenCount);
         }
-
-        if (patch.fixedAt !== undefined) {
-            fields.push("fixed_at = ?");
-            params.push(patch.fixedAt ?? null);
+        if (patch.resolvedAt !== undefined) {
+            fields.push("resolved_at = ?");
+            params.push(patch.resolvedAt ?? null);
         }
-
         if (patch.verifiedAt !== undefined) {
             fields.push("verified_at = ?");
             params.push(patch.verifiedAt ?? null);
         }
-
+        if (patch.lastVerifiedResult !== undefined) {
+            fields.push("last_verified_result = ?");
+            params.push(patch.lastVerifiedResult ?? null);
+        }
+        if (patch.closeReasonType !== undefined) {
+            fields.push("close_reason_type = ?");
+            params.push(patch.closeReasonType ?? null);
+        }
+        if (patch.closeReasonText !== undefined) {
+            fields.push("close_reason_text = ?");
+            params.push(patch.closeReasonText ?? null);
+        }
         if (patch.closedAt !== undefined) {
             fields.push("closed_at = ?");
             params.push(patch.closedAt ?? null);
@@ -236,13 +252,9 @@ export class IssueRepo {
 
         fields.push("updated_at = ?");
         params.push(patch.updatedAt);
-
         params.push(id);
 
-        const result = this.db
-            .prepare(`UPDATE issues SET ${fields.join(", ")} WHERE id = ?`)
-            .run(...params);
-
+        const result = this.db.prepare(`UPDATE issues SET ${fields.join(", ")} WHERE id = ?`).run(...params);
         return result.changes > 0;
     }
 
@@ -254,47 +266,33 @@ export class IssueRepo {
             where.push("project_id = ?");
             params.push(query.projectId);
         }
-
         if (query.status) {
             where.push("status = ?");
             params.push(query.status);
         }
-
         if (query.type) {
             where.push("type = ?");
             params.push(query.type);
         }
-
         if (query.priority) {
             where.push("priority = ?");
             params.push(query.priority);
         }
-
         if (query.keyword) {
             where.push("(issue_no LIKE ? OR title LIKE ? OR description LIKE ?)");
-            params.push(
-                `%${query.keyword}%`,
-                `%${query.keyword}%`,
-                `%${query.keyword}%`
-            );
+            params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
         }
 
         const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
         const offset = (query.page - 1) * query.pageSize;
-
-        const totalRow = this.db
-            .prepare(`SELECT COUNT(*) as total FROM issues ${whereSql}`)
-            .get(...params) as { total: number };
-
-        const rows = this.db
-            .prepare(`
+        const totalRow = this.db.prepare(`SELECT COUNT(*) as total FROM issues ${whereSql}`).get(...params) as { total: number };
+        const rows = this.db.prepare(`
         SELECT *
         FROM issues
         ${whereSql}
         ORDER BY updated_at DESC, created_at DESC
         LIMIT ? OFFSET ?
-      `)
-            .all(...params, query.pageSize, offset) as IssueRow[];
+      `).all(...params, query.pageSize, offset) as IssueRow[];
 
         return {
             items: rows.map((row) => this.toEntity(row)),
@@ -305,15 +303,13 @@ export class IssueRepo {
     }
 
     createComment(entity: IssueCommentEntity): void {
-        const stmt = this.db.prepare(`
+        this.db.prepare(`
       INSERT INTO issue_comments (
         id, issue_id, author_id, author_name, content, mentions_json, created_at, updated_at
       ) VALUES (
         @id, @issue_id, @author_id, @author_name, @content, @mentions_json, @created_at, @updated_at
       )
-    `);
-
-        stmt.run({
+    `).run({
             id: entity.id,
             issue_id: entity.issueId,
             author_id: entity.authorId ?? null,
@@ -326,28 +322,23 @@ export class IssueRepo {
     }
 
     listComments(issueId: string): IssueCommentEntity[] {
-        const rows = this.db
-            .prepare(`
+        const rows = this.db.prepare(`
         SELECT *
         FROM issue_comments
         WHERE issue_id = ?
         ORDER BY created_at ASC
-      `)
-            .all(issueId) as IssueCommentRow[];
-
+      `).all(issueId) as IssueCommentRow[];
         return rows.map((row) => this.toCommentEntity(row));
     }
 
     createActionLog(entity: IssueActionLogEntity): void {
-        const stmt = this.db.prepare(`
+        this.db.prepare(`
       INSERT INTO issue_action_logs (
-        id, issue_id, action_type, from_status, to_status, operator_id, operator_name, summary, created_at
+        id, issue_id, action_type, from_status, to_status, operator_id, operator_name, summary, meta_json, created_at
       ) VALUES (
-        @id, @issue_id, @action_type, @from_status, @to_status, @operator_id, @operator_name, @summary, @created_at
+        @id, @issue_id, @action_type, @from_status, @to_status, @operator_id, @operator_name, @summary, @meta_json, @created_at
       )
-    `);
-
-        stmt.run({
+    `).run({
             id: entity.id,
             issue_id: entity.issueId,
             action_type: entity.actionType,
@@ -356,13 +347,13 @@ export class IssueRepo {
             operator_id: entity.operatorId ?? null,
             operator_name: entity.operatorName ?? null,
             summary: entity.summary ?? null,
+            meta_json: entity.metaJson ?? null,
             created_at: entity.createdAt
         });
     }
 
     listActionLogs(issueId: string): IssueActionLogEntity[] {
-        const rows = this.db
-            .prepare(`
+        const rows = this.db.prepare(`
         SELECT *
         FROM issue_action_logs
         WHERE issue_id = ?
@@ -371,147 +362,172 @@ export class IssueRepo {
         return rows.map((row) => this.toActionLogEntity(row));
     }
 
+    addParticipant(entity: IssueParticipantEntity): void {
+        this.db.prepare(`
+      INSERT INTO issue_participants (
+        id, issue_id, user_id, user_name, created_at
+      ) VALUES (
+        @id, @issue_id, @user_id, @user_name, @created_at
+      )
+    `).run({
+            id: entity.id,
+            issue_id: entity.issueId,
+            user_id: entity.userId,
+            user_name: entity.userName ?? null,
+            created_at: entity.createdAt
+        });
+    }
+
+    removeParticipant(issueId: string, userId: string): boolean {
+        const result = this.db.prepare(`DELETE FROM issue_participants WHERE issue_id = ? AND user_id = ?`).run(issueId, userId);
+        return result.changes > 0;
+    }
+
+    listParticipants(issueId: string): IssueParticipantEntity[] {
+        const rows = this.db.prepare(`
+      SELECT *
+      FROM issue_participants
+      WHERE issue_id = ?
+      ORDER BY created_at ASC
+    `).all(issueId) as IssueParticipantRow[];
+        return rows.map((row) => this.toIssueParticipantEntity(row));
+    }
+
+    hasParticipant(issueId: string, userId: string): boolean {
+        const row = this.db.prepare(`
+      SELECT 1 as matched
+      FROM issue_participants
+      WHERE issue_id = ? AND user_id = ?
+      LIMIT 1
+    `).get(issueId, userId) as { matched: number } | undefined;
+        return !!row;
+    }
+
+    addWatcher(entity: IssueWatcherEntity): void {
+        this.db.prepare(`
+      INSERT INTO issue_watchers (
+        id, issue_id, user_id, user_name, created_at
+      ) VALUES (
+        @id, @issue_id, @user_id, @user_name, @created_at
+      )
+    `).run({
+            id: entity.id,
+            issue_id: entity.issueId,
+            user_id: entity.userId,
+            user_name: entity.userName ?? null,
+            created_at: entity.createdAt
+        });
+    }
+
+    removeWatcher(issueId: string, userId: string): boolean {
+        const result = this.db.prepare(`DELETE FROM issue_watchers WHERE issue_id = ? AND user_id = ?`).run(issueId, userId);
+        return result.changes > 0;
+    }
+
+    listWatchers(issueId: string): IssueWatcherEntity[] {
+        const rows = this.db.prepare(`
+      SELECT *
+      FROM issue_watchers
+      WHERE issue_id = ?
+      ORDER BY created_at ASC
+    `).all(issueId) as IssueWatcherRow[];
+        return rows.map((row) => this.toIssueWatcherEntity(row));
+    }
+
+    hasWatcher(issueId: string, userId: string): boolean {
+        const row = this.db.prepare(`
+      SELECT 1 as matched
+      FROM issue_watchers
+      WHERE issue_id = ? AND user_id = ?
+      LIMIT 1
+    `).get(issueId, userId) as { matched: number } | undefined;
+        return !!row;
+    }
+
     getDetail(id: string): IssueDetailResult | null {
         const issue = this.findById(id);
         if (!issue) return null;
 
         return {
             issue,
-            assignees: this.listIssueAssignees(id),
+            participants: this.listParticipants(id),
+            watchers: this.listWatchers(id),
             comments: this.listComments(id),
             logs: this.listActionLogs(id),
-            attachments: this.listAttachments(id),
+            attachments: this.listAttachments(id)
         };
     }
 
-    replaceIssueAssignees(issueId: string, assignees: Array<{ id: string; userId: string; userName?: string | null; createdAt: string }>): void {
-        this.db.prepare(`DELETE FROM issue_assignees WHERE issue_id = ?`).run(issueId);
-
-        if (assignees.length === 0) {
-            return;
-        }
-
-        const stmt = this.db.prepare(`
-      INSERT INTO issue_assignees (
-        id, issue_id, user_id, user_name, created_at
-      ) VALUES (
-        @id, @issue_id, @user_id, @user_name, @created_at
-      )
-    `);
-
-        for (const item of assignees) {
-            stmt.run({
-                id: item.id,
-                issue_id: issueId,
-                user_id: item.userId,
-                user_name: item.userName ?? null,
-                created_at: item.createdAt
-            });
-        }
-    }
-
-    listIssueAssignees(issueId: string): IssueAssigneeEntity[] {
-        const rows = this.db
-            .prepare(`
-      SELECT *
-      FROM issue_assignees
-      WHERE issue_id = ?
-      ORDER BY created_at ASC
-    `)
-            .all(issueId) as IssueAssigneeRow[];
-
-        return rows.map((row) => this.toIssueAssigneeEntity(row));
-    }
-
-    isIssueAssignee(issueId: string, userId: string): boolean {
-        const row = this.db
-            .prepare(`
-      SELECT 1 as matched
-      FROM issue_assignees
-      WHERE issue_id = ? AND user_id = ?
-      LIMIT 1
-    `)
-            .get(issueId, userId) as { matched: number } | undefined;
-
-        return !!row;
-    }
     createAttachment(entity: IssueAttachmentEntity): void {
-        const stmt = this.db.prepare(`
+        this.db.prepare(`
     INSERT INTO issue_attachments (
       id,
       issue_id,
-      file_name,
-      original_name,
-      file_ext,
-      mime_type,
-      file_size,
-      storage_path,
-      storage_provider,
-      uploader_id,
-      uploader_name,
+      upload_id,
       created_at
     ) VALUES (
       @id,
       @issue_id,
-      @file_name,
-      @original_name,
-      @file_ext,
-      @mime_type,
-      @file_size,
-      @storage_path,
-      @storage_provider,
-      @uploader_id,
-      @uploader_name,
+      @upload_id,
       @created_at
     )
-  `);
-
-        stmt.run({
+  `).run({
             id: entity.id,
             issue_id: entity.issueId,
-            file_name: entity.fileName,
-            original_name: entity.originalName,
-            file_ext: entity.fileExt ?? null,
-            mime_type: entity.mimeType ?? null,
-            file_size: entity.fileSize,
-            storage_path: entity.storagePath,
-            storage_provider: entity.storageProvider,
-            uploader_id: entity.uploaderId ?? null,
-            uploader_name: entity.uploaderName ?? null,
+            upload_id: entity.uploadId,
             created_at: entity.createdAt
         });
     }
 
     listAttachments(issueId: string): IssueAttachmentEntity[] {
-        const rows = this.db
-            .prepare(`
-      SELECT *
-      FROM issue_attachments
-      WHERE issue_id = ?
-      ORDER BY created_at ASC
-    `)
-            .all(issueId) as IssueAttachmentRow[];
-
+        const rows = this.db.prepare(`
+      SELECT
+        ia.id,
+        ia.issue_id,
+        ia.upload_id,
+        ia.created_at,
+        u.file_name,
+        u.original_name,
+        u.file_ext,
+        u.mime_type,
+        u.file_size,
+        u.storage_path,
+        u.storage_provider,
+        u.uploader_id,
+        u.uploader_name
+      FROM issue_attachments ia
+      INNER JOIN uploads u ON u.id = ia.upload_id
+      WHERE ia.issue_id = ? AND u.status <> 'deleted'
+      ORDER BY ia.created_at ASC
+    `).all(issueId) as IssueAttachmentRow[];
         return rows.map((row) => this.toAttachmentEntity(row));
     }
 
     findAttachmentById(id: string): IssueAttachmentEntity | null {
-        const row = this.db
-            .prepare(`
-      SELECT *
-      FROM issue_attachments
-      WHERE id = ?
-    `)
-            .get(id) as IssueAttachmentRow | undefined;
-
+        const row = this.db.prepare(`
+      SELECT
+        ia.id,
+        ia.issue_id,
+        ia.upload_id,
+        ia.created_at,
+        u.file_name,
+        u.original_name,
+        u.file_ext,
+        u.mime_type,
+        u.file_size,
+        u.storage_path,
+        u.storage_provider,
+        u.uploader_id,
+        u.uploader_name
+      FROM issue_attachments ia
+      INNER JOIN uploads u ON u.id = ia.upload_id
+      WHERE ia.id = ?
+    `).get(id) as IssueAttachmentRow | undefined;
         return row ? this.toAttachmentEntity(row) : null;
     }
 
     deleteAttachment(id: string): boolean {
-        const result = this.db
-            .prepare(`DELETE FROM issue_attachments WHERE id = ?`)
-            .run(id);
-
+        const result = this.db.prepare(`DELETE FROM issue_attachments WHERE id = ?`).run(id);
         return result.changes > 0;
     }
 
@@ -535,8 +551,11 @@ export class IssueRepo {
             module: entity.module ?? null,
             version: entity.version ?? null,
             environment: entity.environment ?? null,
-            fixed_at: entity.fixedAt ?? null,
+            resolved_at: entity.resolvedAt ?? null,
             verified_at: entity.verifiedAt ?? null,
+            last_verified_result: entity.lastVerifiedResult ?? null,
+            close_reason_type: entity.closeReasonType ?? null,
+            close_reason_text: entity.closeReasonText ?? null,
             closed_at: entity.closedAt ?? null,
             created_at: entity.createdAt,
             updated_at: entity.updatedAt
@@ -563,8 +582,11 @@ export class IssueRepo {
             module: row.module,
             version: row.version,
             environment: row.environment,
-            fixedAt: row.fixed_at,
+            resolvedAt: row.resolved_at,
             verifiedAt: row.verified_at,
+            lastVerifiedResult: row.last_verified_result,
+            closeReasonType: row.close_reason_type as IssueEntity["closeReasonType"],
+            closeReasonText: row.close_reason_text,
             closedAt: row.closed_at,
             createdAt: row.created_at,
             updatedAt: row.updated_at
@@ -604,6 +626,7 @@ export class IssueRepo {
             return [];
         }
     }
+
     private toActionLogEntity(row: IssueActionLogRow): IssueActionLogEntity {
         return {
             id: row.id,
@@ -614,11 +637,12 @@ export class IssueRepo {
             operatorId: row.operator_id,
             operatorName: row.operator_name,
             summary: row.summary,
+            metaJson: row.meta_json,
             createdAt: row.created_at
         };
     }
 
-    private toIssueAssigneeEntity(row: IssueAssigneeRow): IssueAssigneeEntity {
+    private toIssueParticipantEntity(row: IssueParticipantRow): IssueParticipantEntity {
         return {
             id: row.id,
             issueId: row.issue_id,
@@ -627,10 +651,22 @@ export class IssueRepo {
             createdAt: row.created_at
         };
     }
+
+    private toIssueWatcherEntity(row: IssueWatcherRow): IssueWatcherEntity {
+        return {
+            id: row.id,
+            issueId: row.issue_id,
+            userId: row.user_id,
+            userName: row.user_name,
+            createdAt: row.created_at
+        };
+    }
+
     private toAttachmentEntity(row: IssueAttachmentRow): IssueAttachmentEntity {
         return {
             id: row.id,
             issueId: row.issue_id,
+            uploadId: row.upload_id,
             fileName: row.file_name,
             originalName: row.original_name,
             fileExt: row.file_ext,
@@ -644,3 +680,11 @@ export class IssueRepo {
         };
     }
 }
+
+
+
+
+
+
+
+

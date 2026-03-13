@@ -1,57 +1,57 @@
+
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../../env";
 import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
-import { buildStoredFileName, ensureDirSync, getFileExt, safeBaseName } from "../../utils/storage";
 import { nowIso } from "../../utils/time";
 import { ProjectMemberService } from "../project/project-member.service";
-import { AuthRepo } from "../auth/auth.repo";
 import { ProjectRepo } from "../project/project.repo";
-import type { ProjectMemberEntity, ProjectMemberRole } from "../project/project.types";
-import { IssueRepo } from "./issue.repo";
+import { UploadService } from "../upload/upload.service";
+import { IssueActivityService } from "./issue.activity";
 import { isAllowedIssueAttachmentType } from "./issue.attachment-policy";
+import { IssuePermissionService } from "./issue.permission";
+import { IssueRepo } from "./issue.repo";
 import type {
     AddIssueCommentInput,
+    AddIssueParticipantInput,
+    AddIssueWatcherInput,
     AssignIssueInput,
+    ClaimIssueInput,
     CloseIssueInput,
     CreateIssueInput,
-    IssueActionLogEntity,
-    IssueActionType,
     IssueAttachmentEntity,
-    IssueCloseReasonType,
     IssueDetailResult,
     IssueEntity,
     IssueListResult,
     IssueStatus,
     ListIssueQuery,
-    MarkFixedInput,
+    RemoveIssueParticipantInput,
+    RemoveIssueWatcherInput,
+    ReassignIssueInput,
+    ResolveIssueInput,
     ReopenIssueInput,
-    StartProgressInput,
+    RevokeResolveIssueInput,
+    SetIssueVerifierInput,
+    StartIssueInput,
     UpdateIssueInput,
     UpdateIssueRepoPatch,
     UploadIssueAttachmentInput,
+    UnassignIssueInput,
     VerifyIssueInput,
 } from "./issue.types";
 
-const ISSUE_STATUS_TRANSITIONS: Record<IssueStatus, IssueStatus[]> = {
-    open: ["assigned", "in_progress", "closed"],
-    assigned: ["in_progress"],
-    in_progress: ["fixed", "assigned"],
-    fixed: ["verified", "reopened", "in_progress"],
-    verified: ["closed", "reopened"],
-    reopened: ["assigned", "in_progress"],
-    closed: ["reopened"]
-};
-
 const MAX_ISSUE_NO_RETRY = 5;
+
 export class IssueService {
     constructor(
         private readonly repo: IssueRepo,
         private readonly projectRepo: ProjectRepo,
         private readonly projectMemberService: ProjectMemberService,
-        private readonly authRepo: AuthRepo
+        private readonly uploadService: UploadService,
+        private readonly permission: IssuePermissionService,
+        private readonly activity: IssueActivityService
     ) { }
 
     create(input: CreateIssueInput): IssueEntity {
@@ -60,27 +60,55 @@ export class IssueService {
             throw new AppError("PROJECT_NOT_FOUND", `项目未找到: ${input.projectId}`, 404);
         }
 
+        const operatorId = this.permission.requireOperatorId(input.operatorId ?? input.reporterId, "create issue");
+        this.permission.assertCanCreate(input.projectId, operatorId);
+
+        let assigneeId: string | null = input.assigneeId?.trim() || null;
+        let assigneeName: string | null = null;
+        let verifierId: string | null = input.verifierId?.trim() || null;
+        let verifierName: string | null = null;
+
+        if (assigneeId || verifierId) {
+            if (!this.permission.canManageProject(input.projectId, operatorId)) {
+                throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "创建时带负责人或验证人仅管理员可执行", 403);
+            }
+        }
+
+        if (assigneeId) {
+            const member = this.requireProjectMember(input.projectId, assigneeId, "【创建时设置负责人】");
+            assigneeName = member.displayName;
+        }
+
+        if (verifierId) {
+            const member = this.requireProjectMember(input.projectId, verifierId, "【创建时设置验证人】");
+            verifierName = member.displayName;
+        }
+
         for (let attempt = 1; attempt <= MAX_ISSUE_NO_RETRY; attempt += 1) {
             const now = nowIso();
-        const entity: IssueEntity = {
+            const entity: IssueEntity = {
                 id: genId("iss"),
                 projectId: input.projectId,
                 issueNo: this.generateIssueNo(),
                 title: input.title.trim(),
                 description: input.description?.trim() || "",
                 type: input.type ?? "bug",
-                status: "open",
+                status: assigneeId ? "assigned" : "open",
                 priority: input.priority ?? "medium",
-                reporterId: input.reporterId?.trim() || null,
-                reporterName: input.reporterName?.trim() || null,
-                assigneeId: null,
-                assigneeName: null,
+                reporterId: input.reporterId?.trim() || operatorId,
+                reporterName: input.reporterName?.trim() || input.operatorName?.trim() || null,
+                assigneeId,
+                assigneeName,
+                verifierId,
+                verifierName,
                 lastVerifiedResult: null,
+                closeReasonType: null,
+                closeReasonText: null,
                 reopenCount: 0,
                 module: input.module?.trim() || null,
                 version: input.version?.trim() || null,
                 environment: input.environment?.trim() || null,
-                fixedAt: null,
+                resolvedAt: null,
                 verifiedAt: null,
                 closedAt: null,
                 createdAt: now,
@@ -90,17 +118,16 @@ export class IssueService {
             try {
                 this.repo.runInTransaction(() => {
                     this.repo.create(entity);
-                    this.repo.createActionLog(
-                        this.buildActionLog({
-                            issueId: entity.id,
-                            actionType: "create",
-                            fromStatus: null,
-                            toStatus: "open",
-                            operatorId: entity.reporterId ?? null,
-                            operatorName: entity.reporterName ?? null,
-                            summary: "创建问题"
-                        })
-                    );
+                    this.activity.record({
+                        issueId: entity.id,
+                        actionType: "create",
+                        fromStatus: null,
+                        toStatus: entity.status,
+                        operatorId,
+                        operatorName: input.operatorName?.trim() || entity.reporterName,
+                        summary: assigneeName ? `创建并指派给 ${assigneeName}` : "创建问题",
+                        meta: { assigneeId, verifierId }
+                    });
                 });
                 return entity;
             } catch (error) {
@@ -135,7 +162,11 @@ export class IssueService {
     }
 
     update(id: string, input: UpdateIssueInput): IssueEntity {
-        const existing = this.getById(id);
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "update issue");
+        this.assertStatus(issue.status, ["open", "assigned", "reopened"], "编辑");
+        this.permission.assertCanUpdate(issue, operatorId);
+
         const patch: UpdateIssueRepoPatch = {
             title: input.title?.trim(),
             description: input.description?.trim(),
@@ -151,16 +182,15 @@ export class IssueService {
             if (!changed) {
                 throw new AppError("ISSUE_UPDATE_FAILED", "无法更新问题", 500);
             }
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "update",
-                    fromStatus: existing.status,
-                    toStatus: existing.status,
-                    summary: "update issue"
-                })
-            );
+            this.activity.record({
+                issueId: id,
+                actionType: "update",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: "更新问题信息"
+            });
         });
 
         return this.getById(id);
@@ -168,278 +198,362 @@ export class IssueService {
 
     assign(id: string, input: AssignIssueInput): IssueEntity {
         const issue = this.getById(id);
-        const nextStatus: IssueStatus = issue.status === "open" ? "assigned" : issue.status;
-        if (nextStatus !== issue.status) {
-            this.assertTransition(issue.status, nextStatus);
-        }
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "assign");
+        this.assertStatus(issue.status, ["open", "reopened"], "指派");
+        this.permission.assertCanAssign(issue, operatorId);
+        const assignee = this.requireProjectMember(issue.projectId, input.assigneeId.trim(), "【指派】");
 
-        const operatorId = this.requireOperatorId(input.operatorId, "assign");
-        const assigneeIds = this.normalizeAssigneeIds(input);
-        if (assigneeIds.length === 0) {
-            throw new AppError("ISSUE_ASSIGNEE_REQUIRED", "分配问题时需要提供负责人", 400);
-        }
+        return this.applyAssigneeChange(issue, {
+            actionType: "assign",
+            operatorId,
+            operatorName: input.operatorName,
+            assigneeId: assignee.userId,
+            assigneeName: assignee.displayName,
+            nextStatus: "assigned",
+            summary: input.comment?.trim() || `指派给 ${assignee.displayName}`
+        });
+    }
 
-        const assignees = assigneeIds.map((assigneeId) => this.requireProjectMember(issue.projectId, assigneeId, "【指派】"));
-        const primaryAssignee = assignees[0]!;
-        const assigneeName = assignees.map((item) => item.displayName).join("、");
+    claim(id: string, input: ClaimIssueInput): IssueEntity {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "claim");
+        this.assertStatus(issue.status, ["open", "reopened"], "认领");
+        this.permission.assertCanClaim(issue, operatorId);
+        const member = this.requireProjectMember(issue.projectId, operatorId, "【认领】");
+
+        return this.applyAssigneeChange(issue, {
+            actionType: "claim",
+            operatorId,
+            operatorName: input.operatorName,
+            assigneeId: member.userId,
+            assigneeName: member.displayName,
+            nextStatus: "assigned",
+            summary: input.comment?.trim() || `认领为 ${member.displayName}`
+        });
+    }
+
+    unassign(id: string, input: UnassignIssueInput): IssueEntity {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "unassign");
+        this.assertStatus(issue.status, ["assigned"], "释放负责人");
+        this.permission.assertCanUnassign(issue, operatorId);
+
+        return this.applyAssigneeChange(issue, {
+            actionType: "unassign",
+            operatorId,
+            operatorName: input.operatorName,
+            assigneeId: null,
+            assigneeName: null,
+            nextStatus: "open",
+            summary: input.comment?.trim() || "释放负责人"
+        });
+    }
+
+    reassign(id: string, input: ReassignIssueInput): IssueEntity {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "reassign");
+        this.assertStatus(issue.status, ["assigned", "in_progress", "reopened"], "转派");
+        this.permission.assertCanReassign(issue, operatorId);
+        const assignee = this.requireProjectMember(issue.projectId, input.assigneeId.trim(), "【转派】");
+
+        return this.applyAssigneeChange(issue, {
+            actionType: "reassign",
+            operatorId,
+            operatorName: input.operatorName,
+            assigneeId: assignee.userId,
+            assigneeName: assignee.displayName,
+            nextStatus: "assigned",
+            summary: input.comment?.trim() || `转派给 ${assignee.displayName}`
+        });
+    }
+
+    setVerifier(id: string, input: SetIssueVerifierInput): IssueEntity {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "set verifier");
+        this.assertStatus(issue.status, ["open", "assigned", "in_progress", "reopened"], "设置验证人");
+        this.permission.assertCanSetVerifier(issue, operatorId);
+
+        let verifierId = input.verifierId?.trim() || null;
+        let verifierName: string | null = null;
+        if (verifierId) {
+            verifierName = this.requireProjectMember(issue.projectId, verifierId, "【设置验证人】").displayName;
+        }
 
         this.repo.runInTransaction(() => {
             const now = nowIso();
             const changed = this.repo.update(id, {
-                assigneeId: primaryAssignee.userId,
-                assigneeName,
-                status: nextStatus,
+                verifierId,
+                verifierName,
                 updatedAt: now
             });
             if (!changed) {
-                throw new AppError("ISSUE_ASSIGN_FAILED", "无法分配问题", 500);
+                throw new AppError("ISSUE_SET_VERIFIER_FAILED", "无法设置验证人", 500);
             }
-
-            this.repo.replaceIssueAssignees(
-                id,
-                assignees.map((item) => ({
-                    id: genId("ias"),
-                    userId: item.userId,
-                    userName: item.displayName,
-                    createdAt: now
-                }))
-            );
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "assign",
-                    fromStatus: issue.status,
-                    toStatus: nextStatus,
-                    operatorId,
-                    operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || `指派给 ${assigneeName}`
-                })
-            );
+            this.activity.record({
+                issueId: id,
+                actionType: "set_verifier",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: verifierName ? `设置验证人: ${verifierName}` : "清空验证人",
+                meta: { verifierId }
+            });
         });
 
         return this.getById(id);
     }
 
-    startProgress(id: string, input: StartProgressInput): IssueEntity {
+    addParticipant(id: string, input: AddIssueParticipantInput): IssueDetailResult {
         const issue = this.getById(id);
-        const nextStatus: IssueStatus = "in_progress";
-        if (issue.status !== "in_progress") {
-            this.assertTransition(issue.status, nextStatus);
-        }
-        const operatorId = this.requireOperatorId(input.operatorId, "start progress");
-        this.requireProjectMember(issue.projectId, operatorId, "【开始处理】");
-        if (issue.type === "bug") {
-            this.requireProjectMemberRoles(issue.projectId, operatorId, ["frontend_dev", "backend_dev","ops","qa","ui","product"], "【开始处理】");
-        }
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "add participant");
+        this.assertStatus(issue.status, ["assigned", "in_progress", "reopened"], "添加参与人");
+        this.permission.assertCanManageParticipants(issue, operatorId);
+        const member = this.requireProjectMember(issue.projectId, input.userId.trim(), "【添加参与人】");
 
         this.repo.runInTransaction(() => {
-            const now = nowIso();
-            const changed = this.repo.update(id, {
-                status: nextStatus,
-                updatedAt: now
-            });
-
-            if (!changed) {
-                throw new AppError("ISSUE_START_PROGRESS_FAILED", "无法开始处理问题", 500);
+            if (!this.repo.hasParticipant(issue.id, member.userId)) {
+                this.repo.addParticipant({
+                    id: genId("ipt"),
+                    issueId: issue.id,
+                    userId: member.userId,
+                    userName: member.displayName,
+                    createdAt: nowIso()
+                });
             }
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "start_progress",
-                    fromStatus: issue.status,
-                    toStatus: nextStatus,
-                    operatorId,
-                    operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "开始处理问题"
-                })
-            );
+            this.activity.record({
+                issueId: issue.id,
+                actionType: "add_participant",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: `添加参与人: ${member.displayName}`,
+                meta: { userId: member.userId }
+            });
         });
 
-        return this.getById(id);
+        return this.getDetail(issue.id);
     }
 
-    markFixed(id: string, input: MarkFixedInput): IssueEntity {
+    removeParticipant(id: string, input: RemoveIssueParticipantInput): IssueDetailResult {
         const issue = this.getById(id);
-        const nextStatus: IssueStatus = "fixed";
-        this.assertTransition(issue.status, nextStatus);
-        const operatorId = this.requireOperatorId(input.operatorId, "mark fixed");
-        const isAdmin = this.isAdminOperator(operatorId);
-        const isAssignee = this.repo.isIssueAssignee(issue.id, operatorId);
-        if (!isAdmin && !isAssignee) {
-            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有当前处理人或管理员可以执行【标记为已修复】操作", 403);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "remove participant");
+        const userId = input.userId.trim();
+        this.permission.assertCanManageParticipants(issue, operatorId);
+
+        this.repo.runInTransaction(() => {
+            this.repo.removeParticipant(issue.id, userId);
+            this.activity.record({
+                issueId: issue.id,
+                actionType: "remove_participant",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: `移除参与人: ${userId}`,
+                meta: { userId }
+            });
+        });
+
+        return this.getDetail(issue.id);
+    }
+
+    addWatcher(id: string, input: AddIssueWatcherInput): IssueDetailResult {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "add watcher");
+        const userId = input.userId?.trim() || operatorId;
+        const userName = input.userName?.trim() || this.requireProjectMember(issue.projectId, userId, "【关注】").displayName;
+        if (userId === operatorId) {
+            this.permission.assertCanWatch(issue, operatorId);
+        } else {
+            this.permission.assertCanManageWatchers(issue, operatorId);
         }
 
         this.repo.runInTransaction(() => {
-            const now = nowIso();
-            const changed = this.repo.update(id, {
-                status: nextStatus,
-                fixedAt: now,
+            if (!this.repo.hasWatcher(issue.id, userId)) {
+                this.repo.addWatcher({
+                    id: genId("iwt"),
+                    issueId: issue.id,
+                    userId,
+                    userName,
+                    createdAt: nowIso()
+                });
+            }
+            this.activity.record({
+                issueId: issue.id,
+                actionType: "add_watcher",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: `添加关注人: ${userName}`,
+                meta: { userId }
+            });
+        });
+
+        return this.getDetail(issue.id);
+    }
+
+    removeWatcher(id: string, input: RemoveIssueWatcherInput): IssueDetailResult {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "remove watcher");
+        const userId = input.userId.trim();
+        if (userId !== operatorId) {
+            this.permission.assertCanManageWatchers(issue, operatorId);
+        } else {
+            this.permission.assertCanWatch(issue, operatorId);
+        }
+
+        this.repo.runInTransaction(() => {
+            this.repo.removeWatcher(issue.id, userId);
+            this.activity.record({
+                issueId: issue.id,
+                actionType: "remove_watcher",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: `移除关注人: ${userId}`,
+                meta: { userId }
+            });
+        });
+
+        return this.getDetail(issue.id);
+    }
+
+    start(id: string, input: StartIssueInput): IssueEntity {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "start");
+        this.assertStatus(issue.status, ["assigned", "reopened"], "开始处理");
+        this.permission.assertCanStart(issue, operatorId);
+        return this.applyStatusChange(issue, {
+            actionType: "start",
+            operatorId,
+            operatorName: input.operatorName,
+            nextStatus: "in_progress",
+            summary: input.comment?.trim() || "开始处理"
+        });
+    }
+
+    resolve(id: string, input: ResolveIssueInput): IssueEntity {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "resolve");
+        this.assertStatus(issue.status, ["in_progress"], "标记已处理");
+        this.permission.assertCanResolve(issue, operatorId);
+        return this.applyStatusChange(issue, {
+            actionType: "resolve",
+            operatorId,
+            operatorName: input.operatorName,
+            nextStatus: "resolved",
+            summary: input.comment.trim(),
+            patch: {
+                resolvedAt: nowIso(),
                 verifiedAt: null,
                 lastVerifiedResult: null,
                 closedAt: null,
-                updatedAt: now
-            });
-
-            if (!changed) {
-                throw new AppError("ISSUE_MARK_FIXED_FAILED", "无法标记为已修复", 500);
+                closeReasonType: null,
+                closeReasonText: null
             }
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "mark_fixed",
-                    fromStatus: issue.status,
-                    toStatus: nextStatus,
-                    operatorId,
-                    operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "标记为已修复"
-                })
-            );
         });
+    }
 
-        return this.getById(id);
+    revokeResolve(id: string, input: RevokeResolveIssueInput): IssueEntity {
+        const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "revoke resolve");
+        this.assertStatus(issue.status, ["resolved"], "撤回已处理");
+        this.permission.assertCanRevokeResolve(issue, operatorId);
+        return this.applyStatusChange(issue, {
+            actionType: "revoke_resolve",
+            operatorId,
+            operatorName: input.operatorName,
+            nextStatus: "in_progress",
+            summary: input.comment?.trim() || "撤回已处理",
+            patch: {
+                resolvedAt: null,
+                verifiedAt: null,
+                lastVerifiedResult: null,
+                closedAt: null,
+                closeReasonType: null,
+                closeReasonText: null
+            }
+        });
     }
 
     verify(id: string, input: VerifyIssueInput): IssueEntity {
         const issue = this.getById(id);
-        const nextStatus: IssueStatus = "verified";
-        this.assertTransition(issue.status, nextStatus);
-        const operatorId = this.requireOperatorId(input.operatorId, "verify");
-        const isAdmin = this.isAdminOperator(operatorId);
-        const isReporter = issue.reporterId === operatorId;
-        if (!isAdmin && !isReporter) {
-            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有提出问题的人或管理员可以执行【验证】操作", 403);
-        }
-
-        this.repo.runInTransaction(() => {
-            const now = nowIso();
-            const changed = this.repo.update(id, {
-                status: nextStatus,
-                verifiedAt: now,
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "verify");
+        this.assertStatus(issue.status, ["resolved"], "验证通过");
+        this.permission.assertCanVerify(issue, operatorId);
+        return this.applyStatusChange(issue, {
+            actionType: "verify",
+            operatorId,
+            operatorName: input.operatorName,
+            nextStatus: "verified",
+            summary: input.comment?.trim() || "验证通过",
+            patch: {
+                verifiedAt: nowIso(),
                 lastVerifiedResult: "pass",
-                verifierId: operatorId,
-                verifierName: input.operatorName?.trim() || null,
-                closedAt: null,
-                updatedAt: now
-            });
-
-            if (!changed) {
-                throw new AppError("ISSUE_VERIFY_FAILED", "没有通过验证", 500);
+                closedAt: null
             }
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "verify",
-                    fromStatus: issue.status,
-                    toStatus: nextStatus,
-                    operatorId,
-                    operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "验证通过"
-                })
-            );
         });
-
-        return this.getById(id);
     }
 
     reopen(id: string, input: ReopenIssueInput): IssueEntity {
         const issue = this.getById(id);
-        const nextStatus: IssueStatus = "reopened";
-        this.assertTransition(issue.status, nextStatus);
-        const operatorId = this.requireOperatorId(input.operatorId, "reopen");
-        const isAdmin = this.isAdminOperator(operatorId);
-        const isReporter = issue.reporterId === operatorId;
-        if (!isAdmin && !isReporter) {
-            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有提出问题的人或管理员可以执行【验证不通过】操作", 403);
-        }
-
-        this.repo.runInTransaction(() => {
-            const now = nowIso();
-            const changed = this.repo.update(id, {
-                status: nextStatus,
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "reopen");
+        this.assertStatus(issue.status, ["resolved", "verified", "closed"], "驳回或重开");
+        this.permission.assertCanReopen(issue, operatorId);
+        return this.applyStatusChange(issue, {
+            actionType: "reopen",
+            operatorId,
+            operatorName: input.operatorName,
+            nextStatus: "reopened",
+            summary: input.comment.trim(),
+            patch: {
                 reopenCount: issue.reopenCount + 1,
-                lastVerifiedResult: "fail",
-                verifierId: operatorId,
-                verifierName: input.operatorName?.trim() || null,
                 verifiedAt: null,
+                lastVerifiedResult: "fail",
                 closedAt: null,
-                updatedAt: now
-            });
-
-            if (!changed) {
-                throw new AppError("ISSUE_REOPEN_FAILED", "无法重开问题", 500);
+                closeReasonType: null,
+                closeReasonText: null
             }
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "reopen",
-                    fromStatus: issue.status,
-                    toStatus: nextStatus,
-                    operatorId,
-                    operatorName: input.operatorName?.trim() || null,
-                    summary: input.comment?.trim() || "重新打开问题"
-                })
-            );
         });
-
-        return this.getById(id);
     }
 
     close(id: string, input: CloseIssueInput): IssueEntity {
         const issue = this.getById(id);
-        const nextStatus: IssueStatus = "closed";
-        this.assertTransition(issue.status, nextStatus);
-        const operatorId = this.requireOperatorId(input.operatorId, "close");
-        const isAdmin = this.isAdminOperator(operatorId);
-        const isReporter = issue.reporterId === operatorId;
-        if (!isAdmin && !isReporter) {
-            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有提出问题的人或管理员可以执行【关闭】操作", 403);
+        const operatorId = this.permission.requireOperatorId(input.operatorId, "close");
+        if (issue.status === "in_progress" && !this.permission.canManageProject(issue.projectId, operatorId)) {
+            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "处理中状态仅管理员可关闭", 403);
+        }
+        this.assertStatus(issue.status, ["open", "assigned", "resolved", "verified", "reopened", "in_progress"], "关闭");
+        this.permission.assertCanClose(issue, operatorId);
+
+        const closeComment = input.comment?.trim() || null;
+        if (issue.status !== "verified" && !input.closeReasonType && !closeComment) {
+            throw new AppError("ISSUE_CLOSE_REASON_REQUIRED", "关闭未完成流转的问题时需要提供关闭原因或说明", 400);
         }
 
-        const closeComment = input.comment?.trim();
-        if (issue.status === "open") {
-            if (!input.closeReasonType) {
-                throw new AppError("ISSUE_CLOSE_REASON_REQUIRED", "关闭未解决的问题时需要提供关闭原因", 400);
-            }
-            if (!closeComment) {
-                throw new AppError("ISSUE_CLOSE_COMMENT_REQUIRED", "关闭未解决的问题时需要提供评论", 400);
-            }
-        }
-
-        this.repo.runInTransaction(() => {
-            const now = nowIso();
-            const changed = this.repo.update(id, {
-                status: nextStatus,
-                closedAt: now,
-                updatedAt: now
-            });
-
-            if (!changed) {
-                throw new AppError("ISSUE_CLOSE_FAILED", "无法关闭问题", 500);
-            }
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "close",
-                    fromStatus: issue.status,
-                    toStatus: nextStatus,
-                    operatorId,
-                    operatorName: input.operatorName?.trim() || null,
-                    summary: this.buildCloseSummary(issue.status, input.closeReasonType, closeComment)
-                })
-            );
+        return this.applyStatusChange(issue, {
+            actionType: "close",
+            operatorId,
+            operatorName: input.operatorName,
+            nextStatus: "closed",
+            summary: closeComment || "关闭问题",
+            patch: {
+                closedAt: nowIso(),
+                closeReasonType: input.closeReasonType ?? null,
+                closeReasonText: closeComment
+            },
+            meta: { closeReasonType: input.closeReasonType ?? null }
         });
-
-        return this.getById(id);
     }
 
-    addComment(id: string, input: AddIssueCommentInput) {
+    addComment(id: string, input: AddIssueCommentInput): IssueDetailResult {
         const issue = this.getById(id);
+        const operatorId = this.permission.requireOperatorId(input.authorId, "comment");
+        this.permission.assertCanComment(issue, operatorId);
         const now = nowIso();
         const mentions = this.normalizeCommentMentions(issue.projectId, input.mentions);
 
@@ -454,18 +568,15 @@ export class IssueService {
                 createdAt: now,
                 updatedAt: now
             });
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: id,
-                    actionType: "comment",
-                    fromStatus: issue.status,
-                    toStatus: issue.status,
-                    operatorId: input.authorId?.trim() || null,
-                    operatorName: input.authorName?.trim() || null,
-                    summary: "新增评论"
-                })
-            );
+            this.activity.record({
+                issueId: id,
+                actionType: "comment",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId: input.authorId?.trim() || null,
+                operatorName: input.authorName?.trim() || null,
+                summary: "新增评论"
+            });
         });
 
         return this.getDetail(id);
@@ -478,337 +589,226 @@ export class IssueService {
 
     async uploadAttachment(input: UploadIssueAttachmentInput): Promise<IssueAttachmentEntity> {
         const issue = this.getById(input.issueId);
+        const operatorId = this.permission.requireOperatorId(input.uploaderId, "upload attachment");
+        this.permission.assertCanUploadAttachment(issue, operatorId);
 
-        if (!fs.existsSync(input.tempFilePath)) {
-            throw new AppError("ISSUE_ATTACHMENT_TEMP_FILE_NOT_FOUND", "没有找到临时文件", 400);
-        }
-
-        const issueDir = this.getIssueUploadDir(issue.id);
-        ensureDirSync(issueDir);
-        const originalName = safeBaseName(input.originalName || "file");
-        const storedFileName = buildStoredFileName(originalName);
-        const targetPath = path.join(issueDir, storedFileName);
-        const stat = fs.statSync(input.tempFilePath);
-        const fileSize = input.fileSize || stat.size;
         const mimeType = input.mimeType?.trim().toLowerCase() || "";
-        const fileExt = getFileExt(originalName)?.toLowerCase() ?? null;
-
-        if (fileSize > env.uploadMaxFileSize) {
-            throw new AppError(
-                "ISSUE_ATTACHMENT_TOO_LARGE",
-                `文件太大, 最大支持 ${env.uploadMaxFileSize} bytes`,
-                400
-            );
+        const fileExt = path.extname(input.originalName || "").trim().toLowerCase() || null;
+        if (input.fileSize > env.uploadMaxFileSize) {
+            throw new AppError("ISSUE_ATTACHMENT_TOO_LARGE", `文件太大, 最大支持 ${env.uploadMaxFileSize} bytes`, 400);
         }
-
         if (!isAllowedIssueAttachmentType(mimeType, fileExt)) {
-            throw new AppError("ISSUE_ATTACHMENT_INVALID_TYPE", "\u4ec5\u652f\u6301\u56fe\u7247\u548c\u89c6\u9891\u6587\u4ef6\u4e0a\u4f20", 400);
+            throw new AppError("ISSUE_ATTACHMENT_INVALID_TYPE", "仅支持图片和视频文件上传", 400);
         }
 
-        fs.copyFileSync(input.tempFilePath, targetPath);
+        const upload = this.uploadService.createLocalUpload({
+            category: "issue",
+            originalName: input.originalName,
+            mimeType: input.mimeType,
+            fileSize: input.fileSize,
+            tempFilePath: input.tempFilePath,
+            storageDir: this.getIssueUploadDir(issue.id),
+            visibility: "private",
+            uploaderId: input.uploaderId,
+            uploaderName: input.uploaderName
+        });
+
         const attachment: IssueAttachmentEntity = {
             id: genId("iat"),
             issueId: issue.id,
-            fileName: storedFileName,
-            originalName,
-            fileExt,
-            mimeType: mimeType || null,
-            fileSize,
-            storagePath: targetPath,
-            storageProvider: "local",
-            uploaderId: input.uploaderId?.trim() || null,
-            uploaderName: input.uploaderName?.trim() || null,
+            uploadId: upload.id,
+            fileName: upload.fileName,
+            originalName: upload.originalName,
+            fileExt: upload.fileExt,
+            mimeType: upload.mimeType,
+            fileSize: upload.fileSize,
+            storagePath: upload.storagePath,
+            storageProvider: upload.storageProvider,
+            uploaderId: upload.uploaderId,
+            uploaderName: upload.uploaderName,
             createdAt: nowIso()
         };
 
-        try {
-            this.repo.runInTransaction(() => {
-                this.repo.createAttachment(attachment);
-                this.repo.createActionLog(
-                    this.buildActionLog({
-                        issueId: issue.id,
-                        actionType: "upload_attachment",
-                        fromStatus: issue.status,
-                        toStatus: issue.status,
-                        operatorId: input.uploaderId?.trim() || null,
-                        operatorName: input.uploaderName?.trim() || null,
-                        summary: `上传附件: ${attachment.originalName}`
-                    })
-                );
+        this.repo.runInTransaction(() => {
+            this.repo.createAttachment(attachment);
+            this.activity.record({
+                issueId: issue.id,
+                actionType: "upload_attachment",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId: input.uploaderId?.trim() || null,
+                operatorName: input.uploaderName?.trim() || null,
+                summary: `上传附件: ${attachment.originalName}`,
+                meta: { uploadId: upload.id }
             });
-            return attachment;
-        } catch (error) {
-            if (fs.existsSync(targetPath)) {
-                fs.unlinkSync(targetPath);
-            }
-            throw error;
-        }
+        });
+        return attachment;
     }
 
-    removeAttachment(issueId: string, attachmentId: string, operator?: {
-        operatorId?: string | null;
-        operatorName?: string | null;
-    }): IssueDetailResult {
+    removeAttachment(issueId: string, attachmentId: string, operator?: { operatorId?: string | null; operatorName?: string | null; }): IssueDetailResult {
         const issue = this.getById(issueId);
         const attachment = this.repo.findAttachmentById(attachmentId);
         if (!attachment || attachment.issueId !== issue.id) {
             throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", "附件未找到", 404);
         }
+        const operatorId = this.permission.requireOperatorId(operator?.operatorId, "remove attachment");
+        this.permission.assertCanDeleteAttachment(issue, attachment, operatorId);
 
-        if (attachment.storageProvider === "local" && attachment.storagePath) {
-            try {
-                if (fs.existsSync(attachment.storagePath)) {
-                    fs.unlinkSync(attachment.storagePath);
-                }
-            } catch (_error) {
-                throw new AppError(
-                    "ISSUE_ATTACHMENT_DELETE_FILE_FAILED",
-                    "删除附件文件失败",
-                    500
-                );
-            }
-        }
-
+        const upload = this.uploadService.getById(attachment.uploadId);
         this.repo.runInTransaction(() => {
             const deleted = this.repo.deleteAttachment(attachmentId);
             if (!deleted) {
                 throw new AppError("ISSUE_ATTACHMENT_DELETE_FAILED", "删除附件记录失败", 500);
             }
-
-            this.repo.createActionLog(
-                this.buildActionLog({
-                    issueId: issue.id,
-                    actionType: "remove_attachment",
-                    fromStatus: issue.status,
-                    toStatus: issue.status,
-                    operatorId: operator?.operatorId?.trim() || null,
-                    operatorName: operator?.operatorName?.trim() || null,
-                    summary: `删除附件: ${attachment.originalName}`
-                })
-            );
+            this.uploadService.softDelete(attachment.uploadId);
+            this.activity.record({
+                issueId: issue.id,
+                actionType: "remove_attachment",
+                fromStatus: issue.status,
+                toStatus: issue.status,
+                operatorId,
+                operatorName: operator?.operatorName?.trim() || null,
+                summary: `删除附件: ${attachment.originalName}`,
+                meta: { uploadId: attachment.uploadId }
+            });
         });
 
+        this.uploadService.deleteLocalFile(upload);
         return this.getDetail(issue.id);
     }
 
     getAttachment(issueId: string, attachmentId: string): IssueAttachmentEntity {
         const issue = this.getById(issueId);
         const attachment = this.repo.findAttachmentById(attachmentId);
-
         if (!attachment || attachment.issueId !== issue.id) {
             throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", "附件未找到", 404);
         }
-
         if (attachment.storageProvider === "local" && !fs.existsSync(attachment.storagePath)) {
             throw new AppError("ISSUE_ATTACHMENT_FILE_NOT_FOUND", "附件文件未找到", 404);
         }
-
         return attachment;
+    }
+
+    private applyAssigneeChange(issue: IssueEntity, input: {
+        actionType: "assign" | "claim" | "unassign" | "reassign";
+        operatorId: string;
+        operatorName?: string | null;
+        assigneeId: string | null;
+        assigneeName: string | null;
+        nextStatus: IssueStatus;
+        summary: string;
+    }): IssueEntity {
+        this.repo.runInTransaction(() => {
+            const changed = this.repo.update(issue.id, {
+                assigneeId: input.assigneeId,
+                assigneeName: input.assigneeName,
+                status: input.nextStatus,
+                updatedAt: nowIso()
+            });
+            if (!changed) {
+                throw new AppError("ISSUE_ASSIGN_FAILED", "无法更新负责人", 500);
+            }
+            this.activity.record({
+                issueId: issue.id,
+                actionType: input.actionType,
+                fromStatus: issue.status,
+                toStatus: input.nextStatus,
+                operatorId: input.operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: input.summary,
+                meta: { assigneeId: input.assigneeId }
+            });
+        });
+        return this.getById(issue.id);
+    }
+
+    private applyStatusChange(issue: IssueEntity, input: {
+        actionType: "start" | "resolve" | "revoke_resolve" | "verify" | "reopen" | "close";
+        operatorId: string;
+        operatorName?: string | null;
+        nextStatus: IssueStatus;
+        summary: string;
+        patch?: Omit<UpdateIssueRepoPatch, "status" | "updatedAt">;
+        meta?: Record<string, unknown> | null;
+    }): IssueEntity {
+        this.repo.runInTransaction(() => {
+            const changed = this.repo.update(issue.id, {
+                ...(input.patch ?? {}),
+                status: input.nextStatus,
+                updatedAt: nowIso()
+            });
+            if (!changed) {
+                throw new AppError("ISSUE_STATUS_UPDATE_FAILED", "无法更新问题状态", 500);
+            }
+            this.activity.record({
+                issueId: issue.id,
+                actionType: input.actionType,
+                fromStatus: issue.status,
+                toStatus: input.nextStatus,
+                operatorId: input.operatorId,
+                operatorName: input.operatorName?.trim() || null,
+                summary: input.summary,
+                meta: input.meta ?? null
+            });
+        });
+        return this.getById(issue.id);
     }
 
     private getIssueUploadDir(issueId: string): string {
         return path.join(env.uploadRoot, "issues", issueId);
     }
 
-    private normalizeCommentMentions(
-        projectId: string,
-        mentions?: AddIssueCommentInput["mentions"]
-    ): Array<{ userId: string; displayName: string }> {
+    private assertStatus(current: IssueStatus, allowed: readonly IssueStatus[], action: string): void {
+        if (!allowed.includes(current)) {
+            throw new AppError("ISSUE_INVALID_STATUS_TRANSITION", `${action} 操作不允许在当前状态执行: ${current}`, 400);
+        }
+    }
+
+    private requireProjectMember(projectId: string, userId: string, action: string) {
+        return this.permission.requireProjectMember(projectId, userId, action);
+    }
+
+    private normalizeCommentMentions(projectId: string, mentions?: AddIssueCommentInput["mentions"]): Array<{ userId: string; displayName: string }> {
         if (!mentions || mentions.length === 0) {
             return [];
         }
 
         const normalized: Array<{ userId: string; displayName: string }> = [];
         const seen = new Set<string>();
-
         for (const item of mentions) {
             const userId = item?.userId?.trim();
             if (!userId || seen.has(userId)) {
                 continue;
             }
-
             const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, userId);
             if (!member) {
                 continue;
             }
-
-            normalized.push({
-                userId,
-                displayName: member.displayName
-            });
+            normalized.push({ userId, displayName: member.displayName });
             seen.add(userId);
         }
-
         return normalized;
-    }
-
-    private assertTransition(from: IssueStatus, to: IssueStatus): void {
-        const allowed = ISSUE_STATUS_TRANSITIONS[from] ?? [];
-        if (!allowed.includes(to)) {
-            throw new AppError(
-                "ISSUE_INVALID_STATUS_TRANSITION",
-                `无法将问题状态从 ${from} 更改为 ${to}`,
-                400
-            );
-        }
-    }
-
-    private requireOperatorId(operatorId: string | null | undefined, action: string): string {
-        const value = operatorId?.trim();
-        if (!value) {
-            throw new AppError("ISSUE_OPERATOR_REQUIRED", `执行 ${action} 操作时需要提供 operatorId`, 400);
-        }
-        return value;
-    }
-
-    private isAdminOperator(operatorId: string): boolean {
-        const user = this.authRepo.findById(operatorId);
-        return !!user && user.status === "active" && user.role === "admin";
-    }
-
-    private normalizeAssigneeIds(input: AssignIssueInput): string[] {
-        const source = (input.assigneeIds && input.assigneeIds.length > 0)
-            ? input.assigneeIds
-            : (input.assigneeId ? [input.assigneeId] : []);
-        const seen = new Set<string>();
-        const normalized: string[] = [];
-        for (const raw of source) {
-            const id = raw?.trim();
-            if (!id || seen.has(id)) {
-                continue;
-            }
-            normalized.push(id);
-            seen.add(id);
-        }
-        return normalized;
-    }
-    private requireProjectMember(projectId: string, userId: string, action: string): ProjectMemberEntity {
-        const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, userId);
-        if (!member) {
-            throw new AppError(
-                "ISSUE_FORBIDDEN_OPERATOR",
-                `${action} 操作人不是项目成员`,
-                403
-            );
-        }
-        return member;
-    }
-
-    private requireProjectMemberRoles(
-        projectId: string,
-        userId: string,
-        requiredRoles: readonly ProjectMemberRole[],
-        action: string
-    ): ProjectMemberEntity {
-        const member = this.requireProjectMember(projectId, userId, action);
-        const ok = member.roles.some((role) => requiredRoles.includes(role));
-        if (!ok) {
-            throw new AppError(
-                "ISSUE_FORBIDDEN_OPERATOR",
-                `${action} 操作人角色不符合要求`,
-                403
-            );
-        }
-        return member;
-    }
-
-    private buildCloseSummary(status: IssueStatus, reasonType?: IssueCloseReasonType, comment?: string): string {
-        if (status === "open") {
-            const reason = reasonType ?? "unknown";
-        const text = comment ?? "";
-            return `关闭未解决的问题 (${reason}): ${text}`;
-        }
-
-        return comment || "关闭问题";
-    }
-
-    private buildActionLog(input: {
-        issueId: string;
-        actionType: IssueActionType;
-        fromStatus?: IssueStatus | null;
-        toStatus?: IssueStatus | null;
-        operatorId?: string | null;
-        operatorName?: string | null;
-        summary?: string | null;
-    }): IssueActionLogEntity {
-        return {
-            id: genId("ial"),
-            issueId: input.issueId,
-            actionType: input.actionType,
-            fromStatus: input.fromStatus ?? null,
-            toStatus: input.toStatus ?? null,
-            operatorId: input.operatorId ?? null,
-            operatorName: input.operatorName ?? null,
-            summary: input.summary ?? null,
-            createdAt: nowIso()
-        };
     }
 
     private generateIssueNo(): string {
         const now = new Date();
-        const date =
-            now.getFullYear().toString() +
-            String(now.getMonth() + 1).padStart(2, "0") +
-            String(now.getDate()).padStart(2, "0");
+        const date = now.getFullYear().toString() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
         const millis = String(now.getMilliseconds()).padStart(3, "0");
-        const random = Math.floor(Math.random() * 1000)
-            .toString()
-            .padStart(3, "0");
-
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
         return `ISSUE-${date}-${millis}${random}`;
     }
 
     private isUniqueIssueNoError(error: unknown): boolean {
-        return error instanceof Database.SqliteError &&
-            error.code === "SQLITE_CONSTRAINT_UNIQUE";
+        return error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE";
     }
 
     private handleSqliteError(error: unknown, issueNo?: string): never {
         if (error instanceof AppError) {
             throw error;
         }
-
         if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
-            throw new AppError(
-                "ISSUE_NO_EXISTS",
-                `问题编号已存在: ${issueNo ?? "未知"}`,
-                409
-            );
+            throw new AppError("ISSUE_NO_EXISTS", `问题编号已存在: ${issueNo ?? "未知"}`, 409);
         }
-
         throw error;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

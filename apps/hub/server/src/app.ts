@@ -11,6 +11,10 @@ import { DocumentRepo } from "./modules/document/document.repo";
 import { DocumentService } from "./modules/document/document.service";
 import { FeedbackRepo } from "./modules/feedback/feedback.repo";
 import { FeedbackService } from "./modules/feedback/feedback.service";
+import { IssueActivityService } from "./modules/issue/issue.activity";
+import { UploadRepo } from "./modules/upload/upload.repo";
+import { UploadService } from "./modules/upload/upload.service";
+import { IssuePermissionService } from "./modules/issue/issue.permission";
 import { IssueRepo } from "./modules/issue/issue.repo";
 import { IssueService } from "./modules/issue/issue.service";
 import { ProjectMemberRepo } from "./modules/project/project-member.repo";
@@ -78,7 +82,11 @@ export async function createApp() {
   const releaseService = new ReleaseService(releaseRepo, projectRepo, app.hubWsEvents);
 
   const issueRepo = new IssueRepo(app.db);
-  const issueService = new IssueService(issueRepo, projectRepo, projectMemberService, authRepo);
+  const uploadRepo = new UploadRepo(app.db);
+  const uploadService = new UploadService(uploadRepo);
+  const issuePermission = new IssuePermissionService(projectMemberService, authRepo);
+  const issueActivity = new IssueActivityService(issueRepo);
+  const issueService = new IssueService(issueRepo, projectRepo, projectMemberService, uploadService, issuePermission, issueActivity);
 
   app.decorate("services", {
     feedback: feedbackService,
@@ -129,3 +137,6 @@ export async function createApp() {
 
   return app;
 }
+
+
+

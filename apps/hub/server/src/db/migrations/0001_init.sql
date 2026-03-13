@@ -70,13 +70,33 @@ CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON documents(updated_at DESC
 CREATE INDEX IF NOT EXISTS idx_documents_project_id ON documents(project_id);
 CREATE INDEX IF NOT EXISTS idx_documents_status_project_id ON documents(status, project_id);
 
+-- users
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  display_name TEXT,
+  email TEXT,
+  mobile TEXT,
+  title_code TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  source TEXT NOT NULL DEFAULT 'local' CHECK (source IN ('local', 'imported')),
+  remark TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_users_display_name ON users(display_name);
+
+-- admin users
 CREATE TABLE IF NOT EXISTS admin_users (
   id TEXT PRIMARY KEY,
+  user_id TEXT,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   nickname TEXT,
   status TEXT NOT NULL DEFAULT 'active',
+  role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'user')),
   must_change_password INTEGER NOT NULL DEFAULT 1,
   last_login_at TEXT,
   created_at TEXT NOT NULL,
@@ -85,6 +105,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
 
 CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
 CREATE INDEX IF NOT EXISTS idx_admin_users_status ON admin_users(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_user_id ON admin_users(user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role);
 
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -148,3 +170,27 @@ CREATE INDEX IF NOT EXISTS idx_releases_channel ON releases(channel);
 CREATE INDEX IF NOT EXISTS idx_releases_status ON releases(status);
 CREATE INDEX IF NOT EXISTS idx_releases_published_at ON releases(published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_releases_updated_at ON releases(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS uploads (
+  id TEXT PRIMARY KEY,
+  bucket TEXT NOT NULL DEFAULT 'default',
+  category TEXT NOT NULL DEFAULT 'general',
+  file_name TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  file_ext TEXT,
+  mime_type TEXT,
+  file_size INTEGER NOT NULL DEFAULT 0,
+  checksum TEXT,
+  storage_provider TEXT NOT NULL DEFAULT 'local',
+  storage_path TEXT NOT NULL,
+  visibility TEXT NOT NULL DEFAULT 'private',
+  status TEXT NOT NULL DEFAULT 'active',
+  uploader_id TEXT,
+  uploader_name TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_uploads_category ON uploads(category);
+CREATE INDEX IF NOT EXISTS idx_uploads_uploader ON uploads(uploader_id);
+CREATE INDEX IF NOT EXISTS idx_uploads_status ON uploads(status);

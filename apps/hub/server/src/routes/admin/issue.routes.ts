@@ -2,20 +2,30 @@ import type { FastifyInstance } from "fastify";
 import fs from "node:fs";
 import {
     addIssueCommentSchema,
+    addIssueParticipantSchema,
+    addIssueWatcherSchema,
     assignIssueSchema,
+    claimIssueSchema,
     closeIssueSchema,
     createIssueSchema,
     listIssueQuerySchema,
-    markFixedIssueSchema,
     removeIssueAttachmentSchema,
+    removeIssueParticipantSchema,
+    removeIssueWatcherSchema,
     reopenIssueSchema,
-    startProgressIssueSchema,
+    resolveIssueSchema,
+    reassignIssueSchema,
+    revokeResolveIssueSchema,
+    setIssueVerifierSchema,
+    startIssueSchema,
+    unassignIssueSchema,
     updateIssueSchema,
     verifyIssueSchema
 } from "../../modules/issue/issue.schema";
 import type {
     IssueAttachmentEntity,
-    IssueDetailResult
+    IssueDetailResult,
+    IssueParticipantEntity
 } from "../../modules/issue/issue.types";
 import { AppError } from "../../utils/app-error";
 import {
@@ -65,10 +75,25 @@ function toAttachmentDto(issueId: string, attachment: IssueAttachmentEntity): Is
     };
 }
 
+function toLegacyAssignees(detail: IssueDetailResult): IssueParticipantEntity[] {
+    if (!detail.issue.assigneeId) {
+        return [];
+    }
+    return [{
+        id: `legacy-${detail.issue.id}-${detail.issue.assigneeId}`,
+        issueId: detail.issue.id,
+        userId: detail.issue.assigneeId,
+        userName: detail.issue.assigneeName,
+        createdAt: detail.issue.updatedAt
+    }];
+}
+
 function toIssueDetailDto(detail: IssueDetailResult) {
     return {
         issue: detail.issue,
-        assignees: detail.assignees,
+        participants: detail.participants,
+        watchers: detail.watchers,
+        assignees: toLegacyAssignees(detail),
         comments: detail.comments,
         attachments: detail.attachments.map((item) => toAttachmentDto(detail.issue.id, item)),
         logs: detail.logs
@@ -102,7 +127,9 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
         const result = fastify.services.issue.create({
             ...body,
             reporterId: body.reporterId ?? operator.operatorId,
-            reporterName: body.reporterName ?? operator.operatorName
+            reporterName: body.reporterName ?? operator.operatorName,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
         });
         return ok(result);
     });
@@ -110,7 +137,12 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
     fastify.patch("/issues/:id", async (request) => {
         const params = request.params as { id: string };
         const body = updateIssueSchema.parse(request.body);
-        const result = fastify.services.issue.update(params.id, body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.update(params.id, {
+            ...body,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
         return ok(result);
     });
 
@@ -120,6 +152,129 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
         const operator = getOperator(request);
         const result = fastify.services.issue.assign(params.id, {
             ...body,
+            assigneeId: body.assigneeId!,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(result);
+    });
+
+    fastify.post("/issues/:id/claim", async (request) => {
+        const params = request.params as { id: string };
+        const body = claimIssueSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.claim(params.id, {
+            ...body,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(result);
+    });
+
+    fastify.post("/issues/:id/unassign", async (request) => {
+        const params = request.params as { id: string };
+        const body = unassignIssueSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.unassign(params.id, {
+            ...body,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(result);
+    });
+
+    fastify.post("/issues/:id/reassign", async (request) => {
+        const params = request.params as { id: string };
+        const body = reassignIssueSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.reassign(params.id, {
+            ...body,
+            assigneeId: body.assigneeId!,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(result);
+    });
+
+    fastify.post("/issues/:id/verifier", async (request) => {
+        const params = request.params as { id: string };
+        const body = setIssueVerifierSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.setVerifier(params.id, {
+            ...body,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(result);
+    });
+
+    fastify.post("/issues/:id/participants", async (request) => {
+        const params = request.params as { id: string };
+        const body = addIssueParticipantSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.addParticipant(params.id, {
+            ...body,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(toIssueDetailDto(result));
+    });
+
+    fastify.delete("/issues/:id/participants/:userId", async (request) => {
+        const params = request.params as { id: string; userId: string };
+        removeIssueParticipantSchema.parse({ userId: params.userId });
+        const operator = getOperator(request);
+        const result = fastify.services.issue.removeParticipant(params.id, {
+            userId: params.userId,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(toIssueDetailDto(result));
+    });
+
+    fastify.post("/issues/:id/watch", async (request) => {
+        const params = request.params as { id: string };
+        const body = addIssueWatcherSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.addWatcher(params.id, {
+            ...body,
+            userId: body.userId ?? operator.operatorId,
+            userName: body.userName ?? operator.operatorName,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(toIssueDetailDto(result));
+    });
+
+    fastify.delete("/issues/:id/watch", async (request) => {
+        const params = request.params as { id: string };
+        const operator = getOperator(request);
+        const result = fastify.services.issue.removeWatcher(params.id, {
+            userId: operator.operatorId,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(toIssueDetailDto(result));
+    });
+
+    fastify.delete("/issues/:id/watchers/:userId", async (request) => {
+        const params = request.params as { id: string; userId: string };
+        removeIssueWatcherSchema.parse({ userId: params.userId });
+        const operator = getOperator(request);
+        const result = fastify.services.issue.removeWatcher(params.id, {
+            userId: params.userId,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(toIssueDetailDto(result));
+    });
+
+    fastify.post("/issues/:id/start", async (request) => {
+        const params = request.params as { id: string };
+        const body = startIssueSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.start(params.id, {
+            ...body,
             operatorId: operator.operatorId,
             operatorName: operator.operatorName
         });
@@ -128,9 +283,21 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
 
     fastify.post("/issues/:id/start-progress", async (request) => {
         const params = request.params as { id: string };
-        const body = startProgressIssueSchema.parse(request.body);
+        const body = startIssueSchema.parse(request.body);
         const operator = getOperator(request);
-        const result = fastify.services.issue.startProgress(params.id, {
+        const result = fastify.services.issue.start(params.id, {
+            ...body,
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(result);
+    });
+
+    fastify.post("/issues/:id/resolve", async (request) => {
+        const params = request.params as { id: string };
+        const body = resolveIssueSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.resolve(params.id, {
             ...body,
             operatorId: operator.operatorId,
             operatorName: operator.operatorName
@@ -140,9 +307,22 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
 
     fastify.post("/issues/:id/mark-fixed", async (request) => {
         const params = request.params as { id: string };
-        const body = markFixedIssueSchema.parse(request.body);
+        const body = startIssueSchema.parse(request.body);
         const operator = getOperator(request);
-        const result = fastify.services.issue.markFixed(params.id, {
+        const result = fastify.services.issue.resolve(params.id, {
+            ...body,
+            comment: body.comment?.trim() || "标记已处理",
+            operatorId: operator.operatorId,
+            operatorName: operator.operatorName
+        });
+        return ok(result);
+    });
+
+    fastify.post("/issues/:id/revoke-resolve", async (request) => {
+        const params = request.params as { id: string };
+        const body = revokeResolveIssueSchema.parse(request.body);
+        const operator = getOperator(request);
+        const result = fastify.services.issue.revokeResolve(params.id, {
             ...body,
             operatorId: operator.operatorId,
             operatorName: operator.operatorName
@@ -200,7 +380,6 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
 
     fastify.post("/issues/:id/attachments", async (request) => {
         const params = request.params as { id: string };
-
         const { files } = await parseMultipartUpload(request);
         const operator = getOperator(request);
 
@@ -237,15 +416,10 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
 
     fastify.get("/issues/:id/attachments/:attachmentId/download", async (request, reply) => {
         const params = request.params as { id: string; attachmentId: string };
-
         const attachment = fastify.services.issue.getAttachment(params.id, params.attachmentId);
 
         reply.header("Content-Type", attachment.mimeType || "application/octet-stream");
-        reply.header(
-            "Content-Disposition",
-            `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`
-        );
-
+        reply.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`);
         return reply.send(fs.createReadStream(attachment.storagePath));
     });
 
@@ -257,4 +431,5 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
         return ok(toIssueDetailDto(result));
     });
 }
+
 
