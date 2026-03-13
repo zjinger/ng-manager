@@ -11,6 +11,8 @@ type UserRow = {
   status: string;
   source: string;
   remark: string | null;
+  login_account_status: string | null;
+  login_account_username: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -49,18 +51,46 @@ export class UserRepo {
 
   findById(id: string): UserEntity | null {
     const row = this.db.prepare(`
-      SELECT id, username, display_name, email, mobile, ${this.titleColumn} AS title_code, status, source, remark, created_at, updated_at
-      FROM users
-      WHERE id = ?
+      SELECT
+        u.id,
+        u.username,
+        u.display_name,
+        u.email,
+        u.mobile,
+        u.${this.titleColumn} AS title_code,
+        u.status,
+        u.source,
+        u.remark,
+        au.status AS login_account_status,
+        au.username AS login_account_username,
+        u.created_at,
+        u.updated_at
+      FROM users u
+      LEFT JOIN admin_users au ON au.user_id = u.id
+      WHERE u.id = ?
     `).get(id) as UserRow | undefined;
     return row ? this.toEntity(row) : null;
   }
 
   findByUsername(username: string): UserEntity | null {
     const row = this.db.prepare(`
-      SELECT id, username, display_name, email, mobile, ${this.titleColumn} AS title_code, status, source, remark, created_at, updated_at
-      FROM users
-      WHERE lower(username) = lower(?)
+      SELECT
+        u.id,
+        u.username,
+        u.display_name,
+        u.email,
+        u.mobile,
+        u.${this.titleColumn} AS title_code,
+        u.status,
+        u.source,
+        u.remark,
+        au.status AS login_account_status,
+        au.username AS login_account_username,
+        u.created_at,
+        u.updated_at
+      FROM users u
+      LEFT JOIN admin_users au ON au.user_id = u.id
+      WHERE lower(u.username) = lower(?)
       LIMIT 1
     `).get(username) as UserRow | undefined;
     return row ? this.toEntity(row) : null;
@@ -116,12 +146,12 @@ export class UserRepo {
     const params: unknown[] = [];
 
     if (query.status) {
-      where.push("status = ?");
+      where.push("u.status = ?");
       params.push(query.status);
     }
 
     if (query.keyword) {
-      where.push("(username LIKE ? OR display_name LIKE ? OR email LIKE ? OR mobile LIKE ?)");
+      where.push("(u.username LIKE ? OR u.display_name LIKE ? OR u.email LIKE ? OR u.mobile LIKE ?)");
       const keyword = `%${query.keyword}%`;
       params.push(keyword, keyword, keyword, keyword);
     }
@@ -130,14 +160,28 @@ export class UserRepo {
     const offset = (query.page - 1) * query.pageSize;
 
     const totalRow = this.db
-      .prepare(`SELECT COUNT(*) AS total FROM users ${whereSql}`)
+      .prepare(`SELECT COUNT(*) AS total FROM users u ${whereSql}`)
       .get(...params) as { total: number };
 
     const rows = this.db.prepare(`
-      SELECT id, username, display_name, email, mobile, ${this.titleColumn} AS title_code, status, source, remark, created_at, updated_at
-      FROM users
+      SELECT
+        u.id,
+        u.username,
+        u.display_name,
+        u.email,
+        u.mobile,
+        u.${this.titleColumn} AS title_code,
+        u.status,
+        u.source,
+        u.remark,
+        au.status AS login_account_status,
+        au.username AS login_account_username,
+        u.created_at,
+        u.updated_at
+      FROM users u
+      LEFT JOIN admin_users au ON au.user_id = u.id
       ${whereSql}
-      ORDER BY updated_at DESC, created_at DESC
+      ORDER BY u.updated_at DESC, u.created_at DESC
       LIMIT ? OFFSET ?
     `).all(...params, query.pageSize, offset) as UserRow[];
 
@@ -169,6 +213,8 @@ export class UserRepo {
       status: row.status as UserEntity["status"],
       source: row.source as UserEntity["source"],
       remark: row.remark,
+      loginAccountStatus: (row.login_account_status as UserEntity["loginAccountStatus"]) ?? null,
+      loginAccountUsername: row.login_account_username,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

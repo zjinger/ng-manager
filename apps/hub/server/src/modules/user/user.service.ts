@@ -8,6 +8,7 @@ import { USER_TITLES } from "./user.constants";
 import { UserRepo } from "./user.repo";
 import type {
   CreateUserInput,
+  EnableUserLoginAccountInput,
   ListUserQuery,
   ResetUserPasswordInput,
   UpdateUserInput,
@@ -55,9 +56,11 @@ export class UserService {
       email: input.email?.trim() || null,
       mobile: input.mobile?.trim() || null,
       titleCode: input.titleCode ?? null,
-      status: "active",
+      status: input.status ?? "active",
       source: input.source ?? "local",
       remark: input.remark?.trim() || null,
+      loginAccountStatus: null,
+      loginAccountUsername: null,
       createdAt: now,
       updatedAt: now
     };
@@ -69,7 +72,8 @@ export class UserService {
           userId: entity.id,
           username: entity.username,
           nickname: entity.displayName || entity.username,
-          status: "active",
+          status: entity.status === "active" ? "active" : "disabled",
+          role: "user",
           password: env.initUserDefaultPassword,
           mustChangePassword: true
         });
@@ -78,7 +82,7 @@ export class UserService {
       this.handleSqliteError(error, username);
     }
 
-    return entity;
+    return this.getById(entity.id);
   }
 
   update(id: string, input: UpdateUserInput): UserEntity {
@@ -123,7 +127,43 @@ export class UserService {
       status: latest.status === "active" ? "active" : "disabled"
     });
 
-    return latest;
+    return this.getById(id);
+  }
+
+  enableLoginAccount(input: EnableUserLoginAccountInput): UserEntity {
+    const user = this.getById(input.userId);
+    const existing = this.authService.getUserLoginAccountByUserId(input.userId);
+
+    if (existing) {
+      this.authService.enableUserLoginAccountByUserId(input.userId, {
+        username: input.username,
+        nickname: user.displayName || user.username,
+        status: user.status === "active" ? "active" : "disabled"
+      });
+      return this.getById(input.userId);
+    }
+
+    if (!input.password?.trim()) {
+      throw new AppError("AUTH_PASSWORD_REQUIRED", "password is required to open login account", 400);
+    }
+
+    this.authService.createUserLoginAccount({
+      userId: input.userId,
+      username: input.username?.trim() || user.username,
+      nickname: user.displayName || user.username,
+      status: user.status === "active" ? "active" : "disabled",
+      role: "user",
+      password: input.password,
+      mustChangePassword: input.mustChangePassword ?? true
+    });
+
+    return this.getById(input.userId);
+  }
+
+  disableLoginAccount(userId: string): UserEntity {
+    this.getById(userId);
+    this.authService.disableUserLoginAccountByUserId(userId);
+    return this.getById(userId);
   }
 
   resetPassword(input: ResetUserPasswordInput): void {

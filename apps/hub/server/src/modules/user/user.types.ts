@@ -1,3 +1,4 @@
+import type { AdminUserStatus } from "../auth/auth.types";
 import type { UserTitleCode } from "./user.constants";
 
 export type UserStatus = "active" | "inactive";
@@ -13,6 +14,8 @@ export interface UserEntity {
   status: UserStatus;
   source: UserSource;
   remark: string | null;
+  loginAccountStatus: AdminUserStatus | null;
+  loginAccountUsername: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,6 +26,7 @@ export interface CreateUserInput {
   email?: string;
   mobile?: string;
   titleCode?: UserTitleCode | null;
+  status?: UserStatus;
   source?: UserSource;
   remark?: string;
 }
@@ -36,6 +40,13 @@ export interface UpdateUserInput {
   status?: UserStatus;
   source?: UserSource;
   remark?: string | null;
+}
+
+export interface EnableUserLoginAccountInput {
+  userId: string;
+  username?: string;
+  password?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface ResetUserPasswordInput {
@@ -57,4 +68,3 @@ export interface UserListResult {
   pageSize: number;
   total: number;
 }
-

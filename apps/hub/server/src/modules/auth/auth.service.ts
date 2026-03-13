@@ -8,6 +8,7 @@ import { nowIso } from "../../utils/time";
 import type {
     AdminUserEntity,
     AdminUserProfile,
+    AdminUserRole,
     ChangePasswordInput,
     LoginChallenge,
     LoginInput,
@@ -120,20 +121,34 @@ export class AuthService {
         username: string;
         nickname?: string | null;
         status?: "active" | "disabled";
+        role?: AdminUserRole;
         password: string;
         mustChangePassword?: boolean;
     }): void {
+        const username = input.username.trim();
+        if (!username) {
+            throw new AppError("AUTH_USERNAME_REQUIRED", "login username is required", 400);
+        }
+
+        if (this.repo.findByUserId(input.userId)) {
+            throw new AppError("AUTH_LOGIN_ACCOUNT_EXISTS", "login account already exists", 409);
+        }
+
+        if (this.repo.findByUsername(username)) {
+            throw new AppError("AUTH_USERNAME_EXISTS", `login username already exists: ${username}`, 409);
+        }
+
         const passwordHash = bcrypt.hashSync(input.password, 10);
         const now = nowIso();
 
         const entity: AdminUserEntity = {
             id: genId("adm"),
             userId: input.userId,
-            username: input.username,
+            username,
             passwordHash,
             nickname: input.nickname ?? null,
             status: input.status ?? "active",
-            role: "user",
+            role: input.role ?? "user",
             mustChangePassword: input.mustChangePassword ?? true,
             lastLoginAt: null,
             createdAt: now,
@@ -141,6 +156,49 @@ export class AuthService {
         };
 
         this.repo.create(entity);
+    }
+
+    getUserLoginAccountByUserId(userId: string): AdminUserProfile | null {
+        const user = this.repo.findByUserId(userId);
+        return user ? this.toProfile(user) : null;
+    }
+
+    enableUserLoginAccountByUserId(userId: string, input: {
+        username?: string;
+        nickname?: string | null;
+        status?: "active" | "disabled";
+    }): void {
+        const existing = this.repo.findByUserId(userId);
+        if (!existing) {
+            throw new AppError("AUTH_USER_NOT_FOUND", "login account not found", 404);
+        }
+
+        const nextUsername = input.username?.trim();
+        if (nextUsername && nextUsername.toLowerCase() !== existing.username.toLowerCase()) {
+            const duplicated = this.repo.findByUsername(nextUsername);
+            if (duplicated && duplicated.id !== existing.id) {
+                throw new AppError("AUTH_USERNAME_EXISTS", `login username already exists: ${nextUsername}`, 409);
+            }
+        }
+
+        this.repo.updateByUserId(userId, {
+            username: nextUsername,
+            nickname: input.nickname,
+            status: input.status ?? "active",
+            updatedAt: nowIso()
+        });
+    }
+
+    disableUserLoginAccountByUserId(userId: string): void {
+        const existing = this.repo.findByUserId(userId);
+        if (!existing) {
+            throw new AppError("AUTH_USER_NOT_FOUND", "login account not found", 404);
+        }
+
+        this.repo.updateByUserId(userId, {
+            status: "disabled",
+            updatedAt: nowIso()
+        });
     }
 
     syncUserLoginAccount(input: {
@@ -154,10 +212,12 @@ export class AuthService {
             return;
         }
 
+        const nextStatus = input.status === "disabled" ? "disabled" : existing.status;
+
         this.repo.updateByUserId(input.userId, {
             username: input.username,
             nickname: input.nickname,
-            status: input.status,
+            status: nextStatus,
             updatedAt: nowIso()
         });
     }
@@ -344,6 +404,9 @@ export class AuthService {
         };
     }
 }
+
+
+
 
 
 
