@@ -79,7 +79,7 @@ export const assignIssueSchema = z.object({
 });
 
 export const startProgressIssueSchema = actorSchema;
-export const markFixedIssueSchema = actorWithRequiredCommentSchema;
+export const markFixedIssueSchema = actorSchema;
 export const verifyIssueSchema = actorSchema;
 export const reopenIssueSchema = actorWithRequiredCommentSchema;
 export const closeIssueSchema = actorSchema.extend({
@@ -111,3 +111,4 @@ export type VerifyIssueDto = z.infer<typeof verifyIssueSchema>;
 export type ReopenIssueDto = z.infer<typeof reopenIssueSchema>;
 export type CloseIssueDto = z.infer<typeof closeIssueSchema>;
 export type AddIssueCommentDto = z.infer<typeof addIssueCommentSchema>;
+

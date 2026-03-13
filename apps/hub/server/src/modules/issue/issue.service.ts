@@ -7,6 +7,7 @@ import { genId } from "../../utils/id";
 import { buildStoredFileName, ensureDirSync, getFileExt, safeBaseName } from "../../utils/storage";
 import { nowIso } from "../../utils/time";
 import { ProjectMemberService } from "../project/project-member.service";
+import { AuthRepo } from "../auth/auth.repo";
 import { ProjectRepo } from "../project/project.repo";
 import type { ProjectMemberEntity, ProjectMemberRole } from "../project/project.types";
 import { IssueRepo } from "./issue.repo";
@@ -37,8 +38,8 @@ import type {
 const ISSUE_STATUS_TRANSITIONS: Record<IssueStatus, IssueStatus[]> = {
     open: ["assigned", "in_progress", "closed"],
     assigned: ["in_progress"],
-    in_progress: ["fixed"],
-    fixed: ["verified", "reopened"],
+    in_progress: ["fixed", "assigned"],
+    fixed: ["verified", "reopened", "in_progress"],
     verified: ["closed", "reopened"],
     reopened: ["assigned", "in_progress"],
     closed: ["reopened"]
@@ -49,7 +50,8 @@ export class IssueService {
     constructor(
         private readonly repo: IssueRepo,
         private readonly projectRepo: ProjectRepo,
-        private readonly projectMemberService: ProjectMemberService
+        private readonly projectMemberService: ProjectMemberService,
+        private readonly authRepo: AuthRepo
     ) { }
 
     create(input: CreateIssueInput): IssueEntity {
@@ -60,7 +62,7 @@ export class IssueService {
 
         for (let attempt = 1; attempt <= MAX_ISSUE_NO_RETRY; attempt += 1) {
             const now = nowIso();
-            const entity: IssueEntity = {
+        const entity: IssueEntity = {
                 id: genId("iss"),
                 projectId: input.projectId,
                 issueNo: this.generateIssueNo(),
@@ -134,7 +136,6 @@ export class IssueService {
 
     update(id: string, input: UpdateIssueInput): IssueEntity {
         const existing = this.getById(id);
-
         const patch: UpdateIssueRepoPatch = {
             title: input.title?.trim(),
             description: input.description?.trim(),
@@ -167,13 +168,12 @@ export class IssueService {
 
     assign(id: string, input: AssignIssueInput): IssueEntity {
         const issue = this.getById(id);
-        const nextStatus: IssueStatus = "assigned";
-        if (issue.status !== "assigned") {
+        const nextStatus: IssueStatus = issue.status === "open" ? "assigned" : issue.status;
+        if (nextStatus !== issue.status) {
             this.assertTransition(issue.status, nextStatus);
         }
 
         const operatorId = this.requireOperatorId(input.operatorId, "assign");
-
         const assigneeIds = this.normalizeAssigneeIds(input);
         if (assigneeIds.length === 0) {
             throw new AppError("ISSUE_ASSIGNEE_REQUIRED", "分配问题时需要提供负责人", 400);
@@ -224,13 +224,13 @@ export class IssueService {
     startProgress(id: string, input: StartProgressInput): IssueEntity {
         const issue = this.getById(id);
         const nextStatus: IssueStatus = "in_progress";
-        this.assertTransition(issue.status, nextStatus);
-
+        if (issue.status !== "in_progress") {
+            this.assertTransition(issue.status, nextStatus);
+        }
         const operatorId = this.requireOperatorId(input.operatorId, "start progress");
         this.requireProjectMember(issue.projectId, operatorId, "【开始处理】");
-        this.assertAssigneeOperator(issue, operatorId, "【开始处理】");
         if (issue.type === "bug") {
-            this.requireProjectMemberRoles(issue.projectId, operatorId, ["frontend_dev", "backend_dev"], "【开始处理】");
+            this.requireProjectMemberRoles(issue.projectId, operatorId, ["frontend_dev", "backend_dev","ops","qa","ui","product"], "【开始处理】");
         }
 
         this.repo.runInTransaction(() => {
@@ -264,12 +264,11 @@ export class IssueService {
         const issue = this.getById(id);
         const nextStatus: IssueStatus = "fixed";
         this.assertTransition(issue.status, nextStatus);
-
         const operatorId = this.requireOperatorId(input.operatorId, "mark fixed");
-        this.requireProjectMember(issue.projectId, operatorId, "【标记为已修复】");
-        this.assertAssigneeOperator(issue, operatorId, "【标记为已修复】");
-        if (issue.type === "bug") {
-            this.requireProjectMemberRoles(issue.projectId, operatorId, ["frontend_dev", "backend_dev"], "【标记为已修复】");
+        const isAdmin = this.isAdminOperator(operatorId);
+        const isAssignee = this.repo.isIssueAssignee(issue.id, operatorId);
+        if (!isAdmin && !isAssignee) {
+            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有当前处理人或管理员可以执行【标记为已修复】操作", 403);
         }
 
         this.repo.runInTransaction(() => {
@@ -307,9 +306,12 @@ export class IssueService {
         const issue = this.getById(id);
         const nextStatus: IssueStatus = "verified";
         this.assertTransition(issue.status, nextStatus);
-
         const operatorId = this.requireOperatorId(input.operatorId, "verify");
-        const verifier = this.requireProjectMemberRoles(issue.projectId, operatorId, ["qa", "product"], "【验证】");
+        const isAdmin = this.isAdminOperator(operatorId);
+        const isReporter = issue.reporterId === operatorId;
+        if (!isAdmin && !isReporter) {
+            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有提出问题的人或管理员可以执行【验证】操作", 403);
+        }
 
         this.repo.runInTransaction(() => {
             const now = nowIso();
@@ -317,8 +319,8 @@ export class IssueService {
                 status: nextStatus,
                 verifiedAt: now,
                 lastVerifiedResult: "pass",
-                verifierId: verifier.userId,
-                verifierName: verifier.displayName,
+                verifierId: operatorId,
+                verifierName: input.operatorName?.trim() || null,
                 closedAt: null,
                 updatedAt: now
             });
@@ -347,9 +349,12 @@ export class IssueService {
         const issue = this.getById(id);
         const nextStatus: IssueStatus = "reopened";
         this.assertTransition(issue.status, nextStatus);
-
         const operatorId = this.requireOperatorId(input.operatorId, "reopen");
-        const verifier = this.requireProjectMemberRoles(issue.projectId, operatorId, ["qa", "product"], "【重新打开】");
+        const isAdmin = this.isAdminOperator(operatorId);
+        const isReporter = issue.reporterId === operatorId;
+        if (!isAdmin && !isReporter) {
+            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有提出问题的人或管理员可以执行【验证不通过】操作", 403);
+        }
 
         this.repo.runInTransaction(() => {
             const now = nowIso();
@@ -357,8 +362,8 @@ export class IssueService {
                 status: nextStatus,
                 reopenCount: issue.reopenCount + 1,
                 lastVerifiedResult: "fail",
-                verifierId: verifier.userId,
-                verifierName: verifier.displayName,
+                verifierId: operatorId,
+                verifierName: input.operatorName?.trim() || null,
                 verifiedAt: null,
                 closedAt: null,
                 updatedAt: now
@@ -388,9 +393,12 @@ export class IssueService {
         const issue = this.getById(id);
         const nextStatus: IssueStatus = "closed";
         this.assertTransition(issue.status, nextStatus);
-
         const operatorId = this.requireOperatorId(input.operatorId, "close");
-        this.requireProjectMemberRoles(issue.projectId, operatorId, ["product", "qa"], "【关闭】");
+        const isAdmin = this.isAdminOperator(operatorId);
+        const isReporter = issue.reporterId === operatorId;
+        if (!isAdmin && !isReporter) {
+            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "只有提出问题的人或管理员可以执行【关闭】操作", 403);
+        }
 
         const closeComment = input.comment?.trim();
         if (issue.status === "open") {
@@ -477,11 +485,9 @@ export class IssueService {
 
         const issueDir = this.getIssueUploadDir(issue.id);
         ensureDirSync(issueDir);
-
         const originalName = safeBaseName(input.originalName || "file");
         const storedFileName = buildStoredFileName(originalName);
         const targetPath = path.join(issueDir, storedFileName);
-
         const stat = fs.statSync(input.tempFilePath);
         const fileSize = input.fileSize || stat.size;
         const mimeType = input.mimeType?.trim().toLowerCase() || "";
@@ -500,7 +506,6 @@ export class IssueService {
         }
 
         fs.copyFileSync(input.tempFilePath, targetPath);
-
         const attachment: IssueAttachmentEntity = {
             id: genId("iat"),
             issueId: issue.id,
@@ -545,7 +550,6 @@ export class IssueService {
         operatorName?: string | null;
     }): IssueDetailResult {
         const issue = this.getById(issueId);
-
         const attachment = this.repo.findAttachmentById(attachmentId);
         if (!attachment || attachment.issueId !== issue.id) {
             throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", "附件未找到", 404);
@@ -657,25 +661,15 @@ export class IssueService {
         return value;
     }
 
-    private assertAssigneeOperator(issue: IssueEntity, operatorId: string, action: string): void {
-        if (this.repo.isIssueAssignee(issue.id, operatorId)) {
-            return;
-        }
-
-        if (issue.assigneeId && issue.assigneeId !== operatorId) {
-            throw new AppError(
-                "ISSUE_FORBIDDEN_OPERATOR",
-                `只有当前负责人可以执行 ${action} 操作`,
-                403
-            );
-        }
+    private isAdminOperator(operatorId: string): boolean {
+        const user = this.authRepo.findById(operatorId);
+        return !!user && user.status === "active" && user.role === "admin";
     }
 
     private normalizeAssigneeIds(input: AssignIssueInput): string[] {
         const source = (input.assigneeIds && input.assigneeIds.length > 0)
             ? input.assigneeIds
             : (input.assigneeId ? [input.assigneeId] : []);
-
         const seen = new Set<string>();
         const normalized: string[] = [];
         for (const raw of source) {
@@ -721,7 +715,7 @@ export class IssueService {
     private buildCloseSummary(status: IssueStatus, reasonType?: IssueCloseReasonType, comment?: string): string {
         if (status === "open") {
             const reason = reasonType ?? "unknown";
-            const text = comment ?? "";
+        const text = comment ?? "";
             return `关闭未解决的问题 (${reason}): ${text}`;
         }
 
@@ -756,7 +750,6 @@ export class IssueService {
             now.getFullYear().toString() +
             String(now.getMonth() + 1).padStart(2, "0") +
             String(now.getDate()).padStart(2, "0");
-
         const millis = String(now.getMilliseconds()).padStart(3, "0");
         const random = Math.floor(Math.random() * 1000)
             .toString()
@@ -786,3 +779,36 @@ export class IssueService {
         throw error;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

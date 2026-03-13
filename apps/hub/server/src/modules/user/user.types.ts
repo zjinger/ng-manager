@@ -1,4 +1,4 @@
-﻿import type { UserTitleCode } from "./user.constants";
+import type { UserTitleCode } from "./user.constants";
 
 export type UserStatus = "active" | "inactive";
 export type UserSource = "local" | "imported";
@@ -38,6 +38,12 @@ export interface UpdateUserInput {
   remark?: string | null;
 }
 
+export interface ResetUserPasswordInput {
+  userId: string;
+  newPassword: string;
+  mustChangePassword?: boolean;
+}
+
 export interface ListUserQuery {
   status?: UserStatus;
   keyword?: string;
@@ -51,3 +57,4 @@ export interface UserListResult {
   pageSize: number;
   total: number;
 }
+

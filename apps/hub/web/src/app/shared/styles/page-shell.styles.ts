@@ -14,9 +14,12 @@
     margin-bottom: 0;
   }
   .content-grid{
+    flex: 1 1 auto;
+    height: 0;
+    overflow: hidden;
     .list-card,
     .detail-card {
-      
+      overflow: hidden;height: 100%;display: flex;flex-direction: column;
     }
   }
 `;

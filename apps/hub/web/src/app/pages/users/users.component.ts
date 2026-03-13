@@ -1,4 +1,4 @@
-﻿import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -16,7 +16,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
+import { NzTooltipDirective } from 'ng-zorro-antd/tooltip';
 
 type UserStatus = 'active' | 'inactive';
 type UserTitleCode = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops' | 'other';
@@ -126,7 +126,10 @@ interface UserTitleOption {
                 <td>{{ item.updatedAt | hubDateTime }}</td>
                 <td>
                   <a nz-button nzType="link" (click)="editUser(item)" nz-tooltip="编辑用户">
-                    <nz-icon nzType="edit" nzTheme="outline"></nz-icon> 
+                    <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
+                  </a>
+                  <a nz-button nzType="link" (click)="openResetPassword(item)" nz-tooltip="重置密码">
+                    <nz-icon nzType="key" nzTheme="outline"></nz-icon>
                   </a>
                 </td>
               </tr>
@@ -157,9 +160,9 @@ interface UserTitleOption {
                 </nz-form-control>
               </nz-form-item>
               <nz-form-item>
-                <nz-form-label nzRequired>真实姓名</nz-form-label>
+                <nz-form-label>显示名</nz-form-label>
                 <nz-form-control>
-                  <input nz-input formControlName="displayName" placeholder="用户的真实姓名" />
+                  <input nz-input formControlName="displayName" placeholder="可选，空则显示用户名" />
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -214,6 +217,39 @@ interface UserTitleOption {
           </form>
         </ng-container>
       </nz-modal>
+
+      <nz-modal
+        nzTitle="重置密码"
+        [(nzVisible)]="resetVisible"
+        [nzMaskClosable]="false"
+        [nzFooter]="null"
+        (nzOnCancel)="resetVisible.set(false)"
+      >
+        <ng-container *nzModalContent>
+          @if (resetError()) {
+            <nz-alert nzType="error" [nzMessage]="resetError()!" nzShowIcon></nz-alert>
+          }
+
+          <form nz-form nzLayout="vertical" [formGroup]="resetForm" class="form">
+            <nz-form-item>
+              <nz-form-label>用户</nz-form-label>
+              <nz-form-control>
+                <input nz-input [value]="resetTargetName()" disabled />
+              </nz-form-control>
+            </nz-form-item>
+            <nz-form-item>
+              <nz-form-label nzRequired>新密码</nz-form-label>
+              <nz-form-control>
+                <input nz-input type="password" formControlName="newPassword" placeholder="至少8位" />
+              </nz-form-control>
+            </nz-form-item>
+
+            <button nz-button nzType="primary" (click)="submitResetPassword()" [disabled]="resetting() || resetForm.invalid">
+              确认重置
+            </button>
+          </form>
+        </ng-container>
+      </nz-modal>
     </section>
   `,
   styles: [
@@ -240,6 +276,12 @@ export class UsersPageComponent {
   protected readonly editingId = signal<string | null>(null);
   protected readonly titleOptions = signal<UserTitleOption[]>([]);
 
+  protected readonly resetVisible = signal(false);
+  protected readonly resetting = signal(false);
+  protected readonly resetError = signal<string | null>(null);
+  protected readonly resetTargetId = signal<string | null>(null);
+  protected readonly resetTargetName = signal('');
+
   protected readonly filters = this.fb.nonNullable.group({
     status: [''],
     keyword: ['']
@@ -247,12 +289,16 @@ export class UsersPageComponent {
 
   protected readonly form = this.fb.nonNullable.group({
     username: ['', [Validators.required]],
-    displayName: ['', [Validators.required]],
+    displayName: [''],
     titleCode: [null as UserTitleCode | null],
     email: ['', [Validators.email]],
     mobile: ['', [Validators.pattern(/^\+?\d{7,15}$/)]],
     status: ['active' as UserStatus, [Validators.required]],
     remark: ['']
+  });
+
+  protected readonly resetForm = this.fb.nonNullable.group({
+    newPassword: ['', [Validators.required, Validators.minLength(8)]]
   });
 
   public constructor() {
@@ -295,6 +341,37 @@ export class UsersPageComponent {
       remark: item.remark || ''
     });
     this.visible.set(true);
+  }
+
+  protected openResetPassword(item: UserItem): void {
+    this.resetError.set(null);
+    this.resetTargetId.set(item.id);
+    this.resetTargetName.set(item.displayName || item.username);
+    this.resetForm.reset({ newPassword: '' });
+    this.resetVisible.set(true);
+  }
+
+  protected async submitResetPassword(): Promise<void> {
+    if (this.resetForm.invalid || !this.resetTargetId()) {
+      this.resetForm.markAllAsTouched();
+      return;
+    }
+
+    this.resetting.set(true);
+    this.resetError.set(null);
+
+    try {
+      const value = this.resetForm.getRawValue();
+      await firstValueFrom(this.api.post<{ ok: boolean }, { newPassword: string; mustChangePassword: boolean }>(
+        `/api/admin/users/${this.resetTargetId()!}/password`,
+        { newPassword: value.newPassword, mustChangePassword: true }
+      ));
+      this.resetVisible.set(false);
+    } catch (error) {
+      this.resetError.set(this.getErrorMessage(error, '重置密码失败'));
+    } finally {
+      this.resetting.set(false);
+    }
   }
 
   protected async saveUser(): Promise<void> {
@@ -398,3 +475,6 @@ export class UsersPageComponent {
     return fallback;
   }
 }
+
+
+

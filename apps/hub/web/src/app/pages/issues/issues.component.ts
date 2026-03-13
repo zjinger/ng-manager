@@ -14,9 +14,11 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzUploadFile, NzUploadModule, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
+import { AdminAuthService } from '../../core/services/admin-auth.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { AttachmentCardItem, AttachmentCardListComponent } from '../../shared/components';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
@@ -40,6 +42,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
     NzSelectModule,
     NzTableModule,
     NzTagModule,
+    // NzTooltipModule,
+    NzTooltipModule,
     NzUploadModule,
     PageHeaderComponent,
     AttachmentCardListComponent,
@@ -56,6 +60,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 export class IssuesPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
+  private readonly auth = inject(AdminAuthService);
   private readonly router = inject(Router);
 
   private attachmentMimePrefixes = ['image/', 'video/'];
@@ -110,7 +115,6 @@ export class IssuesPageComponent {
   });
 
   protected readonly actionForm = this.fb.nonNullable.group({
-    comment: [''],
     closeReasonType: ['' as '' | IssueCloseReasonType]
   });
 
@@ -196,7 +200,7 @@ export class IssuesPageComponent {
     this.assignForm.reset({
       assigneeIds: item.assigneeId ? [item.assigneeId] : []
     });
-    this.actionForm.reset({ comment: '', closeReasonType: '' });
+    this.actionForm.reset({ closeReasonType: '' });
     this.commentForm.reset({ content: '' });
     this.hideMentionPanel();
     void this.loadProjectMembers(item.projectId);
@@ -223,7 +227,6 @@ export class IssuesPageComponent {
     this.detailError.set(null);
 
     try {
-      const comment = this.actionForm.controls.comment.value.trim();
       const closeReasonType = this.actionForm.controls.closeReasonType.value;
 
       if (action === 'assign') {
@@ -232,59 +235,40 @@ export class IssuesPageComponent {
           throw new Error('指派时需要选择至少一个项目成员');
         }
         await firstValueFrom(
-          this.api.post<IssueItem, { assigneeIds: string[]; comment: string }>(`/api/admin/issues/${detail.issue.id}/assign`, {
-            assigneeIds,
-            comment
+          this.api.post<IssueItem, { assigneeIds: string[] }>(`/api/admin/issues/${detail.issue.id}/assign`, {
+            assigneeIds
           })
         );
       } else if (action === 'start-progress') {
         await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/start-progress`, {
-            comment
-          })
+          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/start-progress`, {})
         );
       } else if (action === 'mark-fixed') {
-        if (!comment) {
-          throw new Error('标记已修改时必须填写修复说明');
-        }
         await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/mark-fixed`, {
-            comment
-          })
+          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/mark-fixed`, {})
         );
       } else if (action === 'verify') {
         await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/verify`, {
-            comment
-          })
+          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/verify`, {})
         );
       } else if (action === 'reopen') {
-        if (!comment) {
-          throw new Error('驳回重开时必须填写原因');
-        }
         await firstValueFrom(
           this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/reopen`, {
-            comment
+            comment: '验证不通过'
           })
         );
       } else {
-        if (detail.issue.status === 'open') {
-          if (!closeReasonType) {
-            throw new Error('新建状态直接关闭时必须选择原因');
-          }
-          if (!comment) {
-            throw new Error('新建状态直接关闭时必须填写说明');
-          }
+        if (detail.issue.status === 'open' && !closeReasonType) {
+          throw new Error('新建状态直接关闭时必须选择原因');
         }
         await firstValueFrom(
           this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/close`, {
-            comment,
+            comment: detail.issue.status === 'open' ? '关闭问题' : '',
             closeReasonType
           })
         );
       }
 
-      this.actionForm.patchValue({ comment: '' });
       await this.loadIssues();
       await this.loadIssueDetail(detail.issue.id);
     } catch (error) {
@@ -293,7 +277,6 @@ export class IssuesPageComponent {
       this.actionLoading.set(false);
     }
   }
-
   protected async submitComment(): Promise<void> {
     const detail = this.selectedDetail();
     if (!detail) {
@@ -461,7 +444,7 @@ export class IssuesPageComponent {
       pastedFiles.push({ uid, file: normalized });
     }
     if (pastedFiles.length === 0) {
-      this.createError.set('粘贴内容中没有可上传的图片或视频');
+      // this.createError.set('粘贴内容中没有可上传的图片或视频');
       return;
     }
     this.createError.set(null);
@@ -623,7 +606,7 @@ export class IssuesPageComponent {
   }
 
   protected canAssign(status: IssueStatus): boolean {
-    return status === 'open' || status === 'assigned' || status === 'reopened';
+    return status === 'open' || status === 'assigned' || status === 'reopened' || status === 'in_progress';
   }
 
   protected canStartProgress(status: IssueStatus): boolean {
@@ -639,13 +622,57 @@ export class IssuesPageComponent {
   }
 
   protected canReopen(status: IssueStatus): boolean {
-    return status === 'fixed' || status === 'closed';
+    return status === 'fixed' || status === 'verified' || status === 'closed';
   }
 
   protected canClose(status: IssueStatus): boolean {
     return status === 'verified';
   }
 
+  private currentUserId(): string | null {
+    const profile = this.auth.profile();
+    if (!profile) {
+      return null;
+    }
+    return profile.userId?.trim() || profile.id;
+  }
+
+  private isCurrentReporter(detail: IssueDetailResult): boolean {
+    const userId = this.currentUserId();
+    return !!userId && detail.issue.reporterId === userId;
+  }
+
+  private isCurrentAssignee(detail: IssueDetailResult): boolean {
+    const userId = this.currentUserId();
+    if (!userId) {
+      return false;
+    }
+    return detail.assignees.some((item) => item.userId === userId);
+  }
+
+  protected canActionMarkFixed(detail: IssueDetailResult): boolean {
+    return this.isCurrentAssignee(detail) && detail.issue.status === 'in_progress';
+  }
+
+  protected canActionStartProgress(detail: IssueDetailResult): boolean {
+    return this.isCurrentAssignee(detail) && (detail.issue.status === 'assigned' || detail.issue.status === 'reopened');
+  }
+
+  protected canActionBackToProgress(detail: IssueDetailResult): boolean {
+    return this.isCurrentAssignee(detail) && detail.issue.status === 'fixed';
+  }
+
+  protected canActionVerify(detail: IssueDetailResult): boolean {
+    return this.isCurrentReporter(detail) && detail.issue.status === 'fixed';
+  }
+
+  protected canActionReject(detail: IssueDetailResult): boolean {
+    return this.isCurrentReporter(detail) && (detail.issue.status === 'fixed' || detail.issue.status === 'verified');
+  }
+
+  protected canActionClose(detail: IssueDetailResult): boolean {
+    return this.isCurrentReporter(detail) && detail.issue.status === 'verified';
+  }
   protected statusColor(status: IssueStatus): string {
     if (status === 'closed') return 'default';
     if (status === 'verified') return 'green';
@@ -659,7 +686,7 @@ export class IssuesPageComponent {
     if (status === 'in_progress') return '处理中';
     if (status === 'fixed') return '待测试';
     if (status === 'verified') return '已验证';
-    if (status === 'reopened') return '已重开';
+    if (status === 'reopened') return '驳回重新处理';
     if (status === 'closed') return '已关闭';
     return '新建';
   }
@@ -685,6 +712,23 @@ export class IssuesPageComponent {
     if (type === 'task') return '任务';
     if (type === 'test_record') return '测试记录';
     return '缺陷';
+  }
+
+  protected typeColor(type: IssueType): string {
+    if (type === 'bug') return 'red';
+    if (type === 'requirement_change') return 'gold';
+    if (type === 'feature') return 'green';
+    if (type === 'improvement') return 'cyan';
+    if (type === 'task') return 'blue';
+    return 'purple';
+  }
+
+  protected dateTimeToSecond(value: string | null | undefined): string {
+    if (!value) {
+      return '-';
+    }
+    const normalized = value.replace('T', ' ').replace('Z', '');
+    return normalized.slice(0, 19);
   }
 
   private async loadIssues(): Promise<void> {
@@ -742,7 +786,7 @@ export class IssuesPageComponent {
       this.assignForm.reset({
         assigneeIds: item.assigneeId ? [item.assigneeId] : []
       });
-      this.actionForm.reset({ comment: '', closeReasonType: '' });
+      this.actionForm.reset({ closeReasonType: '' });
       this.commentForm.reset({ content: '' });
       this.hideMentionPanel();
       await this.loadProjectMembers(item.projectId);

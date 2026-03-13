@@ -1,4 +1,4 @@
-﻿import type Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import type { ListUserQuery, UpdateUserInput, UserEntity, UserListResult } from "./user.types";
 
 type UserRow = {
@@ -20,6 +20,11 @@ export class UserRepo {
 
   constructor(private readonly db: Database.Database) {
     this.titleColumn = this.detectTitleColumn();
+  }
+
+  runInTransaction<T>(operation: () => T): T {
+    const tx = this.db.transaction(operation);
+    return tx();
   }
 
   create(entity: UserEntity): void {

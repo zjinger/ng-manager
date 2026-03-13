@@ -72,13 +72,13 @@ export async function createApp() {
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectRepo);
 
   const userRepo = new UserRepo(app.db);
-  const userService = new UserService(userRepo);
+  const userService = new UserService(userRepo, authService);
 
   const releaseRepo = new ReleaseRepo(app.db);
   const releaseService = new ReleaseService(releaseRepo, projectRepo, app.hubWsEvents);
 
   const issueRepo = new IssueRepo(app.db);
-  const issueService = new IssueService(issueRepo, projectRepo, projectMemberService);
+  const issueService = new IssueService(issueRepo, projectRepo, projectMemberService, authRepo);
 
   app.decorate("services", {
     feedback: feedbackService,

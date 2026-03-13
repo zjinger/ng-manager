@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 import { USER_TITLE_VALUES } from "./user.constants";
 
 const statusEnum = z.enum(["active", "inactive"]);
@@ -19,7 +19,7 @@ export const createUserSchema = z.object({
   mobile: z.string().trim().max(30).optional(),
   titleCode: titleCodeEnum.nullable().optional(),
   source: sourceEnum.default("local"),
-  remark: z.string().trim().max(1000).optional()
+  remark: z.string().trim().max(1000).optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -33,7 +33,13 @@ export const updateUserSchema = z.object({
   remark: z.string().trim().max(1000).nullable().optional()
 });
 
+export const resetUserPasswordSchema = z.object({
+  newPassword: z.string().min(8).max(200),
+  mustChangePassword: z.boolean().optional().default(true)
+});
+
 export type ListUserQueryDto = z.infer<typeof listUserQuerySchema>;
 export type CreateUserDto = z.infer<typeof createUserSchema>;
 export type UpdateUserDto = z.infer<typeof updateUserSchema>;
+export type ResetUserPasswordDto = z.infer<typeof resetUserPasswordSchema>;
 

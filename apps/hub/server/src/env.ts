@@ -93,7 +93,9 @@ export const env = {
   initAdminUsername: process.env.INIT_ADMIN_USERNAME || "admin",
   initAdminPassword: process.env.INIT_ADMIN_PASSWORD || "Ad@_2o26",
   initAdminNickname: process.env.INIT_ADMIN_NICKNAME || "Administrator",
+  initUserDefaultPassword: process.env.INIT_USER_DEFAULT_PASSWORD || "12345670",
 
   uploadMaxFileSize: Number(process.env.UPLOAD_MAX_FILE_SIZE || 10 * 1024 * 1024),
   uploadMaxFiles: Number(process.env.UPLOAD_MAX_FILES || 20)
 };
+

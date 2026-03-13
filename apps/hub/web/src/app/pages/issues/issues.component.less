@@ -6,15 +6,14 @@
 
 .content-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1.8fr 1fr;
   gap: 16px;
   align-items: stretch;
 }
 
 .list-card-table {
   flex: 1;
-  height: 0;
-  overflow: hidden;
+  min-height: 0;
   table-layout: fixed;
 }
 
@@ -88,21 +87,72 @@
   margin-bottom: 8px;
 }
 
-.issue-no-col {
-  width: 180px;
-  min-width: 180px;
-  color: #6b7280;
+
+.cell-text {
+  display: block;
+  width: 100%;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.issue-no-col,
+.issue-title-col,
+.issue-status-col,
+.issue-priority-col,
+.issue-type-col,
+.issue-module-col,
+.issue-assignee-col,
+.issue-reporter-col,
+.issue-updated-col {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.issue-no-col {
+  width: 190px;
+  min-width: 190px;
+  color: #6b7280;
 }
 
 .issue-title-col {
-  width: 300px;
-  min-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 200px;
 }
 
+.issue-status-col {
+  width: 82px;
+  min-width: 82px;
+}
+
+.issue-priority-col {
+  width: 72px;
+  min-width: 72px;
+}
+
+.issue-type-col {
+  width: 74px;
+  min-width: 74px;
+}
+
+.issue-module-col {
+  width: 74px;
+  min-width: 74px;
+}
+
+.issue-assignee-col {
+  width: 140px;
+  min-width: 140px;
+}
+
+.issue-reporter-col {
+  width: 90px;
+  min-width: 90px;
+}
+
+.issue-updated-col {
+  width: 140px;
+  min-width: 140px;
+}
 
 .list-panel,
 .detail-panel {
@@ -111,8 +161,16 @@
   padding-right: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   height: 100%;
+}
+
+.list-panel {
+  overflow: hidden;
+}
+
+.detail-panel {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .loading-inline {
@@ -237,4 +295,14 @@
 :host ::ng-deep .list-card .ant-card-body,
 :host ::ng-deep .detail-card .ant-card-body {
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+:host ::ng-deep .list-card-table .ant-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }

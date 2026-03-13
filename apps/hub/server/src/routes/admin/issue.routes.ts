@@ -39,13 +39,13 @@ interface IssueAttachmentDto {
     downloadUrl: string;
 }
 
-function getOperator(request: { adminUser: { id: string; nickname?: string | null; username: string } | null }) {
+function getOperator(request: { adminUser: { id: string; userId?: string | null; nickname?: string | null; username: string } | null }) {
     if (!request.adminUser) {
         throw new AppError("AUTH_UNAUTHORIZED", "unauthorized", 401);
     }
 
     return {
-        operatorId: request.adminUser.id,
+        operatorId: request.adminUser.userId?.trim() || request.adminUser.id,
         operatorName: request.adminUser.nickname?.trim() || request.adminUser.username
     };
 }
@@ -257,3 +257,4 @@ export default async function adminIssueRoutes(fastify: FastifyInstance) {
         return ok(toIssueDetailDto(result));
     });
 }
+

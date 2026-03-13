@@ -3,10 +3,12 @@ import type { AdminUserEntity } from "./auth.types";
 
 type AdminUserRow = {
     id: string;
+    user_id?: string | null;
     username: string;
     password_hash: string;
     nickname: string | null;
     status: string;
+    role?: string;
     must_change_password: number;
     last_login_at: string | null;
     created_at: string;
@@ -18,7 +20,7 @@ export class AuthRepo {
 
     countAdmins(): number {
         const row = this.db
-            .prepare(`SELECT COUNT(*) as total FROM admin_users`)
+            .prepare(`SELECT COUNT(*) as total FROM admin_users WHERE role = 'admin' OR role IS NULL`)
             .get() as { total: number };
 
         return row.total;
@@ -27,20 +29,22 @@ export class AuthRepo {
     create(entity: AdminUserEntity): void {
         const stmt = this.db.prepare(`
       INSERT INTO admin_users (
-        id, username, password_hash, nickname, status,
+        id, user_id, username, password_hash, nickname, status, role,
         must_change_password, last_login_at, created_at, updated_at
       ) VALUES (
-        @id, @username, @password_hash, @nickname, @status,
+        @id, @user_id, @username, @password_hash, @nickname, @status, @role,
         @must_change_password, @last_login_at, @created_at, @updated_at
       )
     `);
 
         stmt.run({
             id: entity.id,
+            user_id: entity.userId ?? null,
             username: entity.username,
             password_hash: entity.passwordHash,
             nickname: entity.nickname ?? null,
             status: entity.status,
+            role: entity.role,
             must_change_password: entity.mustChangePassword ? 1 : 0,
             last_login_at: entity.lastLoginAt ?? null,
             created_at: entity.createdAt,
@@ -60,6 +64,14 @@ export class AuthRepo {
         const row = this.db
             .prepare(`SELECT * FROM admin_users WHERE username = ?`)
             .get(username) as AdminUserRow | undefined;
+
+        return row ? this.toEntity(row) : null;
+    }
+
+    findByUserId(userId: string): AdminUserEntity | null {
+        const row = this.db
+            .prepare(`SELECT * FROM admin_users WHERE user_id = ? LIMIT 1`)
+            .get(userId) as AdminUserRow | undefined;
 
         return row ? this.toEntity(row) : null;
     }
@@ -93,13 +105,51 @@ export class AuthRepo {
         return result.changes > 0;
     }
 
+    updateByUserId(
+        userId: string,
+        patch: {
+            username?: string;
+            nickname?: string | null;
+            status?: AdminUserEntity["status"];
+            updatedAt: string;
+        }
+    ): boolean {
+        const fields: string[] = [];
+        const params: unknown[] = [];
+
+        if (patch.username !== undefined) {
+            fields.push("username = ?");
+            params.push(patch.username);
+        }
+        if (patch.nickname !== undefined) {
+            fields.push("nickname = ?");
+            params.push(patch.nickname);
+        }
+        if (patch.status !== undefined) {
+            fields.push("status = ?");
+            params.push(patch.status);
+        }
+
+        fields.push("updated_at = ?");
+        params.push(patch.updatedAt);
+        params.push(userId);
+
+        const result = this.db
+            .prepare(`UPDATE admin_users SET ${fields.join(", ")} WHERE user_id = ?`)
+            .run(...params);
+
+        return result.changes > 0;
+    }
+
     private toEntity(row: AdminUserRow): AdminUserEntity {
         return {
             id: row.id,
+            userId: row.user_id ?? null,
             username: row.username,
             passwordHash: row.password_hash,
             nickname: row.nickname,
             status: row.status as AdminUserEntity["status"],
+            role: (row.role ?? "admin") as AdminUserEntity["role"],
             mustChangePassword: row.must_change_password === 1,
             lastLoginAt: row.last_login_at,
             createdAt: row.created_at,

@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, inject, signal } from '@angular/core';
+﻿import { Component, HostListener, OnDestroy, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,6 +15,7 @@ import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { AttachmentCardItem, AttachmentCardListComponent } from '../../shared/components';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 export type IssueType =
   | 'bug'
@@ -23,6 +24,7 @@ export type IssueType =
   | 'improvement'
   | 'task'
   | 'test_record';
+
 type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
 
 interface ProjectOption {
@@ -81,8 +83,11 @@ interface AttachmentPolicyResult {
         <nz-alert class="section" nzType="error" [nzMessage]="submitError()!" nzShowIcon></nz-alert>
       }
 
-      <nz-card nzTitle="问题信息" class="section">
+      <nz-card class="section">
         <form nz-form [formGroup]="createForm" nzLayout="vertical" class="form" (ngSubmit)="submitCreate()">
+          <div class="create-divider"></div>
+          <div class="section-title">【基础信息】</div>
+
           <div class="row-two">
             <nz-form-item>
               <nz-form-label nzRequired>项目</nz-form-label>
@@ -98,7 +103,7 @@ interface AttachmentPolicyResult {
             <nz-form-item>
               <nz-form-label nzRequired>标题</nz-form-label>
               <nz-form-control>
-                <input nz-input formControlName="title" placeholder="一句话描述问题" />
+                <input nz-input formControlName="title" placeholder="标题：登录按钮点击无响应" />
               </nz-form-control>
             </nz-form-item>
           </div>
@@ -132,27 +137,50 @@ interface AttachmentPolicyResult {
           </div>
 
           <div class="row-three">
-            <nz-select formControlName="module" nzAllowClear nzPlaceHolder="模块（可选）">
-              @for (item of moduleOptions(); track item.id) {
-                <nz-option [nzValue]="item.name" [nzLabel]="item.name || '-'"> </nz-option>
-              }
-            </nz-select>
-            <nz-select formControlName="version" nzAllowClear nzPlaceHolder="版本（可选）">
-              @for (item of versionOptions(); track item.id) {
-                <nz-option [nzValue]="item.version" [nzLabel]="item.version || '-'"> </nz-option>
-              }
-            </nz-select>
-            <nz-select formControlName="environment" nzAllowClear nzPlaceHolder="环境（可选）">
-              @for (item of environmentOptions(); track item.id) {
-                <nz-option [nzValue]="item.name" [nzLabel]="item.name || '-'"> </nz-option>
-              }
-            </nz-select>
+            <nz-form-item>
+              <nz-form-label>模块</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="module" nzAllowClear nzPlaceHolder="模块（可选）">
+                  @for (item of moduleOptions(); track item.id) {
+                    <nz-option [nzValue]="item.name" [nzLabel]="item.name || '-'"> </nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+              <nz-form-label>版本</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="version" nzAllowClear nzPlaceHolder="版本（可选）">
+                  @for (item of versionOptions(); track item.id) {
+                    <nz-option [nzValue]="item.version" [nzLabel]="item.version || '-'"> </nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+              <nz-form-label>环境</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="environment" nzAllowClear nzPlaceHolder="环境（可选）">
+                  @for (item of environmentOptions(); track item.id) {
+                    <nz-option [nzValue]="item.name" [nzLabel]="item.name || '-'"> </nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
           </div>
 
-          <textarea nz-input rows="7" formControlName="description" placeholder="问题描述 / 复现步骤"></textarea>
+          <div class="section-title">【问题描述】</div>
+          <textarea
+            nz-input
+            rows="9"
+            formControlName="description"
+            placeholder="描述 / 复现步骤&#10;&#10;1. 打开登录页面&#10;2. 输入账号密码&#10;3. 点击登录按钮&#10;&#10;实际结果：&#10;没有任何反应&#10;&#10;期望结果：&#10;进入系统首页"
+          ></textarea>
 
+          <div class="section-title">【附件】</div>
           <div class="create-attachments">
-            <label>附件（支持点击、拖拽、粘贴截图）</label>
             <nz-upload
               nzType="drag"
               [nzMultiple]="true"
@@ -162,9 +190,10 @@ interface AttachmentPolicyResult {
               [nzShowUploadList]="false"
               (nzChange)="onCreateUploadChange($event)"
             >
-              <p class="ant-upload-text">点击或拖拽文件到此区域</p>
-              <p class="ant-upload-hint">支持 Ctrl+V 粘贴截图，文件会在提交问题后上传</p>
+              <p class="ant-upload-text">拖拽或点击上传</p>
+              <p class="ant-upload-hint">支持 Ctrl+V 粘贴截图</p>
             </nz-upload>
+
             <app-attachment-card-list
               [items]="createAttachmentItems()"
               [loading]="submitting()"
@@ -177,6 +206,7 @@ interface AttachmentPolicyResult {
           <div class="form-actions">
             <button nz-button nzType="default" type="button" (click)="goBack()" [disabled]="submitting()">取消</button>
             <button nz-button nzType="primary" [disabled]="submitting() || createForm.invalid">提交问题</button>
+            <button nz-button nzType="default" type="button" (click)="submitCreateAndContinue()" [disabled]="submitting() || createForm.invalid">提交并继续创建</button>
           </div>
         </form>
       </nz-card>
@@ -186,11 +216,10 @@ interface AttachmentPolicyResult {
     PAGE_SHELL_STYLES,
     `
       .form { display: grid; gap: 12px; }
+      .section-title { font-weight: 600; color: #1f2937; margin-top: 2px; }
       .row-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
       .row-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
       .create-attachments { display: grid; gap: 8px; }
-      .create-attachments label { font-weight: 500; }
-      .muted { color: #6b7280; }
       .form-actions { display: flex; justify-content: flex-end; gap: 8px; }
       :host ::ng-deep .create-attachments .ant-upload-list { max-height: 240px; overflow-y: auto; }
 
@@ -204,6 +233,8 @@ export class IssueCreatePageComponent implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
   private readonly router = inject(Router);
+  private readonly msg = inject(NzMessageService);
+
   private attachmentMimePrefixes = ['image/', 'video/'];
   private attachmentExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp', '.flv', '.wmv', '.mpeg', '.mpg'];
 
@@ -214,8 +245,10 @@ export class IssueCreatePageComponent implements OnDestroy {
   protected readonly environmentOptions = signal<ProjectConfigItem[]>([]);
   protected readonly versionOptions = signal<ProjectConfigItem[]>([]);
   protected attachmentAccept = 'image/*,video/*';
+
   protected readonly createUploadFileList = signal<NzUploadFile[]>([]);
   protected readonly createAttachmentItems = signal<AttachmentCardItem[]>([]);
+
   private readonly createAttachmentFileMap = new Map<string, File>();
   private readonly createAttachmentPreviewUrlMap = new Map<string, string>();
 
@@ -241,52 +274,96 @@ export class IssueCreatePageComponent implements OnDestroy {
     void this.loadAttachmentPolicy();
   }
 
-  protected goBack(): void {
-    void this.router.navigate(['/issues']);
-  }
-
   public ngOnDestroy(): void {
     this.cleanupAllAttachmentPreviewUrls();
   }
 
+  protected goBack(): void {
+    void this.router.navigate(['/issues']);
+  }
+
   protected readonly beforeCreateUpload = (file: NzUploadFile): boolean => {
-    const raw = file.originFileObj as File | undefined;
-    if (!raw) return false;
+    const raw = this.extractUploadRawFile(file);
+    if (!raw) {
+      return false;
+    }
     if (!this.isAllowedAttachmentFile(raw)) {
       this.submitError.set('仅支持图片和视频文件：' + raw.name);
       return false;
     }
+
     this.submitError.set(null);
     this.createAttachmentFileMap.set(file.uid, raw);
+
+    const current = this.createUploadFileList();
+    if (!current.some((item) => item.uid === file.uid)) {
+      this.createUploadFileList.set([
+        ...current,
+        {
+          uid: file.uid,
+          name: raw.name,
+          size: raw.size,
+          type: raw.type,
+          originFileObj: raw,
+          status: 'done'
+        }
+      ]);
+    }
+
     this.syncCreateAttachmentFiles();
     return false;
   };
 
   protected onCreateUploadChange(event: { fileList: NzUploadFile[] }): void {
     const nextList = event.fileList ?? [];
-    const activeUids = new Set(nextList.map((item) => item.uid));
-    for (const uid of Array.from(this.createAttachmentFileMap.keys())) {
-      if (!activeUids.has(uid)) {
-        this.createAttachmentFileMap.delete(uid);
-        this.revokeAttachmentPreviewUrl(uid);
-      }
+    if (nextList.length === 0) {
+      return;
     }
-    const filteredList = nextList.filter((item) => this.createAttachmentFileMap.has(item.uid));
-    this.createUploadFileList.set(filteredList);
+
+    const visibleMap = new Map(this.createUploadFileList().map((item) => [item.uid, item]));
+
+    for (const item of nextList) {
+      const raw = this.extractUploadRawFile(item);
+      if (!raw) {
+        visibleMap.set(item.uid, item);
+        continue;
+      }
+      if (!this.isAllowedAttachmentFile(raw)) {
+        this.submitError.set('仅支持图片和视频文件：' + raw.name);
+        continue;
+      }
+
+      this.createAttachmentFileMap.set(item.uid, raw);
+      visibleMap.set(item.uid, {
+        ...item,
+        name: raw.name,
+        size: raw.size,
+        type: raw.type,
+        originFileObj: raw,
+        status: item.status ?? 'done'
+      });
+    }
+
+    this.createUploadFileList.set(Array.from(visibleMap.values()));
     this.syncCreateAttachmentFiles();
   }
 
   protected onCreateAttachmentPaste(event: ClipboardEvent): void {
     const items = event.clipboardData?.items;
-    if (!items || items.length === 0) return;
+    if (!items || items.length === 0) {
+      return;
+    }
 
     const pastedFiles: Array<{ uid: string; file: File }> = [];
     for (let i = 0; i < items.length; i += 1) {
       const item = items[i];
-      if (item.kind !== 'file') continue;
+      if (item.kind !== 'file') {
+        continue;
+      }
       const raw = item.getAsFile();
-      if (!raw) continue;
-      if (!this.isAllowedAttachmentFile(raw)) continue;
+      if (!raw || !this.isAllowedAttachmentFile(raw)) {
+        continue;
+      }
 
       const ext = this.extByMime(raw.type);
       const name = raw.name && raw.name.trim().length > 0 ? raw.name : `pasted-${Date.now()}-${i + 1}${ext}`;
@@ -296,12 +373,13 @@ export class IssueCreatePageComponent implements OnDestroy {
     }
 
     if (pastedFiles.length === 0) {
-      this.submitError.set('粘贴内容中没有可上传的图片或视频');
+      // this.submitError.set('粘贴内容中没有可上传的图片或视频');
       return;
     }
-    this.submitError.set(null);
 
+    this.submitError.set(null);
     event.preventDefault();
+
     const current = [...this.createUploadFileList()];
     for (const item of pastedFiles) {
       this.createAttachmentFileMap.set(item.uid, item.file);
@@ -314,6 +392,7 @@ export class IssueCreatePageComponent implements OnDestroy {
         status: 'done'
       });
     }
+
     this.createUploadFileList.set(current);
     this.syncCreateAttachmentFiles();
   }
@@ -327,11 +406,21 @@ export class IssueCreatePageComponent implements OnDestroy {
 
   @HostListener('document:paste', ['$event'])
   protected handleDocumentPaste(event: ClipboardEvent): void {
-    if (event.defaultPrevented) return;
+    if (event.defaultPrevented) {
+      return;
+    }
     this.onCreateAttachmentPaste(event);
   }
 
   protected async submitCreate(): Promise<void> {
+    await this.createIssue(false);
+  }
+
+  protected async submitCreateAndContinue(): Promise<void> {
+    await this.createIssue(true);
+  }
+
+  private async createIssue(keepCreating: boolean): Promise<void> {
     if (this.createForm.invalid || this.submitting()) {
       return;
     }
@@ -361,12 +450,36 @@ export class IssueCreatePageComponent implements OnDestroy {
       }
 
       this.cleanupAllAttachmentPreviewUrls();
-      await this.router.navigate(['/issues'], { queryParams: { createdId: created.id } });
+      if (keepCreating) {
+        this.msg.success('问题创建成功');
+        this.resetForContinueCreate();
+      } else {
+        await this.router.navigate(['/issues'], { queryParams: { createdId: created.id } });
+      }
     } catch (error) {
       this.submitError.set(this.getErrorMessage(error, '创建问题失败'));
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  private resetForContinueCreate(): void {
+    const value = this.createForm.getRawValue();
+    this.createForm.reset({
+      projectId: value.projectId,
+      module: value.module,
+      version: value.version,
+      environment: value.environment,
+      title: '',
+      description: '',
+      type: 'bug',
+      priority: 'medium'
+    });
+
+    this.createAttachmentFileMap.clear();
+    this.createUploadFileList.set([]);
+    this.createAttachmentItems.set([]);
+    this.submitError.set(null);
   }
 
   private async loadProjectOptions(): Promise<void> {
@@ -449,6 +562,17 @@ export class IssueCreatePageComponent implements OnDestroy {
       });
     }
     this.createAttachmentItems.set(items);
+  }
+
+  private extractUploadRawFile(upload: NzUploadFile): File | null {
+    const fromOrigin = upload.originFileObj;
+    if (fromOrigin instanceof File) {
+      return fromOrigin;
+    }
+    if (upload instanceof File) {
+      return upload;
+    }
+    return null;
   }
 
   private isAllowedAttachmentFile(file: File): boolean {

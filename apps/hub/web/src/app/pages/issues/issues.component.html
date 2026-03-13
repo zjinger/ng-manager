@@ -89,40 +89,45 @@
           [nzData]="issues()"
           [nzFrontPagination]="false"
           [nzLoading]="listLoading()"
+          [nzScroll]="{ y: 'calc(100vh - 430px)' }"
         >
           <thead>
             <tr>
-              <th class="issue-no-col">编号</th>
+              <th class="issue-no-col" nzWidth="190px">编号</th>
               <th class="issue-title-col">标题</th>
-              <th>状态</th>
-              <th>优先级</th>
-              <th>类型</th>
-              <th>模块</th>
-              <th>处理人</th>
-              <th>提出人</th>
-              <th>更新时间</th>
+              <th class="issue-status-col" nzWidth="100px">状态</th>
+              <th class="issue-priority-col" nzWidth="82px">优先级</th>
+              <th class="issue-type-col" nzWidth="82px">类型</th>
+              <th class="issue-module-col" nzWidth="120px">模块</th>
+              <th class="issue-assignee-col" nzWidth="140px">处理人</th>
+              <th class="issue-reporter-col" nzWidth="120px">提出人</th>
+              <th class="issue-updated-col" nzWidth="160px">更新时间</th>
             </tr>
           </thead>
           <tbody>
             @for (item of table.data; track item.id) {
               <tr (click)="selectIssue(item)" [class.selected]="selectedIssueId() === item.id">
                 <td class="issue-no-col">{{ item.issueNo }}</td>
-                <td class="issue-title-col">{{ item.title }}</td>
-                <td>
+                <td class="issue-title-col">
+                  <span class="cell-text" nz-tooltip [nzTooltipTitle]="item.description || '-'" nzTooltipPlacement="topLeft">{{ item.title }}</span>
+                </td>
+                <td class="issue-status-col">
                   <nz-tag [nzColor]="statusColor(item.status)">{{
                     statusLabel(item.status)
                   }}</nz-tag>
                 </td>
-                <td>
+                <td class="issue-priority-col">
                   <nz-tag [nzColor]="priorityColor(item.priority)">{{
                     priorityLabel(item.priority)
                   }}</nz-tag>
                 </td>
-                <td>{{ typeLabel(item.type) }}</td>
-                <td>{{ item.module || '-' }}</td>
-                <td>{{ item.assigneeName || '-' }}</td>
-                <td>{{ item.reporterName || '-' }}</td>
-                <td>{{ item.updatedAt | hubDateTime }}</td>
+                <td class="issue-type-col">                  <nz-tag [nzColor]="typeColor(item.type)">{{ typeLabel(item.type) }}</nz-tag>                </td>
+                <td class="issue-module-col">{{ item.module || '-' }}</td>
+                <td class="issue-assignee-col">
+                  <span class="cell-text" nz-tooltip [nzTooltipTitle]="item.assigneeName || '-'" nzTooltipPlacement="top">{{ item.assigneeName || '-' }}</span>
+                </td>
+                <td class="issue-reporter-col">{{ item.reporterName || '-' }}</td>
+                <td class="issue-updated-col">{{ item.updatedAt | hubDateTime }}</td>
               </tr>
             }
           </tbody>
@@ -149,7 +154,7 @@
                 <span>项目:</span><strong>{{ projectName(detail.issue.projectId) }}</strong>
               </div>
               <div class="meta-item">
-                <span>类型:</span><strong>{{ typeLabel(detail.issue.type) }}</strong>
+                <span>类型:</span><strong>{{ detail.issue.type === 'bug' ? 'Bug' : typeLabel(detail.issue.type) }}</strong>
               </div>
               <div class="meta-item">
                 <span>提出人:</span><strong>{{ detail.issue.reporterName || '-' }}</strong>
@@ -175,45 +180,20 @@
               <div class="meta-item">
                 <span>环境:</span><strong>{{ detail.issue.environment || '-' }}</strong>
               </div>
+              <div class="meta-item">
+                <span>创建时间:</span><strong>{{ dateTimeToSecond(detail.issue.createdAt) }}</strong>
+              </div>
+              <div class="meta-item">
+                <span>更新时间:</span><strong>{{ dateTimeToSecond(detail.issue.updatedAt) }}</strong>
+              </div>
             </div>
           </div>
 
           <div class="section action-box">
-            <div class="action-title">流转操作</div>
-
-            @if (canAssign(detail.issue.status)) {
-              <nz-select
-                [formControl]="assignForm.controls.assigneeIds"
-                nzMode="multiple"
-                nzPlaceHolder="选择项目成员作为处理人（可多选）"
-                [nzLoading]="memberLoading()"
-                nzShowSearch
-              >
-                @for (member of projectMembers(); track member.id) {
-                  <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)"></nz-option>
-                }
-              </nz-select>
-            }
-
-            <textarea
-              nz-input
-              rows="3"
-              [formControl]="actionForm.controls.comment"
-              placeholder="操作说明（标记修复/测试不通过建议填写）"
-            ></textarea>
+            <div class="action-title">操作</div>
 
             <div class="action-buttons">
-              @if (canAssign(detail.issue.status)) {
-                <button
-                  nz-button
-                  nzType="default"
-                  (click)="runAction('assign')"
-                  [disabled]="actionLoading()"
-                >
-                  {{ detail.issue.status === 'open' ? '指派处理人' : '重新指派' }}
-                </button>
-              }
-              @if (canStartProgress(detail.issue.status)) {
+              @if (canActionStartProgress(detail)) {
                 <button
                   nz-button
                   nzType="default"
@@ -223,38 +203,47 @@
                   开始处理
                 </button>
               }
-              @if (canMarkFixed(detail.issue.status)) {
+
+              @if (canActionMarkFixed(detail)) {
                 <button
                   nz-button
                   nzType="primary"
-                  (click)="runAction('mark-fixed')"
+                  nz-popconfirm
+                  nzPopconfirmTitle="确认标记为已修复并申请测试？"
+                  nzPopconfirmPlacement="top"
+                  (nzOnConfirm)="runAction('mark-fixed')"
                   [disabled]="actionLoading()"
                 >
                   标记修复
                 </button>
               }
-              @if (canVerify(detail.issue.status)) {
-                <button
-                  nz-button
-                  nzType="primary"
-                  (click)="runAction('verify')"
-                  [disabled]="actionLoading()"
-                >
-                  测试通过
-                </button>
-              }
-              @if (canReopen(detail.issue.status)) {
+
+              @if (canActionBackToProgress(detail)) {
                 <button
                   nz-button
                   nzType="default"
-                  nzDanger
-                  (click)="runAction('reopen')"
+                  (click)="runAction('start-progress')"
                   [disabled]="actionLoading()"
                 >
-                  {{ detail.issue.status === 'fixed' ? '测试不通过' : '重新打开' }}
+                  标为处理中
                 </button>
               }
-              @if (canClose(detail.issue.status)) {
+
+              @if (canActionVerify(detail)) {
+                <button
+                  nz-button
+                  nzType="primary"
+                  nz-popconfirm
+                  nzPopconfirmTitle="确认验证通过？"
+                  nzPopconfirmPlacement="top"
+                  (nzOnConfirm)="runAction('verify')"
+                  [disabled]="actionLoading()"
+                >
+                  验证通过
+                </button>
+              }
+
+              @if (canActionClose(detail)) {
                 <button
                   nz-button
                   nzType="default"
@@ -262,6 +251,21 @@
                   [disabled]="actionLoading()"
                 >
                   关闭
+                </button>
+              }
+
+              @if (canActionReject(detail)) {
+                <button
+                  nz-button
+                  nzType="default"
+                  nzDanger
+                  nz-popconfirm
+                  nzPopconfirmTitle="确认验证不通过并退回处理？"
+                  nzPopconfirmPlacement="top"
+                  (nzOnConfirm)="runAction('reopen')"
+                  [disabled]="actionLoading()"
+                >
+                  验证不通过
                 </button>
               }
             </div>
@@ -389,3 +393,4 @@
     </nz-card>
   </div>
 </section>
+

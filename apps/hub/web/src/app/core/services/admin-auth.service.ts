@@ -5,12 +5,15 @@ import { HubApiError } from '../http/api-error.interceptor';
 import { HUB_LOGIN_AES_KEY, encryptLoginPassword } from '../utils/crypto.util';
 
 export type AdminUserStatus = 'active' | 'disabled';
+export type AdminUserRole = 'admin' | 'user';
 
 export interface AdminProfile {
   id: string;
+  userId?: string | null;
   username: string;
   nickname?: string | null;
   status: AdminUserStatus;
+  role: AdminUserRole;
   mustChangePassword: boolean;
   lastLoginAt?: string | null;
   createdAt: string;
@@ -88,6 +91,19 @@ export class AdminAuthService {
         iv: encrypted.iv,
         cipherText: encrypted.cipherText
       })
+    );
+
+    this.profile.set(profile);
+    this.hasCheckedSession = true;
+    return profile;
+  }
+
+  public async changePassword(oldPassword: string, newPassword: string): Promise<AdminProfile> {
+    const profile = await firstValueFrom(
+      this.api.post<AdminProfile, { oldPassword: string; newPassword: string }>(
+        '/api/admin/auth/change-password',
+        { oldPassword, newPassword }
+      )
     );
 
     this.profile.set(profile);

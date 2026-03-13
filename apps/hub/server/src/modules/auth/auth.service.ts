@@ -10,7 +10,8 @@ import type {
     AdminUserProfile,
     ChangePasswordInput,
     LoginChallenge,
-    LoginInput
+    LoginInput,
+    ResetPasswordInput
 } from "./auth.types";
 import { AuthRepo } from "./auth.repo";
 
@@ -32,10 +33,12 @@ export class AuthService {
 
         const entity: AdminUserEntity = {
             id: genId("adm"),
+            userId: null,
             username: env.initAdminUsername.trim(),
             passwordHash,
             nickname: env.initAdminNickname.trim() || null,
             status: "active",
+            role: "admin",
             mustChangePassword: true,
             lastLoginAt: null,
             createdAt: now,
@@ -107,30 +110,121 @@ export class AuthService {
         return this.toProfile(user);
     }
 
+    isAdminUser(adminUserId: string): boolean {
+        const user = this.repo.findById(adminUserId);
+        return !!user && user.status === "active" && user.role === "admin";
+    }
+
+    createUserLoginAccount(input: {
+        userId: string;
+        username: string;
+        nickname?: string | null;
+        status?: "active" | "disabled";
+        password: string;
+        mustChangePassword?: boolean;
+    }): void {
+        const passwordHash = bcrypt.hashSync(input.password, 10);
+        const now = nowIso();
+
+        const entity: AdminUserEntity = {
+            id: genId("adm"),
+            userId: input.userId,
+            username: input.username,
+            passwordHash,
+            nickname: input.nickname ?? null,
+            status: input.status ?? "active",
+            role: "user",
+            mustChangePassword: input.mustChangePassword ?? true,
+            lastLoginAt: null,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        this.repo.create(entity);
+    }
+
+    syncUserLoginAccount(input: {
+        userId: string;
+        username?: string;
+        nickname?: string | null;
+        status?: "active" | "disabled";
+    }): void {
+        const existing = this.repo.findByUserId(input.userId);
+        if (!existing) {
+            return;
+        }
+
+        this.repo.updateByUserId(input.userId, {
+            username: input.username,
+            nickname: input.nickname,
+            status: input.status,
+            updatedAt: nowIso()
+        });
+    }
+
+    resetUserPasswordByUserId(
+        userId: string,
+        input: ResetPasswordInput,
+        seed?: {
+            username: string;
+            nickname?: string | null;
+            status?: "active" | "disabled";
+        }
+    ): void {
+        const existing = this.repo.findByUserId(userId);
+        if (!existing) {
+            if (!seed) {
+                throw new AppError("AUTH_USER_NOT_FOUND", "账户未找到", 404);
+            }
+
+            this.createUserLoginAccount({
+                userId,
+                username: seed.username,
+                nickname: seed.nickname ?? null,
+                status: seed.status ?? "active",
+                password: input.newPassword,
+                mustChangePassword: input.mustChangePassword ?? true
+            });
+            return;
+        }
+
+        const passwordHash = bcrypt.hashSync(input.newPassword, 10);
+        const changed = this.repo.updatePassword(
+            existing.id,
+            passwordHash,
+            input.mustChangePassword ?? true,
+            nowIso()
+        );
+
+        if (!changed) {
+            throw new AppError("AUTH_PASSWORD_CHANGE_FAILED", "重置密码失败", 500);
+        }
+    }
+
     async changePassword(adminUserId: string, input: ChangePasswordInput): Promise<AdminUserProfile> {
         const user = this.repo.findById(adminUserId);
         if (!user) {
-            throw new AppError("AUTH_USER_NOT_FOUND", `admin user not found: ${adminUserId}`, 401);
+            throw new AppError("AUTH_USER_NOT_FOUND", `admin 用户未找到: ${adminUserId}`, 401);
         }
 
         if (user.status !== "active") {
-            throw new AppError("AUTH_USER_DISABLED", "admin user is disabled", 403);
+            throw new AppError("AUTH_USER_DISABLED", "admin 用户已被禁用", 403);
         }
 
         const matched = await bcrypt.compare(input.oldPassword, user.passwordHash);
         if (!matched) {
-            throw new AppError("AUTH_INVALID_OLD_PASSWORD", "old password is incorrect", 400);
+            throw new AppError("AUTH_INVALID_OLD_PASSWORD", "旧密码不正确", 400);
         }
 
         if (input.oldPassword === input.newPassword) {
-            throw new AppError("AUTH_PASSWORD_NOT_CHANGED", "new password must be different from old password", 400);
+            throw new AppError("AUTH_PASSWORD_NOT_CHANGED", "新密码必须与旧密码不同", 400);
         }
 
-        const passwordHash = await bcrypt.hash(input.newPassword, 10);
+        const passwordHash = bcrypt.hashSync(input.newPassword, 10);
         const changed = this.repo.updatePassword(user.id, passwordHash, false, nowIso());
 
         if (!changed) {
-            throw new AppError("AUTH_PASSWORD_CHANGE_FAILED", "failed to change password", 500);
+            throw new AppError("AUTH_PASSWORD_CHANGE_FAILED", "修改密码失败", 500);
         }
 
         return this.getProfileById(user.id);
@@ -145,17 +239,17 @@ export class AuthService {
         this.challenges.delete(input.nonce);
 
         if (!nonceState) {
-            throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+            throw new AppError("AUTH_CHALLENGE_INVALID", "登录无效", 401);
         }
 
         if (Date.now() > nonceState.expiresAt) {
-            throw new AppError("AUTH_CHALLENGE_EXPIRED", "login challenge expired", 401);
+            throw new AppError("AUTH_CHALLENGE_EXPIRED", "登录已过期", 401);
         }
 
         const decoded = this.decryptLoginPassword(input.iv, input.cipherText);
         const prefix = `${input.nonce}:`;
         if (!decoded.startsWith(prefix)) {
-            throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+            throw new AppError("AUTH_CHALLENGE_INVALID", "登录无效", 401);
         }
 
         return decoded.slice(prefix.length);
@@ -188,7 +282,7 @@ export class AuthService {
 
             return plain;
         } catch {
-            throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "invalid encrypted password", 401);
+            throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "无效的加密密码", 401);
         }
     }
 
@@ -196,35 +290,35 @@ export class AuthService {
      *  CBC 模式解密，兼容新的加密方式
      */
     private decryptLoginPassword(ivBase64: string, cipherTextBase64: string): string {
-    try {
-        const iv = Buffer.from(ivBase64, "base64");
-        const encrypted = Buffer.from(cipherTextBase64, "base64");
+        try {
+            const iv = Buffer.from(ivBase64, "base64");
+            const encrypted = Buffer.from(cipherTextBase64, "base64");
 
-        if (iv.length !== 16 || encrypted.length === 0) {
-            throw new Error("invalid cipher payload");
+            if (iv.length !== 16 || encrypted.length === 0) {
+                throw new Error("invalid cipher payload");
+            }
+
+            const key = createHash("sha256")
+                .update(env.loginAesKey, "utf8")
+                .digest();
+
+            const decipher = createDecipheriv("aes-256-cbc", key, iv);
+            decipher.setAutoPadding(true);
+
+            const plain = Buffer.concat([
+                decipher.update(encrypted),
+                decipher.final()
+            ]).toString("utf8");
+
+            if (!plain) {
+                throw new Error("empty plain password");
+            }
+
+            return plain;
+        } catch {
+            throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "无效的加密密码", 401);
         }
-
-        const key = createHash("sha256")
-            .update(env.loginAesKey, "utf8")
-            .digest();
-
-        const decipher = createDecipheriv("aes-256-cbc", key, iv);
-        decipher.setAutoPadding(true);
-
-        const plain = Buffer.concat([
-            decipher.update(encrypted),
-            decipher.final()
-        ]).toString("utf8");
-
-        if (!plain) {
-            throw new Error("empty plain password");
-        }
-
-        return plain;
-    } catch {
-        throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "invalid encrypted password", 401);
     }
-}
 
     private cleanupChallenges(): void {
         const now = Date.now();
@@ -238,9 +332,11 @@ export class AuthService {
     private toProfile(user: AdminUserEntity): AdminUserProfile {
         return {
             id: user.id,
+            userId: user.userId ?? null,
             username: user.username,
             nickname: user.nickname,
             status: user.status,
+            role: user.role,
             mustChangePassword: user.mustChangePassword,
             lastLoginAt: user.lastLoginAt,
             createdAt: user.createdAt,
@@ -248,3 +344,6 @@ export class AuthService {
         };
     }
 }
+
+
+

@@ -1,4 +1,4 @@
-﻿@if (isLoginPage()) {
+@if (isLoginPage()) {
   <router-outlet></router-outlet>
 } @else {
   <nz-layout class="app-shell">
@@ -86,5 +86,46 @@
       </nz-content>
     </nz-layout>
   </nz-layout>
-}
 
+  <nz-modal
+    [nzVisible]="mustChangePasswordVisible()"
+    nzTitle="首次登录请修改密码"
+    [nzMaskClosable]="false"
+    [nzKeyboard]="false"
+    [nzClosable]="false"
+    [nzFooter]="null"
+  >
+    <ng-container *nzModalContent>
+      @if (changePasswordError()) {
+        <nz-alert nzType="error" [nzMessage]="changePasswordError()!" nzShowIcon></nz-alert>
+      }
+
+      <form nz-form nzLayout="vertical" [formGroup]="passwordForm" class="change-password-form">
+        <nz-form-item>
+          <nz-form-label nzRequired>当前密码</nz-form-label>
+          <nz-form-control>
+            <input nz-input type="password" formControlName="oldPassword" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>新密码</nz-form-label>
+          <nz-form-control>
+            <input nz-input type="password" formControlName="newPassword" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>确认新密码</nz-form-label>
+          <nz-form-control>
+            <input nz-input type="password" formControlName="confirmPassword" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <button nz-button nzType="primary" (click)="submitPasswordChange()" [disabled]="changingPassword()">
+          确认修改
+        </button>
+      </form>
+    </ng-container>
+  </nz-modal>
+}

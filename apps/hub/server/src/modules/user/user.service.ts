@@ -1,13 +1,25 @@
-﻿import Database from "better-sqlite3";
+import Database from "better-sqlite3";
+import { env } from "../../env";
 import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
+import { AuthService } from "../auth/auth.service";
 import { USER_TITLES } from "./user.constants";
 import { UserRepo } from "./user.repo";
-import type { CreateUserInput, ListUserQuery, UpdateUserInput, UserEntity, UserListResult } from "./user.types";
+import type {
+  CreateUserInput,
+  ListUserQuery,
+  ResetUserPasswordInput,
+  UpdateUserInput,
+  UserEntity,
+  UserListResult
+} from "./user.types";
 
 export class UserService {
-  constructor(private readonly repo: UserRepo) {}
+  constructor(
+    private readonly repo: UserRepo,
+    private readonly authService: AuthService
+  ) {}
 
   list(query: ListUserQuery): UserListResult {
     return this.repo.list(query);
@@ -51,7 +63,17 @@ export class UserService {
     };
 
     try {
-      this.repo.create(entity);
+      this.repo.runInTransaction(() => {
+        this.repo.create(entity);
+        this.authService.createUserLoginAccount({
+          userId: entity.id,
+          username: entity.username,
+          nickname: entity.displayName || entity.username,
+          status: "active",
+          password: env.initUserDefaultPassword,
+          mustChangePassword: true
+        });
+      });
     } catch (error) {
       this.handleSqliteError(error, username);
     }
@@ -93,7 +115,31 @@ export class UserService {
       throw new AppError("USER_UPDATE_FAILED", "failed to update user", 500);
     }
 
-    return this.getById(id);
+    const latest = this.getById(id);
+    this.authService.syncUserLoginAccount({
+      userId: id,
+      username: latest.username,
+      nickname: latest.displayName || latest.username,
+      status: latest.status === "active" ? "active" : "disabled"
+    });
+
+    return latest;
+  }
+
+  resetPassword(input: ResetUserPasswordInput): void {
+    const user = this.getById(input.userId);
+    this.authService.resetUserPasswordByUserId(
+      input.userId,
+      {
+        newPassword: input.newPassword,
+        mustChangePassword: input.mustChangePassword ?? true
+      },
+      {
+        username: user.username,
+        nickname: user.displayName || user.username,
+        status: user.status === "active" ? "active" : "disabled"
+      }
+    );
   }
 
   private ensureUsernameUnique(username: string, excludeId?: string): void {
