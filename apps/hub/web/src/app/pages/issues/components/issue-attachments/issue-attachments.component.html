@@ -1,0 +1,23 @@
+<div class="section-head">
+  <div>
+    <h4>附件</h4>
+    <span class="muted">上传截图、日志和其他交付物</span>
+  </div>
+  @if (canUpload) {
+    <button nz-button nzType="default" (click)="openFilePicker()" [disabled]="uploading">
+      <i nz-icon nzType="upload"></i>
+      上传附件
+    </button>
+  }
+</div>
+
+<input #fileInput type="file" multiple hidden (change)="onFileSelected($event)" />
+
+<app-attachment-card-list
+  [items]="attachmentCards()"
+  [showEmpty]="false"
+  [loading]="uploading"
+  [showDownload]="true"
+  [showRemove]="canDeleteIds.length > 0"
+  [removableIds]="canDeleteIds"
+></app-attachment-card-list>

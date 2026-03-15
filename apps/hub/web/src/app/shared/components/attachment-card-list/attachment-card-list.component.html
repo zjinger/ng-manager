@@ -17,9 +17,6 @@
         </div>
         <div class="attachment-meta">
           <span class="attachment-name">{{ item.name }}</span>
-          <!-- @if (item.size != null) {
-            <span class="muted" nz-tooltip [nzTooltipTitle]="item.size | hubFileSize">{{ item.size | hubFileSize }}</span>
-          } -->
         </div>
         <div class="attachment-overlay">
           @if (item.size != null) {
@@ -30,7 +27,7 @@
               <nz-icon nzType="download"></nz-icon>
             </button>
           }
-          @if (showRemove) {
+          @if (canRemove(item)) {
             <button
               nz-button
               nzType="link"

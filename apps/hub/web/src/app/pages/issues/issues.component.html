@@ -1,66 +1,70 @@
-<section class="page">
+<section class="page issue-page">
   <app-page-header title="缺陷与测试记录" subtitle="测试提单、开发修复与回归闭环">
-    <button page-header-actions nz-button nzType="primary" (click)="openCreateModal()">
-      <i nz-icon nzType="plus"></i>
-      新建问题
-    </button>
+    <button page-header-actions nz-button nzType="primary" (click)="openCreatePage()">新建工单</button>
   </app-page-header>
 
-  <nz-card nzTitle="筛选条件" class="section">
-    <form nz-form [formGroup]="filters" class="filter-grid">
+  @if (listError() && projects().length === 0) {
+    <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
+  }
+
+  <nz-card nzTitle="搜索条件" class="section search-card">
+    <form nz-form [formGroup]="filters" class="search-grid">
       <nz-form-item>
         <nz-form-label>项目</nz-form-label>
         <nz-form-control>
           <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
-            @for (project of projectOptions(); track project.id) {
-              <nz-option
-                [nzValue]="project.id"
-                [nzLabel]="project.name + ' (' + project.projectKey + ')'"
-              >
-              </nz-option>
+            @for (project of projects(); track project.id) {
+              <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
             }
           </nz-select>
         </nz-form-control>
       </nz-form-item>
+
       <nz-form-item>
         <nz-form-label>状态</nz-form-label>
         <nz-form-control>
-          <nz-select formControlName="status" nzAllowClear>
-            <nz-option nzValue="open" nzLabel="新建"></nz-option>
-            <nz-option nzValue="assigned" nzLabel="已指派"></nz-option>
-            <nz-option nzValue="in_progress" nzLabel="处理中"></nz-option>
-            <nz-option nzValue="fixed" nzLabel="待测试"></nz-option>
-            <nz-option nzValue="verified" nzLabel="已验证"></nz-option>
-            <nz-option nzValue="reopened" nzLabel="已重开"></nz-option>
-            <nz-option nzValue="closed" nzLabel="已关闭"></nz-option>
+          <nz-select formControlName="status" nzAllowClear nzPlaceHolder="全部状态">
+            @for (item of statusOptions; track item.value) {
+              <nz-option [nzValue]="item.value" [nzLabel]="item.label" />
+            }
           </nz-select>
         </nz-form-control>
       </nz-form-item>
-      <nz-form-item>
-        <nz-form-label>类型</nz-form-label>
-        <nz-form-control>
-          <nz-select formControlName="type" nzAllowClear>
-            <nz-option nzValue="bug" nzLabel="缺陷"></nz-option>
-            <nz-option nzValue="requirement_change" nzLabel="需求变更"></nz-option>
-            <nz-option nzValue="feature" nzLabel="新功能"></nz-option>
-            <nz-option nzValue="improvement" nzLabel="改进"></nz-option>
-            <nz-option nzValue="task" nzLabel="任务"></nz-option>
-            <nz-option nzValue="test_record" nzLabel="测试记录"></nz-option>
-          </nz-select>
-        </nz-form-control>
-      </nz-form-item>
+
       <nz-form-item>
         <nz-form-label>优先级</nz-form-label>
         <nz-form-control>
-          <nz-select formControlName="priority" nzAllowClear>
-            <nz-option nzValue="low" nzLabel="低"></nz-option>
-            <nz-option nzValue="medium" nzLabel="中"></nz-option>
-            <nz-option nzValue="high" nzLabel="高"></nz-option>
-            <nz-option nzValue="critical" nzLabel="紧急"></nz-option>
+          <nz-select formControlName="priority" nzAllowClear nzPlaceHolder="全部优先级">
+            @for (item of priorityOptions; track item.value) {
+              <nz-option [nzValue]="item.value" [nzLabel]="item.label" />
+            }
           </nz-select>
         </nz-form-control>
       </nz-form-item>
+
       <nz-form-item>
+        <nz-form-label>类型</nz-form-label>
+        <nz-form-control>
+          <nz-select formControlName="type" nzAllowClear nzPlaceHolder="全部类型">
+            @for (item of typeOptions; track item.value) {
+              <nz-option [nzValue]="item.value" [nzLabel]="item.label" />
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-label>负责人</nz-form-label>
+        <nz-form-control>
+          <nz-select formControlName="assigneeId" nzAllowClear nzPlaceHolder="全部负责人">
+            @for (member of projectMembers(); track member.id) {
+              <nz-option [nzValue]="member.userId" [nzLabel]="member.displayName || member.userId" />
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item class="keyword-item">
         <nz-form-label>关键词</nz-form-label>
         <nz-form-control>
           <input nz-input formControlName="keyword" placeholder="编号 / 标题 / 描述" />
@@ -69,328 +73,63 @@
     </form>
   </nz-card>
 
-  @if (listError()) {
-    <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
-  }
+  <div class="issue-layout section">
+    <app-issue-list
+      [items]="issues()"
+      [selectedIssueId]="selectedIssueId()"
+      [loading]="listLoading()"
+      [error]="listError()"
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize"
+      (reloadRequested)="reload()"
+      (issueSelected)="selectIssue($event)"
+      (pageChanged)="changePage($event)"
+    />
 
-  <div class="content-grid section">
-    <nz-card nzTitle="问题列表" class="list-card">
-      <div class="list-panel">
-        <div class="table-head">
-          <span>共 {{ total() }} 条</span>
-          <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">
-            刷新
-          </button>
-        </div>
-
-        <nz-table
-          class="list-card-table"
-          #table
-          [nzData]="issues()"
-          [nzFrontPagination]="false"
-          [nzLoading]="listLoading()"
-          [nzScroll]="{ y: 'calc(100vh - 430px)' }"
-        >
-          <thead>
-            <tr>
-              <th class="issue-no-col" nzWidth="190px">编号</th>
-              <th class="issue-title-col">标题</th>
-              <th class="issue-status-col" nzWidth="100px">状态</th>
-              <th class="issue-priority-col" nzWidth="82px">优先级</th>
-              <th class="issue-type-col" nzWidth="82px">类型</th>
-              <th class="issue-module-col" nzWidth="120px">模块</th>
-              <th class="issue-assignee-col" nzWidth="140px">处理人</th>
-              <th class="issue-reporter-col" nzWidth="120px">提出人</th>
-              <th class="issue-updated-col" nzWidth="160px">更新时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of table.data; track item.id) {
-              <tr (click)="selectIssue(item)" [class.selected]="selectedIssueId() === item.id">
-                <td class="issue-no-col">{{ item.issueNo }}</td>
-                <td class="issue-title-col">
-                  <span class="cell-text" nz-tooltip [nzTooltipTitle]="item.description || '-'" nzTooltipPlacement="topLeft">{{ item.title }}</span>
-                </td>
-                <td class="issue-status-col">
-                  <nz-tag [nzColor]="statusColor(item.status)">{{
-                    statusLabel(item.status)
-                  }}</nz-tag>
-                </td>
-                <td class="issue-priority-col">
-                  <nz-tag [nzColor]="priorityColor(item.priority)">{{
-                    priorityLabel(item.priority)
-                  }}</nz-tag>
-                </td>
-                <td class="issue-type-col">                  <nz-tag [nzColor]="typeColor(item.type)">{{ typeLabel(item.type) }}</nz-tag>                </td>
-                <td class="issue-module-col">{{ item.module || '-' }}</td>
-                <td class="issue-assignee-col">
-                  <span class="cell-text" nz-tooltip [nzTooltipTitle]="item.assigneeName || '-'" nzTooltipPlacement="top">{{ item.assigneeName || '-' }}</span>
-                </td>
-                <td class="issue-reporter-col">{{ item.reporterName || '-' }}</td>
-                <td class="issue-updated-col">{{ item.updatedAt | hubDateTime }}</td>
-              </tr>
-            }
-          </tbody>
-        </nz-table>
-      </div>
-    </nz-card>
-
-    <nz-card nzTitle="详情与处理" class="detail-card">
-      <div class="detail-panel">
-        @if (detailError()) {
-          <nz-alert nzType="error" [nzMessage]="detailError()!" nzShowIcon></nz-alert>
-        }
-
-        @if (selectedDetail(); as detail) {
-          @if (detailLoading()) {
-            <div class="loading-inline">正在加载最新详情...</div>
-          }
-
-          <div class="detail-head section">
-            <div class="detail-title">{{ detail.issue.title }}</div>
-            <div class="detail-desc">{{ detail.issue.description || '-' }}</div>
-            <div class="detail-meta-grid">
-              <div class="meta-item">
-                <span>项目:</span><strong>{{ projectName(detail.issue.projectId) }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>类型:</span><strong>{{ detail.issue.type === 'bug' ? 'Bug' : typeLabel(detail.issue.type) }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>提出人:</span><strong>{{ detail.issue.reporterName || '-' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>优先级:</span><strong>{{ priorityLabel(detail.issue.priority) }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>处理人:</span><strong>{{ detail.issue.assigneeName || '-' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>状态:</span><strong>{{ statusLabel(detail.issue.status) }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>验证人:</span><strong>{{ detail.issue.verifierName || '-' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>模块:</span><strong>{{ detail.issue.module || '-' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>版本:</span><strong>{{ detail.issue.version || '-' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>环境:</span><strong>{{ detail.issue.environment || '-' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>创建时间:</span><strong>{{ dateTimeToSecond(detail.issue.createdAt) }}</strong>
-              </div>
-              <div class="meta-item">
-                <span>更新时间:</span><strong>{{ dateTimeToSecond(detail.issue.updatedAt) }}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div class="section action-box">
-            <div class="action-title">操作</div>
-
-            <div class="action-buttons">
-              @if (canActionStartProgress(detail)) {
-                <button
-                  nz-button
-                  nzType="default"
-                  (click)="runAction('start-progress')"
-                  [disabled]="actionLoading()"
-                >
-                  开始处理
-                </button>
-              }
-
-              @if (canActionMarkFixed(detail)) {
-                <button
-                  nz-button
-                  nzType="primary"
-                  nz-popconfirm
-                  nzPopconfirmTitle="确认标记为已修复并申请测试？"
-                  nzPopconfirmPlacement="top"
-                  (nzOnConfirm)="runAction('mark-fixed')"
-                  [disabled]="actionLoading()"
-                >
-                  标记修复
-                </button>
-              }
-
-              @if (canActionBackToProgress(detail)) {
-                <button
-                  nz-button
-                  nzType="default"
-                  (click)="runAction('start-progress')"
-                  [disabled]="actionLoading()"
-                >
-                  标为处理中
-                </button>
-              }
-
-              @if (canActionVerify(detail)) {
-                <button
-                  nz-button
-                  nzType="primary"
-                  nz-popconfirm
-                  nzPopconfirmTitle="确认验证通过？"
-                  nzPopconfirmPlacement="top"
-                  (nzOnConfirm)="runAction('verify')"
-                  [disabled]="actionLoading()"
-                >
-                  验证通过
-                </button>
-              }
-
-              @if (canActionClose(detail)) {
-                <button
-                  nz-button
-                  nzType="default"
-                  (click)="runAction('close')"
-                  [disabled]="actionLoading()"
-                >
-                  关闭
-                </button>
-              }
-
-              @if (canActionReject(detail)) {
-                <button
-                  nz-button
-                  nzType="default"
-                  nzDanger
-                  nz-popconfirm
-                  nzPopconfirmTitle="确认验证不通过并退回处理？"
-                  nzPopconfirmPlacement="top"
-                  (nzOnConfirm)="runAction('reopen')"
-                  [disabled]="actionLoading()"
-                >
-                  验证不通过
-                </button>
-              }
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="action-title">处理说明 / 评论</div>
-            <div class="comment-editor">
-              <textarea
-                nz-input
-                rows="3"
-                [formControl]="commentForm.controls.content"
-                placeholder="输入评论内容，支持 @人员"
-                (input)="onCommentEditorInput($event)"
-                (click)="onCommentEditorInput($event)"
-                (keyup)="onCommentEditorInput($event)"
-                (keydown)="onCommentEditorKeydown($event)"
-              ></textarea>
-              @if (mentionPanelVisible()) {
-                <div class="mention-panel">
-                  @for (member of mentionCandidates(); track member.id; let i = $index) {
-                    <button
-                      class="mention-option"
-                      type="button"
-                      [class.active]="mentionActiveIndex() === i"
-                      (mousedown)="selectMentionCandidate(member, $event)"
-                    >
-                      <span class="mention-name">{{ memberLabel(member) }}</span>
-                      <!-- <span class="mention-id">{{ member.userId }}</span> -->
-                    </button>
-                  }
-                </div>
-              }
-            </div>
-            <!-- <div class="mention-bar">
-              <span class="muted">快捷 @:</span>
-              @for (member of projectMembers(); track member.id) {
-                <button nz-button nzType="default" nzSize="small" (click)="appendMention(member.displayName)">
-                  @{{ member.displayName }}
-                </button>
-              }
-            </div> -->
-            <div class="action-buttons">
-              <button
-                nz-button
-                nzType="default"
-                (click)="submitComment()"
-                [disabled]="commentLoading()"
-              >
-                提交评论
-              </button>
-            </div>
-            <div class="timeline">
-              @for (item of detail.comments; track item.id) {
-                <div class="timeline-item">
-                  <div class="timeline-head">
-                    {{ item.authorName || '-' }} · {{ item.createdAt | hubDateTime }}
-                  </div>
-                  <div class="comment-content">
-                    @for (segment of commentSegments(item); track $index) {
-                      @if (segment.mention) {
-                        <span class="mention-text">{{ segment.text }}</span>
-                      } @else {
-                        <span>{{ segment.text }}</span>
-                      }
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="action-title">附件</div>
-            <nz-upload
-              class="detail-upload"
-              nzListType="picture-card"
-              [nzMultiple]="true"
-              [nzAccept]="attachmentAccept"
-              [nzShowUploadList]="false"
-              [nzCustomRequest]="uploadDetailAttachmentRequest"
-              [nzDisabled]="attachmentLoading()"
-            >
-              <div class="upload-card-trigger">
-                <div class="plus">+</div>
-                <div>上传</div>
-              </div>
-            </nz-upload>
-            <app-attachment-card-list
-              [showEmpty]="false"
-              [items]="toAttachmentCardItems(detail.attachments)"
-              [loading]="attachmentLoading()"
-              [showDownload]="true"
-              [showRemove]="true"
-              (remove)="removeAttachment($event)"
-            ></app-attachment-card-list>
-          </div>
-
-          <div class="section">
-            <details class="log-collapse">
-              <summary>操作日志（点击展开）</summary>
-              <div class="timeline">
-                @for (log of detail.logs; track log.id) {
-                  <div class="timeline-item">
-                    <div class="timeline-head">
-                      {{ log.operatorName || '-' }} · {{ log.createdAt | hubDateTime }}
-                    </div>
-                    <div>
-                      <nz-tag [nzColor]="actionTypeColor(log.actionType)">{{
-                        actionTypeLabel(log.actionType)
-                      }}</nz-tag>
-                      {{ log.summary || '' }}
-                    </div>
-                  </div>
-                }
-              </div>
-            </details>
-          </div>
-        } @else if (detailLoading()) {
-          <div class="empty-tip">加载详情中...</div>
-        } @else {
-          <div class="empty-tip">请选择一条问题查看详情</div>
-        }
-      </div>
-    </nz-card>
+    <app-issue-detail
+      [detail]="selectedDetail()"
+      [projectMembers]="projectMembers()"
+      [currentUserId]="currentUserId()"
+      [isAdmin]="isAdmin()"
+      [loading]="detailLoading()"
+      [error]="detailError()"
+      [actionLoading]="actionLoading()"
+      [participantSaving]="participantSaving()"
+      [commentSubmitting]="commentSubmitting()"
+      [attachmentUploading]="attachmentUploading()"
+      (editRequested)="openEditModal()"
+      (actionSubmitted)="handleAction($event)"
+      (participantAdded)="addParticipant($event)"
+      (participantRemoved)="removeParticipant($event)"
+      (commentSubmitted)="submitComment($event)"
+      (attachmentsUploaded)="uploadAttachments($event)"
+      (attachmentDeleted)="deleteAttachment($event)"
+    />
   </div>
 </section>
 
+<nz-modal
+  [nzVisible]="formVisible()"
+  [nzTitle]="'编辑 Issue'"
+  [nzFooter]="null"
+  [nzMaskClosable]="false"
+  [nzWidth]="760"
+  (nzOnCancel)="closeFormModal()"
+>
+  <ng-container *nzModalContent>
+    @if (editingIssue()) {
+      <app-issue-form
+        mode="edit"
+        [initialValue]="editingIssue()"
+        [memberOptions]="projectMembers()"
+        [moduleOptions]="moduleOptions()"
+        [versionOptions]="versionOptions()"
+        [environmentOptions]="environmentOptions()"
+        [submitting]="formSubmitting()"
+        (submitted)="submitForm($event)"
+        (cancelled)="closeFormModal()"
+      />
+    }
+  </ng-container>
+</nz-modal>

@@ -1,176 +1,139 @@
+import { AppError } from "../../utils/app-error";
 import { AuthRepo } from "../auth/auth.repo";
 import { ProjectMemberService } from "../project/project-member.service";
-import type { ProjectMemberEntity } from "../project/project.types";
-import { AppError } from "../../utils/app-error";
-import type { IssueAttachmentEntity, IssueEntity } from "./issue.types";
+import { IssueParticipantRepo } from "../issue-participant/participant.repo";
+import type { IssueEntity } from "./issue.types";
 
 export class IssuePermissionService {
-    constructor(
-        private readonly projectMemberService: ProjectMemberService,
-        private readonly authRepo: AuthRepo
-    ) { }
+  constructor(
+    private readonly projectMemberService: ProjectMemberService,
+    private readonly participantRepo: IssueParticipantRepo,
+    private readonly authRepo: AuthRepo
+  ) {}
 
-    requireOperatorId(operatorId: string | null | undefined, action: string): string {
-        const value = operatorId?.trim();
-        if (!value) {
-            throw new AppError("ISSUE_OPERATOR_REQUIRED", `执行 ${action} 操作时需要提供 operatorId`, 400);
-        }
-        return value;
+  requireOperatorId(operatorId: string | null | undefined, action: string): string {
+    const value = operatorId?.trim();
+    if (!value) {
+      throw new AppError("ISSUE_OPERATOR_REQUIRED", `operatorId is required for ${action}`, 400);
     }
+    return value;
+  }
 
-    requireProjectMember(projectId: string, userId: string, action: string): ProjectMemberEntity {
-        const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, userId);
-        if (!member) {
-            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", `${action} 操作人不是项目成员`, 403);
-        }
-        return member;
+  requireProjectMember(projectId: string, userId: string, action: string) {
+    const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, userId);
+    if (!member) {
+      throw new AppError("ISSUE_FORBIDDEN_OPERATOR", `${action} requires a project member`, 403);
     }
+    return member;
+  }
 
-    assertCanCreate(projectId: string, operatorId: string): void {
-        if (!this.canManageProject(projectId, operatorId)) {
-            this.requireProjectMember(projectId, operatorId, "【创建】");
-        }
+  canManageProject(projectId: string, operatorId: string): boolean {
+    if (this.isAdmin(operatorId)) {
+      return true;
     }
+    const member = this.projectMemberService.findMemberByProjectAndUserId(projectId, operatorId);
+    return !!member && member.roles.includes("project_admin" as never);
+  }
 
-    assertCanAssign(issue: IssueEntity, operatorId: string): void {
-        this.assertManageProject(issue.projectId, operatorId, "【指派】");
+  assertCanCreate(projectId: string, operatorId: string): void {
+    if (!this.canManageProject(projectId, operatorId)) {
+      this.requireProjectMember(projectId, operatorId, "create issue");
     }
+  }
 
-    assertCanClaim(issue: IssueEntity, operatorId: string): void {
-        if (!this.canManageProject(issue.projectId, operatorId)) {
-            this.requireProjectMember(issue.projectId, operatorId, "【认领】");
-        }
+  assertCanEdit(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId)) {
+      return;
     }
+    if (issue.reporterId === operatorId || issue.assigneeId === operatorId || this.participantRepo.hasParticipant(issue.id, operatorId)) {
+      return;
+    }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to edit issue", 403);
+  }
 
-    assertCanUnassign(issue: IssueEntity, operatorId: string): void {
-        if (issue.assigneeId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【释放负责人】");
+  assertCanAssign(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.reporterId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to assign issue", 403);
+  }
 
-    assertCanReassign(issue: IssueEntity, operatorId: string): void {
-        if (issue.assigneeId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【转派】");
+  assertCanClaim(issue: IssueEntity, operatorId: string): void {
+    if (!this.canManageProject(issue.projectId, operatorId)) {
+      this.requireProjectMember(issue.projectId, operatorId, "claim issue");
     }
+  }
 
-    assertCanUpdate(issue: IssueEntity, operatorId: string): void {
-        if (issue.reporterId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【编辑】");
+  assertCanReassign(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.assigneeId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to reassign issue", 403);
+  }
 
-    assertCanSetVerifier(issue: IssueEntity, operatorId: string): void {
-        this.assertManageProject(issue.projectId, operatorId, "【设置验证人】");
+  assertCanManageParticipants(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.assigneeId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to manage participants", 403);
+  }
 
-    assertCanManageParticipants(issue: IssueEntity, operatorId: string): void {
-        if (issue.assigneeId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【参与人管理】");
+  assertCanStart(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.assigneeId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to start issue", 403);
+  }
 
-    assertCanWatch(issue: IssueEntity, operatorId: string): void {
-        if (!this.canManageProject(issue.projectId, operatorId)) {
-            this.requireProjectMember(issue.projectId, operatorId, "【关注】");
-        }
+  assertCanResolve(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.assigneeId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to resolve issue", 403);
+  }
 
-    assertCanManageWatchers(issue: IssueEntity, operatorId: string): void {
-        this.assertManageProject(issue.projectId, operatorId, "【关注人管理】");
+  assertCanVerify(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.reporterId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to verify issue", 403);
+  }
 
-    assertCanStart(issue: IssueEntity, operatorId: string): void {
-        if (issue.assigneeId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【开始处理】");
+  assertCanReopen(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.reporterId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to reopen issue", 403);
+  }
 
-    assertCanResolve(issue: IssueEntity, operatorId: string): void {
-        if (issue.assigneeId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【标记已处理】");
+  assertCanClose(issue: IssueEntity, operatorId: string): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.reporterId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to close issue", 403);
+  }
 
-    assertCanRevokeResolve(issue: IssueEntity, operatorId: string): void {
-        if (issue.assigneeId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【撤回已处理】");
+  assertCanComment(issue: IssueEntity, operatorId: string): void {
+    if (!this.canManageProject(issue.projectId, operatorId)) {
+      this.requireProjectMember(issue.projectId, operatorId, "comment");
     }
+  }
 
-    assertCanVerify(issue: IssueEntity, operatorId: string): void {
-        if (this.canVerifyIssue(issue, operatorId)) {
-            return;
-        }
-        throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "没有执行验证动作的权限", 403);
+  assertCanUploadAttachment(issue: IssueEntity, operatorId: string): void {
+    if (!this.canManageProject(issue.projectId, operatorId)) {
+      this.requireProjectMember(issue.projectId, operatorId, "upload attachment");
     }
+  }
 
-    assertCanReopen(issue: IssueEntity, operatorId: string): void {
-        if (this.canVerifyIssue(issue, operatorId)) {
-            return;
-        }
-        throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "没有执行驳回或重开动作的权限", 403);
+  assertCanDeleteAttachment(issue: IssueEntity, operatorId: string, uploaderId?: string | null): void {
+    if (this.canManageProject(issue.projectId, operatorId) || issue.assigneeId === operatorId || uploaderId === operatorId) {
+      return;
     }
+    throw new AppError("ISSUE_FORBIDDEN_OPERATOR", "no permission to delete attachment", 403);
+  }
 
-    assertCanClose(issue: IssueEntity, operatorId: string): void {
-        if (issue.reporterId === operatorId || issue.verifierId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【关闭】");
-    }
-
-    assertCanComment(issue: IssueEntity, operatorId: string): void {
-        if (!this.canManageProject(issue.projectId, operatorId)) {
-            this.requireProjectMember(issue.projectId, operatorId, "【评论】");
-        }
-    }
-
-    assertCanUploadAttachment(issue: IssueEntity, operatorId: string): void {
-        if (!this.canManageProject(issue.projectId, operatorId)) {
-            this.requireProjectMember(issue.projectId, operatorId, "【上传附件】");
-        }
-    }
-
-    assertCanDeleteAttachment(issue: IssueEntity, attachment: IssueAttachmentEntity, operatorId: string): void {
-        if (attachment.uploaderId === operatorId || issue.assigneeId === operatorId) {
-            return;
-        }
-        this.assertManageProject(issue.projectId, operatorId, "【删除附件】");
-    }
-
-    canManageProject(projectId: string, operatorId: string): boolean {
-        return this.isAdminOperator(operatorId) || this.isProjectManager(projectId, operatorId);
-    }
-
-    private canVerifyIssue(issue: IssueEntity, operatorId: string): boolean {
-        if (this.canManageProject(issue.projectId, operatorId)) {
-            return true;
-        }
-        if (issue.verifierId) {
-            return issue.verifierId === operatorId;
-        }
-        return issue.reporterId === operatorId;
-    }
-
-    private assertManageProject(projectId: string, operatorId: string, action: string): void {
-        if (!this.canManageProject(projectId, operatorId)) {
-            throw new AppError("ISSUE_FORBIDDEN_OPERATOR", `${action} 仅管理员或项目管理员可执行`, 403);
-        }
-    }
-
-    private isAdminOperator(operatorId: string): boolean {
-        const user = this.authRepo.findById(operatorId);
-        return !!user && user.status === "active" && user.role === "admin";
-    }
-
-    private isProjectManager(_projectId: string, _operatorId: string): boolean {
-        return false;
-    }
+  private isAdmin(operatorId: string): boolean {
+    const account = this.authRepo.findById(operatorId) ?? this.authRepo.findByUserId(operatorId);
+    return !!account && account.status === "active" && account.role === "admin";
+  }
 }

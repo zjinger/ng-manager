@@ -1,31 +1,37 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, HostListener, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Subscription, debounceTime, firstValueFrom } from 'rxjs';
-import { Router } from '@angular/router';
+import { Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
-import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
-import { NzUploadFile, NzUploadModule, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
 import { HubApiError } from '../../core/http/api-error.interceptor';
-import { HubApiService } from '../../core/http/hub-api.service';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
-import { AttachmentCardItem, AttachmentCardListComponent } from '../../shared/components';
-import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
-import { AttachmentPolicyResult, IssueActionType, IssueAttachmentDto, IssueCloseReasonType, IssueComment, IssueCommentMention, IssueDetailResult, IssueItem, IssueListResult, IssuePriority, IssueStatus, IssueType, ProjectMemberItem, ProjectOption } from './issues.model';
-import { NzSpaceModule } from 'ng-zorro-antd/space';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import type { ProjectConfigItem, ProjectMemberItem, ProjectVersionItem } from '../projects/projects.model';
+import { IssueDetailComponent } from './components/issue-detail/issue-detail.component';
+import { IssueFormComponent } from './components/issue-form/issue-form.component';
+import { IssueListComponent } from './components/issue-list/issue-list.component';
+import { IssueManagementApiService } from './issue-management.api';
+import {
+  ISSUE_PRIORITY_OPTIONS,
+  ISSUE_STATUS_OPTIONS,
+  ISSUE_TYPE_OPTIONS,
+  type IssueActionPanelSubmit,
+  type IssueCommentMention,
+  type IssueDetailResult,
+  type IssueFilterValue,
+  type IssueFormValue,
+  type IssueItem,
+  type ProjectOption
+} from './issues.model';
 
 @Component({
   selector: 'app-issues-page',
@@ -34,190 +40,161 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
     NzAlertModule,
     NzButtonModule,
     NzCardModule,
-    NzDescriptionsModule,
     NzFormModule,
     NzInputModule,
     NzModalModule,
-    NzPopconfirmModule,
     NzSelectModule,
-    NzTableModule,
-    NzTagModule,
-    // NzTooltipModule,
-    NzTooltipModule,
-    NzUploadModule,
     PageHeaderComponent,
-    AttachmentCardListComponent,
-    HubDateTimePipe,
-    NzSpaceModule,
-    NzIconModule
+    IssueListComponent,
+    IssueDetailComponent,
+    IssueFormComponent
   ],
   templateUrl: './issues.component.html',
-  styles: [
-    PAGE_SHELL_STYLES,
-  ],
-  styleUrls: ['./issues.component.less']
+  styleUrls: ['./issues.component.less'],
+  styles: [PAGE_SHELL_STYLES]
 })
 export class IssuesPageComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly api = inject(HubApiService);
+  private readonly api = inject(IssueManagementApiService);
   private readonly auth = inject(AdminAuthService);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly message = inject(NzMessageService);
 
-  private attachmentMimePrefixes = ['image/', 'video/'];
-  private attachmentExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp', '.flv', '.wmv', '.mpeg', '.mpg'];
-
+  protected readonly projects = signal<ProjectOption[]>([]);
+  protected readonly projectMembers = signal<ProjectMemberItem[]>([]);
+  protected readonly moduleOptions = signal<ProjectConfigItem[]>([]);
+  protected readonly versionOptions = signal<ProjectVersionItem[]>([]);
+  protected readonly environmentOptions = signal<ProjectConfigItem[]>([]);
   protected readonly issues = signal<IssueItem[]>([]);
   protected readonly selectedIssueId = signal<string | null>(null);
   protected readonly selectedDetail = signal<IssueDetailResult | null>(null);
-  protected readonly projectOptions = signal<ProjectOption[]>([]);
-  protected readonly projectMembers = signal<ProjectMemberItem[]>([]);
-  protected readonly memberLoading = signal(false);
-  protected readonly total = signal(0);
 
   protected readonly listLoading = signal(false);
-  protected readonly listError = signal<string | null>(null);
   protected readonly detailLoading = signal(false);
-  protected readonly detailError = signal<string | null>(null);
+  protected readonly formSubmitting = signal(false);
   protected readonly actionLoading = signal(false);
-  protected readonly commentLoading = signal(false);
-  protected readonly attachmentLoading = signal(false);
-  protected readonly detailAttachmentFileList = signal<NzUploadFile[]>([]);
+  protected readonly participantSaving = signal(false);
+  protected readonly commentSubmitting = signal(false);
+  protected readonly attachmentUploading = signal(false);
 
-  protected readonly createVisible = signal(false);
-  protected readonly createLoading = signal(false);
-  protected readonly createError = signal<string | null>(null);
-  protected attachmentAccept = 'image/*,video/*';
-  protected readonly createUploadFileList = signal<NzUploadFile[]>([]);
-  private readonly createAttachmentFileMap = new Map<string, File>();
-  protected readonly createAttachmentNames = signal<string[]>([]);
+  protected readonly listError = signal<string | null>(null);
+  protected readonly detailError = signal<string | null>(null);
+
+  protected readonly page = signal(1);
+  protected readonly pageSize = 20;
+  protected readonly total = signal(0);
+
+  protected readonly formVisible = signal(false);
+  protected readonly editingIssue = signal<IssueItem | null>(null);
+  protected readonly statusOptions = ISSUE_STATUS_OPTIONS;
+  protected readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
+  protected readonly typeOptions = ISSUE_TYPE_OPTIONS;
+
+  private pendingIssueId: string | null = null;
+  private pendingProjectId: string | null = null;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
     status: [''],
-    type: [''],
     priority: [''],
+    type: [''],
+    assigneeId: [''],
     keyword: ['']
   });
 
-  protected readonly createForm = this.fb.nonNullable.group({
-    projectId: ['', [Validators.required]],
-    title: ['', [Validators.required]],
-    description: [''],
-    type: ['bug' as IssueType],
-    priority: ['medium' as IssuePriority],
-    module: [''],
-    version: [''],
-    environment: ['']
+  protected readonly currentUserId = computed(() => {
+    const profile = this.auth.profile();
+    if (!profile) {
+      return null;
+    }
+    return profile.userId?.trim() || profile.id;
   });
 
-  protected readonly assignForm = this.fb.nonNullable.group({
-    assigneeIds: [[] as string[]]
-  });
-
-  protected readonly actionForm = this.fb.nonNullable.group({
-    closeReasonType: ['' as '' | IssueCloseReasonType]
-  });
-
-  protected readonly commentForm = this.fb.nonNullable.group({
-    content: ['']
-  });
-
-  protected readonly mentionPanelVisible = signal(false);
-  protected readonly mentionCandidates = signal<ProjectMemberItem[]>([]);
-  protected readonly mentionActiveIndex = signal(0);
-  private mentionTokenStart = -1;
-  private mentionTokenEnd = -1;
+  protected readonly isAdmin = computed(() => this.auth.profile()?.role === 'admin');
 
   public constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.pendingProjectId = params.get('projectId')?.trim() || null;
+      this.pendingIssueId = params.get('issueId')?.trim() || null;
+    });
+
+    this.filters.controls.projectId.valueChanges.pipe(takeUntilDestroyed()).subscribe((projectId) => {
+      this.page.set(1);
+      this.selectedIssueId.set(null);
+      this.selectedDetail.set(null);
+      void this.loadProjectContext(projectId);
+    });
+
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
+      this.page.set(1);
       void this.loadIssues();
     });
 
-    void this.loadProjectOptions();
-    void this.loadAttachmentPolicy();
-    void this.loadIssues();
+    void this.initialize();
   }
 
   protected async reload(): Promise<void> {
-    await this.loadIssues();
-    const selectedId = this.selectedIssueId();
-    if (selectedId) {
-      await this.loadIssueDetail(selectedId);
+    await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
+  }
+
+  protected openCreatePage(): void {
+    void this.router.navigate(['/issues/new'], {
+      queryParams: {
+        projectId: this.filters.controls.projectId.value || undefined
+      }
+    });
+  }
+
+  protected openEditModal(): void {
+    const detail = this.selectedDetail();
+    if (!detail) {
+      return;
     }
+    this.editingIssue.set(detail.issue);
+    this.formVisible.set(true);
   }
 
-  protected openCreateModal(): void {
-    void this.router.navigate(['/issues/new']);
+  protected closeFormModal(): void {
+    this.formVisible.set(false);
+    this.editingIssue.set(null);
   }
 
-  protected async submitCreate(): Promise<void> {
-    if (this.createForm.invalid) {
+  protected async selectIssue(item: IssueItem): Promise<void> {
+    this.selectedIssueId.set(item.id);
+    await this.loadIssueDetail(item.id);
+  }
+
+  protected async changePage(page: number): Promise<void> {
+    this.page.set(page);
+    await this.loadIssues();
+  }
+
+  protected async submitForm(value: IssueFormValue): Promise<void> {
+    const projectId = this.filters.controls.projectId.value;
+    if (!projectId) {
       return;
     }
 
-    this.createLoading.set(true);
-    this.createError.set(null);
-
+    this.formSubmitting.set(true);
     try {
-      const value = this.createForm.getRawValue();
-      const pendingFiles = [...this.createAttachmentFileMap.values()];
-      const created = await firstValueFrom(
-        this.api.post<IssueItem, Record<string, string>>('/api/admin/issues', {
-          projectId: value.projectId,
-          title: value.title.trim(),
-          description: value.description.trim(),
-          type: value.type,
-          priority: value.priority,
-          module: value.module.trim(),
-          version: value.version.trim(),
-          environment: value.environment.trim()
-        })
-      );
-
-      if (pendingFiles.length > 0) {
-        try {
-          await this.uploadIssueAttachmentFiles(created.id, pendingFiles);
-        } catch (error) {
-          this.listError.set(this.getErrorMessage(error, 'Issue created, but attachment upload failed'));
-        }
+      const editing = this.editingIssue();
+      if (!editing) {
+        return;
       }
 
-      this.createAttachmentFileMap.clear();
-      this.createUploadFileList.set([]);
-      this.createAttachmentNames.set([]);
-      this.createVisible.set(false);
-      await this.loadIssues();
-      this.selectIssue(created);
+      await this.api.updateIssue(projectId, editing.id, value);
+      this.message.success('Issue 已更新');
+      this.closeFormModal();
+      await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
-      this.createError.set(this.getErrorMessage(error, '创建问题失败'));
+      this.message.error(this.getErrorMessage(error, '更新 Issue 失败'));
     } finally {
-      this.createLoading.set(false);
+      this.formSubmitting.set(false);
     }
   }
 
-  protected selectIssue(item: IssueItem): void {
-    this.selectedIssueId.set(item.id);
-    this.assignForm.reset({
-      assigneeIds: item.assigneeId ? [item.assigneeId] : []
-    });
-    this.actionForm.reset({ closeReasonType: '' });
-    this.commentForm.reset({ content: '' });
-    this.hideMentionPanel();
-    void this.loadProjectMembers(item.projectId);
-    void this.loadIssueDetail(item.id);
-  }
-
-  protected quickAssign(item: IssueItem, event: MouseEvent): void {
-    event.stopPropagation();
-    void this.handleQuickAssign(item);
-  }
-
-  protected quickFlow(item: IssueItem, event: MouseEvent): void {
-    event.stopPropagation();
-    void this.handleQuickFlow(item);
-  }
-
-  protected async runAction(action: 'assign' | 'start-progress' | 'mark-fixed' | 'verify' | 'reopen' | 'close'): Promise<void> {
+  protected async handleAction(payload: IssueActionPanelSubmit): Promise<void> {
     const detail = this.selectedDetail();
     if (!detail) {
       return;
@@ -227,867 +204,249 @@ export class IssuesPageComponent {
     this.detailError.set(null);
 
     try {
-      const closeReasonType = this.actionForm.controls.closeReasonType.value;
-
-      if (action === 'assign') {
-        const assigneeIds = (this.assignForm.controls.assigneeIds.value ?? []).map((item) => item.trim()).filter((item) => !!item);
-        if (assigneeIds.length === 0) {
-          throw new Error('指派时需要选择至少一个项目成员');
-        }
-        await firstValueFrom(
-          this.api.post<IssueItem, { assigneeIds: string[] }>(`/api/admin/issues/${detail.issue.id}/assign`, {
-            assigneeIds
-          })
-        );
-      } else if (action === 'start-progress') {
-        await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/start-progress`, {})
-        );
-      } else if (action === 'mark-fixed') {
-        await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/mark-fixed`, {})
-        );
-      } else if (action === 'verify') {
-        await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/verify`, {})
-        );
-      } else if (action === 'reopen') {
-        await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/reopen`, {
-            comment: '验证不通过'
-          })
-        );
-      } else {
-        if (detail.issue.status === 'open' && !closeReasonType) {
-          throw new Error('新建状态直接关闭时必须选择原因');
-        }
-        await firstValueFrom(
-          this.api.post<IssueItem, Record<string, string>>(`/api/admin/issues/${detail.issue.id}/close`, {
-            comment: detail.issue.status === 'open' ? '关闭问题' : '',
-            closeReasonType
-          })
-        );
-      }
-
-      await this.loadIssues();
-      await this.loadIssueDetail(detail.issue.id);
+      await this.api.runAction(detail.issue.projectId, detail.issue.id, payload);
+      await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
-      this.detailError.set(this.getErrorMessage(error, '执行操作失败'));
+      this.detailError.set(this.getErrorMessage(error, '执行 Issue 操作失败'));
     } finally {
       this.actionLoading.set(false);
     }
   }
-  protected async submitComment(): Promise<void> {
+
+  protected async addParticipant(userId: string): Promise<void> {
     const detail = this.selectedDetail();
     if (!detail) {
       return;
     }
 
-    const content = this.commentForm.controls.content.value.trim();
-    if (!content) {
-      this.detailError.set('评论内容不能为空');
-      return;
-    }
-
-    this.commentLoading.set(true);
+    this.participantSaving.set(true);
     this.detailError.set(null);
-
     try {
-      const mentions = this.extractMentionsFromContent(content);
-      const result = await firstValueFrom(
-        this.api.post<IssueDetailResult, { content: string; mentions: IssueCommentMention[] }>(`/api/admin/issues/${detail.issue.id}/comments`, {
-          content,
-          mentions
-        })
-      );
-      this.selectedDetail.set(result);
-      this.commentForm.reset({ content: '' });
-      this.hideMentionPanel();
+      await this.api.addParticipant(detail.issue.projectId, detail.issue.id, userId);
+      await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
-      this.detailError.set(this.getErrorMessage(error, '评论失败'));
+      this.detailError.set(this.getErrorMessage(error, '添加参与人失败'));
     } finally {
-      this.commentLoading.set(false);
+      this.participantSaving.set(false);
     }
   }
 
-  protected appendMention(displayName: string): void {
-    const member = this.projectMembers().find((item) => item.displayName === displayName);
-    if (!member) {
-      return;
-    }
-    this.insertMentionMember(member);
-  }
-
-  protected onCommentEditorInput(event: Event): void {
-    const textarea = event.target as HTMLTextAreaElement | null;
-    if (!textarea) {
-      this.hideMentionPanel();
-      return;
-    }
-    this.updateMentionPanel(textarea);
-  }
-
-  protected onCommentEditorKeydown(event: KeyboardEvent): void {
-    if (!this.mentionPanelVisible()) {
-      return;
-    }
-
-    const candidates = this.mentionCandidates();
-    if (!candidates.length) {
-      return;
-    }
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      const next = (this.mentionActiveIndex() + 1) % candidates.length;
-      this.mentionActiveIndex.set(next);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      const next = (this.mentionActiveIndex() - 1 + candidates.length) % candidates.length;
-      this.mentionActiveIndex.set(next);
-      return;
-    }
-
-    if (event.key === 'Enter' || event.key === 'Tab') {
-      event.preventDefault();
-      const textarea = event.target as HTMLTextAreaElement | null;
-      this.insertMentionMember(candidates[this.mentionActiveIndex()], textarea ?? undefined);
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.hideMentionPanel();
-    }
-  }
-
-  protected selectMentionCandidate(member: ProjectMemberItem, event: MouseEvent): void {
-    event.preventDefault();
-    const textarea = event.currentTarget instanceof HTMLElement
-      ? event.currentTarget.closest('.comment-editor')?.querySelector('textarea')
-      : null;
-    this.insertMentionMember(member, textarea instanceof HTMLTextAreaElement ? textarea : undefined);
-  }
-
-  protected commentSegments(comment: IssueComment): Array<{ text: string; mention: boolean }> {
-    const names = Array.from(new Set((comment.mentions ?? []).map((item) => item.displayName).filter((item) => !!item)));
-    if (!names.length) {
-      return [{ text: comment.content, mention: false }];
-    }
-
-    const sortedNames = [...names].sort((a, b) => b.length - a.length);
-    const pattern = sortedNames.map((name) => this.escapeRegExp(`@${name}`)).join('|');
-    const matcher = new RegExp(`(${pattern})`, 'g');
-    const chunks = comment.content.split(matcher);
-
-    return chunks
-      .filter((chunk) => chunk.length > 0)
-      .map((chunk) => ({
-        text: chunk,
-        mention: sortedNames.some((name) => chunk === `@${name}`)
-      }));
-  }
-
-  protected readonly beforeCreateUpload = (file: NzUploadFile): boolean => {
-    const raw = file.originFileObj as File | undefined;
-    if (!raw) {
-      return false;
-    }
-    if (!this.isAllowedAttachmentFile(raw)) {
-      this.createError.set(`\u4ec5\u652f\u6301\u56fe\u7247\u548c\u89c6\u9891\u6587\u4ef6\uff1a${raw.name}`);
-      return false;
-    }
-    this.createError.set(null);
-    this.createAttachmentFileMap.set(file.uid, raw);
-    this.syncCreateAttachmentFiles();
-    return false;
-  };
-
-  protected onCreateUploadChange(event: { fileList: NzUploadFile[] }): void {
-    const nextList = event.fileList ?? [];
-    const activeUids = new Set(nextList.map((item) => item.uid));
-    for (const uid of Array.from(this.createAttachmentFileMap.keys())) {
-      if (!activeUids.has(uid)) {
-        this.createAttachmentFileMap.delete(uid);
-      }
-    }
-    const filteredList = nextList.filter((item) => this.createAttachmentFileMap.has(item.uid));
-    this.createUploadFileList.set(filteredList);
-    this.syncCreateAttachmentFiles();
-  }
-
-  protected onCreateAttachmentPaste(event: ClipboardEvent): void {
-    const items = event.clipboardData?.items;
-    if (!items || items.length === 0) {
-      return;
-    }
-    const pastedFiles: Array<{ uid: string; file: File }> = [];
-    for (let i = 0; i < items.length; i += 1) {
-      const item = items[i];
-      if (item.kind !== 'file') {
-        continue;
-      }
-      const raw = item.getAsFile();
-      if (!raw) {
-        continue;
-      }
-      if (!this.isAllowedAttachmentFile(raw)) {
-        continue;
-      }
-      const ext = this.extByMime(raw.type);
-      const name = raw.name && raw.name.trim().length > 0 ? raw.name : `pasted-${Date.now()}-${i + 1}${ext}`;
-      const normalized = new File([raw], name, { type: raw.type || 'application/octet-stream' });
-      const uid = `paste-${Date.now()}-${i}`;
-      pastedFiles.push({ uid, file: normalized });
-    }
-    if (pastedFiles.length === 0) {
-      // this.createError.set('粘贴内容中没有可上传的图片或视频');
-      return;
-    }
-    this.createError.set(null);
-    event.preventDefault();
-    const current = [...this.createUploadFileList()];
-    for (const item of pastedFiles) {
-      this.createAttachmentFileMap.set(item.uid, item.file);
-      current.push({
-        uid: item.uid,
-        name: item.file.name,
-        size: item.file.size,
-        type: item.file.type,
-        originFileObj: item.file,
-        status: 'done'
-      });
-    }
-    this.createUploadFileList.set(current);
-    this.syncCreateAttachmentFiles();
-  }
-
-  @HostListener('document:paste', ['$event'])
-  protected handleDocumentPaste(event: ClipboardEvent): void {
-    if (event.defaultPrevented || !this.createVisible()) {
-      return;
-    }
-    this.onCreateAttachmentPaste(event);
-  }
-  protected readonly uploadDetailAttachmentRequest = (item: NzUploadXHRArgs): Subscription => {
-    void this.handleDetailAttachmentUpload(item);
-    return new Subscription();
-  };
-
-  protected readonly removeDetailAttachment = (file: NzUploadFile): boolean => {
-    void this.removeAttachment(file.uid);
-    return false;
-  };
-
-  protected readonly downloadDetailAttachment = (file: NzUploadFile): void => {
-    if (file.url) {
-      window.open(file.url, '_blank', 'noopener');
-    }
-  };
-
-  protected readonly previewDetailAttachment = (file: NzUploadFile): void => {
-    if (file.url) {
-      window.open(file.url, '_blank', 'noopener');
-    }
-  };
-
-  private async handleDetailAttachmentUpload(item: NzUploadXHRArgs): Promise<void> {
+  protected async removeParticipant(userId: string): Promise<void> {
     const detail = this.selectedDetail();
     if (!detail) {
-      item.onError?.(new Error('\u672a\u9009\u62e9\u95ee\u9898'), item.file);
       return;
     }
 
-    const uploadFile = this.extractUploadRawFile(item.file as NzUploadFile);
-    if (!uploadFile) {
-      item.onError?.(new Error('\u65e0\u6548\u9644\u4ef6\u6587\u4ef6'), item.file);
-      return;
-    }
-    if (!this.isAllowedAttachmentFile(uploadFile)) {
-      const error = new Error(`\u4ec5\u652f\u6301\u56fe\u7247\u548c\u89c6\u9891\u6587\u4ef6\uff1a${uploadFile.name}`);
-      this.detailError.set(error.message);
-      item.onError?.(error, item.file);
-      return;
-    }
-
-    this.attachmentLoading.set(true);
+    this.participantSaving.set(true);
     this.detailError.set(null);
-
     try {
-      await this.uploadIssueAttachmentFiles(detail.issue.id, [uploadFile]);
-      item.onSuccess?.({}, item.file, undefined);
-      await this.loadIssueDetail(detail.issue.id);
+      await this.api.removeParticipant(detail.issue.projectId, detail.issue.id, userId);
+      await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
-      this.detailError.set(this.getErrorMessage(error, '\u4e0a\u4f20\u9644\u4ef6\u5931\u8d25'));
-      item.onError?.(error as Error, item.file);
+      this.detailError.set(this.getErrorMessage(error, '移除参与人失败'));
     } finally {
-      this.attachmentLoading.set(false);
+      this.participantSaving.set(false);
     }
   }
-  protected async removeAttachment(attachmentId: string): Promise<void> {
+
+  protected async submitComment(payload: { content: string; mentions: IssueCommentMention[] }): Promise<void> {
     const detail = this.selectedDetail();
     if (!detail) {
       return;
     }
 
-    this.attachmentLoading.set(true);
+    this.commentSubmitting.set(true);
     this.detailError.set(null);
-
     try {
-      const result = await firstValueFrom(
-        this.api.delete<IssueDetailResult>(`/api/admin/issues/${detail.issue.id}/attachments/${attachmentId}`)
-      );
-      this.selectedDetail.set(result);
+      await this.api.createComment(detail.issue.projectId, detail.issue.id, payload.content, payload.mentions);
+      await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
+    } catch (error) {
+      this.detailError.set(this.getErrorMessage(error, '提交评论失败'));
+    } finally {
+      this.commentSubmitting.set(false);
+    }
+  }
+
+  protected async uploadAttachments(files: File[]): Promise<void> {
+    const detail = this.selectedDetail();
+    if (!detail || files.length === 0) {
+      return;
+    }
+
+    this.attachmentUploading.set(true);
+    this.detailError.set(null);
+    try {
+      await this.api.uploadAttachments(detail.issue.projectId, detail.issue.id, files);
+      await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
+    } catch (error) {
+      this.detailError.set(this.getErrorMessage(error, '上传附件失败'));
+    } finally {
+      this.attachmentUploading.set(false);
+    }
+  }
+
+  protected async deleteAttachment(attachmentId: string): Promise<void> {
+    const detail = this.selectedDetail();
+    if (!detail) {
+      return;
+    }
+
+    this.attachmentUploading.set(true);
+    this.detailError.set(null);
+    try {
+      await this.api.deleteAttachment(detail.issue.projectId, detail.issue.id, attachmentId);
+      await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
       this.detailError.set(this.getErrorMessage(error, '删除附件失败'));
     } finally {
-      this.attachmentLoading.set(false);
+      this.attachmentUploading.set(false);
     }
   }
 
-  protected previewAttachment(attachment: IssueAttachmentDto): void {
-    window.open(attachment.downloadUrl, '_blank', 'noopener');
+  private async initialize(): Promise<void> {
+    try {
+      const items = await this.api.listProjects();
+      this.projects.set(items);
+      const initialProjectId = this.resolveInitialProjectId(items);
+      this.filters.patchValue({ projectId: initialProjectId }, { emitEvent: true });
+      if (!initialProjectId) {
+        await this.loadIssues();
+      }
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '加载项目失败'));
+    }
   }
 
-  protected downloadAttachment(attachment: IssueAttachmentDto): void {
-    window.open(attachment.downloadUrl, '_blank', 'noopener');
+  private resolveInitialProjectId(items: ProjectOption[]): string {
+    if (this.pendingProjectId && items.some((item) => item.id === this.pendingProjectId)) {
+      return this.pendingProjectId;
+    }
+    return this.filters.controls.projectId.value || items[0]?.id || '';
   }
 
-  protected toAttachmentCardItems(attachments: IssueAttachmentDto[]): AttachmentCardItem[] {
-    return attachments.map((attachment) => ({
-      id: attachment.id,
-      name: attachment.uploaderName ? (attachment.uploaderName + ' - ' + attachment.originalName) : attachment.originalName,
-      size: attachment.fileSize,
-      mimeType: attachment.mimeType ?? null,
-      fileExt: attachment.fileExt ?? null,
-      url: attachment.downloadUrl,
-      previewUrl: attachment.downloadUrl
-    }));
+  private async refreshCurrentView(options: { reloadList: boolean; reloadDetail: boolean }): Promise<void> {
+    if (options.reloadList) {
+      await this.loadIssues();
+    }
+    if (options.reloadDetail) {
+      const selectedId = this.selectedIssueId();
+      if (selectedId) {
+        await this.loadIssueDetail(selectedId);
+      }
+    }
   }
 
-  protected actionTypeColor(actionType: IssueActionType): string {
-    if (actionType === 'create') return 'green';
-    if (actionType === 'assign') return 'blue';
-    if (actionType === 'start_progress') return 'orange';
-    if (actionType === 'mark_fixed') return 'purple';
-    if (actionType === 'verify') return 'cyan';
-    if (actionType === 'reopen') return 'red';
-    if (actionType === 'close') return 'default';
-    if (actionType === 'comment') return 'yellow';
-    if (actionType === 'upload_attachment') return 'green';
-    if (actionType === 'remove_attachment') return 'red';
-    return 'default';
-  }
-  protected actionTypeLabel(actionType: IssueActionType): string {
-    if (actionType === 'create') return '创建';
-    if (actionType === 'assign') return '指派';
-    if (actionType === 'start_progress') return '开始处理';
-    if (actionType === 'mark_fixed') return '申请测试';
-    if (actionType === 'verify') return '验证';
-    if (actionType === 'reopen') return '驳回重新修复';
-    if (actionType === 'close') return '关闭';
-    if (actionType === 'comment') return '评论';
-    if (actionType === 'upload_attachment') return '上传附件';
-    if (actionType === 'remove_attachment') return '删除附件';
-    return '默认';
-  }
-
-  protected isImageAttachment(attachment: IssueAttachmentDto): boolean {
-    const mimeType = attachment.mimeType?.toLowerCase() ?? '';
-    if (mimeType.startsWith('image/')) {
-      return true;
+  private async loadProjectContext(projectId: string): Promise<void> {
+    if (!projectId) {
+      this.projectMembers.set([]);
+      this.moduleOptions.set([]);
+      this.versionOptions.set([]);
+      this.environmentOptions.set([]);
+      this.issues.set([]);
+      this.total.set(0);
+      return;
     }
 
-    const ext = attachment.fileExt?.toLowerCase() ?? '';
-    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
-  }
-
-  protected canAssign(status: IssueStatus): boolean {
-    return status === 'open' || status === 'assigned' || status === 'reopened' || status === 'in_progress';
-  }
-
-  protected canStartProgress(status: IssueStatus): boolean {
-    return status === 'assigned' || status === 'reopened';
-  }
-
-  protected canMarkFixed(status: IssueStatus): boolean {
-    return status === 'in_progress';
-  }
-
-  protected canVerify(status: IssueStatus): boolean {
-    return status === 'fixed';
-  }
-
-  protected canReopen(status: IssueStatus): boolean {
-    return status === 'fixed' || status === 'verified' || status === 'closed';
-  }
-
-  protected canClose(status: IssueStatus): boolean {
-    return status === 'verified';
-  }
-
-  private currentUserId(): string | null {
-    const profile = this.auth.profile();
-    if (!profile) {
-      return null;
+    try {
+      const [members, modules, versions, environments] = await Promise.all([
+        this.api.listProjectMembers(projectId),
+        this.api.listProjectModules(projectId),
+        this.api.listProjectVersions(projectId),
+        this.api.listProjectEnvironments(projectId)
+      ]);
+      this.projectMembers.set(members);
+      this.moduleOptions.set(modules);
+      this.versionOptions.set(versions);
+      this.environmentOptions.set(environments);
+    } catch {
+      this.projectMembers.set([]);
+      this.moduleOptions.set([]);
+      this.versionOptions.set([]);
+      this.environmentOptions.set([]);
     }
-    return profile.userId?.trim() || profile.id;
-  }
-
-  private isCurrentReporter(detail: IssueDetailResult): boolean {
-    const userId = this.currentUserId();
-    return !!userId && detail.issue.reporterId === userId;
-  }
-
-  private isCurrentAssignee(detail: IssueDetailResult): boolean {
-    const userId = this.currentUserId();
-    if (!userId) {
-      return false;
-    }
-    return detail.assignees.some((item) => item.userId === userId);
-  }
-
-  protected canActionMarkFixed(detail: IssueDetailResult): boolean {
-    return this.isCurrentAssignee(detail) && detail.issue.status === 'in_progress';
-  }
-
-  protected canActionStartProgress(detail: IssueDetailResult): boolean {
-    return this.isCurrentAssignee(detail) && (detail.issue.status === 'assigned' || detail.issue.status === 'reopened');
-  }
-
-  protected canActionBackToProgress(detail: IssueDetailResult): boolean {
-    return this.isCurrentAssignee(detail) && detail.issue.status === 'fixed';
-  }
-
-  protected canActionVerify(detail: IssueDetailResult): boolean {
-    return this.isCurrentReporter(detail) && detail.issue.status === 'fixed';
-  }
-
-  protected canActionReject(detail: IssueDetailResult): boolean {
-    return this.isCurrentReporter(detail) && (detail.issue.status === 'fixed' || detail.issue.status === 'verified');
-  }
-
-  protected canActionClose(detail: IssueDetailResult): boolean {
-    return this.isCurrentReporter(detail) && detail.issue.status === 'verified';
-  }
-  protected statusColor(status: IssueStatus): string {
-    if (status === 'closed') return 'default';
-    if (status === 'verified') return 'green';
-    if (status === 'fixed') return 'purple';
-    if (status === 'in_progress' || status === 'assigned') return 'blue';
-    return 'orange';
-  }
-
-  protected statusLabel(status: IssueStatus): string {
-    if (status === 'assigned') return '已指派';
-    if (status === 'in_progress') return '处理中';
-    if (status === 'fixed') return '待测试';
-    if (status === 'verified') return '已验证';
-    if (status === 'reopened') return '驳回重新处理';
-    if (status === 'closed') return '已关闭';
-    return '新建';
-  }
-
-  protected priorityColor(priority: IssuePriority): string {
-    if (priority === 'critical') return 'red';
-    if (priority === 'high') return 'orange';
-    if (priority === 'medium') return 'blue';
-    return 'default';
-  }
-
-  protected priorityLabel(priority: IssuePriority): string {
-    if (priority === 'critical') return '紧急';
-    if (priority === 'high') return '高';
-    if (priority === 'medium') return '中';
-    return '低';
-  }
-
-  protected typeLabel(type: IssueType): string {
-    if (type === 'requirement_change') return '需求变更';
-    if (type === 'feature') return '新功能';
-    if (type === 'improvement') return '改进';
-    if (type === 'task') return '任务';
-    if (type === 'test_record') return '测试记录';
-    return '缺陷';
-  }
-
-  protected typeColor(type: IssueType): string {
-    if (type === 'bug') return 'red';
-    if (type === 'requirement_change') return 'gold';
-    if (type === 'feature') return 'green';
-    if (type === 'improvement') return 'cyan';
-    if (type === 'task') return 'blue';
-    return 'purple';
-  }
-
-  protected dateTimeToSecond(value: string | null | undefined): string {
-    if (!value) {
-      return '-';
-    }
-    const normalized = value.replace('T', ' ').replace('Z', '');
-    return normalized.slice(0, 19);
   }
 
   private async loadIssues(): Promise<void> {
+    const filter = this.filters.getRawValue() as IssueFilterValue;
+    if (!filter.projectId) {
+      this.issues.set([]);
+      this.total.set(0);
+      return;
+    }
+
     this.listLoading.set(true);
     this.listError.set(null);
 
     try {
-      const filter = this.filters.getRawValue();
-      const params: Record<string, string | number> = { page: 1, pageSize: 100 };
-
-      if (filter.projectId) params['projectId'] = filter.projectId;
+      const params: Record<string, string | number> = {
+        page: this.page(),
+        pageSize: this.pageSize
+      };
       if (filter.status) params['status'] = filter.status;
-      if (filter.type) params['type'] = filter.type;
       if (filter.priority) params['priority'] = filter.priority;
+      if (filter.type) params['type'] = filter.type;
+      if (filter.assigneeId) params['assigneeId'] = filter.assigneeId;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
 
-      const result = await firstValueFrom(this.api.get<IssueListResult>('/api/admin/issues', { params }));
+      const result = await this.api.listIssues(filter.projectId, params);
       this.issues.set(result.items);
       this.total.set(result.total);
 
       const selectedId = this.selectedIssueId();
-      if (selectedId && !result.items.find((item) => item.id === selectedId)) {
+      if (selectedId && !result.items.some((item) => item.id === selectedId)) {
         this.selectedIssueId.set(null);
         this.selectedDetail.set(null);
       }
+
+      if (this.pendingIssueId) {
+        const pending = result.items.find((item) => item.id === this.pendingIssueId);
+        if (pending) {
+          this.selectedIssueId.set(pending.id);
+          this.pendingIssueId = null;
+          await this.loadIssueDetail(pending.id);
+        }
+      }
     } catch (error) {
-      this.listError.set(this.getErrorMessage(error, '加载问题列表失败'));
+      this.listError.set(this.getErrorMessage(error, '加载 Issue 列表失败'));
     } finally {
       this.listLoading.set(false);
     }
   }
 
   private async loadIssueDetail(issueId: string): Promise<void> {
+    const projectId = this.filters.controls.projectId.value;
+    if (!projectId) {
+      return;
+    }
+
     this.detailLoading.set(true);
     this.detailError.set(null);
-
     try {
-      const result = await firstValueFrom(this.api.get<IssueDetailResult>(`/api/admin/issues/${issueId}`));
-      this.selectedDetail.set(result);
-      this.assignForm.patchValue({
-        assigneeIds: result.assignees?.length ? result.assignees.map((item) => item.userId) : (result.issue.assigneeId ? [result.issue.assigneeId] : [])
-      });
-      void this.loadProjectMembers(result.issue.projectId);
+      this.selectedDetail.set(await this.api.getIssueDetail(projectId, issueId));
+      if (this.route.snapshot.queryParamMap.get('issueId')) {
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { issueId: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+      }
     } catch (error) {
-      this.detailError.set(this.getErrorMessage(error, '加载问题详情失败'));
+      this.detailError.set(this.getErrorMessage(error, '加载 Issue 详情失败'));
     } finally {
       this.detailLoading.set(false);
     }
   }
 
-
-  private async ensureIssueContext(item: IssueItem): Promise<void> {
-    if (this.selectedIssueId() !== item.id) {
-      this.selectedIssueId.set(item.id);
-      this.assignForm.reset({
-        assigneeIds: item.assigneeId ? [item.assigneeId] : []
-      });
-      this.actionForm.reset({ closeReasonType: '' });
-      this.commentForm.reset({ content: '' });
-      this.hideMentionPanel();
-      await this.loadProjectMembers(item.projectId);
-      await this.loadIssueDetail(item.id);
-      return;
-    }
-
-    const detail = this.selectedDetail();
-    if (!detail || detail.issue.id !== item.id) {
-      await this.loadIssueDetail(item.id);
-    }
-  }
-  private async handleQuickAssign(item: IssueItem): Promise<void> {
-    await this.ensureIssueContext(item);
-    const detail = this.selectedDetail();
-    if (!detail) {
-      return;
-    }
-    if (!this.canAssign(detail.issue.status)) {
-      this.detailError.set('当前状态不支持快速指派');
-      return;
-    }
-
-    const assigneeIds = (this.assignForm.controls.assigneeIds.value ?? []).filter((item) => !!item);
-    if (assigneeIds.length === 0) {
-      this.detailError.set('请先在右侧选择项目成员，再执行快速指派');
-      return;
-    }
-
-    await this.runAction('assign');
-  }
-
-  private resolveQuickFlowAction(status: IssueStatus): 'start-progress' | 'verify' | 'close' | null {
-    if (this.canStartProgress(status)) {
-      return 'start-progress';
-    }
-    if (this.canVerify(status)) {
-      return 'verify';
-    }
-    if (status === 'verified' && this.canClose(status)) {
-      return 'close';
-    }
-    return null;
-  }
-
-  private async handleQuickFlow(item: IssueItem): Promise<void> {
-    await this.ensureIssueContext(item);
-    const detail = this.selectedDetail();
-    if (!detail) {
-      return;
-    }
-    const action = this.resolveQuickFlowAction(detail.issue.status);
-    if (!action) {
-      this.detailError.set('当前状态暂无可执行的快捷流转');
-      return;
-    }
-    await this.runAction(action);
-  }
-
-  private async loadProjectOptions(): Promise<void> {
-    try {
-      const result = await firstValueFrom(
-        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
-          params: { status: 'active', page: 1, pageSize: 100 }
-        })
-      );
-      this.projectOptions.set(result.items);
-    } catch {
-      this.projectOptions.set([]);
-    }
-  }
-
-
-  protected projectName(projectId: string): string {
-    const hit = this.projectOptions().find((item) => item.id === projectId);
-    return hit?.name ?? projectId;
-  }
-
-  protected memberLabel(member: ProjectMemberItem): string {
-    const roleText = member.roles.map((role) => this.roleLabel(role)).join('、');
-    return `${member.displayName} ${roleText ? ' - ' + roleText : ''}`;
-  }
-
-  protected roleLabel(role: ProjectMemberItem['roles'][number]): string {
-    if (role === 'product') return '产品';
-    if (role === 'ui') return 'UI/设计';
-    if (role === 'frontend_dev') return '前端开发';
-    if (role === 'backend_dev') return '后端开发';
-    if (role === 'qa') return '测试';
-    return '运维/环境支持';
-  }
-
-  private async loadProjectMembers(projectId: string): Promise<void> {
-    if (!projectId) {
-      this.projectMembers.set([]);
-      return;
-    }
-
-    this.memberLoading.set(true);
-    try {
-      const result = await firstValueFrom(
-        this.api.get<{ items: ProjectMemberItem[] }>(`/api/admin/projects/${projectId}/members`)
-      );
-      this.projectMembers.set(result.items);
-    } catch {
-      this.projectMembers.set([]);
-    } finally {
-      this.memberLoading.set(false);
-    }
-  }
-  private hideMentionPanel(): void {
-    this.mentionPanelVisible.set(false);
-    this.mentionCandidates.set([]);
-    this.mentionActiveIndex.set(0);
-    this.mentionTokenStart = -1;
-    this.mentionTokenEnd = -1;
-  }
-
-  private updateMentionPanel(textarea: HTMLTextAreaElement): void {
-    const content = this.commentForm.controls.content.value ?? '';
-    const caret = textarea.selectionStart ?? content.length;
-    const context = this.findMentionContext(content, caret);
-    if (!context) {
-      this.hideMentionPanel();
-      return;
-    }
-
-    const query = context.query.toLowerCase();
-    const candidates = this.projectMembers().filter((member) => {
-      const byName = member.displayName.toLowerCase().includes(query);
-      const byUserId = member.userId.toLowerCase().includes(query);
-      return byName || byUserId;
-    });
-
-    if (!candidates.length) {
-      this.hideMentionPanel();
-      return;
-    }
-
-    this.mentionTokenStart = context.start;
-    this.mentionTokenEnd = caret;
-    this.mentionCandidates.set(candidates.slice(0, 8));
-    this.mentionActiveIndex.set(0);
-    this.mentionPanelVisible.set(true);
-  }
-
-  private findMentionContext(content: string, caret: number): { start: number; query: string } | null {
-    const prefix = content.slice(0, caret);
-    const at = prefix.lastIndexOf('@');
-    if (at < 0) {
-      return null;
-    }
-
-    if (at > 0) {
-      const prev = prefix.charAt(at - 1);
-      if (!/\s|[\(\[\{,，。:：]/.test(prev)) {
-        return null;
-      }
-    }
-
-    const query = prefix.slice(at + 1);
-    if (/\s|@/.test(query)) {
-      return null;
-    }
-
-    return { start: at, query };
-  }
-
-  private insertMentionMember(member: ProjectMemberItem, textarea?: HTMLTextAreaElement): void {
-    const current = this.commentForm.controls.content.value ?? '';
-    const input = textarea ?? (document.activeElement instanceof HTMLTextAreaElement ? document.activeElement : null);
-    const hasContext = this.mentionPanelVisible() && this.mentionTokenStart >= 0 && this.mentionTokenEnd >= this.mentionTokenStart;
-
-    if (!input || !hasContext) {
-      const suffix = current.length > 0 && !current.endsWith(' ') ? ' ' : '';
-      this.commentForm.controls.content.setValue(`${current}${suffix}@${member.displayName} `);
-      this.hideMentionPanel();
-      return;
-    }
-
-    const mentionText = `@${member.displayName} `;
-    const next = `${current.slice(0, this.mentionTokenStart)}${mentionText}${current.slice(this.mentionTokenEnd)}`;
-    const caret = this.mentionTokenStart + mentionText.length;
-
-    this.commentForm.controls.content.setValue(next);
-    this.hideMentionPanel();
-
-    queueMicrotask(() => {
-      input.focus();
-      input.setSelectionRange(caret, caret);
-    });
-  }
-
-  private extractMentionsFromContent(content: string): IssueCommentMention[] {
-    const members = this.projectMembers();
-    if (!members.length) {
-      return [];
-    }
-
-    const mentions: IssueCommentMention[] = [];
-    const seen = new Set<string>();
-
-    for (const member of members) {
-      const token = `@${member.displayName}`;
-      if (!content.includes(token)) {
-        continue;
-      }
-      if (seen.has(member.userId)) {
-        continue;
-      }
-      mentions.push({
-        userId: member.userId,
-        displayName: member.displayName
-      });
-      seen.add(member.userId);
-    }
-
-    return mentions;
-  }
-
-  private escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-  private syncDetailAttachmentFileList(attachments: IssueAttachmentDto[]): void {
-    this.detailAttachmentFileList.set(
-      attachments.map((attachment) => ({
-        uid: attachment.id,
-        name: attachment.uploaderName ? (attachment.uploaderName + ' - ' + attachment.originalName) : attachment.originalName,
-        status: "done",
-        url: attachment.downloadUrl,
-        type: attachment.mimeType ?? undefined,
-        size: attachment.fileSize,
-        thumbUrl: this.isImageAttachment(attachment) ? attachment.downloadUrl : undefined
-      }))
-    );
-  }
-  private async uploadIssueAttachmentFiles(issueId: string, files: readonly File[]): Promise<void> {
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append('files', file);
-    }
-    await firstValueFrom(
-      this.api.post<{ items: IssueAttachmentDto[] }, FormData>(`/api/admin/issues/${issueId}/attachments`, formData)
-    );
-  }
-
-  private async loadAttachmentPolicy(): Promise<void> {
-    try {
-      const result = await firstValueFrom(this.api.get<AttachmentPolicyResult>('/api/admin/issues/attachment-policy'));
-      if (result.accept?.trim()) {
-        this.attachmentAccept = result.accept.trim();
-      }
-      if (Array.isArray(result.mimePrefixes) && result.mimePrefixes.length > 0) {
-        this.attachmentMimePrefixes = result.mimePrefixes.map((item) => item.toLowerCase());
-      }
-      if (Array.isArray(result.exts) && result.exts.length > 0) {
-        this.attachmentExts = result.exts.map((item) => item.toLowerCase());
-      }
-    } catch {
-      // fallback to local defaults
-    }
-  }
-
-  private syncCreateAttachmentFiles(): void {
-    this.createAttachmentNames.set(Array.from(this.createAttachmentFileMap.values()).map((file) => file.name));
-  }
-
-
-  private extractUploadRawFile(upload: NzUploadFile): File | null {
-    const fromOrigin = upload.originFileObj;
-    if (fromOrigin instanceof File) {
-      return fromOrigin;
-    }
-    if (upload instanceof File) {
-      return upload;
-    }
-    return null;
-  }
-
-  private isAllowedAttachmentFile(file: File): boolean {
-    const mimeType = file.type.toLowerCase();
-    if (
-      mimeType &&
-      this.attachmentMimePrefixes.some((prefix) => mimeType.startsWith(prefix))
-    ) {
-      return true;
-    }
-
-    const name = file.name.toLowerCase();
-    return this.attachmentExts.some((ext) => name.endsWith(ext));
-  }
-  private extByMime(mimeType: string): string {
-    if (mimeType === 'image/png') return '.png';
-    if (mimeType === 'image/jpeg') return '.jpg';
-    if (mimeType === 'image/webp') return '.webp';
-    if (mimeType === 'image/gif') return '.gif';
-    return '';
-  }
   private getErrorMessage(error: unknown, fallback: string): string {
-    if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
-    if (error instanceof Error) return `${fallback}: ${error.message}`;
+    if (error instanceof HubApiError) {
+      return `${fallback}: ${error.message}`;
+    }
+    if (error instanceof Error) {
+      return `${fallback}: ${error.message}`;
+    }
     return fallback;
   }
 }
+
+

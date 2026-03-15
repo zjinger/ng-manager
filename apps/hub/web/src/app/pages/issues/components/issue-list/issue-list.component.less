@@ -1,0 +1,82 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.list-card {
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.empty-state {
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ellipsis {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected {
+  background: #f0f7ff;
+}
+
+.pagination-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+:host ::ng-deep .issue-table .ant-table-tbody > tr {
+  cursor: pointer;
+}
+
+:host ::ng-deep .issue-table .ant-spin-nested-loading,
+:host ::ng-deep .issue-table .ant-spin-container,
+:host ::ng-deep .issue-table .ant-table,
+:host ::ng-deep .issue-table .ant-table-container {
+  height: 100%;
+}
+
+:host ::ng-deep .issue-table .ant-table-body {
+  overflow-y: auto !important;
+}
+
+:host ::ng-deep .list-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}

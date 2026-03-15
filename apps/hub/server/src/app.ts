@@ -11,9 +11,16 @@ import { DocumentRepo } from "./modules/document/document.repo";
 import { DocumentService } from "./modules/document/document.service";
 import { FeedbackRepo } from "./modules/feedback/feedback.repo";
 import { FeedbackService } from "./modules/feedback/feedback.service";
-import { IssueActivityService } from "./modules/issue/issue.activity";
 import { UploadRepo } from "./modules/upload/upload.repo";
 import { UploadService } from "./modules/upload/upload.service";
+import { IssueAttachmentRepo } from "./modules/issue-attachment/attachment.repo";
+import { IssueAttachmentService } from "./modules/issue-attachment/attachment.service";
+import { IssueCommentRepo } from "./modules/issue-comment/comment.repo";
+import { IssueCommentService } from "./modules/issue-comment/comment.service";
+import { IssueLogRepo } from "./modules/issue-log/issue-log.repo";
+import { IssueLogService } from "./modules/issue-log/issue-log.service";
+import { IssueParticipantRepo } from "./modules/issue-participant/participant.repo";
+import { IssueParticipantService } from "./modules/issue-participant/participant.service";
 import { IssuePermissionService } from "./modules/issue/issue.permission";
 import { IssueRepo } from "./modules/issue/issue.repo";
 import { IssueService } from "./modules/issue/issue.service";
@@ -82,11 +89,28 @@ export async function createApp() {
   const releaseService = new ReleaseService(releaseRepo, projectRepo, app.hubWsEvents);
 
   const issueRepo = new IssueRepo(app.db);
+  const issueParticipantRepo = new IssueParticipantRepo(app.db);
+  const issueLogRepo = new IssueLogRepo(app.db);
+  const issueLogService = new IssueLogService(issueLogRepo);
+  const issuePermission = new IssuePermissionService(projectMemberService, issueParticipantRepo, authRepo);
+  const issueParticipantService = new IssueParticipantService(issueRepo, issueParticipantRepo, issuePermission, issueLogService);
+  const issueCommentRepo = new IssueCommentRepo(app.db);
+  const issueCommentService = new IssueCommentService(issueRepo, issueCommentRepo, projectMemberService, issuePermission, issueLogService);
   const uploadRepo = new UploadRepo(app.db);
   const uploadService = new UploadService(uploadRepo);
-  const issuePermission = new IssuePermissionService(projectMemberService, authRepo);
-  const issueActivity = new IssueActivityService(issueRepo);
-  const issueService = new IssueService(issueRepo, projectRepo, projectMemberService, uploadService, issuePermission, issueActivity);
+  const issueAttachmentRepo = new IssueAttachmentRepo(app.db);
+  const issueAttachmentService = new IssueAttachmentService(issueRepo, issueAttachmentRepo, uploadService, issuePermission, issueLogService);
+  const issueService = new IssueService(
+    issueRepo,
+    projectRepo,
+    projectMemberService,
+    issueParticipantRepo,
+    issueParticipantService,
+    issueCommentService,
+    issueAttachmentService,
+    issueLogService,
+    issuePermission
+  );
 
   app.decorate("services", {
     feedback: feedbackService,

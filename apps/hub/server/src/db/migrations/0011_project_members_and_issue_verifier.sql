@@ -32,7 +32,7 @@ BEFORE INSERT ON project_member_roles
 FOR EACH ROW
 BEGIN
   SELECT CASE
-    WHEN NEW.role NOT IN ('product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops')
+    WHEN NEW.role NOT IN ('product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops', 'project_admin')
     THEN RAISE(ABORT, 'PROJECT_MEMBER_ROLE_INVALID')
   END;
 END;
@@ -42,7 +42,7 @@ BEFORE UPDATE OF role ON project_member_roles
 FOR EACH ROW
 BEGIN
   SELECT CASE
-    WHEN NEW.role NOT IN ('product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops')
+    WHEN NEW.role NOT IN ('product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops', 'project_admin')
     THEN RAISE(ABORT, 'PROJECT_MEMBER_ROLE_INVALID')
   END;
 END;

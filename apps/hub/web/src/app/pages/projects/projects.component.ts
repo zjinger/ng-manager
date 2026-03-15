@@ -24,8 +24,9 @@ import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
-import { ProjectConfigItem, ProjectItem, ProjectListResult, ProjectMemberItem, ProjectMemberRole, ProjectStatus, ProjectVersionItem, ProjectVisibility, UserOptionItem } from './projects.model';
+import { ProjectConfigItem, ProjectItem, ProjectListResult, ProjectMemberItem, ProjectMemberRole, ProjectStatus, ProjectVersionItem, ProjectVisibility, roleLabel, UserOptionItem } from './projects.model';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzResultModule } from 'ng-zorro-antd/result';
 @Component({
   selector: 'app-projects-page',
   imports: [
@@ -49,7 +50,8 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
     PageHeaderComponent,
     HubDateTimePipe,
     NzSpaceModule,
-    NzPopconfirmModule
+    NzPopconfirmModule,
+    NzResultModule
   ],
   templateUrl: './projects.component.html',
   styleUrls: ['./projects.component.less'],
@@ -187,13 +189,7 @@ export class ProjectsPageComponent {
   }
 
   protected roleLabel(role: ProjectMemberRole): string {
-    if (role === 'product') return '产品';
-    if (role === 'ui') return 'UI/设计';
-    if (role === 'frontend_dev') return '前端开发';
-    if (role === 'backend_dev') return '后端开发';
-    if (role === 'qa') return '测试';
-    if (role === 'ops') return '运维/环境支持';
-    return role;
+    return roleLabel(role);
   }
 
   protected onUserSelectChange(userId: string): void {

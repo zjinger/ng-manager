@@ -1,4 +1,4 @@
-﻿import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzImageModule } from 'ng-zorro-antd/image';
@@ -22,6 +22,7 @@ export class AttachmentCardListComponent {
   @Input() showRemove = false;
   @Input() showEmpty = true;
   @Input() showMeta = true;
+  @Input() removableIds: string[] | null = null;
 
   @Output() remove = new EventEmitter<string>();
 
@@ -55,5 +56,14 @@ export class AttachmentCardListComponent {
   protected onRemove(id: string): void {
     this.remove.emit(id);
   }
-}
 
+  protected canRemove(item: AttachmentCardItem): boolean {
+    if (!this.showRemove) {
+      return false;
+    }
+    if (!this.removableIds) {
+      return true;
+    }
+    return this.removableIds.includes(item.id);
+  }
+}

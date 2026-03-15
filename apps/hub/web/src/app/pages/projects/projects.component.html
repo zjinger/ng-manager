@@ -520,26 +520,21 @@
   </nz-modal>
 
   <nz-modal
-    nzTitle="项目创建成功 🎉"
+    [nzTitle]="''"
     [(nzVisible)]="createGuideVisible"
     [nzMaskClosable]="false"
     [nzFooter]="null"
     (nzOnCancel)="createGuideVisible.set(false)"
   >
     <ng-container *nzModalContent>
-      <p>接下来可以继续完善项目配置：</p>
-      <ul class="guide-list">
-        <li><strong>成员管理</strong> 配置项目参与人员</li>
-        <li><strong>模块管理</strong> 维护系统功能模块</li>
-        <li><strong>环境管理</strong> 配置开发 / 测试 / 生产环境</li>
-        <li><strong>版本管理</strong> 维护发布版本</li>
-      </ul>
-      <div class="actions">
-        <button nz-button nzType="primary" (click)="enterConfigCenter()">进入项目配置中心</button>
-        <button nz-button nzType="default" (click)="createGuideVisible.set(false)">
-          返回项目列表
-        </button>
-      </div>
+      <nz-result nzStatus="success" nzTitle="项目创建成功 🎉">
+        <div nz-result-extra>
+          <button nz-button nzType="primary" (click)="enterConfigCenter()">进入项目配置中心</button>
+          <button nz-button nzType="default" (click)="createGuideVisible.set(false)">
+            返回项目列表
+          </button>
+        </div>
+      </nz-result>
     </ng-container>
   </nz-modal>
 </section>

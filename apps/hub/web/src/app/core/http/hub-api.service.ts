@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+﻿import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import type { ApiSuccessResponse } from './api.types';
@@ -40,6 +40,17 @@ export class HubApiService {
     const requestOptions = options ? { params: options.params } : undefined;
     return this.http
       .put<ApiSuccessResponse<TResponse>>(url, body, requestOptions)
+      .pipe(map((response) => response.data));
+  }
+
+  public patch<TResponse, TBody = unknown>(
+    url: string,
+    body: TBody,
+    options?: RequestOptions
+  ): Observable<TResponse> {
+    const requestOptions = options ? { params: options.params } : undefined;
+    return this.http
+      .patch<ApiSuccessResponse<TResponse>>(url, body, requestOptions)
       .pipe(map((response) => response.data));
   }
 

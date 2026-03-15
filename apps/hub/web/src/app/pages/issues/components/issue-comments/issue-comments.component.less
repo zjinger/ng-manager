@@ -1,0 +1,77 @@
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.section-head h4 {
+  margin: 0;
+}
+
+.comment-form {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.comment-list {
+  display: block;
+}
+
+.comment-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+.mention-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mention-name {
+  color: #111827;
+}
+
+.mention-id,
+.muted {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+:host ::ng-deep .comment-form .ant-mentions {
+  width: 100%;
+}
+
+:host ::ng-deep .comment-form .ant-mentions textarea {
+  width: 100%;
+}
+
+:host ::ng-deep .comment-list .ant-list-item {
+  padding: 12px 0;
+}
+
+:host ::ng-deep .comment-list .ant-comment {
+  width: 100%;
+}
+
+:host ::ng-deep .comment-list .ant-comment-inner {
+  padding: 0;
+}
+
+:host ::ng-deep .comment-list .ant-comment-avatar {
+  margin-right: 12px;
+}
+
+:host ::ng-deep .comment-list .ant-avatar {
+  background: #1677ff;
+  color: #fff;
+}

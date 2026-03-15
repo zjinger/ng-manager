@@ -1,0 +1,30 @@
+﻿<div class="section-head">
+  <div>
+    <h4>参与人</h4>
+    <span class="muted">用于协作处理，不承担状态流转</span>
+  </div>
+</div>
+
+@if (allowManage) {
+  <div class="participant-form">
+    <nz-select [formControl]="form.controls.userId" nzAllowClear nzPlaceHolder="选择参与人">
+      @for (member of availableMembers(); track member.id) {
+        <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)" />
+      }
+    </nz-select>
+    <button nz-button nzType="default" (click)="addParticipant()" [disabled]="saving">
+      添加参与人
+    </button>
+  </div>
+}
+<div class="participant-list">
+  @for (item of participants; track item.id) {
+    @if (allowManage) {
+      <nz-tag nzMode="closeable" (nzOnClose)="removed.emit(item.userId)">
+        {{ item.userName || item.userId }}
+      </nz-tag>
+    } @else {
+      <nz-tag>{{ item.userName || item.userId }}</nz-tag>
+    }
+  }
+</div>

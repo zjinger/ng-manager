@@ -1,0 +1,51 @@
+<div class="section-head">
+  <div>
+    <h4>评论</h4>
+    <span class="muted">记录沟通、处理说明和补充信息，输入 @ 可提及项目成员</span>
+  </div>
+</div>
+
+@if (canSubmit) {
+  <form [formGroup]="form" class="comment-form" (ngSubmit)="submit()">
+    <nz-mention
+      [nzSuggestions]="mentionSuggestions()"
+      [nzValueWith]="mentionLabel"
+      (nzOnSearchChange)="handleMentionSearch($event)"
+    >
+      <textarea
+        nz-input
+        nzMentionTrigger
+        formControlName="content"
+        rows="4"
+        placeholder="输入评论内容，使用 @ 提及成员"
+      ></textarea>
+      <ng-template nzMentionSuggestion let-member>
+        <div class="mention-option">
+          <span class="mention-name">{{ member.displayName || member.userId }}</span>
+          <span class="mention-id">{{ mentionUserRoles(member.roles) }}</span>
+        </div>
+      </ng-template>
+    </nz-mention>
+    <div class="comment-actions">
+      <button nz-button nzType="primary" [disabled]="submitting">提交评论</button>
+    </div>
+  </form>
+}
+
+@if (comments.length) {
+  <nz-list
+    [nzDataSource]="comments"
+    [nzRenderItem]="commentItem"
+    nzItemLayout="horizontal"
+    class="comment-list"
+  >
+    <ng-template #commentItem let-item>
+      <nz-comment [nzAuthor]="authorName(item)" [nzDatetime]="datetimeText(item)">
+        <nz-avatar nz-comment-avatar [nzText]="avatarText(item)"></nz-avatar>
+        <nz-comment-content>
+          <div class="comment-body">{{ item.content }}</div>
+        </nz-comment-content>
+      </nz-comment>
+    </ng-template>
+  </nz-list>
+}

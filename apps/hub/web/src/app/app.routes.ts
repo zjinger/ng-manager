@@ -16,6 +16,3 @@ export const routes: Routes = [
   { path: 'releases', loadComponent: () => import('./pages/releases/releases.component').then(m => m.ReleasesPageComponent), canActivate: [adminAuthGuard] },
   { path: '**', redirectTo: 'dashboard' }
 ];
-
-
-

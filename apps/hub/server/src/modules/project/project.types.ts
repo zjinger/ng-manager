@@ -6,7 +6,8 @@ export type ProjectMemberRole =
   | "frontend_dev"
   | "backend_dev"
   | "qa"
-  | "ops";
+  | "ops"
+  | "project_admin";
 
 export interface ProjectEntity {
   id: string;

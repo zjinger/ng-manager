@@ -2,7 +2,7 @@
 
 const statusEnum = z.enum(["active", "archived"]);
 const visibilityEnum = z.enum(["internal", "public"]);
-const memberRoleEnum = z.enum(["product", "ui", "frontend_dev", "backend_dev", "qa", "ops"]);
+const memberRoleEnum = z.enum(["product", "ui", "frontend_dev", "backend_dev", "qa", "ops", "project_admin"]);
 
 const createConfigItemShape = {
   code: z.string().trim().max(64).optional(),

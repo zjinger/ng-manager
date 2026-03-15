@@ -1,0 +1,61 @@
+<section class="page">
+  <app-page-header title="新建 Issue" subtitle="选择项目后录入问题信息并可直接附加截图、日志等附件">
+    <a page-header-actions nz-button routerLink="/issues">返回列表</a>
+  </app-page-header>
+
+  @if (error()) {
+    <nz-alert class="section" nzType="error" [nzMessage]="error()!" nzShowIcon></nz-alert>
+  }
+
+  <nz-card class="section create-card" nzTitle="Issue 信息">
+    <div class="create-layout">
+      <form nz-form [formGroup]="form" class="project-form compact-form">
+        <nz-form-item>
+          <nz-form-label nzRequired>所属项目</nz-form-label>
+          <nz-form-control nzErrorTip="请选择项目">
+            <nz-select formControlName="projectId" nzPlaceHolder="请选择项目" [nzLoading]="loading()">
+              @for (project of projects(); track project.id) {
+                <nz-option [nzValue]="project.id" [nzLabel]="projectLabel(project)"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+      </form>
+
+      <app-issue-form
+        mode="create"
+        [memberOptions]="projectMembers()"
+        [moduleOptions]="moduleOptions()"
+        [versionOptions]="versionOptions()"
+        [environmentOptions]="environmentOptions()"
+        [submitting]="submitting()"
+        (submitted)="submitIssue($event)"
+        (cancelled)="cancel()"
+      />
+
+      <section class="attachment-panel">
+        <div class="section-head">
+          <div>
+            <h4>附件</h4>
+            <span class="muted">支持文件上传，也支持 Ctrl+V 粘贴截图</span>
+          </div>
+          <label nz-button nzType="default" class="upload-trigger">
+            <i nz-icon nzType="upload"></i>
+            选择文件
+            <input #filePicker hidden type="file" multiple (change)="selectFiles(filePicker)" />
+          </label>
+        </div>
+
+        <div class="paste-tip">在当前页面直接按 Ctrl+V 可粘贴截图。</div>
+
+        <app-attachment-card-list
+          class="pending-cards"
+          [items]="pendingAttachmentItems()"
+          [showRemove]="true"
+          [loading]="submitting()"
+          (remove)="removePendingFile($event)"
+        ></app-attachment-card-list>
+      </section>
+    </div>
+  </nz-card>
+</section>

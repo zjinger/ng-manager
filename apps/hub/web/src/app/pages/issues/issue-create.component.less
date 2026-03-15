@@ -1,0 +1,64 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.page {
+  width: 100%;
+  min-width: 0;
+}
+
+.create-card {
+  width: 100%;
+}
+
+.create-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.project-form {
+  display: grid;
+}
+
+.compact-form :is(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.attachment-panel {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 16px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.section-head h4 {
+  margin: 0;
+}
+
+.upload-trigger {
+  position: relative;
+  overflow: hidden;
+}
+
+.paste-tip,
+.muted {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.pending-cards {
+  display: block;
+  margin-top: 12px;
+}
+
+:host ::ng-deep .create-card .ant-card-body {
+  display: grid;
+  gap: 16px;
+}

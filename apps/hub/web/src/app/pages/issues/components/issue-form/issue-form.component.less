@@ -1,0 +1,25 @@
+﻿.issue-form {
+  display: grid;
+  gap: 12px;
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.grid-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+:host ::ng-deep .issue-form .ant-form-item {
+  margin-bottom: 0;
+}

@@ -50,3 +50,14 @@ export interface ProjectVersionItem {
   enabled: boolean;
   sort: number;
 }
+
+
+export function roleLabel(role: ProjectMemberRole): string {
+  if (role === 'product') return '产品';
+  if (role === 'ui') return 'UI/设计';
+  if (role === 'frontend_dev') return '前端开发';
+  if (role === 'backend_dev') return '后端开发';
+  if (role === 'qa') return '测试';
+  if (role === 'ops') return '运维/环境支持';
+  return role;
+}

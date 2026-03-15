@@ -1,0 +1,202 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.detail-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+  padding-bottom: 24px;
+  scrollbar-gutter: stable;
+}
+
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title-row h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+
+.title-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.issue-no {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.section-gap {
+  margin-top: 18px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.section-head h4 {
+  margin: 0;
+}
+
+.compact-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed #f0f0f0;
+}
+
+.meta-row span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.meta-row strong {
+  text-align: right;
+  font-weight: 500;
+}
+
+.description-box {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fafafa;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.action-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.action-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.log-collapse {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 12px;
+  overflow: visible;
+}
+
+.log-collapse summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.log-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.log-item {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.log-head-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.log-operator,
+.log-time,
+.log-transition {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.log-time {
+  flex: 0 0 auto;
+}
+
+.log-summary {
+  color: #1f2937;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.empty-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+:host ::ng-deep .detail-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .compact-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .action-inline {
+    grid-template-columns: 1fr;
+  }
+
+  .log-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

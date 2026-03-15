@@ -1,435 +1,201 @@
 import type { FastifyInstance } from "fastify";
 import fs from "node:fs";
+import { z } from "zod";
 import {
-    addIssueCommentSchema,
-    addIssueParticipantSchema,
-    addIssueWatcherSchema,
-    assignIssueSchema,
-    claimIssueSchema,
-    closeIssueSchema,
-    createIssueSchema,
-    listIssueQuerySchema,
-    removeIssueAttachmentSchema,
-    removeIssueParticipantSchema,
-    removeIssueWatcherSchema,
-    reopenIssueSchema,
-    resolveIssueSchema,
-    reassignIssueSchema,
-    revokeResolveIssueSchema,
-    setIssueVerifierSchema,
-    startIssueSchema,
-    unassignIssueSchema,
-    updateIssueSchema,
-    verifyIssueSchema
+  assignIssueSchema,
+  claimIssueSchema,
+  closeIssueSchema,
+  createIssueSchema,
+  issueIdParamsSchema,
+  listIssuesQuerySchema,
+  reassignIssueSchema,
+  reopenIssueSchema,
+  resolveIssueSchema,
+  startIssueSchema,
+  updateIssueSchema,
+  verifyIssueSchema
 } from "../../modules/issue/issue.schema";
-import type {
-    IssueAttachmentEntity,
-    IssueDetailResult,
-    IssueParticipantEntity
-} from "../../modules/issue/issue.types";
+import { createIssueCommentSchema } from "../../modules/issue-comment/comment.schema";
 import { AppError } from "../../utils/app-error";
-import {
-    getIssueAttachmentAcceptString,
-    ISSUE_ATTACHMENT_EXT_ALLOWLIST,
-    ISSUE_ATTACHMENT_MIME_PREFIX_ALLOWLIST
-} from "../../modules/issue/issue.attachment-policy";
 import { cleanupTempFiles, parseMultipartUpload } from "../../utils/multipart";
 import { ok } from "../../utils/response";
 
-interface IssueAttachmentDto {
-    id: string;
-    originalName: string;
-    fileExt?: string | null;
-    mimeType?: string | null;
-    fileSize: number;
-    storageProvider: "local";
-    uploaderId?: string | null;
-    uploaderName?: string | null;
-    createdAt: string;
-    downloadUrl: string;
-}
+const participantBodySchema = z.object({
+  userId: z.string().trim().min(1).max(64)
+});
 
 function getOperator(request: { adminUser: { id: string; userId?: string | null; nickname?: string | null; username: string } | null }) {
-    if (!request.adminUser) {
-        throw new AppError("AUTH_UNAUTHORIZED", "unauthorized", 401);
+  if (!request.adminUser) {
+    throw new AppError("AUTH_UNAUTHORIZED", "unauthorized", 401);
+  }
+  return {
+    operatorId: request.adminUser.userId?.trim() || request.adminUser.id,
+    operatorName: request.adminUser.nickname?.trim() || request.adminUser.username
+  };
+}
+
+export default async function issueRoutes(fastify: FastifyInstance) {
+  fastify.get("/projects/:projectId/issues", async (request) => {
+    const params = request.params as { projectId: string };
+    const query = listIssuesQuerySchema.parse(request.query);
+    return ok(fastify.services.issue.list(params.projectId, query));
+  });
+
+  fastify.get("/projects/:projectId/issues/:id", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    return ok(fastify.services.issue.getDetail(params.projectId, params.id));
+  });
+
+  fastify.post("/projects/:projectId/issues", async (request) => {
+    const params = request.params as { projectId: string };
+    const body = createIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.create({ ...body, projectId: params.projectId, ...operator }));
+  });
+
+  fastify.patch("/projects/:projectId/issues/:id", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = updateIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.update(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/assign", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = assignIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.assign(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/claim", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = claimIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.claim(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/reassign", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = reassignIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.reassign(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/start", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = startIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.start(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/resolve", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = resolveIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.resolve(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/verify", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = verifyIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.verify(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/reopen", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = reopenIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.reopen(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/close", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = closeIssueSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.close(params.projectId, params.id, { ...body, ...operator }));
+  });
+
+  fastify.get("/projects/:projectId/issues/:id/participants", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    return ok({ items: fastify.services.issue.listParticipants(params.projectId, params.id) });
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/participants", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = participantBodySchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok({ items: fastify.services.issue.addParticipant({ projectId: params.projectId, issueId: params.id, userId: body.userId, ...operator }) });
+  });
+
+  fastify.delete("/projects/:projectId/issues/:id/participants/:userId", async (request) => {
+    const params = request.params as { projectId: string; id: string; userId: string };
+    const operator = getOperator(request);
+    return ok({ items: fastify.services.issue.removeParticipant({ projectId: params.projectId, issueId: params.id, userId: params.userId, ...operator }) });
+  });
+
+  fastify.get("/projects/:projectId/issues/:id/comments", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    return ok({ items: fastify.services.issue.listComments(params.projectId, params.id) });
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/comments", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const body = createIssueCommentSchema.parse(request.body);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.addComment({ projectId: params.projectId, issueId: params.id, content: body.content, mentions: body.mentions, ...operator }));
+  });
+
+  fastify.get("/projects/:projectId/issues/:id/attachments", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    return ok({ items: fastify.services.issue.listAttachments(params.projectId, params.id) });
+  });
+
+  fastify.post("/projects/:projectId/issues/:id/attachments", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    const { files } = await parseMultipartUpload(request);
+    const operator = getOperator(request);
+
+    if (!files.length) {
+      throw new AppError("ISSUE_ATTACHMENT_NO_FILE", "no file uploaded", 400);
     }
 
-    return {
-        operatorId: request.adminUser.userId?.trim() || request.adminUser.id,
-        operatorName: request.adminUser.nickname?.trim() || request.adminUser.username
-    };
-}
-
-function toAttachmentDto(issueId: string, attachment: IssueAttachmentEntity): IssueAttachmentDto {
-    return {
-        id: attachment.id,
-        originalName: attachment.originalName,
-        fileExt: attachment.fileExt,
-        mimeType: attachment.mimeType,
-        fileSize: attachment.fileSize,
-        storageProvider: attachment.storageProvider,
-        uploaderId: attachment.uploaderId,
-        uploaderName: attachment.uploaderName,
-        createdAt: attachment.createdAt,
-        downloadUrl: `/api/admin/issues/${issueId}/attachments/${attachment.id}/download`
-    };
-}
-
-function toLegacyAssignees(detail: IssueDetailResult): IssueParticipantEntity[] {
-    if (!detail.issue.assigneeId) {
-        return [];
+    try {
+      const items = [];
+      for (const file of files) {
+        const item = await fastify.services.issue.createAttachment({
+          projectId: params.projectId,
+          issueId: params.id,
+          originalName: file.originalName,
+          mimeType: file.mimeType,
+          fileSize: file.fileSize,
+          tempFilePath: file.tempFilePath,
+          ...operator
+        });
+        items.push(item);
+      }
+      return ok({ items });
+    } finally {
+      await cleanupTempFiles(files);
     }
-    return [{
-        id: `legacy-${detail.issue.id}-${detail.issue.assigneeId}`,
-        issueId: detail.issue.id,
-        userId: detail.issue.assigneeId,
-        userName: detail.issue.assigneeName,
-        createdAt: detail.issue.updatedAt
-    }];
+  });
+
+  fastify.delete("/projects/:projectId/issues/:id/attachments/:attachmentId", async (request) => {
+    const params = request.params as { projectId: string; id: string; attachmentId: string };
+    const operator = getOperator(request);
+    return ok({ items: fastify.services.issue.deleteAttachment({ projectId: params.projectId, issueId: params.id, attachmentId: params.attachmentId, ...operator }) });
+  });
+
+  fastify.get("/projects/:projectId/issues/:id/attachments/:attachmentId/download", async (request, reply) => {
+    const params = request.params as { projectId: string; id: string; attachmentId: string };
+    const attachment = fastify.services.issue.getAttachment(params.projectId, params.id, params.attachmentId);
+    reply.header("Content-Type", attachment.mimeType || "application/octet-stream");
+    reply.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`);
+    return reply.send(fs.createReadStream(attachment.storagePath));
+  });
+
+  fastify.get("/projects/:projectId/issues/:id/action-logs", async (request) => {
+    const params = issueIdParamsSchema.parse(request.params);
+    return ok({ items: fastify.services.issue.listActionLogs(params.projectId, params.id) });
+  });
 }
-
-function toIssueDetailDto(detail: IssueDetailResult) {
-    return {
-        issue: detail.issue,
-        participants: detail.participants,
-        watchers: detail.watchers,
-        assignees: toLegacyAssignees(detail),
-        comments: detail.comments,
-        attachments: detail.attachments.map((item) => toAttachmentDto(detail.issue.id, item)),
-        logs: detail.logs
-    };
-}
-
-export default async function adminIssueRoutes(fastify: FastifyInstance) {
-    fastify.get("/issues/attachment-policy", async () => {
-        return ok({
-            accept: getIssueAttachmentAcceptString(),
-            mimePrefixes: [...ISSUE_ATTACHMENT_MIME_PREFIX_ALLOWLIST],
-            exts: [...ISSUE_ATTACHMENT_EXT_ALLOWLIST]
-        });
-    });
-
-    fastify.get("/issues", async (request) => {
-        const query = listIssueQuerySchema.parse(request.query);
-        const result = fastify.services.issue.list(query);
-        return ok(result);
-    });
-
-    fastify.get("/issues/:id", async (request) => {
-        const params = request.params as { id: string };
-        const result = fastify.services.issue.getDetail(params.id);
-        return ok(toIssueDetailDto(result));
-    });
-
-    fastify.post("/issues", async (request) => {
-        const body = createIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.create({
-            ...body,
-            reporterId: body.reporterId ?? operator.operatorId,
-            reporterName: body.reporterName ?? operator.operatorName,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.patch("/issues/:id", async (request) => {
-        const params = request.params as { id: string };
-        const body = updateIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.update(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/assign", async (request) => {
-        const params = request.params as { id: string };
-        const body = assignIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.assign(params.id, {
-            ...body,
-            assigneeId: body.assigneeId!,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/claim", async (request) => {
-        const params = request.params as { id: string };
-        const body = claimIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.claim(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/unassign", async (request) => {
-        const params = request.params as { id: string };
-        const body = unassignIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.unassign(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/reassign", async (request) => {
-        const params = request.params as { id: string };
-        const body = reassignIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.reassign(params.id, {
-            ...body,
-            assigneeId: body.assigneeId!,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/verifier", async (request) => {
-        const params = request.params as { id: string };
-        const body = setIssueVerifierSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.setVerifier(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/participants", async (request) => {
-        const params = request.params as { id: string };
-        const body = addIssueParticipantSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.addParticipant(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(toIssueDetailDto(result));
-    });
-
-    fastify.delete("/issues/:id/participants/:userId", async (request) => {
-        const params = request.params as { id: string; userId: string };
-        removeIssueParticipantSchema.parse({ userId: params.userId });
-        const operator = getOperator(request);
-        const result = fastify.services.issue.removeParticipant(params.id, {
-            userId: params.userId,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(toIssueDetailDto(result));
-    });
-
-    fastify.post("/issues/:id/watch", async (request) => {
-        const params = request.params as { id: string };
-        const body = addIssueWatcherSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.addWatcher(params.id, {
-            ...body,
-            userId: body.userId ?? operator.operatorId,
-            userName: body.userName ?? operator.operatorName,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(toIssueDetailDto(result));
-    });
-
-    fastify.delete("/issues/:id/watch", async (request) => {
-        const params = request.params as { id: string };
-        const operator = getOperator(request);
-        const result = fastify.services.issue.removeWatcher(params.id, {
-            userId: operator.operatorId,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(toIssueDetailDto(result));
-    });
-
-    fastify.delete("/issues/:id/watchers/:userId", async (request) => {
-        const params = request.params as { id: string; userId: string };
-        removeIssueWatcherSchema.parse({ userId: params.userId });
-        const operator = getOperator(request);
-        const result = fastify.services.issue.removeWatcher(params.id, {
-            userId: params.userId,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(toIssueDetailDto(result));
-    });
-
-    fastify.post("/issues/:id/start", async (request) => {
-        const params = request.params as { id: string };
-        const body = startIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.start(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/start-progress", async (request) => {
-        const params = request.params as { id: string };
-        const body = startIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.start(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/resolve", async (request) => {
-        const params = request.params as { id: string };
-        const body = resolveIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.resolve(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/mark-fixed", async (request) => {
-        const params = request.params as { id: string };
-        const body = startIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.resolve(params.id, {
-            ...body,
-            comment: body.comment?.trim() || "标记已处理",
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/revoke-resolve", async (request) => {
-        const params = request.params as { id: string };
-        const body = revokeResolveIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.revokeResolve(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/verify", async (request) => {
-        const params = request.params as { id: string };
-        const body = verifyIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.verify(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/reopen", async (request) => {
-        const params = request.params as { id: string };
-        const body = reopenIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.reopen(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/close", async (request) => {
-        const params = request.params as { id: string };
-        const body = closeIssueSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.close(params.id, {
-            ...body,
-            operatorId: operator.operatorId,
-            operatorName: operator.operatorName
-        });
-        return ok(result);
-    });
-
-    fastify.post("/issues/:id/comments", async (request) => {
-        const params = request.params as { id: string };
-        const body = addIssueCommentSchema.parse(request.body);
-        const operator = getOperator(request);
-        const result = fastify.services.issue.addComment(params.id, {
-            ...body,
-            authorId: operator.operatorId,
-            authorName: operator.operatorName
-        });
-        return ok(toIssueDetailDto(result));
-    });
-
-    fastify.post("/issues/:id/attachments", async (request) => {
-        const params = request.params as { id: string };
-        const { files } = await parseMultipartUpload(request);
-        const operator = getOperator(request);
-
-        if (!files.length) {
-            throw new AppError("ISSUE_ATTACHMENT_NO_FILE", "no file uploaded", 400);
-        }
-
-        try {
-            const items: IssueAttachmentDto[] = [];
-            for (const file of files) {
-                const item = await fastify.services.issue.uploadAttachment({
-                    issueId: params.id,
-                    originalName: file.originalName,
-                    mimeType: file.mimeType,
-                    fileSize: file.fileSize,
-                    tempFilePath: file.tempFilePath,
-                    uploaderId: operator.operatorId,
-                    uploaderName: operator.operatorName
-                });
-                items.push(toAttachmentDto(params.id, item));
-            }
-
-            return ok({ items });
-        } finally {
-            await cleanupTempFiles(files);
-        }
-    });
-
-    fastify.get("/issues/:id/attachments", async (request) => {
-        const params = request.params as { id: string };
-        const result = fastify.services.issue.listAttachments(params.id);
-        return ok(result.map((item) => toAttachmentDto(params.id, item)));
-    });
-
-    fastify.get("/issues/:id/attachments/:attachmentId/download", async (request, reply) => {
-        const params = request.params as { id: string; attachmentId: string };
-        const attachment = fastify.services.issue.getAttachment(params.id, params.attachmentId);
-
-        reply.header("Content-Type", attachment.mimeType || "application/octet-stream");
-        reply.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`);
-        return reply.send(fs.createReadStream(attachment.storagePath));
-    });
-
-    fastify.delete("/issues/:id/attachments/:attachmentId", async (request) => {
-        const params = request.params as { id: string; attachmentId: string };
-        removeIssueAttachmentSchema.parse(request.body ?? {});
-        const operator = getOperator(request);
-        const result = fastify.services.issue.removeAttachment(params.id, params.attachmentId, operator);
-        return ok(toIssueDetailDto(result));
-    });
-}
-
-
