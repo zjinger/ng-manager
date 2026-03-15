@@ -17,14 +17,21 @@
           </nz-badge>
         </span>
 
-        <a nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="click" class="user-trigger">
-          <span class="avatar">{{ avatarText() }}</span>
+        <a nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="hover" class="user-trigger">
+          <span class="user-avatar">
+            @if (currentAvatarUrl()) {
+              <img [src]="currentAvatarUrl()!" alt="avatar" class="user-avatar-image" />
+            } @else {
+              <span class="user-avatar-fallback">{{ avatarText() }}</span>
+            }
+          </span>
           <span class="user-name">{{ displayName() }}</span>
           <span nz-icon nzType="down" class="down-icon"></span>
         </a>
 
         <nz-dropdown-menu #userMenu="nzDropdownMenu">
           <ul nz-menu>
+            <li nz-menu-item (click)="openProfile()">个人中心</li>
             <li nz-menu-item [nzDisabled]="loggingOut()" (click)="logout()">退出登录</li>
           </ul>
         </nz-dropdown-menu>
@@ -122,7 +129,12 @@
           </nz-form-control>
         </nz-form-item>
 
-        <button nz-button nzType="primary" (click)="submitPasswordChange()" [disabled]="changingPassword()">
+        <button
+          nz-button
+          nzType="primary"
+          (click)="submitPasswordChange()"
+          [disabled]="changingPassword()"
+        >
           确认修改
         </button>
       </form>

@@ -1,18 +1,26 @@
 import { createDecipheriv, createHash, randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import bcrypt from "bcryptjs";
 import Database from "better-sqlite3";
 import { env } from "../../env";
 import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
+import { UploadService } from "../upload/upload.service";
+import type { UploadEntity } from "../upload/upload.types";
+import { UserRepo } from "../user/user.repo";
+import type { UserEntity } from "../user/user.types";
 import type {
+    AdminAccountProfile,
     AdminUserEntity,
     AdminUserProfile,
     AdminUserRole,
     ChangePasswordInput,
     LoginChallenge,
     LoginInput,
-    ResetPasswordInput
+    ResetPasswordInput,
+    UpdateAdminAccountProfileInput
 } from "./auth.types";
 import { AuthRepo } from "./auth.repo";
 
@@ -20,10 +28,21 @@ interface ChallengeState {
     expiresAt: number;
 }
 
+interface UploadAvatarInput {
+    originalName: string;
+    mimeType?: string | null;
+    fileSize: number;
+    tempFilePath: string;
+}
+
 export class AuthService {
     private readonly challenges = new Map<string, ChallengeState>();
 
-    constructor(private readonly repo: AuthRepo) { }
+    constructor(
+        private readonly repo: AuthRepo,
+        private readonly userRepo: UserRepo,
+        private readonly uploadService: UploadService
+    ) { }
 
     async ensureDefaultAdmin(): Promise<void> {
         const total = this.repo.countAdmins();
@@ -38,6 +57,7 @@ export class AuthService {
             username: env.initAdminUsername.trim(),
             passwordHash,
             nickname: env.initAdminNickname.trim() || null,
+            avatarUploadId: null,
             status: "active",
             role: "admin",
             mustChangePassword: true,
@@ -111,6 +131,107 @@ export class AuthService {
         return this.toProfile(user);
     }
 
+    getAccountProfile(adminUserId: string): AdminAccountProfile {
+        const adminUser = this.requireActiveAdminUser(adminUserId);
+        const linkedUser = adminUser.userId ? this.userRepo.findById(adminUser.userId) : null;
+        return this.toAccountProfile(adminUser, linkedUser);
+    }
+
+    updateAccountProfile(adminUserId: string, input: UpdateAdminAccountProfileInput): AdminAccountProfile {
+        const adminUser = this.requireActiveAdminUser(adminUserId);
+        const linkedUser = adminUser.userId ? this.userRepo.findById(adminUser.userId) : null;
+        const updatedAt = nowIso();
+        const displayName = this.normalizeRequired(input.displayName, "AUTH_DISPLAY_NAME_REQUIRED", "姓名不能为空");
+        const email = this.normalizeOptional(input.email);
+        const mobile = this.normalizeOptional(input.mobile);
+        const bio = this.normalizeOptional(input.bio);
+
+        if (linkedUser) {
+            const changed = this.userRepo.update(linkedUser.id, {
+                displayName,
+                email,
+                mobile,
+                remark: bio,
+                updatedAt
+            });
+            if (!changed) {
+                throw new AppError("AUTH_PROFILE_UPDATE_FAILED", "更新个人资料失败", 500);
+            }
+        }
+
+        const adminChanged = this.repo.updateById(adminUser.id, {
+            nickname: displayName,
+            updatedAt
+        });
+        if (!adminChanged) {
+            throw new AppError("AUTH_PROFILE_UPDATE_FAILED", "更新个人资料失败", 500);
+        }
+
+        return this.getAccountProfile(adminUser.id);
+    }
+
+    uploadAccountAvatar(adminUserId: string, file: UploadAvatarInput): AdminAccountProfile {
+        const adminUser = this.requireActiveAdminUser(adminUserId);
+        if (!fs.existsSync(file.tempFilePath)) {
+            throw new AppError("AUTH_AVATAR_FILE_NOT_FOUND", "未找到上传文件", 400);
+        }
+
+        const upload = this.uploadService.createLocalUpload({
+            category: "avatar",
+            originalName: file.originalName,
+            mimeType: file.mimeType,
+            fileSize: file.fileSize,
+            tempFilePath: file.tempFilePath,
+            storageDir: path.join(env.uploadRoot, "avatars", adminUser.id),
+            visibility: "private",
+            uploaderId: adminUser.userId ?? adminUser.id,
+            uploaderName: adminUser.nickname?.trim() || adminUser.username
+        });
+
+        const previousAvatarId = adminUser.avatarUploadId ?? null;
+        const updatedAt = nowIso();
+        const changed = this.repo.updateById(adminUser.id, {
+            avatarUploadId: upload.id,
+            updatedAt
+        });
+        if (!changed) {
+            this.uploadService.softDelete(upload.id);
+            this.uploadService.deleteLocalFile(upload);
+            throw new AppError("AUTH_AVATAR_UPDATE_FAILED", "更新头像失败", 500);
+        }
+
+        this.removeOldAvatar(previousAvatarId, upload.id);
+        return this.getAccountProfile(adminUser.id);
+    }
+
+    clearAccountAvatar(adminUserId: string): AdminAccountProfile {
+        const adminUser = this.requireActiveAdminUser(adminUserId);
+        const previousAvatarId = adminUser.avatarUploadId ?? null;
+        const changed = this.repo.updateById(adminUser.id, {
+            avatarUploadId: null,
+            updatedAt: nowIso()
+        });
+        if (!changed) {
+            throw new AppError("AUTH_AVATAR_UPDATE_FAILED", "恢复默认头像失败", 500);
+        }
+
+        this.removeOldAvatar(previousAvatarId, null);
+        return this.getAccountProfile(adminUser.id);
+    }
+
+    getAccountAvatar(adminUserId: string): UploadEntity {
+        const adminUser = this.requireActiveAdminUser(adminUserId);
+        if (!adminUser.avatarUploadId) {
+            throw new AppError("AUTH_AVATAR_NOT_FOUND", "未设置个人头像", 404);
+        }
+
+        const upload = this.uploadService.getById(adminUser.avatarUploadId);
+        if (upload.status !== "active") {
+            throw new AppError("AUTH_AVATAR_NOT_FOUND", "未设置个人头像", 404);
+        }
+        return upload;
+    }
+
     isAdminUser(adminUserId: string): boolean {
         const user = this.repo.findById(adminUserId);
         return !!user && user.status === "active" && user.role === "admin";
@@ -147,6 +268,7 @@ export class AuthService {
             username,
             passwordHash,
             nickname: input.nickname ?? null,
+            avatarUploadId: null,
             status: input.status ?? "active",
             role: input.role ?? "user",
             mustChangePassword: input.mustChangePassword ?? true,
@@ -290,6 +412,80 @@ export class AuthService {
         return this.getProfileById(user.id);
     }
 
+    private requireActiveAdminUser(adminUserId: string): AdminUserEntity {
+        const adminUser = this.repo.findById(adminUserId);
+        if (!adminUser) {
+            throw new AppError("AUTH_USER_NOT_FOUND", "账户未找到", 404);
+        }
+        if (adminUser.status !== "active") {
+            throw new AppError("AUTH_USER_DISABLED", "账户已被禁用", 403);
+        }
+        return adminUser;
+    }
+
+    private removeOldAvatar(previousAvatarId: string | null, nextAvatarId: string | null): void {
+        if (!previousAvatarId || previousAvatarId === nextAvatarId) {
+            return;
+        }
+
+        try {
+            const previous = this.uploadService.getById(previousAvatarId);
+            this.uploadService.softDelete(previousAvatarId);
+            this.uploadService.deleteLocalFile(previous);
+        } catch {
+            // 旧头像清理失败不阻断主流程
+        }
+    }
+
+    private toAccountProfile(adminUser: AdminUserEntity, linkedUser: UserEntity | null): AdminAccountProfile {
+        const displayName = linkedUser?.displayName?.trim() || adminUser.nickname?.trim() || adminUser.username;
+        return {
+            id: adminUser.id,
+            userId: adminUser.userId ?? null,
+            username: adminUser.username,
+            displayName,
+            email: linkedUser?.email ?? null,
+            mobile: linkedUser?.mobile ?? null,
+            bio: linkedUser?.remark ?? null,
+            role: adminUser.role,
+            roleLabel: this.getRoleLabel(adminUser.role),
+            avatarUploadId: adminUser.avatarUploadId ?? null,
+            avatarUrl: this.buildAvatarUrl(adminUser),
+            createdAt: adminUser.createdAt,
+            updatedAt: linkedUser?.updatedAt ?? adminUser.updatedAt
+        };
+    }
+
+    private getRoleLabel(role: AdminUserRole): string {
+        return role === "admin" ? "管理员" : "普通成员";
+    }
+
+    private buildAvatarUrl(user: AdminUserEntity): string | null {
+        if (!user.avatarUploadId) {
+            return null;
+        }
+        return "/api/admin/auth/avatar";
+    }
+
+    private normalizeOptional(value?: string | null): string | null | undefined {
+        if (value === undefined) {
+            return undefined;
+        }
+        if (value === null) {
+            return null;
+        }
+        const next = value.trim();
+        return next ? next : null;
+    }
+
+    private normalizeRequired(value: string | null | undefined, code: string, message: string): string {
+        const next = value?.trim() || "";
+        if (!next) {
+            throw new AppError(code, message, 400);
+        }
+        return next;
+    }
+
     private resolvePassword(input: LoginInput): string {
         if ("password" in input) {
             return input.password;
@@ -395,6 +591,8 @@ export class AuthService {
             userId: user.userId ?? null,
             username: user.username,
             nickname: user.nickname,
+            avatarUploadId: user.avatarUploadId ?? null,
+            avatarUrl: this.buildAvatarUrl(user),
             status: user.status,
             role: user.role,
             mustChangePassword: user.mustChangePassword,
@@ -404,9 +602,4 @@ export class AuthService {
         };
     }
 }
-
-
-
-
-
 

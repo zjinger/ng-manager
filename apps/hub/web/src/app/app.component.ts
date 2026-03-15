@@ -64,6 +64,15 @@ export class App {
     return profile.username;
   });
 
+  protected readonly currentAvatarUrl = computed(() => {
+    const profile = this.auth.profile();
+    if (!profile?.avatarUrl) {
+      return null;
+    }
+    const separator = profile.avatarUrl.includes('?') ? '&' : '?';
+    return `${profile.avatarUrl}${separator}v=${encodeURIComponent(profile.updatedAt)}`;
+  });
+
   protected readonly avatarText = computed(() => {
     const profile = this.auth.profile();
     if (!profile) {
@@ -75,7 +84,7 @@ export class App {
       return 'AD';
     }
 
-    return source.slice(0, 2).toUpperCase();
+    return source.slice(0, 1).toUpperCase();
   });
 
   private readonly router = inject(Router);
@@ -114,6 +123,10 @@ export class App {
         this.mustChangePasswordVisible.set(false);
       }
     });
+  }
+
+  protected openProfile(): void {
+    void this.router.navigate(['/profile']);
   }
 
   protected async logout(): Promise<void> {

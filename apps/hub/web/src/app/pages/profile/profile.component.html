@@ -1,0 +1,223 @@
+<div class="page profile-page">
+  <app-page-header title="个人中心" subtitle="管理你的账号信息、头像与密码">
+    <button page-header-actions nz-button nzType="default" (click)="goBack()">返回</button>
+  </app-page-header>
+
+  @if (errorMessage()) {
+    <nz-alert class="section" nzType="error" [nzMessage]="errorMessage()!" nzShowIcon></nz-alert>
+  }
+  @if (!loading()) {
+    <div class="profile-layout">
+      <nz-card class="overview-card">
+        <div class="overview-body" *ngIf="profile() as profile">
+          <div class="avatar-block">
+            @if (avatarUrl()) {
+              <img class="avatar-image" [src]="avatarUrl()!" alt="avatar" />
+            } @else {
+              <nz-avatar [nzText]="avatarText()" [nzSize]="88"></nz-avatar>
+            }
+          </div>
+
+          <div class="overview-name">{{ profile.displayName }}</div>
+          <div class="overview-username">{{ profile.username }}</div>
+          <div class="overview-role">{{ profile.roleLabel }}</div>
+
+          <div class="avatar-actions">
+            <button
+              nz-button
+              nzType="primary"
+              (click)="openAvatarPicker()"
+              [disabled]="uploadingAvatar()"
+            >
+              {{ uploadingAvatar() ? '上传中...' : '更换头像' }}
+            </button>
+            <button
+              nz-button
+              nzType="default"
+              (click)="resetAvatar()"
+              [disabled]="resettingAvatar()"
+            >
+              {{ resettingAvatar() ? '恢复中...' : '恢复默认' }}
+            </button>
+          </div>
+
+          <input
+            #avatarInput
+            type="file"
+            accept="image/*"
+            hidden
+            (change)="onAvatarSelected($event)"
+          />
+        </div>
+      </nz-card>
+
+      <nz-card class="content-card">
+        <nz-tabset>
+          <nz-tab nzTitle="基础资料">
+            <form nz-form nzLayout="vertical" [formGroup]="basicForm" class="profile-form">
+              <nz-form-item>
+                <nz-form-label>用户名</nz-form-label>
+                <nz-form-control>
+                  <input nz-input [value]="profile()?.username || ''" readonly />
+                </nz-form-control>
+              </nz-form-item>
+
+              <nz-form-item>
+                <nz-form-label nzRequired>姓名</nz-form-label>
+                <nz-form-control [nzErrorTip]="nameErrorTpl">
+                  <input nz-input formControlName="displayName" placeholder="请输入姓名" />
+                </nz-form-control>
+              </nz-form-item>
+
+              <nz-form-item>
+                <nz-form-label>邮箱</nz-form-label>
+                <nz-form-control [nzErrorTip]="emailErrorTpl">
+                  <input nz-input formControlName="email" placeholder="请输入邮箱" />
+                </nz-form-control>
+              </nz-form-item>
+
+              <nz-form-item>
+                <nz-form-label>手机</nz-form-label>
+                <nz-form-control>
+                  <input nz-input formControlName="mobile" placeholder="请输入手机号" />
+                </nz-form-control>
+              </nz-form-item>
+
+              <nz-form-item>
+                <nz-form-label>简介</nz-form-label>
+                <nz-form-control>
+                  <textarea
+                    nz-input
+                    rows="5"
+                    formControlName="bio"
+                    placeholder="介绍一下自己"
+                  ></textarea>
+                </nz-form-control>
+              </nz-form-item>
+
+              <div class="form-actions">
+                <button nz-button nzType="default" type="button" (click)="resetBasicForm()">
+                  重置
+                </button>
+                <button
+                  nz-button
+                  nzType="primary"
+                  type="button"
+                  (click)="saveBasicProfile()"
+                  [disabled]="savingBasic()"
+                >
+                  {{ savingBasic() ? '保存中...' : '保存资料' }}
+                </button>
+              </div>
+            </form>
+          </nz-tab>
+
+          <nz-tab nzTitle="头像设置">
+            <div class="avatar-tab" *ngIf="profile() as profile">
+              <div class="avatar-preview">
+                @if (avatarUrl()) {
+                  <img class="avatar-image large" [src]="avatarUrl()!" alt="avatar" />
+                } @else {
+                  <nz-avatar [nzText]="avatarText()" [nzSize]="120"></nz-avatar>
+                }
+              </div>
+
+              <div class="avatar-help">
+                <div class="help-title">当前头像</div>
+                <div class="help-text">
+                  支持上传 JPG、PNG、WEBP 等常见图片。恢复默认后将显示姓名缩写。
+                </div>
+                <div class="avatar-actions inline">
+                  <button
+                    nz-button
+                    nzType="primary"
+                    (click)="openAvatarPicker()"
+                    [disabled]="uploadingAvatar()"
+                  >
+                    {{ uploadingAvatar() ? '上传中...' : '选择头像' }}
+                  </button>
+                  <button
+                    nz-button
+                    nzType="default"
+                    (click)="resetAvatar()"
+                    [disabled]="resettingAvatar() || !profile.avatarUploadId"
+                  >
+                    {{ resettingAvatar() ? '恢复中...' : '恢复默认' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </nz-tab>
+
+          <nz-tab nzTitle="修改密码">
+            <form
+              nz-form
+              nzLayout="vertical"
+              [formGroup]="passwordForm"
+              class="profile-form password-form"
+            >
+              <nz-form-item>
+                <nz-form-label nzRequired>当前密码</nz-form-label>
+                <nz-form-control>
+                  <input nz-input type="password" formControlName="oldPassword" />
+                </nz-form-control>
+              </nz-form-item>
+
+              <nz-form-item>
+                <nz-form-label nzRequired>新密码</nz-form-label>
+                <nz-form-control>
+                  <input nz-input type="password" formControlName="newPassword" />
+                </nz-form-control>
+              </nz-form-item>
+
+              <nz-form-item>
+                <nz-form-label nzRequired>确认新密码</nz-form-label>
+                <nz-form-control>
+                  <input nz-input type="password" formControlName="confirmPassword" />
+                </nz-form-control>
+              </nz-form-item>
+
+              <div class="form-actions">
+                <button
+                  nz-button
+                  nzType="default"
+                  type="button"
+                  (click)="
+                    passwordForm.reset({ oldPassword: '', newPassword: '', confirmPassword: '' })
+                  "
+                >
+                  重置
+                </button>
+                <button
+                  nz-button
+                  nzType="primary"
+                  type="button"
+                  (click)="savePassword()"
+                  [disabled]="changingPassword()"
+                >
+                  {{ changingPassword() ? '提交中...' : '修改密码' }}
+                </button>
+              </div>
+            </form>
+          </nz-tab>
+        </nz-tabset>
+      </nz-card>
+    </div>
+  } @else {
+    <div class="loading-state">
+      <nz-spin nzTip="正在加载个人资料..."></nz-spin>
+    </div>
+  }
+
+  <ng-template #nameErrorTpl>
+    @if (basicForm.controls.displayName.hasError('required')) {
+      请输入姓名
+    }
+  </ng-template>
+
+  <ng-template #emailErrorTpl>
+    @if (basicForm.controls.email.hasError('email')) {
+      请输入正确的邮箱地址
+    }
+  </ng-template>
+</div>

@@ -12,6 +12,8 @@ export interface AdminProfile {
   userId?: string | null;
   username: string;
   nickname?: string | null;
+  avatarUploadId?: string | null;
+  avatarUrl?: string | null;
   status: AdminUserStatus;
   role: AdminUserRole;
   mustChangePassword: boolean;
@@ -122,3 +124,4 @@ export class AdminAuthService {
     this.hasCheckedSession = true;
   }
 }
+

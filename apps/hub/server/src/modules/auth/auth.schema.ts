@@ -21,5 +21,13 @@ export const changePasswordSchema = z.object({
     newPassword: z.string().min(8).max(200)
 });
 
+export const updateAccountProfileSchema = z.object({
+    displayName: z.string().trim().min(1).max(60),
+    email: z.union([z.string().trim().email().max(120), z.literal("")]).optional(),
+    mobile: z.union([z.string().trim().max(40), z.literal("")]).optional(),
+    bio: z.union([z.string().trim().max(500), z.literal("")]).optional()
+});
+
 export type LoginDto = z.infer<typeof loginSchema>;
 export type ChangePasswordDto = z.infer<typeof changePasswordSchema>;
+export type UpdateAccountProfileDto = z.infer<typeof updateAccountProfileSchema>;

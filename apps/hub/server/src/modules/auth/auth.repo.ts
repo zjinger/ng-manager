@@ -7,6 +7,7 @@ type AdminUserRow = {
     username: string;
     password_hash: string;
     nickname: string | null;
+    avatar_upload_id?: string | null;
     status: string;
     role?: string;
     must_change_password: number;
@@ -29,10 +30,10 @@ export class AuthRepo {
     create(entity: AdminUserEntity): void {
         const stmt = this.db.prepare(`
       INSERT INTO admin_users (
-        id, user_id, username, password_hash, nickname, status, role,
+        id, user_id, username, password_hash, nickname, avatar_upload_id, status, role,
         must_change_password, last_login_at, created_at, updated_at
       ) VALUES (
-        @id, @user_id, @username, @password_hash, @nickname, @status, @role,
+        @id, @user_id, @username, @password_hash, @nickname, @avatar_upload_id, @status, @role,
         @must_change_password, @last_login_at, @created_at, @updated_at
       )
     `);
@@ -43,6 +44,7 @@ export class AuthRepo {
             username: entity.username,
             password_hash: entity.passwordHash,
             nickname: entity.nickname ?? null,
+            avatar_upload_id: entity.avatarUploadId ?? null,
             status: entity.status,
             role: entity.role,
             must_change_password: entity.mustChangePassword ? 1 : 0,
@@ -105,6 +107,47 @@ export class AuthRepo {
         return result.changes > 0;
     }
 
+    updateById(
+        id: string,
+        patch: {
+            username?: string;
+            nickname?: string | null;
+            avatarUploadId?: string | null;
+            status?: AdminUserEntity["status"];
+            updatedAt: string;
+        }
+    ): boolean {
+        const fields: string[] = [];
+        const params: unknown[] = [];
+
+        if (patch.username !== undefined) {
+            fields.push("username = ?");
+            params.push(patch.username);
+        }
+        if (patch.nickname !== undefined) {
+            fields.push("nickname = ?");
+            params.push(patch.nickname);
+        }
+        if (patch.avatarUploadId !== undefined) {
+            fields.push("avatar_upload_id = ?");
+            params.push(patch.avatarUploadId);
+        }
+        if (patch.status !== undefined) {
+            fields.push("status = ?");
+            params.push(patch.status);
+        }
+
+        fields.push("updated_at = ?");
+        params.push(patch.updatedAt);
+        params.push(id);
+
+        const result = this.db
+            .prepare(`UPDATE admin_users SET ${fields.join(", ")} WHERE id = ?`)
+            .run(...params);
+
+        return result.changes > 0;
+    }
+
     updateByUserId(
         userId: string,
         patch: {
@@ -148,6 +191,7 @@ export class AuthRepo {
             username: row.username,
             passwordHash: row.password_hash,
             nickname: row.nickname,
+            avatarUploadId: row.avatar_upload_id ?? null,
             status: row.status as AdminUserEntity["status"],
             role: (row.role ?? "admin") as AdminUserEntity["role"],
             mustChangePassword: row.must_change_password === 1,

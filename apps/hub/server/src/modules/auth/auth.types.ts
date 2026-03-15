@@ -7,6 +7,7 @@ export interface AdminUserEntity {
     username: string;
     passwordHash: string;
     nickname?: string | null;
+    avatarUploadId?: string | null;
     status: AdminUserStatus;
     role: AdminUserRole;
     mustChangePassword: boolean;
@@ -20,12 +21,37 @@ export interface AdminUserProfile {
     userId?: string | null;
     username: string;
     nickname?: string | null;
+    avatarUploadId?: string | null;
+    avatarUrl?: string | null;
     status: AdminUserStatus;
     role: AdminUserRole;
     mustChangePassword: boolean;
     lastLoginAt?: string | null;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface AdminAccountProfile {
+    id: string;
+    userId?: string | null;
+    username: string;
+    displayName: string;
+    email?: string | null;
+    mobile?: string | null;
+    bio?: string | null;
+    role: AdminUserRole;
+    roleLabel: string;
+    avatarUploadId?: string | null;
+    avatarUrl?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface UpdateAdminAccountProfileInput {
+    displayName?: string | null;
+    email?: string | null;
+    mobile?: string | null;
+    bio?: string | null;
 }
 
 export interface CreateAdminUserInput {

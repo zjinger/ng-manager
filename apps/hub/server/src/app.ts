@@ -11,8 +11,6 @@ import { DocumentRepo } from "./modules/document/document.repo";
 import { DocumentService } from "./modules/document/document.service";
 import { FeedbackRepo } from "./modules/feedback/feedback.repo";
 import { FeedbackService } from "./modules/feedback/feedback.service";
-import { UploadRepo } from "./modules/upload/upload.repo";
-import { UploadService } from "./modules/upload/upload.service";
 import { IssueAttachmentRepo } from "./modules/issue-attachment/attachment.repo";
 import { IssueAttachmentService } from "./modules/issue-attachment/attachment.service";
 import { IssueCommentRepo } from "./modules/issue-comment/comment.repo";
@@ -32,6 +30,8 @@ import { ReleaseRepo } from "./modules/release/release.repo";
 import { ReleaseService } from "./modules/release/release.service";
 import { SharedConfigRepo } from "./modules/shared-config/shared-config.repo";
 import { SharedConfigService } from "./modules/shared-config/shared-config.service";
+import { UploadRepo } from "./modules/upload/upload.repo";
+import { UploadService } from "./modules/upload/upload.service";
 import { UserRepo } from "./modules/user/user.repo";
 import { UserService } from "./modules/user/user.service";
 import authPlugin from "./plugins/auth.plugin";
@@ -76,13 +76,17 @@ export async function createApp() {
   const documentRepo = new DocumentRepo(app.db);
   const documentService = new DocumentService(documentRepo, projectRepo);
 
+  const uploadRepo = new UploadRepo(app.db);
+  const uploadService = new UploadService(uploadRepo);
+
+  const userRepo = new UserRepo(app.db);
+
   const authRepo = new AuthRepo(app.db);
-  const authService = new AuthService(authRepo);
+  const authService = new AuthService(authRepo, userRepo, uploadService);
 
   const sharedConfigRepo = new SharedConfigRepo(app.db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectRepo);
 
-  const userRepo = new UserRepo(app.db);
   const userService = new UserService(userRepo, authService);
 
   const releaseRepo = new ReleaseRepo(app.db);
@@ -96,8 +100,6 @@ export async function createApp() {
   const issueParticipantService = new IssueParticipantService(issueRepo, issueParticipantRepo, issuePermission, issueLogService);
   const issueCommentRepo = new IssueCommentRepo(app.db);
   const issueCommentService = new IssueCommentService(issueRepo, issueCommentRepo, projectMemberService, issuePermission, issueLogService);
-  const uploadRepo = new UploadRepo(app.db);
-  const uploadService = new UploadService(uploadRepo);
   const issueAttachmentRepo = new IssueAttachmentRepo(app.db);
   const issueAttachmentService = new IssueAttachmentService(issueRepo, issueAttachmentRepo, uploadService, issuePermission, issueLogService);
   const issueService = new IssueService(
@@ -161,6 +163,3 @@ export async function createApp() {
 
   return app;
 }
-
-
-

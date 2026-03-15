@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   nickname TEXT,
+  avatar_upload_id TEXT,
   status TEXT NOT NULL DEFAULT 'active',
   role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'user')),
   must_change_password INTEGER NOT NULL DEFAULT 1,
@@ -107,6 +108,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
 CREATE INDEX IF NOT EXISTS idx_admin_users_status ON admin_users(status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_user_id ON admin_users(user_id) WHERE user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role);
+CREATE INDEX IF NOT EXISTS idx_admin_users_avatar_upload_id ON admin_users(avatar_upload_id);
 
 
 CREATE TABLE IF NOT EXISTS projects (

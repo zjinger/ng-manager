@@ -82,22 +82,56 @@
   }
 }
 
-.avatar {
+.user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: #f5f7fa;
+  }
+}
+
+.user-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #1677ff;
-  color: #ffffff;
+  overflow: hidden;
+  flex: 0 0 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  background: #1677ff;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.user-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-avatar-fallback {
+  color: #ffffff;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   user-select: none;
 }
 
 .user-name {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
+  line-height: 1;
   color: #262626;
 }
 
@@ -105,14 +139,6 @@
   font-size: 12px;
   color: #8c8c8c;
   cursor: pointer;
-}
-
-.user-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  color: inherit;
 }
 
 .shell-body {
@@ -176,6 +202,7 @@
   min-width: 0;
   overflow: auto;
 }
+
 .change-password-form {
   display: grid;
   gap: 8px;
