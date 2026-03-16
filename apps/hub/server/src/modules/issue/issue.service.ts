@@ -34,6 +34,15 @@ import type {
 
 const MAX_ISSUE_NO_RETRY = 5;
 
+const ISSUE_NO_PREFIX: Record<IssueEntity["type"], string> = {
+  bug: "BUG",
+  feature: "FEAT",
+  change: "CHG",
+  improvement: "IMP",
+  task: "TASK",
+  test: "TEST"
+};
+
 export class IssueService {
   constructor(
     private readonly repo: IssueRepo,
@@ -49,7 +58,26 @@ export class IssueService {
 
   list(projectId: string, query: Omit<ListIssuesQuery, "projectId">): IssueListResult {
     this.requireProject(projectId);
-    return this.repo.list({ ...query, projectId });
+    const result = this.repo.list({ ...query, projectId });
+    if (result.items.length === 0) {
+      return result;
+    }
+
+    const participants = this.participantRepo.listByIssueIds(result.items.map((item) => item.id));
+    const participantMap = new Map<string, string[]>();
+    for (const participant of participants) {
+      const current = participantMap.get(participant.issueId) ?? [];
+      current.push(participant.userName);
+      participantMap.set(participant.issueId, current);
+    }
+
+    return {
+      ...result,
+      items: result.items.map((item) => ({
+        ...item,
+        participantNames: participantMap.get(item.id) ?? []
+      }))
+    };
   }
 
   getById(projectId: string, issueId: string): IssueEntity {
@@ -77,6 +105,8 @@ export class IssueService {
     this.permission.assertCanCreate(input.projectId, operatorId);
     const reporter = this.permission.requireProjectMember(input.projectId, operatorId, "create issue");
 
+    const issueType = input.type ?? "bug";
+
     let assigneeId: string | null = null;
     let assigneeName: string | null = null;
     if (input.assigneeId?.trim()) {
@@ -90,10 +120,10 @@ export class IssueService {
       const entity: IssueEntity = {
         id: genId("iss"),
         projectId: input.projectId,
-        issueNo: this.generateIssueNo(),
+        issueNo: this.generateIssueNo(issueType),
         title: input.title.trim(),
         description: input.description?.trim() || "",
-        type: input.type ?? "bug",
+        type: issueType,
         status: "open",
         priority: input.priority ?? "medium",
         reporterId: reporter.userId,
@@ -481,7 +511,7 @@ export class IssueService {
     }
   }
 
-  private generateIssueNo(): string {
+  private generateIssueNo(type: IssueEntity["type"]): string {
     const now = new Date();
     const date = [
       now.getFullYear().toString(),
@@ -494,6 +524,9 @@ export class IssueService {
       String(now.getSeconds()).padStart(2, "0")
     ].join("");
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
-    return `ISSUE-${date}-${time}${random}`;
+    const prefix = ISSUE_NO_PREFIX[type] || "ISSUE";
+    return `${prefix}-${date}-${time}${random}`;
   }
 }
+
+

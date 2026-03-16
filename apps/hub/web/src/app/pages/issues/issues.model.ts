@@ -33,6 +33,7 @@ export interface IssueItem {
   reporterName: string;
   assigneeId?: string | null;
   assigneeName?: string | null;
+  participantNames?: string[];
   reopenCount: number;
   moduleCode?: string | null;
   versionCode?: string | null;
@@ -285,3 +286,4 @@ export function formatActionTransition(log: IssueActionLog): string {
   const to = log.toStatus ? issueStatusLabel(log.toStatus) : '无';
   return `${from} -> ${to}`;
 }
+

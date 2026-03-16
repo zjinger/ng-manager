@@ -53,4 +53,13 @@ export class IssueListComponent {
   protected readonly priorityColor = issuePriorityColor;
   protected readonly typeLabel = issueTypeLabel;
   protected readonly typeColor = issueTypeColor;
+
+  protected assigneeSummary(item: IssueItem): string {
+    const assignee = item.assigneeName?.trim() || '-';
+    const participants = (item.participantNames ?? []).filter((name) => !!name?.trim());
+    if (!participants.length) {
+      return assignee;
+    }
+    return `${assignee}、${participants.join('、')}`;
+  }
 }

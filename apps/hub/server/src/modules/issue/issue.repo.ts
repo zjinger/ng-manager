@@ -204,6 +204,7 @@ export class IssueRepo {
       reporterName: row.reporter_name,
       assigneeId: row.assignee_id,
       assigneeName: row.assignee_name,
+      participantNames: [],
       reopenCount: row.reopen_count,
       moduleCode: row.module_code,
       versionCode: row.version_code,
@@ -226,3 +227,4 @@ export class IssueRepo {
     return status as IssueStatus;
   }
 }
+

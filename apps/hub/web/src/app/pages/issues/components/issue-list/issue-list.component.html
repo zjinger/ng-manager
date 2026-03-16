@@ -21,7 +21,7 @@
         [nzData]="items"
         [nzFrontPagination]="false"
         [nzLoading]="loading"
-        [nzScroll]="{ y: 'calc(100vh - 372px)' }"
+        [nzScroll]="{ y: '100%' }"
         class="issue-table"
       >
         <thead>
@@ -31,8 +31,9 @@
             <th nzWidth="88px">状态</th>
             <th nzWidth="88px">优先级</th>
             <th nzWidth="96px">类型</th>
+            <th nzWidth="140px">功能模块</th>
             <th nzWidth="120px">提出人</th>
-            <th nzWidth="120px">处理人</th>
+            <th nzWidth="220px">处理人 / 参与人</th>
             <th nzWidth="160px">更新时间</th>
           </tr>
         </thead>
@@ -46,8 +47,13 @@
               <td><nz-tag [nzColor]="statusColor(item)">{{ statusLabel(item) }}</nz-tag></td>
               <td><nz-tag [nzColor]="priorityColor(item.priority)">{{ priorityLabel(item.priority) }}</nz-tag></td>
               <td><nz-tag [nzColor]="typeColor(item.type)">{{ typeLabel(item.type) }}</nz-tag></td>
+              <td>
+                <span class="ellipsis" nz-tooltip [nzTooltipTitle]="item.moduleCode || '-'">{{ item.moduleCode || '-' }}</span>
+              </td>
               <td>{{ item.reporterName || '-' }}</td>
-              <td>{{ item.assigneeName || '-' }}</td>
+              <td>
+                <span class="ellipsis multi-line" nz-tooltip [nzTooltipTitle]="assigneeSummary(item)">{{ assigneeSummary(item) }}</span>
+              </td>
               <td>{{ item.updatedAt | hubDateTime }}</td>
             </tr>
           }

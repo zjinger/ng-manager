@@ -36,6 +36,7 @@ export interface IssueEntity {
   reporterName: string;
   assigneeId?: string | null;
   assigneeName?: string | null;
+  participantNames?: string[];
   reopenCount: number;
   moduleCode?: string | null;
   versionCode?: string | null;
@@ -153,3 +154,4 @@ export type UpdateIssuePatch = Partial<{
   reopenCount: number;
   updatedAt: string;
 }>;
+

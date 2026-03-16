@@ -1,4 +1,4 @@
-﻿import type Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import type { IssueParticipantEntity } from "./participant.types";
 
 type IssueParticipantRow = {
@@ -19,6 +19,22 @@ export class IssueParticipantRepo {
       WHERE issue_id = ?
       ORDER BY created_at ASC
     `).all(issueId) as IssueParticipantRow[];
+    return rows.map((row) => this.toEntity(row));
+  }
+
+  listByIssueIds(issueIds: string[]): IssueParticipantEntity[] {
+    if (issueIds.length === 0) {
+      return [];
+    }
+
+    const placeholders = issueIds.map(() => '?').join(', ');
+    const rows = this.db.prepare(`
+      SELECT id, issue_id, user_id, user_name, created_at
+      FROM issue_participants
+      WHERE issue_id IN (${placeholders})
+      ORDER BY created_at ASC
+    `).all(...issueIds) as IssueParticipantRow[];
+
     return rows.map((row) => this.toEntity(row));
   }
 
