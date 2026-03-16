@@ -4,9 +4,11 @@
   "scripts": {
     "build:web": "npm --prefix ./web run build",
     "build:server": "npm --prefix ./server run build",
-    "copy:web": "node ./scripts/copy-web.js",
+    "copy": "node ./scripts/copy.js",
     "build": "node ./scripts/build-all.js",
-    "deploy:prod": "node ./scripts/deploy-server.js --target=prod",
-    "deploy:prod:skip-build": "node ./scripts/deploy-server.js --target=prod --skip-build"
+    "package": "node ./scripts/package-release.js",
+    "release:prod": "node ./scripts/deploy-server.js --target=prod",
+    "release:prod:skip-build": "node ./scripts/deploy-server.js --target=prod --skip-build",
+    "remote:install:prod": "node ./scripts/deploy-server.js --target=prod --install-remote-scripts"
   }
 }

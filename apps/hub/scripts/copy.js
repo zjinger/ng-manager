@@ -1,3 +1,27 @@
+/**
+ *  copy.js
+ * 负责将构建产物和必要的配置文件从源目录复制到 build 目录，为后续的打包发布做准备
+ * 主要步骤：
+ *  1. 清理 build 目录，确保干净的构建环境
+ *  2. 将 server/dist 下的所有文件复制到 build 根目录
+ *  3. 将 web/dist 下的所有文件复制到 build/www 目录
+ *  4. 将 server/package.json 中的必要字段（如 dependencies, scripts）提取出来，生成新的 package.json 到 build 目录
+ *  5. 将 server/package-lock.json（如果存在）复制到 build 目录
+ *  6. 将 server/.env.production（如果存在）复制到 build 目录
+ *  7. 将根目录下的 ecosystem.config.cjs 复制到 build 目录
+ * 注意：
+ *  - 该脚本假设 server 和 web 的构建产物分别位于 server/dist 和 web/dist
+ *  - 生成的 build 目录结构如下：
+ *  build/
+ *   ├── ...               # 来自 server/dist 的文件
+ *   ├── www/                 # 来自 web/dist 的文件
+ *   ├── package.json          # 生成的生产环境 package.json
+ *   ├── package-lock.json     # 来自 server/package-lock.json（如果存在）
+ *   ├── .env.production       # 来自 server/.env.production（如果存在）
+ *   └── ecosystem.config.cjs   # 来自根目录的 ecosystem.config.cjs
+ * 该脚本的目的是为后续的打包和部署步骤准备好一个干净且包含必要文件的 build 目录，确保生产环境部署时只包含必要的文件和配置，避免不必要的开发依赖和文件被部署到生产环境中。
+ *
+ */
 const fs = require("node:fs");
 const path = require("node:path");
 

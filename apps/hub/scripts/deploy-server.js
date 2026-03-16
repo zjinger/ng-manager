@@ -1,157 +1,146 @@
-// scripts/deploy-server.js
 /**
- * 1 本地 build
- * 2 打包 build/* -> ngm-hub.tar.gz
- * 3 scp 上传 tar.gz
- * 4 scp 上传 remote-deploy.sh rollback.sh clean-old-releases.sh
- * 5 ssh 执行 remote-deploy.sh
- * 6 remote-deploy.sh 启动 pm2
+ * deploy-server.js
+ * 负责将打包好的压缩包上传到远程服务器，并执行部署脚本完成部署
+ * 主要步骤：
+ *  1. 解析命令行参数，获取部署目标和选项
+ *  2. 从 deploy-config.json 中加载目标服务器的连接信息和部署配置
+ *  3. 根据配置执行构建、打包、上传和部署操作
+ * 注意：
+ *  - 该脚本假设已经通过 build 和 package 脚本准备好了一个包含必要文件和配置的压缩包（如 ngm-hub.tar.gz）
+ * - 该脚本会使用 ssh 和 scp 命令与远程服务器进行交互，确保远程服务器上有一个部署脚本（如 remote-deploy.sh）来处理上传的压缩包并完成部署
+ * - 该脚本的目的是简化部署过程，确保每次部署都包含最新的代码和配置，并且可以通过简单的命令行参数来控制构建和部署流程
+ * 
  */
 
-const { execSync } = require("node:child_process");
-const path = require("node:path");
 const fs = require("node:fs");
+const path = require("node:path");
+const { execSync } = require("node:child_process");
 
 const HUB_ROOT = path.resolve(__dirname, "..");
-const SCRIPTS_DIR = path.join(HUB_ROOT, "scripts");
-const BUILD_DIR = path.join(HUB_ROOT, "build");
-const ARCHIVE_NAME = "ngm-hub.tar.gz";
-const ARCHIVE_PATH = path.join(HUB_ROOT, ARCHIVE_NAME);
+const SCRIPTS_DIR = __dirname;
+const REMOTE_SCRIPTS_DIR = path.join(SCRIPTS_DIR, "remote");
+const CONFIG_PATH = path.join(SCRIPTS_DIR, "deploy-config.json");
 
-const rawCfg = require("./deploy-config.json");
-
-function run(cmd, options = {}) {
-  console.log(`\n▶ ${cmd}`);
-  execSync(cmd, {
-    stdio: "inherit",
-    cwd: HUB_ROOT,
-    ...options
-  });
-}
-
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const result = {
-    target: "prod",
-    skipBuild: false
+function parseArgs(argv) {
+  const args = {
+    target: null,
+    skipBuild: false,
+    installRemoteScripts: false,
   };
 
-  for (const arg of args) {
+  for (const arg of argv.slice(2)) {
     if (arg.startsWith("--target=")) {
-      result.target = arg.split("=")[1];
+      args.target = arg.split("=")[1];
     } else if (arg === "--skip-build") {
-      result.skipBuild = true;
+      args.skipBuild = true;
+    } else if (arg === "--install-remote-scripts") {
+      args.installRemoteScripts = true;
     }
   }
 
-  return result;
-}
-
-function ensureExists(filePath, label) {
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`${label} not found: ${filePath}`);
-  }
-}
-
-function getTargetConfig(targetName) {
-  const cfg = rawCfg.targets?.[targetName];
-  if (!cfg) {
-    throw new Error(`Unknown deploy target: ${targetName}`);
+  if (!args.target) {
+    throw new Error("missing required arg: --target=<name>");
   }
 
-  const { host, user, port = 22, dir = "/opt/ngm-hub" } = cfg;
-
-  if (!host || !user) {
-    throw new Error(`Invalid target config "${targetName}"`);
-  }
-
-  return { name: targetName, host, user, port, dir };
+  return args;
 }
 
-function ensureBuild(skipBuild) {
-  if (skipBuild) {
-    console.log("[deploy] skip build");
-  } else {
-    run("node ./scripts/build-all.js");
+function loadConfig(targetName) {
+  const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
+  const config = JSON.parse(raw);
+  const target = config.targets?.[targetName];
+
+  if (!target) {
+    throw new Error(`target not found: ${targetName}`);
   }
 
-  ensureExists(BUILD_DIR, "build dir");
-  ensureExists(path.join(BUILD_DIR, "index.js"), "build entry index.js");
-  ensureExists(path.join(BUILD_DIR, "package.json"), "build package.json");
-  ensureExists(path.join(BUILD_DIR, "ecosystem.config.cjs"), "build ecosystem.config.cjs");
+  return target;
 }
 
-function resolvePackListFromBuild() {
-  const entries = fs.readdirSync(BUILD_DIR);
-  if (!entries.length) {
-    throw new Error(`build dir is empty: ${BUILD_DIR}`);
+function run(command, cwd = HUB_ROOT) {
+  console.log(`[deploy] ${command}`);
+  execSync(command, {
+    cwd,
+    stdio: "inherit",
+  });
+}
+
+function quote(value) {
+  return `"${value}"`;
+}
+
+function getSshBase(target) {
+  return `ssh -p ${target.port} ${target.user}@${target.host}`;
+}
+
+function getScpBase(target) {
+  return `scp -P ${target.port}`;
+}
+
+function buildAndPackage(skipBuild) {
+  if (!skipBuild) {
+    run("npm run build");
   }
-  return entries;
+  run("npm run package");
 }
 
-function createArchive() {
-  if (fs.existsSync(ARCHIVE_PATH)) {
-    fs.unlinkSync(ARCHIVE_PATH);
-  }
+function installRemoteScripts(target) {
+  const ssh = getSshBase(target);
+  const scp = getScpBase(target);
 
-  const packList = resolvePackListFromBuild();
+  run(`${ssh} "mkdir -p ${target.remoteBinDir}"`);
 
-  console.log("[deploy] pack files from build:");
-  for (const item of packList) {
-    console.log(`  - ${item}`);
-  }
-
-  // 关键点：从 build 目录切进去，把 build/* 平铺打进压缩包根目录
-  const tarCmd = [
-    "tar",
-    "-czf",
-    `"${ARCHIVE_PATH}"`,
-    "-C",
-    `"${BUILD_DIR}"`,
-    ...packList.map((item) => `"${item}"`)
-  ].join(" ");
-
-  run(tarCmd);
-  ensureExists(ARCHIVE_PATH, "archive");
-}
-
-function uploadFile(localPath, remotePath, port, user, host) {
-  ensureExists(localPath, "upload file");
-  run(`scp -P ${port} "${localPath}" ${user}@${host}:"${remotePath}"`);
-}
-
-function uploadAndDeploy(target) {
-  const { host, user, port, dir } = target;
-
-  const remoteDeployScript = path.join(SCRIPTS_DIR, "remote-deploy.sh");
-  const rollbackScript = path.join(SCRIPTS_DIR, "rollback.sh");
-  const cleanScript = path.join(SCRIPTS_DIR, "clean-old-releases.sh");
-
-  ensureExists(remoteDeployScript, "remote deploy script");
-  ensureExists(rollbackScript, "rollback script");
-  ensureExists(cleanScript, "clean releases script");
-
-  run(`ssh -p ${port} ${user}@${host} "mkdir -p ${dir}"`);
-
-  uploadFile(ARCHIVE_PATH, `${dir}/${ARCHIVE_NAME}`, port, user, host);
-  uploadFile(remoteDeployScript, `${dir}/remote-deploy.sh`, port, user, host);
-  uploadFile(rollbackScript, `${dir}/rollback.sh`, port, user, host);
-  uploadFile(cleanScript, `${dir}/clean-old-releases.sh`, port, user, host);
+  const remoteDeploy = path.join(REMOTE_SCRIPTS_DIR, "remote-deploy.sh");
+  const rollback = path.join(REMOTE_SCRIPTS_DIR, "rollback.sh");
+  const clean = path.join(REMOTE_SCRIPTS_DIR, "clean-old-releases.sh");
 
   run(
-    `ssh -p ${port} ${user}@${host} "cd ${dir} && chmod +x remote-deploy.sh rollback.sh clean-old-releases.sh && ./remote-deploy.sh ${ARCHIVE_NAME}"`
+    `${scp} ${quote(remoteDeploy)} ${target.user}@${target.host}:${target.remoteBinDir}/remote-deploy.sh`,
   );
+  run(
+    `${scp} ${quote(rollback)} ${target.user}@${target.host}:${target.remoteBinDir}/rollback.sh`,
+  );
+  run(
+    `${scp} ${quote(clean)} ${target.user}@${target.host}:${target.remoteBinDir}/clean-old-releases.sh`,
+  );
+
+  run(
+    `${ssh} "chmod +x ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh"`,
+  );
+
+  console.log("[deploy] remote scripts installed");
+}
+
+function uploadArchiveAndDeploy(target) {
+  const archivePath = path.join(HUB_ROOT, target.archiveName);
+  if (!fs.existsSync(archivePath)) {
+    throw new Error(`archive not found: ${archivePath}`);
+  }
+
+  const ssh = getSshBase(target);
+  const scp = getScpBase(target);
+  const remoteArchivePath = `${target.incomingDir}/${target.archiveName}`;
+
+  run(`${ssh} "mkdir -p ${target.appRoot} ${target.incomingDir}"`);
+  run(
+    `${scp} ${quote(archivePath)} ${target.user}@${target.host}:${remoteArchivePath}`,
+  );
+  run(`${ssh} "${target.remoteDeployScript} ${remoteArchivePath}"`);
+
+  console.log("[deploy] release done");
 }
 
 function main() {
-  const args = parseArgs();
-  const target = getTargetConfig(args.target);
+  const args = parseArgs(process.argv);
+  const target = loadConfig(args.target);
 
-  ensureBuild(args.skipBuild);
-  createArchive();
-  uploadAndDeploy(target);
+  if (args.installRemoteScripts) {
+    installRemoteScripts(target);
+    return;
+  }
 
-  console.log("\n[deploy] done");
+  buildAndPackage(args.skipBuild);
+  uploadArchiveAndDeploy(target);
 }
 
 main();
