@@ -93,7 +93,7 @@ export class ProjectsPageComponent {
   protected readonly environments = signal<ProjectConfigItem[]>([]);
   protected readonly versions = signal<ProjectVersionItem[]>([]);
 
-  protected readonly memberRoleOptions: ProjectMemberRole[] = ['product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops'];
+  protected readonly memberRoleOptions: ProjectMemberRole[] = ['product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops', 'project_admin'];
 
   protected readonly projectForm = this.fb.nonNullable.group({
     name: ['', [Validators.required]],

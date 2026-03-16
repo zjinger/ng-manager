@@ -1,6 +1,6 @@
 export type ProjectStatus = 'active' | 'archived';
 export type ProjectVisibility = 'internal' | 'public';
-export type ProjectMemberRole = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops';
+export type ProjectMemberRole = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops' | 'project_admin';
 
 export interface ProjectItem {
   id: string;
@@ -59,5 +59,6 @@ export function roleLabel(role: ProjectMemberRole): string {
   if (role === 'backend_dev') return '后端开发';
   if (role === 'qa') return '测试';
   if (role === 'ops') return '运维/环境支持';
+  if (role === 'project_admin') return '项目管理员';
   return role;
 }
