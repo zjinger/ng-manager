@@ -1,0 +1,37 @@
+<section class="page dashboard-page">
+  @if (errorMessage()) {
+    <nz-alert class="section" nzType="error" [nzMessage]="errorMessage()!" nzShowIcon></nz-alert>
+    <div class="retry-row section">
+      <button nz-button nzType="default" (click)="reload()" [disabled]="loading()">重新加载</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">
+      <nz-spin nzTip="正在加载工作台..."></nz-spin>
+    </div>
+  } @else {
+    @if (hero(); as heroData) {
+      <app-dashboard-hero
+        class="section"
+        [data]="heroData"
+        (profileClick)="openProfile()"
+        (changePasswordClick)="openPassword()"
+      ></app-dashboard-hero>
+
+      <app-dashboard-stat-grid class="section" [stats]="stats()"></app-dashboard-stat-grid>
+
+      <div class="dashboard-main-grid section">
+        <app-dashboard-pending-list [items]="pendingItems()"></app-dashboard-pending-list>
+        <app-dashboard-activity-list [items]="activityItems()"></app-dashboard-activity-list>
+
+        <div class="dashboard-side-stack">
+          <app-dashboard-announcement-panel [items]="announcementItems()"></app-dashboard-announcement-panel>
+          <app-dashboard-document-panel [items]="documentItems()"></app-dashboard-document-panel>
+        </div>
+      </div>
+
+      <app-dashboard-shortcuts [items]="shortcutItems"></app-dashboard-shortcuts>
+    }
+  }
+</section>

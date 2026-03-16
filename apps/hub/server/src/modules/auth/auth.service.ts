@@ -457,7 +457,7 @@ export class AuthService {
     }
 
     private getRoleLabel(role: AdminUserRole): string {
-        return role === "admin" ? "管理员" : "普通成员";
+        return role === "admin" ? "管理员" : "项目成员";
     }
 
     private buildAvatarUrl(user: AdminUserEntity): string | null {

@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
@@ -66,6 +67,7 @@ export class ProfilePageComponent {
   protected readonly changingPassword = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly profile = signal<AccountProfile | null>(null);
+  protected readonly selectedTabIndex = signal(0);
 
   protected readonly avatarUrl = computed(() => {
     const profile = this.profile();
@@ -89,6 +91,7 @@ export class ProfilePageComponent {
   private readonly api = inject(HubApiService);
   private readonly auth = inject(AdminAuthService);
   private readonly notification = inject(NzNotificationService);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   protected readonly basicForm = this.fb.nonNullable.group({
@@ -105,6 +108,10 @@ export class ProfilePageComponent {
   });
 
   public constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.applyTab(params.get('tab'));
+    });
+
     void this.loadProfile();
   }
 
@@ -231,6 +238,18 @@ export class ProfilePageComponent {
     void this.router.navigate(['/dashboard']);
   }
 
+  private applyTab(tab: string | null): void {
+    if (tab === 'avatar') {
+      this.selectedTabIndex.set(1);
+      return;
+    }
+    if (tab === 'password') {
+      this.selectedTabIndex.set(2);
+      return;
+    }
+    this.selectedTabIndex.set(0);
+  }
+
   private resolveErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HubApiError) {
       return error.message;
@@ -241,4 +260,6 @@ export class ProfilePageComponent {
     return fallback;
   }
 }
+
+
 
