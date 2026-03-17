@@ -13,6 +13,8 @@ import type {
   UpdateProjectVersionItemInput
 } from "./project.types";
 
+type ProjectListFilters = Omit<ListProjectQuery, "page" | "pageSize">;
+
 type ProjectRow = {
   id: string;
   project_key: string;
@@ -146,21 +148,49 @@ export class ProjectRepo {
   list(query: ListProjectQuery): ProjectListResult {
     const where: string[] = [];
     const params: unknown[] = [];
-
-    if (query.status) {
-      where.push("p.status = ?");
-      params.push(query.status);
-    }
-    if (query.visibility) {
-      where.push("p.visibility = ?");
-      params.push(query.visibility);
-    }
-    if (query.keyword) {
-      where.push("(p.project_key LIKE ? OR p.name LIKE ? OR p.description LIKE ?)");
-      params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
-    }
+    this.appendListFilters(where, params, query);
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const offset = (query.page - 1) * query.pageSize;
+
+    const totalRow = this.db.prepare(`SELECT COUNT(*) AS total FROM projects p ${whereSql}`).get(...params) as { total: number };
+
+    const rows = this.db.prepare(`
+      SELECT
+        p.*,
+        (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id) AS member_count
+      FROM projects p
+      ${whereSql}
+      ORDER BY p.updated_at DESC, p.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, query.pageSize, offset) as ProjectRow[];
+
+    return {
+      items: rows.map((row) => this.toListItem(row)),
+      page: query.page,
+      pageSize: query.pageSize,
+      total: totalRow.total
+    };
+  }
+
+  listByIds(projectIds: string[], query: ListProjectQuery): ProjectListResult {
+    if (projectIds.length === 0) {
+      return {
+        items: [],
+        page: query.page,
+        pageSize: query.pageSize,
+        total: 0
+      };
+    }
+
+    const where: string[] = [];
+    const params: unknown[] = [];
+    const placeholders = projectIds.map(() => "?").join(", ");
+    where.push(`p.id IN (${placeholders})`);
+    params.push(...projectIds);
+    this.appendListFilters(where, params, query);
+
+    const whereSql = `WHERE ${where.join(" AND ")}`;
     const offset = (query.page - 1) * query.pageSize;
 
     const totalRow = this.db.prepare(`SELECT COUNT(*) AS total FROM projects p ${whereSql}`).get(...params) as { total: number };
@@ -303,6 +333,21 @@ export class ProjectRepo {
   removeVersion(projectId: string, versionId: string): boolean {
     const result = this.db.prepare(`DELETE FROM project_versions WHERE id = ? AND project_id = ?`).run(versionId, projectId);
     return result.changes > 0;
+  }
+
+  private appendListFilters(where: string[], params: unknown[], query: ProjectListFilters): void {
+    if (query.status) {
+      where.push("p.status = ?");
+      params.push(query.status);
+    }
+    if (query.visibility) {
+      where.push("p.visibility = ?");
+      params.push(query.visibility);
+    }
+    if (query.keyword) {
+      where.push("(p.project_key LIKE ? OR p.name LIKE ? OR p.description LIKE ?)");
+      params.push(`%${query.keyword}%`, `%${query.keyword}%`, `%${query.keyword}%`);
+    }
   }
 
   private updateConfigTable(

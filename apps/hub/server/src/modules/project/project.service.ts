@@ -107,6 +107,11 @@ export class ProjectService {
     return this.repo.list(query);
   }
 
+  listForUser(userId: string, query: ListProjectQuery): ProjectListResult {
+    const projectIds = this.memberRepo.listProjectIdsByUserId(userId);
+    return this.repo.listByIds(projectIds, query);
+  }
+
   listPublic(): ProjectEntity[] {
     return this.repo.listPublicActive();
   }

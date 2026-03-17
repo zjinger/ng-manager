@@ -175,7 +175,7 @@ export class ProjectMemberService {
     return this.memberRepo.listMembers(projectId).filter((item) => item.roles.includes("project_admin")).length;
   }
 
-  private isAdmin(operatorId: string): boolean {
+  isAdmin(operatorId: string): boolean {
     const account = this.authRepo.findById(operatorId) ?? this.authRepo.findByUserId(operatorId);
     return !!account && account.status === "active" && account.role === "admin";
   }

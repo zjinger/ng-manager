@@ -25,7 +25,9 @@ export default async function adminProjectRoutes(fastify: FastifyInstance) {
   fastify.get("/projects", async (request) => {
     const query = listProjectQuerySchema.parse(request.query);
     const operator = getOperator(request);
-    const result = fastify.services.project.list(query);
+    const result = fastify.services.projectMember.isAdmin(operator.operatorId)
+      ? fastify.services.project.list(query)
+      : fastify.services.project.listForUser(operator.operatorId, query);
     return ok({
       ...result,
       items: result.items.map((item) => ({
