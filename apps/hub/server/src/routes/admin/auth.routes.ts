@@ -1,25 +1,19 @@
 import fs from "node:fs";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { env } from "../../env";
 import {
     changePasswordSchema,
     loginSchema,
+    plainLoginSchema,
     updateAccountProfileSchema
 } from "../../modules/auth/auth.schema";
+import type { AdminUserProfile } from "../../modules/auth/auth.types";
 import { AppError } from "../../utils/app-error";
 import { cleanupTempFiles, parseMultipartUpload } from "../../utils/multipart";
 import { ok } from "../../utils/response";
 
 export default async function adminAuthRoutes(fastify: FastifyInstance) {
-    fastify.get("/auth/login/challenge", async () => {
-        const challenge = fastify.services.auth.issueLoginChallenge();
-        return ok(challenge, "challenge issued");
-    });
-
-    fastify.post("/auth/login", async (request, reply) => {
-        const body = loginSchema.parse(request.body);
-        const profile = await fastify.services.auth.login(body);
-
+    async function issueLoginCookie(reply: FastifyReply, profile: AdminUserProfile) {
         const token = await reply.jwtSign({
             sub: profile.id,
             username: profile.username
@@ -32,8 +26,29 @@ export default async function adminAuthRoutes(fastify: FastifyInstance) {
             path: "/",
             maxAge: 7 * 24 * 60 * 60
         });
+    }
+
+    fastify.get("/auth/login/challenge", async () => {
+        const challenge = fastify.services.auth.issueLoginChallenge();
+        return ok(challenge, "challenge issued");
+    });
+
+    fastify.post("/auth/login", async (request, reply) => {
+        const body = loginSchema.parse(request.body);
+        const profile = await fastify.services.auth.login(body);
+
+        await issueLoginCookie(reply, profile);
 
         return ok(profile, "login success");
+    });
+
+    fastify.post("/auth/login/plain", async (request, reply) => {
+        const body = plainLoginSchema.parse(request.body);
+        const profile = await fastify.services.auth.login(body);
+
+        await issueLoginCookie(reply, profile);
+
+        return ok(profile, "plain login success");
     });
 
     fastify.get(
