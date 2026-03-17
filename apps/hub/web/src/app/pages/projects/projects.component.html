@@ -58,31 +58,38 @@
                   <a
                     nz-button
                     nzType="primary"
-                    (click)="openConfigCenter(item, 'members')"
-                    nz-tooltip="成员管理"
-                  >
-                    <nz-icon nzType="team" nzTheme="outline" />
-                  </a>
-                  <a
-                    nz-button
-                    nzType="primary"
                     (click)="openConfigCenter(item, 'base')"
                     nz-tooltip="基础配置"
                   >
                     <nz-icon nzType="setting" theme="outline"></nz-icon>
                   </a>
+                  @if (item.currentUserCanManage) {
+                    <a
+                      nz-button
+                      nzType="primary"
+                      (click)="openConfigCenter(item, 'members')"
+                      nz-tooltip="成员管理"
+                    >
+                      <nz-icon nzType="team" nzTheme="outline" />
+                    </a>
+                    <a
+                      nz-button
+                      nzType="primary"
+                      nz-dropdown
+                      [nzDropdownMenu]="moreMenu"
+                      nzTrigger="click"
+                      (click)="setMenuProject(item)"
+                      nz-tooltip="更多操作"
+                    >
+                      <nz-icon nzType="more" theme="outline"></nz-icon>
+                    </a>
+                  }
                 }
-                <a
-                  nz-button
-                  nzType="primary"
-                  nz-dropdown
-                  [nzDropdownMenu]="moreMenu"
-                  nzTrigger="click"
-                  (click)="setMenuProject(item)"
-                  nz-tooltip="更多操作"
-                >
-                  <nz-icon nzType="more" theme="outline"></nz-icon>
-                </a>
+                @if (item.status === 'archived') {
+                  <a nz-button nzType="primary" nz-tooltip="查看详情">
+                    <nz-icon nzType="eye" theme="outline"></nz-icon>
+                  </a>
+                }
               </nz-space>
             </td>
           </tr>
@@ -269,7 +276,7 @@
                         nz-button
                         nzType="link"
                         (click)="toggleProjectAdmin(member)"
-                        [disabled]="!canManageMembers()"
+                        [disabled]="!canManageMembers() || isOnlyProjectAdmin(member)"
                       >
                         {{ member.roles.includes('project_admin') ? '取消管理员' : '设为管理员' }}
                       </a>
@@ -281,7 +288,7 @@
                         nzPopconfirmTitle="确定要移除该成员吗?"
                         nzPopconfirmOkText="确定移除"
                         (nzOnConfirm)="removeMember(member)"
-                        [disabled]="!canManageMembers()"
+                        [disabled]="!canManageMembers() || isOnlyProjectAdmin(member)"
                         >移除</a
                       >
                     </td>

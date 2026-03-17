@@ -1,4 +1,4 @@
-﻿export type ProjectStatus = "active" | "archived";
+export type ProjectStatus = "active" | "archived";
 export type ProjectVisibility = "internal" | "public";
 export type ProjectMemberRole =
   | "product"
@@ -23,6 +23,7 @@ export interface ProjectEntity {
 
 export interface ProjectListItem extends ProjectEntity {
   memberCount: number;
+  currentUserCanManage?: boolean;
 }
 
 export interface CreateProjectInput {

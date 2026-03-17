@@ -24,8 +24,15 @@ function getOperator(request: { adminUser: { id: string; userId?: string | null;
 export default async function adminProjectRoutes(fastify: FastifyInstance) {
   fastify.get("/projects", async (request) => {
     const query = listProjectQuerySchema.parse(request.query);
+    const operator = getOperator(request);
     const result = fastify.services.project.list(query);
-    return ok(result);
+    return ok({
+      ...result,
+      items: result.items.map((item) => ({
+        ...item,
+        currentUserCanManage: fastify.services.projectMember.canManageProject(item.id, operator.operatorId)
+      }))
+    });
   });
 
   fastify.get("/projects/:id", async (request) => {

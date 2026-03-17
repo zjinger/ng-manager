@@ -74,6 +74,7 @@ export class ProjectMemberService {
     if (nextRoles !== undefined && nextRoles.length === 0) {
       throw new AppError("PROJECT_MEMBER_ROLE_REQUIRED", "at least one role is required", 400);
     }
+    this.assertProjectAdminRetained(projectId, existing, nextRoles);
 
     const user = this.memberRepo.findUserById(existing.userId);
     const now = nowIso();
@@ -98,7 +99,8 @@ export class ProjectMemberService {
 
   removeMember(projectId: string, memberId: string): void {
     this.requireProject(projectId);
-    this.requireMember(projectId, memberId);
+    const member = this.requireMember(projectId, memberId);
+    this.assertProjectAdminRetained(projectId, member, null);
 
     const changed = this.memberRepo.deleteMember(projectId, memberId);
     if (!changed) {
@@ -143,6 +145,30 @@ export class ProjectMemberService {
 
   private normalizeRoles(roles: readonly ProjectMemberRole[]): ProjectMemberRole[] {
     return Array.from(new Set(roles));
+  }
+
+  private assertProjectAdminRetained(
+    projectId: string,
+    member: ProjectMemberEntity,
+    nextRoles: ProjectMemberRole[] | null | undefined
+  ): void {
+    if (!member.roles.includes("project_admin")) {
+      return;
+    }
+
+    if (nextRoles && nextRoles.includes("project_admin")) {
+      return;
+    }
+
+    if (this.countProjectAdmins(projectId) > 1) {
+      return;
+    }
+
+    throw new AppError("PROJECT_ADMIN_REQUIRED", "project must keep at least one project admin", 400);
+  }
+
+  private countProjectAdmins(projectId: string): number {
+    return this.memberRepo.listMembers(projectId).filter((item) => item.roles.includes("project_admin")).length;
   }
 
   private isAdmin(operatorId: string): boolean {

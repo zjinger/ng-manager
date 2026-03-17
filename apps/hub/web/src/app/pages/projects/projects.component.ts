@@ -242,6 +242,10 @@ export class ProjectsPageComponent {
       this.message.warning('只有项目管理员可以移除成员');
       return;
     }
+    if (this.isOnlyProjectAdmin(item)) {
+      this.message.warning('项目至少需要保留一个项目管理员');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
 
@@ -254,9 +258,17 @@ export class ProjectsPageComponent {
     }
   }
 
+  protected isOnlyProjectAdmin(item: ProjectMemberItem): boolean {
+    return item.roles.includes('project_admin') && this.projectMembers().filter((member) => member.roles.includes('project_admin')).length === 1;
+  }
+
   protected async toggleProjectAdmin(item: ProjectMemberItem): Promise<void> {
     if (!this.canManageMembers()) {
       this.message.warning('只有项目管理员可以设置管理员');
+      return;
+    }
+    if (this.isOnlyProjectAdmin(item) && item.roles.includes('project_admin')) {
+      this.message.warning('项目至少需要保留一个项目管理员');
       return;
     }
     const projectId = this.configProjectId();
