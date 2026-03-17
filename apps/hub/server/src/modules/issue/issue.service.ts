@@ -314,7 +314,7 @@ export class IssueService {
   start(projectId: string, issueId: string, input: StartIssueInput): IssueEntity {
     const issue = this.getById(projectId, issueId);
     const operatorId = this.permission.requireOperatorId(input.operatorId, "start issue");
-    this.assertStatus(issue.status, ["open", "reopened"], "start issue");
+    this.assertStatus(issue.status, ["open", "reopened","resolved"], "start issue");
     if (!issue.assigneeId) {
       throw new AppError("ISSUE_ASSIGNEE_REQUIRED", "assignee is required before starting work", 400);
     }
