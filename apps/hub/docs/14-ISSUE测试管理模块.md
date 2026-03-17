@@ -6,10 +6,10 @@ resolved
 verified
 closed
 reopened
-```     
+```
 
 含义：
-```plaintext
+
 | 状态          | 含义          |
 | ----------- | ----------- |
 | open        | 待处理         |
@@ -19,7 +19,6 @@ reopened
 | closed      | 已关闭         |
 | reopened    | 重新打开        |
 
-```
 
 ## 状态流转
 - 正常流程：
@@ -42,7 +41,7 @@ resolved
 reopened
  ↓
 in_progress
-```        
+```
 
 - 关闭后再次发现问题：
 ```plaintext
@@ -54,27 +53,29 @@ in_progress
 ```
 
 ## 权限矩阵
-```plaintext
+
 | 动作       | 权限人                                        | 状态                          |
 | -------- | ------------------------------------------ | --------------------------- |
-| 创建 Issue | 任何成员                                       | -                           |
-| 编辑 Issue | reporter / assignee / participants / admin | open, reopened |
+| 创建 | 任何成员                                       | -                           |
+| 编辑 | reporter / admin | open, reopened |
 | 指派负责人    | reporter / admin                           | open, reopened              |
-| 认领 Issue | 任何成员                                       | open, reopened              |
+| 认领 | 任何成员                                       | open, reopened              |
+| 放弃认领 | assignee | open, reopened |
 | 转派负责人    | assignee / admin                           | open, in_progress, reopened |
 | 添加参与人    | assignee / admin                           | open, in_progress, reopened |
 | 开始处理     | assignee / admin                           | open, reopened              |
 | 标记已处理    | assignee / admin                           | in_progress                 |
+| 重新处理 | assignee/ admin | resolved |
 | 验证通过     | verifier / reporter / admin                | resolved                    |
 | 验证不通过    | verifier / reporter / admin                | resolved                    |
-| 关闭 Issue | reporter / admin                           | verified                    |
+| 关闭 Issue | reporter / admin                           | 全状态                  |
 | 重新打开     | reporter / admin                           | resolved, verified, closed  |
 | 评论       | 任何成员                                       | 全状态                         |
 | 上传附件     | 任何成员                                       | 全状态                         |
 | 删除附件     | uploader / assignee / admin                | 非 closed                    |
-```
+
 ## 角色说明
-```plaintext
+
 | 角色           | 含义        |
 | ------------ | --------- |
 | reporter     | Issue 提出人 |
@@ -84,7 +85,6 @@ in_progress
 
 验证人规则：verifier = reporter（默认）
 
-```
 
 ## 操作
 
@@ -100,13 +100,14 @@ in_progress
 
 **assignee（如果已经被指派）可以：**
 - 开始处理
+- 放弃认领
 - 转派负责人
 - 添加参与人
 - 评论
 - 上传附件
 
 **其他成员可以：**
-
+- 认领（如果没有被指派）
 - 评论
 - 上传附件
 

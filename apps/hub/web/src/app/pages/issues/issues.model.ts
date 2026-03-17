@@ -8,6 +8,7 @@ export type IssueActionType =
   | 'edit'
   | 'assign'
   | 'claim'
+  | 'unclaim'
   | 'reassign'
   | 'start'
   | 'resolve'
@@ -142,7 +143,7 @@ export interface IssueFormValue {
 }
 
 export interface IssueActionPanelSubmit {
-  action: 'assign' | 'claim' | 'reassign' | 'start' | 'resolve' | 'verify' | 'reopen' | 'close';
+  action: 'assign' | 'claim' | 'unclaim' | 'reassign' | 'start' | 'resolve' | 'verify' | 'reopen' | 'close';
   assigneeId?: string;
   comment?: string;
   closeReason?: string;
@@ -178,6 +179,7 @@ export const ISSUE_ACTION_LABELS: Record<IssueActionType, string> = {
   edit: '编辑',
   assign: '指派负责人',
   claim: '认领',
+  unclaim:'取消认领',
   reassign: '转派负责人',
   start: '开始处理',
   resolve: '标记已处理',
@@ -196,6 +198,7 @@ export const ISSUE_ACTION_COLORS: Record<IssueActionType, string> = {
   edit: 'blue',
   assign: 'blue',
   claim: 'cyan',
+  unclaim:'orange',
   reassign: 'purple',
   start: 'processing',
   resolve: 'success',

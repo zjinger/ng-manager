@@ -79,9 +79,9 @@ export class IssueFormComponent implements OnChanges {
       type: value.type,
       priority: value.priority,
       assigneeId: value.assigneeId.trim(),
-      moduleCode: value.moduleCode.trim(),
-      versionCode: value.versionCode.trim(),
-      environmentCode: value.environmentCode.trim()
+      moduleCode: value.moduleCode?.trim(),
+      versionCode: value.versionCode?.trim(),
+      environmentCode: value.environmentCode?.trim()
     });
   }
 

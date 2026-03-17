@@ -82,7 +82,7 @@ export class IssuesPageComponent {
   protected readonly detailError = signal<string | null>(null);
 
   protected readonly page = signal(1);
-  protected readonly pageSize = 20;
+  protected readonly pageSize = signal(20);
   protected readonly total = signal(0);
 
   protected readonly formVisible = signal(false);
@@ -168,6 +168,11 @@ export class IssuesPageComponent {
   protected async changePage(page: number): Promise<void> {
     this.page.set(page);
     await this.loadIssues();
+  }
+
+  protected async changePageSize(pageSize: number): Promise<void> {
+   this.pageSize.set(pageSize);
+   await this.loadIssues(); 
   }
 
   protected async submitForm(value: IssueFormValue): Promise<void> {
@@ -380,7 +385,7 @@ export class IssuesPageComponent {
     try {
       const params: Record<string, string | number> = {
         page: this.page(),
-        pageSize: this.pageSize
+        pageSize: this.pageSize()
       };
       if (filter.status) params['status'] = filter.status;
       if (filter.priority) params['priority'] = filter.priority;

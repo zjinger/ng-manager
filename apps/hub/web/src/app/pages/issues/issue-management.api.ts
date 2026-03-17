@@ -83,6 +83,7 @@ export class IssueManagementApiService {
         description: value.description,
         type: value.type,
         priority: value.priority,
+        assigneeId: value.assigneeId || null,
         moduleCode: value.moduleCode || null,
         versionCode: value.versionCode || null,
         environmentCode: value.environmentCode || null

@@ -82,10 +82,25 @@
             >认领</button>
           }
           @if (canStart()) {
-            <button nz-button nzType="default" (click)="submitStart()" [disabled]="actionLoading">开始处理</button>
+            <button nz-button nzType="primary" nzGhost="true" (click)="submitStart()" [disabled]="actionLoading">开始处理</button>
+            <button 
+            nz-button 
+            nzType="default" 
+            nzGhost="true" 
+            nzDanger 
+            nz-popconfirm
+            nzPopconfirmTitle="确认放弃认领该 Issue 吗？"
+            nzPopconfirmOkText="确认"
+            nzPopconfirmCancelText="取消"
+            (nzOnConfirm)="submitUnClaim()" 
+            [disabled]="actionLoading"
+            >放弃认领</button>
           }
           @if (canResolve()) {
             <button nz-button nzType="primary" (click)="submitResolve()" [disabled]="actionLoading">标记已处理</button>
+          }
+          @if(canReProcess()){
+            <button nz-button nzType="primary" (click)="submitReprocess()" [disabled]="actionLoading">重新处理</button>
           }
           @if (showResolvedReviewActions()) {
             @if (canVerify()) {
@@ -96,15 +111,21 @@
             }
           }
           @if (showVerifiedActions()) {
-            @if (canClose()) {
-              <button nz-button nzType="default" (click)="submitClose()" [disabled]="actionLoading">关闭</button>
-            }
             @if (canReopen()) {
               <button nz-button nzType="default" nzDanger (click)="submitReopen()" [disabled]="actionLoading">重新打开</button>
             }
           }
           @if (showClosedReopenAction()) {
             <button nz-button nzType="default" nzDanger (click)="submitReopen()" [disabled]="actionLoading">重新打开</button>
+          }
+          @if (canClose()) {
+            <button
+            nz-button
+            nzDanger
+            nzType="primary"
+            (click)="changeCloseVisible(true)"
+            [disabled]="actionLoading"
+            >关闭</button>
           }
         </div>
       </section>
@@ -170,5 +191,7 @@
         </details>
       </section>
     </div>
+
+    <app-issue-close-modal [closeVisible]="closeVisible" (closeVisibleChange)="changeCloseVisible($event)"  (closeOk)="submitClose($event)"></app-issue-close-modal>
   }
 </nz-card>

@@ -46,6 +46,7 @@ export class IssueListComponent {
   @Output() readonly reloadRequested = new EventEmitter<void>();
   @Output() readonly issueSelected = new EventEmitter<IssueItem>();
   @Output() readonly pageChanged = new EventEmitter<number>();
+  @Output() readonly pageSizeChanged = new EventEmitter<number>();
 
   protected readonly statusLabel = issueDisplayStatusLabel;
   protected readonly statusColor = issueDisplayStatusColor;
