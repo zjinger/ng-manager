@@ -132,7 +132,7 @@ export class ProjectsPageComponent {
   protected setMenuProject(item: ProjectItem): void { this.menuProject.set(item); }
 
   protected archiveFromMenu(): void { const item = this.menuProject(); if (item) void this.updateStatus(item, 'archived', '归档项目失败', `项目「${item.name}」已归档`); }
-
+  protected activateFromMenu(): void { const item = this.menuProject(); if (item) void this.updateStatus(item, 'active', '激活项目失败', `项目「${item.name}」已激活`); }
   protected openProjectModal(item?: ProjectItem): void {
     this.formError.set(null);
     if (!item) {

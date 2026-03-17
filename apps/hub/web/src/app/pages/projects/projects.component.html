@@ -90,7 +90,29 @@
 
     <nz-dropdown-menu #moreMenu="nzDropdownMenu" nzTrigger="click">
       <ul nz-menu>
-        <li nz-menu-item (click)="archiveFromMenu()" nzDanger>归档</li>
+        <li
+          nz-menu-item
+          nz-popconfirm
+          nzPopconfirmTitle="确定要归档吗？"
+          nzPopconfirmOkText="确定"
+          nzPopconfirmCancelText="取消"
+          (nzOnConfirm)="archiveFromMenu()"
+          nzDanger
+        >
+          归档
+        </li>
+        @if(menuProject()?.status === 'archived') {
+           <li
+            nz-menu-item
+            nz-popconfirm
+            nzPopconfirmTitle="确定要启用吗？"
+            nzPopconfirmOkText="确定"
+            nzPopconfirmCancelText="取消"
+            (nzOnConfirm)="activateFromMenu()"
+          >
+            启用
+          </li>
+        }
       </ul>
     </nz-dropdown-menu>
   </nz-card>
