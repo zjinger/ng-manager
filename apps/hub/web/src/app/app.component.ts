@@ -18,6 +18,7 @@ import { filter } from 'rxjs';
 import { HubApiError } from './core/http/api-error.interceptor';
 import { AdminAuthService } from './core/services/admin-auth.service';
 import { HubWsEventType, HubWebsocketService } from './core/services/hub-websocket.service';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
 @Component({
   selector: 'app-root',
@@ -33,6 +34,7 @@ import { HubWsEventType, HubWebsocketService } from './core/services/hub-websock
     NzModalModule,
     NzFormModule,
     NzInputModule,
+    NzSelectModule,
     NzButtonModule,
     NzAlertModule
   ],

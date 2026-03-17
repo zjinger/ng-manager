@@ -1,5 +1,5 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -21,6 +21,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
+import { AdminAuthService } from '../../core/services/admin-auth.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
@@ -60,6 +61,7 @@ import { NzResultModule } from 'ng-zorro-antd/result';
 export class ProjectsPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
+  private readonly auth = inject(AdminAuthService);
   private readonly clipboard = inject(Clipboard);
   private readonly message = inject(NzMessageService);
 
@@ -94,6 +96,18 @@ export class ProjectsPageComponent {
   protected readonly versions = signal<ProjectVersionItem[]>([]);
 
   protected readonly memberRoleOptions: ProjectMemberRole[] = ['product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops', 'project_admin'];
+  protected readonly currentUserId = computed(() => {
+    const profile = this.auth.profile();
+    if (!profile) return null;
+    return profile.userId?.trim() || profile.id;
+  });
+  protected readonly isAdmin = computed(() => this.auth.profile()?.role === 'admin');
+  protected readonly currentMember = computed(() => {
+    const currentUserId = this.currentUserId();
+    if (!currentUserId) return null;
+    return this.projectMembers().find((item) => item.userId === currentUserId) ?? null;
+  });
+  protected readonly canManageMembers = computed(() => this.isAdmin() || !!this.currentMember()?.roles.includes('project_admin'));
 
   protected readonly projectForm = this.fb.nonNullable.group({
     name: ['', [Validators.required]],
@@ -201,6 +215,10 @@ export class ProjectsPageComponent {
   }
 
   protected async saveMember(): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以添加成员');
+      return;
+    }
     if (this.memberForm.invalid) return;
     const projectId = this.configProjectId();
     if (!projectId) return;
@@ -220,14 +238,65 @@ export class ProjectsPageComponent {
   }
 
   protected async removeMember(item: ProjectMemberItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以移除成员');
+      return;
+    }
+    if (this.isOnlyProjectAdmin(item)) {
+      this.message.warning('项目至少需要保留一个项目管理员');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
-    await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/members/${item.id}`));
-    await this.loadMembers(projectId);
-    await this.loadProjects();
+
+    try {
+      await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/members/${item.id}`));
+      await this.loadMembers(projectId);
+      await this.loadProjects();
+    } catch (error) {
+      this.message.error(this.getErrorMessage(error, '移除成员失败'));
+    }
+  }
+
+  protected isOnlyProjectAdmin(item: ProjectMemberItem): boolean {
+    return item.roles.includes('project_admin') && this.projectMembers().filter((member) => member.roles.includes('project_admin')).length === 1;
+  }
+
+  protected async toggleProjectAdmin(item: ProjectMemberItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以设置管理员');
+      return;
+    }
+    if (this.isOnlyProjectAdmin(item) && item.roles.includes('project_admin')) {
+      this.message.warning('项目至少需要保留一个项目管理员');
+      return;
+    }
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+
+    const nextRoles: ProjectMemberRole[] = item.roles.includes('project_admin')
+      ? item.roles.filter((role) => role !== 'project_admin')
+      : [...item.roles, 'project_admin'];
+
+    try {
+      await firstValueFrom(
+        this.api.put<ProjectMemberItem, { roles: ProjectMemberRole[] }>(
+          `/api/admin/projects/${projectId}/members/${item.id}`,
+          { roles: nextRoles }
+        )
+      );
+      await this.loadMembers(projectId);
+      this.message.success(item.roles.includes('project_admin') ? '已取消项目管理员' : '已设为项目管理员');
+    } catch (error) {
+      this.message.error(this.getErrorMessage(error, '更新成员角色失败'));
+    }
   }
 
   protected async addModule(): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护模块配置');
+      return;
+    }
     if (this.moduleForm.invalid) return;
     const projectId = this.configProjectId();
     if (!projectId) return;
@@ -238,6 +307,10 @@ export class ProjectsPageComponent {
   }
 
   protected async toggleModuleEnabled(item: ProjectConfigItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护模块配置');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
     await firstValueFrom(this.api.put<ProjectConfigItem, { enabled: boolean }>(`/api/admin/projects/${projectId}/modules/${item.id}`, { enabled: !item.enabled }));
@@ -245,6 +318,10 @@ export class ProjectsPageComponent {
   }
 
   protected async removeModule(item: ProjectConfigItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护模块配置');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
     await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/modules/${item.id}`));
@@ -252,6 +329,10 @@ export class ProjectsPageComponent {
   }
 
   protected async addEnvironment(): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护环境配置');
+      return;
+    }
     if (this.environmentForm.invalid) return;
     const projectId = this.configProjectId();
     if (!projectId) return;
@@ -262,6 +343,10 @@ export class ProjectsPageComponent {
   }
 
   protected async toggleEnvironmentEnabled(item: ProjectConfigItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护环境配置');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
     await firstValueFrom(this.api.put<ProjectConfigItem, { enabled: boolean }>(`/api/admin/projects/${projectId}/environments/${item.id}`, { enabled: !item.enabled }));
@@ -269,6 +354,10 @@ export class ProjectsPageComponent {
   }
 
   protected async removeEnvironment(item: ProjectConfigItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护环境配置');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
     await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/environments/${item.id}`));
@@ -276,6 +365,10 @@ export class ProjectsPageComponent {
   }
 
   protected async addVersion(): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护版本配置');
+      return;
+    }
     if (this.versionForm.invalid) return;
     const projectId = this.configProjectId();
     if (!projectId) return;
@@ -286,6 +379,10 @@ export class ProjectsPageComponent {
   }
 
   protected async toggleVersionEnabled(item: ProjectVersionItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护版本配置');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
     await firstValueFrom(this.api.put<ProjectVersionItem, { enabled: boolean }>(`/api/admin/projects/${projectId}/versions/${item.id}`, { enabled: !item.enabled }));
@@ -293,6 +390,10 @@ export class ProjectsPageComponent {
   }
 
   protected async removeVersion(item: ProjectVersionItem): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护版本配置');
+      return;
+    }
     const projectId = this.configProjectId();
     if (!projectId) return;
     await firstValueFrom(this.api.delete<{ id: string }>(`/api/admin/projects/${projectId}/versions/${item.id}`));
@@ -367,4 +468,3 @@ export class ProjectsPageComponent {
     this.message.success('projectKey 已复制');
   }
 }
-

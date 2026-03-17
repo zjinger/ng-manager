@@ -11,6 +11,7 @@ export interface ProjectItem {
   visibility: ProjectVisibility;
   memberCount: number;
   updatedAt: string;
+  currentUserCanManage?: boolean;
 }
 
 export interface ProjectListResult {

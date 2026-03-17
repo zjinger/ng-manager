@@ -16,14 +16,24 @@ import type {
   UpdateProjectInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
+import { ProjectMemberRepo } from "./project-member.repo";
 import { ProjectRepo } from "./project.repo";
 
 const projectKeyNanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 24);
 
 export class ProjectService {
-  constructor(private readonly repo: ProjectRepo) {}
+  constructor(
+    private readonly repo: ProjectRepo,
+    private readonly memberRepo: ProjectMemberRepo
+  ) {}
 
-  create(input: CreateProjectInput): ProjectEntity {
+  create(
+    input: CreateProjectInput,
+    creator?: {
+      userId: string;
+      displayName?: string | null;
+    }
+  ): ProjectEntity {
     const now = nowIso();
     const name = input.name.trim();
     this.assertNameUnique(name);
@@ -42,8 +52,27 @@ export class ProjectService {
       updatedAt: now
     };
 
+    const creatorUserId = creator?.userId?.trim();
+    if (creator && !creatorUserId) {
+      throw new AppError("PROJECT_CREATOR_REQUIRED", "project creator is required", 400);
+    }
+
     try {
-      this.repo.create(entity);
+      this.repo.runInTransaction(() => {
+        this.repo.create(entity);
+
+        if (creatorUserId) {
+          this.memberRepo.createMember({
+            id: genId("pm"),
+            projectId: entity.id,
+            userId: creatorUserId,
+            displayName: creator?.displayName?.trim() || creatorUserId,
+            roles: ["project_admin"],
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+      });
       return entity;
     } catch (error) {
       this.handleSqliteError(error, projectKey, name);

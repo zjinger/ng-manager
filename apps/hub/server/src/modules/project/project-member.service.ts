@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import { AppError } from "../../utils/app-error";
+import { AuthRepo } from "../auth/auth.repo";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
 import { ProjectRepo } from "./project.repo";
@@ -14,7 +15,8 @@ import { ProjectMemberRepo } from "./project-member.repo";
 export class ProjectMemberService {
   constructor(
     private readonly projectRepo: ProjectRepo,
-    private readonly memberRepo: ProjectMemberRepo
+    private readonly memberRepo: ProjectMemberRepo,
+    private readonly authRepo: AuthRepo
   ) {}
 
   listMembers(projectId: string): ProjectMemberEntity[] {
@@ -72,6 +74,7 @@ export class ProjectMemberService {
     if (nextRoles !== undefined && nextRoles.length === 0) {
       throw new AppError("PROJECT_MEMBER_ROLE_REQUIRED", "at least one role is required", 400);
     }
+    this.assertProjectAdminRetained(projectId, existing, nextRoles);
 
     const user = this.memberRepo.findUserById(existing.userId);
     const now = nowIso();
@@ -96,7 +99,8 @@ export class ProjectMemberService {
 
   removeMember(projectId: string, memberId: string): void {
     this.requireProject(projectId);
-    this.requireMember(projectId, memberId);
+    const member = this.requireMember(projectId, memberId);
+    this.assertProjectAdminRetained(projectId, member, null);
 
     const changed = this.memberRepo.deleteMember(projectId, memberId);
     if (!changed) {
@@ -106,6 +110,22 @@ export class ProjectMemberService {
 
   findMemberByProjectAndUserId(projectId: string, userId: string): ProjectMemberEntity | null {
     return this.memberRepo.findMemberByProjectAndUserId(projectId, userId);
+  }
+
+  assertCanManageProject(projectId: string, operatorId: string, action: string): void {
+    this.requireProject(projectId);
+    if (this.canManageProject(projectId, operatorId)) {
+      return;
+    }
+    throw new AppError("PROJECT_FORBIDDEN_OPERATOR", `no permission to ${action}`, 403);
+  }
+
+  canManageProject(projectId: string, operatorId: string): boolean {
+    if (this.isAdmin(operatorId)) {
+      return true;
+    }
+    const member = this.memberRepo.findMemberByProjectAndUserId(projectId, operatorId);
+    return !!member && member.roles.includes("project_admin");
   }
 
   private requireProject(projectId: string): void {
@@ -125,5 +145,34 @@ export class ProjectMemberService {
 
   private normalizeRoles(roles: readonly ProjectMemberRole[]): ProjectMemberRole[] {
     return Array.from(new Set(roles));
+  }
+
+  private assertProjectAdminRetained(
+    projectId: string,
+    member: ProjectMemberEntity,
+    nextRoles: ProjectMemberRole[] | null | undefined
+  ): void {
+    if (!member.roles.includes("project_admin")) {
+      return;
+    }
+
+    if (nextRoles && nextRoles.includes("project_admin")) {
+      return;
+    }
+
+    if (this.countProjectAdmins(projectId) > 1) {
+      return;
+    }
+
+    throw new AppError("PROJECT_ADMIN_REQUIRED", "project must keep at least one project admin", 400);
+  }
+
+  private countProjectAdmins(projectId: string): number {
+    return this.memberRepo.listMembers(projectId).filter((item) => item.roles.includes("project_admin")).length;
+  }
+
+  private isAdmin(operatorId: string): boolean {
+    const account = this.authRepo.findById(operatorId) ?? this.authRepo.findByUserId(operatorId);
+    return !!account && account.status === "active" && account.role === "admin";
   }
 }

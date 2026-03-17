@@ -66,9 +66,7 @@ export async function createApp() {
   });
 
   const projectRepo = new ProjectRepo(app.db);
-  const projectService = new ProjectService(projectRepo);
   const projectMemberRepo = new ProjectMemberRepo(app.db);
-  const projectMemberService = new ProjectMemberService(projectRepo, projectMemberRepo);
 
   const feedbackRepo = new FeedbackRepo(app.db);
   const feedbackService = new FeedbackService(feedbackRepo, projectRepo);
@@ -86,6 +84,8 @@ export async function createApp() {
 
   const authRepo = new AuthRepo(app.db);
   const authService = new AuthService(authRepo, userRepo, uploadService);
+  const projectService = new ProjectService(projectRepo, projectMemberRepo);
+  const projectMemberService = new ProjectMemberService(projectRepo, projectMemberRepo, authRepo);
 
   const sharedConfigRepo = new SharedConfigRepo(app.db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectRepo);
