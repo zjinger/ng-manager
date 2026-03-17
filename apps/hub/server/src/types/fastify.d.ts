@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type { AnnouncementService } from "../modules/announcement/announcement.service";
 import type { AuthService } from "../modules/auth/auth.service";
 import type { AdminUserProfile } from "../modules/auth/auth.types";
+import type { DashboardService } from "../modules/dashboard/dashboard.service";
 import type { DocumentService } from "../modules/document/document.service";
 import type { FeedbackService } from "../modules/feedback/feedback.service";
 import type { IssueService } from "../modules/issue/issue.service";
@@ -10,10 +11,10 @@ import type { ProjectService } from "../modules/project/project.service";
 import type { RdService } from "../modules/rd/rd.service";
 import type { ReleaseService } from "../modules/release/release.service";
 import type { SharedConfigService } from "../modules/shared-config/shared-config.service";
+import type { UploadService } from "../modules/upload/upload.service";
 import type { UserService } from "../modules/user/user.service";
 import { HubWsEvents } from "../modules/ws/ws.events";
 import { HubWsManager } from "../modules/ws/ws.manager";
-import { UploadService } from "../modules/upload/upload.service";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -21,6 +22,7 @@ declare module "fastify" {
     services: {
       feedback: FeedbackService;
       announcement: AnnouncementService;
+      dashboard: DashboardService;
       document: DocumentService;
       auth: AuthService;
       user: UserService;
@@ -30,7 +32,7 @@ declare module "fastify" {
       release: ReleaseService;
       issue: IssueService;
       rd: RdService;
-      upload: UploadService
+      upload: UploadService;
     };
     verifyAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void>;
     wsManager: HubWsManager;

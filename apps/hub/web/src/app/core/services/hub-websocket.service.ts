@@ -1,20 +1,22 @@
-import { DestroyRef, Inject, Injectable, InjectionToken, signal } from '@angular/core';
+﻿import { DestroyRef, Inject, Injectable, InjectionToken, signal } from '@angular/core';
 import { Subject, firstValueFrom } from 'rxjs';
 import { HubApiService } from '../http/hub-api.service';
 import { AdminAuthService } from './admin-auth.service';
 
 export type HubWsServerEventType =
-  | 'system.connected' // 连接成功，通常在建立连接后由服务器发送
-  | 'system.subscribed' // 已同步项目订阅，服务器在接收到订阅请求后发送，表示已成功订阅相关项目的事件
-  | 'pong' // 心跳响应，服务器对客户端发送的 ping 消息的回复
-  | 'announcement.published' // 公告发布，表示有新公告发布
-  | 'announcement.updated' // 公告更新，表示已有公告内容更新
-  | 'doc.published' // 文档发布，表示有新文档发布
-  | 'doc.updated' // 文档更新，表示已有文档内容更新
-  | 'release.created' // 版本发布，表示有新版本发布
-  | 'issue.created' // 事项创建，表示有新事项被创建
-  | 'issue.updated' // 事项更新，表示已有事项状态或内容更新
-  | 'broadcast'; // 系统广播，表示服务器发送的一般性消息，可能包含公告、通知等内容
+  | 'system.connected'
+  | 'system.subscribed'
+  | 'pong'
+  | 'announcement.published'
+  | 'announcement.updated'
+  | 'doc.published'
+  | 'doc.updated'
+  | 'release.created'
+  | 'issue.created'
+  | 'issue.updated'
+  | 'rd.created'
+  | 'rd.updated'
+  | 'broadcast';
 
 export type HubWsEventType = HubWsServerEventType | 'system.message';
 
@@ -210,6 +212,10 @@ export class HubWebsocketService {
         return title ? `新事项已创建：${issueNo || title}` : '有新事项创建';
       case 'issue.updated':
         return title ? `事项已更新：${issueNo || title}${action ? ` · ${action}` : ''}` : '事项状态已更新';
+      case 'rd.created':
+        return title ? `新研发项已创建：${title}` : '有新研发项创建';
+      case 'rd.updated':
+        return title ? `研发项已更新：${title}${action ? ` · ${action}` : ''}` : '研发项状态已更新';
       case 'broadcast':
         return [title, content].filter(Boolean).join('：') || '收到系统广播';
       case 'system.connected':
@@ -289,6 +295,8 @@ export class HubWebsocketService {
       maybe.type === 'release.created' ||
       maybe.type === 'issue.created' ||
       maybe.type === 'issue.updated' ||
+      maybe.type === 'rd.created' ||
+      maybe.type === 'rd.updated' ||
       maybe.type === 'broadcast';
 
     return (

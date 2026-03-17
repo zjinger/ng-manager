@@ -52,7 +52,7 @@
       </nz-card>
 
       <nz-card class="content-card">
-        <nz-tabset [nzSelectedIndex]="selectedTabIndex()" (nzSelectedIndexChange)="selectedTabIndex.set($event)">
+        <nz-tabs [nzSelectedIndex]="selectedTabIndex()" (nzSelectedIndexChange)="selectedTabIndex.set($event)">
           <nz-tab nzTitle="基础资料">
             <form nz-form nzLayout="vertical" [formGroup]="basicForm" class="profile-form">
               <nz-form-item>
@@ -200,7 +200,7 @@
               </div>
             </form>
           </nz-tab>
-        </nz-tabset>
+        </nz-tabs>
       </nz-card>
     </div>
   } @else {

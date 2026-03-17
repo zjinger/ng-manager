@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { HubWsEvent, HubWsEventType } from "./ws.types";
 
@@ -162,6 +162,50 @@ export class HubWsEvents {
         );
 
         this.dispatch(event, input.userIds);
+    }
+
+    rdCreated(input: {
+        id: string;
+        rdNo: string;
+        title: string;
+        status: string;
+        projectId: string;
+    }) {
+        const event = buildEvent(
+            "rd.created",
+            {
+                id: input.id,
+                rdNo: input.rdNo,
+                title: input.title,
+                status: input.status,
+            },
+            input.projectId
+        );
+
+        this.dispatch(event);
+    }
+
+    rdUpdated(input: {
+        id: string;
+        rdNo: string;
+        title: string;
+        status: string;
+        action: string;
+        projectId: string;
+    }) {
+        const event = buildEvent(
+            "rd.updated",
+            {
+                id: input.id,
+                rdNo: input.rdNo,
+                title: input.title,
+                status: input.status,
+                action: input.action,
+            },
+            input.projectId
+        );
+
+        this.dispatch(event);
     }
 
     broadcast(input: {

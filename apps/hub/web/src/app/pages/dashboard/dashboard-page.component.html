@@ -19,7 +19,16 @@
         (changePasswordClick)="openPassword()"
       ></app-dashboard-hero>
 
-      <app-dashboard-stat-grid class="section" [stats]="stats()"></app-dashboard-stat-grid>
+      <section class="section stat-section">
+        <div class="section-heading">
+          <div>
+            <div class="section-heading__title">我的关注事项</div>
+            <div class="section-heading__description">支持按优先级、项目范围定制统计卡片</div>
+          </div>
+          <button nz-button nzType="default" (click)="openStatPreferenceModal()">定制卡片</button>
+        </div>
+        <app-dashboard-stat-grid [stats]="stats()"></app-dashboard-stat-grid>
+      </section>
 
       <div class="dashboard-main-grid section">
         <app-dashboard-pending-list [items]="pendingItems()"></app-dashboard-pending-list>
@@ -35,3 +44,125 @@
     }
   }
 </section>
+
+<nz-modal
+  [nzVisible]="statPreferenceModalVisible()"
+  nzTitle="定制 Dashboard 卡片"
+  nzOkText="保存"
+  nzCancelText="取消"
+  [nzWidth]="1040"
+  [nzOkLoading]="statPreferenceSaving()"
+  [nzOkDisabled]="statPreferenceLoading() || visibleStatCardCount() === 0"
+  (nzOnCancel)="closeStatPreferenceModal()"
+  (nzOnOk)="saveStatPreferences()"
+>
+  <ng-container *nzModalContent>
+    <div class="preference-modal">
+      <div class="preference-modal__intro">
+        <div>
+          <div class="preference-modal__title">按个人关注点组合统计卡片</div>
+          <div class="preference-modal__subtitle">开关、排序和筛选条件都会跟随当前账号保存。</div>
+        </div>
+        <div class="preference-modal__summary">
+          <strong>{{ visibleStatCardCount() }}</strong>
+          <span>/ {{ statPreferenceCards().length }} 已显示</span>
+        </div>
+      </div>
+
+      <div class="preference-modal__toolbar">
+        <span class="preference-modal__hint">建议保留 5-7 张核心卡片，避免首页信息过载。</span>
+        <button nz-button nzType="default" nzSize="small" (click)="resetStatPreferences()" [disabled]="statPreferenceSaving()">
+          恢复默认
+        </button>
+      </div>
+
+      @if (statPreferenceLoading()) {
+        <div class="stat-preference-loading">
+          <nz-spin nzTip="正在加载卡片配置..."></nz-spin>
+        </div>
+      } @else {
+        <div class="stat-preference-list">
+          @for (item of statPreferenceCards(); track item.key; let index = $index) {
+            <article class="stat-preference-item" [class.stat-preference-item--disabled]="!item.enabled">
+              <div class="stat-preference-item__header">
+                <div class="stat-preference-item__identity">
+                  <div class="stat-preference-item__index">{{ index + 1 }}</div>
+                  <div>
+                    <div class="stat-preference-item__title">{{ item.label }}</div>
+                    <div class="stat-preference-item__helper">{{ item.helper }}</div>
+                  </div>
+                </div>
+
+                <div class="stat-preference-item__switch">
+                  <span class="stat-preference-item__switch-label">{{ item.enabled ? '显示' : '隐藏' }}</span>
+                  <nz-switch
+                    [ngModel]="item.enabled"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="setStatPreferenceEnabled(item.key, $event)"
+                    [disabled]="statPreferenceSaving()"
+                  ></nz-switch>
+                </div>
+              </div>
+
+              <div class="stat-preference-item__toolbar">
+                <div class="stat-preference-item__scope">{{ getProjectScopeLabel(item) }}</div>
+                <div class="stat-preference-item__actions">
+                  <button nz-button nzType="default" nzSize="small" (click)="moveStatPreference(item.key, -1)" [disabled]="index === 0 || statPreferenceSaving()">
+                    上移
+                  </button>
+                  <button nz-button nzType="default" nzSize="small" (click)="moveStatPreference(item.key, 1)" [disabled]="index === statPreferenceCards().length - 1 || statPreferenceSaving()">
+                    下移
+                  </button>
+                </div>
+              </div>
+
+              @if (item.supportsPriorityScope || (item.supportsProjectIds && statPreferenceProjects().length > 1)) {
+                <div class="stat-preference-item__filters">
+                  @if (item.supportsPriorityScope) {
+                    <label class="filter-field">
+                      <span class="filter-field__label">优先级范围</span>
+                      <nz-select
+                        class="filter-field__control"
+                        [ngModel]="getPriorityScope(item)"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="setPriorityScope(item.key, $event)"
+                        [disabled]="statPreferenceSaving()"
+                      >
+                        @for (option of priorityScopeOptions; track option.value) {
+                          <nz-option [nzLabel]="option.label" [nzValue]="option.value"></nz-option>
+                        }
+                      </nz-select>
+                    </label>
+                  }
+
+                  @if (item.supportsProjectIds && statPreferenceProjects().length > 1) {
+                    <label class="filter-field">
+                      <span class="filter-field__label">项目范围</span>
+                      <nz-select
+                        class="filter-field__control"
+                        nzMode="multiple"
+                        nzPlaceHolder="全部项目"
+                        [ngModel]="getProjectScope(item)"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="setProjectScope(item.key, $event)"
+                        [disabled]="statPreferenceSaving()"
+                      >
+                        @for (project of statPreferenceProjects(); track project.id) {
+                          <nz-option [nzLabel]="project.name" [nzValue]="project.id"></nz-option>
+                        }
+                      </nz-select>
+                    </label>
+                  }
+                </div>
+              }
+            </article>
+          }
+        </div>
+
+        @if (visibleStatCardCount() === 0) {
+          <nz-alert nzType="warning" nzShowIcon nzMessage="至少保留一张统计卡片"></nz-alert>
+        }
+      }
+    </div>
+  </ng-container>
+</nz-modal>

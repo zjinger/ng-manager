@@ -7,6 +7,8 @@ import { AnnouncementRepo } from "./modules/announcement/announcement.repo";
 import { AnnouncementService } from "./modules/announcement/announcement.service";
 import { AuthRepo } from "./modules/auth/auth.repo";
 import { AuthService } from "./modules/auth/auth.service";
+import { DashboardRepo } from "./modules/dashboard/dashboard.repo";
+import { DashboardService } from "./modules/dashboard/dashboard.service";
 import { DocumentRepo } from "./modules/document/document.repo";
 import { DocumentService } from "./modules/document/document.service";
 import { FeedbackRepo } from "./modules/feedback/feedback.repo";
@@ -121,9 +123,21 @@ export async function createApp() {
   const rdPermission = new RdPermissionService(projectMemberService, authRepo);
   const rdService = new RdService(rdRepo, projectRepo, projectMemberService, rdPermission);
 
+  const dashboardRepo = new DashboardRepo(app.db);
+  const dashboardService = new DashboardService(
+    dashboardRepo,
+    projectService,
+    projectMemberService,
+    announcementService,
+    documentService,
+    issueRepo,
+    rdService
+  );
+
   app.decorate("services", {
     feedback: feedbackService,
     announcement: announcementService,
+    dashboard: dashboardService,
     document: documentService,
     auth: authService,
     user: userService,

@@ -25,7 +25,7 @@ export default fp(async function errorHandlerPlugin(fastify) {
         fail("VALIDATION_ERROR", "request validation failed", error.flatten())
       );
     }
-
+    console.error(error);
     return reply.status(500).send(
       fail("INTERNAL_SERVER_ERROR", "internal server error")
     );

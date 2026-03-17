@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+﻿import type { FastifyInstance } from "fastify";
 import {
   addRdCommentSchema,
   changeRdItemStatusSchema,
@@ -11,6 +11,7 @@ import {
   updateRdItemSchema,
   updateRdStageSchema
 } from "../../modules/rd/rd.schema";
+import type { RdItemEntity } from "../../modules/rd/rd.types";
 import { AppError } from "../../utils/app-error";
 import { ok } from "../../utils/response";
 
@@ -22,6 +23,47 @@ function getOperator(request: { adminUser: { id: string; userId?: string | null;
     operatorId: request.adminUser.userId?.trim() || request.adminUser.id,
     operatorName: request.adminUser.nickname?.trim() || request.adminUser.username
   };
+}
+
+function emitRdRealtimeEvent(
+  fastify: FastifyInstance,
+  item: RdItemEntity,
+  action: "created" | "edited" | "status_changed" | "progress_updated" | "deleted"
+): void {
+  const eventType = action === "created" ? "rd.created" : "rd.updated";
+
+  fastify.log.info(
+    {
+      event: eventType,
+      id: item.id,
+      rdNo: item.rdNo,
+      title: item.title,
+      status: item.status,
+      action,
+      projectId: item.projectId
+    },
+    "[hub-ws] emit rd event"
+  );
+
+  if (action === "created") {
+    fastify.hubWsEvents.rdCreated({
+      id: item.id,
+      rdNo: item.rdNo,
+      title: item.title,
+      status: item.status,
+      projectId: item.projectId
+    });
+    return;
+  }
+
+  fastify.hubWsEvents.rdUpdated({
+    id: item.id,
+    rdNo: item.rdNo,
+    title: item.title,
+    status: item.status,
+    action,
+    projectId: item.projectId
+  });
 }
 
 export default async function rdRoutes(fastify: FastifyInstance) {
@@ -65,6 +107,7 @@ export default async function rdRoutes(fastify: FastifyInstance) {
     const params = request.params as { projectId: string };
     const body = createRdItemSchema.parse(request.body);
     const item = fastify.services.rd.create({ ...body, projectId: params.projectId, ...getOperator(request) });
+    emitRdRealtimeEvent(fastify, item, "created");
     return reply.status(201).send(ok(item, "rd item created"));
   });
 
@@ -76,31 +119,33 @@ export default async function rdRoutes(fastify: FastifyInstance) {
   fastify.patch("/projects/:projectId/rd/items/:id", async (request) => {
     const params = rdItemParamsSchema.parse(request.params);
     const body = updateRdItemSchema.parse(request.body);
-    return ok(fastify.services.rd.update(params.projectId, params.id, { ...body, ...getOperator(request) }), "rd item updated");
+    const item = fastify.services.rd.update(params.projectId, params.id, { ...body, ...getOperator(request) });
+    emitRdRealtimeEvent(fastify, item, "edited");
+    return ok(item, "rd item updated");
   });
 
   fastify.delete("/projects/:projectId/rd/items/:id", async (request) => {
     const params = rdItemParamsSchema.parse(request.params);
+    const detail = fastify.services.rd.getDetail(params.projectId, params.id, getOperator(request));
     fastify.services.rd.remove(params.projectId, params.id, getOperator(request));
+    emitRdRealtimeEvent(fastify, detail.item, "deleted");
     return ok({ id: params.id }, "rd item deleted");
   });
 
   fastify.post("/projects/:projectId/rd/items/:id/status", async (request) => {
     const params = rdItemParamsSchema.parse(request.params);
     const body = changeRdItemStatusSchema.parse(request.body);
-    return ok(
-      fastify.services.rd.changeStatus(params.projectId, params.id, { ...body, ...getOperator(request) }),
-      "rd item status updated"
-    );
+    const item = fastify.services.rd.changeStatus(params.projectId, params.id, { ...body, ...getOperator(request) });
+    emitRdRealtimeEvent(fastify, item, "status_changed");
+    return ok(item, "rd item status updated");
   });
 
   fastify.post("/projects/:projectId/rd/items/:id/progress", async (request) => {
     const params = rdItemParamsSchema.parse(request.params);
     const body = updateRdItemProgressSchema.parse(request.body);
-    return ok(
-      fastify.services.rd.updateProgress(params.projectId, params.id, { ...body, ...getOperator(request) }),
-      "rd item progress updated"
-    );
+    const item = fastify.services.rd.updateProgress(params.projectId, params.id, { ...body, ...getOperator(request) });
+    emitRdRealtimeEvent(fastify, item, "progress_updated");
+    return ok(item, "rd item progress updated");
   });
 
   fastify.post("/projects/:projectId/rd/items/:id/comment", async (request) => {

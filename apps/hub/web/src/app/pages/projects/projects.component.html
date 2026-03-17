@@ -192,7 +192,7 @@
     (nzOnCancel)="configVisible.set(false)"
   >
     <ng-container *nzModalContent>
-      <nz-tabset [(nzSelectedIndex)]="configTabIndex">
+      <nz-tabs [(nzSelectedIndex)]="configTabIndex">
         <nz-tab nzTitle="基础信息">
           <div class="tab-block">
             <p><strong>项目名称：</strong>{{ configProjectName() }}</p>
@@ -641,7 +641,7 @@
             >
           </div>
         </nz-tab>
-      </nz-tabset>
+      </nz-tabs>
     </ng-container>
   </nz-modal>
 

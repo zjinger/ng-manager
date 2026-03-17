@@ -1,4 +1,4 @@
-import type WebSocket from "ws";
+﻿import type WebSocket from "ws";
 
 export type HubWsEventType =
     | "system.connected"
@@ -11,6 +11,8 @@ export type HubWsEventType =
     | "release.created"
     | "issue.created"
     | "issue.updated"
+    | "rd.created"
+    | "rd.updated"
     | "broadcast";
 
 export interface HubWsEvent<T = unknown> {

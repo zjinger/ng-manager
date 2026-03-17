@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import type { DashboardStatCardData } from '../models/dashboard.model';
 import { DashboardStatCardComponent } from './dashboard-stat-card.component';
@@ -22,20 +22,8 @@ import { DashboardStatCardComponent } from './dashboard-stat-card.component';
 
       .stat-grid {
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 16px;
-      }
-
-      @media (max-width: 1600px) {
-        .stat-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-      }
-
-      @media (max-width: 960px) {
-        .stat-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
       }
 
       @media (max-width: 640px) {

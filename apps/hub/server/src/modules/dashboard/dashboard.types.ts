@@ -1,21 +1,21 @@
-export type DashboardTone = 'blue' | 'violet' | 'green' | 'amber' | 'rose' | 'slate';
-export type DashboardStatCardKey =
-  | 'pending'
-  | 'verify'
-  | 'rd-doing'
-  | 'reported-issues'
-  | 'reported-active'
-  | 'rd-blocked'
-  | 'rd-review'
-  | 'announcements'
-  | 'docs'
-  | 'projects';
-export type DashboardIssuePriorityScope = 'all' | 'high_up' | 'critical';
+export type DashboardTone = "blue" | "violet" | "green" | "amber" | "rose" | "slate";
 
-export type DashboardQueryParams = Record<
-  string,
-  string | number | boolean | null | undefined
->;
+export const DASHBOARD_STAT_CARD_KEYS = [
+  "pending",
+  "verify",
+  "rd-doing",
+  "reported-issues",
+  "reported-active",
+  "rd-blocked",
+  "rd-review",
+  "announcements",
+  "docs",
+  "projects"
+] as const;
+
+export type DashboardStatCardKey = typeof DASHBOARD_STAT_CARD_KEYS[number];
+export type DashboardIssuePriorityScope = "all" | "high_up" | "critical";
+export type DashboardQueryParams = Record<string, string | number | boolean | null | undefined>;
 
 export interface DashboardProjectOption {
   id: string;
@@ -45,23 +45,26 @@ export interface DashboardStatCardData {
   queryParams?: DashboardQueryParams;
 }
 
-export interface DashboardStatCardPreferenceItem {
+export interface DashboardStatCardPreferenceInput {
   key: DashboardStatCardKey;
+  enabled: boolean;
+  order: number;
+  filters?: DashboardStatCardFilters;
+}
+
+export interface DashboardStatCardPreferenceItem extends DashboardStatCardPreferenceInput {
   label: string;
   helper: string;
   icon: string;
   tone: DashboardTone;
   route?: string;
-  enabled: boolean;
-  order: number;
-  filters?: DashboardStatCardFilters;
   defaultEnabled: boolean;
   defaultOrder: number;
   supportsPriorityScope: boolean;
   supportsProjectIds: boolean;
 }
 
-export interface DashboardStatPreferencesData {
+export interface DashboardStatPreferencesResult {
   cards: DashboardStatCardPreferenceItem[];
   availableProjects: DashboardProjectOption[];
   updatedAt?: string | null;
@@ -110,16 +113,6 @@ export interface DashboardDocumentItem {
   categoryLabel: string;
   updatedAt: string;
   route?: string;
-  queryParams?: DashboardQueryParams;
-}
-
-export interface DashboardShortcutItem {
-  key: string;
-  label: string;
-  description: string;
-  icon: string;
-  tone: DashboardTone;
-  route: string;
   queryParams?: DashboardQueryParams;
 }
 
