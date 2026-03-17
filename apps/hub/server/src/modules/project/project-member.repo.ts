@@ -133,6 +133,17 @@ export class ProjectMemberRepo {
     return this.toMemberEntity(row, roles);
   }
 
+  listProjectIdsByUserId(userId: string): string[] {
+    const rows = this.db.prepare(`
+      SELECT DISTINCT project_id
+      FROM project_members
+      WHERE user_id = ?
+      ORDER BY project_id ASC
+    `).all(userId) as Array<{ project_id: string }>;
+
+    return rows.map((row) => row.project_id);
+  }
+
   updateMember(projectId: string, memberId: string, patch: { displayName?: string; updatedAt: string }): boolean {
     const fields: string[] = [];
     const params: unknown[] = [];

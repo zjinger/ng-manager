@@ -112,6 +112,10 @@ export class ProjectMemberService {
     return this.memberRepo.findMemberByProjectAndUserId(projectId, userId);
   }
 
+  listProjectIdsByUserId(userId: string): string[] {
+    return this.memberRepo.listProjectIdsByUserId(userId);
+  }
+
   assertCanManageProject(projectId: string, operatorId: string, action: string): void {
     this.requireProject(projectId);
     if (this.canManageProject(projectId, operatorId)) {
