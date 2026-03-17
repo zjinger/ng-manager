@@ -24,6 +24,10 @@ const participantBodySchema = z.object({
   userId: z.string().trim().min(1).max(64)
 });
 
+const listCurrentUserIssuesQuerySchema = listIssuesQuerySchema.extend({
+  projectId: z.string().trim().min(1).max(64).optional()
+});
+
 function getOperator(request: { adminUser: { id: string; userId?: string | null; nickname?: string | null; username: string } | null }) {
   if (!request.adminUser) {
     throw new AppError("AUTH_UNAUTHORIZED", "unauthorized", 401);
@@ -35,6 +39,12 @@ function getOperator(request: { adminUser: { id: string; userId?: string | null;
 }
 
 export default async function issueRoutes(fastify: FastifyInstance) {
+  fastify.get("/issues", async (request) => {
+    const query = listCurrentUserIssuesQuerySchema.parse(request.query);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.listCurrentUserIssues(operator.operatorId, query));
+  });
+
   fastify.get("/projects/:projectId/issues", async (request) => {
     const params = request.params as { projectId: string };
     const query = listIssuesQuerySchema.parse(request.query);

@@ -112,6 +112,13 @@ export class ProjectMemberService {
     return this.memberRepo.findMemberByProjectAndUserId(projectId, userId);
   }
 
+<<<<<<< HEAD
+=======
+  listProjectIdsByUserId(userId: string): string[] {
+    return this.memberRepo.listProjectIdsByUserId(userId);
+  }
+
+>>>>>>> origin
   assertCanManageProject(projectId: string, operatorId: string, action: string): void {
     this.requireProject(projectId);
     if (this.canManageProject(projectId, operatorId)) {
@@ -175,4 +182,8 @@ export class ProjectMemberService {
     const account = this.authRepo.findById(operatorId) ?? this.authRepo.findByUserId(operatorId);
     return !!account && account.status === "active" && account.role === "admin";
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin

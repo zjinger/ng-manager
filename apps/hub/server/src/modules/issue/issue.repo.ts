@@ -1,6 +1,8 @@
 import type Database from "better-sqlite3";
 import type { IssueEntity, IssueListResult, IssueStatus, ListIssuesQuery, UpdateIssuePatch } from "./issue.types";
 
+type IssueListFilters = Omit<ListIssuesQuery, "projectId">;
+
 type IssueRow = {
   id: string;
   project_id: string;
@@ -102,29 +104,33 @@ export class IssueRepo {
   }
 
   list(query: ListIssuesQuery): IssueListResult {
-    const conditions = ["project_id = ?"];
-    const params: unknown[] = [query.projectId];
+    return this.listByProjectIds([query.projectId], {
+      status: query.status,
+      priority: query.priority,
+      type: query.type,
+      assigneeId: query.assigneeId,
+      keyword: query.keyword,
+      page: query.page,
+      pageSize: query.pageSize
+    });
+  }
 
-    if (query.status) {
-      this.appendStatusCondition(conditions, params, query.status);
+  listByProjectIds(projectIds: string[], query: IssueListFilters): IssueListResult {
+    if (projectIds.length === 0) {
+      return {
+        items: [],
+        page: query.page,
+        pageSize: query.pageSize,
+        total: 0
+      };
     }
-    if (query.priority) {
-      conditions.push("priority = ?");
-      params.push(query.priority);
-    }
-    if (query.type) {
-      conditions.push("type = ?");
-      params.push(query.type);
-    }
-    if (query.assigneeId) {
-      conditions.push("assignee_id = ?");
-      params.push(query.assigneeId);
-    }
-    if (query.keyword) {
-      conditions.push("(issue_no LIKE ? OR title LIKE ? OR description LIKE ?)");
-      const keyword = `%${query.keyword}%`;
-      params.push(keyword, keyword, keyword);
-    }
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    const placeholders = projectIds.map(() => "?").join(", ");
+    conditions.push(`project_id IN (${placeholders})`);
+    params.push(...projectIds);
+    this.appendListFilters(conditions, params, query);
 
     const whereSql = `WHERE ${conditions.join(" AND ")}`;
     const totalRow = this.db.prepare(`SELECT COUNT(1) AS total FROM issues ${whereSql}`).get(...params) as { total: number };
@@ -158,6 +164,29 @@ export class IssueRepo {
     }
     conditions.push("status = ?");
     params.push(status);
+  }
+
+  private appendListFilters(conditions: string[], params: unknown[], query: IssueListFilters): void {
+    if (query.status) {
+      this.appendStatusCondition(conditions, params, query.status);
+    }
+    if (query.priority) {
+      conditions.push("priority = ?");
+      params.push(query.priority);
+    }
+    if (query.type) {
+      conditions.push("type = ?");
+      params.push(query.type);
+    }
+    if (query.assigneeId) {
+      conditions.push("assignee_id = ?");
+      params.push(query.assigneeId);
+    }
+    if (query.keyword) {
+      conditions.push("(issue_no LIKE ? OR title LIKE ? OR description LIKE ?)");
+      const keyword = `%${query.keyword}%`;
+      params.push(keyword, keyword, keyword);
+    }
   }
 
   private toDbEntity(entity: IssueEntity) {
@@ -227,4 +256,3 @@ export class IssueRepo {
     return status as IssueStatus;
   }
 }
-

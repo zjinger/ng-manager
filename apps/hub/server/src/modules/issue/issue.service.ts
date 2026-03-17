@@ -34,6 +34,10 @@ import type {
 
 const MAX_ISSUE_NO_RETRY = 5;
 
+type CurrentUserIssueQuery = Omit<ListIssuesQuery, "projectId"> & {
+  projectId?: string;
+};
+
 const ISSUE_NO_PREFIX: Record<IssueEntity["type"], string> = {
   bug: "BUG",
   feature: "FEAT",
@@ -58,26 +62,26 @@ export class IssueService {
 
   list(projectId: string, query: Omit<ListIssuesQuery, "projectId">): IssueListResult {
     this.requireProject(projectId);
-    const result = this.repo.list({ ...query, projectId });
-    if (result.items.length === 0) {
-      return result;
-    }
+    return this.attachParticipantNames(this.repo.list({ ...query, projectId }));
+  }
 
-    const participants = this.participantRepo.listByIssueIds(result.items.map((item) => item.id));
-    const participantMap = new Map<string, string[]>();
-    for (const participant of participants) {
-      const current = participantMap.get(participant.issueId) ?? [];
-      current.push(participant.userName);
-      participantMap.set(participant.issueId, current);
-    }
+  listCurrentUserIssues(operatorId: string, query: CurrentUserIssueQuery): IssueListResult {
+    const normalizedOperatorId = this.permission.requireOperatorId(operatorId, "list current user issues");
+    const scopedProjectIds = query.projectId
+      ? this.projectMemberService.findMemberByProjectAndUserId(query.projectId, normalizedOperatorId)
+        ? [query.projectId]
+        : []
+      : this.projectMemberService.listProjectIdsByUserId(normalizedOperatorId);
 
-    return {
-      ...result,
-      items: result.items.map((item) => ({
-        ...item,
-        participantNames: participantMap.get(item.id) ?? []
-      }))
-    };
+    return this.attachParticipantNames(this.repo.listByProjectIds(scopedProjectIds, {
+      status: query.status,
+      priority: query.priority,
+      type: query.type,
+      assigneeId: query.assigneeId,
+      keyword: query.keyword,
+      page: query.page,
+      pageSize: query.pageSize
+    }));
   }
 
   getById(projectId: string, issueId: string): IssueEntity {
@@ -498,6 +502,28 @@ export class IssueService {
     return this.logService.list(issueId);
   }
 
+  private attachParticipantNames(result: IssueListResult): IssueListResult {
+    if (result.items.length === 0) {
+      return result;
+    }
+
+    const participants = this.participantRepo.listByIssueIds(result.items.map((item) => item.id));
+    const participantMap = new Map<string, string[]>();
+    for (const participant of participants) {
+      const current = participantMap.get(participant.issueId) ?? [];
+      current.push(participant.userName);
+      participantMap.set(participant.issueId, current);
+    }
+
+    return {
+      ...result,
+      items: result.items.map((item) => ({
+        ...item,
+        participantNames: participantMap.get(item.id) ?? []
+      }))
+    };
+  }
+
   private requireProject(projectId: string): void {
     const project = this.projectRepo.findById(projectId);
     if (!project) {
@@ -528,5 +554,3 @@ export class IssueService {
     return `${prefix}-${date}-${time}${random}`;
   }
 }
-
-
