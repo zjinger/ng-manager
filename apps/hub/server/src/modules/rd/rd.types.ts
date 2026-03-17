@@ -86,6 +86,19 @@ export interface RdListQuery {
   pageSize: number;
 }
 
+export interface CurrentUserRdListQuery {
+  projectId?: string;
+  stageId?: string;
+  status?: RdItemStatus;
+  priority?: RdItemPriority;
+  type?: RdItemType;
+  assigneeId?: string;
+  overdue?: boolean;
+  keyword?: string;
+  page: number;
+  pageSize: number;
+}
+
 export interface RdItemListResult {
   items: RdItemEntity[];
   page: number;

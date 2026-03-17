@@ -10,6 +10,8 @@ import type {
   UpdateRdItemPatch
 } from "./rd.types";
 
+type RdListFilters = Omit<RdListQuery, "projectId">;
+
 type RdStageRow = {
   id: string;
   project_id: string;
@@ -244,9 +246,62 @@ export class RdRepo {
   }
 
   listItems(query: RdListQuery): RdItemListResult {
-    const conditions = ["i.project_id = ?"];
-    const params: unknown[] = [query.projectId];
+    return this.listByProjectIds([query.projectId], {
+      stageId: query.stageId,
+      status: query.status,
+      priority: query.priority,
+      type: query.type,
+      assigneeId: query.assigneeId,
+      overdue: query.overdue,
+      keyword: query.keyword,
+      page: query.page,
+      pageSize: query.pageSize
+    });
+  }
 
+  listByProjectIds(projectIds: string[], query: RdListFilters): RdItemListResult {
+    if (projectIds.length === 0) {
+      return {
+        items: [],
+        page: query.page,
+        pageSize: query.pageSize,
+        total: 0
+      };
+    }
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    const placeholders = projectIds.map(() => "?").join(", " );
+    conditions.push(`i.project_id IN (${placeholders})`);
+    params.push(...projectIds);
+    this.appendListFilters(conditions, params, query);
+
+    const whereSql = `WHERE ${conditions.join(" AND ")}`;
+    const totalRow = this.db.prepare(`
+      SELECT COUNT(1) AS total
+      FROM rd_items i
+      ${whereSql}
+    `).get(...params) as { total: number };
+
+    const offset = (query.page - 1) * query.pageSize;
+    const rows = this.db.prepare(`
+      SELECT i.*, s.name AS stage_name
+      FROM rd_items i
+      LEFT JOIN rd_stages s ON s.id = i.stage_id
+      ${whereSql}
+      ORDER BY i.updated_at DESC, i.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, query.pageSize, offset) as RdItemRow[];
+
+    return {
+      items: rows.map((row) => this.toItemEntity(row)),
+      page: query.page,
+      pageSize: query.pageSize,
+      total: totalRow.total
+    };
+  }
+
+  private appendListFilters(conditions: string[], params: unknown[], query: RdListFilters): void {
     if (query.stageId) {
       conditions.push("i.stage_id = ?");
       params.push(query.stageId);
@@ -278,30 +333,6 @@ export class RdRepo {
       conditions.push("(i.rd_no LIKE ? OR i.title LIKE ? OR i.description LIKE ?)");
       params.push(keyword, keyword, keyword);
     }
-
-    const whereSql = `WHERE ${conditions.join(" AND ")}`;
-    const totalRow = this.db.prepare(`
-      SELECT COUNT(1) AS total
-      FROM rd_items i
-      ${whereSql}
-    `).get(...params) as { total: number };
-
-    const offset = (query.page - 1) * query.pageSize;
-    const rows = this.db.prepare(`
-      SELECT i.*, s.name AS stage_name
-      FROM rd_items i
-      LEFT JOIN rd_stages s ON s.id = i.stage_id
-      ${whereSql}
-      ORDER BY i.updated_at DESC, i.created_at DESC
-      LIMIT ? OFFSET ?
-    `).all(...params, query.pageSize, offset) as RdItemRow[];
-
-    return {
-      items: rows.map((row) => this.toItemEntity(row)),
-      page: query.page,
-      pageSize: query.pageSize,
-      total: totalRow.total
-    };
   }
 
   getOverview(projectId: string): RdOverview {

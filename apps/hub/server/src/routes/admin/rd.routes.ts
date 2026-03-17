@@ -67,6 +67,11 @@ function emitRdRealtimeEvent(
 }
 
 export default async function rdRoutes(fastify: FastifyInstance) {
+  fastify.get("/rd/items", async (request) => {
+    const query = listRdItemsQuerySchema.parse(request.query);
+    return ok(fastify.services.rd.listCurrentUserItems(query, getOperator(request)));
+  });
+
   fastify.get("/projects/:projectId/rd/overview", async (request) => {
     const params = request.params as { projectId: string };
     return ok(fastify.services.rd.getOverview(params.projectId, getOperator(request)));

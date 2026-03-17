@@ -20,6 +20,7 @@ export const rdItemParamsSchema = z.object({
 });
 
 export const listRdItemsQuerySchema = z.object({
+  projectId: z.string().trim().max(64).optional(),
   stageId: z.string().trim().max(64).optional(),
   status: rdItemStatusSchema.optional(),
   priority: rdItemPrioritySchema.optional(),

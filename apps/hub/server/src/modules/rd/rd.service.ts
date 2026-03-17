@@ -11,6 +11,7 @@ import type {
   ChangeRdItemStatusInput,
   CreateRdItemInput,
   CreateRdStageInput,
+  CurrentUserRdListQuery,
   OperatorInput,
   RdItemDetailResult,
   RdItemEntity,
@@ -121,6 +122,27 @@ export class RdService {
     const operatorId = this.permission.requireOperatorId(operator.operatorId, "list rd items");
     this.permission.assertCanView(projectId, operatorId);
     return this.repo.listItems({ ...query, projectId });
+  }
+
+  listCurrentUserItems(query: CurrentUserRdListQuery, operator: OperatorInput): RdItemListResult {
+    const operatorId = this.permission.requireOperatorId(operator.operatorId, "list current user rd items");
+    const scopedProjectIds = query.projectId
+      ? this.projectMemberService.findMemberByProjectAndUserId(query.projectId, operatorId)
+        ? [query.projectId]
+        : []
+      : this.projectMemberService.listProjectIdsByUserId(operatorId);
+
+    return this.repo.listByProjectIds(scopedProjectIds, {
+      stageId: query.stageId,
+      status: query.status,
+      priority: query.priority,
+      type: query.type,
+      assigneeId: query.assigneeId,
+      overdue: query.overdue,
+      keyword: query.keyword,
+      page: query.page,
+      pageSize: query.pageSize
+    });
   }
 
   getDetail(projectId: string, itemId: string, operator: OperatorInput): RdItemDetailResult {
