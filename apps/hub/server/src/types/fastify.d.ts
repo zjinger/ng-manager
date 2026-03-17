@@ -7,6 +7,7 @@ import type { FeedbackService } from "../modules/feedback/feedback.service";
 import type { IssueService } from "../modules/issue/issue.service";
 import type { ProjectMemberService } from "../modules/project/project-member.service";
 import type { ProjectService } from "../modules/project/project.service";
+import type { RdService } from "../modules/rd/rd.service";
 import type { ReleaseService } from "../modules/release/release.service";
 import type { SharedConfigService } from "../modules/shared-config/shared-config.service";
 import type { UserService } from "../modules/user/user.service";
@@ -27,6 +28,7 @@ declare module "fastify" {
       projectMember: ProjectMemberService;
       release: ReleaseService;
       issue: IssueService;
+      rd: RdService;
     };
     verifyAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void>;
     wsManager: HubWsManager;

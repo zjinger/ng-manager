@@ -7,6 +7,7 @@ import adminFeedbackRoutes from "../routes/admin/feedback.routes";
 import adminIssueRoutes from "../routes/admin/issue.routes";
 import adminProjectMemberRoutes from "../routes/admin/project-member.routes";
 import adminProjectRoutes from "../routes/admin/project.routes";
+import adminRdRoutes from "../routes/admin/rd.routes";
 import adminReleaseRoutes from "../routes/admin/release.routes";
 import adminSharedConfigRoutes from "../routes/admin/shared-config.routes";
 import adminUserRoutes from "../routes/admin/user.routes";
@@ -25,5 +26,6 @@ export default async function adminProtectedRoutesPlugin(fastify: FastifyInstanc
   await fastify.register(adminWsRoutes);
   await fastify.register(adminBroadcastRoutes);
   await fastify.register(adminIssueRoutes);
+  await fastify.register(adminRdRoutes);
   await fastify.register(adminUserRoutes);
 }

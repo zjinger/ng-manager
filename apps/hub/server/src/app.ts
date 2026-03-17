@@ -26,6 +26,9 @@ import { ProjectMemberRepo } from "./modules/project/project-member.repo";
 import { ProjectMemberService } from "./modules/project/project-member.service";
 import { ProjectRepo } from "./modules/project/project.repo";
 import { ProjectService } from "./modules/project/project.service";
+import { RdPermissionService } from "./modules/rd/rd.permission";
+import { RdRepo } from "./modules/rd/rd.repo";
+import { RdService } from "./modules/rd/rd.service";
 import { ReleaseRepo } from "./modules/release/release.repo";
 import { ReleaseService } from "./modules/release/release.service";
 import { SharedConfigRepo } from "./modules/shared-config/shared-config.repo";
@@ -114,6 +117,10 @@ export async function createApp() {
     issuePermission
   );
 
+  const rdRepo = new RdRepo(app.db);
+  const rdPermission = new RdPermissionService(projectMemberService, authRepo);
+  const rdService = new RdService(rdRepo, projectRepo, projectMemberService, rdPermission);
+
   app.decorate("services", {
     feedback: feedbackService,
     announcement: announcementService,
@@ -124,7 +131,8 @@ export async function createApp() {
     project: projectService,
     projectMember: projectMemberService,
     release: releaseService,
-    issue: issueService
+    issue: issueService,
+    rd: rdService
   });
 
   await app.register(authPlugin);

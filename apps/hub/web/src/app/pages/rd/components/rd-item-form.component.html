@@ -1,0 +1,109 @@
+<form nz-form [formGroup]="form" class="rd-item-form" (ngSubmit)="submit()">
+  <nz-form-item>
+    <nz-form-label nzRequired>标题</nz-form-label>
+    <nz-form-control nzErrorTip="请输入研发项标题">
+      <input nz-input formControlName="title" maxlength="200" placeholder="请输入研发项标题" />
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>描述</nz-form-label>
+    <nz-form-control>
+      <textarea nz-input formControlName="description" rows="5" maxlength="10000" placeholder="补充背景、范围、交付说明"></textarea>
+    </nz-form-control>
+  </nz-form-item>
+
+  <div class="grid-row grid-row-3">
+    <nz-form-item>
+      <nz-form-label nzRequired>阶段</nz-form-label>
+      <nz-form-control nzErrorTip="请选择阶段">
+        <nz-select formControlName="stageId" nzPlaceHolder="请选择阶段">
+          @for (item of stageOptions; track item.id) {
+            <nz-option [nzValue]="item.id" [nzLabel]="item.name"></nz-option>
+          }
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label>类型</nz-form-label>
+      <nz-form-control>
+        <nz-select formControlName="type">
+          @for (item of typeOptions; track item.value) {
+            <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+          }
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label>优先级</nz-form-label>
+      <nz-form-control>
+        <nz-select formControlName="priority">
+          @for (item of priorityOptions; track item.value) {
+            <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+          }
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+  </div>
+
+  <div class="grid-row grid-row-3">
+    <nz-form-item>
+      <nz-form-label>负责人</nz-form-label>
+      <nz-form-control>
+        <nz-select formControlName="assigneeId" nzAllowClear nzPlaceHolder="可选">
+          @for (member of memberOptions; track member.id) {
+            <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)"></nz-option>
+          }
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label>确认人</nz-form-label>
+      <nz-form-control>
+        <nz-select formControlName="reviewerId" nzAllowClear nzPlaceHolder="可选">
+          @for (member of memberOptions; track member.id) {
+            <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)"></nz-option>
+          }
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label>进度</nz-form-label>
+      <nz-form-control>
+        <nz-input-number formControlName="progress" [nzMin]="0" [nzMax]="100" [nzStep]="5"></nz-input-number>
+      </nz-form-control>
+    </nz-form-item>
+  </div>
+
+  <div class="grid-row grid-row-2">
+    <nz-form-item>
+      <nz-form-label>计划开始</nz-form-label>
+      <nz-form-control>
+        <nz-date-picker formControlName="planStartAt" nzFormat="yyyy-MM-dd" nzPlaceHolder="请选择计划开始时间"></nz-date-picker>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label>计划截止</nz-form-label>
+      <nz-form-control>
+        <nz-date-picker formControlName="planEndAt" nzFormat="yyyy-MM-dd" nzPlaceHolder="请选择计划截止时间"></nz-date-picker>
+      </nz-form-control>
+    </nz-form-item>
+  </div>
+
+  <nz-form-item>
+    <nz-form-label>阻塞说明</nz-form-label>
+    <nz-form-control>
+      <textarea nz-input formControlName="blockerReason" rows="3" maxlength="4000" placeholder="如当前存在风险或阻塞可提前说明"></textarea>
+    </nz-form-control>
+  </nz-form-item>
+
+  <div class="form-actions">
+    <button nz-button type="button" (click)="cancelled.emit()">取消</button>
+    <button nz-button nzType="primary" [disabled]="submitting">{{ mode === 'create' ? '创建研发项' : '保存修改' }}</button>
+  </div>
+</form>

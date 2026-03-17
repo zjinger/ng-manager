@@ -1,0 +1,158 @@
+.rd-page {
+  min-height: 100%;
+}
+
+.filter-card {
+  border-radius: 16px;
+}
+
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filter-form nz-select {
+  width: 160px;
+}
+
+.keyword-item {
+  flex: 1 1 240px;
+}
+
+.keyword-item input {
+  min-width: 240px;
+}
+
+.quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eef2f7;
+}
+
+.quick-filter-hint {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  border-radius: 18px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #eef3ff 100%);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.stat-card .label {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.stat-card .value {
+  margin-top: 12px;
+  color: #0f172a;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.tone-blue {
+  background: linear-gradient(135deg, #ffffff 0%, #e8f1ff 100%);
+}
+
+.tone-cyan {
+  background: linear-gradient(135deg, #ffffff 0%, #e8fbff 100%);
+}
+
+.tone-red {
+  background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%);
+}
+
+.tone-green {
+  background: linear-gradient(135deg, #ffffff 0%, #ecfdf3 100%);
+}
+
+.tone-amber {
+  background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
+}
+
+.tone-slate {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+}
+
+.rd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+  gap: 12px;
+}
+
+.loading-state {
+  min-height: 200px;
+  display: grid;
+  place-items: center;
+}
+
+.rd-table .mono {
+  font-family: Consolas, 'Courier New', monospace;
+  font-weight: 600;
+  color: #475569;
+}
+
+.title-cell {
+  min-width: 220px;
+}
+
+.link-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rd-table tbody tr {
+  cursor: pointer;
+}
+
+.rd-table tbody tr.is-active {
+  background: #eef4ff;
+}
+
+@media (max-width: 1440px) {
+  .stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1080px) {
+  .rd-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-form nz-select,
+  .keyword-item,
+  .keyword-item input {
+    width: 100%;
+  }
+
+  .quick-filters {
+    align-items: stretch;
+  }
+}

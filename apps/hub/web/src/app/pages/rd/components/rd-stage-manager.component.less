@@ -1,0 +1,70 @@
+.stage-manager {
+  display: grid;
+  gap: 16px;
+}
+
+.create-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.stage-list {
+  display: grid;
+  gap: 12px;
+}
+
+.stage-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.stage-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stage-name {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.stage-meta {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.stage-edit-form {
+  display: grid;
+  grid-template-columns: 1.4fr 120px 110px auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.stage-edit-form .row-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 768px) {
+  .stage-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

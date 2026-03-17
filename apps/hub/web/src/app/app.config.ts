@@ -1,11 +1,11 @@
-import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
   provideZonelessChangeDetection
 } from '@angular/core';
+import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { provideNzIcons } from 'ng-zorro-antd/icon';
 import {
   BellOutline,
   BranchesOutline,
@@ -20,16 +20,18 @@ import {
   NotificationOutline,
   RocketOutline
 } from '@ant-design/icons-angular/icons';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideNzIcons } from 'ng-zorro-antd/icon';
 
+import { registerLocaleData } from '@angular/common';
+import zh from '@angular/common/locales/zh';
 import { routes } from './app.routes';
-import { HUB_WS_URL } from './core/services/hub-websocket.service';
 import { HUB_API_BASE_URL } from './core/http/api-base-url.token';
-import { apiUrlInterceptor } from './core/http/api-url.interceptor';
 import { apiErrorInterceptor } from './core/http/api-error.interceptor';
+import { apiUrlInterceptor } from './core/http/api-url.interceptor';
 import { authRedirectInterceptor } from './core/http/auth-redirect.interceptor';
+import { HUB_WS_URL } from './core/services/hub-websocket.service';
 import { HUB_LOGIN_AES_KEY } from './core/utils/crypto.util';
-
+registerLocaleData(zh);
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),

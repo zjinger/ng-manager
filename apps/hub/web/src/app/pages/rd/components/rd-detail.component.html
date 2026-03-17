@@ -1,0 +1,126 @@
+<nz-card class="detail-card" [nzTitle]="detail?.item?.title || '研发项详情'">
+  @if (loading && !detail) {
+    <div class="empty-wrap"><nz-spin nzTip="加载详情..."></nz-spin></div>
+  } @else if (!detail) {
+    <div class="empty-wrap"><nz-empty nzNotFoundContent="请选择左侧研发项查看详情"></nz-empty></div>
+  } @else {
+    <div class="detail-body">
+      <div class="title-row">
+        <div>
+          <div class="item-no">{{ detail.item.rdNo }}</div>
+          <h2>{{ detail.item.title }}</h2>
+        </div>
+        <nz-tag [nzColor]="statusColor(detail.item.status)">{{ statusLabel(detail.item.status) }}</nz-tag>
+      </div>
+
+      <section class="section-gap compact-meta">
+        <div class="meta-row"><span>项目</span><strong>{{ currentProjectName || '-' }}</strong></div>
+        <div class="meta-row"><span>阶段</span><strong>{{ detail.item.stageName || '-' }}</strong></div>
+        <div class="meta-row"><span>优先级</span><strong>{{ priorityLabel(detail.item.priority) }}</strong></div>
+        <div class="meta-row"><span>类型</span><strong>{{ typeLabel(detail.item.type) }}</strong></div>
+        <div class="meta-row"><span>负责人</span><strong>{{ detail.item.assigneeName || '-' }}</strong></div>
+        <div class="meta-row"><span>创建人</span><strong>{{ detail.item.creatorName }}</strong></div>
+        <div class="meta-row"><span>计划开始</span><strong>{{ detail.item.planStartAt || '-' }}</strong></div>
+        <div class="meta-row"><span>计划截止</span><strong>{{ detail.item.planEndAt || '-' }}</strong></div>
+        <div class="meta-row"><span>更新时间</span><strong>{{ detail.item.updatedAt | hubDateTime }}</strong></div>
+      </section>
+
+      <section class="section-gap">
+        <div class="section-head">
+          <h4>任务描述</h4>
+          @if (canEdit || canDelete) {
+            <div class="section-actions">
+              @if (canEdit) {
+                <button nz-button nzType="default" (click)="editRequested.emit()">编辑</button>
+              }
+              @if (canDelete) {
+                <button
+                  nz-button
+                  nzType="default"
+                  nzDanger
+                  nz-popconfirm
+                  [nzPopconfirmTitle]="deleteConfirmTitle()"
+                  (nzOnConfirm)="deleteRequested.emit()"
+                  [disabled]="actionSaving"
+                >删除研发项</button>
+              }
+            </div>
+          }
+        </div>
+        <div class="description-box">{{ detail.item.description || '暂无任务描述' }}</div>
+      </section>
+
+      <section class="section-gap progress-panel">
+        <div class="section-head">
+          <h4>进度</h4>
+        </div>
+        <nz-progress [nzPercent]="detail.item.progress"></nz-progress>
+        @if (canEdit) {
+          <div class="progress-editor" [formGroup]="progressForm">
+            <nz-input-number formControlName="progress" [nzMin]="0" [nzMax]="100" [nzStep]="5"></nz-input-number>
+            <button nz-button nzType="default" (click)="saveProgress()" [disabled]="actionSaving">保存进度</button>
+          </div>
+        }
+      </section>
+
+      @if (canEdit) {
+        <section class="section-gap action-panel">
+          <div class="section-head">
+            <h4>状态操作</h4>
+          </div>
+          <textarea nz-input rows="3" [formControl]="blockerForm.controls.blockerReason" placeholder="标记阻塞时请输入阻塞说明；解除阻塞后会自动清空"></textarea>
+          <div class="action-buttons">
+            @if (canShowAction('todo')) {
+              <button nz-button nzType="default" nz-popconfirm [nzPopconfirmTitle]="statusConfirmTitle('todo')" (nzOnConfirm)="submitStatus('todo')" [disabled]="actionSaving">恢复待开始</button>
+            }
+            @if (canShowAction('doing')) {
+              <button nz-button nzType="default" nz-popconfirm [nzPopconfirmTitle]="statusConfirmTitle('doing')" (nzOnConfirm)="submitStatus('doing')" [disabled]="actionSaving">标记进行中</button>
+            }
+            @if (canShowAction('blocked')) {
+              <button nz-button nzType="default" nzDanger nz-popconfirm [nzPopconfirmTitle]="statusConfirmTitle('blocked')" (nzOnConfirm)="submitStatus('blocked')" [disabled]="actionSaving">标记阻塞</button>
+            }
+            @if (canShowAction('done')) {
+              <button nz-button nzType="primary" nz-popconfirm [nzPopconfirmTitle]="statusConfirmTitle('done')" (nzOnConfirm)="submitStatus('done')" [disabled]="actionSaving">标记完成</button>
+            }
+            @if (canShowAction('canceled')) {
+              <button nz-button nzType="default" nz-popconfirm [nzPopconfirmTitle]="statusConfirmTitle('canceled')" (nzOnConfirm)="submitStatus('canceled')" [disabled]="actionSaving">取消任务</button>
+            }
+          </div>
+        </section>
+      }
+
+      @if (detail.item.blockerReason) {
+        <section class="section-gap">
+          <h4>当前阻塞</h4>
+          <div class="description-box blocker-box">{{ detail.item.blockerReason }}</div>
+        </section>
+      }
+
+      <section class="section-gap timeline-section">
+        <div class="section-head section-head-no-gap">
+          <h4>更新记录</h4>
+        </div>
+        @if (detail.logs.length === 0) {
+          <nz-empty nzNotFoundContent="暂无更新记录"></nz-empty>
+        } @else {
+          <nz-timeline>
+            @for (log of detail.logs; track log.id) {
+              <nz-timeline-item [nzColor]="logColor(log.actionType)">
+                <div class="timeline-item">
+                  <div class="timeline-head">
+                    <div class="timeline-head-main">
+                      <span class="timeline-type">{{ logActionLabel(log.actionType) }}</span>
+                      <span class="timeline-operator">{{ log.operatorName || log.operatorId || '系统' }}</span>
+                    </div>
+                    <span class="timeline-time">{{ log.createdAt | hubDateTime }}</span>
+                  </div>
+                  <div class="timeline-content">{{ log.content }}</div>
+                </div>
+              </nz-timeline-item>
+            }
+          </nz-timeline>
+        }
+      </section>
+    </div>
+  }
+</nz-card>

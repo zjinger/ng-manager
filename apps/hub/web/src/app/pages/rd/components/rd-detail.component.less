@@ -1,0 +1,189 @@
+.empty-wrap {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+}
+
+.detail-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:host ::ng-deep .detail-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 0;
+}
+
+:host ::ng-deep .timeline-section .ant-timeline {
+  margin-top: 12px;
+}
+
+:host ::ng-deep .timeline-section .ant-timeline-item-tail {
+  border-inline-start-color: #dbe4f0;
+}
+
+.detail-body {
+  display: grid;
+  gap: 16px;
+  flex: 1 1 auto;
+  height: 0;
+  overflow: hidden auto;
+}
+
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title-row h2 {
+  margin: 6px 0 0;
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.item-no {
+  color: #64748b;
+  font-family: Consolas, 'Courier New', monospace;
+  font-weight: 700;
+}
+
+.section-gap {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
+.compact-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-row span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.meta-row strong {
+  color: #0f172a;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-head-no-gap {
+  margin-bottom: 0;
+}
+
+.section-head h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.description-box {
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  padding: 12px 14px;
+  color: #334155;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.blocker-box {
+  color: #b91c1c;
+}
+
+.progress-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.progress-editor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.timeline-item {
+  display: grid;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeline-head-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.timeline-type {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.timeline-operator,
+.timeline-time {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.timeline-content {
+  color: #0f172a;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .compact-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .title-row,
+  .progress-editor,
+  .timeline-head,
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

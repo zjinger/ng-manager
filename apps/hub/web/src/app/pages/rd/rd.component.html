@@ -1,0 +1,241 @@
+<section class="page rd-page">
+  <app-page-header title="研发管理" subtitle="面向提测前的轻量研发项管理与进度跟踪">
+    <button page-header-actions nz-button nzType="default" (click)="openStageManager()" [disabled]="!canManageStages()">阶段管理</button>
+    <button page-header-actions nz-button nzType="primary" (click)="openCreateModal()" [disabled]="!canCreateItem()">新建研发项</button>
+  </app-page-header>
+
+  @if (errorMessage()) {
+    <nz-alert class="section" nzType="error" [nzMessage]="errorMessage()!" nzShowIcon></nz-alert>
+  }
+
+  <nz-card class="section filter-card">
+    <form nz-form nzLayout="inline" [formGroup]="filters" class="filter-form">
+      <nz-form-item>
+        <nz-form-control>
+          <nz-select formControlName="projectId" nzPlaceHolder="选择项目" nzShowSearch>
+            @for (item of projects(); track item.id) {
+              <nz-option [nzValue]="item.id" [nzLabel]="item.name"></nz-option>
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-control>
+          <nz-select formControlName="stageId" nzPlaceHolder="阶段" nzAllowClear>
+            @for (item of enabledStages(); track item.id) {
+              <nz-option [nzValue]="item.id" [nzLabel]="item.name"></nz-option>
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-control>
+          <nz-select formControlName="status" nzPlaceHolder="状态" nzAllowClear>
+            @for (item of statusOptions; track item.value) {
+              <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-control>
+          <nz-select formControlName="priority" nzPlaceHolder="优先级" nzAllowClear>
+            @for (item of priorityOptions; track item.value) {
+              <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-control>
+          <nz-select formControlName="type" nzPlaceHolder="类型" nzAllowClear>
+            @for (item of typeOptions; track item.value) {
+              <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item>
+        <nz-form-control>
+          <nz-select formControlName="assigneeId" nzPlaceHolder="负责人" nzAllowClear nzShowSearch>
+            @for (item of projectMembers(); track item.id) {
+              <nz-option [nzValue]="item.userId" [nzLabel]="memberDisplay(item)"></nz-option>
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+
+      <nz-form-item class="keyword-item">
+        <nz-form-control>
+          <input nz-input formControlName="keyword" placeholder="搜索研发项标题、编号" />
+        </nz-form-control>
+      </nz-form-item>
+    </form>
+
+    <div class="quick-filters">
+      <button
+        type="button"
+        nz-button
+        nzSize="small"
+        [nzType]="onlyMine() ? 'primary' : 'default'"
+        [disabled]="!currentUserId()"
+        (click)="toggleOnlyMine()"
+      >仅看我的研发项</button>
+      <button
+        type="button"
+        nz-button
+        nzSize="small"
+        [nzType]="onlyBlocked() ? 'primary' : 'default'"
+        (click)="toggleOnlyBlocked()"
+      >仅看阻塞项</button>
+      <button
+        type="button"
+        nz-button
+        nzSize="small"
+        [nzType]="onlyOverdue() ? 'primary' : 'default'"
+        (click)="toggleOnlyOverdue()"
+      >仅看逾期项</button>
+      @if (quickFilterCount()) {
+        <span class="quick-filter-hint">已启用 {{ quickFilterCount() }} 个快捷筛选</span>
+      }
+    </div>
+  </nz-card>
+
+  <div class="section stat-grid">
+    <div class="stat-card tone-blue">
+      <div class="label">总研发项</div>
+      <div class="value">{{ overview()?.totalCount ?? 0 }}</div>
+    </div>
+    <div class="stat-card tone-cyan">
+      <div class="label">进行中</div>
+      <div class="value">{{ overview()?.doingCount ?? 0 }}</div>
+    </div>
+    <div class="stat-card tone-red">
+      <div class="label">阻塞</div>
+      <div class="value">{{ overview()?.blockedCount ?? 0 }}</div>
+    </div>
+    <div class="stat-card tone-green">
+      <div class="label">已完成</div>
+      <div class="value">{{ overview()?.doneCount ?? 0 }}</div>
+    </div>
+    <div class="stat-card tone-amber">
+      <div class="label">逾期项</div>
+      <div class="value">{{ overview()?.overdueCount ?? 0 }}</div>
+    </div>
+    <div class="stat-card tone-slate">
+      <div class="label">完成率</div>
+      <div class="value">{{ overview()?.completionRate ?? 0 }}%</div>
+    </div>
+  </div>
+
+  <div class="content-grid rd-grid section">
+    <nz-card class="list-card" [nzTitle]="currentProject()?.name || '研发项列表'">
+      @if (loading()) {
+        <div class="loading-state"><nz-spin nzTip="加载中..."></nz-spin></div>
+      } @else if (!items().length) {
+        <nz-empty nzNotFoundContent="当前条件下暂无研发项"></nz-empty>
+      } @else {
+        <nz-table
+          class="rd-table"
+          [nzData]="items()"
+          [nzFrontPagination]="false"
+          [nzShowPagination]="true"
+          [nzPageIndex]="page()"
+          [nzTotal]="total()"
+          [nzPageSize]="pageSize"
+          (nzPageIndexChange)="changePage($event)"
+        >
+          <thead>
+            <tr>
+              <th>编号</th>
+              <th>标题</th>
+              <th>阶段</th>
+              <th>状态</th>
+              <th>优先级</th>
+              <th>类型</th>
+              <th>负责人</th>
+              <th>进度</th>
+              <th>截止时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track item.id) {
+              <tr [class.is-active]="selectedItemId() === item.id" (click)="selectItem(item)">
+                <td class="mono">{{ item.rdNo }}</td>
+                <td class="title-cell">
+                  <button type="button" class="link-btn">{{ item.title }}</button>
+                </td>
+                <td>{{ item.stageName || '-' }}</td>
+                <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
+                <td><nz-tag [nzColor]="priorityColor(item.priority)">{{ priorityLabel(item.priority) }}</nz-tag></td>
+                <td><nz-tag [nzColor]="typeColor(item.type)">{{ typeLabel(item.type) }}</nz-tag></td>
+                <td>{{ item.assigneeName || '-' }}</td>
+                <td><nz-progress [nzPercent]="item.progress" [nzShowInfo]="false" [nzStrokeWidth]="10"></nz-progress></td>
+                <td>{{ item.planEndAt || '-' }}</td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      }
+    </nz-card>
+
+    <app-rd-detail
+      class="detail-card"
+      [detail]="detail()"
+      [loading]="detailLoading()"
+      [currentProjectName]="currentProject()?.name || ''"
+      [canEdit]="canEditSelected()"
+      [canDelete]="canDeleteSelected()"
+      [actionSaving]="actionSaving()"
+      (editRequested)="openEditModal()"
+      (deleteRequested)="handleDeleteItem()"
+      (statusChanged)="handleStatusChange($event)"
+      (progressUpdated)="handleProgressUpdate($event)"
+    ></app-rd-detail>
+  </div>
+
+  <nz-modal
+    [nzTitle]="editingItem() ? '编辑研发项' : '新建研发项'"
+    [nzVisible]="itemModalVisible()"
+    [nzMaskClosable]="false"
+    [nzFooter]="null"
+    [nzWidth]="780"
+    (nzOnCancel)="closeItemModal()"
+  >
+    <ng-container *nzModalContent>
+      <app-rd-item-form
+        [mode]="editingItem() ? 'edit' : 'create'"
+        [initialValue]="editingItem()"
+        [stageOptions]="enabledStages()"
+        [memberOptions]="projectMembers()"
+        [submitting]="itemSubmitting()"
+        (submitted)="submitItemForm($event)"
+        (cancelled)="closeItemModal()"
+      ></app-rd-item-form>
+    </ng-container>
+  </nz-modal>
+
+  <nz-modal
+    nzTitle="研发阶段管理"
+    [nzVisible]="stageManagerVisible()"
+    [nzMaskClosable]="false"
+    [nzFooter]="null"
+    [nzWidth]="860"
+    (nzOnCancel)="stageManagerVisible.set(false)"
+  >
+    <ng-container *nzModalContent>
+      <app-rd-stage-manager
+        [stages]="stages()"
+        [saving]="stageSaving()"
+        (created)="createStage($event)"
+        (updated)="updateStage($event)"
+        (removed)="deleteStage($event)"
+      ></app-rd-stage-manager>
+    </ng-container>
+  </nz-modal>
+</section>

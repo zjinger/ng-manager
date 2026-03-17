@@ -1,0 +1,64 @@
+<section class="stage-manager">
+  <form nz-form [formGroup]="createForm" nzLayout="inline" class="create-form">
+    <nz-form-item>
+      <nz-form-control nzErrorTip="请输入阶段名称">
+        <input nz-input formControlName="name" placeholder="新增阶段名称，如开发阶段" />
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-control>
+        <nz-input-number formControlName="sort" [nzMin]="0" [nzMax]="9999"></nz-input-number>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-control>
+        <nz-select formControlName="enabled" style="width: 110px">
+          <nz-option [nzValue]="true" nzLabel="启用"></nz-option>
+          <nz-option [nzValue]="false" nzLabel="停用"></nz-option>
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <button nz-button nzType="primary" type="button" (click)="submitCreate()" [disabled]="saving">新增阶段</button>
+  </form>
+
+  @if (!stages.length) {
+    <nz-empty nzNotFoundContent="当前项目还没有研发阶段"></nz-empty>
+  } @else {
+    <div class="stage-list">
+      @for (item of stages; track item.id) {
+        <article class="stage-item">
+          @if (editingId === item.id) {
+            <form nz-form [formGroup]="editForm" class="stage-edit-form">
+              <input nz-input formControlName="name" />
+              <nz-input-number formControlName="sort" [nzMin]="0" [nzMax]="9999"></nz-input-number>
+              <nz-select formControlName="enabled" style="width: 100px">
+                <nz-option [nzValue]="true" nzLabel="启用"></nz-option>
+                <nz-option [nzValue]="false" nzLabel="停用"></nz-option>
+              </nz-select>
+              <div class="row-actions">
+                <button nz-button nzType="primary" type="button" (click)="saveEdit(item)" [disabled]="saving">保存</button>
+                <button nz-button type="button" (click)="cancelEdit()">取消</button>
+              </div>
+            </form>
+          } @else {
+            <div class="stage-main">
+              <div>
+                <div class="stage-name">{{ item.name }}</div>
+                <div class="stage-meta">排序 {{ item.sort }}</div>
+              </div>
+              <nz-tag [nzColor]="item.enabled ? 'green' : 'default'">{{ item.enabled ? '启用' : '停用' }}</nz-tag>
+            </div>
+            <div class="row-actions">
+              <button nz-button nzType="default" type="button" (click)="beginEdit(item)">编辑</button>
+              <button nz-button nzType="default" type="button" (click)="toggleEnabled(item)" [disabled]="saving">{{ item.enabled ? '停用' : '启用' }}</button>
+              <button nz-button nzType="default" nzDanger nz-popconfirm [nzPopconfirmTitle]="removeConfirmTitle(item)" (nzOnConfirm)="removed.emit(item.id)" [disabled]="saving">删除</button>
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>
