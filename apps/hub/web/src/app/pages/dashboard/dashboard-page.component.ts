@@ -1,10 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { filter } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
+import { HubWsEventType, HubWebsocketService } from '../../core/services/hub-websocket.service';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 import { DashboardActivityListComponent } from './components/dashboard-activity-list.component';
 import { DashboardAnnouncementPanelComponent } from './components/dashboard-announcement-panel.component';
@@ -48,6 +51,9 @@ import { DashboardService } from './dashboard.service';
 export class DashboardPageComponent {
   private readonly dashboardService = inject(DashboardService);
   private readonly router = inject(Router);
+  private readonly ws = inject(HubWebsocketService);
+  private readonly destroyRef = inject(DestroyRef);
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
@@ -112,6 +118,22 @@ export class DashboardPageComponent {
 
   public constructor() {
     void this.loadDashboard();
+
+    this.ws.events$
+      .pipe(
+        filter((event) => this.isRealtimeDashboardEvent(event.type)),
+        takeUntilDestroyed()
+      )
+      .subscribe(() => {
+        this.scheduleRealtimeRefresh();
+      });
+
+    this.destroyRef.onDestroy(() => {
+      if (this.refreshTimer !== null) {
+        clearTimeout(this.refreshTimer);
+        this.refreshTimer = null;
+      }
+    });
   }
 
   protected reload(): void {
@@ -126,17 +148,37 @@ export class DashboardPageComponent {
     void this.router.navigate(['/profile'], { queryParams: { tab: 'password' } });
   }
 
-  private async loadDashboard(): Promise<void> {
-    this.loading.set(true);
-    this.errorMessage.set(null);
+  private scheduleRealtimeRefresh(): void {
+    if (this.refreshTimer !== null) {
+      clearTimeout(this.refreshTimer);
+    }
+
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = null;
+      void this.loadDashboard(false);
+    }, 300);
+  }
+
+  private async loadDashboard(showLoading = true): Promise<void> {
+    if (showLoading) {
+      this.loading.set(true);
+      this.errorMessage.set(null);
+    }
 
     try {
       const data = await this.dashboardService.loadDashboard();
       this.applyData(data);
+      if (showLoading) {
+        this.errorMessage.set(null);
+      }
     } catch (error) {
-      this.errorMessage.set(this.resolveErrorMessage(error, '加载仪表盘失败'));
+      if (showLoading) {
+        this.errorMessage.set(this.resolveErrorMessage(error, '加载仪表盘失败'));
+      }
     } finally {
-      this.loading.set(false);
+      if (showLoading) {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -147,6 +189,25 @@ export class DashboardPageComponent {
     this.activityItems.set(data.activityItems);
     this.announcementItems.set(data.announcementItems);
     this.documentItems.set(data.documentItems);
+  }
+
+  /**
+   * dashboard 相关的实时事件包括：
+   * - issue.created / issue.updated：测试问题的创建和更新事件，影响待办事项和活动动态
+   * - announcement.published / announcement.updated：公告的发布和更新事件，影响公告面板
+   * - doc.published / doc.updated：文档的发布和更新事件，影响文档面板
+   * 这些事件发生后会触发仪表盘数据的刷新，以确保用户看到最新的信息。
+   * 由于可能会有短时间内的多次相关事件（例如批量更新问题），因此刷新会有一个短暂的延迟（300ms），以避免重复刷新。
+   */
+  private isRealtimeDashboardEvent(type: HubWsEventType): boolean {
+    return (
+      type === 'issue.created' ||
+      type === 'issue.updated' ||
+      type === 'announcement.published' ||
+      type === 'announcement.updated' ||
+      type === 'doc.published' ||
+      type === 'doc.updated'
+    );
   }
 
   private resolveErrorMessage(error: unknown, fallback: string): string {

@@ -1,10 +1,13 @@
-import { AppError } from "../../utils/app-error";
+﻿import { AppError } from "../../utils/app-error";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
 import { ProjectRepo } from "../project/project.repo";
 import type {
   AnnouncementEntity,
+  AnnouncementListItem,
   AnnouncementListResult,
+  AnnouncementReadState,
+  AnnouncementSnapshot,
   CreateAnnouncementInput,
   ListAnnouncementQuery,
   PublishAnnouncementInput,
@@ -17,7 +20,7 @@ export class AnnouncementService {
   constructor(
     private readonly repo: AnnouncementRepo,
     private readonly projectRepo: ProjectRepo
-  ) { }
+  ) {}
 
   create(input: CreateAnnouncementInput): AnnouncementEntity {
     const now = nowIso();
@@ -37,7 +40,10 @@ export class AnnouncementService {
       expireAt: input.expireAt ?? null,
       createdBy: input.createdBy?.trim() || null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      isRead: false,
+      readAt: null,
+      readVersion: null
     };
 
     this.validateTimeRange(entity.publishAt ?? undefined, entity.expireAt ?? undefined);
@@ -51,6 +57,11 @@ export class AnnouncementService {
       throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
     }
     return item;
+  }
+
+  getByIdWithReadState(id: string, userId: string): AnnouncementEntity {
+    const item = this.getById(id);
+    return this.enrichItemReadState(userId, item);
   }
 
   getPublicById(id: string, scope: "desktop" | "cli" | "all", projectKey?: string): AnnouncementEntity {
@@ -81,6 +92,34 @@ export class AnnouncementService {
     }
 
     return this.repo.list(query);
+  }
+
+  listWithReadState(userId: string, query: ListAnnouncementQuery): AnnouncementListResult {
+    return this.enrichListReadState(userId, this.list(query));
+  }
+
+  listByProjectIds(
+    projectIds: string[],
+    query: ListAnnouncementQuery,
+    options?: { includeGlobal?: boolean }
+  ): AnnouncementListResult {
+    if (query.projectId) {
+      this.assertProjectExists(query.projectId);
+    }
+
+    const normalizedProjectIds = Array.from(new Set(projectIds.map((item) => item.trim()).filter(Boolean)));
+    return this.repo.listByProjectIds(normalizedProjectIds, query, {
+      includeGlobal: options?.includeGlobal ?? false
+    });
+  }
+
+  listByProjectIdsWithReadState(
+    userId: string,
+    projectIds: string[],
+    query: ListAnnouncementQuery,
+    options?: { includeGlobal?: boolean }
+  ): AnnouncementListResult {
+    return this.enrichListReadState(userId, this.listByProjectIds(projectIds, query, options));
   }
 
   listPublic(query: {
@@ -172,6 +211,60 @@ export class AnnouncementService {
     }
 
     return this.getById(id);
+  }
+
+  markRead(id: string, userId: string): AnnouncementEntity {
+    const item = this.getById(id);
+    const now = nowIso();
+    this.repo.markRead(userId, { id: item.id, updatedAt: item.updatedAt }, now);
+    return {
+      ...item,
+      isRead: true,
+      readAt: now,
+      readVersion: item.updatedAt
+    };
+  }
+
+  markAllPublishedRead(userId: string): number {
+    return this.markSnapshotsRead(userId, this.repo.listPublishedSnapshots());
+  }
+
+  markPublishedReadByProjectIds(userId: string, projectIds: string[], options?: { includeGlobal?: boolean }): number {
+    return this.markSnapshotsRead(
+      userId,
+      this.repo.listPublishedSnapshotsByProjectIds(projectIds, { includeGlobal: options?.includeGlobal ?? false })
+    );
+  }
+
+  private markSnapshotsRead(userId: string, snapshots: AnnouncementSnapshot[]): number {
+    const now = nowIso();
+    return this.repo.markReads(userId, snapshots, now);
+  }
+
+  private enrichListReadState(userId: string, result: AnnouncementListResult): AnnouncementListResult {
+    const readMap = this.repo.findReadStates(userId, result.items.map((item) => item.id));
+    return {
+      ...result,
+      items: result.items.map((item) => this.applyReadState(item, readMap.get(item.id)))
+    };
+  }
+
+  private enrichItemReadState(userId: string, item: AnnouncementEntity): AnnouncementEntity {
+    const readMap = this.repo.findReadStates(userId, [item.id]);
+    return this.applyReadState(item, readMap.get(item.id));
+  }
+
+  private applyReadState<T extends AnnouncementEntity | AnnouncementListItem>(
+    item: T,
+    readState?: AnnouncementReadState
+  ): T {
+    const readVersion = readState?.readVersion ?? null;
+    return {
+      ...item,
+      isRead: !!readVersion && readVersion === item.updatedAt,
+      readAt: readState?.readAt ?? null,
+      readVersion
+    };
   }
 
   private assertProjectExists(projectId?: string | null) {

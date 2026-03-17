@@ -70,6 +70,22 @@ export class HubWsManager {
         return count;
     }
 
+    broadcastToUsers(userIds: string[], event: HubWsEvent): number {
+        const targets = new Set((userIds || []).map((item) => String(item).trim()).filter(Boolean));
+        if (targets.size === 0) {
+            return 0;
+        }
+
+        let count = 0;
+        for (const client of this.clients.values()) {
+            if (!client.userId || !targets.has(client.userId)) continue;
+            if (this.sendSocket(client.socket, event)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     listClients() {
         return Array.from(this.clients.values()).map(client => ({
             id: client.id,

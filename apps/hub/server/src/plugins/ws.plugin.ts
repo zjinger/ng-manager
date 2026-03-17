@@ -5,7 +5,8 @@ import type { FastifyInstance } from "fastify";
 
 import { HubWsManager } from "../modules/ws/ws.manager";
 import { HubWsEvents } from "../modules/ws/ws.events";
-import type { HubWsClientMessage } from "../modules/ws/ws.types";
+import type { HubWsClient, HubWsClientMessage } from "../modules/ws/ws.types";
+import type { JwtAdminPayload } from "../modules/auth/auth.types";
 
 function safeParseMessage(raw: string): HubWsClientMessage | null {
     try {
@@ -13,6 +14,39 @@ function safeParseMessage(raw: string): HubWsClientMessage | null {
     } catch {
         return null;
     }
+}
+
+async function authenticateSocket(fastify: FastifyInstance, request: any) {
+    await request.jwtVerify();
+    const payload = request.user as JwtAdminPayload | undefined;
+    if (!payload?.sub) {
+        throw new Error("unauthorized");
+    }
+
+    const profile = fastify.services.auth.getProfileById(payload.sub);
+    request.adminUser = profile;
+    return profile;
+}
+
+function filterProjectIds(fastify: FastifyInstance, client: HubWsClient, projectIds: string[]): string[] {
+    const normalized = Array.from(
+        new Set((projectIds || []).map((item) => String(item).trim()).filter(Boolean))
+    );
+
+    if (normalized.length === 0) {
+        return [];
+    }
+
+    if (client.role === "admin") {
+        return normalized;
+    }
+
+    if (!client.userId) {
+        return [];
+    }
+
+    const allowed = new Set(fastify.services.projectMember.listProjectIdsByUserId(client.userId));
+    return normalized.filter((projectId) => allowed.has(projectId));
 }
 
 export default fp(async function wsPlugin(fastify: FastifyInstance) {
@@ -24,10 +58,18 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     const hubWsEvents = new HubWsEvents(fastify);
     fastify.decorate("hubWsEvents", hubWsEvents);
 
-    fastify.get("/ws", { websocket: true }, (socket, req) => {
+    fastify.get("/ws", { websocket: true }, async (socket, request) => {
+        let profile;
+        try {
+            profile = await authenticateSocket(fastify, request);
+        } catch {
+            socket.close(4401, "unauthorized");
+            return;
+        }
+
         const client = wsManager.addClient(socket, {
-            userId: "anonymous",
-            role: "client",
+            userId: profile.userId?.trim() || profile.id,
+            role: profile.role,
         });
 
         wsManager.sendToClient(client.id, {
@@ -36,6 +78,8 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
             createdAt: new Date().toISOString(),
             payload: {
                 clientId: client.id,
+                userId: client.userId ?? null,
+                role: client.role ?? null,
             },
         });
 
@@ -56,13 +100,14 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
                 }
 
                 case "subscribe.projects": {
-                    wsManager.subscribeProjects(client.id, msg.projectIds || []);
+                    const allowedProjectIds = filterProjectIds(fastify, client, msg.projectIds || []);
+                    wsManager.subscribeProjects(client.id, allowedProjectIds);
                     wsManager.sendToClient(client.id, {
                         id: randomUUID(),
                         type: "system.subscribed",
                         createdAt: new Date().toISOString(),
                         payload: {
-                            projectIds: msg.projectIds || [],
+                            projectIds: allowedProjectIds,
                         },
                     });
                     break;
@@ -82,3 +127,4 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         });
     });
 });
+

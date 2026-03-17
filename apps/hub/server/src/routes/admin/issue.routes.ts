@@ -16,6 +16,7 @@ import {
   verifyIssueSchema
 } from "../../modules/issue/issue.schema";
 import { createIssueCommentSchema } from "../../modules/issue-comment/comment.schema";
+import type { IssueEntity } from "../../modules/issue/issue.types";
 import { AppError } from "../../utils/app-error";
 import { cleanupTempFiles, parseMultipartUpload } from "../../utils/multipart";
 import { ok } from "../../utils/response";
@@ -28,6 +29,18 @@ const listCurrentUserIssuesQuerySchema = listIssuesQuerySchema.extend({
   projectId: z.string().trim().min(1).max(64).optional()
 });
 
+type IssueRealtimeAction =
+  | "created"
+  | "edited"
+  | "assigned"
+  | "claimed"
+  | "reassigned"
+  | "started"
+  | "resolved"
+  | "verified"
+  | "reopened"
+  | "closed";
+
 function getOperator(request: { adminUser: { id: string; userId?: string | null; nickname?: string | null; username: string } | null }) {
   if (!request.adminUser) {
     throw new AppError("AUTH_UNAUTHORIZED", "unauthorized", 401);
@@ -36,6 +49,72 @@ function getOperator(request: { adminUser: { id: string; userId?: string | null;
     operatorId: request.adminUser.userId?.trim() || request.adminUser.id,
     operatorName: request.adminUser.nickname?.trim() || request.adminUser.username
   };
+}
+
+function collectIssueRealtimeUsers(current: IssueEntity, previous?: IssueEntity | null): string[] {
+  return Array.from(
+    new Set(
+      [
+        current.reporterId,
+        current.assigneeId ?? null,
+        previous?.reporterId ?? null,
+        previous?.assigneeId ?? null
+      ]
+        .map((item) => item?.trim())
+        .filter((item): item is string => !!item)
+    )
+  );
+}
+
+function emitIssueRealtimeEvent(
+  fastify: FastifyInstance,
+  item: IssueEntity,
+  action: IssueRealtimeAction,
+  previous?: IssueEntity | null
+): void {
+  const eventType = action === "created" ? "issue.created" : "issue.updated";
+  const userIds = collectIssueRealtimeUsers(item, previous);
+
+  fastify.log.info(
+    {
+      event: eventType,
+      id: item.id,
+      issueNo: item.issueNo,
+      title: item.title,
+      status: item.status,
+      action,
+      projectId: item.projectId,
+      assigneeId: item.assigneeId ?? null,
+      userIds
+    },
+    "[hub-ws] emit issue event"
+  );
+
+  if (action === "created") {
+    fastify.hubWsEvents.issueCreated({
+      id: item.id,
+      issueNo: item.issueNo,
+      title: item.title,
+      status: item.status,
+      assigneeId: item.assigneeId ?? null,
+      assigneeName: item.assigneeName ?? null,
+      projectId: item.projectId,
+      userIds
+    });
+    return;
+  }
+
+  fastify.hubWsEvents.issueUpdated({
+    id: item.id,
+    issueNo: item.issueNo,
+    title: item.title,
+    status: item.status,
+    action,
+    assigneeId: item.assigneeId ?? null,
+    assigneeName: item.assigneeName ?? null,
+    projectId: item.projectId,
+    userIds
+  });
 }
 
 export default async function issueRoutes(fastify: FastifyInstance) {
@@ -60,70 +139,99 @@ export default async function issueRoutes(fastify: FastifyInstance) {
     const params = request.params as { projectId: string };
     const body = createIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.create({ ...body, projectId: params.projectId, ...operator }));
+    const item = fastify.services.issue.create({ ...body, projectId: params.projectId, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "created");
+    return ok(item);
   });
 
   fastify.patch("/projects/:projectId/issues/:id", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = updateIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.update(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.update(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "edited", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/assign", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = assignIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.assign(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.assign(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "assigned", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/claim", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = claimIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.claim(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.claim(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "claimed", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/reassign", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = reassignIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.reassign(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.reassign(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "reassigned", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/start", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = startIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.start(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.start(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "started", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/resolve", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = resolveIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.resolve(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.resolve(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "resolved", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/verify", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = verifyIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.verify(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.verify(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "verified", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/reopen", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = reopenIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.reopen(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.reopen(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "reopened", previous);
+    return ok(item);
   });
 
   fastify.post("/projects/:projectId/issues/:id/close", async (request) => {
     const params = issueIdParamsSchema.parse(request.params);
     const body = closeIssueSchema.parse(request.body);
     const operator = getOperator(request);
-    return ok(fastify.services.issue.close(params.projectId, params.id, { ...body, ...operator }));
+    const previous = fastify.services.issue.getById(params.projectId, params.id);
+    const item = fastify.services.issue.close(params.projectId, params.id, { ...body, ...operator });
+    emitIssueRealtimeEvent(fastify, item, "closed", previous);
+    return ok(item);
   });
 
   fastify.get("/projects/:projectId/issues/:id/participants", async (request) => {

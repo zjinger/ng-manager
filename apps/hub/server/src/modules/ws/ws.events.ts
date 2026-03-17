@@ -110,6 +110,60 @@ export class HubWsEvents {
         this.dispatch(event);
     }
 
+    issueCreated(input: {
+        id: string;
+        issueNo: string;
+        title: string;
+        status: string;
+        assigneeId?: string | null;
+        assigneeName?: string | null;
+        projectId: string;
+        userIds: string[];
+    }) {
+        const event = buildEvent(
+            "issue.created",
+            {
+                id: input.id,
+                issueNo: input.issueNo,
+                title: input.title,
+                status: input.status,
+                assigneeId: input.assigneeId ?? null,
+                assigneeName: input.assigneeName ?? null,
+            },
+            input.projectId
+        );
+
+        this.dispatch(event, input.userIds);
+    }
+
+    issueUpdated(input: {
+        id: string;
+        issueNo: string;
+        title: string;
+        status: string;
+        action: string;
+        assigneeId?: string | null;
+        assigneeName?: string | null;
+        projectId: string;
+        userIds: string[];
+    }) {
+        const event = buildEvent(
+            "issue.updated",
+            {
+                id: input.id,
+                issueNo: input.issueNo,
+                title: input.title,
+                status: input.status,
+                action: input.action,
+                assigneeId: input.assigneeId ?? null,
+                assigneeName: input.assigneeName ?? null,
+            },
+            input.projectId
+        );
+
+        this.dispatch(event, input.userIds);
+    }
+
     broadcast(input: {
         title: string;
         content: string;
@@ -129,7 +183,16 @@ export class HubWsEvents {
         this.dispatch(event);
     }
 
-    private dispatch(event: HubWsEvent) {
+    private dispatch(event: HubWsEvent, userIds?: string[]) {
+        const normalizedUserIds = Array.from(
+            new Set((userIds || []).map((item) => String(item).trim()).filter(Boolean))
+        );
+
+        if (normalizedUserIds.length > 0) {
+            this.fastify.wsManager.broadcastToUsers(normalizedUserIds, event);
+            return;
+        }
+
         if (event.projectId) {
             this.fastify.wsManager.broadcastToProject(event.projectId, event);
         } else {

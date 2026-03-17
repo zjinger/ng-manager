@@ -55,6 +55,7 @@ export const appConfig: ApplicationConfig = {
     ]),
     { provide: HUB_API_BASE_URL, useValue: '' },
     { provide: HUB_LOGIN_AES_KEY, useValue: 'ngm_hub_login_aes_2026' },
-    { provide: HUB_WS_URL, useValue: 'ws://localhost:19527/ws' }
+    { provide: HUB_WS_URL, useValue: '/ws' }
   ]
 };
+

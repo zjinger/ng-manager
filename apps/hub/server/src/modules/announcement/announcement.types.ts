@@ -1,7 +1,13 @@
-export type AnnouncementScope = "all" | "desktop" | "cli";
+﻿export type AnnouncementScope = "all" | "desktop" | "cli";
 export type AnnouncementStatus = "draft" | "published" | "archived";
 
-export interface AnnouncementEntity {
+export interface AnnouncementReadState {
+  isRead: boolean;
+  readAt?: string | null;
+  readVersion?: string | null;
+}
+
+export interface AnnouncementEntity extends AnnouncementReadState {
   id: string;
   projectId?: string | null;
   title: string;
@@ -17,7 +23,7 @@ export interface AnnouncementEntity {
   updatedAt: string;
 }
 
-export interface AnnouncementListItem {
+export interface AnnouncementListItem extends AnnouncementReadState {
   id: string;
   projectId?: string | null;
   title: string;
@@ -29,6 +35,11 @@ export interface AnnouncementListItem {
   expireAt?: string | null;
   createdBy?: string | null;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnouncementSnapshot {
+  id: string;
   updatedAt: string;
 }
 

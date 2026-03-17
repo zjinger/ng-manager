@@ -145,7 +145,7 @@ export class DashboardService {
       hero: {
         displayName,
         roleLabel: this.roleLabel(profile),
-        summary: `你当前有 ${pendingIssues.length} 条待处理事项，${verifyIssues.length} 条待验证，${announcementCount} 条公告待关注`,
+        summary: `你当前有 ${pendingIssues.length} 条待处理事项，${verifyIssues.length} 条待验证，${announcementCount} 条已发布公告`,
         lastLoginAt: profile.lastLoginAt ?? null
       },
       stats: this.buildStats(reportedIssues, pendingIssues, verifyIssues, recentDocs, projects, announcementCount),
@@ -209,7 +209,7 @@ export class DashboardService {
       },
       {
         key: 'announcements',
-        label: '未读公告',
+        label: '已发布公告',
         value: String(announcementCount),
         helper: '当前按已发布公告统计',
         icon: 'notification',
@@ -370,3 +370,4 @@ export class DashboardService {
     return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 }
+

@@ -19,11 +19,71 @@
         <nz-option *ngFor="let p of projects()" [nzValue]="p.id" [nzLabel]="p.name"></nz-option>
       </nz-select> -->
       <div class="header-actions">
-        <span class="notify-btn" [class.offline]="!ws.connected()">
-          <nz-badge [nzCount]="unreadCount()">
+        <a
+          nz-dropdown
+          [nzDropdownMenu]="notifyMenu"
+          nzTrigger="click"
+          class="notify-btn"
+          [class.offline]="!ws.connected()"
+          (nzVisibleChange)="onNotifyVisibleChange($event)"
+        >
+          <nz-badge [nzCount]="unreadCount()" [nzOverflowCount]="99">
             <span nz-icon nzType="bell"></span>
           </nz-badge>
-        </span>
+        </a>
+
+        <nz-dropdown-menu #notifyMenu="nzDropdownMenu">
+          <div class="notify-panel">
+            <div class="notify-panel__header">
+              <div>
+                <div class="notify-panel__title">未读公告</div>
+                <div class="notify-panel__subtitle">点击公告可进入公告管理页</div>
+              </div>
+              <div class="notify-panel__actions">
+                <button
+                  nz-button
+                  nzType="link"
+                  nzSize="small"
+                  type="button"
+                  (click)="markAllAnnouncementsRead()"
+                  [disabled]="!unreadAnnouncements().length"
+                >
+                  全部已读
+                </button>
+                <button
+                  nz-button
+                  nzType="link"
+                  nzSize="small"
+                  type="button"
+                  (click)="openAnnouncementsCenter()"
+                >
+                  查看全部
+                </button>
+              </div>
+            </div>
+
+            @if (announcementLoading()) {
+              <div class="notify-panel__empty">公告加载中...</div>
+            } @else if (unreadAnnouncements().length) {
+              <div class="notify-list">
+                @for (item of unreadAnnouncements(); track item.id) {
+                  <button type="button" class="notify-item" (click)="openAnnouncement(item)">
+                    <div class="notify-item__top">
+                      <span class="notify-item__title">{{ item.title }}</span>
+                      @if (item.pinned) {
+                        <span class="notify-item__badge">置顶</span>
+                      }
+                    </div>
+                    <div class="notify-item__summary">{{ item.summary || '暂无公告摘要' }}</div>
+                    <div class="notify-item__time">{{ formatAnnouncementTime(item) }}</div>
+                  </button>
+                }
+              </div>
+            } @else {
+              <div class="notify-panel__empty">暂无未读公告</div>
+            }
+          </div>
+        </nz-dropdown-menu>
 
         <a nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="hover" class="user-trigger">
           <span class="user-avatar">

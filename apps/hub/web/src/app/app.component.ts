@@ -1,4 +1,4 @@
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -14,11 +14,36 @@ import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { filter } from 'rxjs';
+import { filter, firstValueFrom } from 'rxjs';
 import { HubApiError } from './core/http/api-error.interceptor';
+import { HubApiService } from './core/http/hub-api.service';
 import { AdminAuthService } from './core/services/admin-auth.service';
 import { HubWsEventType, HubWebsocketService } from './core/services/hub-websocket.service';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+
+type AnnouncementStatus = 'draft' | 'published' | 'archived';
+
+interface HeaderAnnouncementItem {
+  id: string;
+  projectId?: string | null;
+  title: string;
+  summary?: string | null;
+  pinned: boolean;
+  status: AnnouncementStatus;
+  publishAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  isRead: boolean;
+  readAt?: string | null;
+  readVersion?: string | null;
+}
+
+interface HeaderAnnouncementListResult {
+  items: HeaderAnnouncementItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
 
 @Component({
   selector: 'app-root',
@@ -43,15 +68,19 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 })
 export class App {
   protected readonly title = signal('NGM Admin');
-  protected readonly unreadCount = signal(3);
   protected readonly ws = inject(HubWebsocketService);
   protected readonly isLoginPage = signal(false);
   protected readonly loggingOut = signal(false);
   protected readonly auth = inject(AdminAuthService);
+  protected readonly announcementLoading = signal(false);
+  protected readonly announcementItems = signal<HeaderAnnouncementItem[]>([]);
 
   protected readonly mustChangePasswordVisible = signal(false);
   protected readonly changingPassword = signal(false);
   protected readonly changePasswordError = signal<string | null>(null);
+
+  protected readonly unreadAnnouncements = computed(() => this.announcementItems().filter((item) => !item.isRead));
+  protected readonly unreadCount = computed(() => this.unreadAnnouncements().length);
 
   protected readonly displayName = computed(() => {
     const profile = this.auth.profile();
@@ -92,6 +121,7 @@ export class App {
   private readonly router = inject(Router);
   private readonly notification = inject(NzNotificationService);
   private readonly fb = inject(FormBuilder);
+  private readonly api = inject(HubApiService);
 
   protected readonly passwordForm = this.fb.nonNullable.group({
     oldPassword: ['', [Validators.required]],
@@ -110,9 +140,16 @@ export class App {
       .subscribe(() => this.updateRouteState());
 
     this.ws.events$.pipe(takeUntilDestroyed()).subscribe((event) => {
+      if (event.type === 'announcement.published' || event.type === 'announcement.updated') {
+        void this.loadAnnouncementInbox(true);
+      }
+
+      if (!this.shouldNotify(event.type)) {
+        return;
+      }
+
       const title = this.mapNotificationTitle(event.type);
       this.notification.info(title, event.message);
-      this.unreadCount.update((count) => count + 1);
     });
 
     effect(() => {
@@ -124,6 +161,19 @@ export class App {
       } else {
         this.mustChangePasswordVisible.set(false);
       }
+    });
+
+    effect(() => {
+      const profile = this.auth.profile();
+      if (!profile) {
+        this.ws.disconnect();
+        this.announcementItems.set([]);
+        return;
+      }
+
+      this.ws.ensureConnected();
+      void this.ws.refreshProjectSubscriptions();
+      void this.loadAnnouncementInbox(true);
     });
   }
 
@@ -179,21 +229,137 @@ export class App {
     }
   }
 
+  protected onNotifyVisibleChange(open: boolean): void {
+    if (open) {
+      void this.loadAnnouncementInbox(false);
+    }
+  }
+
+  protected async markAllAnnouncementsRead(): Promise<void> {
+    if (!this.unreadAnnouncements().length) {
+      return;
+    }
+
+    this.patchAllAnnouncementsRead();
+
+    try {
+      await firstValueFrom(this.api.post<{ count: number }, Record<string, never>>('/api/admin/announcements/read-all', {}));
+    } catch {
+      void this.loadAnnouncementInbox(true);
+    }
+  }
+
+  protected openAnnouncement(item: HeaderAnnouncementItem): void {
+    void this.markAnnouncementRead(item);
+    void this.router.navigate(['/announcements']);
+  }
+
+  protected openAnnouncementsCenter(): void {
+    void this.router.navigate(['/announcements']);
+  }
+
+  protected formatAnnouncementTime(item: HeaderAnnouncementItem): string {
+    return item.publishAt || item.createdAt;
+  }
+
+  private async loadAnnouncementInbox(silent = false): Promise<void> {
+    if (!this.auth.profile()) {
+      this.announcementItems.set([]);
+      return;
+    }
+
+    if (!silent) {
+      this.announcementLoading.set(true);
+    }
+
+    try {
+      const result = await firstValueFrom(
+        this.api.get<HeaderAnnouncementListResult>('/api/admin/announcements', {
+          params: { page: 1, pageSize: 8, status: 'published' }
+        })
+      );
+      this.announcementItems.set(result.items);
+    } catch {
+      if (!silent) {
+        this.announcementItems.set([]);
+      }
+    } finally {
+      if (!silent) {
+        this.announcementLoading.set(false);
+      }
+    }
+  }
+
+  private async markAnnouncementRead(item: HeaderAnnouncementItem): Promise<void> {
+    if (item.isRead) {
+      return;
+    }
+
+    this.patchAnnouncementRead(item.id, item.updatedAt);
+
+    try {
+      await firstValueFrom(
+        this.api.post<HeaderAnnouncementItem, Record<string, never>>(`/api/admin/announcements/${item.id}/read`, {})
+      );
+    } catch {
+      void this.loadAnnouncementInbox(true);
+    }
+  }
+
+  private patchAnnouncementRead(announcementId: string, readVersion: string): void {
+    this.announcementItems.update((items) =>
+      items.map((item) =>
+        item.id === announcementId
+          ? {
+              ...item,
+              isRead: true,
+              readAt: new Date().toISOString(),
+              readVersion
+            }
+          : item
+      )
+    );
+  }
+
+  private patchAllAnnouncementsRead(): void {
+    const now = new Date().toISOString();
+    this.announcementItems.update((items) =>
+      items.map((item) => ({
+        ...item,
+        isRead: true,
+        readAt: now,
+        readVersion: item.updatedAt
+      }))
+    );
+  }
+
   private updateRouteState(): void {
     this.isLoginPage.set(this.router.url.startsWith('/login'));
   }
 
+  private shouldNotify(type: HubWsEventType): boolean {
+    return (
+      type === 'announcement.published' ||
+      type === 'announcement.updated' ||
+      type === 'doc.published' ||
+      type === 'release.created' ||
+      type === 'broadcast'
+    );
+  }
+
   private mapNotificationTitle(type: HubWsEventType): string {
     switch (type) {
-      case 'feedback.created':
-        return '新反馈通知';
-      case 'announcement.created':
-        return '新公告通知';
-      case 'release.published':
-        return '新版本发布';
+      case 'announcement.published':
+      case 'announcement.updated':
+        return '公告通知';
+      case 'doc.published':
+        return '文档发布';
+      case 'release.created':
+        return '版本发布';
+      case 'broadcast':
+        return '系统广播';
       default:
         return '系统通知';
     }
   }
 }
-

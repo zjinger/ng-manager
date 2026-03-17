@@ -1,17 +1,19 @@
 import type WebSocket from "ws";
 
 export type HubWsEventType =
-    | "system.connected" // 客户端连接成功
-    | "system.subscribed" // 客户端订阅了项目
-    | "pong" // 心跳响应
-    | "announcement.published" // 公告发布
-    | "announcement.updated" // 公告更新
-    | "doc.published" // 文档发布
-    | "doc.updated" // 文档更新
-    | "release.created" // 版本发布
-    | "broadcast"; // 管理员广播消息
+    | "system.connected"
+    | "system.subscribed"
+    | "pong"
+    | "announcement.published"
+    | "announcement.updated"
+    | "doc.published"
+    | "doc.updated"
+    | "release.created"
+    | "issue.created"
+    | "issue.updated"
+    | "broadcast";
 
-export interface HubWsEvent<T = any> {
+export interface HubWsEvent<T = unknown> {
     id: string;
     type: HubWsEventType;
     projectId?: string | null;
