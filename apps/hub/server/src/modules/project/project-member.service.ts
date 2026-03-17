@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import { AppError } from "../../utils/app-error";
+import { AuthRepo } from "../auth/auth.repo";
 import { genId } from "../../utils/id";
 import { nowIso } from "../../utils/time";
 import { ProjectRepo } from "./project.repo";
@@ -14,7 +15,8 @@ import { ProjectMemberRepo } from "./project-member.repo";
 export class ProjectMemberService {
   constructor(
     private readonly projectRepo: ProjectRepo,
-    private readonly memberRepo: ProjectMemberRepo
+    private readonly memberRepo: ProjectMemberRepo,
+    private readonly authRepo: AuthRepo
   ) {}
 
   listMembers(projectId: string): ProjectMemberEntity[] {
@@ -108,6 +110,22 @@ export class ProjectMemberService {
     return this.memberRepo.findMemberByProjectAndUserId(projectId, userId);
   }
 
+  assertCanManageProject(projectId: string, operatorId: string, action: string): void {
+    this.requireProject(projectId);
+    if (this.canManageProject(projectId, operatorId)) {
+      return;
+    }
+    throw new AppError("PROJECT_FORBIDDEN_OPERATOR", `no permission to ${action}`, 403);
+  }
+
+  canManageProject(projectId: string, operatorId: string): boolean {
+    if (this.isAdmin(operatorId)) {
+      return true;
+    }
+    const member = this.memberRepo.findMemberByProjectAndUserId(projectId, operatorId);
+    return !!member && member.roles.includes("project_admin");
+  }
+
   private requireProject(projectId: string): void {
     const project = this.projectRepo.findById(projectId);
     if (!project) {
@@ -125,5 +143,10 @@ export class ProjectMemberService {
 
   private normalizeRoles(roles: readonly ProjectMemberRole[]): ProjectMemberRole[] {
     return Array.from(new Set(roles));
+  }
+
+  private isAdmin(operatorId: string): boolean {
+    const account = this.authRepo.findById(operatorId) ?? this.authRepo.findByUserId(operatorId);
+    return !!account && account.status === "active" && account.role === "admin";
   }
 }

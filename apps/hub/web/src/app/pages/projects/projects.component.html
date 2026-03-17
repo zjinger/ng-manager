@@ -51,25 +51,27 @@
             <td>{{ item.updatedAt | hubDateTime }}</td>
             <td>
               <nz-space>
-                <a nz-button nzType="primary" (click)="openProjectModal(item)" nz-tooltip="编辑">
-                  <nz-icon nzType="edit" theme="outline"></nz-icon>
-                </a>
-                <a
-                  nz-button
-                  nzType="primary"
-                  (click)="openConfigCenter(item, 'members')"
-                  nz-tooltip="成员管理"
-                >
-                  <nz-icon nzType="team" nzTheme="outline" />
-                </a>
-                <a
-                  nz-button
-                  nzType="primary"
-                  (click)="openConfigCenter(item, 'base')"
-                  nz-tooltip="基础配置"
-                >
-                  <nz-icon nzType="setting" theme="outline"></nz-icon>
-                </a>
+                @if (item.status === 'active') {
+                  <a nz-button nzType="primary" (click)="openProjectModal(item)" nz-tooltip="编辑">
+                    <nz-icon nzType="edit" theme="outline"></nz-icon>
+                  </a>
+                  <a
+                    nz-button
+                    nzType="primary"
+                    (click)="openConfigCenter(item, 'members')"
+                    nz-tooltip="成员管理"
+                  >
+                    <nz-icon nzType="team" nzTheme="outline" />
+                  </a>
+                  <a
+                    nz-button
+                    nzType="primary"
+                    (click)="openConfigCenter(item, 'base')"
+                    nz-tooltip="基础配置"
+                  >
+                    <nz-icon nzType="setting" theme="outline"></nz-icon>
+                  </a>
+                }
                 <a
                   nz-button
                   nzType="primary"
@@ -90,19 +92,22 @@
 
     <nz-dropdown-menu #moreMenu="nzDropdownMenu" nzTrigger="click">
       <ul nz-menu>
-        <li
-          nz-menu-item
-          nz-popconfirm
-          nzPopconfirmTitle="确定要归档吗？"
-          nzPopconfirmOkText="确定"
-          nzPopconfirmCancelText="取消"
-          (nzOnConfirm)="archiveFromMenu()"
-          nzDanger
-        >
-          归档
-        </li>
-        @if(menuProject()?.status === 'archived') {
-           <li
+        @if (menuProject()?.status === 'active') {
+          <li
+            nz-menu-item
+            nz-popconfirm
+            nzPopconfirmTitle="确定要归档吗？"
+            nzPopconfirmOkText="确定"
+            nzPopconfirmCancelText="取消"
+            (nzOnConfirm)="archiveFromMenu()"
+            nzDanger
+          >
+            归档
+          </li>
+        }
+
+        @if (menuProject()?.status === 'archived') {
+          <li
             nz-menu-item
             nz-popconfirm
             nzPopconfirmTitle="确定要启用吗？"
@@ -195,6 +200,13 @@
 
         <nz-tab nzTitle="成员管理">
           <div class="tab-block">
+            @if (!canManageMembers()) {
+              <nz-alert
+                nzType="info"
+                nzShowIcon
+                nzMessage="仅项目管理员可以添加成员、移除成员和设置项目管理员"
+              ></nz-alert>
+            }
             <form nz-form [formGroup]="memberForm" nzLayout="inline" class="inline-form">
               <nz-form-item>
                 <nz-form-label>用户名</nz-form-label>
@@ -234,7 +246,7 @@
                 nz-button
                 nzType="primary"
                 (click)="saveMember()"
-                [disabled]="memberForm.invalid || memberSaving()"
+                [disabled]="memberForm.invalid || memberSaving() || !canManageMembers()"
               >
                 添加成员
               </button>
@@ -256,11 +268,20 @@
                       <a
                         nz-button
                         nzType="link"
+                        (click)="toggleProjectAdmin(member)"
+                        [disabled]="!canManageMembers()"
+                      >
+                        {{ member.roles.includes('project_admin') ? '取消管理员' : '设为管理员' }}
+                      </a>
+                      <a
+                        nz-button
+                        nzType="link"
                         nzDanger
                         nz-popconfirm
-                        nzPopconfirmTitle="确定要移除改成员吗?"
+                        nzPopconfirmTitle="确定要移除该成员吗?"
                         nzPopconfirmOkText="确定移除"
                         (nzOnConfirm)="removeMember(member)"
+                        [disabled]="!canManageMembers()"
                         >移除</a
                       >
                     </td>
@@ -310,7 +331,7 @@
                 nz-button
                 nzType="primary"
                 (click)="addModule()"
-                [disabled]="moduleForm.invalid"
+                [disabled]="moduleForm.invalid || !canManageMembers()"
               >
                 新增模块
               </button>
@@ -341,6 +362,7 @@
                         "
                         nzPopconfirmOkText="确定"
                         (nzOnConfirm)="toggleModuleEnabled(item)"
+                        [disabled]="!canManageMembers()"
                         >{{ item.enabled ? '停用' : '启用' }}</a
                       ><a
                         nz-button
@@ -350,6 +372,7 @@
                         nzPopconfirmTitle="确定要移除该模块吗?"
                         nzPopconfirmOkText="确定移除"
                         (nzOnConfirm)="removeModule(item)"
+                        [disabled]="!canManageMembers()"
                         >移除</a
                       >
                     </td>
@@ -399,7 +422,7 @@
                 nz-button
                 nzType="primary"
                 (click)="addEnvironment()"
-                [disabled]="environmentForm.invalid"
+                [disabled]="environmentForm.invalid || !canManageMembers()"
               >
                 新增环境
               </button>
@@ -430,6 +453,7 @@
                         "
                         nzPopconfirmOkText="确定"
                         (nzOnConfirm)="toggleEnvironmentEnabled(item)"
+                        [disabled]="!canManageMembers()"
                         >{{ item.enabled ? '停用' : '启用' }}</a
                       ><a
                         nz-button
@@ -439,6 +463,7 @@
                         nzPopconfirmTitle="确定要移除该环境吗?"
                         nzPopconfirmOkText="确定移除"
                         (nzOnConfirm)="removeEnvironment(item)"
+                        [disabled]="!canManageMembers()"
                         >移除</a
                       >
                     </td>
@@ -488,7 +513,7 @@
                 nz-button
                 nzType="primary"
                 (click)="addVersion()"
-                [disabled]="versionForm.invalid"
+                [disabled]="versionForm.invalid || !canManageMembers()"
               >
                 新增版本
               </button>
@@ -519,6 +544,7 @@
                         "
                         nzPopconfirmOkText="确定"
                         (nzOnConfirm)="toggleVersionEnabled(item)"
+                        [disabled]="!canManageMembers()"
                         >{{ item.enabled ? '停用' : '启用' }}</a
                       ><a
                         nz-button
@@ -528,6 +554,7 @@
                         nzPopconfirmTitle="确定要移除该版本吗?"
                         nzPopconfirmOkText="确定移除"
                         (nzOnConfirm)="removeVersion(item)"
+                        [disabled]="!canManageMembers()"
                         >移除</a
                       >
                     </td>
