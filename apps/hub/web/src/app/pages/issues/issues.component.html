@@ -81,10 +81,11 @@
       [error]="listError()"
       [total]="total()"
       [page]="page()"
-      [pageSize]="pageSize"
+      [pageSize]="pageSize()"
       (reloadRequested)="reload()"
       (issueSelected)="selectIssue($event)"
       (pageChanged)="changePage($event)"
+      (pageSizeChanged)="changePageSize($event)"
     />
 
     <app-issue-detail

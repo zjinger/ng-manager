@@ -1,4 +1,12 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  inject,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -24,11 +32,14 @@ import {
   type IssueAttachment,
   type IssueActionPanelSubmit,
   type IssueCommentMention,
-  type IssueDetailResult
+  type IssueDetailResult,
 } from '../../issues.model';
 import { IssueAttachmentsComponent } from '../issue-attachments/issue-attachments.component';
 import { IssueCommentsComponent } from '../issue-comments/issue-comments.component';
 import { IssueParticipantsComponent } from '../issue-participants/issue-participants.component';
+import { AdminAuthService } from '../../../../core/services/admin-auth.service';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { IssueCloseModalComponent } from '../issue-close-modal.component/issue-close-modal.component';
 
 @Component({
   selector: 'app-issue-detail',
@@ -45,13 +56,15 @@ import { IssueParticipantsComponent } from '../issue-participants/issue-particip
     HubDateTimePipe,
     IssueAttachmentsComponent,
     IssueCommentsComponent,
-    IssueParticipantsComponent
+    IssueParticipantsComponent,
+    IssueCloseModalComponent,
   ],
   templateUrl: './issue-detail.component.html',
-  styleUrls: ['./issue-detail.component.less']
+  styleUrls: ['./issue-detail.component.less'],
 })
 export class IssueDetailComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);
+  private readonly modal = inject(NzModalService);
 
   @Input() detail: IssueDetailResult | null = null;
   @Input() projectMembers: ProjectMemberItem[] = [];
@@ -68,13 +81,19 @@ export class IssueDetailComponent implements OnChanges {
   @Output() readonly actionSubmitted = new EventEmitter<IssueActionPanelSubmit>();
   @Output() readonly participantAdded = new EventEmitter<string>();
   @Output() readonly participantRemoved = new EventEmitter<string>();
-  @Output() readonly commentSubmitted = new EventEmitter<{ content: string; mentions: IssueCommentMention[] }>();
+  @Output() readonly commentSubmitted = new EventEmitter<{
+    content: string;
+    mentions: IssueCommentMention[];
+  }>();
   @Output() readonly attachmentsUploaded = new EventEmitter<File[]>();
   @Output() readonly attachmentDeleted = new EventEmitter<string>();
 
   protected readonly actionForm = this.fb.nonNullable.group({
-    assigneeId: ['']
+    assigneeId: [''],
   });
+
+  // 关闭弹窗
+  closeVisible = false;
 
   protected readonly statusLabel = issueDisplayStatusLabel;
   protected readonly statusColor = issueDisplayStatusColor;
@@ -89,7 +108,7 @@ export class IssueDetailComponent implements OnChanges {
   public ngOnChanges(changes: SimpleChanges): void {
     if (changes['detail']) {
       this.actionForm.patchValue({
-        assigneeId: this.detail?.issue.assigneeId ?? ''
+        assigneeId: this.detail?.issue.assigneeId ?? '',
       });
     }
   }
@@ -108,16 +127,19 @@ export class IssueDetailComponent implements OnChanges {
     if (issue.status === 'open' || issue.status === 'reopened') {
       return this.isReporter() || this.isAdmin;
     }
-    if (issue.status === 'in_progress') {
-      return this.isReporter() || this.isAssignee() || this.isParticipant() || this.isAdmin;
-    }
+    // if (issue.status === 'in_progress') {
+    //   return this.isReporter() || this.isAssignee() || this.isParticipant() || this.isAdmin;
+    // }
     return false;
   }
 
   protected canAssign(): boolean {
     const issue = this.detail?.issue;
     if (!issue) return false;
-    return (issue.status === 'open' || issue.status === 'reopened') && (this.isReporter() || this.isAdmin);
+    return (
+      (issue.status === 'open' || issue.status === 'reopened') &&
+      (this.isReporter() || this.isAdmin)
+    );
   }
 
   protected canClaim(): boolean {
@@ -132,11 +154,25 @@ export class IssueDetailComponent implements OnChanges {
   protected canStart(): boolean {
     const issue = this.detail?.issue;
     if (!issue) return false;
-    return (issue.status === 'open' || issue.status === 'reopened') && !!issue.assigneeId && (this.isAssignee() || this.isAdmin);
+    return (
+      (issue.status === 'open' || issue.status === 'reopened') &&
+      !!issue.assigneeId &&
+      (this.isAssignee() || this.isAdmin)
+    );
   }
 
   protected canResolve(): boolean {
     return this.detail?.issue.status === 'in_progress' && (this.isAssignee() || this.isAdmin);
+  }
+
+  protected canReProcess(): boolean {
+    const issue = this.detail?.issue;
+    if (!issue) return false;
+    return (
+      (issue.status === 'resolved') &&
+      !!issue.assigneeId &&
+      (this.isAssignee() || this.isAdmin)
+    );
   }
 
   protected canVerify(): boolean {
@@ -147,25 +183,37 @@ export class IssueDetailComponent implements OnChanges {
   protected canReassign(): boolean {
     const issue = this.detail?.issue;
     if (!issue) return false;
-    return ['open', 'in_progress', 'reopened'].includes(issue.status) && !!issue.assigneeId && (this.isAssignee() || this.isAdmin);
+    return (
+      ['open', 'in_progress', 'reopened'].includes(issue.status) &&
+      !!issue.assigneeId &&
+      (this.isAssignee() || this.isAdmin)
+    );
   }
 
   protected canManageParticipants(): boolean {
     const issue = this.detail?.issue;
     if (!issue) return false;
-    return ['open', 'in_progress', 'reopened'].includes(issue.status) && !!issue.assigneeId && (this.isAssignee() || this.isAdmin);
+    return (
+      ['open', 'in_progress', 'reopened'].includes(issue.status) &&
+      !!issue.assigneeId &&
+      (this.isAssignee() || this.isAdmin)
+    );
   }
 
   protected canReopen(): boolean {
     const issue = this.detail?.issue;
     if (!issue) return false;
-    return ['resolved', 'verified', 'closed'].includes(issue.status) && (this.isReporter() || this.isAdmin);
+    return (
+      ['resolved', 'verified', 'closed'].includes(issue.status) &&
+      (this.isReporter() || this.isAdmin)
+    );
   }
 
   protected canClose(): boolean {
     const issue = this.detail?.issue;
     if (!issue) return false;
-    return issue.status === 'verified' && (this.isReporter() || this.isAdmin);
+    // 发布者和管理员任何时候可以关闭issue
+    return issue.status !== 'closed' && this.isReporter() || this.isAdmin;
   }
 
   protected canComment(): boolean {
@@ -184,7 +232,9 @@ export class IssueDetailComponent implements OnChanges {
     if (detail.issue.status === 'closed') {
       return [];
     }
-    return detail.attachments.filter((item) => this.canDeleteAttachment(item)).map((item) => item.id);
+    return detail.attachments
+      .filter((item) => this.canDeleteAttachment(item))
+      .map((item) => item.id);
   }
 
   protected showResolvedReviewActions(): boolean {
@@ -210,6 +260,10 @@ export class IssueDetailComponent implements OnChanges {
   protected submitClaim(): void {
     this.actionSubmitted.emit({ action: 'claim' });
   }
+  /** 取消认领*/
+  protected submitUnClaim(): void {
+    this.actionSubmitted.emit({ action: 'assign', assigneeId: '' });
+  }
 
   protected submitReassign(): void {
     const assigneeId = this.actionForm.controls.assigneeId.value.trim();
@@ -227,6 +281,10 @@ export class IssueDetailComponent implements OnChanges {
     this.actionSubmitted.emit({ action: 'resolve' });
   }
 
+  protected submitReprocess(): void {
+    this.actionSubmitted.emit({ action: 'start' });
+  }
+
   protected submitVerify(): void {
     this.actionSubmitted.emit({ action: 'verify' });
   }
@@ -235,9 +293,15 @@ export class IssueDetailComponent implements OnChanges {
     this.actionSubmitted.emit({ action: 'reopen' });
   }
 
-  protected submitClose(): void {
-    this.actionSubmitted.emit({ action: 'close' });
+  /**切换关闭issue确认弹窗 */
+  protected changeCloseVisible(visible:boolean): void {
+    this.closeVisible = visible;
   }
+
+  protected submitClose(msg: string): void {
+    this.actionSubmitted.emit({ action: 'close', closeReason: msg });
+  }
+  
 
   private isReporter(): boolean {
     return !!this.currentUserId && this.detail?.issue.reporterId === this.currentUserId;
@@ -248,17 +312,26 @@ export class IssueDetailComponent implements OnChanges {
   }
 
   private isParticipant(): boolean {
-    return !!this.currentUserId && !!this.detail?.participants.some((item) => item.userId === this.currentUserId);
+    return (
+      !!this.currentUserId &&
+      !!this.detail?.participants.some((item) => item.userId === this.currentUserId)
+    );
   }
 
   private isProjectMember(): boolean {
     if (this.isAdmin) {
       return true;
     }
-    return !!this.currentUserId && this.projectMembers.some((item) => item.userId === this.currentUserId);
+    return (
+      !!this.currentUserId && this.projectMembers.some((item) => item.userId === this.currentUserId)
+    );
   }
 
   private canDeleteAttachment(attachment: IssueAttachment): boolean {
-    return this.isAdmin || this.isAssignee() || (!!this.currentUserId && attachment.uploaderId === this.currentUserId);
+    return (
+      this.isAdmin ||
+      this.isAssignee() ||
+      (!!this.currentUserId && attachment.uploaderId === this.currentUserId)
+    );
   }
 }

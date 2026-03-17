@@ -1,6 +1,6 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterModule } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -32,7 +32,8 @@ import type { IssueFormValue, ProjectOption } from './issues.model';
     NzSelectModule,
     AttachmentCardListComponent,
     PageHeaderComponent,
-    IssueFormComponent
+    IssueFormComponent,
+    RouterModule
   ],
   templateUrl: './issue-create.component.html',
   styleUrls: ['./issue-create.component.less'],
