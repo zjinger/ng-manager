@@ -58,7 +58,7 @@ export class IssueService {
     private readonly attachmentService: IssueAttachmentService,
     private readonly logService: IssueLogService,
     private readonly permission: IssuePermissionService
-  ) {}
+  ) { }
 
   list(projectId: string, query: Omit<ListIssuesQuery, "projectId">): IssueListResult {
     this.requireProject(projectId);
@@ -161,7 +161,7 @@ export class IssueService {
             toStatus: entity.status,
             operatorId,
             operatorName: input.operatorName?.trim() || reporter.displayName,
-            summary: assigneeName ? `Created issue and assigned to ${assigneeName}` : "Created issue"
+            summary: assigneeName ? `创建工单并指派给 ${assigneeName}` : "创建工单"
           });
         });
         return entity;
@@ -202,7 +202,7 @@ export class IssueService {
       toStatus: issue.status,
       operatorId,
       operatorName: input.operatorName?.trim() || null,
-      summary: "Updated issue fields"
+      summary: "编辑工单"
     });
     return this.getById(projectId, issueId);
   }
@@ -231,7 +231,7 @@ export class IssueService {
         toStatus: issue.status,
         operatorId,
         operatorName: input.operatorName?.trim() || null,
-        summary: `Assigned to ${assignee.displayName}`
+        summary: `指派给 ${assignee.displayName}`
       });
     });
 
@@ -262,7 +262,7 @@ export class IssueService {
         toStatus: issue.status,
         operatorId,
         operatorName: input.operatorName?.trim() || member.displayName,
-        summary: `Claimed by ${member.displayName}`
+        summary: `${member.displayName} 认领工单`
       });
     });
 
@@ -304,7 +304,7 @@ export class IssueService {
         toStatus: issue.status,
         operatorId,
         operatorName: input.operatorName?.trim() || null,
-        summary: `Reassigned to ${nextAssignee.displayName}`
+        summary: `重新指派给 ${nextAssignee.displayName}`
       });
     });
 
@@ -336,7 +336,7 @@ export class IssueService {
       toStatus: nextStatus,
       operatorId,
       operatorName: input.operatorName?.trim() || null,
-      summary: input.comment?.trim() || "Started issue"
+      summary: input.comment?.trim() || null
     });
     return this.getById(projectId, issueId);
   }
@@ -368,7 +368,7 @@ export class IssueService {
       toStatus: nextStatus,
       operatorId,
       operatorName: input.operatorName?.trim() || null,
-      summary: summary || "Resolved issue"
+      summary: summary 
     });
     return this.getById(projectId, issueId);
   }
@@ -397,7 +397,7 @@ export class IssueService {
       toStatus: nextStatus,
       operatorId,
       operatorName: input.operatorName?.trim() || null,
-      summary: summary || "Verified issue"
+      summary: summary
     });
     return this.getById(projectId, issueId);
   }
@@ -428,7 +428,7 @@ export class IssueService {
       toStatus: nextStatus,
       operatorId,
       operatorName: input.operatorName?.trim() || null,
-      summary: input.comment?.trim() || "Reopened issue"
+      summary: input.comment?.trim() || "重新打开工单"
     });
     return this.getById(projectId, issueId);
   }
@@ -436,7 +436,7 @@ export class IssueService {
   close(projectId: string, issueId: string, input: CloseIssueInput): IssueEntity {
     const issue = this.getById(projectId, issueId);
     const operatorId = this.permission.requireOperatorId(input.operatorId, "close issue");
-    this.assertStatus(issue.status, ["verified"], "close issue");
+    this.assertStatus(issue.status, ["verified", "open", "reopened", "in_progress", "resolved"], "close issue");
     this.permission.assertCanClose(issue, operatorId);
 
     const changed = this.repo.update(projectId, issueId, {
@@ -456,7 +456,7 @@ export class IssueService {
       toStatus: "closed",
       operatorId,
       operatorName: input.operatorName?.trim() || null,
-      summary: "Closed issue"
+      summary: input.closeReason?.trim() || null
     });
     return this.getById(projectId, issueId);
   }
