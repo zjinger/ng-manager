@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, computed } from '@angular/core';
+import { Component, EventEmitter, Output, computed, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -76,6 +76,27 @@ type AuthType = NonNullable<Auth>['type'];
             </div>
           }
 
+          @case ('cookie') {
+            <div class="grid">
+              <div class="row row-top">
+                <div class="label">Cookie</div>
+                <textarea
+                  nz-input
+                  rows="4"
+                  placeholder="ngm_hub_token=...; other=value"
+                  [ngModel]="cookieValue()"
+                  (ngModelChange)="setCookieValue($event)"
+                ></textarea>
+              </div>
+
+              <nz-alert
+                nzType="info"
+                nzShowIcon
+                nzMessage="填写完整 Cookie 头值。适合先调用登录接口拿到 Set-Cookie，再粘贴到这里复用会话。"
+              ></nz-alert>
+            </div>
+          }
+
           @case ('apikey') {
             <div class="grid">
               <div class="row">
@@ -118,49 +139,48 @@ type AuthType = NonNullable<Auth>['type'];
       </div>
     </div>
   `,
-  styles: [`
-    .wrap{ display:flex; flex-direction:column; height:100%; min-height:220px; }
-    .bar{
-      display:flex; gap:10px; align-items:center;
-      padding:8px 0; border-bottom:1px solid #f0f0f0;
-    }
-    .type{ width:160px; }
-    .in{ width:140px; }
+  styles: [
+    `
+      .wrap{ display:flex; flex-direction:column; height:100%; min-height:220px; }
+      .bar{
+        display:flex; gap:10px; align-items:center;
+        padding:8px 0; border-bottom:1px solid #f0f0f0;
+      }
+      .type{ width:160px; }
+      .in{ width:140px; }
 
-    .main{ flex:1 1 auto; overflow:auto; padding-top:10px; }
-    .empty{ padding:12px; opacity:.7; }
+      .main{ flex:1 1 auto; overflow:auto; padding-top:10px; }
+      .empty{ padding:12px; opacity:.7; }
 
-    .grid{ display:flex; flex-direction:column; gap:10px; }
-    .row{ display:grid; grid-template-columns: 100px 1fr; align-items:center; gap:10px; }
-    .label{ font-size:12px; opacity:.8; }
-  `],
+      .grid{ display:flex; flex-direction:column; gap:10px; }
+      .row{ display:grid; grid-template-columns: 100px 1fr; align-items:center; gap:10px; }
+      .row-top{ align-items:start; }
+      .label{ font-size:12px; opacity:.8; }
+    `
+  ],
 })
 export class AuthEditorComponent {
-  @Input() auth: Auth | undefined;
+  readonly auth = input<Auth | undefined>(undefined);
   @Output() authChange = new EventEmitter<Auth | undefined>();
 
-  types: AuthType[] = ['none', 'basic', 'bearer', 'apikey'];
+  types: AuthType[] = ['none', 'basic', 'bearer', 'cookie', 'apikey'];
 
-  type = computed<AuthType>(() => (this.auth?.type ?? 'none') as AuthType);
+  type = computed<AuthType>(() => (this.auth()?.type ?? 'none') as AuthType);
 
-  // basic
-  basicUsername = computed(() => (this.auth?.type === 'basic' ? (this.auth.basic?.username ?? '') : ''));
-  basicPassword = computed(() => (this.auth?.type === 'basic' ? (this.auth.basic?.password ?? '') : ''));
-
-  // bearer
-  bearerToken = computed(() => (this.auth?.type === 'bearer' ? (this.auth.bearer?.token ?? '') : ''));
-
-  // apikey
+  basicUsername = computed(() => (this.auth()?.type === 'basic' ? (this.auth()?.basic?.username ?? '') : ''));
+  basicPassword = computed(() => (this.auth()?.type === 'basic' ? (this.auth()?.basic?.password ?? '') : ''));
+  bearerToken = computed(() => (this.auth()?.type === 'bearer' ? (this.auth()?.bearer?.token ?? '') : ''));
+  cookieValue = computed(() => (this.auth()?.type === 'cookie' ? (this.auth()?.cookie?.value ?? '') : ''));
   apiKeyIn = computed<'header' | 'query'>(() => {
-    if (this.auth?.type !== 'apikey') return 'header';
-    return (this.auth.apikey?.in ?? 'header') as any;
+    if (this.auth()?.type !== 'apikey') return 'header';
+    return (this.auth()?.apikey?.in ?? 'header') as 'header' | 'query';
   });
-  apiKeyKey = computed(() => (this.auth?.type === 'apikey' ? (this.auth.apikey?.key ?? '') : ''));
-  apiKeyValue = computed(() => (this.auth?.type === 'apikey' ? (this.auth.apikey?.value ?? '') : ''));
+  apiKeyKey = computed(() => (this.auth()?.type === 'apikey' ? (this.auth()?.apikey?.key ?? '') : ''));
+  apiKeyValue = computed(() => (this.auth()?.type === 'apikey' ? (this.auth()?.apikey?.value ?? '') : ''));
 
   setType(t: AuthType) {
     if (t === 'none') {
-      this.authChange.emit({ type: 'none' } as any);
+      this.authChange.emit({ type: 'none' } as Auth);
       return;
     }
 
@@ -168,7 +188,7 @@ export class AuthEditorComponent {
       this.authChange.emit({
         type: 'basic',
         basic: { username: '', password: '' },
-      } as any);
+      } as Auth);
       return;
     }
 
@@ -176,59 +196,75 @@ export class AuthEditorComponent {
       this.authChange.emit({
         type: 'bearer',
         bearer: { token: '' },
-      } as any);
+      } as Auth);
       return;
     }
 
-    if (t === 'apikey') {
+    if (t === 'cookie') {
       this.authChange.emit({
-        type: 'apikey',
-        apikey: { in: 'header', key: '', value: '' },
-      } as any);
+        type: 'cookie',
+        cookie: { value: '' },
+      } as Auth);
       return;
     }
+
+    this.authChange.emit({
+      type: 'apikey',
+      apikey: { in: 'header', key: '', value: '' },
+    } as Auth);
   }
 
   setBasicUsername(v: string) {
-    const next: any = { ...(this.auth ?? { type: 'basic' }), type: 'basic', basic: { ...(this.auth as any)?.basic, username: v } };
+    const current = this.auth();
+    const next: Auth = { ...(current ?? { type: 'basic' }), type: 'basic', basic: { ...(current as any)?.basic, username: v } } as Auth;
     this.authChange.emit(next);
   }
 
   setBasicPassword(v: string) {
-    const next: any = { ...(this.auth ?? { type: 'basic' }), type: 'basic', basic: { ...(this.auth as any)?.basic, password: v } };
+    const current = this.auth();
+    const next: Auth = { ...(current ?? { type: 'basic' }), type: 'basic', basic: { ...(current as any)?.basic, password: v } } as Auth;
     this.authChange.emit(next);
   }
 
   setBearerToken(v: string) {
-    const next: any = { ...(this.auth ?? { type: 'bearer' }), type: 'bearer', bearer: { ...(this.auth as any)?.bearer, token: v } };
+    const current = this.auth();
+    const next: Auth = { ...(current ?? { type: 'bearer' }), type: 'bearer', bearer: { ...(current as any)?.bearer, token: v } } as Auth;
+    this.authChange.emit(next);
+  }
+
+  setCookieValue(v: string) {
+    const current = this.auth();
+    const next: Auth = { ...(current ?? { type: 'cookie' }), type: 'cookie', cookie: { ...(current as any)?.cookie, value: v } } as Auth;
     this.authChange.emit(next);
   }
 
   setApiKeyIn(v: 'header' | 'query') {
-    const next: any = {
-      ...(this.auth ?? { type: 'apikey' }),
+    const current = this.auth();
+    const next: Auth = {
+      ...(current ?? { type: 'apikey' }),
       type: 'apikey',
-      apikey: { ...(this.auth as any)?.apikey, in: v, key: this.apiKeyKey(), value: this.apiKeyValue() },
-    };
+      apikey: { ...(current as any)?.apikey, in: v, key: this.apiKeyKey(), value: this.apiKeyValue() },
+    } as Auth;
     this.authChange.emit(next);
   }
 
   setApiKeyKey(v: string) {
-    const next: any = {
-      ...(this.auth ?? { type: 'apikey' }),
+    const current = this.auth();
+    const next: Auth = {
+      ...(current ?? { type: 'apikey' }),
       type: 'apikey',
-      apikey: { ...(this.auth as any)?.apikey, in: this.apiKeyIn(), key: v, value: this.apiKeyValue() },
-    };
+      apikey: { ...(current as any)?.apikey, in: this.apiKeyIn(), key: v, value: this.apiKeyValue() },
+    } as Auth;
     this.authChange.emit(next);
   }
 
   setApiKeyValue(v: string) {
-    const next: any = {
-      ...(this.auth ?? { type: 'apikey' }),
+    const current = this.auth();
+    const next: Auth = {
+      ...(current ?? { type: 'apikey' }),
       type: 'apikey',
-      apikey: { ...(this.auth as any)?.apikey, in: this.apiKeyIn(), key: this.apiKeyKey(), value: v },
-    };
+      apikey: { ...(current as any)?.apikey, in: this.apiKeyIn(), key: this.apiKeyKey(), value: v },
+    } as Auth;
     this.authChange.emit(next);
   }
 }
-

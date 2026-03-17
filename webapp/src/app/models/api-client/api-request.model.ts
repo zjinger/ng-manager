@@ -4,7 +4,7 @@ export type ApiRequestKvRow = { id: string; key: string; value: string; enabled:
 
 export type ApiRequestEntityBodyMode = "none" | "json" | "text" | "form" | "urlencoded" | "binary";
 
-export type ApiRequestEntityAuthType = "none" | "basic" | "bearer" | "apikey";
+export type ApiRequestEntityAuthType = "none" | "basic" | "bearer" | "apikey" | "cookie";
 
 export interface ApiRequestEntityBody {
     mode: ApiRequestEntityBodyMode;
@@ -17,6 +17,7 @@ export interface ApiRequestEntityAuth {
     basic?: { username: string; password: string };
     bearer?: { token: string };
     apikey?: { in: "header" | "query"; key: string; value: string };
+    cookie?: { value: string };
 }
 
 export interface ApiRequestEntityOptions {

@@ -14,7 +14,7 @@ export type ApiRequestBodyMode =
     | "urlencoded"
     | "binary";
 
-export type ApiRequestAuthType = "none" | "basic" | "bearer" | "apikey";
+export type ApiRequestAuthType = "none" | "basic" | "bearer" | "apikey" | "cookie";
 
 export interface ApiRequestOptions {
     timeoutMs?: number;
@@ -33,6 +33,7 @@ export interface ApiRequestAuth {
     basic?: { username: string; password: string };
     bearer?: { token: string };
     apikey?: { in: "header" | "query"; key: string; value: string };
+    cookie?: { value: string };
 }
 
 export interface ApiRequestEntity {

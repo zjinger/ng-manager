@@ -44,6 +44,11 @@ function applyAuth(headers: Record<string, string>, auth: any) {
         return;
     }
 
+    if (auth.type === "cookie" && auth.cookie?.value != null) {
+        headers["cookie"] = String(auth.cookie.value ?? "");
+        return;
+    }
+
     if (auth.type === "apikey" && auth.apikey?.key) {
         const k = String(auth.apikey.key);
         const v = String(auth.apikey.value ?? "");
@@ -144,4 +149,3 @@ export function buildBodyTextForSend(
     }
     return undefined;
 }
-
