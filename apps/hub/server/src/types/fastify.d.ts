@@ -13,6 +13,7 @@ import type { SharedConfigService } from "../modules/shared-config/shared-config
 import type { UserService } from "../modules/user/user.service";
 import { HubWsEvents } from "../modules/ws/ws.events";
 import { HubWsManager } from "../modules/ws/ws.manager";
+import { UploadService } from "../modules/upload/upload.service";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -29,6 +30,7 @@ declare module "fastify" {
       release: ReleaseService;
       issue: IssueService;
       rd: RdService;
+      upload: UploadService
     };
     verifyAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void>;
     wsManager: HubWsManager;

@@ -12,6 +12,7 @@ import adminReleaseRoutes from "../routes/admin/release.routes";
 import adminSharedConfigRoutes from "../routes/admin/shared-config.routes";
 import adminUserRoutes from "../routes/admin/user.routes";
 import adminWsRoutes from "../routes/admin/ws.routes";
+import adminUploadRoutes from "../routes/admin/upload.routes";
 
 export default async function adminProtectedRoutesPlugin(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.verifyAdmin);
@@ -28,4 +29,5 @@ export default async function adminProtectedRoutesPlugin(fastify: FastifyInstanc
   await fastify.register(adminIssueRoutes);
   await fastify.register(adminRdRoutes);
   await fastify.register(adminUserRoutes);
+  await fastify.register(adminUploadRoutes);
 }

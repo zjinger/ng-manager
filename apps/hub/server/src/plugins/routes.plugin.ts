@@ -13,6 +13,7 @@ import publicSharedConfigRoutes from "../routes/public/shared-config.routes";
 
 // 管理员受保护的路由
 import adminProtectedRoutesPlugin from "./admin-protected-routes.plugin";
+import publicUploadRoutes from "../routes/public/upload.routes";
 
 // public 路由不需要验证身份，admin 路由需要验证管理员身份
 export default fp(async function routesPlugin(fastify: FastifyInstance) {
@@ -28,8 +29,15 @@ export default fp(async function routesPlugin(fastify: FastifyInstance) {
     await fastify.register(publicSharedConfigRoutes, { prefix: "/api/public" });
     // 项目
     await fastify.register(publicProjectRoutes, { prefix: "/api/public" });
+
+    // upload
+    await fastify.register(publicUploadRoutes, { prefix: "/api/public" });
+
     // auth
     await fastify.register(adminAuthRoutes, { prefix: "/api/admin" });
+
+
+
 
     // 管理员受保护的路由
     await fastify.register(adminProtectedRoutesPlugin, {

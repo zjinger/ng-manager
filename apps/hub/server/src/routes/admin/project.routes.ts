@@ -6,6 +6,7 @@ import {
   listProjectQuerySchema,
   updateProjectConfigItemSchema,
   updateProjectSchema,
+  updateProjectSortSchema,
   updateProjectVersionItemSchema
 } from "../../modules/project/project.schema";
 import { AppError } from "../../utils/app-error";
@@ -94,6 +95,15 @@ export default async function adminProjectRoutes(fastify: FastifyInstance) {
     return ok(item, "project module updated");
   });
 
+  fastify.put("/projects/:id/modules/:moduleId/sort", async (request) => {
+    const params = request.params as { id: string; moduleId: string };
+    const body = updateProjectSortSchema.parse(request.body);
+    const operator = getOperator(request);
+    fastify.services.projectMember.assertCanManageProject(params.id, operator.operatorId, "manage project modules");
+    const item = fastify.services.project.updateModuleSort(params.id, params.moduleId, body.sort);
+    return ok(item, "project module sort updated");
+  });
+
   fastify.delete("/projects/:id/modules/:moduleId", async (request) => {
     const params = request.params as { id: string; moduleId: string };
     const operator = getOperator(request);
@@ -124,6 +134,15 @@ export default async function adminProjectRoutes(fastify: FastifyInstance) {
     fastify.services.projectMember.assertCanManageProject(params.id, operator.operatorId, "manage project environments");
     const item = fastify.services.project.updateEnvironment(params.id, params.environmentId, body);
     return ok(item, "project environment updated");
+  });
+
+  fastify.put("/projects/:id/environments/:environmentId/sort", async (request) => {
+    const params = request.params as { id: string; environmentId: string };
+    const body = updateProjectSortSchema.parse(request.body);
+    const operator = getOperator(request);
+    fastify.services.projectMember.assertCanManageProject(params.id, operator.operatorId, "manage project environments");
+    const item = fastify.services.project.updateEnvironmentSort(params.id, params.environmentId, body.sort);
+    return ok(item, "project environment sort updated");
   });
 
   fastify.delete("/projects/:id/environments/:environmentId", async (request) => {
@@ -158,6 +177,15 @@ export default async function adminProjectRoutes(fastify: FastifyInstance) {
     return ok(item, "project version updated");
   });
 
+  fastify.put("/projects/:id/versions/:versionId/sort", async (request) => {
+    const params = request.params as { id: string; versionId: string };
+    const body = updateProjectSortSchema.parse(request.body);
+    const operator = getOperator(request);
+    fastify.services.projectMember.assertCanManageProject(params.id, operator.operatorId, "manage project versions");
+    const item = fastify.services.project.updateVersionSort(params.id, params.versionId, body.sort);
+    return ok(item, "project version sort updated");
+  });
+
   fastify.delete("/projects/:id/versions/:versionId", async (request) => {
     const params = request.params as { id: string; versionId: string };
     const operator = getOperator(request);
@@ -166,3 +194,4 @@ export default async function adminProjectRoutes(fastify: FastifyInstance) {
     return ok({ id: params.versionId }, "project version deleted");
   });
 }
+

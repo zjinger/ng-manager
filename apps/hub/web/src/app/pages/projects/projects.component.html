@@ -252,6 +252,7 @@
               <button
                 nz-button
                 nzType="primary"
+                type="button"
                 (click)="saveMember()"
                 [disabled]="memberForm.invalid || memberSaving() || !canManageMembers()"
               >
@@ -323,20 +324,23 @@
                 ><nz-form-control
                   ><nz-input-number
                     formControlName="sort"
+                    style="width: 100px"
                     [nzMin]="0"
-                    nzPlaceHolder="排序"
+                    [nzMax]="9999"
+                    nzPlaceHolder="默认排序"
                   ></nz-input-number
                 ></nz-form-control>
                 <nz-icon
                   style="margin-left: 6px; color: rgba(0, 0, 0, 0.45)"
                   nzType="question-circle"
                   nzTheme="outline"
-                  nz-tooltip="序号越小，显示越靠前"
+                  nz-tooltip="序号越小，显示越靠前；留空时自动追加到最后"
                 />
               </nz-form-item>
               <button
                 nz-button
                 nzType="primary"
+                type="button"
                 (click)="addModule()"
                 [disabled]="moduleForm.invalid || !canManageMembers()"
               >
@@ -357,7 +361,27 @@
                   <tr>
                     <td>{{ item.name }}</td>
                     <td>{{ item.enabled ? '启用' : '停用' }}</td>
-                    <td>{{ item.sort }}</td>
+                    <td>
+                      <nz-space>
+                        <nz-input-number
+                          [ngModel]="getSortDraft('module', item.id, item.sort)"
+                          [ngModelOptions]="{ standalone: true }"
+                          [nzMin]="0"
+                          [nzMax]="9999"
+                          (ngModelChange)="setSortDraft('module', item.id, $event)"
+                          [disabled]="!canManageMembers() || isSortSaving('module', item.id)"
+                        ></nz-input-number>
+                        <button
+                          nz-button
+                          nzType="link"
+                          type="button"
+                          (click)="updateModuleSort(item)"
+                          [disabled]="!canManageMembers() || !hasSortChanged('module', item.id, item.sort) || isSortSaving('module', item.id)"
+                        >
+                          保存
+                        </button>
+                      </nz-space>
+                    </td>
                     <td>
                       <a
                         nz-button
@@ -415,19 +439,22 @@
                   ><nz-input-number
                     formControlName="sort"
                     [nzMin]="0"
-                    nzPlaceHolder="排序"
+                    [nzMax]="9999"
+                    style="width: 100px"
+                    nzPlaceHolder="默认排序"
                   ></nz-input-number
                 ></nz-form-control>
                 <nz-icon
                   style="margin-left: 6px; color: rgba(0, 0, 0, 0.45)"
                   nzType="question-circle"
                   nzTheme="outline"
-                  nz-tooltip="序号越小，显示越靠前"
+                  nz-tooltip="序号越小，显示越靠前；留空时自动追加到最后"
                 />
               </nz-form-item>
               <button
                 nz-button
                 nzType="primary"
+                type="button"
                 (click)="addEnvironment()"
                 [disabled]="environmentForm.invalid || !canManageMembers()"
               >
@@ -448,7 +475,27 @@
                   <tr>
                     <td>{{ item.name }}</td>
                     <td>{{ item.enabled ? '启用' : '停用' }}</td>
-                    <td>{{ item.sort }}</td>
+                    <td>
+                      <nz-space>
+                        <nz-input-number
+                          [ngModel]="getSortDraft('environment', item.id, item.sort)"
+                          [ngModelOptions]="{ standalone: true }"
+                          [nzMin]="0"
+                          [nzMax]="9999"
+                          (ngModelChange)="setSortDraft('environment', item.id, $event)"
+                          [disabled]="!canManageMembers() || isSortSaving('environment', item.id)"
+                        ></nz-input-number>
+                        <button
+                          nz-button
+                          nzType="link"
+                          type="button"
+                          (click)="updateEnvironmentSort(item)"
+                          [disabled]="!canManageMembers() || !hasSortChanged('environment', item.id, item.sort) || isSortSaving('environment', item.id)"
+                        >
+                          保存
+                        </button>
+                      </nz-space>
+                    </td>
                     <td>
                       <a
                         nz-button
@@ -506,19 +553,22 @@
                   ><nz-input-number
                     formControlName="sort"
                     [nzMin]="0"
-                    nzPlaceHolder="排序"
+                    [nzMax]="9999"
+                    style="width: 100px"
+                    nzPlaceHolder="默认排序"
                   ></nz-input-number>
                 </nz-form-control>
                 <nz-icon
                   style="margin-left: 6px; color: rgba(0, 0, 0, 0.45)"
                   nzType="question-circle"
                   nzTheme="outline"
-                  nz-tooltip="序号越小，显示越靠前"
+                  nz-tooltip="序号越小，显示越靠前；留空时自动追加到最后"
                 />
               </nz-form-item>
               <button
                 nz-button
                 nzType="primary"
+                type="button"
                 (click)="addVersion()"
                 [disabled]="versionForm.invalid || !canManageMembers()"
               >
@@ -539,7 +589,27 @@
                   <tr>
                     <td>{{ item.version }}</td>
                     <td>{{ item.enabled ? '启用' : '停用' }}</td>
-                    <td>{{ item.sort }}</td>
+                    <td>
+                      <nz-space>
+                        <nz-input-number
+                          [ngModel]="getSortDraft('version', item.id, item.sort)"
+                          [ngModelOptions]="{ standalone: true }"
+                          [nzMin]="0"
+                          [nzMax]="9999"
+                          (ngModelChange)="setSortDraft('version', item.id, $event)"
+                          [disabled]="!canManageMembers() || isSortSaving('version', item.id)"
+                        ></nz-input-number>
+                        <button
+                          nz-button
+                          nzType="link"
+                          type="button"
+                          (click)="updateVersionSort(item)"
+                          [disabled]="!canManageMembers() || !hasSortChanged('version', item.id, item.sort) || isSortSaving('version', item.id)"
+                        >
+                          保存
+                        </button>
+                      </nz-space>
+                    </td>
                     <td>
                       <a
                         nz-button

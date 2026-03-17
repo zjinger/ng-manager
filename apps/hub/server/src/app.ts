@@ -132,7 +132,8 @@ export async function createApp() {
     projectMember: projectMemberService,
     release: releaseService,
     issue: issueService,
-    rd: rdService
+    rd: rdService,
+    upload: uploadService
   });
 
   await app.register(authPlugin);

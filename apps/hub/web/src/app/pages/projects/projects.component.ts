@@ -1,6 +1,6 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -12,6 +12,8 @@ import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzResultModule } from 'ng-zorro-antd/result';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { NzTableModule } from 'ng-zorro-antd/table';
@@ -25,13 +27,27 @@ import { AdminAuthService } from '../../core/services/admin-auth.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
-import { ProjectConfigItem, ProjectItem, ProjectListResult, ProjectMemberItem, ProjectMemberRole, ProjectStatus, ProjectVersionItem, ProjectVisibility, roleLabel, UserOptionItem } from './projects.model';
-import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
-import { NzResultModule } from 'ng-zorro-antd/result';
+import {
+  ProjectConfigItem,
+  ProjectItem,
+  ProjectListResult,
+  ProjectMemberItem,
+  ProjectMemberRole,
+  ProjectStatus,
+  ProjectVersionItem,
+  ProjectVisibility,
+  roleLabel,
+  UserOptionItem
+} from './projects.model';
+
+type ConfigSortKind = 'module' | 'environment' | 'version';
+type SortableConfigItem = ProjectConfigItem | ProjectVersionItem;
+
 @Component({
   selector: 'app-projects-page',
   imports: [
     ClipboardModule,
+    FormsModule,
     ReactiveFormsModule,
     NzAlertModule,
     NzButtonModule,
@@ -94,6 +110,8 @@ export class ProjectsPageComponent {
   protected readonly modules = signal<ProjectConfigItem[]>([]);
   protected readonly environments = signal<ProjectConfigItem[]>([]);
   protected readonly versions = signal<ProjectVersionItem[]>([]);
+  protected readonly sortDrafts = signal<Record<string, number>>({});
+  protected readonly sortSaving = signal<Record<string, boolean>>({});
 
   protected readonly memberRoleOptions: ProjectMemberRole[] = ['product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops', 'project_admin'];
   protected readonly currentUserId = computed(() => {
@@ -120,33 +138,46 @@ export class ProjectsPageComponent {
     roles: [[] as ProjectMemberRole[], [Validators.required]]
   });
 
-  protected readonly moduleForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required]],
-    enabled: [true],
-    sort: [0]
+  protected readonly moduleForm = this.fb.group({
+    name: this.fb.nonNullable.control('', { validators: [Validators.required] }),
+    enabled: this.fb.nonNullable.control(true),
+    sort: this.fb.control<number | null>(null, { validators: [Validators.min(0), Validators.max(9999)] })
   });
 
-  protected readonly environmentForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required]],
-    enabled: [true],
-    sort: [0]
+  protected readonly environmentForm = this.fb.group({
+    name: this.fb.nonNullable.control('', { validators: [Validators.required] }),
+    enabled: this.fb.nonNullable.control(true),
+    sort: this.fb.control<number | null>(null, { validators: [Validators.min(0), Validators.max(9999)] })
   });
 
-  protected readonly versionForm = this.fb.nonNullable.group({
-    version: ['', [Validators.required]],
-    enabled: [true],
-    sort: [0]
+  protected readonly versionForm = this.fb.group({
+    version: this.fb.nonNullable.control('', { validators: [Validators.required] }),
+    enabled: this.fb.nonNullable.control(true),
+    sort: this.fb.control<number | null>(null, { validators: [Validators.min(0), Validators.max(9999)] })
   });
 
   public constructor() {
     void this.loadProjects();
   }
 
-  protected async reload(): Promise<void> { await this.loadProjects(); }
-  protected setMenuProject(item: ProjectItem): void { this.menuProject.set(item); }
+  protected async reload(): Promise<void> {
+    await this.loadProjects();
+  }
 
-  protected archiveFromMenu(): void { const item = this.menuProject(); if (item) void this.updateStatus(item, 'archived', '归档项目失败', `项目「${item.name}」已归档`); }
-  protected activateFromMenu(): void { const item = this.menuProject(); if (item) void this.updateStatus(item, 'active', '激活项目失败', `项目「${item.name}」已激活`); }
+  protected setMenuProject(item: ProjectItem): void {
+    this.menuProject.set(item);
+  }
+
+  protected archiveFromMenu(): void {
+    const item = this.menuProject();
+    if (item) void this.updateStatus(item, 'archived', '归档项目失败', `项目「${item.name}」已归档`);
+  }
+
+  protected activateFromMenu(): void {
+    const item = this.menuProject();
+    if (item) void this.updateStatus(item, 'active', '激活项目失败', `项目「${item.name}」已激活`);
+  }
+
   protected openProjectModal(item?: ProjectItem): void {
     this.formError.set(null);
     if (!item) {
@@ -169,9 +200,20 @@ export class ProjectsPageComponent {
     try {
       const value = this.projectForm.getRawValue();
       if (this.editingId()) {
-        await firstValueFrom(this.api.put<ProjectItem, { name: string; description: string | null; visibility: ProjectVisibility }>(`/api/admin/projects/${this.editingId()}`, { name: value.name.trim(), description: value.description.trim() || null, visibility: value.visibility }));
+        await firstValueFrom(
+          this.api.put<ProjectItem, { name: string; description: string | null; visibility: ProjectVisibility }>(
+            `/api/admin/projects/${this.editingId()}`,
+            { name: value.name.trim(), description: value.description.trim() || null, visibility: value.visibility }
+          )
+        );
       } else {
-        const created = await firstValueFrom(this.api.post<ProjectItem, { name: string; description?: string; visibility: ProjectVisibility }>('/api/admin/projects', { name: value.name.trim(), description: value.description.trim() || undefined, visibility: value.visibility }));
+        const created = await firstValueFrom(
+          this.api.post<ProjectItem, { name: string; description?: string; visibility: ProjectVisibility }>('/api/admin/projects', {
+            name: value.name.trim(),
+            description: value.description.trim() || undefined,
+            visibility: value.visibility
+          })
+        );
         this.createdProjectForGuide = { ...created, memberCount: created.memberCount ?? 0 };
         this.createGuideVisible.set(true);
       }
@@ -198,6 +240,8 @@ export class ProjectsPageComponent {
     this.configProjectDesc.set(item.description || '');
     this.configProjectVisibility.set(item.visibility);
     this.configTabIndex = tab === 'base' ? 0 : tab === 'members' ? 1 : tab === 'modules' ? 2 : tab === 'environments' ? 3 : 4;
+    this.sortDrafts.set({});
+    this.sortSaving.set({});
     this.configVisible.set(true);
     void this.loadConfigData(item.id);
   }
@@ -207,9 +251,8 @@ export class ProjectsPageComponent {
   }
 
   protected onUserSelectChange(userId: string): void {
-    const user = this.projectUsers().find(u => u.id === userId);
+    const user = this.projectUsers().find((item) => item.id === userId);
     if (user && user.titleCode) {
-      // 设置默认的角色
       this.memberForm.patchValue({ roles: [user.titleCode as ProjectMemberRole] });
     }
   }
@@ -226,7 +269,12 @@ export class ProjectsPageComponent {
     this.memberSaving.set(true);
     try {
       const value = this.memberForm.getRawValue();
-      await firstValueFrom(this.api.post<ProjectMemberItem, { userId: string; roles: ProjectMemberRole[] }>(`/api/admin/projects/${projectId}/members`, { userId: value.userId.trim(), roles: value.roles }));
+      await firstValueFrom(
+        this.api.post<ProjectMemberItem, { userId: string; roles: ProjectMemberRole[] }>(`/api/admin/projects/${projectId}/members`, {
+          userId: value.userId.trim(),
+          roles: value.roles
+        })
+      );
       this.memberForm.reset({ userId: '', roles: [] });
       await this.loadMembers(projectId);
       await this.loadProjects();
@@ -280,10 +328,9 @@ export class ProjectsPageComponent {
 
     try {
       await firstValueFrom(
-        this.api.put<ProjectMemberItem, { roles: ProjectMemberRole[] }>(
-          `/api/admin/projects/${projectId}/members/${item.id}`,
-          { roles: nextRoles }
-        )
+        this.api.put<ProjectMemberItem, { roles: ProjectMemberRole[] }>(`/api/admin/projects/${projectId}/members/${item.id}`, {
+          roles: nextRoles
+        })
       );
       await this.loadMembers(projectId);
       this.message.success(item.roles.includes('project_admin') ? '已取消项目管理员' : '已设为项目管理员');
@@ -300,10 +347,22 @@ export class ProjectsPageComponent {
     if (this.moduleForm.invalid) return;
     const projectId = this.configProjectId();
     if (!projectId) return;
+
     const value = this.moduleForm.getRawValue();
-    await firstValueFrom(this.api.post<ProjectConfigItem, { name: string; enabled: boolean; sort: number }>(`/api/admin/projects/${projectId}/modules`, { name: value.name.trim(), enabled: value.enabled, sort: value.sort ?? 0 }));
-    this.moduleForm.reset({ name: '', enabled: true, sort: 0 });
-    await this.loadModules(projectId);
+    const payload: { name: string; enabled: boolean; sort?: number } = {
+      name: value.name.trim(),
+      enabled: value.enabled ?? true
+    };
+    if (value.sort != null) payload.sort = value.sort;
+
+    try {
+      await firstValueFrom(this.api.post<ProjectConfigItem, { name: string; enabled: boolean; sort?: number }>(`/api/admin/projects/${projectId}/modules`, payload));
+      this.moduleForm.reset({ name: '', enabled: true, sort: null });
+      await this.loadModules(projectId);
+      this.message.success('模块已新增');
+    } catch (error) {
+      this.message.error(this.getErrorMessage(error, '新增模块失败'));
+    }
   }
 
   protected async toggleModuleEnabled(item: ProjectConfigItem): Promise<void> {
@@ -328,6 +387,12 @@ export class ProjectsPageComponent {
     await this.loadModules(projectId);
   }
 
+  protected async updateModuleSort(item: ProjectConfigItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await this.updateConfigSort('module', item.id, item.sort, '模块排序', `/api/admin/projects/${projectId}/modules/${item.id}/sort`, () => this.loadModules(projectId));
+  }
+
   protected async addEnvironment(): Promise<void> {
     if (!this.canManageMembers()) {
       this.message.warning('只有项目管理员可以维护环境配置');
@@ -336,10 +401,22 @@ export class ProjectsPageComponent {
     if (this.environmentForm.invalid) return;
     const projectId = this.configProjectId();
     if (!projectId) return;
+
     const value = this.environmentForm.getRawValue();
-    await firstValueFrom(this.api.post<ProjectConfigItem, { name: string; enabled: boolean; sort: number }>(`/api/admin/projects/${projectId}/environments`, { name: value.name.trim(), enabled: value.enabled, sort: value.sort ?? 0 }));
-    this.environmentForm.reset({ name: '', enabled: true, sort: 0 });
-    await this.loadEnvironments(projectId);
+    const payload: { name: string; enabled: boolean; sort?: number } = {
+      name: value.name.trim(),
+      enabled: value.enabled ?? true
+    };
+    if (value.sort != null) payload.sort = value.sort;
+
+    try {
+      await firstValueFrom(this.api.post<ProjectConfigItem, { name: string; enabled: boolean; sort?: number }>(`/api/admin/projects/${projectId}/environments`, payload));
+      this.environmentForm.reset({ name: '', enabled: true, sort: null });
+      await this.loadEnvironments(projectId);
+      this.message.success('环境已新增');
+    } catch (error) {
+      this.message.error(this.getErrorMessage(error, '新增环境失败'));
+    }
   }
 
   protected async toggleEnvironmentEnabled(item: ProjectConfigItem): Promise<void> {
@@ -364,6 +441,12 @@ export class ProjectsPageComponent {
     await this.loadEnvironments(projectId);
   }
 
+  protected async updateEnvironmentSort(item: ProjectConfigItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await this.updateConfigSort('environment', item.id, item.sort, '环境排序', `/api/admin/projects/${projectId}/environments/${item.id}/sort`, () => this.loadEnvironments(projectId));
+  }
+
   protected async addVersion(): Promise<void> {
     if (!this.canManageMembers()) {
       this.message.warning('只有项目管理员可以维护版本配置');
@@ -372,10 +455,22 @@ export class ProjectsPageComponent {
     if (this.versionForm.invalid) return;
     const projectId = this.configProjectId();
     if (!projectId) return;
+
     const value = this.versionForm.getRawValue();
-    await firstValueFrom(this.api.post<ProjectVersionItem, { version: string; enabled: boolean; sort: number }>(`/api/admin/projects/${projectId}/versions`, { version: value.version.trim(), enabled: value.enabled, sort: value.sort ?? 0 }));
-    this.versionForm.reset({ version: '', enabled: true, sort: 0 });
-    await this.loadVersions(projectId);
+    const payload: { version: string; enabled: boolean; sort?: number } = {
+      version: value.version.trim(),
+      enabled: value.enabled ?? true
+    };
+    if (value.sort != null) payload.sort = value.sort;
+
+    try {
+      await firstValueFrom(this.api.post<ProjectVersionItem, { version: string; enabled: boolean; sort?: number }>(`/api/admin/projects/${projectId}/versions`, payload));
+      this.versionForm.reset({ version: '', enabled: true, sort: null });
+      await this.loadVersions(projectId);
+      this.message.success('版本已新增');
+    } catch (error) {
+      this.message.error(this.getErrorMessage(error, '新增版本失败'));
+    }
   }
 
   protected async toggleVersionEnabled(item: ProjectVersionItem): Promise<void> {
@@ -400,8 +495,45 @@ export class ProjectsPageComponent {
     await this.loadVersions(projectId);
   }
 
+  protected async updateVersionSort(item: ProjectVersionItem): Promise<void> {
+    const projectId = this.configProjectId();
+    if (!projectId) return;
+    await this.updateConfigSort('version', item.id, item.sort, '版本排序', `/api/admin/projects/${projectId}/versions/${item.id}/sort`, () => this.loadVersions(projectId));
+  }
+
+  protected getSortDraft(kind: ConfigSortKind, id: string, fallback: number): number {
+    return this.sortDrafts()[this.sortKey(kind, id)] ?? fallback;
+  }
+
+  protected setSortDraft(kind: ConfigSortKind, id: string, value: number | null): void {
+    const nextValue = typeof value === 'number' ? value : 0;
+    this.sortDrafts.update((current) => ({
+      ...current,
+      [this.sortKey(kind, id)]: nextValue
+    }));
+  }
+
+  protected hasSortChanged(kind: ConfigSortKind, id: string, currentSort: number): boolean {
+    return this.getSortDraft(kind, id, currentSort) !== currentSort;
+  }
+
+  protected isSortSaving(kind: ConfigSortKind, id: string): boolean {
+    return this.sortSaving()[this.sortKey(kind, id)] ?? false;
+  }
+
+  protected copyProjectKey(projectKey: string): void {
+    this.clipboard.copy(projectKey);
+    this.message.success('projectKey 已复制');
+  }
+
   private async loadConfigData(projectId: string): Promise<void> {
-    await Promise.all([this.loadUsers(), this.loadMembers(projectId), this.loadModules(projectId), this.loadEnvironments(projectId), this.loadVersions(projectId)]);
+    await Promise.all([
+      this.loadUsers(),
+      this.loadMembers(projectId),
+      this.loadModules(projectId),
+      this.loadEnvironments(projectId),
+      this.loadVersions(projectId)
+    ]);
   }
 
   private async loadUsers(): Promise<void> {
@@ -421,16 +553,19 @@ export class ProjectsPageComponent {
   private async loadModules(projectId: string): Promise<void> {
     const result = await firstValueFrom(this.api.get<{ items: ProjectConfigItem[] }>(`/api/admin/projects/${projectId}/modules`));
     this.modules.set(result.items);
+    this.replaceSortDrafts('module', result.items);
   }
 
   private async loadEnvironments(projectId: string): Promise<void> {
     const result = await firstValueFrom(this.api.get<{ items: ProjectConfigItem[] }>(`/api/admin/projects/${projectId}/environments`));
     this.environments.set(result.items);
+    this.replaceSortDrafts('environment', result.items);
   }
 
   private async loadVersions(projectId: string): Promise<void> {
     const result = await firstValueFrom(this.api.get<{ items: ProjectVersionItem[] }>(`/api/admin/projects/${projectId}/versions`));
     this.versions.set(result.items);
+    this.replaceSortDrafts('version', result.items);
   }
 
   private async updateStatus(item: ProjectItem, status: ProjectStatus, fallback: string, successMessage: string): Promise<void> {
@@ -457,14 +592,67 @@ export class ProjectsPageComponent {
     }
   }
 
+  private sortKey(kind: ConfigSortKind, id: string): string {
+    return `${kind}:${id}`;
+  }
+
+  private replaceSortDrafts(kind: ConfigSortKind, items: SortableConfigItem[]): void {
+    const next = { ...this.sortDrafts() };
+    for (const key of Object.keys(next)) {
+      if (key.startsWith(`${kind}:`)) {
+        delete next[key];
+      }
+    }
+    for (const item of items) {
+      next[this.sortKey(kind, item.id)] = item.sort;
+    }
+    this.sortDrafts.set(next);
+  }
+
+  private setSortSaving(kind: ConfigSortKind, id: string, saving: boolean): void {
+    const key = this.sortKey(kind, id);
+    this.sortSaving.update((current) => {
+      const next = { ...current };
+      if (saving) {
+        next[key] = true;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  }
+
+  private async updateConfigSort(
+    kind: ConfigSortKind,
+    id: string,
+    currentSort: number,
+    label: string,
+    url: string,
+    reload: () => Promise<void>
+  ): Promise<void> {
+    if (!this.canManageMembers()) {
+      this.message.warning('只有项目管理员可以维护排序');
+      return;
+    }
+
+    const sort = this.getSortDraft(kind, id, currentSort);
+    if (sort === currentSort) return;
+
+    this.setSortSaving(kind, id, true);
+    try {
+      await firstValueFrom(this.api.put<SortableConfigItem, { sort: number }>(url, { sort }));
+      await reload();
+      this.message.success(`${label}已更新`);
+    } catch (error) {
+      this.message.error(this.getErrorMessage(error, `更新${label}失败`));
+    } finally {
+      this.setSortSaving(kind, id, false);
+    }
+  }
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
     if (error instanceof Error) return `${fallback}: ${error.message}`;
     return fallback;
-  }
-
-  protected copyProjectKey(projectKey: string): void {
-    this.clipboard.copy(projectKey);
-    this.message.success('projectKey 已复制');
   }
 }

@@ -62,6 +62,8 @@ export interface ProjectMemberEntity {
   userId: string;
   displayName: string;
   roles: ProjectMemberRole[];
+  avatarUploadId: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

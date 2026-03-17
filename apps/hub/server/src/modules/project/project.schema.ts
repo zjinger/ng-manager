@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 
 const statusEnum = z.enum(["active", "archived"]);
 const visibilityEnum = z.enum(["internal", "public"]);
@@ -7,13 +7,13 @@ const memberRoleEnum = z.enum(["product", "ui", "frontend_dev", "backend_dev", "
 const createConfigItemShape = {
   code: z.string().trim().max(64).optional(),
   enabled: z.coerce.boolean().default(true),
-  sort: z.coerce.number().int().min(0).default(0)
+  sort: z.coerce.number().int().min(0).max(9999).optional()
 };
 
 const updateConfigItemShape = {
   code: z.string().trim().max(64).nullable().optional(),
   enabled: z.coerce.boolean().optional(),
-  sort: z.coerce.number().int().min(0).optional()
+  sort: z.coerce.number().int().min(0).max(9999).optional()
 };
 
 export const createProjectSchema = z.object({
@@ -68,6 +68,10 @@ export const updateProjectVersionItemSchema = z.object({
   ...updateConfigItemShape
 });
 
+export const updateProjectSortSchema = z.object({
+  sort: z.coerce.number().int().min(0).max(9999)
+});
+
 export type CreateProjectDto = z.infer<typeof createProjectSchema>;
 export type UpdateProjectDto = z.infer<typeof updateProjectSchema>;
 export type ListProjectQueryDto = z.infer<typeof listProjectQuerySchema>;
@@ -77,3 +81,4 @@ export type CreateProjectConfigItemDto = z.infer<typeof createProjectConfigItemS
 export type UpdateProjectConfigItemDto = z.infer<typeof updateProjectConfigItemSchema>;
 export type CreateProjectVersionItemDto = z.infer<typeof createProjectVersionItemSchema>;
 export type UpdateProjectVersionItemDto = z.infer<typeof updateProjectVersionItemSchema>;
+export type UpdateProjectSortDto = z.infer<typeof updateProjectSortSchema>;

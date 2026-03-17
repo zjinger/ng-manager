@@ -172,6 +172,10 @@ export class ProjectService {
     return this.updateConfigItem(projectId, moduleId, input, "module");
   }
 
+  updateModuleSort(projectId: string, moduleId: string, sort: number): ProjectConfigItemEntity {
+    return this.updateModule(projectId, moduleId, { sort });
+  }
+
   removeModule(projectId: string, moduleId: string): void {
     this.getById(projectId);
     const changed = this.repo.removeModule(projectId, moduleId);
@@ -191,6 +195,10 @@ export class ProjectService {
 
   updateEnvironment(projectId: string, environmentId: string, input: UpdateProjectConfigItemInput): ProjectConfigItemEntity {
     return this.updateConfigItem(projectId, environmentId, input, "environment");
+  }
+
+  updateEnvironmentSort(projectId: string, environmentId: string, sort: number): ProjectConfigItemEntity {
+    return this.updateEnvironment(projectId, environmentId, { sort });
   }
 
   removeEnvironment(projectId: string, environmentId: string): void {
@@ -222,7 +230,7 @@ export class ProjectService {
         version,
         code: input.code?.trim(),
         enabled: input.enabled ?? true,
-        sort: input.sort ?? 0,
+        sort: input.sort ?? this.getNextVersionSort(projectId),
         createdAt: now,
         updatedAt: now
       });
@@ -273,12 +281,30 @@ export class ProjectService {
     return hit;
   }
 
+  updateVersionSort(projectId: string, versionId: string, sort: number): ProjectVersionItemEntity {
+    return this.updateVersion(projectId, versionId, { sort });
+  }
+
   removeVersion(projectId: string, versionId: string): void {
     this.getById(projectId);
     const changed = this.repo.removeVersion(projectId, versionId);
     if (!changed) {
       throw new AppError("PROJECT_VERSION_NOT_FOUND", `version not found: ${versionId}`, 404);
     }
+  }
+
+  private getNextConfigSort(projectId: string, type: "module" | "environment"): number {
+    const items = type === "module" ? this.repo.listModules(projectId) : this.repo.listEnvironments(projectId);
+    return this.getNextSortValue(items.map((item) => item.sort));
+  }
+
+  private getNextVersionSort(projectId: string): number {
+    return this.getNextSortValue(this.repo.listVersions(projectId).map((item) => item.sort));
+  }
+
+  private getNextSortValue(values: number[]): number {
+    const maxSort = values.length ? Math.max(...values) : 0;
+    return maxSort + 10;
   }
 
   private addConfigItem(
@@ -303,7 +329,7 @@ export class ProjectService {
       name,
       code: input.code?.trim(),
       enabled: input.enabled ?? true,
-      sort: input.sort ?? 0,
+      sort: input.sort ?? this.getNextConfigSort(projectId, type),
       createdAt: now,
       updatedAt: now
     };

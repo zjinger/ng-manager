@@ -5,9 +5,12 @@ type ProjectMemberRow = {
   id: string;
   project_id: string;
   user_id: string;
+  enabled: number;
   display_name: string;
+  joined_at: string;
   created_at: string;
   updated_at: string;
+  avatar_upload_id: string | null;
 };
 
 type ProjectMemberRoleRow = {
@@ -23,7 +26,7 @@ type UserBriefRow = {
 };
 
 export class ProjectMemberRepo {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database) { }
 
   runInTransaction<T>(handler: () => T): T {
     const tx = this.db.transaction(handler);
@@ -72,17 +75,25 @@ export class ProjectMemberRepo {
   }
 
   listMembers(projectId: string): ProjectMemberEntity[] {
+    // const memberRows = this.db.prepare(`
+    //   SELECT *
+    //   FROM project_members
+    //   WHERE project_id = ?
+    //   ORDER BY updated_at DESC, created_at DESC
+    // `).all(projectId) as ProjectMemberRow[];
     const memberRows = this.db.prepare(`
-      SELECT *
-      FROM project_members
-      WHERE project_id = ?
-      ORDER BY updated_at DESC, created_at DESC
+      SELECT
+        pm.*,
+        au.avatar_upload_id
+      FROM project_members pm
+      LEFT JOIN admin_users au ON au.user_id = pm.user_id
+      WHERE pm.project_id = ?
+      ORDER BY pm.updated_at DESC, pm.created_at DESC
     `).all(projectId) as ProjectMemberRow[];
 
     if (memberRows.length === 0) {
       return [];
     }
-
     const memberIds = memberRows.map((item) => item.id);
     const placeholders = memberIds.map(() => "?").join(",");
     const roleRows = this.db.prepare(`
@@ -193,6 +204,8 @@ export class ProjectMemberRepo {
       projectId: row.project_id,
       userId: row.user_id,
       displayName: row.display_name,
+      avatarUploadId: row.avatar_upload_id ?? null,
+      avatarUrl: row.avatar_upload_id ? `/api/admin/preview/${row.avatar_upload_id}` : null,
       roles,
       createdAt: row.created_at,
       updatedAt: row.updated_at
