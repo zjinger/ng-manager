@@ -129,6 +129,48 @@
   background: #eef4ff;
 }
 
+:host ::ng-deep .list-card .ant-card-body {
+  flex: 1;
+  height: 0;
+
+  nz-table.rd-table {
+    overflow: hidden;
+    height: 100%;
+
+    .ant-spin-nested-loading {
+      overflow: hidden;
+      height: 100%;
+
+      .ant-spin-container {
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+
+        .ant-table {
+          flex: 1;
+          height: 0;
+
+          .ant-table-container {
+            overflow: hidden;
+            display: block;
+            height: 100%;
+
+            .ant-table-content {
+              height: 100%;
+              overflow: hidden auto;
+            }
+          }
+        }
+      }
+    }
+  }
+
+
+}
+
+
+
 @media (max-width: 1440px) {
   .stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

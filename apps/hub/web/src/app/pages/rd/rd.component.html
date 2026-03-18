@@ -134,7 +134,7 @@
   </div>
 
   <div class="content-grid rd-grid section">
-    <nz-card class="list-card" [nzTitle]="currentProject()?.name || '研发项列表'">
+    <nz-card class="list-card" [nzTitle]="currentProject()?.name || '研发项列表'" [nzExtra]="listExtraTemplate">
       @if (loading()) {
         <div class="loading-state"><nz-spin nzTip="加载中..."></nz-spin></div>
       } @else if (!items().length) {
@@ -149,6 +149,7 @@
           [nzTotal]="total()"
           [nzPageSize]="pageSize"
           (nzPageIndexChange)="changePage($event)"
+          [nzScroll]="{y:'100%'}"
         >
           <thead>
             <tr>
@@ -183,6 +184,9 @@
         </nz-table>
       }
     </nz-card>
+    <ng-template #listExtraTemplate>
+      <button nz-button nzType="default" (click)="reload()">刷新</button>
+    </ng-template>
 
     <app-rd-detail
       class="detail-card"
