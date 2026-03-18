@@ -1,7 +1,7 @@
 ﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
@@ -20,6 +20,7 @@ import { HubApiService } from './core/http/hub-api.service';
 import { AdminAuthService } from './core/services/admin-auth.service';
 import { HubWsEventType, HubWebsocketService } from './core/services/hub-websocket.service';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { ProjectContextService } from './core/services/project-context.service';
 
 type AnnouncementStatus = 'draft' | 'published' | 'archived';
 
@@ -61,10 +62,11 @@ interface HeaderAnnouncementListResult {
     NzInputModule,
     NzSelectModule,
     NzButtonModule,
-    NzAlertModule
+    NzAlertModule,
+    FormsModule,
   ],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.less']
+  styleUrls: ['./app.component.less'],
 })
 export class App {
   protected readonly title = signal('NGM Admin');
@@ -74,12 +76,15 @@ export class App {
   protected readonly auth = inject(AdminAuthService);
   protected readonly announcementLoading = signal(false);
   protected readonly announcementItems = signal<HeaderAnnouncementItem[]>([]);
+  protected readonly projectContext = inject(ProjectContextService);
 
   protected readonly mustChangePasswordVisible = signal(false);
   protected readonly changingPassword = signal(false);
   protected readonly changePasswordError = signal<string | null>(null);
 
-  protected readonly unreadAnnouncements = computed(() => this.announcementItems().filter((item) => !item.isRead));
+  protected readonly unreadAnnouncements = computed(() =>
+    this.announcementItems().filter((item) => !item.isRead),
+  );
   protected readonly unreadCount = computed(() => this.unreadAnnouncements().length);
 
   protected readonly displayName = computed(() => {
@@ -126,7 +131,7 @@ export class App {
   protected readonly passwordForm = this.fb.nonNullable.group({
     oldPassword: ['', [Validators.required]],
     newPassword: ['', [Validators.required, Validators.minLength(8)]],
-    confirmPassword: ['', [Validators.required]]
+    confirmPassword: ['', [Validators.required]],
   });
 
   public constructor() {
@@ -135,7 +140,7 @@ export class App {
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-        takeUntilDestroyed()
+        takeUntilDestroyed(),
       )
       .subscribe(() => this.updateRouteState());
 
@@ -161,6 +166,8 @@ export class App {
       } else {
         this.mustChangePasswordVisible.set(false);
       }
+      // 登录后才执行加载项目列表
+      profile && this.projectContext.loadProjects();
     });
 
     effect(() => {
@@ -190,6 +197,7 @@ export class App {
 
     try {
       await this.auth.logout();
+      this.projectContext.clear();
     } finally {
       this.loggingOut.set(false);
       await this.router.navigate(['/login']);
@@ -243,7 +251,12 @@ export class App {
     this.patchAllAnnouncementsRead();
 
     try {
-      await firstValueFrom(this.api.post<{ count: number }, Record<string, never>>('/api/admin/announcements/read-all', {}));
+      await firstValueFrom(
+        this.api.post<{ count: number }, Record<string, never>>(
+          '/api/admin/announcements/read-all',
+          {},
+        ),
+      );
     } catch {
       void this.loadAnnouncementInbox(true);
     }
@@ -275,8 +288,8 @@ export class App {
     try {
       const result = await firstValueFrom(
         this.api.get<HeaderAnnouncementListResult>('/api/admin/announcements', {
-          params: { page: 1, pageSize: 8, status: 'published' }
-        })
+          params: { page: 1, pageSize: 8, status: 'published' },
+        }),
       );
       this.announcementItems.set(result.items);
     } catch {
@@ -299,7 +312,10 @@ export class App {
 
     try {
       await firstValueFrom(
-        this.api.post<HeaderAnnouncementItem, Record<string, never>>(`/api/admin/announcements/${item.id}/read`, {})
+        this.api.post<HeaderAnnouncementItem, Record<string, never>>(
+          `/api/admin/announcements/${item.id}/read`,
+          {},
+        ),
       );
     } catch {
       void this.loadAnnouncementInbox(true);
@@ -314,10 +330,10 @@ export class App {
               ...item,
               isRead: true,
               readAt: new Date().toISOString(),
-              readVersion
+              readVersion,
             }
-          : item
-      )
+          : item,
+      ),
     );
   }
 
@@ -328,8 +344,8 @@ export class App {
         ...item,
         isRead: true,
         readAt: now,
-        readVersion: item.updatedAt
-      }))
+        readVersion: item.updatedAt,
+      })),
     );
   }
 

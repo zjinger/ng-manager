@@ -1,7 +1,7 @@
 ﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, firstValueFrom } from 'rxjs';
+import { debounceTime, distinctUntilChanged, firstValueFrom } from 'rxjs';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -16,6 +16,7 @@ import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
+import { ProjectContextService } from '../../core/services/project-context.service';
 
 type FeedbackStatus = 'open' | 'processing' | 'resolved' | 'closed';
 type FeedbackCategory = 'bug' | 'suggestion' | 'feature' | 'other';
@@ -65,7 +66,7 @@ interface ProjectOption {
     NzTableModule,
     NzTagModule,
     PageHeaderComponent,
-    HubDateTimePipe
+    HubDateTimePipe,
   ],
   template: `
     <section class="page">
@@ -76,10 +77,9 @@ interface ProjectOption {
           <nz-form-item>
             <nz-form-label>项目</nz-form-label>
             <nz-form-control>
-              <nz-select formControlName="projectKey" nzAllowClear nzPlaceHolder="全部项目">
-                @for (project of projectOptions(); track project.id) {
-                  <nz-option [nzValue]="project.projectKey" [nzLabel]="project.name">
-                  </nz-option>
+              <nz-select formControlName="projectKey" nzAllowClear nzPlaceHolder="选择项目">
+                @for (project of projectUseKeyOpts(); track project.value) {
+                  <nz-option [nzValue]="project.value" [nzLabel]="project.label"> </nz-option>
                 }
               </nz-select>
             </nz-form-control>
@@ -123,9 +123,16 @@ interface ProjectOption {
         <nz-card nzTitle="反馈列表">
           <div class="table-head">
             <span>共 {{ total() }} 条</span>
-            <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">刷新</button>
+            <button nz-button nzType="default" (click)="reload()" [disabled]="listLoading()">
+              刷新
+            </button>
           </div>
-          <nz-table #table [nzData]="feedback()" [nzFrontPagination]="false" [nzLoading]="listLoading()">
+          <nz-table
+            #table
+            [nzData]="feedback()"
+            [nzFrontPagination]="false"
+            [nzLoading]="listLoading()"
+          >
             <thead>
               <tr>
                 <th>ID</th>
@@ -144,7 +151,11 @@ interface ProjectOption {
                   <td>{{ item.projectKey || '-' }}</td>
                   <td>{{ categoryLabel(item.category) }}</td>
                   <td>{{ item.title }}</td>
-                  <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
+                  <td>
+                    <nz-tag [nzColor]="statusColor(item.status)">{{
+                      statusLabel(item.status)
+                    }}</nz-tag>
+                  </td>
                   <td>{{ sourceLabel(item.source) }}</td>
                   <td>{{ item.createdAt | hubDateTime }}</td>
                 </tr>
@@ -157,9 +168,15 @@ interface ProjectOption {
           @if (selected(); as item) {
             <nz-descriptions nzBordered nzSize="small" [nzColumn]="1">
               <nz-descriptions-item nzTitle="反馈内容">{{ item.content }}</nz-descriptions-item>
-              <nz-descriptions-item nzTitle="客户端信息">{{ environmentText(item) }}</nz-descriptions-item>
-              <nz-descriptions-item nzTitle="联系方式">{{ item.contact || '-' }}</nz-descriptions-item>
-              <nz-descriptions-item nzTitle="更新时间">{{ item.updatedAt | hubDateTime }}</nz-descriptions-item>
+              <nz-descriptions-item nzTitle="客户端信息">{{
+                environmentText(item)
+              }}</nz-descriptions-item>
+              <nz-descriptions-item nzTitle="联系方式">{{
+                item.contact || '-'
+              }}</nz-descriptions-item>
+              <nz-descriptions-item nzTitle="更新时间">{{
+                item.updatedAt | hubDateTime
+              }}</nz-descriptions-item>
             </nz-descriptions>
 
             <div class="status-editor">
@@ -189,22 +206,40 @@ interface ProjectOption {
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
       }
-      .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-      .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-      .selected { background: #e6f4ff; }
-      .status-editor { margin-top: 16px; display: grid; gap: 8px; }
-      .empty-tip { color: #6b7280; }
-    `
-  ]
+      .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 16px;
+      }
+      .table-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .selected {
+        background: #e6f4ff;
+      }
+      .status-editor {
+        margin-top: 16px;
+        display: grid;
+        gap: 8px;
+      }
+      .empty-tip {
+        color: #6b7280;
+      }
+    `,
+  ],
 })
 export class FeedbackPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
+  private readonly projectContext = inject(ProjectContextService);
 
   protected readonly feedback = signal<FeedbackItem[]>([]);
   protected readonly selected = signal<FeedbackItem | null>(null);
   protected readonly total = signal(0);
-  protected readonly projectOptions = signal<ProjectOption[]>([]);
+  protected readonly projectUseKeyOpts = this.projectContext.projectUseKeyOpts;
 
   protected readonly listLoading = signal(false);
   protected readonly listError = signal<string | null>(null);
@@ -216,16 +251,19 @@ export class FeedbackPageComponent {
     projectKey: [''],
     status: [''],
     category: [''],
-    keyword: ['']
+    keyword: [''],
   });
 
   public constructor() {
-    void this.loadProjectOptions();
+    this.filters.valueChanges
+      .pipe(debounceTime(250), takeUntilDestroyed(), distinctUntilChanged())
+      .subscribe(() => {
+        void this.loadFeedbacks();
+      });
 
-    this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
-      void this.loadFeedbacks();
-    });
-
+    // 初始化
+    const currentprojectKey = this.projectContext.currentProject()?.projectKey;
+    this.filters.patchValue({ projectKey: currentprojectKey ?? undefined },{emitEvent: false});
     void this.loadFeedbacks();
   }
 
@@ -251,11 +289,13 @@ export class FeedbackPageComponent {
       const updated = await firstValueFrom(
         this.api.put<FeedbackItem, { status: FeedbackStatus }>(
           `/api/admin/feedbacks/${current.id}/status`,
-          { status: this.pendingStatus }
-        )
+          { status: this.pendingStatus },
+        ),
       );
 
-      this.feedback.update((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      this.feedback.update((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
       this.selected.set(updated);
     } catch (error) {
       this.listError.set(this.getErrorMessage(error, '更新状态失败'));
@@ -296,7 +336,7 @@ export class FeedbackPageComponent {
 
   protected environmentText(item: FeedbackItem): string {
     const parts = [item.clientName, item.clientVersion, item.osInfo].filter(
-      (value): value is string => typeof value === 'string' && value.trim().length > 0
+      (value): value is string => typeof value === 'string' && value.trim().length > 0,
     );
 
     return parts.length > 0 ? parts.join(' / ') : '-';
@@ -310,12 +350,14 @@ export class FeedbackPageComponent {
       const filter = this.filters.getRawValue();
       const params: Record<string, string | number | boolean> = { page: 1, pageSize: 50 };
 
-      if (filter.projectKey.trim()) params['projectKey'] = filter.projectKey.trim();
+      if (filter.projectKey?.trim()) params['projectKey'] = filter.projectKey.trim();
       if (filter.status) params['status'] = filter.status;
       if (filter.category) params['category'] = filter.category;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
 
-      const result = await firstValueFrom(this.api.get<FeedbackListResult>('/api/admin/feedbacks', { params }));
+      const result = await firstValueFrom(
+        this.api.get<FeedbackListResult>('/api/admin/feedbacks', { params }),
+      );
 
       this.feedback.set(result.items);
       this.total.set(result.total);
@@ -333,23 +375,9 @@ export class FeedbackPageComponent {
     }
   }
 
-  private async loadProjectOptions(): Promise<void> {
-    try {
-      const result = await firstValueFrom(
-        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
-          params: { status: 'active', page: 1, pageSize: 100 }
-        })
-      );
-      this.projectOptions.set(result.items);
-    } catch {
-      this.projectOptions.set([]);
-    }
-  }
-
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HubApiError) return `${fallback}: ${error.message}`;
     if (error instanceof Error) return `${fallback}: ${error.message}`;
     return fallback;
   }
 }
-

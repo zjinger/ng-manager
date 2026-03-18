@@ -1,4 +1,7 @@
-<nz-card nzTitle="Issue 列表" class="list-card">
+<nz-card nzTitle="测试记录"  [nzExtra]="extraTemplate" class="list-card">
+    <ng-template #extraTemplate>
+      <button nz-button (click)="reloadRequested.emit()" [disabled]="loading">刷新</button>
+    </ng-template>
   @if (error) {
     <nz-alert class="section-gap" nzType="error" [nzMessage]="error" nzShowIcon />
   }
@@ -21,13 +24,13 @@
         <thead>
           <tr>
             <th nzWidth="140px">编号</th>
-            <th nzWidth="120px">标题</th>
+            <th nzWidth="160px">标题</th>
             <th nzWidth="88px">状态</th>
             <th nzWidth="76px">优先级</th>
-            <th nzWidth="80px">类型</th>
+            <th nzWidth="87px">类型</th>
             <th nzWidth="140px">功能模块</th>
             <th nzWidth="100px">提出人</th>
-            <th nzWidth="220px">处理人</th>
+            <th nzWidth="160px">处理人</th>
             <th nzWidth="160px">更新时间</th>
           </tr>
         </thead>
@@ -69,6 +72,5 @@
   </div>
   <ng-template #totalTemplate let-total >
     共 {{ total }} 条
-  <button nz-button (click)="reloadRequested.emit()" [disabled]="loading">刷新</button>
   </ng-template>
 </nz-card>

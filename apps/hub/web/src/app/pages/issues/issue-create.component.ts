@@ -150,7 +150,7 @@ export class IssueCreatePageComponent {
   }
 
   protected projectLabel(project: ProjectOption): string {
-    return `${project.name} (${project.projectKey})`;
+    return `${project.name}`;
   }
 
   protected selectFiles(input: HTMLInputElement): void {

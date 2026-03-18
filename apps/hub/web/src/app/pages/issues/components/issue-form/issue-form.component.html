@@ -2,7 +2,7 @@
   <nz-form-item>
     <nz-form-label nzRequired>标题</nz-form-label>
     <nz-form-control nzErrorTip="请输入标题">
-      <input nz-input formControlName="title" maxlength="200" placeholder="请输入 Issue 标题" />
+      <input nz-input formControlName="title" maxlength="200" placeholder="请输入工单标题" />
     </nz-form-control>
   </nz-form-item>
 
@@ -89,7 +89,7 @@
   <div class="form-actions">
     <button nz-button type="button" (click)="cancelled.emit()">取消</button>
     <button nz-button nzType="primary" [disabled]="submitting">
-      {{ mode === 'create' ? '创建 Issue' : '保存修改' }}
+      {{ mode === 'create' ? '创建工单' : '保存修改' }}
     </button>
   </div>
 </form>

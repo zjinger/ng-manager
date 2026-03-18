@@ -37,7 +37,7 @@ export class AdminAuthService {
 
   public constructor(
     private readonly api: HubApiService,
-    @Inject(HUB_LOGIN_AES_KEY) private readonly loginAesKey: string
+    @Inject(HUB_LOGIN_AES_KEY) private readonly loginAesKey: string,
   ) {}
 
   public async ensureSession(force = false): Promise<AdminProfile | null> {
@@ -78,10 +78,13 @@ export class AdminAuthService {
 
   public async login(username: string, password: string): Promise<AdminProfile> {
     const challenge = await firstValueFrom(
-      this.api.get<LoginChallenge>('/api/admin/auth/login/challenge')
+      this.api.get<LoginChallenge>('/api/admin/auth/login/challenge'),
     );
 
-    const encrypted = await encryptLoginPassword(`${challenge.nonce}:${password}`, this.loginAesKey);
+    const encrypted = await encryptLoginPassword(
+      `${challenge.nonce}:${password}`,
+      this.loginAesKey,
+    );
 
     const profile = await firstValueFrom(
       this.api.post<
@@ -91,8 +94,8 @@ export class AdminAuthService {
         username,
         nonce: challenge.nonce,
         iv: encrypted.iv,
-        cipherText: encrypted.cipherText
-      })
+        cipherText: encrypted.cipherText,
+      }),
     );
 
     this.profile.set(profile);
@@ -104,8 +107,8 @@ export class AdminAuthService {
     const profile = await firstValueFrom(
       this.api.post<AdminProfile, { oldPassword: string; newPassword: string }>(
         '/api/admin/auth/change-password',
-        { oldPassword, newPassword }
-      )
+        { oldPassword, newPassword },
+      ),
     );
 
     this.profile.set(profile);
@@ -114,7 +117,9 @@ export class AdminAuthService {
   }
 
   public async logout(): Promise<void> {
-    await firstValueFrom(this.api.post<{ ok: boolean }, Record<string, never>>('/api/admin/auth/logout', {}));
+    await firstValueFrom(
+      this.api.post<{ ok: boolean }, Record<string, never>>('/api/admin/auth/logout', {}),
+    );
     this.profile.set(null);
     this.hasCheckedSession = true;
   }
@@ -124,4 +129,3 @@ export class AdminAuthService {
     this.hasCheckedSession = true;
   }
 }
-

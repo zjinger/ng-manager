@@ -9,16 +9,20 @@
         </div>
         <span class="title">{{ title() }}</span>
       </div>
-      <!-- <nz-select
-        [ngModel]="currentProjectId()"
-        (ngModelChange)="onChange($event)"
-        nzPlaceHolder="选择项目"
-        nzAllowClear
-      >
-        <nz-option nzValue="" nzLabel="全部项目"></nz-option>
-        <nz-option *ngFor="let p of projects()" [nzValue]="p.id" [nzLabel]="p.name"></nz-option>
-      </nz-select> -->
+
       <div class="header-actions">
+        <nz-select 
+          nzAllowClear 
+          nzPlaceHolder="选择项目" 
+          [ngModel]="projectContext.currentProject()?.id"  
+          (ngModelChange)="projectContext.setProject($event)"
+          nzSize="large"
+          class="project-selector"
+        > 
+          @for (project of projectContext.projectOpts(); track project.value) {
+            <nz-option [nzValue]="project.value" [nzLabel]="project.label" />
+          }
+        </nz-select> 
         <a
           nz-dropdown
           [nzDropdownMenu]="notifyMenu"

@@ -19,6 +19,7 @@ import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { MarkdownEditorComponent } from '../../shared/markdown-editor/markdown-editor.component';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { ProjectContextService } from '../../core/services/project-context.service';
 
 type DocStatus = 'draft' | 'published' | 'archived';
 type DocCategory = 'guide' | 'faq' | 'release-note' | 'spec' | 'policy' | 'other';
@@ -86,9 +87,9 @@ interface ProjectOption {
           <nz-form-item>
             <nz-form-label>项目</nz-form-label>
             <nz-form-control>
-              <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
-                @for (project of projectOptions(); track project.id) {
-                  <nz-option [nzValue]="project.id" [nzLabel]="project.name" />
+              <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="选择项目">
+                @for (project of projectOpts(); track project.value) {
+                  <nz-option [nzValue]="project.value" [nzLabel]="project.label" />
                 }
               </nz-select>
             </nz-form-control>
@@ -185,8 +186,8 @@ interface ProjectOption {
                 <nz-form-label>项目（可选）</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="不关联项目">
-                    @for (project of projectOptions(); track project.id) {
-                      <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+                    @for (project of projectUseKeyOpts(); track project.value) {
+                      <nz-option [nzValue]="project.value" [nzLabel]="project.label + ' (' + project.value + ')'" />
                     }
                   </nz-select>
                 </nz-form-control>
@@ -275,6 +276,7 @@ interface ProjectOption {
 export class DocsPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
+  private readonly projectContext = inject(ProjectContextService);
 
   protected readonly visible = signal(false);
   protected readonly saving = signal(false);
@@ -285,7 +287,8 @@ export class DocsPageComponent {
   protected readonly docs = signal<DocListItem[]>([]);
   protected readonly total = signal(0);
   protected readonly editingId = signal<string | null>(null);
-  protected readonly projectOptions = signal<ProjectOption[]>([]);
+  protected readonly projectOpts = this.projectContext.projectOpts;
+  protected readonly projectUseKeyOpts = this.projectContext.projectUseKeyOpts;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -310,7 +313,9 @@ export class DocsPageComponent {
       void this.loadDocs();
     });
 
-    void this.loadProjectOptions();
+    // 初始化
+    const currentprojectId = this.projectContext.currentProject()?.id;
+    this.filters.patchValue({ projectId: currentprojectId ?? undefined },{emitEvent: false});
     void this.loadDocs();
   }
 
@@ -475,19 +480,6 @@ export class DocsPageComponent {
       this.listError.set(this.getErrorMessage(error, '加载文档列表失败'));
     } finally {
       this.listLoading.set(false);
-    }
-  }
-
-  private async loadProjectOptions(): Promise<void> {
-    try {
-      const result = await firstValueFrom(
-        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
-          params: { status: 'active', page: 1, pageSize: 100 }
-        })
-      );
-      this.projectOptions.set(result.items);
-    } catch {
-      this.projectOptions.set([]);
     }
   }
 

@@ -3,7 +3,7 @@
     <button page-header-actions nz-button nzType="primary" (click)="openCreatePage()">新建工单</button>
   </app-page-header>
 
-  @if (listError() && projects().length === 0) {
+  @if (listError() && projectOpts().length === 0) {
     <nz-alert class="section" nzType="error" [nzMessage]="listError()!" nzShowIcon></nz-alert>
   }
 
@@ -12,9 +12,9 @@
       <nz-form-item>
         <nz-form-label>项目</nz-form-label>
         <nz-form-control>
-          <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
-            @for (project of projects(); track project.id) {
-              <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
+          <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="选择项目">
+            @for (project of projectOpts(); track project.label) {
+              <nz-option [nzValue]="project.value" [nzLabel]="project.label" />
             }
           </nz-select>
         </nz-form-control>

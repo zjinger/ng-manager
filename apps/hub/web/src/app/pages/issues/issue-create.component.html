@@ -1,5 +1,5 @@
 <section class="page">
-  <app-page-header title="新建 Issue" subtitle="选择项目后录入问题信息并可直接附加截图、日志等附件">
+  <app-page-header title="新建工单" subtitle="选择项目后录入问题信息并可直接附加截图、日志等附件">
     <a page-header-actions nz-button routerLink="/issues">返回列表</a>
   </app-page-header>
 
@@ -7,7 +7,7 @@
     <nz-alert class="section" nzType="error" [nzMessage]="error()!" nzShowIcon></nz-alert>
   }
 
-  <nz-card class="section create-card" nzTitle="Issue 信息">
+  <nz-card class="section create-card" nzTitle="工单信息">
     <div class="create-layout">
       <form nz-form [formGroup]="form" class="project-form compact-form">
         <nz-form-item>

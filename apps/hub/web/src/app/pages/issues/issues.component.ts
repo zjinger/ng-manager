@@ -1,8 +1,8 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -15,7 +15,11 @@ import { HubApiError } from '../../core/http/api-error.interceptor';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
-import type { ProjectConfigItem, ProjectMemberItem, ProjectVersionItem } from '../projects/projects.model';
+import type {
+  ProjectConfigItem,
+  ProjectMemberItem,
+  ProjectVersionItem,
+} from '../projects/projects.model';
 import { IssueDetailComponent } from './components/issue-detail/issue-detail.component';
 import { IssueFormComponent } from './components/issue-form/issue-form.component';
 import { IssueListComponent } from './components/issue-list/issue-list.component';
@@ -30,8 +34,9 @@ import {
   type IssueFilterValue,
   type IssueFormValue,
   type IssueItem,
-  type ProjectOption
+  type ProjectOption,
 } from './issues.model';
+import { ProjectContextService } from '../../core/services/project-context.service';
 
 @Component({
   selector: 'app-issues-page',
@@ -47,11 +52,11 @@ import {
     PageHeaderComponent,
     IssueListComponent,
     IssueDetailComponent,
-    IssueFormComponent
+    IssueFormComponent,
   ],
   templateUrl: './issues.component.html',
   styleUrls: ['./issues.component.less'],
-  styles: [PAGE_SHELL_STYLES]
+  styles: [PAGE_SHELL_STYLES],
 })
 export class IssuesPageComponent {
   private readonly fb = inject(FormBuilder);
@@ -60,14 +65,17 @@ export class IssuesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly message = inject(NzMessageService);
+  private readonly projectContextService = inject(ProjectContextService);
 
-  protected readonly projects = signal<ProjectOption[]>([]);
+  protected readonly projectOpts = this.projectContextService.projectOpts;
+  protected readonly currentProject = this.projectContextService.currentProject;
   protected readonly projectMembers = signal<ProjectMemberItem[]>([]);
   protected readonly moduleOptions = signal<ProjectConfigItem[]>([]);
   protected readonly versionOptions = signal<ProjectVersionItem[]>([]);
   protected readonly environmentOptions = signal<ProjectConfigItem[]>([]);
   protected readonly issues = signal<IssueItem[]>([]);
   protected readonly selectedIssueId = signal<string | null>(null);
+  protected readonly selectedProjectId = signal<string | null>(null);
   protected readonly selectedDetail = signal<IssueDetailResult | null>(null);
 
   protected readonly listLoading = signal(false);
@@ -100,7 +108,7 @@ export class IssuesPageComponent {
     priority: [''],
     type: [''],
     assigneeId: [''],
-    keyword: ['']
+    keyword: [''],
   });
 
   protected readonly currentUserId = computed(() => {
@@ -114,17 +122,21 @@ export class IssuesPageComponent {
   protected readonly isAdmin = computed(() => this.auth.profile()?.role === 'admin');
 
   public constructor() {
+    // 优先从路径上获取projectId
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.pendingProjectId = params.get('projectId')?.trim() || null;
       this.pendingIssueId = params.get('issueId')?.trim() || null;
     });
 
-    this.filters.controls.projectId.valueChanges.pipe(takeUntilDestroyed()).subscribe((projectId) => {
-      this.page.set(1);
-      this.selectedIssueId.set(null);
-      this.selectedDetail.set(null);
-      void this.loadProjectContext(projectId);
-    });
+    this.filters.controls.projectId.valueChanges
+      // distinctUntilChanged避免重复加载，避免循环变动（关键）
+      .pipe(takeUntilDestroyed(), distinctUntilChanged())
+      .subscribe((projectId) => {
+        this.page.set(1);
+        this.selectedIssueId.set(null);
+        this.selectedDetail.set(null);
+        void this.loadProjectContext(projectId);
+      });
 
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       this.page.set(1);
@@ -141,8 +153,8 @@ export class IssuesPageComponent {
   protected openCreatePage(): void {
     void this.router.navigate(['/issues/new'], {
       queryParams: {
-        projectId: this.filters.controls.projectId.value || undefined
-      }
+        projectId: this.filters.controls.projectId.value || undefined,
+      },
     });
   }
 
@@ -162,7 +174,8 @@ export class IssuesPageComponent {
 
   protected async selectIssue(item: IssueItem): Promise<void> {
     this.selectedIssueId.set(item.id);
-    await this.loadIssueDetail(item.id);
+    this.selectedProjectId.set(item.projectId);
+    await this.loadIssueDetail(item.id, item.projectId);
   }
 
   protected async changePage(page: number): Promise<void> {
@@ -171,8 +184,8 @@ export class IssuesPageComponent {
   }
 
   protected async changePageSize(pageSize: number): Promise<void> {
-   this.pageSize.set(pageSize);
-   await this.loadIssues(); 
+    this.pageSize.set(pageSize);
+    await this.loadIssues();
   }
 
   protected async submitForm(value: IssueFormValue): Promise<void> {
@@ -254,7 +267,10 @@ export class IssuesPageComponent {
     }
   }
 
-  protected async submitComment(payload: { content: string; mentions: IssueCommentMention[] }): Promise<void> {
+  protected async submitComment(payload: {
+    content: string;
+    mentions: IssueCommentMention[];
+  }): Promise<void> {
     const detail = this.selectedDetail();
     if (!detail) {
       return;
@@ -263,7 +279,12 @@ export class IssuesPageComponent {
     this.commentSubmitting.set(true);
     this.detailError.set(null);
     try {
-      await this.api.createComment(detail.issue.projectId, detail.issue.id, payload.content, payload.mentions);
+      await this.api.createComment(
+        detail.issue.projectId,
+        detail.issue.id,
+        payload.content,
+        payload.mentions,
+      );
       await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
       this.detailError.set(this.getErrorMessage(error, '提交评论失败'));
@@ -309,34 +330,32 @@ export class IssuesPageComponent {
   }
 
   private async initialize(): Promise<void> {
-    try {
-      const items = await this.api.listProjects();
-      this.projects.set(items);
-      const initialProjectId = this.resolveInitialProjectId(items);
-      this.filters.patchValue({ projectId: initialProjectId }, { emitEvent: true });
-      if (!initialProjectId) {
-        await this.loadIssues();
-      }
-    } catch (error) {
-      this.listError.set(this.getErrorMessage(error, '加载项目失败'));
-    }
+    // 不加载数据，让filters.controls.projectId.valueChanges触发
+    this.filters.patchValue(
+      { projectId: this.currentProject()?.id ?? undefined },
+      { emitEvent: true },
+    );
   }
 
-  private resolveInitialProjectId(items: ProjectOption[]): string {
-    if (this.pendingProjectId && items.some((item) => item.id === this.pendingProjectId)) {
-      return this.pendingProjectId;
-    }
-    return this.filters.controls.projectId.value || items[0]?.id || '';
-  }
+  // private resolveInitialProjectId(items: ProjectOption[]): string {
+  //   if (this.pendingProjectId && items.some((item) => item.id === this.pendingProjectId)) {
+  //     return this.pendingProjectId;
+  //   }
+  //   return this.filters.controls.projectId.value || items[0]?.id || '';
+  // }
 
-  private async refreshCurrentView(options: { reloadList: boolean; reloadDetail: boolean }): Promise<void> {
+  private async refreshCurrentView(options: {
+    reloadList: boolean;
+    reloadDetail: boolean;
+  }): Promise<void> {
     if (options.reloadList) {
       await this.loadIssues();
     }
     if (options.reloadDetail) {
       const selectedId = this.selectedIssueId();
-      if (selectedId) {
-        await this.loadIssueDetail(selectedId);
+      const selectedProjectId = this.selectedProjectId();
+      if (selectedId && selectedProjectId) {
+        await this.loadIssueDetail(selectedId, selectedProjectId);
       }
     }
   }
@@ -357,7 +376,7 @@ export class IssuesPageComponent {
         this.api.listProjectMembers(projectId),
         this.api.listProjectModules(projectId),
         this.api.listProjectVersions(projectId),
-        this.api.listProjectEnvironments(projectId)
+        this.api.listProjectEnvironments(projectId),
       ]);
       this.projectMembers.set(members);
       this.moduleOptions.set(modules);
@@ -373,11 +392,11 @@ export class IssuesPageComponent {
 
   private async loadIssues(): Promise<void> {
     const filter = this.filters.getRawValue() as IssueFilterValue;
-    if (!filter.projectId) {
-      this.issues.set([]);
-      this.total.set(0);
-      return;
-    }
+    // if (!filter.projectId) {
+    //   this.issues.set([]);
+    //   this.total.set(0);
+    //   return;
+    // }
 
     this.listLoading.set(true);
     this.listError.set(null);
@@ -385,7 +404,7 @@ export class IssuesPageComponent {
     try {
       const params: Record<string, string | number> = {
         page: this.page(),
-        pageSize: this.pageSize()
+        pageSize: this.pageSize(),
       };
       if (filter.status) params['status'] = filter.status;
       if (filter.priority) params['priority'] = filter.priority;
@@ -393,7 +412,9 @@ export class IssuesPageComponent {
       if (filter.assigneeId) params['assigneeId'] = filter.assigneeId;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
 
-      const result = await this.api.listIssues(filter.projectId, params);
+      const result = filter.projectId
+        ? await this.api.listIssues(filter.projectId, params)
+        : await this.api.listAllIssues(params);
       this.issues.set(result.items);
       this.total.set(result.total);
 
@@ -407,8 +428,9 @@ export class IssuesPageComponent {
         const pending = result.items.find((item) => item.id === this.pendingIssueId);
         if (pending) {
           this.selectedIssueId.set(pending.id);
+          this.selectedProjectId.set(pending.projectId);
           this.pendingIssueId = null;
-          await this.loadIssueDetail(pending.id);
+          await this.loadIssueDetail(pending.id, pending.projectId);
         }
       }
     } catch (error) {
@@ -418,12 +440,7 @@ export class IssuesPageComponent {
     }
   }
 
-  private async loadIssueDetail(issueId: string): Promise<void> {
-    const projectId = this.filters.controls.projectId.value;
-    if (!projectId) {
-      return;
-    }
-
+  private async loadIssueDetail(issueId: string, projectId: string): Promise<void> {
     this.detailLoading.set(true);
     this.detailError.set(null);
     try {
@@ -433,7 +450,7 @@ export class IssuesPageComponent {
           relativeTo: this.route,
           queryParams: { issueId: null },
           queryParamsHandling: 'merge',
-          replaceUrl: true
+          replaceUrl: true,
         });
       }
     } catch (error) {
@@ -453,5 +470,3 @@ export class IssuesPageComponent {
     return fallback;
   }
 }
-
-

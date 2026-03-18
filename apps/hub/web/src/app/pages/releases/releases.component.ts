@@ -17,6 +17,7 @@ import { HubApiService } from '../../core/http/hub-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
+import { ProjectContextService } from '../../core/services/project-context.service';
 
 type ReleaseChannel = 'desktop' | 'cli' | 'web' | 'mobile' | 'applet';
 type ReleaseStatus = 'draft' | 'published' | 'deprecated';
@@ -79,9 +80,9 @@ interface ProjectOption {
           <nz-form-item>
             <nz-form-label>项目</nz-form-label>
             <nz-form-control>
-              <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="全部项目">
-                @for (project of projectOptions(); track project.id) {
-                  <nz-option [nzValue]="project.id" [nzLabel]="project.name" />
+              <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="选择项目">
+                @for (project of projectOptions(); track project.value) {
+                  <nz-option [nzValue]="project.value" [nzLabel]="project.label" />
                 }
               </nz-select>
             </nz-form-control>
@@ -181,7 +182,7 @@ interface ProjectOption {
                 <nz-form-label>项目（可选）</nz-form-label>
                 <nz-form-control>
                   <nz-select formControlName="projectId" nzAllowClear nzPlaceHolder="不关联项目">
-                    @for (project of projectOptions(); track project.id) {
+                    @for (project of projects(); track project.id) {
                       <nz-option [nzValue]="project.id" [nzLabel]="project.name + ' (' + project.projectKey + ')'" />
                     }
                   </nz-select>
@@ -260,6 +261,7 @@ interface ProjectOption {
 export class ReleasesPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
+  private readonly projectContext = inject(ProjectContextService);
 
   protected readonly visible = signal(false);
   protected readonly saving = signal(false);
@@ -270,7 +272,8 @@ export class ReleasesPageComponent {
   protected readonly releases = signal<ReleaseItem[]>([]);
   protected readonly total = signal(0);
   protected readonly editingId = signal<string | null>(null);
-  protected readonly projectOptions = signal<ProjectOption[]>([]);
+  protected readonly projectOptions = this.projectContext.projectOpts;
+  protected readonly projects = this.projectContext.allProjects;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -293,8 +296,7 @@ export class ReleasesPageComponent {
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       void this.loadReleases();
     });
-
-    void this.loadProjectOptions();
+    this.filters.patchValue({ projectId: this.projectContext.currentProject()?.id ?? '' });
     void this.loadReleases();
   }
 
@@ -460,19 +462,6 @@ export class ReleasesPageComponent {
       this.listError.set(this.getErrorMessage(error, '加载版本列表失败'));
     } finally {
       this.listLoading.set(false);
-    }
-  }
-
-  private async loadProjectOptions(): Promise<void> {
-    try {
-      const result = await firstValueFrom(
-        this.api.get<{ items: ProjectOption[] }>('/api/admin/projects', {
-          params: { status: 'active', page: 1, pageSize: 100 }
-        })
-      );
-      this.projectOptions.set(result.items);
-    } catch {
-      this.projectOptions.set([]);
     }
   }
 
