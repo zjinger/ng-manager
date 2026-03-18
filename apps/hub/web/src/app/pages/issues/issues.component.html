@@ -1,6 +1,8 @@
 <section class="page issue-page">
   <app-page-header title="缺陷与测试记录" subtitle="测试提单、开发修复与回归闭环">
-    <button page-header-actions nz-button nzType="primary" (click)="openCreatePage()">新建工单</button>
+    <button page-header-actions nz-button nzType="primary" (click)="openCreatePage()">
+      新建工单
+    </button>
   </app-page-header>
 
   @if (listError() && projectOpts().length === 0) {
@@ -53,16 +55,22 @@
         </nz-form-control>
       </nz-form-item>
 
-      <nz-form-item>
-        <nz-form-label>负责人</nz-form-label>
-        <nz-form-control>
-          <nz-select formControlName="assigneeId" nzAllowClear nzPlaceHolder="全部负责人">
-            @for (member of projectMembers(); track member.id) {
-              <nz-option [nzValue]="member.userId" [nzLabel]="member.displayName || member.userId" />
-            }
-          </nz-select>
-        </nz-form-control>
-      </nz-form-item>
+      <!--选中某个项目后加载-->
+      @if (filters.controls.projectId.value) {
+        <nz-form-item>
+          <nz-form-label>负责人</nz-form-label>
+          <nz-form-control>
+            <nz-select formControlName="assigneeId" nzAllowClear nzPlaceHolder="全部负责人">
+              @for (member of projectMembers(); track member.id) {
+                <nz-option
+                  [nzValue]="member.userId"
+                  [nzLabel]="member.displayName || member.userId"
+                />
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+      }
 
       <nz-form-item class="keyword-item">
         <nz-form-label>关键词</nz-form-label>
@@ -75,6 +83,7 @@
 
   <div class="issue-layout section">
     <app-issue-list
+      [projectName]="projectName()"
       [items]="issues()"
       [selectedIssueId]="selectedIssueId()"
       [loading]="listLoading()"
@@ -90,6 +99,7 @@
 
     <app-issue-detail
       [detail]="selectedDetail()"
+      [projectName]="selectedProjectName()"
       [projectMembers]="projectMembers()"
       [currentUserId]="currentUserId()"
       [isAdmin]="isAdmin()"

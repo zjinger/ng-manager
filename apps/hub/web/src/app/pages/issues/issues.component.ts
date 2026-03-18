@@ -100,7 +100,6 @@ export class IssuesPageComponent {
   protected readonly typeOptions = ISSUE_TYPE_OPTIONS;
 
   private pendingIssueId: string | null = null;
-  private pendingProjectId: string | null = null;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -120,11 +119,16 @@ export class IssuesPageComponent {
   });
 
   protected readonly isAdmin = computed(() => this.auth.profile()?.role === 'admin');
+  protected readonly projectName = signal<string | null>(null);
+  protected readonly selectedProjectName = computed(() => {
+    const projectId = this.selectedProjectId();
+    const project = this.projectOpts().find((p) => p.value === projectId);
+    return project ? project.label : null;
+  });
 
   public constructor() {
     // 优先从路径上获取projectId
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.pendingProjectId = params.get('projectId')?.trim() || null;
       this.pendingIssueId = params.get('issueId')?.trim() || null;
     });
 
@@ -136,6 +140,8 @@ export class IssuesPageComponent {
         this.selectedIssueId.set(null);
         this.selectedDetail.set(null);
         void this.loadProjectContext(projectId);
+        const project = this.projectOpts().find((p) => p.value === projectId);
+        this.projectName.set(project ? project.label : null);
       });
 
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
@@ -174,7 +180,7 @@ export class IssuesPageComponent {
 
   protected async selectIssue(item: IssueItem): Promise<void> {
     this.selectedIssueId.set(item.id);
-    this.selectedProjectId.set(item.projectId);
+
     await this.loadIssueDetail(item.id, item.projectId);
   }
 
@@ -337,13 +343,6 @@ export class IssuesPageComponent {
     );
   }
 
-  // private resolveInitialProjectId(items: ProjectOption[]): string {
-  //   if (this.pendingProjectId && items.some((item) => item.id === this.pendingProjectId)) {
-  //     return this.pendingProjectId;
-  //   }
-  //   return this.filters.controls.projectId.value || items[0]?.id || '';
-  // }
-
   private async refreshCurrentView(options: {
     reloadList: boolean;
     reloadDetail: boolean;
@@ -390,13 +389,11 @@ export class IssuesPageComponent {
     }
   }
 
+  /**
+   * 加载 Issue 列表
+   */
   private async loadIssues(): Promise<void> {
     const filter = this.filters.getRawValue() as IssueFilterValue;
-    // if (!filter.projectId) {
-    //   this.issues.set([]);
-    //   this.total.set(0);
-    //   return;
-    // }
 
     this.listLoading.set(true);
     this.listError.set(null);
@@ -411,10 +408,9 @@ export class IssuesPageComponent {
       if (filter.type) params['type'] = filter.type;
       if (filter.assigneeId) params['assigneeId'] = filter.assigneeId;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
+      if (filter.projectId) params['projectId'] = filter.projectId;
 
-      const result = filter.projectId
-        ? await this.api.listIssues(filter.projectId, params)
-        : await this.api.listAllIssues(params);
+      const result = await this.api.listAllIssues(params);
       this.issues.set(result.items);
       this.total.set(result.total);
 
@@ -428,7 +424,6 @@ export class IssuesPageComponent {
         const pending = result.items.find((item) => item.id === this.pendingIssueId);
         if (pending) {
           this.selectedIssueId.set(pending.id);
-          this.selectedProjectId.set(pending.projectId);
           this.pendingIssueId = null;
           await this.loadIssueDetail(pending.id, pending.projectId);
         }
@@ -441,6 +436,12 @@ export class IssuesPageComponent {
   }
 
   private async loadIssueDetail(issueId: string, projectId: string): Promise<void> {
+    const oldProjectId = this.selectedProjectId();
+    if (oldProjectId !== projectId) {
+      this.selectedProjectId.set(projectId);
+      await this.loadProjectContext(projectId);
+    }
+
     this.detailLoading.set(true);
     this.detailError.set(null);
     try {

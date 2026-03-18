@@ -6,7 +6,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { HubDateTimePipe } from '../../../../shared/pipes/date-time.pipe';
 import {
   issueDisplayStatusColor,
@@ -28,7 +28,7 @@ import {
     NzPaginationModule,
     NzTableModule,
     NzTagModule,
-    NzToolTipModule,
+    NzTooltipModule,
     HubDateTimePipe
   ],
   templateUrl: './issue-list.component.html',
@@ -42,6 +42,7 @@ export class IssueListComponent {
   @Input() total = 0;
   @Input() page = 1;
   @Input() pageSize = 20;
+  @Input() projectName: string | null = null;
 
   @Output() readonly reloadRequested = new EventEmitter<void>();
   @Output() readonly issueSelected = new EventEmitter<IssueItem>();

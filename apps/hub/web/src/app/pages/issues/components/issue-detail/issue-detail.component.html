@@ -1,4 +1,4 @@
-<nz-card nzTitle="Issue 详情" class="detail-card">
+<nz-card nzTitle="工单详情" class="detail-card">
   @if (error) {
     <nz-alert nzType="error" [nzMessage]="error" nzShowIcon></nz-alert>
   }
@@ -7,13 +7,13 @@
     <div class="empty-wrap">加载详情中...</div>
   } @else if (!detail) {
     <div class="empty-wrap">
-      <nz-empty nzNotFoundContent="请选择左侧 Issue 查看详情"></nz-empty>
+      <nz-empty nzNotFoundContent="请选择左侧工单查看详情"></nz-empty>
     </div>
   } @else {
     <div class="detail-body">
       <div class="title-row">
         <div>
-          <div class="issue-no">{{ detail.issue.issueNo }}</div>
+          <div class="issue-no">{{ detail.issue.issueNo }}<nz-badge nzStatus="default" nzText="{{ projectName }}"></nz-badge></div>
           <h2>{{ detail.issue.title }}</h2>
         </div>
         <div class="title-tags">

@@ -6,6 +6,8 @@
 
 .list-card {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 :host ::ng-deep .ant-card-extra {
@@ -24,16 +26,6 @@
   gap: 8px;
 }
 
-// .section-gap {
-//   margin-top: 16px;
-// }
-
-.table-wrap {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
 .empty-state {
   min-height: 240px;
   display: flex;
@@ -47,6 +39,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.center {
+  text-align: center;
 }
 
 .selected {
@@ -69,38 +65,43 @@
 }
 
 :host ::ng-deep .list-card .ant-card-body {
-  display: flex;
-  flex-direction: column;
-  height: calc(100% - 45px);
-  min-height: 0;
-  overflow: hidden;
+  flex: 1;
+  height: 0;
+
+  nz-table.issue-table {
+    overflow: hidden;
+    height: 100%;
+
+    .ant-spin-nested-loading {
+      overflow: hidden;
+      height: 100%;
+
+      .ant-spin-container {
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+
+        .ant-table {
+          flex: 1;
+          height: 0;
+
+          .ant-table-container {
+            overflow: hidden;
+            display: block;
+            height: 100%;
+
+            .ant-table-content {
+              height: 100%;
+              overflow: hidden auto;
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
-:host ::ng-deep .issue-table {
-  height: 100%;
-}
-
-:host ::ng-deep .issue-table .ant-spin-nested-loading,
-:host ::ng-deep .issue-table .ant-spin-container,
-:host ::ng-deep .issue-table .ant-table,
-:host ::ng-deep .issue-table .ant-table-container,
-:host ::ng-deep .issue-table .ant-table-content,
-:host ::ng-deep .issue-table .ant-table-body {
-  height: 100%;
-}
-
-:host ::ng-deep .issue-table .ant-spin-nested-loading,
-:host ::ng-deep .issue-table .ant-spin-container,
-:host ::ng-deep .issue-table .ant-table {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-:host ::ng-deep .issue-table .ant-table-tbody > tr {
+:host ::ng-deep .issue-table .ant-table-tbody>tr {
   cursor: pointer;
-}
-
-:host ::ng-deep .issue-table .ant-table-body {
-  overflow-y: auto !important;
 }
