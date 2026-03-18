@@ -12,9 +12,9 @@
     <form nz-form nzLayout="inline" [formGroup]="filters" class="filter-form">
       <nz-form-item>
         <nz-form-control>
-          <nz-select formControlName="projectId" nzPlaceHolder="选择项目" nzShowSearch>
-            @for (item of projects(); track item.id) {
-              <nz-option [nzValue]="item.id" [nzLabel]="item.name"></nz-option>
+          <nz-select formControlName="projectId" nzPlaceHolder="选择项目" nzShowSearch nzAllowClear>
+            @for (item of projectOpts(); track item.value) {
+              <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
             }
           </nz-select>
         </nz-form-control>
@@ -134,7 +134,7 @@
   </div>
 
   <div class="content-grid rd-grid section">
-    <nz-card class="list-card" [nzTitle]="currentProject()?.name || '研发项列表'" [nzExtra]="listExtraTemplate">
+    <nz-card class="list-card" [nzTitle]="currentProject()?.name ?? '研发项目'" [nzExtra]="listExtraTemplate">
       @if (loading()) {
         <div class="loading-state"><nz-spin nzTip="加载中..."></nz-spin></div>
       } @else if (!items().length) {

@@ -61,6 +61,10 @@ export class RdManagementApiService {
     return firstValueFrom(this.api.get<RdItemListResult>(`/api/admin/projects/${projectId}/rd/items`, { params }));
   }
 
+  public async getListItems(params: Record<string, string | number | boolean>): Promise<RdItemListResult> {
+    return firstValueFrom(this.api.get<RdItemListResult>('/api/admin/rd/items', { params }));
+  }
+
   public async getItemDetail(projectId: string, itemId: string): Promise<RdItemDetailResult> {
     return firstValueFrom(this.api.get<RdItemDetailResult>(`/api/admin/projects/${projectId}/rd/items/${itemId}`));
   }

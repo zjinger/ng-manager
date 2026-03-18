@@ -44,8 +44,9 @@ import {
   type RdProjectOption,
   type RdStageFormValue,
   type RdStageItem,
-  type RdStatusChangeValue
+  type RdStatusChangeValue,
 } from './models/rd.model';
+import { ProjectContextService } from '../../core/services/project-context.service';
 
 @Component({
   selector: 'app-rd-page',
@@ -68,19 +69,22 @@ import {
     PageHeaderComponent,
     RdDetailComponent,
     RdItemFormComponent,
-    RdStageManagerComponent
+    RdStageManagerComponent,
   ],
   templateUrl: './rd.component.html',
   styleUrls: ['./rd.component.less'],
-  styles: [PAGE_SHELL_STYLES]
+  styles: [PAGE_SHELL_STYLES],
 })
 export class RdPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(RdManagementApiService);
   private readonly auth = inject(AdminAuthService);
   private readonly message = inject(NzMessageService);
+  private readonly projectContext = inject(ProjectContextService);
 
-  protected readonly projects = signal<RdProjectOption[]>([]);
+  protected readonly projects = this.projectContext.allProjects;
+  protected readonly projectOpts = this.projectContext.projectOpts;
+  protected readonly currentProjectId = signal<string | null>(null);
   protected readonly projectMembers = signal<ProjectMemberItem[]>([]);
   protected readonly stages = signal<RdStageItem[]>([]);
   protected readonly items = signal<RdItem[]>([]);
@@ -121,12 +125,14 @@ export class RdPageComponent {
     priority: [''],
     type: [''],
     assigneeId: [''],
-    keyword: ['']
+    keyword: [''],
   });
 
   protected readonly currentProject = computed(() => {
-    const projectId = this.filters.controls.projectId.value;
-    return this.projects().find((item) => item.id === projectId) ?? null;
+    // const projectId = this.filters.controls.projectId.value;
+    // return this.projects().find((item) => item.id === projectId) ?? null;
+    const current = this.currentProjectId();
+    return this.projects().find((item) => item.id === current) ?? null;
   });
 
   protected readonly enabledStages = computed(() => this.stages().filter((item) => item.enabled));
@@ -146,18 +152,29 @@ export class RdPageComponent {
   });
 
   protected readonly canCreateItem = computed(() => this.isAdmin() || !!this.currentMember());
-  protected readonly canManageStages = computed(() => this.isAdmin() || !!this.currentMember()?.roles.includes('project_admin'));
-  protected readonly canEditSelected = computed(() => this.canEditItem(this.detail()?.item ?? null));
-  protected readonly canDeleteSelected = computed(() => this.canDeleteItem(this.detail()?.item ?? null));
-  protected readonly quickFilterCount = computed(() => [this.onlyMine(), this.onlyBlocked(), this.onlyOverdue()].filter(Boolean).length);
+  protected readonly canManageStages = computed(
+    () => this.isAdmin() || !!this.currentMember()?.roles.includes('project_admin'),
+  );
+  protected readonly canEditSelected = computed(() =>
+    this.canEditItem(this.detail()?.item ?? null),
+  );
+  protected readonly canDeleteSelected = computed(() =>
+    this.canDeleteItem(this.detail()?.item ?? null),
+  );
+  protected readonly quickFilterCount = computed(
+    () => [this.onlyMine(), this.onlyBlocked(), this.onlyOverdue()].filter(Boolean).length,
+  );
 
   public constructor() {
-    this.filters.controls.projectId.valueChanges.pipe(takeUntilDestroyed()).subscribe((projectId) => {
-      this.page.set(1);
-      this.selectedItemId.set(null);
-      this.detail.set(null);
-      void this.loadProjectContext(projectId);
-    });
+    this.filters.controls.projectId.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((projectId) => {
+        this.page.set(1);
+        this.selectedItemId.set(null);
+        this.detail.set(null);
+        this.currentProjectId.set(projectId);
+        void this.loadProjectContext(projectId);
+      });
 
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       this.page.set(1);
@@ -200,6 +217,7 @@ export class RdPageComponent {
 
   protected async selectItem(item: RdItem): Promise<void> {
     this.selectedItemId.set(item.id);
+    this.currentProjectId.set(item.projectId);
     await this.loadDetail(item.projectId, item.id);
   }
 
@@ -364,16 +382,16 @@ export class RdPageComponent {
     this.errorMessage.set(null);
 
     try {
-      const projects = await this.api.listProjects();
-      this.projects.set(projects);
-      const projectId = projects[0]?.id ?? '';
+      // const projects = await this.api.listProjects();
+      // this.projects.set(projects);
+      // const projectId = projects[0]?.id ?? '';
+      const projectId = this.projectContext.currentProject()?.id ?? '';
       this.filters.patchValue({ projectId }, { emitEvent: false });
-      if (projectId) {
-        await this.loadProjectContext(projectId);
-      } else {
-        this.items.set([]);
-        this.overview.set(null);
-      }
+      await this.loadProjectContext(projectId);
+      // if (!projectId) {
+      //   this.items.set([]);
+      //   this.overview.set(null);
+      // }
     } catch (error) {
       this.errorMessage.set(this.resolveErrorMessage(error, '加载研发管理失败'));
     } finally {
@@ -382,31 +400,34 @@ export class RdPageComponent {
   }
 
   private async loadProjectContext(projectId: string): Promise<void> {
-    if (!projectId) {
-      this.projectMembers.set([]);
-      this.stages.set([]);
-      this.items.set([]);
-      this.overview.set(null);
-      return;
-    }
-
     this.loading.set(true);
     this.errorMessage.set(null);
     try {
-      const [members, stages, overview] = await Promise.all([
-        this.api.listProjectMembers(projectId),
-        this.api.listStages(projectId),
-        this.api.getOverview(projectId)
-      ]);
-      this.projectMembers.set(members);
-      this.stages.set(stages);
-      this.overview.set(overview);
-
-      const selectedStageId = this.filters.controls.stageId.value;
-      if (selectedStageId && !stages.some((item) => item.id === selectedStageId)) {
-        this.filters.patchValue({ stageId: '' }, { emitEvent: false });
+      if (!projectId) {
+        this.projectMembers.set([]);
+        this.stages.set([]);
+        this.items.set([]);
+        // 没有id也需要加载所有的卡片参数
+        // const overview = await this.api.getOverview(projectId);
+        // this.overview.set(overview);
+        await this.loadItems();
+        return;
       }
+      if (projectId) {
+        const [members, stages, overview] = await Promise.all([
+          this.api.listProjectMembers(projectId),
+          this.api.listStages(projectId),
+          this.api.getOverview(projectId),
+        ]);
+        this.projectMembers.set(members);
+        this.stages.set(stages);
+        this.overview.set(overview);
 
+        const selectedStageId = this.filters.controls.stageId.value;
+        if (selectedStageId && !stages.some((item) => item.id === selectedStageId)) {
+          this.filters.patchValue({ stageId: '' }, { emitEvent: false });
+        }
+      }
       await this.loadItems();
     } catch (error) {
       this.errorMessage.set(this.resolveErrorMessage(error, '加载项目研发上下文失败'));
@@ -417,19 +438,15 @@ export class RdPageComponent {
 
   private async loadItems(): Promise<void> {
     const filter = this.filters.getRawValue() as RdFilterValue;
-    if (!filter.projectId) {
-      this.items.set([]);
-      this.total.set(0);
-      return;
-    }
 
     this.loading.set(true);
     this.errorMessage.set(null);
     try {
       const params: Record<string, string | number | boolean> = {
         page: this.page(),
-        pageSize: this.pageSize
+        pageSize: this.pageSize,
       };
+      if (filter.projectId) params['projectId'] = filter.projectId;
       if (filter.stageId) params['stageId'] = filter.stageId;
       if (filter.status) params['status'] = filter.status;
       if (filter.priority) params['priority'] = filter.priority;
@@ -442,18 +459,20 @@ export class RdPageComponent {
       if (this.onlyBlocked()) params['status'] = 'blocked';
       if (this.onlyOverdue()) params['overdue'] = true;
 
-      const result = await this.api.listItems(filter.projectId, params);
+      const result = await this.api.getListItems(params);
       this.items.set(result.items);
       this.total.set(result.total);
 
       const selectedId = this.selectedItemId();
-      const nextSelected = selectedId && result.items.some((item) => item.id === selectedId)
-        ? selectedId
-        : result.items[0]?.id ?? null;
-
+      const nextSelected =
+        selectedId && result.items.some((item) => item.id === selectedId)
+          ? selectedId
+          : (result.items[0]?.id ?? null);
+      const projectId = filter.projectId ? filter.projectId : (result.items[0].projectId ?? null);
+      this.currentProjectId.set(projectId);
       this.selectedItemId.set(nextSelected);
-      if (nextSelected) {
-        await this.loadDetail(filter.projectId, nextSelected);
+      if (nextSelected && projectId) {
+        await this.loadDetail(projectId, nextSelected);
       } else {
         this.detail.set(null);
       }
@@ -468,6 +487,7 @@ export class RdPageComponent {
     this.detailLoading.set(true);
     try {
       const detail = await this.api.getItemDetail(projectId, itemId);
+
       this.detail.set(detail);
     } catch (error) {
       this.errorMessage.set(this.resolveErrorMessage(error, '加载研发项详情失败'));
