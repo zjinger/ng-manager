@@ -13,7 +13,7 @@ import type { DashboardAnnouncementItem } from '../models/dashboard.model';
   template: `
     <nz-card class="info-card">
       <div class="panel-head">
-        <div class="panel-title">未读公告</div>
+        <div class="panel-title">最新公告</div>
         <button type="button" class="panel-link" (click)="openRoute('/announcements')">全部公告</button>
       </div>
       <div class="panel-subtitle">当前先按最新已发布公告展示</div>
@@ -24,7 +24,7 @@ import type { DashboardAnnouncementItem } from '../models/dashboard.model';
             <button type="button" class="info-item" (click)="open(item)">
               <div class="info-item__badge">{{ item.badgeText }}</div>
               <div class="info-item__title">{{ item.title }}</div>
-              <div class="info-item__summary">{{ item.summary }}</div>
+              <!-- <div class="info-item__summary">{{ item.summary }}</div> -->
               <div class="info-item__time">{{ item.publishAt | hubTimeAgo }}</div>
             </button>
           }
@@ -41,14 +41,24 @@ import type { DashboardAnnouncementItem } from '../models/dashboard.model';
     `
       :host {
         display: block;
-        min-height: 100%;
+        height: 100%;
+        min-height: 0;
       }
 
       .info-card {
         height: 100%;
         border: 0;
         border-radius: 20px;
+        overflow: hidden;
         box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      }
+
+      :host ::ng-deep .ant-card-body {
+        box-sizing: border-box;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 24px 28px;
       }
 
       .panel-head {
@@ -79,8 +89,13 @@ import type { DashboardAnnouncementItem } from '../models/dashboard.model';
       }
 
       .panel-list {
+        flex: 1 1 auto;
+        min-height: 0;
         margin-top: 16px;
         display: grid;
+        align-content: start;
+        overflow: auto;
+        padding-right: 4px;
       }
 
       .info-item {
@@ -130,7 +145,8 @@ import type { DashboardAnnouncementItem } from '../models/dashboard.model';
       }
 
       .panel-empty {
-        min-height: 180px;
+        flex: 1 1 auto;
+        min-height: 0;
         display: flex;
         align-items: center;
         justify-content: center;

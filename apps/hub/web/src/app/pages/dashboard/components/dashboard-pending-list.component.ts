@@ -53,14 +53,24 @@ import type { DashboardPendingItem } from '../models/dashboard.model';
     `
       :host {
         display: block;
-        min-height: 100%;
+        height: 100%;
+        min-height: 0;
       }
 
       .panel-card {
         height: 100%;
         border: 0;
         border-radius: 20px;
+        overflow: hidden;
         box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      }
+
+      :host ::ng-deep .ant-card-body {
+        box-sizing: border-box;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 24px 28px;
       }
 
       .panel-head {
@@ -92,7 +102,12 @@ import type { DashboardPendingItem } from '../models/dashboard.model';
       }
 
       .panel-list {
+        flex: 1 1 auto;
+        min-height: 0;
         display: grid;
+        align-content: start;
+        overflow: auto;
+        padding-right: 4px;
       }
 
       .pending-item {
@@ -148,7 +163,8 @@ import type { DashboardPendingItem } from '../models/dashboard.model';
       }
 
       .panel-empty {
-        min-height: 280px;
+        flex: 1 1 auto;
+        min-height: 0;
         display: flex;
         align-items: center;
         justify-content: center;

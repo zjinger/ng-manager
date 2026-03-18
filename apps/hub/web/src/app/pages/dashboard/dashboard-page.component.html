@@ -50,6 +50,7 @@
   nzTitle="定制 Dashboard 卡片"
   nzOkText="保存"
   nzCancelText="取消"
+  nzCentered="true"
   [nzWidth]="1040"
   [nzOkLoading]="statPreferenceSaving()"
   [nzOkDisabled]="statPreferenceLoading() || visibleStatCardCount() === 0"
@@ -61,7 +62,7 @@
       <div class="preference-modal__intro">
         <div>
           <div class="preference-modal__title">按个人关注点组合统计卡片</div>
-          <div class="preference-modal__subtitle">开关、排序和筛选条件都会跟随当前账号保存。</div>
+          <!-- <div class="preference-modal__subtitle">开关、排序和筛选条件都会跟随当前账号保存。</div> -->
         </div>
         <div class="preference-modal__summary">
           <strong>{{ visibleStatCardCount() }}</strong>
@@ -105,7 +106,9 @@
               </div>
 
               <div class="stat-preference-item__toolbar">
-                <div class="stat-preference-item__scope">{{ getProjectScopeLabel(item) }}</div>
+                <div class="stat-preference-item__scope">
+                  <!-- {{ getProjectScopeLabel(item) }} -->
+                </div>
                 <div class="stat-preference-item__actions">
                   <button nz-button nzType="default" nzSize="small" (click)="moveStatPreference(item.key, -1)" [disabled]="index === 0 || statPreferenceSaving()">
                     上移
@@ -116,7 +119,7 @@
                 </div>
               </div>
 
-              @if (item.supportsPriorityScope || (item.supportsProjectIds && statPreferenceProjects().length > 1)) {
+              <!-- @if (item.supportsPriorityScope || (item.supportsProjectIds && statPreferenceProjects().length > 1)) {
                 <div class="stat-preference-item__filters">
                   @if (item.supportsPriorityScope) {
                     <label class="filter-field">
@@ -154,7 +157,7 @@
                     </label>
                   }
                 </div>
-              }
+              } -->
             </article>
           }
         </div>

@@ -209,7 +209,7 @@ export class DashboardService {
     const docResult = this.documentService.list({
       status: "published",
       page: 1,
-      pageSize: 40
+      pageSize: 10
     });
     const issueData = this.loadIssueCollections(projects, currentUserId, projectIds);
     const recentDocs = docResult.items
