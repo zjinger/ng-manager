@@ -16,6 +16,8 @@ export interface UserEntity {
   remark: string | null;
   loginAccountStatus: AdminUserStatus | null;
   loginAccountUsername: string | null;
+  avatarUploadId?: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
