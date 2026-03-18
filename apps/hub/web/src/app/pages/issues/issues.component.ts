@@ -195,8 +195,9 @@ export class IssuesPageComponent {
   }
 
   protected async submitForm(value: IssueFormValue): Promise<void> {
-    const projectId = this.filters.controls.projectId.value;
+    const projectId = this.selectedProjectId();
     if (!projectId) {
+      this.message.error('请先选择项目');
       return;
     }
 
@@ -208,11 +209,11 @@ export class IssuesPageComponent {
       }
 
       await this.api.updateIssue(projectId, editing.id, value);
-      this.message.success('Issue 已更新');
+      this.message.success('工单已更新');
       this.closeFormModal();
       await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
-      this.message.error(this.getErrorMessage(error, '更新 Issue 失败'));
+      this.message.error(this.getErrorMessage(error, '更新工单失败'));
     } finally {
       this.formSubmitting.set(false);
     }
@@ -231,7 +232,7 @@ export class IssuesPageComponent {
       await this.api.runAction(detail.issue.projectId, detail.issue.id, payload);
       await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
     } catch (error) {
-      this.detailError.set(this.getErrorMessage(error, '执行 Issue 操作失败'));
+      this.detailError.set(this.getErrorMessage(error, '执行工单操作失败'));
     } finally {
       this.actionLoading.set(false);
     }
@@ -455,7 +456,7 @@ export class IssuesPageComponent {
         });
       }
     } catch (error) {
-      this.detailError.set(this.getErrorMessage(error, '加载 Issue 详情失败'));
+      this.detailError.set(this.getErrorMessage(error, '加载工单详情失败'));
     } finally {
       this.detailLoading.set(false);
     }
