@@ -2,15 +2,18 @@
   <nz-form-item>
     <nz-form-label nzRequired>标题</nz-form-label>
     <nz-form-control nzErrorTip="请输入标题">
-      <input nz-input formControlName="title" maxlength="200" placeholder="请输入工单标题" />
+      <input nz-input formControlName="title" maxlength="200" placeholder="一句话描述问题" />
     </nz-form-control>
   </nz-form-item>
 
   <nz-form-item>
     <nz-form-label>描述</nz-form-label>
     <nz-form-control>
-      <textarea nz-input formControlName="description" rows="5" maxlength="10000"
-        placeholder="补充复现步骤、影响范围、背景说明"></textarea>
+      <textarea nz-input formControlName="description" rows="5" maxlength="10000" placeholder="补充复现步骤、影响范围、背景说明。
+1. 操作步骤
+2. 预期结果
+3. 实际结果
+        "></textarea>
     </nz-form-control>
   </nz-form-item>
 

@@ -13,6 +13,7 @@ type UserRow = {
   remark: string | null;
   login_account_status: string | null;
   login_account_username: string | null;
+  login_account_avatar_upload_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -176,6 +177,7 @@ export class UserRepo {
         u.remark,
         au.status AS login_account_status,
         au.username AS login_account_username,
+        au.avatar_upload_id AS login_account_avatar_upload_id,
         u.created_at,
         u.updated_at
       FROM users u
@@ -215,6 +217,7 @@ export class UserRepo {
       remark: row.remark,
       loginAccountStatus: (row.login_account_status as UserEntity["loginAccountStatus"]) ?? null,
       loginAccountUsername: row.login_account_username,
+      avatarUrl: row.login_account_avatar_upload_id ? `/api/admin/preview/${row.login_account_avatar_upload_id}` : null, // avatar URL will be resolved in service layer
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

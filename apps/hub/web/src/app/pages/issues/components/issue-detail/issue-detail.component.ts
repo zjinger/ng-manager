@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
@@ -16,8 +17,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import type { ProjectMemberItem } from '../../../projects/projects.model';
 import { HubDateTimePipe } from '../../../../shared/pipes/date-time.pipe';
+import type { ProjectMemberItem } from '../../../projects/projects.model';
 import {
   formatActionTransition,
   issueActionColor,
@@ -29,17 +30,15 @@ import {
   issueTypeColor,
   issueTypeLabel,
   memberDisplay,
-  type IssueAttachment,
   type IssueActionPanelSubmit,
+  type IssueAttachment,
   type IssueCommentMention,
   type IssueDetailResult,
 } from '../../issues.model';
 import { IssueAttachmentsComponent } from '../issue-attachments/issue-attachments.component';
+import { IssueCloseModalComponent } from '../issue-close-modal.component/issue-close-modal.component';
 import { IssueCommentsComponent } from '../issue-comments/issue-comments.component';
 import { IssueParticipantsComponent } from '../issue-participants/issue-participants.component';
-import { AdminAuthService } from '../../../../core/services/admin-auth.service';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
-import { IssueCloseModalComponent } from '../issue-close-modal.component/issue-close-modal.component';
 
 @Component({
   selector: 'app-issue-detail',
@@ -53,6 +52,7 @@ import { IssueCloseModalComponent } from '../issue-close-modal.component/issue-c
     NzPopconfirmModule,
     NzSelectModule,
     NzTagModule,
+    NzBadgeModule,
     HubDateTimePipe,
     IssueAttachmentsComponent,
     IssueCommentsComponent,
@@ -64,7 +64,6 @@ import { IssueCloseModalComponent } from '../issue-close-modal.component/issue-c
 })
 export class IssueDetailComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);
-  private readonly modal = inject(NzModalService);
 
   @Input() detail: IssueDetailResult | null = null;
   @Input() projectMembers: ProjectMemberItem[] = [];
@@ -76,6 +75,7 @@ export class IssueDetailComponent implements OnChanges {
   @Input() participantSaving = false;
   @Input() commentSubmitting = false;
   @Input() attachmentUploading = false;
+  @Input() projectName: string | null = null;
 
   @Output() readonly editRequested = new EventEmitter<void>();
   @Output() readonly actionSubmitted = new EventEmitter<IssueActionPanelSubmit>();

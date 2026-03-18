@@ -18,6 +18,7 @@ import { AdminAuthService } from '../../core/services/admin-auth.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { HubDateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
+import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 
 type UserStatus = 'active' | 'inactive';
 type UserTitleCode = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops' | 'other';
@@ -38,6 +39,7 @@ interface UserItem {
   remark: string | null;
   loginAccountStatus: LoginAccountStatus;
   loginAccountUsername: string | null;
+  avatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,7 +88,8 @@ interface EnableLoginAccountPayload {
     NzTableModule,
     NzTagModule,
     PageHeaderComponent,
-    HubDateTimePipe
+    HubDateTimePipe,
+    NzAvatarModule
   ],
   template: `
     <section class="page">
@@ -149,7 +152,13 @@ interface EnableLoginAccountPayload {
             @for (item of users(); track item.id) {
               <tr>
                 <td>{{ item.username }}</td>
-                <td>{{ item.displayName || item.username }}</td>
+                <td>
+                  @if(item.avatarUrl){
+                    <nz-avatar  [nzSrc]="item.avatarUrl" style="margin-right: 8px;"></nz-avatar>
+                  }@else{
+                    <nz-avatar [nzText]="(item.displayName || item.username).slice(0,1)"/>
+                  }
+                  {{ item.displayName || item.username }}</td>
                 <td>{{ titleLabel(item.titleCode) }}</td>
                 <td><nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag></td>
                 @if (isAdmin()) {
