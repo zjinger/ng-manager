@@ -85,6 +85,21 @@ export class DocumentService {
     return this.repo.list(query);
   }
 
+  listByProjectIds(
+    projectIds: string[],
+    query: ListDocumentQuery,
+    options?: { includeGlobal?: boolean }
+  ): DocumentListResult {
+    if (query.projectId) {
+      this.assertProjectExists(query.projectId);
+    }
+
+    const normalizedProjectIds = Array.from(new Set(projectIds.map((item) => item.trim()).filter(Boolean)));
+    return this.repo.listByProjectIds(normalizedProjectIds, query, {
+      includeGlobal: options?.includeGlobal ?? false
+    });
+  }
+
   listPublic(query: {
     projectKey?: string;
     includeGlobal?: boolean;
@@ -210,7 +225,7 @@ export class DocumentService {
     ) {
       throw new AppError(
         "DOCUMENT_SLUG_EXISTS",
-        `document slug already exists: ${slug ?? "unknown"}`,
+        `文档标识已存在: ${slug ?? "unknown"}`,
         409
       );
     }

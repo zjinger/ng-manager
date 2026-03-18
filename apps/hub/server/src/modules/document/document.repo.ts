@@ -24,7 +24,7 @@ type DocumentRow = {
 };
 
 export class DocumentRepo {
-  constructor(private readonly db: Database.Database) { }
+  constructor(private readonly db: Database.Database) {}
 
   create(entity: DocumentEntity): void {
     const stmt = this.db.prepare(`
@@ -220,6 +220,90 @@ export class DocumentRepo {
     };
   }
 
+  listByProjectIds(
+    projectIds: string[],
+    query: ListDocumentQuery,
+    options?: { includeGlobal?: boolean }
+  ): DocumentListResult {
+    const where: string[] = [];
+    const params: unknown[] = [];
+
+    if (query.projectId !== undefined) {
+      if (query.projectId === null) {
+        where.push("project_id IS NULL");
+      } else {
+        where.push("project_id = ?");
+        params.push(query.projectId);
+      }
+    } else if (projectIds.length > 0) {
+      const placeholders = projectIds.map(() => "?").join(", ");
+      if (options?.includeGlobal) {
+        where.push(`(project_id IN (${placeholders}) OR project_id IS NULL)`);
+      } else {
+        where.push(`project_id IN (${placeholders})`);
+      }
+      params.push(...projectIds);
+    } else if (options?.includeGlobal) {
+      where.push("project_id IS NULL");
+    } else {
+      return {
+        items: [],
+        page: query.page,
+        pageSize: query.pageSize,
+        total: 0
+      };
+    }
+
+    if (query.status) {
+      where.push("status = ?");
+      params.push(query.status);
+    }
+
+    if (query.category) {
+      where.push("category = ?");
+      params.push(query.category);
+    }
+
+    if (query.keyword) {
+      where.push("(slug LIKE ? OR title LIKE ? OR summary LIKE ? OR content_md LIKE ?)");
+      params.push(
+        `%${query.keyword}%`,
+        `%${query.keyword}%`,
+        `%${query.keyword}%`,
+        `%${query.keyword}%`
+      );
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const offset = (query.page - 1) * query.pageSize;
+
+    const totalRow = this.db
+      .prepare(`SELECT COUNT(*) as total FROM documents ${whereSql}`)
+      .get(...params) as { total: number };
+
+    const rows = this.db
+      .prepare(`
+        SELECT id, project_id, slug, title, category, summary, status, version, created_by, created_at, updated_at
+        FROM documents
+        ${whereSql}
+        ORDER BY
+          CASE WHEN project_id IS NULL THEN 1 ELSE 0 END,
+          updated_at DESC,
+          created_at DESC
+        LIMIT ? OFFSET ?
+      `)
+      .all(...params, query.pageSize, offset) as Array<
+        Omit<DocumentRow, "content_md">
+      >;
+
+    return {
+      items: rows.map((row) => this.toListItem(row)),
+      page: query.page,
+      pageSize: query.pageSize,
+      total: totalRow.total
+    };
+  }
+
   listPublished(query: PublicListDocumentQuery): DocumentListResult {
     const where: string[] = ["status = 'published'"];
     const params: unknown[] = [];
@@ -261,7 +345,7 @@ export class DocumentRepo {
         SELECT id, project_id, slug, title, category, summary, status, version, created_by, created_at, updated_at
         FROM documents
         ${whereSql}
-        ORDER BY 
+        ORDER BY
           CASE WHEN project_id IS NULL THEN 1 ELSE 0 END,
           updated_at DESC,
           created_at DESC

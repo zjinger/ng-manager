@@ -14,7 +14,7 @@ const statusEnum = z.enum(["draft", "published", "archived"]);
 export const createDocumentSchema = z.object({
   projectId: z.string().trim().min(1).max(40).nullable().optional(),
   slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-    message: "slug must be kebab-case"
+    message: "文档标识需使用小写字母、数字和短横线"
   }),
   title: z.string().trim().min(1).max(160),
   category: categoryEnum,
@@ -27,7 +27,7 @@ export const createDocumentSchema = z.object({
 export const updateDocumentSchema = z.object({
   projectId: z.string().trim().min(1).max(40).nullable().optional(),
   slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-    message: "slug must be kebab-case"
+    message: "文档标识需使用小写字母、数字和短横线"
   }).optional(),
   title: z.string().trim().min(1).max(160).optional(),
   category: categoryEnum.optional(),

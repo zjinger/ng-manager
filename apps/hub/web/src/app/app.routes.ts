@@ -11,6 +11,7 @@ export const routes: Routes = [
   { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then(m => m.ProjectsPageComponent), canActivate: [adminAuthGuard] },
   { path: 'rd', loadComponent: () => import('./pages/rd/rd.component').then(m => m.RdPageComponent), canActivate: [adminAuthGuard] },
   { path: 'users', loadComponent: () => import('./pages/users/users.component').then(m => m.UsersPageComponent), canActivate: [adminAuthGuard] },
+  { path: 'docs/new', loadComponent: () => import('./pages/docs/docs-create.component').then(m => m.DocsCreatePageComponent), canActivate: [adminAuthGuard] },
   { path: 'docs', loadComponent: () => import('./pages/docs/docs.component').then(m => m.DocsPageComponent), canActivate: [adminAuthGuard] },
   { path: 'feedback', loadComponent: () => import('./pages/feedback/feedback.component').then(m => m.FeedbackPageComponent), canActivate: [adminAuthGuard] },
   { path: 'issues/new', loadComponent: () => import('./pages/issues/issue-create.component').then(m => m.IssueCreatePageComponent), canActivate: [adminAuthGuard] },
