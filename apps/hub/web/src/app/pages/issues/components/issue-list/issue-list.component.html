@@ -14,65 +14,56 @@
     <nz-table
       #table
       [nzData]="items"
+      nzBordered
+      nzSize="default"
+      [nzTableLayout]="'fixed'"
       [nzFrontPagination]="false"
       [nzShowPagination]="true"
       [nzPageIndex]="page"
       [nzTotal]="total"
+      [nzShowQuickJumper]="true"
+      [nzShowSizeChanger]="true"
       [nzPageSize]="pageSize"
       (nzPageIndexChange)="pageChanged.emit($event)"
       (nzPageSizeChange)="pageSizeChanged.emit($event)"
       [nzLoading]="loading"
-      [nzScroll]="{ y: '100%' }"
       class="issue-table"
     >
       <thead>
-        <tr>
-          <th class="center" nzWidth="80px">序号</th>
-          <th class="center" nzWidth="210px">编号</th>
-          <th class="center">标题</th>
-          <th class="center" nzWidth="140px">功能模块</th>
-          <th class="center" nzWidth="88px">状态</th>
-          <th class="center" nzWidth="88px">优先级</th>
-          <th class="center" nzWidth="88px">类型</th>
-          <th class="center" nzWidth="100px">提出人</th>
-          <th class="center" nzWidth="120px">处理人</th>
-          <th class="center" nzWidth="160px">更新时间</th>
+        <tr style="position: sticky; top: 0; z-index: 1;">
+          <th nzAlign="center" nzWidth="80px">序号</th>
+          <th nzAlign="center" >标题</th>
+          <th nzAlign="center" nzWidth="120px">功能模块</th>
+          <th nzAlign="center" nzWidth="90px">状态</th>
+          <th nzAlign="center" nzWidth="90px">优先级</th>
+          <th nzAlign="center" nzWidth="90px">类型</th>
+          <th nzAlign="center" nzWidth="120px">提出人</th>
+          <th nzAlign="center" nzWidth="120px">处理人</th>
+          <th nzAlign="center" nzWidth="150px">更新时间</th>
         </tr>
       </thead>
       <tbody>
         @for (item of table.data; let idx = $index; track item.id) {
           <tr (click)="issueSelected.emit(item)" [class.selected]="selectedIssueId === item.id">
-            <td class="center">{{ idx + 1 }}</td>
-            <td class="center">{{ item.issueNo }}</td>
-            <td>
-              <span class="ellipsis" nz-tooltip [nzTooltipTitle]="item.title">{{
-                item.title
-              }}</span>
-            </td>
-            <td>
-              <span class="ellipsis" nz-tooltip [nzTooltipTitle]="item.moduleCode || '-'">{{
-                item.moduleCode || '-'
-              }}</span>
-            </td>
-            <td class="center">
+            <td nzAlign="center">{{ idx + 1 }}</td>
+            <td nzEllipsis [nz-tooltip]="item.title">{{ item.title }}</td>
+            <td nzEllipsis nzAlign="center" [nz-tooltip]="item.moduleCode || ''">{{ item.moduleCode || '-' }}</td>
+            <td nzAlign="center">
               <nz-tag [nzColor]="statusColor(item)">{{ statusLabel(item) }}</nz-tag>
             </td>
-            <td class="center">
+            <td nzAlign="center">
               <nz-tag [nzColor]="priorityColor(item.priority)">{{
                 priorityLabel(item.priority)
               }}</nz-tag>
             </td>
-            <td class="center">
+            <td nzAlign="center">
               <nz-tag [nzColor]="typeColor(item.type)">{{ typeLabel(item.type) }}</nz-tag>
             </td>
-
-            <td class="center">{{ item.reporterName || '-' }}</td>
-            <td>
-              <span class="ellipsis" nz-tooltip [nzTooltipTitle]="assigneeSummary(item)">{{
-                assigneeSummary(item)
-              }}</span>
+            <td nzAlign="center">{{ item.reporterName || '-' }}</td>
+            <td nzEllipsis [nz-tooltip]="assigneeSummary(item)">
+              {{ assigneeSummary(item) || '-' }}
             </td>
-            <td class="center">{{ item.updatedAt | hubDateTime }}</td>
+            <td nzAlign="center">{{ item.updatedAt | hubDateTime }}</td>
           </tr>
         }
       </tbody>

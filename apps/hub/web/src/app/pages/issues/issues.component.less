@@ -28,46 +28,28 @@
   height: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(520px, 1.5fr) minmax(420px, 1fr);
+  grid-template-columns: 2fr 1fr;
   gap: 16px;
-  overflow: hidden;
 }
 
-:host ::ng-deep app-issue-list,
-:host ::ng-deep app-issue-detail {
-  display: block;
-  height: 100%;
-  min-height: 0;
-}
-
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
   .search-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 1080px) {
-  .issue-page {
-    overflow: auto;
-  }
-
+@media (max-width: 1600px) {
   .search-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .issue-layout {
-    grid-template-columns: 1fr;
-    overflow: visible;
-  }
-
-  :host ::ng-deep app-issue-list,
-  :host ::ng-deep app-issue-detail {
-    height: auto;
+    grid-template-columns: repeat(1, 1fr);
   }
 }
 
 @media (max-width: 768px) {
   .search-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(1, 1fr);
   }
 }
