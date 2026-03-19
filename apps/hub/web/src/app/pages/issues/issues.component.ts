@@ -1,8 +1,7 @@
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, computed, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -11,8 +10,11 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { debounceTime, distinctUntilChanged, filter } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
+import { HubWebsocketService } from '../../core/services/hub-websocket.service';
+import { ProjectContextService } from '../../core/services/project-context.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 import type {
@@ -35,11 +37,8 @@ import {
   type IssueCommentMention,
   type IssueDetailResult,
   type IssueFilterValue,
-  type IssueFormValue,
-  type IssueItem,
-  type ProjectOption,
+  type IssueItem
 } from './issues.model';
-import { ProjectContextService } from '../../core/services/project-context.service';
 
 @Component({
   selector: 'app-issues-page',
@@ -69,6 +68,7 @@ export class IssuesPageComponent {
   private readonly router = inject(Router);
   private readonly message = inject(NzMessageService);
   private readonly projectContextService = inject(ProjectContextService);
+  private readonly ws = inject(HubWebsocketService);
 
   protected readonly projectOpts = this.projectContextService.projectOpts;
   protected readonly currentProject = this.projectContextService.currentProject;
@@ -176,6 +176,15 @@ export class IssuesPageComponent {
       this.clearAllPending();
       void this.loadIssues();
     });
+
+    this.ws.events$
+      .pipe(
+        filter((event) => event.type === 'issue.created' || event.type === 'issue.updated'),
+        takeUntilDestroyed()
+      )
+      .subscribe(() => {
+        void this.handleRealtimeIssueEvent();
+      });
 
     void this.initialize();
   }
@@ -449,6 +458,10 @@ export class IssuesPageComponent {
         await this.loadIssueDetail(selectedId, selectedProjectId);
       }
     }
+  }
+
+  private async handleRealtimeIssueEvent(): Promise<void> {
+    // await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
   }
 
   private async loadProjectContext(projectId: string): Promise<void> {

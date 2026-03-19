@@ -149,11 +149,11 @@ export class App {
         void this.loadAnnouncementInbox(true);
       }
 
-      if (!this.shouldNotify(event.type)) {
+      if (!this.shouldNotify(event.type) || !this.shouldDisplayNotification(event)) {
         return;
       }
 
-      const title = this.mapNotificationTitle(event.type);
+      const title = this.mapNotificationTitle(event);
       this.notification.info(title, event.message);
     });
 
@@ -359,12 +359,66 @@ export class App {
       type === 'announcement.updated' ||
       type === 'doc.published' ||
       type === 'release.created' ||
-      type === 'broadcast'
+      type === 'broadcast' ||
+      type === 'issue.updated'
     );
   }
 
-  private mapNotificationTitle(type: HubWsEventType): string {
-    switch (type) {
+  private shouldDisplayNotification(event: { type: HubWsEventType; payload: unknown }): boolean {
+    if (event.type !== 'issue.updated') {
+      return true;
+    }
+
+    const profile = this.auth.profile();
+    const currentUserId = profile?.userId?.trim() || profile?.id || null;
+    if (!currentUserId || typeof event.payload !== 'object' || event.payload === null) {
+      return false;
+    }
+
+    const payload = event.payload as Record<string, unknown>;
+    const actorId = typeof payload['actorId'] === 'string' ? payload['actorId'] : '';
+    const action = typeof payload['action'] === 'string' ? payload['action'] : '';
+    const assigneeId = typeof payload['assigneeId'] === 'string' ? payload['assigneeId'] : '';
+    const mentionedUserIds = Array.isArray(payload['mentionedUserIds'])
+      ? payload['mentionedUserIds'].filter((item): item is string => typeof item === 'string')
+      : [];
+    const changedUserIds = Array.isArray(payload['changedUserIds'])
+      ? payload['changedUserIds'].filter((item): item is string => typeof item === 'string')
+      : [];
+
+    if (actorId && actorId === currentUserId) {
+      return false;
+    }
+
+    if (action === 'comment_add') {
+      return mentionedUserIds.includes(currentUserId);
+    }
+    if (action === 'add_participant') {
+      return changedUserIds.includes(currentUserId);
+    }
+    if (action === 'assigned' || action === 'claimed' || action === 'reassigned') {
+      return assigneeId === currentUserId || changedUserIds.includes(currentUserId);
+    }
+
+    return false;
+  }
+
+  private mapNotificationTitle(event: { type: HubWsEventType; payload: unknown }): string {
+    if (event.type === 'issue.updated' && typeof event.payload === 'object' && event.payload !== null) {
+      const payload = event.payload as Record<string, unknown>;
+      const action = typeof payload['action'] === 'string' ? payload['action'] : '';
+      if (action === 'comment_add') {
+        return '@ 评论提醒';
+      }
+      if (action === 'add_participant') {
+        return '事项协作提醒';
+      }
+      if (action === 'assigned' || action === 'claimed' || action === 'reassigned') {
+        return '事项指派提醒';
+      }
+    }
+
+    switch (event.type) {
       case 'announcement.published':
       case 'announcement.updated':
         return '公告通知';

@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { HubWsEvent, HubWsEventType } from "./ws.types";
 
@@ -146,6 +146,11 @@ export class HubWsEvents {
         assigneeName?: string | null;
         projectId: string;
         userIds: string[];
+        actorId?: string | null;
+        actorName?: string | null;
+        commentId?: string | null;
+        mentionedUserIds?: string[];
+        changedUserIds?: string[];
     }) {
         const event = buildEvent(
             "issue.updated",
@@ -157,6 +162,11 @@ export class HubWsEvents {
                 action: input.action,
                 assigneeId: input.assigneeId ?? null,
                 assigneeName: input.assigneeName ?? null,
+                actorId: input.actorId ?? null,
+                actorName: input.actorName ?? null,
+                commentId: input.commentId ?? null,
+                mentionedUserIds: input.mentionedUserIds ?? [],
+                changedUserIds: input.changedUserIds ?? [],
             },
             input.projectId
         );

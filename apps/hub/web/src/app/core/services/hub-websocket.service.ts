@@ -210,8 +210,35 @@ export class HubWebsocketService {
         return version ? `新版本已发布：${version}` : '有新版本发布';
       case 'issue.created':
         return title ? `新事项已创建：${issueNo || title}` : '有新事项创建';
-      case 'issue.updated':
-        return title ? `事项已更新：${issueNo || title}${action ? ` · ${action}` : ''}` : '事项状态已更新';
+      case 'issue.updated': {
+        const actorName = typeof data['actorName'] === 'string' ? data['actorName'] : '';
+        if (action === 'comment_add') {
+          return actorName
+            ? `${actorName} 在事项 ${issueNo || title} 中添加了评论`
+            : `事项 ${issueNo || title} 有新评论`;
+        }
+        if (action === 'add_participant') {
+          return actorName
+            ? `${actorName} 更新了事项 ${issueNo || title} 的参与人`
+            : `事项 ${issueNo || title} 的参与人已更新`;
+        }
+        if (action === 'remove_participant') {
+          return actorName
+            ? `${actorName} 调整了事项 ${issueNo || title} 的参与人`
+            : `事项 ${issueNo || title} 的参与人已调整`;
+        }
+        if (action === 'attachment_add') {
+          return actorName
+            ? `${actorName} 为事项 ${issueNo || title} 上传了附件`
+            : `事项 ${issueNo || title} 有新附件`;
+        }
+        if (action === 'attachment_remove') {
+          return actorName
+            ? `${actorName} 删除了事项 ${issueNo || title} 的附件`
+            : `事项 ${issueNo || title} 的附件已删除`;
+        }
+        return title ? `事项已更新：${issueNo || title}${action ? ` ? ${action}` : ''}` : '事项状态已更新';
+      }
       case 'rd.created':
         return title ? `新研发项已创建：${title}` : '有新研发项创建';
       case 'rd.updated':
