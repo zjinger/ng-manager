@@ -14,7 +14,7 @@ export const DASHBOARD_STAT_CARD_KEYS = [
 ] as const;
 
 export type DashboardStatCardKey = typeof DASHBOARD_STAT_CARD_KEYS[number];
-export type DashboardIssuePriorityScope = "all" | "high_up" | "critical";
+export type DashboardIssuePriorityScope = "all" | "high_up" | "critical"; // 统计范围：所有优先级 / 高及以上优先级 / 紧急优先级
 export type DashboardQueryParams = Record<string, string | number | boolean | null | undefined>;
 
 export interface DashboardProjectOption {

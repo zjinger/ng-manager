@@ -176,16 +176,42 @@ in_progress
 **含义：** 验证失败或重新发现问题。行为基本等同`open`。
 
 ## 派生状态
-### 我的待办 todo
+### 待我处理 todo
 #### 场景
 dashboard 点击“待我处理” 跳转到issue 列表，查询我的待办，包含所有的项目的待办事项
+#### 请求url
+GET GET /api/admin/issues?page=1&pageSize=20?assigneeId=assigneeId?status=todo
+#### 说明
+todo: 包含 open、reopened、in_progress 状态
+
+### 待我验证 verify
+#### 场景 
+dashboard  点击“待我验证” 跳转到issue 列表，查询我的待验证工单
 
 #### 请求url
-GET /api/admin/issues/todo
-
+GET GET /api/admin/issues?page=1&pageSize=20?verifierId=reporterId?status=verify
 #### 说明
+verify: 包含 resolved 状态
 
-todo: 包含 open、reopened、in_progreass 状态
+### 我提报的
+#### 场景
+dashboard 点击“我提报的” 跳转到issue 列表，查询我提报的工单
+
+#### 请求url
+GET /api/admin/issues?page=1&pageSize=20?reporterId=reporterId?status=reported
+#### 说明
+包含所有状态
+
+### 待跟进提报
+#### 场景
+dashboard 点击“待跟进提报” 跳转到issue 列表，查询我提报的未结工单
+
+#### 请求url
+GET /api/admin/issues?page=1&pageSize=20?reporterId=reporterId?status=reported_active
+#### 说明
+包含 open、reopened、in_progress、resolved 状态
+
+### 派生状态说明
 
 同时支持分页和筛选，支持的 query 参数有：
 projectId、priority、type、keyword、page、pageSize

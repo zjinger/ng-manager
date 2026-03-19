@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const issueTypeSchema = z.enum(["bug", "feature", "change", "improvement", "task", "test"]);
-export const issueStatusSchema = z.enum(["open", "in_progress", "resolved", "verified", "closed", "reopened"]);
+export const issueStatusSchema = z.enum(["open", "in_progress", "resolved", "verified", "closed", "reopened", "todo", "verify", "reported", "reported_active"]);
 export const issuePrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 
 const operatorSchema = z.object({
@@ -19,6 +19,8 @@ export const listIssuesQuerySchema = z.object({
   priority: issuePrioritySchema.optional(),
   type: issueTypeSchema.optional(),
   assigneeId: z.string().trim().max(64).optional(),
+  verifierId: z.string().trim().max(64).optional(),
+  reporterId: z.string().trim().max(64).optional(),
   keyword: z.string().trim().max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20)

@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { IssueEntity, IssueListResult, IssueStatus, ListIssuesQuery, UpdateIssuePatch } from "./issue.types";
+import type { IssueDerivedStatus, IssueEntity, IssueListResult, IssueStatus, ListIssuesQuery, UpdateIssuePatch } from "./issue.types";
 
 type IssueListFilters = Omit<ListIssuesQuery, "projectId">;
 type MyPendingIssueFilters = Omit<IssueListFilters, "status" | "assigneeId">;
@@ -110,6 +110,8 @@ export class IssueRepo {
       priority: query.priority,
       type: query.type,
       assigneeId: query.assigneeId,
+      verifierId: query.verifierId,
+      reporterId: query.reporterId,
       keyword: query.keyword,
       page: query.page,
       pageSize: query.pageSize
@@ -192,7 +194,45 @@ export class IssueRepo {
     };
   }
 
-  private appendStatusCondition(conditions: string[], params: unknown[], status: IssueStatus): void {
+  private appendStatusCondition(
+    conditions: string[],
+    params: unknown[],
+    status: IssueStatus | IssueDerivedStatus,
+    verifierId?: string,
+    reporterId?: string
+  ): void {
+    if (status === "todo") {
+      conditions.push("status IN (?, ?, ?)");
+      params.push("open", "in_progress", "reopened");
+      return;
+    }
+    if (status === "verify") {
+      if (verifierId?.trim()) {
+        conditions.push("reporter_id = ?");
+        params.push(verifierId.trim());
+      }
+      conditions.push("status = ?");
+      params.push("resolved");
+      return;
+    }
+    if (status === "reported") {
+      const normalizedReporterId = reporterId?.trim();
+      if (normalizedReporterId) {
+        conditions.push("reporter_id = ?");
+        params.push(normalizedReporterId);
+      }
+      return;
+    }
+    if (status === "reported_active") {
+      const normalizedReporterId = reporterId?.trim();
+      if (normalizedReporterId) {
+        conditions.push("reporter_id = ?");
+        params.push(normalizedReporterId);
+      }
+      conditions.push("status IN (?, ?, ?, ?)");
+      params.push("open", "in_progress", "resolved", "reopened");
+      return;
+    }
     if (status === "verified") {
       conditions.push("(status = ? OR (status = ? AND close_remark = ?))");
       params.push("verified", "closed", "verified_passed");
@@ -209,7 +249,7 @@ export class IssueRepo {
 
   private appendListFilters(conditions: string[], params: unknown[], query: IssueListFilters): void {
     if (query.status) {
-      this.appendStatusCondition(conditions, params, query.status);
+      this.appendStatusCondition(conditions, params, query.status, query.verifierId, query.reporterId);
     }
     if (query.priority) {
       conditions.push("priority = ?");
@@ -222,6 +262,14 @@ export class IssueRepo {
     if (query.assigneeId) {
       conditions.push("assignee_id = ?");
       params.push(query.assigneeId);
+    }
+    if (query.verifierId && !query.status) {
+      conditions.push("reporter_id = ?");
+      params.push(query.verifierId);
+    }
+    if (query.reporterId && !query.status) {
+      conditions.push("reporter_id = ?");
+      params.push(query.reporterId);
     }
     if (query.keyword) {
       conditions.push("(issue_no LIKE ? OR title LIKE ? OR description LIKE ?)");

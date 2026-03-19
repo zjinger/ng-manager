@@ -5,7 +5,7 @@ import type { AdminUserProfile } from "../auth/auth.types";
 import { AnnouncementService } from "../announcement/announcement.service";
 import { DocumentService } from "../document/document.service";
 import { IssueRepo } from "../issue/issue.repo";
-import type { IssueEntity, IssuePriority, IssueStatus } from "../issue/issue.types";
+import type { IssueDerivedStatus, IssueEntity, IssuePriority, IssueStatus } from "../issue/issue.types";
 import { ProjectMemberService } from "../project/project-member.service";
 import { ProjectService } from "../project/project.service";
 import { RdService } from "../rd/rd.service";
@@ -197,7 +197,7 @@ export class DashboardService {
     private readonly documentService: DocumentService,
     private readonly issueRepo: IssueRepo,
     private readonly rdService: RdService
-  ) {}
+  ) { }
 
   loadDashboard(profile: AdminUserProfile): DashboardViewData {
     const currentUserId = this.currentUserId(profile);
@@ -297,20 +297,20 @@ export class DashboardService {
   private loadAnnouncements(currentUserId: string, projectIds: string[]) {
     return this.projectMemberService.isAdmin(currentUserId)
       ? this.announcementService.listWithReadState(currentUserId, {
+        status: "published",
+        page: 1,
+        pageSize: 8
+      })
+      : this.announcementService.listByProjectIdsWithReadState(
+        currentUserId,
+        projectIds,
+        {
           status: "published",
           page: 1,
           pageSize: 8
-        })
-      : this.announcementService.listByProjectIdsWithReadState(
-          currentUserId,
-          projectIds,
-          {
-            status: "published",
-            page: 1,
-            pageSize: 8
-          },
-          { includeGlobal: true }
-        );
+        },
+        { includeGlobal: true }
+      );
   }
 
   private loadIssueCollections(projects: DashboardProjectOption[], currentUserId: string, projectIds: string[]) {
@@ -323,10 +323,10 @@ export class DashboardService {
       page: 1,
       pageSize: 1000
     });
-
     const assigned = assignedResult.items
       .map((issue) => this.toProjectIssueRef(projects, issue))
       .filter((item): item is ProjectIssueRef => !!item);
+
     const reported = allIssueResult.items
       .filter((item) => item.reporterId === currentUserId)
       .map((issue) => this.toProjectIssueRef(projects, issue))
@@ -382,40 +382,40 @@ export class DashboardService {
     const projectIds = this.resolveProjectFilter(preference.filters, context.projects.map((item) => item.id));
 
     switch (preference.key) {
-      case "pending":
+      case "pending": // 待我处理的事项默认只统计分配给我的
         return {
           value: String(this.filterIssueRefs(context.pendingIssues, preference.filters).length),
-          queryParams: this.buildIssueQueryParams(projectIds, preference.filters?.priorityScope, context.currentUserId)
+          queryParams: this.buildIssueQueryParams(projectIds, "todo", preference.filters?.priorityScope, context.currentUserId)
         };
-      case "verify":
+      case "verify": // 待我验证的事项默认只统计我提报的
         return {
           value: String(this.filterIssueRefs(context.verifyIssues, preference.filters).length),
-          queryParams: this.buildIssueQueryParams(projectIds, preference.filters?.priorityScope)
+          queryParams: this.buildIssueQueryParams(projectIds, "verify", preference.filters?.priorityScope, undefined, context.currentUserId)
         };
-      case "rd-doing":
+      case "rd-doing": // 研发中事项默认只统计分配给我的
         return {
           value: String(this.countRdItems(projectIds, context.currentUserId, { status: "doing", assigneeId: context.currentUserId })),
           queryParams: this.buildRdQueryParams(projectIds, "doing", context.currentUserId)
         };
-      case "reported-issues":
+      case "reported-issues": // 我提报的事项默认统计所有状态
         return {
           value: String(this.filterIssueRefs(context.reportedIssues, preference.filters).length),
-          queryParams: this.buildIssueQueryParams(projectIds, preference.filters?.priorityScope)
+          queryParams: this.buildIssueQueryParams(projectIds, "reported", preference.filters?.priorityScope, undefined, undefined, context.currentUserId)
         };
-      case "reported-active":
+      case "reported-active": // 待跟进提报默认只统计我提报且仍未结束的事项
         return {
           value: String(
             this.filterIssueRefs(context.reportedIssues, preference.filters)
               .filter(({ issue }) => this.reportedActiveStatuses.has(issue.status)).length
           ),
-          queryParams: this.buildIssueQueryParams(projectIds, preference.filters?.priorityScope)
+          queryParams: this.buildIssueQueryParams(projectIds, "reported_active", preference.filters?.priorityScope, undefined, undefined, context.currentUserId)
         };
-      case "rd-blocked":
+      case "rd-blocked": // 研发阻塞事项默认只统计由我负责且阻塞中的
         return {
           value: String(this.countRdItems(projectIds, context.currentUserId, { status: "blocked", assigneeId: context.currentUserId })),
           queryParams: this.buildRdQueryParams(projectIds, "blocked", context.currentUserId)
         };
-      case "rd-review":
+      case "rd-review": // 待我验收的研发项默认只统计等待我验收的
         return {
           value: String(this.countRdItems(projectIds, context.currentUserId, { status: "done", reviewerId: context.currentUserId })),
           queryParams: this.buildRdQueryParams(projectIds, "done", undefined, context.currentUserId)
@@ -446,8 +446,11 @@ export class DashboardService {
 
   private buildIssueQueryParams(
     projectIds: string[],
+    status: IssueStatus | IssueDerivedStatus,
     priorityScope?: DashboardStatCardFilters["priorityScope"],
-    assigneeId?: string
+    assigneeId?: string, // 处理人
+    verifierId?: string, // 验证人
+    reporterId?: string  // 报告人
   ): Record<string, string | undefined> | undefined {
     const projectId = projectIds.length === 1 ? projectIds[0] : undefined;
     const priority = priorityScope === "critical"
@@ -456,14 +459,17 @@ export class DashboardService {
         ? "high"
         : undefined;
 
-    if (!projectId && !priority && !assigneeId) {
+    if (!projectId && !priority && !assigneeId && !verifierId && !reporterId) {
       return undefined;
     }
 
     return {
       projectId,
+      status,
       priority,
-      assigneeId
+      assigneeId,
+      verifierId,
+      reporterId
     };
   }
 
@@ -477,7 +483,6 @@ export class DashboardService {
     if (!projectId && !status && !assigneeId && !reviewerId) {
       return undefined;
     }
-
     return {
       projectId,
       status,
