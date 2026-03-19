@@ -178,12 +178,14 @@ in_progress
 ## 派生状态
 ### 我的待办 todo
 #### 场景
-dashboard 点击“我的待办” 跳转到issue 列表，查询我的待办，包含所有的项目的待办事项
+dashboard 点击“待我处理” 跳转到issue 列表，查询我的待办，包含所有的项目的待办事项
 
 #### 请求url
 GET /api/admin/issues/todo
 
 #### 说明
+
+todo: 包含 open、reopened、in_progreass 状态
 
 同时支持分页和筛选，支持的 query 参数有：
 projectId、priority、type、keyword、page、pageSize
@@ -192,3 +194,4 @@ projectId、priority、type、keyword、page、pageSize
 不传 projectId 时，查当前用户所属的所有项目
 传了 projectId 时，只查该项目；如果当前用户不属于该项目，返回空列表
 结果只返回“指派给当前用户”的待办 issue
+
