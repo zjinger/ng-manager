@@ -99,7 +99,14 @@ export class IssuesPageComponent {
   protected readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
   protected readonly typeOptions = ISSUE_TYPE_OPTIONS;
 
+  protected readonly onlyMine = signal(false);
+
+  // 路径参数（优先设置到搜索条件中）
   private pendingIssueId: string | null = null;
+  private pendingAssigneeId: string | null = null;
+  private pendingProjectId: string | null = null;
+  private pendingStatus: string | null = null;
+  private hasClearedPending = false;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -126,10 +133,15 @@ export class IssuesPageComponent {
     return project ? project.label : null;
   });
 
+  protected readonly quickFilterCount = computed(() => [this.onlyMine()].filter(Boolean).length);
+
   public constructor() {
-    // 优先从路径上获取projectId
+    // 优先从路径上获取参数
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.pendingProjectId = params.get('projectId')?.trim() || null;
+      this.pendingAssigneeId = params.get('assigneeId')?.trim() || null;
       this.pendingIssueId = params.get('issueId')?.trim() || null;
+      this.pendingStatus = params.get('status')?.trim() || null;
     });
 
     this.filters.controls.projectId.valueChanges
@@ -146,6 +158,8 @@ export class IssuesPageComponent {
 
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       this.page.set(1);
+      // 只要手动修改了搜索条件就清空路由参数
+      if (!this.hasClearedPending) this.clearAllPending();
       void this.loadIssues();
     });
 
@@ -154,6 +168,16 @@ export class IssuesPageComponent {
 
   protected async reload(): Promise<void> {
     await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
+  }
+
+  protected async toggleOnlyMine(): Promise<void> {
+    if (!this.currentUserId()) {
+      this.message.warning('当前账号未关联用户标识，不能按我的研发项筛选');
+      return;
+    }
+    this.onlyMine.update((value) => !value);
+    this.page.set(1);
+    await this.loadIssues();
   }
 
   protected openCreatePage(): void {
@@ -338,10 +362,26 @@ export class IssuesPageComponent {
 
   private async initialize(): Promise<void> {
     // 不加载数据，让filters.controls.projectId.valueChanges触发
+    const projectId = this.pendingProjectId ?? this.currentProject()?.id ?? '';
+    const status = this.pendingStatus ?? '';
+    const assigneeId = this.pendingAssigneeId ?? '';
+    const issueId = this.pendingIssueId ?? '';
+    this.filters.patchValue({ projectId }, { emitEvent: false });
+    // 锁定某一条工单（函数内有加载上下文），否则只加载上下文
+    if (issueId && projectId) await this.loadIssueDetail(issueId, projectId);
+    else if (!issueId && projectId) await this.loadProjectContext(projectId);
+
+    // 待我处理
+    this.onlyMine.set(true);
+
+    // 当前选中的工单的关键字
+    const keyword = this.selectedDetail()?.issue.issueNo ?? '';
+    this.selectedIssueId.set(issueId);
     this.filters.patchValue(
-      { projectId: this.currentProject()?.id ?? undefined },
-      { emitEvent: true },
+      { projectId, status, assigneeId, keyword: keyword },
+      { emitEvent: false },
     );
+    await this.loadIssues();
   }
 
   private async refreshCurrentView(options: {
@@ -411,24 +451,30 @@ export class IssuesPageComponent {
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
       if (filter.projectId) params['projectId'] = filter.projectId;
 
+      // 快捷选项
+      const currentUserId = this.currentUserId();
+      if (this.onlyMine() && currentUserId) params['assigneeId'] = currentUserId;
+
       const result = await this.api.listAllIssues(params);
       this.issues.set(result.items);
       this.total.set(result.total);
 
-      const selectedId = this.selectedIssueId();
-      if (selectedId && !result.items.some((item) => item.id === selectedId)) {
-        this.selectedIssueId.set(null);
-        this.selectedDetail.set(null);
-      }
+      // 去除原因：保持原先的选中没有影响
+      // const selectedId = this.selectedIssueId();
+      // if (selectedId && !result.items.some((item) => item.id === selectedId)) {
+      //   this.selectedIssueId.set(null);
+      //   this.selectedDetail.set(null);
+      // }
 
-      if (this.pendingIssueId) {
-        const pending = result.items.find((item) => item.id === this.pendingIssueId);
-        if (pending) {
-          this.selectedIssueId.set(pending.id);
-          this.pendingIssueId = null;
-          await this.loadIssueDetail(pending.id, pending.projectId);
-        }
-      }
+      // 去除原因：统一在初始化时设置到搜索条件中
+      // if (this.pendingIssueId) {
+      //   const pending = result.items.find((item) => item.id === this.pendingIssueId);
+      //   if (pending) {
+      //     this.selectedIssueId.set(pending.id);
+      //     this.pendingIssueId = null;
+      //     await this.loadIssueDetail(pending.id, pending.projectId);
+      //   }
+      // }
     } catch (error) {
       this.listError.set(this.getErrorMessage(error, '加载 Issue 列表失败'));
     } finally {
@@ -447,14 +493,15 @@ export class IssuesPageComponent {
     this.detailError.set(null);
     try {
       this.selectedDetail.set(await this.api.getIssueDetail(projectId, issueId));
-      if (this.route.snapshot.queryParamMap.get('issueId')) {
-        void this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: { issueId: null },
-          queryParamsHandling: 'merge',
-          replaceUrl: true,
-        });
-      }
+      // 去除原因：在其他地方做了清理
+      // if (this.route.snapshot.queryParamMap.get('issueId')) {
+      //   void this.router.navigate([], {
+      //     relativeTo: this.route,
+      //     queryParams: { issueId: null },
+      //     queryParamsHandling: 'merge',
+      //     replaceUrl: true,
+      //   });
+      // }
     } catch (error) {
       this.detailError.set(this.getErrorMessage(error, '加载工单详情失败'));
     } finally {
@@ -470,5 +517,16 @@ export class IssuesPageComponent {
       return `${fallback}: ${error.message}`;
     }
     return fallback;
+  }
+
+  private clearAllPending() {
+    this.hasClearedPending = true;
+    this.pendingIssueId = null;
+    this.pendingProjectId = null;
+    this.pendingAssigneeId = null;
+    this.pendingStatus = null;
+    this.router.navigate([], {
+      queryParams: {},
+    });
   }
 }

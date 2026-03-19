@@ -18,7 +18,6 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
-import { ProjectContextService } from '../../core/services/project-context.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
 import type { ProjectMemberItem } from '../projects/projects.model';
@@ -46,6 +45,8 @@ import {
   type RdStatusChangeValue
 } from './models/rd.model';
 import { RdManagementApiService } from './services/rd.api';
+import { ProjectContextService } from '../../core/services/project-context.service';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-rd-page',
@@ -79,6 +80,8 @@ export class RdPageComponent {
   private readonly api = inject(RdManagementApiService);
   private readonly auth = inject(AdminAuthService);
   private readonly message = inject(NzMessageService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly projectContext = inject(ProjectContextService);
 
   protected readonly projects = this.projectContext.allProjects;
@@ -122,6 +125,12 @@ export class RdPageComponent {
   protected readonly typeLabel = rdTypeLabel;
   protected readonly typeColor = rdTypeColor;
   protected readonly memberDisplay = memberDisplay;
+
+  // 路由参数
+  private pendingStatus: string | null = null;
+  private pendingAssigneeId: string | null = null;
+  private pendingProjectId: string | null = null;
+  private hasClearedPending = false;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -170,17 +179,26 @@ export class RdPageComponent {
   protected readonly formProjectLocked = computed(() => !!this.editingItem());
 
   public constructor() {
-    this.filters.controls.projectId.valueChanges.pipe(takeUntilDestroyed()).subscribe((projectId) => {
-      this.page.set(1);
-      this.selectedItemId.set(null);
-      this.detail.set(null);
-      this.currentProjectId.set(projectId || null);
-      this.filters.patchValue({ stageId: '', assigneeId: '' }, { emitEvent: false });
-      void this.loadProjectContext(projectId);
+    // 优先从路径上获取参数
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.pendingProjectId = params.get('projectId')?.trim() || null;
+      this.pendingAssigneeId = params.get('assigneeId')?.trim() || null;
+      this.pendingStatus = params.get('status')?.trim() || null;
     });
+
+    this.filters.controls.projectId.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((projectId) => {
+        this.page.set(1);
+        this.selectedItemId.set(null);
+        this.detail.set(null);
+        this.currentProjectId.set(projectId);
+        void this.loadProjectContext(projectId);
+      });
 
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       this.page.set(1);
+      this.clearAllPending();
       void this.loadItems();
     });
 
@@ -198,18 +216,21 @@ export class RdPageComponent {
     }
     this.onlyMine.update((value) => !value);
     this.page.set(1);
+    this.clearAllPending();
     await this.loadItems();
   }
 
   protected async toggleOnlyBlocked(): Promise<void> {
     this.onlyBlocked.update((value) => !value);
     this.page.set(1);
+    this.clearAllPending();
     await this.loadItems();
   }
 
   protected async toggleOnlyOverdue(): Promise<void> {
     this.onlyOverdue.update((value) => !value);
     this.page.set(1);
+    this.clearAllPending();
     await this.loadItems();
   }
 
@@ -417,7 +438,11 @@ export class RdPageComponent {
 
     try {
       const projectId = this.projectContext.currentProject()?.id ?? '';
-      this.filters.patchValue({ projectId }, { emitEvent: false });
+      const status = this.pendingStatus ?? '';
+      const assigneeId = this.pendingAssigneeId ?? '';
+      if(this.currentUserId() === assigneeId) this.onlyMine.set(true);
+
+      this.filters.patchValue({ projectId,status, assigneeId }, { emitEvent: false });
       this.currentProjectId.set(projectId || null);
       await this.loadProjectContext(projectId);
     } catch (error) {
@@ -489,7 +514,12 @@ export class RdPageComponent {
       if (filter.assigneeId) params['assigneeId'] = filter.assigneeId;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
 
+      // 根据路由参数修改
+      // if (this.pendingStatus) params['status'] = this.pendingStatus;
+      // if (this.pendingAssigneeId) params['assigneeId'] = this.pendingAssigneeId;
+
       const currentUserId = this.currentUserId();
+
       if (this.onlyMine() && currentUserId) params['assigneeId'] = currentUserId;
       if (this.onlyBlocked()) params['status'] = 'blocked';
       if (this.onlyOverdue()) params['overdue'] = true;
@@ -503,13 +533,13 @@ export class RdPageComponent {
         selectedId && result.items.some((item) => item.id === selectedId)
           ? selectedId
           : (result.items[0]?.id ?? null);
-      const selectedItem = nextSelected ? result.items.find((item) => item.id === nextSelected) ?? null : null;
-      const detailProjectId = selectedItem?.projectId ?? filter.projectId ?? result.items[0]?.projectId ?? null;
-
-      this.currentProjectId.set(detailProjectId);
+      const projectId = filter.projectId
+        ? filter.projectId
+        : (result.items?.[0]?.projectId ?? null);
+      this.currentProjectId.set(projectId);
       this.selectedItemId.set(nextSelected);
-      if (nextSelected && detailProjectId) {
-        await this.loadDetail(detailProjectId, nextSelected);
+      if (nextSelected && projectId) {
+        await this.loadDetail(projectId    , nextSelected);
       } else {
         this.detail.set(null);
       }
@@ -621,5 +651,18 @@ export class RdPageComponent {
       return error.message;
     }
     return fallback;
+  }
+
+  private clearAllPending() {
+    if(!this.hasClearedPending) {
+      this.hasClearedPending = true;
+      return;
+    }
+    this.pendingProjectId = null;
+    this.pendingAssigneeId = null;
+    this.pendingStatus = null;
+    this.router.navigate([], {
+      queryParams: {},
+    });
   }
 }
