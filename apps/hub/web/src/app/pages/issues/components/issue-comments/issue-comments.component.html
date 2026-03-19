@@ -11,13 +11,15 @@
       [nzSuggestions]="mentionSuggestions()"
       [nzValueWith]="mentionLabel"
       (nzOnSearchChange)="handleMentionSearch($event)"
+      (nzOnSelect)="handleMentionSelect($event)"
     >
       <textarea
+        #commentInput
         nz-input
         nzMentionTrigger
         formControlName="content"
         rows="4"
-        placeholder="输入评论内容，使用 @ 提及成员"
+        placeholder="输入评论内容，使用 @ 提及项目成员"
       ></textarea>
       <ng-template nzMentionSuggestion let-member>
         <div class="mention-option">
@@ -43,7 +45,15 @@
       <nz-comment [nzAuthor]="authorName(item)" [nzDatetime]="datetimeText(item)">
         <nz-avatar nz-comment-avatar [nzText]="avatarText(item)"></nz-avatar>
         <nz-comment-content>
-          <div class="comment-body">{{ item.content }}</div>
+          <div class="comment-body">
+            @for (segment of commentSegments(item); track $index) {
+              @if (segment.mentioned) {
+                <span class="comment-mention">{{ segment.text }}</span>
+              } @else {
+                <span>{{ segment.text }}</span>
+              }
+            }
+          </div>
         </nz-comment-content>
       </nz-comment>
     </ng-template>
