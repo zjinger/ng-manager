@@ -1,0 +1,131 @@
+<section class="page">
+  <app-page-header title="新建文档" subtitle="创建文档并设置所属项目与发布状态">
+    <a page-header-actions nz-button nzType="default" routerLink="/docs">返回列表</a>
+  </app-page-header>
+  <div class="create-page-layout">
+    <div class="create-main">
+      @if (error()) {
+        <nz-alert class="section" nzType="error" [nzMessage]="error()!" nzShowIcon></nz-alert>
+      }
+
+      @if (!loading() && !canCreateDocument()) {
+        <nz-alert
+          class="section"
+          nzType="info"
+          nzMessage="当前账号不是管理员，也不是任何项目的项目管理员，无法新建文档。"
+          nzShowIcon
+        ></nz-alert>
+      }
+
+      <nz-card nzTitle="文档信息" class="section">
+        @if (loading()) {
+          <div class="empty-state">新建页初始化中...</div>
+        } @else if (canCreateDocument()) {
+          <form nz-form [formGroup]="form" nzLayout="vertical" class="form">
+            <div class="grid-2">
+              <nz-form-item>
+                <nz-form-label [nzRequired]="!isAdmin()">{{
+                  isAdmin() ? '项目（管理员可不选）' : '项目'
+                }}</nz-form-label>
+                <nz-form-control>
+                  <nz-select
+                    formControlName="projectId"
+                    [nzAllowClear]="isAdmin()"
+                    [nzPlaceHolder]="
+                      isAdmin() ? '不关联项目时为公共文档' : '请选择你有管理权限的项目'
+                    "
+                  >
+                    @for (project of editableProjectOptions(); track project.id) {
+                      <nz-option [nzValue]="project.id" [nzLabel]="project.name" />
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label nzRequired>文档标识</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    formControlName="slug"
+                    placeholder="用于生成文档地址，建议使用英文短横线，例如 release-note-v2"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+
+            <nz-form-item>
+              <nz-form-label nzRequired>标题</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="title" />
+              </nz-form-control>
+            </nz-form-item>
+
+            <div class="grid-2">
+              <nz-form-item>
+                <nz-form-label nzRequired>分类</nz-form-label>
+                <nz-form-control>
+                  <nz-select formControlName="category">
+                    <nz-option nzValue="guide" nzLabel="指南"></nz-option>
+                    <nz-option nzValue="faq" nzLabel="常见问题"></nz-option>
+                    <nz-option nzValue="release-note" nzLabel="发布说明"></nz-option>
+                    <nz-option nzValue="spec" nzLabel="规范"></nz-option>
+                    <nz-option nzValue="policy" nzLabel="策略"></nz-option>
+                    <nz-option nzValue="other" nzLabel="其他"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+
+              <nz-form-item>
+                <nz-form-label>目标状态</nz-form-label>
+                <nz-form-control>
+                  <nz-select formControlName="status">
+                    <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
+                    <nz-option nzValue="published" nzLabel="已发布"></nz-option>
+                    <nz-option nzValue="archived" nzLabel="已归档"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+
+            <div class="grid-2">
+              <!-- <nz-form-item>
+                <nz-form-label>摘要</nz-form-label>
+                <nz-form-control>
+                  <textarea nz-input rows="2" formControlName="summary"></textarea>
+                </nz-form-control>
+              </nz-form-item> -->
+              <!-- <nz-form-item>
+                <nz-form-label>版本</nz-form-label>
+                <nz-form-control>
+                  <input nz-input formControlName="version" />
+                </nz-form-control>
+              </nz-form-item> -->
+            </div>
+
+            <nz-form-item>
+              <nz-form-label nzRequired>Markdown 内容</nz-form-label>
+              <nz-form-control>
+                <app-markdown-editor formControlName="contentMd"></app-markdown-editor>
+              </nz-form-control>
+            </nz-form-item>
+
+            <div class="actions">
+              <button nz-button type="button" routerLink="/docs">取消</button>
+              <button
+                nz-button
+                nzType="primary"
+                type="button"
+                (click)="saveDoc()"
+                [disabled]="form.invalid || saving()"
+              >
+                保存文档
+              </button>
+            </div>
+          </form>
+        } @else {
+          <div class="empty-state">当前账号没有可管理的项目。</div>
+        }
+      </nz-card>
+    </div>
+  </div>
+</section>
