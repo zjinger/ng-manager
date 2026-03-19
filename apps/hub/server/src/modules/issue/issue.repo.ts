@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type { IssueEntity, IssueListResult, IssueStatus, ListIssuesQuery, UpdateIssuePatch } from "./issue.types";
 
 type IssueListFilters = Omit<ListIssuesQuery, "projectId">;
+type MyPendingIssueFilters = Omit<IssueListFilters, "status" | "assigneeId">;
 
 type IssueRow = {
   id: string;
@@ -115,6 +116,46 @@ export class IssueRepo {
     });
   }
 
+  listPendingByProjectIds(projectIds: string[], assigneeId: string, query: MyPendingIssueFilters): IssueListResult {
+    if (projectIds.length === 0) {
+      return {
+        items: [],
+        page: query.page,
+        pageSize: query.pageSize,
+        total: 0
+      };
+    }
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    const placeholders = projectIds.map(() => "?").join(", ");
+    conditions.push(`project_id IN (${placeholders})`);
+    params.push(...projectIds);
+    conditions.push("assignee_id = ?");
+    params.push(assigneeId);
+    conditions.push("status IN (?, ?, ?)");
+    params.push("open", "in_progress", "reopened");
+    this.appendPendingFilters(conditions, params, query);
+
+    const whereSql = `WHERE ${conditions.join(" AND ")}`;
+    const totalRow = this.db.prepare(`SELECT COUNT(1) AS total FROM issues ${whereSql}`).get(...params) as { total: number };
+    const offset = (query.page - 1) * query.pageSize;
+    const rows = this.db.prepare(`
+      SELECT *
+      FROM issues
+      ${whereSql}
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, query.pageSize, offset) as IssueRow[];
+
+    return {
+      items: rows.map((row) => this.toEntity(row)),
+      page: query.page,
+      pageSize: query.pageSize,
+      total: totalRow.total
+    };
+  }
+
   listByProjectIds(projectIds: string[], query: IssueListFilters): IssueListResult {
     if (projectIds.length === 0) {
       return {
@@ -181,6 +222,22 @@ export class IssueRepo {
     if (query.assigneeId) {
       conditions.push("assignee_id = ?");
       params.push(query.assigneeId);
+    }
+    if (query.keyword) {
+      conditions.push("(issue_no LIKE ? OR title LIKE ? OR description LIKE ?)");
+      const keyword = `%${query.keyword}%`;
+      params.push(keyword, keyword, keyword);
+    }
+  }
+
+  private appendPendingFilters(conditions: string[], params: unknown[], query: MyPendingIssueFilters): void {
+    if (query.priority) {
+      conditions.push("priority = ?");
+      params.push(query.priority);
+    }
+    if (query.type) {
+      conditions.push("type = ?");
+      params.push(query.type);
     }
     if (query.keyword) {
       conditions.push("(issue_no LIKE ? OR title LIKE ? OR description LIKE ?)");

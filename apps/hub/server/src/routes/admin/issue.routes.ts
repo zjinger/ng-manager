@@ -29,6 +29,13 @@ const listCurrentUserIssuesQuerySchema = listIssuesQuerySchema.extend({
   projectId: z.string().trim().min(1).max(64).optional()
 });
 
+const listMyPendingIssuesQuerySchema = listIssuesQuerySchema.omit({
+  status: true,
+  assigneeId: true
+}).extend({
+  projectId: z.string().trim().min(1).max(64).optional()
+});
+
 type IssueRealtimeAction =
   | "created"
   | "edited"
@@ -118,6 +125,12 @@ function emitIssueRealtimeEvent(
 }
 
 export default async function issueRoutes(fastify: FastifyInstance) {
+  fastify.get("/issues/todo", async (request) => {
+    const query = listMyPendingIssuesQuerySchema.parse(request.query);
+    const operator = getOperator(request);
+    return ok(fastify.services.issue.listMyPendingIssues(operator.operatorId, query));
+  });
+
   fastify.get("/issues", async (request) => {
     const query = listCurrentUserIssuesQuerySchema.parse(request.query);
     const operator = getOperator(request);

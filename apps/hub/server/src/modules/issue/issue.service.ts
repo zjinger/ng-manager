@@ -38,6 +38,10 @@ type CurrentUserIssueQuery = Omit<ListIssuesQuery, "projectId"> & {
   projectId?: string;
 };
 
+type MyPendingIssueQuery = Omit<ListIssuesQuery, "projectId" | "status" | "assigneeId"> & {
+  projectId?: string;
+};
+
 const ISSUE_NO_PREFIX: Record<IssueEntity["type"], string> = {
   bug: "BUG",
   feature: "FEAT",
@@ -67,17 +71,26 @@ export class IssueService {
 
   listCurrentUserIssues(operatorId: string, query: CurrentUserIssueQuery): IssueListResult {
     const normalizedOperatorId = this.permission.requireOperatorId(operatorId, "list current user issues");
-    const scopedProjectIds = query.projectId
-      ? this.projectMemberService.findMemberByProjectAndUserId(query.projectId, normalizedOperatorId)
-        ? [query.projectId]
-        : []
-      : this.projectMemberService.listProjectIdsByUserId(normalizedOperatorId);
+    const scopedProjectIds = this.resolveScopedProjectIds(normalizedOperatorId, query.projectId);
 
     return this.attachParticipantNames(this.repo.listByProjectIds(scopedProjectIds, {
       status: query.status,
       priority: query.priority,
       type: query.type,
       assigneeId: query.assigneeId,
+      keyword: query.keyword,
+      page: query.page,
+      pageSize: query.pageSize
+    }));
+  }
+
+  listMyPendingIssues(operatorId: string, query: MyPendingIssueQuery): IssueListResult {
+    const normalizedOperatorId = this.permission.requireOperatorId(operatorId, "list my pending issues");
+    const scopedProjectIds = this.resolveScopedProjectIds(normalizedOperatorId, query.projectId);
+
+    return this.attachParticipantNames(this.repo.listPendingByProjectIds(scopedProjectIds, normalizedOperatorId, {
+      priority: query.priority,
+      type: query.type,
       keyword: query.keyword,
       page: query.page,
       pageSize: query.pageSize
@@ -500,6 +513,16 @@ export class IssueService {
   listActionLogs(projectId: string, issueId: string) {
     this.getById(projectId, issueId);
     return this.logService.list(issueId);
+  }
+
+  private resolveScopedProjectIds(operatorId: string, projectId?: string): string[] {
+    if (projectId) {
+      return this.projectMemberService.findMemberByProjectAndUserId(projectId, operatorId)
+        ? [projectId]
+        : [];
+    }
+
+    return this.projectMemberService.listProjectIdsByUserId(operatorId);
   }
 
   private attachParticipantNames(result: IssueListResult): IssueListResult {

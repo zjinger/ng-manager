@@ -175,5 +175,20 @@ in_progress
 
 **含义：** 验证失败或重新发现问题。行为基本等同`open`。
 
+## 派生状态
+### 我的待办 todo
+#### 场景
+dashboard 点击“我的待办” 跳转到issue 列表，查询我的待办，包含所有的项目的待办事项
 
+#### 请求url
+GET /api/admin/issues/todo
 
+#### 说明
+
+同时支持分页和筛选，支持的 query 参数有：
+projectId、priority、type、keyword、page、pageSize
+
+行为是：
+不传 projectId 时，查当前用户所属的所有项目
+传了 projectId 时，只查该项目；如果当前用户不属于该项目，返回空列表
+结果只返回“指派给当前用户”的待办 issue
