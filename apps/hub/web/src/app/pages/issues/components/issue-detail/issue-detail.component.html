@@ -13,25 +13,48 @@
     <div class="detail-body">
       <div class="title-row">
         <div>
-          <div class="issue-no">{{ detail.issue.issueNo }}<nz-badge nzStatus="default" nzText="{{ projectName }}"></nz-badge></div>
+          <div class="issue-no">
+            {{ detail.issue.issueNo
+            }}<nz-badge nzStatus="default" nzText="{{ projectName }}"></nz-badge>
+          </div>
           <h2>{{ detail.issue.title }}</h2>
         </div>
         <div class="title-tags">
           <nz-tag [nzColor]="statusColor(detail.issue)">{{ statusLabel(detail.issue) }}</nz-tag>
-          <nz-tag [nzColor]="priorityColor(detail.issue.priority)">{{ priorityLabel(detail.issue.priority) }}</nz-tag>
-          <nz-tag [nzColor]="typeColor(detail.issue.type)">{{ typeLabel(detail.issue.type) }}</nz-tag>
+          <nz-tag [nzColor]="priorityColor(detail.issue.priority)">{{
+            priorityLabel(detail.issue.priority)
+          }}</nz-tag>
+          <nz-tag [nzColor]="typeColor(detail.issue.type)">{{
+            typeLabel(detail.issue.type)
+          }}</nz-tag>
         </div>
       </div>
 
       <section class="section-gap compact-meta">
-        <div class="meta-row"><span>提出人</span><strong>{{ detail.issue.reporterName || '-' }}</strong></div>
-        <div class="meta-row"><span>处理人</span><strong>{{ detail.issue.assigneeName || '-' }}</strong></div>
-        <div class="meta-row"><span>模块</span><strong>{{ detail.issue.moduleCode || '-' }}</strong></div>
-        <div class="meta-row"><span>版本</span><strong>{{ detail.issue.versionCode || '-' }}</strong></div>
-        <div class="meta-row"><span>环境</span><strong>{{ detail.issue.environmentCode || '-' }}</strong></div>
-        <div class="meta-row"><span>更新时间</span><strong>{{ detail.issue.updatedAt | hubDateTime }}</strong></div>
-        <div class="meta-row"><span>创建时间</span><strong>{{ detail.issue.createdAt | hubDateTime }}</strong></div>
-        <div class="meta-row"><span>重新打开次数</span><strong>{{ detail.issue.reopenCount }}</strong></div>
+        <div class="meta-row">
+          <span>提出人</span><strong>{{ detail.issue.reporterName || '-' }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>处理人</span><strong>{{ detail.issue.assigneeName || '-' }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>模块</span><strong>{{ detail.issue.moduleCode || '-' }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>版本</span><strong>{{ detail.issue.versionCode || '-' }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>环境</span><strong>{{ detail.issue.environmentCode || '-' }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>更新时间</span><strong>{{ detail.issue.updatedAt | hubDateTime }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>创建时间</span><strong>{{ detail.issue.createdAt | hubDateTime }}</strong>
+        </div>
+        <div class="meta-row">
+          <span>重新打开次数</span><strong>{{ detail.issue.reopenCount }}</strong>
+        </div>
       </section>
 
       <section class="section-gap">
@@ -54,78 +77,152 @@
 
         @if (canAssign() || canReassign()) {
           <div class="action-inline">
-            <nz-select [formControl]="actionForm.controls.assigneeId" nzAllowClear nzPlaceHolder="选择负责人">
+            <nz-select
+              [formControl]="actionForm.controls.assigneeId"
+              nzAllowClear
+              nzPlaceHolder="选择负责人"
+            >
               @for (member of assigneeOptions(); track member.id) {
                 <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)"></nz-option>
               }
             </nz-select>
             @if (canAssign()) {
-              <button nz-button nzType="default" (click)="submitAssign()" [disabled]="actionLoading">指派负责人</button>
+              <button
+                nz-button
+                nzType="default"
+                (click)="submitAssign()"
+                [disabled]="actionLoading"
+              >
+                指派处理人
+              </button>
             }
-            @if (canReassign()) {
-              <button nz-button nzType="default" (click)="submitReassign()" [disabled]="actionLoading">转派负责人</button>
+            @if (canReassign() && !canAssign()) {
+              <button
+                nz-button
+                nzType="default"
+                nz-popconfirm
+                nzPopconfirmTitle="确认转派该工单吗？"
+                nzPopconfirmOkText="确认转派"
+                (click)="submitReassign()"
+                [disabled]="actionLoading"
+              >
+                转派处理人
+              </button>
             }
           </div>
         }
 
         <div class="action-buttons">
-          @if (canClaim()) {
+          <!-- 创建人可以指派任意成员，无需认领 -->
+          @if (canClaim() && !canAssign()) {
             <button
               nz-button
               nzType="default"
               nz-popconfirm
-              nzPopconfirmTitle="确认认领该 Issue 吗？"
+              nzPopconfirmTitle="确认认领该工单吗？"
               nzPopconfirmOkText="确认认领"
               nzPopconfirmCancelText="取消"
               (nzOnConfirm)="submitClaim()"
               [disabled]="actionLoading"
-            >认领</button>
+            >
+              认领
+            </button>
           }
           @if (canStart()) {
-            <button nz-button nzType="primary" nzGhost="true" (click)="submitStart()" [disabled]="actionLoading">开始处理</button>
-            <button 
+            <button
+              nz-button
+              nzType="primary"
+              nzGhost="true"
+              (click)="submitStart()"
+              [disabled]="actionLoading"
+            >
+              开始处理
+            </button>
+            <!-- <button 
             nz-button 
             nzType="default" 
             nzGhost="true" 
             nzDanger 
             nz-popconfirm
-            nzPopconfirmTitle="确认放弃认领该 Issue 吗？"
+            nzPopconfirmTitle="确认这不是你的问题吗？"
             nzPopconfirmOkText="确认"
             nzPopconfirmCancelText="取消"
             (nzOnConfirm)="submitUnClaim()" 
             [disabled]="actionLoading"
-            >放弃认领</button>
+            >不是我的问题</button> -->
           }
           @if (canResolve()) {
-            <button nz-button nzType="primary" (click)="submitResolve()" [disabled]="actionLoading">标记已处理</button>
+            <button nz-button nzType="primary" (click)="submitResolve()" [disabled]="actionLoading">
+              标记已处理
+            </button>
           }
-          @if(canReProcess()){
-            <button nz-button nzType="primary" (click)="submitReprocess()" [disabled]="actionLoading">重新处理</button>
+          @if (canReProcess()) {
+            <button
+              nz-button
+              nzType="primary"
+              (click)="submitReprocess()"
+              [disabled]="actionLoading"
+            >
+              重新处理
+            </button>
           }
           @if (showResolvedReviewActions()) {
             @if (canVerify()) {
-              <button nz-button nzType="primary" (click)="submitVerify()" [disabled]="actionLoading">测试通过</button>
+              <button
+                nz-button
+                nzType="primary"
+                (click)="submitVerify()"
+                [disabled]="actionLoading"
+              >
+                测试通过
+              </button>
             }
             @if (canReopen()) {
-              <button nz-button nzType="default" nzDanger (click)="submitReopen()" [disabled]="actionLoading">测试不通过</button>
+              <button
+                nz-button
+                nzType="default"
+                nzDanger
+                (click)="submitReopen()"
+                [disabled]="actionLoading"
+              >
+                测试不通过
+              </button>
             }
           }
           @if (showVerifiedActions()) {
             @if (canReopen()) {
-              <button nz-button nzType="default" nzDanger (click)="submitReopen()" [disabled]="actionLoading">重新打开</button>
+              <button
+                nz-button
+                nzType="default"
+                nzDanger
+                (click)="submitReopen()"
+                [disabled]="actionLoading"
+              >
+                重新打开
+              </button>
             }
           }
           @if (showClosedReopenAction()) {
-            <button nz-button nzType="default" nzDanger (click)="submitReopen()" [disabled]="actionLoading">重新打开</button>
+            <button
+              nz-button
+              nzType="default"
+              nzDanger
+              (click)="submitReopen()"
+              [disabled]="actionLoading"
+            >
+              重新打开
+            </button>
           }
           @if (canClose()) {
             <button
-            nz-button
-            nzDanger
-            nzType="primary"
-            (click)="changeCloseVisible(true)"
-            [disabled]="actionLoading"
-            >关闭</button>
+              nz-button
+              nzDanger
+              nzType="primary"
+              (click)="changeCloseVisible(true)"
+              [disabled]="actionLoading"
+            >
+              关闭
+            </button>
           }
         </div>
       </section>
@@ -176,7 +273,9 @@
                 <article class="log-item">
                   <div class="log-head">
                     <div class="log-head-main">
-                      <nz-tag [nzColor]="actionColor(log.actionType)">{{ actionLabel(log.actionType) }}</nz-tag>
+                      <nz-tag [nzColor]="actionColor(log.actionType)">{{
+                        actionLabel(log.actionType)
+                      }}</nz-tag>
                       <span class="log-operator">{{ log.operatorName || '-' }}</span>
                     </div>
                     <span class="log-time">{{ log.createdAt | hubDateTime }}</span>
@@ -192,6 +291,10 @@
       </section>
     </div>
 
-    <app-issue-close-modal [closeVisible]="closeVisible" (closeVisibleChange)="changeCloseVisible($event)"  (closeOk)="submitClose($event)"></app-issue-close-modal>
+    <app-issue-close-modal
+      [closeVisible]="closeVisible"
+      (closeVisibleChange)="changeCloseVisible($event)"
+      (closeOk)="submitClose($event)"
+    ></app-issue-close-modal>
   }
 </nz-card>

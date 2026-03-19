@@ -8,6 +8,7 @@ import type { ProjectConfigItem, ProjectMemberItem, ProjectVersionItem } from '.
 import {
   ISSUE_PRIORITY_OPTIONS,
   ISSUE_TYPE_OPTIONS,
+  IssueFormSubmitEvent,
   type IssueFormValue,
   type IssueItem
 } from '../../issues.model';
@@ -29,7 +30,7 @@ export class IssueFormComponent implements OnChanges {
   @Input() environmentOptions: ProjectConfigItem[] = [];
   @Input() submitting = false;
 
-  @Output() readonly submitted = new EventEmitter<IssueFormValue>();
+  @Output() readonly submitted = new EventEmitter<IssueFormSubmitEvent>();
   @Output() readonly cancelled = new EventEmitter<void>();
 
   protected readonly typeOptions = ISSUE_TYPE_OPTIONS;
@@ -65,8 +66,45 @@ export class IssueFormComponent implements OnChanges {
       this.ensureOptionStillValid('environmentCode', this.environmentOptions.map((item) => item.name));
     }
   }
+  public resetForContinueCreate(): void {
+    this.form.patchValue({
+      title: '',
+      description: ''
+    });
+
+    this.form.controls.title.markAsPristine();
+    this.form.controls.title.markAsUntouched();
+    this.form.controls.description.markAsPristine();
+    this.form.controls.description.markAsUntouched();
+  }
+  // protected submit(): void {
+  //   if (this.form.invalid) {
+  //     this.form.markAllAsTouched();
+  //     return;
+  //   }
+
+  //   const value = this.form.getRawValue();
+  //   this.submitted.emit({
+  //     title: value.title.trim(),
+  //     description: value.description.trim(),
+  //     type: value.type,
+  //     priority: value.priority,
+  //     assigneeId: value.assigneeId.trim(),
+  //     moduleCode: value.moduleCode?.trim(),
+  //     versionCode: value.versionCode?.trim(),
+  //     environmentCode: value.environmentCode?.trim()
+  //   });
+  // }
 
   protected submit(): void {
+    this.emitSubmit(false);
+  }
+
+  protected submitAndContinue(): void {
+    this.emitSubmit(true);
+  }
+
+  private emitSubmit(continueCreate: boolean): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -74,14 +112,17 @@ export class IssueFormComponent implements OnChanges {
 
     const value = this.form.getRawValue();
     this.submitted.emit({
-      title: value.title.trim(),
-      description: value.description.trim(),
-      type: value.type,
-      priority: value.priority,
-      assigneeId: value.assigneeId.trim(),
-      moduleCode: value.moduleCode?.trim(),
-      versionCode: value.versionCode?.trim(),
-      environmentCode: value.environmentCode?.trim()
+      continueCreate,
+      value: {
+        title: value.title.trim(),
+        description: value.description.trim(),
+        type: value.type,
+        priority: value.priority,
+        assigneeId: value.assigneeId.trim(),
+        moduleCode: value.moduleCode?.trim(),
+        versionCode: value.versionCode?.trim(),
+        environmentCode: value.environmentCode?.trim()
+      }
     });
   }
 

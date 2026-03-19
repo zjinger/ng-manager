@@ -1,29 +1,46 @@
-﻿<form nz-form [formGroup]="form" class="issue-form" (ngSubmit)="submit()">
-  <nz-form-item>
-    <nz-form-label nzRequired>标题</nz-form-label>
-    <nz-form-control nzErrorTip="请输入标题">
-      <input nz-input formControlName="title" maxlength="200" placeholder="一句话描述问题" />
-    </nz-form-control>
-  </nz-form-item>
+﻿<form
+  nz-form
+  [formGroup]="form"
+  nzLayout="vertical"
+  class="issue-form"
+  (ngSubmit)="submit()"
+  nzLayout="vertical"
+>
+  <div class="form-block">
+    <nz-form-item>
+      <nz-form-label nzRequired>标题</nz-form-label>
+      <nz-form-control nzErrorTip="请输入标题">
+        <input nz-input formControlName="title" maxlength="200" placeholder="一句话描述问题" />
+      </nz-form-control>
+    </nz-form-item>
 
-  <nz-form-item>
-    <nz-form-label>描述</nz-form-label>
-    <nz-form-control>
-      <textarea nz-input formControlName="description" rows="5" maxlength="10000" placeholder="补充复现步骤、影响范围、背景说明。
+    <nz-form-item>
+      <div class="field-head">
+        <nz-form-label>描述</nz-form-label>
+        <span class="field-tip">建议补充复现步骤、预期结果、实际结果</span>
+      </div>
+      <nz-form-control>
+        <textarea
+          nz-input
+          formControlName="description"
+          rows="6"
+          maxlength="10000"
+          placeholder="补充复现步骤、影响范围、背景说明。
 1. 操作步骤
 2. 预期结果
-3. 实际结果
-        "></textarea>
-    </nz-form-control>
-  </nz-form-item>
+3. 实际结果"
+        ></textarea>
+      </nz-form-control>
+    </nz-form-item>
+  </div>
 
-  <div class="grid-row">
+  <div class="form-grid form-grid-2">
     <nz-form-item>
       <nz-form-label>类型</nz-form-label>
       <nz-form-control>
         <nz-select formControlName="type">
           @for (item of typeOptions; track item.value) {
-          <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+            <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
           }
         </nz-select>
       </nz-form-control>
@@ -34,33 +51,35 @@
       <nz-form-control>
         <nz-select formControlName="priority">
           @for (item of priorityOptions; track item.value) {
-          <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+            <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
           }
         </nz-select>
       </nz-form-control>
     </nz-form-item>
   </div>
 
-  @if(mode === 'create'){
-  <nz-form-item>
-    <nz-form-label>负责人</nz-form-label>
-    <nz-form-control>
-      <nz-select formControlName="assigneeId" nzAllowClear nzPlaceHolder="可选">
-        @for (member of memberOptions; track member.id) {
-        <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)"></nz-option>
-        }
-      </nz-select>
-    </nz-form-control>
-  </nz-form-item>
+  @if (mode === 'create') {
+    <div class="form-grid form-grid-1">
+      <nz-form-item>
+        <nz-form-label>处理人</nz-form-label>
+        <nz-form-control>
+          <nz-select formControlName="assigneeId" nzAllowClear nzPlaceHolder="可选">
+            @for (member of memberOptions; track member.id) {
+              <nz-option [nzValue]="member.userId" [nzLabel]="memberLabel(member)"></nz-option>
+            }
+          </nz-select>
+        </nz-form-control>
+      </nz-form-item>
+    </div>
   }
- 
-  <div class="grid-row grid-row-3">
+
+  <div class="form-grid form-grid-3">
     <nz-form-item>
       <nz-form-label>模块</nz-form-label>
       <nz-form-control>
         <nz-select formControlName="moduleCode" nzAllowClear nzPlaceHolder="可选">
           @for (item of moduleOptions; track item.id) {
-          <nz-option [nzValue]="item.name" [nzLabel]="item.name"></nz-option>
+            <nz-option [nzValue]="item.name" [nzLabel]="item.name"></nz-option>
           }
         </nz-select>
       </nz-form-control>
@@ -71,7 +90,7 @@
       <nz-form-control>
         <nz-select formControlName="versionCode" nzAllowClear nzPlaceHolder="可选">
           @for (item of versionOptions; track item.id) {
-          <nz-option [nzValue]="item.version" [nzLabel]="item.version"></nz-option>
+            <nz-option [nzValue]="item.version" [nzLabel]="item.version"></nz-option>
           }
         </nz-select>
       </nz-form-control>
@@ -82,17 +101,30 @@
       <nz-form-control>
         <nz-select formControlName="environmentCode" nzAllowClear nzPlaceHolder="可选">
           @for (item of environmentOptions; track item.id) {
-          <nz-option [nzValue]="item.name" [nzLabel]="item.name"></nz-option>
+            <nz-option [nzValue]="item.name" [nzLabel]="item.name"></nz-option>
           }
         </nz-select>
       </nz-form-control>
     </nz-form-item>
   </div>
 
-  <div class="form-actions">
+  <!-- <div class="form-actions">
     <button nz-button type="button" (click)="cancelled.emit()">取消</button>
     <button nz-button nzType="primary" [disabled]="submitting">
       {{ mode === 'create' ? '创建工单' : '保存修改' }}
     </button>
+  </div> -->
+  <div class="form-actions">
+    <button nz-button type="button" (click)="cancelled.emit()">取消</button>
+
+    @if (mode === 'create') {
+      <button nz-button type="button" [disabled]="submitting" (click)="submitAndContinue()">
+        创建并继续
+      </button>
+
+      <button nz-button nzType="primary" [disabled]="submitting" type="submit">创建工单</button>
+    } @else {
+      <button nz-button nzType="primary" [disabled]="submitting" type="submit">保存修改</button>
+    }
   </div>
 </form>

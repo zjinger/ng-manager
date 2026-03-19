@@ -177,10 +177,10 @@ export const ISSUE_STATUS_OPTIONS: Array<{ value: IssueStatus; label: string; co
 export const ISSUE_ACTION_LABELS: Record<IssueActionType, string> = {
   create: '创建',
   edit: '编辑',
-  assign: '指派负责人',
+  assign: '指派处理人',
   claim: '认领',
-  unclaim:'取消认领',
-  reassign: '转派负责人',
+  unclaim: '取消认领',
+  reassign: '转派处理人',
   start: '开始处理',
   resolve: '标记已处理',
   verify: '验证通过',
@@ -193,12 +193,17 @@ export const ISSUE_ACTION_LABELS: Record<IssueActionType, string> = {
   attachment_remove: '删除附件'
 };
 
+export interface IssueFormSubmitEvent {
+  value: IssueFormValue;
+  continueCreate: boolean;
+}
+
 export const ISSUE_ACTION_COLORS: Record<IssueActionType, string> = {
   create: 'green',
   edit: 'blue',
   assign: 'blue',
   claim: 'cyan',
-  unclaim:'orange',
+  unclaim: 'orange',
   reassign: 'purple',
   start: 'processing',
   resolve: 'success',
