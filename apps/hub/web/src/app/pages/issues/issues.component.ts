@@ -25,9 +25,11 @@ import { IssueFormComponent } from './components/issue-form/issue-form.component
 import { IssueListComponent } from './components/issue-list/issue-list.component';
 import { IssueManagementApiService } from './issue-management.api';
 import {
+  isIssueStatus,
   ISSUE_PRIORITY_OPTIONS,
   ISSUE_STATUS_OPTIONS,
   ISSUE_TYPE_OPTIONS,
+  IssueListResult,
   type IssueActionPanelSubmit,
   type IssueCommentMention,
   type IssueDetailResult,
@@ -99,7 +101,7 @@ export class IssuesPageComponent {
   protected readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
   protected readonly typeOptions = ISSUE_TYPE_OPTIONS;
 
-  protected readonly onlyMine = signal(false);
+  protected readonly onlyMyTodo = signal(false);
 
   // 路径参数（优先设置到搜索条件中）
   private pendingIssueId: string | null = null;
@@ -133,7 +135,7 @@ export class IssuesPageComponent {
     return project ? project.label : null;
   });
 
-  protected readonly quickFilterCount = computed(() => [this.onlyMine()].filter(Boolean).length);
+  protected readonly quickFilterCount = computed(() => [this.onlyMyTodo()].filter(Boolean).length);
 
   public constructor() {
     // 优先从路径上获取参数
@@ -159,7 +161,7 @@ export class IssuesPageComponent {
     this.filters.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => {
       this.page.set(1);
       // 只要手动修改了搜索条件就清空路由参数
-      if (!this.hasClearedPending) this.clearAllPending();
+      this.clearAllPending();
       void this.loadIssues();
     });
 
@@ -175,7 +177,7 @@ export class IssuesPageComponent {
       this.message.warning('当前账号未关联用户标识，不能按我的研发项筛选');
       return;
     }
-    this.onlyMine.update((value) => !value);
+    this.onlyMyTodo.update((value) => !value);
     this.page.set(1);
     await this.loadIssues();
   }
@@ -361,27 +363,54 @@ export class IssuesPageComponent {
   }
 
   private async initialize(): Promise<void> {
+    this.listLoading.set(true);
+    this.detailLoading.set(true);
     // 不加载数据，让filters.controls.projectId.valueChanges触发
     const projectId = this.pendingProjectId ?? this.currentProject()?.id ?? '';
-    const status = this.pendingStatus ?? '';
+    let status = this.pendingStatus ?? '';
     const assigneeId = this.pendingAssigneeId ?? '';
     const issueId = this.pendingIssueId ?? '';
     this.filters.patchValue({ projectId }, { emitEvent: false });
-    // 锁定某一条工单（函数内有加载上下文），否则只加载上下文
-    if (issueId && projectId) await this.loadIssueDetail(issueId, projectId);
-    else if (!issueId && projectId) await this.loadProjectContext(projectId);
 
-    // 待我处理
-    this.onlyMine.set(true);
+    try {
+      // 锁定某一条工单（函数内有加载上下文），否则只加载上下文
+      if (issueId && projectId) await this.loadIssueDetail(issueId, projectId);
+      else if (!issueId && projectId) await this.loadProjectContext(projectId);
 
-    // 当前选中的工单的关键字
-    const keyword = this.selectedDetail()?.issue.issueNo ?? '';
-    this.selectedIssueId.set(issueId);
-    this.filters.patchValue(
-      { projectId, status, assigneeId, keyword: keyword },
-      { emitEvent: false },
-    );
-    await this.loadIssues();
+      // 待我处理
+      switch (status) {
+        case 'todo': {
+          this.onlyMyTodo.set(true);
+          status = '';
+          break;
+        }
+        case 'vertify': {
+          // 暂时先展示所有待验证的工单（验证人还没做）
+          status = 'resolved';
+          break;
+        }
+        default: {
+          if (!isIssueStatus(status)) {
+            status = '';
+          }
+          break;
+        }
+      }
+
+      // 当前选中的工单的关键字
+      const keyword = this.selectedDetail()?.issue.issueNo ?? '';
+      this.selectedIssueId.set(issueId);
+      this.filters.patchValue(
+        { projectId, status, assigneeId, keyword: keyword },
+        { emitEvent: false },
+      );
+      await this.loadIssues();
+    } catch (error) {
+      this.listError.set(this.getErrorMessage(error, '加载工单失败'));
+    } finally {
+      this.listLoading.set(false);
+      this.detailLoading.set(false);
+    }
   }
 
   private async refreshCurrentView(options: {
@@ -451,11 +480,17 @@ export class IssuesPageComponent {
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
       if (filter.projectId) params['projectId'] = filter.projectId;
 
+      let result: IssueListResult;
       // 快捷选项
       const currentUserId = this.currentUserId();
-      if (this.onlyMine() && currentUserId) params['assigneeId'] = currentUserId;
+      if (this.onlyMyTodo() && currentUserId) {
+        params['assigneeId'] = currentUserId;
+        result = await this.api.listTodoIssues(params);
+      } else {
+        result = await this.api.listAllIssues(params);
+      }
 
-      const result = await this.api.listAllIssues(params);
+      // const result = await this.api.listAllIssues(params);
       this.issues.set(result.items);
       this.total.set(result.total);
 
@@ -520,7 +555,10 @@ export class IssuesPageComponent {
   }
 
   private clearAllPending() {
-    this.hasClearedPending = true;
+    if (!this.hasClearedPending) {
+      this.hasClearedPending = true;
+      return;
+    }
     this.pendingIssueId = null;
     this.pendingProjectId = null;
     this.pendingAssigneeId = null;

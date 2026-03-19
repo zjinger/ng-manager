@@ -1,7 +1,16 @@
 import type { ProjectMemberItem } from '../projects/projects.model';
 
 export type IssueType = 'bug' | 'feature' | 'change' | 'improvement' | 'task' | 'test';
-export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'verified' | 'closed' | 'reopened';
+// export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'verified' | 'closed' | 'reopened';
+export const ISSUE_STATUS = [
+  'open',
+  'in_progress',
+  'resolved',
+  'verified',
+  'closed',
+  'reopened',
+] as const;
+export type IssueStatus = typeof ISSUE_STATUS[number];
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
 export type IssueActionType =
   | 'create'
@@ -290,3 +299,6 @@ export function formatActionTransition(log: IssueActionLog): string {
   return `${from} -> ${to}`;
 }
 
+export function isIssueStatus(val: string): val is IssueStatus {
+  return ISSUE_STATUS.includes(val as IssueStatus);
+}

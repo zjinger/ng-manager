@@ -11,7 +11,7 @@ type CardStatus = {
 
 const cardStatus: CardStatus = {
   pending: 'todo',
-  verify: 'vertify',
+  verify: 'resolved',
   'rd-doing': 'doing',
   'reported-issues': 'issues',
   'reported-active': 'active',

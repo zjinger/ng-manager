@@ -61,6 +61,10 @@ export class IssueManagementApiService {
     return firstValueFrom(this.api.get<IssueListResult>('/api/admin/issues', { params }));
   }
 
+  public async listTodoIssues(params: Record<string, string | number>): Promise<IssueListResult> {
+    return firstValueFrom(this.api.get<IssueListResult>('/api/admin/issues/todo', { params }));
+  }
+
   public async getIssueDetail(projectId: string, issueId: string): Promise<IssueDetailResult> {
     return firstValueFrom(this.api.get<IssueDetailResult>(`/api/admin/projects/${projectId}/issues/${issueId}`));
   }

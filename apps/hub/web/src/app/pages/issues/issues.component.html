@@ -84,10 +84,10 @@
         type="button"
         nz-button
         nzSize="small"
-        [nzType]="onlyMine() ? 'primary' : 'default'"
+        [nzType]="onlyMyTodo() ? 'primary' : 'default'"
         [disabled]="!currentUserId()"
         (click)="toggleOnlyMine()"
-      >仅看我的负责项</button>
+      >仅看我的待办项</button>
       @if (quickFilterCount()) {
         <span class="quick-filter-hint">已启用 {{ quickFilterCount() }} 个快捷筛选</span>
       }

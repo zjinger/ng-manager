@@ -9,7 +9,11 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzListModule } from 'ng-zorro-antd/list';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
-import { roleLabel, type ProjectMemberItem, type ProjectMemberRole } from '../../../projects/projects.model';
+import {
+  roleLabel,
+  type ProjectMemberItem,
+  type ProjectMemberRole,
+} from '../../../projects/projects.model';
 import type { IssueComment, IssueCommentMention } from '../../issues.model';
 
 export interface IssueCommentSubmitPayload {
@@ -27,10 +31,10 @@ export interface IssueCommentSubmitPayload {
     NzEmptyModule,
     NzInputModule,
     NzListModule,
-    NzMentionModule
+    NzMentionModule,
   ],
   templateUrl: './issue-comments.component.html',
-  styleUrls: ['./issue-comments.component.less']
+  styleUrls: ['./issue-comments.component.less'],
 })
 export class IssueCommentsComponent {
   private readonly fb = inject(FormBuilder);
@@ -45,7 +49,7 @@ export class IssueCommentsComponent {
   protected mentionKeyword = '';
 
   protected readonly form = this.fb.nonNullable.group({
-    content: ['', [Validators.required, Validators.maxLength(5000)]]
+    content: ['', [Validators.required, Validators.maxLength(5000)]],
   });
 
   protected submit(): void {
@@ -61,7 +65,7 @@ export class IssueCommentsComponent {
 
     this.submitted.emit({
       content,
-      mentions: this.collectMentions(content)
+      mentions: this.collectMentions(content),
     });
     this.form.reset({ content: '' });
     this.mentionKeyword = '';
@@ -73,6 +77,13 @@ export class IssueCommentsComponent {
 
   protected avatarText(item: IssueComment): string {
     return this.authorName(item).slice(0, 1).toUpperCase();
+  }
+
+  protected avatarUrl(item: IssueComment): string {
+    const menber = this.memberOptions.find((m) => {
+      return item.authorId === m.userId;
+    });
+    return menber?.avatarUrl ?? '';
   }
 
   protected datetimeText(item: IssueComment): string {
@@ -88,11 +99,13 @@ export class IssueCommentsComponent {
     if (!keyword) {
       return this.memberOptions.slice(0, 20);
     }
-    return this.memberOptions.filter((member) => {
-      const displayName = (member.displayName || '').toLowerCase();
-      const userId = (member.userId || '').toLowerCase();
-      return displayName.includes(keyword) || userId.includes(keyword);
-    }).slice(0, 20);
+    return this.memberOptions
+      .filter((member) => {
+        const displayName = (member.displayName || '').toLowerCase();
+        const userId = (member.userId || '').toLowerCase();
+        return displayName.includes(keyword) || userId.includes(keyword);
+      })
+      .slice(0, 20);
   }
 
   protected mentionLabel(member: ProjectMemberItem): string {
@@ -100,7 +113,7 @@ export class IssueCommentsComponent {
   }
 
   protected mentionUserRoles(roles: ProjectMemberRole[]): string {
-    return roles.map(role => roleLabel(role)).join(', ');
+    return roles.map((role) => roleLabel(role)).join(', ');
   }
 
   protected handleMentionSearch(event: MentionOnSearchTypes): void {
@@ -119,7 +132,7 @@ export class IssueCommentsComponent {
       }
       result.push({
         userId: member.userId,
-        displayName
+        displayName,
       });
       seen.add(member.userId);
     }

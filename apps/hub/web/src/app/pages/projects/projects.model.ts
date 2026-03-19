@@ -27,6 +27,7 @@ export interface ProjectMemberItem {
   userId: string;
   displayName: string;
   roles: ProjectMemberRole[];
+  avatarUrl: string | null;
 }
 
 export interface UserOptionItem {

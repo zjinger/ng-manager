@@ -41,7 +41,7 @@
   >
     <ng-template #commentItem let-item>
       <nz-comment [nzAuthor]="authorName(item)" [nzDatetime]="datetimeText(item)">
-        <nz-avatar nz-comment-avatar [nzText]="avatarText(item)"></nz-avatar>
+        <nz-avatar nz-comment-avatar [nzText]="avatarText(item)" [nzSrc]="avatarUrl(item)"></nz-avatar>
         <nz-comment-content>
           <div class="comment-body">{{ item.content }}</div>
         </nz-comment-content>
