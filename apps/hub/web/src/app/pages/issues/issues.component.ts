@@ -30,6 +30,7 @@ import {
   ISSUE_STATUS_OPTIONS,
   ISSUE_TYPE_OPTIONS,
   IssueListResult,
+  IssueFormSubmitEvent,
   type IssueActionPanelSubmit,
   type IssueCommentMention,
   type IssueDetailResult,
@@ -220,7 +221,7 @@ export class IssuesPageComponent {
     await this.loadIssues();
   }
 
-  protected async submitForm(value: IssueFormValue): Promise<void> {
+  protected async submitForm(event: IssueFormSubmitEvent): Promise<void> {
     const projectId = this.selectedProjectId();
     if (!projectId) {
       this.message.error('请先选择项目');
@@ -234,7 +235,7 @@ export class IssuesPageComponent {
         return;
       }
 
-      await this.api.updateIssue(projectId, editing.id, value);
+      await this.api.updateIssue(projectId, editing.id, event.value);
       this.message.success('工单已更新');
       this.closeFormModal();
       await this.refreshCurrentView({ reloadList: true, reloadDetail: true });

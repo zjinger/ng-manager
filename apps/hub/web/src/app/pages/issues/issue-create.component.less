@@ -8,13 +8,33 @@
   min-width: 0;
 }
 
-.create-card {
-  width: 100%;
-}
-
-.create-layout {
+.create-page-layout {
+  max-width: 1440px;
+  margin: 0 auto;
   display: grid;
   gap: 16px;
+  grid-template-columns: minmax(480px, 1fr) 480px;
+  align-items: start;
+}
+
+.create-main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.create-side {
+  min-width: 0;
+}
+
+.section-card {
+  border-radius: 12px;
+}
+
+.compact-card {
+  :is(.ant-card-body) {
+    padding-bottom: 8px;
+  }
 }
 
 .project-form {
@@ -26,8 +46,8 @@
 }
 
 .attachment-panel {
-  border-top: 1px solid #f0f0f0;
-  padding-top: 16px;
+  display: grid;
+  gap: 12px;
 }
 
 .section-head {
@@ -35,30 +55,105 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 10px;
+}
+
+.section-head__meta {
+  min-width: 0;
 }
 
 .section-head h4 {
-  margin: 0;
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2329;
 }
 
 .upload-trigger {
   position: relative;
   overflow: hidden;
+  flex: none;
 }
 
 .paste-tip,
 .muted {
   color: #6b7280;
   font-size: 12px;
+  line-height: 1.6;
+}
+
+.attachment-card {
+  :is(.ant-card-body) {
+    padding-top: 18px;
+  }
+}
+
+.attachment-empty {
+  min-height: 180px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 10px;
+  background: #fafafa;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 24px 16px;
+
+  &__icon {
+    font-size: 28px;
+    color: #bfbfbf;
+    margin-bottom: 8px;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2329;
+    margin-bottom: 4px;
+  }
+
+  &__desc {
+    font-size: 12px;
+    color: #8c8c8c;
+  }
 }
 
 .pending-cards {
   display: block;
-  margin-top: 12px;
+  margin-top: 4px;
 }
 
-:host ::ng-deep .create-card .ant-card-body {
-  display: grid;
-  gap: 16px;
+:host ::ng-deep .section-card .ant-card-head {
+  min-height: 52px;
+}
+
+:host ::ng-deep .section-card .ant-card-head-title {
+  font-weight: 600;
+}
+
+:host ::ng-deep .section-card .ant-card-body {
+  display: block;
+}
+
+@media (max-width: 1360px) {
+  .create-page-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .create-page-layout {
+    max-width: 100%;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .upload-trigger {
+    align-self: flex-start;
+  }
+
+  .attachment-empty {
+    min-height: 140px;
+  }
 }

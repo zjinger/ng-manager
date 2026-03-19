@@ -78,6 +78,8 @@ export class IssueService {
       priority: query.priority,
       type: query.type,
       assigneeId: query.assigneeId,
+      verifierId: query.verifierId,
+      reporterId: query.reporterId,
       keyword: query.keyword,
       page: query.page,
       pageSize: query.pageSize

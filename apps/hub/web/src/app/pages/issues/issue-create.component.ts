@@ -1,5 +1,13 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  ViewChild,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, RouterModule } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -14,16 +22,27 @@ import { AttachmentCardListComponent } from '../../shared/components/attachment-
 import type { AttachmentCardItem } from '../../shared/components/attachment-card-list/attachment-card.model';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { PAGE_SHELL_STYLES } from '../../shared/styles/page-shell.styles';
-import type { ProjectConfigItem, ProjectMemberItem, ProjectVersionItem } from '../projects/projects.model';
+import type {
+  ProjectConfigItem,
+  ProjectMemberItem,
+  ProjectVersionItem
+} from '../projects/projects.model';
 import { IssueFormComponent } from './components/issue-form/issue-form.component';
 import { IssueManagementApiService } from './issue-management.api';
-import type { IssueFormValue, ProjectOption } from './issues.model';
+import type { IssueFormSubmitEvent, IssueFormValue, ProjectOption } from './issues.model';
+
+interface PendingAttachmentFile {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+}
 
 @Component({
   selector: 'app-issue-create-page',
   imports: [
     ReactiveFormsModule,
     RouterLink,
+    RouterModule,
     NzAlertModule,
     NzButtonModule,
     NzCardModule,
@@ -32,8 +51,7 @@ import type { IssueFormValue, ProjectOption } from './issues.model';
     NzSelectModule,
     AttachmentCardListComponent,
     PageHeaderComponent,
-    IssueFormComponent,
-    RouterModule
+    IssueFormComponent
   ],
   templateUrl: './issue-create.component.html',
   styleUrls: ['./issue-create.component.less'],
@@ -45,35 +63,49 @@ export class IssueCreatePageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly message = inject(NzMessageService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  @ViewChild(IssueFormComponent)
+  private issueFormComponent?: IssueFormComponent;
 
   protected readonly projects = signal<ProjectOption[]>([]);
   protected readonly projectMembers = signal<ProjectMemberItem[]>([]);
   protected readonly moduleOptions = signal<ProjectConfigItem[]>([]);
   protected readonly versionOptions = signal<ProjectVersionItem[]>([]);
   protected readonly environmentOptions = signal<ProjectConfigItem[]>([]);
-  protected readonly pendingFiles = signal<File[]>([]);
+  protected readonly pendingFiles = signal<PendingAttachmentFile[]>([]);
+  protected readonly loading = signal(false);
+  protected readonly contextLoading = signal(false);
+  protected readonly submitting = signal(false);
+  protected readonly error = signal<string | null>(null);
+
   protected readonly pendingAttachmentItems = computed<AttachmentCardItem[]>(() =>
-    this.pendingFiles().map((file, index) => ({
-      id: String(index),
-      name: file.name,
-      size: file.size,
-      mimeType: file.type || null,
-      fileExt: this.extractFileExt(file.name),
-      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+    this.pendingFiles().map((item) => ({
+      id: item.id,
+      name: item.file.name,
+      size: item.file.size,
+      mimeType: item.file.type || null,
+      fileExt: this.extractFileExt(item.file.name),
+      previewUrl: item.previewUrl,
       url: null
     }))
   );
-  protected readonly loading = signal(false);
-  protected readonly submitting = signal(false);
-  protected readonly error = signal<string | null>(null);
 
   protected readonly form = this.fb.nonNullable.group({
     projectId: ['', [Validators.required]]
   });
 
+
+
   public constructor() {
-    this.form.controls.projectId.valueChanges.pipe(takeUntilDestroyed()).subscribe((projectId) => {
-      void this.loadProjectContext(projectId);
+    this.form.controls.projectId.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((projectId) => {
+        void this.loadProjectContext(projectId);
+      });
+
+    this.destroyRef.onDestroy(() => {
+      this.clearAllPreviewUrls();
     });
 
     void this.initialize();
@@ -92,11 +124,21 @@ export class IssueCreatePageComponent {
       if (item.kind !== 'file') {
         continue;
       }
+
       const raw = item.getAsFile();
       if (!raw) {
         continue;
       }
-      const ext = raw.type === 'image/png' ? '.png' : raw.type === 'image/jpeg' ? '.jpg' : '';
+
+      const ext =
+        raw.type === 'image/png'
+          ? '.png'
+          : raw.type === 'image/jpeg'
+            ? '.jpg'
+            : raw.type === 'image/webp'
+              ? '.webp'
+              : '';
+
       const fileName = raw.name?.trim() || `pasted-${Date.now()}-${i + 1}${ext}`;
       files.push(new File([raw], fileName, { type: raw.type || 'application/octet-stream' }));
     }
@@ -108,7 +150,7 @@ export class IssueCreatePageComponent {
     }
   }
 
-  protected async submitIssue(value: IssueFormValue): Promise<void> {
+  protected async submitIssue(event: IssueFormSubmitEvent): Promise<void> {
     const projectId = this.form.controls.projectId.value.trim();
     if (!projectId) {
       this.form.controls.projectId.markAsDirty();
@@ -119,15 +161,25 @@ export class IssueCreatePageComponent {
     this.error.set(null);
 
     try {
-      const created = await this.api.createIssue(projectId, value);
-      const files = this.pendingFiles();
+      const created = await this.api.createIssue(projectId, event.value);
+
+      const files = this.pendingFiles().map((item) => item.file);
       if (files.length > 0) {
         try {
           await this.api.uploadAttachments(projectId, created.id, files);
         } catch (uploadError) {
-          this.message.warning(this.getErrorMessage(uploadError, 'Issue 已创建，但附件上传失败'));
+          this.message.warning(this.getErrorMessage(uploadError, '工单已创建，但附件上传失败'));
         }
       }
+
+      if (event.continueCreate) {
+        this.issueFormComponent?.resetForContinueCreate();
+        this.clearPendingFiles();
+        this.message.success('工单已创建，可继续新增');
+        return;
+      }
+
+      this.message.success('工单创建成功');
       await this.router.navigate(['/issues'], {
         queryParams: {
           projectId,
@@ -135,7 +187,7 @@ export class IssueCreatePageComponent {
         }
       });
     } catch (error) {
-      this.error.set(this.getErrorMessage(error, '创建 Issue 失败'));
+      this.error.set(this.getErrorMessage(error, '创建工单失败'));
     } finally {
       this.submitting.set(false);
     }
@@ -150,7 +202,7 @@ export class IssueCreatePageComponent {
   }
 
   protected projectLabel(project: ProjectOption): string {
-    return `${project.name}`;
+    return project.name;
   }
 
   protected selectFiles(input: HTMLInputElement): void {
@@ -162,25 +214,32 @@ export class IssueCreatePageComponent {
   }
 
   protected removePendingFile(id: string): void {
-    const index = Number(id);
-    if (Number.isNaN(index) || index < 0) {
+    const target = this.pendingFiles().find((item) => item.id === id);
+    if (!target) {
       return;
     }
-    const next = [...this.pendingFiles()];
-    next.splice(index, 1);
-    this.pendingFiles.set(next);
+
+    if (target.previewUrl) {
+      URL.revokeObjectURL(target.previewUrl);
+    }
+
+    this.pendingFiles.update((list) => list.filter((item) => item.id !== id));
   }
 
   private async initialize(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
+
     try {
       const projects = await this.api.listProjects();
       this.projects.set(projects);
+
       const preferredProjectId = this.route.snapshot.queryParamMap.get('projectId')?.trim() || '';
-      const nextProjectId = preferredProjectId && projects.some((item) => item.id === preferredProjectId)
-        ? preferredProjectId
-        : projects[0]?.id ?? '';
+      const nextProjectId =
+        preferredProjectId && projects.some((item) => item.id === preferredProjectId)
+          ? preferredProjectId
+          : (projects[0]?.id ?? '');
+
       this.form.patchValue({ projectId: nextProjectId }, { emitEvent: true });
     } catch (error) {
       this.error.set(this.getErrorMessage(error, '加载新建页数据失败'));
@@ -198,6 +257,8 @@ export class IssueCreatePageComponent {
       return;
     }
 
+    this.contextLoading.set(true);
+
     try {
       const [members, modules, versions, environments] = await Promise.all([
         this.api.listProjectMembers(projectId),
@@ -205,20 +266,45 @@ export class IssueCreatePageComponent {
         this.api.listProjectVersions(projectId),
         this.api.listProjectEnvironments(projectId)
       ]);
+
+      if (this.form.controls.projectId.value !== projectId) {
+        return;
+      }
+
       this.projectMembers.set(members);
       this.moduleOptions.set(modules);
       this.versionOptions.set(versions);
       this.environmentOptions.set(environments);
     } catch {
-      this.projectMembers.set([]);
-      this.moduleOptions.set([]);
-      this.versionOptions.set([]);
-      this.environmentOptions.set([]);
+      if (this.form.controls.projectId.value === projectId) {
+        this.projectMembers.set([]);
+        this.moduleOptions.set([]);
+        this.versionOptions.set([]);
+        this.environmentOptions.set([]);
+      }
+    } finally {
+      if (this.form.controls.projectId.value === projectId) {
+        this.contextLoading.set(false);
+      }
     }
   }
 
   private addFiles(files: File[]): void {
-    this.pendingFiles.set([...this.pendingFiles(), ...files]);
+    const nextItems: PendingAttachmentFile[] = files.map((file, index) => ({
+      id: `${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}`,
+      file,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    }));
+
+    this.pendingFiles.update((list) => [...list, ...nextItems]);
+  }
+
+  private clearAllPreviewUrls(): void {
+    for (const item of this.pendingFiles()) {
+      if (item.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    }
   }
 
   private extractFileExt(fileName: string): string | null {
@@ -237,5 +323,14 @@ export class IssueCreatePageComponent {
       return `${fallback}: ${error.message}`;
     }
     return fallback;
+  }
+
+  private clearPendingFiles(): void {
+    for (const item of this.pendingFiles()) {
+      if (item.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    }
+    this.pendingFiles.set([]);
   }
 }

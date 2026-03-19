@@ -5,6 +5,8 @@ import type { IssueParticipantEntity } from "../issue-participant/participant.ty
 
 export type IssueType = "bug" | "feature" | "change" | "improvement" | "task" | "test";
 export type IssueStatus = "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
+// 派生状态：待办（todo）= open + in_progress，待我验证（verify）= resolved,reported 我提报的： 包含所有状态， reported_active 我提报的待跟进的： open + in_progress + resolved
+export type IssueDerivedStatus = "todo" | "verify" | 'reported' | 'reported_active';
 export type IssuePriority = "low" | "medium" | "high" | "critical";
 export type IssueActionType =
   | "create"
@@ -61,10 +63,12 @@ export interface IssueDetailResult {
 
 export interface ListIssuesQuery {
   projectId: string;
-  status?: IssueStatus;
+  status?: IssueStatus | IssueDerivedStatus;
   priority?: IssuePriority;
   type?: IssueType;
   assigneeId?: string;
+  verifierId?: string;
+  reporterId?: string;
   keyword?: string;
   page: number;
   pageSize: number;
@@ -108,7 +112,7 @@ export interface AssignIssueInput extends OperatorInput {
   assigneeId: string;
 }
 
-export interface ClaimIssueInput extends OperatorInput {}
+export interface ClaimIssueInput extends OperatorInput { }
 
 export interface ReassignIssueInput extends OperatorInput {
   assigneeId: string;
