@@ -213,6 +213,7 @@ export class RdPageComponent {
 
   protected async reload(): Promise<void> {
     await this.loadProjectContext(this.filters.controls.projectId.value);
+    await this.loadItems();
   }
 
   protected async toggleOnlyMine(): Promise<void> {
@@ -400,6 +401,7 @@ export class RdPageComponent {
       this.message.success('研发阶段已创建');
       this.invalidateProjectStageCache(projectId);
       await this.loadProjectContext(projectId);
+      await this.loadItems();
     } catch (error) {
       this.message.error(this.resolveErrorMessage(error, '创建研发阶段失败'));
     } finally {
@@ -417,6 +419,7 @@ export class RdPageComponent {
       this.message.success('研发阶段已更新');
       this.invalidateProjectStageCache(projectId);
       await this.loadProjectContext(projectId);
+      await this.loadItems();
     } catch (error) {
       this.message.error(this.resolveErrorMessage(error, '更新研发阶段失败'));
     } finally {
@@ -434,6 +437,7 @@ export class RdPageComponent {
       this.message.success('研发阶段已删除');
       this.invalidateProjectStageCache(projectId);
       await this.loadProjectContext(projectId);
+      await this.loadItems();
     } catch (error) {
       this.message.error(this.resolveErrorMessage(error, '删除研发阶段失败'));
     } finally {
@@ -454,6 +458,7 @@ export class RdPageComponent {
       this.filters.patchValue({ projectId, status }, { emitEvent: false });
       this.currentProjectId.set(projectId || null);
       await this.loadProjectContext(projectId);
+      await this.loadItems();
     } catch (error) {
       this.errorMessage.set(this.resolveErrorMessage(error, '加载研发管理失败'));
     } finally {
@@ -481,7 +486,6 @@ export class RdPageComponent {
       this.projectMembers.set(members);
       this.stages.set(stages);
       this.overview.set(overview);
-      await this.loadItems();
     } catch (error) {
       this.errorMessage.set(this.resolveErrorMessage(error, '加载项目研发上下文失败'));
     } finally {
@@ -573,6 +577,7 @@ export class RdPageComponent {
       this.selectedItemId.set(preferredItemId);
     }
     await this.loadProjectContext(this.filters.controls.projectId.value);
+    await this.loadItems();
   }
 
   private async refreshAfterCreate(item: RdItem): Promise<void> {
