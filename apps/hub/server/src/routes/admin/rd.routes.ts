@@ -2,6 +2,7 @@
 import {
   addRdCommentSchema,
   changeRdItemStatusSchema,
+  createGlobalRdItemSchema,
   createRdItemSchema,
   createRdStageSchema,
   listRdItemsQuerySchema,
@@ -70,6 +71,13 @@ export default async function rdRoutes(fastify: FastifyInstance) {
   fastify.get("/rd/items", async (request) => {
     const query = listRdItemsQuerySchema.parse(request.query);
     return ok(fastify.services.rd.listCurrentUserItems(query, getOperator(request)));
+  });
+
+  fastify.post("/rd/items", async (request, reply) => {
+    const body = createGlobalRdItemSchema.parse(request.body);
+    const item = fastify.services.rd.create({ ...body, ...getOperator(request) });
+    emitRdRealtimeEvent(fastify, item, "created");
+    return reply.status(201).send(ok(item, "rd item created"));
   });
 
   fastify.get("/projects/:projectId/rd/overview", async (request) => {

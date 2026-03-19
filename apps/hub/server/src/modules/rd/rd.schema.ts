@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 export const rdItemTypeSchema = z.enum(["feature_dev", "tech_refactor", "integration", "env_setup"]);
 export const rdItemStatusSchema = z.enum(["todo", "doing", "blocked", "done", "canceled"]);
@@ -57,6 +57,10 @@ export const createRdItemSchema = operatorSchema.extend({
   planStartAt: z.string().trim().max(40).nullable().optional(),
   planEndAt: z.string().trim().max(40).nullable().optional(),
   blockerReason: z.string().trim().max(4000).nullable().optional()
+});
+
+export const createGlobalRdItemSchema = createRdItemSchema.extend({
+  projectId: z.string().trim().min(1).max(64)
 });
 
 export const updateRdItemSchema = operatorSchema.extend({

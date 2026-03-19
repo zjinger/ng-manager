@@ -1,3 +1,4 @@
+﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -36,17 +37,22 @@ export class RdItemFormComponent implements OnChanges {
 
   @Input() mode: 'create' | 'edit' = 'create';
   @Input() initialValue: RdItem | null = null;
+  @Input() projectId = '';
+  @Input() projectOptions: Array<{ label: string; value: string }> = [];
+  @Input() projectLocked = false;
   @Input() stageOptions: RdStageItem[] = [];
   @Input() memberOptions: ProjectMemberItem[] = [];
   @Input() submitting = false;
 
   @Output() readonly submitted = new EventEmitter<RdItemFormValue>();
   @Output() readonly cancelled = new EventEmitter<void>();
+  @Output() readonly projectChanged = new EventEmitter<string>();
 
   protected readonly typeOptions = RD_TYPE_OPTIONS;
   protected readonly priorityOptions = RD_PRIORITY_OPTIONS;
 
   protected readonly form = this.fb.nonNullable.group({
+    projectId: ['', [Validators.required]],
     title: ['', [Validators.required, Validators.maxLength(200)]],
     description: ['', [Validators.maxLength(10000)]],
     stageId: ['', [Validators.required]],
@@ -60,9 +66,27 @@ export class RdItemFormComponent implements OnChanges {
     blockerReason: ['']
   });
 
+  public constructor() {
+    this.form.controls.projectId.valueChanges.pipe(takeUntilDestroyed()).subscribe((projectId) => {
+      this.projectChanged.emit(projectId.trim());
+    });
+  }
+
   public ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialValue'] || changes['mode'] || changes['stageOptions']) {
+    if (changes['initialValue'] || changes['mode']) {
       this.resetForm();
+    }
+
+    if (changes['projectId']) {
+      this.syncProjectControl();
+    }
+
+    if (changes['projectLocked']) {
+      this.syncProjectLock();
+    }
+
+    if (changes['stageOptions']) {
+      this.ensureStageStillValid();
     }
 
     if (changes['memberOptions']) {
@@ -79,6 +103,7 @@ export class RdItemFormComponent implements OnChanges {
 
     const value = this.form.getRawValue();
     this.submitted.emit({
+      projectId: value.projectId.trim(),
       title: value.title.trim(),
       description: value.description.trim(),
       stageId: value.stageId,
@@ -99,11 +124,14 @@ export class RdItemFormComponent implements OnChanges {
 
   private resetForm(): void {
     const item = this.initialValue;
-    const defaultStageId = this.stageOptions[0]?.id ?? '';
+    const nextProjectId = item?.projectId ?? this.projectId ?? this.projectOptions[0]?.value ?? '';
+    const defaultStageId = item?.stageId ?? this.stageOptions[0]?.id ?? '';
+
     this.form.reset({
+      projectId: nextProjectId,
       title: item?.title ?? '',
       description: item?.description ?? '',
-      stageId: item?.stageId ?? defaultStageId,
+      stageId: defaultStageId,
       type: item?.type ?? 'feature_dev',
       priority: item?.priority ?? 'medium',
       assigneeId: item?.assigneeId ?? '',
@@ -112,7 +140,40 @@ export class RdItemFormComponent implements OnChanges {
       planStartAt: this.parseDateValue(item?.planStartAt ?? ''),
       planEndAt: this.parseDateValue(item?.planEndAt ?? ''),
       blockerReason: item?.blockerReason ?? ''
-    });
+    }, { emitEvent: false });
+
+    this.syncProjectLock();
+    this.ensureStageStillValid();
+  }
+
+  private syncProjectControl(): void {
+    const nextProjectId = this.initialValue?.projectId ?? this.projectId ?? '';
+    if (nextProjectId === this.form.controls.projectId.getRawValue()) {
+      this.syncProjectLock();
+      return;
+    }
+    this.form.controls.projectId.patchValue(nextProjectId, { emitEvent: false });
+    this.syncProjectLock();
+  }
+
+  private syncProjectLock(): void {
+    if (this.projectLocked) {
+      this.form.controls.projectId.disable({ emitEvent: false });
+      return;
+    }
+    this.form.controls.projectId.enable({ emitEvent: false });
+  }
+
+  private ensureStageStillValid(): void {
+    const currentStageId = this.form.controls.stageId.value.trim();
+    if (!this.stageOptions.length) {
+      this.form.controls.stageId.patchValue('', { emitEvent: false });
+      return;
+    }
+    const exists = this.stageOptions.some((stage) => stage.id === currentStageId);
+    if (!exists) {
+      this.form.controls.stageId.patchValue(this.stageOptions[0]?.id ?? '', { emitEvent: false });
+    }
   }
 
   private ensureMemberStillValid(controlName: 'assigneeId' | 'reviewerId'): void {
@@ -122,7 +183,7 @@ export class RdItemFormComponent implements OnChanges {
     }
     const exists = this.memberOptions.some((member) => member.userId === userId);
     if (!exists) {
-      this.form.patchValue({ [controlName]: '' });
+      this.form.patchValue({ [controlName]: '' }, { emitEvent: false });
     }
   }
 

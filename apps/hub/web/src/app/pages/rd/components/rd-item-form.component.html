@@ -1,4 +1,4 @@
-<form nz-form [formGroup]="form" class="rd-item-form" (ngSubmit)="submit()">
+﻿<form nz-form [formGroup]="form" class="rd-item-form" (ngSubmit)="submit()">
   <nz-form-item>
     <nz-form-label nzRequired>标题</nz-form-label>
     <nz-form-control nzErrorTip="请输入研发项标题">
@@ -15,9 +15,20 @@
 
   <div class="grid-row grid-row-3">
     <nz-form-item>
+      <nz-form-label nzRequired>项目</nz-form-label>
+      <nz-form-control nzErrorTip="请选择所属项目">
+        <nz-select formControlName="projectId" nzPlaceHolder="请选择项目" nzShowSearch [nzDisabled]="projectLocked">
+          @for (item of projectOptions; track item.value) {
+            <nz-option [nzValue]="item.value" [nzLabel]="item.label"></nz-option>
+          }
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
       <nz-form-label nzRequired>阶段</nz-form-label>
       <nz-form-control nzErrorTip="请选择阶段">
-        <nz-select formControlName="stageId" nzPlaceHolder="请选择阶段">
+        <nz-select formControlName="stageId" nzPlaceHolder="请选择阶段" [nzDisabled]="!stageOptions.length">
           @for (item of stageOptions; track item.id) {
             <nz-option [nzValue]="item.id" [nzLabel]="item.name"></nz-option>
           }
@@ -35,7 +46,9 @@
         </nz-select>
       </nz-form-control>
     </nz-form-item>
+  </div>
 
+  <div class="grid-row grid-row-3">
     <nz-form-item>
       <nz-form-label>优先级</nz-form-label>
       <nz-form-control>
@@ -46,9 +59,7 @@
         </nz-select>
       </nz-form-control>
     </nz-form-item>
-  </div>
 
-  <div class="grid-row grid-row-3">
     <nz-form-item>
       <nz-form-label>负责人</nz-form-label>
       <nz-form-control>
@@ -70,16 +81,16 @@
         </nz-select>
       </nz-form-control>
     </nz-form-item>
+  </div>
 
+  <div class="grid-row grid-row-3">
     <nz-form-item>
       <nz-form-label>进度</nz-form-label>
       <nz-form-control>
         <nz-input-number formControlName="progress" [nzMin]="0" [nzMax]="100" [nzStep]="5"></nz-input-number>
       </nz-form-control>
     </nz-form-item>
-  </div>
 
-  <div class="grid-row grid-row-2">
     <nz-form-item>
       <nz-form-label>计划开始</nz-form-label>
       <nz-form-control>

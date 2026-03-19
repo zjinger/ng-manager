@@ -91,6 +91,7 @@ export interface RdFilterValue {
 }
 
 export interface RdItemFormValue {
+  projectId: string;
   title: string;
   description: string;
   stageId: string;

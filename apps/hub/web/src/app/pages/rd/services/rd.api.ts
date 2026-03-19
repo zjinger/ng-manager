@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { HubApiService } from '../../../core/http/hub-api.service';
 import type { ProjectMemberItem } from '../../projects/projects.model';
@@ -69,39 +69,16 @@ export class RdManagementApiService {
     return firstValueFrom(this.api.get<RdItemDetailResult>(`/api/admin/projects/${projectId}/rd/items/${itemId}`));
   }
 
-  public async createItem(projectId: string, value: RdItemFormValue): Promise<RdItem> {
-    return firstValueFrom(
-      this.api.post<RdItem, Record<string, string | number | null>>(`/api/admin/projects/${projectId}/rd/items`, {
-        title: value.title,
-        description: value.description,
-        stageId: value.stageId,
-        type: value.type,
-        priority: value.priority,
-        assigneeId: value.assigneeId || null,
-        reviewerId: value.reviewerId || null,
-        progress: value.progress,
-        planStartAt: value.planStartAt || null,
-        planEndAt: value.planEndAt || null,
-        blockerReason: value.blockerReason || null
-      })
-    );
+  public async createItem(value: RdItemFormValue): Promise<RdItem> {
+    return firstValueFrom(this.api.post<RdItem, Record<string, string | number | null>>('/api/admin/rd/items', this.toItemPayload(value, true)));
   }
 
   public async updateItem(projectId: string, itemId: string, value: RdItemFormValue): Promise<RdItem> {
     return firstValueFrom(
-      this.api.patch<RdItem, Record<string, string | number | null>>(`/api/admin/projects/${projectId}/rd/items/${itemId}`, {
-        title: value.title,
-        description: value.description,
-        stageId: value.stageId,
-        type: value.type,
-        priority: value.priority,
-        assigneeId: value.assigneeId || null,
-        reviewerId: value.reviewerId || null,
-        progress: value.progress,
-        planStartAt: value.planStartAt || null,
-        planEndAt: value.planEndAt || null,
-        blockerReason: value.blockerReason || null
-      })
+      this.api.patch<RdItem, Record<string, string | number | null>>(
+        `/api/admin/projects/${projectId}/rd/items/${itemId}`,
+        this.toItemPayload(value, false)
+      )
     );
   }
 
@@ -122,5 +99,22 @@ export class RdManagementApiService {
 
   public async deleteItem(projectId: string, itemId: string): Promise<void> {
     await firstValueFrom(this.api.delete(`/api/admin/projects/${projectId}/rd/items/${itemId}`));
+  }
+
+  private toItemPayload(value: RdItemFormValue, includeProjectId: boolean): Record<string, string | number | null> {
+    return {
+      ...(includeProjectId ? { projectId: value.projectId } : {}),
+      title: value.title,
+      description: value.description,
+      stageId: value.stageId,
+      type: value.type,
+      priority: value.priority,
+      assigneeId: value.assigneeId || null,
+      reviewerId: value.reviewerId || null,
+      progress: value.progress,
+      planStartAt: value.planStartAt || null,
+      planEndAt: value.planEndAt || null,
+      blockerReason: value.blockerReason || null
+    };
   }
 }

@@ -1,4 +1,4 @@
-<section class="page rd-page">
+﻿<section class="page rd-page">
   <app-page-header title="研发管理" subtitle="面向提测前的轻量研发项管理与进度跟踪">
     <button page-header-actions nz-button nzType="default" (click)="openStageManager()" [disabled]="!canManageStages()">阶段管理</button>
     <button page-header-actions nz-button nzType="primary" (click)="openCreateModal()" [disabled]="!canCreateItem()">新建研发项</button>
@@ -134,7 +134,7 @@
   </div>
 
   <div class="content-grid rd-grid section">
-    <nz-card class="list-card" [nzTitle]="currentProject()?.name ?? '研发项目'" [nzExtra]="listExtraTemplate">
+    <nz-card class="list-card" [nzTitle]="currentProject()?.name ?? '全部研发项'" [nzExtra]="listExtraTemplate">
       @if (loading()) {
         <div class="loading-state"><nz-spin nzTip="加载中..."></nz-spin></div>
       } @else if (!items().length) {
@@ -149,7 +149,7 @@
           [nzTotal]="total()"
           [nzPageSize]="pageSize"
           (nzPageIndexChange)="changePage($event)"
-          [nzScroll]="{y:'100%'}"
+          [nzScroll]="{ y: '100%' }"
         >
           <thead>
             <tr>
@@ -215,9 +215,13 @@
       <app-rd-item-form
         [mode]="editingItem() ? 'edit' : 'create'"
         [initialValue]="editingItem()"
-        [stageOptions]="enabledStages()"
-        [memberOptions]="projectMembers()"
+        [projectId]="formProjectId()"
+        [projectOptions]="projectOpts()"
+        [projectLocked]="formProjectLocked()"
+        [stageOptions]="formEnabledStages()"
+        [memberOptions]="formProjectMembers()"
         [submitting]="itemSubmitting()"
+        (projectChanged)="handleFormProjectChange($event)"
         (submitted)="submitItemForm($event)"
         (cancelled)="closeItemModal()"
       ></app-rd-item-form>
