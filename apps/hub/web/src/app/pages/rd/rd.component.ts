@@ -42,7 +42,7 @@ import {
   type RdOverview,
   type RdStageFormValue,
   type RdStageItem,
-  type RdStatusChangeValue
+  type RdStatusChangeValue,
 } from './models/rd.model';
 import { RdManagementApiService } from './services/rd.api';
 import { ProjectContextService } from '../../core/services/project-context.service';
@@ -69,11 +69,11 @@ import { ActivatedRoute, Router } from '@angular/router';
     PageHeaderComponent,
     RdDetailComponent,
     RdItemFormComponent,
-    RdStageManagerComponent
+    RdStageManagerComponent,
   ],
   templateUrl: './rd.component.html',
   styleUrls: ['./rd.component.less'],
-  styles: [PAGE_SHELL_STYLES]
+  styles: [PAGE_SHELL_STYLES],
 })
 export class RdPageComponent {
   private readonly fb = inject(FormBuilder);
@@ -139,7 +139,7 @@ export class RdPageComponent {
     priority: [''],
     type: [''],
     assigneeId: [''],
-    keyword: ['']
+    keyword: [''],
   });
 
   protected readonly currentProject = computed(() => {
@@ -148,7 +148,9 @@ export class RdPageComponent {
   });
 
   protected readonly enabledStages = computed(() => this.stages().filter((item) => item.enabled));
-  protected readonly formEnabledStages = computed(() => this.formStages().filter((item) => item.enabled));
+  protected readonly formEnabledStages = computed(() =>
+    this.formStages().filter((item) => item.enabled),
+  );
 
   protected readonly currentUserId = computed(() => {
     const profile = this.auth.profile();
@@ -171,10 +173,14 @@ export class RdPageComponent {
     if (this.isAdmin()) return true;
     return !!this.findProjectMember(projectId)?.roles.includes('project_admin');
   });
-  protected readonly canEditSelected = computed(() => this.canEditItem(this.detail()?.item ?? null));
-  protected readonly canDeleteSelected = computed(() => this.canDeleteItem(this.detail()?.item ?? null));
+  protected readonly canEditSelected = computed(() =>
+    this.canEditItem(this.detail()?.item ?? null),
+  );
+  protected readonly canDeleteSelected = computed(() =>
+    this.canDeleteItem(this.detail()?.item ?? null),
+  );
   protected readonly quickFilterCount = computed(
-    () => [this.onlyMine(), this.onlyBlocked(), this.onlyOverdue()].filter(Boolean).length
+    () => [this.onlyMine(), this.onlyBlocked(), this.onlyOverdue()].filter(Boolean).length,
   );
   protected readonly formProjectLocked = computed(() => !!this.editingItem());
 
@@ -252,7 +258,10 @@ export class RdPageComponent {
     }
 
     const defaultProjectId =
-      this.filters.controls.projectId.value || this.currentProjectId() || this.projects()[0]?.id || '';
+      this.filters.controls.projectId.value ||
+      this.currentProjectId() ||
+      this.projects()[0]?.id ||
+      '';
     if (!defaultProjectId) {
       this.message.warning('请先加入至少一个项目后再创建研发项');
       return;
@@ -438,11 +447,11 @@ export class RdPageComponent {
 
     try {
       const projectId = this.projectContext.currentProject()?.id ?? '';
-      const status = this.pendingStatus ?? '';
       const assigneeId = this.pendingAssigneeId ?? '';
-      if(this.currentUserId() === assigneeId) this.onlyMine.set(true);
+      const status = this.pendingStatus ?? '';
+      if (status === 'doing' && this.currentUserId() === assigneeId) this.onlyMine.set(true);
 
-      this.filters.patchValue({ projectId,status, assigneeId }, { emitEvent: false });
+      this.filters.patchValue({ projectId, status }, { emitEvent: false });
       this.currentProjectId.set(projectId || null);
       await this.loadProjectContext(projectId);
     } catch (error) {
@@ -467,7 +476,7 @@ export class RdPageComponent {
       const [members, stages, overview] = await Promise.all([
         this.getProjectMembers(projectId),
         this.getProjectStages(projectId),
-        this.api.getOverview(projectId)
+        this.api.getOverview(projectId),
       ]);
       this.projectMembers.set(members);
       this.stages.set(stages);
@@ -490,7 +499,7 @@ export class RdPageComponent {
 
     const [members, stages] = await Promise.all([
       this.getProjectMembers(projectId),
-      this.getProjectStages(projectId)
+      this.getProjectStages(projectId),
     ]);
     this.formProjectMembers.set(members);
     this.formStages.set(stages);
@@ -504,7 +513,7 @@ export class RdPageComponent {
     try {
       const params: Record<string, string | number | boolean> = {
         page: this.page(),
-        pageSize: this.pageSize
+        pageSize: this.pageSize,
       };
       if (filter.projectId) params['projectId'] = filter.projectId;
       if (filter.stageId) params['stageId'] = filter.stageId;
@@ -513,13 +522,9 @@ export class RdPageComponent {
       if (filter.type) params['type'] = filter.type;
       if (filter.assigneeId) params['assigneeId'] = filter.assigneeId;
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
-
-      // 根据路由参数修改
-      // if (this.pendingStatus) params['status'] = this.pendingStatus;
-      // if (this.pendingAssigneeId) params['assigneeId'] = this.pendingAssigneeId;
-
       const currentUserId = this.currentUserId();
 
+      // 快捷键（优先级高，覆盖选项）
       if (this.onlyMine() && currentUserId) params['assigneeId'] = currentUserId;
       if (this.onlyBlocked()) params['status'] = 'blocked';
       if (this.onlyOverdue()) params['overdue'] = true;
@@ -539,7 +544,7 @@ export class RdPageComponent {
       this.currentProjectId.set(projectId);
       this.selectedItemId.set(nextSelected);
       if (nextSelected && projectId) {
-        await this.loadDetail(projectId    , nextSelected);
+        await this.loadDetail(projectId, nextSelected);
       } else {
         this.detail.set(null);
       }
@@ -654,7 +659,7 @@ export class RdPageComponent {
   }
 
   private clearAllPending() {
-    if(!this.hasClearedPending) {
+    if (!this.hasClearedPending) {
       this.hasClearedPending = true;
       return;
     }

@@ -102,13 +102,18 @@ export class IssuesPageComponent {
   protected readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
   protected readonly typeOptions = ISSUE_TYPE_OPTIONS;
 
-  protected readonly onlyMyTodo = signal(false);
+  // 快捷按钮
+  protected readonly onlyMineTodo = signal(false);
+  protected readonly onlyMineToVerify = signal(false);
+  protected readonly onlyMineReportedActive = signal(false);
 
   // 路径参数（优先设置到搜索条件中）
   private pendingIssueId: string | null = null;
   private pendingAssigneeId: string | null = null;
   private pendingProjectId: string | null = null;
   private pendingStatus: string | null = null;
+  private pendingVerifierId: string | null = null;
+  private pendingReporterId: string | null = null;
   private hasClearedPending = false;
 
   protected readonly filters = this.fb.nonNullable.group({
@@ -136,7 +141,11 @@ export class IssuesPageComponent {
     return project ? project.label : null;
   });
 
-  protected readonly quickFilterCount = computed(() => [this.onlyMyTodo()].filter(Boolean).length);
+  protected readonly quickFilterCount = computed(
+    () =>
+      [this.onlyMineTodo(), this.onlyMineToVerify(), this.onlyMineReportedActive()].filter(Boolean)
+        .length,
+  );
 
   public constructor() {
     // 优先从路径上获取参数
@@ -145,6 +154,8 @@ export class IssuesPageComponent {
       this.pendingAssigneeId = params.get('assigneeId')?.trim() || null;
       this.pendingIssueId = params.get('issueId')?.trim() || null;
       this.pendingStatus = params.get('status')?.trim() || null;
+      this.pendingVerifierId = params.get('verifierId')?.trim() || null;
+      this.pendingReporterId = params.get('reporterId')?.trim() || null;
     });
 
     this.filters.controls.projectId.valueChanges
@@ -173,12 +184,32 @@ export class IssuesPageComponent {
     await this.refreshCurrentView({ reloadList: true, reloadDetail: true });
   }
 
-  protected async toggleOnlyMine(): Promise<void> {
+  protected async toggleOnlyMineTodo(): Promise<void> {
     if (!this.currentUserId()) {
-      this.message.warning('当前账号未关联用户标识，不能按我的研发项筛选');
+      this.message.warning('当前账号未关联用户标识，不能按我的我的代办筛选');
       return;
     }
-    this.onlyMyTodo.update((value) => !value);
+    this.onlyMineTodo.update((value) => !value);
+    this.page.set(1);
+    await this.loadIssues();
+  }
+
+  protected async toggleOnlyMineToVerify(): Promise<void> {
+    if (!this.currentUserId()) {
+      this.message.warning('当前账号未关联用户标识，不能按我的待验证项筛选');
+      return;
+    }
+    this.onlyMineToVerify.update((value) => !value);
+    this.page.set(1);
+    await this.loadIssues();
+  }
+
+  protected async toggleOnlyMineReportedActive(): Promise<void> {
+    if (!this.currentUserId()) {
+      this.message.warning('当前账号未关联用户标识，不能按我的待我跟进提报筛选');
+      return;
+    }
+    this.onlyMineReportedActive.update((value) => !value);
     this.page.set(1);
     await this.loadIssues();
   }
@@ -368,41 +399,31 @@ export class IssuesPageComponent {
     this.detailLoading.set(true);
     // 不加载数据，让filters.controls.projectId.valueChanges触发
     const projectId = this.pendingProjectId ?? this.currentProject()?.id ?? '';
-    let status = this.pendingStatus ?? '';
+    const status = this.pendingStatus ?? '';
     const assigneeId = this.pendingAssigneeId ?? '';
     const issueId = this.pendingIssueId ?? '';
-    this.filters.patchValue({ projectId }, { emitEvent: false });
+    const verifierId = this.pendingVerifierId ?? '';
+    const reporterId = this.pendingReporterId ?? '';
 
+    // 初次加载
     try {
-      // 锁定某一条工单（函数内有加载上下文），否则只加载上下文
+      // 锁定某一条工单（函数内已有加载上下文），否则只加载上下文
+      this.filters.patchValue({ projectId }, { emitEvent: false });
       if (issueId && projectId) await this.loadIssueDetail(issueId, projectId);
       else if (!issueId && projectId) await this.loadProjectContext(projectId);
 
-      // 待我处理
-      switch (status) {
-        case 'todo': {
-          this.onlyMyTodo.set(true);
-          status = '';
-          break;
-        }
-        case 'vertify': {
-          // 暂时先展示所有待验证的工单（验证人还没做）
-          status = 'resolved';
-          break;
-        }
-        default: {
-          if (!isIssueStatus(status)) {
-            status = '';
-          }
-          break;
-        }
-      }
+      // 快捷按钮处理
+      const userId = this.currentUserId();
+      if (status === 'todo' && userId === assigneeId) this.onlyMineTodo.set(true);
+      else if (status === 'verify' && userId === verifierId) this.onlyMineToVerify.set(true);
+      else if (status === 'reported_active' && userId === reporterId)
+        this.onlyMineReportedActive.set(true);
 
       // 当前选中的工单的关键字
       const keyword = this.selectedDetail()?.issue.issueNo ?? '';
       this.selectedIssueId.set(issueId);
       this.filters.patchValue(
-        { projectId, status, assigneeId, keyword: keyword },
+        { projectId,  keyword: keyword },
         { emitEvent: false },
       );
       await this.loadIssues();
@@ -481,17 +502,22 @@ export class IssuesPageComponent {
       if (filter.keyword.trim()) params['keyword'] = filter.keyword.trim();
       if (filter.projectId) params['projectId'] = filter.projectId;
 
-      let result: IssueListResult;
-      // 快捷选项
+      // 快捷选项(优先级高，直接覆盖部分搜索条件)
       const currentUserId = this.currentUserId();
-      if (this.onlyMyTodo() && currentUserId) {
+      if (this.onlyMineTodo() && currentUserId) {
         params['assigneeId'] = currentUserId;
-        result = await this.api.listTodoIssues(params);
-      } else {
-        result = await this.api.listAllIssues(params);
+        params['status'] = 'todo';
+      }
+      if (this.onlyMineToVerify() && currentUserId) {
+        params['verifierId'] = currentUserId;
+        params['status'] = 'verify';
+      }
+      if (this.onlyMineReportedActive() && currentUserId) {
+        params['reporterId'] = currentUserId;
+        params['status'] = 'reported_active';
       }
 
-      // const result = await this.api.listAllIssues(params);
+      const result = await this.api.listAllIssues(params);
       this.issues.set(result.items);
       this.total.set(result.total);
 

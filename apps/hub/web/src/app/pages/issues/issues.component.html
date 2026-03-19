@@ -78,20 +78,36 @@
           <input nz-input formControlName="keyword" placeholder="编号 / 标题 / 描述" />
         </nz-form-control>
       </nz-form-item>
-    </form>
+      </form>
         <div class="quick-filters">
-      <button
-        type="button"
-        nz-button
-        nzSize="small"
-        [nzType]="onlyMyTodo() ? 'primary' : 'default'"
-        [disabled]="!currentUserId()"
-        (click)="toggleOnlyMine()"
-      >仅看我的待办项</button>
-      @if (quickFilterCount()) {
-        <span class="quick-filter-hint">已启用 {{ quickFilterCount() }} 个快捷筛选</span>
-      }
-    </div>
+        <button
+          type="button"
+          nz-button
+          nzSize="small"
+          [nzType]="onlyMineTodo() ? 'primary' : 'default'"
+          [disabled]="!currentUserId()"
+          (click)="toggleOnlyMineTodo()"
+        >仅看待我处理</button>
+        <button
+          type="button"
+          nz-button
+          nzSize="small"
+          [nzType]="onlyMineToVerify() ? 'primary' : 'default'"
+          [disabled]="!currentUserId()"
+          (click)="toggleOnlyMineToVerify()"
+        >仅看待我验证</button>
+        <button
+          type="button"
+          nz-button
+          nzSize="small"
+          [nzType]="onlyMineReportedActive() ? 'primary' : 'default'"
+          [disabled]="!currentUserId()"
+          (click)="toggleOnlyMineReportedActive()"
+        >仅看待我跟进提报</button>
+        @if (quickFilterCount()) {
+          <span class="quick-filter-hint">已启用 {{ quickFilterCount() }} 个快捷筛选</span>
+        }
+      </div>
   </nz-card>
 
   <div class="issue-layout section">

@@ -5,22 +5,6 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { DashboardStatCardData, DashboardStatCardKey } from '../models/dashboard.model';
 
-type CardStatus = {
-  [K in DashboardStatCardKey]?: String;
-};
-
-const cardStatus: CardStatus = {
-  pending: 'todo',
-  verify: 'resolved',
-  'rd-doing': 'doing',
-  'reported-issues': 'issues',
-  'reported-active': 'active',
-  'rd-blocked': 'blocked',
-  'rd-review': 'review',
-  announcements: 'announcements',
-  docs: 'docs',
-  projects: 'projects',
-};
 @Component({
   selector: 'app-dashboard-stat-card',
   standalone: true,
@@ -166,7 +150,7 @@ export class DashboardStatCardComponent {
     }
 
     void this.router.navigate([this.item.route], {
-      queryParams: { ...this.item.queryParams, status: cardStatus[this.item.key] },
+      queryParams: this.item.queryParams,
     });
   }
 }
