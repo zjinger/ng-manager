@@ -200,6 +200,7 @@ export class IssuesPageComponent {
     }
     this.onlyMineTodo.update((value) => !value);
     this.page.set(1);
+    this.clearAllPending();
     this.applyOnlyMineFilters();
     await this.loadIssues();
   }
@@ -211,6 +212,7 @@ export class IssuesPageComponent {
     }
     this.onlyMineToVerify.update((value) => !value);
     this.page.set(1);
+    this.clearAllPending();
     this.applyOnlyMineToVerifyFilters();
     await this.loadIssues();
   }
@@ -222,6 +224,7 @@ export class IssuesPageComponent {
     }
     this.onlyMineReportedActive.update((value) => !value);
     this.page.set(1);
+    this.clearAllPending();
     this.applyOnlyMineReportedActiveFilters();
     await this.loadIssues();
   }
@@ -427,7 +430,11 @@ export class IssuesPageComponent {
       // 当前选中的工单的关键字
       const keyword = this.selectedDetail()?.issue.issueNo ?? '';
       this.selectedIssueId.set(issueId);
-      this.filters.patchValue({ projectId, keyword: keyword }, { emitEvent: false });
+      // 路径参数(优先级最大）都设置在表单里
+      this.filters.patchValue(
+        { projectId, status, assigneeId, keyword: keyword },
+        { emitEvent: false },
+      );
 
       // 快捷按钮处理
       const userId = this.currentUserId();
@@ -441,7 +448,7 @@ export class IssuesPageComponent {
         this.onlyMineReportedActive.set(true);
         this.applyOnlyMineReportedActiveFilters();
       }
-      
+
       await this.loadIssues();
     } catch (error) {
       this.listError.set(this.getErrorMessage(error, '加载工单失败'));
@@ -541,22 +548,20 @@ export class IssuesPageComponent {
       this.issues.set(result.items);
       this.total.set(result.total);
 
-      // 去除原因：保持原先的选中没有影响
-      // const selectedId = this.selectedIssueId();
-      // if (selectedId && !result.items.some((item) => item.id === selectedId)) {
-      //   this.selectedIssueId.set(null);
-      //   this.selectedDetail.set(null);
-      // }
-
-      // 去除原因：统一在初始化时设置到搜索条件中
-      // if (this.pendingIssueId) {
-      //   const pending = result.items.find((item) => item.id === this.pendingIssueId);
-      //   if (pending) {
-      //     this.selectedIssueId.set(pending.id);
-      //     this.pendingIssueId = null;
-      //     await this.loadIssueDetail(pending.id, pending.projectId);
-      //   }
-      // }
+      const selectedId = this.selectedIssueId();
+      const nextSelected =
+        selectedId && result.items.some((item) => item.id === selectedId)
+          ? selectedId
+          : (result.items[0]?.id ?? null);
+      const projectId = filter.projectId
+        ? filter.projectId
+        : (result.items?.[0]?.projectId ?? null);
+      this.selectedIssueId.set(nextSelected);
+      if (nextSelected && projectId) {
+        await this.loadIssueDetail(nextSelected, projectId);
+      } else {
+        this.selectedDetail.set(null);
+      }
     } catch (error) {
       this.listError.set(this.getErrorMessage(error, '加载 Issue 列表失败'));
     } finally {
@@ -575,15 +580,6 @@ export class IssuesPageComponent {
     this.detailError.set(null);
     try {
       this.selectedDetail.set(await this.api.getIssueDetail(projectId, issueId));
-      // 去除原因：在其他地方做了清理
-      // if (this.route.snapshot.queryParamMap.get('issueId')) {
-      //   void this.router.navigate([], {
-      //     relativeTo: this.route,
-      //     queryParams: { issueId: null },
-      //     queryParamsHandling: 'merge',
-      //     replaceUrl: true,
-      //   });
-      // }
     } catch (error) {
       this.detailError.set(this.getErrorMessage(error, '加载工单详情失败'));
     } finally {
@@ -637,14 +633,14 @@ export class IssuesPageComponent {
   }
 
   private clearAllPending() {
-    if (!this.hasClearedPending) {
-      this.hasClearedPending = true;
+    if (this.hasClearedPending) {
       return;
     }
     this.pendingIssueId = null;
     this.pendingProjectId = null;
     this.pendingAssigneeId = null;
     this.pendingStatus = null;
+    this.hasClearedPending = true;
     this.router.navigate([], {
       queryParams: {},
     });
