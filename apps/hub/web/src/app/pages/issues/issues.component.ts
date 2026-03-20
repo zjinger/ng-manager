@@ -105,6 +105,7 @@ export class IssuesPageComponent {
   // 快捷按钮
   protected readonly onlyMineTodo = signal(false);
   protected readonly onlyMineToVerify = signal(false);
+  protected readonly onlyMineReported = signal(false);
   protected readonly onlyMineReportedActive = signal(false);
 
   // 路径参数（优先设置到搜索条件中）
@@ -143,7 +144,7 @@ export class IssuesPageComponent {
 
   protected readonly quickFilterCount = computed(
     () =>
-      [this.onlyMineTodo(), this.onlyMineToVerify(), this.onlyMineReportedActive()].filter(Boolean)
+      [this.onlyMineTodo(), this.onlyMineToVerify(), this.onlyMineReportedActive(),this.onlyMineReported()].filter(Boolean)
         .length,
   );
 
@@ -226,6 +227,17 @@ export class IssuesPageComponent {
     this.page.set(1);
     this.clearAllPending();
     this.applyOnlyMineReportedActiveFilters();
+    await this.loadIssues();
+  }
+
+  protected async toggleOnlyMineReported() {
+    if (!this.currentUserId()) {
+      this.message.warning('当前账号未关联用户标识，不能按我的提报筛选');
+      return;
+    }
+    this.onlyMineReported.update((value) => !value);
+    this.page.set(1);
+    this.clearAllPending();
     await this.loadIssues();
   }
 
@@ -447,6 +459,8 @@ export class IssuesPageComponent {
       } else if (status === 'reported_active' && userId === reporterId) {
         this.onlyMineReportedActive.set(true);
         this.applyOnlyMineReportedActiveFilters();
+      } else if (status === 'reported' && userId === reporterId) {
+        this.onlyMineReported.set(true);
       }
 
       await this.loadIssues();
@@ -539,6 +553,9 @@ export class IssuesPageComponent {
         params['verifierId'] = currentUserId;
         params['status'] = 'verify';
       }
+      if (this.onlyMineReported() && currentUserId) {
+        params['reporterId'] = currentUserId;
+      }
       if (this.onlyMineReportedActive() && currentUserId) {
         params['reporterId'] = currentUserId;
         params['status'] = 'reported_active';
@@ -553,9 +570,7 @@ export class IssuesPageComponent {
         selectedId && result.items.some((item) => item.id === selectedId)
           ? selectedId
           : (result.items[0]?.id ?? null);
-      const projectId = filter.projectId
-        ? filter.projectId
-        : (result.items?.[0]?.projectId ?? null);
+      const projectId = this.issues().find((issue) => issue.id === nextSelected)?.projectId ?? null;
       this.selectedIssueId.set(nextSelected);
       if (nextSelected && projectId) {
         await this.loadIssueDetail(nextSelected, projectId);
