@@ -1,0 +1,11 @@
+{
+  "name": "@ngm/hub-v2",
+  "private": true,
+  "scripts": {
+    "build:web": "npm --prefix ./web run build",
+    "build:server": "npm --prefix ./server run build",
+    "build": "npm run build:server && npm run build:web",
+    "dev:server": "npm --prefix ./server run dev",
+    "dev:web": "npm --prefix ./web run start"
+  }
+}

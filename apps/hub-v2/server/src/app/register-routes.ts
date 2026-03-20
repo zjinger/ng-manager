@@ -1,0 +1,42 @@
+import type { FastifyInstance } from "fastify";
+import announcementPublicRoutes from "../modules/announcement/announcement-public.routes";
+import announcementRoutes from "../modules/announcement/announcement.routes";
+import authRoutes from "../modules/auth/auth.routes";
+import dashboardRoutes from "../modules/dashboard/dashboard.routes";
+import documentPublicRoutes from "../modules/document/document-public.routes";
+import documentRoutes from "../modules/document/document.routes";
+import issueAttachmentRoutes from "../modules/issue/attachment/issue-attachment.routes";
+import issueCommentRoutes from "../modules/issue/comment/issue-comment.routes";
+import issueParticipantRoutes from "../modules/issue/participant/issue-participant.routes";
+import issueRoutes from "../modules/issue/issue.routes";
+import projectRoutes from "../modules/project/project.routes";
+import rdRoutes from "../modules/rd/rd.routes";
+import releasePublicRoutes from "../modules/release/release-public.routes";
+import releaseRoutes from "../modules/release/release.routes";
+import sharedConfigPublicRoutes from "../modules/shared-config/shared-config-public.routes";
+import sharedConfigRoutes from "../modules/shared-config/shared-config.routes";
+import healthRoutes from "../modules/system/health.routes";
+import uploadRoutes from "../modules/upload/upload.routes";
+import userRoutes from "../modules/user/user.routes";
+
+export async function registerRoutes(app: FastifyInstance) {
+  await app.register(authRoutes, { prefix: "/api/admin" });
+  await app.register(announcementRoutes, { prefix: "/api/admin" });
+  await app.register(dashboardRoutes, { prefix: "/api/admin" });
+  await app.register(documentRoutes, { prefix: "/api/admin" });
+  await app.register(issueRoutes, { prefix: "/api/admin" });
+  await app.register(issueAttachmentRoutes, { prefix: "/api/admin" });
+  await app.register(issueCommentRoutes, { prefix: "/api/admin" });
+  await app.register(issueParticipantRoutes, { prefix: "/api/admin" });
+  await app.register(rdRoutes, { prefix: "/api/admin" });
+  await app.register(releaseRoutes, { prefix: "/api/admin" });
+  await app.register(sharedConfigRoutes, { prefix: "/api/admin" });
+  await app.register(userRoutes, { prefix: "/api/admin" });
+  await app.register(projectRoutes, { prefix: "/api/admin" });
+  await app.register(uploadRoutes, { prefix: "/api/admin" });
+  await app.register(announcementPublicRoutes, { prefix: "/api/public" });
+  await app.register(documentPublicRoutes, { prefix: "/api/public" });
+  await app.register(releasePublicRoutes, { prefix: "/api/public" });
+  await app.register(sharedConfigPublicRoutes, { prefix: "/api/public" });
+  await app.register(healthRoutes, { prefix: "/api/public" });
+}
