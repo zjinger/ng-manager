@@ -106,8 +106,9 @@ export class RdPageComponent {
   protected readonly stageManagerVisible = signal(false);
   protected readonly editingItem = signal<RdItem | null>(null);
   protected readonly onlyMine = signal(false);
-  protected readonly onlyBlocked = signal(false);
+  protected readonly onlyMineBlocked = signal(false);
   protected readonly onlyOverdue = signal(false);
+  protected readonly onlyMineToReview = signal(false);
   protected readonly formProjectId = signal('');
   protected readonly formProjectMembers = signal<ProjectMemberItem[]>([]);
   protected readonly formStages = signal<RdStageItem[]>([]);
@@ -130,6 +131,7 @@ export class RdPageComponent {
   private pendingStatus: string | null = null;
   private pendingAssigneeId: string | null = null;
   private pendingProjectId: string | null = null;
+  private pendingReviewerId: string | null = null;
   private hasClearedPending = false;
 
   protected readonly filters = this.fb.nonNullable.group({
@@ -180,7 +182,10 @@ export class RdPageComponent {
     this.canDeleteItem(this.detail()?.item ?? null),
   );
   protected readonly quickFilterCount = computed(
-    () => [this.onlyMine(), this.onlyBlocked(), this.onlyOverdue()].filter(Boolean).length,
+    () =>
+      [this.onlyMine(), this.onlyMineBlocked(), this.onlyOverdue(), this.onlyMineToReview()].filter(
+        Boolean,
+      ).length,
   );
   protected readonly formProjectLocked = computed(() => !!this.editingItem());
 
@@ -190,6 +195,7 @@ export class RdPageComponent {
       this.pendingProjectId = params.get('projectId')?.trim() || null;
       this.pendingAssigneeId = params.get('assigneeId')?.trim() || null;
       this.pendingStatus = params.get('status')?.trim() || null;
+      this.pendingReviewerId = params.get('reviewerId')?.trim() || null;
     });
 
     this.filters.controls.projectId.valueChanges
@@ -224,13 +230,19 @@ export class RdPageComponent {
     this.onlyMine.update((value) => !value);
     this.page.set(1);
     this.clearAllPending();
+    this.applyOnlyMineFilters();
     await this.loadItems();
   }
 
-  protected async toggleOnlyBlocked(): Promise<void> {
-    this.onlyBlocked.update((value) => !value);
+  protected async toggleOnlyMineBlocked(): Promise<void> {
+    if (!this.currentUserId()) {
+      this.message.warning('当前账号未关联用户标识，不能按我的待审核项筛选');
+      return;
+    }
+    this.onlyMineBlocked.update((value) => !value);
     this.page.set(1);
     this.clearAllPending();
+    this.applyOnlyMineBlockedFilters();
     await this.loadItems();
   }
 
@@ -238,6 +250,18 @@ export class RdPageComponent {
     this.onlyOverdue.update((value) => !value);
     this.page.set(1);
     this.clearAllPending();
+    await this.loadItems();
+  }
+
+  protected async toggleOnlyMineToReview(): Promise<void> {
+    if (!this.currentUserId()) {
+      this.message.warning('当前账号未关联用户标识，不能按我的待审核项筛选');
+      return;
+    }
+    this.onlyMineToReview.update((value) => !value);
+    this.page.set(1);
+    this.clearAllPending();
+    this.applyOnlyMineToReviewFilters();
     await this.loadItems();
   }
 
@@ -450,13 +474,32 @@ export class RdPageComponent {
     this.errorMessage.set(null);
 
     try {
-      const projectId = this.projectContext.currentProject()?.id ?? '';
+      const projectId = this.pendingAssigneeId ?? this.projectContext.currentProject()?.id ?? '';
       const assigneeId = this.pendingAssigneeId ?? '';
+      const reviewerId = this.pendingReviewerId ?? '';
       const status = this.pendingStatus ?? '';
-      if (status === 'doing' && this.currentUserId() === assigneeId) this.onlyMine.set(true);
 
-      this.filters.patchValue({ projectId, status }, { emitEvent: false });
+      // 路径参数(优先级最大）都设置在表单里
+      this.filters.patchValue({ projectId, assigneeId, status }, { emitEvent: false });
       this.currentProjectId.set(projectId || null);
+
+      // 快捷筛选（检查是否满足快捷筛选条件）
+      // 仅看我的研发项目
+      if (status === 'doing' && this.currentUserId() === assigneeId) {
+        this.onlyMine.set(true);
+        this.applyOnlyMineFilters();
+      }
+      // 仅看我的阻塞项目
+      if (status === 'blocked' && this.currentUserId() === assigneeId) {
+        this.onlyMineBlocked.set(true);
+        this.applyOnlyMineBlockedFilters();
+      }
+      // 仅看待我验收
+      if(status === 'done' && this.currentUserId() === reviewerId) {
+        this.onlyMineToReview.set(true);
+        this.applyOnlyMineToReviewFilters();
+      }
+
       await this.loadProjectContext(projectId);
       await this.loadItems();
     } catch (error) {
@@ -474,7 +517,6 @@ export class RdPageComponent {
         this.projectMembers.set([]);
         this.stages.set([]);
         this.overview.set(null);
-        await this.loadItems();
         return;
       }
 
@@ -530,8 +572,12 @@ export class RdPageComponent {
 
       // 快捷键（优先级高，覆盖选项）
       if (this.onlyMine() && currentUserId) params['assigneeId'] = currentUserId;
-      if (this.onlyBlocked()) params['status'] = 'blocked';
+      if (this.onlyMineBlocked()) params['status'] = 'blocked';
       if (this.onlyOverdue()) params['overdue'] = true;
+      if (this.onlyMineToReview() && currentUserId) {
+        params['reviewerId'] = currentUserId;
+        params['status'] = 'done';
+      }
 
       const result = await this.api.getListItems(params);
       this.items.set(result.items);
@@ -663,14 +709,51 @@ export class RdPageComponent {
     return fallback;
   }
 
+  /**进看我的研发项后，表单状态更新 */
+  private applyOnlyMineFilters() {
+    if (this.onlyMine()) {
+      this.filters.patchValue({ assigneeId: this.currentUserId() ?? '' }, { emitEvent: false });
+      this.filters.controls.assigneeId.disable({ emitEvent: false });
+    } else {
+      this.filters.patchValue({ assigneeId: '' }, { emitEvent: false });
+      this.filters.enable({ emitEvent: false });
+    }
+  }
+
+  /**仅看阻塞项后，表单状态更新 */
+  private applyOnlyMineBlockedFilters() {
+    if (this.onlyMineBlocked()) {
+      this.filters.patchValue(
+        { assigneeId: this.currentUserId() ?? '', status: 'blocked' },
+        { emitEvent: false },
+      );
+      this.filters.controls.status.disable({ emitEvent: false });
+      this.filters.controls.assigneeId.disable({ emitEvent: false });
+    } else {
+      this.filters.patchValue({ assigneeId: '', status: '' }, { emitEvent: false });
+      this.filters.enable({ emitEvent: false });
+    }
+  }
+
+  /**仅看待我验收后，表单状态更新 */
+  private applyOnlyMineToReviewFilters() {
+    if (this.onlyMineToReview()) {
+      this.filters.patchValue({ status: 'done' }, { emitEvent: false });
+      this.filters.controls.status.disable({ emitEvent: false });
+    } else {
+      this.filters.patchValue({ status: '' }, { emitEvent: false });
+      this.filters.enable({ emitEvent: false });
+    }
+  }
+
   private clearAllPending() {
-    if (!this.hasClearedPending) {
-      this.hasClearedPending = true;
+    if (this.hasClearedPending) {
       return;
     }
     this.pendingProjectId = null;
     this.pendingAssigneeId = null;
     this.pendingStatus = null;
+    this.hasClearedPending = true;
     this.router.navigate([], {
       queryParams: {},
     });
