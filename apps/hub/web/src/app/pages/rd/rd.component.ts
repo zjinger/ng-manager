@@ -132,7 +132,8 @@ export class RdPageComponent {
   private pendingAssigneeId: string | null = null;
   private pendingProjectId: string | null = null;
   private pendingReviewerId: string | null = null;
-  private hasClearedPending = false;
+  // 路由参数总数
+  private pendingCount = 0;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -196,6 +197,7 @@ export class RdPageComponent {
       this.pendingAssigneeId = params.get('assigneeId')?.trim() || null;
       this.pendingStatus = params.get('status')?.trim() || null;
       this.pendingReviewerId = params.get('reviewerId')?.trim() || null;
+      this.pendingCount = params.keys.length;
     });
 
     this.filters.controls.projectId.valueChanges
@@ -474,7 +476,10 @@ export class RdPageComponent {
     this.errorMessage.set(null);
 
     try {
-      const projectId = this.pendingAssigneeId ?? this.projectContext.currentProject()?.id ?? '';
+      // 全局的项目(只有从侧边栏点击过来才设置，也就是没有路径参数)
+      const currentProject =
+        this.pendingCount === 0 ? this.projectContext.currentProject()?.id : null;
+      const projectId = this.pendingProjectId ?? currentProject ?? '';
       const assigneeId = this.pendingAssigneeId ?? '';
       const reviewerId = this.pendingReviewerId ?? '';
       const status = this.pendingStatus ?? '';
@@ -495,7 +500,7 @@ export class RdPageComponent {
         this.applyOnlyMineBlockedFilters();
       }
       // 仅看待我验收
-      if(status === 'done' && this.currentUserId() === reviewerId) {
+      if (status === 'done' && this.currentUserId() === reviewerId) {
         this.onlyMineToReview.set(true);
         this.applyOnlyMineToReviewFilters();
       }
@@ -747,13 +752,9 @@ export class RdPageComponent {
   }
 
   private clearAllPending() {
-    if (this.hasClearedPending) {
+    if (this.pendingCount === 0) {
       return;
     }
-    this.pendingProjectId = null;
-    this.pendingAssigneeId = null;
-    this.pendingStatus = null;
-    this.hasClearedPending = true;
     this.router.navigate([], {
       queryParams: {},
     });

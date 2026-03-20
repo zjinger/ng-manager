@@ -115,7 +115,8 @@ export class IssuesPageComponent {
   private pendingStatus: string | null = null;
   private pendingVerifierId: string | null = null;
   private pendingReporterId: string | null = null;
-  private hasClearedPending = false;
+  // 路由参数总数
+  private pendingCount = 0;
 
   protected readonly filters = this.fb.nonNullable.group({
     projectId: [''],
@@ -144,8 +145,12 @@ export class IssuesPageComponent {
 
   protected readonly quickFilterCount = computed(
     () =>
-      [this.onlyMineTodo(), this.onlyMineToVerify(), this.onlyMineReportedActive(),this.onlyMineReported()].filter(Boolean)
-        .length,
+      [
+        this.onlyMineTodo(),
+        this.onlyMineToVerify(),
+        this.onlyMineReportedActive(),
+        this.onlyMineReported(),
+      ].filter(Boolean).length,
   );
 
   public constructor() {
@@ -157,6 +162,7 @@ export class IssuesPageComponent {
       this.pendingStatus = params.get('status')?.trim() || null;
       this.pendingVerifierId = params.get('verifierId')?.trim() || null;
       this.pendingReporterId = params.get('reporterId')?.trim() || null;
+      this.pendingCount = params.keys.length;
     });
 
     this.filters.controls.projectId.valueChanges
@@ -424,8 +430,11 @@ export class IssuesPageComponent {
   private async initialize(): Promise<void> {
     this.listLoading.set(true);
     this.detailLoading.set(true);
-    // 不加载数据，让filters.controls.projectId.valueChanges触发
-    const projectId = this.pendingProjectId ?? this.currentProject()?.id ?? '';
+
+    // 全局的项目(只有从侧边栏点击过来才设置，也就是没有路径参数)
+    const currentProjectId =
+      this.pendingCount === 0 ? this.projectContextService.currentProject()?.id : null;
+    const projectId = this.pendingProjectId ?? currentProjectId ?? '';
     const status = this.pendingStatus ?? '';
     const assigneeId = this.pendingAssigneeId ?? '';
     const issueId = this.pendingIssueId ?? '';
@@ -648,14 +657,10 @@ export class IssuesPageComponent {
   }
 
   private clearAllPending() {
-    if (this.hasClearedPending) {
+    if (this.pendingCount === 0) {
       return;
     }
-    this.pendingIssueId = null;
-    this.pendingProjectId = null;
-    this.pendingAssigneeId = null;
-    this.pendingStatus = null;
-    this.hasClearedPending = true;
+    // 路由监听会清空pending
     this.router.navigate([], {
       queryParams: {},
     });
