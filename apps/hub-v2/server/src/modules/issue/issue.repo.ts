@@ -1,0 +1,412 @@
+import type Database from "better-sqlite3";
+import { normalizePage } from "../../shared/http/pagination";
+import type {
+  IssueEntity,
+  IssueDashboardTodo,
+  IssueListResult,
+  IssueLogEntity,
+  ListIssuesQuery
+} from "./issue.types";
+
+type IssueRow = {
+  id: string;
+  project_id: string;
+  issue_no: string;
+  title: string;
+  description: string | null;
+  type: "bug" | "task" | "support";
+  status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
+  priority: "low" | "medium" | "high" | "critical";
+  reporter_id: string;
+  reporter_name: string;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  verifier_id: string | null;
+  verifier_name: string | null;
+  module_code: string | null;
+  version_code: string | null;
+  environment_code: string | null;
+  resolution_summary: string | null;
+  close_reason: string | null;
+  close_remark: string | null;
+  reopen_count: number;
+  started_at: string | null;
+  resolved_at: string | null;
+  verified_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type IssueLogRow = {
+  id: string;
+  issue_id: string;
+  action_type: "create" | "update" | "assign" | "start" | "resolve" | "verify" | "reopen" | "close";
+  from_status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened" | null;
+  to_status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened" | null;
+  operator_id: string | null;
+  operator_name: string | null;
+  summary: string | null;
+  meta_json: string | null;
+  created_at: string;
+};
+
+type UpdateIssueRowInput = Partial<{
+  title: string;
+  description: string | null;
+  type: "bug" | "task" | "support";
+  status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
+  priority: "low" | "medium" | "high" | "critical";
+  assignee_id: string | null;
+  assignee_name: string | null;
+  verifier_id: string | null;
+  verifier_name: string | null;
+  module_code: string | null;
+  version_code: string | null;
+  environment_code: string | null;
+  resolution_summary: string | null;
+  close_reason: string | null;
+  close_remark: string | null;
+  reopen_count: number;
+  started_at: string | null;
+  resolved_at: string | null;
+  verified_at: string | null;
+  closed_at: string | null;
+  updated_at: string;
+}>;
+
+export class IssueRepo {
+  constructor(private readonly db: Database.Database) {}
+
+  create(entity: IssueEntity): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO issues (
+            id, project_id, issue_no, title, description, type, status, priority,
+            reporter_id, reporter_name, assignee_id, assignee_name, verifier_id, verifier_name,
+            module_code, version_code, environment_code, resolution_summary, close_reason, close_remark,
+            reopen_count, started_at, resolved_at, verified_at, closed_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        entity.id,
+        entity.projectId,
+        entity.issueNo,
+        entity.title,
+        entity.description,
+        entity.type,
+        entity.status,
+        entity.priority,
+        entity.reporterId,
+        entity.reporterName,
+        entity.assigneeId,
+        entity.assigneeName,
+        entity.verifierId,
+        entity.verifierName,
+        entity.moduleCode,
+        entity.versionCode,
+        entity.environmentCode,
+        entity.resolutionSummary,
+        entity.closeReason,
+        entity.closeRemark,
+        entity.reopenCount,
+        entity.startedAt,
+        entity.resolvedAt,
+        entity.verifiedAt,
+        entity.closedAt,
+        entity.createdAt,
+        entity.updatedAt
+      );
+  }
+
+  findById(id: string): IssueEntity | null {
+    const row = this.db.prepare("SELECT * FROM issues WHERE id = ?").get(id) as IssueRow | undefined;
+    return row ? this.mapIssue(row) : null;
+  }
+
+  list(query: ListIssuesQuery, projectIds?: string[]): IssueListResult {
+    const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (projectIds) {
+      if (projectIds.length === 0) {
+        return { items: [], page, pageSize, total: 0 };
+      }
+      conditions.push(`project_id IN (${projectIds.map(() => "?").join(", ")})`);
+      params.push(...projectIds);
+    }
+
+    if (query.projectId?.trim()) {
+      conditions.push("project_id = ?");
+      params.push(query.projectId.trim());
+    }
+
+    if (query.status) {
+      conditions.push("status = ?");
+      params.push(query.status);
+    }
+
+    if (query.type) {
+      conditions.push("type = ?");
+      params.push(query.type);
+    }
+
+    if (query.priority) {
+      conditions.push("priority = ?");
+      params.push(query.priority);
+    }
+
+    if (query.assigneeId?.trim()) {
+      conditions.push("assignee_id = ?");
+      params.push(query.assigneeId.trim());
+    }
+
+    if (query.verifierId?.trim()) {
+      conditions.push("verifier_id = ?");
+      params.push(query.verifierId.trim());
+    }
+
+    if (query.keyword?.trim()) {
+      const keyword = `%${query.keyword.trim()}%`;
+      conditions.push("(title LIKE ? OR issue_no LIKE ? OR description LIKE ?)");
+      params.push(keyword, keyword, keyword);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const totalRow = this.db
+      .prepare(`SELECT COUNT(*) as total FROM issues ${whereClause}`)
+      .get(...params) as { total: number };
+
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM issues
+          ${whereClause}
+          ORDER BY updated_at DESC
+          LIMIT ? OFFSET ?
+        `
+      )
+      .all(...params, pageSize, offset) as IssueRow[];
+
+    return {
+      items: rows.map((row) => this.mapIssue(row)),
+      page,
+      pageSize,
+      total: totalRow.total
+    };
+  }
+
+  update(id: string, input: UpdateIssueRowInput): boolean {
+    const entries = Object.entries(input);
+    if (entries.length === 0) {
+      return false;
+    }
+
+    const assignments = entries.map(([key]) => `${key} = ?`).join(", ");
+    const params = entries.map(([, value]) => value);
+    const result = this.db.prepare(`UPDATE issues SET ${assignments} WHERE id = ?`).run(...params, id);
+    return result.changes > 0;
+  }
+
+  getNextIssueNo(): string {
+    const row = this.db.prepare("SELECT COUNT(*) as total FROM issues").get() as { total: number };
+    return `ISS-${String(row.total + 1).padStart(6, "0")}`;
+  }
+
+  createLog(log: IssueLogEntity): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO issue_logs (
+            id, issue_id, action_type, from_status, to_status, operator_id, operator_name, summary, meta_json, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        log.id,
+        log.issueId,
+        log.actionType,
+        log.fromStatus,
+        log.toStatus,
+        log.operatorId,
+        log.operatorName,
+        log.summary,
+        log.metaJson,
+        log.createdAt
+      );
+  }
+
+  listLogs(issueId: string): IssueLogEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM issue_logs
+          WHERE issue_id = ?
+          ORDER BY created_at DESC
+        `
+      )
+      .all(issueId) as IssueLogRow[];
+
+    return rows.map((row) => this.mapLog(row));
+  }
+
+  countAssignedForDashboard(projectIds: string[], userId: string): number {
+    const scope = this.createProjectScope(projectIds);
+    const row = this.db
+      .prepare(
+        `
+          SELECT COUNT(*) as total
+          FROM issues
+          WHERE assignee_id = ?
+            AND status IN ('open', 'in_progress', 'reopened')
+            ${scope.clause}
+        `
+      )
+      .get(userId, ...scope.params) as { total: number };
+    return row.total;
+  }
+
+  countVerifyingForDashboard(projectIds: string[], userId: string): number {
+    const scope = this.createProjectScope(projectIds);
+    const row = this.db
+      .prepare(
+        `
+          SELECT COUNT(*) as total
+          FROM issues
+          WHERE verifier_id = ?
+            AND status = 'resolved'
+            ${scope.clause}
+        `
+      )
+      .get(userId, ...scope.params) as { total: number };
+    return row.total;
+  }
+
+  listTodosForDashboard(projectIds: string[], userId: string, limit: number): IssueDashboardTodo[] {
+    const scope = this.createProjectScope(projectIds);
+    const assigned = this.db
+      .prepare(
+        `
+          SELECT id, issue_no as code, title, status, updated_at, project_id
+          FROM issues
+          WHERE assignee_id = ?
+            AND status IN ('open', 'in_progress', 'reopened')
+            ${scope.clause}
+          ORDER BY updated_at DESC
+          LIMIT ?
+        `
+      )
+      .all(userId, ...scope.params, limit) as Array<{
+      id: string;
+      code: string;
+      title: string;
+      status: string;
+      updated_at: string;
+      project_id: string;
+    }>;
+
+    const verifying = this.db
+      .prepare(
+        `
+          SELECT id, issue_no as code, title, status, updated_at, project_id
+          FROM issues
+          WHERE verifier_id = ?
+            AND status = 'resolved'
+            ${scope.clause}
+          ORDER BY updated_at DESC
+          LIMIT ?
+        `
+      )
+      .all(userId, ...scope.params, limit) as Array<{
+      id: string;
+      code: string;
+      title: string;
+      status: string;
+      updated_at: string;
+      project_id: string;
+    }>;
+
+    return [
+      ...assigned.map((row) => this.mapDashboardTodo("issue_assigned", row)),
+      ...verifying.map((row) => this.mapDashboardTodo("issue_verify", row))
+    ]
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, limit);
+  }
+
+  private mapIssue(row: IssueRow): IssueEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      issueNo: row.issue_no,
+      title: row.title,
+      description: row.description,
+      type: row.type,
+      status: row.status,
+      priority: row.priority,
+      reporterId: row.reporter_id,
+      reporterName: row.reporter_name,
+      assigneeId: row.assignee_id,
+      assigneeName: row.assignee_name,
+      verifierId: row.verifier_id,
+      verifierName: row.verifier_name,
+      moduleCode: row.module_code,
+      versionCode: row.version_code,
+      environmentCode: row.environment_code,
+      resolutionSummary: row.resolution_summary,
+      closeReason: row.close_reason,
+      closeRemark: row.close_remark,
+      reopenCount: row.reopen_count,
+      startedAt: row.started_at,
+      resolvedAt: row.resolved_at,
+      verifiedAt: row.verified_at,
+      closedAt: row.closed_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapLog(row: IssueLogRow): IssueLogEntity {
+    return {
+      id: row.id,
+      issueId: row.issue_id,
+      actionType: row.action_type,
+      fromStatus: row.from_status,
+      toStatus: row.to_status,
+      operatorId: row.operator_id,
+      operatorName: row.operator_name,
+      summary: row.summary,
+      metaJson: row.meta_json,
+      createdAt: row.created_at
+    };
+  }
+
+  private createProjectScope(projectIds: string[]) {
+    if (projectIds.length === 0) {
+      return { clause: "", params: [] as string[] };
+    }
+
+    return {
+      clause: `AND project_id IN (${projectIds.map(() => "?").join(", ")})`,
+      params: projectIds
+    };
+  }
+
+  private mapDashboardTodo(
+    kind: IssueDashboardTodo["kind"],
+    row: { id: string; code: string; title: string; status: string; updated_at: string; project_id: string }
+  ): IssueDashboardTodo {
+    return {
+      kind,
+      entityId: row.id,
+      code: row.code,
+      title: row.title,
+      status: row.status,
+      updatedAt: row.updated_at,
+      projectId: row.project_id
+    };
+  }
+}
