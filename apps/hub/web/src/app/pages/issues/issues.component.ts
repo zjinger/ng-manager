@@ -37,7 +37,7 @@ import {
   type IssueCommentMention,
   type IssueDetailResult,
   type IssueFilterValue,
-  type IssueItem
+  type IssueItem,
 } from './issues.model';
 
 @Component({
@@ -180,7 +180,7 @@ export class IssuesPageComponent {
     this.ws.events$
       .pipe(
         filter((event) => event.type === 'issue.created' || event.type === 'issue.updated'),
-        takeUntilDestroyed()
+        takeUntilDestroyed(),
       )
       .subscribe(() => {
         void this.handleRealtimeIssueEvent();
@@ -200,6 +200,7 @@ export class IssuesPageComponent {
     }
     this.onlyMineTodo.update((value) => !value);
     this.page.set(1);
+    this.applyOnlyMineFilters();
     await this.loadIssues();
   }
 
@@ -210,6 +211,7 @@ export class IssuesPageComponent {
     }
     this.onlyMineToVerify.update((value) => !value);
     this.page.set(1);
+    this.applyOnlyMineToVerifyFilters();
     await this.loadIssues();
   }
 
@@ -220,6 +222,7 @@ export class IssuesPageComponent {
     }
     this.onlyMineReportedActive.update((value) => !value);
     this.page.set(1);
+    this.applyOnlyMineReportedActiveFilters();
     await this.loadIssues();
   }
 
@@ -421,20 +424,24 @@ export class IssuesPageComponent {
       if (issueId && projectId) await this.loadIssueDetail(issueId, projectId);
       else if (!issueId && projectId) await this.loadProjectContext(projectId);
 
-      // 快捷按钮处理
-      const userId = this.currentUserId();
-      if (status === 'todo' && userId === assigneeId) this.onlyMineTodo.set(true);
-      else if (status === 'verify' && userId === verifierId) this.onlyMineToVerify.set(true);
-      else if (status === 'reported_active' && userId === reporterId)
-        this.onlyMineReportedActive.set(true);
-
       // 当前选中的工单的关键字
       const keyword = this.selectedDetail()?.issue.issueNo ?? '';
       this.selectedIssueId.set(issueId);
-      this.filters.patchValue(
-        { projectId,  keyword: keyword },
-        { emitEvent: false },
-      );
+      this.filters.patchValue({ projectId, keyword: keyword }, { emitEvent: false });
+
+      // 快捷按钮处理
+      const userId = this.currentUserId();
+      if (status === 'todo' && userId === assigneeId) {
+        this.onlyMineTodo.set(true);
+        this.applyOnlyMineFilters();
+      } else if (status === 'verify' && userId === verifierId) {
+        this.onlyMineToVerify.set(true);
+        this.applyOnlyMineToVerifyFilters();
+      } else if (status === 'reported_active' && userId === reporterId) {
+        this.onlyMineReportedActive.set(true);
+        this.applyOnlyMineReportedActiveFilters();
+      }
+      
       await this.loadIssues();
     } catch (error) {
       this.listError.set(this.getErrorMessage(error, '加载工单失败'));
@@ -592,6 +599,41 @@ export class IssuesPageComponent {
       return `${fallback}: ${error.message}`;
     }
     return fallback;
+  }
+
+  /**仅看待我处理后，表单状态变化 */
+  private applyOnlyMineFilters(): void {
+    if (this.onlyMineTodo()) {
+      this.filters.patchValue(
+        { assigneeId: this.currentUserId() ?? '', status: '' },
+        { emitEvent: false },
+      );
+      this.filters.controls.assigneeId.disable({ emitEvent: false });
+      this.filters.controls.status.disable({ emitEvent: false });
+    } else {
+      this.filters.patchValue({ assigneeId: '', status: '' }, { emitEvent: false });
+      this.filters.enable({ emitEvent: false });
+    }
+  }
+
+  /**仅看待我验证，表单状态变化 */
+  private applyOnlyMineToVerifyFilters(): void {
+    if (this.onlyMineToVerify()) {
+      this.filters.patchValue({ status: '' }, { emitEvent: false });
+      this.filters.controls.status.disable({ emitEvent: false });
+    } else {
+      this.filters.enable({ emitEvent: false });
+    }
+  }
+
+  /**仅看待我跟进提报后，表单状态变化 */
+  private applyOnlyMineReportedActiveFilters(): void {
+    if (this.onlyMineReportedActive()) {
+      this.filters.patchValue({ status: '' }, { emitEvent: false });
+      this.filters.controls.status.disable({ emitEvent: false });
+    } else {
+      this.filters.enable({ emitEvent: false });
+    }
   }
 
   private clearAllPending() {

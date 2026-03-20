@@ -85,7 +85,7 @@
           nz-button
           nzSize="small"
           [nzType]="onlyMineTodo() ? 'primary' : 'default'"
-          [disabled]="!currentUserId()"
+          [disabled]="!currentUserId() || (quickFilterCount() >= 1 && !onlyMineTodo())"
           (click)="toggleOnlyMineTodo()"
         >仅看待我处理</button>
         <button
@@ -93,7 +93,7 @@
           nz-button
           nzSize="small"
           [nzType]="onlyMineToVerify() ? 'primary' : 'default'"
-          [disabled]="!currentUserId()"
+          [disabled]="!currentUserId() || (quickFilterCount() >= 1 && !onlyMineToVerify())"
           (click)="toggleOnlyMineToVerify()"
         >仅看待我验证</button>
         <button
@@ -101,7 +101,7 @@
           nz-button
           nzSize="small"
           [nzType]="onlyMineReportedActive() ? 'primary' : 'default'"
-          [disabled]="!currentUserId()"
+          [disabled]="!currentUserId() || (quickFilterCount() >= 1 && !onlyMineReportedActive())"
           (click)="toggleOnlyMineReportedActive()"
         >仅看待我跟进提报</button>
         @if (quickFilterCount()) {
