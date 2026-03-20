@@ -77,6 +77,7 @@ export class App {
   protected readonly announcementLoading = signal(false);
   protected readonly announcementItems = signal<HeaderAnnouncementItem[]>([]);
   protected readonly projectContext = inject(ProjectContextService);
+  private readonly projectsLoaded = signal(false);
 
   protected readonly mustChangePasswordVisible = signal(false);
   protected readonly changingPassword = signal(false);
@@ -166,8 +167,12 @@ export class App {
       } else {
         this.mustChangePasswordVisible.set(false);
       }
-      // 登录后才执行加载项目列表
-      profile && this.projectContext.loadProjects();
+      
+      // 登录后才执行加载项目列表,只加载一次
+      if (profile && !this.projectsLoaded()) {
+        this.projectContext.loadProjects();
+        this.projectsLoaded.set(true);
+      }
     });
 
     effect(() => {
@@ -404,7 +409,11 @@ export class App {
   }
 
   private mapNotificationTitle(event: { type: HubWsEventType; payload: unknown }): string {
-    if (event.type === 'issue.updated' && typeof event.payload === 'object' && event.payload !== null) {
+    if (
+      event.type === 'issue.updated' &&
+      typeof event.payload === 'object' &&
+      event.payload !== null
+    ) {
       const payload = event.payload as Record<string, unknown>;
       const action = typeof payload['action'] === 'string' ? payload['action'] : '';
       if (action === 'comment_add') {

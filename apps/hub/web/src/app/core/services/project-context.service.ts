@@ -63,6 +63,11 @@ export class ProjectContextService {
     }
   }
 
+  // 手动更新projects列表
+  updateProjects(projects: ProjectItem[]) {
+    this.projects.set(projects);
+  }
+
   clear() {
     this.projects.set([]);
     this.setProject(null);

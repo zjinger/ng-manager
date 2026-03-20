@@ -39,6 +39,7 @@ import {
   roleLabel,
   UserOptionItem
 } from './projects.model';
+import { ProjectContextService } from '../../core/services/project-context.service';
 
 type ConfigSortKind = 'module' | 'environment' | 'version';
 type SortableConfigItem = ProjectConfigItem | ProjectVersionItem;
@@ -80,6 +81,7 @@ export class ProjectsPageComponent {
   private readonly auth = inject(AdminAuthService);
   private readonly clipboard = inject(Clipboard);
   private readonly message = inject(NzMessageService);
+  private readonly projectContextService = inject(ProjectContextService);
 
   protected readonly projects = signal<ProjectItem[]>([]);
   protected readonly total = signal(0);
@@ -583,6 +585,7 @@ export class ProjectsPageComponent {
     this.listError.set(null);
     try {
       const result = await firstValueFrom(this.api.get<ProjectListResult>('/api/admin/projects', { params: { page: 1, pageSize: 100 } }));
+      this.projectContextService.updateProjects(result.items);
       this.projects.set(result.items);
       this.total.set(result.total);
     } catch (error) {
