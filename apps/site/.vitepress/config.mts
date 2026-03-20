@@ -18,7 +18,8 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: "起步", link: "/getting-started/" },
       { text: "指南", link: "/guides/" },
-      { text: "下载", link: "/download" }
+      { text: 'hub-v2', link: "/hub-v2/" },
+      { text: "下载", link: "/download/" }
     ],
     sidebar: {
       "/getting-started/": [
@@ -51,12 +52,26 @@ export default defineConfig({
           ]
         }
       ],
+      "/hub-v2/": [
+        {
+          text: "方案与实施文档",
+          items: [
+            { text: "使用指南", link: "/hub-v2/" },
+            { text: "设计方案", link: "/hub-v2/01-hub-redesign-implementation-plan" },
+            { text: "架构设计", link: "/hub-v2/02-architecture-design" },
+            { text: "数据库设计", link: "/hub-v2/03-database-design" },
+            { text: "API 设计", link: "/hub-v2/04-api-design" },
+            { text: "实施路线图", link: "/hub-v2/05-implementation-roadmap" }
+          ]
+        }
+      ],
       "/": [
         {
           text: "文档",
           items: [
             { text: "起步", link: "/getting-started/" },
             { text: "指南", link: "/guides/" },
+            { text: "hub-v2 方案与实施文档", link: "/hub-v2" },
             { text: "下载", link: "/download" }
           ]
         }
