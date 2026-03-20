@@ -27,7 +27,7 @@ const path = require("node:path");
 
 const HUB_ROOT = path.resolve(__dirname, "..");
 
-const WEB_DIST = path.join(HUB_ROOT, "web", "dist", "hub-web");
+const WEB_DIST = path.join(HUB_ROOT, "web", "dist", "hub-v2-web");
 const SERVER_DIST = path.join(HUB_ROOT, "server", "dist");
 
 const SERVER_PACKAGE_JSON = path.join(HUB_ROOT, "server", "package.json");
@@ -141,7 +141,7 @@ async function main() {
   // 1. server/dist -> build/dist
   await copyDir(SERVER_DIST, BUILD_DIR);
 
-  // 2. web/dist/hub-web -> build/www
+  // 2. web/dist/hub-v2-web -> build/www
   await copyDir(WEB_DIST, BUILD_WWW);
 
   // 3. server/src/db/migrations -> build/db/migrations
@@ -165,7 +165,7 @@ async function main() {
     path.join(BUILD_DIR, ".env.production"),
   );
 
-  // 7. hub/ecosystem.config.cjs -> build/ecosystem.config.cjs
+  // 7. hub-v2/ecosystem.config.cjs -> build/ecosystem.config.cjs
   await copyFileIfExists(
     HUB_ECOSYSTEM,
     path.join(BUILD_DIR, "ecosystem.config.cjs"),
