@@ -1,19 +1,30 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
-import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
-import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
-import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
-import { ListStateComponent } from '../../../../shared/ui/list-state/list-state.component';
-import type { UserEntity } from '../../../users/models/user.model';
-import { UserApiService } from '../../../users/services/user-api.service';
-import { ProjectMembersDialogComponent } from '../../dialogs/project-members-dialog/project-members-dialog.component';
-import { ProjectCreateDialogComponent } from '../../dialogs/project-create-dialog/project-create-dialog.component';
+import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { ProjectListTableComponent } from '../../components/project-list-table/project-list-table.component';
-import type { ProjectMemberEntity, ProjectSummary } from '../../models/project.model';
+import { ProjectConfigDialogComponent } from '../../dialogs/project-config-dialog/project-config-dialog.component';
+import { ProjectCreateDialogComponent } from '../../dialogs/project-create-dialog/project-create-dialog.component';
+import { ProjectEditDialogComponent } from '../../dialogs/project-edit-dialog/project-edit-dialog.component';
+import { ProjectMembersDialogComponent } from '../../dialogs/project-members-dialog/project-members-dialog.component';
+import type {
+  CreateProjectMetaItemInput,
+  CreateProjectVersionItemInput,
+  ProjectMemberCandidate,
+  ProjectMemberEntity,
+  ProjectMemberRole,
+  ProjectMetaItem,
+  ProjectStatus,
+  ProjectSummary,
+  ProjectVersionItem,
+  UpdateProjectInput,
+  UpdateProjectMetaItemInput,
+  UpdateProjectVersionItemInput
+} from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
 import { ProjectListStore } from '../../store/project-list.store';
 
@@ -23,6 +34,7 @@ import { ProjectListStore } from '../../store/project-list.store';
   imports: [
     FormsModule,
     NzButtonModule,
+    NzIconModule,
     NzSelectModule,
     PageHeaderComponent,
     PageToolbarComponent,
@@ -31,101 +43,44 @@ import { ProjectListStore } from '../../store/project-list.store';
     ListStateComponent,
     ProjectListTableComponent,
     ProjectCreateDialogComponent,
-    ProjectMembersDialogComponent,
+    ProjectEditDialogComponent,
+    ProjectConfigDialogComponent,
+    ProjectMembersDialogComponent
   ],
   providers: [ProjectListStore],
-  template: `
-    <app-page-header title="项目管理" [subtitle]="subtitle()" />
-
-    <app-page-toolbar>
-      <button toolbar-primary nz-button nzType="primary" class="toolbar__create" (click)="dialogOpen.set(true)">新建项目</button>
-
-      <app-filter-bar toolbar-filters class="toolbar__filters">
-        <nz-select class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)">
-          <nz-option nzLabel="全部状态" nzValue=""></nz-option>
-          <nz-option nzLabel="活跃" nzValue="active"></nz-option>
-          <nz-option nzLabel="停用" nzValue="inactive"></nz-option>
-        </nz-select>
-
-        <button nz-button class="toolbar__filter-btn" (click)="applyFilters()">筛选</button>
-      </app-filter-bar>
-
-      <app-search-box
-        toolbar-search
-        class="toolbar__search"
-        placeholder="搜索项目名称或 Key"
-        [value]="keyword()"
-        (valueChange)="keyword.set($event)"
-        (submitted)="applyFilters()"
-      />
-    </app-page-toolbar>
-
-    <app-list-state
-      [loading]="store.loading()"
-      [empty]="store.items().length === 0"
-      loadingText="正在加载项目列表…"
-      emptyTitle="当前还没有项目"
-      emptyDescription="先创建一批测试项目。"
-    >
-      <app-project-list-table [items]="store.items()" (manageMembers)="openMembersDialog($event)" />
-    </app-list-state>
-
-    <app-project-create-dialog
-      [open]="dialogOpen()"
-      [busy]="store.busy()"
-      (cancel)="dialogOpen.set(false)"
-      (create)="createProject($event)"
-    />
-
-    <app-project-members-dialog
-      [open]="membersDialogOpen()"
-      [project]="selectedProject()"
-      [members]="members()"
-      [users]="users()"
-      [loading]="membersLoading()"
-      [busy]="membersBusy()"
-      (cancel)="closeMembersDialog()"
-      (add)="addMember($event)"
-      (remove)="removeMember($event)"
-    />
-  `,
-  styles: [
-    `
-      .toolbar__filters {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-      .toolbar__search {
-        min-width: min(320px, 100%);
-        flex: 1 1 320px;
-      }
-      @media (max-width: 768px) {
-        .toolbar__create,
-        .toolbar__status,
-        .toolbar__filter-btn {
-          width: 100%;
-        }
-      }
-    `,
-  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './project-list-page.component.html',
+  styleUrls: ['./project-list-page.component.less']
 })
 export class ProjectListPageComponent {
   readonly store = inject(ProjectListStore);
   private readonly projectApi = inject(ProjectApiService);
-  private readonly userApi = inject(UserApiService);
+  private readonly message = inject(NzMessageService);
 
   readonly keyword = signal('');
-  readonly status = signal<'active' | 'inactive' | ''>('');
+  readonly status = signal<ProjectStatus | ''>('');
   readonly dialogOpen = signal(false);
+  readonly editDialogOpen = signal(false);
+  readonly configDialogOpen = signal(false);
   readonly membersDialogOpen = signal(false);
   readonly selectedProject = signal<ProjectSummary | null>(null);
+  readonly configProject = signal<ProjectSummary | null>(null);
   readonly members = signal<ProjectMemberEntity[]>([]);
-  readonly users = signal<UserEntity[]>([]);
+  readonly users = signal<ProjectMemberCandidate[]>([]);
+  readonly modules = signal<ProjectMetaItem[]>([]);
+  readonly environments = signal<ProjectMetaItem[]>([]);
+  readonly versions = signal<ProjectVersionItem[]>([]);
   readonly membersLoading = signal(false);
+  readonly configLoading = signal(false);
   readonly membersBusy = signal(false);
+  readonly editBusy = signal(false);
+  readonly configBusy = signal(false);
+  readonly pendingModuleMap = signal<Record<string, true>>({});
+  readonly pendingEnvironmentMap = signal<Record<string, true>>({});
+  readonly pendingVersionMap = signal<Record<string, true>>({});
+  readonly pendingModuleIds = computed(() => Object.keys(this.pendingModuleMap()));
+  readonly pendingEnvironmentIds = computed(() => Object.keys(this.pendingEnvironmentMap()));
+  readonly pendingVersionIds = computed(() => Object.keys(this.pendingVersionMap()));
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个项目`);
 
   constructor() {
@@ -135,7 +90,7 @@ export class ProjectListPageComponent {
   applyFilters(): void {
     this.store.updateQuery({
       keyword: this.keyword().trim(),
-      status: this.status(),
+      status: this.status()
     });
   }
 
@@ -143,15 +98,61 @@ export class ProjectListPageComponent {
     this.store.create(input, () => this.dialogOpen.set(false));
   }
 
+  openEditDialog(project: ProjectSummary): void {
+    this.selectedProject.set(project);
+    this.editDialogOpen.set(true);
+  }
+
+  saveProject(input: UpdateProjectInput): void {
+    const project = this.selectedProject();
+    if (!project) {
+      return;
+    }
+    this.editBusy.set(true);
+    this.projectApi.update(project.id, input).subscribe({
+      next: () => {
+        this.editBusy.set(false);
+        this.message.success('项目已更新');
+        this.editDialogOpen.set(false);
+        this.store.load();
+      },
+      error: () => {
+        this.editBusy.set(false);
+        this.message.error('项目更新失败');
+      }
+    });
+  }
+
+  archiveProject(project: ProjectSummary): void {
+    this.updateProjectStatus(project.id, 'inactive');
+  }
+
+  restoreProject(project: ProjectSummary): void {
+    this.updateProjectStatus(project.id, 'active');
+  }
+
+  openConfigDialog(project: ProjectSummary): void {
+    this.configProject.set(project);
+    this.configDialogOpen.set(true);
+    this.loadProjectMeta(project.id);
+  }
+
+  closeConfigDialog(): void {
+    this.configDialogOpen.set(false);
+    this.configProject.set(null);
+    this.modules.set([]);
+    this.environments.set([]);
+    this.versions.set([]);
+    this.pendingModuleMap.set({});
+    this.pendingEnvironmentMap.set({});
+    this.pendingVersionMap.set({});
+  }
+
   openMembersDialog(project: ProjectSummary): void {
     this.selectedProject.set(project);
     this.membersDialogOpen.set(true);
     this.loadMembers(project.id);
-    if (this.users().length === 0) {
-      this.userApi.list({ page: 1, pageSize: 200 }).subscribe({
-        next: (result) => this.users.set(result.items),
-      });
-    }
+    this.loadMemberCandidates(project.id);
   }
 
   closeMembersDialog(): void {
@@ -160,7 +161,7 @@ export class ProjectListPageComponent {
     this.members.set([]);
   }
 
-  addMember(input: { userId: string; roleCode?: string; isOwner?: boolean }): void {
+  addMember(input: { userId: string; roleCode?: ProjectMemberRole | 'member'; isOwner?: boolean }): void {
     const project = this.selectedProject();
     if (!project) {
       return;
@@ -169,11 +170,14 @@ export class ProjectListPageComponent {
     this.projectApi.addMember(project.id, input).subscribe({
       next: () => {
         this.membersBusy.set(false);
+        this.message.success('成员添加成功');
         this.loadMembers(project.id);
+        this.loadMemberCandidates(project.id);
       },
       error: () => {
         this.membersBusy.set(false);
-      },
+        this.message.error('成员添加失败');
+      }
     });
   }
 
@@ -186,11 +190,170 @@ export class ProjectListPageComponent {
     this.projectApi.removeMember(project.id, member.id).subscribe({
       next: () => {
         this.membersBusy.set(false);
+        this.message.success('成员已移除');
         this.loadMembers(project.id);
+        this.loadMemberCandidates(project.id);
       },
       error: () => {
         this.membersBusy.set(false);
-      },
+        this.message.error('成员移除失败');
+      }
+    });
+  }
+
+  createModule(input: CreateProjectMetaItemInput): void {
+    this.withConfigProject((projectId) => {
+      this.configBusy.set(true);
+      this.projectApi.addModule(projectId, input).subscribe({
+        next: () => {
+          this.message.success('模块已新增');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.configBusy.set(false);
+          this.message.error('新增模块失败');
+        }
+      });
+    });
+  }
+
+  updateModule(event: { id: string; patch: UpdateProjectMetaItemInput }): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingModuleMap, event.id, true);
+      this.applyMetaPatchLocal(this.modules, event.id, event.patch);
+      this.projectApi.updateModule(projectId, event.id, event.patch).subscribe({
+        next: () => {
+          this.setPending(this.pendingModuleMap, event.id, false);
+          this.message.success('模块已更新');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingModuleMap, event.id, false);
+          this.message.error('更新模块失败');
+          this.reloadMeta(projectId);
+        }
+      });
+    });
+  }
+
+  removeModule(moduleId: string): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingModuleMap, moduleId, true);
+      this.projectApi.removeModule(projectId, moduleId).subscribe({
+        next: () => {
+          this.setPending(this.pendingModuleMap, moduleId, false);
+          this.message.success('模块已删除');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingModuleMap, moduleId, false);
+          this.message.error('删除模块失败');
+        }
+      });
+    });
+  }
+
+  createEnvironment(input: CreateProjectMetaItemInput): void {
+    this.withConfigProject((projectId) => {
+      this.configBusy.set(true);
+      this.projectApi.addEnvironment(projectId, input).subscribe({
+        next: () => {
+          this.message.success('环境已新增');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.configBusy.set(false);
+          this.message.error('新增环境失败');
+        }
+      });
+    });
+  }
+
+  updateEnvironment(event: { id: string; patch: UpdateProjectMetaItemInput }): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingEnvironmentMap, event.id, true);
+      this.applyMetaPatchLocal(this.environments, event.id, event.patch);
+      this.projectApi.updateEnvironment(projectId, event.id, event.patch).subscribe({
+        next: () => {
+          this.setPending(this.pendingEnvironmentMap, event.id, false);
+          this.message.success('环境已更新');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingEnvironmentMap, event.id, false);
+          this.message.error('更新环境失败');
+          this.reloadMeta(projectId);
+        }
+      });
+    });
+  }
+
+  removeEnvironment(environmentId: string): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingEnvironmentMap, environmentId, true);
+      this.projectApi.removeEnvironment(projectId, environmentId).subscribe({
+        next: () => {
+          this.setPending(this.pendingEnvironmentMap, environmentId, false);
+          this.message.success('环境已删除');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingEnvironmentMap, environmentId, false);
+          this.message.error('删除环境失败');
+        }
+      });
+    });
+  }
+
+  createVersion(input: CreateProjectVersionItemInput): void {
+    this.withConfigProject((projectId) => {
+      this.configBusy.set(true);
+      this.projectApi.addVersion(projectId, input).subscribe({
+        next: () => {
+          this.message.success('版本已新增');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.configBusy.set(false);
+          this.message.error('新增版本失败');
+        }
+      });
+    });
+  }
+
+  updateVersion(event: { id: string; patch: UpdateProjectVersionItemInput }): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingVersionMap, event.id, true);
+      this.applyVersionPatchLocal(this.versions, event.id, event.patch);
+      this.projectApi.updateVersion(projectId, event.id, event.patch).subscribe({
+        next: () => {
+          this.setPending(this.pendingVersionMap, event.id, false);
+          this.message.success('版本已更新');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingVersionMap, event.id, false);
+          this.message.error('更新版本失败');
+          this.reloadMeta(projectId);
+        }
+      });
+    });
+  }
+
+  removeVersion(versionId: string): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingVersionMap, versionId, true);
+      this.projectApi.removeVersion(projectId, versionId).subscribe({
+        next: () => {
+          this.setPending(this.pendingVersionMap, versionId, false);
+          this.message.success('版本已删除');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingVersionMap, versionId, false);
+          this.message.error('删除版本失败');
+        }
+      });
     });
   }
 
@@ -203,7 +366,142 @@ export class ProjectListPageComponent {
       },
       error: () => {
         this.membersLoading.set(false);
-      },
+      }
     });
+  }
+
+  private loadMemberCandidates(projectId: string): void {
+    this.projectApi.listMemberCandidates(projectId).subscribe({
+      next: (items) => this.users.set(items),
+      error: () => this.users.set([])
+    });
+  }
+
+  private updateProjectStatus(projectId: string, status: ProjectStatus): void {
+    this.editBusy.set(true);
+    this.projectApi.update(projectId, { status }).subscribe({
+      next: () => {
+        this.editBusy.set(false);
+        this.message.success(status === 'inactive' ? '项目已归档' : '项目已恢复');
+        this.store.load();
+      },
+      error: () => {
+        this.editBusy.set(false);
+        this.message.error('更新项目状态失败');
+      }
+    });
+  }
+
+  private withConfigProject(handler: (projectId: string) => void): void {
+    const project = this.configProject();
+    if (!project) {
+      return;
+    }
+    handler(project.id);
+  }
+
+  private reloadMeta(projectId: string): void {
+    this.loadProjectMeta(projectId);
+    this.configBusy.set(false);
+  }
+
+  private loadProjectMeta(projectId: string): void {
+    this.configLoading.set(true);
+    this.projectApi.listModules(projectId).subscribe({
+      next: (modules) => {
+        this.modules.set(modules);
+        this.projectApi.listEnvironments(projectId).subscribe({
+          next: (environments) => {
+            this.environments.set(environments);
+            this.projectApi.listVersions(projectId).subscribe({
+              next: (versions) => {
+                this.versions.set(versions);
+                this.configLoading.set(false);
+              },
+              error: () => {
+                this.versions.set([]);
+                this.configLoading.set(false);
+              }
+            });
+          },
+          error: () => {
+            this.environments.set([]);
+            this.versions.set([]);
+            this.configLoading.set(false);
+          }
+        });
+      },
+      error: () => {
+        this.modules.set([]);
+        this.environments.set([]);
+        this.versions.set([]);
+        this.configLoading.set(false);
+      }
+    });
+  }
+
+  private setPending(mapSignal: { update: (fn: (value: Record<string, true>) => Record<string, true>) => void }, id: string, busy: boolean): void {
+    mapSignal.update((current) => {
+      if (busy) {
+        return { ...current, [id]: true };
+      }
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
+  private sortMetaItems(items: ProjectMetaItem[]): ProjectMetaItem[] {
+    return [...items].sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
+  }
+
+  private sortVersionItems(items: ProjectVersionItem[]): ProjectVersionItem[] {
+    return [...items].sort((a, b) => (a.sort - b.sort) || a.version.localeCompare(b.version));
+  }
+
+  private applyMetaPatchLocal(
+    source: { update: (fn: (value: ProjectMetaItem[]) => ProjectMetaItem[]) => void },
+    id: string,
+    patch: UpdateProjectMetaItemInput
+  ): void {
+    source.update((items) =>
+      this.sortMetaItems(
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                name: patch.name ?? item.name,
+                code: patch.code === undefined ? item.code : patch.code,
+                description: patch.description === undefined ? item.description : patch.description,
+                sort: patch.sort ?? item.sort,
+                enabled: patch.enabled ?? item.enabled
+              }
+            : item
+        )
+      )
+    );
+  }
+
+  private applyVersionPatchLocal(
+    source: { update: (fn: (value: ProjectVersionItem[]) => ProjectVersionItem[]) => void },
+    id: string,
+    patch: UpdateProjectVersionItemInput
+  ): void {
+    source.update((items) =>
+      this.sortVersionItems(
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                version: patch.version ?? item.version,
+                code: patch.code === undefined ? item.code : patch.code,
+                description: patch.description === undefined ? item.description : patch.description,
+                sort: patch.sort ?? item.sort,
+                enabled: patch.enabled ?? item.enabled
+              }
+            : item
+        )
+      )
+    );
   }
 }

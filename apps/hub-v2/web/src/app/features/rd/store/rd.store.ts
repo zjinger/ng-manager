@@ -26,6 +26,7 @@ export class RdStore {
   private readonly stagesState = signal<RdStageEntity[]>([]);
   private readonly loadingState = signal(false);
   private readonly busyState = signal(false);
+  private loadToken = 0;
 
   readonly query = computed(() => this.queryState());
   readonly result = computed(() => this.resultState());
@@ -57,8 +58,11 @@ export class RdStore {
     if (!projectId) {
       this.resultState.set({ items: [], page: 1, pageSize: 50, total: 0 });
       this.stagesState.set([]);
+      this.loadingState.set(false);
       return;
     }
+    this.loadingState.set(true);
+    this.resultState.set(null);
     this.loadStages(projectId);
     this.load();
   }
@@ -76,16 +80,24 @@ export class RdStore {
     const query = this.queryState();
     if (!query.projectId) {
       this.resultState.set({ items: [], page: 1, pageSize: 50, total: 0 });
+      this.loadingState.set(false);
       return;
     }
 
+    const token = ++this.loadToken;
     this.loadingState.set(true);
     this.rdApi.listItems(query).subscribe({
       next: (result) => {
+        if (token !== this.loadToken) {
+          return;
+        }
         this.resultState.set(result);
         this.loadingState.set(false);
       },
       error: () => {
+        if (token !== this.loadToken) {
+          return;
+        }
         this.loadingState.set(false);
       },
     });

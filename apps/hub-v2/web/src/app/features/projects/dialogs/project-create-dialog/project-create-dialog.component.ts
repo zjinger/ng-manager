@@ -4,11 +4,13 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { DialogShellComponent } from '../../../../shared/ui/dialog/dialog-shell.component';
+import { DialogShellComponent } from '@shared/ui';
 import type { CreateProjectInput } from '../../models/project.model';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
 
 const DEFAULT_DRAFT: CreateProjectInput = {
-  projectKey: '',
   name: '',
   description: '',
   icon: '',
@@ -18,86 +20,78 @@ const DEFAULT_DRAFT: CreateProjectInput = {
 @Component({
   selector: 'app-project-create-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzInputModule, NzSelectModule, DialogShellComponent],
+  imports: [FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzFormModule, NzInputModule, NzSelectModule, DialogShellComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
       [width]="720"
       [title]="'新建项目'"
       [subtitle]="'先建立用于测试协作流和问题流转的基础项目数据。'"
-      [icon]="'appstore'"
+      [icon]="'folder-add'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body>
-        <form id="project-create-form" class="project-form dialog-form" (ngSubmit)="submitForm()">
-          <div class="project-form__grid dialog-form__grid">
-            <label class="field dialog-field">
-              <span class="dialog-field__label">项目名称</span>
-              <input nz-input [ngModel]="draft().name" name="name" (ngModelChange)="updateField('name', $event)" />
-            </label>
-
-            <label class="field dialog-field">
-              <span class="dialog-field__label">项目 Key</span>
-              <input
-                nz-input
-                placeholder="例如 HUB、RUNTIME"
-                [ngModel]="draft().projectKey"
-                name="projectKey"
-                (ngModelChange)="updateField('projectKey', $event)"
-              />
-            </label>
+        <form nz-form [nzLayout]="'vertical'">
+          <div class="row" nz-row  [nzGutter]="16"> 
+            <div class="col" nz-col  [nzSpan]="12">
+              <nz-form-item >
+              <nz-form-label nzRequired nzFor="email">项目名称</nz-form-label>
+              <nz-form-control nzErrorTip="请输入项目名称">
+                <input nz-input required="true" [ngModel]="draft().name" name="name" (ngModelChange)="updateField('name', $event)" />
+              </nz-form-control>
+            </nz-form-item>
+            </div>
+            <div class="col" nz-col  [nzSpan]="12"></div>
           </div>
-
-          <div class="project-form__grid dialog-form__grid">
-            <label class="field dialog-field">
-              <span class="dialog-field__label">可见性</span>
-              <nz-select [ngModel]="draft().visibility" name="visibility" (ngModelChange)="updateField('visibility', $event)">
-                <nz-option nzLabel="内部" nzValue="internal"></nz-option>
-                <nz-option nzLabel="私有" nzValue="private"></nz-option>
-              </nz-select>
-            </label>
-
-            <label class="field dialog-field">
-              <span class="dialog-field__label">图标</span>
-              <input
-                nz-input
-                placeholder="可先填写 emoji 或简写"
-                [ngModel]="draft().icon"
-                name="icon"
-                (ngModelChange)="updateField('icon', $event)"
-              />
-            </label>
+          <div class="row" nz-row  [nzGutter]="16">
+            <div class="col" nz-col  [nzSpan]="24" >
+            <nz-form-item >
+              <nz-form-label  nzFor="email">项目描述</nz-form-label>
+              <nz-form-control >
+                <textarea nz-input rows="4" placeholder="描述项目的业务边界、协作对象或当前阶段。" [ngModel]="draft().description" name="description" (ngModelChange)="updateField('description', $event)"></textarea>
+              </nz-form-control>
+            </nz-form-item>
+            </div>
           </div>
-
-          <label class="field dialog-field">
-            <span class="dialog-field__label">描述</span>
-            <textarea
-              nz-input
-              rows="4"
-              placeholder="描述项目的业务边界、协作对象或当前阶段。"
-              [ngModel]="draft().description"
-              name="description"
-              (ngModelChange)="updateField('description', $event)"
-            ></textarea>
-          </label>
+          <div class="row" nz-row  [nzGutter]="16">
+            <div class="col" nz-col  [nzSpan]="12">
+              <nz-form-item >
+                <nz-form-label  nzFor="visibility">图标</nz-form-label>
+                <nz-form-control >
+                  <input
+                    nz-input
+                    placeholder="可先填写 emoji 或简写"
+                    [ngModel]="draft().icon"
+                    name="icon"
+                    (ngModelChange)="updateField('icon', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="col" nz-col  [nzSpan]="12">
+              <nz-form-item >
+                <nz-form-label nzRequired nzTooltipTitle="内部公开：所有登录用户可见；私有：仅项目成员可见" [nzTooltipIcon]="'question-circle'" nzFor="visibility">可见性</nz-form-label>
+                <nz-form-control >
+                  <nz-select [ngModel]="draft().visibility" name="visibility" (ngModelChange)="updateField('visibility', $event)">
+                  <nz-option nzLabel="内部" nzValue="internal"></nz-option>
+                  <nz-option nzLabel="私有" nzValue="private"></nz-option>
+                </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
         </form>
       </div>
 
-      <div dialog-footer>
+      <ng-container dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
-        <button nz-button nzType="primary" [nzLoading]="busy()" [disabled]="!canSubmit()" type="submit" form="project-create-form">
+        <button nz-button nzType="primary" [nzLoading]="busy()" (click)="submitForm()" [disabled]="!canSubmit()" type="submit" >
+          <nz-icon nzType="check" nzTheme="outline"/>
           创建项目
         </button>
-      </div>
+      </ng-container>
     </app-dialog-shell>
   `,
-  styles: [
-    `
-      .project-form__grid {
-        gap: 16px;
-      }
-    `,
-  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectCreateDialogComponent {
@@ -121,7 +115,7 @@ export class ProjectCreateDialogComponent {
   }
 
   canSubmit(): boolean {
-    return !!this.draft().name?.trim() && !!this.draft().projectKey?.trim();
+    return !!this.draft().name?.trim();
   }
 
   submitForm(): void {
@@ -131,7 +125,6 @@ export class ProjectCreateDialogComponent {
     const draft = this.draft();
     this.create.emit({
       name: draft.name.trim(),
-      projectKey: draft.projectKey.trim().toUpperCase(),
       description: draft.description?.trim() || undefined,
       icon: draft.icon?.trim() || undefined,
       visibility: draft.visibility || 'internal',

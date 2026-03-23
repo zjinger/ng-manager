@@ -1,0 +1,1 @@
+export * from './view-toggle.component';

@@ -1,18 +1,21 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableComponent } from '@shared/ui';
 import type { ProjectSummary } from '../../models/project.model';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { NzButtonComponent, NzButtonModule } from "ng-zorro-antd/button";
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 @Component({
   selector: 'app-project-list-table',
   standalone: true,
-  imports: [DatePipe, DataTableComponent],
+  imports: [DatePipe, DataTableComponent, NzButtonModule, NzIconModule, NzTooltipModule, NzButtonComponent, NzPopconfirmModule],
   template: `
     <app-data-table>
       <div table-head class="project-table__head">
         <div>项目</div>
-        <div>Key</div>
         <div>可见性</div>
         <div>状态</div>
         <div>更新时间</div>
@@ -23,12 +26,14 @@ import type { ProjectSummary } from '../../models/project.model';
           <div class="project-row">
             <div class="project-cell project-cell--project">
               <div class="project-avatar">{{ avatarText(item.name) }}</div>
-              <div>
-                <div class="project-name">{{ item.name }}</div>
+              <div class="project-info">
+                <div class="project-name">
+                    <strong>{{ item.name }}</strong>
+                    <a nz-icon nz-tooltip="复制项目Key" nzType="copy" nzTheme="outline"></a>
+                  </div>
                 <div class="project-meta">{{ item.description || '暂无项目描述' }}</div>
               </div>
             </div>
-            <div class="project-cell project-cell--mono">{{ item.projectKey }}</div>
             <div class="project-cell">
               <span class="project-tag" [attr.data-visibility]="item.visibility">
                 {{ item.visibility === 'private' ? '私有' : '内部' }}
@@ -36,12 +41,29 @@ import type { ProjectSummary } from '../../models/project.model';
             </div>
             <div class="project-cell">
               <span class="project-tag" [attr.data-status]="item.status">
-                {{ item.status === 'active' ? '活跃' : '停用' }}
+                {{ item.status === 'active' ? '活跃' : '归档' }}
               </span>
             </div>
             <div class="project-cell project-cell--muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
             <div class="project-cell">
-              <button class="project-action" type="button" (click)="manageMembers.emit(item)">成员</button>
+              <a nz-button nz-tooltip="编辑" nzType="text" class="project-action" type="button" (click)="edit.emit(item)">
+                <nz-icon nzType="edit" nzTheme="outline" />
+              </a>
+              <a nz-button nz-tooltip="成员" nzType="text" class="project-action" type="button" (click)="manageMembers.emit(item)">
+                <nz-icon nzType="team" nzTheme="outline" />
+              </a>
+              <a nz-button nz-tooltip="项目配置" nzType="text" class="project-action" type="button" (click)="manageConfig.emit(item)">
+                <nz-icon nzType="setting" nzTheme="outline"/>
+              </a> 
+              @if(item.status === 'active'){
+                <a nz-button nz-tooltip="归档" nz-popconfirm="确定要归档该项目吗？" nzType="text" class="project-action" type="button" (nzOnConfirm)="archive.emit(item)">
+                  <nz-icon nzType="delete" nzTheme="outline" />
+                </a> 
+              }@else {
+                <a nz-button nz-tooltip="恢复" nz-popconfirm="确定要恢复该项目吗？" nzType="text" class="project-action" type="button" (nzOnConfirm)="restore.emit(item)">  
+                  <nz-icon nzType="reload" nzTheme="outline" />
+                </a>
+              }
             </div>
           </div>
         }
@@ -95,7 +117,16 @@ import type { ProjectSummary } from '../../models/project.model';
         flex-shrink: 0;
         box-shadow: 0 12px 24px rgba(79, 70, 229, 0.24);
       }
+      .project-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
       .project-name {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         font-weight: 700;
         color: var(--text-heading);
       }
@@ -103,10 +134,6 @@ import type { ProjectSummary } from '../../models/project.model';
       .project-cell--muted {
         font-size: 12px;
         color: var(--text-muted);
-      }
-      .project-cell--mono {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
       }
       .project-tag {
         display: inline-flex;
@@ -177,6 +204,10 @@ import type { ProjectSummary } from '../../models/project.model';
 export class ProjectListTableComponent {
   readonly items = input.required<ProjectSummary[]>();
   readonly manageMembers = output<ProjectSummary>();
+  readonly edit = output<ProjectSummary>();
+  readonly manageConfig = output<ProjectSummary>();
+  readonly archive = output<ProjectSummary>();
+  readonly restore = output<ProjectSummary>();
 
   avatarText(name: string): string {
     return name.slice(0, 1).toUpperCase();

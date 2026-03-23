@@ -153,9 +153,7 @@ export class RdBoardPageComponent {
   readonly subtitle = computed(() => `当前项目共 ${this.store.total()} 个研发项`);
 
   constructor() {
-    this.store.initialize();
-
-    effect(() => {
+    effect((onCleanup) => {
       const projectId = this.projectContext.currentProjectId();
       this.store.refreshForProject(projectId);
       this.selectedItem.set(null);
@@ -163,10 +161,12 @@ export class RdBoardPageComponent {
         this.members.set([]);
         return;
       }
-      this.projectApi.listMembers(projectId).subscribe({
+
+      const subscription = this.projectApi.listMembers(projectId).subscribe({
         next: (items) => this.members.set(items),
         error: () => this.members.set([]),
       });
+      onCleanup(() => subscription.unsubscribe());
     });
 
     effect(() => {

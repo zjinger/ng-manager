@@ -1,0 +1,99 @@
+<app-page-header title="项目管理" [subtitle]="subtitle()" />
+
+<app-page-toolbar>
+  <button
+    toolbar-primary
+    nz-button
+    nzType="primary"
+    class="toolbar__create"
+    (click)="dialogOpen.set(true)"
+  >
+    <nz-icon nzType="folder-add" nzTheme="outline" />
+    新建项目
+  </button>
+
+  <app-filter-bar toolbar-filters class="toolbar__filters">
+    <nz-select class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)">
+      <nz-option nzLabel="全部状态" nzValue=""></nz-option>
+      <nz-option nzLabel="活跃" nzValue="active"></nz-option>
+      <nz-option nzLabel="归档" nzValue="inactive"></nz-option>
+    </nz-select>
+
+    <button nz-button class="toolbar__filter-btn" (click)="applyFilters()">筛选</button>
+  </app-filter-bar>
+
+  <app-search-box
+    toolbar-search
+    class="toolbar__search"
+    placeholder="搜索项目名称或 Key"
+    [value]="keyword()"
+    (valueChange)="keyword.set($event)"
+    (submitted)="applyFilters()"
+  />
+</app-page-toolbar>
+
+<app-list-state
+  [loading]="store.loading()"
+  [empty]="store.items().length === 0"
+  loadingText="正在加载项目列表…"
+  emptyTitle="当前还没有项目"
+  emptyDescription="先创建一批测试项目。"
+>
+  <app-project-list-table
+    [items]="store.items()"
+    (manageMembers)="openMembersDialog($event)"
+    (edit)="openEditDialog($event)"
+    (manageConfig)="openConfigDialog($event)"
+    (archive)="archiveProject($event)"
+    (restore)="restoreProject($event)"
+  />
+</app-list-state>
+
+<app-project-create-dialog
+  [open]="dialogOpen()"
+  [busy]="store.busy()"
+  (cancel)="dialogOpen.set(false)"
+  (create)="createProject($event)"
+/>
+
+<app-project-edit-dialog
+  [open]="editDialogOpen()"
+  [busy]="editBusy()"
+  [project]="selectedProject()"
+  (cancel)="editDialogOpen.set(false)"
+  (save)="saveProject($event)"
+/>
+
+<app-project-config-dialog
+  [open]="configDialogOpen()"
+  [busy]="configBusy() || configLoading()"
+  [project]="configProject()"
+  [modules]="modules()"
+  [environments]="environments()"
+  [versions]="versions()"
+  [pendingModuleIds]="pendingModuleIds()"
+  [pendingEnvironmentIds]="pendingEnvironmentIds()"
+  [pendingVersionIds]="pendingVersionIds()"
+  (cancel)="closeConfigDialog()"
+  (createModule)="createModule($event)"
+  (updateModule)="updateModule($event)"
+  (removeModule)="removeModule($event)"
+  (createEnvironment)="createEnvironment($event)"
+  (updateEnvironment)="updateEnvironment($event)"
+  (removeEnvironment)="removeEnvironment($event)"
+  (createVersion)="createVersion($event)"
+  (updateVersion)="updateVersion($event)"
+  (removeVersion)="removeVersion($event)"
+/>
+
+<app-project-members-dialog
+  [open]="membersDialogOpen()"
+  [project]="selectedProject()"
+  [members]="members()"
+  [users]="users()"
+  [loading]="membersLoading()"
+  [busy]="membersBusy()"
+  (cancel)="closeMembersDialog()"
+  (add)="addMember($event)"
+  (remove)="removeMember($event)"
+/>

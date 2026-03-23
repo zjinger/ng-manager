@@ -96,18 +96,22 @@ export class IssueListPageComponent {
   });
 
   constructor() {
-    this.store.initialize();
-
-    effect(() => {
+    effect((onCleanup) => {
       const projectId = this.projectContext.currentProjectId();
+      this.store.refreshForProject(projectId);
+      if (this.selectedIssueId()) {
+        this.closeDetail();
+      }
       if (!projectId) {
         this.members.set([]);
         return;
       }
-      this.projectApi.listMembers(projectId).subscribe({
+
+      const subscription = this.projectApi.listMembers(projectId).subscribe({
         next: (members) => this.members.set(members),
         error: () => this.members.set([]),
       });
+      onCleanup(() => subscription.unsubscribe());
     });
   }
 

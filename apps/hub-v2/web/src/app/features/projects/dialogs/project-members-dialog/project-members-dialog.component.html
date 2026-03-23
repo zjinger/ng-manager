@@ -1,0 +1,122 @@
+<app-dialog-shell
+  [open]="open()"
+  [width]="820"
+  [title]="project() ? project()!.name + ' · 成员管理' : '项目成员'"
+  [subtitle]="''"
+  [icon]="'team'"
+  (cancel)="cancel.emit()"
+>
+  <div dialog-body class="members-dialog">
+    <section class="members-panel members-panel--form">
+      <div class="members-panel__title">添加成员</div>
+      <form nz-form [nzLayout]="'vertical'">
+        <div class="row" nz-row [nzGutter]="16">
+          <div class="col" nz-col [nzSpan]="8">
+            <nz-form-item>
+              <nz-form-label nzRequired nzFor="user">用户</nz-form-label>
+              <nz-form-control>
+                <nz-select
+                  nzShowSearch
+                  nzAllowClear
+                  nzPlaceHolder="选择用户"
+                  [ngModel]="selectedUserId()"
+                  (ngModelChange)="selectedUserId.set($event ?? '')"
+                  name="user"
+                >
+                  @for (item of availableUsers(); track item.id) {
+                    <nz-option
+                      [nzLabel]="item.displayName || item.username"
+                      [nzValue]="item.id"
+                    ></nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div class="col" nz-col [nzSpan]="8">
+            <nz-form-item>
+              <nz-form-label nzRequired nzFor="role">角色</nz-form-label>
+              <nz-form-control>
+                <nz-select
+                  name="role"
+                  [ngModel]="roleCode()"
+                  (ngModelChange)="roleCode.set($event || 'member')"
+                  nzPlaceHolder="选择角色"
+                >
+                  <nz-option nzLabel="成员" nzValue="member"></nz-option>
+                  <nz-option nzLabel="产品" nzValue="product"></nz-option>
+                  <nz-option nzLabel="UI" nzValue="ui"></nz-option>
+                  <nz-option nzLabel="前端开发" nzValue="frontend_dev"></nz-option>
+                  <nz-option nzLabel="后端开发" nzValue="backend_dev"></nz-option>
+                  <nz-option nzLabel="测试" nzValue="qa"></nz-option>
+                  <nz-option nzLabel="运维" nzValue="ops"></nz-option>
+                  <nz-option nzLabel="项目管理员" nzValue="project_admin"></nz-option>
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div class="col" nz-col [nzSpan]="5">
+            <nz-form-item>
+              <nz-form-label nzFor="isOwner">负责人</nz-form-label>
+              <nz-form-control>
+                <label for="isOwner" name="isOwner" nz-checkbox [(ngModel)]="isOwner"></label>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div class="col" nz-col [nzSpan]="3">
+            <button
+              nz-button
+              nzType="primary"
+              class="member-form__submit"
+              [disabled]="!selectedUserId()"
+              [nzLoading]="busy()"
+              (click)="submitAdd()"
+            >
+              添加成员
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="members-panel">
+      <div class="members-panel__header">
+        <div class="members-panel__title">当前成员</div>
+        <div class="members-panel__count">{{ members().length }}</div>
+      </div>
+
+      @if (loading()) {
+        <div class="members-empty">正在加载成员列表…</div>
+      } @else if (members().length === 0) {
+        <div class="members-empty">当前项目还没有成员。</div>
+      } @else {
+        <div class="members-list">
+          @for (member of members(); track member.id) {
+            <div class="member-item">
+              <div class="member-item__avatar">{{ avatarText(member.displayName) }}</div>
+              <div class="member-item__content">
+                <div class="member-item__name">
+                  {{ member.displayName }}
+                  @if (member.isOwner) {
+                    <span class="member-item__tag">项目管理员</span>
+                  }
+                </div>
+                <div class="member-item__meta">{{ member.roleCode || 'member' }}</div>
+              </div>
+              <a
+                nz-button
+                nzType="text"
+                nzDanger
+                [disabled]="busy()"
+                nz-popconfirm="确定要移除改成员吗？"
+                (nzOnConfirm)="remove.emit(member)"
+              >
+                <nz-icon nzType="minus" nzTheme="outline" />
+              </a>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</app-dialog-shell>

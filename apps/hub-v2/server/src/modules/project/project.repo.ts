@@ -1,10 +1,19 @@
 import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
 import type {
+  CreateProjectConfigItemInput,
+  CreateProjectVersionItemInput,
   ListProjectsQuery,
+  ProjectConfigItemEntity,
   ProjectEntity,
   ProjectListResult,
-  ProjectMemberEntity
+  ProjectMemberCandidate,
+  ProjectMemberEntity,
+  ProjectMemberRole,
+  ProjectVersionItemEntity,
+  UpdateProjectConfigItemInput,
+  UpdateProjectInput,
+  UpdateProjectVersionItemInput
 } from "./project.types";
 
 type ProjectRow = {
@@ -31,6 +40,36 @@ type ProjectMemberRow = {
   updated_at: string;
 };
 
+type UserCandidateRow = {
+  id: string;
+  username: string;
+  display_name: string | null;
+};
+
+type ProjectConfigRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  code: string | null;
+  enabled: number;
+  sort: number;
+  desc: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectVersionRow = {
+  id: string;
+  project_id: string;
+  version: string;
+  code: string | null;
+  enabled: number;
+  sort: number;
+  desc: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export class ProjectRepo {
   constructor(private readonly db: Database.Database) {}
 
@@ -40,9 +79,7 @@ export class ProjectRepo {
   }
 
   findByKey(projectKey: string): ProjectEntity | null {
-    const row = this.db
-      .prepare("SELECT * FROM projects WHERE project_key = ?")
-      .get(projectKey) as ProjectRow | undefined;
+    const row = this.db.prepare("SELECT * FROM projects WHERE project_key = ?").get(projectKey) as ProjectRow | undefined;
     return row ? this.mapProject(row) : null;
   }
 
@@ -66,6 +103,39 @@ export class ProjectRepo {
         entity.createdAt,
         entity.updatedAt
       );
+  }
+
+  update(id: string, patch: UpdateProjectInput & { updatedAt: string }): boolean {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+
+    if (patch.name !== undefined) {
+      fields.push("name = ?");
+      params.push(patch.name);
+    }
+    if (patch.description !== undefined) {
+      fields.push("description = ?");
+      params.push(patch.description ?? null);
+    }
+    if (patch.icon !== undefined) {
+      fields.push("icon = ?");
+      params.push(patch.icon ?? null);
+    }
+    if (patch.status !== undefined) {
+      fields.push("status = ?");
+      params.push(patch.status);
+    }
+    if (patch.visibility !== undefined) {
+      fields.push("visibility = ?");
+      params.push(patch.visibility);
+    }
+
+    fields.push("updated_at = ?");
+    params.push(patch.updatedAt);
+    params.push(id);
+
+    const result = this.db.prepare(`UPDATE projects SET ${fields.join(", ")} WHERE id = ?`).run(...params);
+    return result.changes > 0;
   }
 
   list(query: ListProjectsQuery): ProjectListResult {
@@ -200,6 +270,25 @@ export class ProjectRepo {
     return rows.map((row) => this.mapMember(row));
   }
 
+  listActiveUserCandidates(): ProjectMemberCandidate[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT id, username, display_name
+          FROM users
+          WHERE status = 'active'
+          ORDER BY updated_at DESC, created_at DESC
+        `
+      )
+      .all() as UserCandidateRow[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      username: row.username,
+      displayName: row.display_name
+    }));
+  }
+
   findMemberById(projectId: string, memberId: string): ProjectMemberEntity | null {
     const row = this.db
       .prepare(
@@ -256,9 +345,236 @@ export class ProjectRepo {
   }
 
   deleteMember(projectId: string, memberId: string): boolean {
+    const result = this.db.prepare("DELETE FROM project_members WHERE project_id = ? AND id = ?").run(projectId, memberId);
+    return result.changes > 0;
+  }
+
+  listModules(projectId: string): ProjectConfigItemEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+      SELECT *
+      FROM project_modules
+      WHERE project_id = ?
+      ORDER BY sort ASC, updated_at DESC, created_at DESC
+    `
+      )
+      .all(projectId) as ProjectConfigRow[];
+
+    return rows.map((row) => this.mapConfig(row));
+  }
+
+  addModule(projectId: string, input: CreateProjectConfigItemInput & { id: string; createdAt: string; updatedAt: string }): void {
+    this.db
+      .prepare(
+        `
+      INSERT INTO project_modules (id, project_id, name, code, enabled, sort, "desc", created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        input.id,
+        projectId,
+        input.name,
+        input.code ?? null,
+        input.enabled === false ? 0 : 1,
+        input.sort ?? 0,
+        input.description?.trim() || null,
+        input.createdAt,
+        input.updatedAt
+      );
+  }
+
+  updateModule(projectId: string, moduleId: string, patch: UpdateProjectConfigItemInput & { updatedAt: string }): boolean {
+    return this.updateConfigTable("project_modules", projectId, moduleId, patch);
+  }
+
+  removeModule(projectId: string, moduleId: string): boolean {
+    const result = this.db.prepare("DELETE FROM project_modules WHERE id = ? AND project_id = ?").run(moduleId, projectId);
+    return result.changes > 0;
+  }
+
+  listEnvironments(projectId: string): ProjectConfigItemEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+      SELECT *
+      FROM project_environments
+      WHERE project_id = ?
+      ORDER BY sort ASC, updated_at DESC, created_at DESC
+    `
+      )
+      .all(projectId) as ProjectConfigRow[];
+
+    return rows.map((row) => this.mapConfig(row));
+  }
+
+  addEnvironment(
+    projectId: string,
+    input: CreateProjectConfigItemInput & { id: string; createdAt: string; updatedAt: string }
+  ): void {
+    this.db
+      .prepare(
+        `
+      INSERT INTO project_environments (id, project_id, name, code, enabled, sort, "desc", created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        input.id,
+        projectId,
+        input.name,
+        input.code ?? null,
+        input.enabled === false ? 0 : 1,
+        input.sort ?? 0,
+        input.description?.trim() || null,
+        input.createdAt,
+        input.updatedAt
+      );
+  }
+
+  updateEnvironment(
+    projectId: string,
+    environmentId: string,
+    patch: UpdateProjectConfigItemInput & { updatedAt: string }
+  ): boolean {
+    return this.updateConfigTable("project_environments", projectId, environmentId, patch);
+  }
+
+  removeEnvironment(projectId: string, environmentId: string): boolean {
     const result = this.db
-      .prepare("DELETE FROM project_members WHERE project_id = ? AND id = ?")
-      .run(projectId, memberId);
+      .prepare("DELETE FROM project_environments WHERE id = ? AND project_id = ?")
+      .run(environmentId, projectId);
+    return result.changes > 0;
+  }
+
+  listVersions(projectId: string): ProjectVersionItemEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+      SELECT *
+      FROM project_versions
+      WHERE project_id = ?
+      ORDER BY sort ASC, updated_at DESC, created_at DESC
+    `
+      )
+      .all(projectId) as ProjectVersionRow[];
+
+    return rows.map((row) => this.mapVersion(row));
+  }
+
+  addVersion(projectId: string, input: CreateProjectVersionItemInput & { id: string; createdAt: string; updatedAt: string }): void {
+    this.db
+      .prepare(
+        `
+      INSERT INTO project_versions (id, project_id, version, code, enabled, sort, "desc", created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        input.id,
+        projectId,
+        input.version,
+        input.code ?? null,
+        input.enabled === false ? 0 : 1,
+        input.sort ?? 0,
+        input.description?.trim() || null,
+        input.createdAt,
+        input.updatedAt
+      );
+  }
+
+  updateVersion(projectId: string, versionId: string, patch: UpdateProjectVersionItemInput & { updatedAt: string }): boolean {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+
+    if (patch.version !== undefined) {
+      fields.push("version = ?");
+      params.push(patch.version);
+    }
+    if (patch.code !== undefined) {
+      fields.push("code = ?");
+      params.push(patch.code ?? null);
+    }
+    if (patch.enabled !== undefined) {
+      fields.push("enabled = ?");
+      params.push(patch.enabled ? 1 : 0);
+    }
+    if (patch.sort !== undefined) {
+      fields.push("sort = ?");
+      params.push(patch.sort);
+    }
+    if (patch.description !== undefined) {
+      fields.push(`"desc" = ?`);
+      params.push(patch.description ?? null);
+    }
+
+    fields.push("updated_at = ?");
+    params.push(patch.updatedAt);
+    params.push(versionId, projectId);
+
+    const result = this.db
+      .prepare(
+        `
+      UPDATE project_versions
+      SET ${fields.join(", ")}
+      WHERE id = ? AND project_id = ?
+    `
+      )
+      .run(...params);
+
+    return result.changes > 0;
+  }
+
+  removeVersion(projectId: string, versionId: string): boolean {
+    const result = this.db.prepare("DELETE FROM project_versions WHERE id = ? AND project_id = ?").run(versionId, projectId);
+    return result.changes > 0;
+  }
+
+  private updateConfigTable(
+    table: "project_modules" | "project_environments",
+    projectId: string,
+    itemId: string,
+    patch: UpdateProjectConfigItemInput & { updatedAt: string }
+  ): boolean {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+
+    if (patch.name !== undefined) {
+      fields.push("name = ?");
+      params.push(patch.name);
+    }
+    if (patch.code !== undefined) {
+      fields.push("code = ?");
+      params.push(patch.code ?? null);
+    }
+    if (patch.enabled !== undefined) {
+      fields.push("enabled = ?");
+      params.push(patch.enabled ? 1 : 0);
+    }
+    if (patch.sort !== undefined) {
+      fields.push("sort = ?");
+      params.push(patch.sort);
+    }
+    if (patch.description !== undefined) {
+      fields.push(`"desc" = ?`);
+      params.push(patch.description ?? null);
+    }
+
+    fields.push("updated_at = ?");
+    params.push(patch.updatedAt);
+    params.push(itemId, projectId);
+
+    const result = this.db
+      .prepare(
+        `
+      UPDATE ${table}
+      SET ${fields.join(", ")}
+      WHERE id = ? AND project_id = ?
+    `
+      )
+      .run(...params);
+
     return result.changes > 0;
   }
 
@@ -282,11 +598,56 @@ export class ProjectRepo {
       projectId: row.project_id,
       userId: row.user_id,
       displayName: row.display_name,
-      roleCode: row.role_code,
+      roleCode: this.mapMemberRole(row.role_code),
       isOwner: row.is_owner === 1,
       joinedAt: row.joined_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  private mapConfig(row: ProjectConfigRow): ProjectConfigItemEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      name: row.name,
+      code: row.code,
+      enabled: row.enabled === 1,
+      sort: row.sort,
+      description: row.desc,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapVersion(row: ProjectVersionRow): ProjectVersionItemEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      version: row.version,
+      code: row.code,
+      enabled: row.enabled === 1,
+      sort: row.sort,
+      description: row.desc,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapMemberRole(value: string): ProjectMemberRole {
+    const role = value.trim();
+    if (
+      role === "member" ||
+      role === "product" ||
+      role === "ui" ||
+      role === "frontend_dev" ||
+      role === "backend_dev" ||
+      role === "qa" ||
+      role === "ops" ||
+      role === "project_admin"
+    ) {
+      return role;
+    }
+    return "member";
   }
 }

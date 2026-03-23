@@ -13,6 +13,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
       [nzFooter]="null"
       [nzWidth]="width()"
       [nzClosable]="false"
+      [nzMaskClosable]="false"
       [nzClassName]="resolvedModalClass()"
       (nzOnCancel)="cancel.emit()"
     >
@@ -21,7 +22,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
           <div class="dialog-shell__heading">
             <h2>
               @if (icon()) {
-                <span nz-icon [nzType]="icon()!"></span>
+                <span nz-icon [nzType]="icon()!" nzTheme="fill"></span>
               }
               {{ title() }}
             </h2>
@@ -106,8 +107,9 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
         margin-top: 24px;
         border-top: 1px solid var(--border-color-soft);
       }
-      .dialog-shell__footer > * + * {
-        margin-left: 16px;
+      .dialog-shell__footer {
+        display: flex;
+        gap:16px;
       }
     `,
   ],

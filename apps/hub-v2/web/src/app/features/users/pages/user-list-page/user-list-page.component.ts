@@ -12,6 +12,7 @@ import type { UserEntity } from '../../models/user.model';
 import { UserStore } from '../../store/user.store';
 import { UserFormDialogComponent } from '../../dialogs/user-form-dialog/user-form-dialog.component';
 import { UserListTableComponent } from '../../components/user-list-table/user-list-table.component';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-user-list-page',
@@ -20,6 +21,7 @@ import { UserListTableComponent } from '../../components/user-list-table/user-li
     FormsModule,
     NzButtonModule,
     NzSelectModule,
+    NzIconModule,
     PageHeaderComponent,
     PageToolbarComponent,
     SearchBoxComponent,
@@ -33,7 +35,10 @@ import { UserListTableComponent } from '../../components/user-list-table/user-li
     <app-page-header title="用户管理" [subtitle]="subtitle()" />
 
     <app-page-toolbar>
-      <button toolbar-primary nz-button nzType="primary" class="toolbar__create" (click)="openCreate()">新建用户</button>
+      <button toolbar-primary nz-button nzType="primary" class="toolbar__create" (click)="openCreate()">
+        <nz-icon nzType="user-add" nzTheme="outline" />
+        新建用户
+      </button>
 
       <app-filter-bar toolbar-filters class="toolbar__filters">
         <nz-select class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)">
