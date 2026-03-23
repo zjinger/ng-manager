@@ -4,6 +4,9 @@ import type { AnnouncementCommandContract, AnnouncementQueryContract } from "../
 import type { AuthCommandContract, AuthQueryContract } from "../modules/auth/auth.contract";
 import { DashboardService } from "../modules/dashboard/dashboard.service";
 import type { DashboardQueryContract } from "../modules/dashboard/dashboard.contract";
+import type { FeedbackQueryContract } from "../modules/feedback/feedback.contract";
+import { FeedbackRepo } from "../modules/feedback/feedback.repo";
+import { FeedbackService } from "../modules/feedback/feedback.service";
 import { DocumentRepo } from "../modules/document/document.repo";
 import { DocumentService } from "../modules/document/document.service";
 import type { DocumentCommandContract, DocumentQueryContract } from "../modules/document/document.contract";
@@ -61,6 +64,7 @@ export type AppContainer = {
   announcementQuery: AnnouncementQueryContract;
   dashboardQuery: DashboardQueryContract;
   notificationQuery: NotificationQueryContract;
+  feedbackQuery: FeedbackQueryContract;
   documentCommand: DocumentCommandContract;
   documentQuery: DocumentQueryContract;
   issueCommand: IssueCommandContract;
@@ -115,6 +119,8 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const rdService = new RdService(rdRepo, projectAccess, eventBus);
   const dashboardService = new DashboardService(projectAccess, announcementService, issueService, rdService);
   const notificationService = new NotificationService(projectService, announcementService, issueService, rdService);
+  const feedbackRepo = new FeedbackRepo(db);
+  const feedbackService = new FeedbackService(feedbackRepo);
   const releaseRepo = new ReleaseRepo(db);
   const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus);
   const sharedConfigRepo = new SharedConfigRepo(db);
@@ -134,6 +140,7 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     announcementQuery: announcementService,
     dashboardQuery: dashboardService,
     notificationQuery: notificationService,
+    feedbackQuery: feedbackService,
     documentCommand: documentService,
     documentQuery: documentService,
     issueCommand: issueService,

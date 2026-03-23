@@ -38,18 +38,19 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       .profile-hero {
         position: relative;
         overflow: hidden;
-        border-radius: 24px;
-        background: linear-gradient(135deg, #4338ca, #6366f1 56%, #818cf8);
         box-shadow: 0 24px 60px rgba(79, 70, 229, 0.26);
+        background: linear-gradient(135deg, var(--primary-600) 0%, #7C3AED 50%, #EC4899 100%);
+        border-radius: var(--border-radius);
+        padding: 32px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
       }
 
       .profile-hero__bg {
         position: absolute;
         inset: 0;
-        background:
-          radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.18), transparent 24%),
-          radial-gradient(circle at 82% 24%, rgba(255, 255, 255, 0.12), transparent 22%),
-          linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 56%);
+        background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
       }
 
       .profile-hero__content {
@@ -58,7 +59,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         display: flex;
         align-items: center;
         gap: 24px;
-        padding: 28px 32px;
       }
 
       .profile-avatar-large {

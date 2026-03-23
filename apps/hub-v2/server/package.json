@@ -9,12 +9,15 @@
     "start": "node dist/index.js",
     "build": "rimraf dist && tsc -p tsconfig.json",
     "db:migrate": "tsx src/db/migrate-cli.ts",
-    "db:seed": "tsx src/db/seed-cli.ts"
+    "db:seed": "tsx src/db/seed-cli.ts",
+    "db:migrate:from-v1": "tsx src/db/migrate-from-v1.ts",
+    "db:verify:from-v1": "tsx src/db/migrate-from-v1.verify.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^9.4.0",
+    "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7",
     "fastify": "^5.8.0",
@@ -23,6 +26,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.13.10",
     "rimraf": "^6.1.3",

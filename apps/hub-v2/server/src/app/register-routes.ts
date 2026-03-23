@@ -3,6 +3,7 @@ import announcementPublicRoutes from "../modules/announcement/announcement-publi
 import announcementRoutes from "../modules/announcement/announcement.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
+import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
 import notificationRoutes from "../modules/notifications/notification.routes";
@@ -24,6 +25,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(authRoutes, { prefix: "/api/admin" });
   await app.register(announcementRoutes, { prefix: "/api/admin" });
   await app.register(dashboardRoutes, { prefix: "/api/admin" });
+  await app.register(feedbackRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });
   await app.register(notificationRoutes, { prefix: "/api/admin" });
   await app.register(issueRoutes, { prefix: "/api/admin" });
