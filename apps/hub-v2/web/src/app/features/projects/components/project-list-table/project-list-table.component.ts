@@ -44,7 +44,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
                 {{ item.status === 'active' ? '活跃' : '归档' }}
               </span>
             </div>
-            <div class="project-cell project-cell--muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+            <div class="project-cell project-cell--muted">{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
             <div class="project-cell">
               <a nz-button nz-tooltip="编辑" nzType="text" class="project-action" type="button" (click)="edit.emit(item)">
                 <nz-icon nzType="edit" nzTheme="outline" />

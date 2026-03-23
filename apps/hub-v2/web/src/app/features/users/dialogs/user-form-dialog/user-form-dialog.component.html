@@ -9,54 +9,6 @@
   (cancel)="cancel.emit()"
 >
   <div dialog-body>
-    <!-- <form id="user-form" class="user-form dialog-form" (ngSubmit)="submitForm()">
-          <div class="user-form__grid dialog-form__grid">
-            <label class="field dialog-field">
-              <span class="dialog-field__label">用户名</span>
-              <input
-                nz-input
-                [disabled]="mode() === 'edit'"
-                [ngModel]="draft().username"
-                name="username"
-                (ngModelChange)="updateField('username', $event)"
-              />
-            </label>
-            <label class="field dialog-field">
-              <span class="dialog-field__label">显示名</span>
-              <input nz-input [ngModel]="draft().displayName" name="displayName" (ngModelChange)="updateField('displayName', $event)" />
-            </label>
-          </div>
-
-          <div class="user-form__grid dialog-form__grid">
-            <label class="field dialog-field">
-              <span class="dialog-field__label">邮箱</span>
-              <input nz-input [ngModel]="draft().email" name="email" (ngModelChange)="updateField('email', $event)" />
-            </label>
-            <label class="field dialog-field">
-              <span class="dialog-field__label">手机号</span>
-              <input nz-input [ngModel]="draft().mobile" name="mobile" (ngModelChange)="updateField('mobile', $event)" />
-            </label>
-          </div>
-
-          <div class="user-form__grid dialog-form__grid">
-            <label class="field dialog-field">
-              <span class="dialog-field__label">职能</span>
-              <input nz-input [ngModel]="draft().titleCode" name="titleCode" (ngModelChange)="updateField('titleCode', $event)" />
-            </label>
-            <label class="field dialog-field">
-              <span class="dialog-field__label">状态</span>
-              <nz-select [ngModel]="draft().status" name="status" (ngModelChange)="updateField('status', $event)">
-                <nz-option nzLabel="活跃" nzValue="active"></nz-option>
-                <nz-option nzLabel="停用" nzValue="inactive"></nz-option>
-              </nz-select>
-            </label>
-          </div>
-
-          <label class="field dialog-field">
-            <span class="dialog-field__label">备注</span>
-            <textarea nz-input rows="4" [ngModel]="draft().remark" name="remark" (ngModelChange)="updateField('remark', $event)"></textarea>
-          </label>
-        </form> -->
     <form nz-form [nzLayout]="'vertical'">
       <div class="row" nz-row [nzGutter]="16">
         <div class="col" nz-col [nzSpan]="12">

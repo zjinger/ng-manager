@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableComponent } from '@shared/ui';
 import type { UserEntity } from '../../models/user.model';
 import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.component';
 
@@ -34,7 +34,7 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
             <div class="user-cell">{{ item.mobile || '—' }}</div>
             <div class="user-cell">{{ item.titleCode || '—' }}</div>
             <div class="user-cell"><app-user-status-tag [status]="item.status" /></div>
-            <div class="user-cell user-cell--muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+            <div class="user-cell user-cell--muted">{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
             <div class="user-cell">
               <button class="edit-btn" type="button" (click)="edit.emit(item)">编辑</button>
             </div>

@@ -36,7 +36,14 @@ export class UserService implements UserCommandContract, UserQueryContract {
   }
 
   async list(query: ListUsersQuery, ctx: RequestContext): Promise<UserListResult> {
-    requireAdmin(ctx);
+    if (!ctx.userId?.trim() && !ctx.roles.includes("admin")) {
+      return {
+        items: [],
+        page: query.page && query.page > 0 ? query.page : 1,
+        pageSize: query.pageSize && query.pageSize > 0 ? query.pageSize : 20,
+        total: 0
+      };
+    }
     return this.repo.list(query);
   }
 
@@ -63,7 +70,9 @@ export class UserService implements UserCommandContract, UserQueryContract {
   }
 
   async getById(id: string, ctx: RequestContext): Promise<UserEntity> {
-    requireAdmin(ctx);
+    if (!ctx.userId?.trim() && !ctx.roles.includes("admin")) {
+      throw new AppError("USER_ACCESS_DENIED", "get user forbidden", 403);
+    }
     const user = this.repo.findById(id);
     if (!user) {
       throw new AppError("USER_NOT_FOUND", `user not found: ${id}`, 404);
