@@ -1,0 +1,62 @@
+<aside class="sidebar" [class.sidebar--collapsed]="collapsed()">
+  <div class="sidebar__brand">
+    <div class="brand__icon">
+      <img src="/favicon.ico" alt="NGM Hub" />
+    </div>
+    @if (!collapsed()) {
+      <div class="brand__text">
+        <div class="brand__name">NGM Hub</div>
+        <span class="brand__badge">v2</span>
+      </div>
+    }
+  </div>
+
+  @if (!collapsed()) {
+    <app-project-switcher />
+  }
+
+  <nav class="nav">
+    @for (section of items(); track section.key) {
+      <section class="nav__section">
+        @if (!collapsed()) {
+          <div class="nav__section-label">{{ section.label }}</div>
+        }
+
+        @for (item of section.items; track item.key) {
+          <a
+            class="nav__item"
+            [routerLink]="item.route"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          >
+            <span class="nav__item-main">
+              <span nz-icon [nzType]="item.icon"></span>
+              @if (!collapsed()) {
+                <span>{{ item.label }}</span>
+              }
+            </span>
+
+            @if (!collapsed() && (badgeFor(item.key) || item.badge)) {
+              <span class="nav__item-badge" [attr.data-tone]="item.tone || 'default'">
+                {{ badgeFor(item.key) || item.badge }}
+              </span>
+            }
+          </a>
+        }
+      </section>
+    }
+  </nav>
+
+  <a class="sidebar__user" [routerLink]="['/profile']">
+    <div class="sidebar__user-avatar">
+      {{ (currentUser()?.nickname || currentUser()?.username || 'U').slice(0, 1) }}
+    </div>
+    @if (!collapsed()) {
+      <div class="sidebar__user-info">
+        <div class="sidebar__user-name">{{ currentUser()?.nickname || currentUser()?.username || 'Profile' }}</div>
+        <div class="sidebar__user-role">{{ currentUser()?.role || 'member' }}</div>
+      </div>
+      <span nz-icon nzType="user"></span>
+    }
+  </a>
+</aside>

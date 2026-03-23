@@ -66,6 +66,17 @@ export interface IssueDashboardTodo {
   projectId: string;
 }
 
+export interface IssueDashboardActivity {
+  kind: "issue_activity";
+  entityId: string;
+  code: string;
+  title: string;
+  action: string;
+  summary: string | null;
+  createdAt: string;
+  projectId: string;
+}
+
 export interface CreateIssueInput {
   projectId: string;
   title: string;

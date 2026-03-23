@@ -1,0 +1,10 @@
+<div class="shell" [class.shell--collapsed]="uiStore.sidebarCollapsed()">
+  <app-sidebar [items]="navItems" [collapsed]="uiStore.sidebarCollapsed()" />
+
+  <div class="shell__main">
+    <app-topbar />
+    <main class="shell__content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

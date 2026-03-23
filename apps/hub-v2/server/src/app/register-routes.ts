@@ -5,6 +5,7 @@ import authRoutes from "../modules/auth/auth.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
+import notificationRoutes from "../modules/notifications/notification.routes";
 import issueAttachmentRoutes from "../modules/issue/attachment/issue-attachment.routes";
 import issueCommentRoutes from "../modules/issue/comment/issue-comment.routes";
 import issueParticipantRoutes from "../modules/issue/participant/issue-participant.routes";
@@ -24,6 +25,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(announcementRoutes, { prefix: "/api/admin" });
   await app.register(dashboardRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });
+  await app.register(notificationRoutes, { prefix: "/api/admin" });
   await app.register(issueRoutes, { prefix: "/api/admin" });
   await app.register(issueAttachmentRoutes, { prefix: "/api/admin" });
   await app.register(issueCommentRoutes, { prefix: "/api/admin" });

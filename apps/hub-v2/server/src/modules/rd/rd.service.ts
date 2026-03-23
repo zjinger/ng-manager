@@ -23,6 +23,7 @@ import type {
   ListRdItemsQuery,
   ListRdStagesQuery,
   RdAction,
+  RdDashboardActivity,
   RdDashboardTodo,
   RdItemEntity,
   RdItemListResult,
@@ -281,6 +282,15 @@ export class RdService implements RdCommandContract, RdQueryContract {
     _ctx: RequestContext
   ): Promise<RdDashboardTodo[]> {
     return this.repo.listTodosForDashboard(projectIds, userId, limit);
+  }
+
+  async listActivitiesForDashboard(
+    projectIds: string[],
+    userId: string,
+    limit: number,
+    _ctx: RequestContext
+  ): Promise<RdDashboardActivity[]> {
+    return this.repo.listActivitiesForDashboard(projectIds, userId, limit);
   }
 
   private requireStage(id: string): RdStageEntity {

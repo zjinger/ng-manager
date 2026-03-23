@@ -7,6 +7,8 @@ import type { DashboardQueryContract } from "../modules/dashboard/dashboard.cont
 import { DocumentRepo } from "../modules/document/document.repo";
 import { DocumentService } from "../modules/document/document.service";
 import type { DocumentCommandContract, DocumentQueryContract } from "../modules/document/document.contract";
+import type { NotificationQueryContract } from "../modules/notifications/notification.contract";
+import { NotificationService } from "../modules/notifications/notification.service";
 import type { IssueCommandContract, IssueQueryContract } from "../modules/issue/issue.contract";
 import type { IssueAttachmentCommandContract, IssueAttachmentQueryContract } from "../modules/issue/attachment/issue-attachment.contract";
 import { IssueAttachmentRepo } from "../modules/issue/attachment/issue-attachment.repo";
@@ -58,6 +60,7 @@ export type AppContainer = {
   announcementCommand: AnnouncementCommandContract;
   announcementQuery: AnnouncementQueryContract;
   dashboardQuery: DashboardQueryContract;
+  notificationQuery: NotificationQueryContract;
   documentCommand: DocumentCommandContract;
   documentQuery: DocumentQueryContract;
   issueCommand: IssueCommandContract;
@@ -111,6 +114,7 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const rdRepo = new RdRepo(db);
   const rdService = new RdService(rdRepo, projectAccess, eventBus);
   const dashboardService = new DashboardService(projectAccess, announcementService, issueService, rdService);
+  const notificationService = new NotificationService(projectService, announcementService, issueService, rdService);
   const releaseRepo = new ReleaseRepo(db);
   const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus);
   const sharedConfigRepo = new SharedConfigRepo(db);
@@ -129,6 +133,7 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     announcementCommand: announcementService,
     announcementQuery: announcementService,
     dashboardQuery: dashboardService,
+    notificationQuery: notificationService,
     documentCommand: documentService,
     documentQuery: documentService,
     issueCommand: issueService,

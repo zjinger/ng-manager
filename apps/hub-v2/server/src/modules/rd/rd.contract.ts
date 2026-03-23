@@ -7,6 +7,7 @@ import type {
   ListRdStagesQuery,
   RdItemEntity,
   RdDashboardTodo,
+  RdDashboardActivity,
   RdItemListResult,
   RdLogEntity,
   RdStageEntity,
@@ -35,4 +36,10 @@ export interface RdQueryContract {
   countAssignedForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   countReviewingForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   listTodosForDashboard(projectIds: string[], userId: string, limit: number, ctx: RequestContext): Promise<RdDashboardTodo[]>;
+  listActivitiesForDashboard(
+    projectIds: string[],
+    userId: string,
+    limit: number,
+    ctx: RequestContext
+  ): Promise<RdDashboardActivity[]>;
 }

@@ -1,0 +1,78 @@
+import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
+
+export const routes: Routes = [
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/auth/pages/login-page/login-page.component').then(
+        (m) => m.LoginPageComponent
+      ),
+  },
+  {
+    path: '',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./core/layout/app-shell/app-shell.component').then(
+        (m) => m.AppShellComponent
+      ),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'dashboard',
+      },
+      {
+        path: 'dashboard',
+        loadChildren: () =>
+          import('./features/dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
+      },
+      {
+        path: 'issues',
+        loadChildren: () =>
+          import('./features/issues/routes').then((m) => m.ISSUE_ROUTES),
+      },
+      {
+        path: 'rd',
+        loadChildren: () =>
+          import('./features/rd/routes').then((m) => m.RD_ROUTES),
+      },
+      {
+        path: 'content',
+        loadChildren: () =>
+          import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
+      },
+      {
+        path: 'projects',
+        loadChildren: () =>
+          import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
+      },
+      {
+        path: 'users',
+        loadChildren: () =>
+          import('./features/users/routes').then((m) => m.USER_ROUTES),
+      },
+      {
+        path: 'shared-config',
+        loadChildren: () =>
+          import('./features/shared-config/routes').then(
+            (m) => m.SHARED_CONFIG_ROUTES
+          ),
+      },
+      {
+        path: 'profile',
+        loadChildren: () =>
+          import('./features/profile/routes').then((m) => m.PROFILE_ROUTES),
+      },
+      {
+        path: 'notifications',
+        loadChildren: () =>
+          import('./features/notifications/routes').then((m) => m.NOTIFICATION_ROUTES),
+      },
+    ],
+  },
+  {
+    path: '**',
+    redirectTo: 'dashboard',
+  },
+];

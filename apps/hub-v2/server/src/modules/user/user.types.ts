@@ -26,6 +26,15 @@ export interface CreateUserInput {
   remark?: string;
 }
 
+export interface UpdateUserInput {
+  displayName?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  titleCode?: string | null;
+  status?: UserStatus;
+  remark?: string | null;
+}
+
 export interface ListUsersQuery {
   page?: number;
   pageSize?: number;

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
-import { createUserSchema, listUsersQuerySchema } from "./user.schema";
+import { createUserSchema, listUsersQuerySchema, updateUserSchema } from "./user.schema";
 
 export default async function userRoutes(app: FastifyInstance) {
   app.get("/users", async (request) => {
@@ -21,5 +21,12 @@ export default async function userRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const params = request.params as { userId: string };
     return ok(await app.container.userQuery.getById(params.userId, ctx));
+  });
+
+  app.patch("/users/:userId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { userId: string };
+    const body = updateUserSchema.parse(request.body);
+    return ok(await app.container.userCommand.update(params.userId, body, ctx), "user updated");
   });
 }

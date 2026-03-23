@@ -21,6 +21,7 @@ import type {
   CloseIssueInput,
   CreateIssueInput,
   IssueAction,
+  IssueDashboardActivity,
   IssueEntity,
   IssueDashboardTodo,
   IssueListResult,
@@ -270,6 +271,15 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     _ctx: RequestContext
   ): Promise<IssueDashboardTodo[]> {
     return this.repo.listTodosForDashboard(projectIds, userId, limit);
+  }
+
+  async listActivitiesForDashboard(
+    projectIds: string[],
+    userId: string,
+    limit: number,
+    _ctx: RequestContext
+  ): Promise<IssueDashboardActivity[]> {
+    return this.repo.listActivitiesForDashboard(projectIds, userId, limit);
   }
 
   private async requireByIdWithAccess(id: string, ctx: RequestContext, action: string): Promise<IssueEntity> {

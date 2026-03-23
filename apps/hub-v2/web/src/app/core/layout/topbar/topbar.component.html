@@ -1,0 +1,57 @@
+<header class="topbar">
+  <div class="topbar__breadcrumb">
+    <button nz-button nzType="text" class="topbar__icon-btn topbar__sidebar-toggle" (click)="toggleSidebar()">
+      <span nz-icon [nzType]="sidebarCollapsed() ? 'menu-unfold' : 'menu-fold'"></span>
+    </button>
+    <a [routerLink]="['/dashboard']">NGM Hub</a>
+    @for (item of breadcrumbs(); track $index) {
+      <span class="breadcrumb__sep">/</span>
+      @if (item.route) {
+        <a class="breadcrumb__link" [routerLink]="[item.route]">{{ item.label }}</a>
+      } @else {
+        <span class="breadcrumb__current">{{ item.label }}</span>
+      }
+    }
+  </div>
+
+  <div class="topbar__actions">
+    <div class="topbar__search">
+      <span nz-icon nzType="search"></span>
+      <span>搜索问题、研发项、文档…</span>
+      <kbd>Ctrl K</kbd>
+    </div>
+
+    <button
+      nz-button
+      nzType="text"
+      class="topbar__icon-btn"
+      nzShape="circle"
+      [attr.aria-label]="isDark() ? '切换为浅色主题' : '切换为暗黑主题'"
+      (click)="toggleTheme()"
+    >
+      <span nz-icon [nzType]="isDark() ? 'sun' : 'moon'"></span>
+    </button>
+
+    <app-notification-bell />
+
+    <a class="topbar__user" nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="click" nzPlacement="bottomRight" [nzOverlayStyle]="{'width': '100%'}">
+      <span class="topbar__user-avatar">{{ userInitial() }}</span>
+      <span class="topbar__user-name">{{ currentUser()?.nickname || currentUser()?.username || 'Profile' }}</span>
+      <span nz-icon nzType="down"></span>
+    </a>
+  </div>
+</header>
+
+<nz-dropdown-menu #userMenu="nzDropdownMenu">
+  <ul nz-menu>
+    <li nz-menu-item [routerLink]="['/profile']" class="user-menu__item">
+      <span nz-icon nzType="user"></span>
+      <span>个人中心</span>
+    </li>
+    <li nz-menu-divider></li>
+    <li nz-menu-item (click)="logout()" class="user-menu__item">
+      <span nz-icon nzType="logout"></span>
+      <span>退出</span>
+    </li>
+  </ul>
+</nz-dropdown-menu>

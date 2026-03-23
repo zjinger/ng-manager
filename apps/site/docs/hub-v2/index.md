@@ -33,13 +33,15 @@ features:
 - [03 数据库设计文档](/hub-v2/03-database-design)：定义核心表结构、索引、迁移拆分和 v1 到 v2 的数据映射原则。
 - [04 API 设计文档](/hub-v2/04-api-design)：定义 HTTP 资源路径、统一响应、错误码、分页、DTO 和 WebSocket 事件模型。
 - [05 实施路线图](/hub-v2/05-implementation-roadmap)：把设计文档收束成阶段、Epic、Story、Task 和执行顺序。
+- [06 Web 架构设计文档](/hub-v2/06-web-architecture)：定义前端目录结构、Core/Shared/Features 分层、UI 组件边界、状态边界与前端实施顺序。
 
 ## 推荐阅读顺序
 
 1. 先读 [01 实施文档](/hub-v2/01-hub-redesign-implementation-plan)，确认系统定位、目标与范围。
 2. 再读 [02 架构设计文档](/hub-v2/02-architecture-design) 和 [03 数据库设计文档](/hub-v2/03-database-design)，冻结核心设计件。
 3. 接着读 [04 API 设计文档](/hub-v2/04-api-design)，统一前后端接口语义。
-4. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
+4. 再读 [06 Web 架构设计文档](/hub-v2/06-web-architecture)，冻结前端目录、组件和状态边界。
+5. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
 
 ## 当前文档集覆盖范围
 
@@ -51,6 +53,7 @@ features:
 - 数据库建模、索引与 migration 策略
 - HTTP API 与 WS 事件规范
 - 阶段推进方式与任务映射
+- 前端目录结构与 UI 分层策略
 
 <!-- ## 后续扩展建议
 

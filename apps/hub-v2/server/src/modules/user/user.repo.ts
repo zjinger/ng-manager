@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
-import type { ListUsersQuery, UserEntity, UserListResult } from "./user.types";
+import type { ListUsersQuery, UpdateUserInput, UserEntity, UserListResult } from "./user.types";
 
 type UserRow = {
   id: string;
@@ -52,6 +52,34 @@ export class UserRepo {
         entity.remark,
         entity.createdAt,
         entity.updatedAt
+      );
+  }
+
+  update(id: string, input: UpdateUserInput, updatedAt: string): void {
+    this.db
+      .prepare(
+        `
+        UPDATE users
+        SET
+          display_name = ?,
+          email = ?,
+          mobile = ?,
+          title_code = ?,
+          status = ?,
+          remark = ?,
+          updated_at = ?
+        WHERE id = ?
+      `
+      )
+      .run(
+        input.displayName ?? null,
+        input.email ?? null,
+        input.mobile ?? null,
+        input.titleCode ?? null,
+        input.status ?? "active",
+        input.remark ?? null,
+        updatedAt,
+        id
       );
   }
 

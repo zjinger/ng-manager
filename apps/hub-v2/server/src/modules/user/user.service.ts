@@ -5,7 +5,7 @@ import { nowIso } from "../../shared/utils/time";
 import { requireAdmin } from "../utils/require-admin";
 import { UserRepo } from "./user.repo";
 import type { UserCommandContract, UserQueryContract } from "./user.contract";
-import type { CreateUserInput, ListUsersQuery, UserEntity, UserListResult } from "./user.types";
+import type { CreateUserInput, ListUsersQuery, UpdateUserInput, UserEntity, UserListResult } from "./user.types";
 
 export class UserService implements UserCommandContract, UserQueryContract {
   constructor(private readonly repo: UserRepo) {}
@@ -38,6 +38,28 @@ export class UserService implements UserCommandContract, UserQueryContract {
   async list(query: ListUsersQuery, ctx: RequestContext): Promise<UserListResult> {
     requireAdmin(ctx);
     return this.repo.list(query);
+  }
+
+  async update(id: string, input: UpdateUserInput, ctx: RequestContext): Promise<UserEntity> {
+    requireAdmin(ctx);
+    const user = this.repo.findById(id);
+    if (!user) {
+      throw new AppError("USER_NOT_FOUND", `user not found: ${id}`, 404);
+    }
+
+    const updated: UserEntity = {
+      ...user,
+      displayName: input.displayName === undefined ? user.displayName : input.displayName?.trim() || null,
+      email: input.email === undefined ? user.email : input.email?.trim() || null,
+      mobile: input.mobile === undefined ? user.mobile : input.mobile?.trim() || null,
+      titleCode: input.titleCode === undefined ? user.titleCode : input.titleCode?.trim() || null,
+      status: input.status ?? user.status,
+      remark: input.remark === undefined ? user.remark : input.remark?.trim() || null,
+      updatedAt: nowIso()
+    };
+
+    this.repo.update(id, updated, updated.updatedAt);
+    return updated;
   }
 
   async getById(id: string, ctx: RequestContext): Promise<UserEntity> {

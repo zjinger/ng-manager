@@ -63,6 +63,17 @@ export interface RdDashboardTodo {
   projectId: string;
 }
 
+export interface RdDashboardActivity {
+  kind: "rd_activity";
+  entityId: string;
+  code: string;
+  title: string;
+  action: string;
+  summary: string | null;
+  createdAt: string;
+  projectId: string;
+}
+
 export interface CreateRdStageInput {
   projectId: string;
   name: string;

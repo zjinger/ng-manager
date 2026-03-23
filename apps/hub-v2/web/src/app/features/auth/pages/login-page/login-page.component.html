@@ -1,0 +1,79 @@
+<div class="login-page">
+  <section class="login-page__left">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="brand-block">
+      <div class="brand-icon">
+        <img src="/favicon.ico" alt="NGM Hub" />
+      </div>
+      <div class="brand-title">
+        <span>NGM Hub</span>
+        <span class="brand-title__version">v2</span>
+      </div>
+      <p class="brand-subtitle">内 网 协 作 平 台</p>
+    </div>
+
+    <div class="brand-features">
+      <div class="brand-feature">
+        <span nz-icon nzType="bug"></span>
+        <span>Issue 追踪</span>
+      </div>
+      <div class="brand-feature">
+        <span nz-icon nzType="apartment"></span>
+        <span>研发管理</span>
+      </div>
+      <div class="brand-feature">
+        <span nz-icon nzType="read"></span>
+        <span>文档协作</span>
+      </div>
+      <div class="brand-feature">
+        <span nz-icon nzType="bar-chart"></span>
+        <span>数据看板</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="login-page__right">
+    <div class="login-card">
+      <div class="login-card__header">
+        <h1>欢迎回来</h1>
+        <p>登录你的账号以继续使用 NGM Hub</p>
+      </div>
+
+      <form nz-form [formGroup]="form" (ngSubmit)="submit()">
+        <nz-form-item>
+          <nz-form-control>
+            <span nz-icon nzType="user" class="field-icon"></span>
+            <input nz-input formControlName="username" placeholder="请输入用户名" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-control>
+            <span nz-icon nzType="lock" class="field-icon"></span>
+            <input nz-input type="password" formControlName="password" placeholder="请输入密码" />
+          </nz-form-control>
+        </nz-form-item>
+
+        <div class="login-card__options">
+          <label class="remember-option">
+            <input type="checkbox" checked />
+            <span>记住登录状态</span>
+          </label>
+          <a href="javascript:void(0)">忘记密码？</a>
+        </div>
+
+        <button nz-button nzType="primary" class="login-btn">
+          <span>登录</span>
+          <nz-icon nzType="arrow-right" nzTheme="outline" />
+        </button>
+      </form>
+
+      <div class="divider">内网协作平台</div>
+
+      <div class="login-footer">© 2026 Hub v2 · NGM</div>
+    </div>
+  </section>
+</div>

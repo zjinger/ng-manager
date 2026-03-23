@@ -5,6 +5,7 @@ import type {
   CreateIssueInput,
   IssueEntity,
   IssueDashboardTodo,
+  IssueDashboardActivity,
   IssueListResult,
   IssueLogEntity,
   ListIssuesQuery,
@@ -31,4 +32,10 @@ export interface IssueQueryContract {
   countAssignedForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   countVerifyingForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   listTodosForDashboard(projectIds: string[], userId: string, limit: number, ctx: RequestContext): Promise<IssueDashboardTodo[]>;
+  listActivitiesForDashboard(
+    projectIds: string[],
+    userId: string,
+    limit: number,
+    ctx: RequestContext
+  ): Promise<IssueDashboardActivity[]>;
 }

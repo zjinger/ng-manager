@@ -1,0 +1,163 @@
+import { computed, inject, Injectable, signal } from '@angular/core';
+
+import { ProjectContextStore } from '../../../core/state/project-context.store';
+import type { PageResult } from '../../../core/types/page.types';
+import type { BlockRdItemInput, CreateRdItemInput, RdItemEntity, RdListQuery, RdStageEntity } from '../models/rd.model';
+import { RdApiService } from '../services/rd-api.service';
+
+const DEFAULT_QUERY: RdListQuery = {
+  page: 1,
+  pageSize: 50,
+  projectId: '',
+  stageId: '',
+  status: '',
+  type: '',
+  priority: '',
+  keyword: '',
+};
+
+@Injectable()
+export class RdStore {
+  private readonly rdApi = inject(RdApiService);
+  private readonly projectContext = inject(ProjectContextStore);
+
+  private readonly queryState = signal<RdListQuery>({ ...DEFAULT_QUERY });
+  private readonly resultState = signal<PageResult<RdItemEntity> | null>(null);
+  private readonly stagesState = signal<RdStageEntity[]>([]);
+  private readonly loadingState = signal(false);
+  private readonly busyState = signal(false);
+
+  readonly query = computed(() => this.queryState());
+  readonly result = computed(() => this.resultState());
+  readonly items = computed(() => this.resultState()?.items ?? []);
+  readonly total = computed(() => this.resultState()?.total ?? 0);
+  readonly stages = computed(() => this.stagesState());
+  readonly loading = computed(() => this.loadingState());
+  readonly busy = computed(() => this.busyState());
+
+  initialize(): void {
+    const projectId = this.projectContext.currentProjectId() ?? '';
+    this.queryState.update((query) => ({ ...query, projectId }));
+    if (!projectId) {
+      this.resultState.set({ items: [], page: 1, pageSize: 50, total: 0 });
+      this.stagesState.set([]);
+      return;
+    }
+    this.loadStages(projectId);
+    this.load();
+  }
+
+  refreshForProject(projectId: string | null): void {
+    this.queryState.update((query) => ({
+      ...query,
+      projectId: projectId ?? '',
+      stageId: '',
+      page: 1,
+    }));
+    if (!projectId) {
+      this.resultState.set({ items: [], page: 1, pageSize: 50, total: 0 });
+      this.stagesState.set([]);
+      return;
+    }
+    this.loadStages(projectId);
+    this.load();
+  }
+
+  updateQuery(patch: Partial<RdListQuery>): void {
+    this.queryState.update((query) => ({
+      ...query,
+      ...patch,
+      page: patch.page ?? 1,
+    }));
+    this.load();
+  }
+
+  load(): void {
+    const query = this.queryState();
+    if (!query.projectId) {
+      this.resultState.set({ items: [], page: 1, pageSize: 50, total: 0 });
+      return;
+    }
+
+    this.loadingState.set(true);
+    this.rdApi.listItems(query).subscribe({
+      next: (result) => {
+        this.resultState.set(result);
+        this.loadingState.set(false);
+      },
+      error: () => {
+        this.loadingState.set(false);
+      },
+    });
+  }
+
+  private loadStages(projectId: string): void {
+    this.rdApi.listStages(projectId).subscribe({
+      next: (items) => this.stagesState.set(items.filter((item) => item.enabled)),
+      error: () => this.stagesState.set([]),
+    });
+  }
+
+  create(input: Omit<CreateRdItemInput, 'projectId'> & { projectId?: string }, done?: () => void): void {
+    const projectId = input.projectId ?? this.projectContext.currentProjectId() ?? '';
+    const title = input.title.trim();
+    if (!projectId || !title) {
+      return;
+    }
+
+    this.busyState.set(true);
+    this.rdApi
+      .create({
+        ...input,
+        projectId,
+        title,
+      })
+      .subscribe({
+        next: () => {
+          this.busyState.set(false);
+          done?.();
+          this.load();
+        },
+        error: () => {
+          this.busyState.set(false);
+        },
+      });
+  }
+
+  start(itemId: string): void {
+    this.runAction(() => this.rdApi.start(itemId));
+  }
+
+  block(itemId: string, input: BlockRdItemInput): void {
+    this.runAction(() => this.rdApi.block(itemId, input));
+  }
+
+  resume(itemId: string): void {
+    this.runAction(() => this.rdApi.resume(itemId));
+  }
+
+  complete(itemId: string): void {
+    this.runAction(() => this.rdApi.complete(itemId));
+  }
+
+  accept(itemId: string): void {
+    this.runAction(() => this.rdApi.accept(itemId));
+  }
+
+  close(itemId: string): void {
+    this.runAction(() => this.rdApi.close(itemId));
+  }
+
+  private runAction(request: () => ReturnType<RdApiService['start']>): void {
+    this.busyState.set(true);
+    request().subscribe({
+      next: () => {
+        this.busyState.set(false);
+        this.load();
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+}

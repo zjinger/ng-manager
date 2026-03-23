@@ -29,6 +29,7 @@ export class DashboardService implements DashboardQueryContract {
           reviewingRdItems: 0
         },
         todos: [],
+        activities: [],
         announcements: announcements.map((item) => ({
           id: item.id,
           title: item.title,
@@ -46,14 +47,18 @@ export class DashboardService implements DashboardQueryContract {
       assignedRdItems,
       reviewingRdItems,
       issueTodos,
-      rdTodos
+      rdTodos,
+      issueActivities,
+      rdActivities
     ] = await Promise.all([
       this.issueQuery.countAssignedForDashboard(effectiveProjectIds, userId, ctx),
       this.issueQuery.countVerifyingForDashboard(effectiveProjectIds, userId, ctx),
       this.rdQuery.countAssignedForDashboard(effectiveProjectIds, userId, ctx),
       this.rdQuery.countReviewingForDashboard(effectiveProjectIds, userId, ctx),
       this.issueQuery.listTodosForDashboard(effectiveProjectIds, userId, 10, ctx),
-      this.rdQuery.listTodosForDashboard(effectiveProjectIds, userId, 10, ctx)
+      this.rdQuery.listTodosForDashboard(effectiveProjectIds, userId, 10, ctx),
+      this.issueQuery.listActivitiesForDashboard(effectiveProjectIds, userId, 6, ctx),
+      this.rdQuery.listActivitiesForDashboard(effectiveProjectIds, userId, 6, ctx)
     ]);
 
     return {
@@ -64,6 +69,9 @@ export class DashboardService implements DashboardQueryContract {
         reviewingRdItems
       },
       todos: [...issueTodos, ...rdTodos].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 10),
+      activities: [...issueActivities, ...rdActivities]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 8),
       announcements: announcements.map((item) => ({
         id: item.id,
         title: item.title,

@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
 import type {
   IssueEntity,
+  IssueDashboardActivity,
   IssueDashboardTodo,
   IssueListResult,
   IssueLogEntity,
@@ -335,6 +336,49 @@ export class IssueRepo {
     ]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, limit);
+  }
+
+  listActivitiesForDashboard(projectIds: string[], userId: string, limit: number): IssueDashboardActivity[] {
+    const scope = this.createProjectScope(projectIds);
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            l.issue_id as entity_id,
+            i.issue_no as code,
+            i.title as title,
+            l.action_type as action_type,
+            l.summary as summary,
+            l.created_at as created_at,
+            i.project_id as project_id
+          FROM issue_logs l
+          INNER JOIN issues i ON i.id = l.issue_id
+          WHERE l.operator_id = ?
+            ${scope.clause.replace(/project_id/g, "i.project_id")}
+          ORDER BY l.created_at DESC
+          LIMIT ?
+        `
+      )
+      .all(userId, ...scope.params, limit) as Array<{
+      entity_id: string;
+      code: string;
+      title: string;
+      action_type: string;
+      summary: string | null;
+      created_at: string;
+      project_id: string;
+    }>;
+
+    return rows.map((row) => ({
+      kind: "issue_activity",
+      entityId: row.entity_id,
+      code: row.code,
+      title: row.title,
+      action: row.action_type,
+      summary: row.summary,
+      createdAt: row.created_at,
+      projectId: row.project_id,
+    }));
   }
 
   private mapIssue(row: IssueRow): IssueEntity {
