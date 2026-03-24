@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'app-status-badge',
   standalone: true,
-  template: `<span class="status-badge" [attr.data-status]="status()">{{ label() || status() }}</span>`,
+  template: `<span class="status-badge" [attr.data-status]="status()">{{ displayLabel() }}</span>`,
   styles: [
     `
       .status-badge {
@@ -70,4 +70,32 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 export class StatusBadgeComponent {
   readonly status = input.required<string>();
   readonly label = input<string>('');
+
+  displayLabel(): string {
+    const custom = this.label();
+    if (custom) {
+      return custom;
+    }
+    return STATUS_TEXT_MAP[this.status()] ?? this.status();
+  }
 }
+
+const STATUS_TEXT_MAP: Record<string, string> = {
+  active: '启用',
+  inactive: '停用',
+  open: '待处理',
+  in_progress: '处理中',
+  reopened: '已重开',
+  resolved: '已解决',
+  verified: '已验证',
+  closed: '已关闭',
+  todo: '待开始',
+  doing: '进行中',
+  blocked: '阻塞中',
+  done: '待验收',
+  accepted: '已验收',
+  draft: '草稿',
+  published: '已发布',
+  archived: '已归档',
+  canceled: '已取消',
+};

@@ -62,6 +62,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         margin: 0;
         color: var(--text-primary);
         font-size: 15px;
+        font-weight: 600;
       }
 
       .panel__count {

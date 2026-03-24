@@ -1,10 +1,12 @@
 import { z } from "zod";
 
+const issueTypeSchema = z.enum(["bug", "feature", "change", "improvement", "task", "test"]);
+
 export const createIssueSchema = z.object({
   projectId: z.string().trim().min(1),
   title: z.string().trim().min(1),
   description: z.string().optional(),
-  type: z.enum(["bug", "task", "support"]).optional(),
+  type: issueTypeSchema.optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   assigneeId: z.string().trim().optional().nullable(),
   verifierId: z.string().trim().optional().nullable(),
@@ -16,7 +18,7 @@ export const createIssueSchema = z.object({
 export const updateIssueSchema = z.object({
   title: z.string().trim().optional(),
   description: z.string().nullable().optional(),
-  type: z.enum(["bug", "task", "support"]).optional(),
+  type: issueTypeSchema.optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   assigneeId: z.string().trim().nullable().optional(),
   verifierId: z.string().trim().nullable().optional(),
@@ -48,7 +50,7 @@ export const listIssuesQuerySchema = z.object({
   keyword: z.string().trim().optional(),
   projectId: z.string().trim().optional(),
   status: z.enum(["open", "in_progress", "resolved", "verified", "closed", "reopened"]).optional(),
-  type: z.enum(["bug", "task", "support"]).optional(),
+  type: issueTypeSchema.optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   assigneeId: z.string().trim().optional(),
   verifierId: z.string().trim().optional()

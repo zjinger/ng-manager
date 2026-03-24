@@ -288,7 +288,7 @@ const issues = [
     issue_no: "ISS-900004",
     title: "控制台菜单分组需要补齐权限标记",
     description: "当前菜单已分组，但系统管理区还没有按角色隐藏。",
-    type: "support",
+    type: "improvement",
     status: "verified",
     priority: "low",
     reporter_id: "usr_seed_pm",

@@ -61,7 +61,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       status: "open",
       priority: input.priority ?? "medium",
       reporterId: ctx.userId?.trim() || ctx.accountId,
-      reporterName: ctx.userId?.trim() || ctx.accountId,
+      reporterName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       assigneeId: members.assigneeId,
       assigneeName: members.assigneeName,
       verifierId: members.verifierId,
@@ -369,7 +369,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       fromStatus,
       toStatus,
       operatorId: ctx.userId?.trim() || ctx.accountId,
-      operatorName: ctx.userId?.trim() || ctx.accountId,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       summary,
       metaJson: meta ? JSON.stringify(meta) : null,
       createdAt: nowIso()

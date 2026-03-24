@@ -9,16 +9,18 @@ import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-to
 import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
 import { ViewToggleComponent } from '../../../../shared/ui/view-toggle/view-toggle.component';
 import type { IssueListQuery } from '../../models/issue.model';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 export type IssueListViewMode = 'list' | 'card';
 
 @Component({
   selector: 'app-issue-filter-bar',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzSelectModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
+  imports: [FormsModule, NzButtonModule, NzSelectModule, NzIconModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
   template: `
     <app-page-toolbar>
       <button toolbar-primary nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
+        <nz-icon nzType="plus" nzTheme="outline" />
         新建 Issue
       </button>
 

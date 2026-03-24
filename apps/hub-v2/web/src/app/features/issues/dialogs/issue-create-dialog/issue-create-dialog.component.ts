@@ -5,11 +5,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { ISSUE_PRIORITY_OPTIONS } from '../../../../shared/constants/priority-options';
-import { DialogShellComponent } from '../../../../shared/ui/dialog/dialog-shell.component';
-import { FormActionsComponent } from '../../../../shared/ui/form-actions/form-actions.component';
+import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
+import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import type { CreateIssueInput, IssueType } from '../../models/issue.model';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzUploadModule } from 'ng-zorro-antd/upload';
 
 type Draft = Omit<CreateIssueInput, 'projectId'>;
 
@@ -28,86 +30,99 @@ const DEFAULT_DRAFT: Draft = {
 @Component({
   selector: 'app-issue-create-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent, FormActionsComponent],
+  imports: [FormsModule, NzFormModule, NzGridModule, NzUploadModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent, FormActionsComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
       [width]="920"
       [title]="'新建 Issue'"
-      [subtitle]="'按设计稿保留标题、描述、责任人、模块和环境信息。'"
-      [icon]="'plus'"
+      [subtitle]="''"
+      [icon]="'plus-circle'"
       [modalClass]="'issue-create-modal'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body>
-        <form id="issue-create-form" class="issue-form dialog-form" (ngSubmit)="submitForm()">
-          <div class="issue-form__group">
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">标题 <span class="required">*</span></span>
-              <input
-                nz-input
-                maxlength="120"
-                placeholder="简要描述问题，例如：登录接口在高并发下返回 500"
-                [ngModel]="draft().title"
-                name="title"
-                (ngModelChange)="updateField('title', $event)"
-              />
-            </label>
+        <form nz-form nzLayout="vertical">
+          <div class="row" nz-row nzGutter="16">
+            <div class="col" nz-col nzSpan="24">
+              <nz-form-item>
+                <nz-form-label nzRequired nzFor="title">标题</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    maxlength="120"
+                    placeholder="简要描述问题，例如：登录接口在高并发下返回 500"
+                    [ngModel]="draft().title"
+                    name="title"
+                    (ngModelChange)="updateField('title', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
           </div>
-
-          <div class="issue-form__group">
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">描述</span>
-              <div class="md-toolbar">
-                <button type="button" class="md-toolbar__btn">B</button>
-                <button type="button" class="md-toolbar__btn">I</button>
-                <button type="button" class="md-toolbar__btn">S</button>
-                <span class="md-toolbar__sep"></span>
-                <button type="button" class="md-toolbar__btn">H</button>
-                <button type="button" class="md-toolbar__btn">•</button>
-                <button type="button" class="md-toolbar__btn">1.</button>
-                <span class="md-toolbar__sep"></span>
-                <button type="button" class="md-toolbar__btn">&#123; &#125;</button>
-                <button type="button" class="md-toolbar__btn">"</button>
-                <button type="button" class="md-toolbar__btn">↗</button>
-              </div>
-              <textarea
-                nz-input
-                class="md-editor"
-                rows="8"
-                placeholder="**复现步骤：**&#10;1. &#10;2. &#10;3. &#10;&#10;**期望行为：**&#10;&#10;**实际行为：**&#10;&#10;**环境信息：**"
-                [ngModel]="draft().description"
-                name="description"
-                (ngModelChange)="updateField('description', $event)"
-              ></textarea>
-              <span class="issue-field__hint">Markdown 编辑器后续再接，当前先用 textarea 代替。</span>
-            </label>
+          <div class="row" nz-row nzGutter="16">
+            <div class="col" nz-col nzSpan="24">
+              <nz-form-item>
+                <nz-form-label nzFor="description">描述</nz-form-label>
+                <nz-form-control>
+                  <div class="md-toolbar">
+                    <button type="button" class="md-toolbar__btn">B</button>
+                    <button type="button" class="md-toolbar__btn">I</button>
+                    <button type="button" class="md-toolbar__btn">S</button>
+                    <span class="md-toolbar__sep"></span>
+                    <button type="button" class="md-toolbar__btn">H</button>
+                    <button type="button" class="md-toolbar__btn">•</button>
+                    <button type="button" class="md-toolbar__btn">1.</button>
+                    <span class="md-toolbar__sep"></span>
+                    <button type="button" class="md-toolbar__btn">&#123; &#125;</button>
+                    <button type="button" class="md-toolbar__btn">"</button>
+                    <button type="button" class="md-toolbar__btn">↗</button>
+                  </div>
+                  <textarea
+                    nz-input
+                    class="md-editor"
+                    rows="8"
+                    placeholder="**复现步骤：**&#10;1. &#10;2. &#10;3. &#10;&#10;**期望行为：**&#10;&#10;**实际行为：**&#10;&#10;**环境信息：**"
+                    [ngModel]="draft().description"
+                    name="description"
+                    (ngModelChange)="updateField('description', $event)"
+                  ></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
           </div>
-
-          <div class="issue-form__grid dialog-form__grid">
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">类型 <span class="required">*</span></span>
-              <nz-select [ngModel]="draft().type" name="type" (ngModelChange)="updateType($event)">
-                <nz-option nzLabel="Bug" nzValue="bug"></nz-option>
-                <nz-option nzLabel="Task" nzValue="task"></nz-option>
-                <nz-option nzLabel="Support" nzValue="support"></nz-option>
-              </nz-select>
-            </label>
-
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">优先级 <span class="required">*</span></span>
-              <nz-select [ngModel]="draft().priority" name="priority" (ngModelChange)="updateField('priority', $event)">
+          <div class="row" nz-row nzGutter="16">
+            <div class="col" nz-col nzSpan="12">
+              <nz-form-item>
+              <nz-form-label nzFor="type" nzRequired>类型</nz-form-label>
+              <nz-form-control>
+                <nz-select [ngModel]="draft().type" name="type" (ngModelChange)="updateType($event)">
+                @for (item of issueTypeOptions; track item.value) {
+                  <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                }
+                </nz-select>
+              </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="col" nz-col nzSpan="12">
+              <nz-form-item>
+              <nz-form-label nzFor="priority" nzRequired>优先级</nz-form-label>
+              <nz-form-control>
+                <nz-select [ngModel]="draft().priority" name="priority" (ngModelChange)="updateField('priority', $event)">
                 @for (item of priorityOptions; track item.value) {
                   <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
                 }
               </nz-select>
-            </label>
+              </nz-form-control>
+              </nz-form-item>
+            </div>
           </div>
-
-          <div class="issue-form__grid dialog-form__grid issue-form__grid--three">
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">指派给</span>
-              <nz-select
+          <div class="row" nz-row nzGutter="16">
+            <div class="col" nz-col nzSpan="8">
+              <nz-form-item>
+              <nz-form-label nzFor="assigneeId">指派给</nz-form-label>
+              <nz-form-control>
+                <nz-select
                 nzAllowClear
                 nzPlaceHolder="未指派"
                 [ngModel]="draft().assigneeId"
@@ -118,18 +133,26 @@ const DEFAULT_DRAFT: Draft = {
                   <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
                 }
               </nz-select>
-            </label>
-            <label class="issue-field dialog-field">
-            <span class="issue-field__label dialog-field__label">协作人</span>
-            <nz-select nzAllowClear nzPlaceHolder="加入协作人列表并收到通知">
-              @for (member of members(); track member.id) {
-                <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
-              }
-            </nz-select>
-            </label>
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">验证人</span>
-              <nz-select
+              </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="col" nz-col nzSpan="8">
+              <nz-form-item>
+                <nz-form-label >协作人</nz-form-label>
+                <nz-form-control>
+                  <nz-select nzAllowClear nzPlaceHolder="加入协作人并收到通知">
+                  @for (member of members(); track member.id) {
+                    <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>   
+            </div>
+            <div class="col" nz-col nzSpan="8">
+              <nz-form-item>
+              <nz-form-label nzFor="verifierId" nzRequired>验证人</nz-form-label>
+              <nz-form-control>
+                <nz-select
                 nzAllowClear
                 nzPlaceHolder="未指定"
                 [ngModel]="draft().verifierId"
@@ -140,13 +163,16 @@ const DEFAULT_DRAFT: Draft = {
                   <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
                 }
               </nz-select>
-            </label>    
+              </nz-form-control>
+              </nz-form-item>
+            </div>
           </div>
-
-          <div class="issue-form__grid dialog-form__grid issue-form__grid--three">
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">模块</span>
-              <nz-select
+          <div class="row" nz-row nzGutter="16">
+            <div class="col" nz-col nzSpan="8">
+              <nz-form-item>
+              <nz-form-label nzFor="moduleCode">模块</nz-form-label>
+              <nz-form-control>
+                <nz-select
                 nzAllowClear
                 nzPlaceHolder="未选择"
                 [ngModel]="draft().moduleCode"
@@ -157,31 +183,29 @@ const DEFAULT_DRAFT: Draft = {
                 <nz-option nzLabel="User" nzValue="User"></nz-option>
                 <nz-option nzLabel="Project" nzValue="Project"></nz-option>
                 <nz-option nzLabel="Issue" nzValue="Issue"></nz-option>
-                <nz-option nzLabel="RD" nzValue="RD"></nz-option>
-                <nz-option nzLabel="Dashboard" nzValue="Dashboard"></nz-option>
               </nz-select>
-            </label>
-
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">版本</span>
-              <nz-select
+              </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="col" nz-col nzSpan="8">
+              <nz-form-item>
+                <nz-form-label nzFor="versionCode">版本</nz-form-label>
+                <nz-form-control>
+                  <nz-select nzAllowClear nzPlaceHolder="未选择" [ngModel]="draft().versionCode" name="versionCode" (ngModelChange)="updateField('versionCode', $event)">
+                    <nz-option nzLabel="v2.3.0" nzValue="v2.3.0"></nz-option>
+                    <nz-option nzLabel="v2.2.3" nzValue="v2.2.3"></nz-option>
+                    <nz-option nzLabel="v2.2.2" nzValue="v2.2.2"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="col" nz-col nzSpan="8">
+              <nz-form-item>
+              <nz-form-label nzFor="environmentCode" nzRequired>环境</nz-form-label>
+              <nz-form-control>
+                <nz-select
                 nzAllowClear
-                nzPlaceHolder="未选择"
-                [ngModel]="draft().versionCode"
-                name="versionCode"
-                (ngModelChange)="updateField('versionCode', $event)"
-              >
-                <nz-option nzLabel="v2.3.0" nzValue="v2.3.0"></nz-option>
-                <nz-option nzLabel="v2.2.3" nzValue="v2.2.3"></nz-option>
-                <nz-option nzLabel="v2.2.2" nzValue="v2.2.2"></nz-option>
-              </nz-select>
-            </label>
-
-            <label class="issue-field dialog-field">
-              <span class="issue-field__label dialog-field__label">环境</span>
-              <nz-select
-                nzAllowClear
-                nzPlaceHolder="未选择"
+                nzPlaceHolder="未指定"
                 [ngModel]="draft().environmentCode"
                 name="environmentCode"
                 (ngModelChange)="updateField('environmentCode', $event)"
@@ -190,20 +214,31 @@ const DEFAULT_DRAFT: Draft = {
                 <nz-option nzLabel="Staging" nzValue="Staging"></nz-option>
                 <nz-option nzLabel="Development" nzValue="Development"></nz-option>
               </nz-select>
-            </label>
-          </div>
-
-          <label class="issue-field dialog-field issue-field--upload">
-            <span class="issue-field__label dialog-field__label">附件</span>
-            <div class="upload-zone">
-              <div class="upload-zone__icon">
-                <span nz-icon nzType="plus"></span>
-              </div>
-              <div class="upload-zone__title">点击或拖拽文件到此区域上传</div>
-              <div class="upload-zone__hint">支持 png、jpg、log、txt 等格式，单个文件最大 10MB</div>
+              </nz-form-control>
+              </nz-form-item>
             </div>
-          </label>
-
+          </div>          
+          <div class="row" nz-row nzGutter="16">
+            <div class="col" nz-col nzSpan="24">
+              <nz-form-item>
+              <nz-form-label>附件</nz-form-label>
+              <nz-form-control>
+                <nz-upload
+                    class="upload-zone"
+                    nzType="drag"
+                    [nzMultiple]="true"
+                    nzAction="https://www.mocky.io/v2/5cc8019d300000980a055e76"
+                  >
+                    <p class="upload-zone__icon">
+                      <nz-icon nzType="plus" />
+                    </p>
+                    <div class="upload-zone__title">点击或拖拽文件到此区域上传</div>
+                    <div class="upload-zone__hint">支持 png、jpg、log、txt 等格式，单个文件最大 10MB</div>
+                  </nz-upload>
+              </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>          
          </form>
       </div>
 
@@ -215,6 +250,7 @@ const DEFAULT_DRAFT: Draft = {
             nzType="primary"
             [disabled]="!draft().title.trim()"
             [nzLoading]="busy()"
+            (click)="submitForm()"
             type="submit"
             form="issue-create-form"
           >
@@ -227,29 +263,6 @@ const DEFAULT_DRAFT: Draft = {
   `,
   styles: [
     `
-      .issue-form {
-        gap: 18px;
-      }
-      .issue-form__group {
-        display: grid;
-      }
-      .issue-form__grid--three {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-      .issue-field--upload,
-      .issue-field--collaborators {
-        min-height: 100%;
-      }
-      .issue-field--collaborators {
-        margin-top: 2px;
-      }
-      .required {
-        color: var(--color-danger);
-      }
-      .issue-field__hint {
-        font-size: 12px;
-        color: var(--text-muted);
-      }
       .md-toolbar {
         display: flex;
         align-items: center;
@@ -318,7 +331,8 @@ const DEFAULT_DRAFT: Draft = {
         font-size: 16px;
       }
       .upload-zone__hint {
-        max-width: 320px;
+        margin:0 auto;
+        max-width: 360px;
         font-size: 14px;
         line-height: 1.7;
         color: var(--text-muted);
@@ -332,16 +346,6 @@ const DEFAULT_DRAFT: Draft = {
       :host-context(html[data-theme='dark']) .upload-zone__icon {
         background: color-mix(in srgb, var(--primary-500) 18%, transparent);
       }
-      @media (max-width: 900px) {
-        .issue-form__grid--three {
-          grid-template-columns: 1fr;
-        }
-      }
-      @media (max-width: 768px) {
-        .issue-form__grid {
-          grid-template-columns: 1fr;
-        }
-      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -353,7 +357,8 @@ export class IssueCreateDialogComponent {
   readonly create = output<Draft>();
   readonly cancel = output<void>();
 
-  readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
+  readonly priorityOptions = ISSUE_PRIORITY_OPTIONS.filter((option) => option.value !== '');
+  readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
 
   constructor() {

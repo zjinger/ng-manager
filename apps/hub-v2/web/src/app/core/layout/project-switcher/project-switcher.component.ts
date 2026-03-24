@@ -13,7 +13,9 @@ import { ProjectContextStore } from '../../state/project-context.store';
         <span class="switcher__avatar">{{ currentProjectInitial() }}</span>
         <span class="switcher__info">
           <span class="switcher__name">{{ currentProject()?.name || '选择项目' }}</span>
-          <span class="switcher__key">{{ currentProject()?.projectKey || '暂无项目上下文' }}</span>
+          <span class="switcher__key">
+            <!-- {{ currentProject()?.projectKey || '暂无项目上下文' }} -->
+          </span>
         </span>
         <span
           nz-icon
@@ -37,7 +39,7 @@ import { ProjectContextStore } from '../../state/project-context.store';
               </span>
               <span class="switcher__info">
                 <span class="switcher__name">{{ project.name }}</span>
-                <span class="switcher__key">{{ project.projectKey }}</span>
+                <!-- <span class="switcher__key">{{ project.projectKey }}</span> -->
               </span>
             </button>
           }

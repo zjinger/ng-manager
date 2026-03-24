@@ -2,17 +2,17 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 
 import type { ProjectMemberEntity } from '../../../../features/projects/models/project.model';
 import { ProjectApiService } from '../../../../features/projects/services/project-api.service';
 import { ProjectContextStore } from '../../../../core/state/project-context.store';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
-import { ListStateComponent } from '../../../../shared/ui/list-state/list-state.component';
+import { PageHeaderComponent, ListStateComponent } from '@shared/ui';
 import { IssueDetailDrawerComponent } from '../../components/issue-detail-drawer/issue-detail-drawer.component';
 import { IssueFilterBarComponent, type IssueListViewMode } from '../../components/issue-filter-bar/issue-filter-bar.component';
 import { IssueListTableComponent } from '../../components/issue-list-table/issue-list-table.component';
 import { IssueCreateDialogComponent } from '../../dialogs/issue-create-dialog/issue-create-dialog.component';
-import type { IssueEntity } from '../../models/issue.model';
+import type { IssueEntity, IssueListQuery } from '../../models/issue.model';
 import { IssueListStore } from '../../store/issue-list.store';
 
 @Component({
@@ -25,19 +25,18 @@ import { IssueListStore } from '../../store/issue-list.store';
     IssueFilterBarComponent,
     IssueListTableComponent,
     IssueCreateDialogComponent,
+    NzPaginationModule,
   ],
   providers: [IssueListStore],
   template: `
     <app-page-header title="Issues" [subtitle]="subtitle()" />
-
     <app-issue-filter-bar
       [query]="store.query()"
       [viewMode]="viewMode()"
-      (submit)="store.updateQuery($event)"
+      (submit)="onFilterSubmit($event)"
       (create)="createOpen.set(true)"
       (viewModeChange)="viewMode.set($event)"
     />
-
     <app-list-state
       [loading]="store.loading()"
       [empty]="store.items().length === 0"
@@ -48,8 +47,27 @@ import { IssueListStore } from '../../store/issue-list.store';
         [items]="store.items()"
         [viewMode]="viewMode()"
         [activeIssueId]="selectedIssueId()"
+        [page]="store.page()"
+        [pageSize]="store.pageSize()"
         (open)="openDetail($event)"
       />
+
+      @if (store.total() > 0) {
+        <div class="issue-pagination">
+          <nz-pagination
+            [nzTotal]="store.total()"
+            [nzPageIndex]="store.page()"
+            [nzPageSize]="store.pageSize()"
+            [nzPageSizeOptions]="[10, 20, 50, 100]"
+            [nzShowSizeChanger]="true"
+            [nzShowQuickJumper]="true"
+            [nzShowTotal]="totalTpl"
+            (nzPageIndexChange)="onPageIndexChange($event)"
+            (nzPageSizeChange)="onPageSizeChange($event)"
+          ></nz-pagination>
+          <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+        </div>
+      }
     </app-list-state>
 
     <app-issue-create-dialog
@@ -67,6 +85,15 @@ import { IssueListStore } from '../../store/issue-list.store';
       (close)="closeDetail()"
     />
   `,
+  styles: [
+    `
+      .issue-pagination {
+        display: flex;
+        justify-content: flex-end;
+        padding: 16px 0 4px;
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueListPageComponent {
@@ -94,12 +121,15 @@ export class IssueListPageComponent {
     const total = this.store.result()?.total ?? 0;
     return `${projectName} · 共 ${total} 个问题`;
   });
+  private lastProjectId: string | null | undefined = undefined;
 
   constructor() {
     effect((onCleanup) => {
       const projectId = this.projectContext.currentProjectId();
+      const projectChanged = this.lastProjectId !== undefined && this.lastProjectId !== projectId;
+      this.lastProjectId = projectId;
       this.store.refreshForProject(projectId);
-      if (this.selectedIssueId()) {
+      if (projectChanged) {
         this.closeDetail();
       }
       if (!projectId) {
@@ -118,6 +148,22 @@ export class IssueListPageComponent {
   createIssue(input: Parameters<IssueListStore['create']>[0]): void {
     this.store.create(input);
     this.createOpen.set(false);
+  }
+
+  onFilterSubmit(query: IssueListQuery): void {
+    this.store.updateQuery({ ...query, page: 1 });
+  }
+
+  onPageIndexChange(page: number): void {
+    this.store.updateQuery({ page });
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    const nextPageSize = Number(pageSize) || this.store.pageSize();
+    if (nextPageSize === this.store.pageSize()) {
+      return;
+    }
+    this.store.updateQuery({ page: 1, pageSize: nextPageSize });
   }
 
   openDetail(issueId: string): void {

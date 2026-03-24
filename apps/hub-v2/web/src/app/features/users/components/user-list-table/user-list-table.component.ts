@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 
 import { DataTableComponent } from '@shared/ui';
 import type { UserEntity } from '../../models/user.model';
@@ -24,7 +24,13 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
         @for (item of items(); track item.id) {
           <div class="user-row">
             <div class="user-cell user-cell--user">
-              <div class="user-avatar">{{ avatarText(item.displayName || item.username) }}</div>
+              <div class="user-avatar">
+                @if (showAvatarImage(item)) {
+                  <img [src]="item.avatarUrl!" [alt]="item.displayName || item.username" (error)="markAvatarError(item.id)" />
+                } @else {
+                  <span>{{ avatarText(item.displayName || item.username) }}</span>
+                }
+              </div>
               <div>
                 <div class="user-name">{{ item.displayName || item.username }}</div>
                 <div class="user-meta">{{ item.username }}</div>
@@ -80,14 +86,19 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
         width: 32px;
         height: 32px;
         border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        display: inline-grid;
+        place-items: center;
+        overflow: hidden;
         color: #fff;
         font-size: 12px;
         font-weight: 700;
         background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
         flex-shrink: 0;
+      }
+      .user-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
       .user-name {
         font-weight: 600;
@@ -121,8 +132,17 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
 export class UserListTableComponent {
   readonly items = input.required<UserEntity[]>();
   readonly edit = output<UserEntity>();
+  private readonly brokenAvatarMap = signal<Record<string, true>>({});
 
   avatarText(name: string): string {
     return name.slice(0, 1);
+  }
+
+  showAvatarImage(item: UserEntity): boolean {
+    return !!item.avatarUrl && !this.brokenAvatarMap()[item.id];
+  }
+
+  markAvatarError(userId: string): void {
+    this.brokenAvatarMap.update((state) => ({ ...state, [userId]: true }));
   }
 }

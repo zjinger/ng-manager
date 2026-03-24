@@ -127,7 +127,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
       fromStatus: null,
       toStatus: null,
       operatorId: ctx.userId?.trim() || ctx.accountId,
-      operatorName: ctx.userId?.trim() || ctx.accountId,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       summary: `${kind === "participant.added" ? "added" : "removed"} participant ${userName}`,
       metaJson: JSON.stringify({ kind, userName }),
       createdAt

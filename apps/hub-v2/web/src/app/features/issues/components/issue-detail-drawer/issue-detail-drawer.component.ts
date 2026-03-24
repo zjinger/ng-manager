@@ -3,12 +3,12 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import type { IssueEntity } from '../../models/issue.model';
-import { IssueDetailPageComponent } from '../../pages/issue-detail-page/issue-detail-page.component';
+import { IssueDetailDrawerPageComponent } from '../../pages/issue-detail-page/issue-detail-drawer-page.component'; 
 
 @Component({
   selector: 'app-issue-detail-drawer',
   standalone: true,
-  imports: [NzDrawerModule, NzIconModule, IssueDetailPageComponent],
+  imports: [NzDrawerModule, NzIconModule, IssueDetailDrawerPageComponent],
   template: `
     <nz-drawer
       [nzVisible]="open()"
@@ -24,11 +24,10 @@ import { IssueDetailPageComponent } from '../../pages/issue-detail-page/issue-de
       <ng-template #drawerTitleTpl>
         <div class="detail-drawer__title">
           <div class="detail-drawer__title-main">
-            <span class="detail-drawer__eyebrow">Issues</span>
-            <strong>{{ titleText() }}</strong>
             @if (subtitleText(); as subtitle) {
               <span class="detail-drawer__subtitle">{{ subtitle }}</span>
             }
+            <strong>{{ titleText() }}</strong>
           </div>
           <button type="button" class="detail-drawer__close" (click)="close.emit()">
             <span nz-icon nzType="close"></span>
@@ -38,7 +37,8 @@ import { IssueDetailPageComponent } from '../../pages/issue-detail-page/issue-de
 
       <ng-template nzDrawerContent>
         @if (issueId(); as id) {
-          <app-issue-detail-page [issueId]="id" [embedded]="true" />
+          <!-- <app-issue-detail-page [issueId]="id" [embedded]="true" /> -->
+          <app-issue-detail-drawer-page [issueId]="id" />
         }
       </ng-template>
     </nz-drawer>
@@ -53,26 +53,23 @@ import { IssueDetailPageComponent } from '../../pages/issue-detail-page/issue-de
       }
       .detail-drawer__title-main {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         gap: 4px;
+        align-items: center;
       }
       .detail-drawer__title-main strong {
         color: var(--text-primary);
         font-size: 18px;
         line-height: 1.2;
       }
-      .detail-drawer__eyebrow {
-        font-size: 11px;
-        line-height: 1;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--primary-700);
-        font-weight: 700;
-      }
       .detail-drawer__subtitle {
         color: var(--text-muted);
         font-size: 12px;
         line-height: 1.4;
+        background: var(--gray-100);
+        padding: 3px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
       }
       .detail-drawer__close {
         width: 36px;

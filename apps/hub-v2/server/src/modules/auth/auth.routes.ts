@@ -25,6 +25,7 @@ export default async function authRoutes(app: FastifyInstance) {
     const token = await reply.jwtSign({
       accountId: profile.id,
       username: profile.username,
+      nickname: profile.nickname,
       role: profile.role,
       userId: profile.userId ?? null
     });

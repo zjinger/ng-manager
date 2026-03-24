@@ -43,6 +43,7 @@ export async function registerPlugins(app: FastifyInstance) {
 
         request.requestContext = createRequestContext({
           accountId: payload?.accountId ?? "anonymous",
+          nickname: payload?.nickname ?? null,
           userId: payload?.userId ?? null,
           roles: payload?.role ? [payload.role] : [],
           source: "http",

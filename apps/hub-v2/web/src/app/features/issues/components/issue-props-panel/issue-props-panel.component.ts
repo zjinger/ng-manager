@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-import { ISSUE_STATUS_LABELS } from '../../../../shared/constants/status-options';
+import { ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '../../../../shared/constants';
 import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
 import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
@@ -45,20 +45,20 @@ import type { IssueEntity } from '../../models/issue.model';
             @if (issue().verifierName) {
               <span class="mini-avatar">{{ avatarText(issue().verifierName!) }}</span>
             }
-            <span>{{ issue().verifierName || '未设置' }}</span>
+            <span>{{ issue().verifierName || '-' }}</span>
           </dd>
         </div>
         <div>
           <dt>模块</dt>
-          <dd>{{ issue().moduleCode || '未设置' }}</dd>
+          <dd>{{ issue().moduleCode || '-' }}</dd>
         </div>
         <div>
           <dt>版本</dt>
-          <dd>{{ issue().versionCode || '未设置' }}</dd>
+          <dd>{{ issue().versionCode || '-' }}</dd>
         </div>
         <div>
           <dt>环境</dt>
-          <dd>{{ issue().environmentCode || '未设置' }}</dd>
+          <dd>{{ issue().environmentCode || '-' }}</dd>
         </div>
         <div>
           <dt>创建时间</dt>
@@ -78,7 +78,7 @@ import type { IssueEntity } from '../../models/issue.model';
         display: flex;
         justify-content: space-between;
         gap: 12px;
-        padding: 15px 20px;
+        padding: 12px 20px;
         border-top: 1px solid var(--border-color-soft);
       }
       dt {
@@ -125,13 +125,7 @@ export class IssuePropsPanelComponent {
   }
 
   issueTypeLabel(type: string): string {
-    return (
-      {
-        bug: 'Bug',
-        task: 'Task',
-        support: 'Support',
-      }[type] || type
-    );
+    return ISSUE_TYPE_LABELS[type] || type;
   }
 
   avatarText(name: string): string {

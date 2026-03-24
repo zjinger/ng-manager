@@ -1,4 +1,6 @@
 import type { FastifyInstance } from "fastify";
+import { createReadStream, existsSync } from "node:fs";
+import path from "node:path";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import { saveMultipartFile } from "../../shared/storage/file-storage";
@@ -60,4 +62,39 @@ export default async function uploadRoutes(app: FastifyInstance) {
     const params = request.params as { uploadId: string };
     return ok(await app.container.uploadQuery.getById(params.uploadId, ctx));
   });
+
+  app.get("/uploads/:uploadId/raw", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { uploadId: string };
+    const upload = await app.container.uploadQuery.getById(params.uploadId, ctx);
+    const filePath = resolveUploadFilePath(upload.storagePath, upload.fileName, app.config.uploadDir);
+    if (upload.status !== "active" || !filePath) {
+      return reply.status(404).send({
+        code: "UPLOAD_NOT_FOUND",
+        message: "upload file not found"
+      });
+    }
+
+    reply.header("Content-Type", upload.mimeType || "application/octet-stream");
+    reply.header("Content-Disposition", `inline; filename="${encodeURIComponent(upload.fileName)}"`);
+    return reply.send(createReadStream(filePath));
+  });
+}
+
+function resolveUploadFilePath(storagePath: string, fileName: string, uploadDir: string): string | null {
+  if (storagePath && existsSync(storagePath)) {
+    return storagePath;
+  }
+
+  const byFileName = path.resolve(uploadDir, fileName);
+  if (existsSync(byFileName)) {
+    return byFileName;
+  }
+
+  const byBasename = path.resolve(uploadDir, path.basename(storagePath || fileName));
+  if (existsSync(byBasename)) {
+    return byBasename;
+  }
+
+  return null;
 }

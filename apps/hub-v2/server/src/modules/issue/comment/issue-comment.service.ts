@@ -25,7 +25,7 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
       id: genId("isc"),
       issueId: issue.id,
       authorId: ctx.userId?.trim() || ctx.accountId,
-      authorName: ctx.userId?.trim() || ctx.accountId,
+      authorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       content: input.content.trim(),
       mentionsJson: input.mentions && input.mentions.length > 0 ? JSON.stringify(input.mentions) : null,
       createdAt: now,
@@ -79,7 +79,7 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
       fromStatus: null,
       toStatus: null,
       operatorId: ctx.userId?.trim() || ctx.accountId,
-      operatorName: ctx.userId?.trim() || ctx.accountId,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       summary: content.length > 60 ? `${content.slice(0, 57)}...` : content,
       metaJson: JSON.stringify({ kind: "comment" }),
       createdAt: nowIso()

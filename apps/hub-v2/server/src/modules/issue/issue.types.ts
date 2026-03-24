@@ -1,6 +1,6 @@
 import type { PageResult } from "../../shared/http/pagination";
 
-export type IssueType = "bug" | "task" | "support";
+export type IssueType = "bug" | "feature" | "change" | "improvement" | "task" | "test";
 export type IssuePriority = "low" | "medium" | "high" | "critical";
 export type IssueStatus = "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
 export type IssueAction =

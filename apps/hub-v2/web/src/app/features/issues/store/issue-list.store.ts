@@ -28,6 +28,9 @@ export class IssueListStore {
   readonly result = computed(() => this.resultState());
   readonly items = computed(() => this.resultState()?.items ?? []);
   readonly loading = computed(() => this.loadingState());
+  readonly total = computed(() => this.resultState()?.total ?? 0);
+  readonly page = computed(() => this.queryState().page ?? 1);
+  readonly pageSize = computed(() => this.queryState().pageSize ?? 20);
 
   initialize(): void {
     const projectId = this.projectContext.currentProjectId() ?? '';
@@ -57,7 +60,7 @@ export class IssueListStore {
     this.queryState.update((query) => ({
       ...query,
       ...patch,
-      page: patch.page ?? 1,
+      page: patch.page ?? query.page ?? 1,
     }));
     this.load();
   }

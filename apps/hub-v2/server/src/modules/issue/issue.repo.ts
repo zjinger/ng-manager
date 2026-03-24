@@ -15,7 +15,7 @@ type IssueRow = {
   issue_no: string;
   title: string;
   description: string | null;
-  type: "bug" | "task" | "support";
+  type: "bug" | "feature" | "change" | "improvement" | "task" | "test" | "support";
   status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
   priority: "low" | "medium" | "high" | "critical";
   reporter_id: string;
@@ -55,7 +55,7 @@ type IssueLogRow = {
 type UpdateIssueRowInput = Partial<{
   title: string;
   description: string | null;
-  type: "bug" | "task" | "support";
+  type: "bug" | "feature" | "change" | "improvement" | "task" | "test";
   status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
   priority: "low" | "medium" | "high" | "critical";
   assignee_id: string | null;
@@ -77,6 +77,8 @@ type UpdateIssueRowInput = Partial<{
 }>;
 
 export class IssueRepo {
+  private readonly displayNameCache = new Map<string, string | null>();
+
   constructor(private readonly db: Database.Database) {}
 
   create(entity: IssueEntity): void {
@@ -151,8 +153,13 @@ export class IssueRepo {
     }
 
     if (query.type) {
-      conditions.push("type = ?");
-      params.push(query.type);
+      if (query.type === "task") {
+        conditions.push("(type = ? OR type = 'support')");
+        params.push(query.type);
+      } else {
+        conditions.push("type = ?");
+        params.push(query.type);
+      }
     }
 
     if (query.priority) {
@@ -388,15 +395,15 @@ export class IssueRepo {
       issueNo: row.issue_no,
       title: row.title,
       description: row.description,
-      type: row.type,
+      type: this.normalizeIssueType(row.type),
       status: row.status,
       priority: row.priority,
       reporterId: row.reporter_id,
-      reporterName: row.reporter_name,
+      reporterName: this.normalizeActorName(row.reporter_id, row.reporter_name) ?? row.reporter_name,
       assigneeId: row.assignee_id,
-      assigneeName: row.assignee_name,
+      assigneeName: this.normalizeActorName(row.assignee_id, row.assignee_name),
       verifierId: row.verifier_id,
-      verifierName: row.verifier_name,
+      verifierName: this.normalizeActorName(row.verifier_id, row.verifier_name),
       moduleCode: row.module_code,
       versionCode: row.version_code,
       environmentCode: row.environment_code,
@@ -421,7 +428,7 @@ export class IssueRepo {
       fromStatus: row.from_status,
       toStatus: row.to_status,
       operatorId: row.operator_id,
-      operatorName: row.operator_name,
+      operatorName: this.normalizeActorName(row.operator_id, row.operator_name),
       summary: row.summary,
       metaJson: row.meta_json,
       createdAt: row.created_at
@@ -452,5 +459,73 @@ export class IssueRepo {
       updatedAt: row.updated_at,
       projectId: row.project_id
     };
+  }
+
+  private normalizeIssueType(type: IssueRow["type"]): IssueEntity["type"] {
+    if (type === "support") {
+      return "task";
+    }
+    return type;
+  }
+
+  private normalizeActorName(actorId: string | null, actorName: string | null): string | null {
+    const current = actorName?.trim() || null;
+    const id = actorId?.trim() || null;
+    if (!current) {
+      return id ? this.lookupDisplayNameById(id) : null;
+    }
+
+    // Handle historical rows where *_name was saved as usr_xxx/adm_xxx.
+    if (id && current === id) {
+      return this.lookupDisplayNameById(id) ?? current;
+    }
+
+    if (this.looksLikeActorId(current)) {
+      return this.lookupDisplayNameById(current) ?? current;
+    }
+
+    return current;
+  }
+
+  private looksLikeActorId(value: string): boolean {
+    return /^usr_[a-z0-9]+$/i.test(value) || /^adm_[a-z0-9]+$/i.test(value);
+  }
+
+  private lookupDisplayNameById(id: string): string | null {
+    if (this.displayNameCache.has(id)) {
+      return this.displayNameCache.get(id) ?? null;
+    }
+
+    const userRow = this.db
+      .prepare(
+        `
+          SELECT COALESCE(NULLIF(display_name, ''), username) AS name
+          FROM users
+          WHERE id = ?
+          LIMIT 1
+        `
+      )
+      .get(id) as { name: string | null } | undefined;
+
+    if (userRow?.name?.trim()) {
+      const normalized = userRow.name.trim();
+      this.displayNameCache.set(id, normalized);
+      return normalized;
+    }
+
+    const adminRow = this.db
+      .prepare(
+        `
+          SELECT COALESCE(NULLIF(nickname, ''), username) AS name
+          FROM admin_accounts
+          WHERE id = ? OR user_id = ?
+          LIMIT 1
+        `
+      )
+      .get(id, id) as { name: string | null } | undefined;
+
+    const resolved = adminRow?.name?.trim() || null;
+    this.displayNameCache.set(id, resolved);
+    return resolved;
   }
 }

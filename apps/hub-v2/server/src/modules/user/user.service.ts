@@ -24,6 +24,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
       email: input.email?.trim() || null,
       mobile: input.mobile?.trim() || null,
       titleCode: input.titleCode?.trim() || null,
+      avatarUploadId: null,
+      avatarUrl: null,
       status: "active",
       source: "local",
       remark: input.remark?.trim() || null,

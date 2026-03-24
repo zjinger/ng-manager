@@ -37,12 +37,12 @@ export type IssueTransitionMode = 'resolve' | 'reopen';
         </form>
       </div>
 
-      <div dialog-footer>
+      <ng-container dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
         <button nz-button nzType="primary" [disabled]="!content().trim()" [nzLoading]="busy()" type="submit" form="issue-transition-form">
           {{ confirmText() }}
         </button>
-      </div>
+      </ng-container>
     </app-dialog-shell>
   `,
   styles: [
@@ -75,7 +75,11 @@ export class IssueTransitionDialogComponent {
   constructor() {
     effect(() => {
       if (this.open()) {
-        this.content.set('');
+        if(this.mode() === 'resolve') {
+          this.content.set('已解决');
+        }else{
+          this.content.set('');
+        }
       }
     });
   }

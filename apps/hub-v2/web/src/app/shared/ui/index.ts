@@ -14,3 +14,5 @@ export * from './status-badge';
 export * from './view-toggle';
 export * from './priority-badge';
 export * from './loading-state';
+export * from './side-detail-layout';
+export * from './type-badge';

@@ -12,3 +12,17 @@ export const ISSUE_PRIORITY_OPTIONS = [
   { label: '高', value: 'high' },
   { label: '紧急', value: 'critical' },
 ];
+
+export const ISSUE_PRIORITY_COLORS: Record<string, string> = {
+  low: '#52c41a',
+  medium: '#faad14',
+  high: '#f5222d',
+  critical: '#722ed1',
+};
+
+export const ISSUE_PRIORITY_BADGE_COLORS: Record<string, string> = {
+  low: 'success',
+  medium: 'warning',
+  high: 'error',
+  critical: 'purple',
+};

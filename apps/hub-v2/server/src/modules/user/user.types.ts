@@ -10,6 +10,8 @@ export interface UserEntity {
   email: string | null;
   mobile: string | null;
   titleCode: string | null;
+  avatarUploadId: string | null;
+  avatarUrl: string | null;
   status: UserStatus;
   source: UserSource;
   remark: string | null;
