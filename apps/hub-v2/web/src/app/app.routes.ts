@@ -43,6 +43,11 @@ export const routes: Routes = [
           import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
       },
       {
+        path: 'feedbacks',
+        loadChildren: () =>
+          import('./features/feedback/routes').then((m) => m.FEEDBACK_ROUTES),
+      },
+      {
         path: 'projects',
         loadChildren: () =>
           import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),

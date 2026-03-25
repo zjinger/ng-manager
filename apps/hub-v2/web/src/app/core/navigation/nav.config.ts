@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavSection[] = [
     label: "内容中心",
     items: [
       { key: 'content', label: '内容管理', icon: 'read', route: '/content' },
+      { key: 'feedbacks', label: '反馈管理', icon: 'message', route: '/feedbacks' },
     ]
   },
   {

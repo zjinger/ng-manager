@@ -6,6 +6,7 @@ import announcementPublicRoutes from "../modules/announcement/announcement-publi
 import announcementRoutes from "../modules/announcement/announcement.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
+import feedbackPublicRoutes from "../modules/feedback/feedback-public.routes";
 import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
@@ -93,6 +94,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(projectRoutes, { prefix: "/api/admin" });
   await app.register(uploadRoutes, { prefix: "/api/admin" });
   await app.register(announcementPublicRoutes, { prefix: "/api/public" });
+  await app.register(feedbackPublicRoutes, { prefix: "/api/public" });
   await app.register(documentPublicRoutes, { prefix: "/api/public" });
   await app.register(releasePublicRoutes, { prefix: "/api/public" });
   await app.register(sharedConfigPublicRoutes, { prefix: "/api/public" });

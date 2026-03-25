@@ -38,6 +38,14 @@ export class ApiClientService {
       .pipe(map((response) => response.data));
   }
 
+  put<T, B = unknown>(path: string, body?: B): Observable<T> {
+    return this.http
+      .put<ApiSuccessResponse<T>>(this.buildUrl(path), body ?? {}, {
+        withCredentials: true,
+      })
+      .pipe(map((response) => response.data));
+  }
+
   delete<T>(path: string): Observable<T> {
     return this.http
       .delete<ApiSuccessResponse<T>>(this.buildUrl(path), {
