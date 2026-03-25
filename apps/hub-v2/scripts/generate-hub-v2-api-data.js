@@ -17,6 +17,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const DEFAULT_NAME_MAP_PATH = path.join(__dirname, "generate-hub-v2-api-name-map.json");
 
 function parseArg(name) {
   const idx = process.argv.indexOf(`--${name}`);
@@ -28,6 +29,17 @@ function parseArg(name) {
 
 function hasFlag(name) {
   return process.argv.includes(`--${name}`);
+}
+
+function readJsonIfExists(filePath, fallback) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return fallback;
+  }
 }
 
 function normalizePathToUrl(p) {
@@ -286,6 +298,19 @@ function endpointNameCn(endpoint) {
   return `${resourceNameCn(endpoint)}-${actionNameCn(endpoint)}`;
 }
 
+function resolveEndpointName(endpoint, nameMap) {
+  const exactKey = `${endpoint.method} ${endpoint.fullPath}`;
+  const exact = nameMap?.exact || {};
+  const byPath = nameMap?.path || {};
+  if (typeof exact[exactKey] === "string" && exact[exactKey].trim()) {
+    return exact[exactKey].trim();
+  }
+  if (typeof byPath[endpoint.fullPath] === "string" && byPath[endpoint.fullPath].trim()) {
+    return byPath[endpoint.fullPath].trim();
+  }
+  return endpointNameCn(endpoint);
+}
+
 function groupName(endpoint) {
   const p = endpoint.fullPath;
   if (p.startsWith("/api/admin/auth")) return "认证";
@@ -309,7 +334,7 @@ function groupName(endpoint) {
   return "其他";
 }
 
-function buildRequest(endpoint, index, now, collectionId) {
+function buildRequest(endpoint, index, now, collectionId, nameMap) {
   const id = `req_hubv2_${String(index + 1).padStart(3, "0")}_${now.toString(36)}`;
   const isWrite = ["POST", "PUT", "PATCH"].includes(endpoint.method);
   const isNoAuth = endpoint.fullPath.startsWith("/api/admin/auth/login") || endpoint.fullPath.startsWith("/api/public/");
@@ -325,7 +350,7 @@ function buildRequest(endpoint, index, now, collectionId) {
   }));
   return {
     id,
-    name: endpointNameCn(endpoint),
+    name: resolveEndpointName(endpoint, nameMap),
     method: endpoint.method,
     url: endpoint.fullPath,
     collectionId,
@@ -371,6 +396,8 @@ function main() {
     parseArg("dataDir") ?? process.env.NGM_DATA_DIR ?? path.join(os.homedir(), ".ng-manager")
   );
   const baseUrl = parseArg("baseUrl") ?? "http://127.0.0.1:7008";
+  const nameMapPath = path.resolve(parseArg("nameMap") ?? DEFAULT_NAME_MAP_PATH);
+  const nameMap = readJsonIfExists(nameMapPath, { exact: {}, path: {} });
   const projectId = parseArg("projectId");
   const scope = projectId ? "project" : "global";
 
@@ -407,7 +434,7 @@ function main() {
     });
 
     for (const endpoint of list) {
-      requests.push(buildRequest(endpoint, reqIdx, now, colId));
+      requests.push(buildRequest(endpoint, reqIdx, now, colId, nameMap));
       reqIdx += 1;
     }
   }
@@ -464,6 +491,7 @@ function main() {
         apply,
         scope,
         projectId: projectId ?? null,
+        nameMapPath: fs.existsSync(nameMapPath) ? nameMapPath : null,
         targetDataDir: apply ? targetDataDir : null,
         generated: {
           collections: collections.length,

@@ -1,0 +1,18 @@
+{
+  "exact": {
+    "POST /api/admin/auth/login": "认证-登录",
+    "POST /api/admin/auth/login/plain": "认证-明文登录（调试）",
+    "GET /api/admin/auth/login/challenge": "认证-获取登录随机验证码",
+    "GET /api/admin/issues": "问题-获取列表",
+    "GET /api/admin/issues/:issueId": "问题-获取详情",
+    "GET /api/admin/rd/items": "研发项-获取列表",
+    "GET /api/admin/feedbacks": "反馈-获取列表",
+    "GET /api/admin/feedbacks/:feedbackId": "反馈-获取详情",
+    "PUT /api/admin/feedbacks/:feedbackId/status": "反馈-更新状态",
+    "POST /api/public/feedbacks": "反馈-提交"
+  },
+  "path": {
+    "/api/admin/projects/:projectId/members": "项目成员-管理",
+    "/api/admin/uploads/:uploadId/raw": "上传-读取原始文件"
+  }
+}
