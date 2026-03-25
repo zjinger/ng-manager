@@ -103,9 +103,10 @@ export class ApiSendService {
 
         const finalUrl = buildFinalUrl(urlWithBase, resolved.pathParams ?? [], resolved.query ?? [], resolved.auth);
 
-        const headersLower: Record<string, string> = {};
-        // 规范化为小写 key（node fetch 更一致）
-        for (const [k, v] of Object.entries(resolved.headers)) headersLower[k.toLowerCase()] = String(v ?? "");
+            const headersLower: Record<string, string> = {};
+            for (const [k, v] of Object.entries(dto.runtimeHeaders ?? {})) headersLower[k.toLowerCase()] = String(v ?? "");
+            // 规范化为小写 key（node fetch 更一致）
+            for (const [k, v] of Object.entries(resolved.headers)) headersLower[k.toLowerCase()] = String(v ?? "");
 
         const historyId = newId("hist");
         let history: ApiHistoryEntity = {
@@ -179,6 +180,7 @@ export class ApiSendService {
                 response: history.response,
                 metrics: history.metrics,
                 curl,
+                responseSetCookies: out.setCookies,
             };
         } catch (e: any) {
             const endedAt = Date.now();

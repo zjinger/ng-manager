@@ -20,6 +20,7 @@ export type NodeHttpSendOutput = {
     headers: Record<string, string>;
     bodyText: string;
     bodySize: number;
+    setCookies?: string[];
 };
 
 function headersToRecord(headers: Headers): Record<string, string> {
@@ -108,11 +109,21 @@ export class NodeHttpClient {
                 headers: headersToRecord(res.headers),
                 bodyText,
                 bodySize: bufSize,
+                setCookies: extractSetCookies(res.headers),
             };
         } finally {
             clearTimeout(timer);
         }
     }
+}
+
+function extractSetCookies(headers: Headers): string[] {
+    const h = headers as Headers & { getSetCookie?: () => string[] };
+    if (typeof h.getSetCookie === "function") {
+        return h.getSetCookie();
+    }
+    const single = headers.get("set-cookie");
+    return single ? [single] : [];
 }
 
 // 小工具：生成 id（给 history 用）

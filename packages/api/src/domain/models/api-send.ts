@@ -12,6 +12,8 @@ export type SendDto = {
     envId?: string;
     // 可选：提供 projectRoot 等上下文
     projectRoot?: string;
+    // 运行时注入的请求头（不会落库）
+    runtimeHeaders?: Record<string, string>;
 };
 
 export type SendResult = {
@@ -20,4 +22,5 @@ export type SendResult = {
     error?: ApiResponseError;
     metrics: ApiResponseMetrics;
     curl?: ApiCurlEntity;
+    responseSetCookies?: string[];
 };
