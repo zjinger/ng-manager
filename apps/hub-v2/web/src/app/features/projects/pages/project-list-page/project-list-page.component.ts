@@ -1,3 +1,4 @@
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -7,15 +8,17 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { ProjectContextStore } from '../../../../core/state/project-context.store';
 
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
+import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
+import { RdApiService } from '../../../rd/services/rd-api.service';
 import { ProjectListTableComponent } from '../../components/project-list-table/project-list-table.component';
 import { ProjectConfigDialogComponent } from '../../dialogs/project-config-dialog/project-config-dialog.component';
 import { ProjectCreateDialogComponent } from '../../dialogs/project-create-dialog/project-create-dialog.component';
 import { ProjectEditDialogComponent } from '../../dialogs/project-edit-dialog/project-edit-dialog.component';
 import { ProjectMembersDialogComponent } from '../../dialogs/project-members-dialog/project-members-dialog.component';
 import type {
+  CreateProjectApiTokenInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
-  CreateProjectApiTokenInput,
   ProjectApiTokenEntity,
   ProjectMemberCandidate,
   ProjectMemberEntity,
@@ -30,14 +33,13 @@ import type {
 } from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
 import { ProjectListStore } from '../../store/project-list.store';
-import { RdApiService } from '../../../rd/services/rd-api.service';
-import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
 
 @Component({
   selector: 'app-project-list-page',
   standalone: true,
   imports: [
     FormsModule,
+    ClipboardModule,
     NzButtonModule,
     NzIconModule,
     NzSelectModule,
@@ -63,6 +65,7 @@ export class ProjectListPageComponent {
   private readonly rdApi = inject(RdApiService);
   private readonly projectContext = inject(ProjectContextStore);
   private readonly message = inject(NzMessageService);
+  private readonly clipboard = inject(Clipboard);
 
   readonly keyword = signal('');
   readonly status = signal<ProjectStatus | ''>('');
@@ -480,10 +483,12 @@ export class ProjectListPageComponent {
     if (!token) {
       return;
     }
-    navigator.clipboard
-      .writeText(token)
-      .then(() => this.message.success('Token 已复制'))
-      .catch(() => this.message.error('复制失败，请手动复制'));
+    const ok = this.clipboard.copy(token);
+    if (ok) {
+      this.message.success('Token 已复制');
+    } else {
+      this.message.error('复制 Token 失败');
+    }
   }
 
   private loadMembers(projectId: string): void {
@@ -633,13 +638,13 @@ export class ProjectListPageComponent {
         items.map((item) =>
           item.id === id
             ? {
-                ...item,
-                name: patch.name ?? item.name,
-                code: patch.code === undefined ? item.code : patch.code,
-                description: patch.description === undefined ? item.description : patch.description,
-                sort: patch.sort ?? item.sort,
-                enabled: patch.enabled ?? item.enabled
-              }
+              ...item,
+              name: patch.name ?? item.name,
+              code: patch.code === undefined ? item.code : patch.code,
+              description: patch.description === undefined ? item.description : patch.description,
+              sort: patch.sort ?? item.sort,
+              enabled: patch.enabled ?? item.enabled
+            }
             : item
         )
       )
@@ -656,13 +661,13 @@ export class ProjectListPageComponent {
         items.map((item) =>
           item.id === id
             ? {
-                ...item,
-                version: patch.version ?? item.version,
-                code: patch.code === undefined ? item.code : patch.code,
-                description: patch.description === undefined ? item.description : patch.description,
-                sort: patch.sort ?? item.sort,
-                enabled: patch.enabled ?? item.enabled
-              }
+              ...item,
+              version: patch.version ?? item.version,
+              code: patch.code === undefined ? item.code : patch.code,
+              description: patch.description === undefined ? item.description : patch.description,
+              sort: patch.sort ?? item.sort,
+              enabled: patch.enabled ?? item.enabled
+            }
             : item
         )
       )
@@ -683,11 +688,11 @@ export class ProjectListPageComponent {
         items.map((item) =>
           item.id === id
             ? {
-                ...item,
-                name: patch.name ?? item.name,
-                sort: patch.sort ?? item.sort,
-                enabled: patch.enabled ?? item.enabled
-              }
+              ...item,
+              name: patch.name ?? item.name,
+              sort: patch.sort ?? item.sort,
+              enabled: patch.enabled ?? item.enabled
+            }
             : item
         )
       )

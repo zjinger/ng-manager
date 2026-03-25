@@ -11,6 +11,7 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
 import { DialogShellComponent } from '@shared/ui';
+import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
 import type {
   CreateProjectApiTokenInput,
@@ -39,8 +40,9 @@ import type {
     NzSelectModule,
     NzSwitchModule,
     NzTabsModule,
-    DialogShellComponent
-  ],
+    DialogShellComponent,
+    NzTooltipDirective
+],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -253,10 +255,15 @@ import type {
               @if (latestCreatedToken()) {
                 <div class="token-once">
                   <div class="token-once__title">新 Token（仅展示一次）</div>
-                  <div class="token-once__value">{{ latestCreatedToken() }}</div>
+                  <div class="token-once__value">{{ latestCreatedToken() }}
+                    <a (click)="copyLatestToken.emit(latestCreatedToken()!)" nz-tooltip="点击复制token">
+                      <nz-icon nzType="copy" nzTheme="outline" />
+                    </a></div>
                   <div class="token-once__actions">
-                    <button nz-button nzType="default" (click)="copyLatestToken.emit(latestCreatedToken()!)">复制</button>
-                    <button nz-button nzType="default" (click)="clearLatestToken.emit()">已保存，关闭展示</button>
+                    <button nz-button nzType="default" (click)="clearLatestToken.emit()">
+                      <nz-icon nzType="check" nzTheme="outline" />
+                      已保存，关闭展示
+                    </button>
                   </div>
                 </div>
               }

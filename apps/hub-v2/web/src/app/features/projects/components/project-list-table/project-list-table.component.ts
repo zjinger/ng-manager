@@ -239,7 +239,11 @@ export class ProjectListTableComponent {
   }
 
   copyProjectKey(projectKey: string): void {
-    this.clipboard.copy(projectKey);
-    this.message.success('projectKey 已复制');
+    const ok = this.clipboard.copy(projectKey);
+    if (ok) {
+      this.message.success('projectKey 已复制');
+    } else {
+      this.message.error('复制 projectKey 失败');
+    }
   }
 }
