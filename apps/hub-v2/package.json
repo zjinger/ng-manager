@@ -9,7 +9,7 @@
     "package": "node ./scripts/package-release.js",
     "release:prod": "node ./scripts/deploy-server.js --target=prod",
     "release:prod:skip-build": "node ./scripts/deploy-server.js --target=prod --skip-build",
-    "sync:api-data": "node ../../packages/server/scripts/generate-hub-v2-api-data.js --apply --dataDir C:\\Users\\zjing\\.ng-manager --projectId proj_44af68e604f5 --baseUrl http://192.168.1.31:7008",
+    "sync:api-data": "node ./scripts/generate-hub-v2-api-data.js --apply --dataDir C:\\Users\\zjing\\.ng-manager --projectId proj_44af68e604f5 --baseUrl http://127.0.0.1:19528",
     "remote:install:prod": "node ./scripts/deploy-server.js --target=prod --install-remote-scripts",
     "dev:server": "npm --prefix ./server run dev",
     "dev:web": "npm --prefix ./web run start"

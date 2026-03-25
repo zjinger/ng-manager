@@ -4,3 +4,4 @@ server/data-migrated/*
 !.env
 !.env.production
 ngm-hub.tar.gz
+.generated/
