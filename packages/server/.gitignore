@@ -54,3 +54,6 @@ Thumbs.db
 
 # Docker (optional)
 docker-data/
+
+# Hub-v2
+.generated/

@@ -66,3 +66,5 @@ Thumbs.db
 .temp/
 .artifacts/
 apps/hub-v2/ngm-hub-v2.tar.gz
+packages/server/scripts/generate-hub-v2-api-data.ts
+packages/server/scripts/generate-hub-v2-api-data.js
