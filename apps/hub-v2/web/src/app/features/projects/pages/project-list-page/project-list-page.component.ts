@@ -15,6 +15,8 @@ import { ProjectMembersDialogComponent } from '../../dialogs/project-members-dia
 import type {
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
+  CreateProjectApiTokenInput,
+  ProjectApiTokenEntity,
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMemberRole,
@@ -76,6 +78,8 @@ export class ProjectListPageComponent {
   readonly environments = signal<ProjectMetaItem[]>([]);
   readonly versions = signal<ProjectVersionItem[]>([]);
   readonly stages = signal<RdStageEntity[]>([]);
+  readonly apiTokens = signal<ProjectApiTokenEntity[]>([]);
+  readonly latestCreatedToken = signal<string | null>(null);
   readonly membersLoading = signal(false);
   readonly configLoading = signal(false);
   readonly membersBusy = signal(false);
@@ -85,10 +89,12 @@ export class ProjectListPageComponent {
   readonly pendingEnvironmentMap = signal<Record<string, true>>({});
   readonly pendingVersionMap = signal<Record<string, true>>({});
   readonly pendingStageMap = signal<Record<string, true>>({});
+  readonly pendingTokenMap = signal<Record<string, true>>({});
   readonly pendingModuleIds = computed(() => Object.keys(this.pendingModuleMap()));
   readonly pendingEnvironmentIds = computed(() => Object.keys(this.pendingEnvironmentMap()));
   readonly pendingVersionIds = computed(() => Object.keys(this.pendingVersionMap()));
   readonly pendingStageIds = computed(() => Object.keys(this.pendingStageMap()));
+  readonly pendingTokenIds = computed(() => Object.keys(this.pendingTokenMap()));
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个项目`);
 
   constructor() {
@@ -157,10 +163,13 @@ export class ProjectListPageComponent {
     this.environments.set([]);
     this.versions.set([]);
     this.stages.set([]);
+    this.apiTokens.set([]);
+    this.latestCreatedToken.set(null);
     this.pendingModuleMap.set({});
     this.pendingEnvironmentMap.set({});
     this.pendingVersionMap.set({});
     this.pendingStageMap.set({});
+    this.pendingTokenMap.set({});
   }
 
   openMembersDialog(project: ProjectSummary): void {
@@ -424,6 +433,59 @@ export class ProjectListPageComponent {
     });
   }
 
+  createApiToken(input: CreateProjectApiTokenInput): void {
+    const project = this.configProject();
+    if (!project) {
+      return;
+    }
+    this.configBusy.set(true);
+    this.projectApi.createApiToken(project.projectKey, input).subscribe({
+      next: (result) => {
+        this.configBusy.set(false);
+        this.latestCreatedToken.set(result.token);
+        this.message.success('API Token 已创建（仅展示一次）');
+        this.loadProjectApiTokens(project.projectKey);
+      },
+      error: () => {
+        this.configBusy.set(false);
+        this.message.error('创建 API Token 失败');
+      }
+    });
+  }
+
+  revokeApiToken(tokenId: string): void {
+    const project = this.configProject();
+    if (!project) {
+      return;
+    }
+    this.setPending(this.pendingTokenMap, tokenId, true);
+    this.projectApi.revokeApiToken(project.projectKey, tokenId).subscribe({
+      next: () => {
+        this.setPending(this.pendingTokenMap, tokenId, false);
+        this.message.success('API Token 已吊销');
+        this.loadProjectApiTokens(project.projectKey);
+      },
+      error: () => {
+        this.setPending(this.pendingTokenMap, tokenId, false);
+        this.message.error('吊销 API Token 失败');
+      }
+    });
+  }
+
+  clearLatestCreatedToken(): void {
+    this.latestCreatedToken.set(null);
+  }
+
+  copyLatestToken(token: string): void {
+    if (!token) {
+      return;
+    }
+    navigator.clipboard
+      .writeText(token)
+      .then(() => this.message.success('Token 已复制'))
+      .catch(() => this.message.error('复制失败，请手动复制'));
+  }
+
   private loadMembers(projectId: string): void {
     this.membersLoading.set(true);
     this.projectApi.listMembers(projectId).subscribe({
@@ -486,17 +548,20 @@ export class ProjectListPageComponent {
                 this.rdApi.listStages(projectId).subscribe({
                   next: (stages) => {
                     this.stages.set(stages);
-                    this.configLoading.set(false);
+                    const currentProject = this.configProject();
+                    this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
                   },
                   error: () => {
                     this.stages.set([]);
-                    this.configLoading.set(false);
+                    const currentProject = this.configProject();
+                    this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
                   }
                 });
               },
               error: () => {
                 this.versions.set([]);
                 this.stages.set([]);
+                this.apiTokens.set([]);
                 this.configLoading.set(false);
               }
             });
@@ -505,6 +570,7 @@ export class ProjectListPageComponent {
             this.environments.set([]);
             this.versions.set([]);
             this.stages.set([]);
+            this.apiTokens.set([]);
             this.configLoading.set(false);
           }
         });
@@ -514,7 +580,26 @@ export class ProjectListPageComponent {
         this.environments.set([]);
         this.versions.set([]);
         this.stages.set([]);
+        this.apiTokens.set([]);
         this.configLoading.set(false);
+      }
+    });
+  }
+
+  private loadProjectApiTokens(projectKey: string, done?: () => void): void {
+    if (!projectKey) {
+      this.apiTokens.set([]);
+      done?.();
+      return;
+    }
+    this.projectApi.listApiTokens(projectKey).subscribe({
+      next: (items) => {
+        this.apiTokens.set(items);
+        done?.();
+      },
+      error: () => {
+        this.apiTokens.set([]);
+        done?.();
       }
     });
   }

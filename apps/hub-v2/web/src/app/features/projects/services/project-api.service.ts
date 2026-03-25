@@ -5,9 +5,12 @@ import { ApiClientService } from '../../../core/http/api-client.service';
 import type { PageResult } from '../../../core/types/page.types';
 import type {
   AddProjectMemberInput,
+  CreateProjectApiTokenInput,
+  CreateProjectApiTokenResult,
   CreateProjectInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
+  ProjectApiTokenEntity,
   ProjectListQuery,
   ProjectMemberCandidate,
   ProjectMemberEntity,
@@ -119,5 +122,19 @@ export class ProjectApiService {
 
   removeVersion(projectId: string, versionId: string) {
     return this.api.delete<{ id: string }>(`/projects/${projectId}/versions/${versionId}`);
+  }
+
+  listApiTokens(projectKey: string) {
+    return this.api
+      .get<{ items: ProjectApiTokenEntity[] }>(`/projects/${projectKey}/api-tokens`)
+      .pipe(map((response) => response.items));
+  }
+
+  createApiToken(projectKey: string, input: CreateProjectApiTokenInput) {
+    return this.api.post<CreateProjectApiTokenResult, CreateProjectApiTokenInput>(`/projects/${projectKey}/api-tokens`, input);
+  }
+
+  revokeApiToken(projectKey: string, tokenId: string) {
+    return this.api.delete<{ id: string }>(`/projects/${projectKey}/api-tokens/${tokenId}`);
   }
 }

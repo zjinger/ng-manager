@@ -4,6 +4,8 @@ import { createReadStream } from "node:fs";
 import type { FastifyInstance } from "fastify";
 import announcementPublicRoutes from "../modules/announcement/announcement-public.routes";
 import announcementRoutes from "../modules/announcement/announcement.routes";
+import apiTokenAdminRoutes from "../modules/api-token/api-token-admin.routes";
+import apiTokenRoutes from "../modules/api-token/api-token.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
 import feedbackPublicRoutes from "../modules/feedback/feedback-public.routes";
@@ -77,6 +79,7 @@ function guessContentType(filePath: string) {
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(authRoutes, { prefix: "/api/admin" });
+  await app.register(apiTokenAdminRoutes, { prefix: "/api/admin" });
   await app.register(announcementRoutes, { prefix: "/api/admin" });
   await app.register(dashboardRoutes, { prefix: "/api/admin" });
   await app.register(feedbackRoutes, { prefix: "/api/admin" });
@@ -99,6 +102,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(releasePublicRoutes, { prefix: "/api/public" });
   await app.register(sharedConfigPublicRoutes, { prefix: "/api/public" });
   await app.register(healthRoutes, { prefix: "/api/public" });
+  await app.register(apiTokenRoutes, { prefix: "/api/token" });
 
   const spaRoot = resolveSpaRoot();
   if (!spaRoot) {

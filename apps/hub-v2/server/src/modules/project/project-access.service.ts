@@ -10,6 +10,9 @@ export class ProjectAccessService {
     if (ctx.roles.includes("admin")) {
       return this.repo.listAllProjectIds();
     }
+    if (ctx.projectIds?.length) {
+      return Array.from(new Set(ctx.projectIds.map((item) => item.trim()).filter((item) => item.length > 0)));
+    }
 
     const userId = ctx.userId?.trim();
     if (!userId) {
@@ -21,6 +24,9 @@ export class ProjectAccessService {
 
   async requireProjectAccess(projectId: string, ctx: RequestContext, action: string): Promise<void> {
     if (ctx.roles.includes("admin")) {
+      return;
+    }
+    if (ctx.projectIds?.includes(projectId)) {
       return;
     }
 

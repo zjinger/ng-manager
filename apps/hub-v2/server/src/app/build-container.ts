@@ -1,6 +1,9 @@
 import { AnnouncementRepo } from "../modules/announcement/announcement.repo";
 import { AnnouncementService } from "../modules/announcement/announcement.service";
 import type { AnnouncementCommandContract, AnnouncementQueryContract } from "../modules/announcement/announcement.contract";
+import type { ApiTokenCommandContract, ApiTokenQueryContract } from "../modules/api-token/api-token.contract";
+import { ApiTokenRepo } from "../modules/api-token/api-token.repo";
+import { ApiTokenService } from "../modules/api-token/api-token.service";
 import type { AuthCommandContract, AuthQueryContract } from "../modules/auth/auth.contract";
 import { DashboardService } from "../modules/dashboard/dashboard.service";
 import type { DashboardQueryContract } from "../modules/dashboard/dashboard.contract";
@@ -58,6 +61,8 @@ export type AppContainer = {
   healthQuery: HealthQueryService;
   authCommand: AuthCommandContract;
   authQuery: AuthQueryContract;
+  apiTokenCommand: ApiTokenCommandContract;
+  apiTokenQuery: ApiTokenQueryContract;
   userCommand: UserCommandContract;
   userQuery: UserQueryContract;
   projectCommand: ProjectCommandContract;
@@ -129,6 +134,15 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const notificationService = new NotificationService(projectService, announcementService, issueService, rdService);
   const feedbackRepo = new FeedbackRepo(db);
   const feedbackService = new FeedbackService(feedbackRepo, projectRepo, projectAccess);
+  const apiTokenRepo = new ApiTokenRepo(db);
+  const apiTokenService = new ApiTokenService(
+    apiTokenRepo,
+    projectRepo,
+    projectAccess,
+    issueService,
+    rdService,
+    feedbackService
+  );
   const releaseRepo = new ReleaseRepo(db);
   const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus);
   const sharedConfigRepo = new SharedConfigRepo(db);
@@ -139,6 +153,8 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     healthQuery: new HealthQueryService(config),
     authCommand: authService,
     authQuery: authService,
+    apiTokenCommand: apiTokenService,
+    apiTokenQuery: apiTokenService,
     userCommand: userService,
     userQuery: userService,
     projectCommand: projectService,

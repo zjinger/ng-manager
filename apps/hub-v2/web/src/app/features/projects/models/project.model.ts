@@ -123,3 +123,31 @@ export interface UpdateProjectVersionItemInput {
   sort?: number;
   description?: string | null;
 }
+
+export type ProjectApiTokenScope = 'issues:read' | 'rd:read' | 'feedbacks:read';
+export type ProjectApiTokenStatus = 'active' | 'revoked';
+
+export interface ProjectApiTokenEntity {
+  id: string;
+  projectId: string;
+  ownerUserId: string;
+  name: string;
+  tokenPrefix: string;
+  scopes: ProjectApiTokenScope[];
+  status: ProjectApiTokenStatus;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProjectApiTokenInput {
+  name: string;
+  scopes: ProjectApiTokenScope[];
+  expiresAt?: string | null;
+}
+
+export interface CreateProjectApiTokenResult {
+  token: string;
+  entity: ProjectApiTokenEntity;
+}

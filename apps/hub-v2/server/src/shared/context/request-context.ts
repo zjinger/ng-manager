@@ -1,4 +1,5 @@
 export type RequestSource = "http" | "ws" | "cli" | "job";
+export type RequestAuthType = "anonymous" | "user" | "token" | "public";
 
 export interface RequestContext {
   accountId: string;
@@ -6,6 +7,9 @@ export interface RequestContext {
   userId?: string | null;
   roles: string[];
   projectIds?: string[];
+  authType: RequestAuthType;
+  authScopes?: string[];
+  tokenId?: string;
   source: RequestSource;
   requestId?: string;
   ip?: string;
@@ -18,6 +22,9 @@ type CreateRequestContextInput = {
   userId?: string | null;
   roles?: string[];
   projectIds?: string[];
+  authType?: RequestAuthType;
+  authScopes?: string[];
+  tokenId?: string;
   source: RequestSource;
   requestId?: string;
   ip?: string;
@@ -25,12 +32,20 @@ type CreateRequestContextInput = {
 };
 
 export function createRequestContext(input: CreateRequestContextInput): RequestContext {
+  const accountId = input.accountId ?? "anonymous";
+  const authType =
+    input.authType ??
+    (accountId === "anonymous" ? "anonymous" : accountId === "public" ? "public" : "user");
+
   return {
-    accountId: input.accountId ?? "anonymous",
+    accountId,
     nickname: input.nickname ?? null,
     userId: input.userId ?? null,
     roles: input.roles ?? [],
     projectIds: input.projectIds ?? [],
+    authType,
+    authScopes: input.authScopes ?? [],
+    tokenId: input.tokenId,
     source: input.source,
     requestId: input.requestId,
     ip: input.ip,

@@ -1,17 +1,23 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
 import { DialogShellComponent } from '@shared/ui';
 import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
 import type {
+  CreateProjectApiTokenInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
+  ProjectApiTokenEntity,
+  ProjectApiTokenScope,
   ProjectMetaItem,
   ProjectSummary,
   ProjectVersionItem,
@@ -23,11 +29,14 @@ import type {
   selector: 'app-project-config-dialog',
   standalone: true,
   imports: [
+    DatePipe,
     FormsModule,
     NzButtonModule,
+    NzDatePickerModule,
     NzIconModule,
     NzInputModule,
     NzPopconfirmModule,
+    NzSelectModule,
     NzSwitchModule,
     NzTabsModule,
     DialogShellComponent
@@ -238,6 +247,92 @@ import type {
               </div>
             </section>
           </nz-tab>
+
+          <nz-tab nzTitle="API Token">
+            <section class="section">
+              @if (latestCreatedToken()) {
+                <div class="token-once">
+                  <div class="token-once__title">新 Token（仅展示一次）</div>
+                  <div class="token-once__value">{{ latestCreatedToken() }}</div>
+                  <div class="token-once__actions">
+                    <button nz-button nzType="default" (click)="copyLatestToken.emit(latestCreatedToken()!)">复制</button>
+                    <button nz-button nzType="default" (click)="clearLatestToken.emit()">已保存，关闭展示</button>
+                  </div>
+                </div>
+              }
+
+              <div class="token-creator">
+                <input
+                  nz-input
+                  placeholder="Token 名称，如 webapp-readonly"
+                  [ngModel]="tokenNameDraft()"
+                  (ngModelChange)="tokenNameDraft.set($event)"
+                />
+                <nz-select
+                  nzMode="multiple"
+                  nzPlaceHolder="选择读取权限"
+                  [ngModel]="tokenScopesDraft()"
+                  (ngModelChange)="tokenScopesDraft.set($event)"
+                >
+                  <nz-option nzLabel="Issue 读取" nzValue="issues:read"></nz-option>
+                  <nz-option nzLabel="研发项读取" nzValue="rd:read"></nz-option>
+                  <nz-option nzLabel="反馈读取" nzValue="feedbacks:read"></nz-option>
+                </nz-select>
+                <nz-date-picker
+                  nzShowTime
+                  nzPlaceHolder="过期时间（可选）"
+                  [ngModel]="tokenExpiresAt()"
+                  (ngModelChange)="tokenExpiresAt.set($event)"
+                ></nz-date-picker>
+                <button nz-button nzType="primary" [disabled]="busy() || !canSubmitTokenCreate()" (click)="submitTokenCreate()">
+                  <nz-icon nzType="plus" nzTheme="outline" />生成 Token
+                </button>
+              </div>
+
+              <div class="token-list">
+                <div class="token-list__head">
+                  <div>名称</div>
+                  <div>权限</div>
+                  <div>状态</div>
+                  <div>过期时间</div>
+                  <div>最近使用</div>
+                  <div>前缀</div>
+                  <div>操作</div>
+                </div>
+                @for (item of apiTokens(); track item.id) {
+                  <div class="token-list__row">
+                    <div>{{ item.name }}</div>
+                    <div>{{ renderScopes(item.scopes) }}</div>
+                    <div>{{ item.status === 'active' ? '生效中' : '已吊销' }}</div>
+                    <div>{{ item.expiresAt ? (item.expiresAt | date: 'yyyy-MM-dd HH:mm') : '永不过期' }}</div>
+                    <div>{{ item.lastUsedAt ? (item.lastUsedAt | date: 'MM-dd HH:mm') : '-' }}</div>
+                    <div class="token-list__prefix">{{ item.tokenPrefix }}</div>
+                    <div>
+                      @if(item.status=='active') {
+                         <button
+                        nz-button
+                        nzType="default"
+                        nzDanger
+                        [disabled]="busy()  || isTokenPending(item.id)"
+                        [nzLoading]="isTokenPending(item.id)"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认注销该 Token？吊销后不可恢复。"
+                        (nzOnConfirm)="revokeApiToken.emit(item.id)"
+                      >
+                        <nz-icon nzType="minus" nzTheme="outline" />
+                      </button>
+                      }@else {
+                          <span style="color: var(--text-muted)">已注销</span>
+                      }
+                     
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="empty">暂无 API Token</div>
+                }
+              </div>
+            </section>
+          </nz-tab>
         </nz-tabs>
       </div>
       <ng-container dialog-footer>
@@ -274,6 +369,63 @@ import type {
       .row--stage {
         grid-template-columns: 1.6fr 110px 72px auto auto;
       }
+      .token-once {
+        border: 1px solid var(--primary-300);
+        border-radius: 10px;
+        padding: 12px;
+        background: color-mix(in srgb, var(--primary-100) 36%, transparent);
+        display: grid;
+        gap: 8px;
+      }
+      .token-once__title {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .token-once__value {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 13px;
+        word-break: break-all;
+      }
+      .token-once__actions {
+        display: flex;
+        gap: 8px;
+      }
+      .token-creator {
+        display: grid;
+        grid-template-columns: minmax(200px, 1fr) minmax(220px, 1fr) 220px auto;
+        gap: 10px;
+        align-items: center;
+      }
+      .token-list {
+        border: 1px solid var(--border-color-soft);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .token-list__head,
+      .token-list__row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 90px 150px 110px 150px 88px;
+        gap: 10px;
+        padding: 10px 12px;
+        align-items: center;
+      }
+      .token-list__head {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-muted);
+        background: var(--bg-subtle);
+        border-bottom: 1px solid var(--border-color-soft);
+      }
+      .token-list__row {
+        border-bottom: 1px solid var(--border-color-soft);
+      }
+      .token-list__row:last-child {
+        border-bottom: 0;
+      }
+      .token-list__prefix {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+      }
       .empty {
         color: var(--text-muted);
         padding: 12px 0;
@@ -295,10 +447,13 @@ export class ProjectConfigDialogComponent {
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly apiTokens = input<ProjectApiTokenEntity[]>([]);
+  readonly latestCreatedToken = input<string | null>(null);
   readonly pendingModuleIds = input<string[]>([]);
   readonly pendingEnvironmentIds = input<string[]>([]);
   readonly pendingVersionIds = input<string[]>([]);
   readonly pendingStageIds = input<string[]>([]);
+  readonly pendingTokenIds = input<string[]>([]);
 
   readonly cancel = output<void>();
   readonly createModule = output<CreateProjectMetaItemInput>();
@@ -313,11 +468,18 @@ export class ProjectConfigDialogComponent {
   readonly createStage = output<CreateRdStageInput>();
   readonly updateStage = output<{ id: string; patch: UpdateRdStageInput }>();
   readonly removeStage = output<string>();
+  readonly createApiToken = output<CreateProjectApiTokenInput>();
+  readonly revokeApiToken = output<string>();
+  readonly copyLatestToken = output<string>();
+  readonly clearLatestToken = output<void>();
 
   readonly moduleDraft = signal('');
   readonly environmentDraft = signal('');
   readonly versionDraft = signal('');
   readonly stageDraft = signal('');
+  readonly tokenNameDraft = signal('');
+  readonly tokenScopesDraft = signal<ProjectApiTokenScope[]>(['issues:read', 'rd:read', 'feedbacks:read']);
+  readonly tokenExpiresAt = signal<Date | null>(null);
 
   isModulePending(id: string): boolean {
     return this.pendingModuleIds().includes(id);
@@ -333,6 +495,10 @@ export class ProjectConfigDialogComponent {
 
   isStagePending(id: string): boolean {
     return this.pendingStageIds().includes(id);
+  }
+
+  isTokenPending(id: string): boolean {
+    return this.pendingTokenIds().includes(id);
   }
 
   asNumber(value: unknown): number {
@@ -414,5 +580,32 @@ export class ProjectConfigDialogComponent {
     if (Object.keys(patch).length > 0) {
       this.updateStage.emit({ id: item.id, patch });
     }
+  }
+
+  canSubmitTokenCreate(): boolean {
+    return this.tokenNameDraft().trim().length > 0 && this.tokenScopesDraft().length > 0;
+  }
+
+  submitTokenCreate(): void {
+    if (!this.canSubmitTokenCreate()) {
+      return;
+    }
+    this.createApiToken.emit({
+      name: this.tokenNameDraft().trim(),
+      scopes: this.tokenScopesDraft(),
+      expiresAt: this.tokenExpiresAt() ? this.tokenExpiresAt()!.toISOString() : null
+    });
+    this.tokenNameDraft.set('');
+    this.tokenExpiresAt.set(null);
+  }
+
+  renderScopes(scopes: ProjectApiTokenScope[]): string {
+    return scopes
+      .map((scope) => {
+        if (scope === 'issues:read') return 'Issue读取';
+        if (scope === 'rd:read') return '研发项读取';
+        return '反馈读取';
+      })
+      .join(' / ');
   }
 }

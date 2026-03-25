@@ -37,6 +37,32 @@ export async function registerPlugins(app: FastifyInstance) {
         const userAgentHeader = request.headers["user-agent"];
         const userAgent =
           typeof userAgentHeader === "string" ? userAgentHeader : userAgentHeader?.[0];
+        const requestPath = request.url.split("?")[0] ?? request.url;
+        const authHeader = request.headers.authorization;
+        const bearerToken =
+          typeof authHeader === "string" && authHeader.startsWith("Bearer ")
+            ? authHeader.slice("Bearer ".length).trim()
+            : "";
+
+        if (requestPath.startsWith("/api/token/") && bearerToken) {
+          const verifiedToken = await fastify.container.apiTokenQuery.verifyToken(bearerToken);
+          if (verifiedToken) {
+            request.requestContext = createRequestContext({
+              accountId: verifiedToken.tokenId,
+              userId: verifiedToken.ownerUserId,
+              roles: ["token"],
+              projectIds: [verifiedToken.projectId],
+              authType: "token",
+              authScopes: verifiedToken.scopes,
+              tokenId: verifiedToken.tokenId,
+              source: "http",
+              requestId: request.id,
+              ip: request.ip,
+              userAgent
+            });
+            return;
+          }
+        }
 
         try {
           const verified = await request.jwtVerify<AuthJwtPayload>();
@@ -50,6 +76,7 @@ export async function registerPlugins(app: FastifyInstance) {
           nickname: payload?.nickname ?? null,
           userId: payload?.userId ?? null,
           roles: payload?.role ? [payload.role] : [],
+          authType: payload ? "user" : "anonymous",
           source: "http",
           requestId: request.id,
           ip: request.ip,

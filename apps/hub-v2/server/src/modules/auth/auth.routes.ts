@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
+import { requireAuth } from "../../shared/auth/require-auth";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
-import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import { changePasswordSchema, loginSchema, updateAvatarSchema } from "./auth.schema";
 
@@ -18,6 +18,7 @@ export default async function authRoutes(app: FastifyInstance) {
         accountId: "anonymous",
         roles: [],
         projectIds: [],
+        authType: "anonymous",
         source: "http"
       }
     );
@@ -52,6 +53,7 @@ export default async function authRoutes(app: FastifyInstance) {
         accountId: "anonymous",
         roles: [],
         projectIds: [],
+        authType: "anonymous",
         source: "http"
       }
     );

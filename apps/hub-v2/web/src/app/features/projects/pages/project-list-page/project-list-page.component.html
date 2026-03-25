@@ -72,10 +72,13 @@
   [environments]="environments()"
   [versions]="versions()"
   [stages]="stages()"
+  [apiTokens]="apiTokens()"
+  [latestCreatedToken]="latestCreatedToken()"
   [pendingModuleIds]="pendingModuleIds()"
   [pendingEnvironmentIds]="pendingEnvironmentIds()"
   [pendingVersionIds]="pendingVersionIds()"
   [pendingStageIds]="pendingStageIds()"
+  [pendingTokenIds]="pendingTokenIds()"
   (cancel)="closeConfigDialog()"
   (createModule)="createModule($event)"
   (updateModule)="updateModule($event)"
@@ -89,6 +92,10 @@
   (createStage)="createStage($event)"
   (updateStage)="updateStage($event)"
   (removeStage)="removeStage($event)"
+  (createApiToken)="createApiToken($event)"
+  (revokeApiToken)="revokeApiToken($event)"
+  (copyLatestToken)="copyLatestToken($event)"
+  (clearLatestToken)="clearLatestCreatedToken()"
 />
 
 <app-project-members-dialog

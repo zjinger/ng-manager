@@ -39,6 +39,7 @@ features:
 - [10 RD 权限矩阵](/hub-v2/10-rd-permission-matrix)：冻结 RD 状态流转与角色操作权限，直接用于开发与测试验收。
 - [11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix)：冻结 Issue 状态流转与角色操作权限（含认领），直接用于开发与测试验收。
 - [12 内网部署与迁移执行](/hub-v2/12-deploy-intranet)：定义 192.168.1.31 的发布步骤、v1->v2 迁移命令、验收和回滚。
+- [13 API Token 接入说明](/hub-v2/13-api-token-integration)：定义项目级 API Token 的鉴权模型、接口、接入方式与安全边界。
 
 ## 推荐阅读顺序
 
@@ -48,7 +49,8 @@ features:
 4. 再读 [06 Web 架构设计文档](/hub-v2/06-web-architecture)，冻结前端目录、组件和状态边界。
 5. 如果准备接现网，再读 [08 数据迁移映射清单](/hub-v2/08-migration-mapping)，冻结迁移口径。
 6. 在准备演练和切流前，再读 [09 迁移执行 Runbook](/hub-v2/09-migration-runbook)，冻结执行顺序与回滚规则。
-7. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
+7. 如需 webapp 直连 Hub V2 数据，再读 [13 API Token 接入说明](/hub-v2/13-api-token-integration)。
+8. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
 
 ## 当前文档集覆盖范围
 
@@ -63,6 +65,7 @@ features:
 - 前端目录结构与 UI 分层策略
 - v1 -> v2 的数据迁移与切流口径
 - 迁移演练、正式切流与回滚执行手册
+- webapp 通过 API Token 读取 Hub V2 数据的接入规范
 
 <!-- ## 后续扩展建议
 
