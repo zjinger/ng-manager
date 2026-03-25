@@ -99,6 +99,6 @@ export class IssueDetailDrawerComponent {
   readonly close = output<void>();
 
   readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
-  readonly titleText = computed(() => this.issue()?.title || 'Issue 详情');
+  readonly titleText = computed(() => this.issue()?.title || '测试单详情');
   readonly subtitleText = computed(() => this.issue()?.issueNo || this.issueId() || '');
 }

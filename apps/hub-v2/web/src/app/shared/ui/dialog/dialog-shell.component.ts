@@ -10,6 +10,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
   template: `
     <nz-modal
       [nzVisible]="open()"
+      [nzCentered]="center()"
       [nzFooter]="null"
       [nzWidth]="width()"
       [nzClosable]="false"
@@ -22,7 +23,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
           <div class="dialog-shell__heading">
             <h2>
               @if (icon()) {
-                <span nz-icon [nzType]="icon()!" nzTheme="fill"></span>
+                <span nz-icon [nzType]="icon()!"></span>
               }
               {{ title() }}
             </h2>
@@ -117,6 +118,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
 })
 export class DialogShellComponent {
   readonly open = input(false);
+  readonly center = input(false);
   readonly title = input.required<string>();
   readonly subtitle = input('');
   readonly icon = input<string | null>(null);

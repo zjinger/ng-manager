@@ -110,6 +110,15 @@ function countRows(db: Database.Database, schema: string, table: string): number
   return row.c;
 }
 
+function assertTargetTable(db: Database.Database, table: string) {
+  if (!tableExists(db, "main", table)) {
+    throw new Error(
+      `[db:migrate:from-v1] target table missing: main.${table}. ` +
+      `Please run db:migrate first and ensure migrations are available in runtime package.`
+    );
+  }
+}
+
 function migrateTableByInsertSelect(
   db: Database.Database,
   sourceTable: string,
@@ -137,6 +146,8 @@ function migrateTableByInsertSelect(
 function migrateUsersModule(db: Database.Database): ModuleSummary {
   const skippedTables: string[] = [];
   const stats: MigrationStat[] = [];
+  assertTargetTable(db, "users");
+  assertTargetTable(db, "admin_accounts");
 
   if (tableExists(db, "source", "users")) {
     stats.push(
@@ -169,42 +180,120 @@ function migrateUsersModule(db: Database.Database): ModuleSummary {
     const avatarUploadExpr = adminColumns.has("avatar_upload_id")
       ? "avatar_upload_id"
       : "NULL AS avatar_upload_id";
+    const before = countRows(db, "main", "admin_accounts");
+    // 兼容旧 SQLite：不用 INSERT ... ON CONFLICT DO UPDATE
+    // 采用两步：
+    // 1) 先按 username（不区分大小写）更新已有账号
+    // 2) 再插入不存在的账号
+    db.prepare(
+      `UPDATE main.admin_accounts AS tgt
+       SET
+         user_id = (
+           SELECT src.user_id
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         password_hash = (
+           SELECT src.password_hash
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         nickname = (
+           SELECT COALESCE(NULLIF(src.nickname, ''), src.username)
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         avatar_upload_id = (
+           SELECT ${avatarUploadExpr}
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         role = (
+           SELECT CASE WHEN src.role IN ('admin', 'user') THEN src.role ELSE 'admin' END
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         status = (
+           SELECT CASE
+                    WHEN src.status = 'disabled' THEN 'inactive'
+                    WHEN src.status IN ('active', 'inactive') THEN src.status
+                    ELSE 'active'
+                  END
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         must_change_password = (
+           SELECT COALESCE(src.must_change_password, 1)
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         last_login_at = (
+           SELECT src.last_login_at
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         ),
+         updated_at = (
+           SELECT src.updated_at
+           FROM source.admin_users src
+           WHERE lower(src.username) = lower(tgt.username)
+           LIMIT 1
+         )
+       WHERE EXISTS (
+         SELECT 1
+         FROM source.admin_users src
+         WHERE lower(src.username) = lower(tgt.username)
+       )`
+    ).run();
 
-    stats.push(
-      migrateTableByInsertSelect(
-        db,
-        "admin_users",
-        "admin_accounts",
-        [
-          "id",
-          "user_id",
-          "username",
-          "password_hash",
-          "nickname",
-          "avatar_upload_id",
-          "role",
-          "status",
-          "must_change_password",
-          "last_login_at",
-          "created_at",
-          "updated_at"
-        ],
-        `SELECT
-            id,
-            user_id,
-            username,
-            password_hash,
-            COALESCE(NULLIF(nickname, ''), username) AS nickname,
-            ${avatarUploadExpr},
-            role,
-            CASE WHEN status IN ('active', 'inactive') THEN status ELSE 'active' END AS status,
-            COALESCE(must_change_password, 1) AS must_change_password,
-            last_login_at,
-            created_at,
-            updated_at
-          FROM __SOURCE_TABLE__`
-      )
-    );
+    db.prepare(
+      `INSERT OR IGNORE INTO main.admin_accounts (
+          id,
+          user_id,
+          username,
+          password_hash,
+          nickname,
+          avatar_upload_id,
+          role,
+          status,
+          must_change_password,
+          last_login_at,
+          created_at,
+          updated_at
+        )
+        SELECT
+          id,
+          user_id,
+          username,
+          password_hash,
+          COALESCE(NULLIF(nickname, ''), username) AS nickname,
+          ${avatarUploadExpr},
+          CASE WHEN role IN ('admin', 'user') THEN role ELSE 'admin' END AS role,
+          CASE
+            WHEN status = 'disabled' THEN 'inactive'
+            WHEN status IN ('active', 'inactive') THEN status
+            ELSE 'active'
+          END AS status,
+          COALESCE(must_change_password, 1) AS must_change_password,
+          last_login_at,
+          created_at,
+          updated_at
+        FROM source.admin_users`
+    ).run();
+    const after = countRows(db, "main", "admin_accounts");
+    stats.push({
+      table: "admin_accounts",
+      before,
+      after,
+      inserted: Math.max(after - before, 0)
+    });
   } else {
     skippedTables.push("source.admin_users");
   }
@@ -214,11 +303,8 @@ function migrateUsersModule(db: Database.Database): ModuleSummary {
 
 function roleCodeCaseExpression(): string {
   return `CASE
-      WHEN role_top.role = 'project_admin' THEN 'owner'
-      WHEN role_top.role = 'product' THEN 'manager'
-      WHEN role_top.role = 'qa' THEN 'tester'
-      WHEN role_top.role = 'ops' THEN 'viewer'
-      WHEN role_top.role IN ('ui', 'frontend_dev', 'backend_dev') THEN 'member'
+      WHEN role_top.role IN ('project_admin', 'product', 'ui', 'frontend_dev', 'backend_dev', 'qa', 'ops')
+        THEN role_top.role
       ELSE 'member'
     END`;
 }

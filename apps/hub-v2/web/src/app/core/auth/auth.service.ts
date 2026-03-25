@@ -1,10 +1,11 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, map, Observable, of, tap } from 'rxjs';
+import { catchError, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 
 import { ApiClientService } from '../http/api-client.service';
 import { AuthStore } from './auth.store';
-import type { AuthUser, LoginInput } from './auth.types';
+import { encryptLoginPassword } from './login-crypto.util';
+import type { AuthUser, LoginChallenge, LoginInput } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -13,7 +14,27 @@ export class AuthService {
   private readonly router = inject(Router);
 
   login(input: LoginInput): Observable<AuthUser> {
-    return this.api.post<AuthUser, LoginInput>('/auth/login', input).pipe(
+    const username = input.username.trim();
+    return this.api.get<LoginChallenge>('/auth/login/challenge').pipe(
+      switchMap((challenge) => {
+        const encrypted = encryptLoginPassword(`${challenge.nonce}:${input.password}`, 'ngm_hub_login_aes_2026');
+        return this.api.post<AuthUser, { username: string; nonce: string; iv: string; cipherText: string }>(
+          '/auth/login',
+          {
+            username,
+            nonce: challenge.nonce,
+            iv: encrypted.iv,
+            cipherText: encrypted.cipherText,
+          }
+        );
+      }),
+      catchError((error) => {
+        const status = Number(error?.status ?? 0);
+        if (status !== 400 && status !== 404) {
+          return throwError(() => error);
+        }
+        return this.api.post<AuthUser, LoginInput>('/auth/login/plain', { username, password: input.password });
+      }),
       tap((user) => {
         this.authStore.setCurrentUser(user);
         this.authStore.markInitialized();

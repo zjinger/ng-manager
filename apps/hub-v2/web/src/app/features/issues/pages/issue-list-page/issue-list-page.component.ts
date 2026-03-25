@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { map } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 
-import type { ProjectMemberEntity } from '../../../../features/projects/models/project.model';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../../features/projects/models/project.model';
 import { ProjectApiService } from '../../../../features/projects/services/project-api.service';
 import { ProjectContextStore } from '../../../../core/state/project-context.store';
 import { PageHeaderComponent, ListStateComponent } from '@shared/ui';
@@ -29,7 +29,7 @@ import { IssueListStore } from '../../store/issue-list.store';
   ],
   providers: [IssueListStore],
   template: `
-    <app-page-header title="Issues" [subtitle]="subtitle()" />
+    <app-page-header title="测试跟踪" [subtitle]="subtitle()" />
     <app-issue-filter-bar
       [query]="store.query()"
       [viewMode]="viewMode()"
@@ -40,8 +40,8 @@ import { IssueListStore } from '../../store/issue-list.store';
     <app-list-state
       [loading]="store.loading()"
       [empty]="store.items().length === 0"
-      loadingText="正在加载 Issue 列表…"
-      emptyTitle="当前筛选条件下没有 Issue"
+      loadingText="正在加载测试跟踪列表…"
+      emptyTitle="当前筛选条件下没有测试跟踪"
     >
       <app-issue-list-table
         [items]="store.items()"
@@ -74,6 +74,10 @@ import { IssueListStore } from '../../store/issue-list.store';
       [open]="createOpen()"
       [busy]="store.loading()"
       [members]="members()"
+      [modules]="modules()"
+      [environments]="environments()"
+      [versions]="versions()"
+      [projectName]="projectContext.currentProject()?.name || ''"
       (cancel)="createOpen.set(false)"
       (create)="createIssue($event)"
     />
@@ -99,10 +103,13 @@ import { IssueListStore } from '../../store/issue-list.store';
 export class IssueListPageComponent {
   readonly store = inject(IssueListStore);
   private readonly projectApi = inject(ProjectApiService);
-  private readonly projectContext = inject(ProjectContextStore);
+  readonly projectContext = inject(ProjectContextStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly members = signal<ProjectMemberEntity[]>([]);
+  readonly modules = signal<ProjectMetaItem[]>([]);
+  readonly environments = signal<ProjectMetaItem[]>([]);
+  readonly versions = signal<ProjectVersionItem[]>([]);
   readonly createOpen = signal(false);
   readonly viewMode = signal<IssueListViewMode>('list');
   readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
@@ -126,20 +133,45 @@ export class IssueListPageComponent {
   constructor() {
     effect((onCleanup) => {
       const projectId = this.projectContext.currentProjectId();
-      const projectChanged = this.lastProjectId !== undefined && this.lastProjectId !== projectId;
+      const isFirstRun = this.lastProjectId === undefined;
+      const projectChanged = !isFirstRun && this.lastProjectId !== projectId;
+      const shouldRefresh = isFirstRun || projectChanged;
       this.lastProjectId = projectId;
+
+      if (!shouldRefresh) {
+        return;
+      }
+
       this.store.refreshForProject(projectId);
       if (projectChanged) {
         this.closeDetail();
       }
       if (!projectId) {
         this.members.set([]);
+        this.modules.set([]);
+        this.environments.set([]);
+        this.versions.set([]);
         return;
       }
 
-      const subscription = this.projectApi.listMembers(projectId).subscribe({
-        next: (members) => this.members.set(members),
-        error: () => this.members.set([]),
+      const subscription = forkJoin({
+        members: this.projectApi.listMembers(projectId),
+        modules: this.projectApi.listModules(projectId),
+        environments: this.projectApi.listEnvironments(projectId),
+        versions: this.projectApi.listVersions(projectId),
+      }).subscribe({
+        next: ({ members, modules, environments, versions }) => {
+          this.members.set(members);
+          this.modules.set(modules.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+          this.environments.set(environments.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+          this.versions.set(versions.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+        },
+        error: () => {
+          this.members.set([]);
+          this.modules.set([]);
+          this.environments.set([]);
+          this.versions.set([]);
+        },
       });
       onCleanup(() => subscription.unsubscribe());
     });

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzProgressModule } from 'ng-zorro-antd/progress';
 
+import { RD_STATUS_LABELS } from '../../../../shared/constants';
 import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
@@ -8,7 +9,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 @Component({
   selector: 'app-rd-board',
   standalone: true,
-  imports: [NzButtonModule, PriorityBadgeComponent, StatusBadgeComponent],
+  imports: [NzProgressModule, PriorityBadgeComponent, StatusBadgeComponent],
   template: `
     <div class="rd-board">
       @for (stage of displayStages(); track stage.id) {
@@ -37,22 +38,12 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
                     <span class="rd-card__assignee">{{ item.assigneeName || '未指派' }}</span>
                   </div>
                   <div class="rd-card__progress">
-                    <div class="rd-card__progress-bar">
-                      <span [style.width.%]="item.progress"></span>
-                    </div>
-                    <span>{{ item.progress }}%</span>
-                  </div>
-                  <div class="rd-card__actions">
-                    @for (action of actionsFor(item); track action.key) {
-                      <button
-                        nz-button
-                        nzSize="small"
-                        [nzType]="action.primary ? 'primary' : 'default'"
-                        (click)="$event.stopPropagation(); actionClick.emit({ item, action: action.key })"
-                      >
-                        {{ action.label }}
-                      </button>
-                    }
+                    <nz-progress
+                      [nzPercent]="item.progress"
+                      [nzShowInfo]="true"
+                      [nzStrokeWidth]="6"
+                      [nzSize]="'small'"
+                    ></nz-progress>
                   </div>
                 </article>
               }
@@ -127,6 +118,11 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
         align-items: center;
         justify-content: space-between;
         gap: 10px;
+        width: 100%;
+        nz-progress {
+          width:0;
+          flex: 1;
+        }
       }
       .rd-card__code {
         font-size: 12px;
@@ -151,31 +147,15 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
       .rd-card__progress {
         margin-top: 12px;
       }
-      .rd-card__actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 12px;
-      }
-      .rd-card__progress span:last-child {
-        min-width: 38px;
-        text-align: right;
-        font-size: 12px;
+      .rd-card__progress :where(.ant-progress-text) {
         color: var(--text-muted);
+        font-size: 12px;
       }
-      .rd-card__progress-bar {
-        position: relative;
-        flex: 1;
-        height: 8px;
-        border-radius: 999px;
+      .rd-card__progress :where(.ant-progress-outer) {
+        margin-inline-end: 0;
+      }
+      .rd-card__progress :where(.ant-progress-inner) {
         background: var(--bg-subtle);
-        overflow: hidden;
-      }
-      .rd-card__progress-bar span {
-        position: absolute;
-        inset: 0 auto 0 0;
-        border-radius: inherit;
-        background: linear-gradient(90deg, var(--primary-500), var(--primary-700));
       }
     `,
   ],
@@ -185,7 +165,6 @@ export class RdBoardComponent {
   readonly stages = input<RdStageEntity[]>([]);
   readonly items = input<RdItemEntity[]>([]);
   readonly selectedItemId = input<string | null>(null);
-  readonly actionClick = output<{ item: RdItemEntity; action: 'start' | 'block' | 'resume' | 'complete' | 'accept' | 'close' }>();
   readonly selectItem = output<RdItemEntity>();
 
   readonly displayStages = computed(() => this.stages());
@@ -203,35 +182,6 @@ export class RdBoardComponent {
   });
 
   statusLabel(status: string): string {
-    return (
-      {
-        todo: '待开始',
-        doing: '开发中',
-        blocked: '阻塞中',
-        done: '待验收',
-        accepted: '已验收',
-        closed: '已关闭',
-      }[status] ?? status
-    );
-  }
-
-  actionsFor(item: RdItemEntity) {
-    switch (item.status) {
-      case 'todo':
-        return [{ key: 'start' as const, label: '开始', primary: true }];
-      case 'doing':
-        return [
-          { key: 'block' as const, label: '阻塞', primary: false },
-          { key: 'complete' as const, label: '完成', primary: true },
-        ];
-      case 'blocked':
-        return [{ key: 'resume' as const, label: '继续', primary: true }];
-      case 'done':
-        return [{ key: 'accept' as const, label: '验收', primary: true }];
-      case 'accepted':
-        return [{ key: 'close' as const, label: '关闭', primary: false }];
-      default:
-        return [];
-    }
+    return RD_STATUS_LABELS[status] ?? status;
   }
 }

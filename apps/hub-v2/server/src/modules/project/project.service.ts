@@ -57,9 +57,12 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const entity: ProjectEntity = {
       id: genId("prj"),
       projectKey,
+      displayCode: this.normalizeDisplayCode(input.displayCode, projectName),
       name: projectName,
       description: input.description?.trim() || null,
       icon: input.icon?.trim() || null,
+      avatarUploadId: input.avatarUploadId?.trim() || null,
+      avatarUrl: input.avatarUploadId?.trim() ? `/api/admin/uploads/${input.avatarUploadId.trim()}/raw` : null,
       status: "active",
       visibility: input.visibility ?? "internal",
       createdAt: now,
@@ -93,8 +96,15 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const patch: UpdateProjectInput & { updatedAt: string } = {
       name: input.name?.trim(),
+      displayCode:
+        input.displayCode === undefined
+          ? undefined
+          : input.displayCode === null
+            ? null
+            : this.normalizeDisplayCode(input.displayCode, current.name),
       description: input.description === undefined ? undefined : input.description?.trim() || null,
       icon: input.icon === undefined ? undefined : input.icon?.trim() || null,
+      avatarUploadId: input.avatarUploadId === undefined ? undefined : input.avatarUploadId?.trim() || null,
       status: input.status,
       visibility: input.visibility,
       updatedAt: nowIso()
@@ -393,7 +403,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     }
 
     const member = await this.access.requireProjectMember(projectId, userId, action);
-    if (member.roleCode !== "project_admin") {
+    if (member.roleCode !== "project_admin" && !member.isOwner) {
       throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
     }
   }
@@ -408,6 +418,25 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       attempt += 1;
     }
     throw new AppError("PROJECT_KEY_GENERATE_FAILED", "failed to generate unique project key", 500);
+  }
+
+  private normalizeDisplayCode(value: string | null | undefined, projectName: string): string | null {
+    const input = value?.trim();
+    if (input) {
+      return input.slice(0, 24);
+    }
+    const words = projectName
+      .split(/[\s\-_.]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    }
+    if (/^[a-z0-9\s\-_.]+$/i.test(projectName)) {
+      const compact = projectName.replace(/[\s\-_.]+/g, "");
+      return compact.slice(0, 2).toUpperCase() || null;
+    }
+    return projectName.slice(0, 2) || null;
   }
 
   private getNextSort(values: number[]): number {

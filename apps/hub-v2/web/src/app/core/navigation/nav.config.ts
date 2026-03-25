@@ -10,8 +10,8 @@ export const NAV_ITEMS: NavSection[] = [
     key: 'collaboration',
     label: '协作中心',
     items: [
-      { key: 'issues', label: 'Issues', icon: 'bug', route: '/issues', tone: 'danger' },
-      { key: 'rd', label: '研发项', icon: 'rocket', route: '/rd', tone: 'warning' },
+      { key: 'issues', label: '测试跟踪', icon: 'bug', route: '/issues', tone: 'danger' },
+      { key: 'rd', label: '研发管理', icon: 'rocket', route: '/rd', tone: 'warning' },
     ],
   },
   {

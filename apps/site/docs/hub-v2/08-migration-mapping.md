@@ -352,7 +352,7 @@ v2：
 ### 9.1 `issues -> issues`
 
 v2 增加了 `verifier_id / verifier_name / verified_at`。  
-v1 中这些字段是在 [0011_project_members_and_issue_verifier.sql](/d:/ng-manager/apps/hub/server/src/db/migrations/0011_project_members_and_issue_verifier.sql) 后引入，迁移时必须确认源库已包含这些列。
+v1 中这些字段是在 `0011_project_members_and_issue_verifier.sql` 后引入，迁移时必须确认源库已包含这些列。
 
 字段映射：
 
@@ -673,4 +673,3 @@ v1 中这些字段是在 [0011_project_members_and_issue_verifier.sql](/d:/ng-ma
 2. `apps/hub-v2/server/src/db/migrate-from-v1.ts`
    - 先实现 `users / admin_accounts / projects / project_members`
    - 再逐步扩到 `content / issues / rd`
-

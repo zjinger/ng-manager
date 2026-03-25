@@ -23,6 +23,7 @@ export class DashboardRepo {
         assignedIssues: 0,
         verifyingIssues: 0,
         assignedRdItems: 0,
+        inProgressRdItems: 0,
         reviewingRdItems: 0
       };
     }
@@ -68,11 +69,22 @@ export class DashboardRepo {
       `,
       [userId, ...scope.params]
     );
+    const inProgressRdItems = this.count(
+      `
+        SELECT COUNT(*) as total
+        FROM rd_items
+        WHERE assignee_id = ?
+          AND status = 'doing'
+          ${scope.clause}
+      `,
+      [userId, ...scope.params]
+    );
 
     return {
       assignedIssues,
       verifyingIssues,
       assignedRdItems,
+      inProgressRdItems,
       reviewingRdItems
     };
   }

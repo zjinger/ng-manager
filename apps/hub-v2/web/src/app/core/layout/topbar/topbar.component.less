@@ -89,6 +89,41 @@
   color: var(--text-muted);
 }
 
+.topbar__ws-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  opacity: 0.72;
+  transition: opacity 0.2s ease;
+}
+
+.topbar__ws-indicator:hover {
+  opacity: 1;
+}
+
+.topbar__ws-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.topbar__ws-indicator[data-tone='ok'] .topbar__ws-dot {
+  background: var(--color-success);
+}
+
+.topbar__ws-indicator[data-tone='warn'] .topbar__ws-dot {
+  background: var(--color-warning);
+}
+
+.topbar__ws-indicator[data-tone='down'] .topbar__ws-dot {
+  background: var(--color-danger);
+}
+
 .badge-dot {
   position: absolute;
   top: 8px;
@@ -126,6 +161,14 @@
   color: var(--text-inverse);
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+}
+
+.topbar__user-avatar > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .topbar__user-name {
@@ -157,6 +200,7 @@
     flex: 1;
     min-width: 0;
   }
+
 }
 
 @media (max-width:768px) {

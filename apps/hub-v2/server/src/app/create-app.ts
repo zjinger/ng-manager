@@ -31,6 +31,7 @@ export async function createApp() {
   await registerRoutes(app);
 
   app.addHook("onClose", async (instance) => {
+    instance.wsHub?.closeAll();
     instance.db.close();
   });
 

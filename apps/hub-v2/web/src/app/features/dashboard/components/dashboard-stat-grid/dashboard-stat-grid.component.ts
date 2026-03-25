@@ -10,14 +10,14 @@ import type { DashboardStats } from '../../models/dashboard.model';
   template: `
     <div class="grid">
       <app-stat-card
-        label="待处理 Issues"
+        label="待处理测试单"
         [value]="stats().assignedIssues"
         hint="当前分配给你的问题单"
         icon="bug"
         tone="blue"
       />
       <app-stat-card
-        label="待验证 Issues"
+        label="待验证测试单"
         [value]="stats().verifyingIssues"
         hint="需要你完成验证闭环"
         icon="safety-certificate"

@@ -26,6 +26,7 @@ export class DashboardService implements DashboardQueryContract {
           assignedIssues: 0,
           verifyingIssues: 0,
           assignedRdItems: 0,
+          inProgressRdItems: 0,
           reviewingRdItems: 0
         },
         todos: [],
@@ -45,6 +46,7 @@ export class DashboardService implements DashboardQueryContract {
       assignedIssues,
       verifyingIssues,
       assignedRdItems,
+      inProgressRdItems,
       reviewingRdItems,
       issueTodos,
       rdTodos,
@@ -54,6 +56,7 @@ export class DashboardService implements DashboardQueryContract {
       this.issueQuery.countAssignedForDashboard(effectiveProjectIds, userId, ctx),
       this.issueQuery.countVerifyingForDashboard(effectiveProjectIds, userId, ctx),
       this.rdQuery.countAssignedForDashboard(effectiveProjectIds, userId, ctx),
+      this.rdQuery.countInProgressForDashboard(effectiveProjectIds, userId, ctx),
       this.rdQuery.countReviewingForDashboard(effectiveProjectIds, userId, ctx),
       this.issueQuery.listTodosForDashboard(effectiveProjectIds, userId, 10, ctx),
       this.rdQuery.listTodosForDashboard(effectiveProjectIds, userId, 10, ctx),
@@ -66,6 +69,7 @@ export class DashboardService implements DashboardQueryContract {
         assignedIssues,
         verifyingIssues,
         assignedRdItems,
+        inProgressRdItems,
         reviewingRdItems
       },
       todos: [...issueTodos, ...rdTodos].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 10),

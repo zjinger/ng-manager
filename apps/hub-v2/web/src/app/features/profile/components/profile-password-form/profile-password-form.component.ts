@@ -6,6 +6,9 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
 import { FormActionsComponent } from '../../../../shared/ui/form-actions/form-actions.component';
 import type { ChangePasswordInput } from '../../models/profile.model';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 interface PasswordFormValue extends ChangePasswordInput {
   confirmPassword: string;
@@ -20,63 +23,68 @@ const DEFAULT_FORM: PasswordFormValue = {
 @Component({
   selector: 'app-profile-password-form',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzInputModule, PanelCardComponent, FormActionsComponent],
+  imports: [FormsModule, NzFormModule, NzGridModule, NzButtonModule, NzInputModule, NzIconModule, PanelCardComponent, FormActionsComponent],
   template: `
     <app-panel-card title="修改密码">
-      <form id="profile-password-form" class="dialog-form" (ngSubmit)="submitForm()">
-        <label class="dialog-field">
-          <span class="dialog-field__label">当前密码 <span class="password-required">*</span></span>
-          <input nz-input type="password" [ngModel]="form().oldPassword" name="oldPassword" (ngModelChange)="updateField('oldPassword', $event)" />
-        </label>
-
-        <div class="dialog-form__grid password-grid">
-          <label class="dialog-field">
-            <span class="dialog-field__label">新密码 <span class="password-required">*</span></span>
-            <input nz-input type="password" [ngModel]="form().newPassword" name="newPassword" (ngModelChange)="updateField('newPassword', $event)" />
-            <span class="password-note">密码长度 8~32 位，建议同时包含字母和数字。</span>
-          </label>
-
-          <label class="dialog-field">
-            <span class="dialog-field__label">确认新密码 <span class="password-required">*</span></span>
-            <input nz-input type="password" [ngModel]="form().confirmPassword" name="confirmPassword" (ngModelChange)="updateField('confirmPassword', $event)" />
-            @if (form().confirmPassword && form().confirmPassword !== form().newPassword) {
-              <span class="password-error">两次输入的新密码不一致。</span>
-            }
-          </label>
-        </div>
-
-        <app-form-actions>
-          <button nz-button type="button" (click)="resetForm()">取消</button>
-          <button nz-button nzType="primary" type="submit" [nzLoading]="busy()" [disabled]="!canSubmit()">更新密码</button>
-        </app-form-actions>
-      </form>
+       <div class="profile-form">
+       <form nz-form nzLayout="vertical" class="profile-form">
+          <div nz-row nzGutter="24">
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label nzRequired nzFor="oldPassword">当前密码</nz-form-label>
+                <nz-form-control>
+                  <input nz-input type="password" [ngModel]="form().oldPassword" name="oldPassword" (ngModelChange)="updateField('oldPassword', $event)" />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+          <div nz-row nzGutter="24">
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label nzRequired nzFor="newPassword">新密码</nz-form-label>
+                <nz-form-control>
+                  <input nz-input type="password" [ngModel]="form().newPassword" name="newPassword" (ngModelChange)="updateField('newPassword', $event)" />
+                  <span class="password-note">密码长度 8~32 位，建议同时包含字母和数字。</span>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label nzRequired nzFor="confirmPassword">确认新密码</nz-form-label>
+                <nz-form-control>
+                  <input nz-input type="password" [ngModel]="form().confirmPassword" name="confirmPassword" (ngModelChange)="updateField('confirmPassword', $event)" />
+                  @if (form().confirmPassword && form().confirmPassword !== form().newPassword) {
+                    <span class="password-error">两次输入的新密码不一致。</span>
+                  }
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+           <app-form-actions>
+            <button nz-button type="button" (click)="resetForm()">取消</button>
+            <button nz-button nzType="primary" type="submit" [nzLoading]="busy()" (click)="submitForm()" [disabled]="!canSubmit()">
+              <nz-icon nzType="check" />
+              修改密码
+            </button>
+          </app-form-actions>
+       </form>
+      </div>
     </app-panel-card>
   `,
   styles: [
     `
-      .password-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .password-required {
-        color: var(--color-danger);
-      }
-
       .password-note {
+        display: block;
+        margin-top: 4px;
         color: var(--text-muted);
-        font-size: 12px;
-        line-height: 1.7;
       }
-
-      .password-error {
+      .profile-form {
+        padding: 24px;
+      }
+      .password-error{
+        display: block;
+        margin-top: 4px;
         color: var(--color-danger);
-        font-size: 12px;
-      }
-
-      @media (max-width: 768px) {
-        .password-grid {
-          grid-template-columns: 1fr;
-        }
       }
     `,
   ],

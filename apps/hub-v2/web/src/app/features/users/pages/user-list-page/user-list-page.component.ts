@@ -13,6 +13,7 @@ import { UserStore } from '../../store/user.store';
 import { UserFormDialogComponent } from '../../dialogs/user-form-dialog/user-form-dialog.component';
 import { UserListTableComponent } from '../../components/user-list-table/user-list-table.component';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { AuthStore } from '../../../../core/auth/auth.store';
 
 @Component({
   selector: 'app-user-list-page',
@@ -35,10 +36,12 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
     <app-page-header title="用户管理" [subtitle]="subtitle()" />
 
     <app-page-toolbar>
-      <button toolbar-primary nz-button nzType="primary" class="toolbar__create" (click)="openCreate()">
-        <nz-icon nzType="user-add" nzTheme="outline" />
-        新建用户
-      </button>
+      @if (canCreate()) {
+        <button toolbar-primary nz-button nzType="primary" class="toolbar__create" (click)="openCreate()">
+          <nz-icon nzType="user-add" nzTheme="outline" />
+          新建用户
+        </button>
+      }
 
       <app-filter-bar toolbar-filters class="toolbar__filters">
         <nz-select class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)">
@@ -104,6 +107,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 })
 export class UserListPageComponent {
   readonly store = inject(UserStore);
+  readonly authStore = inject(AuthStore);
 
   readonly keyword = signal('');
   readonly status = signal<'active' | 'inactive' | ''>('');
@@ -111,6 +115,7 @@ export class UserListPageComponent {
   readonly dialogMode = signal<'create' | 'edit'>('create');
   readonly editingUser = signal<UserEntity | null>(null);
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个用户`);
+  readonly canCreate = computed(() => this.authStore.currentUser()?.role === 'admin');
 
   constructor() {
     this.store.initialize();

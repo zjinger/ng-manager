@@ -1,7 +1,7 @@
 <app-dialog-shell
   [open]="open()"
   [width]="820"
-  [title]="project() ? project()!.name + ' · 成员管理' : '项目成员'"
+  [title]="project() ?'成员管理 · '+ project()!.name  : '项目成员'"
   [subtitle]="''"
   [icon]="'team'"
   (cancel)="cancel.emit()"
@@ -43,14 +43,9 @@
                   (ngModelChange)="roleCode.set($event || 'member')"
                   nzPlaceHolder="选择角色"
                 >
-                  <nz-option nzLabel="成员" nzValue="member"></nz-option>
-                  <nz-option nzLabel="产品" nzValue="product"></nz-option>
-                  <nz-option nzLabel="UI" nzValue="ui"></nz-option>
-                  <nz-option nzLabel="前端开发" nzValue="frontend_dev"></nz-option>
-                  <nz-option nzLabel="后端开发" nzValue="backend_dev"></nz-option>
-                  <nz-option nzLabel="测试" nzValue="qa"></nz-option>
-                  <nz-option nzLabel="运维" nzValue="ops"></nz-option>
-                  <nz-option nzLabel="项目管理员" nzValue="project_admin"></nz-option>
+                @for(option of roleOptions; track option.value) {
+                  <nz-option [nzLabel]="option.label" [nzValue]="option.value"></nz-option>
+                }
                 </nz-select>
               </nz-form-control>
             </nz-form-item>
@@ -98,10 +93,16 @@
                 <div class="member-item__name">
                   {{ member.displayName }}
                   @if (member.isOwner) {
-                    <span class="member-item__tag">项目管理员</span>
+                    <span class="member-item__tag">创建者</span>
                   }
+                  @if (member.roleCode==='project_admin') {
+                    <span class="member-item__tag">项目管理员</span>
+                  }@else {
+                    <span class="member-item__tag">项目成员</span>
+                  }
+                  
                 </div>
-                <div class="member-item__meta">{{ member.roleCode || 'member' }}</div>
+                <div class="member-item__meta">{{roleleLabel( member.roleCode || 'member') }}</div>
               </div>
               <a
                 nz-button

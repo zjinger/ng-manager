@@ -112,6 +112,7 @@ export interface CreateIssueInput {
   type?: IssueType;
   priority?: IssuePriority;
   assigneeId?: string | null;
+  participantIds?: string[];
   verifierId?: string | null;
   moduleCode?: string;
   versionCode?: string;

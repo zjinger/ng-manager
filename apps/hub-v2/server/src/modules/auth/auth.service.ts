@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createDecipheriv, createHash, randomUUID } from "node:crypto";
 import type { AppConfig } from "../../shared/env/env";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
@@ -13,26 +13,32 @@ import type {
   AdminProfile,
   ChangePasswordInput,
   LoginChallenge,
-  LoginInput
+  LoginInput,
+  UpdateAvatarInput
 } from "./auth.types";
 
 export class AuthService implements AuthCommandContract, AuthQueryContract {
+  private readonly challenges = new Map<string, { expiresAt: number }>();
+
   constructor(
     private readonly config: AppConfig,
     private readonly repo: AuthRepo
   ) {}
 
   issueLoginChallenge(): LoginChallenge {
-    const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+    this.cleanupChallenges();
+    const nonce = randomUUID();
+    const expiresAtMs = Date.now() + this.config.loginChallengeTtlMs;
+    this.challenges.set(nonce, { expiresAt: expiresAtMs });
     return {
-      nonce: randomUUID(),
-      expiresAt
+      nonce,
+      expiresAt: new Date(expiresAtMs).toISOString()
     };
   }
 
   async login(input: LoginInput, _ctx: RequestContext): Promise<AdminProfile> {
     const username = input.username.trim();
-    const password = input.password;
+    const password = this.resolvePassword(input);
     const account = this.repo.findByUsername(username);
 
     if (!account || account.status !== "active" || !verifyPassword(password, account.passwordHash)) {
@@ -78,6 +84,20 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     });
   }
 
+  async updateAvatar(input: UpdateAvatarInput, ctx: RequestContext): Promise<AdminProfile> {
+    const account = this.repo.findById(ctx.accountId);
+    if (!account || account.status !== "active") {
+      throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "unauthorized", 401);
+    }
+    const updatedAt = nowIso();
+    this.repo.updateAvatar(account.id, input.uploadId?.trim() || null, updatedAt);
+    return this.toProfile({
+      ...account,
+      avatarUploadId: input.uploadId?.trim() || null,
+      updatedAt
+    });
+  }
+
   async logout(_ctx: RequestContext): Promise<{ ok: true }> {
     return { ok: true };
   }
@@ -109,11 +129,74 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       id: account.id,
       userId: account.userId ?? null,
       username: account.username,
+      email: account.email ?? null,
+      mobile: account.mobile ?? null,
+      remark: account.remark ?? null,
       nickname: account.nickname,
+      avatarUploadId: account.avatarUploadId ?? null,
+      avatarUrl: account.avatarUploadId ? `/api/admin/uploads/${account.avatarUploadId}/raw` : null,
       role: account.role,
       mustChangePassword: account.mustChangePassword,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     };
+  }
+
+  private resolvePassword(input: LoginInput): string {
+    if ("password" in input) {
+      return input.password;
+    }
+
+    const nonceState = this.challenges.get(input.nonce);
+    this.challenges.delete(input.nonce);
+
+    if (!nonceState) {
+      throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+    }
+
+    if (Date.now() > nonceState.expiresAt) {
+      throw new AppError("AUTH_CHALLENGE_EXPIRED", "login challenge has expired", 401);
+    }
+
+    const decrypted = this.decryptLoginPassword(input.iv, input.cipherText);
+    const expectedPrefix = `${input.nonce}:`;
+    if (!decrypted.startsWith(expectedPrefix)) {
+      throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+    }
+
+    return decrypted.slice(expectedPrefix.length);
+  }
+
+  private decryptLoginPassword(ivBase64: string, cipherTextBase64: string): string {
+    try {
+      const iv = Buffer.from(ivBase64, "base64");
+      const encrypted = Buffer.from(cipherTextBase64, "base64");
+
+      if (iv.length !== 16 || encrypted.length === 0) {
+        throw new Error("invalid cipher payload");
+      }
+
+      const key = createHash("sha256").update(this.config.loginAesKey, "utf8").digest();
+      const decipher = createDecipheriv("aes-256-cbc", key, iv);
+      decipher.setAutoPadding(true);
+
+      const plain = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
+      if (!plain) {
+        throw new Error("empty plain password");
+      }
+
+      return plain;
+    } catch {
+      throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "invalid encrypted password", 401);
+    }
+  }
+
+  private cleanupChallenges(): void {
+    const now = Date.now();
+    for (const [nonce, state] of this.challenges.entries()) {
+      if (state.expiresAt <= now) {
+        this.challenges.delete(nonce);
+      }
+    }
   }
 }

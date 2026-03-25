@@ -7,6 +7,7 @@ export type IssueAction =
   | "create"
   | "update"
   | "assign"
+  | "claim"
   | "start"
   | "resolve"
   | "verify"

@@ -21,7 +21,7 @@ export const createRdItemSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().optional(),
   stageId: z.string().trim().nullable().optional(),
-  type: z.enum(["feature", "task", "improvement"]).optional(),
+  type: z.enum(["feature_dev", "tech_refactor", "integration", "env_setup"]).optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   assigneeId: z.string().trim().nullable().optional(),
   reviewerId: z.string().trim().nullable().optional(),
@@ -33,7 +33,7 @@ export const updateRdItemSchema = z.object({
   title: z.string().trim().optional(),
   description: z.string().nullable().optional(),
   stageId: z.string().trim().nullable().optional(),
-  type: z.enum(["feature", "task", "improvement"]).optional(),
+  type: z.enum(["feature_dev", "tech_refactor", "integration", "env_setup"]).optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   assigneeId: z.string().trim().nullable().optional(),
   reviewerId: z.string().trim().nullable().optional(),
@@ -46,13 +46,17 @@ export const blockRdItemSchema = z.object({
   blockerReason: z.string().optional()
 });
 
+export const advanceRdStageSchema = z.object({
+  stageId: z.string().trim().min(1)
+});
+
 export const listRdItemsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),
   projectId: z.string().trim().optional(),
   stageId: z.string().trim().optional(),
   status: z.enum(["todo", "doing", "blocked", "done", "accepted", "closed"]).optional(),
-  type: z.enum(["feature", "task", "improvement"]).optional(),
+  type: z.enum(["feature_dev", "tech_refactor", "integration", "env_setup"]).optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
   assigneeId: z.string().trim().optional(),
   keyword: z.string().trim().optional()

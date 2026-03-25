@@ -28,9 +28,8 @@
                 "output": "/assets/"
               }
             ],
-            "styles": [
-              "src/styles.less"
-            ]
+            "styles": ["src/styles.less"],
+            "allowedCommonJsDependencies": ["crypto-js", "easymde"]
           },
           "configurations": {
             "production": {
@@ -77,9 +76,7 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.less"
-            ]
+            "styles": ["src/styles.less"]
           }
         }
       }

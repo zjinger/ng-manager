@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import {
+  advanceRdStageSchema,
   blockRdItemSchema,
   createRdItemSchema,
   createRdStageSchema,
@@ -99,5 +100,18 @@ export default async function rdRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
     return ok(await app.container.rdCommand.close(params.itemId, ctx), "rd item closed");
+  });
+
+  app.post("/rd/items/:itemId/advance-stage", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    const body = advanceRdStageSchema.parse(request.body);
+    return ok(await app.container.rdCommand.advanceStage(params.itemId, body, ctx), "rd item advanced stage");
+  });
+
+  app.delete("/rd/items/:itemId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    return ok(await app.container.rdCommand.delete(params.itemId, ctx), "rd item deleted");
   });
 }

@@ -71,9 +71,11 @@
   [modules]="modules()"
   [environments]="environments()"
   [versions]="versions()"
+  [stages]="stages()"
   [pendingModuleIds]="pendingModuleIds()"
   [pendingEnvironmentIds]="pendingEnvironmentIds()"
   [pendingVersionIds]="pendingVersionIds()"
+  [pendingStageIds]="pendingStageIds()"
   (cancel)="closeConfigDialog()"
   (createModule)="createModule($event)"
   (updateModule)="updateModule($event)"
@@ -84,6 +86,9 @@
   (createVersion)="createVersion($event)"
   (updateVersion)="updateVersion($event)"
   (removeVersion)="removeVersion($event)"
+  (createStage)="createStage($event)"
+  (updateStage)="updateStage($event)"
+  (removeStage)="removeStage($event)"
 />
 
 <app-project-members-dialog

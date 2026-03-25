@@ -2,15 +2,19 @@ import { z } from "zod";
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1),
+  displayCode: z.string().trim().max(24).optional(),
   description: z.string().trim().optional(),
   icon: z.string().trim().optional(),
+  avatarUploadId: z.string().trim().optional(),
   visibility: z.enum(["internal", "private"]).optional()
 });
 
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1).optional(),
+  displayCode: z.string().trim().max(24).nullable().optional(),
   description: z.string().trim().nullable().optional(),
   icon: z.string().trim().nullable().optional(),
+  avatarUploadId: z.string().trim().nullable().optional(),
   status: z.enum(["active", "inactive"]).optional(),
   visibility: z.enum(["internal", "private"]).optional()
 });

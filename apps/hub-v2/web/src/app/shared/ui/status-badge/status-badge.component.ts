@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { RD_STATUS_LABELS } from '../../constants';
 
 @Component({
   selector: 'app-status-badge',
@@ -89,13 +90,9 @@ const STATUS_TEXT_MAP: Record<string, string> = {
   resolved: '已解决',
   verified: '已验证',
   closed: '已关闭',
-  todo: '待开始',
-  doing: '进行中',
-  blocked: '阻塞中',
-  done: '待验收',
-  accepted: '已验收',
   draft: '草稿',
   published: '已发布',
   archived: '已归档',
   canceled: '已取消',
+  ...RD_STATUS_LABELS,
 };

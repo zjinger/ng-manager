@@ -3,22 +3,22 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
+import { RD_STATUS_FILTER_OPTIONS } from '../../../../shared/constants';
 import { ISSUE_PRIORITY_OPTIONS } from '../../../../shared/constants/priority-options';
-import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
-import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
-import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
-import { ViewToggleComponent } from '../../../../shared/ui/view-toggle/view-toggle.component';
+import { ViewToggleComponent, SearchBoxComponent, FilterBarComponent, PageToolbarComponent } from '@shared/ui';
 import type { RdListQuery, RdStageEntity } from '../../models/rd.model';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 export type RdViewMode = 'board' | 'list';
 
 @Component({
   selector: 'app-rd-filter-bar',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzSelectModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
+  imports: [FormsModule, NzIconModule, NzButtonModule, NzSelectModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
   template: `
     <app-page-toolbar>
       <button toolbar-primary nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
+        <nz-icon nzType="plus" nzTheme="outline"/>
         新建研发项
       </button>
 
@@ -41,13 +41,9 @@ export type RdViewMode = 'board' | 'list';
           [ngModel]="draft().status"
           (ngModelChange)="updateField('status', $event)"
         >
-          <nz-option nzLabel="所有状态" nzValue=""></nz-option>
-          <nz-option nzLabel="待开始" nzValue="todo"></nz-option>
-          <nz-option nzLabel="开发中" nzValue="doing"></nz-option>
-          <nz-option nzLabel="阻塞中" nzValue="blocked"></nz-option>
-          <nz-option nzLabel="待验收" nzValue="done"></nz-option>
-          <nz-option nzLabel="已验收" nzValue="accepted"></nz-option>
-          <nz-option nzLabel="已关闭" nzValue="closed"></nz-option>
+          @for (item of statusOptions; track item.value) {
+            <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+          }
         </nz-select>
 
         <nz-select
@@ -89,6 +85,11 @@ export type RdViewMode = 'board' | 'list';
         gap: 12px;
         flex-wrap: wrap;
       }
+      .toolbar-search {
+        min-width: 240px;
+        max-width: 320px;
+        flex: 0 0 clamp(240px, 28vw, 320px);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -96,19 +97,20 @@ export type RdViewMode = 'board' | 'list';
 export class RdFilterBarComponent {
   readonly query = input.required<RdListQuery>();
   readonly stages = input<RdStageEntity[]>([]);
-  readonly viewMode = input<RdViewMode>('board');
+  readonly viewMode = input<RdViewMode>('list');
   readonly submit = output<RdListQuery>();
   readonly create = output<void>();
   readonly viewModeChange = output<RdViewMode>();
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
+  readonly statusOptions = RD_STATUS_FILTER_OPTIONS;
   readonly viewOptions = [
-    { value: 'board' as const, icon: 'appstore', ariaLabel: '看板视图' },
     { value: 'list' as const, icon: 'unordered-list', ariaLabel: '列表视图' },
+    { value: 'board' as const, icon: 'appstore', ariaLabel: '看板视图' },
   ];
   readonly draft = signal<RdListQuery>({
     page: 1,
-    pageSize: 50,
+    pageSize: 20,
     keyword: '',
     projectId: '',
     stageId: '',

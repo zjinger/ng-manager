@@ -6,6 +6,7 @@ import { nowIso } from "../../shared/utils/time";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import {
   requireIssueAssignAccess,
+  requireIssueClaimAccess,
   requireIssueCloseAccess,
   requireIssueEditAccess,
   requireIssueReopenAccess,
@@ -82,7 +83,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     };
 
     this.repo.create(entity);
-    this.repo.createLog(this.createLog(entity.id, "create", null, entity.status, ctx, `created ${entity.issueNo}`));
+    this.repo.createLog(this.createLog(entity.id, "create", null, entity.status, ctx, `创建问题 ${entity.issueNo}`));
     await this.emitIssueEvent("issue.created", "created", entity, ctx);
     return entity;
   }
@@ -118,14 +119,16 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     }
 
     const entity = this.requireById(id);
-    this.repo.createLog(this.createLog(id, "update", current.status, entity.status, ctx, "updated issue"));
+    this.repo.createLog(
+      this.createLog(id, "update", current.status, entity.status, ctx, this.createUpdateSummary(current, input, members))
+    );
     await this.emitIssueEvent("issue.updated", "updated", entity, ctx);
     return entity;
   }
 
   async assign(id: string, input: AssignIssueInput, ctx: RequestContext): Promise<IssueEntity> {
     const current = await this.requireByIdWithAccess(id, ctx, "assign issue");
-    requireIssueAssignAccess(ctx);
+    requireIssueAssignAccess(current, ctx, await this.isProjectAdmin(current.projectId, ctx));
     const member = await this.projectAccess.requireProjectMember(current.projectId, input.assigneeId.trim(), "assign issue");
     return this.applyAction(
       id,
@@ -136,7 +139,30 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         assignee_id: member.userId,
         assignee_name: member.displayName
       },
-      `assigned to ${member.displayName}`
+      `指派给 ${member.displayName}`
+    );
+  }
+
+  async claim(id: string, ctx: RequestContext): Promise<IssueEntity> {
+    const current = await this.requireByIdWithAccess(id, ctx, "claim issue");
+    requireIssueClaimAccess(current, ctx);
+
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError("ISSUE_CLAIM_FORBIDDEN", "issue claim forbidden", 403);
+    }
+    const member = await this.projectAccess.requireProjectMember(current.projectId, userId, "claim issue");
+
+    return this.applyAction(
+      id,
+      "claim",
+      ctx,
+      current,
+      {
+        assignee_id: member.userId,
+        assignee_name: member.displayName
+      },
+      `认领问题，负责人变更为 ${member.displayName}`
     );
   }
 
@@ -152,7 +178,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       {
         started_at: current.startedAt ?? now
       },
-      "started issue",
+      "开始处理问题",
       now
     );
   }
@@ -172,7 +198,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         verified_at: null,
         closed_at: null
       },
-      "resolved issue",
+      "标记问题已解决",
       now
     );
   }
@@ -190,7 +216,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         verified_at: now,
         closed_at: null
       },
-      "verified issue",
+      "标记问题已验证",
       now
     );
   }
@@ -210,7 +236,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         verified_at: null,
         closed_at: null
       },
-      "reopened issue"
+      "重新打开问题"
     );
   }
 
@@ -228,7 +254,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         close_remark: input.remark?.trim() || current.closeRemark,
         closed_at: now
       },
-      "closed issue",
+      "关闭问题",
       now
     );
   }
@@ -376,6 +402,40 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     };
   }
 
+  private createUpdateSummary(current: IssueEntity, input: UpdateIssueInput, members: IssueMemberRef): string {
+    const changes: string[] = [];
+
+    if (input.title !== undefined && input.title.trim() !== current.title) {
+      changes.push("更新标题");
+    }
+    if (input.description !== undefined && (input.description?.trim() || null) !== current.description) {
+      changes.push("更新描述");
+    }
+    if (input.type !== undefined && input.type !== current.type) {
+      changes.push(`类型: ${current.type} -> ${input.type}`);
+    }
+    if (input.priority !== undefined && input.priority !== current.priority) {
+      changes.push(`优先级: ${current.priority} -> ${input.priority}`);
+    }
+    if (input.assigneeId !== undefined && members.assigneeId !== current.assigneeId) {
+      changes.push(`负责人: ${current.assigneeName || "未指派"} -> ${members.assigneeName || "未指派"}`);
+    }
+    if (input.verifierId !== undefined && members.verifierId !== current.verifierId) {
+      changes.push(`验证人: ${current.verifierName || "未指定"} -> ${members.verifierName || "未指定"}`);
+    }
+    if (input.moduleCode !== undefined && (input.moduleCode?.trim() || null) !== current.moduleCode) {
+      changes.push("更新模块");
+    }
+    if (input.versionCode !== undefined && (input.versionCode?.trim() || null) !== current.versionCode) {
+      changes.push("更新版本");
+    }
+    if (input.environmentCode !== undefined && (input.environmentCode?.trim() || null) !== current.environmentCode) {
+      changes.push("更新环境");
+    }
+
+    return changes.length > 0 ? changes.join("；") : "更新问题信息";
+  }
+
   private async emitIssueEvent(type: string, action: string, entity: IssueEntity, ctx: RequestContext): Promise<void> {
     await this.eventBus.emit({
       type,
@@ -393,5 +453,19 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         priority: entity.priority
       }
     });
+  }
+
+  private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {
+    if (ctx.roles.includes("admin")) {
+      return true;
+    }
+
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      return false;
+    }
+
+    const member = await this.projectAccess.requireProjectMember(projectId, userId, "issue role check");
+    return member.roleCode === "project_admin" || member.isOwner;
   }
 }

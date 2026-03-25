@@ -23,12 +23,44 @@ export function requireIssueEditAccess(issue: IssueEntity, ctx: RequestContext):
   throw new AppError("ISSUE_EDIT_FORBIDDEN", "issue edit forbidden", 403);
 }
 
-export function requireIssueAssignAccess(ctx: RequestContext): void {
-  if (isAdmin(ctx)) {
+export function requireIssueAssignAccess(issue: IssueEntity, ctx: RequestContext, isProjectAdmin = false): void {
+  if (isAdmin(ctx) || isProjectAdmin) {
+    return;
+  }
+
+  // 提报人仅能在“开始处理前”执行重新指派。
+  if (matchActor(ctx, issue.reporterId) && (issue.status === "open" || issue.status === "reopened")) {
     return;
   }
 
   throw new AppError("ISSUE_ASSIGN_FORBIDDEN", "issue assign forbidden", 403);
+}
+
+export function requireIssueClaimAccess(issue: IssueEntity, ctx: RequestContext): void {
+  if (!ctx.userId?.trim()) {
+    throw new AppError("ISSUE_CLAIM_FORBIDDEN", "issue claim forbidden", 403);
+  }
+
+  if (issue.assigneeId) {
+    throw new AppError("ISSUE_ALREADY_ASSIGNED", "issue already assigned", 409);
+  }
+}
+
+export function requireIssueParticipantManageAccess(
+  issue: IssueEntity,
+  ctx: RequestContext,
+  isProjectAdmin = false
+): void {
+  // 仅在“未处理(open)”或“处理中(in_progress)”允许管理协作人。
+  if (issue.status !== "open" && issue.status !== "in_progress") {
+    throw new AppError("ISSUE_PARTICIPANT_FORBIDDEN", "issue participant manage forbidden", 403);
+  }
+
+  if (isAdmin(ctx) || isProjectAdmin || matchActor(ctx, issue.reporterId) || matchActor(ctx, issue.assigneeId)) {
+    return;
+  }
+
+  throw new AppError("ISSUE_PARTICIPANT_FORBIDDEN", "issue participant manage forbidden", 403);
 }
 
 export function requireIssueStartAccess(issue: IssueEntity, ctx: RequestContext): void {

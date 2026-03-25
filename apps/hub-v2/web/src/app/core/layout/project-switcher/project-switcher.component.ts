@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { ProjectContextStore } from '../../state/project-context.store';
@@ -10,7 +10,13 @@ import { ProjectContextStore } from '../../state/project-context.store';
   template: `
     <div class="switcher">
       <button class="switcher__trigger" type="button" (click)="toggleOpen()">
-        <span class="switcher__avatar">{{ currentProjectInitial() }}</span>
+        <span class="switcher__avatar">
+          @if (showCurrentAvatar()) {
+            <img [src]="currentProject()?.avatarUrl!" [alt]="currentProject()?.name || 'project'" (error)="onCurrentAvatarError()" />
+          } @else {
+            {{ currentProjectInitial() }}
+          }
+        </span>
         <span class="switcher__info">
           <span class="switcher__name">{{ currentProject()?.name || '选择项目' }}</span>
           <span class="switcher__key">
@@ -35,11 +41,14 @@ import { ProjectContextStore } from '../../state/project-context.store';
               (click)="selectProject(project.id)"
             >
               <span class="switcher__avatar switcher__avatar--option">
-                {{ project.projectKey.slice(0, 2).toUpperCase() }}
+                @if (showOptionAvatar(project.id, project.avatarUrl)) {
+                  <img [src]="project.avatarUrl!" [alt]="project.name" (error)="onOptionAvatarError(project.id)" />
+                } @else {
+                  {{ project.displayCode || projectNameInitial(project.name) }}
+                }
               </span>
               <span class="switcher__info">
                 <span class="switcher__name">{{ project.name }}</span>
-                <!-- <span class="switcher__key">{{ project.projectKey }}</span> -->
               </span>
             </button>
           }
@@ -74,18 +83,27 @@ import { ProjectContextStore } from '../../state/project-context.store';
       .switcher__option.is-active {
         background: var(--bg-white-hover);
       }
+      .switcher__option.is-active {
+        border-left: 2px solid var(--primary-500);
+      }
       .switcher__avatar {
-        width: 28px;
-        height: 28px;
+        width: 36px;
+        height: 30px;
         flex-shrink: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 6px;
+        border-radius: 12px;
         background: var(--gradient-brand);
         color: #fff;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 600;
+        overflow: hidden;
+      }
+      .switcher__avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
       .switcher__avatar--option {
         background: linear-gradient(135deg, var(--color-info), var(--primary-600));
@@ -140,9 +158,22 @@ export class ProjectSwitcherComponent {
   readonly projectContext = inject(ProjectContextStore);
   readonly open = signal(false);
   readonly currentProject = this.projectContext.currentProject;
+  readonly currentAvatarBroken = signal(false);
+  readonly optionAvatarBroken = signal<Record<string, true>>({});
   readonly currentProjectInitial = computed(() =>
-    (this.currentProject()?.projectKey || this.currentProject()?.name || 'PJ').slice(0, 2).toUpperCase()
+    this.projectNameInitial(this.currentProject()?.displayCode || this.currentProject()?.name || '项目')
   );
+
+  readonly showCurrentAvatar = computed(
+    () => !!this.currentProject()?.avatarUrl && !this.currentAvatarBroken()
+  );
+
+  constructor() {
+    effect(() => {
+      this.currentProject()?.avatarUrl;
+      this.currentAvatarBroken.set(false);
+    });
+  }
 
   toggleOpen(): void {
     this.open.update((value) => !value);
@@ -151,6 +182,39 @@ export class ProjectSwitcherComponent {
   selectProject(projectId: string): void {
     this.projectContext.setCurrentProjectId(projectId);
     this.open.set(false);
+  }
+
+  showOptionAvatar(projectId: string, avatarUrl: string | null): boolean {
+    return !!avatarUrl && !this.optionAvatarBroken()[projectId];
+  }
+
+  onCurrentAvatarError(): void {
+    this.currentAvatarBroken.set(true);
+  }
+
+  onOptionAvatarError(projectId: string): void {
+    this.optionAvatarBroken.update((current) => ({ ...current, [projectId]: true }));
+  }
+
+  projectNameInitial(name: string): string {
+    const normalized = name.trim();
+    if (!normalized) {
+      return '项目';
+    }
+
+    const latinWords = normalized
+      .split(/[\s\-_.]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (latinWords.length >= 3) {
+      return `${latinWords[0][0]}${latinWords[1][0]}${latinWords[2][0]}`.toUpperCase();
+    }
+
+    if (/^[a-z0-9\s\-_.]+$/i.test(normalized)) {
+      return normalized.replace(/[\s\-_.]+/g, '').slice(0, 3).toUpperCase();
+    }
+
+    return normalized.slice(0, 3).toUpperCase();
   }
 
   @HostListener('document:click', ['$event.target'])

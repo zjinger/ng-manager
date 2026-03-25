@@ -6,9 +6,12 @@ export type ProjectVisibility = "internal" | "private";
 export interface ProjectSummary {
   id: string;
   projectKey: string;
+  displayCode: string | null;
   name: string;
   description: string | null;
   icon: string | null;
+  avatarUploadId: string | null;
+  avatarUrl: string | null;
   status: string;
   visibility: string;
   createdAt: string;
@@ -24,15 +27,19 @@ export interface ProjectListQuery {
 
 export interface CreateProjectInput {
   name: string;
+  displayCode?: string;
   description?: string;
   icon?: string;
+  avatarUploadId?: string;
   visibility?: ProjectVisibility;
 }
 
 export interface UpdateProjectInput {
   name?: string;
+  displayCode?: string | null;
   description?: string | null;
   icon?: string | null;
+  avatarUploadId?: string | null;
   visibility?: ProjectVisibility;
   status?: ProjectStatus;
 }

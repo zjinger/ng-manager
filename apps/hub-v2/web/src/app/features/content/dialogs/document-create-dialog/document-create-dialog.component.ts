@@ -26,7 +26,7 @@ const DEFAULT_DRAFT: Draft = {
     <app-dialog-shell
       [open]="open()"
       [width]="900"
-      [title]="isEdit() ? '编辑文档' : '新建文档'"
+      [title]="(isEdit() ? '编辑文档' : '新建文档') + (!isEdit() && projectName() ? ' · ' + projectName() : '')"
       [subtitle]="isEdit() ? '修改文档内容后保存。' : '先录入标题、标识和正文，版本和分类可以后续再维护。'"
       [icon]="'file-text'"
       (cancel)="cancel.emit()"
@@ -146,6 +146,7 @@ export class DocumentCreateDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly value = input<DocumentEntity | null>(null);
+  readonly projectName = input<string>('');
   readonly create = output<Draft>();
   readonly cancel = output<void>();
 

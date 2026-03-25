@@ -40,16 +40,40 @@ export class IssueDetailStore {
   readonly busy = computed(() => this.busyState());
   readonly currentUser = this.authStore.currentUser;
   readonly availableMembers = computed(() => {
+    const issue = this.issueState();
+    const assigneeId = issue?.assigneeId ?? null;
     const usedUserIds = new Set(this.participantsState().map((item) => item.userId));
-    return this.membersState().filter((item) => !usedUserIds.has(item.userId));
+    return this.membersState().filter((item) => !usedUserIds.has(item.userId) && item.userId !== assigneeId);
+  });
+  readonly isProjectAdmin = computed(() => {
+    const userId = this.currentUser()?.userId;
+    if (!userId) {
+      return false;
+    }
+    const member = this.membersState().find((item) => item.userId === userId);
+    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
   });
   readonly canAssign = computed(() => {
     const issue = this.issueState();
     const currentUser = this.currentUser();
-    if (!issue || !currentUser) {
+    if (!issue) {
       return false;
     }
-    return currentUser.role === 'admin' || issue.reporterId === currentUser.userId;
+    return this.permissionService.canAssign(issue, currentUser, this.isProjectAdmin());
+  });
+  readonly canManageParticipants = computed(() => {
+    const issue = this.issueState();
+    if (!issue) {
+      return false;
+    }
+    return this.permissionService.canManageParticipants(issue, this.currentUser(), this.isProjectAdmin());
+  });
+  readonly canClaim = computed(() => {
+    const issue = this.issueState();
+    if (!issue) {
+      return false;
+    }
+    return this.permissionService.canClaim(issue, this.currentUser());
   });
   readonly canStart = computed(() => {
     const issue = this.issueState();
@@ -99,14 +123,14 @@ export class IssueDetailStore {
     });
   }
 
-  postComment(content: string): void {
+  postComment(content: string, mentions: string[] = []): void {
     const issueId = this.issueState()?.id;
     if (!issueId || !content.trim()) {
       return;
     }
 
     this.busyState.set(true);
-    this.issueApi.createComment(issueId, content.trim()).subscribe({
+    this.issueApi.createComment(issueId, content.trim(), mentions).subscribe({
       next: (comment) => {
         this.commentsState.update((items) => [comment, ...items]);
         this.busyState.set(false);
@@ -119,6 +143,10 @@ export class IssueDetailStore {
 
   start(): void {
     this.runIssueAction((issueId) => this.issueApi.start(issueId));
+  }
+
+  claim(): void {
+    this.runIssueAction((issueId) => this.issueApi.claim(issueId));
   }
 
   assign(assigneeId: string): void {
@@ -150,6 +178,25 @@ export class IssueDetailStore {
     this.issueApi.addParticipant(issueId, userId).subscribe({
       next: (participant) => {
         this.participantsState.update((items) => [...items, participant]);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  addParticipants(userIds: string[]): void {
+    const issueId = this.issueState()?.id;
+    const ids = [...new Set(userIds.map((item) => item.trim()).filter(Boolean))];
+    if (!issueId || ids.length === 0) {
+      return;
+    }
+
+    this.busyState.set(true);
+    forkJoin(ids.map((userId) => this.issueApi.addParticipant(issueId, userId))).subscribe({
+      next: (participants) => {
+        this.participantsState.update((items) => [...items, ...participants]);
         this.busyState.set(false);
       },
       error: () => {

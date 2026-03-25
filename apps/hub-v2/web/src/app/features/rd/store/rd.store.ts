@@ -1,13 +1,22 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import { ProjectContextStore } from '../../../core/state/project-context.store';
 import type { PageResult } from '../../../core/types/page.types';
-import type { BlockRdItemInput, CreateRdItemInput, RdItemEntity, RdListQuery, RdStageEntity } from '../models/rd.model';
+import type {
+  AdvanceRdStageInput,
+  BlockRdItemInput,
+  CreateRdItemInput,
+  RdItemEntity,
+  RdListQuery,
+  RdStageEntity,
+  UpdateRdItemInput
+} from '../models/rd.model';
 import { RdApiService } from '../services/rd-api.service';
 
 const DEFAULT_QUERY: RdListQuery = {
   page: 1,
-  pageSize: 50,
+  pageSize: 20,
   projectId: '',
   stageId: '',
   status: '',
@@ -35,6 +44,8 @@ export class RdStore {
   readonly stages = computed(() => this.stagesState());
   readonly loading = computed(() => this.loadingState());
   readonly busy = computed(() => this.busyState());
+  readonly page = computed(() => this.queryState().page ?? 1);
+  readonly pageSize = computed(() => this.queryState().pageSize ?? 20);
 
   initialize(): void {
     const projectId = this.projectContext.currentProjectId() ?? '';
@@ -71,7 +82,7 @@ export class RdStore {
     this.queryState.update((query) => ({
       ...query,
       ...patch,
-      page: patch.page ?? 1,
+      page: patch.page ?? query.page ?? 1,
     }));
     this.load();
   }
@@ -136,6 +147,10 @@ export class RdStore {
       });
   }
 
+  update(itemId: string, input: UpdateRdItemInput): void {
+    this.runAction(() => this.rdApi.update(itemId, input));
+  }
+
   start(itemId: string): void {
     this.runAction(() => this.rdApi.start(itemId));
   }
@@ -152,6 +167,10 @@ export class RdStore {
     this.runAction(() => this.rdApi.complete(itemId));
   }
 
+  advanceStage(itemId: string, input: AdvanceRdStageInput): void {
+    this.runAction(() => this.rdApi.advanceStage(itemId, input));
+  }
+
   accept(itemId: string): void {
     this.runAction(() => this.rdApi.accept(itemId));
   }
@@ -160,7 +179,11 @@ export class RdStore {
     this.runAction(() => this.rdApi.close(itemId));
   }
 
-  private runAction(request: () => ReturnType<RdApiService['start']>): void {
+  delete(itemId: string): void {
+    this.runAction(() => this.rdApi.delete(itemId));
+  }
+
+  private runAction(request: () => Observable<unknown>): void {
     this.busyState.set(true);
     request().subscribe({
       next: () => {

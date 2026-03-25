@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 
 import { DataTableComponent } from '@shared/ui';
 import type { ProjectSummary } from '../../models/project.model';
@@ -7,11 +8,12 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzButtonComponent, NzButtonModule } from "ng-zorro-antd/button";
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 @Component({
   selector: 'app-project-list-table',
   standalone: true,
-  imports: [DatePipe, DataTableComponent, NzButtonModule, NzIconModule, NzTooltipModule, NzButtonComponent, NzPopconfirmModule],
+  imports: [DatePipe, ClipboardModule, DataTableComponent, NzButtonModule, NzIconModule, NzTooltipModule, NzButtonComponent, NzPopconfirmModule],
   template: `
     <app-data-table>
       <div table-head class="project-table__head">
@@ -25,11 +27,17 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         @for (item of items(); track item.id) {
           <div class="project-row">
             <div class="project-cell project-cell--project">
-              <div class="project-avatar">{{ avatarText(item.name) }}</div>
+              <div class="project-avatar">
+                @if (showAvatar(item)) {
+                  <img [src]="item.avatarUrl!" [alt]="item.name" (error)="markAvatarError(item.id)" />
+                } @else {
+                  {{ avatarText(item.displayCode || item.name) }}
+                }
+              </div>
               <div class="project-info">
                 <div class="project-name">
                     <strong>{{ item.name }}</strong>
-                    <a nz-icon nz-tooltip="复制项目Key" nzType="copy" nzTheme="outline"></a>
+                    <a nz-icon nz-tooltip="复制项目Key" (click)="copyProjectKey(item.projectKey)" nzType="copy" nzTheme="outline"></a>
                   </div>
                 <div class="project-meta">{{ item.description || '暂无项目描述' }}</div>
               </div>
@@ -104,7 +112,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         gap: 12px;
       }
       .project-avatar {
-        width: 36px;
+        width: 38px;
         height: 36px;
         border-radius: 12px;
         display: inline-flex;
@@ -116,6 +124,12 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         font-weight: 700;
         flex-shrink: 0;
         box-shadow: 0 12px 24px rgba(79, 70, 229, 0.24);
+        overflow: hidden;
+      }
+      .project-avatar > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
       .project-info {
         display: flex;
@@ -202,14 +216,30 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectListTableComponent {
+  private readonly message = inject(NzMessageService);
+  private readonly clipboard = inject(Clipboard);
   readonly items = input.required<ProjectSummary[]>();
   readonly manageMembers = output<ProjectSummary>();
   readonly edit = output<ProjectSummary>();
   readonly manageConfig = output<ProjectSummary>();
   readonly archive = output<ProjectSummary>();
   readonly restore = output<ProjectSummary>();
+  private readonly brokenAvatarMap = new Map<string, true>();
 
   avatarText(name: string): string {
-    return name.slice(0, 1).toUpperCase();
+    return name.slice(0, 3).toUpperCase();
+  }
+
+  showAvatar(item: ProjectSummary): boolean {
+    return !!item.avatarUrl && !this.brokenAvatarMap.has(item.id);
+  }
+
+  markAvatarError(projectId: string): void {
+    this.brokenAvatarMap.set(projectId, true);
+  }
+
+  copyProjectKey(projectKey: string): void {
+    this.clipboard.copy(projectKey);
+    this.message.success('projectKey 已复制');
   }
 }

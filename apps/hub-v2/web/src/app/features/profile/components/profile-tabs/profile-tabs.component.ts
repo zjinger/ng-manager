@@ -1,13 +1,20 @@
+import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-profile-tabs',
   standalone: true,
+  imports: [
+    CommonModule, NzIconModule
+  ],
   template: `
     <nav class="profile-tabs">
       @for (tab of tabs(); track tab.id) {
         <button type="button" class="profile-tab" [class.active]="activeId() === tab.id" (click)="tabChange.emit(tab.id)">
-          <span class="profile-tab__dot"></span>
+           @if(tab.icon){
+            <nz-icon [nzType]="tab.icon"/>
+           }
           <span>{{ tab.label }}</span>
         </button>
       }
@@ -71,7 +78,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfileTabsComponent {
-  readonly tabs = input.required<{ id: string; label: string }[]>();
+  readonly tabs = input.required<{ id: string; label: string; icon?: string }[]>();
   readonly activeId = input.required<string>();
   readonly tabChange = output<string>();
 }

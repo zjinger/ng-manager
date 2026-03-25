@@ -35,6 +35,7 @@ export class IssueActivityTimelineComponent {
       {
         create: 'plus-circle',
         assign: 'user-add',
+        claim: 'user-add',
         start: 'play-circle',
         resolve: 'check-circle',
         verify: 'safety-certificate',

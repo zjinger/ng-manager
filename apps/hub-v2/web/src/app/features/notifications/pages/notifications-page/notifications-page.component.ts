@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ProjectContextStore } from '../../../../core/state/project-context.store';
@@ -17,6 +18,7 @@ import { NotificationStore } from '../../store/notification.store';
   imports: [
     FormsModule,
     NzCheckboxModule,
+    NzPaginationModule,
     NzSelectModule,
     PageHeaderComponent,
     FilterBarComponent,
@@ -63,7 +65,7 @@ import { NotificationStore } from '../../store/notification.store';
         nz-checkbox
         class="notifications-page__toggle"
         [ngModel]="store.unreadOnly()"
-        (ngModelChange)="store.setUnreadOnly($event)"
+      (ngModelChange)="store.setUnreadOnly($event)"
       >
         只看未读
       </label>
@@ -75,7 +77,24 @@ import { NotificationStore } from '../../store/notification.store';
       loadingText="正在加载通知…"
       emptyTitle="当前没有通知"
     >
-      <app-notification-list [items]="store.filteredItems()" />
+      <app-notification-list [items]="pagedItems()" />
+
+      @if (total() > 0) {
+        <div class="notifications-page__pagination">
+          <nz-pagination
+            [nzTotal]="total()"
+            [nzPageIndex]="page()"
+            [nzPageSize]="pageSize()"
+            [nzPageSizeOptions]="[10, 20, 50, 100]"
+            [nzShowSizeChanger]="true"
+            [nzShowQuickJumper]="true"
+            [nzShowTotal]="totalTpl"
+            (nzPageIndexChange)="onPageIndexChange($event)"
+            (nzPageSizeChange)="onPageSizeChange($event)"
+          ></nz-pagination>
+          <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+        </div>
+      }
     </app-list-state>
   `,
   styles: [
@@ -127,6 +146,11 @@ import { NotificationStore } from '../../store/notification.store';
       .notifications-page__select {
         flex: 0 0 152px;
       }
+      .notifications-page__pagination {
+        display: flex;
+        justify-content: flex-end;
+        padding: 16px 0 4px;
+      }
 
       @media (max-width: 960px) {
         .notifications-page__search,
@@ -148,4 +172,31 @@ export class NotificationsPageComponent {
   readonly store = inject(NotificationStore);
   private readonly projectContext = inject(ProjectContextStore);
   readonly projects = this.projectContext.projects;
+  readonly page = signal(1);
+  readonly pageSize = signal(20);
+  readonly total = computed(() => this.store.filteredItems().length);
+  readonly pagedItems = computed(() => {
+    const all = this.store.filteredItems();
+    const page = this.page();
+    const pageSize = this.pageSize();
+    const start = (page - 1) * pageSize;
+    return all.slice(start, start + pageSize);
+  });
+
+  constructor() {
+    effect(() => {
+      this.store.query();
+      this.store.unreadOnly();
+      this.page.set(1);
+    });
+  }
+
+  onPageIndexChange(page: number): void {
+    this.page.set(page);
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.pageSize.set(Number(pageSize) || 20);
+    this.page.set(1);
+  }
 }

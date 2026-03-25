@@ -12,25 +12,24 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
   standalone: true,
   imports: [NzBadgeModule, NzButtonModule, NzDropDownModule, NzIconModule, NotificationDropdownComponent],
   template: `
-    <button
-      nz-button
-      nzType="text"
-      class="topbar__icon-btn topbar__notification-btn"
-      nzShape="circle"
-      nz-dropdown
-      [nzDropdownMenu]="notificationMenu"
-      nzTrigger="click"
-      nzPlacement="bottomRight"
-      (nzVisibleChange)="onVisibleChange($event)"
-    >
-      <span nz-icon nzType="bell"></span>
-      @if (store.unreadCount() > 0) {
-        <span class="badge-dot"></span>
-      }
-    </button>
+    <nz-badge [nzDot]="store.unreadCount() > 0">
+      <button
+        nz-button
+        nzType="text"
+        class="topbar__icon-btn topbar__notification-btn"
+        nzShape="circle"
+        nz-dropdown
+        [nzDropdownMenu]="notificationMenu"
+        nzTrigger="click"
+        nzPlacement="bottomRight"
+        (nzVisibleChange)="onVisibleChange($event)"
+      >
+        <span nz-icon nzType="bell"></span>
+      </button>
+    </nz-badge>
 
     <nz-dropdown-menu #notificationMenu="nzDropdownMenu">
-      <app-notification-dropdown [items]="store.items()" />
+      <app-notification-dropdown [items]="dropdownItems()" [totalCount]="store.items().length" />
     </nz-dropdown-menu>
   `,
   styles: [
@@ -41,22 +40,13 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
         height: 36px;
         color: var(--text-muted);
       }
-      .badge-dot {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 8px;
-        height: 8px;
-        border: 2px solid var(--bg-container);
-        border-radius: 50%;
-        background: var(--color-danger);
-      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationBellComponent {
   readonly store = inject(NotificationStore);
+  readonly dropdownItems = () => this.store.items().slice(0, 20);
 
   onVisibleChange(visible: boolean): void {
     if (visible) {

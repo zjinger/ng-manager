@@ -37,7 +37,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
           linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
           var(--bg-container);
         border: 1px solid var(--border-color);
-        border-radius: 24px;
+        border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
       }
@@ -47,7 +47,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         justify-content: space-between;
         align-items: center;
         gap: 16px;
-        padding: 18px 20px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border-color);
       }
 

@@ -4,11 +4,11 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { DialogShellComponent } from '../../../../shared/ui/dialog/dialog-shell.component';
-import type { CreateUserInput, UpdateUserInput, UserEntity, UserStatus } from '../../models/user.model';
+import { DialogShellComponent } from '@shared/ui';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { USER_TITLE_OPTIONS, type CreateUserInput, type UpdateUserInput, type UserEntity, type UserStatus, type UserTitleCode } from '../../models/user.model';
 
 type UserFormMode = 'create' | 'edit';
 
@@ -17,7 +17,7 @@ type Draft = {
   displayName: string;
   email: string;
   mobile: string;
-  titleCode: string;
+  titleCode: UserTitleCode | '';
   remark: string;
   status: UserStatus;
 };
@@ -35,7 +35,7 @@ const DEFAULT_DRAFT: Draft = {
 @Component({
   selector: 'app-user-form-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent],
+  imports: [FormsModule, NzButtonModule, NzIconModule, NzFormModule, NzGridModule, NzInputModule, NzSelectModule, DialogShellComponent],
   templateUrl: './user-form-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -49,6 +49,7 @@ export class UserFormDialogComponent {
   readonly cancel = output<void>();
 
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
+  readonly titleOptions = USER_TITLE_OPTIONS;
 
   constructor() {
     effect(() => {
@@ -88,7 +89,7 @@ export class UserFormDialogComponent {
         displayName: draft.displayName.trim() || undefined,
         email: draft.email.trim() || undefined,
         mobile: draft.mobile.trim() || undefined,
-        titleCode: draft.titleCode.trim() || undefined,
+        titleCode: draft.titleCode || undefined,
         remark: draft.remark.trim() || undefined,
       });
       return;
@@ -98,7 +99,7 @@ export class UserFormDialogComponent {
       displayName: draft.displayName.trim() || null,
       email: draft.email.trim() || null,
       mobile: draft.mobile.trim() || null,
-      titleCode: draft.titleCode.trim() || null,
+      titleCode: draft.titleCode || null,
       remark: draft.remark.trim() || null,
       status: draft.status,
     });

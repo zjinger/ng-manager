@@ -3,9 +3,9 @@
 # 用法：remote-deploy.sh <archive-path>
 # 其中 archive-path 是本地构建产物的路径，通常是一个 tar.gz 文件
 # 远程部署步骤：
-#   1. 确保服务器上有 /opt/ngm-hub
-#   2. 将 archive-path 上传到服务器的 /opt/ngm-hub/incoming 目录
-#   3. 在服务器上解压到 /opt/ngm-hub/releases/<timestamp> 目录
+#   1. 确保服务器上有 /opt/ngm-hub-v2
+#   2. 将 archive-path 上传到服务器的 /opt/ngm-hub-v2/incoming 目录
+#   3. 在服务器上解压到 /opt/ngm-hub-v2/releases/<timestamp> 目录
 #   4. 安装依赖，运行数据库迁移
 #   5. 切换 /opt/ngm-hub/current 指向新的 release
 #   6. 重启 pm2 服务
@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-APP_ROOT="/opt/ngm-hub"
+APP_ROOT="/opt/ngm-hub-v2"
 ARCHIVE_PATH="${1:-}"
 
 if [ -z "$ARCHIVE_PATH" ]; then

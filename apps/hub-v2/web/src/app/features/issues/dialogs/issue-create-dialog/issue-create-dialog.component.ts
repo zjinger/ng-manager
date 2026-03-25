@@ -1,19 +1,26 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
-import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
-import type { ProjectMemberEntity } from '../../../projects/models/project.model';
+import { AttachmentPreviewWallComponent, DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
+import type { AttachmentPreviewItem } from '@shared/ui';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../projects/models/project.model';
 import type { CreateIssueInput, IssueType } from '../../models/issue.model';
+import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzUploadModule } from 'ng-zorro-antd/upload';
+import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
 
-type Draft = Omit<CreateIssueInput, 'projectId'>;
+type Draft = Omit<CreateIssueInput, 'projectId'> & {
+  attachmentFiles: File[];
+};
 
 const DEFAULT_DRAFT: Draft = {
   title: '',
@@ -21,21 +28,36 @@ const DEFAULT_DRAFT: Draft = {
   type: 'bug',
   priority: 'medium',
   assigneeId: null,
+  participantIds: [],
   verifierId: null,
   moduleCode: '',
   versionCode: '',
   environmentCode: '',
+  attachmentFiles: [],
 };
 
 @Component({
   selector: 'app-issue-create-dialog',
   standalone: true,
-  imports: [FormsModule, NzFormModule, NzGridModule, NzUploadModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent, FormActionsComponent],
+  imports: [FormsModule,
+    NzFormModule,
+    NzGridModule,
+    NzUploadModule,
+    NzButtonModule,
+    NzIconModule,
+    NzInputModule,
+    NzSelectModule,
+    AttachmentPreviewWallComponent,
+    DialogShellComponent,
+    FormActionsComponent,
+    MarkdownEditorComponent
+  ],
   template: `
     <app-dialog-shell
       [open]="open()"
+      [center]="true"
       [width]="920"
-      [title]="'新建 Issue'"
+      [title]="'新建测试单' + (projectName() ? ' · ' + projectName() : '')"
       [subtitle]="''"
       [icon]="'plus-circle'"
       [modalClass]="'issue-create-modal'"
@@ -65,7 +87,7 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
                 <nz-form-label nzFor="description">描述</nz-form-label>
                 <nz-form-control>
-                  <div class="md-toolbar">
+                  <!-- <div class="md-toolbar">
                     <button type="button" class="md-toolbar__btn">B</button>
                     <button type="button" class="md-toolbar__btn">I</button>
                     <button type="button" class="md-toolbar__btn">S</button>
@@ -77,8 +99,7 @@ const DEFAULT_DRAFT: Draft = {
                     <button type="button" class="md-toolbar__btn">&#123; &#125;</button>
                     <button type="button" class="md-toolbar__btn">"</button>
                     <button type="button" class="md-toolbar__btn">↗</button>
-                  </div>
-                  <textarea
+                  </div> <textarea
                     nz-input
                     class="md-editor"
                     rows="8"
@@ -86,7 +107,16 @@ const DEFAULT_DRAFT: Draft = {
                     [ngModel]="draft().description"
                     name="description"
                     (ngModelChange)="updateField('description', $event)"
-                  ></textarea>
+                  ></textarea> -->
+	                  <app-markdown-editor 
+	                    [ngModel]="draft().description" 
+	                    [config]="editorConfig"
+                      [imageUploadHandler]="uploadMarkdownImage"
+	                    name="description"
+	                    [minHeight]="'240px'"
+	                    (contentChange)="updateField('description', $event)"
+                      (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
+	                    [placeholder]="'**复现步骤：**&#10;1. &#10;2. &#10;3. &#10;&#10;**期望行为：**&#10;&#10;**实际行为：**&#10;&#10;'" />
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -140,17 +170,24 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
                 <nz-form-label >协作人</nz-form-label>
                 <nz-form-control>
-                  <nz-select nzAllowClear nzPlaceHolder="加入协作人并收到通知">
-                  @for (member of members(); track member.id) {
-                    <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
-                  }
-                </nz-select>
+                  <nz-select
+                    nzMode="multiple"
+                    nzAllowClear
+                    nzPlaceHolder="加入协作人并收到通知"
+                    [ngModel]="draft().participantIds"
+                    name="participantIds"
+                    (ngModelChange)="updateParticipantIds($event)"
+                  >
+                    @for (member of participantCandidates(); track member.id) {
+                      <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
+                    }
+                  </nz-select>
               </nz-form-control>
             </nz-form-item>   
             </div>
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
-              <nz-form-label nzFor="verifierId" nzRequired>验证人</nz-form-label>
+              <nz-form-label nzFor="verifierId">验证人</nz-form-label>
               <nz-form-control>
                 <nz-select
                 nzAllowClear
@@ -179,10 +216,9 @@ const DEFAULT_DRAFT: Draft = {
                 name="moduleCode"
                 (ngModelChange)="updateField('moduleCode', $event)"
               >
-                <nz-option nzLabel="Auth" nzValue="Auth"></nz-option>
-                <nz-option nzLabel="User" nzValue="User"></nz-option>
-                <nz-option nzLabel="Project" nzValue="Project"></nz-option>
-                <nz-option nzLabel="Issue" nzValue="Issue"></nz-option>
+                @for (item of modules(); track item.id) {
+                  <nz-option [nzLabel]="item.name" [nzValue]="item.code || item.name"></nz-option>
+                }
               </nz-select>
               </nz-form-control>
               </nz-form-item>
@@ -192,16 +228,16 @@ const DEFAULT_DRAFT: Draft = {
                 <nz-form-label nzFor="versionCode">版本</nz-form-label>
                 <nz-form-control>
                   <nz-select nzAllowClear nzPlaceHolder="未选择" [ngModel]="draft().versionCode" name="versionCode" (ngModelChange)="updateField('versionCode', $event)">
-                    <nz-option nzLabel="v2.3.0" nzValue="v2.3.0"></nz-option>
-                    <nz-option nzLabel="v2.2.3" nzValue="v2.2.3"></nz-option>
-                    <nz-option nzLabel="v2.2.2" nzValue="v2.2.2"></nz-option>
+                    @for (item of versions(); track item.id) {
+                      <nz-option [nzLabel]="item.version" [nzValue]="item.code || item.version"></nz-option>
+                    }
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
             </div>
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
-              <nz-form-label nzFor="environmentCode" nzRequired>环境</nz-form-label>
+              <nz-form-label nzFor="environmentCode">环境</nz-form-label>
               <nz-form-control>
                 <nz-select
                 nzAllowClear
@@ -210,9 +246,9 @@ const DEFAULT_DRAFT: Draft = {
                 name="environmentCode"
                 (ngModelChange)="updateField('environmentCode', $event)"
               >
-                <nz-option nzLabel="Production" nzValue="Production"></nz-option>
-                <nz-option nzLabel="Staging" nzValue="Staging"></nz-option>
-                <nz-option nzLabel="Development" nzValue="Development"></nz-option>
+                @for (item of environments(); track item.id) {
+                  <nz-option [nzLabel]="item.name" [nzValue]="item.code || item.name"></nz-option>
+                }
               </nz-select>
               </nz-form-control>
               </nz-form-item>
@@ -227,14 +263,26 @@ const DEFAULT_DRAFT: Draft = {
                     class="upload-zone"
                     nzType="drag"
                     [nzMultiple]="true"
-                    nzAction="https://www.mocky.io/v2/5cc8019d300000980a055e76"
+                    [nzShowUploadList]="false"
+                    [nzAccept]="acceptTypes"
+                    [nzBeforeUpload]="beforeUpload"
+                    [nzCustomRequest]="customRequest"
                   >
                     <p class="upload-zone__icon">
                       <nz-icon nzType="plus" />
                     </p>
                     <div class="upload-zone__title">点击或拖拽文件到此区域上传</div>
-                    <div class="upload-zone__hint">支持 png、jpg、log、txt 等格式，单个文件最大 10MB</div>
-                  </nz-upload>
+                    <div class="upload-zone__hint">支持图片/视频格式，单个文件最大 10MB</div>
+                </nz-upload>
+                @if (draft().attachmentFiles.length > 0) {
+                  <div class="upload-picked">
+                    <app-attachment-preview-wall
+                      [items]="attachmentPreviewItems()"
+                      [removeDisabled]="busy()"
+                      (remove)="removeAttachmentById($event)"
+                    />
+                  </div>
+                }
               </nz-form-control>
               </nz-form-item>
             </div>
@@ -255,7 +303,7 @@ const DEFAULT_DRAFT: Draft = {
             form="issue-create-form"
           >
             <span nz-icon nzType="send"></span>
-            创建 Issue
+            创建 测试单
           </button>
         </app-form-actions>
       </ng-container>
@@ -337,6 +385,9 @@ const DEFAULT_DRAFT: Draft = {
         line-height: 1.7;
         color: var(--text-muted);
       }
+      .upload-picked {
+        margin-top: 12px;
+      }
       .issue-field textarea.ant-input {
         border-radius: 0 0 8px 8px;
       }
@@ -350,23 +401,62 @@ const DEFAULT_DRAFT: Draft = {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IssueCreateDialogComponent {
+export class IssueCreateDialogComponent implements OnDestroy {
+  private readonly message = inject(NzMessageService);
+  private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+  private readonly previewUrlMap = new Map<string, string>();
+
   readonly open = input(false);
   readonly busy = input(false);
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly modules = input<ProjectMetaItem[]>([]);
+  readonly environments = input<ProjectMetaItem[]>([]);
+  readonly versions = input<ProjectVersionItem[]>([]);
+  readonly projectName = input<string>('');
   readonly create = output<Draft>();
   readonly cancel = output<void>();
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS.filter((option) => option.value !== '');
   readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
+  readonly acceptTypes = 'image/*,video/*';
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
+  readonly participantCandidates = signal<ProjectMemberEntity[]>([]);
+  readonly editorConfig = {
+    autosave: true,
+    autosaveUniqueId: 'article-editor',
+    status: ['lines', 'words']
+  };
+  readonly uploadMarkdownImage = async (file: File): Promise<string> => {
+    return this.markdownImageUpload.uploadImage(file, 10);
+  };
 
   constructor() {
     effect(() => {
       if (this.open()) {
+        this.clearPreviewUrls();
         this.draft.set({ ...DEFAULT_DRAFT });
       }
     });
+
+    effect(() => {
+      const assigneeId = this.draft().assigneeId;
+      this.participantCandidates.set(this.members().filter((member) => member.userId !== assigneeId));
+      if (!assigneeId) {
+        return;
+      }
+      const participantIds = this.draft().participantIds ?? [];
+      if (!participantIds.includes(assigneeId)) {
+        return;
+      }
+      this.updateField(
+        'participantIds',
+        participantIds.filter((id) => id !== assigneeId)
+      );
+    });
+  }
+
+  onMarkdownImageUploadFailed(message: string): void {
+    this.message.error(message || '图片上传失败');
   }
 
   updateField<K extends keyof Draft>(key: K, value: Draft[K]): void {
@@ -377,10 +467,151 @@ export class IssueCreateDialogComponent {
     this.updateField('type', value);
   }
 
+  updateParticipantIds(value: unknown): void {
+    const values = Array.isArray(value) ? value : [];
+    const normalized = [...new Set(values.map((item) => `${item}`.trim()).filter(Boolean))];
+    const assigneeId = this.draft().assigneeId;
+    this.updateField(
+      'participantIds',
+      assigneeId ? normalized.filter((id) => id !== assigneeId) : normalized
+    );
+  }
+
+  readonly beforeUpload = (file: NzUploadFile): boolean => {
+    const rawFile = this.toRawFile(file);
+    if (!rawFile) {
+      this.message.warning('文件读取失败，请重试');
+      return false;
+    }
+    if (!this.isAllowedFile(rawFile)) {
+      this.message.warning('仅支持上传图片或视频文件');
+      return false;
+    }
+    if (rawFile.size > 10 * 1024 * 1024) {
+      this.message.warning('单个文件最大 10MB');
+      return false;
+    }
+
+    this.draft.update((draft) => {
+      const exists = draft.attachmentFiles.some(
+        (item) => item.name === rawFile.name && item.size === rawFile.size && item.lastModified === rawFile.lastModified
+      );
+      if (exists) {
+        return draft;
+      }
+      return { ...draft, attachmentFiles: [...draft.attachmentFiles, rawFile] };
+    });
+    return false;
+  };
+
+  readonly customRequest = (item: NzUploadXHRArgs): Subscription => {
+    item.onSuccess?.({}, item.file, item);
+    return new Subscription();
+  };
+
+  removeAttachment(file: File): void {
+    this.revokePreviewUrl(file);
+    this.draft.update((draft) => ({
+      ...draft,
+      attachmentFiles: draft.attachmentFiles.filter(
+        (item) => !(item.name === file.name && item.size === file.size && item.lastModified === file.lastModified)
+      ),
+    }));
+  }
+
+  removeAttachmentById(id: string): void {
+    const file = this.draft().attachmentFiles.find((item) => this.fileIdentity(item) === id);
+    if (!file) {
+      return;
+    }
+    this.removeAttachment(file);
+  }
+
+  attachmentPreviewItems(): AttachmentPreviewItem[] {
+    return this.draft().attachmentFiles.map((file) => ({
+      id: this.fileIdentity(file),
+      name: file.name,
+      url: this.previewUrl(file),
+      kind: this.isImage(file) ? 'image' : 'video',
+    }));
+  }
+
+  isImage(file: File): boolean {
+    return (file.type || '').toLowerCase().startsWith('image/');
+  }
+
+  previewUrl(file: File): string {
+    const key = this.fileIdentity(file);
+    const cached = this.previewUrlMap.get(key);
+    if (cached) {
+      return cached;
+    }
+    const created = URL.createObjectURL(file);
+    this.previewUrlMap.set(key, created);
+    return created;
+  }
+
+  private toRawFile(file: NzUploadFile): File | null {
+    if (file.originFileObj instanceof File) {
+      return file.originFileObj;
+    }
+    if (file instanceof File) {
+      return file;
+    }
+    return null;
+  }
+
+  private isAllowedFile(file: File): boolean {
+    const mime = (file.type || '').toLowerCase();
+    if (mime.startsWith('image/') || mime.startsWith('video/')) {
+      return true;
+    }
+    const name = file.name.toLowerCase();
+    return /\.(png|jpe?g|gif|webp|bmp|svg|mp4|mov|webm|mkv|avi|m4v)$/.test(name);
+  }
+
+  formatSize(size: number): string {
+    if (!Number.isFinite(size) || size < 0) {
+      return '-';
+    }
+    if (size < 1024) {
+      return `${size} B`;
+    }
+    if (size < 1024 * 1024) {
+      return `${(size / 1024).toFixed(1)} KB`;
+    }
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
   submitForm(): void {
     if (!this.draft().title.trim()) {
       return;
     }
     this.create.emit({ ...this.draft(), title: this.draft().title.trim() });
+  }
+
+  ngOnDestroy(): void {
+    this.clearPreviewUrls();
+  }
+
+  private revokePreviewUrl(file: File): void {
+    const key = this.fileIdentity(file);
+    const cached = this.previewUrlMap.get(key);
+    if (!cached) {
+      return;
+    }
+    URL.revokeObjectURL(cached);
+    this.previewUrlMap.delete(key);
+  }
+
+  private clearPreviewUrls(): void {
+    for (const url of this.previewUrlMap.values()) {
+      URL.revokeObjectURL(url);
+    }
+    this.previewUrlMap.clear();
+  }
+
+  private fileIdentity(file: File): string {
+    return `${file.name}|${file.size}|${file.lastModified}`;
   }
 }

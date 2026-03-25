@@ -19,9 +19,11 @@ import type {
 type ProjectRow = {
   id: string;
   project_key: string;
+  display_code: string | null;
   name: string;
   description: string | null;
   icon: string | null;
+  avatar_upload_id: string | null;
   status: "active" | "inactive";
   visibility: "internal" | "private";
   created_at: string;
@@ -88,16 +90,18 @@ export class ProjectRepo {
       .prepare(
         `
         INSERT INTO projects (
-          id, project_key, name, description, icon, status, visibility, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, project_key, display_code, name, description, icon, avatar_upload_id, status, visibility, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
         entity.id,
         entity.projectKey,
+        entity.displayCode,
         entity.name,
         entity.description,
         entity.icon,
+        entity.avatarUploadId,
         entity.status,
         entity.visibility,
         entity.createdAt,
@@ -113,6 +117,10 @@ export class ProjectRepo {
       fields.push("name = ?");
       params.push(patch.name);
     }
+    if (patch.displayCode !== undefined) {
+      fields.push("display_code = ?");
+      params.push(patch.displayCode ?? null);
+    }
     if (patch.description !== undefined) {
       fields.push("description = ?");
       params.push(patch.description ?? null);
@@ -120,6 +128,10 @@ export class ProjectRepo {
     if (patch.icon !== undefined) {
       fields.push("icon = ?");
       params.push(patch.icon ?? null);
+    }
+    if (patch.avatarUploadId !== undefined) {
+      fields.push("avatar_upload_id = ?");
+      params.push(patch.avatarUploadId ?? null);
     }
     if (patch.status !== undefined) {
       fields.push("status = ?");
@@ -213,9 +225,11 @@ export class ProjectRepo {
           SELECT DISTINCT
             p.id,
             p.project_key,
+            p.display_code,
             p.name,
             p.description,
             p.icon,
+            p.avatar_upload_id,
             p.status,
             p.visibility,
             p.created_at,
@@ -582,9 +596,12 @@ export class ProjectRepo {
     return {
       id: row.id,
       projectKey: row.project_key,
+      displayCode: row.display_code,
       name: row.name,
       description: row.description,
       icon: row.icon,
+      avatarUploadId: row.avatar_upload_id ?? null,
+      avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
       status: row.status,
       visibility: row.visibility,
       createdAt: row.created_at,

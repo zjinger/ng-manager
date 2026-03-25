@@ -33,6 +33,9 @@ import type { ProjectAccessContract } from "../modules/project/project-access.co
 import { ProjectAccessService } from "../modules/project/project-access.service";
 import { ProjectRepo } from "../modules/project/project.repo";
 import { ProjectService } from "../modules/project/project.service";
+import type { ProfileCommandContract, ProfileQueryContract } from "../modules/profile/profile.contract";
+import { ProfileRepo } from "../modules/profile/profile.repo";
+import { ProfileService } from "../modules/profile/profile.service";
 import type { RdCommandContract, RdQueryContract } from "../modules/rd/rd.contract";
 import { RdRepo } from "../modules/rd/rd.repo";
 import { RdService } from "../modules/rd/rd.service";
@@ -60,6 +63,8 @@ export type AppContainer = {
   projectCommand: ProjectCommandContract;
   projectQuery: ProjectQueryContract;
   projectAccess: ProjectAccessContract;
+  profileCommand: ProfileCommandContract;
+  profileQuery: ProfileQueryContract;
   announcementCommand: AnnouncementCommandContract;
   announcementQuery: AnnouncementQueryContract;
   dashboardQuery: DashboardQueryContract;
@@ -95,6 +100,8 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const projectRepo = new ProjectRepo(db);
   const projectAccess = new ProjectAccessService(projectRepo);
   const projectService = new ProjectService(projectRepo, userRepo, projectAccess);
+  const profileRepo = new ProfileRepo(db);
+  const profileService = new ProfileService(profileRepo);
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus);
   const documentRepo = new DocumentRepo(db);
@@ -136,6 +143,8 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     projectCommand: projectService,
     projectQuery: projectService,
     projectAccess,
+    profileCommand: profileService,
+    profileQuery: profileService,
     announcementCommand: announcementService,
     announcementQuery: announcementService,
     dashboardQuery: dashboardService,

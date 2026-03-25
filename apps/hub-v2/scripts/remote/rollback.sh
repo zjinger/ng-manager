@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-APP_ROOT="/opt/ngm-hub"
+APP_ROOT="/opt/ngm-hub-v2"
 VERSION="${1:-}"
 
 if [ -z "$VERSION" ]; then

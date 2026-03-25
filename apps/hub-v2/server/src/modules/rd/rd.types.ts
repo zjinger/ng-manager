@@ -1,9 +1,19 @@
 import type { PageResult } from "../../shared/http/pagination";
 
-export type RdItemType = "feature" | "task" | "improvement";
+export type RdItemType = "feature_dev" | "tech_refactor" | "integration" | "env_setup";
 export type RdItemPriority = "low" | "medium" | "high" | "critical";
 export type RdItemStatus = "todo" | "doing" | "blocked" | "done" | "accepted" | "closed";
-export type RdAction = "create" | "update" | "start" | "block" | "resume" | "complete" | "accept" | "close";
+export type RdAction =
+  | "create"
+  | "update"
+  | "start"
+  | "block"
+  | "resume"
+  | "complete"
+  | "accept"
+  | "close"
+  | "advance_stage"
+  | "delete";
 
 export interface RdStageEntity {
   id: string;
@@ -118,6 +128,10 @@ export interface UpdateRdItemInput {
 
 export interface BlockRdItemInput {
   blockerReason?: string;
+}
+
+export interface AdvanceRdStageInput {
+  stageId: string;
 }
 
 export interface ListRdItemsQuery {

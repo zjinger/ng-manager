@@ -5,6 +5,7 @@ import { genId } from "../../../shared/utils/id";
 import { nowIso } from "../../../shared/utils/time";
 import type { ProjectAccessContract } from "../../project/project-access.contract";
 import { IssueRepo } from "../issue.repo";
+import { requireIssueParticipantManageAccess } from "../issue.policy";
 import type { IssueLogEntity } from "../issue.types";
 import type { IssueParticipantCommandContract, IssueParticipantQueryContract } from "./issue-participant.contract";
 import { IssueParticipantRepo } from "./issue-participant.repo";
@@ -24,6 +25,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
     ctx: RequestContext
   ): Promise<IssueParticipantEntity> {
     const issue = await this.requireIssueWithAccess(issueId, ctx, "add issue participant");
+    requireIssueParticipantManageAccess(issue, ctx, await this.isProjectAdmin(issue.projectId, ctx));
     const member = await this.projectAccess.requireProjectMember(issue.projectId, input.userId.trim(), "add issue participant");
 
     if (this.participantRepo.exists(issue.id, member.userId)) {
@@ -67,6 +69,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
 
   async remove(issueId: string, participantId: string, ctx: RequestContext): Promise<{ ok: true }> {
     const issue = await this.requireIssueWithAccess(issueId, ctx, "remove issue participant");
+    requireIssueParticipantManageAccess(issue, ctx, await this.isProjectAdmin(issue.projectId, ctx));
     const participant = this.participantRepo.findById(issue.id, participantId);
     if (!participant) {
       throw new AppError("ISSUE_PARTICIPANT_NOT_FOUND", `participant not found: ${participantId}`, 404);
@@ -128,9 +131,23 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
       toStatus: null,
       operatorId: ctx.userId?.trim() || ctx.accountId,
       operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
-      summary: `${kind === "participant.added" ? "added" : "removed"} participant ${userName}`,
+      summary: `${kind === "participant.added" ? "添加协作人" : "移除协作人"} ${userName}`,
       metaJson: JSON.stringify({ kind, userName }),
       createdAt
     };
+  }
+
+  private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {
+    if (ctx.roles.includes("admin")) {
+      return true;
+    }
+
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      return false;
+    }
+
+    const member = await this.projectAccess.requireProjectMember(projectId, userId, "issue participant role check");
+    return member.roleCode === "project_admin" || member.isOwner;
   }
 }

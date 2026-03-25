@@ -2,9 +2,7 @@
   [open]="open()"
   [width]="680"
   [title]="mode() === 'create' ? '新建用户' : '编辑用户'"
-  [subtitle]="
-    mode() === 'create' ? '创建测试与协作所需的基础用户数据。' : '调整用户的展示信息和当前状态。'
-  "
+  [subtitle]=" '' "
   [icon]="'user'"
   (cancel)="cancel.emit()"
 >
@@ -73,12 +71,17 @@
           <nz-form-item>
             <nz-form-label nzFor="titleCode">职务</nz-form-label>
             <nz-form-control>
-              <input
-                nz-input
+              <nz-select
+                nzAllowClear
+                nzPlaceHolder="请选择职务"
                 [ngModel]="draft().titleCode"
                 name="titleCode"
                 (ngModelChange)="updateField('titleCode', $event)"
-              />
+              >
+                @for (item of titleOptions; track item.value) {
+                  <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                }
+              </nz-select>
             </nz-form-control>
           </nz-form-item>
         </div>

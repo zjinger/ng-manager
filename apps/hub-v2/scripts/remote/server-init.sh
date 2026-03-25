@@ -2,12 +2,12 @@
 # 服务器初始化脚本，设置目录结构，检查环境，安装 pm2
 # 执行一次：
 #   检查 node/npm/pm2
-#   创建 /opt/ngm-hub 基础目录
+#   创建 /opt/ngm-hub-v2 基础目录
 #   初始化 pm2 startup
 
 set -euo pipefail
 
-APP_ROOT="/opt/ngm-hub"
+APP_ROOT="/opt/ngm-hub-v2"
 
 BIN_DIR="$APP_ROOT/bin"
 RELEASES_DIR="$APP_ROOT/releases"

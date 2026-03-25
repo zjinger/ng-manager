@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 
 import { DataTableComponent } from '@shared/ui';
-import type { UserEntity } from '../../models/user.model';
+import { USER_TITLE_OPTIONS, type UserEntity, type UserTitleCode } from '../../models/user.model';
 import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.component';
 
 @Component({
@@ -38,7 +38,7 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
             </div>
             <div class="user-cell">{{ item.email || '—' }}</div>
             <div class="user-cell">{{ item.mobile || '—' }}</div>
-            <div class="user-cell">{{ item.titleCode || '—' }}</div>
+            <div class="user-cell">{{ titleLabel(item.titleCode) }}</div>
             <div class="user-cell"><app-user-status-tag [status]="item.status" /></div>
             <div class="user-cell user-cell--muted">{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
             <div class="user-cell">
@@ -144,5 +144,12 @@ export class UserListTableComponent {
 
   markAvatarError(userId: string): void {
     this.brokenAvatarMap.update((state) => ({ ...state, [userId]: true }));
+  }
+
+  titleLabel(titleCode: UserTitleCode | null): string {
+    if (!titleCode) {
+      return '—';
+    }
+    return USER_TITLE_OPTIONS.find((item) => item.value === titleCode)?.label ?? titleCode;
   }
 }

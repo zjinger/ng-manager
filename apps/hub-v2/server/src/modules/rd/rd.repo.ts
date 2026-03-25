@@ -27,7 +27,7 @@ type RdItemRow = {
   title: string;
   description: string | null;
   stage_id: string | null;
-  type: "feature" | "task" | "improvement";
+  type: "feature_dev" | "tech_refactor" | "integration" | "env_setup";
   status: "todo" | "doing" | "blocked" | "done" | "accepted" | "closed";
   priority: "low" | "medium" | "high" | "critical";
   assignee_id: string | null;
@@ -50,7 +50,17 @@ type RdLogRow = {
   id: string;
   project_id: string;
   item_id: string;
-  action_type: "create" | "update" | "start" | "block" | "resume" | "complete" | "accept" | "close";
+  action_type:
+    | "create"
+    | "update"
+    | "start"
+    | "block"
+    | "resume"
+    | "complete"
+    | "accept"
+    | "close"
+    | "advance_stage"
+    | "delete";
   content: string | null;
   operator_id: string | null;
   operator_name: string | null;
@@ -69,7 +79,7 @@ type UpdateRdItemRowInput = Partial<{
   title: string;
   description: string | null;
   stage_id: string | null;
-  type: "feature" | "task" | "improvement";
+  type: "feature_dev" | "tech_refactor" | "integration" | "env_setup";
   status: "todo" | "doing" | "blocked" | "done" | "accepted" | "closed";
   priority: "low" | "medium" | "high" | "critical";
   assignee_id: string | null;
@@ -257,6 +267,11 @@ export class RdRepo {
     return result.changes > 0;
   }
 
+  deleteItem(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM rd_items WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
   getNextRdNo(): string {
     const row = this.db.prepare("SELECT COUNT(*) as total FROM rd_items").get() as { total: number };
     return `RD-${String(row.total + 1).padStart(6, "0")}`;
@@ -305,6 +320,22 @@ export class RdRepo {
           FROM rd_items
           WHERE assignee_id = ?
             AND status IN ('todo', 'doing', 'blocked')
+            ${scope.clause}
+        `
+      )
+      .get(userId, ...scope.params) as { total: number };
+    return row.total;
+  }
+
+  countInProgressForDashboard(projectIds: string[], userId: string): number {
+    const scope = this.createProjectScope(projectIds);
+    const row = this.db
+      .prepare(
+        `
+          SELECT COUNT(*) as total
+          FROM rd_items
+          WHERE assignee_id = ?
+            AND status = 'doing'
             ${scope.clause}
         `
       )

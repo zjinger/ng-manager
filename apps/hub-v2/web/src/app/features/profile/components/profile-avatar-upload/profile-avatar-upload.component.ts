@@ -1,12 +1,16 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-profile-avatar-upload',
   standalone: true,
+  imports: [NzIconModule],
   template: `
     <div class="hero-avatar">
       <span>{{ initials() || 'U' }}</span>
-      <button class="hero-avatar__edit" type="button">更换</button>
+      <button class="hero-avatar__edit" type="button">
+        <nz-icon nzType="camera" />
+      </button>
     </div>
   `,
   styles: [

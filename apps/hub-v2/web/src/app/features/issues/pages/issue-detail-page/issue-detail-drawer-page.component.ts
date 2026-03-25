@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, input, signal } fro
 import { ActivatedRoute } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzModalService } from 'ng-zorro-antd/modal';
 
 import { IssueActivityTimelineComponent } from '../../components/issue-activity-timeline/issue-activity-timeline.component';
 import { IssueAttachmentsPanelComponent } from '../../components/issue-attachments-panel/issue-attachments-panel.component';
@@ -10,8 +11,10 @@ import { IssueCommentEditorComponent } from '../../components/issue-comment-edit
 import { IssueDetailDrawerHeaderComponent } from '../../components/issue-detail-header/issue-detail-drawer-header.component';
 import { IssuePropsPanelComponent } from '../../components/issue-props-panel/issue-props-panel.component';
 import { IssueAssignDialogComponent } from '../../dialogs/issue-assign-dialog/issue-assign-dialog.component';
+import { IssueAddParticipantsDialogComponent } from '../../dialogs/issue-add-participants-dialog/issue-add-participants-dialog.component';
 import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-dialog/issue-transition-dialog.component';
 import { IssueDetailStore } from '../../store/issue-detail.store';
+import { MarkdownViewerComponent } from '@app/shared/ui';
 
 @Component({
   selector: 'app-issue-detail-drawer-page',
@@ -26,24 +29,30 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
     IssueDetailDrawerHeaderComponent,
     IssuePropsPanelComponent,
     IssueAssignDialogComponent,
+    IssueAddParticipantsDialogComponent,
     IssueTransitionDialogComponent,
+    MarkdownViewerComponent
   ],
   providers: [IssueDetailStore],
   template: `
     <div class="detail-page">
       @if (store.loading()) {
-        <div class="state-card">正在加载 Issue 详情…</div>
+        <div class="state-card">正在加载测试单详情…</div>
       } @else if (store.issue(); as issue) {
         <section class="detail-stack">
           <app-issue-detail-drawer-header
             [issue]="issue"
             [canStart]="store.canStart()"
+            [canClaim]="store.canClaim()"
             [canAssign]="store.canAssign()"
+            [canManageParticipants]="store.canManageParticipants()"
             [canResolve]="store.canResolve()"
             [canVerify]="store.canVerify()"
             [canReopen]="store.canReopen()"
-            (start)="store.start()"
+            (start)="confirmStart()"
+            (claim)="store.claim()"
             (assign)="assignIssue()"
+            (addParticipants)="openAddParticipants()"
             (resolve)="resolveIssue()"
             (verify)="store.verify()"
             (reopen)="reopenIssue()"
@@ -51,7 +60,13 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
 
           <section class="description-card">
             <h3>问题描述</h3>
-            <div class="description">{{ issue.description || '暂无描述' }}</div>
+            <div class="description">
+              @if (issue.description) {
+                <app-markdown-viewer [content]="issue.description"></app-markdown-viewer>
+              } @else {
+                暂无描述
+              }
+            </div>
             @if (issue.resolutionSummary) {
               <div class="resolution">
                 <div class="resolution__label">解决说明</div>
@@ -62,13 +77,14 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
           <div class="detail-main">
             <app-issue-comment-editor
               [comments]="store.comments()"
+              [members]="store.members()"
               [busy]="store.busy()"
-              (submit)="store.postComment($event)"
+              (submit)="store.postComment($event.content, $event.mentions)"
             />
             <app-issue-activity-timeline [logs]="store.logs()" />
           </div>
         </section>
-        <div detail-side class="detail-side">
+        <div  class="detail-side">
             <app-issue-props-panel [issue]="issue" />
             <app-issue-collaborators-panel
               [issue]="issue"
@@ -76,9 +92,9 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
               [members]="store.members()"
               [availableMembers]="store.availableMembers()"
               [canAssign]="store.canAssign()"
+              [canManageParticipants]="store.canManageParticipants()"
               [busy]="store.busy()"
               (assign)="store.assign($event)"
-              (addParticipant)="store.addParticipant($event)"
               (removeParticipant)="store.removeParticipant($event)"
             />
             <app-issue-attachments-panel
@@ -89,7 +105,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
             />
           </div>
       } @else {
-        <div class="state-card">未找到该 Issue</div>
+        <div class="state-card">未找到该测试单</div>
       }
 
       <app-issue-assign-dialog
@@ -118,6 +134,15 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         (cancel)="reopenOpen.set(false)"
         (confirm)="confirmReopen($event.content)"
       />
+
+      <app-issue-add-participants-dialog
+        [open]="addParticipantsOpen()"
+        [busy]="store.busy()"
+        [issue]="store.issue()"
+        [members]="store.availableMembers()"
+        (cancel)="addParticipantsOpen.set(false)"
+        (confirm)="confirmAddParticipants($event.userIds)"
+      />
     </div>
   `,
   styles: [
@@ -128,6 +153,11 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         grid-template-columns: 1.5fr 1fr;
       }
       .detail-stack {
+        display: flex;
+        flex-direction: column;
+        gap:12px;
+      }
+      .detail-side{
         display: flex;
         flex-direction: column;
         gap:12px;
@@ -189,8 +219,10 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
 export class IssueDetailDrawerPageComponent {
   readonly store = inject(IssueDetailStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly modal = inject(NzModalService);
   readonly issueId = input<string | null>(null);
   readonly assignOpen = signal(false);
+  readonly addParticipantsOpen = signal(false);
   readonly resolveOpen = signal(false);
   readonly reopenOpen = signal(false);
   private readonly loadedIssueId = signal<string | null>(null);
@@ -218,9 +250,28 @@ export class IssueDetailDrawerPageComponent {
     this.assignOpen.set(true);
   }
 
+  openAddParticipants(): void {
+    this.addParticipantsOpen.set(true);
+  }
+
+  confirmStart(): void {
+    this.modal.confirm({
+      nzTitle: '确认开始处理该问题？',
+      nzContent: '开始处理后，提报人将不能再重新指派负责人。',
+      nzOkText: '确认开始',
+      nzCancelText: '取消',
+      nzOnOk: () => this.store.start(),
+    });
+  }
+
   confirmAssign(assigneeId: string): void {
     this.store.assign(assigneeId);
     this.assignOpen.set(false);
+  }
+
+  confirmAddParticipants(userIds: string[]): void {
+    this.store.addParticipants(userIds);
+    this.addParticipantsOpen.set(false);
   }
 
   confirmResolve(summary: string): void {

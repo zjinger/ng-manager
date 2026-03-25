@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { createReadStream } from "node:fs";
 import type { FastifyInstance } from "fastify";
 import announcementPublicRoutes from "../modules/announcement/announcement-public.routes";
 import announcementRoutes from "../modules/announcement/announcement.routes";
@@ -7,6 +10,7 @@ import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
 import notificationRoutes from "../modules/notifications/notification.routes";
+import profileRoutes from "../modules/profile/profile.routes";
 import issueAttachmentRoutes from "../modules/issue/attachment/issue-attachment.routes";
 import issueCommentRoutes from "../modules/issue/comment/issue-comment.routes";
 import issueParticipantRoutes from "../modules/issue/participant/issue-participant.routes";
@@ -21,6 +25,55 @@ import healthRoutes from "../modules/system/health.routes";
 import uploadRoutes from "../modules/upload/upload.routes";
 import userRoutes from "../modules/user/user.routes";
 
+function resolveSpaRoot(cwd = process.cwd()) {
+  const candidates = [
+    path.join(cwd, "www", "browser"),
+    path.join(cwd, "web", "dist", "hub-v2-web", "browser"),
+    path.join(cwd, "dist", "www", "browser")
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, "index.html"))) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function guessContentType(filePath: string) {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".html":
+      return "text/html; charset=utf-8";
+    case ".js":
+      return "text/javascript; charset=utf-8";
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".svg":
+      return "image/svg+xml";
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".gif":
+      return "image/gif";
+    case ".ico":
+      return "image/x-icon";
+    case ".webp":
+      return "image/webp";
+    case ".woff":
+      return "font/woff";
+    case ".woff2":
+      return "font/woff2";
+    default:
+      return "application/octet-stream";
+  }
+}
+
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(authRoutes, { prefix: "/api/admin" });
   await app.register(announcementRoutes, { prefix: "/api/admin" });
@@ -28,6 +81,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(feedbackRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });
   await app.register(notificationRoutes, { prefix: "/api/admin" });
+  await app.register(profileRoutes, { prefix: "/api/admin" });
   await app.register(issueRoutes, { prefix: "/api/admin" });
   await app.register(issueAttachmentRoutes, { prefix: "/api/admin" });
   await app.register(issueCommentRoutes, { prefix: "/api/admin" });
@@ -43,4 +97,51 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(releasePublicRoutes, { prefix: "/api/public" });
   await app.register(sharedConfigPublicRoutes, { prefix: "/api/public" });
   await app.register(healthRoutes, { prefix: "/api/public" });
+
+  const spaRoot = resolveSpaRoot();
+  if (!spaRoot) {
+    app.log.warn("[hub-v2] SPA static root not found, '/' will not be served");
+    return;
+  }
+
+  const spaIndexPath = path.join(spaRoot, "index.html");
+  app.log.info({ spaRoot }, "[hub-v2] SPA static root enabled");
+
+  app.get("/", async (_request, reply) => {
+    reply.type("text/html; charset=utf-8");
+    return reply.send(createReadStream(spaIndexPath));
+  });
+
+  app.get("/*", async (request, reply) => {
+    const wildcardPath = String((request.params as { "*": string })["*"] ?? "").trim();
+    const normalized = wildcardPath.replace(/^\/+/, "");
+
+    if (
+      normalized.startsWith("api/") ||
+      normalized.startsWith("ws")
+    ) {
+      return reply.code(404).send({
+        message: `Route GET:/${normalized} not found`,
+        error: "Not Found",
+        statusCode: 404
+      });
+    }
+
+    const resolvedPath = path.resolve(spaRoot, normalized);
+    if (!resolvedPath.startsWith(spaRoot)) {
+      return reply.code(403).send({
+        message: "Forbidden",
+        error: "Forbidden",
+        statusCode: 403
+      });
+    }
+
+    if (normalized && fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
+      reply.type(guessContentType(resolvedPath));
+      return reply.send(createReadStream(resolvedPath));
+    }
+
+    reply.type("text/html; charset=utf-8");
+    return reply.send(createReadStream(spaIndexPath));
+  });
 }

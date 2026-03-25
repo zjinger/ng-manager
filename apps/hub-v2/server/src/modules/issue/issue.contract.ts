@@ -18,6 +18,7 @@ export interface IssueCommandContract {
   create(input: CreateIssueInput, ctx: RequestContext): Promise<IssueEntity>;
   update(id: string, input: UpdateIssueInput, ctx: RequestContext): Promise<IssueEntity>;
   assign(id: string, input: AssignIssueInput, ctx: RequestContext): Promise<IssueEntity>;
+  claim(id: string, ctx: RequestContext): Promise<IssueEntity>;
   start(id: string, ctx: RequestContext): Promise<IssueEntity>;
   resolve(id: string, input: ResolveIssueInput, ctx: RequestContext): Promise<IssueEntity>;
   verify(id: string, ctx: RequestContext): Promise<IssueEntity>;

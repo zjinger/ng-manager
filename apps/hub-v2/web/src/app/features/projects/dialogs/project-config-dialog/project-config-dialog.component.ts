@@ -8,6 +8,7 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
 import { DialogShellComponent } from '@shared/ui';
+import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
 import type {
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
@@ -36,170 +37,208 @@ import type {
       [open]="open()"
       [width]="1040"
       [title]="project() ? project()!.name + ' · 项目配置' : '项目配置'"
-      [subtitle]="'维护模块、环境和版本。'"
+      [subtitle]="'维护模块、环境、版本和研发阶段。'"
       [icon]="'setting'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body class="config-dialog">
-        <nz-tabset nzSize="small">
+        <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="true">
           <nz-tab nzTitle="模块">
-            <ng-template nz-tab>
-              <section class="section">
-                <div class="creator">
-                  <input nz-input placeholder="新增模块名称" [ngModel]="moduleDraft()" (ngModelChange)="moduleDraft.set($event)" />
-                  <button nz-button nzType="primary" [disabled]="!moduleDraft().trim() || busy()" (click)="submitModuleCreate()">
-                    <nz-icon nzType="plus" nzTheme="outline" />新增
-                  </button>
-                </div>
-                <div class="list">
-                  @for (item of modules(); track item.id) {
-                    <div class="row">
-                      <input #nameRef nz-input [ngModel]="item.name" />
-                      <input #codeRef nz-input [ngModel]="item.code || ''" placeholder="编码（可选）" />
-                      <input #descRef nz-input [ngModel]="item.description || ''" placeholder="描述（可选）" />
-                      <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-                      <nz-switch
-                        [ngModel]="item.enabled"
-                        [nzDisabled]="busy() || isModulePending(item.id)"
-                        (ngModelChange)="updateModule.emit({ id: item.id, patch: { enabled: !!$event } })"
-                      ></nz-switch>
-                      <button
-                        nz-button
-                        nzType="default"
-                        [disabled]="busy() || isModulePending(item.id)"
-                        [nzLoading]="isModulePending(item.id)"
-                        (click)="saveModule(item, nameRef.value, codeRef.value, descRef.value, asNumber(sortRef.value))"
-                      >
-                        保存
-                      </button>
-                      <button
-                        nz-button
-                        nzType="default"
-                        nzDanger
-                        [disabled]="busy() || isModulePending(item.id)"
-                        [nzLoading]="isModulePending(item.id)"
-                        nz-popconfirm
-                        nzPopconfirmTitle="确认删除该模块？"
-                        (nzOnConfirm)="removeModule.emit(item.id)"
-                      >
-                        删除
-                      </button>
-                    </div>
-                  } @empty {
-                    <div class="empty">暂无模块配置</div>
-                  }
-                </div>
-              </section>
-            </ng-template>
+            <section class="section">
+              <div class="creator">
+                <input nz-input placeholder="新增模块名称，如用户管理" [ngModel]="moduleDraft()" (ngModelChange)="moduleDraft.set($event)" />
+                <button nz-button nzType="primary" [disabled]="!moduleDraft().trim() || busy()" (click)="submitModuleCreate()">
+                  <nz-icon nzType="plus" nzTheme="outline" />新增
+                </button>
+              </div>
+              <div class="list">
+                @for (item of modules(); track item.id) {
+                  <div class="row">
+                    <input #nameRef nz-input [ngModel]="item.name" />
+                    <input #descRef nz-input [ngModel]="item.description || ''" placeholder="描述（可选）" />
+                    <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                    <nz-switch
+                      [ngModel]="item.enabled"
+                      [nzDisabled]="busy() || isModulePending(item.id)"
+                      (ngModelChange)="updateModule.emit({ id: item.id, patch: { enabled: !!$event } })"
+                    ></nz-switch>
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy() || isModulePending(item.id)"
+                      [nzLoading]="isModulePending(item.id)"
+                      (click)="saveModule(item, nameRef.value, descRef.value, asNumber(sortRef.value))"
+                    >
+                      保存
+                    </button>
+                    <button
+                      nz-button
+                      nzType="default"
+                      nzDanger
+                      [disabled]="busy() || isModulePending(item.id)"
+                      [nzLoading]="isModulePending(item.id)"
+                      nz-popconfirm
+                      nzPopconfirmTitle="确认删除该模块？"
+                      (nzOnConfirm)="removeModule.emit(item.id)"
+                    >
+                      删除
+                    </button>
+                  </div>
+                } @empty {
+                  <div class="empty">暂无模块配置</div>
+                }
+              </div>
+            </section>
           </nz-tab>
 
           <nz-tab nzTitle="环境">
-            <ng-template nz-tab>
-              <section class="section">
-                <div class="creator">
-                  <input nz-input placeholder="新增环境名称" [ngModel]="environmentDraft()" (ngModelChange)="environmentDraft.set($event)" />
-                  <button
-                    nz-button
-                    nzType="primary"
-                    [disabled]="!environmentDraft().trim() || busy()"
-                    (click)="submitEnvironmentCreate()"
-                  >
-                    <nz-icon nzType="plus" nzTheme="outline" />新增
-                  </button>
-                </div>
-                <div class="list">
-                  @for (item of environments(); track item.id) {
-                    <div class="row">
-                      <input #nameRef nz-input [ngModel]="item.name" />
-                      <input #codeRef nz-input [ngModel]="item.code || ''" placeholder="编码（可选）" />
-                      <input #descRef nz-input [ngModel]="item.description || ''" placeholder="描述（可选）" />
-                      <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-                      <nz-switch
-                        [ngModel]="item.enabled"
-                        [nzDisabled]="busy() || isEnvironmentPending(item.id)"
-                        (ngModelChange)="updateEnvironment.emit({ id: item.id, patch: { enabled: !!$event } })"
-                      ></nz-switch>
-                      <button
-                        nz-button
-                        nzType="default"
-                        [disabled]="busy() || isEnvironmentPending(item.id)"
-                        [nzLoading]="isEnvironmentPending(item.id)"
-                        (click)="saveEnvironment(item, nameRef.value, codeRef.value, descRef.value, asNumber(sortRef.value))"
-                      >
-                        保存
-                      </button>
-                      <button
-                        nz-button
-                        nzType="default"
-                        nzDanger
-                        [disabled]="busy() || isEnvironmentPending(item.id)"
-                        [nzLoading]="isEnvironmentPending(item.id)"
-                        nz-popconfirm
-                        nzPopconfirmTitle="确认删除该环境？"
-                        (nzOnConfirm)="removeEnvironment.emit(item.id)"
-                      >
-                        删除
-                      </button>
-                    </div>
-                  } @empty {
-                    <div class="empty">暂无环境配置</div>
-                  }
-                </div>
-              </section>
-            </ng-template>
+            <section class="section">
+              <div class="creator">
+                <input nz-input placeholder="新增环境名称，如19号机测试环境" [ngModel]="environmentDraft()" (ngModelChange)="environmentDraft.set($event)" />
+                <button
+                  nz-button
+                  nzType="primary"
+                  [disabled]="!environmentDraft().trim() || busy()"
+                  (click)="submitEnvironmentCreate()"
+                >
+                  <nz-icon nzType="plus" nzTheme="outline" />新增
+                </button>
+              </div>
+              <div class="list">
+                @for (item of environments(); track item.id) {
+                  <div class="row">
+                    <input #nameRef nz-input [ngModel]="item.name" />
+                    <input #descRef nz-input [ngModel]="item.description || ''" placeholder="描述（可选）" />
+                    <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                    <nz-switch
+                      [ngModel]="item.enabled"
+                      [nzDisabled]="busy() || isEnvironmentPending(item.id)"
+                      (ngModelChange)="updateEnvironment.emit({ id: item.id, patch: { enabled: !!$event } })"
+                    ></nz-switch>
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy() || isEnvironmentPending(item.id)"
+                      [nzLoading]="isEnvironmentPending(item.id)"
+                      (click)="saveEnvironment(item, nameRef.value, descRef.value, asNumber(sortRef.value))"
+                    >
+                      保存
+                    </button>
+                    <button
+                      nz-button
+                      nzType="default"
+                      nzDanger
+                      [disabled]="busy() || isEnvironmentPending(item.id)"
+                      [nzLoading]="isEnvironmentPending(item.id)"
+                      nz-popconfirm
+                      nzPopconfirmTitle="确认删除该环境？"
+                      (nzOnConfirm)="removeEnvironment.emit(item.id)"
+                    >
+                      删除
+                    </button>
+                  </div>
+                } @empty {
+                  <div class="empty">暂无环境配置</div>
+                }
+              </div>
+            </section>
           </nz-tab>
 
           <nz-tab nzTitle="版本">
-            <ng-template nz-tab>
-              <section class="section">
-                <div class="creator">
-                  <input nz-input placeholder="新增版本号" [ngModel]="versionDraft()" (ngModelChange)="versionDraft.set($event)" />
-                  <button nz-button nzType="primary" [disabled]="!versionDraft().trim() || busy()" (click)="submitVersionCreate()">
-                    <nz-icon nzType="plus" nzTheme="outline" />新增
-                  </button>
-                </div>
-                <div class="list">
-                  @for (item of versions(); track item.id) {
-                    <div class="row">
-                      <input #versionRef nz-input [ngModel]="item.version" />
-                      <input #codeRef nz-input [ngModel]="item.code || ''" placeholder="编码（可选）" />
-                      <input #descRef nz-input [ngModel]="item.description || ''" placeholder="描述（可选）" />
-                      <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-                      <nz-switch
-                        [ngModel]="item.enabled"
-                        [nzDisabled]="busy() || isVersionPending(item.id)"
-                        (ngModelChange)="updateVersion.emit({ id: item.id, patch: { enabled: !!$event } })"
-                      ></nz-switch>
-                      <button
-                        nz-button
-                        nzType="default"
-                        [disabled]="busy() || isVersionPending(item.id)"
-                        [nzLoading]="isVersionPending(item.id)"
-                        (click)="saveVersion(item, versionRef.value, codeRef.value, descRef.value, asNumber(sortRef.value))"
-                      >
-                        保存
-                      </button>
-                      <button
-                        nz-button
-                        nzType="default"
-                        nzDanger
-                        [disabled]="busy() || isVersionPending(item.id)"
-                        [nzLoading]="isVersionPending(item.id)"
-                        nz-popconfirm
-                        nzPopconfirmTitle="确认删除该版本？"
-                        (nzOnConfirm)="removeVersion.emit(item.id)"
-                      >
-                        删除
-                      </button>
-                    </div>
-                  } @empty {
-                    <div class="empty">暂无版本配置</div>
-                  }
-                </div>
-              </section>
-            </ng-template>
+            <section class="section">
+              <div class="creator">
+                <input nz-input placeholder="新增版本号，如v1.0.0" [ngModel]="versionDraft()" (ngModelChange)="versionDraft.set($event)" />
+                <button nz-button nzType="primary" [disabled]="!versionDraft().trim() || busy()" (click)="submitVersionCreate()">
+                  <nz-icon nzType="plus" nzTheme="outline" />新增
+                </button>
+              </div>
+              <div class="list">
+                @for (item of versions(); track item.id) {
+                  <div class="row">
+                    <input #versionRef nz-input [ngModel]="item.version" />
+                    <input #descRef nz-input [ngModel]="item.description || ''" placeholder="描述（可选）" />
+                    <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                    <nz-switch
+                      [ngModel]="item.enabled"
+                      [nzDisabled]="busy() || isVersionPending(item.id)"
+                      (ngModelChange)="updateVersion.emit({ id: item.id, patch: { enabled: !!$event } })"
+                    ></nz-switch>
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy() || isVersionPending(item.id)"
+                      [nzLoading]="isVersionPending(item.id)"
+                      (click)="saveVersion(item, versionRef.value, descRef.value, asNumber(sortRef.value))"
+                    >
+                      保存
+                    </button>
+                    <button
+                      nz-button
+                      nzType="default"
+                      nzDanger
+                      [disabled]="busy() || isVersionPending(item.id)"
+                      [nzLoading]="isVersionPending(item.id)"
+                      nz-popconfirm
+                      nzPopconfirmTitle="确认删除该版本？"
+                      (nzOnConfirm)="removeVersion.emit(item.id)"
+                    >
+                      删除
+                    </button>
+                  </div>
+                } @empty {
+                  <div class="empty">暂无版本配置</div>
+                }
+              </div>
+            </section>
           </nz-tab>
-        </nz-tabset>
+
+          <nz-tab nzTitle="研发阶段">
+            <section class="section">
+              <div class="creator">
+                <input nz-input placeholder="新增阶段名称，如开发阶段" [ngModel]="stageDraft()" (ngModelChange)="stageDraft.set($event)" />
+                <button nz-button nzType="primary" [disabled]="!stageDraft().trim() || busy()" (click)="submitStageCreate()">
+                  <nz-icon nzType="plus" nzTheme="outline" />新增
+                </button>
+              </div>
+              <div class="list">
+                @for (item of stages(); track item.id) {
+                  <div class="row row--stage">
+                    <input #nameRef nz-input [ngModel]="item.name" />
+                    <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                    <nz-switch
+                      [ngModel]="item.enabled"
+                      [nzDisabled]="busy() || isStagePending(item.id)"
+                      (ngModelChange)="updateStage.emit({ id: item.id, patch: { enabled: !!$event } })"
+                    ></nz-switch>
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy() || isStagePending(item.id)"
+                      [nzLoading]="isStagePending(item.id)"
+                      (click)="saveStage(item, nameRef.value, asNumber(sortRef.value))"
+                    >
+                      保存
+                    </button>
+                    <button
+                      nz-button
+                      nzType="default"
+                      nzDanger
+                      [disabled]="busy() || isStagePending(item.id)"
+                      [nzLoading]="isStagePending(item.id)"
+                      nz-popconfirm
+                      nzPopconfirmTitle="确认停用该阶段？"
+                      (nzOnConfirm)="removeStage.emit(item.id)"
+                    >
+                      停用
+                    </button>
+                  </div>
+                } @empty {
+                  <div class="empty">暂无研发阶段配置</div>
+                }
+              </div>
+            </section>
+          </nz-tab>
+        </nz-tabs>
       </div>
       <ng-container dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">关闭</button>
@@ -228,9 +267,12 @@ import type {
       }
       .row {
         display: grid;
-        grid-template-columns: 1.2fr 1fr 1fr 110px 72px auto auto;
+        grid-template-columns: 1.4fr 1.2fr 110px 72px auto auto;
         gap: 10px;
         align-items: center;
+      }
+      .row--stage {
+        grid-template-columns: 1.6fr 110px 72px auto auto;
       }
       .empty {
         color: var(--text-muted);
@@ -252,9 +294,11 @@ export class ProjectConfigDialogComponent {
   readonly modules = input<ProjectMetaItem[]>([]);
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
+  readonly stages = input<RdStageEntity[]>([]);
   readonly pendingModuleIds = input<string[]>([]);
   readonly pendingEnvironmentIds = input<string[]>([]);
   readonly pendingVersionIds = input<string[]>([]);
+  readonly pendingStageIds = input<string[]>([]);
 
   readonly cancel = output<void>();
   readonly createModule = output<CreateProjectMetaItemInput>();
@@ -266,10 +310,14 @@ export class ProjectConfigDialogComponent {
   readonly createVersion = output<CreateProjectVersionItemInput>();
   readonly updateVersion = output<{ id: string; patch: UpdateProjectVersionItemInput }>();
   readonly removeVersion = output<string>();
+  readonly createStage = output<CreateRdStageInput>();
+  readonly updateStage = output<{ id: string; patch: UpdateRdStageInput }>();
+  readonly removeStage = output<string>();
 
   readonly moduleDraft = signal('');
   readonly environmentDraft = signal('');
   readonly versionDraft = signal('');
+  readonly stageDraft = signal('');
 
   isModulePending(id: string): boolean {
     return this.pendingModuleIds().includes(id);
@@ -281,6 +329,10 @@ export class ProjectConfigDialogComponent {
 
   isVersionPending(id: string): boolean {
     return this.pendingVersionIds().includes(id);
+  }
+
+  isStagePending(id: string): boolean {
+    return this.pendingStageIds().includes(id);
   }
 
   asNumber(value: unknown): number {
@@ -315,10 +367,19 @@ export class ProjectConfigDialogComponent {
     this.versionDraft.set('');
   }
 
-  saveModule(item: ProjectMetaItem, name: string, code: string, description: string, sort: number): void {
+  submitStageCreate(): void {
+    const name = this.stageDraft().trim();
+    const projectId = this.project()?.id;
+    if (!name || !projectId) {
+      return;
+    }
+    this.createStage.emit({ projectId, name });
+    this.stageDraft.set('');
+  }
+
+  saveModule(item: ProjectMetaItem, name: string, description: string, sort: number): void {
     const patch: UpdateProjectMetaItemInput = {};
     if (name.trim() !== item.name) patch.name = name.trim();
-    if ((code.trim() || null) !== item.code) patch.code = code.trim() || null;
     if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
     if (sort !== item.sort) patch.sort = sort;
     if (Object.keys(patch).length > 0) {
@@ -326,10 +387,9 @@ export class ProjectConfigDialogComponent {
     }
   }
 
-  saveEnvironment(item: ProjectMetaItem, name: string, code: string, description: string, sort: number): void {
+  saveEnvironment(item: ProjectMetaItem, name: string, description: string, sort: number): void {
     const patch: UpdateProjectMetaItemInput = {};
     if (name.trim() !== item.name) patch.name = name.trim();
-    if ((code.trim() || null) !== item.code) patch.code = code.trim() || null;
     if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
     if (sort !== item.sort) patch.sort = sort;
     if (Object.keys(patch).length > 0) {
@@ -337,14 +397,22 @@ export class ProjectConfigDialogComponent {
     }
   }
 
-  saveVersion(item: ProjectVersionItem, version: string, code: string, description: string, sort: number): void {
+  saveVersion(item: ProjectVersionItem, version: string, description: string, sort: number): void {
     const patch: UpdateProjectVersionItemInput = {};
     if (version.trim() !== item.version) patch.version = version.trim();
-    if ((code.trim() || null) !== item.code) patch.code = code.trim() || null;
     if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
     if (sort !== item.sort) patch.sort = sort;
     if (Object.keys(patch).length > 0) {
       this.updateVersion.emit({ id: item.id, patch });
+    }
+  }
+
+  saveStage(item: RdStageEntity, name: string, sort: number): void {
+    const patch: UpdateRdStageInput = {};
+    if (name.trim() !== item.name) patch.name = name.trim();
+    if (sort !== item.sort) patch.sort = sort;
+    if (Object.keys(patch).length > 0) {
+      this.updateStage.emit({ id: item.id, patch });
     }
   }
 }

@@ -4,11 +4,11 @@
       "host": "192.168.1.31",
       "user": "root",
       "port": 22,
-      "appRoot": "/opt/ngm-hub",
-      "remoteBinDir": "/opt/ngm-hub/bin",
-      "incomingDir": "/opt/ngm-hub/incoming",
-      "remoteDeployScript": "/opt/ngm-hub/bin/remote-deploy.sh",
-      "archiveName": "ngm-hub.tar.gz"
+      "appRoot": "/opt/ngm-hub-v2",
+      "remoteBinDir": "/opt/ngm-hub-v2/bin",
+      "incomingDir": "/opt/ngm-hub-v2/incoming",
+      "remoteDeployScript": "/opt/ngm-hub-v2/bin/remote-deploy.sh",
+      "archiveName": "ngm-hub-v2.tar.gz"
     }
   }
 }

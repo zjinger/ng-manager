@@ -5,8 +5,12 @@ export interface AdminAccountEntity {
   id: string;
   userId?: string | null;
   username: string;
+  email?: string | null;
+  mobile?: string | null;
+  remark?: string | null;
   passwordHash: string;
   nickname: string;
+  avatarUploadId?: string | null;
   role: AdminAccountRole;
   status: AdminAccountStatus;
   mustChangePassword: boolean;
@@ -19,7 +23,12 @@ export interface AdminProfile {
   id: string;
   userId?: string | null;
   username: string;
+  email: string | null;
+  mobile: string | null;
+  remark: string | null;
   nickname: string;
+  avatarUploadId: string | null;
+  avatarUrl: string | null;
   role: AdminAccountRole;
   mustChangePassword: boolean;
   createdAt: string;
@@ -31,12 +40,25 @@ export interface LoginChallenge {
   expiresAt: string;
 }
 
-export interface LoginInput {
+export interface PlainLoginInput {
   username: string;
   password: string;
 }
 
+export interface EncryptedLoginInput {
+  username: string;
+  nonce: string;
+  iv: string;
+  cipherText: string;
+}
+
+export type LoginInput = PlainLoginInput | EncryptedLoginInput;
+
 export interface ChangePasswordInput {
   oldPassword: string;
   newPassword: string;
+}
+
+export interface UpdateAvatarInput {
+  uploadId: string | null;
 }

@@ -4,12 +4,14 @@ import type { IssueAction, IssueStatus } from "./issue.types";
 const transitions: Record<IssueStatus, Partial<Record<IssueAction, IssueStatus>>> = {
   open: {
     assign: "open",
+    claim: "open",
     update: "open",
     start: "in_progress",
     close: "closed"
   },
   in_progress: {
     assign: "in_progress",
+    claim: "in_progress",
     update: "in_progress",
     resolve: "resolved",
     close: "closed"
@@ -27,6 +29,7 @@ const transitions: Record<IssueStatus, Partial<Record<IssueAction, IssueStatus>>
   },
   reopened: {
     assign: "reopened",
+    claim: "reopened",
     update: "reopened",
     start: "in_progress",
     resolve: "resolved",

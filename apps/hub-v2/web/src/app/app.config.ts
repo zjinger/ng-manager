@@ -3,10 +3,12 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessC
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 
+import { registerLocaleData } from '@angular/common';
+import zh from '@angular/common/locales/zh';
+import { provideMarkdown } from 'ngx-markdown';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { apiErrorInterceptor } from './core/http/api-error.interceptor';
-
 // const ngZorroConfig: NzConfig = {
 //   theme: {
 //     primaryColor: '#4f46e5',
@@ -18,7 +20,7 @@ import { apiErrorInterceptor } from './core/http/api-error.interceptor';
 //     nzTop: 60,
 //   },
 // };
-
+registerLocaleData(zh);
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -26,8 +28,9 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor, apiErrorInterceptor])),
+    provideMarkdown(),
     provideAnimations(),
-   
+
     // { provide: NZ_CONFIG, useValue: ngZorroConfig },
   ],
 };

@@ -5,17 +5,18 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { DialogShellComponent } from '@shared/ui';
-import type { AddProjectMemberInput, ProjectMemberCandidate, ProjectMemberEntity, ProjectMemberRole, ProjectSummary } from '../../models/project.model';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmDirective, NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
+import type { AddProjectMemberInput, ProjectMemberCandidate, ProjectMemberEntity, ProjectMemberRole, ProjectSummary } from '../../models/project.model';
+import { ROLE_OPTIONS } from '@app/shared/constants';
 
 @Component({
   selector: 'app-project-members-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzCheckboxModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective],
+  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzCheckboxModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective],
   templateUrl: './project-members-dialog.component.html',
   styleUrls: ['./project-members-dialog.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +42,8 @@ export class ProjectMembersDialogComponent {
     return this.users().filter((item) => !memberIds.has(item.id));
   });
 
+  readonly roleOptions = ROLE_OPTIONS;
+
   submitAdd(): void {
     if (!this.selectedUserId()) {
       return;
@@ -57,5 +60,10 @@ export class ProjectMembersDialogComponent {
 
   avatarText(name: string): string {
     return (name || '?').slice(0, 1).toUpperCase();
+  }
+
+  roleleLabel(roleCode: string): string {
+    const option = this.roleOptions.find((item) => item.value === roleCode);
+    return option ? option.label : roleCode;
   }
 }

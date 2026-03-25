@@ -1,0 +1,118 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.markdown-editor {
+  width: 100%;
+
+  &.is-disabled {
+    opacity: 0.72;
+  }
+}
+
+:host ::ng-deep .EasyMDEContainer {
+  width: 100%;
+}
+
+:host ::ng-deep .editor-toolbar {
+  border: 1px solid #d9d9d9;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  background: #fff;
+}
+
+:host ::ng-deep .editor-toolbar.fullscreen {
+  z-index: 1000;
+}
+
+:host ::ng-deep .CodeMirror {
+  min-height: 320px;
+  border: 1px solid #d9d9d9;
+  border-radius: 0 0 10px 10px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* 不要再写 height: auto */
+/* 不要强行覆盖 EasyMDE 对显示状态的控制 */
+
+:host ::ng-deep .CodeMirror-scroll {
+  min-height: 320px;
+}
+
+/* 预览区域基础样式 */
+:host ::ng-deep .editor-preview,
+:host ::ng-deep .editor-preview-side {
+  box-sizing: border-box;
+  padding: 16px 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+/* 关键：普通预览模式下，预览层覆盖编辑区 */
+:host ::ng-deep .editor-preview {
+  z-index: 10;
+  background: #fff;
+}
+
+/* 关键：side-by-side 模式下，左右分栏正常显示 */
+:host ::ng-deep .CodeMirror-sided {
+  width: 50% !important;
+}
+
+:host ::ng-deep .editor-preview-side {
+  width: 50%;
+  border: 1px solid #d9d9d9;
+  border-left: none;
+  border-radius: 0 0 10px 0;
+  background: #fff;
+}
+
+/* 标题等排版 */
+:host ::ng-deep .editor-preview h1,
+:host ::ng-deep .editor-preview-side h1,
+:host ::ng-deep .editor-preview h2,
+:host ::ng-deep .editor-preview-side h2,
+:host ::ng-deep .editor-preview h3,
+:host ::ng-deep .editor-preview-side h3 {
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+  line-height: 1.4;
+}
+
+:host ::ng-deep .editor-preview p,
+:host ::ng-deep .editor-preview-side p {
+  margin: 0 0 12px;
+}
+
+:host ::ng-deep .editor-preview pre,
+:host ::ng-deep .editor-preview-side pre {
+  overflow: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f6f8fa;
+}
+
+:host ::ng-deep .editor-preview blockquote,
+:host ::ng-deep .editor-preview-side blockquote {
+  margin: 0 0 12px;
+  padding-left: 12px;
+  color: #666;
+  border-left: 4px solid #d9d9d9;
+}
+
+:host ::ng-deep .editor-preview table,
+:host ::ng-deep .editor-preview-side table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+:host ::ng-deep .editor-preview table th,
+:host ::ng-deep .editor-preview table td,
+:host ::ng-deep .editor-preview-side table th,
+:host ::ng-deep .editor-preview-side table td {
+  padding: 8px 10px;
+  border: 1px solid #e5e6eb;
+}

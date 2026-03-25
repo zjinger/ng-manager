@@ -54,12 +54,12 @@ export class NotificationService implements NotificationQueryContract {
         time: item.updatedAt,
         projectId: item.projectId,
         projectName: this.projectNameOf(projectMap, item.projectId),
-        route: "/rd"
+        route: `/rd?detail=${item.entityId}`
       })),
       ...issueActivities.map((item) => ({
         id: `activity:${item.kind}:${item.entityId}:${item.createdAt}`,
         kind: "activity" as const,
-        sourceLabel: "Issue 动态",
+        sourceLabel: "测试单动态",
         title: item.title,
         description: item.summary || `${item.code} · ${item.action}`,
         time: item.createdAt,
@@ -76,7 +76,7 @@ export class NotificationService implements NotificationQueryContract {
         time: item.createdAt,
         projectId: item.projectId,
         projectName: this.projectNameOf(projectMap, item.projectId),
-        route: "/rd"
+        route: `/rd?detail=${item.entityId}`
       })),
       ...announcements.map((item) => ({
         id: `announcement:${item.id}`,

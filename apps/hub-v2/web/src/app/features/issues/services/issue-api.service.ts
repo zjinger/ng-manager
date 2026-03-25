@@ -38,8 +38,11 @@ export class IssueApiService {
     return this.api.get<{ items: IssueCommentEntity[] }>(`/issues/${issueId}/comments`);
   }
 
-  createComment(issueId: string, content: string) {
-    return this.api.post<IssueCommentEntity, { content: string }>(`/issues/${issueId}/comments`, { content });
+  createComment(issueId: string, content: string, mentions: string[] = []) {
+    return this.api.post<IssueCommentEntity, { content: string; mentions?: string[] }>(`/issues/${issueId}/comments`, {
+      content,
+      mentions: mentions.length > 0 ? mentions : undefined,
+    });
   }
 
   listParticipants(issueId: string) {
@@ -79,6 +82,10 @@ export class IssueApiService {
 
   assign(issueId: string, input: AssignIssueInput) {
     return this.api.post<IssueEntity, AssignIssueInput>(`/issues/${issueId}/assign`, input);
+  }
+
+  claim(issueId: string) {
+    return this.api.post<IssueEntity>(`/issues/${issueId}/claim`);
   }
 
   start(issueId: string) {

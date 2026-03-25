@@ -110,21 +110,12 @@ async function generateProdPackageJson(src, dest) {
     prodPkg.engines = pkg.engines;
   }
 
-  // 只保留生产运行需要的脚本
-  if (pkg.scripts) {
-    const allowedScripts = ["db:migrate"];
-    const scripts = {};
-
-    for (const key of allowedScripts) {
-      if (pkg.scripts[key]) {
-        scripts[key] = pkg.scripts[key];
-      }
-    }
-
-    if (Object.keys(scripts).length > 0) {
-      prodPkg.scripts = scripts;
-    }
-  }
+  // 生产发布包内统一使用 dist 下的 CLI，避免依赖 tsx 与 src 目录
+  prodPkg.scripts = {
+    "db:migrate": "node db/migrate-cli.js",
+    "db:migrate:from-v1": "node db/migrate-from-v1.js",
+    "db:verify:from-v1": "node db/migrate-from-v1.verify.js"
+  };
 
   await fs.promises.writeFile(dest, JSON.stringify(prodPkg, null, 2));
 }

@@ -144,7 +144,7 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
       toStatus: null,
       operatorId: ctx.userId?.trim() || ctx.accountId,
       operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
-      summary: `${kind === "attachment.added" ? "attached" : "removed"} ${fileName}`,
+      summary: `${kind === "attachment.added" ? "添加附件" : "移除附件"} ${fileName}`,
       metaJson: JSON.stringify({ kind, fileName }),
       createdAt
     };

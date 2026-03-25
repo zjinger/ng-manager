@@ -25,7 +25,7 @@ const DEFAULT_DRAFT: Draft = {
     <app-dialog-shell
       [open]="open()"
       [width]="860"
-      [title]="isEdit() ? '编辑发布' : '新建发布'"
+      [title]="(isEdit() ? '编辑发布' : '新建发布') + (!isEdit() && projectName() ? ' · ' + projectName() : '')"
       [subtitle]="isEdit() ? '修改发布信息后保存。' : '录入版本号、渠道和更新说明，后续再补完整发布流。'"
       [icon]="'cloud-upload'"
       (cancel)="cancel.emit()"
@@ -133,6 +133,7 @@ export class ReleaseCreateDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly value = input<ReleaseEntity | null>(null);
+  readonly projectName = input<string>('');
   readonly create = output<Draft>();
   readonly cancel = output<void>();
 

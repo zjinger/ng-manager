@@ -337,11 +337,11 @@ const issueParticipants = [
 
 const rdStages = [
   stage("rds_seed_hub_1", "prj_seed_hub", "待开始", 1, -72),
-  stage("rds_seed_hub_2", "prj_seed_hub", "开发中", 2, -72),
+  stage("rds_seed_hub_2", "prj_seed_hub", "进行中", 2, -72),
   stage("rds_seed_hub_3", "prj_seed_hub", "待验收", 3, -72),
   stage("rds_seed_hub_4", "prj_seed_hub", "已完成", 4, -72),
   stage("rds_seed_runtime_1", "prj_seed_runtime", "待开始", 1, -72),
-  stage("rds_seed_runtime_2", "prj_seed_runtime", "开发中", 2, -72),
+  stage("rds_seed_runtime_2", "prj_seed_runtime", "进行中", 2, -72),
   stage("rds_seed_runtime_3", "prj_seed_runtime", "待验收", 3, -72),
   stage("rds_seed_runtime_4", "prj_seed_runtime", "已完成", 4, -72),
 ] as const
@@ -354,7 +354,7 @@ const rdItems = [
     title: "Dashboard 深色主题验收",
     description: "按暗黑设计稿收 dashboard 卡片、列表和 hover 层次。",
     stage_id: "rds_seed_hub_3",
-    type: "feature",
+    type: "feature_dev",
     status: "done",
     priority: "high",
     assignee_id: "usr_seed_dev_1",
@@ -377,7 +377,7 @@ const rdItems = [
     title: "Projects 成员管理弹框落地",
     description: "补齐项目列表、成员管理和测试数据准备入口。",
     stage_id: "rds_seed_hub_2",
-    type: "task",
+    type: "integration",
     status: "doing",
     priority: "medium",
     assignee_id: "usr_seed_dev_1",
@@ -400,7 +400,7 @@ const rdItems = [
     title: "RequestContext 日志链路补全",
     description: "将 requestId、source、accountId 全部补齐到 runtime 日志上下文。",
     stage_id: "rds_seed_runtime_2",
-    type: "improvement",
+    type: "tech_refactor",
     status: "blocked",
     priority: "high",
     assignee_id: "usr_seed_dev_2",
@@ -422,7 +422,7 @@ const rdLogs = [
   logRd("rlog_seed_1", "prj_seed_hub", "rdi_seed_900001", "create", "创建 dashboard 深色主题验收任务", "usr_seed_pm", "王雯", -72),
   logRd("rlog_seed_2", "prj_seed_hub", "rdi_seed_900001", "start", "开始按暗黑稿收首页卡片层次", "usr_seed_dev_1", "陈墨", -60),
   logRd("rlog_seed_3", "prj_seed_hub", "rdi_seed_900001", "complete", "dashboard 深色稿第一轮完成", "usr_seed_dev_1", "陈墨", -6),
-  logRd("rlog_seed_4", "prj_seed_hub", "rdi_seed_900002", "start", "成员管理弹框开发中", "usr_seed_dev_1", "陈墨", -20),
+  logRd("rlog_seed_4", "prj_seed_hub", "rdi_seed_900002", "start", "成员管理弹框进行中", "usr_seed_dev_1", "陈墨", -20),
   logRd("rlog_seed_5", "prj_seed_runtime", "rdi_seed_900003", "block", "等待日志平台确认 requestId 检索策略", "usr_seed_dev_2", "李程", -8),
 ] as const
 

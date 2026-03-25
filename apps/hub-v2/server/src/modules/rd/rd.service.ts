@@ -5,18 +5,13 @@ import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import {
-  requireRdAcceptAccess,
-  requireRdBlockAccess,
-  requireRdCloseAccess,
-  requireRdCompleteAccess,
-  requireRdEditAccess,
-  requireRdStageManageAccess,
-  requireRdStartAccess
+  requireRdAcceptAccess
 } from "./rd.policy";
 import type { RdCommandContract, RdQueryContract } from "./rd.contract";
 import { RdRepo } from "./rd.repo";
 import { transitionRdItem } from "./rd-state-machine";
 import type {
+  AdvanceRdStageInput,
   BlockRdItemInput,
   CreateRdItemInput,
   CreateRdStageInput,
@@ -48,9 +43,9 @@ export class RdService implements RdCommandContract, RdQueryContract {
   ) {}
 
   async createStage(input: CreateRdStageInput, ctx: RequestContext): Promise<RdStageEntity> {
-    requireRdStageManageAccess(ctx);
     const projectId = input.projectId.trim();
     await this.projectAccess.requireProjectAccess(projectId, ctx, "create rd stage");
+    await this.requireStageMaintainer(projectId, ctx, "create rd stage");
 
     if (this.repo.findStageByProjectAndName(projectId, input.name.trim())) {
       throw new AppError("RD_STAGE_EXISTS", `rd stage already exists: ${input.name}`, 409);
@@ -73,9 +68,9 @@ export class RdService implements RdCommandContract, RdQueryContract {
   }
 
   async updateStage(id: string, input: UpdateRdStageInput, ctx: RequestContext): Promise<RdStageEntity> {
-    requireRdStageManageAccess(ctx);
     const stage = this.requireStage(id);
     await this.projectAccess.requireProjectAccess(stage.projectId, ctx, "update rd stage");
+    await this.requireStageMaintainer(stage.projectId, ctx, "update rd stage");
 
     if (input.name?.trim() && input.name.trim() !== stage.name) {
       const byName = this.repo.findStageByProjectAndName(stage.projectId, input.name.trim());
@@ -114,13 +109,13 @@ export class RdService implements RdCommandContract, RdQueryContract {
       title: input.title.trim(),
       description: input.description?.trim() || null,
       stageId,
-      type: input.type ?? "feature",
+      type: input.type ?? "feature_dev",
       status: "todo",
       priority: input.priority ?? "medium",
       assigneeId: members.assigneeId,
       assigneeName: members.assigneeName,
       creatorId: ctx.userId?.trim() || ctx.accountId,
-      creatorName: ctx.userId?.trim() || ctx.accountId,
+      creatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       reviewerId: members.reviewerId,
       reviewerName: members.reviewerName,
       progress: 0,
@@ -132,16 +127,36 @@ export class RdService implements RdCommandContract, RdQueryContract {
       createdAt: now,
       updatedAt: now
     };
-
     this.repo.createItem(entity);
-    this.repo.createLog(this.createLog(entity, "create", ctx, `created ${entity.rdNo}`));
+    this.repo.createLog(this.createLog(entity, "create", ctx, `创建研发项 ${entity.rdNo}`));
     await this.emitRdEvent("rd.created", "created", entity, ctx);
     return entity;
   }
 
   async updateItem(id: string, input: UpdateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "update rd item");
-    requireRdEditAccess(current, ctx);
+    await this.requireBasicEditAccess(current, ctx, "update rd item");
+    if (input.progress !== undefined) {
+      this.requireAssignee(current, ctx, "update rd progress");
+      if (input.progress >= 100 && current.status === "doing") {
+        return this.complete(id, ctx);
+      }
+      if (input.progress < 100 && (current.status === "done" || current.status === "accepted")) {
+        return this.applyAction(
+          id,
+          "resume",
+          ctx,
+          current,
+          {
+            progress: input.progress,
+            actual_end_at: null,
+            blocker_reason: null
+          },
+          // `resumed rd item by progress update: ${current.progress}% -> ${input.progress}%`
+          `更新研发项进度: ${current.progress}% -> ${input.progress}%`
+        );
+      }
+    }
     const members = await this.resolveMembers(
       current.projectId,
       input.assigneeId === undefined ? current.assigneeId : input.assigneeId,
@@ -168,14 +183,14 @@ export class RdService implements RdCommandContract, RdQueryContract {
       throw new AppError("RD_ITEM_UPDATE_FAILED", "failed to update rd item", 500);
     }
     const entity = this.requireItem(id);
-    this.repo.createLog(this.createLog(entity, "update", ctx, "updated rd item"));
+    this.repo.createLog(this.createLog(entity, "update", ctx, this.createUpdateLogContent(current, input)));
     await this.emitRdEvent("rd.updated", "updated", entity, ctx);
     return entity;
   }
 
   async start(id: string, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "start rd item");
-    requireRdStartAccess(current, ctx);
+    this.requireAssignee(current, ctx, "start rd item");
     const now = nowIso();
     return this.applyAction(
       id,
@@ -187,14 +202,14 @@ export class RdService implements RdCommandContract, RdQueryContract {
         progress: current.progress > 0 ? current.progress : 10,
         blocker_reason: null
       },
-      "started rd item",
+      "标记研发项已开始",
       now
     );
   }
 
   async block(id: string, input: BlockRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "block rd item");
-    requireRdBlockAccess(current, ctx);
+    await this.requireBlockAccess(current, ctx, "block rd item");
     return this.applyAction(
       id,
       "block",
@@ -203,19 +218,19 @@ export class RdService implements RdCommandContract, RdQueryContract {
       {
         blocker_reason: input.blockerReason?.trim() || current.blockerReason || "blocked"
       },
-      "blocked rd item"
+      "标记研发项已阻塞"
     );
   }
 
   async resume(id: string, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "resume rd item");
-    requireRdBlockAccess(current, ctx);
-    return this.applyAction(id, "resume", ctx, current, { blocker_reason: null }, "resumed rd item");
+    await this.requireBlockAccess(current, ctx, "resume rd item");
+    return this.applyAction(id, "resume", ctx, current, { blocker_reason: null }, "标记研发项已恢复");
   }
 
   async complete(id: string, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "complete rd item");
-    requireRdCompleteAccess(current, ctx);
+    this.requireAssignee(current, ctx, "complete rd item");
     const now = nowIso();
     return this.applyAction(
       id,
@@ -227,7 +242,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
         progress: 100,
         blocker_reason: null
       },
-      "completed rd item",
+      "标记研发项完成",
       now
     );
   }
@@ -235,13 +250,66 @@ export class RdService implements RdCommandContract, RdQueryContract {
   async accept(id: string, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "accept rd item");
     requireRdAcceptAccess(current, ctx);
-    return this.applyAction(id, "accept", ctx, current, {}, "accepted rd item");
+    return this.applyAction(id, "accept", ctx, current, {}, "标记研发项已接受");
   }
 
   async close(id: string, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "close rd item");
-    requireRdCloseAccess(ctx);
-    return this.applyAction(id, "close", ctx, current, {}, "closed rd item");
+    await this.requireCloseAccess(current, ctx, "close rd item");
+    return this.applyAction(id, "close", ctx, current, {}, "标记研发项已关闭");
+  }
+
+  async advanceStage(id: string, input: AdvanceRdStageInput, ctx: RequestContext): Promise<RdItemEntity> {
+    const current = await this.requireItemWithAccess(id, ctx, "advance rd stage");
+    await this.requireBasicEditAccess(current, ctx, "advance rd stage");
+    if (current.status !== "done" && current.status !== "accepted") {
+      throw new AppError("RD_ADVANCE_STAGE_INVALID_STATUS", "rd item is not completed", 400);
+    }
+
+    const targetStage = this.requireStage(input.stageId.trim());
+    if (targetStage.projectId !== current.projectId) {
+      throw new AppError("RD_STAGE_PROJECT_MISMATCH", "rd stage project mismatch", 400);
+    }
+
+    if (current.stageId === targetStage.id) {
+      throw new AppError("RD_ADVANCE_STAGE_INVALID_TARGET", "rd target stage must be different", 400);
+    }
+
+    const currentStage = current.stageId ? this.requireStage(current.stageId) : null;
+    if (currentStage && targetStage.sort <= currentStage.sort) {
+      throw new AppError("RD_ADVANCE_STAGE_INVALID_TARGET", "rd target stage must be after current stage", 400);
+    }
+
+    const updated = this.repo.updateItem(id, {
+      stage_id: targetStage.id,
+      status: "todo",
+      progress: 0,
+      actual_start_at: null,
+      actual_end_at: null,
+      blocker_reason: null,
+      updated_at: nowIso()
+    });
+    if (!updated) {
+      throw new AppError("RD_ADVANCE_STAGE_FAILED", "failed to advance rd stage", 500);
+    }
+
+    const entity = this.requireItem(id);
+    const fromStageName = currentStage?.name || "未归类";
+    this.repo.createLog(
+      this.createLog(entity, "advance_stage", ctx, `推进阶段: ${fromStageName} -> ${targetStage.name}`)
+    );
+    await this.emitRdEvent("rd.updated", "advance_stage", entity, ctx);
+    return entity;
+  }
+
+  async delete(id: string, ctx: RequestContext): Promise<{ id: string }> {
+    const current = await this.requireItemWithAccess(id, ctx, "delete rd item");
+    await this.requireDeleteAccess(current, ctx, "delete rd item");
+    const deleted = this.repo.deleteItem(id);
+    if (!deleted) {
+      throw new AppError("RD_ITEM_DELETE_FAILED", "failed to delete rd item", 500);
+    }
+    return { id };
   }
 
   async listItems(query: ListRdItemsQuery, ctx: RequestContext): Promise<RdItemListResult> {
@@ -269,6 +337,10 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   async countAssignedForDashboard(projectIds: string[], userId: string, _ctx: RequestContext): Promise<number> {
     return this.repo.countAssignedForDashboard(projectIds, userId);
+  }
+
+  async countInProgressForDashboard(projectIds: string[], userId: string, _ctx: RequestContext): Promise<number> {
+    return this.repo.countInProgressForDashboard(projectIds, userId);
   }
 
   async countReviewingForDashboard(projectIds: string[], userId: string, _ctx: RequestContext): Promise<number> {
@@ -313,6 +385,101 @@ export class RdService implements RdCommandContract, RdQueryContract {
     const item = this.requireItem(id);
     await this.projectAccess.requireProjectAccess(item.projectId, ctx, action);
     return item;
+  }
+
+  private async requireStageMaintainer(projectId: string, ctx: RequestContext, action: string): Promise<void> {
+    if (ctx.roles.includes("admin")) {
+      return;
+    }
+
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError("RD_STAGE_FORBIDDEN", `${action} forbidden`, 403);
+    }
+
+    const member = await this.projectAccess.requireProjectMember(projectId, userId, action);
+    if (member.roleCode !== "project_admin" && !member.isOwner) {
+      throw new AppError("RD_STAGE_FORBIDDEN", `${action} forbidden`, 403);
+    }
+  }
+
+  private async requireBasicEditAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError("RD_EDIT_FORBIDDEN", `${action} forbidden`, 403);
+    }
+
+    if (item.creatorId === userId || item.assigneeId === userId) {
+      return;
+    }
+
+    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, action);
+    if (member.roleCode === "project_admin" || member.isOwner) {
+      return;
+    }
+
+    throw new AppError("RD_EDIT_FORBIDDEN", `${action} forbidden`, 403);
+  }
+
+  private async requireDeleteAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError("RD_DELETE_FORBIDDEN", `${action} forbidden`, 403);
+    }
+
+    if (item.creatorId === userId) {
+      return;
+    }
+
+    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, action);
+    if (member.roleCode === "project_admin" || member.isOwner) {
+      return;
+    }
+
+    throw new AppError("RD_DELETE_FORBIDDEN", `${action} forbidden`, 403);
+  }
+
+  private async requireCloseAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError("RD_CLOSE_FORBIDDEN", `${action} forbidden`, 403);
+    }
+
+    if (item.creatorId === userId) {
+      return;
+    }
+
+    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, action);
+    if (member.roleCode === "project_admin" || member.isOwner) {
+      return;
+    }
+
+    throw new AppError("RD_CLOSE_FORBIDDEN", `${action} forbidden`, 403);
+  }
+
+  private requireAssignee(item: RdItemEntity, ctx: RequestContext, action: string): void {
+    const userId = ctx.userId?.trim();
+    if (!userId || !item.assigneeId || item.assigneeId !== userId) {
+      throw new AppError("RD_PROGRESS_FORBIDDEN", `${action} forbidden`, 403);
+    }
+  }
+
+  private async requireBlockAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError("RD_BLOCK_FORBIDDEN", `${action} forbidden`, 403);
+    }
+
+    if (item.assigneeId && item.assigneeId === userId) {
+      return;
+    }
+
+    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, action);
+    if (member.roleCode === "project_admin" || member.isOwner) {
+      return;
+    }
+
+    throw new AppError("RD_BLOCK_FORBIDDEN", `${action} forbidden`, 403);
   }
 
   private async resolveStageId(projectId: string, stageId: string | null | undefined): Promise<string | null> {
@@ -390,10 +557,45 @@ export class RdService implements RdCommandContract, RdQueryContract {
       actionType: action,
       content,
       operatorId: ctx.userId?.trim() || ctx.accountId,
-      operatorName: ctx.userId?.trim() || ctx.accountId,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       metaJson: null,
       createdAt: nowIso()
     };
+  }
+
+  private createUpdateLogContent(current: RdItemEntity, input: UpdateRdItemInput): string {
+    const changes: string[] = [];
+    if (input.progress !== undefined && input.progress !== current.progress) {
+      changes.push(`进度: ${current.progress}% -> ${input.progress}%`);
+    }
+    if (input.title !== undefined && input.title.trim() !== current.title) {
+      changes.push("更新标题");
+    }
+    if (input.description !== undefined) {
+      const next = input.description?.trim() || null;
+      if (next !== current.description) {
+        changes.push("更新描述");
+      }
+    }
+    if (input.stageId !== undefined && (input.stageId?.trim() || null) !== current.stageId) {
+      changes.push("更新阶段");
+    }
+    if (input.type !== undefined && input.type !== current.type) {
+      changes.push(`类型: ${current.type} -> ${input.type}`);
+    }
+    if (input.priority !== undefined && input.priority !== current.priority) {
+      changes.push(`优先级: ${current.priority} -> ${input.priority}`);
+    }
+    if (input.assigneeId !== undefined && (input.assigneeId?.trim() || null) !== current.assigneeId) {
+      changes.push("更新执行人");
+    }
+    if (input.reviewerId !== undefined && (input.reviewerId?.trim() || null) !== current.reviewerId) {
+      changes.push("更新验证人");
+    }
+    if (input.planStartAt !== undefined || input.planEndAt !== undefined) {
+      changes.push("更新计划时间");
+    }
+    return changes.length > 0 ? changes.join("；") : "更新研发项信息";
   }
 
   private async emitRdEvent(type: string, action: string, item: RdItemEntity, ctx: RequestContext): Promise<void> {

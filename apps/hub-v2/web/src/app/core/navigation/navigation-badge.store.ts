@@ -15,8 +15,8 @@ export class NavigationBadgeStore {
   load(): void {
     this.dashboardApi.getHomeData().subscribe({
       next: (data) => {
-        this.issueCountState.set((data.stats.assignedIssues ?? 0) + (data.stats.verifyingIssues ?? 0));
-        this.rdCountState.set((data.stats.assignedRdItems ?? 0) + (data.stats.reviewingRdItems ?? 0));
+        this.issueCountState.set(data.stats.assignedIssues ?? 0);
+        this.rdCountState.set(data.stats.inProgressRdItems ?? 0);
       },
       error: () => {
         this.issueCountState.set(0);

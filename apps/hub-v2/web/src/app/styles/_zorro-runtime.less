@@ -248,6 +248,36 @@
     box-shadow: var(--shadow-lg);
 }
 
+.ant-picker-dropdown .ant-picker-panel-container {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.ant-picker-dropdown .ant-picker-header,
+.ant-picker-dropdown .ant-picker-content th {
+    color: var(--text-muted);
+}
+
+.ant-picker-dropdown .ant-picker-cell,
+.ant-picker-dropdown .ant-picker-time-panel-column > li {
+    color: var(--text-primary);
+}
+
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner {
+    background: var(--primary-600);
+}
+
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+    border-color: var(--primary-500);
+}
+
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell:hover .ant-picker-cell-inner {
+    background: var(--bg-subtle);
+}
+
 html[data-theme='dark'] .ant-select-dropdown,
 html[data-theme='dark'] .ant-dropdown-menu,
 html[data-theme='dark'] .ant-popover-inner,
@@ -255,6 +285,22 @@ html[data-theme='dark'] .ant-modal-content,
 html[data-theme='dark'] .ant-drawer-content {
     background: var(--surface-elevated);
     border-color: rgba(148, 163, 184, 0.18);
+}
+
+html[data-theme='dark'] .ant-picker-dropdown .ant-picker-panel-container {
+    background: var(--surface-elevated);
+    border-color: rgba(148, 163, 184, 0.18);
+}
+
+html[data-theme='dark'] .ant-picker-dropdown .ant-picker-header,
+html[data-theme='dark'] .ant-picker-dropdown .ant-picker-content th,
+html[data-theme='dark'] .ant-picker-dropdown .ant-picker-cell,
+html[data-theme='dark'] .ant-picker-dropdown .ant-picker-time-panel-column > li {
+    color: var(--text-primary);
+}
+
+html[data-theme='dark'] .ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell:hover .ant-picker-cell-inner {
+    background: rgba(99, 102, 241, 0.14);
 }
 
 html[data-theme='dark'] .issue-detail-drawer .ant-drawer-content {

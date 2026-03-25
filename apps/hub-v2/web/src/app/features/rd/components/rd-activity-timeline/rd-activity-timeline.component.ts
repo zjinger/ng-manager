@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { ActivityTimelineComponent } from '../../../../shared/ui/activity-timeline/activity-timeline.component';
-import type { RdItemEntity } from '../../models/rd.model';
+import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model';
 
 @Component({
   selector: 'app-rd-activity-timeline',
@@ -14,37 +14,63 @@ import type { RdItemEntity } from '../../models/rd.model';
 })
 export class RdActivityTimelineComponent {
   readonly item = input.required<RdItemEntity>();
+  readonly logs = input<RdLogEntity[]>([]);
 
   readonly timelineItems = computed(() => {
-    const item = this.item();
-    const events = [
-      { id: `${item.id}-created`, icon: 'plus-circle', actor: item.creatorName || '系统', action: '创建了研发项', time: item.createdAt },
-      item.actualStartAt
-        ? { id: `${item.id}-started`, icon: 'play-circle', actor: item.assigneeName || item.creatorName || '系统', action: '开始执行', time: item.actualStartAt }
-        : null,
-      item.blockerReason
-        ? { id: `${item.id}-blocked`, icon: 'pause-circle', actor: item.assigneeName || item.creatorName || '系统', action: `标记阻塞：${item.blockerReason}`, time: item.updatedAt }
-        : null,
-      item.actualEndAt
-        ? { id: `${item.id}-completed`, icon: 'check-circle', actor: item.assigneeName || item.creatorName || '系统', action: '标记完成', time: item.actualEndAt }
-        : null,
-      item.status === 'accepted'
-        ? { id: `${item.id}-accepted`, icon: 'safety-certificate', actor: item.reviewerName || '系统', action: '完成验收', time: item.updatedAt }
-        : null,
-      item.status === 'closed'
-        ? { id: `${item.id}-closed`, icon: 'close-circle', actor: item.reviewerName || item.creatorName || '系统', action: '关闭研发项', time: item.updatedAt }
-        : null,
-    ].filter(Boolean) as Array<{ id: string; icon: string; actor: string; action: string; time: string }>;
-
-    return events.map((event) => ({
-      ...event,
-      time: new Intl.DateTimeFormat('zh-CN', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(new Date(event.time)),
+    const logs = this.logs();
+    if (logs.length === 0) {
+      return [];
+    }
+    return logs.map((log) => ({
+      id: log.id,
+      icon: this.iconByAction(log.actionType),
+      actor: log.operatorName || log.operatorId || '系统',
+      action: log.content?.trim() || this.labelByAction(log.actionType),
+      time: this.formatTime(log.createdAt),
     }));
   });
+
+  private labelByAction(action: RdAction): string {
+    return (
+      {
+        create: '创建研发项',
+        update: '更新研发项',
+        start: '开始执行',
+        block: '标记阻塞',
+        resume: '恢复执行',
+        complete: '标记完成',
+        accept: '验收完成',
+        close: '关闭研发项',
+        advance_stage: '进入下一阶段',
+        delete: '删除研发项',
+      }[action] ?? action
+    );
+  }
+
+  private iconByAction(action: RdAction): string {
+    return (
+      {
+        create: 'plus-circle',
+        update: 'edit',
+        start: 'play-circle',
+        block: 'pause-circle',
+        resume: 'redo',
+        complete: 'check-circle',
+        accept: 'safety-certificate',
+        close: 'close-circle',
+        advance_stage: 'right-circle',
+        delete: 'delete',
+      }[action] ?? 'history'
+    );
+  }
+
+  private formatTime(value: string): string {
+    return new Intl.DateTimeFormat('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(value));
+  }
 }

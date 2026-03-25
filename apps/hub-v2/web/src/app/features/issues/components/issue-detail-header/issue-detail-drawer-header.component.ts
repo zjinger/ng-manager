@@ -32,8 +32,14 @@ import type { IssueEntity } from '../../models/issue.model';
           @if (canStart()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="start.emit()">开始处理</button>
           }
+          @if (canClaim()) {
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="claim.emit()">认领</button>
+          }
           @if (canAssign()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="assign.emit()">重新指派</button>
+          }
+          @if (canManageParticipants()) {
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="addParticipants.emit()">添加协作人</button>
           }
           @if (canResolve()) {
             <button nz-button nzType="primary" class="detail-header__action-btn" (click)="resolve.emit()">标记解决</button>
@@ -171,13 +177,17 @@ export class IssueDetailDrawerHeaderComponent {
 
   readonly issue = input.required<IssueEntity>();
   readonly canStart = input(false);
+  readonly canClaim = input(false);
   readonly canAssign = input(false);
+  readonly canManageParticipants = input(false);
   readonly canResolve = input(false);
   readonly canVerify = input(false);
   readonly canReopen = input(false);
 
   readonly start = output<void>();
+  readonly claim = output<void>();
   readonly assign = output<void>();
+  readonly addParticipants = output<void>();
   readonly resolve = output<void>();
   readonly verify = output<void>();
   readonly reopen = output<void>();

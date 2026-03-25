@@ -4,6 +4,7 @@ export interface DashboardStats {
   assignedIssues: number;
   verifyingIssues: number;
   assignedRdItems: number;
+  inProgressRdItems: number;
   reviewingRdItems: number;
 }
 export interface DashboardTodoItem {

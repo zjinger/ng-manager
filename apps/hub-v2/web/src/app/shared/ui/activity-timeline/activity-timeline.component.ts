@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { PanelCardComponent } from '../panel-card';
 
 export interface ActivityTimelineItem {
   id: string;
@@ -12,13 +13,9 @@ export interface ActivityTimelineItem {
 @Component({
   selector: 'app-activity-timeline',
   standalone: true,
-  imports: [NzIconModule],
+  imports: [NzIconModule, PanelCardComponent],
   template: `
-    <section class="panel">
-      <header class="panel__header">
-        <span class="panel__title">{{ title() }}</span>
-      </header>
-
+    <app-panel-card [title]="title()">
       @if (items().length === 0) {
         <div class="panel__empty">{{ emptyText() }}</div>
       } @else {
@@ -39,37 +36,10 @@ export interface ActivityTimelineItem {
           }
         </div>
       }
-    </section>
+    </app-panel-card>
   `,
   styles: [
     `
-      .panel {
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
-          var(--bg-container);
-        border: 1px solid var(--border-color);
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
-      }
-
-      .panel__header {
-        padding: 18px 20px;
-        border-bottom: 1px solid var(--border-color);
-      }
-
-      .panel__title {
-        color: var(--text-primary);
-        font-size: 15px;
-        font-weight: 600;
-      }
-
-      .panel__empty {
-        padding: 36px 20px;
-        text-align: center;
-        color: var(--text-muted);
-      }
-
       .timeline {
         display: grid;
       }
@@ -101,10 +71,6 @@ export interface ActivityTimelineItem {
         margin-left: auto;
         font-size: 12px;
         color: var(--text-muted);
-      }
-
-      :host-context(html[data-theme='dark']) .panel {
-        border-color: rgba(148, 163, 184, 0.14);
       }
 
       @media (max-width: 768px) {

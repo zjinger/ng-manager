@@ -1,7 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzProgressModule } from 'ng-zorro-antd/progress';
 
+import { RD_STATUS_LABELS } from '../../../../shared/constants';
 import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
@@ -10,7 +11,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 @Component({
   selector: 'app-rd-list-table',
   standalone: true,
-  imports: [DatePipe, NzButtonModule, DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent],
+  imports: [DatePipe, NzProgressModule, DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent],
   template: `
     <app-data-table>
       <div table-head class="rd-table__head">
@@ -21,7 +22,6 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
         <div>负责人</div>
         <div>进度</div>
         <div>更新时间</div>
-        <div>操作</div>
       </div>
       <div table-body class="rd-table__body">
         @for (item of items(); track item.id) {
@@ -34,20 +34,15 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
             <div class="rd-cell"><app-status-badge [status]="item.status" [label]="statusLabel(item.status)" /></div>
             <div class="rd-cell"><app-priority-badge [priority]="item.priority" /></div>
             <div class="rd-cell">{{ item.assigneeName || '未指派' }}</div>
-            <div class="rd-cell rd-cell--muted">{{ item.progress }}%</div>
-            <div class="rd-cell rd-cell--muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
-            <div class="rd-cell rd-cell--actions">
-              @for (action of actionsFor(item); track action.key) {
-                <button
-                  nz-button
-                  nzSize="small"
-                  [nzType]="action.primary ? 'primary' : 'default'"
-                  (click)="$event.stopPropagation(); actionClick.emit({ item, action: action.key })"
-                >
-                  {{ action.label }}
-                </button>
-              }
+            <div class="rd-cell rd-cell--progress">
+              <nz-progress
+                [nzPercent]="item.progress"
+                [nzShowInfo]="true"
+                [nzStrokeWidth]="6"
+                [nzSize]="'small'"
+              ></nz-progress>
             </div>
+            <div class="rd-cell rd-cell--muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
           </div>
         }
       </div>
@@ -58,7 +53,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
       .rd-table__head,
       .rd-row {
         display: grid;
-        grid-template-columns: 1.8fr 0.9fr 0.9fr 0.8fr 0.9fr 0.7fr 0.9fr 1fr;
+        grid-template-columns: 2fr 1fr 1fr 0.8fr 0.8fr 1fr 0.8fr;
         gap: 16px;
         align-items: center;
       }
@@ -71,19 +66,31 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
       }
       .rd-row {
         padding: 14px 16px;
-        border-top: 1px solid var(--border-color-soft);
+        border-bottom: 1px solid var(--border-color-soft);
         cursor: pointer;
-        transition: background 0.2s ease;
+        transition: var(--transition-base);
+      }
+      .rd-row:last-child {
+        border-bottom: 0;
       }
       .rd-row:hover {
         background: var(--bg-subtle);
       }
       .rd-row.is-active {
-        background: color-mix(in srgb, var(--primary-500) 8%, transparent);
+        background:
+          linear-gradient(90deg, rgba(99, 102, 241, 0.14), rgba(99, 102, 241, 0.04)),
+          var(--bg-subtle);
+        box-shadow: inset 3px 0 0 var(--primary-600);
       }
       .rd-cell {
         min-width: 0;
         color: var(--text-primary);
+      }
+      .rd-cell--progress {
+        min-width: 140px;
+      }
+      .rd-cell--progress :where(.ant-progress-text) {
+        color: var(--text-muted);
       }
       .rd-name {
         font-weight: 700;
@@ -93,11 +100,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
       .rd-cell--muted {
         font-size: 12px;
         color: var(--text-muted);
-      }
-      .rd-cell--actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        padding-left: 12px;
       }
       @media (max-width: 1100px) {
         .rd-table__head {
@@ -108,6 +111,11 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
           gap: 8px;
         }
       }
+      :host-context(html[data-theme='dark']) .rd-row.is-active {
+        background:
+          linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.06)),
+          var(--bg-subtle);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -116,7 +124,6 @@ export class RdListTableComponent {
   readonly items = input<RdItemEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
   readonly selectedItemId = input<string | null>(null);
-  readonly actionClick = output<{ item: RdItemEntity; action: 'start' | 'block' | 'resume' | 'complete' | 'accept' | 'close' }>();
   readonly selectItem = output<RdItemEntity>();
 
   stageName(stageId: string | null): string {
@@ -124,35 +131,6 @@ export class RdListTableComponent {
   }
 
   statusLabel(status: string): string {
-    return (
-      {
-        todo: '待开始',
-        doing: '开发中',
-        blocked: '阻塞中',
-        done: '待验收',
-        accepted: '已验收',
-        closed: '已关闭',
-      }[status] ?? status
-    );
-  }
-
-  actionsFor(item: RdItemEntity) {
-    switch (item.status) {
-      case 'todo':
-        return [{ key: 'start' as const, label: '开始', primary: true }];
-      case 'doing':
-        return [
-          { key: 'block' as const, label: '阻塞', primary: false },
-          { key: 'complete' as const, label: '完成', primary: true },
-        ];
-      case 'blocked':
-        return [{ key: 'resume' as const, label: '继续', primary: true }];
-      case 'done':
-        return [{ key: 'accept' as const, label: '验收', primary: true }];
-      case 'accepted':
-        return [{ key: 'close' as const, label: '关闭', primary: false }];
-      default:
-        return [];
-    }
+    return RD_STATUS_LABELS[status] ?? status;
   }
 }

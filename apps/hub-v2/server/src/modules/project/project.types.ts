@@ -14,9 +14,12 @@ export type ProjectMemberRole =
 export interface ProjectEntity {
   id: string;
   projectKey: string;
+  displayCode: string | null;
   name: string;
   description: string | null;
   icon: string | null;
+  avatarUploadId: string | null;
+  avatarUrl: string | null;
   status: ProjectStatus;
   visibility: ProjectVisibility;
   createdAt: string;
@@ -37,15 +40,19 @@ export interface ProjectMemberEntity {
 
 export interface CreateProjectInput {
   name: string;
+  displayCode?: string;
   description?: string;
   icon?: string;
+  avatarUploadId?: string;
   visibility?: ProjectVisibility;
 }
 
 export interface UpdateProjectInput {
   name?: string;
+  displayCode?: string | null;
   description?: string | null;
   icon?: string | null;
+  avatarUploadId?: string | null;
   status?: ProjectStatus;
   visibility?: ProjectVisibility;
 }

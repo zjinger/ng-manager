@@ -36,6 +36,9 @@ features:
 - [06 Web 架构设计文档](/hub-v2/06-web-architecture)：定义前端目录结构、Core/Shared/Features 分层、UI 组件边界、状态边界与前端实施顺序。
 - [08 数据迁移映射清单](/hub-v2/08-migration-mapping)：定义 hub v1 到 hub-v2 的表级、字段级、状态级映射和切流建议。
 - [09 迁移执行 Runbook](/hub-v2/09-migration-runbook)：定义迁移演练、上线当天执行顺序、校验清单、灰度切流与回滚规则。
+- [10 RD 权限矩阵](/hub-v2/10-rd-permission-matrix)：冻结 RD 状态流转与角色操作权限，直接用于开发与测试验收。
+- [11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix)：冻结 Issue 状态流转与角色操作权限（含认领），直接用于开发与测试验收。
+- [12 内网部署与迁移执行](/hub-v2/12-deploy-intranet)：定义 192.168.1.31 的发布步骤、v1->v2 迁移命令、验收和回滚。
 
 ## 推荐阅读顺序
 

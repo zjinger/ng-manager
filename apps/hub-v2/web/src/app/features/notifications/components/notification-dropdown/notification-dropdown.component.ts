@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { ProjectContextStore } from '../../../../core/state/project-context.store';
 import type { NotificationItem } from '../../models/notification.model';
 
 @Component({
@@ -16,7 +17,7 @@ import type { NotificationItem } from '../../models/notification.model';
         </div>
         <div class="notification-menu__header-side">
           <a class="notification-menu__all" [routerLink]="['/notifications']">查看全部</a>
-          <span class="notification-menu__count">{{ items().length }}</span>
+          <span class="notification-menu__count">{{ totalCount() ?? items().length }}</span>
         </div>
       </div>
 
@@ -28,8 +29,9 @@ import type { NotificationItem } from '../../models/notification.model';
             <a
               class="notification-item"
               [class.is-unread]="item.unread"
-              [routerLink]="routeTarget(item.route).path"
-              [queryParams]="routeTarget(item.route).query"
+              [routerLink]="routeTarget(item).path"
+              [queryParams]="routeTarget(item).query"
+              (click)="syncProjectContext(item)"
             >
               <span class="notification-item__dot" [class.is-activity]="item.kind === 'activity'" [class.is-announcement]="item.kind === 'announcement'"></span>
               <div class="notification-item__body">
@@ -217,19 +219,51 @@ import type { NotificationItem } from '../../models/notification.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationDropdownComponent {
+  private readonly projectContext = inject(ProjectContextStore);
   readonly items = input<NotificationItem[]>([]);
+  readonly totalCount = input<number | null>(null);
 
-  routeTarget(route: string): { path: string[]; query?: Record<string, string> } {
+  routeTarget(item: NotificationItem): { path: string[]; query?: Record<string, string> } {
+    const route = item.route || '';
     const [path, query = ''] = route.split('?');
-    if (!query) {
-      return { path: [path] };
-    }
     const params = new URLSearchParams(query);
     const queryParams: Record<string, string> = {};
     params.forEach((value, key) => {
       queryParams[key] = value;
     });
-    return { path: [path], query: queryParams };
+
+    if (!queryParams['detail'] && path === '/rd') {
+      const entityId = this.resolveEntityId(item);
+      if (entityId) {
+        queryParams['detail'] = entityId;
+      }
+    }
+
+    if (!queryParams['detail'] && path === '/issues') {
+      const entityId = this.resolveEntityId(item);
+      if (entityId) {
+        queryParams['detail'] = entityId;
+      }
+    }
+
+    return Object.keys(queryParams).length > 0 ? { path: [path], query: queryParams } : { path: [path] };
+  }
+
+  private resolveEntityId(item: NotificationItem): string | null {
+    if (!item?.id) {
+      return null;
+    }
+    const parts = item.id.split(':');
+    if (parts.length < 3) {
+      return null;
+    }
+    if (parts[0] === 'todo') {
+      return parts[2] || null;
+    }
+    if (parts[0] === 'activity') {
+      return parts[2] || null;
+    }
+    return null;
   }
 
   kindLabel(kind: NotificationItem['kind']): string {
@@ -240,6 +274,13 @@ export class NotificationDropdownComponent {
         announcement: '公告',
       }[kind] || '通知'
     );
+  }
+
+  syncProjectContext(item: NotificationItem): void {
+    if (!item.projectId) {
+      return;
+    }
+    this.projectContext.setCurrentProjectId(item.projectId);
   }
 
   formatRelativeTime(value: string): string {

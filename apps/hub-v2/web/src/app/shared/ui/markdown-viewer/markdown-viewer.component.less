@@ -1,0 +1,103 @@
+ :host {
+     display: block;
+     width: 100%;
+
+     .markdown-viewer {
+         font-size: 14px;
+         line-height: 1.8;
+         color: var(--text-primary, #262626);
+         word-break: break-word;
+
+         ::ng-deep h1,
+         ::ng-deep h2,
+         ::ng-deep h3,
+         ::ng-deep h4,
+         ::ng-deep h5,
+         ::ng-deep h6 {
+             margin: 1.2em 0 0.6em;
+             font-weight: 600;
+             line-height: 1.4;
+         }
+
+         ::ng-deep h1 {
+             font-size: 28px;
+         }
+
+         ::ng-deep h2 {
+             font-size: 24px;
+         }
+
+         ::ng-deep h3 {
+             font-size: 20px;
+         }
+
+         ::ng-deep p {
+             margin: 0 0 12px;
+         }
+
+         ::ng-deep ul,
+         ::ng-deep ol {
+             margin: 0 0 12px;
+             padding-left: 24px;
+         }
+
+         ::ng-deep li {
+             margin: 4px 0;
+         }
+
+         ::ng-deep blockquote {
+             margin: 0 0 12px;
+             padding: 8px 12px;
+             color: #595959;
+             border-left: 4px solid #d9d9d9;
+             background: #fafafa;
+         }
+
+         ::ng-deep pre {
+             overflow: auto;
+             padding: 12px 14px;
+             border-radius: 8px;
+             background: #f6f8fa;
+         }
+
+         ::ng-deep code {
+             font-family: Consolas, 'Courier New', monospace;
+         }
+
+         ::ng-deep table {
+             width: 100%;
+             margin: 0 0 12px;
+             border-collapse: collapse;
+         }
+
+         ::ng-deep th,
+         ::ng-deep td {
+             padding: 8px 10px;
+             border: 1px solid #e5e6eb;
+             text-align: left;
+         }
+
+         ::ng-deep img {
+             display: block;
+             max-width: 100%;
+             width: auto;
+             max-height: min(32vh, 100px);
+             margin: 12px 0;
+             border-radius: 10px;
+             object-fit: contain;
+             border: 1px solid var(--border-color-soft, #e5e6eb);
+             background: var(--bg-elevated, #fff);
+             cursor: zoom-in;
+             box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+         }
+
+         ::ng-deep a {
+             color: #1677ff;
+             text-decoration: none;
+         }
+
+         ::ng-deep a:hover {
+             text-decoration: underline;
+         }
+     }
+ }

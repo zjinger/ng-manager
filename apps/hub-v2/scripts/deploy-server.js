@@ -93,6 +93,7 @@ function installRemoteScripts(target) {
   const remoteDeploy = path.join(REMOTE_SCRIPTS_DIR, "remote-deploy.sh");
   const rollback = path.join(REMOTE_SCRIPTS_DIR, "rollback.sh");
   const clean = path.join(REMOTE_SCRIPTS_DIR, "clean-old-releases.sh");
+  const serverInit = path.join(REMOTE_SCRIPTS_DIR, "server-init.sh");
 
   run(
     `${scp} ${quote(remoteDeploy)} ${target.user}@${target.host}:${target.remoteBinDir}/remote-deploy.sh`,
@@ -103,9 +104,16 @@ function installRemoteScripts(target) {
   run(
     `${scp} ${quote(clean)} ${target.user}@${target.host}:${target.remoteBinDir}/clean-old-releases.sh`,
   );
+  run(
+    `${scp} ${quote(serverInit)} ${target.user}@${target.host}:${target.remoteBinDir}/server-init.sh`,
+  );
 
   run(
-    `${ssh} "chmod +x ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh"`,
+    `${ssh} "sed -i 's/\\r$//' ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh ${target.remoteBinDir}/server-init.sh 2>/dev/null || true"`,
+  );
+
+  run(
+    `${ssh} "chmod +x ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh ${target.remoteBinDir}/server-init.sh"`,
   );
 
   console.log("[deploy] remote scripts installed");
@@ -125,6 +133,7 @@ function uploadArchiveAndDeploy(target) {
   run(
     `${scp} ${quote(archivePath)} ${target.user}@${target.host}:${remoteArchivePath}`,
   );
+  run(`${ssh} "sed -i 's/\\r$//' ${target.remoteDeployScript} 2>/dev/null || true"`);
   run(`${ssh} "${target.remoteDeployScript} ${remoteArchivePath}"`);
 
   console.log("[deploy] release done");

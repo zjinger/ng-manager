@@ -20,12 +20,11 @@ const transitions: Record<RdItemStatus, Partial<Record<RdAction, RdItemStatus>>>
   },
   done: {
     update: "done",
-    accept: "accepted",
-    block: "blocked",
-    close: "closed"
+    resume: "doing"
   },
   accepted: {
     update: "accepted",
+    resume: "doing",
     close: "closed"
   },
   closed: {}

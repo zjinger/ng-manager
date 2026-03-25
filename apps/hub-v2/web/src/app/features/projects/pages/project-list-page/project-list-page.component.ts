@@ -4,6 +4,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { ProjectContextStore } from '../../../../core/state/project-context.store';
 
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { ProjectListTableComponent } from '../../components/project-list-table/project-list-table.component';
@@ -27,6 +28,8 @@ import type {
 } from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
 import { ProjectListStore } from '../../store/project-list.store';
+import { RdApiService } from '../../../rd/services/rd-api.service';
+import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
 
 @Component({
   selector: 'app-project-list-page',
@@ -55,6 +58,8 @@ import { ProjectListStore } from '../../store/project-list.store';
 export class ProjectListPageComponent {
   readonly store = inject(ProjectListStore);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly rdApi = inject(RdApiService);
+  private readonly projectContext = inject(ProjectContextStore);
   private readonly message = inject(NzMessageService);
 
   readonly keyword = signal('');
@@ -70,6 +75,7 @@ export class ProjectListPageComponent {
   readonly modules = signal<ProjectMetaItem[]>([]);
   readonly environments = signal<ProjectMetaItem[]>([]);
   readonly versions = signal<ProjectVersionItem[]>([]);
+  readonly stages = signal<RdStageEntity[]>([]);
   readonly membersLoading = signal(false);
   readonly configLoading = signal(false);
   readonly membersBusy = signal(false);
@@ -78,9 +84,11 @@ export class ProjectListPageComponent {
   readonly pendingModuleMap = signal<Record<string, true>>({});
   readonly pendingEnvironmentMap = signal<Record<string, true>>({});
   readonly pendingVersionMap = signal<Record<string, true>>({});
+  readonly pendingStageMap = signal<Record<string, true>>({});
   readonly pendingModuleIds = computed(() => Object.keys(this.pendingModuleMap()));
   readonly pendingEnvironmentIds = computed(() => Object.keys(this.pendingEnvironmentMap()));
   readonly pendingVersionIds = computed(() => Object.keys(this.pendingVersionMap()));
+  readonly pendingStageIds = computed(() => Object.keys(this.pendingStageMap()));
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个项目`);
 
   constructor() {
@@ -95,7 +103,12 @@ export class ProjectListPageComponent {
   }
 
   createProject(input: Parameters<ProjectListStore['create']>[0]): void {
-    this.store.create(input, () => this.dialogOpen.set(false));
+    this.store.create(input, (created) => {
+      this.dialogOpen.set(false);
+      this.projectContext.loadProjects().subscribe({
+        next: () => this.projectContext.setCurrentProjectId(created.id),
+      });
+    });
   }
 
   openEditDialog(project: ProjectSummary): void {
@@ -143,9 +156,11 @@ export class ProjectListPageComponent {
     this.modules.set([]);
     this.environments.set([]);
     this.versions.set([]);
+    this.stages.set([]);
     this.pendingModuleMap.set({});
     this.pendingEnvironmentMap.set({});
     this.pendingVersionMap.set({});
+    this.pendingStageMap.set({});
   }
 
   openMembersDialog(project: ProjectSummary): void {
@@ -357,6 +372,58 @@ export class ProjectListPageComponent {
     });
   }
 
+  createStage(input: CreateRdStageInput): void {
+    this.withConfigProject(() => {
+      this.configBusy.set(true);
+      this.rdApi.createStage(input).subscribe({
+        next: () => {
+          this.message.success('研发阶段已新增');
+          this.reloadMeta(input.projectId);
+        },
+        error: () => {
+          this.configBusy.set(false);
+          this.message.error('新增研发阶段失败');
+        }
+      });
+    });
+  }
+
+  updateStage(event: { id: string; patch: UpdateRdStageInput }): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingStageMap, event.id, true);
+      this.applyStagePatchLocal(this.stages, event.id, event.patch);
+      this.rdApi.updateStage(event.id, event.patch).subscribe({
+        next: () => {
+          this.setPending(this.pendingStageMap, event.id, false);
+          this.message.success('研发阶段已更新');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingStageMap, event.id, false);
+          this.message.error('更新研发阶段失败');
+          this.reloadMeta(projectId);
+        }
+      });
+    });
+  }
+
+  removeStage(stageId: string): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingStageMap, stageId, true);
+      this.rdApi.updateStage(stageId, { enabled: false }).subscribe({
+        next: () => {
+          this.setPending(this.pendingStageMap, stageId, false);
+          this.message.success('研发阶段已停用');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingStageMap, stageId, false);
+          this.message.error('停用研发阶段失败');
+        }
+      });
+    });
+  }
+
   private loadMembers(projectId: string): void {
     this.membersLoading.set(true);
     this.projectApi.listMembers(projectId).subscribe({
@@ -416,10 +483,20 @@ export class ProjectListPageComponent {
             this.projectApi.listVersions(projectId).subscribe({
               next: (versions) => {
                 this.versions.set(versions);
-                this.configLoading.set(false);
+                this.rdApi.listStages(projectId).subscribe({
+                  next: (stages) => {
+                    this.stages.set(stages);
+                    this.configLoading.set(false);
+                  },
+                  error: () => {
+                    this.stages.set([]);
+                    this.configLoading.set(false);
+                  }
+                });
               },
               error: () => {
                 this.versions.set([]);
+                this.stages.set([]);
                 this.configLoading.set(false);
               }
             });
@@ -427,6 +504,7 @@ export class ProjectListPageComponent {
           error: () => {
             this.environments.set([]);
             this.versions.set([]);
+            this.stages.set([]);
             this.configLoading.set(false);
           }
         });
@@ -435,6 +513,7 @@ export class ProjectListPageComponent {
         this.modules.set([]);
         this.environments.set([]);
         this.versions.set([]);
+        this.stages.set([]);
         this.configLoading.set(false);
       }
     });
@@ -496,6 +575,31 @@ export class ProjectListPageComponent {
                 version: patch.version ?? item.version,
                 code: patch.code === undefined ? item.code : patch.code,
                 description: patch.description === undefined ? item.description : patch.description,
+                sort: patch.sort ?? item.sort,
+                enabled: patch.enabled ?? item.enabled
+              }
+            : item
+        )
+      )
+    );
+  }
+
+  private sortStages(items: RdStageEntity[]): RdStageEntity[] {
+    return [...items].sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
+  }
+
+  private applyStagePatchLocal(
+    source: { update: (fn: (value: RdStageEntity[]) => RdStageEntity[]) => void },
+    id: string,
+    patch: UpdateRdStageInput
+  ): void {
+    source.update((items) =>
+      this.sortStages(
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                name: patch.name ?? item.name,
                 sort: patch.sort ?? item.sort,
                 enabled: patch.enabled ?? item.enabled
               }

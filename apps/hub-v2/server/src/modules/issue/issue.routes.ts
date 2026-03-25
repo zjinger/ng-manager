@@ -51,6 +51,12 @@ export default async function issueRoutes(app: FastifyInstance) {
     return ok(await app.container.issueCommand.assign(params.issueId, body, ctx), "issue assigned");
   });
 
+  app.post("/issues/:issueId/claim", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { issueId: string };
+    return ok(await app.container.issueCommand.claim(params.issueId, ctx), "issue claimed");
+  });
+
   app.post("/issues/:issueId/start", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { issueId: string };

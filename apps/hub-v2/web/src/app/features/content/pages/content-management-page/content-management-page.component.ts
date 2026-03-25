@@ -121,6 +121,7 @@ import { ContentStore } from '../../store/content.store';
       [open]="announcementDialogOpen()"
       [busy]="store.busy() && store.activeTab() === 'announcements'"
       [value]="editingAnnouncement()"
+      [projectName]="projectContext.currentProject()?.name || ''"
       (cancel)="closeAnnouncementDialog()"
       (create)="createAnnouncement($event)"
     />
@@ -129,6 +130,7 @@ import { ContentStore } from '../../store/content.store';
       [open]="documentDialogOpen()"
       [busy]="store.busy() && store.activeTab() === 'documents'"
       [value]="editingDocument()"
+      [projectName]="projectContext.currentProject()?.name || ''"
       (cancel)="closeDocumentDialog()"
       (create)="createDocument($event)"
     />
@@ -137,6 +139,7 @@ import { ContentStore } from '../../store/content.store';
       [open]="releaseDialogOpen()"
       [busy]="store.busy() && store.activeTab() === 'releases'"
       [value]="editingRelease()"
+      [projectName]="projectContext.currentProject()?.name || ''"
       (cancel)="closeReleaseDialog()"
       (create)="createRelease($event)"
     />
@@ -159,7 +162,7 @@ import { ContentStore } from '../../store/content.store';
 })
 export class ContentManagementPageComponent {
   readonly store = inject(ContentStore);
-  private readonly projectContext = inject(ProjectContextStore);
+  readonly projectContext = inject(ProjectContextStore);
 
   readonly keyword = signal('');
   readonly status = signal<ContentStatus>('');

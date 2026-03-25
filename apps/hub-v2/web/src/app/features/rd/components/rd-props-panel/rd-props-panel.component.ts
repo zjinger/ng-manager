@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
+import { RD_STATUS_LABELS } from '../../../../shared/constants';
 import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
 import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
@@ -92,15 +93,6 @@ export class RdPropsPanelComponent {
   }
 
   statusLabel(status: string): string {
-    return (
-      {
-        todo: '待开始',
-        doing: '开发中',
-        blocked: '阻塞中',
-        done: '待验收',
-        accepted: '已验收',
-        closed: '已关闭',
-      }[status] ?? status
-    );
+    return RD_STATUS_LABELS[status] ?? status;
   }
 }

@@ -15,11 +15,11 @@
   </div>
 
   <div class="topbar__actions">
-    <div class="topbar__search">
+    <!-- <div class="topbar__search">
       <span nz-icon nzType="search"></span>
       <span>搜索问题、研发项、文档…</span>
       <kbd>Ctrl K</kbd>
-    </div>
+    </div> -->
 
     <button
       nz-button
@@ -32,10 +32,25 @@
       <span nz-icon [nzType]="isDark() ? 'sun' : 'moon'"></span>
     </button>
 
+    <span
+      class="topbar__ws-indicator"
+      [attr.data-tone]="wsStateTone()"
+      [attr.title]="wsStateLabel()"
+      [attr.aria-label]="wsStateLabel()"
+    >
+      <i class="topbar__ws-dot"></i>
+    </span>
+
     <app-notification-bell />
 
     <a class="topbar__user" nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="click" nzPlacement="bottomRight" [nzOverlayStyle]="{'width': '100%'}">
-      <span class="topbar__user-avatar">{{ userInitial() }}</span>
+      <span class="topbar__user-avatar">
+        @if (showAvatarImage()) {
+          <img [src]="currentUser()?.avatarUrl!" [alt]="currentUser()?.nickname || currentUser()?.username || 'avatar'" (error)="onAvatarError()" />
+        } @else {
+          <span>{{ userInitial() }}</span>
+        }
+      </span>
       <span class="topbar__user-name">{{ currentUser()?.nickname || currentUser()?.username || 'Profile' }}</span>
       <span nz-icon nzType="down"></span>
     </a>

@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { forkJoin, of, switchMap } from 'rxjs';
 
 import { ProjectContextStore } from '../../../core/state/project-context.store';
 import type { PageResult } from '../../../core/types/page.types';
@@ -65,14 +66,13 @@ export class IssueListStore {
     this.load();
   }
 
-  load(): void {
+  private load(): void {
     const query = this.queryState();
     if (!query.projectId) {
       this.resultState.set({ items: [], page: 1, pageSize: queryPageSize(query), total: 0 });
       this.loadingState.set(false);
       return;
     }
-
     const token = ++this.loadToken;
     this.loadingState.set(true);
     this.issueApi.list(query).subscribe({
@@ -92,22 +92,44 @@ export class IssueListStore {
     });
   }
 
-  create(input: Omit<CreateIssueInput, 'projectId'> & { projectId?: string }): void {
+  create(input: Omit<CreateIssueInput, 'projectId'> & { projectId?: string; attachmentFiles?: File[] }): void {
     const projectId = input.projectId ?? this.projectContext.currentProjectId() ?? '';
     const title = input.title.trim();
     if (!projectId || !title) {
       return;
     }
+    const attachmentFiles = input.attachmentFiles ?? [];
+    const assigneeId = input.assigneeId ?? null;
+    const participantIds = [...new Set((input.participantIds ?? []).map((item) => item.trim()).filter(Boolean))].filter(
+      (id) => id !== assigneeId
+    );
+    const createPayload = { ...input } as Omit<CreateIssueInput, 'projectId'> & { attachmentFiles?: File[] };
+    delete createPayload.attachmentFiles;
 
     this.loadingState.set(true);
     this.issueApi
       .create({
-        ...input,
+        ...createPayload,
         projectId,
         title,
       })
       .subscribe({
-        next: () => this.load(),
+        next: (created) => {
+          const participantTasks = participantIds.map((userId) => this.issueApi.addParticipant(created.id, userId));
+          const participant$ = participantTasks.length ? forkJoin(participantTasks) : of([]);
+          const attachment$ = attachmentFiles.length
+            ? forkJoin(attachmentFiles.map((file) => this.issueApi.uploadFile(file))).pipe(
+                switchMap((uploads) =>
+                  uploads.length ? forkJoin(uploads.map((upload) => this.issueApi.addAttachment(created.id, upload.id))) : of([])
+                )
+              )
+            : of([]);
+
+          forkJoin([participant$, attachment$]).subscribe({
+            next: () => this.load(),
+            error: () => this.load(),
+          });
+        },
         error: () => {
           this.loadingState.set(false);
         },

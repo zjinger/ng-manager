@@ -1,6 +1,7 @@
 import type { RequestContext } from "../../shared/context/request-context";
 import type {
   BlockRdItemInput,
+  AdvanceRdStageInput,
   CreateRdItemInput,
   CreateRdStageInput,
   ListRdItemsQuery,
@@ -24,8 +25,10 @@ export interface RdCommandContract {
   block(id: string, input: BlockRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
   resume(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   complete(id: string, ctx: RequestContext): Promise<RdItemEntity>;
+  advanceStage(id: string, input: AdvanceRdStageInput, ctx: RequestContext): Promise<RdItemEntity>;
   accept(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   close(id: string, ctx: RequestContext): Promise<RdItemEntity>;
+  delete(id: string, ctx: RequestContext): Promise<{ id: string }>;
 }
 
 export interface RdQueryContract {
@@ -34,6 +37,7 @@ export interface RdQueryContract {
   getItemById(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   listLogs(id: string, ctx: RequestContext): Promise<RdLogEntity[]>;
   countAssignedForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
+  countInProgressForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   countReviewingForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   listTodosForDashboard(projectIds: string[], userId: string, limit: number, ctx: RequestContext): Promise<RdDashboardTodo[]>;
   listActivitiesForDashboard(

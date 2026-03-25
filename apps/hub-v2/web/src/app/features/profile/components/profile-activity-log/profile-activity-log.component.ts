@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
@@ -6,6 +6,7 @@ import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.
 
 export interface ProfileActivityItem {
   id: string;
+  kind: 'issue_activity' | 'rd_activity';
   dotColor: string;
   html: string;
   meta: string;
@@ -20,15 +21,13 @@ export interface ProfileActivityItem {
       <div panel-actions>
         <nz-select class="toolbar-select profile-activity-filter" nzSize="small" [ngModel]="filter()" (ngModelChange)="filter.set($event)">
           <nz-option nzLabel="所有类型" nzValue="all"></nz-option>
-          <nz-option nzLabel="Issue" nzValue="issue"></nz-option>
+          <nz-option nzLabel="测试单" nzValue="issue"></nz-option>
           <nz-option nzLabel="研发项" nzValue="rd"></nz-option>
-          <nz-option nzLabel="配置" nzValue="config"></nz-option>
-          <nz-option nzLabel="用户" nzValue="user"></nz-option>
         </nz-select>
       </div>
 
       <div class="activity-list">
-        @for (item of items(); track item.id) {
+        @for (item of filteredItems(); track item.id) {
           <div class="activity-item">
             <div class="activity-dot" [style.background]="item.dotColor"></div>
             <div class="activity-content">
@@ -114,5 +113,15 @@ export interface ProfileActivityItem {
 })
 export class ProfileActivityLogComponent {
   readonly items = input.required<ProfileActivityItem[]>();
-  readonly filter = signal('all');
+  readonly filter = signal<'all' | 'issue' | 'rd'>('all');
+
+  readonly filteredItems = computed(() => {
+    const filter = this.filter();
+    const items = this.items();
+    if (filter === 'all') {
+      return items;
+    }
+    const expectedKind = filter === 'issue' ? 'issue_activity' : 'rd_activity';
+    return items.filter((item) => item.kind === expectedKind);
+  });
 }

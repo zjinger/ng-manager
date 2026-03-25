@@ -6,7 +6,7 @@ import { ProjectApiService } from '../services/project-api.service';
 
 const DEFAULT_QUERY: ProjectListQuery = {
   page: 1,
-  pageSize: 20,
+  pageSize: 100,
   keyword: '',
   status: '',
 };
@@ -53,12 +53,12 @@ export class ProjectListStore {
     });
   }
 
-  create(input: CreateProjectInput, done?: () => void): void {
+  create(input: CreateProjectInput, done?: (created: ProjectSummary) => void): void {
     this.busyState.set(true);
     this.projectApi.create(input).subscribe({
-      next: () => {
+      next: (created) => {
         this.busyState.set(false);
-        done?.();
+        done?.(created);
         this.load();
       },
       error: () => {

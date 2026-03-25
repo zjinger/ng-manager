@@ -23,6 +23,15 @@ import type {
 export class ProjectApiService {
   private readonly api = inject(ApiClientService);
 
+  uploadProjectAvatar(file: File) {
+    const formData = new FormData();
+    formData.set('file', file);
+    formData.set('bucket', 'project-avatars');
+    formData.set('category', 'project_avatar');
+    formData.set('visibility', 'private');
+    return this.api.post<{ id: string }, FormData>('/uploads', formData);
+  }
+
   list(query: Partial<ProjectListQuery>) {
     return this.api.get<PageResult<ProjectSummary>>('/projects', query);
   }

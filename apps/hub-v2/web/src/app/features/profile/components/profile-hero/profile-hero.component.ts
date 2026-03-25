@@ -1,15 +1,25 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-profile-hero',
   standalone: true,
+  imports: [NzIconModule,NzTooltipModule],
   template: `
     <section class="profile-hero">
       <div class="profile-hero__bg"></div>
       <div class="profile-hero__content">
         <div class="profile-avatar-large">
-          <span>{{ initials() || 'U' }}</span>
-          <button class="profile-avatar-edit" type="button">更换</button>
+          @if (avatarUrl()) {
+            <img [src]="avatarUrl()!" [alt]="name()" />
+          } @else {
+            <span>{{ initials() || 'U' }}</span>
+          }
+          <input #avatarInput type="file" accept="image/*" hidden (change)="onAvatarPicked($event)" />
+          <button class="profile-avatar-edit" type="button" nz-tooltip="更换头像" (click)="avatarInput.click()">
+            <nz-icon nzType="camera" nzTheme="fill"/>
+          </button>
         </div>
 
         <div class="profile-hero-info">
@@ -22,14 +32,14 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
           </div>
         </div>
 
-        <div class="profile-hero-stats">
+        <!-- <div class="profile-hero-stats">
           @for (stat of stats(); track stat.label) {
             <div class="profile-stat">
               <div class="profile-stat-value">{{ stat.value }}</div>
               <div class="profile-stat-label">{{ stat.label }}</div>
             </div>
           }
-        </div>
+        </div> -->
       </div>
     </section>
   `,
@@ -80,24 +90,36 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         font-weight: 800;
         letter-spacing: -0.04em;
       }
+      .profile-avatar-large > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 32px;
+      }
 
       .profile-avatar-edit {
         position: absolute;
-        right: -8px;
-        bottom: -8px;
+        right: 0px;
+        bottom: 0px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 52px;
-        height: 30px;
-        padding: 0 12px;
+        width: 28px;
+        height: 28px;
         border: none;
-        border-radius: 999px;
+        border-radius: 50%;
         background: white;
         color: var(--primary-600);
         font-size: 12px;
         font-weight: 700;
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+        transition: all 0.2s;
+        &:hover{
+          background: var(--primary-50);
+          color: var(--primary-700);
+          cursor: pointer;
+          transform: scale(1.1);
+        }
       }
 
       .profile-hero-info {
@@ -213,6 +235,19 @@ export class ProfileHeroComponent {
   readonly initials = input('U');
   readonly name = input('当前账号');
   readonly subtitle = input('');
+  readonly avatarUrl = input<string | null>(null);
   readonly tags = input<string[]>([]);
   readonly stats = input<{ label: string; value: number | string }[]>([]);
+  readonly avatarChange = output<File>();
+
+  onAvatarPicked(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (file) {
+      this.avatarChange.emit(file);
+    }
+    if (input) {
+      input.value = '';
+    }
+  }
 }

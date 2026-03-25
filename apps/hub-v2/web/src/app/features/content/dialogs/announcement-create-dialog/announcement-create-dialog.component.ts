@@ -36,7 +36,7 @@ const DEFAULT_DRAFT: Draft = {
     <app-dialog-shell
       [open]="open()"
       [width]="860"
-      [title]="isEdit() ? '编辑公告' : '新建公告'"
+      [title]="(isEdit() ? '编辑公告' : '新建公告') + (!isEdit() && projectName() ? ' · ' + projectName() : '')"
       [subtitle]="isEdit() ? '修改公告内容后保存。' : '先录入标题、摘要和正文，发布动作后续在列表页继续补。'"
       [icon]="'notification'"
       (cancel)="cancel.emit()"
@@ -159,6 +159,7 @@ export class AnnouncementCreateDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly value = input<AnnouncementEntity | null>(null);
+  readonly projectName = input<string>('');
   readonly create = output<Draft>();
   readonly cancel = output<void>();
 

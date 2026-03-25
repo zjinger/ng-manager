@@ -21,7 +21,7 @@ export type IssueListViewMode = 'list' | 'card';
     <app-page-toolbar>
       <button toolbar-primary nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
         <nz-icon nzType="plus" nzTheme="outline" />
-        新建 Issue
+        新建测试单
       </button>
 
       <app-filter-bar toolbar-filters class="issue-toolbar__main">
@@ -80,8 +80,9 @@ export type IssueListViewMode = 'list' | 'card';
         flex-wrap: wrap;
       }
       .toolbar-search {
-        min-width: min(240px, 100%);
-        flex: 1 1 280px;
+        min-width: 240px;
+        max-width: 320px;
+        flex: 0 0 clamp(240px, 28vw, 320px);
       }
     `,
   ],

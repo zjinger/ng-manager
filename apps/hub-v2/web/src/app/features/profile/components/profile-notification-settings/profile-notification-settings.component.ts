@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
 import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 export interface ProfileNotificationSetting {
   id: string;
@@ -15,14 +16,16 @@ export interface ProfileNotificationSetting {
 @Component({
   selector: 'app-profile-notification-settings',
   standalone: true,
-  imports: [FormsModule, NzCheckboxModule, PanelCardComponent],
+  imports: [FormsModule, NzCheckboxModule, NzIconModule, PanelCardComponent],
   template: `
     <section class="profile-stack">
       <app-panel-card title="通知渠道">
         <div class="preference-list">
           @for (item of channels(); track item.id) {
             <label class="preference-item">
-              <div class="preference-item__icon channel">{{ item.icon || '•' }}</div>
+              <div class="preference-item__icon channel">
+                <nz-icon [nzType]="item.icon || 'bell'" nzTheme="outline"></nz-icon>
+              </div>
               <div class="preference-item__body">
                 <div class="preference-item__title">{{ item.title }}</div>
                 <div class="preference-item__desc">{{ item.description }}</div>
@@ -37,7 +40,9 @@ export interface ProfileNotificationSetting {
         <div class="preference-list">
           @for (item of events(); track item.id) {
             <label class="preference-item">
-              <div class="preference-item__icon">{{ item.icon || '•' }}</div>
+              <div class="preference-item__icon">
+                <nz-icon [nzType]="item.icon || 'notification'" nzTheme="outline"></nz-icon>
+              </div>
               <div class="preference-item__body">
                 <div class="preference-item__title">{{ item.title }}</div>
                 <div class="preference-item__desc">{{ item.description }}</div>
