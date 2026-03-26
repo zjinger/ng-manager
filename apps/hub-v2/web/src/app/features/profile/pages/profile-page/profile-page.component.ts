@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { AuthStore } from '../../../../core/auth/auth.store';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
+import { AuthStore } from '@core/auth';
+import { PageHeaderComponent } from '@shared/ui';
 import { ProfileBasicFormComponent } from '../../components/profile-basic-form/profile-basic-form.component';
 import { ProfileHeroComponent } from '../../components/profile-hero/profile-hero.component';
 import {

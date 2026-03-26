@@ -8,7 +8,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { PanelCardComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import type { AuthUser } from '../../../../core/auth/auth.types';
+import type { AuthUser } from '@core/auth';
 
 @Component({
   selector: 'app-profile-basic-form',

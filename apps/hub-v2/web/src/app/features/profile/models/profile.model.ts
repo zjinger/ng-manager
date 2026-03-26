@@ -1,4 +1,4 @@
-import type { AuthUser } from '../../../core/auth/auth.types';
+import type { AuthUser } from '@core/auth';
 
 export interface ChangePasswordInput {
   oldPassword: string;

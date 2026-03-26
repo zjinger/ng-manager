@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 
-import { ApiClientService } from '../../../core/http/api-client.service';
+import { ApiClientService } from '@core/http';
 import type { CreateUserInput, UpdateUserInput, UserEntity, UserListQuery, UserListResult } from '../models/user.model';
 
 @Injectable({ providedIn: 'root' })

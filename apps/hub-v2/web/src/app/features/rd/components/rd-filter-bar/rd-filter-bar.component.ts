@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { RD_STATUS_FILTER_OPTIONS } from '../../../../shared/constants';
-import { ISSUE_PRIORITY_OPTIONS } from '../../../../shared/constants/priority-options';
+import { RD_STATUS_FILTER_OPTIONS } from '@shared/constants';
+import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
 import { ViewToggleComponent, SearchBoxComponent, FilterBarComponent, PageToolbarComponent } from '@shared/ui';
 import type { RdListQuery, RdStageEntity } from '../../models/rd.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';

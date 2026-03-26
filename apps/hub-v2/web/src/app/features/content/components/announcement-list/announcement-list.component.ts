@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 
-import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableComponent } from '@shared/ui';
 import type { AnnouncementEntity } from '../../models/content.model';
 
 @Component({

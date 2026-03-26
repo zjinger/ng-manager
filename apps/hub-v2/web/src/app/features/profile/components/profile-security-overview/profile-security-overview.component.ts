@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
+import { PanelCardComponent } from '@shared/ui';
 
 @Component({
   selector: 'app-profile-security-overview',

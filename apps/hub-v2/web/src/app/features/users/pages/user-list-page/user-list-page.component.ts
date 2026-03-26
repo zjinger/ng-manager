@@ -1,19 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AuthStore } from '@core/auth';
+import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
-import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
-import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
-import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
-import { ListStateComponent } from '../../../../shared/ui/list-state/list-state.component';
+import { UserListTableComponent } from '../../components/user-list-table/user-list-table.component';
+import { UserFormDialogComponent } from '../../dialogs/user-form-dialog/user-form-dialog.component';
 import type { UserEntity } from '../../models/user.model';
 import { UserStore } from '../../store/user.store';
-import { UserFormDialogComponent } from '../../dialogs/user-form-dialog/user-form-dialog.component';
-import { UserListTableComponent } from '../../components/user-list-table/user-list-table.component';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { AuthStore } from '../../../../core/auth/auth.store';
 
 @Component({
   selector: 'app-user-list-page',

@@ -2,9 +2,8 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import { ISSUE_STATUS_LABELS } from '../../../../shared/constants/status-options';
-import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { ISSUE_STATUS_LABELS } from '@shared/constants';
+import { PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
 
 @Component({

@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 
 import type { NotificationItem } from '../models/notification.model';
-import { ApiClientService } from '../../../core/http/api-client.service';
+import { ApiClientService } from '@core/http';
 
 export interface NotificationListQuery {
   [key: string]: string | number | boolean | null | undefined;

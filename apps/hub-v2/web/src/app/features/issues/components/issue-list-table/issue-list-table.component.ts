@@ -1,7 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { ISSUE_TYPE_LABELS } from '../../../../shared/constants';
+import { ISSUE_TYPE_LABELS } from '@shared/constants';
 import { DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
 import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.component';

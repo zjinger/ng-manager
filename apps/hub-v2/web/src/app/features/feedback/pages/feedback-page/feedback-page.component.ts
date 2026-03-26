@@ -8,8 +8,8 @@ import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
+import { ProjectContextStore } from '@core/state';
 import { DataTableComponent, FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
-import { ProjectContextStore } from '../../../../core/state/project-context.store';
 import type { FeedbackCategory, FeedbackSource, FeedbackStatus } from '../../models/feedback.model';
 import { FeedbackStore } from '../../store/feedback.store';
 

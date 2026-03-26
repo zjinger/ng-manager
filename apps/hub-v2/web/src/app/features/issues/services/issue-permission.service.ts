@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import type { AuthUser } from '../../../core/auth/auth.types';
+import type { AuthUser } from '@core/auth';
 import type { IssueEntity } from '../models/issue.model';
 
 @Injectable({ providedIn: 'root' })

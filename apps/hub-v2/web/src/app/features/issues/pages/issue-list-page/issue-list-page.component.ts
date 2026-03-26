@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin, map } from 'rxjs';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
+import { forkJoin, map } from 'rxjs';
 
-import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../../features/projects/models/project.model';
-import { ProjectApiService } from '../../../../features/projects/services/project-api.service';
-import { ProjectContextStore } from '../../../../core/state/project-context.store';
-import { PageHeaderComponent, ListStateComponent } from '@shared/ui';
+import { ProjectContextStore } from '@core/state';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
+import { ProjectApiService } from '@features/projects/services/project-api.service';
+import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
 import { IssueDetailDrawerComponent } from '../../components/issue-detail-drawer/issue-detail-drawer.component';
 import { IssueFilterBarComponent, type IssueListViewMode } from '../../components/issue-filter-bar/issue-filter-bar.component';
 import { IssueListTableComponent } from '../../components/issue-list-table/issue-list-table.component';

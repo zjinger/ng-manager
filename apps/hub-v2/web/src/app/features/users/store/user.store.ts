@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
-import type { PageResult } from '../../../core/types/page.types';
+import type { PageResult } from '@core/types';
 import type { CreateUserInput, UpdateUserInput, UserEntity, UserListQuery } from '../models/user.model';
 import { UserApiService } from '../services/user-api.service';
 

@@ -7,8 +7,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { AuthService } from '@core/auth/auth.service';
-import { ProjectContextStore } from '@core/state/project-context.store';
+import { AuthService } from '@core/auth';
+import { ProjectContextStore } from '@core/state';
 
 @Component({
   selector: 'app-login-page',

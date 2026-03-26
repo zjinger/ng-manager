@@ -4,11 +4,8 @@ import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { ProjectContextStore } from '../../../../core/state/project-context.store';
-import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
-import { ListStateComponent } from '../../../../shared/ui/list-state/list-state.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
-import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
+import { ProjectContextStore } from '@core/state';
+import { FilterBarComponent, ListStateComponent, PageHeaderComponent, SearchBoxComponent } from '@shared/ui';
 import { NotificationListComponent } from '../../components/notification-list/notification-list.component';
 import { NotificationStore } from '../../store/notification.store';
 

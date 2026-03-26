@@ -1,4 +1,4 @@
-import type { PageResult } from '../../../core/types/page.types';
+import type { PageResult } from '@core/types';
 
 export type UserStatus = 'active' | 'inactive';
 export type UserTitleCode = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops' | 'other';

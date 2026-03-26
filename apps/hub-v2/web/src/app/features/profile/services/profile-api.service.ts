@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { ApiClientService } from '../../../core/http/api-client.service';
-import type { AuthUser } from '../../../core/auth/auth.types';
+import { ApiClientService } from '@core/http';
+import type { AuthUser } from '@core/auth';
 import type { ChangePasswordInput, ProfileActivityRecord, ProfileNotificationPrefs } from '../models/profile.model';
 
 interface UploadEntity {

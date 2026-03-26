@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
+import { PanelCardComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 export interface ProfileNotificationSetting {

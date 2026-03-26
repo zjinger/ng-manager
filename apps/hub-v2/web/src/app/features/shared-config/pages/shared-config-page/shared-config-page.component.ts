@@ -2,13 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { ProjectContextStore } from '@core/state';
+import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 
-import { ProjectContextStore } from '../../../../core/state/project-context.store';
-import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
-import { ListStateComponent } from '../../../../shared/ui/list-state/list-state.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
-import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
-import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
 import { ConfigListComponent } from '../../components/config-list.component';
 import { ConfigFormDialogComponent } from '../../dialogs/config-form-dialog.component';
 import type {

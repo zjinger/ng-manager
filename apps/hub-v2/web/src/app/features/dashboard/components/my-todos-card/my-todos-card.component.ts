@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { StatusBadgeComponent } from '@shared/ui';
 import type { DashboardTodoItem } from '../../models/dashboard.model';
 
 @Component({

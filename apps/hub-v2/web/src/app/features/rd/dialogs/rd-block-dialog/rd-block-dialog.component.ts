@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import { DialogShellComponent } from '../../../../shared/ui/dialog/dialog-shell.component';
+import { DialogShellComponent } from '@shared/ui';
 import type { RdItemEntity } from '../../models/rd.model';
 
 @Component({

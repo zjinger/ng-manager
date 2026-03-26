@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import { DialogShellComponent } from '../../../../shared/ui/dialog/dialog-shell.component';
-import { FormActionsComponent } from '../../../../shared/ui/form-actions/form-actions.component';
+import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
+
 import type { CreateReleaseInput, ReleaseEntity } from '../../models/content.model';
 
 type Draft = Omit<CreateReleaseInput, 'projectId'>;

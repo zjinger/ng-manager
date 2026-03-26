@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
-import type { PageResult } from '../../../core/types/page.types';
+import type { PageResult } from '@core/types';
 import type { CreateProjectInput, ProjectListQuery, ProjectSummary } from '../models/project.model';
 import { ProjectApiService } from '../services/project-api.service';
 

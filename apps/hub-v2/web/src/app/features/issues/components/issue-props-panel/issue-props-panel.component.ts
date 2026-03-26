@@ -1,10 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-import { ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '../../../../shared/constants';
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
-import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '@shared/constants';
+import { PanelCardComponent, StatusBadgeComponent, PriorityBadgeComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
 
 @Component({

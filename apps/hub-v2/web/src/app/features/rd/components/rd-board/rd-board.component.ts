@@ -1,9 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 
-import { RD_STATUS_LABELS } from '../../../../shared/constants';
-import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { RD_STATUS_LABELS } from '@shared/constants';
+import { PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
 import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 
 @Component({

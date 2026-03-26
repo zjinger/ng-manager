@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { forkJoin, type Observable } from 'rxjs';
 
-import { AuthStore } from '../../../core/auth/auth.store';
+import { AuthStore } from '@core/auth';
 import type { ProjectMemberEntity } from '../../projects/models/project.model';
 import { ProjectApiService } from '../../projects/services/project-api.service';
 import type {
@@ -230,7 +230,7 @@ export class IssueDetailStore {
     }
 
     this.busyState.set(true);
-    this.issueApi.uploadFile(file).subscribe({
+    this.issueApi.uploadFile(file, issueId).subscribe({
       next: (upload) => {
         this.issueApi.addAttachment(issueId, upload.id).subscribe({
           next: (attachment) => {

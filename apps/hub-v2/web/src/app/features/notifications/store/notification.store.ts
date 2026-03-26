@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { computed, effect, inject, Inject, Injectable, signal, untracked } from '@angular/core';
 
-import { ProjectContextStore } from '../../../core/state/project-context.store';
+import { ProjectContextStore } from '@core/state';
 import type { NotificationItem } from '../models/notification.model';
 import { NotificationApiService, type NotificationListQuery } from '../services/notification-api.service';
 

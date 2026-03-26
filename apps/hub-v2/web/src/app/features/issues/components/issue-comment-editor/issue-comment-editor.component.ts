@@ -6,11 +6,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
 
-import { AuthStore } from '../../../../core/auth/auth.store';
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
-import type { IssueCommentEntity } from '../../models/issue.model';
-import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ROLE_LABELS } from '@app/shared/constants';
+import { AuthStore } from '@core/auth';
+import { PanelCardComponent } from '@shared/ui';
+import type { ProjectMemberEntity } from '../../../projects/models/project.model';
+import type { IssueCommentEntity } from '../../models/issue.model';
 
 @Component({
   selector: 'app-issue-comment-editor',

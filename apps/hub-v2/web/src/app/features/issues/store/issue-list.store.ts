@@ -1,8 +1,8 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { forkJoin, of, switchMap } from 'rxjs';
 
-import { ProjectContextStore } from '../../../core/state/project-context.store';
-import type { PageResult } from '../../../core/types/page.types';
+import { ProjectContextStore } from '@core/state';
+import type { PageResult } from '@core/types';
 import type { CreateIssueInput, IssueEntity, IssueListQuery } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
 
@@ -118,7 +118,7 @@ export class IssueListStore {
           const participantTasks = participantIds.map((userId) => this.issueApi.addParticipant(created.id, userId));
           const participant$ = participantTasks.length ? forkJoin(participantTasks) : of([]);
           const attachment$ = attachmentFiles.length
-            ? forkJoin(attachmentFiles.map((file) => this.issueApi.uploadFile(file))).pipe(
+            ? forkJoin(attachmentFiles.map((file) => this.issueApi.uploadFile(file, created.id))).pipe(
                 switchMap((uploads) =>
                   uploads.length ? forkJoin(uploads.map((upload) => this.issueApi.addAttachment(created.id, upload.id))) : of([])
                 )

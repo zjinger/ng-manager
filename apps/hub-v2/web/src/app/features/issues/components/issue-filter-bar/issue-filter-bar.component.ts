@@ -3,13 +3,10 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { ISSUE_PRIORITY_OPTIONS } from '../../../../shared/constants/priority-options';
-import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
-import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
-import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
-import { ViewToggleComponent } from '../../../../shared/ui/view-toggle/view-toggle.component';
-import type { IssueListQuery } from '../../models/issue.model';
+import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
+import { FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import type { IssueListQuery } from '../../models/issue.model';
 
 export type IssueListViewMode = 'list' | 'card';
 

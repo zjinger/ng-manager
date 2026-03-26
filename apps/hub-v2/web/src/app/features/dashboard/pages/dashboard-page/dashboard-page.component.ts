@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
+import { PageHeaderComponent } from '@shared/ui';
 import { DashboardStatGridComponent } from '../../components/dashboard-stat-grid/dashboard-stat-grid.component';
 import { LatestAnnouncementsCardComponent } from '../../components/latest-announcements-card/latest-announcements-card.component';
 import { MyActivitiesCardComponent } from '../../components/my-activities-card/my-activities-card.component';

@@ -19,3 +19,4 @@ export * from './type-badge';
 export * from './markdown-editor';
 export * from './attachment-preview-wall';
 export * from './markdown-viewer';
+export * from './stat-card';

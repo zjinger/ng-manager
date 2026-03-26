@@ -1,4 +1,4 @@
-import type { PageResult } from '../../../core/types/page.types';
+import type { PageResult } from '@core/types';
 
 export type IssueType = 'bug' | 'feature' | 'change' | 'improvement' | 'task' | 'test';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';

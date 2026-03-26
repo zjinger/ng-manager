@@ -1,10 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-import { RD_STATUS_LABELS } from '../../../../shared/constants';
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
-import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { RD_STATUS_LABELS } from '@shared/constants';
+import { PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
 import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 
 @Component({

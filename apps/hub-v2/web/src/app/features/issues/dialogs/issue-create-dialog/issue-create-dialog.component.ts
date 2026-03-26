@@ -8,8 +8,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
-import { AttachmentPreviewWallComponent, DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
-import type { AttachmentPreviewItem } from '@shared/ui';
+import { type AttachmentPreviewItem, AttachmentPreviewWallComponent, DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../projects/models/project.model';
 import type { CreateIssueInput, IssueType } from '../../models/issue.model';
 import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';

@@ -1,16 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { API_BASE_URL } from '@core/http';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzUploadModule } from 'ng-zorro-antd/upload';
 import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
-import { API_BASE_URL } from '../../../../core/http/api-base-url.token';
+import { NzUploadModule } from 'ng-zorro-antd/upload';
+import { Subscription } from 'rxjs';
 
-import { AttachmentPreviewWallComponent } from '../../../../shared/ui/attachment-preview-wall/attachment-preview-wall.component';
-import type { AttachmentPreviewItem } from '../../../../shared/ui/attachment-preview-wall/attachment-preview-wall.component';
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
-import type { IssueAttachmentEntity } from '../../models/issue.model';
+import { type AttachmentPreviewItem, AttachmentPreviewWallComponent, PanelCardComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import type { IssueAttachmentEntity } from '../../models/issue.model';
 
 @Component({
   selector: 'app-issue-attachments-panel',

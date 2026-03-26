@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { ProjectContextStore } from '../../../../core/state/project-context.store';
+import { ProjectContextStore } from '@core/state';
 import type { NotificationItem } from '../../models/notification.model';
 
 @Component({

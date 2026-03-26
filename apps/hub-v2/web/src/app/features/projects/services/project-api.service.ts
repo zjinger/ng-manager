@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
-import { ApiClientService } from '../../../core/http/api-client.service';
-import type { PageResult } from '../../../core/types/page.types';
+import { ApiClientService } from '@core/http';
+import type { PageResult } from '@core/types';
 import type {
   AddProjectMemberInput,
   CreateProjectApiTokenInput,

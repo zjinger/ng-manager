@@ -1,8 +1,8 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import type { Observable } from 'rxjs';
 
-import { ProjectContextStore } from '../../../core/state/project-context.store';
-import type { PageResult } from '../../../core/types/page.types';
+import { ProjectContextStore } from '@core/state';
+import type { PageResult } from '@core/types';
 import type {
   AdvanceRdStageInput,
   BlockRdItemInput,

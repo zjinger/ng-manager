@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
-import { ProjectContextStore } from '../../../core/state/project-context.store';
-import type { PageResult } from '../../../core/types/page.types';
+import { ProjectContextStore } from '@core/state';
+import type { PageResult } from '@core/types';
 import type {
   AnnouncementEntity,
   ContentQuery,

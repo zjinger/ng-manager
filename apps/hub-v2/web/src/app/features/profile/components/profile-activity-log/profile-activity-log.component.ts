@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 import { FormsModule } from '@angular/forms';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
+import { PanelCardComponent } from '@shared/ui';
 
 export interface ProfileActivityItem {
   id: string;

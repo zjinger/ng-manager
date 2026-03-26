@@ -2,10 +2,8 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 
-import { RD_STATUS_LABELS } from '../../../../shared/constants';
-import { DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
-import { PriorityBadgeComponent } from '../../../../shared/ui/priority-badge/priority-badge.component';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { RD_STATUS_LABELS } from '@shared/constants';
+import { DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
 import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 
 @Component({

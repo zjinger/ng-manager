@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { DialogShellComponent } from '../../../../shared/ui/dialog/dialog-shell.component';
+import { DialogShellComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import type { IssueEntity } from '../../models/issue.model';
 

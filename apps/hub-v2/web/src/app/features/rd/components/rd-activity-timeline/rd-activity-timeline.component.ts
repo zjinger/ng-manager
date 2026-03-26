@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { ActivityTimelineComponent } from '../../../../shared/ui/activity-timeline/activity-timeline.component';
+import { ActivityTimelineComponent } from '@shared/ui';
 import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model';
 
 @Component({

@@ -3,12 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
-import { FormActionsComponent } from '../../../../shared/ui/form-actions/form-actions.component';
-import type { ChangePasswordInput } from '../../models/profile.model';
+import { FormActionsComponent, PanelCardComponent } from '@shared/ui';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import type { ChangePasswordInput } from '../../models/profile.model';
 
 interface PasswordFormValue extends ChangePasswordInput {
   confirmPassword: string;

@@ -1,4 +1,4 @@
-import type { PageResult } from '../../../core/types/page.types';
+import type { PageResult } from '@core/types';
 
 export type ContentTab = 'announcements' | 'documents' | 'releases';
 export type ContentStatus = 'draft' | 'published' | 'archived' | '';

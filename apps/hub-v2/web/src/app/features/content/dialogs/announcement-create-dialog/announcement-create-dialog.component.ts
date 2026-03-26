@@ -5,8 +5,7 @@ import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { DialogShellComponent } from '../../../../shared/ui/dialog/dialog-shell.component';
-import { FormActionsComponent } from '../../../../shared/ui/form-actions/form-actions.component';
+import { FormActionsComponent, DialogShellComponent } from '@shared/ui';
 import type { AnnouncementEntity, CreateAnnouncementInput } from '../../models/content.model';
 
 type Draft = Omit<CreateAnnouncementInput, 'projectId'>;

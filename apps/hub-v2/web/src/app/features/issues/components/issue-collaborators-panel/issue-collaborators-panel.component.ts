@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
+import { PanelCardComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';

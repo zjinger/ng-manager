@@ -3,12 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { ProjectContextStore } from '../../../../core/state/project-context.store';
-import { FilterBarComponent } from '../../../../shared/ui/filter-bar/filter-bar.component';
-import { ListStateComponent } from '../../../../shared/ui/list-state/list-state.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
-import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
-import { SearchBoxComponent } from '../../../../shared/ui/search-box/search-box.component';
+import { ProjectContextStore } from '@core/state';
+import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
+
 import { AnnouncementListComponent } from '../../components/announcement-list/announcement-list.component';
 import { ContentTabsComponent } from '../../components/content-tabs/content-tabs.component';
 import { DocumentListComponent } from '../../components/document-list/document-list.component';
@@ -186,29 +183,29 @@ export class ContentManagementPageComponent {
 
   readonly createLabel = computed(
     () =>
-      ({
-        announcements: '新建公告',
-        documents: '新建文档',
-        releases: '新建发布',
-      }[this.store.activeTab()]),
+    ({
+      announcements: '新建公告',
+      documents: '新建文档',
+      releases: '新建发布',
+    }[this.store.activeTab()]),
   );
 
   readonly emptyTitle = computed(
     () =>
-      ({
-        announcements: '当前筛选条件下没有公告',
-        documents: '当前筛选条件下没有文档',
-        releases: '当前筛选条件下没有发布记录',
-      }[this.store.activeTab()]),
+    ({
+      announcements: '当前筛选条件下没有公告',
+      documents: '当前筛选条件下没有文档',
+      releases: '当前筛选条件下没有发布记录',
+    }[this.store.activeTab()]),
   );
 
   readonly emptyDescription = computed(
     () =>
-      ({
-        announcements: '先创建一条公告或调整筛选条件。',
-        documents: '先创建一篇文档或调整筛选条件。',
-        releases: '先创建一条发布记录或调整筛选条件。',
-      }[this.store.activeTab()]),
+    ({
+      announcements: '先创建一条公告或调整筛选条件。',
+      documents: '先创建一篇文档或调整筛选条件。',
+      releases: '先创建一条发布记录或调整筛选条件。',
+    }[this.store.activeTab()]),
   );
 
   readonly announcementItems = computed(() => this.store.items() as AnnouncementEntity[]);

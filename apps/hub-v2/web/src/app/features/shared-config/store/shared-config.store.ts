@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
-import { ProjectContextStore } from '../../../core/state/project-context.store';
+import { ProjectContextStore } from '@core/state';
 import type {
   CreateSharedConfigInput,
   SharedConfigEntity,

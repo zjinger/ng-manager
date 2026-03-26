@@ -3,10 +3,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 
-import { AuthStore } from '../../../../core/auth/auth.store';
-import { ProjectContextStore } from '../../../../core/state/project-context.store';
-import { ListStateComponent } from '../../../../shared/ui/list-state/list-state.component';
-import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
+import { AuthStore } from '@core/auth';
+import { ProjectContextStore } from '@core/state';
+import { PageHeaderComponent, ListStateComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { RdBoardComponent } from '../../components/rd-board/rd-board.component';

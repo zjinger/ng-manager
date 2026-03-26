@@ -7,7 +7,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSliderModule } from 'ng-zorro-antd/slider';
 
-import { PanelCardComponent } from '../../../../shared/ui/panel-card/panel-card.component';
+import { PanelCardComponent } from '@shared/ui';
 import type { RdItemEntity, RdLogEntity, RdStageEntity } from '../../models/rd.model';
 import { RdActivityTimelineComponent } from '../rd-activity-timeline/rd-activity-timeline.component';
 import { RdPropsPanelComponent } from '../rd-props-panel/rd-props-panel.component';

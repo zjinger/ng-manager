@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 
-import { ApiClientService } from '../../../core/http/api-client.service';
+import { ApiClientService } from '@core/http';
 import type { FeedbackEntity, FeedbackListQuery, FeedbackListResult, FeedbackStatus } from '../models/feedback.model';
 
 @Injectable({ providedIn: 'root' })

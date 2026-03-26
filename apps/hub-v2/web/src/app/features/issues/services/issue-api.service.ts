@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 
-import { ApiClientService } from '../../../core/http/api-client.service';
+import { ApiClientService } from '@core/http';
 import type {
   AssignIssueInput,
   CreateIssueInput,
@@ -71,11 +71,15 @@ export class IssueApiService {
     return this.api.delete<{ id: string }>(`/issues/${issueId}/attachments/${attachmentId}`);
   }
 
-  uploadFile(file: File) {
+  uploadFile(file: File, issueId?: string) {
     const formData = new FormData();
     formData.set('file', file);
     formData.set('bucket', 'issues');
     formData.set('category', 'attachment');
+    if (issueId?.trim()) {
+      formData.set('entityType', 'issue');
+      formData.set('entityId', issueId.trim());
+    }
     formData.set('visibility', 'private');
     return this.api.post<UploadEntity, FormData>('/uploads', formData);
   }
