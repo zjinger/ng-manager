@@ -438,6 +438,60 @@ export class ApiClientStateService {
     if (!req) return;
     await this.sendResolvedRequest(req);
   }
+  async sendHubV2Issues() {
+    const project = this.projectState.currentProject();
+    if (!project?.id) {
+      this.msg.warning('请先选择项目');
+      return;
+    }
+
+    const startedAt = Date.now();
+    this.sending.set(true);
+    this.lastResult.set(null);
+    try {
+      const data = await this.api.hubTokenRequest({
+        projectId: project.id,
+        path: `/issues`,
+        method: 'GET',
+        query: { page: 1, pageSize: 20 },
+      });
+      const bodyText = JSON.stringify(data, null, 2);
+      const endedAt = Date.now();
+      this.lastResult.set({
+        historyId: `hub_token_${endedAt}`,
+        response: {
+          status: 200,
+          statusText: 'OK',
+          headers: { 'content-type': 'application/json; charset=utf-8' },
+          bodyText,
+          bodySize: bodyText.length,
+        },
+        metrics: {
+          startedAt,
+          endedAt,
+          durationMs: endedAt - startedAt,
+        },
+      });
+      this.msg.success(`Hub Issues 请求成功 (${Date.now() - startedAt}ms)`);
+    } catch (e: any) {
+      const endedAt = Date.now();
+      this.lastResult.set({
+        historyId: `hub_token_${endedAt}`,
+        error: {
+          code: 'HUB_TOKEN_REQUEST_ERROR',
+          message: e?.message ?? 'Hub Issues 请求失败',
+        },
+        metrics: {
+          startedAt,
+          endedAt,
+          durationMs: endedAt - startedAt,
+        },
+      });
+      this.msg.error(e?.message ?? 'Hub Issues 请求失败');
+    } finally {
+      this.sending.set(false);
+    }
+  }
 
   /**
    * 删除请求

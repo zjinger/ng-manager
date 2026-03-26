@@ -64,6 +64,9 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
       <app-page-layout [title]="'API 请求'" [loading]="store.loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
         <ng-container ngProjectAs="actions">
           <app-env-picker/>
+          <button nz-button nzType="default" (click)="store.sendHubV2Issues()" nz-tooltip nzTooltipTitle="读取当前项目 Hub V2 Issues">
+            Hub Issues
+          </button>
           <button nz-button nzType="text" (click)="store.openHistory()" nz-tooltip nzTooltipTitle="历史记录">
             <nz-icon nzType="history" nzTheme="outline" />
           </button>

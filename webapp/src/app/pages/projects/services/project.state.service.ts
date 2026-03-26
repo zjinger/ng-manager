@@ -1,10 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { Project } from '@models/project.model';
+import { EditingProjectDraft, Project } from '@models/project.model';
 import { ProjectApiService } from './project-api.service';
 import { UiNotifierService } from '@core/ui-notifier.service';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { LocalStateStore, LS_KEYS } from '@core/local-state';
 import { Router } from '@angular/router';
+
 @Injectable({ providedIn: 'root' })
 export class ProjectStateService {
   private modal = inject(NzModalService);
@@ -23,7 +24,7 @@ export class ProjectStateService {
   isEditModalVisible = signal(false);
   isEditSaving = signal(false);
   /* 正在编辑的项目 */
-  editingProject = signal<{ id: string; name: string; repoPageUrl?: string; description?: string } | null>(null);
+  editingProject = signal<EditingProjectDraft | null>(null);
 
   /* ----------------- list computed ----------------- */
   filteredProjects = computed(() => {
@@ -131,11 +132,17 @@ export class ProjectStateService {
   /* ----------------- rename modal ----------------- */
   /** 打开重命名弹窗：默认带入当前名称 */
   openEditModal(project: Project) {
+    const env = project.env ?? {};
     this.editingProject.set({
       id: project.id,
       name: project.name ?? '',
       repoPageUrl: project.repoPageUrl ?? '',
       description: project.description ?? '',
+      hubV2: {
+        baseUrl: env['NGM_HUB_V2_BASE_URL'] ?? '',
+        projectKey: env['NGM_HUB_V2_PROJECT_KEY'] ?? '',
+        token: env['NGM_HUB_V2_TOKEN'] ?? '',
+      },
     });
     this.isEditModalVisible.set(true);
   }
@@ -148,7 +155,7 @@ export class ProjectStateService {
 
   confirmEditProject() {
     if (this.isEditSaving() || !this.editingProject()) return;
-    const { id, name, description, repoPageUrl } = this.editingProject()!;
+    const { id, name, description, repoPageUrl, hubV2 } = this.editingProject()!;
 
     if (!id) {
       this.notify.error('未选中需要重命名的项目');
@@ -157,25 +164,50 @@ export class ProjectStateService {
     if (!name) return;
     const desc = description?.trim();
     const repoPUrl = repoPageUrl?.trim();
+    const nextHubV2 = {
+      baseUrl: hubV2.baseUrl.trim(),
+      projectKey: hubV2.projectKey.trim(),
+      token: hubV2.token.trim(),
+    };
     const current = this.getProjectById(id);
-    if (current && current.name === name && current.description === desc && current.repoPageUrl === repoPUrl) {
+    const currentEnv = current?.env ?? {};
+    if (
+      current &&
+      current.name === name &&
+      current.description === desc &&
+      current.repoPageUrl === repoPUrl &&
+      (currentEnv['NGM_HUB_V2_BASE_URL'] ?? '') === nextHubV2.baseUrl &&
+      (currentEnv['NGM_HUB_V2_PROJECT_KEY'] ?? '') === nextHubV2.projectKey &&
+      (currentEnv['NGM_HUB_V2_TOKEN'] ?? '') === nextHubV2.token
+    ) {
       this.closeEditModal();
       return;
     }
 
     this.isEditSaving.set(true);
     this.projectService.edit(id, { name, description: desc, repoPageUrl: repoPUrl, }).subscribe({
-      next: (updated) => {
-        this.isEditSaving.set(false);
-        this.patchProject(updated);
-        this.notify.success('修改成功');
-        this.closeEditModal();
+      next: () => {
+        const nextEnv = {
+          ...(current?.env ?? {}),
+          NGM_HUB_V2_BASE_URL: nextHubV2.baseUrl,
+          NGM_HUB_V2_PROJECT_KEY: nextHubV2.projectKey,
+          NGM_HUB_V2_TOKEN: nextHubV2.token,
+        };
+        this.projectService.update(id, { env: nextEnv }).subscribe({
+          next: (updated) => {
+            this.patchProject(updated);
+            this.notify.success('修改成功');
+            this.closeEditModal();
+            this.isEditSaving.set(false);
+          },
+          error: (err) => {
+            this.notify.error(err?.message || '项目配置保存失败');
+            this.isEditSaving.set(false);
+          },
+        });
       },
       error: (err) => {
         this.notify.error(err?.message || '修改失败');
-        this.isEditSaving.set(false);
-      },
-      complete: () => {
         this.isEditSaving.set(false);
       },
     });

@@ -45,6 +45,24 @@ export class ApiClientService {
     return await firstValueFrom(this.http.post<SendResponse>(`${this.base}/send`, body));
   }
 
+  async hubTokenRequest(body: {
+    projectId: string;
+    path: string;
+    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    query?: Record<string, string | number | boolean | undefined | null>;
+    payload?: unknown;
+    headers?: Record<string, string>;
+  }) {
+    return await firstValueFrom(this.http.post<unknown>(`${this.base}/hub-token/request`, {
+      projectId: body.projectId,
+      path: body.path,
+      method: body.method ?? "GET",
+      query: body.query,
+      body: body.payload,
+      headers: body.headers,
+    }));
+  }
+
   async listHistory(scope: ApiScope, projectId?: string) {
     let params = new HttpParams().set('scope', scope);
     if (projectId) params = params.set('projectId', projectId);

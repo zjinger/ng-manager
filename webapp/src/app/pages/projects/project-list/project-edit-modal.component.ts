@@ -45,6 +45,42 @@ import { ProjectStateService } from '../services/project.state.service';
               />
               <nz-icon nzInputPrefix nzType="github" nzTheme="outline" />
             </nz-input-wrapper>
+
+            <div class="section-title">NGM Hub V2</div>
+            <label class="label">Hub 地址</label>
+            <nz-input-wrapper>
+              <input
+                nz-input
+                [ngModel]="editingProject()!.hubV2.baseUrl"
+                (ngModelChange)="projectState.editingProject()!.hubV2.baseUrl = $event"
+                placeholder="例如：http://192.168.1.31:7008"
+              />
+              <nz-icon nzInputPrefix nzType="link" nzTheme="outline" />
+            </nz-input-wrapper>
+
+            <label class="label">Project Key</label>
+            <nz-input-wrapper>
+              <input
+                nz-input
+                [ngModel]="editingProject()!.hubV2.projectKey"
+                (ngModelChange)="projectState.editingProject()!.hubV2.projectKey = $event"
+                placeholder="例如：NGM"
+              />
+              <nz-icon nzInputPrefix nzType="key" nzTheme="outline" />
+            </nz-input-wrapper>
+
+            <label class="label">API Token</label>
+            <nz-input-wrapper>
+              <input
+                nz-input
+                type="password"
+                [ngModel]="editingProject()!.hubV2.token"
+                (ngModelChange)="projectState.editingProject()!.hubV2.token = $event"
+                placeholder="粘贴 hub-v2 项目 token"
+              />
+              <nz-icon nzInputPrefix nzType="safety-certificate" nzTheme="outline" />
+            </nz-input-wrapper>
+            <div class="hint">以上配置会写入项目 env：NGM_HUB_V2_BASE_URL / NGM_HUB_V2_PROJECT_KEY / NGM_HUB_V2_TOKEN。</div>
             <!-- <label class="label">原尺寸图标SVN地址</label>
             <nz-input-wrapper >
               <input
@@ -90,6 +126,7 @@ import { ProjectStateService } from '../services/project.state.service';
   `,
   styles: [`
     .modal-body { display: grid; gap: 12px; }
+    .section-title { font-size: 13px; font-weight: 600; opacity: .9; margin-top: 4px; }
     .hint { font-size: 12px; opacity: .75; }
   `],
 })

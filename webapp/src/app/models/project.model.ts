@@ -56,6 +56,20 @@ export interface DetectResult {
     hasDockerCompose?: boolean;
 }
 
+export type ProjectHubV2ConfigDraft = {
+    baseUrl: string;
+    projectKey: string;
+    token: string;
+};
+
+export type EditingProjectDraft = {
+    id: string;
+    name: string;
+    repoPageUrl?: string;
+    description?: string;
+    hubV2: ProjectHubV2ConfigDraft;
+};
+
 /**
  * 工程资源来源 - SVN
  * - 目前先只做 SVN，未来可扩展 Git/HTTP 等
