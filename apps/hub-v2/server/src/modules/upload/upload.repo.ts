@@ -61,6 +61,19 @@ export class UploadRepo {
     return row ? this.mapRow(row) : null;
   }
 
+  updateStorageAndBucket(id: string, bucket: string, category: string, storagePath: string, updatedAt: string): boolean {
+    const result = this.db
+      .prepare(
+        `
+          UPDATE uploads
+          SET bucket = ?, category = ?, storage_path = ?, updated_at = ?
+          WHERE id = ?
+        `
+      )
+      .run(bucket, category, storagePath, updatedAt, id);
+    return result.changes > 0;
+  }
+
   private mapRow(row: UploadRow): UploadEntity {
     return {
       id: row.id,

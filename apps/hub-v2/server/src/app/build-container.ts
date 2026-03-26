@@ -120,9 +120,9 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const documentRepo = new DocumentRepo(db);
   const documentService = new DocumentService(documentRepo, projectAccess, eventBus);
   const uploadRepo = new UploadRepo(db);
-  const uploadService = new UploadService(uploadRepo);
+  const uploadService = new UploadService(uploadRepo, config.uploadDir);
   const issueRepo = new IssueRepo(db);
-  const issueService = new IssueService(issueRepo, projectAccess, eventBus);
+  const issueService = new IssueService(issueRepo, projectAccess, eventBus, uploadService);
   const issueAttachmentRepo = new IssueAttachmentRepo(db);
   const issueAttachmentService = new IssueAttachmentService(
     issueRepo,

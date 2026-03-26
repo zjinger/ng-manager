@@ -28,6 +28,30 @@ function sanitizePathSegment(value: string | undefined, fallback: string): strin
   return safe || fallback;
 }
 
+function normalizeBucket(bucketRaw: string | undefined, categoryRaw: string | undefined): string {
+  const bucket = sanitizePathSegment(bucketRaw, "");
+  const category = sanitizePathSegment(categoryRaw, "general");
+
+  if (bucket === "avatars" || bucket === "issues" || bucket === "project-avatars") {
+    return bucket;
+  }
+
+  if (bucket === "default" || bucket === "global" || bucket === "general" || bucket === "misc" || bucket === "") {
+    if (category === "avatar" || category === "avatars" || category === "profile") {
+      return "avatars";
+    }
+    if (category === "issue" || category === "issues" || category === "attachment" || category === "markdown") {
+      return "issues";
+    }
+    if (category === "project_avatar" || category === "project-avatar" || category === "project") {
+      return "project-avatars";
+    }
+    return "misc";
+  }
+
+  return bucket;
+}
+
 export default async function uploadRoutes(app: FastifyInstance) {
   app.post("/uploads", async (request, reply) => {
     const ctx = requireAuth(request);
@@ -42,10 +66,15 @@ export default async function uploadRoutes(app: FastifyInstance) {
 
     const bucket = getFieldValue(file.fields.bucket);
     const category = getFieldValue(file.fields.category);
+    const entityType = sanitizePathSegment(getFieldValue(file.fields.entityType), "");
+    const entityId = sanitizePathSegment(getFieldValue(file.fields.entityId), "");
     const visibility = getFieldValue(file.fields.visibility);
-    const normalizedBucket = sanitizePathSegment(bucket, "default");
+    const normalizedBucket = normalizeBucket(bucket, category);
     const normalizedCategory = sanitizePathSegment(category, "general");
-    const targetDir = path.join(app.config.uploadDir, normalizedBucket, normalizedCategory);
+    const targetDir =
+      normalizedBucket === "issues" && entityType === "issue" && entityId
+        ? path.join(app.config.uploadDir, normalizedBucket, entityId)
+        : path.join(app.config.uploadDir, normalizedBucket);
     const saved = await saveMultipartFile(file, targetDir);
     const upload = await app.container.uploadCommand.create(
       {

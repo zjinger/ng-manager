@@ -17,7 +17,7 @@ export class MarkdownImageUploadService {
 
     const formData = new FormData();
     formData.set('file', file);
-    formData.set('bucket', 'issues');
+    formData.set('bucket', 'temp');
     formData.set('category', 'markdown');
     formData.set('visibility', 'private');
 

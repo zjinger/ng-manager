@@ -4,6 +4,7 @@ import type { EventBus } from "../../shared/event/event-bus";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ProjectAccessContract } from "../project/project-access.contract";
+import type { UploadCommandContract } from "../upload/upload.contract";
 import {
   requireIssueAssignAccess,
   requireIssueClaimAccess,
@@ -44,7 +45,8 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   constructor(
     private readonly repo: IssueRepo,
     private readonly projectAccess: ProjectAccessContract,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly uploadCommand: UploadCommandContract
   ) {}
 
   async create(input: CreateIssueInput, ctx: RequestContext): Promise<IssueEntity> {
@@ -83,6 +85,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     };
 
     this.repo.create(entity);
+    await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
     this.repo.createLog(this.createLog(entity.id, "create", null, entity.status, ctx, `创建问题 ${entity.issueNo}`));
     await this.emitIssueEvent("issue.created", "created", entity, ctx);
     return entity;
@@ -453,6 +456,31 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         priority: entity.priority
       }
     });
+  }
+
+  private async promoteTempMarkdownUploads(issueId: string, description: string | null, ctx: RequestContext): Promise<void> {
+    if (!description) {
+      return;
+    }
+    const uploadIds = this.extractUploadIdsFromMarkdown(description);
+    if (uploadIds.length === 0) {
+      return;
+    }
+    await this.uploadCommand.promoteIssueMarkdownUploads(uploadIds, issueId, ctx);
+  }
+
+  private extractUploadIdsFromMarkdown(content: string): string[] {
+    const ids = new Set<string>();
+    const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_]+)\/raw/g;
+    let match = pattern.exec(content);
+    while (match) {
+      const id = match[1]?.trim();
+      if (id) {
+        ids.add(id);
+      }
+      match = pattern.exec(content);
+    }
+    return Array.from(ids);
   }
 
   private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {
