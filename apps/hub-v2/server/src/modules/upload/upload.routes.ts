@@ -22,6 +22,12 @@ function getFieldValue(field: unknown): string | undefined {
   return undefined;
 }
 
+function sanitizePathSegment(value: string | undefined, fallback: string): string {
+  const normalized = (value || "").trim().toLowerCase();
+  const safe = normalized.replace(/[^a-z0-9_-]/g, "");
+  return safe || fallback;
+}
+
 export default async function uploadRoutes(app: FastifyInstance) {
   app.post("/uploads", async (request, reply) => {
     const ctx = requireAuth(request);
@@ -34,14 +40,17 @@ export default async function uploadRoutes(app: FastifyInstance) {
       });
     }
 
-    const saved = await saveMultipartFile(file, app.config.uploadDir);
     const bucket = getFieldValue(file.fields.bucket);
     const category = getFieldValue(file.fields.category);
     const visibility = getFieldValue(file.fields.visibility);
+    const normalizedBucket = sanitizePathSegment(bucket, "default");
+    const normalizedCategory = sanitizePathSegment(category, "general");
+    const targetDir = path.join(app.config.uploadDir, normalizedBucket, normalizedCategory);
+    const saved = await saveMultipartFile(file, targetDir);
     const upload = await app.container.uploadCommand.create(
       {
-        bucket,
-        category,
+        bucket: normalizedBucket,
+        category: normalizedCategory,
         visibility: visibility === "public" || visibility === "private" ? visibility : undefined,
         fileName: saved.fileName,
         originalName: saved.originalName,

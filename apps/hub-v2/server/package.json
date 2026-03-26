@@ -8,6 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "rimraf dist && tsc -p tsconfig.json",
+    "uploads:migrate-paths": "tsx src/scripts/migrate-upload-paths.ts",
+    "uploads:migrate-paths:dist": "node dist/scripts/migrate-upload-paths.js",
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:seed": "tsx src/db/seed-cli.ts",
     "db:migrate:from-v1": "tsx src/db/migrate-from-v1.ts",

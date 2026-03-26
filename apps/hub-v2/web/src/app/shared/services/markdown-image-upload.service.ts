@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { ApiClientService } from '../../core/http/api-client.service';
+import { API_BASE_URL, ApiClientService } from '@core/http';
 
 interface UploadResult {
   id: string;
@@ -10,6 +10,7 @@ interface UploadResult {
 @Injectable({ providedIn: 'root' })
 export class MarkdownImageUploadService {
   private readonly api = inject(ApiClientService);
+  private readonly apiBaseUrl = inject(API_BASE_URL);
 
   async uploadImage(file: File, maxSizeMb = 10): Promise<string> {
     this.ensureImageFile(file, maxSizeMb);
@@ -24,7 +25,7 @@ export class MarkdownImageUploadService {
       const upload = await firstValueFrom(
         this.api.post<UploadResult, FormData>('/uploads', formData)
       );
-      return `/api/admin/uploads/${upload.id}/raw`;
+      return `${this.apiBaseUrl}/uploads/${upload.id}/raw`;
     } catch {
       throw new Error('图片上传失败，请稍后重试');
     }
@@ -39,4 +40,3 @@ export class MarkdownImageUploadService {
     }
   }
 }
-

@@ -4,6 +4,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzUploadModule } from 'ng-zorro-antd/upload';
 import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
+import { API_BASE_URL } from '../../../../core/http/api-base-url.token';
 
 import { AttachmentPreviewWallComponent } from '../../../../shared/ui/attachment-preview-wall/attachment-preview-wall.component';
 import type { AttachmentPreviewItem } from '../../../../shared/ui/attachment-preview-wall/attachment-preview-wall.component';
@@ -68,6 +69,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 })
 export class IssueAttachmentsPanelComponent {
   private readonly message = inject(NzMessageService);
+  private readonly apiBaseUrl = inject(API_BASE_URL);
 
   readonly attachments = input<IssueAttachmentEntity[]>([]);
   readonly busy = input(false);
@@ -96,7 +98,7 @@ export class IssueAttachmentsPanelComponent {
   };
 
   fileUrl(item: IssueAttachmentEntity): string {
-    return `/api/admin/uploads/${item.upload.id}/raw`;
+    return `${this.apiBaseUrl}/uploads/${item.upload.id}/raw`;
   }
 
   attachmentPreviewItems(): AttachmentPreviewItem[] {
