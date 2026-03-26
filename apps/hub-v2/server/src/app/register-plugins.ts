@@ -64,6 +64,25 @@ export async function registerPlugins(app: FastifyInstance) {
           }
         }
 
+        if (requestPath.startsWith("/api/personal/") && bearerToken) {
+          const verifiedToken = await fastify.container.personalTokenQuery.verifyToken(bearerToken);
+          if (verifiedToken) {
+            request.requestContext = createRequestContext({
+              accountId: verifiedToken.tokenId,
+              userId: verifiedToken.ownerUserId,
+              roles: ["personal_token"],
+              authType: "personal_token",
+              authScopes: verifiedToken.scopes,
+              tokenId: verifiedToken.tokenId,
+              source: "http",
+              requestId: request.id,
+              ip: request.ip,
+              userAgent
+            });
+            return;
+          }
+        }
+
         try {
           const verified = await request.jwtVerify<AuthJwtPayload>();
           payload = verified;

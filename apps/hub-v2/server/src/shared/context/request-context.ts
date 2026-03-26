@@ -1,5 +1,5 @@
 export type RequestSource = "http" | "ws" | "cli" | "job";
-export type RequestAuthType = "anonymous" | "user" | "token" | "public";
+export type RequestAuthType = "anonymous" | "user" | "token" | "personal_token" | "public";
 
 export interface RequestContext {
   accountId: string;

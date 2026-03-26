@@ -39,6 +39,9 @@ import { ProjectService } from "../modules/project/project.service";
 import type { ProfileCommandContract, ProfileQueryContract } from "../modules/profile/profile.contract";
 import { ProfileRepo } from "../modules/profile/profile.repo";
 import { ProfileService } from "../modules/profile/profile.service";
+import type { PersonalTokenCommandContract, PersonalTokenQueryContract } from "../modules/personal-token/personal-token.contract";
+import { PersonalTokenRepo } from "../modules/personal-token/personal-token.repo";
+import { PersonalTokenService } from "../modules/personal-token/personal-token.service";
 import type { RdCommandContract, RdQueryContract } from "../modules/rd/rd.contract";
 import { RdRepo } from "../modules/rd/rd.repo";
 import { RdService } from "../modules/rd/rd.service";
@@ -70,6 +73,8 @@ export type AppContainer = {
   projectAccess: ProjectAccessContract;
   profileCommand: ProfileCommandContract;
   profileQuery: ProfileQueryContract;
+  personalTokenCommand: PersonalTokenCommandContract;
+  personalTokenQuery: PersonalTokenQueryContract;
   announcementCommand: AnnouncementCommandContract;
   announcementQuery: AnnouncementQueryContract;
   dashboardQuery: DashboardQueryContract;
@@ -108,6 +113,8 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const projectService = new ProjectService(projectRepo, userRepo, projectAccess);
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
+  const personalTokenRepo = new PersonalTokenRepo(db);
+  const personalTokenService = new PersonalTokenService(personalTokenRepo, projectRepo);
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus);
   const documentRepo = new DocumentRepo(db);
@@ -162,6 +169,8 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     projectAccess,
     profileCommand: profileService,
     profileQuery: profileService,
+    personalTokenCommand: personalTokenService,
+    personalTokenQuery: personalTokenService,
     announcementCommand: announcementService,
     announcementQuery: announcementService,
     dashboardQuery: dashboardService,

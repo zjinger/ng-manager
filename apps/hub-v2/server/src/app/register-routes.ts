@@ -13,6 +13,9 @@ import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
 import notificationRoutes from "../modules/notifications/notification.routes";
+import personalTokenAdminRoutes from "../modules/personal-token/personal-token-admin.routes";
+import personalTokenIssueRoutes from "../modules/personal-token/personal-token-issue.routes";
+import personalTokenRdRoutes from "../modules/personal-token/personal-token-rd.routes";
 import profileRoutes from "../modules/profile/profile.routes";
 import issueAttachmentRoutes from "../modules/issue/attachment/issue-attachment.routes";
 import issueCommentRoutes from "../modules/issue/comment/issue-comment.routes";
@@ -86,6 +89,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(documentRoutes, { prefix: "/api/admin" });
   await app.register(notificationRoutes, { prefix: "/api/admin" });
   await app.register(profileRoutes, { prefix: "/api/admin" });
+  await app.register(personalTokenAdminRoutes, { prefix: "/api/admin" });
   await app.register(issueRoutes, { prefix: "/api/admin" });
   await app.register(issueAttachmentRoutes, { prefix: "/api/admin" });
   await app.register(issueCommentRoutes, { prefix: "/api/admin" });
@@ -103,6 +107,8 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(sharedConfigPublicRoutes, { prefix: "/api/public" });
   await app.register(healthRoutes, { prefix: "/api/public" });
   await app.register(apiTokenRoutes, { prefix: "/api/token" });
+  await app.register(personalTokenIssueRoutes, { prefix: "/api/personal" });
+  await app.register(personalTokenRdRoutes, { prefix: "/api/personal" });
 
   const spaRoot = resolveSpaRoot();
   if (!spaRoot) {
