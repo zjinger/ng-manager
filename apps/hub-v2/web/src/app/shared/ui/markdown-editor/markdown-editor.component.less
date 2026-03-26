@@ -31,6 +31,12 @@
   z-index: 1000;
 }
 
+:host ::ng-deep .CodeMirror.CodeMirror-fullscreen .CodeMirror-scroll,
+:host ::ng-deep .editor-preview-side.editor-preview-active-side,
+:host ::ng-deep .editor-preview-full.editor-preview-active {
+  max-height: none !important;
+}
+
 :host ::ng-deep .CodeMirror {
   min-height: 320px;
   border: 1px solid #d9d9d9;

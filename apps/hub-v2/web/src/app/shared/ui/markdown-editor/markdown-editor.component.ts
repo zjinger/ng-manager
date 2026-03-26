@@ -53,6 +53,8 @@ export class MarkdownEditorComponent
 
     @Input() minHeight = '320px';
 
+    @Input() maxHeight = '';
+
     @Input() readonly = false;
 
     @Input() disabled = false;
@@ -91,7 +93,7 @@ export class MarkdownEditorComponent
             this.setEditorReadonlyState();
         }
 
-        if (changes['minHeight'] || changes['config']) {
+        if (changes['minHeight'] || changes['maxHeight'] || changes['config']) {
             this.applyMinHeight();
         }
     }
@@ -255,11 +257,19 @@ export class MarkdownEditorComponent
         const toolbar = wrapper.parentElement?.querySelector('.editor-toolbar') as HTMLElement | null;
 
         const minHeight = this.config.minHeight ?? this.minHeight;
+        const maxHeight = this.config.maxHeight ?? this.maxHeight;
 
         wrapper.style.minHeight = minHeight;
 
         if (scroll) {
             scroll.style.minHeight = minHeight;
+            if (maxHeight) {
+                scroll.style.maxHeight = maxHeight;
+                scroll.style.overflowY = 'auto';
+            } else {
+                scroll.style.maxHeight = '';
+                scroll.style.overflowY = '';
+            }
         }
 
         if (toolbar) {

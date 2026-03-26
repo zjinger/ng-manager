@@ -122,7 +122,7 @@ export class DialogShellComponent {
   readonly title = input.required<string>();
   readonly subtitle = input('');
   readonly icon = input<string | null>(null);
-  readonly width = input<number>(720);
+  readonly width = input<number | string>(720);
   readonly modalClass = input('');
   readonly cancel = output<void>();
 

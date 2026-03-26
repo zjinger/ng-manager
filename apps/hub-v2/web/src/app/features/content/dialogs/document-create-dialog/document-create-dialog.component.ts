@@ -29,7 +29,8 @@ const DEFAULT_DRAFT: Draft = {
   template: `
     <app-dialog-shell
       [open]="open()"
-      [width]="900"
+      [width]="'60%'"
+      [center]="true"
       [title]="(isEdit() ? '编辑文档' : '新建文档') + (!isEdit() && projectName() ? ' · ' + projectName() : '')"
       [subtitle]="''"
       [icon]="'file-text'"
@@ -140,6 +141,7 @@ const DEFAULT_DRAFT: Draft = {
                     [imageUploadHandler]="uploadMarkdownImage"
                     name="contentMd"
                     [minHeight]="'300px'"
+                    [maxHeight]="'420px'"
                     (contentChange)="updateField('contentMd', $event)"
                     (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
                     [placeholder]="'请输入文档正文，支持 Markdown 语法'"

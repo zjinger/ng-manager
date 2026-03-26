@@ -37,6 +37,7 @@ export type MarkdownEditorToolbarItem =
 export interface MarkdownEditorConfig {
     placeholder?: string;
     minHeight?: string;
+    maxHeight?: string;
     autofocus?: boolean;
     spellChecker?: boolean;
     autosave?: boolean;
