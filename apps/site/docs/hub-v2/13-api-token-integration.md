@@ -1,147 +1,254 @@
-# 13 Hub V2 API Token 接入说明
+# 13 Hub V2 Token 体系与 webapp 读写接入方案
+
+最后更新：2026-03-26
 
 ## 1. 背景与目标
 
-`ng-manager/webapp` 是开发者日常使用的工作台，很多场景只需要查看 Hub V2 的项目数据（Issue、研发项、反馈），并不希望反复登录 Hub 管理端。
+`ng-manager/webapp` 需要在不进入 Hub 管理端的前提下，直接读取并操作 Hub V2 的 Issue 与 RD 数据。  
+本方案用于冻结 Token 体系、接口口径、权限口径与审计口径，直接指导开发与测试。
 
-因此在 Hub V2 增加一套**项目级 API Token**机制：
+目标如下：
 
-- 由项目侧签发 token
-- 由调用方仅携带 token 即可访问只读接口
-- 与管理端登录态（JWT + Cookie）隔离
-
-目标是实现“**开发者在 webapp 内可直接读取 Hub V2 项目数据**”。
-
----
-
-## 2. 设计原则
-
-### 2.1 为什么不用 `user + projectKey` 直接拼 Key
-
-直接拼接的 key 无法安全撤销、轮换和审计，泄露后风险不可控。  
-因此采用“随机高熵 token + 服务端哈希存储 + 可撤销”的方案。
-
-### 2.2 权限最小化
-
-第一阶段仅开放只读 scope：
-
-- `issues:read`
-- `rd:read`
-- `feedbacks:read`
-
-默认不开放写接口，降低误操作与泄露风险。
-
-### 2.3 项目强绑定
-
-token 在服务端绑定单一项目（内部是 `projectId`，外部接口使用 `projectKey`），即使调用方传入其它项目参数，也会被拒绝。
+- 提供稳定的 webapp 接入链路
+- 统一 Token 体系与权限模型
+- 统一 Issue 与 RD 的读写方案
 
 ---
 
-## 3. 鉴权模型
+## 2. 总体架构
 
-## 3.1 双鉴权通道
+调用链路如下：
 
-- 管理端接口：`/api/admin/*`，继续使用用户登录态（JWT）
-- Token 接口：`/api/token/*`，只接受 `Authorization: Bearer <token>`
+- `webapp -> packages/server -> packages/api -> hub-v2`
 
-两者隔离，防止 token 访问管理端写接口。
+职责如下：
 
-## 3.2 RequestContext 扩展
-
-`RequestContext` 新增：
-
-- `authType`: `anonymous | user | token | public`
-- `authScopes?: string[]`
-- `tokenId?: string`
-
-在 `/api/token/*` 请求中，服务端会把 token 校验结果注入 `requestContext`。
-
-## 3.3 requireAuth 与 requireTokenAuth
-
-- `requireAuth`：仅允许 `authType = user`
-- `requireTokenAuth(scope)`：仅允许 `authType = token`，且校验 scope
+- webapp 只传 `projectId` 与业务路径
+- packages/server 读取项目配置并补齐 `projectKey` 与鉴权信息
+- hub-v2 负责 scope 校验、业务权限校验、状态机校验、审计落库
 
 ---
 
-## 4. 数据库模型
+## 3. Token 体系
 
-新增表：`project_api_tokens`
+### 3.1 Project Token
 
-关键字段：
+- 用于读取项目数据
+- 默认只读权限
+- 不用于关键写操作
 
-- `project_id`: 绑定项目
-- `owner_user_id`: 签发人
-- `token_prefix`: 前缀索引（快速定位）
-- `token_hash`: token 的 SHA-256 哈希值（不存明文）
-- `scopes_json`: scope 列表
-- `status`: `active | revoked`
-- `expires_at`, `last_used_at`
+### 3.2 Personal Token
 
-迁移文件：
+- 用于关键写操作
+- 绑定用户身份
+- 支持吊销、过期、轮换
 
-- `apps/hub-v2/server/src/db/migrations/0016_api_tokens.sql`
+### 3.3 实施结论
+
+- 读取统一使用 Project Token
+- 关键写操作统一使用 Personal Token
 
 ---
 
-## 5. 服务端接口
+## 4. 配置规范
 
-## 5.1 管理端（签发与吊销）
+项目配置键：
 
-前缀：`/api/admin`
+- `NGM_HUB_V2_BASE_URL`
+- `NGM_HUB_V2_PROJECT_KEY`
+- `NGM_HUB_V2_TOKEN`
 
-- `GET /projects/:projectKey/api-tokens`：查询 token 列表
-- `POST /projects/:projectKey/api-tokens`：创建 token（明文仅返回一次）
-- `DELETE /projects/:projectKey/api-tokens/:tokenId`：吊销 token
+约束：
 
-权限：`admin` 或项目 `owner/project_admin`。
+- `projectKey` 按配置原值使用，仅做空白处理
+- 前端不拼接 `projectKey`，由 server 侧补齐
 
-## 5.2 Token 只读接口
+---
 
-前缀：`/api/token`
+## 5. 接口方案
 
-- `GET /projects/:projectKey/issues`
-- `GET /projects/:projectKey/issues/:issueId`
+### 5.1 webapp 到 packages/server
+
+1. `POST /api/client/hub-token/resolve`  
+入参：`{ projectId }`  
+出参：`{ baseUrl, tokenConfigured, projectKey }`
+
+2. `POST /api/client/hub-token/request`  
+入参示例：
+
+```json
+{
+  "projectId": "proj_xxx",
+  "path": "/issues",
+  "method": "GET",
+  "query": { "page": 1, "pageSize": 20 }
+}
+```
+
+---
+
+## 5.2 读取接口
+
+Issue：
+
+- `GET /api/token/projects/:projectKey/issues`
+- `GET /api/token/projects/:projectKey/issues/:issueId`
 - `GET /projects/:projectKey/issues/:issueId/logs`
-- `GET /projects/:projectKey/rd-items`
-- `GET /projects/:projectKey/rd-items/:itemId`
+
+RD：
+
+- `GET /api/token/projects/:projectKey/rd-items`
+- `GET /api/token/projects/:projectKey/rd-items/:itemId`
 - `GET /projects/:projectKey/rd-items/:itemId/logs`
+
+Feedback：
 - `GET /projects/:projectKey/feedbacks`
 - `GET /projects/:projectKey/feedbacks/:feedbackId`
 
 ---
 
-## 6. 调用示例
+## 5.3 写入接口
 
-```bash
-curl -H "Authorization: Bearer ngm_ptk_xxx" \
-  "http://<hub-v2-host>/api/token/projects/<projectKey>/issues?page=1&pageSize=20"
-```
+Issue：
 
----
+- `POST /api/personal/projects/:projectKey/issues/:issueId/comments`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/transitions`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/assignee`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/participants`
+- `DELETE /api/personal/projects/:projectKey/issues/:issueId/participants/:userId`
 
-## 7. webapp 侧接入
+RD：
 
-`packages/api` 新增 `ProjectTokenApiClient`，统一封装 token 调用：
-
-- 构造参数：`baseUrl + apiToken`
-- 内置请求头：`Authorization: Bearer <apiToken>`
-- 提供通用方法：`request()` / `getByPath()`
-
-适用于在 `ng-manager/webapp` 中直接读取 Hub V2 项目数据，无需 Hub UI 登录。
-
----
-
-## 8. 安全与运维建议
-
-- token 明文只展示一次，调用方自行妥善保存
-- 默认设置过期时间，避免长期有效凭证
-- 定期轮换 token，旧 token 及时吊销
-- 通过 `last_used_at` 做活跃度审计
-- 线上建议配合内网策略和 HTTPS
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/start`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/block`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/resume`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/complete`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/progress`
+- `PATCH /api/personal/projects/:projectKey/rd-items/:itemId`
+- `DELETE /api/personal/projects/:projectKey/rd-items/:itemId`
 
 ---
 
-## 9. 当前边界与后续规划
+## 6. 权限方案
 
-当前版本只支持只读数据接入，不支持 token 写操作。  
-后续可按业务需要增加细粒度 scope（如评论只写、附件只读）与 IP 白名单策略。
+### 6.1 Scope 映射
+
+| 模块 | 操作 | Scope |
+|---|---|---|
+| Issue | 列表与详情 | `issue:read` |
+| Issue | 评论 | `issue:comment:write` |
+| Issue | 状态流转 | `issue:transition:write` |
+| Issue | 指派与认领 | `issue:assign:write` |
+| Issue | 协作人管理 | `issue:participant:write` |
+| RD | 列表与详情 | `rd:read` |
+| RD | 状态流转与进度 | `rd:transition:write` |
+| RD | 编辑基础信息 | `rd:edit:write` |
+| RD | 删除 | `rd:delete:write` |
+
+### 6.2 判定规则
+
+操作放行需同时满足：
+
+1. Token 有效
+2. Scope 允许
+3. 业务角色允许
+
+角色权限基线：
+
+- Issue 参照 [11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix)
+- RD 参照 [10 RD 权限矩阵](/hub-v2/10-rd-permission-matrix)
+
+---
+
+## 7. 状态机规则
+
+Issue 状态流转以 [11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix) 为准。
+
+RD 状态流转如下：
+
+- `todo -> doing`
+- `doing -> blocked`
+- `blocked -> doing`
+- `doing -> done`
+
+补充规则：
+
+- RD 进度更新为 `100%`，状态变更为 `done`
+- 已完成项进度调整到 `0~99`，状态回到 `doing`
+
+---
+
+## 8. 数据模型
+
+Project Token 表：`project_api_tokens`
+
+- `project_id`
+- `owner_user_id`
+- `token_prefix`
+- `token_hash`
+- `scopes_json`
+- `status`
+- `expires_at`
+- `last_used_at`
+
+Personal Token 表：`personal_api_tokens`
+
+- `owner_user_id`
+- `token_prefix`
+- `token_hash`
+- `scopes_json`
+- `status`
+- `expires_at`
+- `last_used_at`
+
+---
+
+## 9. 审计方案
+
+关键写操作日志字段：
+
+- `action`
+- `projectId`
+- `entityId`
+- `actorUserId`
+- `actorName`
+- `tokenId`
+- `before`
+- `after`
+- `createdAt`
+
+说明：
+
+- `entityId` 在 Issue 场景为 `issueId`，在 RD 场景为 `rdItemId`
+- 日志文案统一中文
+
+---
+
+## 10. 实施计划
+
+### 阶段 1
+
+- 打通读取链路
+- webapp 可读取 Issue 与 RD
+
+### 阶段 2
+
+- 落地 Personal Token 管理接口
+- 落地 `/api/personal` 写接口
+- 落地审计字段
+
+### 阶段 3
+
+- webapp 写操作切换到 Personal Token
+- Project Token 收敛为只读
+- 完成回归与灰度发布
+
+---
+
+## 11. 验收标准
+
+- Project Token 仅读，Personal Token 负责写
+- Issue 与 RD 写操作可定位到操作者身份
+- Scope 不匹配或角色不匹配返回 `403`
+- webapp 不承担 `projectKey` 拼接与 token 鉴权细节
+
