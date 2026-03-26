@@ -14,6 +14,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
       [nzFooter]="null"
       [nzWidth]="width()"
       [nzClosable]="false"
+      [nzKeyboard]="false"
       [nzMaskClosable]="false"
       [nzClassName]="resolvedModalClass()"
       (nzOnCancel)="cancel.emit()"
