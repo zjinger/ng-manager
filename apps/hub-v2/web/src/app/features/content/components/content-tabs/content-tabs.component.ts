@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { ContentTab } from '../../models/content.model';
 
 @Component({
   selector: 'app-content-tabs',
   standalone: true,
+  imports: [
+    NzIconModule
+  ],
   template: `
     <div class="content-tabs">
       @for (tab of tabs; track tab.value) {
@@ -14,6 +18,7 @@ import type { ContentTab } from '../../models/content.model';
           [class.is-active]="value() === tab.value"
           (click)="valueChange.emit(tab.value)"
         >
+          <nz-icon [nzType]="tab.icon" nzTheme="outline"/>
           {{ tab.label }}
         </button>
       }
@@ -42,8 +47,8 @@ import type { ContentTab } from '../../models/content.model';
         transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
       .content-tabs__item.is-active {
-        background: var(--bg-container);
-        color: var(--text-primary);
+        background: var(--color-primary);
+        color: #fff;
         box-shadow: var(--shadow-sm);
       }
     `,
@@ -54,9 +59,9 @@ export class ContentTabsComponent {
   readonly value = input.required<ContentTab>();
   readonly valueChange = output<ContentTab>();
 
-  protected readonly tabs: Array<{ value: ContentTab; label: string }> = [
-    { value: 'announcements', label: '公告' },
-    { value: 'documents', label: '文档' },
-    { value: 'releases', label: '发布' },
+  protected readonly tabs: Array<{ value: ContentTab; label: string; icon: string }> = [
+    { value: 'announcements', label: '公告管理', icon: 'notification' },
+    { value: 'documents', label: '文档管理', icon: 'file-text' },
+    { value: 'releases', label: '版本发布', icon: 'cloud-upload' },
   ];
 }

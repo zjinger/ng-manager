@@ -23,19 +23,17 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   ) {}
 
   async create(input: CreateAnnouncementInput, ctx: RequestContext): Promise<AnnouncementEntity> {
-    requireAdmin(ctx);
-    if (input.projectId?.trim()) {
-      await this.projectAccess.requireProjectAccess(input.projectId.trim(), ctx, "create announcement");
-    }
+    const projectId = input.projectId?.trim() || null;
+    await this.requireProjectOrAdmin(projectId, ctx, "create announcement");
 
     const now = nowIso();
     const entity: AnnouncementEntity = {
       id: genId("ann"),
-      projectId: input.projectId?.trim() || null,
+      projectId,
       title: input.title.trim(),
       summary: input.summary?.trim() || null,
       contentMd: input.contentMd,
-      scope: input.scope ?? (input.projectId ? "project" : "global"),
+      scope: input.scope ?? (projectId ? "project" : "global"),
       pinned: input.pinned === true,
       status: "draft",
       publishAt: null,
@@ -50,7 +48,6 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   }
 
   async update(id: string, input: UpdateAnnouncementInput, ctx: RequestContext): Promise<AnnouncementEntity> {
-    requireAdmin(ctx);
     const current = this.repo.findById(id);
     if (!current) {
       throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
@@ -58,9 +55,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
 
     const nextProjectId =
       input.projectId === undefined ? current.projectId : input.projectId?.trim() || null;
-    if (nextProjectId) {
-      await this.projectAccess.requireProjectAccess(nextProjectId, ctx, "update announcement");
-    }
+    await this.requireProjectOrAdmin(nextProjectId, ctx, "update announcement");
 
     const updated = this.repo.update(id, {
       projectId: nextProjectId,
@@ -96,11 +91,8 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   }
 
   async publish(id: string, ctx: RequestContext): Promise<AnnouncementEntity> {
-    requireAdmin(ctx);
     const current = this.requireById(id);
-    if (current.projectId) {
-      await this.projectAccess.requireProjectAccess(current.projectId, ctx, "publish announcement");
-    }
+    await this.requireProjectOrAdmin(current.projectId, ctx, "publish announcement");
 
     const publishAt = nowIso();
     const updated = this.repo.update(id, {
@@ -131,16 +123,18 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   }
 
   async list(query: ListAnnouncementsQuery, ctx: RequestContext): Promise<AnnouncementListResult> {
-    requireAdmin(ctx);
+    const projectId = query.projectId?.trim();
+    if (projectId) {
+      await this.projectAccess.requireProjectAccess(projectId, ctx, "list announcements");
+    } else {
+      requireAdmin(ctx);
+    }
     return this.repo.list(query);
   }
 
   async getById(id: string, ctx: RequestContext): Promise<AnnouncementEntity> {
-    requireAdmin(ctx);
     const entity = this.requireById(id);
-    if (entity.projectId) {
-      await this.projectAccess.requireProjectAccess(entity.projectId, ctx, "get announcement");
-    }
+    await this.requireProjectOrAdmin(entity.projectId, ctx, "get announcement");
     return entity;
   }
 
@@ -159,5 +153,13 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
     }
     return entity;
+  }
+
+  private async requireProjectOrAdmin(projectId: string | null, ctx: RequestContext, action: string): Promise<void> {
+    if (projectId) {
+      await this.projectAccess.requireProjectAccess(projectId, ctx, action);
+      return;
+    }
+    requireAdmin(ctx);
   }
 }

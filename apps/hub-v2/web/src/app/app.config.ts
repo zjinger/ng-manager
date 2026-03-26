@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 
 import { registerLocaleData } from '@angular/common';
 import zh from '@angular/common/locales/zh';
-import { provideMarkdown } from 'ngx-markdown';
+import { MARKED_OPTIONS, provideMarkdown } from 'ngx-markdown';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { apiErrorInterceptor } from './core/http/api-error.interceptor';
@@ -28,7 +28,15 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor, apiErrorInterceptor])),
-    provideMarkdown(),
+    provideMarkdown({
+      markedOptions: {
+        provide: MARKED_OPTIONS,
+        useValue: {
+          gfm: true,
+          breaks: true,
+        },
+      },
+    }),
     provideAnimations(),
 
     // { provide: NZ_CONFIG, useValue: ngZorroConfig },

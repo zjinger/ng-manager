@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { PageHeaderComponent } from '@shared/ui';
+import { ProjectContextStore } from '@core/state';
 import { DashboardStatGridComponent } from '../../components/dashboard-stat-grid/dashboard-stat-grid.component';
 import { LatestAnnouncementsCardComponent } from '../../components/latest-announcements-card/latest-announcements-card.component';
 import { MyActivitiesCardComponent } from '../../components/my-activities-card/my-activities-card.component';
@@ -35,7 +36,11 @@ import { DashboardStore } from '../../store/dashboard.store';
       <div class="dashboard-grid">
         <app-my-todos-card [items]="data.todos" />
         <app-my-activities-card [items]="data.activities" />
-        <app-latest-announcements-card [items]="data.announcements" />
+        <app-latest-announcements-card
+          [items]="data.announcements"
+          [currentProjectId]="projectContext.currentProjectId()"
+          [currentProjectName]="projectContext.currentProject()?.name || null"
+        />
       </div>
     } @else {
       <div class="empty">
@@ -88,6 +93,7 @@ import { DashboardStore } from '../../store/dashboard.store';
 })
 export class DashboardPageComponent {
   readonly store = inject(DashboardStore);
+  readonly projectContext = inject(ProjectContextStore);
 
   constructor() {
     this.store.load();

@@ -23,19 +23,16 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   ) {}
 
   async create(input: CreateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
-    requireAdmin(ctx);
+    const projectId = input.projectId?.trim() || null;
     if (this.repo.findBySlug(input.slug.trim())) {
       throw new AppError("DOCUMENT_SLUG_EXISTS", `document slug already exists: ${input.slug}`, 409);
     }
-
-    if (input.projectId?.trim()) {
-      await this.projectAccess.requireProjectAccess(input.projectId.trim(), ctx, "create document");
-    }
+    await this.requireProjectOrAdmin(projectId, ctx, "create document");
 
     const now = nowIso();
     const entity: DocumentEntity = {
       id: genId("doc"),
-      projectId: input.projectId?.trim() || null,
+      projectId,
       slug: input.slug.trim(),
       title: input.title.trim(),
       category: input.category?.trim() || "general",
@@ -54,7 +51,6 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   }
 
   async update(id: string, input: UpdateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
-    requireAdmin(ctx);
     const current = this.requireById(id);
 
     if (input.slug?.trim() && input.slug.trim() !== current.slug) {
@@ -66,9 +62,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
 
     const nextProjectId =
       input.projectId === undefined ? current.projectId : input.projectId?.trim() || null;
-    if (nextProjectId) {
-      await this.projectAccess.requireProjectAccess(nextProjectId, ctx, "update document");
-    }
+    await this.requireProjectOrAdmin(nextProjectId, ctx, "update document");
 
     const updated = this.repo.update(id, {
       projectId: nextProjectId,
@@ -106,11 +100,8 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   }
 
   async publish(id: string, ctx: RequestContext): Promise<DocumentEntity> {
-    requireAdmin(ctx);
     const current = this.requireById(id);
-    if (current.projectId) {
-      await this.projectAccess.requireProjectAccess(current.projectId, ctx, "publish document");
-    }
+    await this.requireProjectOrAdmin(current.projectId, ctx, "publish document");
 
     const publishAt = nowIso();
     const updated = this.repo.update(id, {
@@ -143,16 +134,18 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   }
 
   async list(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult> {
-    requireAdmin(ctx);
+    const projectId = query.projectId?.trim();
+    if (projectId) {
+      await this.projectAccess.requireProjectAccess(projectId, ctx, "list documents");
+    } else {
+      requireAdmin(ctx);
+    }
     return this.repo.list(query);
   }
 
   async getById(id: string, ctx: RequestContext): Promise<DocumentEntity> {
-    requireAdmin(ctx);
     const entity = this.requireById(id);
-    if (entity.projectId) {
-      await this.projectAccess.requireProjectAccess(entity.projectId, ctx, "get document");
-    }
+    await this.requireProjectOrAdmin(entity.projectId, ctx, "get document");
     return entity;
   }
 
@@ -167,5 +160,13 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
       throw new AppError("DOCUMENT_NOT_FOUND", `document not found: ${id}`, 404);
     }
     return entity;
+  }
+
+  private async requireProjectOrAdmin(projectId: string | null, ctx: RequestContext, action: string): Promise<void> {
+    if (projectId) {
+      await this.projectAccess.requireProjectAccess(projectId, ctx, action);
+      return;
+    }
+    requireAdmin(ctx);
   }
 }

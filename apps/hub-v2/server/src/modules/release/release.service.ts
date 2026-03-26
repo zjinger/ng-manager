@@ -23,15 +23,13 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
   ) {}
 
   async create(input: CreateReleaseInput, ctx: RequestContext): Promise<ReleaseEntity> {
-    requireAdmin(ctx);
-    if (input.projectId?.trim()) {
-      await this.projectAccess.requireProjectAccess(input.projectId.trim(), ctx, "create release");
-    }
+    const projectId = input.projectId?.trim() || null;
+    await this.requireProjectOrAdmin(projectId, ctx, "create release");
 
     const now = nowIso();
     const entity: ReleaseEntity = {
       id: genId("rel"),
-      projectId: input.projectId?.trim() || null,
+      projectId,
       channel: input.channel.trim(),
       version: input.version.trim(),
       title: input.title.trim(),
@@ -49,14 +47,11 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
   }
 
   async update(id: string, input: UpdateReleaseInput, ctx: RequestContext): Promise<ReleaseEntity> {
-    requireAdmin(ctx);
     const current = this.requireById(id);
     const nextProjectId =
       input.projectId === undefined ? current.projectId : input.projectId?.trim() || null;
 
-    if (nextProjectId) {
-      await this.projectAccess.requireProjectAccess(nextProjectId, ctx, "update release");
-    }
+    await this.requireProjectOrAdmin(nextProjectId, ctx, "update release");
 
     const updated = this.repo.update(id, {
       projectId: nextProjectId,
@@ -95,11 +90,8 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
   }
 
   async publish(id: string, ctx: RequestContext): Promise<ReleaseEntity> {
-    requireAdmin(ctx);
     const current = this.requireById(id);
-    if (current.projectId) {
-      await this.projectAccess.requireProjectAccess(current.projectId, ctx, "publish release");
-    }
+    await this.requireProjectOrAdmin(current.projectId, ctx, "publish release");
 
     const publishedAt = nowIso();
     const updated = this.repo.update(id, {
@@ -133,16 +125,18 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
   }
 
   async list(query: ListReleasesQuery, ctx: RequestContext): Promise<ReleaseListResult> {
-    requireAdmin(ctx);
+    const projectId = query.projectId?.trim();
+    if (projectId) {
+      await this.projectAccess.requireProjectAccess(projectId, ctx, "list releases");
+    } else {
+      requireAdmin(ctx);
+    }
     return this.repo.list(query);
   }
 
   async getById(id: string, ctx: RequestContext): Promise<ReleaseEntity> {
-    requireAdmin(ctx);
     const entity = this.requireById(id);
-    if (entity.projectId) {
-      await this.projectAccess.requireProjectAccess(entity.projectId, ctx, "get release");
-    }
+    await this.requireProjectOrAdmin(entity.projectId, ctx, "get release");
     return entity;
   }
 
@@ -156,5 +150,13 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
       throw new AppError("RELEASE_NOT_FOUND", `release not found: ${id}`, 404);
     }
     return entity;
+  }
+
+  private async requireProjectOrAdmin(projectId: string | null, ctx: RequestContext, action: string): Promise<void> {
+    if (projectId) {
+      await this.projectAccess.requireProjectAccess(projectId, ctx, action);
+      return;
+    }
+    requireAdmin(ctx);
   }
 }

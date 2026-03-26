@@ -2,12 +2,15 @@ import { inject, Injectable } from '@angular/core';
 
 import { ApiClientService } from '@core/http';
 import type {
+  AnnouncementEntity,
   AnnouncementListResult,
   ContentQuery,
   CreateAnnouncementInput,
   CreateDocumentInput,
   CreateReleaseInput,
+  DocumentEntity,
   DocumentListResult,
+  ReleaseEntity,
   ReleaseListResult,
   UpdateAnnouncementInput,
   UpdateDocumentInput,
@@ -31,15 +34,15 @@ export class ContentApiService {
   }
 
   createAnnouncement(input: CreateAnnouncementInput) {
-    return this.api.post('/announcements', input);
+    return this.api.post<AnnouncementEntity>('/announcements', input);
   }
 
   createDocument(input: CreateDocumentInput) {
-    return this.api.post('/documents', input);
+    return this.api.post<DocumentEntity>('/documents', input);
   }
 
   createRelease(input: CreateReleaseInput) {
-    return this.api.post('/releases', input);
+    return this.api.post<ReleaseEntity>('/releases', input);
   }
 
   updateAnnouncement(announcementId: string, input: UpdateAnnouncementInput) {

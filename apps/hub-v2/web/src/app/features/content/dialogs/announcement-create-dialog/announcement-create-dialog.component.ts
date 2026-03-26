@@ -2,6 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, effect, input, output, si
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
@@ -26,6 +29,9 @@ const DEFAULT_DRAFT: Draft = {
     FormsModule,
     NzButtonModule,
     NzCheckboxModule,
+    NzDatePickerModule,
+    NzFormModule,
+    NzGridModule,
     NzInputModule,
     NzSelectModule,
     DialogShellComponent,
@@ -36,83 +42,106 @@ const DEFAULT_DRAFT: Draft = {
       [open]="open()"
       [width]="860"
       [title]="(isEdit() ? '编辑公告' : '新建公告') + (!isEdit() && projectName() ? ' · ' + projectName() : '')"
-      [subtitle]="isEdit() ? '修改公告内容后保存。' : '先录入标题、摘要和正文，发布动作后续在列表页继续补。'"
+      [subtitle]="''"
       [icon]="'notification'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body>
-        <form id="announcement-create-form" class="dialog-form" (ngSubmit)="submitForm()">
-          <label class="dialog-field">
-            <span class="dialog-field__label">标题</span>
-            <input
-              nz-input
-              maxlength="120"
-              placeholder="例如：Hub v2 本周发布计划"
-              [ngModel]="draft().title"
-              name="title"
-              (ngModelChange)="updateField('title', $event)"
-            />
-          </label>
-
-          <label class="dialog-field">
-            <span class="dialog-field__label">摘要</span>
-            <textarea
-              nz-input
-              rows="3"
-              placeholder="给列表卡片使用的简短摘要。"
-              [ngModel]="draft().summary"
-              name="summary"
-              (ngModelChange)="updateField('summary', $event)"
-            ></textarea>
-          </label>
-
-          <div class="dialog-form__grid dialog-form__grid--wide">
-            <label class="dialog-field">
-              <span class="dialog-field__label">范围</span>
-              <nz-select
-                [ngModel]="draft().scope"
-                name="scope"
-                (ngModelChange)="updateField('scope', $event)"
-              >
-                <nz-option nzLabel="项目内" nzValue="project"></nz-option>
-                <nz-option nzLabel="全局" nzValue="global"></nz-option>
-              </nz-select>
-            </label>
-
-            <label class="dialog-field">
-              <span class="dialog-field__label">过期时间</span>
-              <input
-                nz-input
-                type="date"
-                [ngModel]="draft().expireAt"
-                name="expireAt"
-                (ngModelChange)="updateField('expireAt', $event)"
-              />
-            </label>
+        <form id="announcement-create-form" nz-form nzLayout="vertical" (ngSubmit)="submitForm()">
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="24">
+              <nz-form-item>
+                <nz-form-label nzRequired>标题</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    maxlength="120"
+                    placeholder="例如：Hub v2 本周发布计划"
+                    [ngModel]="draft().title"
+                    name="title"
+                    (ngModelChange)="updateField('title', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
           </div>
 
-          <label class="dialog-field">
-            <span class="dialog-field__label">正文</span>
-            <textarea
-              nz-input
-              rows="10"
-              placeholder="公告正文，当前先用 textarea 代替富文本编辑器。"
-              [ngModel]="draft().contentMd"
-              name="contentMd"
-              (ngModelChange)="updateField('contentMd', $event)"
-            ></textarea>
-          </label>
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="24">
+              <nz-form-item>
+                <nz-form-label>摘要</nz-form-label>
+                <nz-form-control>
+                  <textarea
+                    nz-input
+                    rows="3"
+                    placeholder="给列表卡片使用的简短摘要。"
+                    [ngModel]="draft().summary"
+                    name="summary"
+                    (ngModelChange)="updateField('summary', $event)"
+                  ></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
 
-          <label class="content-checkbox">
-            <input
-              nz-checkbox
-              type="checkbox"
-              [ngModel]="draft().pinned"
-              name="pinned"
-              (ngModelChange)="updateField('pinned', $event)"
-            />
-            <span>置顶显示</span>
-          </label>
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label>范围</nz-form-label>
+                <nz-form-control>
+                  <nz-select
+                    [ngModel]="draft().scope"
+                    name="scope"
+                    (ngModelChange)="updateField('scope', $event)"
+                  >
+                    <nz-option nzLabel="项目内" nzValue="project"></nz-option>
+                    <nz-option nzLabel="全局" nzValue="global"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label>过期时间</nz-form-label>
+                <nz-form-control>
+                  <nz-date-picker
+                    nzFormat="yyyy-MM-dd"
+                    nzPlaceHolder="选择过期时间"
+                    [ngModel]="expireAtDate()"
+                    name="expireAtDate"
+                    (ngModelChange)="onExpireAtDateChange($event)"
+                  ></nz-date-picker>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="24">
+              <nz-form-item>
+                <nz-form-label>正文</nz-form-label>
+                <nz-form-control>
+                  <textarea
+                    nz-input
+                    rows="10"
+                    placeholder="公告正文，当前先用 textarea 代替富文本编辑器。"
+                    [ngModel]="draft().contentMd"
+                    name="contentMd"
+                    (ngModelChange)="updateField('contentMd', $event)"
+                  ></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="24">
+              <label nz-checkbox [ngModel]="draft().pinned" name="pinned" (ngModelChange)="updateField('pinned', $event)">
+                置顶显示
+              </label>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -135,20 +164,15 @@ const DEFAULT_DRAFT: Draft = {
   `,
   styles: [
     `
-      .dialog-form__grid--wide {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      :host ::ng-deep .ant-picker {
+        width: 100%;
       }
-      .content-checkbox {
+      :host ::ng-deep .ant-checkbox-wrapper {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         color: var(--text-secondary);
         font-size: 13px;
-      }
-      @media (max-width: 768px) {
-        .dialog-form__grid--wide {
-          grid-template-columns: 1fr;
-        }
       }
     `,
   ],
@@ -164,6 +188,14 @@ export class AnnouncementCreateDialogComponent {
 
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
   readonly isEdit = computed(() => !!this.value());
+  readonly expireAtDate = computed<Date | null>(() => {
+    const value = this.draft().expireAt?.trim();
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  });
 
   constructor() {
     effect(() => {
@@ -192,6 +224,17 @@ export class AnnouncementCreateDialogComponent {
 
   updateField<K extends keyof Draft>(key: K, value: Draft[K]): void {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
+  }
+
+  onExpireAtDateChange(value: Date | null): void {
+    if (!value) {
+      this.updateField('expireAt', '' as Draft['expireAt']);
+      return;
+    }
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    this.updateField('expireAt', `${year}-${month}-${day}` as Draft['expireAt']);
   }
 
   submitForm(): void {

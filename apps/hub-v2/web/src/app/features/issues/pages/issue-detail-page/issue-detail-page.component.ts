@@ -4,7 +4,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
-import { SideDetailLayoutComponent } from '@shared/ui';
+import { MarkdownViewerComponent, SideDetailLayoutComponent } from '@shared/ui';
 import { IssueActivityTimelineComponent } from '../../components/issue-activity-timeline/issue-activity-timeline.component';
 import { IssueAttachmentsPanelComponent } from '../../components/issue-attachments-panel/issue-attachments-panel.component';
 import { IssueCommentEditorComponent } from '../../components/issue-comment-editor/issue-comment-editor.component';
@@ -33,6 +33,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
     IssueAssignDialogComponent,
     IssueAddParticipantsDialogComponent,
     IssueTransitionDialogComponent,
+    MarkdownViewerComponent
   ],
   providers: [IssueDetailStore],
   template: `
@@ -68,7 +69,12 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
 
           <section class="description-card">
             <h3>问题描述</h3>
-            <div class="description">{{ issue.description || '暂无描述' }}</div>
+            <!-- <div class="description">{{ issue.description || '暂无描述' }}</div> -->
+              @if (issue.description) {
+                <app-markdown-viewer [content]="issue.description" [showToc]="true"></app-markdown-viewer>
+              } @else {
+                暂无描述
+              }
             @if (issue.resolutionSummary) {
               <div class="resolution">
                 <div class="resolution__label">解决说明</div>

@@ -14,7 +14,7 @@ import { IssueDetailDrawerPageComponent } from '../../pages/issue-detail-page/is
       [nzVisible]="open()"
       [nzClosable]="false"
       [nzMaskClosable]="true"
-      [nzWidth]="1140"
+      [nzWidth]="860"
       [nzWrapClassName]="'issue-detail-drawer'"
       [nzBodyStyle]="drawerBodyStyle"
       (nzOnClose)="close.emit()"

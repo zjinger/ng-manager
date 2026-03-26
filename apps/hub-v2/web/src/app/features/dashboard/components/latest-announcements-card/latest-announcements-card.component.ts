@@ -29,7 +29,7 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
               <div class="announcement__summary">{{ item.summary }}</div>
             }
             <div class="announcement__meta">
-              <span>{{ item.projectId || '全局公告' }}</span>
+              <span>{{ projectLabel(item) }}</span>
               <span>{{ item.publishAt || item.id }}</span>
             </div>
           </div>
@@ -126,4 +126,16 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
 })
 export class LatestAnnouncementsCardComponent {
   readonly items = input.required<DashboardAnnouncement[]>();
+  readonly currentProjectId = input<string | null>(null);
+  readonly currentProjectName = input<string | null>(null);
+
+  projectLabel(item: DashboardAnnouncement): string {
+    if (!item.projectId) {
+      return '全局公告';
+    }
+    if (this.currentProjectId() && item.projectId === this.currentProjectId()) {
+      return this.currentProjectName() || '项目公告';
+    }
+    return '项目公告';
+  }
 }

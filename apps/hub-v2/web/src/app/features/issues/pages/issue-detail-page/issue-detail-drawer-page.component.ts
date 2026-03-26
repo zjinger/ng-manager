@@ -62,7 +62,12 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
             <h3>问题描述</h3>
             <div class="description">
               @if (issue.description) {
-                <app-markdown-viewer [content]="issue.description"></app-markdown-viewer>
+                <app-markdown-viewer
+                  [content]="issue.description"
+                  [showToc]="true"
+                  [tocVariant]="'floating'"
+                  [tocCollapsedByDefault]="true"
+                ></app-markdown-viewer>
               } @else {
                 暂无描述
               }
@@ -150,7 +155,7 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
       .detail-page {
         display:grid;
         gap:12px;
-        grid-template-columns: 1.5fr 1fr;
+        grid-template-columns: 2fr 1fr;
       }
       .detail-stack {
         display: flex;
@@ -172,6 +177,10 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
         border: 1px solid var(--border-color);
         border-radius: 24px;
         box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+      }
+      .description-card{
+        max-height: 500px;
+        overflow: auto;
       }
       .description-card h3 {
         margin: 0 0 14px;

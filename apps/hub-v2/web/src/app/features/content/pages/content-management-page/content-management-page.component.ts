@@ -1,12 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ProjectContextStore } from '@core/state';
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { AnnouncementListComponent } from '../../components/announcement-list/announcement-list.component';
+import { ContentDetailDrawerComponent } from '../../components/content-detail-drawer/content-detail-drawer.component';
 import { ContentTabsComponent } from '../../components/content-tabs/content-tabs.component';
 import { DocumentListComponent } from '../../components/document-list/document-list.component';
 import { ReleaseListComponent } from '../../components/release-list/release-list.component';
@@ -32,6 +35,7 @@ import { ContentStore } from '../../store/content.store';
     FormsModule,
     NzButtonModule,
     NzSelectModule,
+    NzIconModule,
     PageHeaderComponent,
     PageToolbarComponent,
     SearchBoxComponent,
@@ -44,6 +48,7 @@ import { ContentStore } from '../../store/content.store';
     AnnouncementCreateDialogComponent,
     DocumentCreateDialogComponent,
     ReleaseCreateDialogComponent,
+    ContentDetailDrawerComponent,
   ],
   providers: [ContentStore],
   template: `
@@ -68,6 +73,7 @@ import { ContentStore } from '../../store/content.store';
         <button nz-button class="toolbar-filter-btn" (click)="applyFilters()">筛选</button>
 
         <button nz-button nzType="primary" class="toolbar-create-btn" (click)="openCreateDialog()">
+          <nz-icon nzType="plus" nzTheme="outline" />
           {{ createLabel() }}
         </button>
       </app-filter-bar>
@@ -93,22 +99,22 @@ import { ContentStore } from '../../store/content.store';
         @case ('announcements') {
           <app-announcement-list
             [items]="announcementItems()"
-            (edit)="openAnnouncementEdit($event)"
-            (publish)="publishAnnouncement($event)"
+            [selectedId]="selectedAnnouncementId()"
+            (select)="openAnnouncementDetail($event)"
           />
         }
         @case ('documents') {
           <app-document-list
             [items]="documentItems()"
-            (edit)="openDocumentEdit($event)"
-            (publish)="publishDocument($event)"
+            [selectedId]="selectedDocumentId()"
+            (select)="openDocumentDetail($event)"
           />
         }
         @case ('releases') {
           <app-release-list
             [items]="releaseItems()"
-            (edit)="openReleaseEdit($event)"
-            (publish)="publishRelease($event)"
+            [selectedId]="selectedReleaseId()"
+            (select)="openReleaseDetail($event)"
           />
         }
       }
@@ -140,6 +146,18 @@ import { ContentStore } from '../../store/content.store';
       (cancel)="closeReleaseDialog()"
       (create)="createRelease($event)"
     />
+
+    <app-content-detail-drawer
+      [open]="detailDrawerOpen()"
+      [tab]="detailTab()"
+      [announcement]="detailAnnouncement()"
+      [document]="detailDocument()"
+      [release]="detailRelease()"
+      [projectName]="projectContext.currentProject()?.name || ''"
+      (edit)="editCurrentDetail()"
+      (publish)="publishCurrentDetail()"
+      (close)="closeDetailDrawer()"
+    />
   `,
   styles: [
     `
@@ -160,6 +178,7 @@ import { ContentStore } from '../../store/content.store';
 export class ContentManagementPageComponent {
   readonly store = inject(ContentStore);
   readonly projectContext = inject(ProjectContextStore);
+  private readonly modal = inject(NzModalService);
 
   readonly keyword = signal('');
   readonly status = signal<ContentStatus>('');
@@ -169,6 +188,11 @@ export class ContentManagementPageComponent {
   readonly editingAnnouncement = signal<AnnouncementEntity | null>(null);
   readonly editingDocument = signal<DocumentEntity | null>(null);
   readonly editingRelease = signal<ReleaseEntity | null>(null);
+  readonly detailDrawerOpen = signal(false);
+  readonly detailTab = signal<ContentTab | null>(null);
+  readonly detailAnnouncement = signal<AnnouncementEntity | null>(null);
+  readonly detailDocument = signal<DocumentEntity | null>(null);
+  readonly detailRelease = signal<ReleaseEntity | null>(null);
 
   readonly subtitle = computed(() => {
     const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
@@ -211,17 +235,22 @@ export class ContentManagementPageComponent {
   readonly announcementItems = computed(() => this.store.items() as AnnouncementEntity[]);
   readonly documentItems = computed(() => this.store.items() as DocumentEntity[]);
   readonly releaseItems = computed(() => this.store.items() as ReleaseEntity[]);
+  readonly selectedAnnouncementId = computed(() => (this.detailTab() === 'announcements' ? this.detailAnnouncement()?.id ?? null : null));
+  readonly selectedDocumentId = computed(() => (this.detailTab() === 'documents' ? this.detailDocument()?.id ?? null : null));
+  readonly selectedReleaseId = computed(() => (this.detailTab() === 'releases' ? this.detailRelease()?.id ?? null : null));
 
   constructor() {
     this.store.initialize();
 
     effect(() => {
       this.store.refreshForProject(this.projectContext.currentProjectId());
+      this.closeDetailDrawer();
     });
   }
 
   switchTab(tab: ContentTab): void {
     this.store.setTab(tab);
+    this.closeDetailDrawer();
   }
 
   applyFilters(): void {
@@ -263,6 +292,30 @@ export class ContentManagementPageComponent {
     this.releaseDialogOpen.set(true);
   }
 
+  openAnnouncementDetail(item: AnnouncementEntity): void {
+    this.detailTab.set('announcements');
+    this.detailAnnouncement.set(item);
+    this.detailDocument.set(null);
+    this.detailRelease.set(null);
+    this.detailDrawerOpen.set(true);
+  }
+
+  openDocumentDetail(item: DocumentEntity): void {
+    this.detailTab.set('documents');
+    this.detailAnnouncement.set(null);
+    this.detailDocument.set(item);
+    this.detailRelease.set(null);
+    this.detailDrawerOpen.set(true);
+  }
+
+  openReleaseDetail(item: ReleaseEntity): void {
+    this.detailTab.set('releases');
+    this.detailAnnouncement.set(null);
+    this.detailDocument.set(null);
+    this.detailRelease.set(item);
+    this.detailDrawerOpen.set(true);
+  }
+
   createAnnouncement(input: CreateAnnouncementInput): void {
     const editing = this.editingAnnouncement();
     if (editing) {
@@ -282,7 +335,10 @@ export class ContentManagementPageComponent {
         ...input,
         projectId: this.projectContext.currentProjectId(),
       },
-      () => this.closeAnnouncementDialog(),
+      (created) => {
+        this.closeAnnouncementDialog();
+        this.confirmPublishAfterCreate('announcements', created.id);
+      },
     );
   }
 
@@ -305,7 +361,10 @@ export class ContentManagementPageComponent {
         ...input,
         projectId: this.projectContext.currentProjectId(),
       },
-      () => this.closeDocumentDialog(),
+      (created) => {
+        this.closeDocumentDialog();
+        this.confirmPublishAfterCreate('documents', created.id);
+      },
     );
   }
 
@@ -328,7 +387,10 @@ export class ContentManagementPageComponent {
         ...input,
         projectId: this.projectContext.currentProjectId(),
       },
-      () => this.closeReleaseDialog(),
+      (created) => {
+        this.closeReleaseDialog();
+        this.confirmPublishAfterCreate('releases', created.id);
+      },
     );
   }
 
@@ -357,5 +419,100 @@ export class ContentManagementPageComponent {
   closeReleaseDialog(): void {
     this.releaseDialogOpen.set(false);
     this.editingRelease.set(null);
+  }
+
+  closeDetailDrawer(): void {
+    this.detailDrawerOpen.set(false);
+    this.detailTab.set(null);
+    this.detailAnnouncement.set(null);
+    this.detailDocument.set(null);
+    this.detailRelease.set(null);
+  }
+
+  editCurrentDetail(): void {
+    const tab = this.detailTab();
+    if (tab === 'announcements') {
+      const item = this.detailAnnouncement();
+      if (item) {
+        this.closeDetailDrawer();
+        this.openAnnouncementEdit(item);
+      }
+      return;
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      if (item) {
+        this.closeDetailDrawer();
+        this.openDocumentEdit(item);
+      }
+      return;
+    }
+    if (tab === 'releases') {
+      const item = this.detailRelease();
+      if (item) {
+        this.closeDetailDrawer();
+        this.openReleaseEdit(item);
+      }
+    }
+  }
+
+  publishCurrentDetail(): void {
+    const tab = this.detailTab();
+    if (tab === 'announcements') {
+      const item = this.detailAnnouncement();
+      if (item) {
+        this.publishAnnouncement(item);
+      }
+      return;
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      if (item) {
+        this.publishDocument(item);
+      }
+      return;
+    }
+    if (tab === 'releases') {
+      const item = this.detailRelease();
+      if (item) {
+        this.publishRelease(item);
+      }
+    }
+  }
+
+  private confirmPublishAfterCreate(
+    type: 'announcements' | 'documents' | 'releases',
+    entityId: string,
+  ): void {
+    const title =
+      type === 'announcements'
+        ? '公告已创建，是否立即发布？'
+        : type === 'documents'
+          ? '文档已创建，是否立即发布？'
+          : '发布记录已创建，是否立即发布？';
+    const content =
+      type === 'announcements'
+        ? '立即发布后，项目成员将可见该公告。'
+        : type === 'documents'
+          ? '立即发布后，项目成员将可见该文档。'
+          : '立即发布后，项目成员将可见该版本发布信息。';
+
+    this.modal.confirm({
+      nzTitle: title,
+      nzContent: content,
+      nzOkText: '立即发布',
+      nzCancelText: '暂不发布',
+      nzOnOk: () => {
+        if (type === 'announcements') {
+          this.store.publishAnnouncement(entityId);
+          return;
+        }
+        if (type === 'documents') {
+          this.store.publishDocument(entityId);
+          return;
+        }
+        this.store.publishRelease(entityId);
+      },
+    });
   }
 }

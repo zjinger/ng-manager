@@ -119,13 +119,16 @@ export class ContentStore {
     }
   }
 
-  createAnnouncement(input: CreateAnnouncementInput, done?: () => void): void {
+  createAnnouncement(input: CreateAnnouncementInput, done?: (entity: AnnouncementEntity) => void): void {
     this.busyState.set(true);
     this.api.createAnnouncement(input).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        done?.();
-        this.setTab('announcements');
+        done?.(entity);
+        if (this.tabState() !== 'announcements') {
+          this.tabState.set('announcements');
+        }
+        this.load();
       },
       error: () => {
         this.busyState.set(false);
@@ -133,13 +136,16 @@ export class ContentStore {
     });
   }
 
-  createDocument(input: CreateDocumentInput, done?: () => void): void {
+  createDocument(input: CreateDocumentInput, done?: (entity: DocumentEntity) => void): void {
     this.busyState.set(true);
     this.api.createDocument(input).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        done?.();
-        this.setTab('documents');
+        done?.(entity);
+        if (this.tabState() !== 'documents') {
+          this.tabState.set('documents');
+        }
+        this.load();
       },
       error: () => {
         this.busyState.set(false);
@@ -147,13 +153,16 @@ export class ContentStore {
     });
   }
 
-  createRelease(input: CreateReleaseInput, done?: () => void): void {
+  createRelease(input: CreateReleaseInput, done?: (entity: ReleaseEntity) => void): void {
     this.busyState.set(true);
     this.api.createRelease(input).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        done?.();
-        this.setTab('releases');
+        done?.(entity);
+        if (this.tabState() !== 'releases') {
+          this.tabState.set('releases');
+        }
+        this.load();
       },
       error: () => {
         this.busyState.set(false);

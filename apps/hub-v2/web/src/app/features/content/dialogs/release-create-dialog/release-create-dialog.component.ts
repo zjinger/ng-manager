@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
 import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
 
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { CreateReleaseInput, ReleaseEntity } from '../../models/content.model';
 
 type Draft = Omit<CreateReleaseInput, 'projectId'>;
@@ -20,81 +23,103 @@ const DEFAULT_DRAFT: Draft = {
 @Component({
   selector: 'app-release-create-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzInputModule, DialogShellComponent, FormActionsComponent],
+  imports: [FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzInputModule, NzIconModule, DialogShellComponent, FormActionsComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
       [width]="860"
       [title]="(isEdit() ? '编辑发布' : '新建发布') + (!isEdit() && projectName() ? ' · ' + projectName() : '')"
-      [subtitle]="isEdit() ? '修改发布信息后保存。' : '录入版本号、渠道和更新说明，后续再补完整发布流。'"
+      [subtitle]="''"
       [icon]="'cloud-upload'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body>
-        <form id="release-create-form" class="dialog-form" (ngSubmit)="submitForm()">
-          <div class="dialog-form__grid dialog-form__grid--wide">
-            <label class="dialog-field">
-              <span class="dialog-field__label">标题</span>
-              <input
-                nz-input
-                maxlength="120"
-                placeholder="例如：Hub v2 Beta 发布"
-                [ngModel]="draft().title"
-                name="title"
-                (ngModelChange)="updateField('title', $event)"
-              />
-            </label>
+        <form id="release-create-form" nz-form nzLayout="vertical" (ngSubmit)="submitForm()">
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>标题</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    maxlength="120"
+                    placeholder="例如：Hub v2 Beta 发布"
+                    [ngModel]="draft().title"
+                    name="title"
+                    (ngModelChange)="updateField('title', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
 
-            <label class="dialog-field">
-              <span class="dialog-field__label">版本号</span>
-              <input
-                nz-input
-                maxlength="40"
-                placeholder="例如：v2.0.0-beta.1"
-                [ngModel]="draft().version"
-                name="version"
-                (ngModelChange)="updateField('version', $event)"
-              />
-            </label>
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>版本号</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    maxlength="40"
+                    placeholder="例如：v2.0.0-beta.1"
+                    [ngModel]="draft().version"
+                    name="version"
+                    (ngModelChange)="updateField('version', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
           </div>
 
-          <div class="dialog-form__grid dialog-form__grid--wide">
-            <label class="dialog-field">
-              <span class="dialog-field__label">渠道</span>
-              <input
-                nz-input
-                maxlength="40"
-                placeholder="例如：stable / beta / canary"
-                [ngModel]="draft().channel"
-                name="channel"
-                (ngModelChange)="updateField('channel', $event)"
-              />
-            </label>
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label>渠道</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    maxlength="40"
+                    placeholder="例如：stable / beta / canary"
+                    [ngModel]="draft().channel"
+                    name="channel"
+                    (ngModelChange)="updateField('channel', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
 
-            <label class="dialog-field">
-              <span class="dialog-field__label">下载地址</span>
-              <input
-                nz-input
-                maxlength="200"
-                placeholder="可选：安装包地址"
-                [ngModel]="draft().downloadUrl"
-                name="downloadUrl"
-                (ngModelChange)="updateField('downloadUrl', $event)"
-              />
-            </label>
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label>下载地址</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    maxlength="200"
+                    placeholder="可选：安装包地址"
+                    [ngModel]="draft().downloadUrl"
+                    name="downloadUrl"
+                    (ngModelChange)="updateField('downloadUrl', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
           </div>
 
-          <label class="dialog-field">
-            <span class="dialog-field__label">更新说明</span>
-            <textarea
-              nz-input
-              rows="10"
-              placeholder="补充本次版本更新内容。"
-              [ngModel]="draft().notes"
-              name="notes"
-              (ngModelChange)="updateField('notes', $event)"
-            ></textarea>
-          </label>
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="24">
+              <nz-form-item>
+                <nz-form-label>更新说明</nz-form-label>
+                <nz-form-control>
+                  <textarea
+                    nz-input
+                    rows="10"
+                    placeholder="补充本次版本更新内容。"
+                    [ngModel]="draft().notes"
+                    name="notes"
+                    (ngModelChange)="updateField('notes', $event)"
+                  ></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -109,24 +134,14 @@ const DEFAULT_DRAFT: Draft = {
             [nzLoading]="busy()"
             [disabled]="!canSubmit()"
           >
+            <nz-icon nzType="check" nzTheme="outline"/>
             {{ isEdit() ? '保存发布' : '创建发布' }}
           </button>
         </app-form-actions>
       </ng-container>
     </app-dialog-shell>
   `,
-  styles: [
-    `
-      .dialog-form__grid--wide {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      @media (max-width: 768px) {
-        .dialog-form__grid--wide {
-          grid-template-columns: 1fr;
-        }
-      }
-    `,
-  ],
+  styles: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReleaseCreateDialogComponent {
@@ -174,13 +189,14 @@ export class ReleaseCreateDialogComponent {
     }
 
     const draft = this.draft();
+    const notes = draft.notes?.trim();
+    const downloadUrl = draft.downloadUrl?.trim();
     this.create.emit({
-      ...draft,
       title: draft.title.trim(),
       version: draft.version.trim(),
       channel: draft.channel.trim() || 'stable',
-      notes: draft.notes?.trim() || '',
-      downloadUrl: draft.downloadUrl?.trim() || '',
+      notes: notes || undefined,
+      downloadUrl: downloadUrl || undefined,
     });
   }
 }
