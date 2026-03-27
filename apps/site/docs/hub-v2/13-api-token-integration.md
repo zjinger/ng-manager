@@ -1,6 +1,6 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-03-26
+最后更新：2026-03-27
 
 ## 1. 背景与目标
 
@@ -93,17 +93,17 @@ Issue：
 
 - `GET /api/token/projects/:projectKey/issues`
 - `GET /api/token/projects/:projectKey/issues/:issueId`
-- `GET /projects/:projectKey/issues/:issueId/logs`
+- `GET /api/token/projects/:projectKey/issues/:issueId/logs`
 
 RD：
 
 - `GET /api/token/projects/:projectKey/rd-items`
 - `GET /api/token/projects/:projectKey/rd-items/:itemId`
-- `GET /projects/:projectKey/rd-items/:itemId/logs`
+- `GET /api/token/projects/:projectKey/rd-items/:itemId/logs`
 
 Feedback：
-- `GET /projects/:projectKey/feedbacks`
-- `GET /projects/:projectKey/feedbacks/:feedbackId`
+- `GET /api/token/projects/:projectKey/feedbacks`
+- `GET /api/token/projects/:projectKey/feedbacks/:feedbackId`
 
 ---
 
@@ -112,10 +112,15 @@ Feedback：
 Issue：
 
 - `POST /api/personal/projects/:projectKey/issues/:issueId/comments`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/transitions`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/assignee`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/assign`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/claim`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/start`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/resolve`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/verify`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/reopen`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/close`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/participants`
-- `DELETE /api/personal/projects/:projectKey/issues/:issueId/participants/:userId`
+- `DELETE /api/personal/projects/:projectKey/issues/:issueId/participants/:participantId`
 
 RD：
 
@@ -252,3 +257,18 @@ Personal Token 表：`personal_api_tokens`
 - Scope 不匹配或角色不匹配返回 `403`
 - webapp 不承担 `projectKey` 拼接与 token 鉴权细节
 
+---
+
+## 12. Curl 验证示例
+
+### 12.1 Personal Token 写评论
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/comments" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"content\":\"[PTK验证] 评论写入测试\"}"
+```
+
+### 12.2 Project Token 读取 Issue 列表
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues?page=1&pageSize=20" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
