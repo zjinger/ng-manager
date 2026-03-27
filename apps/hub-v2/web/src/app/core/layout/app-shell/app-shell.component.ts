@@ -31,15 +31,14 @@ export class AppShellComponent implements OnDestroy {
     this.projectContext
       .loadProjects()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.navigationBadgeStore.load();
-        },
-      });
+      .subscribe();
 
     effect(() => {
-      this.projectContext.currentProjectId();
-      this.navigationBadgeStore.load();
+      const projectId = this.projectContext.currentProjectId();
+      if (!projectId) {
+        return;
+      }
+      this.navigationBadgeStore.load({ force: true });
     });
   }
 

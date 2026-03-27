@@ -81,10 +81,10 @@ export class SharedConfigStore {
   create(input: CreateSharedConfigInput, done?: () => void): void {
     this.busyState.set(true);
     this.api.create(input).subscribe({
-      next: () => {
+      next: (created) => {
         this.busyState.set(false);
         done?.();
-        this.load();
+        this.insertOrRefresh(created);
       },
       error: () => {
         this.busyState.set(false);
@@ -95,14 +95,58 @@ export class SharedConfigStore {
   update(configId: string, input: UpdateSharedConfigInput, done?: () => void): void {
     this.busyState.set(true);
     this.api.update(configId, input).subscribe({
-      next: () => {
+      next: (updated) => {
         this.busyState.set(false);
         done?.();
-        this.load();
+        this.patchOrRefresh(updated);
       },
       error: () => {
         this.busyState.set(false);
       },
     });
+  }
+
+  private patchOrRefresh(updated: SharedConfigEntity): void {
+    const query = this.queryState();
+    const hasFilter =
+      !!query.keyword?.trim() ||
+      !!query.status?.trim() ||
+      !!query.scope?.trim() ||
+      !!query.category?.trim() ||
+      query.page > 1;
+
+    if (hasFilter) {
+      this.load();
+      return;
+    }
+
+    const current = this.itemsState();
+    const index = current.findIndex((item) => item.id === updated.id);
+    if (index < 0) {
+      this.load();
+      return;
+    }
+
+    const next = [...current];
+    next[index] = updated;
+    this.itemsState.set(next);
+  }
+
+  private insertOrRefresh(created: SharedConfigEntity): void {
+    const query = this.queryState();
+    const hasFilter =
+      !!query.keyword?.trim() ||
+      !!query.status?.trim() ||
+      !!query.scope?.trim() ||
+      !!query.category?.trim() ||
+      query.page > 1;
+
+    if (hasFilter) {
+      this.load();
+      return;
+    }
+
+    this.itemsState.update((items) => [created, ...items].slice(0, query.pageSize));
+    this.totalState.update((total) => total + 1);
   }
 }

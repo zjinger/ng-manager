@@ -6,7 +6,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { DialogShellComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
 
-export type IssueTransitionMode = 'resolve' | 'reopen';
+export type IssueTransitionMode = 'resolve' | 'reopen' | 'close';
 
 @Component({
   selector: 'app-issue-transition-dialog',
@@ -39,7 +39,14 @@ export type IssueTransitionMode = 'resolve' | 'reopen';
 
       <ng-container dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
-        <button nz-button nzType="primary" [disabled]="!content().trim()" [nzLoading]="busy()" type="submit" form="issue-transition-form">
+        <button
+          nz-button
+          nzType="primary"
+          [disabled]="reasonRequired() && !content().trim()"
+          [nzLoading]="busy()"
+          type="submit"
+          form="issue-transition-form"
+        >
           {{ confirmText() }}
         </button>
       </ng-container>
@@ -58,19 +65,58 @@ export class IssueTransitionDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly mode = input<IssueTransitionMode>('resolve');
+  readonly reasonRequired = input(false);
   readonly issue = input<IssueEntity | null>(null);
   readonly confirm = output<{ content: string }>();
   readonly cancel = output<void>();
 
   readonly content = signal('');
 
-  readonly title = computed(() => (this.mode() === 'resolve' ? '标记解决' : '重新打开'));
-  readonly subtitle = computed(() => (this.mode() === 'resolve' ? '填写本次处理结果。' : '说明重开的原因。'));
-  readonly fieldLabel = computed(() => (this.mode() === 'resolve' ? '解决说明' : '重开说明'));
-  readonly confirmText = computed(() => (this.mode() === 'resolve' ? '确认解决' : '确认重开'));
-  readonly placeholder = computed(() =>
-    this.mode() === 'resolve' ? '例如：已替换为主题变量，并补齐 hover 阴影。' : '例如：验收时发现暗黑态还有一处浅色残留。'
-  );
+  readonly title = computed(() => {
+    if (this.mode() === 'resolve') {
+      return '标记解决';
+    }
+    if (this.mode() === 'reopen') {
+      return '重新打开';
+    }
+    return '关闭问题';
+  });
+  readonly subtitle = computed(() => {
+    if (this.mode() === 'resolve') {
+      return '填写本次处理结果。';
+    }
+    if (this.mode() === 'reopen') {
+      return '说明重开的原因。';
+    }
+    return this.reasonRequired() ? '请填写关闭原因。' : '可选填写关闭说明。';
+  });
+  readonly fieldLabel = computed(() => {
+    if (this.mode() === 'resolve') {
+      return '解决说明';
+    }
+    if (this.mode() === 'reopen') {
+      return '重开说明';
+    }
+    return this.reasonRequired() ? '关闭原因' : '关闭说明';
+  });
+  readonly confirmText = computed(() => {
+    if (this.mode() === 'resolve') {
+      return '确认解决';
+    }
+    if (this.mode() === 'reopen') {
+      return '确认重开';
+    }
+    return '确认关闭';
+  });
+  readonly placeholder = computed(() => {
+    if (this.mode() === 'resolve') {
+      return '例如：已替换为主题变量，并补齐 hover 阴影。';
+    }
+    if (this.mode() === 'reopen') {
+      return '例如：验收时发现暗黑态还有一处浅色残留。';
+    }
+    return this.reasonRequired() ? '例如：需求取消 / 重复问题 / 无法复现。' : '可选填写关闭说明。';
+  });
 
   constructor() {
     effect(() => {
@@ -86,7 +132,7 @@ export class IssueTransitionDialogComponent {
 
   submitForm(): void {
     const value = this.content().trim();
-    if (!value) {
+    if (!value && this.reasonRequired()) {
       return;
     }
     this.confirm.emit({ content: value });

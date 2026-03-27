@@ -33,7 +33,15 @@ export class RdApiService {
   }
 
   listItems(query: Partial<RdListQuery>) {
-    return this.api.get<RdListResult>('/rd/items', query);
+    const normalizedQuery: Record<string, string | number | boolean | null | undefined> = {
+      ...query,
+      status: query.status && query.status.length > 0 ? query.status.join(',') : undefined,
+      type: query.type && query.type.length > 0 ? query.type.join(',') : undefined,
+      priority: query.priority && query.priority.length > 0 ? query.priority.join(',') : undefined,
+      assigneeIds: query.assigneeIds && query.assigneeIds.length > 0 ? query.assigneeIds.join(',') : undefined,
+      stageIds: query.stageIds && query.stageIds.length > 0 ? query.stageIds.join(',') : undefined,
+    };
+    return this.api.get<RdListResult>('/rd/items', normalizedQuery);
   }
 
   getById(itemId: string) {

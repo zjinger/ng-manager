@@ -11,8 +11,16 @@ const DEFAULT_QUERY: IssueListQuery = {
   pageSize: 20,
   keyword: '',
   projectId: '',
-  status: '',
-  priority: '',
+  status: [],
+  priority: [],
+  reporterIds: [],
+  assigneeIds: [],
+  moduleCodes: [],
+  versionCodes: [],
+  environmentCodes: [],
+  includeAssigneeParticipants: true,
+  sortBy: 'updatedAt',
+  sortOrder: 'desc',
 };
 
 @Injectable()
@@ -64,6 +72,46 @@ export class IssueListStore {
       page: patch.page ?? query.page ?? 1,
     }));
     this.load();
+  }
+
+  refresh(): void {
+    this.load();
+  }
+
+  patchOrRefresh(updated: IssueEntity): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    const query = this.queryState();
+    const hasComplexFilter =
+      (query.status?.length ?? 0) > 0 ||
+      (query.priority?.length ?? 0) > 0 ||
+      (query.reporterIds?.length ?? 0) > 0 ||
+      (query.assigneeIds?.length ?? 0) > 0 ||
+      (query.moduleCodes?.length ?? 0) > 0 ||
+      (query.versionCodes?.length ?? 0) > 0 ||
+      (query.environmentCodes?.length ?? 0) > 0 ||
+      !!query.keyword?.trim();
+
+    if (hasComplexFilter) {
+      this.load();
+      return;
+    }
+
+    const index = result.items.findIndex((item) => item.id === updated.id);
+    if (index < 0) {
+      return;
+    }
+
+    const items = [...result.items];
+    items[index] = updated;
+    this.resultState.set({
+      ...result,
+      items,
+    });
   }
 
   private load(): void {

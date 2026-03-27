@@ -13,9 +13,9 @@ export class DashboardStore {
   readonly data = computed(() => this.dataState());
   readonly loading = computed(() => this.loadingState());
 
-  load(): void {
+  load(options?: { force?: boolean }): void {
     this.loadingState.set(true);
-    this.dashboardApi.getHomeData().subscribe({
+    this.dashboardApi.getHomeData(options).subscribe({
       next: (data) => {
         this.dataState.set(data);
         this.loadingState.set(false);

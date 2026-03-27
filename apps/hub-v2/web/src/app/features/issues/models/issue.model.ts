@@ -17,6 +17,8 @@ export interface IssueEntity {
   reporterName: string;
   assigneeId: string | null;
   assigneeName: string | null;
+  participantCount?: number;
+  participantNames?: string[];
   verifierId: string | null;
   verifierName: string | null;
   moduleCode: string | null;
@@ -99,8 +101,16 @@ export interface IssueListQuery {
   pageSize: number;
   keyword?: string;
   projectId?: string;
-  status?: string;
-  priority?: string;
+  status: string[];
+  priority: string[];
+  reporterIds: string[];
+  assigneeIds: string[];
+  moduleCodes: string[];
+  versionCodes: string[];
+  environmentCodes: string[];
+  includeAssigneeParticipants: boolean;
+  sortBy: 'updatedAt' | 'createdAt';
+  sortOrder: 'desc' | 'asc';
 }
 
 export type IssueListResult = PageResult<IssueEntity>;
@@ -121,4 +131,9 @@ export interface CreateIssueInput {
 
 export interface AssignIssueInput {
   assigneeId: string;
+}
+
+export interface CloseIssueInput {
+  reason?: string;
+  remark?: string;
 }

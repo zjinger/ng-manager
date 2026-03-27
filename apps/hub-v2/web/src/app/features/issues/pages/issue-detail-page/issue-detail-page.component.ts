@@ -54,17 +54,20 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
             [canStart]="store.canStart()"
             [canClaim]="store.canClaim()"
             [canAssign]="store.canAssign()"
+            [assignActionLabel]="store.assignActionLabel()"
             [canManageParticipants]="store.canManageParticipants()"
             [canResolve]="store.canResolve()"
             [canVerify]="store.canVerify()"
             [canReopen]="store.canReopen()"
+            [canClose]="store.canClose()"
             (start)="confirmStart()"
-            (claim)="store.claim()"
+            (claim)="confirmClaim()"
             (assign)="assignIssue()"
             (addParticipants)="openAddParticipants()"
             (resolve)="resolveIssue()"
             (verify)="store.verify()"
             (reopen)="reopenIssue()"
+            (close)="confirmClose()"
           />
 
           <section class="description-card">
@@ -79,6 +82,12 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
               <div class="resolution">
                 <div class="resolution__label">解决说明</div>
                 <div>{{ issue.resolutionSummary }}</div>
+              </div>
+            }
+            @if (issue.closeReason) {
+              <div class="resolution">
+                <div class="resolution__label">关闭原因</div>
+                <div>{{ issue.closeReason }}</div>
               </div>
             }
           </section>
@@ -124,6 +133,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         [open]="assignOpen()"
         [busy]="store.busy()"
         [issue]="store.issue()"
+        [actionLabel]="store.assignActionLabel()"
         [members]="store.members()"
         (cancel)="assignOpen.set(false)"
         (confirm)="confirmAssign($event.assigneeId)"
@@ -145,6 +155,16 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         [issue]="store.issue()"
         (cancel)="reopenOpen.set(false)"
         (confirm)="confirmReopen($event.content)"
+      />
+
+      <app-issue-transition-dialog
+        [open]="closeOpen()"
+        [busy]="store.busy()"
+        [mode]="'close'"
+        [reasonRequired]="closeReasonRequired()"
+        [issue]="store.issue()"
+        (cancel)="closeOpen.set(false)"
+        (confirm)="confirmCloseWithReason($event.content)"
       />
 
       <app-issue-add-participants-dialog
@@ -261,6 +281,8 @@ export class IssueDetailPageComponent {
   readonly addParticipantsOpen = signal(false);
   readonly resolveOpen = signal(false);
   readonly reopenOpen = signal(false);
+  readonly closeOpen = signal(false);
+  readonly closeReasonRequired = signal(false);
   private readonly loadedIssueId = signal<string | null>(null);
 
   constructor() {
@@ -300,6 +322,16 @@ export class IssueDetailPageComponent {
     });
   }
 
+  confirmClaim(): void {
+    this.modal.confirm({
+      nzTitle: '确认认领该问题？',
+      nzContent: '认领后你将成为负责人，可继续开始处理或转派。',
+      nzOkText: '确认认领',
+      nzCancelText: '取消',
+      nzOnOk: () => this.store.claim(),
+    });
+  }
+
   confirmAssign(assigneeId: string): void {
     this.store.assign(assigneeId);
     this.assignOpen.set(false);
@@ -318,5 +350,35 @@ export class IssueDetailPageComponent {
   confirmReopen(remark: string): void {
     this.store.reopen(remark);
     this.reopenOpen.set(false);
+  }
+
+  confirmClose(): void {
+    const issue = this.store.issue();
+    if (!issue) {
+      return;
+    }
+
+    if (issue.status === 'verified') {
+      this.modal.confirm({
+        nzTitle: '确认关闭该问题？',
+        nzContent: '关闭后状态将变为“已关闭”，如需继续处理可重新打开。',
+        nzOkText: '确认关闭',
+        nzCancelText: '取消',
+        nzOnOk: () => this.store.close(),
+      });
+      return;
+    }
+
+    this.closeReasonRequired.set(true);
+    this.closeOpen.set(true);
+  }
+
+  confirmCloseWithReason(reason: string): void {
+    const value = reason.trim();
+    if (this.closeReasonRequired() && !value) {
+      return;
+    }
+    this.store.close(value || undefined);
+    this.closeOpen.set(false);
   }
 }

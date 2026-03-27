@@ -29,6 +29,7 @@ export class IssueDetailStore {
   private readonly membersState = signal<ProjectMemberEntity[]>([]);
   private readonly loadingState = signal(false);
   private readonly busyState = signal(false);
+  private readonly actionTickState = signal(0);
 
   readonly issue = computed(() => this.issueState());
   readonly logs = computed(() => this.logsState());
@@ -38,6 +39,7 @@ export class IssueDetailStore {
   readonly members = computed(() => this.membersState());
   readonly loading = computed(() => this.loadingState());
   readonly busy = computed(() => this.busyState());
+  readonly actionTick = computed(() => this.actionTickState());
   readonly currentUser = this.authStore.currentUser;
   readonly availableMembers = computed(() => {
     const issue = this.issueState();
@@ -60,6 +62,13 @@ export class IssueDetailStore {
       return false;
     }
     return this.permissionService.canAssign(issue, currentUser, this.isProjectAdmin());
+  });
+  readonly assignActionLabel = computed(() => {
+    const issue = this.issueState();
+    if (!issue) {
+      return '重新指派';
+    }
+    return this.permissionService.getAssignActionLabel(issue, this.currentUser(), this.isProjectAdmin()) ?? '重新指派';
   });
   readonly canManageParticipants = computed(() => {
     const issue = this.issueState();
@@ -90,6 +99,14 @@ export class IssueDetailStore {
   readonly canReopen = computed(() => {
     const issue = this.issueState();
     return !!issue && ['resolved', 'verified', 'closed'].includes(issue.status) && this.permissionService.canVerify(issue, this.currentUser());
+  });
+  readonly canClose = computed(() => {
+    const issue = this.issueState();
+    return (
+      !!issue &&
+      ['open', 'in_progress', 'resolved', 'verified', 'reopened'].includes(issue.status) &&
+      this.permissionService.canClose(issue, this.currentUser())
+    );
   });
 
   load(issueId: string): void {
@@ -166,6 +183,10 @@ export class IssueDetailStore {
 
   reopen(remark?: string): void {
     this.runIssueAction((issueId) => this.issueApi.reopen(issueId, remark));
+  }
+
+  close(reason?: string, remark?: string): void {
+    this.runIssueAction((issueId) => this.issueApi.close(issueId, { reason, remark }));
   }
 
   addParticipant(userId: string): void {
@@ -278,6 +299,7 @@ export class IssueDetailStore {
         this.issueState.set(issue);
         this.busyState.set(false);
         this.refreshLogs(issueId);
+        this.actionTickState.update((value) => value + 1);
       },
       error: () => {
         this.busyState.set(false);

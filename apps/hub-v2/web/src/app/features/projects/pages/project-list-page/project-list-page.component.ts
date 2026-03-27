@@ -132,11 +132,11 @@ export class ProjectListPageComponent {
     }
     this.editBusy.set(true);
     this.projectApi.update(project.id, input).subscribe({
-      next: () => {
+      next: (updated) => {
         this.editBusy.set(false);
         this.message.success('项目已更新');
         this.editDialogOpen.set(false);
-        this.store.load();
+        this.store.patchOrRefresh(updated);
       },
       error: () => {
         this.editBusy.set(false);
@@ -514,10 +514,10 @@ export class ProjectListPageComponent {
   private updateProjectStatus(projectId: string, status: ProjectStatus): void {
     this.editBusy.set(true);
     this.projectApi.update(projectId, { status }).subscribe({
-      next: () => {
+      next: (updated) => {
         this.editBusy.set(false);
         this.message.success(status === 'inactive' ? '项目已归档' : '项目已恢复');
-        this.store.load();
+        this.store.patchOrRefresh(updated);
       },
       error: () => {
         this.editBusy.set(false);

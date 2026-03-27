@@ -1,7 +1,6 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { ISSUE_TYPE_LABELS } from '@shared/constants';
 import { DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
 import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.component';
@@ -51,7 +50,6 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
           <div>编号</div>
           <div>标题</div>
           <div>状态</div>
-          <div>模块</div>
           <div>提报人</div>
           <div>负责人</div>
           <div>更新时间</div>
@@ -71,21 +69,24 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
                   <span class="issue-row__title-text">{{ item.title }}</span>
                   <app-type-badge [type]="item.type" />
                   <app-priority-badge [priority]="item.priority" />
+                  @if (item.moduleCode) {
+                    <span class="issue-module-tag">{{ item.moduleCode }}</span>
+                  }
                 </div>
                 <div class="issue-row__meta">{{ item.description || '暂无详细描述' }}</div>
               </div>
               <div><app-status-badge [status]="item.status" /></div>
-              <div>{{ item.moduleCode || '-' }}</div>
               <div class="issue-row__assignee">
-                <span class="mini-avatar">{{ avatarText(item.reporterName) }}</span>
                 <span>{{ item.reporterName }}</span>
               </div>
               <div class="issue-row__assignee">
                 @if (item.assigneeName) {
-                  <span class="mini-avatar">{{ avatarText(item.assigneeName) }}</span>
-                  <span>{{ item.assigneeName }}</span>
+                  <span class="issue-row__assignee-name">{{ item.assigneeName }}</span>
                 } @else {
-                  <span>未指派</span>
+                  <span class="issue-row__assignee-name">未指派</span>
+                }
+                @if ((item.participantNames?.length ?? 0) > 0) {
+                  <span class="issue-row__participant-inline">· {{ participantNamesText(item) }}</span>
                 }
               </div>
               <div class="issue-row__time">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
@@ -100,7 +101,7 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
       .issue-table__head,
       .issue-row {
         display: grid;
-        grid-template-columns: 64px 110px minmax(0, 1.7fr) 110px 100px 120px 120px 140px 110px;
+        grid-template-columns: 64px 110px minmax(0, 1.85fr) 110px 120px 130px 110px;
         gap: 16px;
         align-items: center;
       }
@@ -183,11 +184,33 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
         line-height: 18px;
         white-space: nowrap;
       }
+      .issue-module-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 18px;
+        white-space: nowrap;
+      }
       .issue-row__assignee,
       .issue-card__assignee {
         display: inline-flex;
         align-items: center;
         gap: 8px;
+      }
+      .issue-row__assignee-name {
+        display: inline-flex;
+        align-items: center;
+        line-height: 1.2;
+      }
+      .issue-row__participant-inline {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 400;
       }
       .issue-row__time {
         font-size: 12px;
@@ -330,10 +353,6 @@ export class IssueListTableComponent {
   readonly pageSize = input(20);
   readonly open = output<string>();
 
-  issueTypeLabel(type: IssueEntity['type']): string {
-    return ISSUE_TYPE_LABELS[type] ?? type;
-  }
-
   avatarText(name: string): string {
     return name.slice(0, 1);
   }
@@ -342,5 +361,16 @@ export class IssueListTableComponent {
     const page = this.page() || 1;
     const pageSize = this.pageSize() || 20;
     return (page - 1) * pageSize + index + 1;
+  }
+
+  participantNamesText(item: IssueEntity): string {
+    const names = (item.participantNames ?? []).filter(Boolean);
+    if (names.length === 0) {
+      return '';
+    }
+    if (names.length <= 2) {
+      return names.join('、');
+    }
+    return `${names.slice(0, 2).join('、')} +${names.length - 2}`;
   }
 }

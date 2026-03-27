@@ -18,6 +18,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
     <app-data-table>
       <div table-head class="project-table__head">
         <div>项目</div>
+        <div>成员数</div>
         <div>可见性</div>
         <div>状态</div>
         <div>更新时间</div>
@@ -41,6 +42,9 @@ import { NzMessageService } from 'ng-zorro-antd/message';
                   </div>
                 <div class="project-meta">{{ item.description || '暂无项目描述' }}</div>
               </div>
+            </div>
+            <div class="project-cell">
+              <span class="project-member-count">{{ item.memberCount ?? 0 }} 人</span>
             </div>
             <div class="project-cell">
               <span class="project-tag" [attr.data-visibility]="item.visibility">
@@ -83,7 +87,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
       .project-table__head,
       .project-row {
         display: grid;
-        grid-template-columns: 2fr 0.9fr 0.8fr 0.8fr 0.9fr 0.6fr;
+        grid-template-columns: 2fr 0.7fr 0.8fr 0.8fr 0.9fr 0.9fr;
         gap: 16px;
         align-items: center;
       }
@@ -158,6 +162,11 @@ import { NzMessageService } from 'ng-zorro-antd/message';
         color: var(--text-muted);
         border: 1px solid transparent;
         font-size: 12px;
+        font-weight: 600;
+      }
+      .project-member-count {
+        font-size: 13px;
+        color: var(--text-secondary);
         font-weight: 600;
       }
       .project-tag[data-status='active'] {

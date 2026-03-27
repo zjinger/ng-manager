@@ -2,15 +2,15 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '@shared/constants';
-import { PanelCardComponent, StatusBadgeComponent, PriorityBadgeComponent } from '@shared/ui';
+import { PanelCardComponent, StatusBadgeComponent, PriorityBadgeComponent, TypeBadgeComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
 
 @Component({
   selector: 'app-issue-props-panel',
   standalone: true,
-  imports: [DatePipe, PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent],
+  imports: [DatePipe, PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent],
   template: `
-    <app-panel-card title="属性">
+    <app-panel-card title="基础信息">
       <dl class="props">
         <div>
           <dt>状态</dt>
@@ -22,7 +22,8 @@ import type { IssueEntity } from '../../models/issue.model';
         </div>
         <div>
           <dt>类型</dt>
-          <dd>{{ issueTypeLabel(issue().type) }}</dd>
+          <dd><app-type-badge [type]="issue().type" />
+          </dd>
         </div>
         <div>
           <dt>提报人</dt>
@@ -120,10 +121,6 @@ export class IssuePropsPanelComponent {
 
   statusLabel(status: string): string {
     return ISSUE_STATUS_LABELS[status] || status;
-  }
-
-  issueTypeLabel(type: string): string {
-    return ISSUE_TYPE_LABELS[type] || type;
   }
 
   avatarText(name: string): string {

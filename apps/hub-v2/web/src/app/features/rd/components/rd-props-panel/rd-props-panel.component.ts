@@ -10,7 +10,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
   standalone: true,
   imports: [DatePipe, PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent],
   template: `
-    <app-panel-card title="研发项属性">
+    <app-panel-card title="基础信息">
       <dl class="props">
         <div>
           <dt>状态</dt>

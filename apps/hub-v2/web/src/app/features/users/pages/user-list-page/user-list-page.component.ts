@@ -58,7 +58,7 @@ import { UserStore } from '../../store/user.store';
     </app-page-toolbar>
 
     <app-list-state [loading]="store.loading()" [empty]="store.items().length === 0" loadingText="正在加载用户列表…" emptyTitle="当前没有用户数据">
-      <app-user-list-table [items]="store.items()" (edit)="openEdit($event)" />
+      <app-user-list-table [items]="store.items()" [canEdit]="canCreate()" (edit)="openEdit($event)" />
     </app-list-state>
 
     <app-user-form-dialog

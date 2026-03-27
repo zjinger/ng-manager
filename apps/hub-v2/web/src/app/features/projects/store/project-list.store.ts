@@ -59,11 +59,60 @@ export class ProjectListStore {
       next: (created) => {
         this.busyState.set(false);
         done?.(created);
-        this.load();
+        this.insertOrRefresh(created);
       },
       error: () => {
         this.busyState.set(false);
       },
+    });
+  }
+
+  patchOrRefresh(updated: ProjectSummary): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    const query = this.queryState();
+    const hasFilter = !!query.keyword?.trim() || !!query.status?.trim();
+    if (hasFilter) {
+      this.load();
+      return;
+    }
+
+    const index = result.items.findIndex((item) => item.id === updated.id);
+    if (index < 0) {
+      return;
+    }
+
+    const items = [...result.items];
+    items[index] = updated;
+    this.resultState.set({
+      ...result,
+      items,
+    });
+  }
+
+  private insertOrRefresh(created: ProjectSummary): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    const query = this.queryState();
+    const hasFilter = !!query.keyword?.trim() || !!query.status?.trim() || query.page > 1;
+    if (hasFilter) {
+      this.load();
+      return;
+    }
+
+    const items = [created, ...result.items].slice(0, query.pageSize);
+    this.resultState.set({
+      ...result,
+      items,
+      total: result.total + 1,
     });
   }
 }

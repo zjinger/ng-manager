@@ -25,16 +25,16 @@ import type { DashboardStats } from '../../models/dashboard.model';
       />
       <app-stat-card
         label="进行中研发项"
-        [value]="stats().assignedRdItems"
+        [value]="stats().inProgressRdItems"
         hint="正在推进中的研发任务"
         icon="rocket"
         tone="green"
       />
       <app-stat-card
-        label="待验收研发项"
-        [value]="stats().reviewingRdItems"
-        hint="等待确认结果的研发项"
-        icon="check-circle"
+        label="我参与的项目数"
+        [value]="stats().myProjects"
+        hint="当前可访问的项目总数"
+        icon="team"
         tone="orange"
       />
     </div>

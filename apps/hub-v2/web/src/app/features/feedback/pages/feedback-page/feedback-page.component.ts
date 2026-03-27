@@ -38,24 +38,21 @@ import { FeedbackStore } from '../../store/feedback.store';
 
     <app-page-toolbar>
       <app-filter-bar toolbar-filters class="toolbar__filters">
-        <nz-select class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)">
-          <nz-option nzLabel="全部状态" nzValue=""></nz-option>
+        <nz-select nzPlaceHolder="状态，支持多选" style="width: 260px;" class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)" nzMode="multiple" [nzAllowClear]="true" [nzMaxTagCount]="2">
           <nz-option nzLabel="待处理" nzValue="open"></nz-option>
           <nz-option nzLabel="处理中" nzValue="processing"></nz-option>
           <nz-option nzLabel="已解决" nzValue="resolved"></nz-option>
           <nz-option nzLabel="已关闭" nzValue="closed"></nz-option>
         </nz-select>
 
-        <nz-select class="toolbar__category" [ngModel]="category()" (ngModelChange)="category.set($event)">
-          <nz-option nzLabel="全部类型" nzValue=""></nz-option>
+        <nz-select nzPlaceHolder="类型，支持多选" style="width: 260px;" class="toolbar__category" [ngModel]="category()" (ngModelChange)="category.set($event)" nzMode="multiple" [nzAllowClear]="true" [nzMaxTagCount]="2">
           <nz-option nzLabel="缺陷" nzValue="bug"></nz-option>
           <nz-option nzLabel="建议" nzValue="suggestion"></nz-option>
           <nz-option nzLabel="功能需求" nzValue="feature"></nz-option>
           <nz-option nzLabel="其他" nzValue="other"></nz-option>
         </nz-select>
 
-        <nz-select class="toolbar__source" [ngModel]="source()" (ngModelChange)="source.set($event)">
-          <nz-option nzLabel="全部来源" nzValue=""></nz-option>
+        <nz-select nzPlaceHolder="来源，支持多选" style="width: 260px;" class="toolbar__source" [ngModel]="source()" (ngModelChange)="source.set($event)" nzMode="multiple" [nzAllowClear]="true" [nzMaxTagCount]="2">
           <nz-option nzLabel="Web" nzValue="web"></nz-option>
           <nz-option nzLabel="桌面端" nzValue="desktop"></nz-option>
           <nz-option nzLabel="CLI" nzValue="cli"></nz-option>
@@ -64,6 +61,7 @@ import { FeedbackStore } from '../../store/feedback.store';
         </nz-select>
 
         <button nz-button class="toolbar__filter-btn" (click)="applyFilters()">筛选</button>
+        <button nz-button class="toolbar__filter-btn" (click)="resetFilters()">清空</button>
       </app-filter-bar>
 
       <app-search-box
@@ -74,6 +72,15 @@ import { FeedbackStore } from '../../store/feedback.store';
         (submitted)="applyFilters()"
       />
     </app-page-toolbar>
+    @if (activeFilterTags().length > 0) {
+      <div class="active-filters">
+        <span class="active-filters__label">当前筛选</span>
+        @for (tag of activeFilterTags(); track tag.kind + ':' + tag.value) {
+          <nz-tag nzMode="closeable" [class]="filterTagClass(tag.kind)" (nzOnClose)="removeFilterTag(tag.kind, tag.value)">{{ tag.label }}</nz-tag>
+        }
+        <button type="button" class="active-filters__clear" (click)="resetFilters()">清空全部</button>
+      </div>
+    }
 
     <app-list-state
       [loading]="store.loading()"
@@ -130,7 +137,7 @@ import { FeedbackStore } from '../../store/feedback.store';
     <nz-drawer
       [nzVisible]="!!store.selectedId()"
       [nzWidth]="560"
-      [nzClosable]="true"
+      nzMode="closeable"
       nzPlacement="right"
       [nzTitle]="drawerTitle"
       (nzOnClose)="closeDetail()"
@@ -188,6 +195,65 @@ import { FeedbackStore } from '../../store/feedback.store';
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
+      }
+      .active-filters {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0 14px;
+        flex-wrap: wrap;
+      }
+      .active-filters__label {
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+      .active-filters__clear {
+        border: 0;
+        background: transparent;
+        color: var(--primary-500);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 6px 8px;
+        cursor: pointer;
+      }
+      :host ::ng-deep .active-filters .ant-tag.filter-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        line-height: 30px;
+        margin-inline-end: 0;
+        border-radius: 999px;
+        padding-inline: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid var(--border-color);
+        background: var(--bg-subtle);
+        color: var(--text-primary);
+      }
+      :host ::ng-deep .active-filters .ant-tag.filter-tag .ant-tag-close-icon {
+        margin-inline-start: 8px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      :host ::ng-deep .active-filters .ant-tag.filter-tag--status {
+        background: rgba(37, 99, 235, 0.1);
+        border-color: rgba(37, 99, 235, 0.35);
+        color: rgb(30, 64, 175);
+      }
+      :host ::ng-deep .active-filters .ant-tag.filter-tag--category {
+        background: rgba(99, 102, 241, 0.12);
+        border-color: rgba(99, 102, 241, 0.35);
+        color: rgb(67, 56, 202);
+      }
+      :host ::ng-deep .active-filters .ant-tag.filter-tag--source {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.35);
+        color: rgb(6, 95, 70);
+      }
+      :host ::ng-deep .active-filters .ant-tag.filter-tag--keyword {
+        background: rgba(236, 72, 153, 0.12);
+        border-color: rgba(236, 72, 153, 0.35);
+        color: rgb(157, 23, 77);
       }
       
       .feedback-table__head,
@@ -305,14 +371,52 @@ export class FeedbackPageComponent {
   readonly projectContext = inject(ProjectContextStore);
 
   readonly keyword = signal('');
-  readonly status = signal<FeedbackStatus | ''>('');
-  readonly category = signal<FeedbackCategory | ''>('');
-  readonly source = signal<FeedbackSource | ''>('');
+  readonly status = signal<FeedbackStatus[]>([]);
+  readonly category = signal<FeedbackCategory[]>([]);
+  readonly source = signal<FeedbackSource[]>([]);
   readonly pendingStatus = signal<FeedbackStatus>('open');
 
   readonly subtitle = computed(() => {
     const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
     return `${projectName} · 共 ${this.store.total()} 条反馈`;
+  });
+  readonly activeFilterTags = computed(() => {
+    const firstSeen = new Set<string>();
+    const withPrefix = (group: string, prefix: string, valueLabel: string) => {
+      const first = !firstSeen.has(group);
+      if (first) {
+        firstSeen.add(group);
+      }
+      return first ? `${prefix}: ${valueLabel}` : valueLabel;
+    };
+    const tags: Array<{ kind: 'status' | 'category' | 'source' | 'keyword'; value: string; label: string }> = [];
+    if (this.status().length > 0) {
+      for (const status of this.status()) {
+        tags.push({ kind: 'status', value: status, label: withPrefix('status', '状态', this.statusLabel(status)) });
+      }
+    }
+    if (this.category().length > 0) {
+      for (const category of this.category()) {
+        tags.push({
+          kind: 'category',
+          value: category,
+          label: withPrefix('category', '类型', this.categoryLabel(category)),
+        });
+      }
+    }
+    if (this.source().length > 0) {
+      for (const source of this.source()) {
+        tags.push({ kind: 'source', value: source, label: withPrefix('source', '来源', this.sourceLabel(source)) });
+      }
+    }
+    if (this.keyword().trim()) {
+      tags.push({
+        kind: 'keyword',
+        value: this.keyword().trim(),
+        label: withPrefix('keyword', '关键词', this.keyword().trim()),
+      });
+    }
+    return tags;
   });
 
   private lastProjectId: string | null | undefined = undefined;
@@ -348,6 +452,40 @@ export class FeedbackPageComponent {
       category: this.category(),
       source: this.source(),
     });
+  }
+
+  resetFilters(): void {
+    this.keyword.set('');
+    this.status.set([]);
+    this.category.set([]);
+    this.source.set([]);
+    this.store.updateQuery({
+      page: 1,
+      keyword: '',
+      status: [],
+      category: [],
+      source: [],
+    });
+  }
+
+  removeFilterTag(kind: 'status' | 'category' | 'source' | 'keyword', value: string): void {
+    if (kind === 'status') {
+      this.status.set(this.status().filter((item) => item !== value));
+      this.applyFilters();
+      return;
+    }
+    if (kind === 'category') {
+      this.category.set(this.category().filter((item) => item !== value));
+      this.applyFilters();
+      return;
+    }
+    if (kind === 'source') {
+      this.source.set(this.source().filter((item) => item !== value));
+      this.applyFilters();
+      return;
+    }
+    this.keyword.set('');
+    this.applyFilters();
   }
 
   onPageIndexChange(page: number): void {
@@ -405,5 +543,12 @@ export class FeedbackPageComponent {
     if (source === 'mobile') return '移动端';
     if (source === 'applet') return '小程序';
     return 'Web';
+  }
+
+  filterTagClass(kind: 'status' | 'category' | 'source' | 'keyword'): string {
+    if (kind === 'status') return 'filter-tag filter-tag--status';
+    if (kind === 'category') return 'filter-tag filter-tag--category';
+    if (kind === 'source') return 'filter-tag filter-tag--source';
+    return 'filter-tag filter-tag--keyword';
   }
 }

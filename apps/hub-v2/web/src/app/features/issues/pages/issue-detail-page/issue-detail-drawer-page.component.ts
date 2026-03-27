@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -14,6 +14,7 @@ import { IssueAssignDialogComponent } from '../../dialogs/issue-assign-dialog/is
 import { IssueAddParticipantsDialogComponent } from '../../dialogs/issue-add-participants-dialog/issue-add-participants-dialog.component';
 import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-dialog/issue-transition-dialog.component';
 import { IssueDetailStore } from '../../store/issue-detail.store';
+import type { IssueEntity } from '../../models/issue.model';
 import { MarkdownViewerComponent } from '@app/shared/ui';
 
 @Component({
@@ -45,17 +46,20 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
             [canStart]="store.canStart()"
             [canClaim]="store.canClaim()"
             [canAssign]="store.canAssign()"
+            [assignActionLabel]="store.assignActionLabel()"
             [canManageParticipants]="store.canManageParticipants()"
             [canResolve]="store.canResolve()"
             [canVerify]="store.canVerify()"
             [canReopen]="store.canReopen()"
+            [canClose]="store.canClose()"
             (start)="confirmStart()"
-            (claim)="store.claim()"
+            (claim)="confirmClaim()"
             (assign)="assignIssue()"
             (addParticipants)="openAddParticipants()"
             (resolve)="resolveIssue()"
             (verify)="store.verify()"
             (reopen)="reopenIssue()"
+            (close)="confirmClose()"
           />
 
           <section class="description-card">
@@ -76,6 +80,12 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
               <div class="resolution">
                 <div class="resolution__label">解决说明</div>
                 <div>{{ issue.resolutionSummary }}</div>
+              </div>
+            }
+            @if (issue.closeReason) {
+              <div class="resolution">
+                <div class="resolution__label">关闭原因</div>
+                <div>{{ issue.closeReason }}</div>
               </div>
             }
           </section>
@@ -117,6 +127,7 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
         [open]="assignOpen()"
         [busy]="store.busy()"
         [issue]="store.issue()"
+        [actionLabel]="store.assignActionLabel()"
         [members]="store.members()"
         (cancel)="assignOpen.set(false)"
         (confirm)="confirmAssign($event.assigneeId)"
@@ -138,6 +149,16 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
         [issue]="store.issue()"
         (cancel)="reopenOpen.set(false)"
         (confirm)="confirmReopen($event.content)"
+      />
+
+      <app-issue-transition-dialog
+        [open]="closeOpen()"
+        [busy]="store.busy()"
+        [mode]="'close'"
+        [reasonRequired]="closeReasonRequired()"
+        [issue]="store.issue()"
+        (cancel)="closeOpen.set(false)"
+        (confirm)="confirmCloseWithReason($event.content)"
       />
 
       <app-issue-add-participants-dialog
@@ -230,11 +251,16 @@ export class IssueDetailDrawerPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
   readonly issueId = input<string | null>(null);
+  readonly changed = output<IssueEntity>();
   readonly assignOpen = signal(false);
   readonly addParticipantsOpen = signal(false);
   readonly resolveOpen = signal(false);
   readonly reopenOpen = signal(false);
+  readonly closeOpen = signal(false);
   private readonly loadedIssueId = signal<string | null>(null);
+  private lastActionTick = 0;
+
+  readonly closeReasonRequired = signal(false);
 
   constructor() {
     effect(() => {
@@ -244,6 +270,18 @@ export class IssueDetailDrawerPageComponent {
       }
       this.loadedIssueId.set(issueId);
       this.store.load(issueId);
+    });
+
+    effect(() => {
+      const tick = this.store.actionTick();
+      if (tick <= 0 || tick === this.lastActionTick) {
+        return;
+      }
+      this.lastActionTick = tick;
+      const issue = this.store.issue();
+      if (issue) {
+        this.changed.emit(issue);
+      }
     });
   }
 
@@ -273,6 +311,16 @@ export class IssueDetailDrawerPageComponent {
     });
   }
 
+  confirmClaim(): void {
+    this.modal.confirm({
+      nzTitle: '确认认领该问题？',
+      nzContent: '认领后你将成为负责人，可继续开始处理或转派。',
+      nzOkText: '确认认领',
+      nzCancelText: '取消',
+      nzOnOk: () => this.store.claim(),
+    });
+  }
+
   confirmAssign(assigneeId: string): void {
     this.store.assign(assigneeId);
     this.assignOpen.set(false);
@@ -291,5 +339,35 @@ export class IssueDetailDrawerPageComponent {
   confirmReopen(remark: string): void {
     this.store.reopen(remark);
     this.reopenOpen.set(false);
+  }
+
+  confirmClose(): void {
+    const issue = this.store.issue();
+    if (!issue) {
+      return;
+    }
+
+    if (issue.status === 'verified') {
+      this.modal.confirm({
+        nzTitle: '确认关闭该问题？',
+        nzContent: '关闭后状态将变为“已关闭”，如需继续处理可重新打开。',
+        nzOkText: '确认关闭',
+        nzCancelText: '取消',
+        nzOnOk: () => this.store.close(),
+      });
+      return;
+    }
+
+    this.closeReasonRequired.set(true);
+    this.closeOpen.set(true);
+  }
+
+  confirmCloseWithReason(reason: string): void {
+    const value = reason.trim();
+    if (this.closeReasonRequired() && !value) {
+      return;
+    }
+    this.store.close(value || undefined);
+    this.closeOpen.set(false);
   }
 }

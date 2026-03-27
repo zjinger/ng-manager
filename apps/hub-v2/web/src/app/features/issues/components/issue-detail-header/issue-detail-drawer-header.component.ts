@@ -36,7 +36,7 @@ import type { IssueEntity } from '../../models/issue.model';
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="claim.emit()">认领</button>
           }
           @if (canAssign()) {
-            <button nz-button nzType="default" class="detail-header__action-btn" (click)="assign.emit()">重新指派</button>
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="assign.emit()">{{ assignActionLabel() }}</button>
           }
           @if (canManageParticipants()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="addParticipants.emit()">添加协作人</button>
@@ -49,6 +49,9 @@ import type { IssueEntity } from '../../models/issue.model';
           }
           @if (canReopen()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="reopen.emit()">重新打开</button>
+          }
+          @if (canClose()) {
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="close.emit()">关闭问题</button>
           }
         </div>
       </div>
@@ -179,10 +182,12 @@ export class IssueDetailDrawerHeaderComponent {
   readonly canStart = input(false);
   readonly canClaim = input(false);
   readonly canAssign = input(false);
+  readonly assignActionLabel = input('重新指派');
   readonly canManageParticipants = input(false);
   readonly canResolve = input(false);
   readonly canVerify = input(false);
   readonly canReopen = input(false);
+  readonly canClose = input(false);
 
   readonly start = output<void>();
   readonly claim = output<void>();
@@ -191,6 +196,7 @@ export class IssueDetailDrawerHeaderComponent {
   readonly resolve = output<void>();
   readonly verify = output<void>();
   readonly reopen = output<void>();
+  readonly close = output<void>();
 
   stepState(step: (typeof this.flowSteps)[number]['value']): 'done' | 'active' | 'pending' {
     const order = this.flowSteps.map((item) => item.value);

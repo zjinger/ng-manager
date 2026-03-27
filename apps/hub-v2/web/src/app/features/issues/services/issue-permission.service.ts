@@ -6,16 +6,42 @@ import type { IssueEntity } from '../models/issue.model';
 @Injectable({ providedIn: 'root' })
 export class IssuePermissionService {
   canAssign(issue: IssueEntity, user: AuthUser | null, isProjectAdmin = false): boolean {
+    return !!this.getAssignActionLabel(issue, user, isProjectAdmin);
+  }
+
+  getAssignActionLabel(issue: IssueEntity, user: AuthUser | null, isProjectAdmin = false): string | null {
     if (!user) {
-      return false;
+      return null;
     }
 
-    if (this.isAdmin(user) || isProjectAdmin) {
-      return true;
+    if (!['open', 'reopened', 'in_progress'].includes(issue.status)) {
+      return null;
+    }
+    const isReporter = this.matchActor(user, issue.reporterId);
+    const isAssignee = this.matchActor(user, issue.assigneeId);
+    const isManager = this.isAdmin(user) || isProjectAdmin;
+
+    // 已有负责人时：负责人显示“转派”。
+    if (issue.assigneeId && isAssignee) {
+      return '转派';
     }
 
-    // 提报人仅可在开始处理前（open/reopened）重新指派
-    return this.matchActor(user, issue.reporterId) && ['open', 'reopened'].includes(issue.status);
+    // 管理角色：未有负责人时“指派”，已有负责人时“重新指派”。
+    if (isManager) {
+      return issue.assigneeId ? '重新指派' : '指派';
+    }
+
+    // 未有负责人时：提报人显示“指派”。
+    if (!issue.assigneeId && isReporter) {
+      return '指派';
+    }
+
+    // 已有负责人且处于开始处理前：提报人显示“重新指派”。
+    if (issue.assigneeId && isReporter && ['open', 'reopened'].includes(issue.status)) {
+      return '重新指派';
+    }
+
+    return null;
   }
 
   canManageParticipants(issue: IssueEntity, user: AuthUser | null, isProjectAdmin = false): boolean {
@@ -45,6 +71,16 @@ export class IssuePermissionService {
 
   canVerify(issue: IssueEntity, user: AuthUser | null): boolean {
     return this.isAdmin(user) || this.matchActor(user, issue.verifierId) || this.matchActor(user, issue.reporterId);
+  }
+
+  canClose(issue: IssueEntity, user: AuthUser | null): boolean {
+    if (this.isAdmin(user)) {
+      return true;
+    }
+    if (!this.matchActor(user, issue.reporterId)) {
+      return false;
+    }
+    return ['open', 'reopened', 'verified'].includes(issue.status);
   }
 
   private isAdmin(user: AuthUser | null): boolean {

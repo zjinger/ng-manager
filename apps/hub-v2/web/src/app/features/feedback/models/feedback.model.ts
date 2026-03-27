@@ -23,9 +23,9 @@ export interface FeedbackListQuery {
   page: number;
   pageSize: number;
   keyword?: string;
-  status?: FeedbackStatus | '';
-  category?: FeedbackCategory | '';
-  source?: FeedbackSource | '';
+  status?: FeedbackStatus[];
+  category?: FeedbackCategory[];
+  source?: FeedbackSource[];
   projectId?: string;
   projectKey?: string;
 }

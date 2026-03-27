@@ -8,6 +8,7 @@ import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
 import { ViewToggleComponent, SearchBoxComponent, FilterBarComponent, PageToolbarComponent } from '@shared/ui';
 import type { RdListQuery, RdStageEntity } from '../../models/rd.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import type { ProjectMemberEntity } from '@features/projects/models/project.model';
 
 export type RdViewMode = 'board' | 'list';
 
@@ -23,41 +24,70 @@ export type RdViewMode = 'board' | 'list';
       </button>
 
       <app-filter-bar toolbar-filters class="rd-toolbar__main">
+        @if(stages().length > 0){
         <nz-select
-          nzPlaceHolder="所有阶段"
+          nzPlaceHolder="阶段，支持多选"
+          style="width:250px"
           class="toolbar-select"
-          [ngModel]="draft().stageId"
-          (ngModelChange)="updateField('stageId', $event)"
+          [ngModel]="draft().stageIds"
+          (ngModelChange)="updateField('stageIds', $event)"
+          nzMode="multiple"
+          [nzMaxTagCount]="2"
+          [nzAllowClear]="true"
         >
-          <nz-option nzLabel="所有阶段" nzValue=""></nz-option>
           @for (item of stages(); track item.id) {
             <nz-option [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
           }
         </nz-select>
-
+        }
         <nz-select
-          nzPlaceHolder="所有状态"
+          nzPlaceHolder="状态，支持多选"
+          style="width:250px"
           class="toolbar-select"
           [ngModel]="draft().status"
           (ngModelChange)="updateField('status', $event)"
+          nzMode="multiple"
+          [nzMaxTagCount]="2"
+          [nzAllowClear]="true"
         >
           @for (item of statusOptions; track item.value) {
-            <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+            @if (item.value !== '') {
+              <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+            }
           }
         </nz-select>
-
         <nz-select
-          nzPlaceHolder="所有优先级"
+          nzPlaceHolder="优先级，支持多选"
+          style="width:240px"
           class="toolbar-select"
           [ngModel]="draft().priority"
           (ngModelChange)="updateField('priority', $event)"
+          nzMode="multiple"
+          [nzMaxTagCount]="3"
+          [nzAllowClear]="true"
         >
           @for (item of priorityOptions; track item.value) {
-            <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+            @if (item.value !== '') {
+              <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+            }
           }
         </nz-select>
-
+        <nz-select
+          nzPlaceHolder="负责人，支持多选"
+          style="width:230px"
+          class="toolbar-select"
+          [ngModel]="draft().assigneeIds"
+          (ngModelChange)="updateField('assigneeIds', $event)"
+          nzMode="multiple"
+          [nzMaxTagCount]="2"
+          [nzAllowClear]="true"
+        >
+          @for (member of members(); track member.userId) {
+            <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
+          }
+        </nz-select>
         <button nz-button class="toolbar-filter-btn" (click)="submit.emit(draft())">筛选</button>
+        <button nz-button class="toolbar-filter-btn" (click)="reset.emit()">清空</button>
       </app-filter-bar>
 
       <app-search-box
@@ -97,8 +127,10 @@ export type RdViewMode = 'board' | 'list';
 export class RdFilterBarComponent {
   readonly query = input.required<RdListQuery>();
   readonly stages = input<RdStageEntity[]>([]);
+  readonly members = input<ProjectMemberEntity[]>([]);
   readonly viewMode = input<RdViewMode>('list');
   readonly submit = output<RdListQuery>();
+  readonly reset = output<void>();
   readonly create = output<void>();
   readonly viewModeChange = output<RdViewMode>();
 
@@ -114,9 +146,11 @@ export class RdFilterBarComponent {
     keyword: '',
     projectId: '',
     stageId: '',
-    status: '',
-    type: '',
-    priority: '',
+    stageIds: [],
+    status: [],
+    type: [],
+    priority: [],
+    assigneeIds: [],
   });
 
   constructor() {

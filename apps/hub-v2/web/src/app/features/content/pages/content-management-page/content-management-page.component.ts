@@ -63,6 +63,7 @@ import { ContentStore } from '../../store/content.store';
           class="toolbar-select"
           [ngModel]="status()"
           (ngModelChange)="status.set($event)"
+          style="width: 100px;"
         >
           <nz-option nzLabel="全部状态" nzValue=""></nz-option>
           <nz-option nzLabel="草稿" nzValue="draft"></nz-option>
@@ -322,7 +323,10 @@ export class ContentManagementPageComponent {
           ...input,
           projectId: this.projectContext.currentProjectId(),
         },
-        () => this.closeAnnouncementDialog(),
+        (entity) => {
+          this.closeAnnouncementDialog();
+          this.syncAnnouncementDetail(entity);
+        },
       );
       return;
     }
@@ -348,7 +352,10 @@ export class ContentManagementPageComponent {
           ...input,
           projectId: this.projectContext.currentProjectId(),
         },
-        () => this.closeDocumentDialog(),
+        (entity) => {
+          this.closeDocumentDialog();
+          this.syncDocumentDetail(entity);
+        },
       );
       return;
     }
@@ -374,7 +381,10 @@ export class ContentManagementPageComponent {
           ...input,
           projectId: this.projectContext.currentProjectId(),
         },
-        () => this.closeReleaseDialog(),
+        (entity) => {
+          this.closeReleaseDialog();
+          this.syncReleaseDetail(entity);
+        },
       );
       return;
     }
@@ -392,15 +402,15 @@ export class ContentManagementPageComponent {
   }
 
   publishAnnouncement(item: AnnouncementEntity): void {
-    this.store.publishAnnouncement(item.id);
+    this.store.publishAnnouncement(item.id, (entity) => this.syncAnnouncementDetail(entity));
   }
 
   publishDocument(item: DocumentEntity): void {
-    this.store.publishDocument(item.id);
+    this.store.publishDocument(item.id, (entity) => this.syncDocumentDetail(entity));
   }
 
   publishRelease(item: ReleaseEntity): void {
-    this.store.publishRelease(item.id);
+    this.store.publishRelease(item.id, (entity) => this.syncReleaseDetail(entity));
   }
 
   closeAnnouncementDialog(): void {
@@ -501,15 +511,33 @@ export class ContentManagementPageComponent {
       nzCancelText: '暂不发布',
       nzOnOk: () => {
         if (type === 'announcements') {
-          this.store.publishAnnouncement(entityId);
+          this.store.publishAnnouncement(entityId, (entity) => this.syncAnnouncementDetail(entity));
           return;
         }
         if (type === 'documents') {
-          this.store.publishDocument(entityId);
+          this.store.publishDocument(entityId, (entity) => this.syncDocumentDetail(entity));
           return;
         }
-        this.store.publishRelease(entityId);
+        this.store.publishRelease(entityId, (entity) => this.syncReleaseDetail(entity));
       },
     });
+  }
+
+  private syncAnnouncementDetail(entity: AnnouncementEntity): void {
+    if (this.detailTab() === 'announcements' && this.detailAnnouncement()?.id === entity.id) {
+      this.detailAnnouncement.set(entity);
+    }
+  }
+
+  private syncDocumentDetail(entity: DocumentEntity): void {
+    if (this.detailTab() === 'documents' && this.detailDocument()?.id === entity.id) {
+      this.detailDocument.set(entity);
+    }
+  }
+
+  private syncReleaseDetail(entity: ReleaseEntity): void {
+    if (this.detailTab() === 'releases' && this.detailRelease()?.id === entity.id) {
+      this.detailRelease.set(entity);
+    }
   }
 }

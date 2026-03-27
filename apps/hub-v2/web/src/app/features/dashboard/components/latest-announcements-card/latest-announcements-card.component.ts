@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 
 import type { DashboardAnnouncement } from '../../models/dashboard.model';
 
 @Component({
   selector: 'app-latest-announcements-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DatePipe],
   template: `
     <section class="panel">
       <header class="panel__header">
@@ -30,7 +30,7 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
             }
             <div class="announcement__meta">
               <span>{{ projectLabel(item) }}</span>
-              <span>{{ item.publishAt || item.id }}</span>
+              <span>{{ item.publishAt | date: 'yyyy-MM-dd HH:mm' }}</span>
             </div>
           </div>
         }
@@ -128,10 +128,15 @@ export class LatestAnnouncementsCardComponent {
   readonly items = input.required<DashboardAnnouncement[]>();
   readonly currentProjectId = input<string | null>(null);
   readonly currentProjectName = input<string | null>(null);
+  readonly projectNames = input<Record<string, string>>({});
 
   projectLabel(item: DashboardAnnouncement): string {
     if (!item.projectId) {
       return '全局公告';
+    }
+    const mapped = this.projectNames()[item.projectId];
+    if (mapped) {
+      return mapped;
     }
     if (this.currentProjectId() && item.projectId === this.currentProjectId()) {
       return this.currentProjectName() || '项目公告';

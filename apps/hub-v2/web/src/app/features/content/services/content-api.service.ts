@@ -46,26 +46,26 @@ export class ContentApiService {
   }
 
   updateAnnouncement(announcementId: string, input: UpdateAnnouncementInput) {
-    return this.api.patch(`/announcements/${announcementId}`, input);
+    return this.api.patch<AnnouncementEntity, UpdateAnnouncementInput>(`/announcements/${announcementId}`, input);
   }
 
   publishAnnouncement(announcementId: string) {
-    return this.api.post(`/announcements/${announcementId}/publish`);
+    return this.api.post<AnnouncementEntity>(`/announcements/${announcementId}/publish`);
   }
 
   updateDocument(documentId: string, input: UpdateDocumentInput) {
-    return this.api.patch(`/documents/${documentId}`, input);
+    return this.api.patch<DocumentEntity, UpdateDocumentInput>(`/documents/${documentId}`, input);
   }
 
   publishDocument(documentId: string) {
-    return this.api.post(`/documents/${documentId}/publish`);
+    return this.api.post<DocumentEntity>(`/documents/${documentId}/publish`);
   }
 
   updateRelease(releaseId: string, input: UpdateReleaseInput) {
-    return this.api.patch(`/releases/${releaseId}`, input);
+    return this.api.patch<ReleaseEntity, UpdateReleaseInput>(`/releases/${releaseId}`, input);
   }
 
   publishRelease(releaseId: string) {
-    return this.api.post(`/releases/${releaseId}/publish`);
+    return this.api.post<ReleaseEntity>(`/releases/${releaseId}/publish`);
   }
 }

@@ -12,6 +12,7 @@ export interface ProjectSummary {
   icon: string | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
+  memberCount?: number;
   status: string;
   visibility: string;
   createdAt: string;

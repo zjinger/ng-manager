@@ -18,7 +18,8 @@ import { RD_STATUS_LABELS } from '../../constants';
         background: var(--bg-subtle);
         color: var(--text-muted);
       }
-      .status-badge[data-status='resolved'],
+      .status-badge[data-status='verified'],
+      
       .status-badge[data-status='done'],
       .status-badge[data-status='published'] {
         background: rgba(34, 197, 94, 0.14);
@@ -33,7 +34,8 @@ import { RD_STATUS_LABELS } from '../../constants';
         background: rgba(239, 68, 68, 0.14);
         color: #dc2626;
       }
-      .status-badge[data-status='verified'] {
+      .status-badge[data-status='resolved']
+       {
         background: rgba(14, 165, 233, 0.14);
         color: #0284c7;
       }
@@ -87,7 +89,7 @@ const STATUS_TEXT_MAP: Record<string, string> = {
   open: '待处理',
   in_progress: '处理中',
   reopened: '已重开',
-  resolved: '已解决',
+  resolved: '待验证',
   verified: '已验证',
   closed: '已关闭',
   draft: '草稿',

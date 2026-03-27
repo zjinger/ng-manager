@@ -19,9 +19,11 @@ const DEFAULT_QUERY: RdListQuery = {
   pageSize: 20,
   projectId: '',
   stageId: '',
-  status: '',
-  type: '',
-  priority: '',
+  stageIds: [],
+  status: [],
+  type: [],
+  priority: [],
+  assigneeIds: [],
   keyword: '',
 };
 
@@ -64,6 +66,7 @@ export class RdStore {
       ...query,
       projectId: projectId ?? '',
       stageId: '',
+      stageIds: [],
       page: 1,
     }));
     if (!projectId) {
@@ -180,19 +183,77 @@ export class RdStore {
   }
 
   delete(itemId: string): void {
-    this.runAction(() => this.rdApi.delete(itemId));
-  }
-
-  private runAction(request: () => Observable<unknown>): void {
     this.busyState.set(true);
-    request().subscribe({
+    this.rdApi.delete(itemId).subscribe({
       next: () => {
         this.busyState.set(false);
-        this.load();
+        const result = this.resultState();
+        if (!result) {
+          this.load();
+          return;
+        }
+        const items = result.items.filter((item) => item.id !== itemId);
+        if (items.length === result.items.length) {
+          this.load();
+          return;
+        }
+        this.resultState.set({
+          ...result,
+          items,
+          total: Math.max(0, result.total - 1),
+        });
       },
       error: () => {
         this.busyState.set(false);
       },
+    });
+  }
+
+  private runAction(request: () => Observable<RdItemEntity>): void {
+    this.busyState.set(true);
+    request().subscribe({
+      next: (updated) => {
+        this.busyState.set(false);
+        this.patchOrRefresh(updated);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  private patchOrRefresh(updated: RdItemEntity): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    const query = this.queryState();
+    const hasComplexFilter =
+      !!query.stageId?.trim() ||
+      (query.stageIds?.length ?? 0) > 0 ||
+      (query.status?.length ?? 0) > 0 ||
+      (query.type?.length ?? 0) > 0 ||
+      (query.priority?.length ?? 0) > 0 ||
+      (query.assigneeIds?.length ?? 0) > 0 ||
+      !!query.keyword?.trim();
+
+    if (hasComplexFilter) {
+      this.load();
+      return;
+    }
+
+    const index = result.items.findIndex((item) => item.id === updated.id);
+    if (index < 0) {
+      return;
+    }
+
+    const items = [...result.items];
+    items[index] = updated;
+    this.resultState.set({
+      ...result,
+      items,
     });
   }
 }

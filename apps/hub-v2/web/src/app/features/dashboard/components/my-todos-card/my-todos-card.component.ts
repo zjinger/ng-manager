@@ -22,7 +22,7 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         @for (item of items(); track item.entityId) {
           <a
             class="todo"
-            [routerLink]="item.kind.startsWith('rd') ? ['/rd'] : ['/issues']"
+            [routerLink]="detailLink(item)"
           >
             <div class="todo__priority" [attr.data-kind]="item.kind"></div>
             <div class="todo__body">
@@ -35,6 +35,7 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
               <div class="todo__meta">
                 <span class="todo__code">{{ item.code }}</span>
                 <app-status-badge [status]="item.status" />
+                <span>{{ projectLabel(item.projectId) }}</span>
                 <span>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
               </div>
             </div>
@@ -107,9 +108,6 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
       .todo__priority[data-kind='issue_verify'] {
         background: var(--color-warning);
       }
-      .todo__priority[data-kind='rd_review'] {
-        background: var(--primary-500);
-      }
       .todo__body {
         min-width: 0;
       }
@@ -165,4 +163,17 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
 })
 export class MyTodosCardComponent {
   readonly items = input.required<DashboardTodoItem[]>();
+  readonly projectNames = input<Record<string, string>>({});
+
+  detailLink(item: DashboardTodoItem): string[] {
+    if (item.kind.startsWith('rd')) {
+      return ['/rd', item.entityId];
+    }
+    return ['/issues', item.entityId];
+  }
+
+  projectLabel(projectId: string): string {
+    return this.projectNames()[projectId] || '未知项目';
+  }
+
 }

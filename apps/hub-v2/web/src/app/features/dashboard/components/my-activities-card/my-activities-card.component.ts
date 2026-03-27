@@ -21,7 +21,7 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         @for (item of items(); track item.kind + '-' + item.entityId + '-' + item.createdAt) {
           <a
             class="activity"
-            [routerLink]="item.kind === 'rd_activity' ? ['/rd'] : ['/issues', item.entityId]"
+            [routerLink]="detailLink(item)"
           >
             <div class="activity__dot" [attr.data-kind]="item.kind"></div>
             <div class="activity__body">
@@ -34,6 +34,7 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
                 <span class="activity__tag" [attr.data-kind]="item.kind">
                   {{ item.kind === 'rd_activity' ? 'RD' : 'ISSUE' }}
                 </span>
+                <span>{{ projectLabel(item.projectId) }}</span>
                 <span>{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
               </div>
             </div>
@@ -166,4 +167,17 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
 })
 export class MyActivitiesCardComponent {
   readonly items = input.required<DashboardActivityItem[]>();
+  readonly projectNames = input<Record<string, string>>({});
+
+  detailLink(item: DashboardActivityItem): string[] {
+    if (item.kind === 'rd_activity') {
+      return ['/rd', item.entityId];
+    }
+    return ['/issues', item.entityId];
+  }
+
+  projectLabel(projectId: string): string {
+    return this.projectNames()[projectId] || '未知项目';
+  }
+
 }

@@ -7,9 +7,9 @@ const DEFAULT_QUERY: FeedbackListQuery = {
   page: 1,
   pageSize: 20,
   keyword: '',
-  status: '',
-  category: '',
-  source: '',
+  status: [],
+  category: [],
+  source: [],
   projectId: '',
 };
 

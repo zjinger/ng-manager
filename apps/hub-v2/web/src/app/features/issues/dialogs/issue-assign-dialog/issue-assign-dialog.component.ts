@@ -15,7 +15,7 @@ import type { IssueEntity } from '../../models/issue.model';
     <app-dialog-shell
       [open]="open()"
       [width]="620"
-      [title]="'重新指派'"
+      [title]="dialogTitle()"
       [subtitle]="issue() ? issue()!.title : '选择新的负责人。'"
       [icon]="'swap'"
       (cancel)="cancel.emit()"
@@ -39,7 +39,7 @@ import type { IssueEntity } from '../../models/issue.model';
       <ng-container dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
         <button nz-button nzType="primary" [disabled]="!assigneeId()" [nzLoading]="busy()" (click)="confirmAssign()">
-          确认指派
+          {{ confirmText() }}
         </button>
       </ng-container>
     </app-dialog-shell>
@@ -54,6 +54,7 @@ export class IssueAssignDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly issue = input<IssueEntity | null>(null);
+  readonly actionLabel = input('重新指派');
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly confirm = output<{ assigneeId: string }>();
   readonly cancel = output<void>();
@@ -66,6 +67,28 @@ export class IssueAssignDialogComponent {
         this.assigneeId.set(this.issue()?.assigneeId ?? '');
       }
     });
+  }
+
+  dialogTitle(): string {
+    const label = this.actionLabel();
+    if (label === '指派') {
+      return '指派负责人';
+    }
+    if (label === '转派') {
+      return '转派负责人';
+    }
+    return '重新指派负责人';
+  }
+
+  confirmText(): string {
+    const label = this.actionLabel();
+    if (label === '指派') {
+      return '确认指派';
+    }
+    if (label === '转派') {
+      return '确认转派';
+    }
+    return '确认重新指派';
   }
 
   confirmAssign(): void {

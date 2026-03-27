@@ -56,10 +56,10 @@ export class UserStore {
   create(input: CreateUserInput, done?: () => void): void {
     this.busyState.set(true);
     this.userApi.create(input).subscribe({
-      next: () => {
+      next: (created) => {
         this.busyState.set(false);
         done?.();
-        this.load();
+        this.insertOrRefresh(created);
       },
       error: () => {
         this.busyState.set(false);
@@ -70,14 +70,70 @@ export class UserStore {
   update(userId: string, input: UpdateUserInput, done?: () => void): void {
     this.busyState.set(true);
     this.userApi.update(userId, input).subscribe({
-      next: () => {
+      next: (updated) => {
         this.busyState.set(false);
         done?.();
-        this.load();
+        this.patchOrRefresh(updated);
       },
       error: () => {
         this.busyState.set(false);
       },
+    });
+  }
+
+  private patchOrRefresh(updated: UserEntity): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    const query = this.queryState();
+    const keyword = query.keyword?.trim().toLowerCase() ?? '';
+    const status = query.status?.trim() ?? '';
+    const hasFilter = !!keyword || !!status;
+
+    if (hasFilter) {
+      this.load();
+      return;
+    }
+
+    const index = result.items.findIndex((item) => item.id === updated.id);
+    if (index < 0) {
+      return;
+    }
+
+    const items = [...result.items];
+    items[index] = updated;
+    this.resultState.set({
+      ...result,
+      items,
+    });
+  }
+
+  private insertOrRefresh(created: UserEntity): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    const query = this.queryState();
+    const keyword = query.keyword?.trim().toLowerCase() ?? '';
+    const status = query.status?.trim() ?? '';
+    const hasFilter = !!keyword || !!status;
+    const notFirstPage = query.page > 1;
+
+    if (hasFilter || notFirstPage) {
+      this.load();
+      return;
+    }
+
+    const nextItems = [created, ...result.items].slice(0, query.pageSize);
+    this.resultState.set({
+      ...result,
+      items: nextItems,
+      total: result.total + 1,
     });
   }
 }

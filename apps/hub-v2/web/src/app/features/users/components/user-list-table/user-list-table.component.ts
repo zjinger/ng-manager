@@ -4,25 +4,28 @@ import { ChangeDetectionStrategy, Component, input, output, signal } from '@angu
 import { DataTableComponent } from '@shared/ui';
 import { USER_TITLE_OPTIONS, type UserEntity, type UserTitleCode } from '../../models/user.model';
 import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.component';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-user-list-table',
   standalone: true,
-  imports: [DatePipe, DataTableComponent, UserStatusTagComponent],
+  imports: [NzIconModule, DatePipe, DataTableComponent, UserStatusTagComponent],
   template: `
     <app-data-table>
-      <div table-head class="user-table__head">
+      <div table-head class="user-table__head" [class.user-table__head--editable]="canEdit()">
         <div>用户</div>
         <div>邮箱</div>
         <div>手机号</div>
         <div>职能</div>
         <div>状态</div>
         <div>更新时间</div>
-        <div>操作</div>
+        @if (canEdit()) {
+          <div>操作</div>
+        }
       </div>
       <div table-body class="user-table__body">
         @for (item of items(); track item.id) {
-          <div class="user-row">
+          <div class="user-row" [class.user-row--editable]="canEdit()">
             <div class="user-cell user-cell--user">
               <div class="user-avatar">
                 @if (showAvatarImage(item)) {
@@ -41,9 +44,13 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
             <div class="user-cell">{{ titleLabel(item.titleCode) }}</div>
             <div class="user-cell"><app-user-status-tag [status]="item.status" /></div>
             <div class="user-cell user-cell--muted">{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
-            <div class="user-cell">
-              <button class="edit-btn" type="button" (click)="edit.emit(item)">编辑</button>
-            </div>
+            @if (canEdit()) {
+              <div class="user-cell">
+                <button class="edit-btn" type="button" (click)="edit.emit(item)">
+                  <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
+                </button>
+              </div>
+            }
           </div>
         }
       </div>
@@ -54,9 +61,13 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
       .user-table__head,
       .user-row {
         display: grid;
-        grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.9fr 0.6fr;
+        grid-template-columns: 1.6fr 1.3fr 1fr 0.8fr 0.8fr 0.9fr;
         gap: 16px;
         align-items: center;
+      }
+      .user-table__head--editable,
+      .user-row--editable {
+        grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.9fr 0.6fr;
       }
       .user-table__head {
         padding: 10px 16px;
@@ -131,6 +142,7 @@ import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.compo
 })
 export class UserListTableComponent {
   readonly items = input.required<UserEntity[]>();
+  readonly canEdit = input(false);
   readonly edit = output<UserEntity>();
   private readonly brokenAvatarMap = signal<Record<string, true>>({});
 

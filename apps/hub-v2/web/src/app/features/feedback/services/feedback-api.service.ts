@@ -8,9 +8,13 @@ export class FeedbackApiService {
   private readonly api = inject(ApiClientService);
 
   list(query: FeedbackListQuery) {
-    return this.api.get<FeedbackListResult>('/feedbacks', {
+    const normalizedQuery: Record<string, string | number | boolean | null | undefined> = {
       ...query,
-    } as Record<string, string | number | boolean | null | undefined>);
+      status: query.status && query.status.length > 0 ? query.status.join(',') : undefined,
+      category: query.category && query.category.length > 0 ? query.category.join(',') : undefined,
+      source: query.source && query.source.length > 0 ? query.source.join(',') : undefined,
+    };
+    return this.api.get<FeedbackListResult>('/feedbacks', normalizedQuery);
   }
 
   getById(feedbackId: string) {

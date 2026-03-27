@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { ApiClientService } from '@core/http';
 import type {
   AssignIssueInput,
+  CloseIssueInput,
   CreateIssueInput,
   IssueAttachmentEntity,
   IssueCommentEntity,
@@ -19,7 +20,20 @@ export class IssueApiService {
   private readonly api = inject(ApiClientService);
 
   list(query: Partial<IssueListQuery>) {
-    return this.api.get<IssueListResult>('/issues', query);
+    const normalizedQuery: Record<string, string | number | boolean | null | undefined> = {
+      ...query,
+      status: query.status && query.status.length > 0 ? query.status.join(',') : undefined,
+      priority: query.priority && query.priority.length > 0 ? query.priority.join(',') : undefined,
+      reporterIds: query.reporterIds && query.reporterIds.length > 0 ? query.reporterIds.join(',') : undefined,
+      assigneeIds: query.assigneeIds && query.assigneeIds.length > 0 ? query.assigneeIds.join(',') : undefined,
+      moduleCodes: query.moduleCodes && query.moduleCodes.length > 0 ? query.moduleCodes.join(',') : undefined,
+      versionCodes: query.versionCodes && query.versionCodes.length > 0 ? query.versionCodes.join(',') : undefined,
+      environmentCodes: query.environmentCodes && query.environmentCodes.length > 0 ? query.environmentCodes.join(',') : undefined,
+      includeAssigneeParticipants: query.includeAssigneeParticipants,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    };
+    return this.api.get<IssueListResult>('/issues', normalizedQuery);
   }
 
   create(input: CreateIssueInput) {
@@ -108,5 +122,9 @@ export class IssueApiService {
 
   reopen(issueId: string, remark?: string) {
     return this.api.post<IssueEntity, { remark?: string }>(`/issues/${issueId}/reopen`, { remark });
+  }
+
+  close(issueId: string, input: CloseIssueInput = {}) {
+    return this.api.post<IssueEntity, CloseIssueInput>(`/issues/${issueId}/close`, input);
   }
 }

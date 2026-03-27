@@ -25,6 +25,8 @@ const DEFAULT_QUERY: ContentQuery = {
   projectId: '',
 };
 
+type ContentEntity = AnnouncementEntity | DocumentEntity | ReleaseEntity;
+
 @Injectable()
 export class ContentStore {
   private readonly api = inject(ContentApiService);
@@ -35,7 +37,7 @@ export class ContentStore {
   private readonly loadingState = signal(false);
   private readonly busyState = signal(false);
   private readonly resultState = signal<
-    PageResult<AnnouncementEntity | DocumentEntity | ReleaseEntity> | null
+    PageResult<ContentEntity> | null
   >(null);
 
   readonly activeTab = computed(() => this.tabState());
@@ -44,9 +46,7 @@ export class ContentStore {
   readonly busy = computed(() => this.busyState());
   readonly result = computed(() => this.resultState());
   readonly items = computed(
-    () =>
-      (this.resultState()?.items ??
-        []) as Array<AnnouncementEntity | DocumentEntity | ReleaseEntity>,
+    () => (this.resultState()?.items ?? []) as ContentEntity[],
   );
   readonly total = computed(() => this.resultState()?.total ?? 0);
 
@@ -86,9 +86,7 @@ export class ContentStore {
     this.loadingState.set(true);
 
     const query = this.queryState();
-    const handleNext = (
-      result: PageResult<AnnouncementEntity | DocumentEntity | ReleaseEntity>,
-    ) => {
+    const handleNext = (result: PageResult<ContentEntity>) => {
       this.resultState.set(result);
       this.loadingState.set(false);
     };
@@ -170,13 +168,17 @@ export class ContentStore {
     });
   }
 
-  updateAnnouncement(announcementId: string, input: UpdateAnnouncementInput, done?: () => void): void {
+  updateAnnouncement(
+    announcementId: string,
+    input: UpdateAnnouncementInput,
+    done?: (entity: AnnouncementEntity) => void
+  ): void {
     this.busyState.set(true);
     this.api.updateAnnouncement(announcementId, input).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        done?.();
-        this.load();
+        done?.(entity);
+        this.patchOrRefresh('announcements', entity);
       },
       error: () => {
         this.busyState.set(false);
@@ -184,12 +186,13 @@ export class ContentStore {
     });
   }
 
-  publishAnnouncement(announcementId: string): void {
+  publishAnnouncement(announcementId: string, done?: (entity: AnnouncementEntity) => void): void {
     this.busyState.set(true);
     this.api.publishAnnouncement(announcementId).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        this.load();
+        done?.(entity);
+        this.patchOrRefresh('announcements', entity);
       },
       error: () => {
         this.busyState.set(false);
@@ -197,13 +200,17 @@ export class ContentStore {
     });
   }
 
-  updateDocument(documentId: string, input: UpdateDocumentInput, done?: () => void): void {
+  updateDocument(
+    documentId: string,
+    input: UpdateDocumentInput,
+    done?: (entity: DocumentEntity) => void
+  ): void {
     this.busyState.set(true);
     this.api.updateDocument(documentId, input).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        done?.();
-        this.load();
+        done?.(entity);
+        this.patchOrRefresh('documents', entity);
       },
       error: () => {
         this.busyState.set(false);
@@ -211,12 +218,13 @@ export class ContentStore {
     });
   }
 
-  publishDocument(documentId: string): void {
+  publishDocument(documentId: string, done?: (entity: DocumentEntity) => void): void {
     this.busyState.set(true);
     this.api.publishDocument(documentId).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        this.load();
+        done?.(entity);
+        this.patchOrRefresh('documents', entity);
       },
       error: () => {
         this.busyState.set(false);
@@ -224,13 +232,17 @@ export class ContentStore {
     });
   }
 
-  updateRelease(releaseId: string, input: UpdateReleaseInput, done?: () => void): void {
+  updateRelease(
+    releaseId: string,
+    input: UpdateReleaseInput,
+    done?: (entity: ReleaseEntity) => void
+  ): void {
     this.busyState.set(true);
     this.api.updateRelease(releaseId, input).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        done?.();
-        this.load();
+        done?.(entity);
+        this.patchOrRefresh('releases', entity);
       },
       error: () => {
         this.busyState.set(false);
@@ -238,16 +250,49 @@ export class ContentStore {
     });
   }
 
-  publishRelease(releaseId: string): void {
+  publishRelease(releaseId: string, done?: (entity: ReleaseEntity) => void): void {
     this.busyState.set(true);
     this.api.publishRelease(releaseId).subscribe({
-      next: () => {
+      next: (entity) => {
         this.busyState.set(false);
-        this.load();
+        done?.(entity);
+        this.patchOrRefresh('releases', entity);
       },
       error: () => {
         this.busyState.set(false);
       },
+    });
+  }
+
+  private patchOrRefresh(tab: ContentTab, entity: ContentEntity): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    if (this.tabState() !== tab) {
+      this.load();
+      return;
+    }
+
+    const query = this.queryState();
+    const hasComplexFilter = !!query.status?.trim() || !!query.keyword?.trim();
+    if (hasComplexFilter) {
+      this.load();
+      return;
+    }
+
+    const index = result.items.findIndex((item) => item.id === entity.id);
+    if (index < 0) {
+      return;
+    }
+
+    const items = [...result.items];
+    items[index] = entity;
+    this.resultState.set({
+      ...result,
+      items,
     });
   }
 }

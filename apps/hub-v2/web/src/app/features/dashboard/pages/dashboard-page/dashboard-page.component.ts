@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
 import { PageHeaderComponent } from '@shared/ui';
 import { ProjectContextStore } from '@core/state';
@@ -34,12 +34,13 @@ import { DashboardStore } from '../../store/dashboard.store';
       <app-dashboard-stat-grid [stats]="data.stats" />
 
       <div class="dashboard-grid">
-        <app-my-todos-card [items]="data.todos" />
-        <app-my-activities-card [items]="data.activities" />
+        <app-my-todos-card [items]="data.todos" [projectNames]="projectNames()" />
+        <app-my-activities-card [items]="data.activities" [projectNames]="projectNames()" />
         <app-latest-announcements-card
           [items]="data.announcements"
           [currentProjectId]="projectContext.currentProjectId()"
           [currentProjectName]="projectContext.currentProject()?.name || null"
+          [projectNames]="projectNames()"
         />
       </div>
     } @else {
@@ -94,6 +95,13 @@ import { DashboardStore } from '../../store/dashboard.store';
 export class DashboardPageComponent {
   readonly store = inject(DashboardStore);
   readonly projectContext = inject(ProjectContextStore);
+  readonly projectNames = computed<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const project of this.projectContext.projects()) {
+      map[project.id] = project.name;
+    }
+    return map;
+  });
 
   constructor() {
     this.store.load();

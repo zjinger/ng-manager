@@ -38,7 +38,7 @@ import { IssueDetailDrawerPageComponent } from '../../pages/issue-detail-page/is
       <ng-template nzDrawerContent>
         @if (issueId(); as id) {
           <!-- <app-issue-detail-page [issueId]="id" [embedded]="true" /> -->
-          <app-issue-detail-drawer-page [issueId]="id" />
+          <app-issue-detail-drawer-page [issueId]="id" (changed)="changed.emit($event)" />
         }
       </ng-template>
     </nz-drawer>
@@ -97,6 +97,7 @@ export class IssueDetailDrawerComponent {
   readonly issueId = input<string | null>(null);
   readonly issue = input<IssueEntity | null>(null);
   readonly close = output<void>();
+  readonly changed = output<IssueEntity>();
 
   readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
   readonly titleText = computed(() => this.issue()?.title || '测试单详情');
