@@ -13,6 +13,7 @@ import type {
 } from "./personal-token.types";
 import type { PersonalTokenCommandContract, PersonalTokenQueryContract } from "./personal-token.contract";
 import { ProjectRepo } from "../project/project.repo";
+import { UserRepo } from "../user/user.repo";
 
 const TOKEN_PREFIX = "ngm_uptk";
 const TOKEN_PREFIX_LENGTH = 17;
@@ -20,7 +21,8 @@ const TOKEN_PREFIX_LENGTH = 17;
 export class PersonalTokenService implements PersonalTokenCommandContract, PersonalTokenQueryContract {
   constructor(
     private readonly repo: PersonalTokenRepo,
-    private readonly projectRepo: ProjectRepo
+    private readonly projectRepo: ProjectRepo,
+    private readonly userRepo: UserRepo
   ) {}
 
   async create(input: CreatePersonalApiTokenInput, ctx: RequestContext): Promise<CreatePersonalApiTokenResult> {
@@ -123,9 +125,11 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     }
 
     this.repo.touchLastUsed(entity.id, nowIso());
+    const owner = this.userRepo.findById(entity.ownerUserId);
     return {
       tokenId: entity.id,
       ownerUserId: entity.ownerUserId,
+      ownerNickname: owner?.displayName?.trim() || owner?.username?.trim() || entity.ownerUserId,
       scopes: entity.scopes
     };
   }

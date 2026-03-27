@@ -114,7 +114,7 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
   const personalTokenRepo = new PersonalTokenRepo(db);
-  const personalTokenService = new PersonalTokenService(personalTokenRepo, projectRepo);
+  const personalTokenService = new PersonalTokenService(personalTokenRepo, projectRepo, userRepo);
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus);
   const documentRepo = new DocumentRepo(db);

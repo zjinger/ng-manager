@@ -70,6 +70,7 @@ export async function registerPlugins(app: FastifyInstance) {
             request.requestContext = createRequestContext({
               accountId: verifiedToken.tokenId,
               userId: verifiedToken.ownerUserId,
+              nickname: verifiedToken.ownerNickname,
               roles: ["personal_token"],
               authType: "personal_token",
               authScopes: verifiedToken.scopes,
