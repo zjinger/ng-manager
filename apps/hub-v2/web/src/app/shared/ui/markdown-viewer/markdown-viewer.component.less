@@ -23,17 +23,21 @@
          .markdown-content {
              min-width: 0;
              order: 1;
+             display: flow-root;
          }
 
          .markdown-toc-floating {
-             position: absolute;
-             right: 0;
-             top: 0;
+             position: sticky;
+             top: 8px;
              z-index: 4;
              display: flex;
              flex-direction: column;
              align-items: flex-end;
              gap: 8px;
+             float: right;
+             clear: right;
+             margin: 0 0 8px 16px;
+             width: fit-content;
          }
 
          .markdown-toc-floating__toggle {
@@ -42,7 +46,7 @@
              padding: 0 10px;
              border: 1px solid var(--border-color-soft, #d9dde6);
              border-radius: 999px;
-             background: var(--bg-elevated, rgba(255, 255, 255, 0.92));
+             background: var(--surface-elevated, rgba(255, 255, 255, 0.92));
              color: var(--text-secondary, #475569);
              font-size: 12px;
              line-height: 28px;
@@ -63,9 +67,17 @@
              padding: 10px 0 10px 14px;
              border-radius: 14px;
              border: 1px solid var(--border-color-soft, #e5e6eb);
-             background: var(--bg-elevated, rgba(255, 255, 255, 0.96));
+             background: var(--surface-elevated, rgba(255, 255, 255, 0.96));
              box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
              position: static;
+         }
+
+         .markdown-toc.markdown-toc--floating {
+             position: static;
+             top: auto;
+             order: initial;
+             border-left: 0;
+             padding-left: 14px;
          }
 
          .markdown-toc {
@@ -76,6 +88,8 @@
              top: 76px;
              order: 2;
              min-width: 0;
+             max-height: min(68vh, calc(100vh - 140px));
+             overflow: auto;
          }
 
          .markdown-toc__title {
@@ -104,7 +118,7 @@
              text-align: left;
              font-size: 13px;
              line-height: 1.45;
-             padding: 4px 4px;
+             padding: 4px 8px 4px 10px;
              cursor: pointer;
              white-space: normal;
              word-break: break-word;
@@ -118,17 +132,22 @@
 
          .markdown-toc__item.is-active {
              color: var(--primary-500, #2563eb);
+             font-weight: 600;
          }
 
-         .markdown-toc__item.is-active::before {
+         .markdown-toc__item.is-active::after {
              content: '';
              position: absolute;
-             left: -19px;
-             top: 4px;
-             bottom: 4px;
+             left: 2px;
+             top: 7px;
+             bottom: 7px;
              width: 2px;
              border-radius: 999px;
              background: var(--primary-500, #2563eb);
+         }
+
+         .markdown-toc--floating .markdown-toc__item {
+             padding-left: 10px;
          }
 
          ::ng-deep h1,
@@ -264,25 +283,51 @@
              color: #e2e8f0;
          }
 
-         :host-context(html[data-theme='dark']) .markdown-toc {
+         :host-context(html[data-theme='dark']) .markdown-toc,
+         :host-context(html.dark) .markdown-toc,
+         :host-context(body[data-theme='dark']) .markdown-toc {
              border-color: rgba(148, 163, 184, 0.24);
+             background: transparent;
          }
 
          :host-context(html[data-theme='dark']) .markdown-toc--floating,
-         :host-context(html[data-theme='dark']) .markdown-toc-floating__toggle {
+         :host-context(html.dark) .markdown-toc--floating,
+         :host-context(body[data-theme='dark']) .markdown-toc--floating {
              border-color: rgba(148, 163, 184, 0.28);
-             background: rgba(15, 23, 42, 0.9);
+             background: #162033 !important;
+             box-shadow: 0 14px 28px rgba(2, 6, 23, 0.45);
          }
 
-         :host-context(html[data-theme='dark']) .markdown-toc__title {
+         :host-context(html[data-theme='dark']) .markdown-toc-floating__toggle,
+         :host-context(html.dark) .markdown-toc-floating__toggle,
+         :host-context(body[data-theme='dark']) .markdown-toc-floating__toggle {
+             border-color: rgba(148, 163, 184, 0.3) !important;
+             background: #162033 !important;
+             color: #e2e8f0 !important;
+             box-shadow: 0 10px 22px rgba(2, 6, 23, 0.42);
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc__title,
+         :host-context(html.dark) .markdown-toc__title,
+         :host-context(body[data-theme='dark']) .markdown-toc__title {
              color: #e2e8f0;
          }
 
-         :host-context(html[data-theme='dark']) .markdown-toc__item {
+         :host-context(html[data-theme='dark']) .markdown-toc__item,
+         :host-context(html.dark) .markdown-toc__item,
+         :host-context(body[data-theme='dark']) .markdown-toc__item {
              color: #cbd5e1;
          }
 
-         :host-context(html[data-theme='dark']) .markdown-toc__item.is-active {
+         :host-context(html[data-theme='dark']) .markdown-toc__item:hover,
+         :host-context(html.dark) .markdown-toc__item:hover,
+         :host-context(body[data-theme='dark']) .markdown-toc__item:hover {
+             color: #f1f5f9;
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc__item.is-active,
+         :host-context(html.dark) .markdown-toc__item.is-active,
+         :host-context(body[data-theme='dark']) .markdown-toc__item.is-active {
              color: #60a5fa;
          }
 

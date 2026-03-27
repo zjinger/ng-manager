@@ -126,11 +126,6 @@ import { NotificationStore } from '../../store/notification.store';
         background: color-mix(in srgb, var(--primary-50) 72%, var(--surface-elevated));
       }
 
-      :host-context(html[data-theme='dark']) .notifications-page__toggle.ant-checkbox-wrapper-checked {
-        background: rgba(79, 70, 229, 0.14);
-        border-color: rgba(99, 102, 241, 0.34);
-      }
-
       .notifications-page__filters {
         align-items: center;
       }

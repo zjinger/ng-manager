@@ -292,6 +292,9 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
         background: color-mix(in srgb, var(--primary-400) 22%, transparent);
         color: var(--primary-300);
       }
+      :host-context(html[data-theme='dark']) .issue-row__id {
+        color: var(--text-muted);
+      }
       :host-context(html[data-theme='dark']) .issue-card.is-active {
         border-color: rgba(129, 140, 248, 0.7);
         box-shadow:

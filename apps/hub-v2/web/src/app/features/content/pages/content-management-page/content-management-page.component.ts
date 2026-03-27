@@ -167,10 +167,7 @@ import { ContentStore } from '../../store/content.store';
         gap: 12px;
         flex-wrap: wrap;
       }
-      .toolbar-search {
-        min-width: min(320px, 100%);
-        flex: 1 1 320px;
-      }
+     
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

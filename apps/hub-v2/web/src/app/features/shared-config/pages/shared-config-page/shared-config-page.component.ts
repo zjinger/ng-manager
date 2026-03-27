@@ -55,7 +55,6 @@ import { SharedConfigStore } from '../../store/shared-config.store';
 
       <app-search-box
         toolbar-search
-        class="toolbar__search"
         placeholder="搜索配置名称或 Key"
         [value]="keyword()"
         (valueChange)="keyword.set($event)"
@@ -83,10 +82,6 @@ import { SharedConfigStore } from '../../store/shared-config.store';
   `,
   styles: [
     `
-      .toolbar__search {
-        min-width: min(320px, 100%);
-        flex: 1 1 320px;
-      }
       .toolbar__filters {
         display: flex;
         gap: 12px;

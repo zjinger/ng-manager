@@ -50,7 +50,6 @@ import { UserStore } from '../../store/user.store';
 
       <app-search-box
         toolbar-search
-        class="toolbar__search"
         placeholder="搜索用户名或显示名"
         [value]="keyword()"
         (valueChange)="keyword.set($event)"
@@ -76,25 +75,6 @@ import { UserStore } from '../../store/user.store';
     `
       .toolbar {
         display: contents;
-      }
-      .toolbar__filters {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-      .toolbar__search {
-        min-width: min(320px, 100%);
-      }
-      .toolbar__search {
-        flex: 1 1 320px;
-      }
-      @media (max-width: 768px) {
-        .toolbar__create,
-        .toolbar__status,
-        .toolbar__filter-btn {
-          width: 100%;
-        }
       }
     `,
   ],

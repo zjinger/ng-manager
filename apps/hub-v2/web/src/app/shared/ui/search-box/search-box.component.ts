@@ -1,70 +1,38 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
 
 @Component({
   selector: 'app-search-box',
   standalone: true,
-  imports: [NzIconModule],
+  imports: [NzIconModule, NzInputModule],
+  host: {
+    class: 'search-box',
+  },
   template: `
-    <label class="search-box">
-      <span nz-icon nzType="search"></span>
-      <input
-        #box
-        class="search-box__input"
-        type="text"
-        [placeholder]="placeholder()"
-        [value]="value()"
-        (input)="valueChange.emit(box.value)"
-        (keyup.enter)="submitted.emit(box.value)"
-      />
-    </label>
+      <nz-input-wrapper>
+        <span nz-icon nzType="search" nzTheme="outline" nzInputPrefix></span>
+        <input
+          nz-input
+          #box
+          class="search-box__input"
+          type="text"
+          [placeholder]="placeholder()"
+          [value]="value()"
+          (input)="valueChange.emit(box.value)"
+          (keyup.enter)="submitted.emit(box.value)"
+        />
+     </nz-input-wrapper>
   `,
   styles: [
     `
-      .search-box {
+     :host.search-box {
         position: relative;
         display: flex;
         align-items: center;
-        min-width: min(280px, 100%);
-      }
-
-      .search-box > span[nz-icon] {
-        position: absolute;
-        left: 12px;
-        z-index: 1;
-        color: var(--text-muted);
-        pointer-events: none;
-      }
-
-      .search-box__input {
-        width: 100%;
-        height: 40px;
-        padding: 0 14px 0 38px;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        background: var(--bg-container);
-        color: var(--text-primary);
-        font-size: 14px;
-        outline: none;
-        transition: var(--transition-base);
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
-      }
-
-      .search-box__input::placeholder {
-        color: var(--text-muted);
-      }
-
-      .search-box__input:hover {
-        border-color: var(--primary-300);
-      }
-
-      .search-box__input:focus {
-        border-color: var(--primary-500);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
-      }
-
-      :host-context(html[data-theme='dark']) .search-box__input {
-        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+        min-width: min(320px, 100%);
+        flex: 1 1 320px;
+        max-width: 320px;
       }
     `,
   ],

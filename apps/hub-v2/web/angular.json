@@ -30,6 +30,16 @@
             ],
             "styles": [
               "src/styles.less",
+              {
+                "input": "src/styles/default.less",
+                "bundleName": "default",
+                "inject": false
+              },
+              {
+                "input": "src/styles/dark.less",
+                "bundleName": "dark",
+                "inject": false
+              },
               "node_modules/prismjs/themes/prism.css"
             ],
             "scripts": [
@@ -107,6 +117,16 @@
             ],
             "styles": [
               "src/styles.less",
+              {
+                "input": "src/styles/default.less",
+                "bundleName": "default",
+                "inject": false
+              },
+              {
+                "input": "src/styles/dark.less",
+                "bundleName": "dark",
+                "inject": false
+              },
               "node_modules/prismjs/themes/prism.css"
             ],
             "scripts": [

@@ -68,7 +68,6 @@ import { FeedbackStore } from '../../store/feedback.store';
 
       <app-search-box
         toolbar-search
-        class="toolbar__search"
         placeholder="搜索反馈标题或内容"
         [value]="keyword()"
         (valueChange)="keyword.set($event)"
@@ -190,10 +189,7 @@ import { FeedbackStore } from '../../store/feedback.store';
         gap: 12px;
         flex-wrap: wrap;
       }
-      .toolbar__search {
-        min-width: min(320px, 100%);
-        flex: 1 1 320px;
-      }
+      
       .feedback-table__head,
       .feedback-row {
         display: grid;

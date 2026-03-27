@@ -1,0 +1,144 @@
+// Structure-only runtime patch layer for ng-zorro.
+// Keep this file free of theme colors; color tokens live in `_theme.less`.
+.ant-btn:not(.ant-btn-circle):not(.ant-btn-icon-only):not(.ant-btn-link):not(.ant-btn-text) {
+    height: 36px;
+    padding-inline: 14px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.ant-btn-sm:not(.ant-btn-circle):not(.ant-btn-icon-only):not(.ant-btn-link):not(.ant-btn-text) {
+    height: 30px;
+    padding-inline: 12px;
+    border-radius: 8px;
+}
+
+.ant-select:not(.ant-select-disabled):hover .ant-select-selector,
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-picker:hover {
+    border-color: var(--primary-400);
+}
+
+.ant-select-focused .ant-select-selector,
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-picker-focused {
+    box-shadow: 0 0 0 3px var(--focus-ring-primary);
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+    height: 36px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+}
+
+.ant-select-single.ant-select-sm:not(.ant-select-customize-input) .ant-select-selector {
+    height: 30px !important;
+    border-radius: 8px !important;
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selection-item,
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selection-placeholder,
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selection-search-input {
+    height: 34px !important;
+    line-height: 34px !important;
+}
+
+.ant-select-single.ant-select-sm:not(.ant-select-customize-input) .ant-select-selection-item,
+.ant-select-single.ant-select-sm:not(.ant-select-customize-input) .ant-select-selection-placeholder,
+.ant-select-single.ant-select-sm:not(.ant-select-customize-input) .ant-select-selection-search-input {
+    height: 28px !important;
+    line-height: 28px !important;
+}
+
+.ant-select-item {
+    border-radius: 8px;
+}
+
+.ant-btn-default,
+.ant-btn:not(.ant-btn-primary) {
+    border-color: var(--border-color);
+}
+
+.ant-btn-default:hover,
+.ant-btn:not(.ant-btn-primary):hover {
+    border-color: var(--primary-400);
+    color: var(--color-primary);
+}
+
+.ant-checkbox-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ant-checkbox {
+    top: 0;
+}
+
+.ant-checkbox + span {
+    padding-inline-start: 0;
+    line-height: 1;
+}
+
+.ant-checkbox-inner {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+}
+
+.ant-table-wrapper .ant-table {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ant-modal-content,
+.ant-drawer-content,
+.ant-popover-inner,
+.ant-dropdown-menu,
+.ant-select-dropdown {
+    border-radius: 8px;
+}
+
+.ant-modal-header {
+    border-bottom: 1px solid var(--border-color-soft);
+}
+
+.issue-detail-drawer .ant-drawer-content-wrapper {
+    max-width: calc(100vw - 52px);
+}
+
+.issue-detail-drawer .ant-drawer-content {
+    background:
+        radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
+        var(--surface-elevated);
+}
+
+.issue-detail-drawer .ant-drawer-header {
+    padding: 18px 20px 16px;
+    border-bottom: 1px solid var(--border-color-soft);
+    background: transparent;
+}
+
+.issue-detail-drawer .ant-drawer-title {
+    color: var(--text-primary);
+}
+
+.issue-detail-drawer .ant-drawer-body {
+    background: transparent;
+}
+
+.ant-tabs-tab {
+    font-weight: 500;
+}
+
+.ant-notification-notice,
+.ant-message-notice-content {
+    border-radius: 8px;
+}
+
+.ant-select-single.ant-select {
+    height: auto;
+}

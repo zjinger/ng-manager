@@ -19,6 +19,7 @@
                     type="button"
                     class="markdown-toc__item"
                     [class.is-active]="activeTocId === item.id"
+                    [attr.data-toc-id]="item.id"
                     [style.paddingLeft.px]="(item.level - 1) * 12"
                     (click)="jumpToHeading(item.id)"
                   >
@@ -41,6 +42,7 @@
                 type="button"
                 class="markdown-toc__item"
                 [class.is-active]="activeTocId === item.id"
+                [attr.data-toc-id]="item.id"
                 [style.paddingLeft.px]="(item.level - 1) * 12"
                 (click)="jumpToHeading(item.id)"
               >

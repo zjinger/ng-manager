@@ -1,0 +1,34 @@
+.markdown-clipboard-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 8px;
+}
+
+.markdown-clipboard-button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color-soft, #e5e6eb);
+  background: var(--surface-primary, #fff);
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 26px;
+  transition: var(--transition-base);
+}
+
+.markdown-clipboard-button:hover {
+  color: var(--text-primary, #0f172a);
+  border-color: color-mix(in srgb, var(--primary-500) 35%, var(--border-color-soft, #e5e6eb));
+}
+
+.markdown-clipboard-button.copied {
+  color: var(--primary-600, #4f46e5);
+  border-color: color-mix(in srgb, var(--primary-500) 35%, var(--border-color-soft, #e5e6eb));
+}
+
+html[data-theme='dark'] .markdown-clipboard-button {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #cbd5e1;
+}

@@ -21,10 +21,10 @@
 }
 
 :host ::ng-deep .editor-toolbar {
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border-color, #d9d9d9);
   border-bottom: none;
   border-radius: 10px 10px 0 0;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 :host ::ng-deep .editor-toolbar.fullscreen {
@@ -39,10 +39,12 @@
 
 :host ::ng-deep .CodeMirror {
   min-height: 320px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border-color, #d9d9d9);
   border-radius: 0 0 10px 10px;
   font-size: 14px;
   line-height: 1.7;
+  color: var(--text-primary, #1e293b);
+  background: var(--surface-elevated, #fff);
 }
 
 /* 不要再写 height: auto */
@@ -65,7 +67,7 @@
 /* 关键：普通预览模式下，预览层覆盖编辑区 */
 :host ::ng-deep .editor-preview {
   z-index: 10;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 /* 关键：side-by-side 模式下，左右分栏正常显示 */
@@ -75,10 +77,10 @@
 
 :host ::ng-deep .editor-preview-side {
   width: 50%;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border-color, #d9d9d9);
   border-left: none;
   border-radius: 0 0 10px 0;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 /* 标题等排版 */
@@ -103,15 +105,17 @@
   overflow: auto;
   padding: 12px;
   border-radius: 8px;
-  background: #f6f8fa;
+  background: var(--bg-subtle, #f6f8fa);
+  border: 1px solid var(--border-color-soft, #e5e6eb);
 }
 
 :host ::ng-deep .editor-preview blockquote,
 :host ::ng-deep .editor-preview-side blockquote {
   margin: 0 0 12px;
   padding-left: 12px;
-  color: #666;
-  border-left: 4px solid #d9d9d9;
+  color: var(--text-secondary, #666);
+  border-left: 4px solid var(--border-color, #d9d9d9);
+  background: var(--bg-subtle, #fafafa);
 }
 
 :host ::ng-deep .editor-preview table,
@@ -125,5 +129,68 @@
 :host ::ng-deep .editor-preview-side table th,
 :host ::ng-deep .editor-preview-side table td {
   padding: 8px 10px;
-  border: 1px solid #e5e6eb;
+  border: 1px solid var(--border-color-soft, #e5e6eb);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-toolbar,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-toolbar.fullscreen {
+  background: var(--surface-elevated, #162033);
+  border-color: var(--border-color, rgba(148, 163, 184, 0.24));
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .CodeMirror {
+  background: var(--surface-elevated, #162033);
+  border-color: var(--border-color, rgba(148, 163, 184, 0.24));
+  color: var(--text-primary, #e2e8f0);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .CodeMirror-cursor {
+  border-left-color: var(--text-primary, #e2e8f0);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview-side,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview-full.editor-preview-active {
+  background: var(--surface-elevated, #162033);
+  color: var(--text-primary, #e2e8f0);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview-side {
+  border-color: var(--border-color, rgba(148, 163, 184, 0.24));
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview pre,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview-side pre {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview blockquote,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview-side blockquote {
+  background: rgba(148, 163, 184, 0.1);
+  border-left-color: rgba(148, 163, 184, 0.28);
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview table th,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview table td,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview-side table th,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-preview-side table td {
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-toolbar i.separator {
+  border-left-color: rgba(148, 163, 184, 0.24);
+  border-right-color: transparent;
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-toolbar button {
+  color: var(--text-secondary, #cbd5e1);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .editor-toolbar button.active,
+:host-context(html[data-theme='dark']) ::ng-deep .editor-toolbar button:hover {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(129, 140, 248, 0.4);
+  color: var(--text-primary, #f8fafc);
 }

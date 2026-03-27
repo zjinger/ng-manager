@@ -106,6 +106,7 @@ const DEFAULT_DRAFT: Draft = {
                 <nz-form-label>过期时间</nz-form-label>
                 <nz-form-control>
                   <nz-date-picker
+                    class="announcement-create-dialog__date-picker"
                     nzFormat="yyyy-MM-dd"
                     nzPlaceHolder="选择过期时间"
                     [ngModel]="expireAtDate()"
@@ -137,7 +138,13 @@ const DEFAULT_DRAFT: Draft = {
 
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="24">
-              <label nz-checkbox [ngModel]="draft().pinned" name="pinned" (ngModelChange)="updateField('pinned', $event)">
+              <label
+                nz-checkbox
+                class="announcement-create-dialog__pinned"
+                [ngModel]="draft().pinned"
+                name="pinned"
+                (ngModelChange)="updateField('pinned', $event)"
+              >
                 置顶显示
               </label>
             </div>
@@ -164,10 +171,11 @@ const DEFAULT_DRAFT: Draft = {
   `,
   styles: [
     `
-      :host ::ng-deep .ant-picker {
+      .announcement-create-dialog__date-picker {
         width: 100%;
       }
-      :host ::ng-deep .ant-checkbox-wrapper {
+
+      .announcement-create-dialog__pinned {
         display: inline-flex;
         align-items: center;
         gap: 8px;

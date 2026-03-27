@@ -26,7 +26,9 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
     tocItems: Array<{ id: string; text: string; level: number }> = [];
     activeTocId: string | null = null;
     tocCollapsed = false;
-    private headingObserver: IntersectionObserver | null = null;
+    private headingElements: HTMLElement[] = [];
+    private scrollContainer: HTMLElement | Window | null = null;
+    private scrollListener: (() => void) | null = null;
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['content'] || changes['showToc'] || changes['tocCollapsedByDefault'] || changes['tocVariant']) {
@@ -39,15 +41,32 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
     }
 
     ngOnDestroy(): void {
-        this.destroyHeadingObserver();
+        this.teardownScrollTracking();
     }
 
     jumpToHeading(id: string): void {
         const host = this.viewerRef?.nativeElement;
         const target = host?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+        if (!target) {
+            return;
+        }
+
         this.activeTocId = id;
         this.cdr.markForCheck();
-        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        queueMicrotask(() => this.ensureActiveTocItemVisible());
+
+        const container = this.scrollContainer instanceof HTMLElement ? this.scrollContainer : null;
+        const topOffset = 16;
+        if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const nextTop = container.scrollTop + (targetRect.top - containerRect.top) - topOffset;
+            container.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+            return;
+        }
+
+        const viewportTop = target.getBoundingClientRect().top + window.scrollY - 88;
+        window.scrollTo({ top: Math.max(0, viewportTop), behavior: 'smooth' });
     }
 
     toggleToc(): void {
@@ -93,7 +112,7 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
             this.tocItems = [];
             this.activeTocId = null;
             this.tocCollapsed = true;
-            this.destroyHeadingObserver();
+            this.teardownScrollTracking();
             this.cdr.markForCheck();
             return;
         }
@@ -103,7 +122,7 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
             this.tocItems = [];
             this.activeTocId = null;
             this.tocCollapsed = this.tocCollapsedByDefault;
-            this.destroyHeadingObserver();
+            this.teardownScrollTracking();
             this.cdr.markForCheck();
             return;
         }
@@ -133,47 +152,113 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
         this.tocItems = items;
         this.activeTocId = items[0]?.id ?? null;
         this.tocCollapsed = this.tocCollapsedByDefault;
-        this.setupHeadingObserver(host, headings);
+        this.setupScrollTracking(host, headings);
         this.cdr.markForCheck();
     }
 
-    private setupHeadingObserver(host: HTMLElement, headings: HTMLElement[]): void {
-        this.destroyHeadingObserver();
+    private setupScrollTracking(host: HTMLElement, headings: HTMLElement[]): void {
+        this.teardownScrollTracking();
         if (headings.length === 0) {
             return;
         }
 
-        const root = this.findScrollContainer(host);
-        this.headingObserver = new IntersectionObserver(
-            (entries) => {
-                const visible = entries
-                    .filter((entry) => entry.isIntersecting)
-                    .sort((a, b) => Math.abs(a.boundingClientRect.top - 120) - Math.abs(b.boundingClientRect.top - 120));
-                if (visible.length === 0) {
-                    return;
-                }
-                const currentId = (visible[0].target as HTMLElement).id;
-                if (!currentId || currentId === this.activeTocId) {
-                    return;
-                }
-                this.activeTocId = currentId;
-                this.cdr.markForCheck();
-            },
-            {
-                root,
-                rootMargin: '-88px 0px -60% 0px',
-                threshold: [0, 1],
-            }
-        );
-
-        for (const heading of headings) {
-            this.headingObserver.observe(heading);
-        }
+        this.headingElements = headings;
+        const container = this.findScrollContainer(host);
+        this.scrollContainer = container ?? window;
+        this.scrollListener = () => this.syncActiveHeading();
+        this.scrollContainer.addEventListener('scroll', this.scrollListener, { passive: true });
+        window.addEventListener('resize', this.scrollListener, { passive: true });
+        this.syncActiveHeading();
     }
 
-    private destroyHeadingObserver(): void {
-        this.headingObserver?.disconnect();
-        this.headingObserver = null;
+    private teardownScrollTracking(): void {
+        if (this.scrollListener) {
+            this.scrollContainer?.removeEventListener('scroll', this.scrollListener as EventListener);
+            window.removeEventListener('resize', this.scrollListener as EventListener);
+        }
+        this.headingElements = [];
+        this.scrollContainer = null;
+        this.scrollListener = null;
+    }
+
+    private syncActiveHeading(): void {
+        if (this.headingElements.length === 0) {
+            return;
+        }
+
+        const threshold = 96;
+        let active = this.headingElements[0];
+        const container = this.scrollContainer instanceof HTMLElement ? this.scrollContainer : null;
+
+        if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const current = container.scrollTop + threshold;
+            const maxScrollTop = Math.max(container.scrollHeight - container.clientHeight, 0);
+            const nearBottom = maxScrollTop - container.scrollTop <= 2;
+
+            if (nearBottom) {
+                active = this.headingElements[this.headingElements.length - 1];
+            }
+
+            for (const heading of this.headingElements) {
+                const headingRect = heading.getBoundingClientRect();
+                const top = headingRect.top - containerRect.top + container.scrollTop;
+                if (top <= current) {
+                    active = heading;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            for (const heading of this.headingElements) {
+                const top = heading.getBoundingClientRect().top;
+                if (top <= threshold) {
+                    active = heading;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if (!active.id || active.id === this.activeTocId) {
+            return;
+        }
+
+        this.activeTocId = active.id;
+        this.cdr.markForCheck();
+        queueMicrotask(() => this.ensureActiveTocItemVisible());
+    }
+
+    private ensureActiveTocItemVisible(): void {
+        const host = this.viewerRef?.nativeElement;
+        if (!host || !this.activeTocId) {
+            return;
+        }
+
+        const item = host.querySelector<HTMLElement>(
+            `.markdown-toc__item[data-toc-id="${CSS.escape(this.activeTocId)}"]`
+        );
+        if (!item) {
+            return;
+        }
+
+        const container = item.closest<HTMLElement>('.markdown-toc--floating, .markdown-toc');
+        if (!container) {
+            return;
+        }
+
+        item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+        const itemTop = item.offsetTop;
+        const itemBottom = itemTop + item.offsetHeight;
+        const viewTop = container.scrollTop;
+        const viewBottom = viewTop + container.clientHeight;
+
+        if (itemTop < viewTop) {
+            container.scrollTop = Math.max(itemTop - 8, 0);
+        } else if (itemBottom > viewBottom) {
+            container.scrollTop = itemBottom - container.clientHeight + 8;
+        }
     }
 
     private findScrollContainer(element: HTMLElement): HTMLElement | null {
