@@ -48,6 +48,10 @@
 - 提报人仅可在 `open/reopened` 阶段重新指派。
 - 一旦负责人开始处理进入 `in_progress`，提报人不能再重新指派。
 
+关闭约束（提报人）：
+- 提报人可在未进入开始处理流程前关闭（`open/reopened`）。
+- 提报人可在验证通过后关闭（`verified`）。
+
 ---
 
 ## 3. 操作权限矩阵（核心流转）
@@ -57,16 +61,18 @@
 | 创建 Issue | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 更新基础信息（标题/描述/优先级/模块等） | ✅ | ⛔（当前实现） | ✅ | ✅ | ✅ | ⛔ |
 | 认领 Claim（仅未指派） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 重新指派 Assign | ✅ | ✅ | ✅（仅 open/reopened） | ⛔ | ⛔ | ⛔ |
+| 重新指派 Assign | ✅ | ✅ | ✅（仅 open/reopened） | ✅（open/reopened/in_progress，显示“转派”） | ⛔ | ⛔ |
 | 开始处理 Start | ✅ | ⛔（当前实现） | ⛔ | ✅ | ⛔ | ⛔ |
 | 标记解决 Resolve | ✅ | ⛔（当前实现） | ⛔ | ✅ | ⛔ | ⛔ |
 | 验证通过 Verify | ✅ | ⛔（当前实现） | ✅ | ⛔ | ✅ | ⛔ |
 | 重新打开 Reopen | ✅ | ⛔（当前实现） | ✅ | ⛔ | ✅ | ⛔ |
-| 关闭 Close | ✅ | ⛔（当前实现） | ⛔ | ⛔ | ⛔ | ⛔ |
+| 关闭 Close | ✅ | ⛔（当前实现） | ✅（仅 open/reopened/verified） | ⛔ | ⛔ | ⛔ |
 
 说明：
 - 上表是“当前实现口径 + 本次认领增强”。
 - 后续若要和 RD 权限风格统一，建议把 `project_admin` 纳入 `assign/close` 等管理动作。
+- `close` 新增 reporter 条件：提报人仅在 `open/reopened/verified` 可关闭。
+- `assign` 当前实现包含“负责人转派”：`assignee` 在 `open/reopened/in_progress` 可转派。
 
 ---
 
