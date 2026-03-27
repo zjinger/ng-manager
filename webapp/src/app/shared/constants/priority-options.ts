@@ -1,0 +1,35 @@
+export const PRIORITY_LABELS: Record<string, string> = {
+  low: '低',
+  medium: '中',
+  high: '高',
+  critical: '紧急',
+};
+
+export const PRIORITY_OPTIONS = [
+  { label: '全部优先级', value: '' },
+  { label: '低', value: 'low' },
+  { label: '中', value: 'medium' },
+  { label: '高', value: 'high' },
+  { label: '紧急', value: 'critical' },
+];
+
+// export const PRIORITY_COLORS: Record<string, string> = {
+//   low: '#52c41a',
+//   medium: '#faad14',
+//   high: '#f5222d',
+//   critical: '#722ed1',
+// };
+
+export const PRIORITY_COLORS = {
+  low: 'green', 
+  medium: 'orange', 
+  high: 'magenta', 
+  critical: 'red', 
+};
+
+export const PRIORITY_BADGE_COLORS: Record<string, string> = {
+  low: 'success',
+  medium: 'warning',
+  high: 'error',
+  critical: 'purple',
+};

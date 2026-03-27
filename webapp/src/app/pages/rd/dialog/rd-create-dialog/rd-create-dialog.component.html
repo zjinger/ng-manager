@@ -1,0 +1,133 @@
+<nz-modal [nzVisible]="open()" [nzFooter]="null" [nzWidth]="720" [nzClosable]="false" [nzTitle]="'新建研发项'">
+  <ng-container *nzModalContent>
+    <form nz-form [formGroup]="form" nzLayout="vertical">
+      <!-- 标题 -->
+      <nz-form-item class="form-item">
+        <nz-form-label nzFor="title" nzRequired>标题</nz-form-label>
+        <nz-form-control nzErrorTip="请输入标题">
+          <input nz-input formControlName="title" placeholder="请输入标题" />
+        </nz-form-control>
+      </nz-form-item>
+
+      <!-- 描述 -->
+      <!-- 后面更换成Markdown文档 -->
+      <nz-form-item>
+        <nz-form-label nzFor="description">描述</nz-form-label>
+        <nz-form-control>
+          <textarea nz-input formControlName="description" rows="3" placeholder="请简要描述背景、目标和预期交付"></textarea>
+        </nz-form-control>
+      </nz-form-item>
+
+      <div nz-row [nzGutter]="24">
+        <!-- 阶段 -->
+        <div nz-col nzSpan="8">
+          <nz-form-item>
+            <nz-form-label nzFor="stageId" nzRequired>阶段</nz-form-label>
+            <nz-form-control nzErrorTip="请选择阶段">
+              <nz-select formControlName="stageId" nzPlaceHolder="请选择阶段">
+                @for(stage of stages(); track stage.id) {
+                <nz-option [nzValue]="stage.id" [nzLabel]="stage.name"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <!-- 类型 -->
+        <div nz-col nzSpan="8">
+          <nz-form-item>
+            <nz-form-label nzFor="type" nzRequired>类型</nz-form-label>
+            <nz-form-control nzErrorTip="请选择类型">
+              <nz-select formControlName="type" nzPlaceHolder="请选择类型">
+                <nz-option nzLabel="功能开发" nzValue="feature_dev"></nz-option>
+                <nz-option nzLabel="技术改造" nzValue="tech_refactor"></nz-option>
+                <nz-option nzLabel="联调协作" nzValue="integration"></nz-option>
+                <nz-option nzLabel="环境准备" nzValue="env_setup"></nz-option>
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <!-- 优先级 -->
+        <div nz-col nzSpan="8">
+          <nz-form-item>
+            <nz-form-label nzFor="priority" nzRequired>优先级</nz-form-label>
+            <nz-form-control nzErrorTip="请选择优先级">
+              <nz-select formControlName="priority" nzPlaceHolder="请选择优先级">
+                @for (item of priorityOptions.slice(1); track item.value) {
+                <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </div>
+
+      <div nz-row [nzGutter]="24">
+        <div nz-col nzSpan="12">
+          <!-- 负责人 -->
+          <nz-form-item>
+            <nz-form-label nzFor="assigneeId" nzRequired>负责人</nz-form-label>
+            <nz-form-control>
+              <nz-select formControlName="assigneeId" nzPlaceHolder="请指派负责人">
+                @for (member of members(); track member.id) {
+                <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col nzSpan="12">
+
+          <!-- 评审人 -->
+          <nz-form-item>
+            <nz-form-label nzFor="reviewerId" nzTooltipTitle="确认人默认为负责人">评审人</nz-form-label>
+            <nz-form-control>
+              <nz-select formControlName="reviewerId" nzPlaceHolder="请指定评审人">
+                @for (member of members(); track member.id) {
+                <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </div>
+
+      <div nz-row [nzGutter]="24">
+        <div nz-col nzSpan="12">
+          <!-- 开始时间 -->
+          <nz-form-item>
+            <nz-form-label nzFor="planStartAt">计划开始</nz-form-label>
+            <nz-form-control>
+              <nz-flex nzVertical>
+                <nz-date-picker nzPlaceHolder="请选择计划开始时间" formControlName="planStartAt"
+                  nzStyle="width: 100%"></nz-date-picker>
+              </nz-flex>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col nzSpan="12">
+          <!-- 结束时间 -->
+          <nz-form-item>
+            <nz-form-label nzFor="planEndAt">计划结束</nz-form-label>
+            <nz-form-control>
+              <nz-flex nzVertical>
+                <nz-date-picker nzPlaceHolder="请选择计划结束时间" formControlName="planEndAt"></nz-date-picker>
+              </nz-flex>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div style="text-align: right; margin-top: 16px;">
+        <button nz-button (click)="cancel.emit()">取消</button>
+        <button nz-button nzType="primary" [disabled]="form.invalid" (click)="submit()" style="margin-left: 8px;">
+          新建研发项
+        </button>
+      </div>
+
+    </form>
+  </ng-container>
+
+</nz-modal>

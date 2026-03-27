@@ -1,0 +1,17 @@
+<div class="cards-list">
+    @for (col of listCards; track col.key) {
+    <nz-card [nzTitle]="cardTitleTpl" class="items-card">
+        @for(item of ItemsGroupedByStatus().get(col.key); track item.id) {
+        <app-rd-item-card [rdItem]="item" (selectItem)="select($event)" [selected]="selectedItem()?.id === item.id" />
+        }
+    </nz-card>
+    <ng-template #cardTitleTpl>
+        <div class="card-title">
+            <nz-badge [nzColor]="col.color" />
+            <span>{{ col.title }}</span>
+            <nz-badge nzStandalone nzShowZero [nzCount]="ItemsGroupedByStatus().get(col.key)?.length ?? 0"
+                [nzStyle]="{ backgroundColor: col.color }" />
+        </div>
+    </ng-template>
+    }
+</div>

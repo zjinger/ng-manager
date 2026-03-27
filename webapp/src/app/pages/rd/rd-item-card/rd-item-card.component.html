@@ -1,0 +1,32 @@
+<div class="task-card" [ngClass]="{ 'task-card-active': selected() }" (click)="selectItem.emit(rdItem())">
+    <!-- 侧边紧急条 -->
+    <div [class.priority-left-bar]="selected()" class="priority-left-bar" [style.background]="'#1890ff'"></div>
+    <div class="card-content">
+        <div class="card-header">
+            <span class="task-id">{{ rdItem().rdNo }}</span>
+            <div class="badge-row">
+                <nz-tag [nzColor]="blue" class="tag">{{ rdItem().type }}</nz-tag>
+                <nz-tag [nzColor]="getPriorityColor(rdItem().priority)" class="tag">{{ rdItem().priority }}</nz-tag>
+            </div>
+        </div>
+        <div class="task-title">{{ rdItem().title }}</div>
+        <div class="progress-section">
+            <nz-progress [nzPercent]="rdItem().progress" nzSize="small" />
+        </div>
+
+        <div class="meta-row">
+            <div class="assignee">
+                <nz-avatar [nzText]="rdItem().assigneeName?.charAt(0) ?? '?'" nzSize="small" />
+                <span class="assignee-name">{{ rdItem().assigneeName }}</span>
+            </div>
+            <div class="due-date">
+                <!-- 这里紧急时可以标红色标记 -->
+                <nz-icon nzType="calendar" nzTheme="outline" />
+                {{ rdItem().planEndAt }}
+            </div>
+        </div>
+        <!-- <div class="footer-note">
+            剩余 5 天
+        </div> -->
+    </div>
+</div>

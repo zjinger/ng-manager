@@ -1,0 +1,110 @@
+<app-page-layout [title]="'研发项'" [loading]="loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
+    <div class="rd-content">
+        <div class="toolbar">
+            <form [formGroup]="form" nz-form class="search-form">
+                <!-- 搜索框 -->
+                <nz-form-item class="search-box">
+                    <nz-form-control>
+                        <nz-input-wrapper>
+                            <nz-icon nzInputPrefix nzType="search" nzTheme="outline"></nz-icon>
+                            <input nz-input type="text" formControlName="keyword" placeholder="请输入研发项..." />
+                        </nz-input-wrapper>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- 阶段选择 -->
+                <nz-form-item class="form-item">
+                    <nz-form-control>
+                        <nz-select formControlName="stage" nzPlaceHolder="选择阶段" [nzPrefix]="stageIconTpl" nzAllowClear>
+                            <nz-option [nzValue]="" [nzLabel]=""></nz-option>
+                        </nz-select>
+                    </nz-form-control>
+                    <ng-template #stageIconTpl>
+                        <nz-icon nzType="stock" nzTheme="outline"></nz-icon>
+                    </ng-template>
+                </nz-form-item>
+
+                <!-- 状态选择 -->
+                <nz-form-item class="form-item">
+                    <nz-form-control>
+                        <nz-select formControlName="status" nzPlaceHolder="选择状态" [nzPrefix]="statusIconTpl"
+                            nzAllowClear>
+                            <!-- <nz-option [nzValue]="" [nzLabel]=""></nz-option> -->
+                        </nz-select>
+                    </nz-form-control>
+                    <ng-template #statusIconTpl>
+                        <nz-icon nzType="thunderbolt" nzTheme="outline" />
+                    </ng-template>
+                </nz-form-item>
+
+                <!-- 优先级选择 -->
+                <nz-form-item class="form-item">
+                    <nz-form-control>
+                        <nz-select formControlName="priority" nzPlaceHolder="选择优先级" [nzPrefix]="priorityIconTpl"
+                            nzAllowClear>
+                            <!-- <nz-option [nzValue]="" [nzLabel]=""></nz-option> -->
+                        </nz-select>
+                    </nz-form-control>
+                    <ng-template #priorityIconTpl>
+                        <nz-icon nzType="tags" nzTheme="outline" />
+                    </ng-template>
+                </nz-form-item>
+            </form>
+            <div class="right-col">
+                <!-- 新建按钮 -->
+                <button nz-button nzType="primary" type="button" (click)="openCreateDialog()">
+                    <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+                    新建研发项
+                </button>
+                <!-- 列表视图切换 -->
+                <nz-radio-group [(ngModel)]="viewType" class="view-type">
+                    <label nz-radio-button nzValue="list">
+                        <nz-icon nzType="unordered-list" nzTheme="outline"></nz-icon>
+                    </label>
+                    <label nz-radio-button nzValue="board">
+                        <nz-icon nzType="book" nzTheme="outline"></nz-icon>
+                    </label>
+                </nz-radio-group>
+            </div>
+
+        </div>
+
+        <!-- 列表 -->
+        <div class="list-content">
+            @if(viewType() === 'list') {
+            <app-rd-list-table [rdItems]="pageRdItems()" [total]="total()" [pageIndex]="pageIndex()"
+                [pageSize]="pageSize()" (onPageChange)="onPageChange($event)" [selectedItem]="currentRdItem()"
+                (onPageSizeChange)="onPageSizeChange($event)" (selectItem)="selectItem($event)"></app-rd-list-table>
+            } @else {
+            <app-rd-list-board [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()"
+                (selectItem)="selectItem($event)"></app-rd-list-board>
+            }
+
+            <div class=" pagination-bar">
+                <nz-pagination [(nzPageIndex)]="curren" [nzTotal]="total()" [nzShowTotal]="totalTemplate"
+                    nzShowSizeChanger nzShowQuickJumper (nzPageIndexChange)="onPageChange($event)"
+                    (nzPageSizeChange)="onPageSizeChange($event)" />
+                <ng-template #totalTemplate let-total>共 {{ total }} 条记录</ng-template>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建 -->
+    <app-rd-create-dialog [open]="createDialogOpen()" (cancel)="createDialogOpen.set(false)"
+        (create)="onCreate($event)"></app-rd-create-dialog>
+
+    <!-- 详情 -->
+    <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" (close)="closeDetail()"
+        [logs]="currentRdLogs()" [placement]="drawerPlacement()" (actionClick)="handleSelectedAction($event)"
+        (progressChange)="updateSelectedProgress($event)" (deleteClick)="deleteSelectedItem()">
+    </app-rd-detail>
+
+    <!-- 阻塞弹窗 -->
+    <app-rd-block-dialog [open]="blockOpen()" [busy]="busy()" [item]="blockingItem()" (cancel)="closeBlockDialog()"
+        (confirm)="confirmBlock($event.blockerReason)" />
+
+    <!-- 推进弹窗 -->
+    <app-rd-advance-stage-dialog [open]="advanceStageOpen()" [busy]="busy()" [item]="currentRdItem()"
+        [stages]="stages()" (cancel)="advanceStageOpen.set(false)"
+        (confirm)="confirmAdvanceStage($event.stageId)" />
+</app-page-layout>
