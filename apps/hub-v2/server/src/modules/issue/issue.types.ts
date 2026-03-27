@@ -27,6 +27,8 @@ export interface IssueEntity {
   reporterName: string;
   assigneeId: string | null;
   assigneeName: string | null;
+  participantCount?: number;
+  participantNames?: string[];
   verifierId: string | null;
   verifierName: string | null;
   moduleCode: string | null;
@@ -125,9 +127,17 @@ export interface ListIssuesQuery {
   pageSize?: number;
   keyword?: string;
   projectId?: string;
-  status?: IssueStatus;
+  status?: IssueStatus[];
   type?: IssueType;
-  priority?: IssuePriority;
+  priority?: IssuePriority[];
+  reporterIds?: string[];
+  assigneeIds?: string[];
+  moduleCodes?: string[];
+  versionCodes?: string[];
+  environmentCodes?: string[];
+  includeAssigneeParticipants?: boolean;
+  sortBy?: "updatedAt" | "createdAt";
+  sortOrder?: "desc" | "asc";
   assigneeId?: string;
   verifierId?: string;
 }

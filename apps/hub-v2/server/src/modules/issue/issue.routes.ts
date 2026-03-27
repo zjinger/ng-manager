@@ -10,11 +10,12 @@ import {
   resolveIssueSchema,
   updateIssueSchema
 } from "./issue.schema";
+import type { ListIssuesQuery } from "./issue.types";
 
 export default async function issueRoutes(app: FastifyInstance) {
   app.get("/issues", async (request) => {
     const ctx = requireAuth(request);
-    const query = listIssuesQuerySchema.parse(request.query);
+    const query = listIssuesQuerySchema.parse(request.query) as ListIssuesQuery;
     return ok(await app.container.issueQuery.list(query, ctx));
   });
 

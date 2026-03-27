@@ -51,24 +51,29 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
 
   async create(input: CreateIssueInput, ctx: RequestContext): Promise<IssueEntity> {
     const projectId = input.projectId.trim();
+    const issueType = input.type ?? "bug";
     await this.projectAccess.requireProjectAccess(projectId, ctx, "create issue");
     const members = await this.resolveMembers(projectId, input.assigneeId ?? null, input.verifierId ?? null);
+    const reporterId = ctx.userId?.trim() || ctx.accountId;
+    const reporterName = ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId;
+    const effectiveVerifierId = members.verifierId ?? reporterId;
+    const effectiveVerifierName = members.verifierName ?? reporterName;
     const now = nowIso();
     const entity: IssueEntity = {
       id: genId("iss"),
       projectId,
-      issueNo: this.repo.getNextIssueNo(),
+      issueNo: this.repo.getNextIssueNo(issueType),
       title: input.title.trim(),
       description: input.description?.trim() || null,
-      type: input.type ?? "bug",
+      type: issueType,
       status: "open",
       priority: input.priority ?? "medium",
-      reporterId: ctx.userId?.trim() || ctx.accountId,
-      reporterName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      reporterId,
+      reporterName,
       assigneeId: members.assigneeId,
       assigneeName: members.assigneeName,
-      verifierId: members.verifierId,
-      verifierName: members.verifierName,
+      verifierId: effectiveVerifierId,
+      verifierName: effectiveVerifierName,
       moduleCode: input.moduleCode?.trim() || null,
       versionCode: input.versionCode?.trim() || null,
       environmentCode: input.environmentCode?.trim() || null,
@@ -245,7 +250,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
 
   async close(id: string, input: CloseIssueInput, ctx: RequestContext): Promise<IssueEntity> {
     const current = await this.requireByIdWithAccess(id, ctx, "close issue");
-    requireIssueCloseAccess(ctx);
+    requireIssueCloseAccess(current, ctx);
     const now = nowIso();
     return this.applyAction(
       id,
@@ -263,17 +268,30 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   }
 
   async list(query: ListIssuesQuery, ctx: RequestContext): Promise<IssueListResult> {
+    const normalizedQuery: ListIssuesQuery = {
+      ...query,
+      reporterIds: query.reporterIds ?? [],
+      assigneeIds: query.assigneeIds ?? (query.assigneeId?.trim() ? [query.assigneeId.trim()] : []),
+      moduleCodes: query.moduleCodes ?? [],
+      versionCodes: query.versionCodes ?? [],
+      environmentCodes: query.environmentCodes ?? [],
+      includeAssigneeParticipants: query.includeAssigneeParticipants ?? true,
+      sortBy: query.sortBy ?? "updatedAt",
+      sortOrder: query.sortOrder ?? "desc",
+      assigneeId: query.assigneeIds && query.assigneeIds.length > 0 ? undefined : query.assigneeId,
+    };
+
     if (query.projectId?.trim()) {
       await this.projectAccess.requireProjectAccess(query.projectId.trim(), ctx, "list issues");
-      return this.repo.list(query, [query.projectId.trim()]);
+      return this.repo.list(normalizedQuery, [query.projectId.trim()]);
     }
 
     if (ctx.roles.includes("admin")) {
-      return this.repo.list(query);
+      return this.repo.list(normalizedQuery);
     }
 
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
-    return this.repo.list(query, projectIds);
+    return this.repo.list(normalizedQuery, projectIds);
   }
 
   async getById(id: string, ctx: RequestContext): Promise<IssueEntity> {

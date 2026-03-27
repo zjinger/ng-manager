@@ -22,6 +22,8 @@ type IssueRow = {
   reporter_name: string;
   assignee_id: string | null;
   assignee_name: string | null;
+  participant_count?: number | null;
+  participant_names?: string | null;
   verifier_id: string | null;
   verifier_name: string | null;
   module_code: string | null;
@@ -75,6 +77,15 @@ type UpdateIssueRowInput = Partial<{
   closed_at: string | null;
   updated_at: string;
 }>;
+
+const ISSUE_NO_PREFIX_BY_TYPE: Record<IssueEntity["type"], string> = {
+  bug: "BUG",
+  feature: "FEAT",
+  change: "CHG",
+  improvement: "IMP",
+  task: "TASK",
+  test: "TEST"
+};
 
 export class IssueRepo {
   private readonly displayNameCache = new Map<string, string | null>();
@@ -138,62 +149,110 @@ export class IssueRepo {
       if (projectIds.length === 0) {
         return { items: [], page, pageSize, total: 0 };
       }
-      conditions.push(`project_id IN (${projectIds.map(() => "?").join(", ")})`);
+      conditions.push(`i.project_id IN (${projectIds.map(() => "?").join(", ")})`);
       params.push(...projectIds);
     }
 
     if (query.projectId?.trim()) {
-      conditions.push("project_id = ?");
+      conditions.push("i.project_id = ?");
       params.push(query.projectId.trim());
     }
 
-    if (query.status) {
-      conditions.push("status = ?");
-      params.push(query.status);
+    if (query.status && query.status.length > 0) {
+      conditions.push(`i.status IN (${query.status.map(() => "?").join(", ")})`);
+      params.push(...query.status);
     }
 
     if (query.type) {
       if (query.type === "task") {
-        conditions.push("(type = ? OR type = 'support')");
+        conditions.push("(i.type = ? OR i.type = 'support')");
         params.push(query.type);
       } else {
-        conditions.push("type = ?");
+        conditions.push("i.type = ?");
         params.push(query.type);
       }
     }
 
-    if (query.priority) {
-      conditions.push("priority = ?");
-      params.push(query.priority);
+    if (query.priority && query.priority.length > 0) {
+      conditions.push(`i.priority IN (${query.priority.map(() => "?").join(", ")})`);
+      params.push(...query.priority);
+    }
+
+    if (query.reporterIds && query.reporterIds.length > 0) {
+      conditions.push(`i.reporter_id IN (${query.reporterIds.map(() => "?").join(", ")})`);
+      params.push(...query.reporterIds);
+    }
+
+    if (query.assigneeIds && query.assigneeIds.length > 0) {
+      const assigneePlaceholders = query.assigneeIds.map(() => "?").join(", ");
+      const includeParticipants = query.includeAssigneeParticipants !== false;
+      if (includeParticipants) {
+        conditions.push(
+          `(i.assignee_id IN (${assigneePlaceholders}) OR EXISTS (
+            SELECT 1
+            FROM issue_participants ip
+            WHERE ip.issue_id = i.id
+              AND ip.user_id IN (${assigneePlaceholders})
+          ))`
+        );
+        params.push(...query.assigneeIds, ...query.assigneeIds);
+      } else {
+        conditions.push(`i.assignee_id IN (${assigneePlaceholders})`);
+        params.push(...query.assigneeIds);
+      }
+    }
+
+    if (query.moduleCodes && query.moduleCodes.length > 0) {
+      conditions.push(`COALESCE(i.module_code, '') IN (${query.moduleCodes.map(() => "?").join(", ")})`);
+      params.push(...query.moduleCodes);
+    }
+
+    if (query.versionCodes && query.versionCodes.length > 0) {
+      conditions.push(`COALESCE(i.version_code, '') IN (${query.versionCodes.map(() => "?").join(", ")})`);
+      params.push(...query.versionCodes);
+    }
+
+    if (query.environmentCodes && query.environmentCodes.length > 0) {
+      conditions.push(`COALESCE(i.environment_code, '') IN (${query.environmentCodes.map(() => "?").join(", ")})`);
+      params.push(...query.environmentCodes);
     }
 
     if (query.assigneeId?.trim()) {
-      conditions.push("assignee_id = ?");
+      conditions.push("i.assignee_id = ?");
       params.push(query.assigneeId.trim());
     }
 
     if (query.verifierId?.trim()) {
-      conditions.push("verifier_id = ?");
+      conditions.push("i.verifier_id = ?");
       params.push(query.verifierId.trim());
     }
 
     if (query.keyword?.trim()) {
       const keyword = `%${query.keyword.trim()}%`;
-      conditions.push("(title LIKE ? OR issue_no LIKE ? OR description LIKE ?)");
+      conditions.push("(i.title LIKE ? OR i.issue_no LIKE ? OR i.description LIKE ?)");
       params.push(keyword, keyword, keyword);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sortColumn = query.sortBy === "createdAt" ? "i.created_at" : "i.updated_at";
+    const sortDirection = query.sortOrder === "asc" ? "ASC" : "DESC";
     const totalRow = this.db
-      .prepare(`SELECT COUNT(*) as total FROM issues ${whereClause}`)
+      .prepare(`SELECT COUNT(*) as total FROM issues i ${whereClause}`)
       .get(...params) as { total: number };
 
     const rows = this.db
       .prepare(
         `
-          SELECT * FROM issues
+          SELECT i.*, COALESCE(pc.participant_count, 0) AS participant_count
+               , COALESCE(pc.participant_names, '') AS participant_names
+          FROM issues i
+          LEFT JOIN (
+            SELECT issue_id, COUNT(*) AS participant_count, GROUP_CONCAT(user_name, '||') AS participant_names
+            FROM issue_participants
+            GROUP BY issue_id
+          ) pc ON pc.issue_id = i.id
           ${whereClause}
-          ORDER BY updated_at DESC
+          ORDER BY ${sortColumn} ${sortDirection}
           LIMIT ? OFFSET ?
         `
       )
@@ -219,9 +278,10 @@ export class IssueRepo {
     return result.changes > 0;
   }
 
-  getNextIssueNo(): string {
+  getNextIssueNo(type: IssueEntity["type"]): string {
     const row = this.db.prepare("SELECT COUNT(*) as total FROM issues").get() as { total: number };
-    return `ISS-${String(row.total + 1).padStart(6, "0")}`;
+    const prefix = ISSUE_NO_PREFIX_BY_TYPE[type] ?? "ISS";
+    return `${prefix}-${String(row.total + 1).padStart(6, "0")}`;
   }
 
   createLog(log: IssueLogEntity): void {
@@ -284,7 +344,7 @@ export class IssueRepo {
         `
           SELECT COUNT(*) as total
           FROM issues
-          WHERE verifier_id = ?
+          WHERE COALESCE(verifier_id, reporter_id) = ?
             AND status = 'resolved'
             ${scope.clause}
         `
@@ -321,7 +381,7 @@ export class IssueRepo {
         `
           SELECT id, issue_no as code, title, status, updated_at, project_id
           FROM issues
-          WHERE verifier_id = ?
+          WHERE COALESCE(verifier_id, reporter_id) = ?
             AND status = 'resolved'
             ${scope.clause}
           ORDER BY updated_at DESC
@@ -402,6 +462,8 @@ export class IssueRepo {
       reporterName: this.normalizeActorName(row.reporter_id, row.reporter_name) ?? row.reporter_name,
       assigneeId: row.assignee_id,
       assigneeName: this.normalizeActorName(row.assignee_id, row.assignee_name),
+      participantCount: Number(row.participant_count ?? 0),
+      participantNames: this.normalizeParticipantNames(row.participant_names),
       verifierId: row.verifier_id,
       verifierName: this.normalizeActorName(row.verifier_id, row.verifier_name),
       moduleCode: row.module_code,
@@ -527,5 +589,22 @@ export class IssueRepo {
     const resolved = adminRow?.name?.trim() || null;
     this.displayNameCache.set(id, resolved);
     return resolved;
+  }
+
+  private normalizeParticipantNames(raw: string | null | undefined): string[] {
+    const source = raw?.trim();
+    if (!source) {
+      return [];
+    }
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const name of source.split("||").map((item) => item.trim()).filter(Boolean)) {
+      if (seen.has(name)) {
+        continue;
+      }
+      seen.add(name);
+      result.push(name);
+    }
+    return result;
   }
 }

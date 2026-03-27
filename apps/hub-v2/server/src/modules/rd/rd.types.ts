@@ -64,7 +64,7 @@ export interface RdLogEntity {
 }
 
 export interface RdDashboardTodo {
-  kind: "rd_assigned" | "rd_review";
+  kind: "rd_assigned";
   entityId: string;
   code: string;
   title: string;
@@ -139,9 +139,11 @@ export interface ListRdItemsQuery {
   pageSize?: number;
   projectId?: string;
   stageId?: string;
-  status?: RdItemStatus;
-  type?: RdItemType;
-  priority?: RdItemPriority;
+  stageIds?: string[];
+  status?: RdItemStatus[];
+  type?: RdItemType[];
+  priority?: RdItemPriority[];
+  assigneeIds?: string[];
   assigneeId?: string;
   keyword?: string;
 }

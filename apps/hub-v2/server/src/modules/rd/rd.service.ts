@@ -313,17 +313,25 @@ export class RdService implements RdCommandContract, RdQueryContract {
   }
 
   async listItems(query: ListRdItemsQuery, ctx: RequestContext): Promise<RdItemListResult> {
+    const normalizedQuery: ListRdItemsQuery = {
+      ...query,
+      stageIds: query.stageIds ?? (query.stageId?.trim() ? [query.stageId.trim()] : []),
+      assigneeIds: query.assigneeIds ?? (query.assigneeId?.trim() ? [query.assigneeId.trim()] : []),
+      stageId: query.stageIds && query.stageIds.length > 0 ? undefined : query.stageId,
+      assigneeId: query.assigneeIds && query.assigneeIds.length > 0 ? undefined : query.assigneeId,
+    };
+
     if (query.projectId?.trim()) {
       await this.projectAccess.requireProjectAccess(query.projectId.trim(), ctx, "list rd items");
-      return this.repo.listItems(query, [query.projectId.trim()]);
+      return this.repo.listItems(normalizedQuery, [query.projectId.trim()]);
     }
 
     if (ctx.roles.includes("admin")) {
-      return this.repo.listItems(query);
+      return this.repo.listItems(normalizedQuery);
     }
 
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
-    return this.repo.listItems(query, projectIds);
+    return this.repo.listItems(normalizedQuery, projectIds);
   }
 
   async getItemById(id: string, ctx: RequestContext): Promise<RdItemEntity> {

@@ -82,19 +82,19 @@ export class FeedbackRepo {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    if (query.status?.trim()) {
-      conditions.push("status = ?");
-      params.push(query.status.trim());
+    if (query.status && query.status.length > 0) {
+      conditions.push(`status IN (${query.status.map(() => "?").join(",")})`);
+      params.push(...query.status);
     }
 
-    if (query.category?.trim()) {
-      conditions.push("category = ?");
-      params.push(query.category.trim());
+    if (query.category && query.category.length > 0) {
+      conditions.push(`category IN (${query.category.map(() => "?").join(",")})`);
+      params.push(...query.category);
     }
 
-    if (query.source?.trim()) {
-      conditions.push("source = ?");
-      params.push(query.source.trim());
+    if (query.source && query.source.length > 0) {
+      conditions.push(`source IN (${query.source.map(() => "?").join(",")})`);
+      params.push(...query.source);
     }
 
     if (query.projectKey?.trim()) {

@@ -28,6 +28,14 @@ export function requireIssueAssignAccess(issue: IssueEntity, ctx: RequestContext
     return;
   }
 
+  // 当前负责人可在 open/reopened/in_progress 执行转派。
+  if (
+    matchActor(ctx, issue.assigneeId) &&
+    (issue.status === "open" || issue.status === "reopened" || issue.status === "in_progress")
+  ) {
+    return;
+  }
+
   // 提报人仅能在“开始处理前”执行重新指派。
   if (matchActor(ctx, issue.reporterId) && (issue.status === "open" || issue.status === "reopened")) {
     return;
@@ -95,8 +103,16 @@ export function requireIssueReopenAccess(issue: IssueEntity, ctx: RequestContext
   throw new AppError("ISSUE_REOPEN_FORBIDDEN", "issue reopen forbidden", 403);
 }
 
-export function requireIssueCloseAccess(ctx: RequestContext): void {
+export function requireIssueCloseAccess(issue: IssueEntity, ctx: RequestContext): void {
   if (isAdmin(ctx)) {
+    return;
+  }
+
+  // 提报人可在未进入处理流程前关闭（open/reopened），或验证通过后关闭（verified）。
+  if (
+    matchActor(ctx, issue.reporterId) &&
+    (issue.status === "open" || issue.status === "reopened" || issue.status === "verified")
+  ) {
     return;
   }
 

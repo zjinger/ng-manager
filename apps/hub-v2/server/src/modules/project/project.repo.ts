@@ -26,6 +26,7 @@ type ProjectRow = {
   avatar_upload_id: string | null;
   status: "active" | "inactive";
   visibility: "internal" | "private";
+  member_count?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -174,9 +175,17 @@ export class ProjectRepo {
     const rows = this.db
       .prepare(
         `
-          SELECT * FROM projects
+          SELECT
+            p.*,
+            COALESCE(mc.member_count, 0) AS member_count
+          FROM projects p
+          LEFT JOIN (
+            SELECT project_id, COUNT(*) AS member_count
+            FROM project_members
+            GROUP BY project_id
+          ) mc ON mc.project_id = p.id
           ${whereClause}
-          ORDER BY updated_at DESC
+          ORDER BY p.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )
@@ -232,10 +241,16 @@ export class ProjectRepo {
             p.avatar_upload_id,
             p.status,
             p.visibility,
+            COALESCE(mc.member_count, 0) AS member_count,
             p.created_at,
             p.updated_at
           FROM projects p
           INNER JOIN project_members pm ON pm.project_id = p.id
+          LEFT JOIN (
+            SELECT project_id, COUNT(*) AS member_count
+            FROM project_members
+            GROUP BY project_id
+          ) mc ON mc.project_id = p.id
           ${whereClause}
           ORDER BY p.updated_at DESC
           LIMIT ? OFFSET ?
@@ -602,6 +617,7 @@ export class ProjectRepo {
       icon: row.icon,
       avatarUploadId: row.avatar_upload_id ?? null,
       avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
+      memberCount: Number(row.member_count ?? 0),
       status: row.status,
       visibility: row.visibility,
       createdAt: row.created_at,

@@ -11,6 +11,7 @@ import {
   updateRdItemSchema,
   updateRdStageSchema
 } from "./rd.schema";
+import type { ListRdItemsQuery } from "./rd.types";
 
 export default async function rdRoutes(app: FastifyInstance) {
   app.get("/rd/stages", async (request) => {
@@ -35,7 +36,7 @@ export default async function rdRoutes(app: FastifyInstance) {
 
   app.get("/rd/items", async (request) => {
     const ctx = requireAuth(request);
-    const query = listRdItemsQuerySchema.parse(request.query);
+    const query = listRdItemsQuerySchema.parse(request.query) as ListRdItemsQuery;
     return ok(await app.container.rdQuery.listItems(query, ctx));
   });
 

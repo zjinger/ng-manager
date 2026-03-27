@@ -24,7 +24,7 @@ export class DashboardRepo {
         verifyingIssues: 0,
         assignedRdItems: 0,
         inProgressRdItems: 0,
-        reviewingRdItems: 0
+        myProjects: 0
       };
     }
 
@@ -59,16 +59,6 @@ export class DashboardRepo {
       `,
       [userId, ...scope.params]
     );
-    const reviewingRdItems = this.count(
-      `
-        SELECT COUNT(*) as total
-        FROM rd_items
-        WHERE reviewer_id = ?
-          AND status = 'done'
-          ${scope.clause}
-      `,
-      [userId, ...scope.params]
-    );
     const inProgressRdItems = this.count(
       `
         SELECT COUNT(*) as total
@@ -85,7 +75,7 @@ export class DashboardRepo {
       verifyingIssues,
       assignedRdItems,
       inProgressRdItems,
-      reviewingRdItems
+      myProjects: projectIds.length
     };
   }
 
@@ -158,32 +148,10 @@ export class DashboardRepo {
       project_id: string;
     }>;
 
-    const rdReview = this.db
-      .prepare(
-        `
-          SELECT id, rd_no as code, title, status, updated_at, project_id
-          FROM rd_items
-          WHERE reviewer_id = ?
-            AND status = 'done'
-            ${scope.clause}
-          ORDER BY updated_at DESC
-          LIMIT ?
-        `
-      )
-      .all(userId, ...scope.params, limit) as Array<{
-      id: string;
-      code: string;
-      title: string;
-      status: string;
-      updated_at: string;
-      project_id: string;
-    }>;
-
     return [
       ...issuesAssigned.map((row) => this.mapTodo("issue_assigned", row)),
       ...issuesVerify.map((row) => this.mapTodo("issue_verify", row)),
-      ...rdAssigned.map((row) => this.mapTodo("rd_assigned", row)),
-      ...rdReview.map((row) => this.mapTodo("rd_review", row))
+      ...rdAssigned.map((row) => this.mapTodo("rd_assigned", row))
     ]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, limit);

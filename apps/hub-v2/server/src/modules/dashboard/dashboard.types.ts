@@ -1,4 +1,4 @@
-export type DashboardTodoItemKind = "issue_assigned" | "issue_verify" | "rd_assigned" | "rd_review";
+export type DashboardTodoItemKind = "issue_assigned" | "issue_verify" | "rd_assigned";
 export type DashboardActivityItemKind = "issue_activity" | "rd_activity";
 export interface DashboardTodoItem {
   kind: DashboardTodoItemKind;
@@ -35,7 +35,7 @@ export interface DashboardStats {
   verifyingIssues: number;
   assignedRdItems: number;
   inProgressRdItems: number;
-  reviewingRdItems: number;
+  myProjects: number;
 }
 
 export interface DashboardHomeData {

@@ -10,12 +10,14 @@ import {
   tokenIssueListQuerySchema,
   tokenRdListQuerySchema
 } from "./api-token.schema";
+import type { TokenIssueListQuery } from "./api-token.types";
+import type { TokenRdListQuery, TokenFeedbackListQuery } from "./api-token.types";
 
 export default async function apiTokenRoutes(app: FastifyInstance) {
   app.get("/projects/:projectKey/issues", async (request) => {
     const ctx = requireTokenAuth(request, "issues:read");
     const params = projectParamSchema.parse(request.params);
-    const query = tokenIssueListQuerySchema.parse(request.query);
+    const query = tokenIssueListQuerySchema.parse(request.query) as TokenIssueListQuery;
     return ok(await app.container.apiTokenQuery.listIssues(params.projectKey, query, ctx));
   });
 
@@ -34,7 +36,7 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
   app.get("/projects/:projectKey/rd-items", async (request) => {
     const ctx = requireTokenAuth(request, "rd:read");
     const params = projectParamSchema.parse(request.params);
-    const query = tokenRdListQuerySchema.parse(request.query);
+    const query = tokenRdListQuerySchema.parse(request.query) as TokenRdListQuery;
     return ok(await app.container.apiTokenQuery.listRdItems(params.projectKey, query, ctx));
   });
 
@@ -53,7 +55,7 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
   app.get("/projects/:projectKey/feedbacks", async (request) => {
     const ctx = requireTokenAuth(request, "feedbacks:read");
     const params = projectParamSchema.parse(request.params);
-    const query = tokenFeedbackListQuerySchema.parse(request.query);
+    const query = tokenFeedbackListQuerySchema.parse(request.query) as TokenFeedbackListQuery;
     return ok(await app.container.apiTokenQuery.listFeedbacks(params.projectKey, query, ctx));
   });
 

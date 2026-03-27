@@ -20,6 +20,7 @@ export interface ProjectEntity {
   icon: string | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
+  memberCount?: number;
   status: ProjectStatus;
   visibility: ProjectVisibility;
   createdAt: string;

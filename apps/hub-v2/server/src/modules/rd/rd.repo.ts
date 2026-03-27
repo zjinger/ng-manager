@@ -210,17 +210,25 @@ export class RdRepo {
       conditions.push("stage_id = ?");
       params.push(query.stageId.trim());
     }
-    if (query.status) {
-      conditions.push("status = ?");
-      params.push(query.status);
+    if (query.stageIds && query.stageIds.length > 0) {
+      conditions.push(`stage_id IN (${query.stageIds.map(() => "?").join(", ")})`);
+      params.push(...query.stageIds);
     }
-    if (query.type) {
-      conditions.push("type = ?");
-      params.push(query.type);
+    if (query.status && query.status.length > 0) {
+      conditions.push(`status IN (${query.status.map(() => "?").join(", ")})`);
+      params.push(...query.status);
     }
-    if (query.priority) {
-      conditions.push("priority = ?");
-      params.push(query.priority);
+    if (query.type && query.type.length > 0) {
+      conditions.push(`type IN (${query.type.map(() => "?").join(", ")})`);
+      params.push(...query.type);
+    }
+    if (query.priority && query.priority.length > 0) {
+      conditions.push(`priority IN (${query.priority.map(() => "?").join(", ")})`);
+      params.push(...query.priority);
+    }
+    if (query.assigneeIds && query.assigneeIds.length > 0) {
+      conditions.push(`assignee_id IN (${query.assigneeIds.map(() => "?").join(", ")})`);
+      params.push(...query.assigneeIds);
     }
     if (query.assigneeId?.trim()) {
       conditions.push("assignee_id = ?");
@@ -382,31 +390,8 @@ export class RdRepo {
       project_id: string;
     }>;
 
-    const review = this.db
-      .prepare(
-        `
-          SELECT id, rd_no as code, title, status, updated_at, project_id
-          FROM rd_items
-          WHERE reviewer_id = ?
-            AND status = 'done'
-            ${scope.clause}
-          ORDER BY updated_at DESC
-          LIMIT ?
-        `
-      )
-      .all(userId, ...scope.params, limit) as Array<{
-      id: string;
-      code: string;
-      title: string;
-      status: string;
-      updated_at: string;
-      project_id: string;
-    }>;
-
-    return [
-      ...assigned.map((row) => this.mapDashboardTodo("rd_assigned", row)),
-      ...review.map((row) => this.mapDashboardTodo("rd_review", row))
-    ]
+    return assigned
+      .map((row) => this.mapDashboardTodo("rd_assigned", row))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, limit);
   }
