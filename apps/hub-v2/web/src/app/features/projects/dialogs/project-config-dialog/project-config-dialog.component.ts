@@ -256,11 +256,12 @@ import type {
                 <div class="token-once">
                   <div class="token-once__title">新 Token（仅展示一次）</div>
                   <div class="token-once__value">{{ latestCreatedToken() }}
-                    <a (click)="copyLatestToken.emit(latestCreatedToken()!)" nz-tooltip="点击复制token">
+                    <button type="button" nz-button nzType="default" (click)="copyLatestToken.emit(latestCreatedToken()!)">
                       <nz-icon nzType="copy" nzTheme="outline" />
-                    </a></div>
+                      复制Token
+                    </button></div>
                   <div class="token-once__actions">
-                    <button nz-button nzType="default" (click)="clearLatestToken.emit()">
+                    <button type="button" nz-button nzType="default" (click)="clearLatestToken.emit()">
                       <nz-icon nzType="check" nzTheme="outline" />
                       已保存，关闭展示
                     </button>
@@ -388,11 +389,11 @@ import type {
         font-size: 12px;
         color: var(--text-muted);
       }
-      .token-once__value {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        font-size: 13px;
-        word-break: break-all;
-      }
+      // .token-once__value {
+      //   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      //   font-size: 13px;
+      //   word-break: break-all;
+      // }
       .token-once__actions {
         display: flex;
         gap: 8px;

@@ -10,11 +10,12 @@ import {
   type ProfileNotificationSetting,
 } from '../../components/profile-notification-settings/profile-notification-settings.component';
 import { ProfilePasswordFormComponent } from '../../components/profile-password-form/profile-password-form.component';
+import { ProfilePersonalTokenComponent } from '../../components/profile-personal-token/profile-personal-token.component';
 import { ProfileTabsComponent } from '../../components/profile-tabs/profile-tabs.component';
 import type { ChangePasswordInput, ProfileNotificationPrefs } from '../../models/profile.model';
 import { ProfileApiService } from '../../services/profile-api.service';
 
-type ProfileTab = 'basic' | 'security' | 'notifications';
+type ProfileTab = 'basic' | 'security' | 'notifications' | 'tokens';
 
 @Component({
   selector: 'app-profile-page',
@@ -26,6 +27,7 @@ type ProfileTab = 'basic' | 'security' | 'notifications';
     ProfileBasicFormComponent,
     ProfilePasswordFormComponent,
     ProfileNotificationSettingsComponent,
+    ProfilePersonalTokenComponent,
   ],
   template: `
     <app-page-header title="个人中心" subtitle="管理你的个人信息、安全设置与偏好" />
@@ -66,6 +68,10 @@ type ProfileTab = 'basic' | 'security' | 'notifications';
           (toggle)="togglePref($event.group, $event.id, $event.enabled)"
         />
       }
+
+      @case ('tokens') {
+        <app-profile-personal-token />
+      }
     }
   `,
   styles: [
@@ -100,6 +106,7 @@ export class ProfilePageComponent {
     { id: 'basic', label: '基本信息', icon: 'user' },
     { id: 'security', label: '账号安全', icon: 'lock' },
     { id: 'notifications', label: '通知偏好', icon: 'bell' },
+    { id: 'tokens', label: 'API Token', icon: 'key' },
   ];
 
   readonly channelPrefs = signal<ProfileNotificationSetting[]>([

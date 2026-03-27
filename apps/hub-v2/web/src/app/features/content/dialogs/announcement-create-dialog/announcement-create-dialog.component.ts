@@ -163,6 +163,7 @@ const DEFAULT_DRAFT: Draft = {
             [nzLoading]="busy()"
             [disabled]="!canSubmit()"
           >
+            <nz-icon nzType="check" nzTheme="outline"></nz-icon>
             {{ isEdit() ? '保存公告' : '创建公告' }}
           </button>
         </app-form-actions>

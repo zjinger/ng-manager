@@ -3,7 +3,14 @@ import { Observable } from 'rxjs';
 
 import { ApiClientService } from '@core/http';
 import type { AuthUser } from '@core/auth';
-import type { ChangePasswordInput, ProfileActivityRecord, ProfileNotificationPrefs } from '../models/profile.model';
+import type {
+  ChangePasswordInput,
+  CreatePersonalApiTokenInput,
+  CreatePersonalApiTokenResult,
+  PersonalApiTokenEntity,
+  ProfileActivityRecord,
+  ProfileNotificationPrefs,
+} from '../models/profile.model';
 
 interface UploadEntity {
   id: string;
@@ -40,5 +47,17 @@ export class ProfileApiService {
 
   saveNotificationPrefs(prefs: ProfileNotificationPrefs): Observable<ProfileNotificationPrefs> {
     return this.api.patch<ProfileNotificationPrefs, ProfileNotificationPrefs>('/profile/preferences', prefs);
+  }
+
+  listPersonalTokens(): Observable<{ items: PersonalApiTokenEntity[] }> {
+    return this.api.get<{ items: PersonalApiTokenEntity[] }>('/personal-api-tokens');
+  }
+
+  createPersonalToken(input: CreatePersonalApiTokenInput): Observable<CreatePersonalApiTokenResult> {
+    return this.api.post<CreatePersonalApiTokenResult, CreatePersonalApiTokenInput>('/personal-api-tokens', input);
+  }
+
+  revokePersonalToken(tokenId: string): Observable<{ id: string }> {
+    return this.api.delete<{ id: string }>(`/personal-api-tokens/${tokenId}`);
   }
 }

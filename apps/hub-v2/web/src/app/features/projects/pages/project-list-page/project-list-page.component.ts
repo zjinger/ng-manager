@@ -487,7 +487,7 @@ export class ProjectListPageComponent {
     if (ok) {
       this.message.success('Token 已复制');
     } else {
-      this.message.error('复制 Token 失败');
+      this.message.error('复制 Token 失败，请手动复制');
     }
   }
 
