@@ -36,4 +36,10 @@ export default async function documentRoutes(app: FastifyInstance) {
     const params = request.params as { documentId: string };
     return ok(await app.container.documentCommand.publish(params.documentId, ctx), "document published");
   });
+
+  app.post("/documents/:documentId/archive", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { documentId: string };
+    return ok(await app.container.documentCommand.archive(params.documentId, ctx), "document archived");
+  });
 }

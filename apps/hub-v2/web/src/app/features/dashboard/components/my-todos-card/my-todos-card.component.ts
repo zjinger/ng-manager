@@ -28,7 +28,7 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
             <div class="todo__body">
               <div class="todo__title">
                 <span class="todo__tag" [attr.data-kind]="item.kind">
-                  {{ item.kind.startsWith('rd') ? 'RD' : 'ISSUE' }}
+                  {{ item.kind.startsWith('rd') ? '研发项' : '测试单' }}
                 </span>
                 <span>{{ item.title }}</span>
               </div>
@@ -46,6 +46,10 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        height: 100%;
+      }
       .panel {
         background: var(--bg-container);
         border: 1px solid var(--border-color);
@@ -53,6 +57,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         overflow: hidden;
         box-shadow: var(--shadow-sm);
         position: relative;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
       }
       .panel::after {
         content: '';
@@ -86,6 +93,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         padding: 32px 18px;
         text-align: center;
         color: var(--text-disabled);
+        flex: 1;
+        display: grid;
+        place-items: center;
       }
       .todo {
         display: flex;

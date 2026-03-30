@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ProjectContextStore } from '@core/state';
-import { FilterBarComponent, ListStateComponent, PageHeaderComponent, SearchBoxComponent } from '@shared/ui';
+import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NotificationListComponent } from '../../components/notification-list/notification-list.component';
 import { NotificationStore } from '../../store/notification.store';
 
@@ -18,55 +18,58 @@ import { NotificationStore } from '../../store/notification.store';
     NzPaginationModule,
     NzSelectModule,
     PageHeaderComponent,
+    PageToolbarComponent,
     FilterBarComponent,
     SearchBoxComponent,
     ListStateComponent,
     NotificationListComponent,
   ],
   template: `
-    <app-page-header title="通知中心" subtitle="查看最近的待办、动态与公告提醒" />
+    <app-page-header title="通知中心" subtitle="查看最近的待办与动态提醒" />
 
-    <app-filter-bar class="notifications-page__filters">
+    <app-page-toolbar>
       <app-search-box
+        toolbar-primary
         class="notifications-page__search"
         [placeholder]="'搜索通知标题、项目或来源'"
         [value]="store.query().keyword || ''"
-        (valueChange)="store.updateQuery({ keyword: $event || undefined })"
+        (valueChange)="onFilterChange({ keyword: $event || undefined })"
       />
 
-      <nz-select
-        nzPlaceHolder="全部类型"
-        class="toolbar-select notifications-page__select"
-        [ngModel]="store.query().kind || ''"
-        (ngModelChange)="store.updateQuery({ kind: $event || '' })"
-      >
-        <nz-option nzLabel="全部类型" nzValue=""></nz-option>
-        <nz-option nzLabel="待办" nzValue="todo"></nz-option>
-        <nz-option nzLabel="动态" nzValue="activity"></nz-option>
-        <nz-option nzLabel="公告" nzValue="announcement"></nz-option>
-      </nz-select>
+      <app-filter-bar toolbar-filters class="notifications-page__filters">
+        <nz-select
+          nzPlaceHolder="全部类型"
+          class="toolbar-select notifications-page__select"
+          [ngModel]="store.query().kind || ''"
+          (ngModelChange)="onFilterChange({ kind: $event || '' })"
+        >
+          <nz-option nzLabel="全部类型" nzValue=""></nz-option>
+          <nz-option nzLabel="待办" nzValue="todo"></nz-option>
+          <nz-option nzLabel="动态" nzValue="activity"></nz-option>
+        </nz-select>
 
-      <nz-select
-        nzPlaceHolder="全部项目"
-        class="toolbar-select notifications-page__select"
-        [ngModel]="store.query().projectId || ''"
-        (ngModelChange)="store.updateQuery({ projectId: $event || undefined })"
-      >
-        <nz-option nzLabel="全部项目" nzValue=""></nz-option>
-        @for (project of projects(); track project.id) {
-          <nz-option [nzLabel]="project.name" [nzValue]="project.id"></nz-option>
-        }
-      </nz-select>
+        <nz-select
+          nzPlaceHolder="全部项目"
+          class="toolbar-select notifications-page__select"
+          [ngModel]="store.query().projectId || ''"
+          (ngModelChange)="onFilterChange({ projectId: $event || undefined })"
+        >
+          <nz-option nzLabel="全部项目" nzValue=""></nz-option>
+          @for (project of projects(); track project.id) {
+            <nz-option [nzLabel]="project.name" [nzValue]="project.id"></nz-option>
+          }
+        </nz-select>
 
-      <label
-        nz-checkbox
-        class="notifications-page__toggle"
-        [ngModel]="store.unreadOnly()"
-      (ngModelChange)="store.setUnreadOnly($event)"
-      >
-        只看未读
-      </label>
-    </app-filter-bar>
+        <label
+          nz-checkbox
+          class="notifications-page__toggle"
+          [ngModel]="store.unreadOnly()"
+          (ngModelChange)="store.setUnreadOnly($event)"
+        >
+          只看未读
+        </label>
+      </app-filter-bar>
+    </app-page-toolbar>
 
     <app-list-state
       [loading]="store.loading()"
@@ -74,14 +77,14 @@ import { NotificationStore } from '../../store/notification.store';
       loadingText="正在加载通知…"
       emptyTitle="当前没有通知"
     >
-      <app-notification-list [items]="pagedItems()" />
+      <app-notification-list [items]="store.filteredItems()" />
 
-      @if (total() > 0) {
+      @if (store.total() > 0 && !store.unreadOnly()) {
         <div class="notifications-page__pagination">
           <nz-pagination
-            [nzTotal]="total()"
-            [nzPageIndex]="page()"
-            [nzPageSize]="pageSize()"
+            [nzTotal]="store.total()"
+            [nzPageIndex]="store.query().page || 1"
+            [nzPageSize]="store.query().pageSize || 20"
             [nzPageSizeOptions]="[10, 20, 50, 100]"
             [nzShowSizeChanger]="true"
             [nzShowQuickJumper]="true"
@@ -107,8 +110,6 @@ import { NotificationStore } from '../../store/notification.store';
         color: var(--text-primary);
         background: var(--surface-elevated);
         border: 1px solid var(--border-color);
-        font-size: 13px;
-        font-weight: 500;
         cursor: pointer;
         transition:
           border-color 0.2s ease,
@@ -116,45 +117,33 @@ import { NotificationStore } from '../../store/notification.store';
           color 0.2s ease,
           box-shadow 0.2s ease;
       }
+      .notifications-page__toggle.ant-checkbox-wrapper {
+        gap: 8px;
+        line-height: 1;
+      }
+      .notifications-page__toggle.ant-checkbox-wrapper ::ng-deep .ant-checkbox {
+        top: 0;
+      }
+      .notifications-page__toggle.ant-checkbox-wrapper ::ng-deep .ant-checkbox + span {
+        display: inline-flex;
+        align-items: center;
+        padding-inline-start: 0;
+      }
 
       .notifications-page__toggle:hover {
         border-color: var(--primary-400);
       }
 
-      .notifications-page__toggle.ant-checkbox-wrapper-checked {
-        border-color: var(--primary-300);
-        background: color-mix(in srgb, var(--primary-50) 72%, var(--surface-elevated));
-      }
-
-      .notifications-page__filters {
-        align-items: center;
-      }
-
-      .notifications-page__search {
-        flex: 1 1 320px;
-        min-width: min(320px, 100%);
-      }
-
       .notifications-page__select {
         flex: 0 0 152px;
+      }
+      .notifications-page__search {
+        min-width: min(320px, 100%);
       }
       .notifications-page__pagination {
         display: flex;
         justify-content: flex-end;
         padding: 16px 0 4px;
-      }
-
-      @media (max-width: 960px) {
-        .notifications-page__search,
-        .notifications-page__select,
-        .notifications-page__toggle {
-          flex: 1 1 100%;
-          width: 100%;
-        }
-
-        .notifications-page__toggle {
-          justify-content: flex-start;
-        }
       }
     `,
   ],
@@ -164,31 +153,23 @@ export class NotificationsPageComponent {
   readonly store = inject(NotificationStore);
   private readonly projectContext = inject(ProjectContextStore);
   readonly projects = this.projectContext.projects;
-  readonly page = signal(1);
   readonly pageSize = signal(20);
-  readonly total = computed(() => this.store.filteredItems().length);
-  readonly pagedItems = computed(() => {
-    const all = this.store.filteredItems();
-    const page = this.page();
-    const pageSize = this.pageSize();
-    const start = (page - 1) * pageSize;
-    return all.slice(start, start + pageSize);
-  });
 
   constructor() {
-    effect(() => {
-      this.store.query();
-      this.store.unreadOnly();
-      this.page.set(1);
-    });
+    this.store.updateQuery({ page: 1, pageSize: this.pageSize(), limit: undefined });
+  }
+
+  onFilterChange(query: Record<string, string | number | boolean | null | undefined>): void {
+    this.store.updateQuery({ ...query, page: 1, pageSize: this.store.query().pageSize || this.pageSize(), limit: undefined });
   }
 
   onPageIndexChange(page: number): void {
-    this.page.set(page);
+    this.store.updateQuery({ page, pageSize: this.store.query().pageSize || this.pageSize(), limit: undefined });
   }
 
   onPageSizeChange(pageSize: number): void {
-    this.pageSize.set(Number(pageSize) || 20);
-    this.page.set(1);
+    const next = Number(pageSize) || 20;
+    this.pageSize.set(next);
+    this.store.updateQuery({ page: 1, pageSize: next, limit: undefined });
   }
 }

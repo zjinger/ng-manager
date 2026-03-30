@@ -1,5 +1,5 @@
 export type DashboardTodoItemKind = "issue_assigned" | "issue_verify" | "rd_assigned";
-export type DashboardActivityItemKind = "issue_activity" | "rd_activity";
+export type DashboardActivityItemKind = "issue_activity" | "rd_activity" | "content_activity";
 export interface DashboardTodoItem {
   kind: DashboardTodoItemKind;
   entityId: string;
@@ -30,6 +30,17 @@ export interface DashboardAnnouncementSummary {
   pinned: boolean;
 }
 
+export interface DashboardDocumentSummary {
+  id: string;
+  title: string;
+  summary: string | null;
+  projectId: string | null;
+  publishAt: string | null;
+  category: string;
+  version: string | null;
+  slug: string;
+}
+
 export interface DashboardStats {
   assignedIssues: number;
   verifyingIssues: number;
@@ -43,4 +54,5 @@ export interface DashboardHomeData {
   todos: DashboardTodoItem[];
   activities: DashboardActivityItem[];
   announcements: DashboardAnnouncementSummary[];
+  documents: DashboardDocumentSummary[];
 }

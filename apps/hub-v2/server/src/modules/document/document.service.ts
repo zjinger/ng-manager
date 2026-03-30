@@ -3,6 +3,7 @@ import { AppError } from "../../shared/errors/app-error";
 import type { EventBus } from "../../shared/event/event-bus";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
+import type { ContentLogCommandContract } from "../content-log/content-log.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import { requireAdmin } from "../utils/require-admin";
 import type { DocumentCommandContract, DocumentQueryContract } from "./document.contract";
@@ -19,7 +20,8 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   constructor(
     private readonly repo: DocumentRepo,
     private readonly projectAccess: ProjectAccessContract,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly contentLogCommand: ContentLogCommandContract
   ) {}
 
   async create(input: CreateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
@@ -47,6 +49,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     };
 
     this.repo.create(entity);
+    this.recordContentLog("created", entity, ctx, "创建文档");
     return entity;
   }
 
@@ -95,6 +98,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
         slug: entity.slug
       }
     });
+    this.recordContentLog("updated", entity, ctx, "更新文档");
 
     return entity;
   }
@@ -129,6 +133,44 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
         slug: entity.slug
       }
     });
+    this.recordContentLog("published", entity, ctx, "发布文档");
+
+    return entity;
+  }
+
+  async archive(id: string, ctx: RequestContext): Promise<DocumentEntity> {
+    const current = this.requireById(id);
+    await this.requireProjectOrAdmin(current.projectId, ctx, "archive document");
+    if (current.status === "archived") {
+      return current;
+    }
+
+    const updatedAt = nowIso();
+    const updated = this.repo.update(id, {
+      status: "archived",
+      updatedAt
+    });
+
+    if (!updated) {
+      throw new AppError("DOCUMENT_ARCHIVE_FAILED", "failed to archive document", 500);
+    }
+
+    const entity = this.requireById(id);
+    await this.eventBus.emit({
+      type: "document.archived",
+      scope: entity.projectId ? "project" : "global",
+      projectId: entity.projectId ?? undefined,
+      entityType: "document",
+      entityId: entity.id,
+      action: "archived",
+      actorId: ctx.accountId,
+      occurredAt: entity.updatedAt,
+      payload: {
+        title: entity.title,
+        slug: entity.slug
+      }
+    });
+    this.recordContentLog("archived", entity, ctx, "归档文档");
 
     return entity;
   }
@@ -152,6 +194,22 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   async listPublic(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult> {
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
     return this.repo.listPublic(projectIds, query);
+  }
+
+  async listRecentPublishedForNotifications(
+    projectIds: string[],
+    limit: number,
+    _ctx: RequestContext
+  ): Promise<DocumentEntity[]> {
+    return this.repo.listRecentPublishedForNotifications(projectIds, limit);
+  }
+
+  async listRecentArchivedForNotifications(
+    projectIds: string[],
+    limit: number,
+    _ctx: RequestContext
+  ): Promise<DocumentEntity[]> {
+    return this.repo.listRecentArchivedForNotifications(projectIds, limit);
   }
 
   async getPublicBySlug(slug: string): Promise<DocumentEntity> {
@@ -181,4 +239,26 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     }
     requireAdmin(ctx);
   }
+
+  private recordContentLog(
+    actionType: "created" | "updated" | "published" | "archived",
+    entity: DocumentEntity,
+    ctx: RequestContext,
+    summary: string
+  ): void {
+    this.contentLogCommand.create({
+      id: genId("clog"),
+      projectId: entity.projectId,
+      contentType: "document",
+      contentId: entity.id,
+      actionType,
+      title: entity.title,
+      summary,
+      operatorId: ctx.userId ?? null,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      metaJson: JSON.stringify({ status: entity.status, slug: entity.slug, version: entity.version }),
+      createdAt: nowIso()
+    });
+  }
 }
+

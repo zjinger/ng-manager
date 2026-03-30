@@ -50,6 +50,7 @@ export class NotificationBellComponent {
 
   onVisibleChange(visible: boolean): void {
     if (visible) {
+      this.store.updateQuery({ limit: 50, page: undefined, pageSize: undefined });
       this.store.markAllAsRead();
     }
   }

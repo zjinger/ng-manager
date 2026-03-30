@@ -13,7 +13,7 @@ import type { NotificationItem } from '../../models/notification.model';
       <div class="notification-menu__header">
         <div>
           <strong>通知中心</strong>
-          <span>最新待办、动态和公告</span>
+          <span>最新待办和动态</span>
         </div>
         <div class="notification-menu__header-side">
           <a class="notification-menu__all" [routerLink]="['/notifications']">查看全部</a>
@@ -33,13 +33,12 @@ import type { NotificationItem } from '../../models/notification.model';
               [queryParams]="routeTarget(item).query"
               (click)="syncProjectContext(item)"
             >
-              <span class="notification-item__dot" [class.is-activity]="item.kind === 'activity'" [class.is-announcement]="item.kind === 'announcement'"></span>
+              <span class="notification-item__dot" [class.is-activity]="item.kind === 'activity'"></span>
               <div class="notification-item__body">
                 <div class="notification-item__meta">
                   <span
                     class="notification-item__tag"
                     [class.is-activity]="item.kind === 'activity'"
-                    [class.is-announcement]="item.kind === 'announcement'"
                 >
                   {{ kindLabel(item.kind) }}
                 </span>
@@ -142,9 +141,6 @@ import type { NotificationItem } from '../../models/notification.model';
       .notification-item__dot.is-activity {
         background: var(--color-info);
       }
-      .notification-item__dot.is-announcement {
-        background: var(--color-warning);
-      }
       .notification-item__title {
         margin-top: 6px;
         color: var(--text-primary);
@@ -189,10 +185,6 @@ import type { NotificationItem } from '../../models/notification.model';
       .notification-item__tag.is-activity {
         background: rgba(14, 165, 233, 0.12);
         color: var(--color-info);
-      }
-      .notification-item__tag.is-announcement {
-        background: rgba(245, 158, 11, 0.14);
-        color: var(--color-warning);
       }
       .notification-item__project {
         color: var(--text-muted);
@@ -271,7 +263,6 @@ export class NotificationDropdownComponent {
       {
         todo: '待办',
         activity: '动态',
-        announcement: '公告',
       }[kind] || '通知'
     );
   }

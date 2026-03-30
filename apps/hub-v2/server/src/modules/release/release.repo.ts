@@ -180,6 +180,58 @@ export class ReleaseRepo {
     };
   }
 
+  listRecentPublishedForNotifications(projectIds: string[], limit: number): ReleaseEntity[] {
+    const conditions: string[] = ["status = 'published'"];
+    const params: unknown[] = [];
+
+    if (projectIds.length > 0) {
+      const placeholders = projectIds.map(() => "?").join(", ");
+      conditions.push(`(project_id IS NULL OR project_id IN (${placeholders}))`);
+      params.push(...projectIds);
+    } else {
+      conditions.push("project_id IS NULL");
+    }
+
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM releases
+          WHERE ${conditions.join(" AND ")}
+          ORDER BY published_at DESC, updated_at DESC
+          LIMIT ?
+        `
+      )
+      .all(...params, limit) as ReleaseRow[];
+
+    return rows.map((row) => this.mapRow(row));
+  }
+
+  listRecentArchivedForNotifications(projectIds: string[], limit: number): ReleaseEntity[] {
+    const conditions: string[] = ["status = 'archived'"];
+    const params: unknown[] = [];
+
+    if (projectIds.length > 0) {
+      const placeholders = projectIds.map(() => "?").join(", ");
+      conditions.push(`(project_id IS NULL OR project_id IN (${placeholders}))`);
+      params.push(...projectIds);
+    } else {
+      conditions.push("project_id IS NULL");
+    }
+
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM releases
+          WHERE ${conditions.join(" AND ")}
+          ORDER BY updated_at DESC
+          LIMIT ?
+        `
+      )
+      .all(...params, limit) as ReleaseRow[];
+
+    return rows.map((row) => this.mapRow(row));
+  }
+
   private mapRow(row: ReleaseRow): ReleaseEntity {
     return {
       id: row.id,

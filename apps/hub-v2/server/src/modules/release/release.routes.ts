@@ -35,4 +35,10 @@ export default async function releaseRoutes(app: FastifyInstance) {
     const params = request.params as { releaseId: string };
     return ok(await app.container.releaseCommand.publish(params.releaseId, ctx), "release published");
   });
+
+  app.post("/releases/:releaseId/archive", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { releaseId: string };
+    return ok(await app.container.releaseCommand.archive(params.releaseId, ctx), "release archived");
+  });
 }

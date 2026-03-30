@@ -10,10 +10,13 @@ import type { DashboardQueryContract } from "../modules/dashboard/dashboard.cont
 import type { FeedbackCommandContract, FeedbackQueryContract } from "../modules/feedback/feedback.contract";
 import { FeedbackRepo } from "../modules/feedback/feedback.repo";
 import { FeedbackService } from "../modules/feedback/feedback.service";
+import type { ContentLogCommandContract, ContentLogQueryContract } from "../modules/content-log/content-log.contract";
+import { ContentLogRepo } from "../modules/content-log/content-log.repo";
+import { ContentLogService } from "../modules/content-log/content-log.service";
 import { DocumentRepo } from "../modules/document/document.repo";
 import { DocumentService } from "../modules/document/document.service";
 import type { DocumentCommandContract, DocumentQueryContract } from "../modules/document/document.contract";
-import type { NotificationQueryContract } from "../modules/notifications/notification.contract";
+import type { NotificationCommandContract, NotificationQueryContract } from "../modules/notifications/notification.contract";
 import { NotificationService } from "../modules/notifications/notification.service";
 import type { IssueCommandContract, IssueQueryContract } from "../modules/issue/issue.contract";
 import type { IssueAttachmentCommandContract, IssueAttachmentQueryContract } from "../modules/issue/attachment/issue-attachment.contract";
@@ -79,8 +82,11 @@ export type AppContainer = {
   announcementQuery: AnnouncementQueryContract;
   dashboardQuery: DashboardQueryContract;
   notificationQuery: NotificationQueryContract;
+  notificationCommand: NotificationCommandContract;
   feedbackCommand: FeedbackCommandContract;
   feedbackQuery: FeedbackQueryContract;
+  contentLogCommand: ContentLogCommandContract;
+  contentLogQuery: ContentLogQueryContract;
   documentCommand: DocumentCommandContract;
   documentQuery: DocumentQueryContract;
   issueCommand: IssueCommandContract;
@@ -115,10 +121,12 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const profileService = new ProfileService(profileRepo);
   const personalTokenRepo = new PersonalTokenRepo(db);
   const personalTokenService = new PersonalTokenService(personalTokenRepo, projectRepo, userRepo);
+  const contentLogRepo = new ContentLogRepo(db);
+  const contentLogService = new ContentLogService(contentLogRepo);
   const announcementRepo = new AnnouncementRepo(db);
-  const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus);
+  const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus, contentLogService);
   const documentRepo = new DocumentRepo(db);
-  const documentService = new DocumentService(documentRepo, projectAccess, eventBus);
+  const documentService = new DocumentService(documentRepo, projectAccess, eventBus, contentLogService);
   const uploadRepo = new UploadRepo(db);
   const uploadService = new UploadService(uploadRepo, config.uploadDir);
   const issueRepo = new IssueRepo(db);
@@ -137,8 +145,25 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const issueParticipantService = new IssueParticipantService(issueRepo, issueParticipantRepo, projectAccess, eventBus);
   const rdRepo = new RdRepo(db);
   const rdService = new RdService(rdRepo, projectAccess, eventBus);
-  const dashboardService = new DashboardService(projectAccess, announcementService, issueService, rdService);
-  const notificationService = new NotificationService(projectService, announcementService, issueService, rdService);
+  const releaseRepo = new ReleaseRepo(db);
+  const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus, contentLogService);
+  const dashboardService = new DashboardService(
+    projectAccess,
+    announcementService,
+    documentService,
+    contentLogService,
+    issueService,
+    rdService
+  );
+  const notificationService = new NotificationService(
+    projectService,
+    profileService,
+    announcementService,
+    announcementService,
+    contentLogService,
+    issueService,
+    rdService
+  );
   const feedbackRepo = new FeedbackRepo(db);
   const feedbackService = new FeedbackService(feedbackRepo, projectRepo, projectAccess);
   const apiTokenRepo = new ApiTokenRepo(db);
@@ -150,8 +175,6 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     rdService,
     feedbackService
   );
-  const releaseRepo = new ReleaseRepo(db);
-  const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus);
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
   authService.ensureDefaultAdmin();
@@ -175,8 +198,11 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     announcementQuery: announcementService,
     dashboardQuery: dashboardService,
     notificationQuery: notificationService,
+    notificationCommand: notificationService,
     feedbackCommand: feedbackService,
     feedbackQuery: feedbackService,
+    contentLogCommand: contentLogService,
+    contentLogQuery: contentLogService,
     documentCommand: documentService,
     documentQuery: documentService,
     issueCommand: issueService,

@@ -42,4 +42,13 @@ export default async function announcementRoutes(app: FastifyInstance) {
       "announcement published"
     );
   });
+
+  app.post("/announcements/:announcementId/archive", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { announcementId: string };
+    return ok(
+      await app.container.announcementCommand.archive(params.announcementId, ctx),
+      "announcement archived"
+    );
+  });
 }

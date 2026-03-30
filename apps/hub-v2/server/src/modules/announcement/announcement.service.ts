@@ -3,6 +3,7 @@ import { AppError } from "../../shared/errors/app-error";
 import type { EventBus } from "../../shared/event/event-bus";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
+import type { ContentLogCommandContract } from "../content-log/content-log.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import { requireAdmin } from "../utils/require-admin";
 import type { AnnouncementCommandContract, AnnouncementQueryContract } from "./announcement.contract";
@@ -19,7 +20,8 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   constructor(
     private readonly repo: AnnouncementRepo,
     private readonly projectAccess: ProjectAccessContract,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly contentLogCommand: ContentLogCommandContract
   ) {}
 
   async create(input: CreateAnnouncementInput, ctx: RequestContext): Promise<AnnouncementEntity> {
@@ -44,6 +46,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     };
 
     this.repo.create(entity);
+    this.recordContentLog("created", entity, ctx, "创建公告");
     return entity;
   }
 
@@ -87,6 +90,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
         status: entity.status
       }
     });
+    this.recordContentLog("updated", entity, ctx, "更新公告");
     return entity;
   }
 
@@ -119,6 +123,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
         title: entity.title
       }
     });
+    this.recordContentLog("published", entity, ctx, "发布公告");
     return entity;
   }
 
@@ -138,6 +143,43 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     return entity;
   }
 
+  async archive(id: string, ctx: RequestContext): Promise<AnnouncementEntity> {
+    const current = this.requireById(id);
+    await this.requireProjectOrAdmin(current.projectId, ctx, "archive announcement");
+
+    if (current.status === "archived") {
+      return current;
+    }
+
+    const updatedAt = nowIso();
+    const updated = this.repo.update(id, {
+      status: "archived",
+      updatedAt
+    });
+
+    if (!updated) {
+      throw new AppError("ANNOUNCEMENT_ARCHIVE_FAILED", "failed to archive announcement", 500);
+    }
+
+    const entity = this.requireById(id);
+    await this.eventBus.emit({
+      type: "announcement.archived",
+      scope: entity.projectId ? "project" : "global",
+      projectId: entity.projectId ?? undefined,
+      entityType: "announcement",
+      entityId: entity.id,
+      action: "archived",
+      actorId: ctx.accountId,
+      occurredAt: entity.updatedAt,
+      payload: {
+        title: entity.title,
+        status: entity.status
+      }
+    });
+    this.recordContentLog("archived", entity, ctx, "下线公告");
+    return entity;
+  }
+
   async listPublic(query: ListAnnouncementsQuery, ctx: RequestContext): Promise<AnnouncementListResult> {
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
     return this.repo.listPublic(projectIds, query);
@@ -145,6 +187,48 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
 
   async listRecentForDashboard(projectIds: string[], limit: number, _ctx: RequestContext): Promise<AnnouncementEntity[]> {
     return this.repo.listRecentForDashboard(projectIds, limit);
+  }
+
+  async listRecentArchivedForNotifications(
+    projectIds: string[],
+    limit: number,
+    _ctx: RequestContext
+  ): Promise<AnnouncementEntity[]> {
+    return this.repo.listRecentArchivedForNotifications(projectIds, limit);
+  }
+
+  async getReadVersions(ids: string[], ctx: RequestContext): Promise<Map<string, string>> {
+    if (!ctx.userId || ids.length === 0) {
+      return new Map();
+    }
+    return this.repo.getReadVersionsByUser(ctx.userId, ids);
+  }
+
+  async markReadBatch(ids: string[], ctx: RequestContext): Promise<number> {
+    if (!ctx.userId || ids.length === 0) {
+      return 0;
+    }
+
+    const uniqueIds = Array.from(new Set(ids.map((item) => item.trim()).filter(Boolean)));
+    if (uniqueIds.length === 0) {
+      return 0;
+    }
+
+    const accessibleProjectIds = new Set(await this.projectAccess.listAccessibleProjectIds(ctx));
+    const now = nowIso();
+    let updated = 0;
+    for (const id of uniqueIds) {
+      const entity = this.repo.findById(id);
+      if (!entity || entity.status !== "published") {
+        continue;
+      }
+      if (entity.projectId && !ctx.roles.includes("admin") && !accessibleProjectIds.has(entity.projectId)) {
+        continue;
+      }
+      this.repo.markRead(entity.id, ctx.userId, entity.updatedAt, now, genId("anr"));
+      updated += 1;
+    }
+    return updated;
   }
 
   private requireById(id: string): AnnouncementEntity {
@@ -161,5 +245,26 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       return;
     }
     requireAdmin(ctx);
+  }
+
+  private recordContentLog(
+    actionType: "created" | "updated" | "published" | "archived",
+    entity: AnnouncementEntity,
+    ctx: RequestContext,
+    summary: string
+  ): void {
+    this.contentLogCommand.create({
+      id: genId("clog"),
+      projectId: entity.projectId,
+      contentType: "announcement",
+      contentId: entity.id,
+      actionType,
+      title: entity.title,
+      summary,
+      operatorId: ctx.userId ?? null,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      metaJson: JSON.stringify({ status: entity.status, scope: entity.scope }),
+      createdAt: nowIso()
+    });
   }
 }

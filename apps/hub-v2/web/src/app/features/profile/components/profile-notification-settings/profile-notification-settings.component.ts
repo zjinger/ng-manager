@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
 import { PanelCardComponent } from '@shared/ui';
@@ -16,10 +17,20 @@ export interface ProfileNotificationSetting {
 @Component({
   selector: 'app-profile-notification-settings',
   standalone: true,
-  imports: [FormsModule, NzCheckboxModule, NzIconModule, PanelCardComponent],
+  imports: [FormsModule, NzButtonModule, NzCheckboxModule, NzIconModule, PanelCardComponent],
   template: `
     <section class="profile-stack">
       <app-panel-card title="通知渠道">
+        <div panel-actions class="preference-actions">
+          @if (!editable()) {
+            <button nz-button (click)="edit.emit()">编辑偏好</button>
+          } @else {
+            <button nz-button (click)="cancel.emit()" [disabled]="saving()">取消</button>
+            <button nz-button nzType="primary" (click)="save.emit()" [disabled]="!dirty() || saving()">
+              {{ saving() ? '保存中…' : '保存设置' }}
+            </button>
+          }
+        </div>
         <div class="preference-list">
           @for (item of channels(); track item.id) {
             <label class="preference-item">
@@ -30,7 +41,12 @@ export interface ProfileNotificationSetting {
                 <div class="preference-item__title">{{ item.title }}</div>
                 <div class="preference-item__desc">{{ item.description }}</div>
               </div>
-              <label nz-checkbox [ngModel]="item.enabled" (ngModelChange)="toggle.emit({ group: 'channel', id: item.id, enabled: $event })"></label>
+              <label
+                nz-checkbox
+                [ngModel]="item.enabled"
+                [nzDisabled]="!editable() || saving()"
+                (ngModelChange)="toggle.emit({ group: 'channel', id: item.id, enabled: $event })"
+              ></label>
             </label>
           }
         </div>
@@ -47,7 +63,12 @@ export interface ProfileNotificationSetting {
                 <div class="preference-item__title">{{ item.title }}</div>
                 <div class="preference-item__desc">{{ item.description }}</div>
               </div>
-              <label nz-checkbox [ngModel]="item.enabled" (ngModelChange)="toggle.emit({ group: 'event', id: item.id, enabled: $event })"></label>
+              <label
+                nz-checkbox
+                [ngModel]="item.enabled"
+                [nzDisabled]="!editable() || saving()"
+                (ngModelChange)="toggle.emit({ group: 'event', id: item.id, enabled: $event })"
+              ></label>
             </label>
           }
         </div>
@@ -60,6 +81,11 @@ export interface ProfileNotificationSetting {
       .preference-list {
         display: grid;
         gap: 20px;
+      }
+      .preference-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
       }
 
       .preference-list {
@@ -145,5 +171,11 @@ export interface ProfileNotificationSetting {
 export class ProfileNotificationSettingsComponent {
   readonly channels = input.required<ProfileNotificationSetting[]>();
   readonly events = input.required<ProfileNotificationSetting[]>();
+  readonly editable = input(false);
+  readonly dirty = input(false);
+  readonly saving = input(false);
   readonly toggle = output<{ group: 'channel' | 'event'; id: string; enabled: boolean }>();
+  readonly edit = output<void>();
+  readonly save = output<void>();
+  readonly cancel = output<void>();
 }

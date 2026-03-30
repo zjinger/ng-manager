@@ -157,6 +157,7 @@ import { ContentStore } from '../../store/content.store';
       [projectName]="projectContext.currentProject()?.name || ''"
       (edit)="editCurrentDetail()"
       (publish)="publishCurrentDetail()"
+      (archive)="archiveCurrentDetail()"
       (close)="closeDetailDrawer()"
     />
   `,
@@ -483,6 +484,30 @@ export class ContentManagementPageComponent {
       const item = this.detailRelease();
       if (item) {
         this.publishRelease(item);
+      }
+    }
+  }
+
+  archiveCurrentDetail(): void {
+    const tab = this.detailTab();
+    if (tab === 'announcements') {
+      const item = this.detailAnnouncement();
+      if (item) {
+        this.store.archiveAnnouncement(item.id, (entity) => this.syncAnnouncementDetail(entity));
+      }
+      return;
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      if (item) {
+        this.store.archiveDocument(item.id, (entity) => this.syncDocumentDetail(entity));
+      }
+      return;
+    }
+    if (tab === 'releases') {
+      const item = this.detailRelease();
+      if (item) {
+        this.store.archiveRelease(item.id, (entity) => this.syncReleaseDetail(entity));
       }
     }
   }

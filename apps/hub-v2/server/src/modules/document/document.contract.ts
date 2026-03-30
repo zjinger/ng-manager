@@ -11,6 +11,7 @@ export interface DocumentCommandContract {
   create(input: CreateDocumentInput, ctx: RequestContext): Promise<DocumentEntity>;
   update(id: string, input: UpdateDocumentInput, ctx: RequestContext): Promise<DocumentEntity>;
   publish(id: string, ctx: RequestContext): Promise<DocumentEntity>;
+  archive(id: string, ctx: RequestContext): Promise<DocumentEntity>;
 }
 
 export interface DocumentQueryContract {
@@ -18,4 +19,6 @@ export interface DocumentQueryContract {
   getById(id: string, ctx: RequestContext): Promise<DocumentEntity>;
   listPublic(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult>;
   getPublicBySlug(slug: string): Promise<DocumentEntity>;
+  listRecentPublishedForNotifications(projectIds: string[], limit: number, ctx: RequestContext): Promise<DocumentEntity[]>;
+  listRecentArchivedForNotifications(projectIds: string[], limit: number, ctx: RequestContext): Promise<DocumentEntity[]>;
 }

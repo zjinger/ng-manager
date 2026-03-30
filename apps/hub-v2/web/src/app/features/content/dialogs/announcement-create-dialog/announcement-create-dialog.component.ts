@@ -140,7 +140,6 @@ const DEFAULT_DRAFT: Draft = {
             <div nz-col nzSpan="24">
               <label
                 nz-checkbox
-                class="announcement-create-dialog__pinned"
                 [ngModel]="draft().pinned"
                 name="pinned"
                 (ngModelChange)="updateField('pinned', $event)"
@@ -174,14 +173,6 @@ const DEFAULT_DRAFT: Draft = {
     `
       .announcement-create-dialog__date-picker {
         width: 100%;
-      }
-
-      .announcement-create-dialog__pinned {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--text-secondary);
-        font-size: 13px;
       }
     `,
   ],

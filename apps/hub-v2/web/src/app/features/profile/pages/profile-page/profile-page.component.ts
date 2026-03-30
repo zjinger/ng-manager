@@ -65,7 +65,13 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'tokens';
         <app-profile-notification-settings
           [channels]="channelPrefs()"
           [events]="eventPrefs()"
+          [editable]="prefsEditing()"
+          [dirty]="prefsDirty()"
+          [saving]="prefsSaving()"
           (toggle)="togglePref($event.group, $event.id, $event.enabled)"
+          (edit)="startEditPrefs()"
+          (save)="saveNotificationPrefs()"
+          (cancel)="cancelEditPrefs()"
         />
       }
 
@@ -100,7 +106,11 @@ export class ProfilePageComponent {
 
   readonly activeTab = signal<ProfileTab>('basic');
   readonly busy = signal(false);
+  readonly prefsSaving = signal(false);
+  readonly prefsEditing = signal(false);
+  readonly prefsDirty = signal(false);
   readonly submittedVersion = signal(0);
+  readonly savedPrefs = signal<ProfileNotificationPrefs | null>(null);
 
   readonly tabs = [
     { id: 'basic', label: '基本信息', icon: 'user' },
@@ -178,9 +188,47 @@ export class ProfilePageComponent {
   }
 
   togglePref(group: 'channel' | 'event', id: string, enabled: boolean): void {
+    if (!this.prefsEditing() || this.prefsSaving()) {
+      return;
+    }
     const store = group === 'channel' ? this.channelPrefs : this.eventPrefs;
     store.update((items) => items.map((item) => (item.id === id ? { ...item, enabled } : item)));
-    this.persistNotificationPrefs();
+    this.updatePrefsDirty();
+  }
+
+  startEditPrefs(): void {
+    this.prefsEditing.set(true);
+  }
+
+  cancelEditPrefs(): void {
+    const saved = this.savedPrefs();
+    if (saved) {
+      this.applyNotificationPrefs(saved);
+    }
+    this.prefsDirty.set(false);
+    this.prefsEditing.set(false);
+  }
+
+  saveNotificationPrefs(): void {
+    if (!this.prefsEditing() || !this.prefsDirty() || this.prefsSaving()) {
+      return;
+    }
+    this.prefsSaving.set(true);
+    const payload = this.currentPrefsPayload();
+    this.profileApi.saveNotificationPrefs(payload).subscribe({
+      next: (saved) => {
+        this.prefsSaving.set(false);
+        this.savedPrefs.set(saved);
+        this.applyNotificationPrefs(saved);
+        this.prefsDirty.set(false);
+        this.prefsEditing.set(false);
+        this.message.success('通知偏好已保存');
+      },
+      error: () => {
+        this.prefsSaving.set(false);
+        this.message.error('通知偏好保存失败');
+      },
+    });
   }
 
   updateAvatar(file: File): void {
@@ -216,29 +264,40 @@ export class ProfilePageComponent {
 
   private loadNotificationPrefs(): void {
     this.profileApi.loadNotificationPrefs().subscribe({
-      next: (prefs) => this.applyNotificationPrefs(prefs),
+      next: (prefs) => {
+        this.savedPrefs.set(prefs);
+        this.applyNotificationPrefs(prefs);
+        this.prefsDirty.set(false);
+        this.prefsEditing.set(false);
+      },
       error: () => {
         // keep defaults
       },
     });
   }
 
-  private persistNotificationPrefs(): void {
-    const payload: ProfileNotificationPrefs = {
+  private currentPrefsPayload(): ProfileNotificationPrefs {
+    return {
       channels: Object.fromEntries(this.channelPrefs().map((item) => [item.id, item.enabled])),
       events: Object.fromEntries(this.eventPrefs().map((item) => [item.id, item.enabled])),
       updatedAt: new Date().toISOString(),
     };
-    this.profileApi.saveNotificationPrefs(payload).subscribe({
-      next: (saved) => this.applyNotificationPrefs(saved),
-      error: () => {
-        this.message.error('通知偏好保存失败');
-      },
-    });
   }
 
   private applyNotificationPrefs(prefs: ProfileNotificationPrefs): void {
     this.channelPrefs.update((items) => items.map((item) => ({ ...item, enabled: prefs.channels[item.id] ?? item.enabled })));
     this.eventPrefs.update((items) => items.map((item) => ({ ...item, enabled: prefs.events[item.id] ?? item.enabled })));
+  }
+
+  private updatePrefsDirty(): void {
+    const saved = this.savedPrefs();
+    if (!saved) {
+      this.prefsDirty.set(true);
+      return;
+    }
+    const current = this.currentPrefsPayload();
+    const sameChannels = JSON.stringify(current.channels) === JSON.stringify(saved.channels);
+    const sameEvents = JSON.stringify(current.events) === JSON.stringify(saved.events);
+    this.prefsDirty.set(!(sameChannels && sameEvents));
   }
 }

@@ -22,6 +22,11 @@ type AnnouncementRow = {
   updated_at: string;
 };
 
+type AnnouncementReadRow = {
+  announcement_id: string;
+  read_version: string;
+};
+
 export class AnnouncementRepo {
   constructor(private readonly db: Database.Database) {}
 
@@ -206,6 +211,76 @@ export class AnnouncementRepo {
       .all(...params, limit) as AnnouncementRow[];
 
     return rows.map((row) => this.mapRow(row));
+  }
+
+  listRecentArchivedForNotifications(projectIds: string[], limit: number): AnnouncementEntity[] {
+    const conditions: string[] = ["status = 'archived'"];
+    const params: unknown[] = [];
+
+    if (projectIds.length > 0) {
+      const placeholders = projectIds.map(() => "?").join(", ");
+      conditions.push(`(scope = 'global' OR project_id IN (${placeholders}))`);
+      params.push(...projectIds);
+    } else {
+      conditions.push("(scope = 'global' OR project_id IS NULL)");
+    }
+
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM announcements
+          WHERE ${conditions.join(" AND ")}
+          ORDER BY updated_at DESC
+          LIMIT ?
+        `
+      )
+      .all(...params, limit) as AnnouncementRow[];
+
+    return rows.map((row) => this.mapRow(row));
+  }
+
+  getReadVersionsByUser(userId: string, announcementIds: string[]): Map<string, string> {
+    if (!userId || announcementIds.length === 0) {
+      return new Map();
+    }
+    const placeholders = announcementIds.map(() => "?").join(", ");
+    const rows = this.db
+      .prepare(
+        `
+          SELECT announcement_id, read_version
+          FROM announcement_reads
+          WHERE user_id = ? AND announcement_id IN (${placeholders})
+        `
+      )
+      .all(userId, ...announcementIds) as AnnouncementReadRow[];
+
+    const map = new Map<string, string>();
+    rows.forEach((row) => map.set(row.announcement_id, row.read_version));
+    return map;
+  }
+
+  markRead(announcementId: string, userId: string, readVersion: string, readAt: string, idForInsert: string): void {
+    const updated = this.db
+      .prepare(
+        `
+          UPDATE announcement_reads
+          SET read_version = ?, read_at = ?
+          WHERE announcement_id = ? AND user_id = ?
+        `
+      )
+      .run(readVersion, readAt, announcementId, userId);
+    if (updated.changes > 0) {
+      return;
+    }
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO announcement_reads (id, announcement_id, user_id, read_version, read_at)
+          VALUES (?, ?, ?, ?, ?)
+        `
+      )
+      .run(idForInsert, announcementId, userId, readVersion, readAt);
   }
 
   private mapRow(row: AnnouncementRow): AnnouncementEntity {

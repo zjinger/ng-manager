@@ -40,7 +40,7 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
         <div class="detail-panel">
           <div class="detail-actions">
             <button nz-button nzSize="small" (click)="edit.emit()">编辑</button>
-            @if (isDraft()) {
+            @if (canPublish()) {
               <button
                 nz-button
                 nzType="primary"
@@ -50,7 +50,20 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
                 nzPopconfirmPlacement="topRight"
                 (nzOnConfirm)="publish.emit()"
               >
-                发布
+                {{ publishActionLabel() }}
+              </button>
+            }
+            @if (canArchive()) {
+              <button
+                nz-button
+                nzDanger
+                nzSize="small"
+                nz-popconfirm
+                [nzPopconfirmTitle]="archiveConfirmText()"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="archive.emit()"
+              >
+                {{ archiveActionLabel() }}
               </button>
             }
           </div>
@@ -303,6 +316,7 @@ export class ContentDetailDrawerComponent {
   readonly close = output<void>();
   readonly edit = output<void>();
   readonly publish = output<void>();
+  readonly archive = output<void>();
 
   readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
   readonly isDraft = computed(() => {
@@ -317,6 +331,30 @@ export class ContentDetailDrawerComponent {
     }
     return false;
   });
+  readonly isArchived = computed(() => {
+    if (this.tab() === 'announcements') {
+      return this.announcement()?.status === 'archived';
+    }
+    if (this.tab() === 'documents') {
+      return this.document()?.status === 'archived';
+    }
+    if (this.tab() === 'releases') {
+      return this.release()?.status === 'archived';
+    }
+    return false;
+  });
+  readonly canPublish = computed(() => {
+    if (this.tab() === 'announcements') {
+      return this.announcement()?.status !== 'published';
+    }
+    if (this.tab() === 'documents') {
+      return this.document()?.status !== 'published';
+    }
+    if (this.tab() === 'releases') {
+      return this.release()?.status !== 'published';
+    }
+    return false;
+  });
   readonly titleText = computed(() => {
     if (this.tab() === 'announcements') {
       return this.announcement()?.title || '公告详情';
@@ -328,6 +366,18 @@ export class ContentDetailDrawerComponent {
       return this.release()?.title || '发布详情';
     }
     return '详情';
+  });
+  readonly canArchive = computed(() => {
+    if (this.tab() === 'announcements') {
+      return this.announcement()?.status !== 'archived';
+    }
+    if (this.tab() === 'documents') {
+      return this.document()?.status !== 'archived';
+    }
+    if (this.tab() === 'releases') {
+      return this.release()?.status !== 'archived';
+    }
+    return false;
   });
 
   readonly tabLabel = computed(() => {
@@ -354,13 +404,14 @@ export class ContentDetailDrawerComponent {
   }
 
   publishConfirmText(): string {
+    const republish = this.isArchived();
     if (this.tab() === 'announcements') {
-      return '确认发布这条公告吗？发布后将对项目成员可见。';
+      return republish ? '确认重新发布这条公告吗？' : '确认发布这条公告吗？发布后将对项目成员可见。';
     }
     if (this.tab() === 'documents') {
-      return '确认发布这篇文档吗？发布后将对项目成员可见。';
+      return republish ? '确认重新发布这篇文档吗？' : '确认发布这篇文档吗？发布后将对项目成员可见。';
     }
-    return '确认发布这条版本记录吗？发布后将对项目成员可见。';
+    return republish ? '确认重新发布这条版本记录吗？' : '确认发布这条版本记录吗？发布后将对项目成员可见。';
   }
 
   publicDocumentLink(slug: string): string {
@@ -369,5 +420,29 @@ export class ContentDetailDrawerComponent {
       return `/public/docs/${normalizedSlug}`;
     }
     return `${window.location.origin}/public/docs/${normalizedSlug}`;
+  }
+
+  archiveActionLabel(): string {
+    if (this.tab() === 'announcements') {
+      return '下线';
+    }
+    if (this.tab() === 'documents') {
+      return '归档';
+    }
+    return '作废';
+  }
+
+  publishActionLabel(): string {
+    return this.isArchived() ? '重新发布' : '发布';
+  }
+
+  archiveConfirmText(): string {
+    if (this.tab() === 'announcements') {
+      return '确认下线这条公告吗？下线后将不再对外展示。';
+    }
+    if (this.tab() === 'documents') {
+      return '确认归档这篇文档吗？归档后将不再对外展示。';
+    }
+    return '确认作废这条发布记录吗？作废后将不再对外展示。';
   }
 }

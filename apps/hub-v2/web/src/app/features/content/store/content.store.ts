@@ -39,6 +39,7 @@ export class ContentStore {
   private readonly resultState = signal<
     PageResult<ContentEntity> | null
   >(null);
+  private lastLoadKey: string | null = null;
 
   readonly activeTab = computed(() => this.tabState());
   readonly query = computed(() => this.queryState());
@@ -82,10 +83,16 @@ export class ContentStore {
     this.load();
   }
 
-  load(): void {
+  load(force = false): void {
+    const query = this.queryState();
+    const loadKey = `${this.tabState()}::${JSON.stringify(query)}`;
+    if (!force && this.lastLoadKey === loadKey) {
+      return;
+    }
+    this.lastLoadKey = loadKey;
+
     this.loadingState.set(true);
 
-    const query = this.queryState();
     const handleNext = (result: PageResult<ContentEntity>) => {
       this.resultState.set(result);
       this.loadingState.set(false);
@@ -126,7 +133,7 @@ export class ContentStore {
         if (this.tabState() !== 'announcements') {
           this.tabState.set('announcements');
         }
-        this.load();
+        this.load(true);
       },
       error: () => {
         this.busyState.set(false);
@@ -143,7 +150,7 @@ export class ContentStore {
         if (this.tabState() !== 'documents') {
           this.tabState.set('documents');
         }
-        this.load();
+        this.load(true);
       },
       error: () => {
         this.busyState.set(false);
@@ -160,7 +167,7 @@ export class ContentStore {
         if (this.tabState() !== 'releases') {
           this.tabState.set('releases');
         }
-        this.load();
+        this.load(true);
       },
       error: () => {
         this.busyState.set(false);
@@ -189,6 +196,20 @@ export class ContentStore {
   publishAnnouncement(announcementId: string, done?: (entity: AnnouncementEntity) => void): void {
     this.busyState.set(true);
     this.api.publishAnnouncement(announcementId).subscribe({
+      next: (entity) => {
+        this.busyState.set(false);
+        done?.(entity);
+        this.patchOrRefresh('announcements', entity);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  archiveAnnouncement(announcementId: string, done?: (entity: AnnouncementEntity) => void): void {
+    this.busyState.set(true);
+    this.api.archiveAnnouncement(announcementId).subscribe({
       next: (entity) => {
         this.busyState.set(false);
         done?.(entity);
@@ -232,6 +253,20 @@ export class ContentStore {
     });
   }
 
+  archiveDocument(documentId: string, done?: (entity: DocumentEntity) => void): void {
+    this.busyState.set(true);
+    this.api.archiveDocument(documentId).subscribe({
+      next: (entity) => {
+        this.busyState.set(false);
+        done?.(entity);
+        this.patchOrRefresh('documents', entity);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
   updateRelease(
     releaseId: string,
     input: UpdateReleaseInput,
@@ -264,22 +299,36 @@ export class ContentStore {
     });
   }
 
+  archiveRelease(releaseId: string, done?: (entity: ReleaseEntity) => void): void {
+    this.busyState.set(true);
+    this.api.archiveRelease(releaseId).subscribe({
+      next: (entity) => {
+        this.busyState.set(false);
+        done?.(entity);
+        this.patchOrRefresh('releases', entity);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
   private patchOrRefresh(tab: ContentTab, entity: ContentEntity): void {
     const result = this.resultState();
     if (!result) {
-      this.load();
+      this.load(true);
       return;
     }
 
     if (this.tabState() !== tab) {
-      this.load();
+      this.load(true);
       return;
     }
 
     const query = this.queryState();
     const hasComplexFilter = !!query.status?.trim() || !!query.keyword?.trim();
     if (hasComplexFilter) {
-      this.load();
+      this.load(true);
       return;
     }
 

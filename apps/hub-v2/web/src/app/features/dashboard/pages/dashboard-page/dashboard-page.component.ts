@@ -4,6 +4,7 @@ import { PageHeaderComponent } from '@shared/ui';
 import { ProjectContextStore } from '@core/state';
 import { DashboardStatGridComponent } from '../../components/dashboard-stat-grid/dashboard-stat-grid.component';
 import { LatestAnnouncementsCardComponent } from '../../components/latest-announcements-card/latest-announcements-card.component';
+import { LatestDocumentsCardComponent } from '../../components/latest-documents-card/latest-documents-card.component';
 import { MyActivitiesCardComponent } from '../../components/my-activities-card/my-activities-card.component';
 import { MyTodosCardComponent } from '../../components/my-todos-card/my-todos-card.component';
 import { DashboardStore } from '../../store/dashboard.store';
@@ -17,6 +18,7 @@ import { DashboardStore } from '../../store/dashboard.store';
     MyTodosCardComponent,
     MyActivitiesCardComponent,
     LatestAnnouncementsCardComponent,
+    LatestDocumentsCardComponent,
   ],
   providers: [DashboardStore],
   template: `
@@ -36,12 +38,20 @@ import { DashboardStore } from '../../store/dashboard.store';
       <div class="dashboard-grid">
         <app-my-todos-card [items]="data.todos" [projectNames]="projectNames()" />
         <app-my-activities-card [items]="data.activities" [projectNames]="projectNames()" />
-        <app-latest-announcements-card
-          [items]="data.announcements"
-          [currentProjectId]="projectContext.currentProjectId()"
-          [currentProjectName]="projectContext.currentProject()?.name || null"
-          [projectNames]="projectNames()"
-        />
+        <div class="dashboard-side">
+          <app-latest-announcements-card
+            [items]="data.announcements"
+            [currentProjectId]="projectContext.currentProjectId()"
+            [currentProjectName]="projectContext.currentProject()?.name || null"
+            [projectNames]="projectNames()"
+          />
+          <app-latest-documents-card
+            [items]="data.documents"
+            [currentProjectId]="projectContext.currentProjectId()"
+            [currentProjectName]="projectContext.currentProject()?.name || null"
+            [projectNames]="projectNames()"
+          />
+        </div>
       </div>
     } @else {
       <div class="empty">
@@ -56,6 +66,16 @@ import { DashboardStore } from '../../store/dashboard.store';
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 20px;
+        align-items: stretch;
+      }
+      .dashboard-grid > * {
+        min-height: 0;
+      }
+      .dashboard-side {
+        display: grid;
+        gap: 20px;
+        height: 100%;
+        grid-template-rows: repeat(2, minmax(0, 1fr));
       }
       .empty {
         padding: 32px;
@@ -86,6 +106,10 @@ import { DashboardStore } from '../../store/dashboard.store';
       @media (max-width: 1100px) {
         .dashboard-grid {
           grid-template-columns: 1fr;
+        }
+        .dashboard-side {
+          gap: 16px;
+          grid-template-rows: none;
         }
       }
     `,

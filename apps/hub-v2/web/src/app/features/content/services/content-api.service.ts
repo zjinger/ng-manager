@@ -53,6 +53,10 @@ export class ContentApiService {
     return this.api.post<AnnouncementEntity>(`/announcements/${announcementId}/publish`);
   }
 
+  archiveAnnouncement(announcementId: string) {
+    return this.api.post<AnnouncementEntity>(`/announcements/${announcementId}/archive`);
+  }
+
   updateDocument(documentId: string, input: UpdateDocumentInput) {
     return this.api.patch<DocumentEntity, UpdateDocumentInput>(`/documents/${documentId}`, input);
   }
@@ -61,11 +65,19 @@ export class ContentApiService {
     return this.api.post<DocumentEntity>(`/documents/${documentId}/publish`);
   }
 
+  archiveDocument(documentId: string) {
+    return this.api.post<DocumentEntity>(`/documents/${documentId}/archive`);
+  }
+
   updateRelease(releaseId: string, input: UpdateReleaseInput) {
     return this.api.patch<ReleaseEntity, UpdateReleaseInput>(`/releases/${releaseId}`, input);
   }
 
   publishRelease(releaseId: string) {
     return this.api.post<ReleaseEntity>(`/releases/${releaseId}/publish`);
+  }
+
+  archiveRelease(releaseId: string) {
+    return this.api.post<ReleaseEntity>(`/releases/${releaseId}/archive`);
   }
 }

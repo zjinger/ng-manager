@@ -13,6 +13,7 @@ export class NotificationStore {
   private readonly projectContext = inject(ProjectContextStore);
   private readonly itemsState = signal<NotificationItem[]>([]);
   private readonly loadingState = signal(false);
+  private readonly totalState = signal(0);
   private readonly readIdsState = signal<string[]>([]);
   private readonly queryState = signal<NotificationListQuery>({ limit: 50 });
   private readonly unreadOnlyState = signal(false);
@@ -20,6 +21,7 @@ export class NotificationStore {
   readonly items = computed(() => this.itemsState());
   readonly query = computed(() => this.queryState());
   readonly loading = computed(() => this.loadingState());
+  readonly total = computed(() => this.totalState());
   readonly unreadOnly = computed(() => this.unreadOnlyState());
   readonly filteredItems = computed(() =>
     this.unreadOnlyState() ? this.itemsState().filter((item) => item.unread) : this.itemsState()
@@ -56,10 +58,18 @@ export class NotificationStore {
     this.api.list(nextQuery).subscribe({
       next: (result) => {
         const readIds = new Set(this.readIdsState());
-        this.itemsState.set(result.items.map((item) => ({ ...item, unread: !readIds.has(item.id) })));
+        this.itemsState.set(
+          result.items.map((item) => {
+            const isAnnouncement = item.id.startsWith('announcement:');
+            const unread = isAnnouncement ? item.unread : !readIds.has(item.id);
+            return { ...item, unread };
+          })
+        );
+        this.totalState.set(Number(result.total) || 0);
         this.loadingState.set(false);
       },
       error: () => {
+        this.totalState.set(0);
         this.loadingState.set(false);
       },
     });
@@ -69,6 +79,12 @@ export class NotificationStore {
     const ids = this.itemsState().map((item) => item.id);
     this.readIdsState.set(Array.from(new Set([...this.readIdsState(), ...ids])));
     this.itemsState.update((items) => items.map((item) => ({ ...item, unread: false })));
+    const announcementIds = this.itemsState()
+      .filter((item) => item.id.startsWith('announcement:'))
+      .map((item) => item.id.slice('announcement:'.length));
+    if (announcementIds.length > 0) {
+      this.api.markRead({ announcementIds }).subscribe();
+    }
   }
 
   updateQuery(query: NotificationListQuery): void {

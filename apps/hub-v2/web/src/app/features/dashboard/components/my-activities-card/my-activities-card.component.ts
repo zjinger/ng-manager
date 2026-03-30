@@ -21,7 +21,8 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         @for (item of items(); track item.kind + '-' + item.entityId + '-' + item.createdAt) {
           <a
             class="activity"
-            [routerLink]="detailLink(item)"
+            [routerLink]="detailLink(item).path"
+            [queryParams]="detailLink(item).query"
           >
             <div class="activity__dot" [attr.data-kind]="item.kind"></div>
             <div class="activity__body">
@@ -32,7 +33,7 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
               <div class="activity__summary">{{ item.summary || item.action }}</div>
               <div class="activity__meta">
                 <span class="activity__tag" [attr.data-kind]="item.kind">
-                  {{ item.kind === 'rd_activity' ? 'RD' : 'ISSUE' }}
+                  {{ kindLabel(item.kind) }}
                 </span>
                 <span>{{ projectLabel(item.projectId) }}</span>
                 <span>{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
@@ -45,6 +46,10 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        height: 100%;
+      }
       .panel {
         background: var(--bg-container);
         border: 1px solid var(--border-color);
@@ -52,6 +57,9 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         overflow: hidden;
         box-shadow: var(--shadow-sm);
         position: relative;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
       }
       .panel::after {
         content: '';
@@ -85,6 +93,9 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         padding: 32px 18px;
         text-align: center;
         color: var(--text-disabled);
+        flex: 1;
+        display: grid;
+        place-items: center;
       }
       .activity {
         display: grid;
@@ -108,6 +119,9 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
       }
       .activity__dot[data-kind='rd_activity'] {
         background: var(--primary-500);
+      }
+      .activity__dot[data-kind='content_activity'] {
+        background: var(--color-warning);
       }
       .activity__body {
         min-width: 0;
@@ -149,6 +163,10 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         background: color-mix(in srgb, var(--primary-500) 14%, transparent);
         color: var(--primary-500);
       }
+      .activity__tag[data-kind='content_activity'] {
+        background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+        color: var(--color-warning-hover);
+      }
       :host-context(html[data-theme='dark']) .panel {
         border-color: rgba(148, 163, 184, 0.14);
         background:
@@ -169,15 +187,31 @@ export class MyActivitiesCardComponent {
   readonly items = input.required<DashboardActivityItem[]>();
   readonly projectNames = input<Record<string, string>>({});
 
-  detailLink(item: DashboardActivityItem): string[] {
-    if (item.kind === 'rd_activity') {
-      return ['/rd', item.entityId];
+  detailLink(item: DashboardActivityItem): { path: string[]; query?: Record<string, string> } {
+    if (item.kind === 'content_activity') {
+      return { path: ['/content'] };
     }
-    return ['/issues', item.entityId];
+    if (item.kind === 'rd_activity') {
+      return { path: ['/rd', item.entityId] };
+    }
+    return { path: ['/issues', item.entityId] };
   }
 
   projectLabel(projectId: string): string {
+    if (!projectId) {
+      return '全局';
+    }
     return this.projectNames()[projectId] || '未知项目';
+  }
+
+  kindLabel(kind: DashboardActivityItem['kind']): string {
+    if (kind === 'rd_activity') {
+      return '研发项';
+    }
+    if (kind === 'content_activity') {
+      return '内容动态';
+    }
+    return '测试单';
   }
 
 }
