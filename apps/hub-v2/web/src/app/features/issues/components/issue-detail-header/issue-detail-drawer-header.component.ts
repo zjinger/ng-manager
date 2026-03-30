@@ -4,11 +4,12 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { ISSUE_STATUS_LABELS } from '@shared/constants';
 import type { IssueEntity } from '../../models/issue.model';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 @Component({
   selector: 'app-issue-detail-drawer-header',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule,],
+  imports: [NzButtonModule, NzIconModule, NzPopconfirmModule],
   template: `
     <section class="detail-header">
       <div class="detail-header__top">
@@ -45,7 +46,7 @@ import type { IssueEntity } from '../../models/issue.model';
             <button nz-button nzType="primary" class="detail-header__action-btn" (click)="resolve.emit()">标记解决</button>
           }
           @if (canVerify()) {
-            <button nz-button nzType="primary" class="detail-header__action-btn" (click)="verify.emit()">验证通过</button>
+            <button nz-button nzType="primary" class="detail-header__action-btn"  nz-popconfirm nzPopconfirmTitle="确定验证通过吗？" nzPopconfirmOkText="确定" nzPopconfirmCancelText="取消" (nzOnConfirm)="verify.emit()">验证通过</button>
           }
           @if (canReopen()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="reopen.emit()">重新打开</button>
