@@ -81,15 +81,17 @@ export class DashboardService implements DashboardQueryContract {
       return {
         assignedIssues: 0,
         verifyingIssues: 0,
+        reportedUnresolvedIssues: 0,
         assignedRdItems: 0,
         inProgressRdItems: 0,
         myProjects: 0
       };
     }
 
-    const [assignedIssues, verifyingIssues, assignedRdItems, inProgressRdItems] = await Promise.all([
+    const [assignedIssues, verifyingIssues, reportedUnresolvedIssues, assignedRdItems, inProgressRdItems] = await Promise.all([
       this.issueQuery.countAssignedForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
       this.issueQuery.countVerifyingForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
+      this.issueQuery.countReportedUnresolvedForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
       this.rdQuery.countAssignedForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
       this.rdQuery.countInProgressForDashboard(scope.effectiveProjectIds, scope.userId, ctx)
     ]);
@@ -97,6 +99,7 @@ export class DashboardService implements DashboardQueryContract {
     return {
       assignedIssues,
       verifyingIssues,
+      reportedUnresolvedIssues,
       assignedRdItems,
       inProgressRdItems,
       myProjects: scope.projectIds.length

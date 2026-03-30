@@ -3,6 +3,7 @@ export type DashboardActivityItemKind = "issue_activity" | "rd_activity" | "cont
 export interface DashboardStats {
   assignedIssues: number;
   verifyingIssues: number;
+  reportedUnresolvedIssues: number;
   assignedRdItems: number;
   inProgressRdItems: number;
   myProjects: number;

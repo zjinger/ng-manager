@@ -64,10 +64,15 @@ import { DashboardStore } from '../../store/dashboard.store';
   styles: [
     `
       .dashboard-grid {
+        --dashboard-panel-height: clamp(440px, 62vh, 620px);
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 20px;
         align-items: stretch;
+      }
+      .dashboard-grid > app-my-todos-card,
+      .dashboard-grid > app-my-activities-card {
+        height: var(--dashboard-panel-height);
       }
       .dashboard-grid > * {
         min-height: 0;
@@ -75,7 +80,7 @@ import { DashboardStore } from '../../store/dashboard.store';
       .dashboard-side {
         display: grid;
         gap: 20px;
-        height: 100%;
+        height: var(--dashboard-panel-height);
         grid-template-rows: repeat(2, minmax(0, 1fr));
       }
       .empty {
@@ -108,8 +113,13 @@ import { DashboardStore } from '../../store/dashboard.store';
         .dashboard-grid {
           grid-template-columns: 1fr;
         }
+        .dashboard-grid > app-my-todos-card,
+        .dashboard-grid > app-my-activities-card {
+          height: auto;
+        }
         .dashboard-side {
           gap: 16px;
+          height: auto;
           grid-template-rows: none;
         }
       }

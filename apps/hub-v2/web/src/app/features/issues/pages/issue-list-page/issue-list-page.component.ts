@@ -271,7 +271,10 @@ export class IssueListPageComponent {
     }
     if (query.assigneeIds.length > 0) {
       for (const assigneeId of query.assigneeIds) {
-        const name = this.members().find((item) => item.userId === assigneeId)?.displayName || assigneeId;
+        const name =
+          assigneeId === '__unassigned__'
+            ? '未指派'
+            : this.members().find((item) => item.userId === assigneeId)?.displayName || assigneeId;
         tags.push({
           kind: 'assigneeIds',
           value: assigneeId,

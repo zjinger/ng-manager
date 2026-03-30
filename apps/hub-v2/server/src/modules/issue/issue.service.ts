@@ -232,6 +232,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   async reopen(id: string, input: ReopenIssueInput, ctx: RequestContext): Promise<IssueEntity> {
     const current = await this.requireByIdWithAccess(id, ctx, "reopen issue");
     requireIssueReopenAccess(current, ctx);
+    const reopenReason = input.remark?.trim() || null;
     return this.applyAction(
       id,
       "reopen",
@@ -244,7 +245,9 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         verified_at: null,
         closed_at: null
       },
-      "重新打开问题"
+      reopenReason ? `重新打开问题：${reopenReason}` : "重新打开问题",
+      undefined,
+      reopenReason ? { reason: reopenReason } : undefined
     );
   }
 
@@ -309,6 +312,10 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
 
   async countVerifyingForDashboard(projectIds: string[], userId: string, _ctx: RequestContext): Promise<number> {
     return this.repo.countVerifyingForDashboard(projectIds, userId);
+  }
+
+  async countReportedUnresolvedForDashboard(projectIds: string[], userId: string, _ctx: RequestContext): Promise<number> {
+    return this.repo.countReportedUnresolvedForDashboard(projectIds, userId);
   }
 
   async listTodosForDashboard(
@@ -380,7 +387,8 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     current: IssueEntity,
     extra: Record<string, unknown>,
     summary: string,
-    actionAt?: string
+    actionAt?: string,
+    meta?: Record<string, unknown>
   ): Promise<IssueEntity> {
     const nextStatus = transitionIssue(current.status, action);
     const updatedAt = actionAt ?? nowIso();
@@ -395,7 +403,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     }
 
     const entity = this.requireById(id);
-    this.repo.createLog(this.createLog(id, action, current.status, entity.status, ctx, summary));
+    this.repo.createLog(this.createLog(id, action, current.status, entity.status, ctx, summary, meta));
     await this.emitIssueEvent("issue.updated", action, entity, ctx);
     return entity;
   }

@@ -2,100 +2,51 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
+import { DashboardPanelComponent } from '@shared/ui';
 import type { DashboardActivityItem } from '../../models/dashboard.model';
 
 @Component({
   selector: 'app-my-activities-card',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DashboardPanelComponent],
   template: `
-    <section class="panel">
-      <header class="panel__header">
-        <h3 class="panel__title">我的动态</h3>
-        <span class="panel__count">{{ items().length }}</span>
-      </header>
-
-      @if (items().length === 0) {
-        <div class="panel__empty">最近还没有动态</div>
-      } @else {
-        @for (item of items(); track item.kind + '-' + item.entityId + '-' + item.createdAt) {
-          <a
-            class="activity"
-            [routerLink]="detailLink(item).path"
-            [queryParams]="detailLink(item).query"
-          >
-            <div class="activity__dot" [attr.data-kind]="item.kind"></div>
-            <div class="activity__body">
-              <div class="activity__title">
-                <span class="activity__code">{{ item.code }}</span>
-                <span>{{ item.title }}</span>
-              </div>
-              <div class="activity__summary">{{ item.summary || item.action }}</div>
-              <div class="activity__meta">
-                <span class="activity__tag" [attr.data-kind]="item.kind">
-                  {{ kindLabel(item.kind) }}
-                </span>
-                <span>{{ projectLabel(item.projectId) }}</span>
-                <span>{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
-              </div>
+    <app-dashboard-panel
+      title="我的动态"
+      icon="bar-chart"
+      [count]="items().length"
+      [empty]="items().length === 0"
+      emptyText="最近还没有动态"
+    >
+      @for (item of items(); track item.kind + '-' + item.entityId + '-' + item.createdAt) {
+        <a
+          class="activity"
+          [routerLink]="detailLink(item).path"
+          [queryParams]="detailLink(item).query"
+        >
+          <div class="activity__dot" [attr.data-kind]="item.kind"></div>
+          <div class="activity__body">
+            <div class="activity__title">
+              <span class="activity__code">{{ item.code }}</span>
+              <span>{{ item.title }}</span>
             </div>
-          </a>
-        }
+            <div class="activity__summary">{{ item.summary || item.action }}</div>
+            <div class="activity__meta">
+              <span class="activity__tag" [attr.data-kind]="item.kind">
+                {{ kindLabel(item.kind) }}
+              </span>
+              <span>{{ projectLabel(item.projectId) }}</span>
+              <span>{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
+            </div>
+          </div>
+        </a>
       }
-    </section>
+    </app-dashboard-panel>
   `,
   styles: [
     `
       :host {
         display: block;
         height: 100%;
-      }
-      .panel {
-        background: var(--bg-container);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: var(--shadow-sm);
-        position: relative;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-      }
-      .panel::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 26%);
-      }
-      .panel__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 18px;
-        border-bottom: 1px solid var(--border-color-soft);
-      }
-      .panel__title {
-        margin: 0;
-        color: var(--text-heading);
-        font-size: 15px;
-        font-weight: 600;
-      }
-      .panel__count {
-        padding: 1px 8px;
-        border-radius: 10px;
-        background: var(--bg-subtle);
-        color: var(--text-muted);
-        font-size: 12px;
-        font-weight: 500;
-      }
-      .panel__empty {
-        padding: 32px 18px;
-        text-align: center;
-        color: var(--text-disabled);
-        flex: 1;
-        display: grid;
-        place-items: center;
       }
       .activity {
         display: grid;
@@ -166,12 +117,6 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
       .activity__tag[data-kind='content_activity'] {
         background: color-mix(in srgb, var(--color-warning) 18%, transparent);
         color: var(--color-warning-hover);
-      }
-      :host-context(html[data-theme='dark']) .panel {
-        border-color: rgba(148, 163, 184, 0.14);
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 26%),
-          var(--bg-container);
       }
       :host-context(html[data-theme='dark']) .activity__tag {
         background: rgba(59, 130, 246, 0.16);

@@ -33,6 +33,18 @@ export class IssueDetailStore {
 
   readonly issue = computed(() => this.issueState());
   readonly logs = computed(() => this.logsState());
+  readonly reopenReason = computed(() => {
+    for (const log of this.logsState()) {
+      if (log.actionType !== 'reopen') {
+        continue;
+      }
+      const reason = this.extractReopenReason(log);
+      if (reason) {
+        return reason;
+      }
+    }
+    return null;
+  });
   readonly comments = computed(() => this.commentsState());
   readonly participants = computed(() => this.participantsState());
   readonly attachments = computed(() => this.attachmentsState());
@@ -311,5 +323,27 @@ export class IssueDetailStore {
     this.issueApi.listLogs(issueId).subscribe({
       next: (logs) => this.logsState.set(logs.items),
     });
+  }
+
+  private extractReopenReason(log: IssueLogEntity): string | null {
+    const metaRaw = log.metaJson?.trim();
+    if (metaRaw) {
+      try {
+        const parsed = JSON.parse(metaRaw) as { reason?: unknown };
+        const reason = typeof parsed.reason === 'string' ? parsed.reason.trim() : '';
+        if (reason) {
+          return reason;
+        }
+      } catch {}
+    }
+
+    const summary = log.summary?.trim() ?? '';
+    const marker = '：';
+    const index = summary.indexOf(marker);
+    if (index >= 0 && index < summary.length - 1) {
+      const text = summary.slice(index + 1).trim();
+      return text || null;
+    }
+    return null;
   }
 }

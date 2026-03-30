@@ -87,6 +87,7 @@ export type IssueListViewMode = 'list' | 'card';
           [nzMaxTagCount]="2"
           [nzAllowClear]="true"
         >
+          <nz-option nzLabel="未指派" nzValue="__unassigned__"></nz-option>
           @for (member of members(); track member.userId) {
             <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
           }

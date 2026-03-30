@@ -22,6 +22,7 @@ export class DashboardRepo {
       return {
         assignedIssues: 0,
         verifyingIssues: 0,
+        reportedUnresolvedIssues: 0,
         assignedRdItems: 0,
         inProgressRdItems: 0,
         myProjects: 0
@@ -69,10 +70,21 @@ export class DashboardRepo {
       `,
       [userId, ...scope.params]
     );
+    const reportedUnresolvedIssues = this.count(
+      `
+        SELECT COUNT(*) as total
+        FROM issues
+        WHERE reporter_id = ?
+          AND status IN ('open', 'in_progress', 'reopened')
+          ${scope.clause}
+      `,
+      [userId, ...scope.params]
+    );
 
     return {
       assignedIssues,
       verifyingIssues,
+      reportedUnresolvedIssues,
       assignedRdItems,
       inProgressRdItems,
       myProjects: projectIds.length

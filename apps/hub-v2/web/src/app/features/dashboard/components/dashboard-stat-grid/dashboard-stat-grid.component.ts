@@ -24,6 +24,13 @@ import type { DashboardStats } from '../../models/dashboard.model';
         tone="purple"
       />
       <app-stat-card
+        label="我提报未解决"
+        [value]="stats().reportedUnresolvedIssues"
+        hint="我提报且尚未标记已解决"
+        icon="alert"
+        tone="cyan"
+      />
+      <app-stat-card
         label="进行中研发项"
         [value]="stats().inProgressRdItems"
         hint="正在推进中的研发任务"
@@ -43,11 +50,16 @@ import type { DashboardStats } from '../../models/dashboard.model';
     `
       .grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 16px;
         margin-bottom: 24px;
       }
       @media (max-width: 1200px) {
+        .grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 960px) {
         .grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }

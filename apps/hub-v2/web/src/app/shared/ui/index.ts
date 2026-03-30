@@ -2,6 +2,7 @@ export * from './activity-timeline';
 export * from './empty-state';
 export * from './data-table';
 export * from './dialog';
+export * from './dashboard-panel';
 export * from './form-actions';
 export * from './list-state';
 export * from './filter-bar';

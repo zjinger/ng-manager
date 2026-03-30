@@ -32,6 +32,7 @@ export interface IssueQueryContract {
   listLogs(id: string, ctx: RequestContext): Promise<IssueLogEntity[]>;
   countAssignedForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   countVerifyingForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
+  countReportedUnresolvedForDashboard(projectIds: string[], userId: string, ctx: RequestContext): Promise<number>;
   listTodosForDashboard(projectIds: string[], userId: string, limit: number, ctx: RequestContext): Promise<IssueDashboardTodo[]>;
   listActivitiesForDashboard(
     projectIds: string[],

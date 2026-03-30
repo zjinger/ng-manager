@@ -78,8 +78,14 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
             </div>
             @if (issue.resolutionSummary) {
               <div class="resolution">
-                <div class="resolution__label">解决说明</div>
+                <div class="resolution__label">标记已解决原因</div>
                 <div>{{ issue.resolutionSummary }}</div>
+              </div>
+            }
+            @if (store.reopenReason()) {
+              <div class="resolution">
+                <div class="resolution__label">重开原因</div>
+                <div>{{ store.reopenReason() }}</div>
               </div>
             }
             @if (issue.closeReason) {

@@ -184,21 +184,35 @@ export class IssueRepo {
     }
 
     if (query.assigneeIds && query.assigneeIds.length > 0) {
-      const assigneePlaceholders = query.assigneeIds.map(() => "?").join(", ");
+      const includesUnassigned = query.assigneeIds.includes("__unassigned__");
+      const assigneeIds = query.assigneeIds.filter((id) => id !== "__unassigned__");
       const includeParticipants = query.includeAssigneeParticipants !== false;
-      if (includeParticipants) {
-        conditions.push(
-          `(i.assignee_id IN (${assigneePlaceholders}) OR EXISTS (
-            SELECT 1
-            FROM issue_participants ip
-            WHERE ip.issue_id = i.id
-              AND ip.user_id IN (${assigneePlaceholders})
-          ))`
-        );
-        params.push(...query.assigneeIds, ...query.assigneeIds);
-      } else {
-        conditions.push(`i.assignee_id IN (${assigneePlaceholders})`);
-        params.push(...query.assigneeIds);
+
+      const groupConditions: string[] = [];
+      if (assigneeIds.length > 0) {
+        const assigneePlaceholders = assigneeIds.map(() => "?").join(", ");
+        if (includeParticipants) {
+          groupConditions.push(
+            `(i.assignee_id IN (${assigneePlaceholders}) OR EXISTS (
+              SELECT 1
+              FROM issue_participants ip
+              WHERE ip.issue_id = i.id
+                AND ip.user_id IN (${assigneePlaceholders})
+            ))`
+          );
+          params.push(...assigneeIds, ...assigneeIds);
+        } else {
+          groupConditions.push(`i.assignee_id IN (${assigneePlaceholders})`);
+          params.push(...assigneeIds);
+        }
+      }
+
+      if (includesUnassigned) {
+        groupConditions.push("i.assignee_id IS NULL");
+      }
+
+      if (groupConditions.length > 0) {
+        conditions.push(`(${groupConditions.join(" OR ")})`);
       }
     }
 
@@ -346,6 +360,22 @@ export class IssueRepo {
           FROM issues
           WHERE COALESCE(verifier_id, reporter_id) = ?
             AND status = 'resolved'
+            ${scope.clause}
+        `
+      )
+      .get(userId, ...scope.params) as { total: number };
+    return row.total;
+  }
+
+  countReportedUnresolvedForDashboard(projectIds: string[], userId: string): number {
+    const scope = this.createProjectScope(projectIds);
+    const row = this.db
+      .prepare(
+        `
+          SELECT COUNT(*) as total
+          FROM issues
+          WHERE reporter_id = ?
+            AND status IN ('open', 'in_progress', 'reopened')
             ${scope.clause}
         `
       )

@@ -44,6 +44,7 @@ export interface DashboardDocumentSummary {
 export interface DashboardStats {
   assignedIssues: number;
   verifyingIssues: number;
+  reportedUnresolvedIssues: number;
   assignedRdItems: number;
   inProgressRdItems: number;
   myProjects: number;

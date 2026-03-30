@@ -83,6 +83,10 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         background: var(--color-warning-light);
         color: var(--color-warning);
       }
+      .stat-card__icon[data-tone='cyan'] {
+        background: rgba(6, 182, 212, 0.14);
+        color: #0891b2;
+      }
       .stat-card__value {
         font-size: 30px;
         font-weight: 700;
@@ -112,6 +116,9 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
       :host-context(html[data-theme='dark']) .stat-card__icon[data-tone='orange'] {
         background: rgba(245, 158, 11, 0.18);
       }
+      :host-context(html[data-theme='dark']) .stat-card__icon[data-tone='cyan'] {
+        background: rgba(6, 182, 212, 0.2);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -121,5 +128,5 @@ export class StatCardComponent {
   readonly value = input.required<string | number>();
   readonly hint = input<string>('');
   readonly icon = input<string>('bar-chart');
-  readonly tone = input<'blue' | 'purple' | 'green' | 'orange'>('blue');
+  readonly tone = input<'blue' | 'purple' | 'green' | 'orange' | 'cyan'>('blue');
 }
