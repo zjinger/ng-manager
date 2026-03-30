@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>运营看板 — Hub v2</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary-50: #EEF2FF; --primary-100: #E0E7FF; --primary-200: #C7D2FE;
+      --primary-300: #A5B4FC; --primary-400: #818CF8; --primary-500: #6366F1;
+      --primary-600: #4F46E5; --primary-700: #4338CA; --primary-800: #3730A3; --primary-900: #312E81;
+      --gray-50: #F8FAFC; --gray-100: #F1F5F9; --gray-200: #E2E8F0; --gray-300: #CBD5E1;
+      --gray-400: #94A3B8; --gray-500: #64748B; --gray-600: #475569; --gray-700: #334155;
+      --gray-800: #1E293B; --gray-900: #0F172A;
+      --success: #10B981; --success-light: #D1FAE5;
+      --warning: #F59E0B; --warning-light: #FEF3C7;
+      --danger: #EF4444; --danger-light: #FEE2E2;
+      --info: #3B82F6; --info-light: #DBEAFE;
+      --purple: #7C3AED; --purple-light: #EDE9FE;
+      --sidebar-width: 240px; --topbar-height: 56px;
+      --border-radius: 8px; --border-radius-sm: 6px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+      --transition: all 0.2s ease;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: var(--gray-50); color: var(--gray-800); font-size: 14px; line-height: 1.5;
+      overflow: hidden; height: 100vh;
+    }
+    .app-layout { display: flex; height: 100vh; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: var(--sidebar-width); background: var(--gray-900); display: flex; flex-direction: column;
+      flex-shrink: 0; z-index: 100;
+    }
+    .sidebar-brand {
+      height: var(--topbar-height); display: flex; align-items: center; padding: 0 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08); gap: 10px;
+    }
+    .sidebar-brand-icon {
+      width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+    .sidebar-brand-text { color: #fff; font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+    .sidebar-brand-badge { font-size: 10px; padding: 2px 6px; background: var(--primary-600); color: #fff; border-radius: 10px; font-weight: 500; }
+    .project-switcher { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .project-switcher-trigger {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      background: rgba(255,255,255,0.06); border-radius: var(--border-radius-sm);
+      cursor: pointer; transition: var(--transition); color: #fff;
+    }
+    .project-switcher-trigger:hover { background: rgba(255,255,255,0.1); }
+    .project-avatar {
+      width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; font-weight: 700; font-size: 12px; color: #fff; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--info), var(--primary-500));
+    }
+    .project-switcher-info { flex: 1; min-width: 0; }
+    .project-switcher-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .project-switcher-key { font-size: 11px; color: var(--gray-400); }
+    .project-switcher-arrow { color: var(--gray-400); font-size: 12px; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .nav-section-label {
+      padding: 16px 16px 6px; font-size: 11px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 16px; color: var(--gray-400);
+      cursor: pointer; transition: var(--transition); font-size: 13px; margin: 1px 8px;
+      border-radius: var(--border-radius-sm);
+    }
+    .nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    .nav-item.active { color: #fff; background: var(--primary-600); }
+    .nav-item i { width: 18px; text-align: center; font-size: 14px; }
+    .sidebar-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border-radius: var(--border-radius-sm); cursor: pointer; transition: var(--transition);
+    }
+    .sidebar-user:hover { background: rgba(255,255,255,0.06); }
+    .sidebar-user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #F59E0B, #EF4444); display: flex;
+      align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 13px; flex-shrink: 0;
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; }
+    .sidebar-user-name { font-size: 13px; color: #fff; font-weight: 500; }
+    .sidebar-user-role { font-size: 11px; color: var(--gray-400); }
+
+    /* ===== Main Area ===== */
+    .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      height: var(--topbar-height); background: #fff; border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; padding: 0 24px; gap: 16px; flex-shrink: 0;
+    }
+    .topbar-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-500); }
+    .topbar-breadcrumb .current { color: var(--gray-800); font-weight: 500; }
+    .topbar-breadcrumb .separator { color: var(--gray-300); }
+    .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .topbar-icon-btn {
+      width: 36px; height: 36px; border-radius: var(--border-radius); display: flex;
+      align-items: center; justify-content: center; color: var(--gray-500); cursor: pointer;
+      transition: var(--transition); border: none; background: none; font-size: 16px;
+    }
+    .topbar-icon-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+    .content-area { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ===== Common ===== */
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); letter-spacing: -0.3px; display: flex; align-items: center; gap: 10px; }
+    .page-header p { font-size: 14px; color: var(--gray-500); margin-top: 4px; }
+    .page-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .filter-select {
+      padding: 7px 30px 7px 10px; border: 1px solid var(--gray-200);
+      border-radius: var(--border-radius-sm); font-size: 13px;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;
+      appearance: none; cursor: pointer; color: var(--gray-700);
+    }
+    .filter-select:focus { outline: none; border-color: var(--primary-400); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .toolbar-spacer { flex: 1; }
+    .range-toggle { display: flex; background: var(--gray-100); border-radius: var(--border-radius-sm); padding: 2px; }
+    .range-toggle-btn {
+      padding: 5px 14px; border-radius: 4px; cursor: pointer; color: var(--gray-500);
+      font-size: 13px; transition: var(--transition); border: none; background: none; font-weight: 500;
+    }
+    .range-toggle-btn.active { background: #fff; color: var(--gray-800); box-shadow: var(--shadow-sm); }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+      border-radius: var(--border-radius-sm); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: var(--transition); border: 1px solid transparent; white-space: nowrap;
+    }
+    .btn-default { background: #fff; border-color: var(--gray-200); color: var(--gray-700); }
+    .btn-default:hover { border-color: var(--gray-300); background: var(--gray-50); }
+    .btn-primary { background: var(--primary-600); color: #fff; }
+    .btn-primary:hover { background: var(--primary-700); }
+    .last-updated { font-size: 12px; color: var(--gray-400); display: flex; align-items: center; gap: 4px; }
+
+    /* ===== Stat Cards ===== */
+    .stats-row { display: grid; gap: 16px; margin-bottom: 24px; }
+    .stats-row.cols-5 { grid-template-columns: repeat(5, 1fr); }
+    .stats-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .stats-row.cols-6 { grid-template-columns: repeat(6, 1fr); }
+    .stat-card {
+      background: #fff; border-radius: var(--border-radius); padding: 20px;
+      box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); transition: var(--transition);
+      position: relative; overflow: hidden;
+    }
+    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-card.blue::before { background: var(--info); }
+    .stat-card.orange::before { background: var(--warning); }
+    .stat-card.purple::before { background: var(--purple); }
+    .stat-card.green::before { background: var(--success); }
+    .stat-card.red::before { background: var(--danger); }
+    .stat-card.cyan::before { background: #06B6D4; }
+    .stat-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .stat-card-label { font-size: 13px; color: var(--gray-500); font-weight: 500; }
+    .stat-card-icon {
+      width: 36px; height: 36px; border-radius: var(--border-radius);
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .stat-card-icon.blue { background: var(--info-light); color: var(--info); }
+    .stat-card-icon.orange { background: var(--warning-light); color: var(--warning); }
+    .stat-card-icon.purple { background: var(--purple-light); color: var(--purple); }
+    .stat-card-icon.green { background: var(--success-light); color: var(--success); }
+    .stat-card-icon.red { background: var(--danger-light); color: var(--danger); }
+    .stat-card-icon.cyan { background: #CFFAFE; color: #06B6D4; }
+    .stat-card-value { font-size: 32px; font-weight: 700; color: var(--gray-900); line-height: 1; }
+    .stat-card-sub { font-size: 12px; color: var(--gray-400); margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+    .stat-card-trend {
+      display: inline-flex; align-items: center; gap: 3px; font-size: 12px;
+      font-weight: 600; padding: 2px 6px; border-radius: 4px;
+    }
+    .stat-card-trend.up { color: var(--danger); background: var(--danger-light); }
+    .stat-card-trend.down { color: var(--success); background: var(--success-light); }
+    .stat-card-trend.neutral { color: var(--gray-500); background: var(--gray-100); }
+
+    /* ===== Chart ===== */
+    .charts-section { display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .chart-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+    .chart-card {
+      background: #fff; border-radius: var(--border-radius); box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200); overflow: hidden;
+    }
+    .chart-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--gray-100);
+    }
+    .chart-card-title {
+      font-size: 15px; font-weight: 600; color: var(--gray-900); display: flex; align-items: center; gap: 8px;
+    }
+    .chart-card-title .icon { font-size: 14px; }
+    .chart-card-body { padding: 16px 20px; }
+    .chart-container { width: 100%; height: 280px; }
+    .chart-container.tall { height: 340px; }
+
+    /* ===== Skeleton ===== */
+    .skeleton {
+      background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+      background-size: 200% 100%; animation: skeleton-pulse 1.5s ease-in-out infinite; border-radius: 4px;
+    }
+    @keyframes skeleton-pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-value { height: 32px; width: 60px; margin-bottom: 8px; }
+    .skeleton-text { height: 14px; width: 80px; }
+    .skeleton-chart { height: 280px; border-radius: 0; }
+
+    /* ===== Fade-in ===== */
+    .fade-in { animation: fadeIn 0.4s ease-out forwards; opacity: 0; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ===== List / Table ===== */
+    .data-table {
+      width: 100%; background: #fff; border-radius: var(--border-radius);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200);
+      border-collapse: separate; border-spacing: 0;
+    }
+    .data-table thead th {
+      padding: 10px 16px; font-size: 12px; font-weight: 600; color: var(--gray-500);
+      text-align: left; background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap; user-select: none;
+    }
+    .data-table thead th:first-child { border-radius: var(--border-radius) 0 0 0; }
+    .data-table thead th:last-child { border-radius: 0 var(--border-radius) 0 0; }
+    .data-table tbody tr { transition: var(--transition); cursor: pointer; }
+    .data-table tbody tr:hover { background: var(--gray-50); }
+    .data-table tbody td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+
+    .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; display: inline-block; }
+    .status-badge.open { background: #DBEAFE; color: var(--info); }
+    .status-badge.in-progress { background: #EDE9FE; color: var(--purple); }
+    .status-badge.resolved { background: var(--success-light); color: var(--success); }
+    .status-badge.closed { background: var(--gray-100); color: var(--gray-500); }
+    .status-badge.doing { background: #DBEAFE; color: var(--info); }
+    .status-badge.blocked { background: var(--danger-light); color: var(--danger); }
+    .status-badge.done { background: var(--success-light); color: var(--success); }
+    .status-badge.todo { background: var(--gray-100); color: var(--gray-500); }
+
+    .priority-dot { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+    .priority-dot .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .priority-dot .dot.p0 { background: var(--danger); }
+    .priority-dot .dot.p1 { background: var(--warning); }
+    .priority-dot .dot.p2 { background: var(--info); }
+    .priority-dot .dot.p3 { background: var(--gray-300); }
+
+    .mini-avatar {
+      width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center;
+      justify-content: center; font-size: 10px; font-weight: 600; color: #fff; flex-shrink: 0;
+    }
+    .assignee-cell { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+    /* ===== Rank / Leaderboard ===== */
+    .rank-list { list-style: none; }
+    .rank-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .rank-item:last-child { border-bottom: none; }
+    .rank-number {
+      width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .rank-number.gold { background: #FEF3C7; color: #D97706; }
+    .rank-number.silver { background: var(--gray-100); color: var(--gray-500); }
+    .rank-number.bronze { background: #FFEDD5; color: #EA580C; }
+    .rank-number.normal { background: var(--gray-50); color: var(--gray-400); }
+    .rank-avatar {
+      width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0;
+    }
+    .rank-info { flex: 1; min-width: 0; }
+    .rank-name { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+    .rank-meta { font-size: 12px; color: var(--gray-400); }
+    .rank-value { font-size: 14px; font-weight: 700; color: var(--gray-900); }
+
+    /* ===== Progress Bar ===== */
+    .progress-bar { width: 100%; height: 6px; background: var(--gray-100); border-radius: 3px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+    .progress-label { font-size: 12px; color: var(--gray-500); display: flex; justify-content: space-between; margin-top: 4px; }
+
+    /* ===== Risk Tag ===== */
+    .risk-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
+    .risk-tag.high { background: var(--danger-light); color: var(--danger); }
+    .risk-tag.medium { background: var(--warning-light); color: var(--warning); }
+    .risk-tag.low { background: var(--success-light); color: var(--success); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1400px) {
+      .stats-row.cols-5 { grid-template-columns: repeat(3, 1fr); }
+      .stats-row.cols-6 { grid-template-columns: repeat(3, 1fr); }
+      .chart-row { grid-template-columns: 1fr; }
+      .chart-row.triple { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 1024px) {
+      .stats-row.cols-5, .stats-row.cols-6 { grid-template-columns: repeat(2, 1fr); }
+      .chart-row.triple { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon"><i class="fas fa-cube"></i></div>
+      <span class="sidebar-brand-text">Hub</span>
+      <span class="sidebar-brand-badge">v2</span>
+    </div>
+    <div class="project-switcher">
+      <div class="project-switcher-trigger">
+        <div class="project-avatar">PM</div>
+        <div class="project-switcher-info">
+          <div class="project-switcher-name">Project Mercury</div>
+          <div class="project-switcher-key">PM-2024</div>
+        </div>
+        <i class="fas fa-chevron-down project-switcher-arrow"></i>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">工作台</div>
+      <div class="nav-item"><i class="fas fa-home"></i> 首页</div>
+      <div class="nav-item"><i class="fas fa-list-check"></i> Issue 列表</div>
+      <div class="nav-item"><i class="fas fa-table-columns"></i> RD 看板</div>
+      <div class="nav-section-label">数据</div>
+      <div class="nav-item active" data-page="project"><i class="fas fa-chart-line"></i> 运营看板</div>
+      <div class="nav-item" data-page="personal"><i class="fas fa-user-chart"></i> 个人看板</div>
+      <div class="nav-item" data-page="management"><i class="fas fa-chart-pie"></i> 管理看板</div>
+      <div class="nav-section-label">设置</div>
+      <div class="nav-item"><i class="fas fa-gear"></i> 项目设置</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar">张</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">张三</div>
+          <div class="sidebar-user-role">项目管理员</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <div class="main-area">
+    <div class="topbar">
+      <div class="topbar-breadcrumb">
+        <span>Project Mercury</span>
+        <span class="separator"><i class="fas fa-chevron-right" style="font-size:10px"></i></span>
+        <span class="current" id="breadcrumbCurrent">运营看板</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-icon-btn"><i class="fas fa-bell"></i></button>
+        <button class="topbar-icon-btn"><i class="fas fa-gear"></i></button>
+      </div>
+    </div>
+    <div class="content-area">
+
+      <!-- ==================== PAGE 1: PROJECT DASHBOARD ==================== -->
+      <div class="page active" id="page-project">
+        <div class="page-header">
+          <h1><i class="fas fa-chart-line" style="color:var(--primary-500);font-size:20px"></i> 运营看板</h1>
+          <p>项目维度数据总览 · 实时聚合</p>
+        </div>
+        <div class="page-toolbar">
+          <select class="filter-select">
+            <option>Project Mercury</option>
+            <option>Project Apollo</option>
+            <option>Project Voyager</option>
+          </select>
+          <div class="range-toggle">
+            <button class="range-toggle-btn" data-range="30d">30 天</button>
+            <button class="range-toggle-btn active" data-range="7d">7 天</button>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <div class="last-updated"><i class="fas fa-clock"></i><span>更新于 15:00</span></div>
+          <button class="btn btn-default" id="refreshProject"><i class="fas fa-rotate"></i> 刷新</button>
+        </div>
+
+        <div class="stats-row cols-5" id="projectStats"></div>
+
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-arrow-trend-up icon" style="color:var(--info)"></i> Issue 新增 / 关闭趋势</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="projIssueTrend"></div></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-rocket icon" style="color:var(--purple)"></i> RD 完成趋势</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="projRdTrend"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-layer-group icon" style="color:var(--warning)"></i> Issue 按优先级</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="projIssuePriority"></div></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-circle-dot icon" style="color:var(--info)"></i> Issue 按状态</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="projIssueStatus"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-bars-progress icon" style="color:var(--purple)"></i> RD 按阶段</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="projRdStage"></div></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-circle-half-stroke icon" style="color:var(--success)"></i> RD 按状态</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="projRdStatus"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PAGE 2: PERSONAL DASHBOARD ==================== -->
+      <div class="page" id="page-personal">
+        <div class="page-header">
+          <h1><i class="fas fa-user" style="color:var(--primary-500);font-size:20px"></i> 个人看板</h1>
+          <p>张三的工作负载与效率概览</p>
+        </div>
+        <div class="page-toolbar">
+          <div class="range-toggle">
+            <button class="range-toggle-btn" data-range="30d">30 天</button>
+            <button class="range-toggle-btn active" data-range="7d">7 天</button>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <div class="last-updated"><i class="fas fa-clock"></i><span>更新于 15:00</span></div>
+          <button class="btn btn-default"><i class="fas fa-rotate"></i> 刷新</button>
+        </div>
+
+        <!-- My Workload -->
+        <div class="stats-row cols-6" id="personalStats"></div>
+
+        <!-- My Efficiency + Today's Tasks -->
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-gauge-high icon" style="color:var(--success)"></i> 我的效率趋势</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="personalEfficiency"></div></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-list-check icon" style="color:var(--info)"></i> 今日待办</div>
+              </div>
+              <div class="chart-card-body">
+                <div id="personalTodos"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Issue Burndown + RD Completion -->
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-fire icon" style="color:var(--danger)"></i> 我的 Issue 燃尽</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="personalIssueBurn"></div></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-clock-rotate-left icon" style="color:var(--purple)"></i> 我的 RD 完成周期</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="personalRdCycle"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Table -->
+        <div class="chart-card" style="margin-bottom:24px">
+          <div class="chart-card-header">
+            <div class="chart-card-title"><i class="fas fa-clock icon" style="color:var(--gray-500)"></i> 最近活动</div>
+          </div>
+          <div class="chart-card-body" style="padding:0">
+            <table class="data-table" id="personalActivityTable">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>类型</th>
+                  <th>标题</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PAGE 3: MANAGEMENT DASHBOARD ==================== -->
+      <div class="page" id="page-management">
+        <div class="page-header">
+          <h1><i class="fas fa-chart-pie" style="color:var(--primary-500);font-size:20px"></i> 管理看板</h1>
+          <p>全局视角 · 跨项目数据聚合</p>
+        </div>
+        <div class="page-toolbar">
+          <select class="filter-select">
+            <option>全部项目</option>
+            <option>Project Mercury</option>
+            <option>Project Apollo</option>
+            <option>Project Voyager</option>
+          </select>
+          <div class="range-toggle">
+            <button class="range-toggle-btn" data-range="30d">30 天</button>
+            <button class="range-toggle-btn active" data-range="7d">7 天</button>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <div class="last-updated"><i class="fas fa-clock"></i><span>更新于 15:00</span></div>
+          <button class="btn btn-default"><i class="fas fa-rotate"></i> 刷新</button>
+        </div>
+
+        <!-- Global Overview -->
+        <div class="stats-row cols-4" id="mgmtStats"></div>
+
+        <!-- Project Health Matrix + Delivery Rhythm -->
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-heart-pulse icon" style="color:var(--danger)"></i> 项目健康度矩阵</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container tall" id="mgmtHealthMatrix"></div></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-truck-fast icon" style="color:var(--success)"></i> 交付节奏对比</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container tall" id="mgmtDeliveryRhythm"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Ranking + Risk Heatmap -->
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-trophy icon" style="color:var(--warning)"></i> 团队效能排行</div>
+              </div>
+              <div class="chart-card-body">
+                <div id="mgmtTeamRank"></div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-triangle-exclamation icon" style="color:var(--danger)"></i> 风险热力图</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container tall" id="mgmtRiskHeatmap"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quality Trend + Cross-Project Issue -->
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-shield-halved icon" style="color:var(--info)"></i> 质量趋势（全局）</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="mgmtQualityTrend"></div></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <div class="chart-card-title"><i class="fas fa-scale-balanced icon" style="color:var(--purple)"></i> 各项目 Issue 积压对比</div>
+              </div>
+              <div class="chart-card-body"><div class="chart-container" id="mgmtIssueBacklog"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== Chart Registry =====
+const chartMap = {};
+function getChart(id) {
+  if (chartMap[id]) { chartMap[id].dispose(); }
+  const el = document.getElementById(id);
+  if (!el) return null;
+  const c = echarts.init(el);
+  chartMap[id] = c;
+  return c;
+}
+window.addEventListener('resize', () => Object.values(chartMap).forEach(c => c.resize()));
+
+// ===== Page Navigation =====
+const pageNames = { project: '运营看板', personal: '个人看板', management: '管理看板' };
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.getElementById('breadcrumbCurrent').textContent = pageNames[page];
+    // Re-init charts for visible page
+    setTimeout(() => initPage(page), 50);
+  });
+});
+
+// ===== MOCK DATA =====
+const MOCK = {
+  project: {
+    stats: [
+      { label: '未关闭 Issue', value: 47, trend: +5, icon: 'fa-circle-exclamation', iconClass: 'blue', css: 'blue', sub: 'Open + In Progress + Reopened' },
+      { label: '待验证 Issue', value: 12, trend: -3, icon: 'fa-clock-rotate-left', iconClass: 'orange', css: 'orange', sub: 'Resolved, 等待 QA 验证' },
+      { label: '进行中 RD', value: 23, trend: +2, icon: 'fa-code', iconClass: 'purple', css: 'purple', sub: '开发中 + 联调中' },
+      { label: '近7天发布数', value: 4, trend: 0, icon: 'fa-rocket', iconClass: 'green', css: 'green', sub: '已上线版本' },
+      { label: '未处理反馈', value: 8, trend: +3, icon: 'fa-comment-dots', iconClass: 'red', css: 'red', sub: '用户/客户反馈待处理' },
+    ],
+    issueTrend: {
+      dates: ['03/24','03/25','03/26','03/27','03/28','03/29','03/30'],
+      created: [8,12,6,15,9,4,7], closed: [5,8,10,7,12,6,9],
+    },
+    rdTrend: {
+      dates: ['03/24','03/25','03/26','03/27','03/28','03/29','03/30'],
+      completed: [3,5,2,8,4,6,3], cumulative: [3,8,10,18,22,28,31],
+    },
+    issuePriority: [
+      { name:'P0 紧急', value:3, color:'#EF4444' },
+      { name:'P1 高', value:12, color:'#F59E0B' },
+      { name:'P2 中', value:24, color:'#3B82F6' },
+      { name:'P3 低', value:8, color:'#94A3B8' },
+    ],
+    issueStatus: [
+      { name:'Open', value:18, color:'#3B82F6' },
+      { name:'In Progress', value:14, color:'#8B5CF6' },
+      { name:'Resolved', value:8, color:'#10B981' },
+      { name:'Verified', value:5, color:'#06B6D4' },
+      { name:'Closed', value:32, color:'#6B7280' },
+      { name:'Reopened', value:2, color:'#F59E0B' },
+    ],
+    rdStage: [
+      { name:'需求分析', value:5, color:'#94A3B8' },
+      { name:'设计中', value:3, color:'#3B82F6' },
+      { name:'开发中', value:15, color:'#8B5CF6' },
+      { name:'联调中', value:4, color:'#F59E0B' },
+      { name:'测试中', value:6, color:'#06B6D4' },
+      { name:'已上线', value:28, color:'#10B981' },
+    ],
+    rdStatus: [
+      { name:'Todo', value:8, color:'#94A3B8' },
+      { name:'Doing', value:23, color:'#3B82F6' },
+      { name:'Blocked', value:2, color:'#EF4444' },
+      { name:'Done', value:28, color:'#10B981' },
+      { name:'Accepted', value:15, color:'#06B6D4' },
+    ],
+  },
+  personal: {
+    stats: [
+      { label: '我的 Issue', value: 14, trend: +2, icon: 'fa-circle-exclamation', iconClass: 'blue', css: 'blue', sub: '分配给我的' },
+      { label: '待修复', value: 5, trend: -1, icon: 'fa-wrench', iconClass: 'orange', css: 'orange', sub: '需要我修复' },
+      { label: '进行中 RD', value: 3, trend: 0, icon: 'fa-code', iconClass: 'purple', css: 'purple', sub: '我负责开发' },
+      { label: '本周完成', value: 8, trend: +3, icon: 'fa-check-circle', iconClass: 'green', css: 'green', sub: '已关闭/已上线' },
+      { label: '平均处理时长', value: '2.4d', trend: -0.5, icon: 'fa-stopwatch', iconClass: 'cyan', css: 'cyan', sub: 'Issue 关闭周期' },
+      { label: '积压率', value: '18%', trend: -5, icon: 'fa-layer-group', iconClass: 'red', css: 'red', sub: '未关闭 / 总分配' },
+    ],
+    efficiency: {
+      dates: ['03/24','03/25','03/26','03/27','03/28','03/29','03/30'],
+      closed: [2,3,1,4,2,3,2],
+      rdDone: [1,2,0,3,1,2,1],
+      avgCycle: [3.2,2.8,3.5,2.1,2.4,1.9,2.4],
+    },
+    todos: [
+      { title: '修复登录页 XSS 问题', type: 'issue', priority: 'p0', id: 'PM-142' },
+      { title: '用户模块 API 联调', type: 'rd', priority: 'p1', id: 'PM-RD-089' },
+      { title: '审查 PR #234', type: 'review', priority: 'p1', id: 'PR-234' },
+      { title: '回归测试 v2.3.1', type: 'test', priority: 'p2', id: 'PM-138' },
+      { title: '更新接口文档', type: 'doc', priority: 'p3', id: 'DOC-12' },
+    ],
+    issueBurn: {
+      dates: ['03/24','03/25','03/26','03/27','03/28','03/29','03/30'],
+      remaining: [20,18,17,14,13,11,14],
+      ideal: [20,17.1,14.3,11.4,8.6,5.7,2.9],
+    },
+    rdCycle: {
+      labels: ['需求→设计','设计→开发','开发→联调','联调→测试','测试→上线'],
+      values: [1.2, 0.8, 3.5, 1.1, 0.6],
+      colors: ['#94A3B8','#3B82F6','#8B5CF6','#F59E0B','#10B981'],
+    },
+    activities: [
+      { time: '14:32', type: 'Issue', title: '关闭 PM-138 回归测试 v2.3.1', action: '关闭' },
+      { time: '11:20', type: 'RD', title: 'PM-RD-089 用户模块 API 联调', action: '状态变更' },
+      { time: '10:05', type: 'PR', title: '合并 PR #234 用户权限修复', action: '合并' },
+      { time: '09:30', type: 'Issue', title: '确认 PM-142 XSS 问题复现', action: '评论' },
+      { time: '09:00', type: 'RD', title: 'PM-RD-085 登录模块开发完成', action: '完成' },
+    ],
+  },
+  management: {
+    stats: [
+      { label: '全局未关闭 Issue', value: 186, trend: +12, icon: 'fa-circle-exclamation', iconClass: 'blue', css: 'blue', sub: '跨项目汇总' },
+      { label: '全局进行中 RD', value: 67, trend: +5, icon: 'fa-code', iconClass: 'purple', css: 'purple', sub: '跨项目汇总' },
+      { label: '本月发布次数', value: 18, trend: +4, icon: 'fa-rocket', iconClass: 'green', css: 'green', sub: '所有项目' },
+      { label: '全局风险项', value: 7, trend: +2, icon: 'fa-triangle-exclamation', iconClass: 'red', css: 'red', sub: 'P0 Issue + Blocked RD' },
+    ],
+    healthMatrix: {
+      projects: ['Mercury','Apollo','Voyager','Gemini','Atlas'],
+      issueHealth: [72, 85, 58, 91, 45],
+      rdProgress: [68, 74, 52, 88, 60],
+      deliveryScore: [80, 65, 70, 92, 55],
+    },
+    deliveryRhythm: {
+      projects: ['Mercury','Apollo','Voyager','Gemini','Atlas'],
+      releases: [4, 2, 3, 5, 1],
+      avgCycle: [5.2, 8.1, 6.4, 3.8, 12.2],
+      feedbackRate: [0.08, 0.15, 0.11, 0.04, 0.22],
+    },
+    teamRank: [
+      { name: '李四', role: '前端', closed: 24, rd: 8, cycle: '1.8d', avatar: '李', color: '#3B82F6' },
+      { name: '王五', role: '后端', closed: 21, rd: 12, cycle: '2.1d', avatar: '王', color: '#8B5CF6' },
+      { name: '张三', role: '全栈', closed: 18, rd: 9, cycle: '2.4d', avatar: '张', color: '#F59E0B' },
+      { name: '赵六', role: 'QA', closed: 32, rd: 0, cycle: '1.2d', avatar: '赵', color: '#10B981' },
+      { name: '孙七', role: '后端', closed: 15, rd: 7, cycle: '2.8d', avatar: '孙', color: '#EF4444' },
+    ],
+    riskHeatmap: {
+      xLabels: ['Mercury','Apollo','Voyager','Gemini','Atlas'],
+      yLabels: ['P0 Issue','Blocked RD','逾期发布','客户投诉','技术债'],
+      data: [
+        [0,0,2],[0,1,1],[0,2,0],[0,3,1],[0,4,3],
+        [1,0,0],[1,1,2],[1,2,1],[1,3,0],[1,4,2],
+        [2,0,1],[2,1,0],[2,2,1],[2,3,0],[2,4,1],
+        [3,0,0],[3,1,0],[3,2,0],[3,3,0],[3,4,0],
+        [4,0,1],[4,1,3],[4,2,2],[4,3,1],[4,4,4],
+      ],
+    },
+    qualityTrend: {
+      dates: ['03/24','03/25','03/26','03/27','03/28','03/29','03/30'],
+      reopenRate: [0.05,0.08,0.04,0.06,0.03,0.07,0.04],
+      regressionRate: [0.03,0.02,0.05,0.03,0.04,0.02,0.03],
+      avgFixTime: [4.2,3.8,5.1,3.2,4.5,2.9,3.5],
+    },
+    issueBacklog: {
+      projects: ['Mercury','Apollo','Voyager','Gemini','Atlas'],
+      open: [18, 32, 24, 8, 42],
+      inProgress: [14, 20, 16, 6, 28],
+      pending: [8, 12, 10, 4, 18],
+    },
+  },
+};
+
+// ===== Render Helpers =====
+function renderStats(containerId, items, cols) {
+  const row = document.getElementById(containerId);
+  row.className = 'stats-row cols-' + cols;
+  row.innerHTML = items.map((s, i) => {
+    const tClass = s.trend > 0 ? 'up' : s.trend < 0 ? 'down' : 'neutral';
+    const tIcon = s.trend > 0 ? 'fa-arrow-up' : s.trend < 0 ? 'fa-arrow-down' : 'fa-minus';
+    const tText = s.trend === 0 ? '持平' : `${s.trend > 0 ? '+' : ''}${typeof s.trend === 'number' ? s.trend : s.trend}`;
+    return `<div class="stat-card ${s.css} fade-in" style="animation-delay:${i*0.05}s">
+      <div class="stat-card-header">
+        <div class="stat-card-label">${s.label}</div>
+        <div class="stat-card-icon ${s.iconClass}"><i class="fas ${s.icon}"></i></div>
+      </div>
+      <div class="stat-card-value">${s.value}</div>
+      <div class="stat-card-sub">
+        <span class="stat-card-trend ${tClass}"><i class="fas ${tIcon}" style="font-size:10px"></i> ${tText}</span>
+        <span>${s.sub || '较上周'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTodoList(containerId, items) {
+  const el = document.getElementById(containerId);
+  const typeColors = { issue: '#3B82F6', rd: '#8B5CF6', review: '#F59E0B', test: '#06B6D4', doc: '#94A3B8' };
+  const typeLabels = { issue: 'Issue', rd: 'RD', review: 'Review', test: 'Test', doc: 'Doc' };
+  const prioColors = { p0: '#EF4444', p1: '#F59E0B', p2: '#3B82F6', p3: '#94A3B8' };
+  el.innerHTML = '<ul class="rank-list">' + items.map(t => `
+    <li class="rank-item">
+      <div style="width:4px;height:32px;border-radius:2px;background:${prioColors[t.priority]};flex-shrink:0"></div>
+      <div class="rank-info">
+        <div class="rank-name" style="font-size:13px;font-weight:500">${t.title}</div>
+        <div class="rank-meta">
+          <span style="font-size:11px;padding:1px 6px;border-radius:4px;background:${typeColors[t.type]}22;color:${typeColors[t.type]};font-weight:500">${typeLabels[t.type]}</span>
+          <span style="margin-left:6px;font-family:monospace;font-size:11px;color:var(--gray-400)">${t.id}</span>
+        </div>
+      </div>
+    </li>`).join('') + '</ul>';
+}
+
+function renderActivityTable(containerId, items) {
+  const tbody = document.querySelector(`#${containerId} tbody`);
+  const typeColors = { Issue: '#3B82F6', RD: '#8B5CF6', PR: '#10B981' };
+  tbody.innerHTML = items.map(a => `
+    <tr>
+      <td style="font-size:12px;color:var(--gray-400);white-space:nowrap">${a.time}</td>
+      <td><span class="status-badge" style="background:${typeColors[a.type]}18;color:${typeColors[a.type]}">${a.type}</span></td>
+      <td style="font-weight:500">${a.title}</td>
+      <td style="font-size:12px;color:var(--gray-400)">${a.action}</td>
+    </tr>`).join('');
+}
+
+function renderTeamRank(containerId, items) {
+  const el = document.getElementById(containerId);
+  const rankClasses = ['gold','silver','bronze','normal','normal'];
+  el.innerHTML = '<ul class="rank-list">' + items.map((m, i) => `
+    <li class="rank-item">
+      <div class="rank-number ${rankClasses[i]}">${i+1}</div>
+      <div class="rank-avatar" style="background:${m.color}">${m.avatar}</div>
+      <div class="rank-info">
+        <div class="rank-name">${m.name} <span style="font-weight:400;font-size:12px;color:var(--gray-400)">${m.role}</span></div>
+        <div class="rank-meta">关闭 ${m.closed} Issue · 完成 ${m.rd} RD · 周期 ${m.cycle}</div>
+      </div>
+      <div class="rank-value">${m.closed + m.rd * 3}</div>
+    </li>`).join('') + '</ul>';
+}
+
+// ===== Chart Renderers =====
+function renderProjectCharts() {
+  const d = MOCK.project;
+  // Issue Trend
+  let c = getChart('projIssueTrend');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['新增','关闭'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:16 },
+    grid: { left:40, right:16, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.issueTrend.dates, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    yAxis: { type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    series: [
+      { name:'新增', type:'line', data:d.issueTrend.created, smooth:true, symbol:'circle', symbolSize:6, lineStyle:{width:2.5,color:'#3B82F6'}, itemStyle:{color:'#3B82F6'}, areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(59,130,246,0.12)'},{offset:1,color:'rgba(59,130,246,0)'}])} },
+      { name:'关闭', type:'line', data:d.issueTrend.closed, smooth:true, symbol:'circle', symbolSize:6, lineStyle:{width:2.5,color:'#10B981'}, itemStyle:{color:'#10B981'}, areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.12)'},{offset:1,color:'rgba(16,185,129,0)'}])} },
+    ],
+  });
+  // RD Trend
+  c = getChart('projRdTrend');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['当日完成','累计完成'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:16 },
+    grid: { left:40, right:40, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.rdTrend.dates, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    yAxis: [{ type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }, { type:'value', splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }],
+    series: [
+      { name:'当日完成', type:'bar', data:d.rdTrend.completed, barWidth:24, itemStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#818CF8'},{offset:1,color:'#6366F1'}]), borderRadius:[4,4,0,0]} },
+      { name:'累计完成', type:'line', yAxisIndex:1, data:d.rdTrend.cumulative, smooth:true, symbol:'circle', symbolSize:5, lineStyle:{width:2,color:'#7C3AED',type:'dashed'}, itemStyle:{color:'#7C3AED'} },
+    ],
+  });
+  // Issue Priority
+  c = getChart('projIssuePriority');
+  if (c) {
+    const ip = d.issuePriority;
+    c.setOption({
+      tooltip: { trigger:'axis', axisPointer:{type:'shadow'}, backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+      grid: { left:80, right:32, top:16, bottom:24 },
+      xAxis: { type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+      yAxis: { type:'category', data:ip.map(i=>i.name).reverse(), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:13} },
+      series: [{ type:'bar', data:ip.map(i=>({value:i.value,itemStyle:{color:i.color,borderRadius:[0,4,4,0]}})).reverse(), barWidth:20 }],
+    });
+  }
+  // Issue Status
+  c = getChart('projIssueStatus');
+  if (c) c.setOption({
+    tooltip: { trigger:'item', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13}, formatter:'{b}: {c} ({d}%)' },
+    legend: { orient:'vertical', right:16, top:'center', textStyle:{color:'#64748B',fontSize:12}, itemWidth:10, itemHeight:10, itemGap:12 },
+    series: [{ type:'pie', radius:['42%','68%'], center:['35%','50%'], label:{show:false}, emphasis:{label:{show:true,fontSize:14,fontWeight:600,color:'#1E293B'}}, data:d.issueStatus.map(i=>({name:i.name,value:i.value,itemStyle:{color:i.color}})) }],
+  });
+  // RD Stage
+  c = getChart('projRdStage');
+  if (c) {
+    const rs = d.rdStage;
+    c.setOption({
+      tooltip: { trigger:'axis', axisPointer:{type:'shadow'}, backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+      grid: { left:72, right:32, top:16, bottom:24 },
+      xAxis: { type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+      yAxis: { type:'category', data:rs.map(i=>i.name).reverse(), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:13} },
+      series: [{ type:'bar', data:rs.map(i=>({value:i.value,itemStyle:{color:i.color,borderRadius:[0,4,4,0]}})).reverse(), barWidth:20 }],
+    });
+  }
+  // RD Status
+  c = getChart('projRdStatus');
+  if (c) c.setOption({
+    tooltip: { trigger:'item', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13}, formatter:'{b}: {c} ({d}%)' },
+    legend: { orient:'vertical', right:16, top:'center', textStyle:{color:'#64748B',fontSize:12}, itemWidth:10, itemHeight:10, itemGap:12 },
+    series: [{ type:'pie', radius:['42%','68%'], center:['35%','50%'], label:{show:false}, emphasis:{label:{show:true,fontSize:14,fontWeight:600,color:'#1E293B'}}, data:d.rdStatus.map(i=>({name:i.name,value:i.value,itemStyle:{color:i.color}})) }],
+  });
+}
+
+function renderPersonalCharts() {
+  const d = MOCK.personal;
+  // Efficiency trend
+  let c = getChart('personalEfficiency');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['关闭 Issue','完成 RD','平均周期(d)'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:12 },
+    grid: { left:40, right:40, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.efficiency.dates, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    yAxis: [{ type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }, { type:'value', splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }],
+    series: [
+      { name:'关闭 Issue', type:'bar', data:d.efficiency.closed, barWidth:16, itemStyle:{color:'#3B82F6',borderRadius:[3,3,0,0]}, barGap:'20%' },
+      { name:'完成 RD', type:'bar', data:d.efficiency.rdDone, barWidth:16, itemStyle:{color:'#8B5CF6',borderRadius:[3,3,0,0]} },
+      { name:'平均周期(d)', type:'line', yAxisIndex:1, data:d.efficiency.avgCycle, smooth:true, symbol:'circle', symbolSize:5, lineStyle:{width:2,color:'#F59E0B'}, itemStyle:{color:'#F59E0B'} },
+    ],
+  });
+  // Issue Burndown
+  c = getChart('personalIssueBurn');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['实际剩余','理想燃尽'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:16 },
+    grid: { left:40, right:16, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.issueBurn.dates, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    yAxis: { type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    series: [
+      { name:'实际剩余', type:'line', data:d.issueBurn.remaining, smooth:true, symbol:'circle', symbolSize:6, lineStyle:{width:2.5,color:'#EF4444'}, itemStyle:{color:'#EF4444'}, areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(239,68,68,0.15)'},{offset:1,color:'rgba(239,68,68,0)'}])} },
+      { name:'理想燃尽', type:'line', data:d.issueBurn.ideal, symbol:'none', lineStyle:{width:1.5,color:'#94A3B8',type:'dashed'} },
+    ],
+  });
+  // RD Cycle
+  c = getChart('personalRdCycle');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', axisPointer:{type:'shadow'}, backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13}, formatter:p=>`${p[0].name}<br/>平均 <b>${p[0].value} 天</b>` },
+    grid: { left:100, right:32, top:16, bottom:24 },
+    xAxis: { type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12}, name:'天', nameTextStyle:{color:'#94A3B8',fontSize:11} },
+    yAxis: { type:'category', data:d.rdCycle.labels.reverse(), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:12} },
+    series: [{ type:'bar', data:d.rdCycle.values.map((v,i)=>({value:v,itemStyle:{color:d.rdCycle.colors[d.rdCycle.colors.length-1-i],borderRadius:[0,4,4,0]}})), barWidth:18 }],
+  });
+}
+
+function renderManagementCharts() {
+  const d = MOCK.management;
+  // Health Matrix — grouped bar
+  let c = getChart('mgmtHealthMatrix');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', axisPointer:{type:'shadow'}, backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['Issue 健康度','RD 进度','交付评分'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:12 },
+    grid: { left:48, right:16, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.healthMatrix.projects, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:12} },
+    yAxis: { type:'value', max:100, splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12}, name:'%', nameTextStyle:{color:'#94A3B8',fontSize:11} },
+    series: [
+      { name:'Issue 健康度', type:'bar', data:d.healthMatrix.issueHealth, barWidth:16, itemStyle:{color:'#3B82F6',borderRadius:[3,3,0,0]} },
+      { name:'RD 进度', type:'bar', data:d.healthMatrix.rdProgress, barWidth:16, itemStyle:{color:'#8B5CF6',borderRadius:[3,3,0,0]} },
+      { name:'交付评分', type:'bar', data:d.healthMatrix.deliveryScore, barWidth:16, itemStyle:{color:'#10B981',borderRadius:[3,3,0,0]} },
+    ],
+  });
+  // Delivery Rhythm
+  c = getChart('mgmtDeliveryRhythm');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['发布次数','平均周期(d)','反馈率'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:12 },
+    grid: { left:48, right:48, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.deliveryRhythm.projects, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:12} },
+    yAxis: [{ type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }, { type:'value', max:0.3, splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }],
+    series: [
+      { name:'发布次数', type:'bar', data:d.deliveryRhythm.releases, barWidth:20, itemStyle:{color:'#10B981',borderRadius:[3,3,0,0]} },
+      { name:'平均周期(d)', type:'line', data:d.deliveryRhythm.avgCycle, smooth:true, symbol:'circle', symbolSize:6, lineStyle:{width:2.5,color:'#F59E0B'}, itemStyle:{color:'#F59E0B'} },
+      { name:'反馈率', type:'line', yAxisIndex:1, data:d.deliveryRhythm.feedbackRate, smooth:true, symbol:'circle', symbolSize:5, lineStyle:{width:2,color:'#EF4444'}, itemStyle:{color:'#EF4444'} },
+    ],
+  });
+  // Risk Heatmap
+  c = getChart('mgmtRiskHeatmap');
+  if (c) {
+    const rh = d.riskHeatmap;
+    const heatColors = ['#F1F5F9','#FEF3C7','#FCD34D','#F59E0B','#EF4444'];
+    c.setOption({
+      tooltip: { trigger:'item', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13}, formatter:p=>`${rh.xLabels[p.data[0]]} · ${rh.yLabels[p.data[1]]}<br/>风险值: <b>${p.data[2]}</b>` },
+      grid: { left:80, right:48, top:16, bottom:36 },
+      xAxis: { type:'category', data:rh.xLabels, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:12}, splitArea:{show:false} },
+      yAxis: { type:'category', data:rh.yLabels, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:12} },
+      visualMap: { min:0, max:4, calculable:false, orient:'horizontal', left:'center', bottom:0, show:false, inRange:{color:['#F1F5F9','#FEF3C7','#FCD34D','#F59E0B','#EF4444']} },
+      series: [{ type:'heatmap', data:rh.data, label:{show:true,fontSize:12,fontWeight:600,color:'#475569'}, itemStyle:{borderRadius:4,borderWidth:2,borderColor:'#fff'} }],
+    });
+  }
+  // Quality Trend
+  c = getChart('mgmtQualityTrend');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['Reopen 率','回归缺陷率','平均修复时长(h)'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:12 },
+    grid: { left:48, right:48, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.qualityTrend.dates, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    yAxis: [{ type:'value', max:0.1, splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }, { type:'value', splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} }],
+    series: [
+      { name:'Reopen 率', type:'line', data:d.qualityTrend.reopenRate, smooth:true, symbol:'circle', symbolSize:5, lineStyle:{width:2.5,color:'#EF4444'}, itemStyle:{color:'#EF4444'} },
+      { name:'回归缺陷率', type:'line', data:d.qualityTrend.regressionRate, smooth:true, symbol:'circle', symbolSize:5, lineStyle:{width:2.5,color:'#F59E0B'}, itemStyle:{color:'#F59E0B'} },
+      { name:'平均修复时长(h)', type:'line', yAxisIndex:1, data:d.qualityTrend.avgFixTime, smooth:true, symbol:'circle', symbolSize:5, lineStyle:{width:2,color:'#3B82F6'}, itemStyle:{color:'#3B82F6'} },
+    ],
+  });
+  // Issue Backlog
+  c = getChart('mgmtIssueBacklog');
+  if (c) c.setOption({
+    tooltip: { trigger:'axis', axisPointer:{type:'shadow'}, backgroundColor:'#fff', borderColor:'#E2E8F0', borderWidth:1, textStyle:{color:'#334155',fontSize:13} },
+    legend: { data:['Open','In Progress','待验证'], top:0, right:0, textStyle:{color:'#64748B',fontSize:12}, itemWidth:12, itemHeight:3, itemGap:12 },
+    grid: { left:48, right:16, top:36, bottom:28 },
+    xAxis: { type:'category', data:d.issueBacklog.projects, axisLine:{lineStyle:{color:'#E2E8F0'}}, axisTick:{show:false}, axisLabel:{color:'#475569',fontSize:12} },
+    yAxis: { type:'value', splitLine:{lineStyle:{color:'#F1F5F9',type:'dashed'}}, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:'#94A3B8',fontSize:12} },
+    series: [
+      { name:'Open', type:'bar', stack:'total', data:d.issueBacklog.open, itemStyle:{color:'#3B82F6'} },
+      { name:'In Progress', type:'bar', stack:'total', data:d.issueBacklog.inProgress, itemStyle:{color:'#8B5CF6'} },
+      { name:'待验证', type:'bar', stack:'total', data:d.issueBacklog.pending, itemStyle:{color:'#F59E0B', borderRadius:[3,3,0,0]} },
+    ],
+  });
+}
+
+// ===== Page Init =====
+function initPage(page) {
+  if (page === 'project') {
+    renderStats('projectStats', MOCK.project.stats, 5);
+    renderProjectCharts();
+  } else if (page === 'personal') {
+    renderStats('personalStats', MOCK.personal.stats, 6);
+    renderTodoList('personalTodos', MOCK.personal.todos);
+    renderActivityTable('personalActivityTable', MOCK.personal.activities);
+    renderPersonalCharts();
+  } else if (page === 'management') {
+    renderStats('mgmtStats', MOCK.management.stats, 4);
+    renderTeamRank('mgmtTeamRank', MOCK.management.teamRank);
+    renderManagementCharts();
+  }
+}
+
+// ===== Init =====
+initPage('project');
+</script>
+</body>
+</html>
