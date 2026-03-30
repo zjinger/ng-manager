@@ -1,197 +1,280 @@
 import type Database from "better-sqlite3";
 import type {
-  DashboardAnnouncementSummary,
-  DashboardStats,
-  DashboardTodoItem
+  DashboardBoardData,
+  DashboardBoardDistribution,
+  DashboardBoardMetric,
+  DashboardBoardOverview,
+  DashboardBoardRange,
+  DashboardBoardTrend
 } from "./dashboard.types";
 
-type DashboardAnnouncementRow = {
-  id: string;
-  title: string;
-  summary: string | null;
-  project_id: string | null;
-  publish_at: string | null;
-  pinned: number;
+type DashboardScope = {
+  includeAll: boolean;
+  projectIds: string[];
+  projectKey: string | null;
+};
+
+type DateCountRow = {
+  day: string;
+  total: number;
+};
+
+type BucketRow = {
+  key: string;
+  total: number;
+};
+
+type StageBucketRow = {
+  key: string | null;
+  label: string | null;
+  total: number;
+};
+
+const ISSUE_PRIORITY_LABELS: Record<string, string> = {
+  low: "低",
+  medium: "中",
+  high: "高",
+  critical: "紧急"
+};
+
+const ISSUE_STATUS_LABELS: Record<string, string> = {
+  open: "待处理",
+  in_progress: "处理中",
+  resolved: "待验证",
+  verified: "已验证",
+  closed: "已关闭",
+  reopened: "重新打开"
+};
+
+const RD_STATUS_LABELS: Record<string, string> = {
+  todo: "待开始",
+  doing: "进行中",
+  blocked: "阻塞中",
+  done: "已完成",
+  accepted: "已验收",
+  closed: "已关闭"
 };
 
 export class DashboardRepo {
   constructor(private readonly db: Database.Database) {}
 
-  getStats(projectIds: string[], userId: string | null): DashboardStats {
-    if (!userId) {
-      return {
-        assignedIssues: 0,
-        verifyingIssues: 0,
-        reportedUnresolvedIssues: 0,
-        assignedRdItems: 0,
-        inProgressRdItems: 0,
-        myProjects: 0
-      };
-    }
+  getBoardData(range: DashboardBoardRange, scope: DashboardScope): DashboardBoardData {
+    return {
+      range,
+      projectId: scope.projectIds.length === 1 ? scope.projectIds[0] : null,
+      overview: this.getBoardOverview(scope),
+      trend: this.getBoardTrend(range, scope),
+      distribution: this.getBoardDistribution(scope)
+    };
+  }
 
-    const scope = this.createProjectScope(projectIds);
-    const assignedIssues = this.count(
+  private getBoardOverview(scope: DashboardScope): DashboardBoardOverview {
+    const issueScope = this.createProjectScopeClause("issues.project_id", scope);
+    const rdScope = this.createProjectScopeClause("rd_items.project_id", scope);
+    const releaseScope = this.createNullableProjectScopeClause("releases.project_id", scope);
+    const feedbackScope = this.createFeedbackScopeClause(scope);
+
+    const openIssues = this.count(
       `
         SELECT COUNT(*) as total
         FROM issues
-        WHERE assignee_id = ?
-          AND status IN ('open', 'in_progress', 'reopened')
-          ${scope.clause}
+        WHERE status IN ('open', 'in_progress', 'resolved', 'reopened')
+          ${issueScope.clause}
       `,
-      [userId, ...scope.params]
+      issueScope.params
     );
-    const verifyingIssues = this.count(
+    const pendingVerifyIssues = this.count(
       `
         SELECT COUNT(*) as total
         FROM issues
-        WHERE verifier_id = ?
-          AND status = 'resolved'
-          ${scope.clause}
+        WHERE status = 'resolved'
+          ${issueScope.clause}
       `,
-      [userId, ...scope.params]
-    );
-    const assignedRdItems = this.count(
-      `
-        SELECT COUNT(*) as total
-        FROM rd_items
-        WHERE assignee_id = ?
-          AND status IN ('todo', 'doing', 'blocked')
-          ${scope.clause}
-      `,
-      [userId, ...scope.params]
+      issueScope.params
     );
     const inProgressRdItems = this.count(
       `
         SELECT COUNT(*) as total
         FROM rd_items
-        WHERE assignee_id = ?
-          AND status = 'doing'
-          ${scope.clause}
+        WHERE status IN ('doing', 'blocked')
+          ${rdScope.clause}
       `,
-      [userId, ...scope.params]
+      rdScope.params
     );
-    const reportedUnresolvedIssues = this.count(
+    const recentReleaseCount = this.count(
       `
         SELECT COUNT(*) as total
-        FROM issues
-        WHERE reporter_id = ?
-          AND status IN ('open', 'in_progress', 'reopened')
-          ${scope.clause}
+        FROM releases
+        WHERE status = 'published'
+          AND DATE(COALESCE(published_at, updated_at)) >= DATE('now', '-6 day')
+          ${releaseScope.clause}
       `,
-      [userId, ...scope.params]
+      releaseScope.params
+    );
+    const unprocessedFeedbackCount = this.count(
+      `
+        SELECT COUNT(*) as total
+        FROM feedbacks
+        ${feedbackScope.joinClause}
+        WHERE status IN ('open', 'processing')
+          ${feedbackScope.whereClause}
+      `,
+      feedbackScope.params
     );
 
     return {
-      assignedIssues,
-      verifyingIssues,
-      reportedUnresolvedIssues,
-      assignedRdItems,
+      openIssues,
+      pendingVerifyIssues,
       inProgressRdItems,
-      myProjects: projectIds.length
+      recentReleaseCount,
+      unprocessedFeedbackCount
     };
   }
 
-  listTodos(projectIds: string[], userId: string | null, limit = 10): DashboardTodoItem[] {
-    if (!userId) {
-      return [];
-    }
+  private getBoardTrend(range: DashboardBoardRange, scope: DashboardScope): DashboardBoardTrend {
+    const days = range === "30d" ? 30 : 7;
+    const labels = this.createDateLabels(days);
 
-    const scope = this.createProjectScope(projectIds);
-    const issuesAssigned = this.db
+    const issueScope = this.createProjectScopeClause("issues.project_id", scope);
+    const rdScope = this.createProjectScopeClause("rd_items.project_id", scope);
+
+    const issueCreatedRows = this.db
       .prepare(
         `
-          SELECT id, issue_no as code, title, status, updated_at, project_id
+          SELECT SUBSTR(created_at, 1, 10) as day, COUNT(*) as total
           FROM issues
-          WHERE assignee_id = ?
-            AND status IN ('open', 'in_progress', 'reopened')
-            ${scope.clause}
-          ORDER BY updated_at DESC
-          LIMIT ?
+          WHERE DATE(created_at) >= DATE('now', ?)
+            ${issueScope.clause}
+          GROUP BY SUBSTR(created_at, 1, 10)
         `
       )
-      .all(userId, ...scope.params, limit) as Array<{
-      id: string;
-      code: string;
-      title: string;
-      status: string;
-      updated_at: string;
-      project_id: string;
-    }>;
+      .all(`-${days - 1} day`, ...issueScope.params) as DateCountRow[];
 
-    const issuesVerify = this.db
+    const issueClosedRows = this.db
       .prepare(
         `
-          SELECT id, issue_no as code, title, status, updated_at, project_id
+          SELECT SUBSTR(closed_at, 1, 10) as day, COUNT(*) as total
           FROM issues
-          WHERE verifier_id = ?
-            AND status = 'resolved'
-            ${scope.clause}
-          ORDER BY updated_at DESC
-          LIMIT ?
+          WHERE closed_at IS NOT NULL
+            AND DATE(closed_at) >= DATE('now', ?)
+            ${issueScope.clause}
+          GROUP BY SUBSTR(closed_at, 1, 10)
         `
       )
-      .all(userId, ...scope.params, limit) as Array<{
-      id: string;
-      code: string;
-      title: string;
-      status: string;
-      updated_at: string;
-      project_id: string;
-    }>;
+      .all(`-${days - 1} day`, ...issueScope.params) as DateCountRow[];
 
-    const rdAssigned = this.db
+    const rdCompletedRows = this.db
       .prepare(
         `
-          SELECT id, rd_no as code, title, status, updated_at, project_id
+          SELECT SUBSTR(COALESCE(actual_end_at, updated_at), 1, 10) as day, COUNT(*) as total
           FROM rd_items
-          WHERE assignee_id = ?
-            AND status IN ('todo', 'doing', 'blocked')
-            ${scope.clause}
-          ORDER BY updated_at DESC
-          LIMIT ?
+          WHERE status IN ('done', 'closed')
+            AND DATE(COALESCE(actual_end_at, updated_at)) >= DATE('now', ?)
+            ${rdScope.clause}
+          GROUP BY SUBSTR(COALESCE(actual_end_at, updated_at), 1, 10)
         `
       )
-      .all(userId, ...scope.params, limit) as Array<{
-      id: string;
-      code: string;
-      title: string;
-      status: string;
-      updated_at: string;
-      project_id: string;
-    }>;
+      .all(`-${days - 1} day`, ...rdScope.params) as DateCountRow[];
 
-    return [
-      ...issuesAssigned.map((row) => this.mapTodo("issue_assigned", row)),
-      ...issuesVerify.map((row) => this.mapTodo("issue_verify", row)),
-      ...rdAssigned.map((row) => this.mapTodo("rd_assigned", row))
-    ]
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .slice(0, limit);
+    return {
+      labels,
+      issueCreated: this.alignSeries(labels, issueCreatedRows),
+      issueClosed: this.alignSeries(labels, issueClosedRows),
+      rdCompleted: this.alignSeries(labels, rdCompletedRows)
+    };
   }
 
-  listRecentAnnouncements(projectIds: string[], limit = 6): DashboardAnnouncementSummary[] {
-    const scope = this.createAnnouncementScope(projectIds);
-    const rows = this.db
+  private getBoardDistribution(scope: DashboardScope): DashboardBoardDistribution {
+    const issueScope = this.createProjectScopeClause("issues.project_id", scope);
+    const rdScope = this.createProjectScopeClause("rd_items.project_id", scope);
+
+    const issuePriorityRows = this.db
       .prepare(
         `
-          SELECT id, title, summary, project_id, publish_at, pinned
-          FROM announcements
-          WHERE status = 'published'
-            ${scope.clause}
-          ORDER BY pinned DESC, publish_at DESC, updated_at DESC
-          LIMIT ?
+          SELECT priority as key, COUNT(*) as total
+          FROM issues
+          WHERE 1=1
+            ${issueScope.clause}
+          GROUP BY priority
         `
       )
-      .all(...scope.params, limit) as DashboardAnnouncementRow[];
+      .all(...issueScope.params) as BucketRow[];
 
-    return rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      summary: row.summary,
-      projectId: row.project_id,
-      publishAt: row.publish_at,
-      pinned: row.pinned === 1
-    }));
+    const issueStatusRows = this.db
+      .prepare(
+        `
+          SELECT status as key, COUNT(*) as total
+          FROM issues
+          WHERE 1=1
+            ${issueScope.clause}
+          GROUP BY status
+        `
+      )
+      .all(...issueScope.params) as BucketRow[];
+
+    const rdStatusRows = this.db
+      .prepare(
+        `
+          SELECT status as key, COUNT(*) as total
+          FROM rd_items
+          WHERE 1=1
+            ${rdScope.clause}
+          GROUP BY status
+        `
+      )
+      .all(...rdScope.params) as BucketRow[];
+
+    const rdStageRows = this.db
+      .prepare(
+        `
+          SELECT COALESCE(rd_items.stage_id, '__none__') as key, COALESCE(rd_stages.name, '未分阶段') as label, COUNT(*) as total
+          FROM rd_items
+          LEFT JOIN rd_stages ON rd_stages.id = rd_items.stage_id
+          WHERE 1=1
+            ${rdScope.clause}
+          GROUP BY COALESCE(rd_items.stage_id, '__none__'), COALESCE(rd_stages.name, '未分阶段')
+        `
+      )
+      .all(...rdScope.params) as StageBucketRow[];
+
+    return {
+      issueByPriority: this.toMetrics(issuePriorityRows, ISSUE_PRIORITY_LABELS),
+      issueByStatus: this.toMetrics(issueStatusRows, ISSUE_STATUS_LABELS),
+      rdByStatus: this.toMetrics(rdStatusRows, RD_STATUS_LABELS),
+      rdByStage: rdStageRows
+        .map((row) => ({
+          key: row.key || "__none__",
+          label: row.label || "未分阶段",
+          value: row.total
+        }))
+        .sort((a, b) => b.value - a.value)
+    };
+  }
+
+  private alignSeries(labels: string[], rows: DateCountRow[]): number[] {
+    const map = new Map(rows.map((item) => [item.day, item.total]));
+    return labels.map((label) => map.get(label) ?? 0);
+  }
+
+  private createDateLabels(days: number): string[] {
+    const labels: string[] = [];
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i -= 1) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      labels.push(date.toISOString().slice(0, 10));
+    }
+    return labels;
+  }
+
+  private toMetrics(rows: BucketRow[], labelMap: Record<string, string>): DashboardBoardMetric[] {
+    return rows
+      .map((row) => ({
+        key: row.key,
+        label: labelMap[row.key] ?? row.key,
+        value: row.total
+      }))
+      .sort((a, b) => b.value - a.value);
   }
 
   private count(sql: string, params: unknown[]): number {
@@ -199,41 +282,50 @@ export class DashboardRepo {
     return row.total;
   }
 
-  private createProjectScope(projectIds: string[]) {
-    if (projectIds.length === 0) {
-      return { clause: "", params: [] as string[] };
+  private createProjectScopeClause(column: string, scope: DashboardScope): { clause: string; params: string[] } {
+    if (scope.includeAll) {
+      return { clause: "", params: [] };
+    }
+    if (scope.projectIds.length === 0) {
+      return { clause: "AND 1=0", params: [] };
     }
     return {
-      clause: `AND project_id IN (${projectIds.map(() => "?").join(", ")})`,
-      params: projectIds
+      clause: `AND ${column} IN (${scope.projectIds.map(() => "?").join(", ")})`,
+      params: scope.projectIds
     };
   }
 
-  private createAnnouncementScope(projectIds: string[]) {
-    if (projectIds.length === 0) {
+  private createNullableProjectScopeClause(column: string, scope: DashboardScope): { clause: string; params: string[] } {
+    if (scope.includeAll) {
+      return { clause: "", params: [] };
+    }
+    if (scope.projectIds.length === 0) {
+      return { clause: "AND 1=0", params: [] };
+    }
+    return {
+      clause: `AND ${column} IN (${scope.projectIds.map(() => "?").join(", ")})`,
+      params: scope.projectIds
+    };
+  }
+
+  private createFeedbackScopeClause(scope: DashboardScope): { joinClause: string; whereClause: string; params: string[] } {
+    if (scope.includeAll) {
+      return { joinClause: "", whereClause: "", params: [] };
+    }
+    if (scope.projectIds.length === 0) {
+      return { joinClause: "", whereClause: "AND 1=0", params: [] };
+    }
+    if (scope.projectKey) {
       return {
-        clause: "AND (scope = 'global' OR project_id IS NULL)",
-        params: [] as string[]
+        joinClause: "",
+        whereClause: "AND project_key = ?",
+        params: [scope.projectKey]
       };
     }
     return {
-      clause: `AND (scope = 'global' OR project_id IN (${projectIds.map(() => "?").join(", ")}))`,
-      params: projectIds
-    };
-  }
-
-  private mapTodo(
-    kind: DashboardTodoItem["kind"],
-    row: { id: string; code: string; title: string; status: string; updated_at: string; project_id: string }
-  ): DashboardTodoItem {
-    return {
-      kind,
-      entityId: row.id,
-      code: row.code,
-      title: row.title,
-      status: row.status,
-      updatedAt: row.updated_at,
-      projectId: row.project_id
+      joinClause: "LEFT JOIN projects ON projects.project_key = feedbacks.project_key",
+      whereClause: `AND projects.id IN (${scope.projectIds.map(() => "?").join(", ")})`,
+      params: scope.projectIds
     };
   }
 }

@@ -8,4 +8,11 @@ export const DASHBOARD_ROUTES: Routes = [
         (m) => m.DashboardPageComponent
       ),
   },
+  {
+    path: 'board',
+    loadComponent: () =>
+      import('./pages/dashboard-board-page/dashboard-board-page.component').then(
+        (m) => m.DashboardBoardPageComponent
+      ),
+  },
 ];

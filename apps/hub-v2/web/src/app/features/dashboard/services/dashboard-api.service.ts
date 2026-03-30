@@ -5,6 +5,8 @@ import { ApiClientService } from '@core/http';
 import type {
   DashboardActivityItem,
   DashboardAnnouncement,
+  DashboardBoardData,
+  DashboardBoardRange,
   DashboardDocument,
   DashboardHomeData,
   DashboardStats,
@@ -37,6 +39,10 @@ export class DashboardApiService {
 
   getDocuments(): Observable<DashboardDocument[]> {
     return this.api.get<DashboardDocument[]>('/dashboard/documents');
+  }
+
+  getBoardData(params: { projectId?: string; range: DashboardBoardRange }): Observable<DashboardBoardData> {
+    return this.api.get<DashboardBoardData>('/dashboard/board', params);
   }
 
   invalidateHomeDataCache(): void {

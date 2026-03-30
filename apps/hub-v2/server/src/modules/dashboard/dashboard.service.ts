@@ -1,14 +1,19 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { AppError } from "../../shared/errors/app-error";
 import type { AnnouncementQueryContract } from "../announcement/announcement.contract";
 import type { ContentLogQueryContract } from "../content-log/content-log.contract";
 import type { DocumentQueryContract } from "../document/document.contract";
 import type { IssueQueryContract } from "../issue/issue.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
+import type { ProjectQueryContract } from "../project/project.contract";
 import type { RdQueryContract } from "../rd/rd.contract";
 import type { DashboardQueryContract } from "./dashboard.contract";
+import { DashboardRepo } from "./dashboard.repo";
 import type {
   DashboardActivityItem,
   DashboardAnnouncementSummary,
+  DashboardBoardData,
+  DashboardBoardRange,
   DashboardDocumentSummary,
   DashboardHomeData,
   DashboardStats,
@@ -28,7 +33,9 @@ export class DashboardService implements DashboardQueryContract {
     private readonly documentQuery: DocumentQueryContract,
     private readonly contentLogQuery: ContentLogQueryContract,
     private readonly issueQuery: IssueQueryContract,
-    private readonly rdQuery: RdQueryContract
+    private readonly rdQuery: RdQueryContract,
+    private readonly dashboardRepo: DashboardRepo,
+    private readonly projectQuery: ProjectQueryContract
   ) {}
 
   async getHomeData(ctx: RequestContext): Promise<DashboardHomeData> {
@@ -45,6 +52,11 @@ export class DashboardService implements DashboardQueryContract {
   async getStats(ctx: RequestContext): Promise<DashboardStats> {
     const scope = await this.resolveScope(ctx);
     return this.getStatsByScope(scope, ctx);
+  }
+
+  async getBoardData(input: { projectId?: string; range: DashboardBoardRange }, ctx: RequestContext): Promise<DashboardBoardData> {
+    const scope = await this.resolveBoardScope(input.projectId, ctx);
+    return this.dashboardRepo.getBoardData(input.range, scope);
   }
 
   async getTodos(ctx: RequestContext): Promise<DashboardTodoItem[]> {
@@ -73,6 +85,43 @@ export class DashboardService implements DashboardQueryContract {
       projectIds,
       effectiveProjectIds: ctx.roles.includes("admin") ? [] : projectIds,
       userId: ctx.userId ?? null
+    };
+  }
+
+  private async resolveBoardScope(projectId: string | undefined, ctx: RequestContext): Promise<{
+    includeAll: boolean;
+    projectIds: string[];
+    projectKey: string | null;
+  }> {
+    const normalizedProjectId = projectId?.trim();
+    if (normalizedProjectId) {
+      if (!ctx.roles.includes("admin")) {
+        await this.projectAccess.requireProjectAccess(normalizedProjectId, ctx, "view dashboard board");
+      }
+      const project = await this.projectQuery.getById(normalizedProjectId, ctx).catch(() => null);
+      if (!project) {
+        throw new AppError("PROJECT_NOT_FOUND", `project not found: ${normalizedProjectId}`, 404);
+      }
+      return {
+        includeAll: false,
+        projectIds: [normalizedProjectId],
+        projectKey: project.projectKey
+      };
+    }
+
+    if (ctx.roles.includes("admin")) {
+      return {
+        includeAll: true,
+        projectIds: [],
+        projectKey: null
+      };
+    }
+
+    const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
+    return {
+      includeAll: false,
+      projectIds,
+      projectKey: null
     };
   }
 

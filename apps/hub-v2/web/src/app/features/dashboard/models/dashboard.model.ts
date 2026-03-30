@@ -56,3 +56,41 @@ export interface DashboardHomeData {
   announcements: DashboardAnnouncement[];
   documents: DashboardDocument[];
 }
+
+export type DashboardBoardRange = '7d' | '30d';
+
+export interface DashboardBoardMetric {
+  key: string;
+  label: string;
+  value: number;
+}
+
+export interface DashboardBoardOverview {
+  openIssues: number;
+  pendingVerifyIssues: number;
+  inProgressRdItems: number;
+  recentReleaseCount: number;
+  unprocessedFeedbackCount: number;
+}
+
+export interface DashboardBoardTrend {
+  labels: string[];
+  issueCreated: number[];
+  issueClosed: number[];
+  rdCompleted: number[];
+}
+
+export interface DashboardBoardDistribution {
+  issueByPriority: DashboardBoardMetric[];
+  issueByStatus: DashboardBoardMetric[];
+  rdByStatus: DashboardBoardMetric[];
+  rdByStage: DashboardBoardMetric[];
+}
+
+export interface DashboardBoardData {
+  range: DashboardBoardRange;
+  projectId: string | null;
+  overview: DashboardBoardOverview;
+  trend: DashboardBoardTrend;
+  distribution: DashboardBoardDistribution;
+}

@@ -4,7 +4,10 @@ export const NAV_ITEMS: NavSection[] = [
   {
     key: 'workspace',
     label: '工作台',
-    items: [{ key: 'dashboard', label: 'Dashboard', icon: 'dashboard', route: '/dashboard', exact: true }],
+    items: [
+      { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', route: '/dashboard', exact: true },
+      { key: 'dashboard-board', label: '数据看板', icon: 'line-chart', route: '/dashboard/board' },
+    ],
   },
   {
     key: 'collaboration',

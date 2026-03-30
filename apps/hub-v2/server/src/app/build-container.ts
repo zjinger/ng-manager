@@ -6,6 +6,7 @@ import { ApiTokenRepo } from "../modules/api-token/api-token.repo";
 import { ApiTokenService } from "../modules/api-token/api-token.service";
 import type { AuthCommandContract, AuthQueryContract } from "../modules/auth/auth.contract";
 import { DashboardService } from "../modules/dashboard/dashboard.service";
+import { DashboardRepo } from "../modules/dashboard/dashboard.repo";
 import type { DashboardQueryContract } from "../modules/dashboard/dashboard.contract";
 import type { FeedbackCommandContract, FeedbackQueryContract } from "../modules/feedback/feedback.contract";
 import { FeedbackRepo } from "../modules/feedback/feedback.repo";
@@ -153,7 +154,9 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     documentService,
     contentLogService,
     issueService,
-    rdService
+    rdService,
+    new DashboardRepo(db),
+    projectService
   );
   const notificationService = new NotificationService(
     projectService,

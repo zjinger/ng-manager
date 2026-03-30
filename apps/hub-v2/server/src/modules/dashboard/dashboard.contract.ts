@@ -2,6 +2,8 @@ import type { RequestContext } from "../../shared/context/request-context";
 import type {
   DashboardActivityItem,
   DashboardAnnouncementSummary,
+  DashboardBoardData,
+  DashboardBoardRange,
   DashboardDocumentSummary,
   DashboardHomeData,
   DashboardStats,
@@ -10,6 +12,7 @@ import type {
 
 export interface DashboardQueryContract {
   getHomeData(ctx: RequestContext): Promise<DashboardHomeData>;
+  getBoardData(input: { projectId?: string; range: DashboardBoardRange }, ctx: RequestContext): Promise<DashboardBoardData>;
   getStats(ctx: RequestContext): Promise<DashboardStats>;
   getTodos(ctx: RequestContext): Promise<DashboardTodoItem[]>;
   getActivities(ctx: RequestContext): Promise<DashboardActivityItem[]>;
