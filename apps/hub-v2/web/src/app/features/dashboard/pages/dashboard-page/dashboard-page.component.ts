@@ -8,6 +8,7 @@ import { LatestAnnouncementsCardComponent } from '../../components/latest-announ
 import { LatestDocumentsCardComponent } from '../../components/latest-documents-card/latest-documents-card.component';
 import { MyActivitiesCardComponent } from '../../components/my-activities-card/my-activities-card.component';
 import { MyTodosCardComponent } from '../../components/my-todos-card/my-todos-card.component';
+import { DashboardShortcutsComponent, type DashboardShortcutItem } from '../../components/dashboard-shortcuts/dashboard-shortcuts.component';
 import { DashboardStore } from '../../store/dashboard.store';
 
 @Component({
@@ -20,6 +21,7 @@ import { DashboardStore } from '../../store/dashboard.store';
     MyActivitiesCardComponent,
     LatestAnnouncementsCardComponent,
     LatestDocumentsCardComponent,
+    DashboardShortcutsComponent,
   ],
   providers: [DashboardStore],
   template: `
@@ -54,6 +56,8 @@ import { DashboardStore } from '../../store/dashboard.store';
           />
         </div>
       </div>
+
+      <app-dashboard-shortcuts [items]="shortcutItems" />
     } @else {
       <div class="empty">
         <div class="empty__title">首页数据加载失败或当前项目暂无内容</div>
@@ -138,6 +142,60 @@ export class DashboardPageComponent {
     }
     return map;
   });
+  readonly shortcutItems: DashboardShortcutItem[] = [
+    {
+      key: 'issues',
+      label: '新建测试单  ',
+      description: '跳转测试跟踪并打开新增弹窗',
+      route: '/issues',
+      queryParams: { action: 'create' },
+      state: { quickCreate: 'issue' },
+      icon: 'bug',
+      tone: 'blue',
+    },
+    {
+      key: 'rd',
+      label: '新建研发项',
+      description: '跳转研发管理并打开新增弹窗',
+      route: '/rd',
+      queryParams: { action: 'create' },
+      state: { quickCreate: 'rd' },
+      icon: 'rocket',
+      tone: 'violet',
+    },
+    {
+      key: 'content',
+      label: '内容管理',
+      description: '公告、文档与版本发布',
+      route: '/content',
+      icon: 'read',
+      tone: 'green',
+    },
+    {
+      key: 'feedbacks',
+      label: '反馈管理',
+      description: '处理上线反馈问题',
+      route: '/feedbacks',
+      icon: 'message',
+      tone: 'amber',
+    },
+    {
+      key: 'projects',
+      label: '项目管理',
+      description: '维护项目成员与配置',
+      route: '/projects',
+      icon: 'appstore',
+      tone: 'rose',
+    },
+    {
+      key: 'profile',
+      label: '个人中心',
+      description: '查看并维护个人信息与偏好',
+      route: '/profile',
+      icon: 'user',
+      tone: 'slate',
+    },
+  ];
 
   constructor() {
     effect(() => {

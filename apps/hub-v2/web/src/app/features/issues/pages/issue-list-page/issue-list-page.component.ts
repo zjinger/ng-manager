@@ -202,6 +202,9 @@ export class IssueListPageComponent {
   readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
   });
+  readonly actionQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('action'))), {
+    initialValue: this.route.snapshot.queryParamMap.get('action'),
+  });
   readonly selectedIssueId = computed(() => this.detailQuery());
   readonly selectedIssue = computed<IssueEntity | null>(() => {
     const issueId = this.selectedIssueId();
@@ -333,6 +336,12 @@ export class IssueListPageComponent {
   private lastProjectId: string | null | undefined = undefined;
 
   constructor() {
+    const navigation = this.router.getCurrentNavigation();
+    const quickCreateState = (navigation?.extras?.state as { quickCreate?: string } | undefined)?.quickCreate;
+    if (quickCreateState === 'issue') {
+      queueMicrotask(() => this.createOpen.set(true));
+    }
+
     effect((onCleanup) => {
       const projectId = this.projectContext.currentProjectId();
       const isFirstRun = this.lastProjectId === undefined;
@@ -402,6 +411,19 @@ export class IssueListPageComponent {
       includeAssigneeParticipants: true,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
+    });
+
+    effect(() => {
+      const action = this.actionQuery();
+      if (action !== 'create') {
+        return;
+      }
+      this.createOpen.set(true);
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { action: null },
+        queryParamsHandling: 'merge',
+      });
     });
   }
 

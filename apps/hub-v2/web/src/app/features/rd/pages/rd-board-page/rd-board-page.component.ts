@@ -246,6 +246,9 @@ export class RdBoardPageComponent {
   readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
   });
+  readonly actionQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('action'))), {
+    initialValue: this.route.snapshot.queryParamMap.get('action'),
+  });
   readonly selectedItemId = computed(() => this.detailQuery());
   readonly selectedItem = computed(
     () => this.store.items().find((item) => item.id === this.selectedItemId()) ?? null
@@ -401,6 +404,19 @@ export class RdBoardPageComponent {
         error: () => this.members.set([]),
       });
       onCleanup(() => subscription.unsubscribe());
+    });
+
+    effect(() => {
+      const action = this.actionQuery();
+      if (action !== 'create') {
+        return;
+      }
+      this.createOpen.set(true);
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { action: null },
+        queryParamsHandling: 'merge',
+      });
     });
 
     effect(() => {
