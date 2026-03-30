@@ -11,7 +11,7 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
 import { DialogShellComponent } from '@shared/ui';
-import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
 import type {
   CreateProjectApiTokenInput,
@@ -41,7 +41,7 @@ import type {
     NzSwitchModule,
     NzTabsModule,
     DialogShellComponent,
-    NzTooltipDirective
+    NzTooltipModule
 ],
   template: `
     <app-dialog-shell

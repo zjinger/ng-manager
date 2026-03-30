@@ -154,6 +154,18 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     return this.repo.listPublic(projectIds, query);
   }
 
+  async getPublicBySlug(slug: string): Promise<DocumentEntity> {
+    const normalizedSlug = slug.trim();
+    if (!normalizedSlug) {
+      throw new AppError("DOCUMENT_NOT_FOUND", "document not found", 404);
+    }
+    const entity = this.repo.findPublishedBySlug(normalizedSlug);
+    if (!entity) {
+      throw new AppError("DOCUMENT_NOT_FOUND", `document not found: ${slug}`, 404);
+    }
+    return entity;
+  }
+
   private requireById(id: string): DocumentEntity {
     const entity = this.repo.findById(id);
     if (!entity) {

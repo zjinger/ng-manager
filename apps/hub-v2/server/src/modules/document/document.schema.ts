@@ -28,3 +28,7 @@ export const listDocumentsQuerySchema = z.object({
   projectId: z.string().trim().optional(),
   category: z.string().trim().optional()
 });
+
+export const documentSlugParamSchema = z.object({
+  slug: z.string().trim().min(1)
+});

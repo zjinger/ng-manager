@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createRequestContext } from "../../shared/context/request-context";
 import { ok } from "../../shared/http/response";
-import { listDocumentsQuerySchema } from "./document.schema";
+import { documentSlugParamSchema, listDocumentsQuerySchema } from "./document.schema";
 
 export default async function documentPublicRoutes(app: FastifyInstance) {
   app.get("/documents", async (request) => {
@@ -14,5 +14,10 @@ export default async function documentPublicRoutes(app: FastifyInstance) {
       ip: request.ip
     });
     return ok(await app.container.documentQuery.listPublic(query, ctx));
+  });
+
+  app.get("/documents/:slug", async (request) => {
+    const params = documentSlugParamSchema.parse(request.params);
+    return ok(await app.container.documentQuery.getPublicBySlug(params.slug));
   });
 }

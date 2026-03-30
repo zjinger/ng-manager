@@ -93,6 +93,13 @@ export class DocumentRepo {
     return row ? this.mapRow(row) : null;
   }
 
+  findPublishedBySlug(slug: string): DocumentEntity | null {
+    const row = this.db
+      .prepare("SELECT * FROM documents WHERE slug = ? AND status = 'published' LIMIT 1")
+      .get(slug) as DocumentRow | undefined;
+    return row ? this.mapRow(row) : null;
+  }
+
   list(query: ListDocumentsQuery): DocumentListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
     const conditions: string[] = [];

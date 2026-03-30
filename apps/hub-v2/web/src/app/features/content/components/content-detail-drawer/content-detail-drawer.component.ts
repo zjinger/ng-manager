@@ -106,6 +106,21 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
                 <span>版本</span>
                 <strong>{{ item.version || '-' }}</strong>
               </div>
+              <div class="detail-field detail-field--full">
+                <span>对外访问链接</span>
+                @if (item.status === 'published') {
+                  <a
+                    class="detail-link"
+                    [href]="publicDocumentLink(item.slug)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{ publicDocumentLink(item.slug) }}
+                  </a>
+                } @else {
+                  <strong>文档发布后可访问</strong>
+                }
+              </div>
             </div>
 
             @if (item.summary) {
@@ -231,6 +246,9 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
         display: grid;
         gap: 4px;
       }
+      .detail-field--full {
+        grid-column: 1 / -1;
+      }
       .detail-field > span {
         font-size: 12px;
         color: var(--text-muted);
@@ -343,5 +361,13 @@ export class ContentDetailDrawerComponent {
       return '确认发布这篇文档吗？发布后将对项目成员可见。';
     }
     return '确认发布这条版本记录吗？发布后将对项目成员可见。';
+  }
+
+  publicDocumentLink(slug: string): string {
+    const normalizedSlug = encodeURIComponent((slug || '').trim());
+    if (typeof window === 'undefined') {
+      return `/public/docs/${normalizedSlug}`;
+    }
+    return `${window.location.origin}/public/docs/${normalizedSlug}`;
   }
 }

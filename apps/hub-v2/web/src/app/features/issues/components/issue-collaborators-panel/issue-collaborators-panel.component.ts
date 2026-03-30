@@ -7,13 +7,13 @@ import { PanelCardComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTooltipDirective, NzTooltipModule } from "ng-zorro-antd/tooltip";
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 @Component({
   selector: 'app-issue-collaborators-panel',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzSelectModule, NzIconModule, NzTooltipModule, NzPopconfirmModule, PanelCardComponent, NzTooltipDirective],
+  imports: [FormsModule, NzButtonModule, NzSelectModule, NzIconModule, NzTooltipModule, NzPopconfirmModule, PanelCardComponent],
   template: `
     <app-panel-card title="协作人" [count]="participants().length" [empty]="participants().length === 0" emptyText="当前还没有参与人">
       <!-- @if (canAssign()) {
