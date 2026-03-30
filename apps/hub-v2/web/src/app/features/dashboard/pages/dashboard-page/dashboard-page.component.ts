@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, untracked } from '@angular/core';
 
 import { PageHeaderComponent } from '@shared/ui';
 import { ProjectContextStore } from '@core/state';
+import { DashboardRefreshBusService } from '@core/realtime';
 import { DashboardStatGridComponent } from '../../components/dashboard-stat-grid/dashboard-stat-grid.component';
 import { LatestAnnouncementsCardComponent } from '../../components/latest-announcements-card/latest-announcements-card.component';
 import { LatestDocumentsCardComponent } from '../../components/latest-documents-card/latest-documents-card.component';
@@ -119,6 +120,7 @@ import { DashboardStore } from '../../store/dashboard.store';
 export class DashboardPageComponent {
   readonly store = inject(DashboardStore);
   readonly projectContext = inject(ProjectContextStore);
+  private readonly dashboardRefreshBus = inject(DashboardRefreshBusService);
   readonly projectNames = computed<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const project of this.projectContext.projects()) {
@@ -128,6 +130,21 @@ export class DashboardPageComponent {
   });
 
   constructor() {
-    this.store.load();
+    effect(() => {
+      this.projectContext.currentProjectId();
+      this.store.load({ force: true });
+    });
+
+    let skipFirst = true;
+    effect(() => {
+      const event = this.dashboardRefreshBus.event();
+      if (skipFirst) {
+        skipFirst = false;
+        return;
+      }
+      untracked(() => {
+        this.store.refreshByEntityTypes(event.entityTypes);
+      });
+    });
   }
 }

@@ -1,29 +1,45 @@
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, shareReplay, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { ApiClientService } from '@core/http';
-import type { DashboardHomeData } from '../models/dashboard.model';
+import type {
+  DashboardActivityItem,
+  DashboardAnnouncement,
+  DashboardDocument,
+  DashboardHomeData,
+  DashboardStats,
+  DashboardTodoItem,
+} from '../models/dashboard.model';
 
 @Injectable({ providedIn: 'root' })
 export class DashboardApiService {
   private readonly api = inject(ApiClientService);
-  private homeDataRequest$: Observable<DashboardHomeData> | null = null;
 
-  getHomeData(options?: { force?: boolean }): Observable<DashboardHomeData> {
-    const force = !!options?.force;
-    if (force || !this.homeDataRequest$) {
-      this.homeDataRequest$ = this.api.get<DashboardHomeData>('/dashboard/home').pipe(
-        catchError((error) => {
-          this.homeDataRequest$ = null;
-          return throwError(() => error);
-        }),
-        shareReplay(1)
-      );
-    }
-    return this.homeDataRequest$;
+  getHomeData(_options?: { force?: boolean }): Observable<DashboardHomeData> {
+    return this.api.get<DashboardHomeData>('/dashboard/home');
+  }
+
+  getStats(): Observable<DashboardStats> {
+    return this.api.get<DashboardStats>('/dashboard/stats');
+  }
+
+  getTodos(): Observable<DashboardTodoItem[]> {
+    return this.api.get<DashboardTodoItem[]>('/dashboard/todos');
+  }
+
+  getActivities(): Observable<DashboardActivityItem[]> {
+    return this.api.get<DashboardActivityItem[]>('/dashboard/activities');
+  }
+
+  getAnnouncements(): Observable<DashboardAnnouncement[]> {
+    return this.api.get<DashboardAnnouncement[]>('/dashboard/announcements');
+  }
+
+  getDocuments(): Observable<DashboardDocument[]> {
+    return this.api.get<DashboardDocument[]>('/dashboard/documents');
   }
 
   invalidateHomeDataCache(): void {
-    this.homeDataRequest$ = null;
+    // 已移除 dashboard 首页缓存，这里保留空实现用于兼容既有调用方。
   }
 }

@@ -1,4 +1,5 @@
 export type WsConnectionState = 'offline' | 'connecting' | 'connected' | 'reconnecting';
+export type WsRefreshHint = 'notification' | 'badge' | 'dashboard';
 
 export type WsServerMessage =
   | {
@@ -16,6 +17,7 @@ export type WsServerMessage =
         entityType: string;
         entityId: string;
         action: string;
+        hints?: WsRefreshHint[];
       };
     }
   | {
@@ -24,6 +26,18 @@ export type WsServerMessage =
       projectId?: string;
       payload: {
         entityType: string;
+        hints?: WsRefreshHint[];
+      };
+    }
+  | {
+      type: 'dashboard.changed';
+      ts: string;
+      projectId?: string;
+      payload: {
+        entityType: string;
+        entityId?: string;
+        action?: string;
+        hints?: WsRefreshHint[];
       };
     }
   | {

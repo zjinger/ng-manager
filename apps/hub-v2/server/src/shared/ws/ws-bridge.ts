@@ -27,7 +27,19 @@ function createMessages(event: DomainEvent): WsServerMessage[] {
       payload: {
         entityType: event.entityType,
         entityId: event.entityId,
-        action: event.action
+        action: event.action,
+        hints: ["notification", "dashboard"]
+      }
+    },
+    {
+      type: "dashboard.changed",
+      ts,
+      projectId: event.projectId,
+      payload: {
+        entityType: event.entityType,
+        entityId: event.entityId,
+        action: event.action,
+        hints: ["dashboard"]
       }
     }
   ];
@@ -38,7 +50,8 @@ function createMessages(event: DomainEvent): WsServerMessage[] {
       ts,
       projectId: event.projectId,
       payload: {
-        entityType: event.entityType
+        entityType: event.entityType,
+        hints: ["badge"]
       }
     });
   }

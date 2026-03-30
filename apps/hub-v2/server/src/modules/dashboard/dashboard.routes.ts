@@ -7,4 +7,29 @@ export default async function dashboardRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     return ok(await app.container.dashboardQuery.getHomeData(ctx));
   });
+
+  app.get("/dashboard/stats", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.dashboardQuery.getStats(ctx));
+  });
+
+  app.get("/dashboard/todos", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.dashboardQuery.getTodos(ctx));
+  });
+
+  app.get("/dashboard/activities", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.dashboardQuery.getActivities(ctx));
+  });
+
+  app.get("/dashboard/announcements", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.dashboardQuery.getAnnouncements(ctx));
+  });
+
+  app.get("/dashboard/documents", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.dashboardQuery.getDocuments(ctx));
+  });
 }
