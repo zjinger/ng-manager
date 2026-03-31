@@ -60,8 +60,7 @@ export class ApiClientService {
     const tokenType = body.tokenType ?? 'project';
     let personalToken = body.personalToken;
     if (tokenType === 'personal' && !personalToken) {
-      const map = this.ls.get<Record<string, string>>(LS_KEYS.project.hubV2PersonalTokenMap, {});
-      personalToken = (map[body.projectId] ?? '').trim() || undefined;
+      personalToken = this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim() || undefined;
     }
     return await firstValueFrom(this.http.post<unknown>(`${this.base}/hub-token/request`, {
       projectId: body.projectId,

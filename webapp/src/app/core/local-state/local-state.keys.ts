@@ -1,7 +1,9 @@
 export const LS_KEYS = {
     project: {
         currentProjectId: "ngm:project:currentProjectId",
-        hubV2PersonalTokenMap: "ngm:project:hubV2PersonalTokenMap",
+    },
+    token: {
+        hubV2PersonalToken: "ngm:token:hubV2PersonalToken",
     },
     fs: {
         explorer: {

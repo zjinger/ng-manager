@@ -13,7 +13,6 @@ export class ProjectStateService {
   private projectService = inject(ProjectApiService);
   private ls = inject(LocalStateStore);
   private router = inject(Router);
-  private readonly EMPTY_PERSONAL_TOKEN_MAP: Record<string, string> = {};
 
   currentProjectId = signal<string | null>(null);
   currentProject = signal<Project | null>(null);
@@ -130,27 +129,21 @@ export class ProjectStateService {
     return this.currentProjectId() === project.id;
   }
 
-  getHubV2PersonalToken(projectId: string): string {
-    if (!projectId?.trim()) return '';
-    const map = this.ls.get<Record<string, string>>(LS_KEYS.project.hubV2PersonalTokenMap, this.EMPTY_PERSONAL_TOKEN_MAP);
-    return (map[projectId] ?? '').trim();
+  getHubV2PersonalToken(): string {
+    return this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim();
   }
 
-  hasHubV2PersonalToken(projectId: string): boolean {
-    return !!this.getHubV2PersonalToken(projectId);
+  hasHubV2PersonalToken(): boolean {
+    return !!this.getHubV2PersonalToken();
   }
 
-  setHubV2PersonalToken(projectId: string, token: string): void {
-    if (!projectId?.trim()) return;
+  setHubV2PersonalToken(token: string): void {
     const nextToken = token.trim();
-    const current = this.ls.get<Record<string, string>>(LS_KEYS.project.hubV2PersonalTokenMap, this.EMPTY_PERSONAL_TOKEN_MAP);
-    const next = { ...current };
     if (nextToken) {
-      next[projectId] = nextToken;
-    } else {
-      delete next[projectId];
+      this.ls.set(LS_KEYS.token.hubV2PersonalToken, nextToken);
+      return;
     }
-    this.ls.set(LS_KEYS.project.hubV2PersonalTokenMap, next);
+    this.ls.remove(LS_KEYS.token.hubV2PersonalToken);
   }
 
   /* ----------------- rename modal ----------------- */

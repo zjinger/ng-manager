@@ -82,18 +82,6 @@ import { ProjectStateService } from '../services/project.state.service';
             </nz-input-wrapper>
             <div class="hint">以上配置会写入项目 env：NGM_HUB_V2_BASE_URL / NGM_HUB_V2_PROJECT_KEY / NGM_HUB_V2_TOKEN。</div>
 
-            <div class="local-token">
-              <div class="section-title">Personal Token（本地）</div>
-              <div class="local-token__row">
-                <span class="local-token__status" [class.ok]="personalTokenConfigured()">
-                  {{ personalTokenConfigured() ? '已配置' : '未配置' }}
-                </span>
-                <button nz-button nzType="default" nzSize="small" (click)="openPersonalTokenModal()">
-                  配置 Personal Token
-                </button>
-              </div>
-              <div class="hint">该 token 仅保存在当前浏览器本地，不会写入项目 env。</div>
-            </div>
             <!-- <label class="label">原尺寸图标SVN地址</label>
             <nz-input-wrapper >
               <input
@@ -137,81 +125,15 @@ import { ProjectStateService } from '../services/project.state.service';
       </ng-container>
     </nz-modal>
 
-    <nz-modal
-      [nzVisible]="personalTokenModalVisible"
-      [nzClosable]="false"
-      [nzMaskClosable]="false"
-      nzTitle="配置 Personal Token（本地）"
-      [nzWidth]="560"
-      (nzOnCancel)="closePersonalTokenModal()"
-    >
-      <ng-container *nzModalContent>
-        <div class="modal-body">
-          <label class="label">Personal Token</label>
-          <nz-input-wrapper>
-            <input
-              nz-input
-              type="password"
-              [(ngModel)]="personalTokenDraft"
-              placeholder="粘贴 ngm_uptk_xxx"
-            />
-            <nz-icon nzInputPrefix nzType="safety-certificate" nzTheme="outline" />
-          </nz-input-wrapper>
-          <div class="hint">用于 webapp 调用 Hub V2 /api/personal 写接口。</div>
-        </div>
-      </ng-container>
-      <ng-container *nzModalFooter>
-        <button nz-button (click)="clearPersonalToken()">清空</button>
-        <button nz-button (click)="closePersonalTokenModal()">取消</button>
-        <button nz-button nzType="primary" (click)="savePersonalToken()">保存</button>
-      </ng-container>
-    </nz-modal>
   `,
   styles: [`
     .modal-body { display: grid; gap: 12px; }
     .section-title { font-size: 13px; font-weight: 600; opacity: .9; margin-top: 4px; }
     .hint { font-size: 12px; opacity: .75; }
-    .local-token { display: grid; gap: 8px; }
-    .local-token__row { display: flex; align-items: center; gap: 10px; }
-    .local-token__status { font-size: 12px; color: #8c8c8c; }
-    .local-token__status.ok { color: #52c41a; }
   `],
 })
 export class ProjectEditModalComponent {
   projectState = inject(ProjectStateService)
   editingProject = this.projectState.editingProject;
-  personalTokenModalVisible = false;
-  personalTokenDraft = '';
-
-  personalTokenConfigured(): boolean {
-    const projectId = this.editingProject()?.id;
-    if (!projectId) return false;
-    return this.projectState.hasHubV2PersonalToken(projectId);
-  }
-
-  openPersonalTokenModal(): void {
-    const projectId = this.editingProject()?.id;
-    if (!projectId) return;
-    this.personalTokenDraft = this.projectState.getHubV2PersonalToken(projectId);
-    this.personalTokenModalVisible = true;
-  }
-
-  closePersonalTokenModal(): void {
-    this.personalTokenModalVisible = false;
-  }
-
-  savePersonalToken(): void {
-    const projectId = this.editingProject()?.id;
-    if (!projectId) return;
-    this.projectState.setHubV2PersonalToken(projectId, this.personalTokenDraft);
-    this.personalTokenModalVisible = false;
-  }
-
-  clearPersonalToken(): void {
-    const projectId = this.editingProject()?.id;
-    if (!projectId) return;
-    this.projectState.setHubV2PersonalToken(projectId, '');
-    this.personalTokenDraft = '';
-  }
 
 }

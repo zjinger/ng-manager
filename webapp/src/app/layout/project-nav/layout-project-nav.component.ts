@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, input, Input, model, OnInit } from '@angular/core';
+import { Component, computed, model, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
@@ -9,6 +9,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { ProjectEditModalComponent } from "@pages/projects/project-list/project-edit-modal.component";
+import { HubV2PersonalTokenModalComponent } from './hub-v2-personal-token-modal.component';
 
 @Component({
   selector: 'ngm-project-nav',
@@ -21,13 +22,17 @@ import { ProjectEditModalComponent } from "@pages/projects/project-list/project-
     NzSwitchModule,
     NzButtonModule,
     RouterModule,
-    ProjectEditModalComponent
+    ProjectEditModalComponent,
+    HubV2PersonalTokenModalComponent
   ],
   templateUrl: './layout-project-nav.component.html',
   styleUrl: './layout-project-nav.component.less',
 })
 export class LayoutProjectNavComponent implements OnInit {
   isCollapsed = model(false);
+  personalTokenModalVisible = false;
+  @ViewChild(HubV2PersonalTokenModalComponent) personalTokenModal?: HubV2PersonalTokenModalComponent;
+
   constructor(public projectState: ProjectStateService) { }
 
   readonly curProjectName = computed(() => {
@@ -37,5 +42,10 @@ export class LayoutProjectNavComponent implements OnInit {
 
   ngOnInit() {
     this.projectState.getProjects();
+  }
+
+  openPersonalTokenModal(): void {
+    this.personalTokenModalVisible = true;
+    queueMicrotask(() => this.personalTokenModal?.open());
   }
 } 

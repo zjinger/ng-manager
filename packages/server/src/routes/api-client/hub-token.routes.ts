@@ -1,4 +1,4 @@
-import { AppError } from "@yinuo-ngm/core";
+import { AppError, Project } from "@yinuo-ngm/core";
 import { ProjectTokenApiClient } from "@yinuo-ngm/api";
 import type { FastifyInstance } from "fastify";
 
@@ -38,7 +38,7 @@ function normalizeNonEmptyString(value: unknown, field: string): string {
     return value.trim();
 }
 
-function readHubTokenConfigFromProject(project: any): HubProjectConfig {
+function readHubTokenConfigFromProject(project: Project): HubProjectConfig {
     const env = (project?.env ?? {}) as Record<string, string | undefined>;
     const baseUrl = env.NGM_HUB_V2_BASE_URL ?? env.HUB_V2_BASE_URL;
     const token = env.NGM_HUB_V2_TOKEN ?? env.HUB_V2_TOKEN;

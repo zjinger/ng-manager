@@ -47,6 +47,13 @@
       <nz-icon nzType="edit"></nz-icon>
       <span>编辑项目</span>
     </li>
+    <li nz-menu-item class="item" (click)="openPersonalTokenModal()">
+      <nz-icon nzType="safety-certificate"></nz-icon>
+      <span>Hub V2 Personal Token</span>
+      <span class="token-status" [class.ok]="projectState.hasHubV2PersonalToken()">
+        {{ projectState.hasHubV2PersonalToken() ? '已配置' : '未配置' }}
+      </span>
+    </li>
     }
     <li nz-menu-divider></li>
     <li nz-menu-group nzTitle="收藏的项目"></li>
@@ -74,3 +81,7 @@
   </ul>
 </nz-dropdown-menu>
 <app-project-edit-modal></app-project-edit-modal>
+<app-hub-v2-personal-token-modal
+  [visible]="personalTokenModalVisible"
+  (visibleChange)="personalTokenModalVisible = $event"
+></app-hub-v2-personal-token-modal>
