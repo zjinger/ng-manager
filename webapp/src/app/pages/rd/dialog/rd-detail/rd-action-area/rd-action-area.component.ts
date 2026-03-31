@@ -37,9 +37,9 @@ export class RdActionAreaComponent {
   readonly progressChange = output<number>();
 
   // TODO:后面从外部传入 项目成员
-  members = signal<ProjectMemberEntity[]>([{ userId: 'usr_seed_pm' } as ProjectMemberEntity]);
+  members = signal<ProjectMemberEntity[]>([{ userId: 'usr_seed_dev_1' } as ProjectMemberEntity]);
   // TODO:后面从外部传入 当前用户id
-  currentUserId = signal('usr_seed_pm');
+  currentUserId = signal('usr_seed_dev_1');
 
   readonly progressDraft = signal(0);
 

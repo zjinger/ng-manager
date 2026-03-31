@@ -1,0 +1,357 @@
+ :host {
+     display: block;
+     width: 100%;
+
+     .markdown-viewer {
+         font-size: 14px;
+         line-height: 1.8;
+         color: var(--text-primary, #262626);
+         word-break: break-word;
+
+         .markdown-layout {
+             display: block;
+             position: relative;
+         }
+
+         .markdown-layout.has-toc {
+             display: grid;
+             grid-template-columns: minmax(0, 1fr) 280px;
+             gap: 20px;
+             align-items: start;
+         }
+
+         .markdown-content {
+             min-width: 0;
+             order: 1;
+             display: flow-root;
+         }
+
+         .markdown-toc-floating {
+             position: sticky;
+             top: 8px;
+             z-index: 4;
+             display: flex;
+             flex-direction: column;
+             align-items: flex-end;
+             gap: 8px;
+             float: right;
+             clear: right;
+             margin: 0 0 8px 16px;
+             width: fit-content;
+         }
+
+         .markdown-toc-floating__toggle {
+             height: 30px;
+             min-width: 64px;
+             padding: 0 10px;
+             border: 1px solid var(--border-color-soft, #d9dde6);
+             border-radius: 999px;
+             background: var(--surface-elevated, rgba(255, 255, 255, 0.92));
+             color: var(--text-secondary, #475569);
+             font-size: 12px;
+             line-height: 28px;
+             cursor: pointer;
+             box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+             backdrop-filter: blur(4px);
+         }
+
+         .markdown-toc-floating__toggle:hover {
+             color: var(--text-primary, #0f172a);
+         }
+
+         .markdown-toc--floating {
+             width: 220px;
+             max-height: min(55vh, 420px);
+             overflow: auto;
+             margin: 0;
+             padding: 10px 0 10px 14px;
+             border-radius: 14px;
+             border: 1px solid var(--border-color-soft, #e5e6eb);
+             background: var(--surface-elevated, rgba(255, 255, 255, 0.96));
+             box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
+             position: static;
+         }
+
+         .markdown-toc.markdown-toc--floating {
+             position: static;
+             top: auto;
+             order: initial;
+             border-left: 0;
+             padding-left: 14px;
+         }
+
+         .markdown-toc {
+             margin: 0;
+             padding: 6px 0 6px 18px;
+             border-left: 1px solid var(--border-color-soft, #e5e6eb);
+             position: sticky;
+             top: 76px;
+             order: 2;
+             min-width: 0;
+             max-height: min(68vh, calc(100vh - 140px));
+             overflow: auto;
+         }
+
+         .markdown-toc__title {
+             margin: 0 0 10px;
+             font-size: 14px;
+             font-weight: 700;
+             color: var(--text-heading, #1f2937);
+         }
+
+         .markdown-toc__list {
+             list-style: none;
+             margin: 0;
+             padding: 0;
+             display: grid;
+             gap: 2px;
+         }
+
+         .markdown-toc__item {
+             position: relative;
+             width: 100%;
+             min-height: 30px;
+             border: 0;
+             border-radius: 0;
+             background: transparent;
+             color: var(--text-muted, #64748b);
+             text-align: left;
+             font-size: 13px;
+             line-height: 1.45;
+             padding: 4px 8px 4px 10px;
+             cursor: pointer;
+             white-space: normal;
+             word-break: break-word;
+             overflow-wrap: anywhere;
+         }
+
+         .markdown-toc__item:hover {
+             background: transparent;
+             color: var(--text-primary, #0f172a);
+         }
+
+         .markdown-toc__item.is-active {
+             color: var(--primary-500, #2563eb);
+             font-weight: 600;
+         }
+
+         .markdown-toc__item.is-active::after {
+             content: '';
+             position: absolute;
+             left: 2px;
+             top: 7px;
+             bottom: 7px;
+             width: 2px;
+             border-radius: 999px;
+             background: var(--primary-500, #2563eb);
+         }
+
+         .markdown-toc--floating .markdown-toc__item {
+             padding-left: 10px;
+         }
+
+         ::ng-deep h1,
+         ::ng-deep h2,
+         ::ng-deep h3,
+         ::ng-deep h4,
+         ::ng-deep h5,
+         ::ng-deep h6 {
+             margin: 1.2em 0 0.6em;
+             font-weight: 600;
+             line-height: 1.4;
+             word-break: break-word;
+             overflow-wrap: anywhere;
+         }
+
+         ::ng-deep h1 {
+             font-size: 28px;
+         }
+
+         ::ng-deep h2 {
+             font-size: 24px;
+         }
+
+         ::ng-deep h3 {
+             font-size: 20px;
+         }
+
+         ::ng-deep h1,
+         ::ng-deep h2,
+         ::ng-deep h3,
+         ::ng-deep h4,
+         ::ng-deep h5,
+         ::ng-deep h6 {
+             scroll-margin-top: 88px;
+         }
+
+         ::ng-deep p {
+             margin: 0 0 12px;
+         }
+
+         ::ng-deep ul,
+         ::ng-deep ol {
+             margin: 0 0 12px;
+             padding-left: 24px;
+         }
+
+         ::ng-deep li {
+             margin: 4px 0;
+         }
+
+         ::ng-deep blockquote {
+             margin: 0 0 12px;
+             padding: 8px 12px;
+             color: #595959;
+             border-left: 4px solid #d9d9d9;
+             background: #fafafa;
+         }
+
+         ::ng-deep pre {
+             overflow: auto;
+             padding: 12px 14px;
+             border-radius: 8px;
+             background: #f6f8fa;
+             border: 1px solid var(--border-color-soft, #e5e6eb);
+         }
+
+         ::ng-deep code {
+             font-family: Consolas, 'Courier New', monospace;
+         }
+
+         ::ng-deep :not(pre)>code {
+             padding: 2px 6px;
+             border-radius: 6px;
+             background: var(--bg-subtle, #f5f7fa);
+             border: 1px solid var(--border-color-soft, #e5e6eb);
+             color: var(--text-primary, #262626);
+             font-size: 13px;
+         }
+
+         ::ng-deep pre code {
+             background: transparent;
+             border: 0;
+             padding: 0;
+             color: inherit;
+             font-size: 13px;
+             line-height: 1.7;
+         }
+
+         ::ng-deep table {
+             width: 100%;
+             margin: 0 0 12px;
+             border-collapse: collapse;
+         }
+
+         ::ng-deep th,
+         ::ng-deep td {
+             padding: 8px 10px;
+             border: 1px solid #e5e6eb;
+             text-align: left;
+         }
+
+         ::ng-deep img {
+             display: block;
+             max-width: 100%;
+             width: auto;
+             max-height: min(32vh, 100px);
+             margin: 12px 0;
+             border-radius: 10px;
+             object-fit: contain;
+             border: 1px solid var(--border-color-soft, #e5e6eb);
+             background: var(--bg-elevated, #fff);
+             cursor: zoom-in;
+             box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+         }
+
+         ::ng-deep a {
+             color: #1677ff;
+             text-decoration: none;
+         }
+
+         ::ng-deep a:hover {
+             text-decoration: underline;
+         }
+
+         :host-context(html[data-theme='dark']) ::ng-deep pre {
+             background: #0f172a;
+             border-color: rgba(148, 163, 184, 0.24);
+         }
+
+         :host-context(html[data-theme='dark']) ::ng-deep :not(pre)>code {
+             background: rgba(148, 163, 184, 0.14);
+             border-color: rgba(148, 163, 184, 0.24);
+             color: #e2e8f0;
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc,
+         :host-context(html.dark) .markdown-toc,
+         :host-context(body[data-theme='dark']) .markdown-toc {
+             border-color: rgba(148, 163, 184, 0.24);
+             background: transparent;
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc--floating,
+         :host-context(html.dark) .markdown-toc--floating,
+         :host-context(body[data-theme='dark']) .markdown-toc--floating {
+             border-color: rgba(148, 163, 184, 0.28);
+             background: #162033 !important;
+             box-shadow: 0 14px 28px rgba(2, 6, 23, 0.45);
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc-floating__toggle,
+         :host-context(html.dark) .markdown-toc-floating__toggle,
+         :host-context(body[data-theme='dark']) .markdown-toc-floating__toggle {
+             border-color: rgba(148, 163, 184, 0.3) !important;
+             background: #162033 !important;
+             color: #e2e8f0 !important;
+             box-shadow: 0 10px 22px rgba(2, 6, 23, 0.42);
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc__title,
+         :host-context(html.dark) .markdown-toc__title,
+         :host-context(body[data-theme='dark']) .markdown-toc__title {
+             color: #e2e8f0;
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc__item,
+         :host-context(html.dark) .markdown-toc__item,
+         :host-context(body[data-theme='dark']) .markdown-toc__item {
+             color: #cbd5e1;
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc__item:hover,
+         :host-context(html.dark) .markdown-toc__item:hover,
+         :host-context(body[data-theme='dark']) .markdown-toc__item:hover {
+             color: #f1f5f9;
+         }
+
+         :host-context(html[data-theme='dark']) .markdown-toc__item.is-active,
+         :host-context(html.dark) .markdown-toc__item.is-active,
+         :host-context(body[data-theme='dark']) .markdown-toc__item.is-active {
+             color: #60a5fa;
+         }
+
+         @media (max-width: 1024px) {
+             .markdown-layout.has-toc {
+                 grid-template-columns: 1fr;
+             }
+
+             .markdown-toc {
+                 position: static;
+                 margin-bottom: 12px;
+             }
+
+             .markdown-toc-floating {
+                 position: static;
+                 margin-bottom: 8px;
+                 align-items: flex-start;
+             }
+
+             .markdown-toc--floating {
+                 width: 100%;
+                 max-height: none;
+             }
+         }
+
+     }
+ }

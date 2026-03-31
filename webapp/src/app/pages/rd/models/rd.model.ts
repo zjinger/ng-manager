@@ -68,9 +68,11 @@ export interface RdListQuery {
   pageSize: number;
   projectId?: string;
   stageId?: string;
-  status?: RdItemStatus | '';
-  type?: RdItemType | '';
-  priority?: RdItemPriority | '';
+  stageIds?: string[];
+  status?: RdItemStatus[];
+  type?: RdItemType[];
+  priority?: RdItemPriority[];
+  assigneeIds?: string[];
   assigneeId?: string;
   keyword?: string;
 }

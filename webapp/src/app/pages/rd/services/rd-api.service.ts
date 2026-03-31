@@ -1,64 +1,182 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
-import { AdvanceRdStageInput, BlockRdItemInput, RdItemEntity, RdListQuery, RdListResult } from '../models/rd.model';
+import { AdvanceRdStageInput, BlockRdItemInput, RdItemEntity, RdListQuery, RdListResult, RdStageEntity, UpdateRdItemInput } from '../models/rd.model';
 import { HttpParams } from '@angular/common/http';
 import { ApiClientService } from '@pages/api-client/services';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { RdTokenApiService } from './rd-token-api.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RdApiService {
-  delete(itemId: string): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+  private readonly apiClient = inject(ApiClient);
+  private readonly rdTokenApi = inject(RdTokenApiService);
+
+  // async delete(
+  //   projectId: string,
+  //   projectKey: string,
+  //   headers: Record<string, string>,
+  //   itemId: string,
+  // ): Promise<RdItemEntity> {
+  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
+  //     projectId: projectId,
+  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}`,
+  //     method: 'DELETE',
+  //     headers: headers,
+  //   });
+  // }
+
+  async delete(projectId: string, itemId: string) {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: itemId,
+      action: 'delete',
+      payload: {},
+    });
   }
-  close(itemId: string): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+
+  // async close(projectId: string, projectKey: string, itemId: string): Promise<RdItemEntity> {
+  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
+  //     projectId: projectId,
+  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}/close`,
+  //     method: 'POST',
+  //   });
+  // }
+
+  async close(projectId: string, itemId: string, summary: string): Promise<RdItemEntity> {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: itemId,
+      action: 'close',
+      payload: { summary },
+    });
   }
-  accept(itemId: string): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+
+  async accept(projectId: string, itemId: string) {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: itemId,
+      action: 'accept',
+      payload: {},
+    });
   }
-  advanceStage(itemId: string, input: AdvanceRdStageInput): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+
+  // async advanceStage(
+  //   projectId: string,
+  //   projectKey: string,
+  //   itemId: string,
+  //   input: AdvanceRdStageInput,
+  // ): Promise<RdItemEntity> {
+  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
+  //     projectId: projectId,
+  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}/progress`,
+  //     method: 'POST',
+  //     payload: input,
+  //   });
+  // }
+
+  async resolve(projectId: string, issueId: string, summary?: string) {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: issueId,
+      action: 'resolve',
+      payload: { summary },
+    });
   }
-  complete(itemId: string): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+
+  // async resume(projectId: string, projectKey: string, itemId: string): Promise<RdItemEntity> {
+  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
+  //     projectId: projectId,
+  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}/resume`,
+  //     method: 'POST',
+  //   });
+  // }
+
+  // 阻塞后重开
+  async resume(projectId: string, itemId: string) :Promise<RdItemEntity> {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: itemId,
+      action: 'resume',
+      payload: {},
+    });
   }
-  resume(itemId: string): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+
+  async block(projectId: string, itemId: string, input: BlockRdItemInput): Promise<RdItemEntity> {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: itemId,
+      action: 'block',
+      payload: input,
+    });
   }
-  block(itemId: string, input: BlockRdItemInput): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+
+  async start(projectId: string, itemId: string): Promise<RdItemEntity> {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      action: 'start',
+      rdId: itemId,
+      payload: {},
+    });
   }
-  start(itemId: string): import("rxjs").Observable<unknown> {
-    throw new Error('Method not implemented.');
+
+  async progress(projectId: string, itemId: string, progress: number): Promise<RdItemEntity> {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: itemId,
+      action: 'progress',
+      payload: { progress },
+    });
   }
-  private readonly apiClient = inject(ApiClientService);
-  private readonly proState = inject(ProjectStateService);
-  private readonly projectId = this.proState.currentProjectId();
+
+  // async update(
+  //   projectId: string,
+  //   projectKey: string,
+  //   itemId: string,
+  //   input: UpdateRdItemInput,
+  // ): Promise<RdItemEntity> {
+  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
+  //     projectId: projectId,
+  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}`,
+  //     method: 'PATCH',
+  //     payload: { ...input },
+  //   });
+  // }
+
+  async update(projectId: string, itemId: string, input: UpdateRdItemInput): Promise<RdItemEntity> {
+    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+      rdId: itemId,
+      action: 'update',
+      payload: { ...input },
+    });
+  }
 
   // TODO：后面统一设置项目key（现在默认为HUB）
-  async getRdItemsList(query: RdListQuery) {
-    if (!this.projectId) return;
-    return await this.apiClient.hubTokenRequest({
-      projectId: this.projectId,
+  async getRdItemsList(projectId: string, query: RdListQuery) {
+    return await this.apiClient.hubRequestWithPrjId<RdListResult>({
+      projectId: projectId,
       path: '/rd-items',
       query: { ...query },
     });
   }
-  async getRdItem(rdItemId: string) {
-    if (!this.projectId) return;
-    return await this.apiClient.hubTokenRequest({
-      projectId: this.projectId,
+  async getRdItem(projectId: string, rdItemId: string) {
+    return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
+      projectId: projectId,
       path: `/rd-items/${rdItemId}`,
     });
   }
 
-  async getRdItemLogs(rdItemId: string) {
-    if (!this.projectId) return;
-    return await this.apiClient.hubTokenRequest({
-      projectId: this.projectId,
+  async getRdStages(projectId: string) {
+    return await this.apiClient.hubRequestWithPrjId<RdStageEntity[]>({
+      projectId: projectId,
+      path: '/rd/stages',
+    });
+  }
+
+  async getRdItemLogs(projectId: string, rdItemId: string): Promise<any> {
+    return await this.apiClient.hubRequestWithPrjId({
+      projectId: projectId,
       path: `/rd-items/${rdItemId}/logs`,
+    });
+  }
+
+  async getProjectMenbers(projectId: string): Promise<any> {
+    return await this.apiClient.hubRequestWithPrjId({
+      projectId: projectId,
+      path: '/projects/${projectId}/members',
     });
   }
 }

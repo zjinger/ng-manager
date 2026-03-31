@@ -5,6 +5,15 @@
     "changeOrigin": true,
     "logLevel": "debug"
   },
+  "/hubv2": {
+    "target": "http://192.168.1.110:19528",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/hubv2": ""
+    }
+  },
   "/sprites": {
     "target": "http://localhost:3210",
     "secure": false,

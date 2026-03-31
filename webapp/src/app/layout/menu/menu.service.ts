@@ -16,6 +16,8 @@ export class MenuService {
     { title: '配置', path: '/configuration', icon: 'setting', level: 1 },
     { title: 'API', path: '/rquest', icon: 'api', level: 1 },
     { title: '雪碧图', path: '/sprite', icon: 'smile', level: 1 },
+    { title: '研发项', path: '/rd', icon: 'rocket', level: 1 },
+    { title: '测试管理', path: '/issues', icon: 'bug', level: 1 },
     // { title: '系统设置', path: '/settings', icon: 'setting', level: 1 },
   ];
 
@@ -37,7 +39,6 @@ export class MenuService {
       matrixParams: 'ignored',
     });
   }
-
 
   getMenus(): MenuItem[] {
     return this.menus;
@@ -62,7 +63,7 @@ export class MenuService {
 
   private findBestMatch(menus: MenuItem[], currentPath: string): MenuItem | null {
     // 递归扁平化后，找“最长前缀匹配”的 menu（支持 /projects/123 也命中 /projects）
-    const all = this.flatten(menus).filter(m => !!m.path);
+    const all = this.flatten(menus).filter((m) => !!m.path);
 
     let best: MenuItem | null = null;
     for (const m of all) {

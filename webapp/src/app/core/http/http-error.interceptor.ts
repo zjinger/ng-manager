@@ -8,14 +8,23 @@ import { ErrorDispatcher, ErrorPolicyCode } from "../error";
 import { ApiBizError } from "../api/api-biz-error";
 import { APP_CONFIG } from "@env/environment";
 import * as _ from "lodash";
+import { UserStore } from "../stores/user.store";
 
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
     const dispatcher = inject(ErrorDispatcher);
+    const userStore = inject(UserStore);
     // 注入 requestId
     const requestId = _.uniqueId("req-");
     req = req.clone({
         setHeaders: { "X-Request-Id": requestId }
     });
+
+    if(userStore.isAuthenticated()) {
+        const token = userStore.currentUser()!.token;
+        req = req.clone({
+            setHeaders: { "Authorization": `Bearer ${token}` }
+        });
+    }
 
     return next(req).pipe(
         catchError((err: unknown) => {

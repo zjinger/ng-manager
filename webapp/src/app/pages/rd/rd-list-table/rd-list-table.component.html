@@ -10,7 +10,6 @@
             <th nzWidth="8%">负责人</th>
             <th nzWidth="11%">进度</th>
             <th nzWidth="12%">更新时间</th>
-            <th nzWidth="6%">操作</th>
         </tr>
     </thead>
     <tbody>
@@ -19,12 +18,11 @@
             <td>{{ item.rdNo }}</td>
             <td> <span class="rd-title"> {{ item.title }} </span></td>
             <td>{{ item.stageName || '-' }}</td>
-            <td> <nz-tag nzColor="default"> {{ getStatusLabel(item.status)}}</nz-tag> </td>
+            <td> <nz-tag [nzColor]="getStatusColor(item.status)"> {{ getStatusLabel(item.status)}}</nz-tag> </td>
             <td> <nz-tag [nzColor]="getPriorityColor(item.priority)">{{getPriorityLabel(item.priority)}}</nz-tag></td>
             <td>{{ item.assigneeName || '-' }}</td>
             <td> <nz-progress [nzPercent]="item.progress" nzSize="small" /> </td>
-            <td>{{ item.planEndAt }}</td>
-            <td><button nz-button nzType="link">操作</button></td>
+            <td>{{ item.planEndAt | date:'yyyy-MM-dd HH:mm' }}</td>
         </tr>
         }
     </tbody>

@@ -15,18 +15,25 @@
     margin-top: 16px;
     padding: 16px;
     .search-form {
-      width: 64%;
+      // width: 62%;
+
+      flex: 1;
+      margin-right: 50px;
       display: flex;
       flex-wrap: wrap;
-      column-gap: 10px;
-      justify-content: space-between;
+      gap: 10px;
+      // justify-content: space-between;
 
       .form-item {
-        width: 30%;
-        margin-bottom: 12px;
+        width: 250px;
+        min-width: 265px;
+        // max-width: 230px;
+        // flex-grow: 1;
+        margin-bottom: 0px;
       }
       .search-box {
         width: 100%;
+        padding-right: 60%;
         // padding: 0 20%;
       }
     }
@@ -48,7 +55,7 @@
     // height: 100%;
     min-height: 0;
     flex-grow: 1;
-    .pagination-bar{
+    .pagination-bar {
       padding: 12px;
       display: flex;
       justify-content: end;

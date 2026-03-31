@@ -1,0 +1,60 @@
+<div #viewerRef class="markdown-viewer markdown-body" (click)="onContentClick($event)">
+  <div class="markdown-layout" [class.has-toc]="showToc && tocItems.length > 0 && tocVariant === 'inline'">
+    @if (showToc && tocItems.length > 0 && tocVariant === 'floating') {
+      <div class="markdown-toc-floating" [class.is-collapsed]="tocCollapsed">
+        <button
+          type="button"
+          class="markdown-toc-floating__toggle"
+          (click)="toggleToc()"
+        >
+          {{ tocCollapsed ? '目录' : '收起目录' }}
+        </button>
+        @if (!tocCollapsed) {
+          <aside class="markdown-toc markdown-toc--floating">
+            <div class="markdown-toc__title">On this page</div>
+            <ul class="markdown-toc__list">
+              @for (item of tocItems; track item.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="markdown-toc__item"
+                    [class.is-active]="activeTocId === item.id"
+                    [attr.data-toc-id]="item.id"
+                    [style.paddingLeft.px]="(item.level - 1) * 12"
+                    (click)="jumpToHeading(item.id)"
+                  >
+                    {{ item.text }}
+                  </button>
+                </li>
+              }
+            </ul>
+          </aside>
+        }
+      </div>
+    }
+    @if (showToc && tocItems.length > 0 && tocVariant === 'inline') {
+      <aside class="markdown-toc">
+        <div class="markdown-toc__title">On this page</div>
+        <ul class="markdown-toc__list">
+          @for (item of tocItems; track item.id) {
+            <li>
+              <button
+                type="button"
+                class="markdown-toc__item"
+                [class.is-active]="activeTocId === item.id"
+                [attr.data-toc-id]="item.id"
+                [style.paddingLeft.px]="(item.level - 1) * 12"
+                (click)="jumpToHeading(item.id)"
+              >
+                {{ item.text }}
+              </button>
+            </li>
+          }
+        </ul>
+      </aside>
+    }
+    <div class="markdown-content">
+      <markdown [data]="content" [clipboard]="true" (ready)="onMarkdownReady()"></markdown>
+    </div>
+  </div>
+</div>

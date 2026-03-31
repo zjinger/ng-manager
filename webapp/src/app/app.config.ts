@@ -10,6 +10,7 @@ import { provideNzI18n, zh_CN } from 'ng-zorro-antd/i18n';
 import { AppInitializerProvider } from './app-initializer.service';
 import { routes } from './app.routes';
 import { httpErrorInterceptor } from './core/http/http-error.interceptor';
+import { provideMarkdown } from 'ngx-markdown';
 
 registerLocaleData(zh);
 
@@ -22,5 +23,6 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideHttpClient(withInterceptors([httpErrorInterceptor])),
     importProvidersFrom(NzModalModule),
+    provideMarkdown(),
   ],
 };

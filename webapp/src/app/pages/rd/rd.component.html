@@ -15,8 +15,9 @@
                 <!-- 阶段选择 -->
                 <nz-form-item class="form-item">
                     <nz-form-control>
-                        <nz-select formControlName="stage" nzPlaceHolder="选择阶段" [nzPrefix]="stageIconTpl" nzAllowClear>
-                            <nz-option [nzValue]="" [nzLabel]=""></nz-option>
+                        <nz-select formControlName="stage" nzPlaceHolder="选择阶段" [nzPrefix]="stageIconTpl"
+                            nzMode="multiple" [nzMaxTagCount]="2" nzAllowClear>
+
                         </nz-select>
                     </nz-form-control>
                     <ng-template #stageIconTpl>
@@ -27,9 +28,13 @@
                 <!-- 状态选择 -->
                 <nz-form-item class="form-item">
                     <nz-form-control>
-                        <nz-select formControlName="status" nzPlaceHolder="选择状态" [nzPrefix]="statusIconTpl"
-                            nzAllowClear>
-                            <!-- <nz-option [nzValue]="" [nzLabel]=""></nz-option> -->
+                        <nz-select formControlName="status" nzPlaceHolder="选择状态" nzMode="multiple"
+                            [nzPrefix]="statusIconTpl" [nzMaxTagCount]="2" nzAllowClear>
+                            @for (item of statusOptions; track item.value) {
+                            @if (item.value !== '') {
+                            <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                            }
+                            }
                         </nz-select>
                     </nz-form-control>
                     <ng-template #statusIconTpl>
@@ -41,14 +46,35 @@
                 <nz-form-item class="form-item">
                     <nz-form-control>
                         <nz-select formControlName="priority" nzPlaceHolder="选择优先级" [nzPrefix]="priorityIconTpl"
-                            nzAllowClear>
-                            <!-- <nz-option [nzValue]="" [nzLabel]=""></nz-option> -->
+                            nzMode="multiple" [nzMaxTagCount]="2" nzAllowClear>
+                            @for (item of priorityOptions; track item.value) {
+                            @if (item.value !== '') {
+                            <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                            }
+                            }
                         </nz-select>
                     </nz-form-control>
                     <ng-template #priorityIconTpl>
                         <nz-icon nzType="tags" nzTheme="outline" />
                     </ng-template>
                 </nz-form-item>
+
+
+                <!-- 负责人选择 -->
+                <nz-form-item class="form-item">
+                    <nz-form-control>
+                        <nz-select nzPlaceHolder="选择负责人" formControlName="assigneeId" nzAllowClear [nzMaxTagCount]="2"
+                            [nzPrefix]="assigneeTpl">
+                            @for (member of members(); track member.userId) {
+                            <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
+                            }
+                        </nz-select>
+                        <ng-template #assigneeTpl>
+                            <nz-icon nzType="user" nzTheme="outline" />
+                        </ng-template>
+                    </nz-form-control>
+                </nz-form-item>
+
             </form>
             <div class="right-col">
                 <!-- 新建按钮 -->
@@ -72,16 +98,15 @@
         <!-- 列表 -->
         <div class="list-content">
             @if(viewType() === 'list') {
-            <app-rd-list-table [rdItems]="pageRdItems()" [total]="total()" [pageIndex]="pageIndex()"
-                [pageSize]="pageSize()" (onPageChange)="onPageChange($event)" [selectedItem]="currentRdItem()"
-                (onPageSizeChange)="onPageSizeChange($event)" (selectItem)="selectItem($event)"></app-rd-list-table>
+            <app-rd-list-table [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()"
+                (selectItem)="selectItem($event)"></app-rd-list-table>
             } @else {
             <app-rd-list-board [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()"
                 (selectItem)="selectItem($event)"></app-rd-list-board>
             }
 
             <div class=" pagination-bar">
-                <nz-pagination [(nzPageIndex)]="curren" [nzTotal]="total()" [nzShowTotal]="totalTemplate"
+                <nz-pagination [nzPageIndex]="query().page" [nzTotal]="total()" [nzShowTotal]="totalTemplate"
                     nzShowSizeChanger nzShowQuickJumper (nzPageIndexChange)="onPageChange($event)"
                     (nzPageSizeChange)="onPageSizeChange($event)" />
                 <ng-template #totalTemplate let-total>共 {{ total }} 条记录</ng-template>
@@ -105,6 +130,5 @@
 
     <!-- 推进弹窗 -->
     <app-rd-advance-stage-dialog [open]="advanceStageOpen()" [busy]="busy()" [item]="currentRdItem()"
-        [stages]="stages()" (cancel)="advanceStageOpen.set(false)"
-        (confirm)="confirmAdvanceStage($event.stageId)" />
+        [stages]="stages()" (cancel)="advanceStageOpen.set(false)" (confirm)="confirmAdvanceStage($event.stageId)" />
 </app-page-layout>

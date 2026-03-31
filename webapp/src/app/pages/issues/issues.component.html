@@ -1,0 +1,73 @@
+<app-page-layout [title]="'测试跟踪'" [loading]="loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
+    <div class="issues-content">
+        <div class="toolbar">
+            <div class="filter-group">
+                <div class="keyword-wrap">
+                    <nz-input-wrapper>
+                        <nz-icon nzInputPrefix nzType="search" nzTheme="outline"></nz-icon>
+                        <input nz-input type="text" [ngModel]="query().keyword" (ngModelChange)="updateKeyword($event)"
+                            placeholder="请输入研发项..." />
+                    </nz-input-wrapper>
+                </div>
+
+                <div class="status-filter-wrap">
+                    <span class="label">
+                        <nz-icon nzType="tags" nzTheme="fill" /> 状态：
+                    </span>
+                    @for (item of statusOptions ; track item.value) {
+                    <button nz-button type="button" nzShape="round"
+                        [nzType]="query().status === item.value ? 'primary' : 'default'"
+                        (click)="updateStatus(item.value)">
+                        {{ item.label }}
+                    </button>
+                    }
+                </div>
+                <div class="priority-filter-wrap">
+                    <span class="label">
+                        <nz-icon nzType="experiment" nzTheme="fill" />
+                        优先级：
+                    </span>
+                    <nz-radio-group [ngModel]="query().priority" (ngModelChange)="updatePriority($event)"
+                        name="priority">
+                        @for (item of priorityOptions; track item.value) {
+                        <label nz-radio-button [nzValue]="item.value">
+                            {{ item.label }}
+                        </label>
+                        }
+                    </nz-radio-group>
+                </div>
+            </div>
+            <div class="right-col">
+                <!-- 新建按钮 -->
+                <button nz-button nzType="primary" type="button" (click)="openCreateDialog()">
+                    <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+                    新建研发项
+                </button>
+                <!-- 列表视图切换 -->
+                <nz-radio-group [(ngModel)]="viewType" class="view-type">
+                    <label nz-radio-button nzValue="list">
+                        <nz-icon nzType="unordered-list" nzTheme="outline"></nz-icon>
+                    </label>
+                    <label nz-radio-button nzValue="board">
+                        <nz-icon nzType="book" nzTheme="outline"></nz-icon>
+                    </label>
+                </nz-radio-group>
+            </div>
+        </div>
+
+        <!-- 列表 -->
+        <div class="list-content">
+            @if(viewType() === 'list') {
+            <app-issues-list-table [issues]="issues()"></app-issues-list-table>
+            } @else {
+
+            }
+            <div class="pagination-bar">
+                <nz-pagination [(nzPageIndex)]="query().page" [nzTotal]="total()" [nzShowTotal]="totalTemplate"
+                    nzShowSizeChanger nzShowQuickJumper (nzPageIndexChange)="onPageChange($event)"
+                    (nzPageSizeChange)="onPageSizeChange($event)" />
+                <ng-template #totalTemplate let-total>共 {{ total }} 条记录</ng-template>
+            </div>
+        </div>
+    </div>
+</app-page-layout>

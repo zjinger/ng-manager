@@ -1,30 +1,32 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
-import { PageLayoutComponent } from '../../shared';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
-import { NzFormModule } from 'ng-zorro-antd/form';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzFlexModule } from 'ng-zorro-antd/flex';
-import { NzBadgeModule } from 'ng-zorro-antd/badge';
-import { RdItemCardComponent } from './rd-item-card/rd-item-card.component';
-import { NzProgressModule } from 'ng-zorro-antd/progress';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { RdListBoardComponent } from './rd-list-board/rd-list-board.component';
-import { RdCreateDialogComponent } from './dialog/rd-create-dialog/rd-create-dialog.component';
-import { CreateRdItemInput, RdItemEntity } from './models/rd.model';
-import { RdListTableComponent } from './rd-list-table/rd-list-table.component';
-import { NzPaginationModule } from 'ng-zorro-antd/pagination';
-import { RdStore } from './store/rd.store';
-import { RdDetailComponent } from './dialog/rd-detail/rd-detail.component';
-import { RdBlockDialogComponent } from './dialog/rd-block-dialog/rd-block-dialog.component';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NzBadgeModule } from 'ng-zorro-antd/badge';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDrawerPlacement } from 'ng-zorro-antd/drawer';
+import { NzFlexModule } from 'ng-zorro-antd/flex';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
+import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { PageLayoutComponent } from '../../shared';
 import { RdAdvanceStageDialogComponent } from './dialog/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
+import { RdBlockDialogComponent } from './dialog/rd-block-dialog/rd-block-dialog.component';
+import { RdCreateDialogComponent } from './dialog/rd-create-dialog/rd-create-dialog.component';
+import { RdDetailComponent } from './dialog/rd-detail/rd-detail.component';
+import { CreateRdItemInput, RdItemEntity, RdItemPriority, RdItemStatus } from './models/rd.model';
+import { RdListBoardComponent } from './rd-list-board/rd-list-board.component';
+import { RdListTableComponent } from './rd-list-table/rd-list-table.component';
+import { RdStore } from './store/rd.store';
+import { RD_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
+import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
+import { debounceTime } from 'rxjs';
 
 type viewType = 'list' | 'board';
 
@@ -63,7 +65,7 @@ export class RdComponent {
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly loading = signal(false);
+  // 视图模式
   protected readonly viewType = signal<viewType>('list');
 
   // 新建研发项弹窗
@@ -81,38 +83,47 @@ export class RdComponent {
   readonly advanceStageOpen = signal(false);
 
   // stages = ['阶段1', '阶段2', '阶段3']; // 可替换成实际阶段
-  statuses = ['待开始', '进行中', '阻塞', '已完成', '已取消'];
+  // statuses = ['待开始', '进行中', '阻塞', '已完成', '已取消'];
+  readonly statusOptions = RD_STATUS_FILTER_OPTIONS;
+  readonly members = this.rdStore.projectMembers;
+  readonly priorityOptions = PRIORITY_OPTIONS;
+
   priorities = ['低', '中', '高'];
 
-  pageIndex = signal(1);
-  pageSize = signal(10);
-
-  pageRdItems = this.rdStore.rdItemsPageList;
-  currentRdItem = this.rdStore.currentRdItem;
-  currentRdLogs = this.rdStore.currentRdLogs;
-  stages = this.rdStore.stages;
-  total = this.rdStore.rdItemsCount;
-  busy = this.rdStore.busy;
+  protected readonly loading = this.rdStore.rdItemsLoading;
+  protected readonly pageRdItems = this.rdStore.rdItemsPageList;
+  protected readonly currentRdItem = this.rdStore.currentRdItem;
+  protected readonly currentRdLogs = this.rdStore.currentRdLogs;
+  protected readonly stages = this.rdStore.stages;
+  protected readonly total = this.rdStore.rdItemsCount;
+  protected readonly busy = this.rdStore.busy;
+  protected readonly query = this.rdStore.query;
 
   constructor() {
-    this.rdStore.loadRdItems(this.pageIndex(), this.pageSize());
+    this.rdStore.loadRdItems();
+    this.form.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
+      this.rdStore.updateQuery({ ...value });
+      this.rdStore.loadRdItems();
+    });
   }
 
   form = this.fb.group({
     keyword: this.fb.control<string>(''),
-    stage: this.fb.control<string>(''),
-    status: this.fb.control<string>(''),
-    priority: this.fb.control<string>(''),
+    stage: this.fb.control<string[]>([]),
+    status: this.fb.control<RdItemStatus[]>([]),
+    priority: this.fb.control<RdItemPriority[]>([]),
+    assigneeId: this.fb.control<string>(''),
   });
 
   onPageChange(page: number) {
-    this.pageIndex.set(page);
-    this.rdStore.loadRdItems(this.pageIndex(), this.pageSize());
+    // this.pageIndex.set(page);
+    this.rdStore.updateQuery({ page });
+    this.rdStore.loadRdItems();
   }
 
   onPageSizeChange(size: number) {
-    this.pageSize.set(size);
-    this.rdStore.loadRdItems(this.pageIndex(), this.pageSize());
+    this.rdStore.updateQuery({ pageSize: size });
+    this.rdStore.loadRdItems();
   }
 
   /** 新建研发项 */
@@ -131,6 +142,7 @@ export class RdComponent {
     } else {
       this.updateDetailDrawerPlacement('right');
     }
+    this.openDetail(item);
     this.detailDrawerOpen.set(true);
     await this.rdStore.loadCurrentRdItem(item.id);
     this.rdStore.setCurrentRdItem(this.rdStore.currentRdItem() ?? item);
@@ -144,6 +156,9 @@ export class RdComponent {
   closeDetail() {
     this.detailDrawerOpen.set(false);
     this.rdStore.setCurrentRdItem(null);
+    this.router.navigate([], {
+      queryParams: {},
+    });
   }
 
   handleSelectedAction(action: 'start' | 'block' | 'resume' | 'complete' | 'advance'): void {
@@ -152,6 +167,14 @@ export class RdComponent {
       return;
     }
     this.handleAction(current, action);
+  }
+
+  updateSelectedProgress(progress: number): void {
+    const current = this.currentRdItem();
+    if (!current) {
+      return;
+    }
+    this.rdStore.progress(current.id, progress);
   }
 
   handleAction(
@@ -171,7 +194,7 @@ export class RdComponent {
         this.rdStore.resume(item.id);
         break;
       case 'complete':
-        this.rdStore.complete(item.id);
+        this.rdStore.resolve(item.id);
         break;
       case 'advance':
         this.advanceStageOpen.set(true);
@@ -205,11 +228,14 @@ export class RdComponent {
 
   // 推进研发项
   confirmAdvanceStage(stageId: string): void {
-    const current = this.currentRdItem();
-    if (!current || !stageId.trim()) {
-      return;
-    }
-    this.rdStore.advanceStage(current.id, { stageId: stageId.trim() });
-    this.advanceStageOpen.set(false);
+    // TODO ：后面需要再添加
+    // const current = this.currentRdItem();
+    // if (!current || !stageId.trim()) {
+    //   return;
+    // }
+    // this.rdStore.advanceStage(current.id, { stageId: stageId.trim() });
+    // this.advanceStageOpen.set(false);
   }
+
+  
 }

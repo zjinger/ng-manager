@@ -57,6 +57,16 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
         } @else {
           <div class="detail-wrap">
             <nz-card class="detail-item">
+              <h2 class="wrap-title">操作</h2>
+              <app-rd-action-area
+                [selectedItem]="rdItem()!"
+                (actionClick)="this.actionClick.emit($event)"
+                (progressChange)="this.progressChange.emit($event)"
+                (deleteClick)="this.deleteClick.emit()"
+              ></app-rd-action-area>
+            </nz-card>
+            
+            <nz-card class="detail-item">
               <h2 class="wrap-title">研发项描述</h2>
               <nz-descriptions nzBordered nzSize="small">
                 <nz-descriptions-item nzTitle="研发项" [nzSpan]="3">
@@ -93,15 +103,6 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
               </nz-descriptions>
             </nz-card>
 
-            <nz-card class="detail-item">
-              <h2 class="wrap-title">操作</h2>
-              <app-rd-action-area
-                [selectedItem]="rdItem()!"
-                (actionClick)="this.actionClick.emit($event)"
-                (progressChange)="this.progressChange.emit($event)"
-                (deleteClick)="this.deleteClick.emit()"
-              ></app-rd-action-area>
-            </nz-card>
             <nz-card class="detail-item">
               <h2 class="wrap-title">研发动态</h2>
               <nz-timeline>

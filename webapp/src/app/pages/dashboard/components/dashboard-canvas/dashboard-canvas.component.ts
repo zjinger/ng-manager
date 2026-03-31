@@ -26,7 +26,7 @@ import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
     GridsterComponent,
     GridsterItemComponent,
     WidgetHostComponent,
-    NzTooltipDirective
+    
   ],
   template: `
     <gridster [options]="options">
