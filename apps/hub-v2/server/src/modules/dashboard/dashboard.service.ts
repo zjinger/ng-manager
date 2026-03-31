@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import type { AnnouncementQueryContract } from "../announcement/announcement.contract";
 import type { ContentLogQueryContract } from "../content-log/content-log.contract";
@@ -100,7 +101,7 @@ export class DashboardService implements DashboardQueryContract {
       }
       const project = await this.projectQuery.getById(normalizedProjectId, ctx).catch(() => null);
       if (!project) {
-        throw new AppError("PROJECT_NOT_FOUND", `project not found: ${normalizedProjectId}`, 404);
+        throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${normalizedProjectId}`, 404);
       }
       return {
         includeAll: false,

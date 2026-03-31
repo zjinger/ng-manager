@@ -4,10 +4,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { catchError, throwError } from 'rxjs';
 
 import { ApiError } from './api-error';
-
-const FRIENDLY_ERROR_MESSAGES: Record<string, string> = {
-  PROJECT_INACTIVE: '项目已归档，仅支持查看',
-};
+import { resolveApiErrorMessage } from './api-error-messages';
 
 export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
   const message = inject(NzMessageService);
@@ -17,10 +14,10 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
       if (error instanceof HttpErrorResponse) {
         const errorCode: string | undefined = error.error?.code;
         const rawMessage = error.error?.message || error.message || '请求失败';
-        const friendlyMessage = (errorCode && FRIENDLY_ERROR_MESSAGES[errorCode]) || rawMessage;
+        const friendlyMessage = resolveApiErrorMessage(errorCode, rawMessage);
 
         if (error.status >= 500) {
-          message.error('服务暂时不可用');
+          message.error(resolveApiErrorMessage('INTERNAL_ERROR', '服务暂时不可用'));
         }
 
         return throwError(

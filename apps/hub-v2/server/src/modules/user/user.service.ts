@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { hashPassword } from "../../shared/utils/password";
@@ -29,7 +30,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     requireAdmin(ctx);
     const username = input.username.trim();
     if (this.repo.findByUsername(username) || this.authRepo.findByUsername(username)) {
-      throw new AppError("USER_ALREADY_EXISTS", `user already exists: ${input.username}`, 409);
+      throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS, `user already exists: ${input.username}`, 409);
     }
 
     const now = nowIso();
@@ -87,7 +88,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     requireAdmin(ctx);
     const user = this.repo.findById(id);
     if (!user) {
-      throw new AppError("USER_NOT_FOUND", `user not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
 
     const updated: UserEntity = {
@@ -131,11 +132,11 @@ export class UserService implements UserCommandContract, UserQueryContract {
 
   async getById(id: string, ctx: RequestContext): Promise<UserEntity> {
     if (!ctx.userId?.trim() && !ctx.roles.includes("admin")) {
-      throw new AppError("USER_ACCESS_DENIED", "get user forbidden", 403);
+      throw new AppError(ERROR_CODES.USER_ACCESS_DENIED, "get user forbidden", 403);
     }
     const user = this.repo.findById(id);
     if (!user) {
-      throw new AppError("USER_NOT_FOUND", `user not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
     return user;
   }
@@ -144,7 +145,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     requireAdmin(ctx);
     const user = this.repo.findById(id);
     if (!user) {
-      throw new AppError("USER_NOT_FOUND", `user not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
 
     const nextPassword = input.newPassword?.trim() || DEFAULT_USER_PASSWORD;

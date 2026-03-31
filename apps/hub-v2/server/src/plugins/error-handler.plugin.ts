@@ -1,13 +1,16 @@
 import fp from "fastify-plugin";
 import { ZodError } from "zod";
 import { AppError } from "../shared/errors/app-error";
-import { ERROR_CODES } from "../shared/errors/error-codes";
+import { ERROR_CODES, getErrorDefinition } from "../shared/errors/error-codes";
 import { fail } from "../shared/http/error-response";
 
 export default fp(async function errorHandlerPlugin(app) {
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof AppError) {
-      reply.status(error.statusCode).send(fail(error.code, error.message, error.details));
+      const definition = getErrorDefinition(error.code);
+      const statusCode = error.statusCode || definition?.statusCode || 500;
+      const message = error.message || definition?.message || "internal error";
+      reply.status(statusCode).send(fail(error.code, message, error.details));
       return;
     }
 

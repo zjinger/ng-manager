@@ -71,7 +71,7 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     }
 
     if (!verifyPassword(input.oldPassword, account.passwordHash)) {
-      throw new AppError("AUTH_PASSWORD_INVALID", "old password is invalid", 400);
+      throw new AppError(ERROR_CODES.AUTH_PASSWORD_INVALID, "old password is invalid", 400);
     }
 
     const updatedAt = nowIso();
@@ -151,17 +151,17 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     this.challenges.delete(input.nonce);
 
     if (!nonceState) {
-      throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+      throw new AppError(ERROR_CODES.AUTH_CHALLENGE_INVALID, "login challenge is invalid", 401);
     }
 
     if (Date.now() > nonceState.expiresAt) {
-      throw new AppError("AUTH_CHALLENGE_EXPIRED", "login challenge has expired", 401);
+      throw new AppError(ERROR_CODES.AUTH_CHALLENGE_EXPIRED, "login challenge has expired", 401);
     }
 
     const decrypted = this.decryptLoginPassword(input.iv, input.cipherText);
     const expectedPrefix = `${input.nonce}:`;
     if (!decrypted.startsWith(expectedPrefix)) {
-      throw new AppError("AUTH_CHALLENGE_INVALID", "login challenge is invalid", 401);
+      throw new AppError(ERROR_CODES.AUTH_CHALLENGE_INVALID, "login challenge is invalid", 401);
     }
 
     return decrypted.slice(expectedPrefix.length);
@@ -187,7 +187,7 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
 
       return plain;
     } catch {
-      throw new AppError("AUTH_INVALID_ENCRYPTED_PASSWORD", "invalid encrypted password", 401);
+      throw new AppError(ERROR_CODES.AUTH_INVALID_ENCRYPTED_PASSWORD, "invalid encrypted password", 401);
     }
   }
 

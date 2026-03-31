@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
@@ -30,7 +31,7 @@ export class SharedConfigService implements SharedConfigCommandContract, SharedC
     }
 
     if (this.repo.findByProjectAndKey(projectId, input.configKey.trim())) {
-      throw new AppError("SHARED_CONFIG_KEY_EXISTS", `config key already exists: ${input.configKey}`, 409);
+      throw new AppError(ERROR_CODES.SHARED_CONFIG_KEY_EXISTS, `config key already exists: ${input.configKey}`, 409);
     }
 
     const now = nowIso();
@@ -80,7 +81,7 @@ export class SharedConfigService implements SharedConfigCommandContract, SharedC
     });
 
     if (!updated) {
-      throw new AppError("SHARED_CONFIG_UPDATE_FAILED", "failed to update shared config", 500);
+      throw new AppError(ERROR_CODES.SHARED_CONFIG_UPDATE_FAILED, "failed to update shared config", 500);
     }
 
     return this.requireById(id);
@@ -107,7 +108,7 @@ export class SharedConfigService implements SharedConfigCommandContract, SharedC
   private requireById(id: string): SharedConfigEntity {
     const entity = this.repo.findById(id);
     if (!entity) {
-      throw new AppError("SHARED_CONFIG_NOT_FOUND", `shared config not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.SHARED_CONFIG_NOT_FOUND, `shared config not found: ${id}`, 404);
     }
     return entity;
   }

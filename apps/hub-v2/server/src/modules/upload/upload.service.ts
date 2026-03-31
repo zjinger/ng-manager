@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
@@ -43,7 +44,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
   async getById(id: string, _ctx: RequestContext): Promise<UploadEntity> {
     const upload = this.repo.findById(id);
     if (!upload) {
-      throw new AppError("UPLOAD_NOT_FOUND", `upload not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, `upload not found: ${id}`, 404);
     }
     return upload;
   }

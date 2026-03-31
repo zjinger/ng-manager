@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { requirePersonalTokenAuth } from "../../shared/auth/require-personal-token-auth";
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
@@ -63,6 +64,6 @@ async function assertRdProjectAccess(app: FastifyInstance, projectKey: string, i
   const projectId = app.container.personalTokenQuery.resolveProjectId(projectKey);
   const item = await app.container.rdQuery.getItemById(itemId, ctx);
   if (item.projectId !== projectId) {
-    throw new AppError("RD_ITEM_NOT_FOUND", "rd item not found", 404);
+    throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd item not found", 404);
   }
 }

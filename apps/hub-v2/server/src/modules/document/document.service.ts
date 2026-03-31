@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import type { EventBus } from "../../shared/event/event-bus";
 import { genId } from "../../shared/utils/id";
@@ -27,7 +28,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   async create(input: CreateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
     const projectId = input.projectId?.trim() || null;
     if (this.repo.findBySlug(input.slug.trim())) {
-      throw new AppError("DOCUMENT_SLUG_EXISTS", `document slug already exists: ${input.slug}`, 409);
+      throw new AppError(ERROR_CODES.DOCUMENT_SLUG_EXISTS, `document slug already exists: ${input.slug}`, 409);
     }
     await this.requireProjectOrAdmin(projectId, ctx, "create document");
 
@@ -59,7 +60,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     if (input.slug?.trim() && input.slug.trim() !== current.slug) {
       const bySlug = this.repo.findBySlug(input.slug.trim());
       if (bySlug && bySlug.id !== current.id) {
-        throw new AppError("DOCUMENT_SLUG_EXISTS", `document slug already exists: ${input.slug}`, 409);
+        throw new AppError(ERROR_CODES.DOCUMENT_SLUG_EXISTS, `document slug already exists: ${input.slug}`, 409);
       }
     }
 
@@ -79,7 +80,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     });
 
     if (!updated) {
-      throw new AppError("DOCUMENT_UPDATE_FAILED", "failed to update document", 500);
+      throw new AppError(ERROR_CODES.DOCUMENT_UPDATE_FAILED, "failed to update document", 500);
     }
 
     const entity = this.requireById(id);
@@ -115,7 +116,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     });
 
     if (!updated) {
-      throw new AppError("DOCUMENT_PUBLISH_FAILED", "failed to publish document", 500);
+      throw new AppError(ERROR_CODES.DOCUMENT_PUBLISH_FAILED, "failed to publish document", 500);
     }
 
     const entity = this.requireById(id);
@@ -152,7 +153,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     });
 
     if (!updated) {
-      throw new AppError("DOCUMENT_ARCHIVE_FAILED", "failed to archive document", 500);
+      throw new AppError(ERROR_CODES.DOCUMENT_ARCHIVE_FAILED, "failed to archive document", 500);
     }
 
     const entity = this.requireById(id);
@@ -215,11 +216,11 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   async getPublicBySlug(slug: string): Promise<DocumentEntity> {
     const normalizedSlug = slug.trim();
     if (!normalizedSlug) {
-      throw new AppError("DOCUMENT_NOT_FOUND", "document not found", 404);
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, "document not found", 404);
     }
     const entity = this.repo.findPublishedBySlug(normalizedSlug);
     if (!entity) {
-      throw new AppError("DOCUMENT_NOT_FOUND", `document not found: ${slug}`, 404);
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, `document not found: ${slug}`, 404);
     }
     return entity;
   }
@@ -227,7 +228,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   private requireById(id: string): DocumentEntity {
     const entity = this.repo.findById(id);
     if (!entity) {
-      throw new AppError("DOCUMENT_NOT_FOUND", `document not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, `document not found: ${id}`, 404);
     }
     return entity;
   }

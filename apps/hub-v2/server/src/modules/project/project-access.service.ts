@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
 import { ProjectRepo } from "./project.repo";
@@ -25,11 +26,11 @@ export class ProjectAccessService {
   async requireProjectAccess(projectId: string, ctx: RequestContext, action: string): Promise<void> {
     const project = this.repo.findById(projectId);
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
 
     if (project.status !== "active" && !this.isReadAction(action)) {
-      throw new AppError("PROJECT_INACTIVE", `${action} forbidden: project is archived`, 400);
+      throw new AppError(ERROR_CODES.PROJECT_INACTIVE, `${action} forbidden: project is archived`, 400);
     }
 
     if (ctx.roles.includes("admin")) {
@@ -38,7 +39,7 @@ export class ProjectAccessService {
 
     const userId = ctx.userId?.trim() || ctx.accountId?.trim();
     if (!userId) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
     }
 
     if (ctx.projectIds?.includes(projectId) || this.repo.findMemberByProjectAndUserId(projectId, userId)) {
@@ -49,13 +50,13 @@ export class ProjectAccessService {
       return;
     }
 
-    throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+    throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
   }
 
   async requireProjectMember(projectId: string, userId: string, action: string): Promise<ProjectMemberEntity> {
     const member = this.repo.findMemberByProjectAndUserId(projectId, userId);
     if (!member) {
-      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `${action}: project member not found`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, `${action}: project member not found`, 404);
     }
 
     return member;

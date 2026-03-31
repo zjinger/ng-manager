@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { createHash, randomBytes } from "node:crypto";
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
@@ -50,12 +51,12 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
 
     const name = input.name.trim();
     if (!name) {
-      throw new AppError("TOKEN_NAME_REQUIRED", "token name is required", 400);
+      throw new AppError(ERROR_CODES.TOKEN_NAME_REQUIRED, "token name is required", 400);
     }
 
     const scopes = Array.from(new Set(input.scopes)).filter((scope) => this.isScope(scope));
     if (scopes.length === 0) {
-      throw new AppError("TOKEN_SCOPE_REQUIRED", "at least one scope is required", 400);
+      throw new AppError(ERROR_CODES.TOKEN_SCOPE_REQUIRED, "at least one scope is required", 400);
     }
 
     const now = nowIso();
@@ -79,7 +80,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
 
     const entity = this.repo.findById(entityId);
     if (!entity) {
-      throw new AppError("TOKEN_CREATE_FAILED", "failed to create token", 500);
+      throw new AppError(ERROR_CODES.TOKEN_CREATE_FAILED, "failed to create token", 500);
     }
     return {
       token: tokenValue,
@@ -115,7 +116,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
 
     const token = this.repo.findById(tokenId.trim());
     if (!token || token.projectId !== normalizedProjectId) {
-      throw new AppError("TOKEN_NOT_FOUND", "token not found", 404);
+      throw new AppError(ERROR_CODES.TOKEN_NOT_FOUND, "token not found", 404);
     }
     if (token.status === "revoked") {
       return;
@@ -159,7 +160,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     const project = this.assertTokenProject(projectKey, ctx);
     const entity = await this.issueQuery.getById(issueId, ctx);
     if (entity.projectId !== project.id) {
-      throw new AppError("ISSUE_NOT_FOUND", "issue not found", 404);
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
     }
     return entity;
   }
@@ -168,7 +169,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     const project = this.assertTokenProject(projectKey, ctx);
     const issue = await this.issueQuery.getById(issueId, ctx);
     if (issue.projectId !== project.id) {
-      throw new AppError("ISSUE_NOT_FOUND", "issue not found", 404);
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
     }
     return { items: await this.issueQuery.listLogs(issueId, ctx) };
   }
@@ -182,7 +183,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     const project = this.assertTokenProject(projectKey, ctx);
     const entity = await this.rdQuery.getItemById(itemId, ctx);
     if (entity.projectId !== project.id) {
-      throw new AppError("RD_ITEM_NOT_FOUND", "rd item not found", 404);
+      throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd item not found", 404);
     }
     return entity;
   }
@@ -191,7 +192,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     const project = this.assertTokenProject(projectKey, ctx);
     const item = await this.rdQuery.getItemById(itemId, ctx);
     if (item.projectId !== project.id) {
-      throw new AppError("RD_ITEM_NOT_FOUND", "rd item not found", 404);
+      throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd item not found", 404);
     }
     return { items: await this.rdQuery.listLogs(itemId, ctx) };
   }
@@ -209,7 +210,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     this.assertTokenProject(projectKey, ctx);
     const feedback = await this.feedbackQuery.getById(feedbackId, ctx);
     if (projectKey && feedback.projectKey !== projectKey) {
-      throw new AppError("FEEDBACK_NOT_FOUND", "feedback not found", 404);
+      throw new AppError(ERROR_CODES.FEEDBACK_NOT_FOUND, "feedback not found", 404);
     }
     return feedback;
   }
@@ -218,7 +219,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     const normalizedProjectKey = projectKey.trim();
     const project = this.projectRepo.findByKey(normalizedProjectKey);
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectKey}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectKey}`, 404);
     }
     return project;
   }
@@ -229,12 +230,12 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     }
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
     }
     const member = await this.projectAccess.requireProjectMember(projectId, userId, action);
     const canManage = member.isOwner || member.roleCode === "project_admin";
     if (!canManage) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
     }
   }
 
@@ -253,11 +254,11 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
 
   private assertTokenProject(projectKey: string, ctx: RequestContext) {
     if (ctx.authType !== "token") {
-      throw new AppError("TOKEN_UNAUTHORIZED", "token unauthorized", 401);
+      throw new AppError(ERROR_CODES.TOKEN_UNAUTHORIZED, "token unauthorized", 401);
     }
     const project = this.requireProjectByKey(projectKey);
     if (!ctx.projectIds?.includes(project.id)) {
-      throw new AppError("TOKEN_PROJECT_FORBIDDEN", "token project forbidden", 403);
+      throw new AppError(ERROR_CODES.TOKEN_PROJECT_FORBIDDEN, "token project forbidden", 403);
     }
     return project;
   }

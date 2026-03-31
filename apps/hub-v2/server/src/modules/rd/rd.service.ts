@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
 import type { EventBus } from "../../shared/event/event-bus";
@@ -48,7 +49,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     await this.requireStageMaintainer(projectId, ctx, "create rd stage");
 
     if (this.repo.findStageByProjectAndName(projectId, input.name.trim())) {
-      throw new AppError("RD_STAGE_EXISTS", `rd stage already exists: ${input.name}`, 409);
+      throw new AppError(ERROR_CODES.RD_STAGE_EXISTS, `rd stage already exists: ${input.name}`, 409);
     }
 
     const now = nowIso();
@@ -75,7 +76,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     if (input.name?.trim() && input.name.trim() !== stage.name) {
       const byName = this.repo.findStageByProjectAndName(stage.projectId, input.name.trim());
       if (byName && byName.id !== stage.id) {
-        throw new AppError("RD_STAGE_EXISTS", `rd stage already exists: ${input.name}`, 409);
+        throw new AppError(ERROR_CODES.RD_STAGE_EXISTS, `rd stage already exists: ${input.name}`, 409);
       }
     }
 
@@ -86,7 +87,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       updated_at: nowIso()
     });
     if (!updated) {
-      throw new AppError("RD_STAGE_UPDATE_FAILED", "failed to update rd stage", 500);
+      throw new AppError(ERROR_CODES.RD_STAGE_UPDATE_FAILED, "failed to update rd stage", 500);
     }
     return this.requireStage(id);
   }
@@ -180,7 +181,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       updated_at: nowIso()
     });
     if (!updated) {
-      throw new AppError("RD_ITEM_UPDATE_FAILED", "failed to update rd item", 500);
+      throw new AppError(ERROR_CODES.RD_ITEM_UPDATE_FAILED, "failed to update rd item", 500);
     }
     const entity = this.requireItem(id);
     this.repo.createLog(this.createLog(entity, "update", ctx, this.createUpdateLogContent(current, input)));
@@ -263,21 +264,21 @@ export class RdService implements RdCommandContract, RdQueryContract {
     const current = await this.requireItemWithAccess(id, ctx, "advance rd stage");
     await this.requireBasicEditAccess(current, ctx, "advance rd stage");
     if (current.status !== "done" && current.status !== "accepted") {
-      throw new AppError("RD_ADVANCE_STAGE_INVALID_STATUS", "rd item is not completed", 400);
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_STATUS, "rd item is not completed", 400);
     }
 
     const targetStage = this.requireStage(input.stageId.trim());
     if (targetStage.projectId !== current.projectId) {
-      throw new AppError("RD_STAGE_PROJECT_MISMATCH", "rd stage project mismatch", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_PROJECT_MISMATCH, "rd stage project mismatch", 400);
     }
 
     if (current.stageId === targetStage.id) {
-      throw new AppError("RD_ADVANCE_STAGE_INVALID_TARGET", "rd target stage must be different", 400);
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd target stage must be different", 400);
     }
 
     const currentStage = current.stageId ? this.requireStage(current.stageId) : null;
     if (currentStage && targetStage.sort <= currentStage.sort) {
-      throw new AppError("RD_ADVANCE_STAGE_INVALID_TARGET", "rd target stage must be after current stage", 400);
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd target stage must be after current stage", 400);
     }
 
     const updated = this.repo.updateItem(id, {
@@ -290,7 +291,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       updated_at: nowIso()
     });
     if (!updated) {
-      throw new AppError("RD_ADVANCE_STAGE_FAILED", "failed to advance rd stage", 500);
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_FAILED, "failed to advance rd stage", 500);
     }
 
     const entity = this.requireItem(id);
@@ -307,7 +308,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     await this.requireDeleteAccess(current, ctx, "delete rd item");
     const deleted = this.repo.deleteItem(id);
     if (!deleted) {
-      throw new AppError("RD_ITEM_DELETE_FAILED", "failed to delete rd item", 500);
+      throw new AppError(ERROR_CODES.RD_ITEM_DELETE_FAILED, "failed to delete rd item", 500);
     }
     return { id };
   }
@@ -376,7 +377,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
   private requireStage(id: string): RdStageEntity {
     const stage = this.repo.findStageById(id);
     if (!stage) {
-      throw new AppError("RD_STAGE_NOT_FOUND", `rd stage not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.RD_STAGE_NOT_FOUND, `rd stage not found: ${id}`, 404);
     }
     return stage;
   }
@@ -384,7 +385,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
   private requireItem(id: string): RdItemEntity {
     const item = this.repo.findItemById(id);
     if (!item) {
-      throw new AppError("RD_ITEM_NOT_FOUND", `rd item not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, `rd item not found: ${id}`, 404);
     }
     return item;
   }
@@ -402,19 +403,19 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("RD_STAGE_FORBIDDEN", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.RD_STAGE_FORBIDDEN, `${action} forbidden`, 403);
     }
 
     const member = await this.projectAccess.requireProjectMember(projectId, userId, action);
     if (member.roleCode !== "project_admin" && !member.isOwner) {
-      throw new AppError("RD_STAGE_FORBIDDEN", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.RD_STAGE_FORBIDDEN, `${action} forbidden`, 403);
     }
   }
 
   private async requireBasicEditAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("RD_EDIT_FORBIDDEN", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.RD_EDIT_FORBIDDEN, `${action} forbidden`, 403);
     }
 
     if (item.creatorId === userId || item.assigneeId === userId) {
@@ -426,13 +427,13 @@ export class RdService implements RdCommandContract, RdQueryContract {
       return;
     }
 
-    throw new AppError("RD_EDIT_FORBIDDEN", `${action} forbidden`, 403);
+    throw new AppError(ERROR_CODES.RD_EDIT_FORBIDDEN, `${action} forbidden`, 403);
   }
 
   private async requireDeleteAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("RD_DELETE_FORBIDDEN", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.RD_DELETE_FORBIDDEN, `${action} forbidden`, 403);
     }
 
     if (item.creatorId === userId) {
@@ -444,13 +445,13 @@ export class RdService implements RdCommandContract, RdQueryContract {
       return;
     }
 
-    throw new AppError("RD_DELETE_FORBIDDEN", `${action} forbidden`, 403);
+    throw new AppError(ERROR_CODES.RD_DELETE_FORBIDDEN, `${action} forbidden`, 403);
   }
 
   private async requireCloseAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("RD_CLOSE_FORBIDDEN", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.RD_CLOSE_FORBIDDEN, `${action} forbidden`, 403);
     }
 
     if (item.creatorId === userId) {
@@ -462,20 +463,20 @@ export class RdService implements RdCommandContract, RdQueryContract {
       return;
     }
 
-    throw new AppError("RD_CLOSE_FORBIDDEN", `${action} forbidden`, 403);
+    throw new AppError(ERROR_CODES.RD_CLOSE_FORBIDDEN, `${action} forbidden`, 403);
   }
 
   private requireAssignee(item: RdItemEntity, ctx: RequestContext, action: string): void {
     const userId = ctx.userId?.trim();
     if (!userId || !item.assigneeId || item.assigneeId !== userId) {
-      throw new AppError("RD_PROGRESS_FORBIDDEN", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.RD_PROGRESS_FORBIDDEN, `${action} forbidden`, 403);
     }
   }
 
   private async requireBlockAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("RD_BLOCK_FORBIDDEN", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.RD_BLOCK_FORBIDDEN, `${action} forbidden`, 403);
     }
 
     if (item.assigneeId && item.assigneeId === userId) {
@@ -487,7 +488,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       return;
     }
 
-    throw new AppError("RD_BLOCK_FORBIDDEN", `${action} forbidden`, 403);
+    throw new AppError(ERROR_CODES.RD_BLOCK_FORBIDDEN, `${action} forbidden`, 403);
   }
 
   private async resolveStageId(projectId: string, stageId: string | null | undefined): Promise<string | null> {
@@ -497,7 +498,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     }
     const stage = this.requireStage(normalized);
     if (stage.projectId !== projectId) {
-      throw new AppError("RD_STAGE_PROJECT_MISMATCH", "rd stage project mismatch", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_PROJECT_MISMATCH, "rd stage project mismatch", 400);
     }
     return stage.id;
   }
@@ -549,7 +550,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       ...extra
     });
     if (!updated) {
-      throw new AppError("RD_ACTION_FAILED", `failed to ${action} rd item`, 500);
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, `failed to ${action} rd item`, 500);
     }
     const entity = this.requireItem(id);
     this.repo.createLog(this.createLog(entity, action, ctx, content));

@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import type { RdAction, RdItemStatus } from "./rd.types";
 
@@ -33,7 +34,7 @@ const transitions: Record<RdItemStatus, Partial<Record<RdAction, RdItemStatus>>>
 export function transitionRdItem(from: RdItemStatus, action: RdAction): RdItemStatus {
   const to = transitions[from][action];
   if (!to) {
-    throw new AppError("RD_INVALID_TRANSITION", `cannot ${action} rd item from ${from}`, 400);
+    throw new AppError(ERROR_CODES.RD_INVALID_TRANSITION, `cannot ${action} rd item from ${from}`, 400);
   }
   return to;
 }

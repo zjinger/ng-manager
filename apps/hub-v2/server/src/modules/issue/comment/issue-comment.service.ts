@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../../shared/errors/error-codes";
 import type { RequestContext } from "../../../shared/context/request-context";
 import { AppError } from "../../../shared/errors/app-error";
 import type { EventBus } from "../../../shared/event/event-bus";
@@ -60,7 +61,7 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
   private requireIssue(issueId: string) {
     const issue = this.issueRepo.findById(issueId);
     if (!issue) {
-      throw new AppError("ISSUE_NOT_FOUND", `issue not found: ${issueId}`, 404);
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, `issue not found: ${issueId}`, 404);
     }
     return issue;
   }

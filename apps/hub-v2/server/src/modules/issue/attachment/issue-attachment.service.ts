@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../../shared/errors/error-codes";
 import type { RequestContext } from "../../../shared/context/request-context";
 import { AppError } from "../../../shared/errors/app-error";
 import type { EventBus } from "../../../shared/event/event-bus";
@@ -29,7 +30,7 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
     const upload = await this.uploadQuery.getById(input.uploadId.trim(), ctx);
 
     if (this.attachmentRepo.exists(issue.id, upload.id)) {
-      throw new AppError("ISSUE_ATTACHMENT_EXISTS", "attachment already exists", 409);
+      throw new AppError(ERROR_CODES.ISSUE_ATTACHMENT_EXISTS, "attachment already exists", 409);
     }
 
     const record = {
@@ -85,13 +86,13 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
     const issue = await this.requireIssueWithAccess(issueId, ctx, "remove issue attachment");
     const record = this.attachmentRepo.findById(issue.id, attachmentId);
     if (!record) {
-      throw new AppError("ISSUE_ATTACHMENT_NOT_FOUND", `attachment not found: ${attachmentId}`, 404);
+      throw new AppError(ERROR_CODES.ISSUE_ATTACHMENT_NOT_FOUND, `attachment not found: ${attachmentId}`, 404);
     }
 
     const upload = await this.uploadQuery.getById(record.uploadId, ctx);
     const deleted = this.attachmentRepo.delete(issue.id, attachmentId);
     if (!deleted) {
-      throw new AppError("ISSUE_ATTACHMENT_DELETE_FAILED", "failed to delete attachment", 500);
+      throw new AppError(ERROR_CODES.ISSUE_ATTACHMENT_DELETE_FAILED, "failed to delete attachment", 500);
     }
 
     const now = nowIso();
@@ -118,7 +119,7 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
   private requireIssue(issueId: string) {
     const issue = this.issueRepo.findById(issueId);
     if (!issue) {
-      throw new AppError("ISSUE_NOT_FOUND", `issue not found: ${issueId}`, 404);
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, `issue not found: ${issueId}`, 404);
     }
     return issue;
   }

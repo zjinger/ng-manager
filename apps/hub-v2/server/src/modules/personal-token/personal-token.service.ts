@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
@@ -28,17 +29,17 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
   async create(input: CreatePersonalApiTokenInput, ctx: RequestContext): Promise<CreatePersonalApiTokenResult> {
     const ownerUserId = ctx.userId?.trim();
     if (!ownerUserId) {
-      throw new AppError("TOKEN_OWNER_REQUIRED", "token owner required", 400);
+      throw new AppError(ERROR_CODES.TOKEN_OWNER_REQUIRED, "token owner required", 400);
     }
 
     const name = input.name.trim();
     if (!name) {
-      throw new AppError("TOKEN_NAME_REQUIRED", "token name is required", 400);
+      throw new AppError(ERROR_CODES.TOKEN_NAME_REQUIRED, "token name is required", 400);
     }
 
     const scopes = Array.from(new Set(input.scopes)).filter((scope) => this.isScope(scope));
     if (scopes.length === 0) {
-      throw new AppError("TOKEN_SCOPE_REQUIRED", "at least one scope is required", 400);
+      throw new AppError(ERROR_CODES.TOKEN_SCOPE_REQUIRED, "at least one scope is required", 400);
     }
 
     const now = nowIso();
@@ -61,7 +62,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
 
     const entity = this.repo.findById(tokenId);
     if (!entity) {
-      throw new AppError("TOKEN_CREATE_FAILED", "failed to create personal token", 500);
+      throw new AppError(ERROR_CODES.TOKEN_CREATE_FAILED, "failed to create personal token", 500);
     }
 
     return {
@@ -84,7 +85,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
   async list(ctx: RequestContext): Promise<ListPersonalApiTokensResult> {
     const ownerUserId = ctx.userId?.trim();
     if (!ownerUserId) {
-      throw new AppError("TOKEN_OWNER_REQUIRED", "token owner required", 400);
+      throw new AppError(ERROR_CODES.TOKEN_OWNER_REQUIRED, "token owner required", 400);
     }
     return { items: this.repo.listByOwner(ownerUserId) };
   }
@@ -92,12 +93,12 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
   async revoke(tokenId: string, ctx: RequestContext): Promise<void> {
     const ownerUserId = ctx.userId?.trim();
     if (!ownerUserId) {
-      throw new AppError("TOKEN_OWNER_REQUIRED", "token owner required", 400);
+      throw new AppError(ERROR_CODES.TOKEN_OWNER_REQUIRED, "token owner required", 400);
     }
 
     const token = this.repo.findById(tokenId.trim());
     if (!token || token.ownerUserId !== ownerUserId) {
-      throw new AppError("TOKEN_NOT_FOUND", "token not found", 404);
+      throw new AppError(ERROR_CODES.TOKEN_NOT_FOUND, "token not found", 404);
     }
     if (token.status === "revoked") {
       return;
@@ -138,7 +139,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     const normalizedProjectKey = projectKey.trim();
     const project = this.projectRepo.findByKey(normalizedProjectKey);
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectKey}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectKey}`, 404);
     }
     return project.id;
   }

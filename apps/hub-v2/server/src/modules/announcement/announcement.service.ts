@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import type { EventBus } from "../../shared/event/event-bus";
 import { genId } from "../../shared/utils/id";
@@ -53,7 +54,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   async update(id: string, input: UpdateAnnouncementInput, ctx: RequestContext): Promise<AnnouncementEntity> {
     const current = this.repo.findById(id);
     if (!current) {
-      throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.ANNOUNCEMENT_NOT_FOUND, `announcement not found: ${id}`, 404);
     }
 
     const nextProjectId =
@@ -72,7 +73,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     });
 
     if (!updated) {
-      throw new AppError("ANNOUNCEMENT_UPDATE_FAILED", "failed to update announcement", 500);
+      throw new AppError(ERROR_CODES.ANNOUNCEMENT_UPDATE_FAILED, "failed to update announcement", 500);
     }
 
     const entity = this.requireById(id);
@@ -106,7 +107,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     });
 
     if (!updated) {
-      throw new AppError("ANNOUNCEMENT_PUBLISH_FAILED", "failed to publish announcement", 500);
+      throw new AppError(ERROR_CODES.ANNOUNCEMENT_PUBLISH_FAILED, "failed to publish announcement", 500);
     }
 
     const entity = this.requireById(id);
@@ -158,7 +159,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     });
 
     if (!updated) {
-      throw new AppError("ANNOUNCEMENT_ARCHIVE_FAILED", "failed to archive announcement", 500);
+      throw new AppError(ERROR_CODES.ANNOUNCEMENT_ARCHIVE_FAILED, "failed to archive announcement", 500);
     }
 
     const entity = this.requireById(id);
@@ -234,7 +235,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   private requireById(id: string): AnnouncementEntity {
     const entity = this.repo.findById(id);
     if (!entity) {
-      throw new AppError("ANNOUNCEMENT_NOT_FOUND", `announcement not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.ANNOUNCEMENT_NOT_FOUND, `announcement not found: ${id}`, 404);
     }
     return entity;
   }

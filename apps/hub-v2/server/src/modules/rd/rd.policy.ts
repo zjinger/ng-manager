@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import type { RequestContext } from "../../shared/context/request-context";
 import type { RdItemEntity } from "./rd.types";
@@ -14,7 +15,7 @@ export function requireRdStageManageAccess(ctx: RequestContext): void {
   if (isAdmin(ctx)) {
     return;
   }
-  throw new AppError("RD_STAGE_FORBIDDEN", "rd stage forbidden", 403);
+  throw new AppError(ERROR_CODES.RD_STAGE_FORBIDDEN, "rd stage forbidden", 403);
 }
 
 export function requireRdAcceptAccess(item: RdItemEntity, ctx: RequestContext): void {
@@ -22,5 +23,5 @@ export function requireRdAcceptAccess(item: RdItemEntity, ctx: RequestContext): 
   if (matchActor(ctx, effectiveReviewerId)) {
     return;
   }
-  throw new AppError("RD_ACCEPT_FORBIDDEN", "rd item accept forbidden", 403);
+  throw new AppError(ERROR_CODES.RD_ACCEPT_FORBIDDEN, "rd item accept forbidden", 403);
 }

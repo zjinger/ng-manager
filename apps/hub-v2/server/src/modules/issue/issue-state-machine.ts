@@ -1,3 +1,4 @@
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import type { IssueAction, IssueStatus } from "./issue.types";
 
@@ -43,7 +44,7 @@ const transitions: Record<IssueStatus, Partial<Record<IssueAction, IssueStatus>>
 export function transitionIssue(from: IssueStatus, action: IssueAction): IssueStatus {
   const to = transitions[from][action];
   if (!to) {
-    throw new AppError("ISSUE_INVALID_TRANSITION", `cannot ${action} issue from ${from}`, 400);
+    throw new AppError(ERROR_CODES.ISSUE_INVALID_TRANSITION, `cannot ${action} issue from ${from}`, 400);
   }
   return to;
 }

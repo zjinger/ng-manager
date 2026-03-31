@@ -1,6 +1,7 @@
 import type { RequestContext } from "../../../shared/context/request-context";
 import { AppError } from "../../../shared/errors/app-error";
 import type { EventBus } from "../../../shared/event/event-bus";
+import { ERROR_CODES } from "../../../shared/errors/error-codes";
 import { genId } from "../../../shared/utils/id";
 import { nowIso } from "../../../shared/utils/time";
 import type { ProjectAccessContract } from "../../project/project-access.contract";
@@ -29,7 +30,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
     const member = await this.projectAccess.requireProjectMember(issue.projectId, input.userId.trim(), "add issue participant");
 
     if (this.participantRepo.exists(issue.id, member.userId)) {
-      throw new AppError("ISSUE_PARTICIPANT_EXISTS", "participant already exists", 409);
+      throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_EXISTS, "participant already exists", 409);
     }
 
     const entity: IssueParticipantEntity = {
@@ -72,12 +73,12 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
     requireIssueParticipantManageAccess(issue, ctx, await this.isProjectAdmin(issue.projectId, ctx));
     const participant = this.participantRepo.findById(issue.id, participantId);
     if (!participant) {
-      throw new AppError("ISSUE_PARTICIPANT_NOT_FOUND", `participant not found: ${participantId}`, 404);
+      throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_NOT_FOUND, `participant not found: ${participantId}`, 404);
     }
 
     const deleted = this.participantRepo.delete(issue.id, participantId);
     if (!deleted) {
-      throw new AppError("ISSUE_PARTICIPANT_DELETE_FAILED", "failed to delete participant", 500);
+      throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_DELETE_FAILED, "failed to delete participant", 500);
     }
 
     const now = nowIso();
@@ -105,7 +106,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
   private requireIssue(issueId: string) {
     const issue = this.issueRepo.findById(issueId);
     if (!issue) {
-      throw new AppError("ISSUE_NOT_FOUND", `issue not found: ${issueId}`, 404);
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, `issue not found: ${issueId}`, 404);
     }
     return issue;
   }

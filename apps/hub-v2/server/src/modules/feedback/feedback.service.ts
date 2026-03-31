@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
@@ -50,7 +51,7 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
     if (query.projectId?.trim()) {
       const project = this.assertProjectIdExists(query.projectId.trim());
       if (!project) {
-        throw new AppError("PROJECT_NOT_FOUND", `project not found: ${query.projectId}`, 400);
+        throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${query.projectId}`, 400);
       }
       if (ctx.roles.includes("admin")) {
         return this.repo.list({ ...query, projectId: undefined, projectKey: project.projectKey });
@@ -69,7 +70,7 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
     if (query.projectKey?.trim()) {
       const project = this.assertProjectKeyExists(query.projectKey.trim());
       if (!project) {
-        throw new AppError("PROJECT_NOT_FOUND", `project not found: ${query.projectKey}`, 400);
+        throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${query.projectKey}`, 400);
       }
       await this.projectAccess.requireProjectAccess(project.id, ctx, "list feedbacks");
       return this.repo.list({ ...query, projectKey: project.projectKey });
@@ -93,7 +94,7 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
   async getById(id: string, ctx: RequestContext): Promise<FeedbackEntity> {
     const feedback = this.repo.findById(id);
     if (!feedback) {
-      throw new AppError("FEEDBACK_NOT_FOUND", `feedback not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.FEEDBACK_NOT_FOUND, `feedback not found: ${id}`, 404);
     }
     await this.ensureFeedbackAccess(feedback, ctx, "get feedback");
     return feedback;
@@ -102,14 +103,14 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
   async changeStatus(id: string, input: UpdateFeedbackStatusInput, ctx: RequestContext): Promise<FeedbackEntity> {
     const exists = this.repo.findById(id);
     if (!exists) {
-      throw new AppError("FEEDBACK_NOT_FOUND", `feedback not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.FEEDBACK_NOT_FOUND, `feedback not found: ${id}`, 404);
     }
     await this.ensureFeedbackAccess(exists, ctx, "change feedback status");
     await this.ensureFeedbackStatusManagePermission(exists, ctx);
 
     const updated = this.repo.updateStatus(id, input, nowIso());
     if (!updated) {
-      throw new AppError("FEEDBACK_STATUS_UPDATE_FAILED", "failed to update feedback status", 500);
+      throw new AppError(ERROR_CODES.FEEDBACK_STATUS_UPDATE_FAILED, "failed to update feedback status", 500);
     }
 
     return (this.repo.findById(id) as FeedbackEntity);
@@ -121,10 +122,10 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
     }
     const project = this.projectRepo.findByKey(projectKey.trim());
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectKey}`, 400);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectKey}`, 400);
     }
     if (project.status !== "active") {
-      throw new AppError("PROJECT_INACTIVE", `project is not active: ${projectKey}`, 400);
+      throw new AppError(ERROR_CODES.PROJECT_INACTIVE, `project is not active: ${projectKey}`, 400);
     }
     return project;
   }
@@ -135,10 +136,10 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
     }
     const project = this.projectRepo.findById(projectId.trim());
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 400);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 400);
     }
     if (project.status !== "active") {
-      throw new AppError("PROJECT_INACTIVE", `project is not active: ${projectId}`, 400);
+      throw new AppError(ERROR_CODES.PROJECT_INACTIVE, `project is not active: ${projectId}`, 400);
     }
     return project;
   }
@@ -149,11 +150,11 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
     }
 
     if (!feedback.projectKey) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
     }
     const project = this.assertProjectKeyExists(feedback.projectKey);
     if (!project) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
     }
     await this.projectAccess.requireProjectAccess(project.id, ctx, action);
   }
@@ -164,23 +165,23 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
     }
 
     if (!feedback.projectKey) {
-      throw new AppError("PROJECT_ACCESS_DENIED", "change feedback status forbidden", 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "change feedback status forbidden", 403);
     }
 
     const project = this.assertProjectKeyExists(feedback.projectKey);
     if (!project) {
-      throw new AppError("PROJECT_ACCESS_DENIED", "change feedback status forbidden", 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "change feedback status forbidden", 403);
     }
 
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("PROJECT_ACCESS_DENIED", "change feedback status forbidden", 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "change feedback status forbidden", 403);
     }
 
     const member = await this.projectAccess.requireProjectMember(project.id, userId, "change feedback status");
     const canManage = member.isOwner || member.roleCode === "project_admin";
     if (!canManage) {
-      throw new AppError("PROJECT_ACCESS_DENIED", "change feedback status forbidden", 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "change feedback status forbidden", 403);
     }
   }
 }

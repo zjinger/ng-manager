@@ -1,6 +1,7 @@
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
 import type { EventBus } from "../../shared/event/event-bus";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ProjectAccessContract } from "../project/project-access.contract";
@@ -123,7 +124,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     });
 
     if (!updated) {
-      throw new AppError("ISSUE_UPDATE_FAILED", "failed to update issue", 500);
+      throw new AppError(ERROR_CODES.ISSUE_UPDATE_FAILED, "failed to update issue", 500);
     }
 
     const entity = this.requireById(id);
@@ -157,7 +158,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
 
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("ISSUE_CLAIM_FORBIDDEN", "issue claim forbidden", 403);
+      throw new AppError(ERROR_CODES.ISSUE_CLAIM_FORBIDDEN, "issue claim forbidden", 403);
     }
     const member = await this.projectAccess.requireProjectMember(current.projectId, userId, "claim issue");
 
@@ -345,7 +346,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   private requireById(id: string): IssueEntity {
     const entity = this.repo.findById(id);
     if (!entity) {
-      throw new AppError("ISSUE_NOT_FOUND", `issue not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, `issue not found: ${id}`, 404);
     }
     return entity;
   }
@@ -399,7 +400,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     });
 
     if (!updated) {
-      throw new AppError("ISSUE_ACTION_FAILED", `failed to ${action} issue`, 500);
+      throw new AppError(ERROR_CODES.ISSUE_ACTION_FAILED, `failed to ${action} issue`, 500);
     }
 
     const entity = this.requireById(id);

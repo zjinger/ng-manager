@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import { customAlphabet } from "nanoid";
 import { pinyin } from "pinyin-pro";
@@ -41,17 +42,17 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   async create(input: CreateProjectInput, ctx: RequestContext): Promise<ProjectEntity> {
     const creatorId = ctx.userId?.trim();
     if (!creatorId) {
-      throw new AppError("PROJECT_CREATE_FORBIDDEN", "create project forbidden", 403);
+      throw new AppError(ERROR_CODES.PROJECT_CREATE_FORBIDDEN, "create project forbidden", 403);
     }
 
     const creator = this.userRepo.findById(creatorId);
     if (!creator) {
-      throw new AppError("USER_NOT_FOUND", `user not found: ${creatorId}`, 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${creatorId}`, 404);
     }
 
     const projectName = input.name.trim();
     if (!projectName) {
-      throw new AppError("PROJECT_NAME_REQUIRED", "project name is required", 400);
+      throw new AppError(ERROR_CODES.PROJECT_NAME_REQUIRED, "project name is required", 400);
     }
     const projectKey = this.generateUniqueProjectKey();
 
@@ -95,7 +96,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     await this.requireProjectMaintainer(projectId, ctx, "update project");
     const current = this.repo.findById(projectId);
     if (!current) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
 
     const patch: UpdateProjectInput & { updatedAt: string } = {
@@ -117,7 +118,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     try {
       const changed = this.repo.update(projectId, patch);
       if (!changed) {
-        throw new AppError("PROJECT_UPDATE_FAILED", "failed to update project", 500);
+        throw new AppError(ERROR_CODES.PROJECT_UPDATE_FAILED, "failed to update project", 500);
       }
     } catch (error) {
       this.handleSqliteError(error);
@@ -125,7 +126,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const next = this.repo.findById(projectId);
     if (!next) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
     return next;
   }
@@ -160,7 +161,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   async getById(projectId: string, ctx: RequestContext): Promise<ProjectEntity> {
     const project = this.repo.findById(projectId);
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
 
     await this.access.requireProjectAccess(projectId, ctx, "get project");
@@ -181,19 +182,19 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     await this.requireProjectMaintainer(projectId, ctx, "add project member");
     const project = this.repo.findById(projectId);
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
 
     const user = this.userRepo.findById(input.userId.trim());
     if (!user) {
-      throw new AppError("USER_NOT_FOUND", `user not found: ${input.userId}`, 404);
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${input.userId}`, 404);
     }
 
     if (this.repo.hasMember(project.id, user.id)) {
-      throw new AppError("PROJECT_MEMBER_EXISTS", "project member already exists", 409);
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_EXISTS, "project member already exists", 409);
     }
     if (input.isOwner === true) {
-      throw new AppError("PROJECT_OWNER_IMMUTABLE", "owner is unique and cannot be reassigned", 400);
+      throw new AppError(ERROR_CODES.PROJECT_OWNER_IMMUTABLE, "owner is unique and cannot be reassigned", 400);
     }
 
     const now = nowIso();
@@ -222,20 +223,20 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     await this.requireProjectMaintainer(projectId, ctx, "update project member");
     const project = this.repo.findById(projectId);
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
 
     const current = this.repo.findMemberById(projectId, memberId);
     if (!current) {
-      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `project member not found: ${memberId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, `project member not found: ${memberId}`, 404);
     }
 
     if (input.isOwner !== undefined && input.isOwner !== current.isOwner) {
-      throw new AppError("PROJECT_OWNER_IMMUTABLE", "owner is fixed to project creator", 400);
+      throw new AppError(ERROR_CODES.PROJECT_OWNER_IMMUTABLE, "owner is fixed to project creator", 400);
     }
 
     if (input.roleCode !== undefined && input.roleCode !== "project_admin") {
-      throw new AppError("PROJECT_MEMBER_ROLE_UNSUPPORTED", "only promote-to-project-admin is supported", 400);
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_ROLE_UNSUPPORTED, "only promote-to-project-admin is supported", 400);
     }
 
     const changed = this.repo.updateMember(projectId, memberId, {
@@ -249,7 +250,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const next = this.repo.findMemberById(projectId, memberId);
     if (!next) {
-      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `project member not found: ${memberId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, `project member not found: ${memberId}`, 404);
     }
     return next;
   }
@@ -258,19 +259,19 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     await this.requireProjectMaintainer(projectId, ctx, "remove project member");
     const project = this.repo.findById(projectId);
     if (!project) {
-      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
 
     const member = this.repo.findMemberById(projectId, memberId);
     if (!member) {
-      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `project member not found: ${memberId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, `project member not found: ${memberId}`, 404);
     }
     if (member.isOwner) {
-      throw new AppError("PROJECT_OWNER_IMMUTABLE", "project owner cannot be removed", 400);
+      throw new AppError(ERROR_CODES.PROJECT_OWNER_IMMUTABLE, "project owner cannot be removed", 400);
     }
 
     if (!this.repo.deleteMember(projectId, memberId)) {
-      throw new AppError("PROJECT_MEMBER_DELETE_FAILED", "failed to remove project member", 500);
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_DELETE_FAILED, "failed to remove project member", 500);
     }
   }
 
@@ -319,7 +320,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       updatedAt: nowIso()
     });
     if (!changed) {
-      throw new AppError("PROJECT_MODULE_NOT_FOUND", `module not found: ${moduleId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_NOT_FOUND, `module not found: ${moduleId}`, 404);
     }
     return this.findConfigById(this.repo.listModules(projectId), moduleId, "PROJECT_MODULE_NOT_FOUND");
   }
@@ -327,7 +328,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   async removeModule(projectId: string, moduleId: string, ctx: RequestContext): Promise<void> {
     await this.requireProjectMaintainer(projectId, ctx, "remove project module");
     if (!this.repo.removeModule(projectId, moduleId)) {
-      throw new AppError("PROJECT_MODULE_NOT_FOUND", `module not found: ${moduleId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_NOT_FOUND, `module not found: ${moduleId}`, 404);
     }
   }
 
@@ -378,7 +379,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       updatedAt: nowIso()
     });
     if (!changed) {
-      throw new AppError("PROJECT_ENVIRONMENT_NOT_FOUND", `environment not found: ${environmentId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_ENVIRONMENT_NOT_FOUND, `environment not found: ${environmentId}`, 404);
     }
     return this.findConfigById(this.repo.listEnvironments(projectId), environmentId, "PROJECT_ENVIRONMENT_NOT_FOUND");
   }
@@ -386,7 +387,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   async removeEnvironment(projectId: string, environmentId: string, ctx: RequestContext): Promise<void> {
     await this.requireProjectMaintainer(projectId, ctx, "remove project environment");
     if (!this.repo.removeEnvironment(projectId, environmentId)) {
-      throw new AppError("PROJECT_ENVIRONMENT_NOT_FOUND", `environment not found: ${environmentId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_ENVIRONMENT_NOT_FOUND, `environment not found: ${environmentId}`, 404);
     }
   }
 
@@ -435,7 +436,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       updatedAt: nowIso()
     });
     if (!changed) {
-      throw new AppError("PROJECT_VERSION_NOT_FOUND", `version not found: ${versionId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_VERSION_NOT_FOUND, `version not found: ${versionId}`, 404);
     }
     return this.findVersionById(this.repo.listVersions(projectId), versionId, "PROJECT_VERSION_NOT_FOUND");
   }
@@ -443,7 +444,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   async removeVersion(projectId: string, versionId: string, ctx: RequestContext): Promise<void> {
     await this.requireProjectMaintainer(projectId, ctx, "remove project version");
     if (!this.repo.removeVersion(projectId, versionId)) {
-      throw new AppError("PROJECT_VERSION_NOT_FOUND", `version not found: ${versionId}`, 404);
+      throw new AppError(ERROR_CODES.PROJECT_VERSION_NOT_FOUND, `version not found: ${versionId}`, 404);
     }
   }
 
@@ -454,20 +455,20 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const userId = ctx.userId?.trim();
     if (!userId) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
     }
 
     let member: ProjectMemberEntity;
     try {
       member = await this.access.requireProjectMember(projectId, userId, action);
     } catch (error) {
-      if (error instanceof AppError && error.code === "PROJECT_MEMBER_NOT_FOUND") {
-        throw new AppError("PROJECT_ACCESS_DENIED", "无权限执行该操作，需要项目管理员权限", 403);
+      if (error instanceof AppError && error.code === ERROR_CODES.PROJECT_MEMBER_NOT_FOUND) {
+        throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限执行该操作，需要项目管理员权限", 403);
       }
       throw error;
     }
     if (member.roleCode !== "project_admin" && !member.isOwner) {
-      throw new AppError("PROJECT_ACCESS_DENIED", "无权限执行该操作，需要项目管理员权限", 403);
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限执行该操作，需要项目管理员权限", 403);
     }
   }
 
@@ -480,7 +481,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       }
       attempt += 1;
     }
-    throw new AppError("PROJECT_KEY_GENERATE_FAILED", "failed to generate unique project key", 500);
+    throw new AppError(ERROR_CODES.PROJECT_KEY_GENERATE_FAILED, "failed to generate unique project key", 500);
   }
 
   private normalizeDisplayCode(value: string | null | undefined, projectName: string): string | null {
@@ -520,7 +521,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         return null;
       }
       if (this.repo.findByDisplayCode(normalized)) {
-        throw new AppError("PROJECT_DISPLAY_CODE_CONFLICT", `项目标识已存在：${normalized}`, 409);
+        throw new AppError(ERROR_CODES.PROJECT_DISPLAY_CODE_CONFLICT, `项目标识已存在：${normalized}`, 409);
       }
       return normalized;
     }
@@ -544,7 +545,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       }
       const hit = this.repo.findByDisplayCode(normalized);
       if (hit && hit.id !== projectId) {
-        throw new AppError("PROJECT_DISPLAY_CODE_CONFLICT", `项目标识已存在：${normalized}`, 409);
+        throw new AppError(ERROR_CODES.PROJECT_DISPLAY_CODE_CONFLICT, `项目标识已存在：${normalized}`, 409);
       }
       return normalized;
     }
@@ -563,7 +564,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         return candidate;
       }
     }
-    throw new AppError("PROJECT_DISPLAY_CODE_GENERATE_FAILED", "failed to generate unique displayCode", 500);
+    throw new AppError(ERROR_CODES.PROJECT_DISPLAY_CODE_GENERATE_FAILED, "failed to generate unique displayCode", 500);
   }
 
   private buildAutoDisplayCodeCandidates(base: string, seed: string): string[] {
@@ -657,7 +658,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       throw error;
     }
     if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
-      throw new AppError("PROJECT_CONFLICT", "resource already exists", 409);
+      throw new AppError(ERROR_CODES.PROJECT_CONFLICT, "resource already exists", 409);
     }
     throw error;
   }

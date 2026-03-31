@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import type { EventBus } from "../../shared/event/event-bus";
 import { genId } from "../../shared/utils/id";
@@ -68,7 +69,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
     });
 
     if (!updated) {
-      throw new AppError("RELEASE_UPDATE_FAILED", "failed to update release", 500);
+      throw new AppError(ERROR_CODES.RELEASE_UPDATE_FAILED, "failed to update release", 500);
     }
 
     const entity = this.requireById(id);
@@ -105,7 +106,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
     });
 
     if (!updated) {
-      throw new AppError("RELEASE_PUBLISH_FAILED", "failed to publish release", 500);
+      throw new AppError(ERROR_CODES.RELEASE_PUBLISH_FAILED, "failed to publish release", 500);
     }
 
     const entity = this.requireById(id);
@@ -143,7 +144,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
     });
 
     if (!updated) {
-      throw new AppError("RELEASE_ARCHIVE_FAILED", "failed to archive release", 500);
+      throw new AppError(ERROR_CODES.RELEASE_ARCHIVE_FAILED, "failed to archive release", 500);
     }
 
     const entity = this.requireById(id);
@@ -207,7 +208,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
   private requireById(id: string): ReleaseEntity {
     const entity = this.repo.findById(id);
     if (!entity) {
-      throw new AppError("RELEASE_NOT_FOUND", `release not found: ${id}`, 404);
+      throw new AppError(ERROR_CODES.RELEASE_NOT_FOUND, `release not found: ${id}`, 404);
     }
     return entity;
   }

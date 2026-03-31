@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { requirePersonalTokenAuth } from "../../shared/auth/require-personal-token-auth";
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
@@ -94,6 +95,6 @@ async function assertIssueProjectAccess(app: FastifyInstance, projectKey: string
   const projectId = app.container.personalTokenQuery.resolveProjectId(projectKey);
   const issue = await app.container.issueQuery.getById(issueId, ctx);
   if (issue.projectId !== projectId) {
-    throw new AppError("ISSUE_NOT_FOUND", "issue not found", 404);
+    throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
   }
 }
