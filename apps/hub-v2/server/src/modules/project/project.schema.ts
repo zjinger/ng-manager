@@ -32,7 +32,8 @@ export const listProjectsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),
   keyword: z.string().trim().optional(),
-  status: z.enum(["active", "inactive"]).optional()
+  status: z.enum(["active", "inactive"]).optional(),
+  scope: z.enum(["all_accessible", "member_only"]).optional()
 });
 
 export const addProjectMemberSchema = z.object({

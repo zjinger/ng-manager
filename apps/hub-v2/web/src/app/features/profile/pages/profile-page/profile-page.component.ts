@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthStore } from '@core/auth';
+import { ProjectContextStore, type ProjectScopeMode } from '@core/state';
 import { PageHeaderComponent } from '@shared/ui';
 import { ProfileBasicFormComponent } from '../../components/profile-basic-form/profile-basic-form.component';
 import { ProfileHeroComponent } from '../../components/profile-hero/profile-hero.component';
@@ -11,11 +12,12 @@ import {
 } from '../../components/profile-notification-settings/profile-notification-settings.component';
 import { ProfilePasswordFormComponent } from '../../components/profile-password-form/profile-password-form.component';
 import { ProfilePersonalTokenComponent } from '../../components/profile-personal-token/profile-personal-token.component';
+import { ProfileProjectVisibilitySettingsComponent } from '../../components/profile-project-visibility-settings/profile-project-visibility-settings.component';
 import { ProfileTabsComponent } from '../../components/profile-tabs/profile-tabs.component';
 import type { ChangePasswordInput, ProfileNotificationPrefs } from '../../models/profile.model';
 import { ProfileApiService } from '../../services/profile-api.service';
 
-type ProfileTab = 'basic' | 'security' | 'notifications' | 'tokens';
+type ProfileTab = 'basic' | 'security' | 'notifications' | 'project-visibility' | 'tokens';
 
 @Component({
   selector: 'app-profile-page',
@@ -27,6 +29,7 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'tokens';
     ProfileBasicFormComponent,
     ProfilePasswordFormComponent,
     ProfileNotificationSettingsComponent,
+    ProfileProjectVisibilitySettingsComponent,
     ProfilePersonalTokenComponent,
   ],
   template: `
@@ -78,6 +81,21 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'tokens';
       @case ('tokens') {
         <app-profile-personal-token />
       }
+
+      @case ('project-visibility') {
+        <app-profile-project-visibility-settings
+          [mode]="projectScopeMode()"
+          [includeArchivedProjects]="includeArchivedProjects()"
+          [editable]="projectScopeEditing()"
+          [dirty]="projectScopeDirty()"
+          [saving]="projectScopeSaving()"
+          (modeChange)="changeProjectScopeMode($event)"
+          (includeArchivedProjectsChange)="changeIncludeArchivedProjects($event)"
+          (edit)="startEditProjectScope()"
+          (save)="saveProjectScope()"
+          (cancel)="cancelEditProjectScope()"
+        />
+      }
     }
   `,
   styles: [
@@ -102,6 +120,7 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'tokens';
 export class ProfilePageComponent {
   readonly authStore = inject(AuthStore);
   private readonly profileApi = inject(ProfileApiService);
+  private readonly projectContext = inject(ProjectContextStore);
   private readonly message = inject(NzMessageService);
 
   readonly activeTab = signal<ProfileTab>('basic');
@@ -109,13 +128,19 @@ export class ProfilePageComponent {
   readonly prefsSaving = signal(false);
   readonly prefsEditing = signal(false);
   readonly prefsDirty = signal(false);
+  readonly projectScopeEditing = signal(false);
+  readonly projectScopeSaving = signal(false);
+  readonly projectScopeDirty = signal(false);
   readonly submittedVersion = signal(0);
   readonly savedPrefs = signal<ProfileNotificationPrefs | null>(null);
+  readonly projectScopeMode = signal<ProjectScopeMode>('all_accessible');
+  readonly includeArchivedProjects = signal(false);
 
   readonly tabs = [
     { id: 'basic', label: '基本信息', icon: 'user' },
     { id: 'security', label: '账号安全', icon: 'lock' },
     { id: 'notifications', label: '通知偏好', icon: 'bell' },
+    { id: 'project-visibility', label: '项目显示范围', icon: 'appstore' },
     { id: 'tokens', label: 'API Token', icon: 'key' },
   ];
 
@@ -209,12 +234,75 @@ export class ProfilePageComponent {
     this.prefsEditing.set(false);
   }
 
+  startEditProjectScope(): void {
+    this.projectScopeEditing.set(true);
+  }
+
+  cancelEditProjectScope(): void {
+    const saved = this.savedPrefs();
+    if (saved) {
+      this.projectScopeMode.set(saved.projectScopeMode ?? 'all_accessible');
+      this.includeArchivedProjects.set(!!saved.includeArchivedProjects);
+    }
+    this.projectScopeDirty.set(false);
+    this.projectScopeEditing.set(false);
+  }
+
+  changeProjectScopeMode(mode: ProjectScopeMode): void {
+    if (!this.projectScopeEditing() || this.projectScopeSaving()) {
+      return;
+    }
+    this.projectScopeMode.set(mode);
+    this.updateProjectScopeDirty();
+  }
+
+  changeIncludeArchivedProjects(enabled: boolean): void {
+    if (!this.projectScopeEditing() || this.projectScopeSaving()) {
+      return;
+    }
+    this.includeArchivedProjects.set(enabled);
+    this.updateProjectScopeDirty();
+  }
+
+  saveProjectScope(): void {
+    if (!this.projectScopeEditing() || !this.projectScopeDirty() || this.projectScopeSaving()) {
+      return;
+    }
+    this.projectScopeSaving.set(true);
+    const saved = this.savedPrefs();
+    const payload: ProfileNotificationPrefs = {
+      channels: saved?.channels ?? Object.fromEntries(this.channelPrefs().map((item) => [item.id, item.enabled])),
+      events: saved?.events ?? Object.fromEntries(this.eventPrefs().map((item) => [item.id, item.enabled])),
+      projectScopeMode: this.projectScopeMode(),
+      includeArchivedProjects: this.includeArchivedProjects(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.profileApi.saveNotificationPrefs(payload).subscribe({
+      next: (saved) => {
+        this.projectScopeSaving.set(false);
+        this.savedPrefs.set(saved);
+        this.applyNotificationPrefs(saved);
+        this.projectScopeMode.set(saved.projectScopeMode ?? 'all_accessible');
+        this.includeArchivedProjects.set(!!saved.includeArchivedProjects);
+        this.projectScopeDirty.set(false);
+        this.projectScopeEditing.set(false);
+        this.projectContext.setProjectScopeMode(saved.projectScopeMode ?? 'all_accessible');
+        this.projectContext.refreshIncludeArchivedProjects(!!saved.includeArchivedProjects).subscribe();
+        this.message.success('项目显示范围已保存');
+      },
+      error: () => {
+        this.projectScopeSaving.set(false);
+        this.message.error('项目显示范围保存失败');
+      },
+    });
+  }
+
   saveNotificationPrefs(): void {
     if (!this.prefsEditing() || !this.prefsDirty() || this.prefsSaving()) {
       return;
     }
     this.prefsSaving.set(true);
-    const payload = this.currentPrefsPayload();
+    const payload = this.currentPrefsPayload(this.savedPrefs()?.projectScopeMode ?? this.projectScopeMode());
     this.profileApi.saveNotificationPrefs(payload).subscribe({
       next: (saved) => {
         this.prefsSaving.set(false);
@@ -269,6 +357,8 @@ export class ProfilePageComponent {
         this.applyNotificationPrefs(prefs);
         this.prefsDirty.set(false);
         this.prefsEditing.set(false);
+        this.projectScopeDirty.set(false);
+        this.projectScopeEditing.set(false);
       },
       error: () => {
         // keep defaults
@@ -276,10 +366,12 @@ export class ProfilePageComponent {
     });
   }
 
-  private currentPrefsPayload(): ProfileNotificationPrefs {
+  private currentPrefsPayload(projectScopeMode: ProjectScopeMode): ProfileNotificationPrefs {
     return {
       channels: Object.fromEntries(this.channelPrefs().map((item) => [item.id, item.enabled])),
       events: Object.fromEntries(this.eventPrefs().map((item) => [item.id, item.enabled])),
+      projectScopeMode,
+      includeArchivedProjects: this.includeArchivedProjects(),
       updatedAt: new Date().toISOString(),
     };
   }
@@ -287,6 +379,8 @@ export class ProfilePageComponent {
   private applyNotificationPrefs(prefs: ProfileNotificationPrefs): void {
     this.channelPrefs.update((items) => items.map((item) => ({ ...item, enabled: prefs.channels[item.id] ?? item.enabled })));
     this.eventPrefs.update((items) => items.map((item) => ({ ...item, enabled: prefs.events[item.id] ?? item.enabled })));
+    this.projectScopeMode.set(prefs.projectScopeMode ?? 'all_accessible');
+    this.includeArchivedProjects.set(!!prefs.includeArchivedProjects);
   }
 
   private updatePrefsDirty(): void {
@@ -295,9 +389,16 @@ export class ProfilePageComponent {
       this.prefsDirty.set(true);
       return;
     }
-    const current = this.currentPrefsPayload();
+    const current = this.currentPrefsPayload(saved.projectScopeMode ?? this.projectScopeMode());
     const sameChannels = JSON.stringify(current.channels) === JSON.stringify(saved.channels);
     const sameEvents = JSON.stringify(current.events) === JSON.stringify(saved.events);
     this.prefsDirty.set(!(sameChannels && sameEvents));
+  }
+
+  private updateProjectScopeDirty(): void {
+    const saved = this.savedPrefs();
+    const sameScope = (saved?.projectScopeMode ?? 'all_accessible') === this.projectScopeMode();
+    const sameArchivedFlag = !!saved?.includeArchivedProjects === this.includeArchivedProjects();
+    this.projectScopeDirty.set(!(sameScope && sameArchivedFlag));
   }
 }

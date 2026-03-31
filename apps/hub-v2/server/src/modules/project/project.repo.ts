@@ -208,7 +208,8 @@ export class ProjectRepo {
 
   listAccessibleByUserId(userId: string, query: ListProjectsQuery): ProjectListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = ["(pm.user_id = ? OR p.visibility = 'internal')"];
+    const conditions: string[] =
+      query.scope === "member_only" ? ["pm.user_id = ?"] : ["(pm.user_id = ? OR p.visibility = 'internal')"];
     const params: unknown[] = [userId];
 
     if (query.status) {

@@ -13,6 +13,8 @@ export interface ProfileViewModel {
 export interface ProfileNotificationPrefs {
   channels: Record<string, boolean>;
   events: Record<string, boolean>;
+  projectScopeMode: 'all_accessible' | 'member_only';
+  includeArchivedProjects: boolean;
   updatedAt: string;
 }
 

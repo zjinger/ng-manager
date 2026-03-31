@@ -10,5 +10,7 @@ export const listProfileActivitiesQuerySchema = z.object({
 
 export const updateProfileNotificationPrefsSchema = z.object({
   channels: boolMapSchema,
-  events: boolMapSchema
+  events: boolMapSchema,
+  projectScopeMode: z.enum(["all_accessible", "member_only"]).optional(),
+  includeArchivedProjects: z.boolean().optional()
 });

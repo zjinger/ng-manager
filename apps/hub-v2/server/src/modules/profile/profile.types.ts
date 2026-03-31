@@ -1,6 +1,10 @@
+export type ProjectScopeMode = "all_accessible" | "member_only";
+
 export interface ProfileNotificationPrefs {
   channels: Record<string, boolean>;
   events: Record<string, boolean>;
+  projectScopeMode: ProjectScopeMode;
+  includeArchivedProjects: boolean;
   updatedAt: string;
 }
 
@@ -26,4 +30,6 @@ export interface ListProfileActivitiesQuery {
 export interface UpdateProfileNotificationPrefsInput {
   channels: Record<string, boolean>;
   events: Record<string, boolean>;
+  projectScopeMode?: ProjectScopeMode;
+  includeArchivedProjects?: boolean;
 }

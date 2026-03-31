@@ -29,7 +29,7 @@ export class AppShellComponent implements OnDestroy {
     this.realtimeSync.start();
 
     this.projectContext
-      .loadProjects()
+      .loadProjects({ refreshScope: true })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe();
 

@@ -63,6 +63,7 @@ export interface ListProjectsQuery {
   pageSize?: number;
   keyword?: string;
   status?: ProjectStatus;
+  scope?: "all_accessible" | "member_only";
 }
 
 export interface AddProjectMemberInput {

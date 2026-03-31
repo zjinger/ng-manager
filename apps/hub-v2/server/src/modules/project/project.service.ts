@@ -136,11 +136,15 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   }
 
   async listAccessible(query: ListProjectsQuery, ctx: RequestContext): Promise<ProjectListResult> {
+    const userId = ctx.userId?.trim();
+
     if (ctx.roles.includes("admin")) {
+      if (query.scope === "member_only" && userId) {
+        return this.repo.listAccessibleByUserId(userId, query);
+      }
       return this.repo.list(query);
     }
 
-    const userId = ctx.userId?.trim();
     if (!userId) {
       return {
         items: [],

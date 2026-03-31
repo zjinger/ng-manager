@@ -38,7 +38,7 @@ export class LoginPageComponent {
 
     this.authService.login(this.form.getRawValue()).subscribe({
       next: () => {
-        this.projectContext.loadProjects().subscribe({
+        this.projectContext.loadProjects({ refreshScope: true }).subscribe({
           next: () => void this.router.navigateByUrl('/dashboard'),
         });
       },

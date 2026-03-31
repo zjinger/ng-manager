@@ -5,6 +5,8 @@ type ProfilePrefsRow = {
   account_id: string;
   channels_json: string;
   events_json: string;
+  project_scope_mode?: "all_accessible" | "member_only";
+  include_archived_projects?: number;
   updated_at: string;
 };
 
@@ -33,13 +35,21 @@ type RdActivityRow = {
 };
 
 export class ProfileRepo {
-  constructor(private readonly db: Database.Database) {}
+  private readonly hasProjectScopeModeColumn: boolean;
+  private readonly hasIncludeArchivedProjectsColumn: boolean;
+
+  constructor(private readonly db: Database.Database) {
+    this.hasProjectScopeModeColumn = this.detectProjectScopeModeColumn();
+    this.hasIncludeArchivedProjectsColumn = this.detectIncludeArchivedProjectsColumn();
+  }
 
   getNotificationPrefs(accountId: string): ProfileNotificationPrefs | null {
     const row = this.db
       .prepare(
         `
           SELECT account_id, channels_json, events_json, updated_at
+          ${this.hasProjectScopeModeColumn ? ", project_scope_mode" : ""}
+          ${this.hasIncludeArchivedProjectsColumn ? ", include_archived_projects" : ""}
           FROM profile_notification_prefs
           WHERE account_id = ?
           LIMIT 1
@@ -54,6 +64,8 @@ export class ProfileRepo {
     return {
       channels: this.parseBooleanMap(row.channels_json),
       events: this.parseBooleanMap(row.events_json),
+      projectScopeMode: row.project_scope_mode ?? "all_accessible",
+      includeArchivedProjects: (row.include_archived_projects ?? 0) === 1,
       updatedAt: row.updated_at
     };
   }
@@ -64,31 +76,102 @@ export class ProfileRepo {
       .get(accountId) as { ok: number } | undefined;
     const channelsJson = JSON.stringify(input.channels);
     const eventsJson = JSON.stringify(input.events);
+    const projectScopeMode = input.projectScopeMode ?? "all_accessible";
+    const includeArchivedProjects = input.includeArchivedProjects ? 1 : 0;
 
     if (exists) {
-      this.db
-        .prepare(
-          `
-            UPDATE profile_notification_prefs
-            SET channels_json = ?, events_json = ?, updated_at = ?
-            WHERE account_id = ?
-          `
-        )
-        .run(channelsJson, eventsJson, now, accountId);
+      if (this.hasProjectScopeModeColumn && this.hasIncludeArchivedProjectsColumn) {
+        this.db
+          .prepare(
+            `
+              UPDATE profile_notification_prefs
+              SET channels_json = ?, events_json = ?, project_scope_mode = ?, include_archived_projects = ?, updated_at = ?
+              WHERE account_id = ?
+            `
+          )
+          .run(channelsJson, eventsJson, projectScopeMode, includeArchivedProjects, now, accountId);
+      } else if (this.hasProjectScopeModeColumn) {
+        this.db
+          .prepare(
+            `
+              UPDATE profile_notification_prefs
+              SET channels_json = ?, events_json = ?, project_scope_mode = ?, updated_at = ?
+              WHERE account_id = ?
+            `
+          )
+          .run(channelsJson, eventsJson, projectScopeMode, now, accountId);
+      } else if (this.hasIncludeArchivedProjectsColumn) {
+        this.db
+          .prepare(
+            `
+              UPDATE profile_notification_prefs
+              SET channels_json = ?, events_json = ?, include_archived_projects = ?, updated_at = ?
+              WHERE account_id = ?
+            `
+          )
+          .run(channelsJson, eventsJson, includeArchivedProjects, now, accountId);
+      } else {
+        this.db
+          .prepare(
+            `
+              UPDATE profile_notification_prefs
+              SET channels_json = ?, events_json = ?, updated_at = ?
+              WHERE account_id = ?
+            `
+          )
+          .run(channelsJson, eventsJson, now, accountId);
+      }
     } else {
-      this.db
-        .prepare(
-          `
-            INSERT INTO profile_notification_prefs (account_id, channels_json, events_json, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-          `
-        )
-        .run(accountId, channelsJson, eventsJson, now, now);
+      if (this.hasProjectScopeModeColumn && this.hasIncludeArchivedProjectsColumn) {
+        this.db
+          .prepare(
+            `
+              INSERT INTO profile_notification_prefs (
+                account_id, channels_json, events_json, project_scope_mode, include_archived_projects, created_at, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(accountId, channelsJson, eventsJson, projectScopeMode, includeArchivedProjects, now, now);
+      } else if (this.hasProjectScopeModeColumn) {
+        this.db
+          .prepare(
+            `
+              INSERT INTO profile_notification_prefs (
+                account_id, channels_json, events_json, project_scope_mode, created_at, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(accountId, channelsJson, eventsJson, projectScopeMode, now, now);
+      } else if (this.hasIncludeArchivedProjectsColumn) {
+        this.db
+          .prepare(
+            `
+              INSERT INTO profile_notification_prefs (
+                account_id, channels_json, events_json, include_archived_projects, created_at, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(accountId, channelsJson, eventsJson, includeArchivedProjects, now, now);
+      } else {
+        this.db
+          .prepare(
+            `
+              INSERT INTO profile_notification_prefs (account_id, channels_json, events_json, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?)
+            `
+          )
+          .run(accountId, channelsJson, eventsJson, now, now);
+      }
     }
 
     return {
       channels: input.channels,
       events: input.events,
+      projectScopeMode,
+      includeArchivedProjects: includeArchivedProjects === 1,
       updatedAt: now
     };
   }
@@ -219,5 +302,15 @@ export class ProfileRepo {
     } catch {
       return {};
     }
+  }
+
+  private detectProjectScopeModeColumn(): boolean {
+    const columns = this.db.prepare("PRAGMA table_info(profile_notification_prefs)").all() as Array<{ name: string }>;
+    return columns.some((column) => column.name === "project_scope_mode");
+  }
+
+  private detectIncludeArchivedProjectsColumn(): boolean {
+    const columns = this.db.prepare("PRAGMA table_info(profile_notification_prefs)").all() as Array<{ name: string }>;
+    return columns.some((column) => column.name === "include_archived_projects");
   }
 }

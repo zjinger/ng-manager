@@ -40,8 +40,18 @@ export class ProjectApiService {
     return this.api.get<PageResult<ProjectSummary>>('/projects', query);
   }
 
-  listAccessible() {
-    return this.api.get<PageResult<ProjectSummary>>('/projects').pipe(map((response) => response.items));
+  listAccessible(
+    scope?: 'all_accessible' | 'member_only',
+    options?: { includeArchived?: boolean }
+  ) {
+    const query: Record<string, string> = {};
+    if (!options?.includeArchived) {
+      query['status'] = 'active';
+    }
+    if (scope) {
+      query['scope'] = scope;
+    }
+    return this.api.get<PageResult<ProjectSummary>>('/projects', query).pipe(map((response) => response.items));
   }
 
   create(input: CreateProjectInput) {

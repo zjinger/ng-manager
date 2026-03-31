@@ -26,6 +26,9 @@ const DEFAULT_EVENTS: Record<string, boolean> = {
   project_member_changed: false
 };
 
+const DEFAULT_PROJECT_SCOPE_MODE = "all_accessible" as const;
+const DEFAULT_INCLUDE_ARCHIVED_PROJECTS = false;
+
 const ISSUE_ACTION_LABELS: Record<string, string> = {
   create: "创建",
   update: "更新",
@@ -58,12 +61,16 @@ export class ProfileService implements ProfileQueryContract, ProfileCommandContr
       return {
         channels: { ...DEFAULT_CHANNELS },
         events: { ...DEFAULT_EVENTS },
+        projectScopeMode: DEFAULT_PROJECT_SCOPE_MODE,
+        includeArchivedProjects: DEFAULT_INCLUDE_ARCHIVED_PROJECTS,
         updatedAt: nowIso()
       };
     }
     return {
       channels: this.mergeFlags(DEFAULT_CHANNELS, saved.channels),
       events: this.mergeFlags(DEFAULT_EVENTS, saved.events),
+      projectScopeMode: saved.projectScopeMode ?? DEFAULT_PROJECT_SCOPE_MODE,
+      includeArchivedProjects: saved.includeArchivedProjects ?? DEFAULT_INCLUDE_ARCHIVED_PROJECTS,
       updatedAt: saved.updatedAt
     };
   }
@@ -71,7 +78,9 @@ export class ProfileService implements ProfileQueryContract, ProfileCommandContr
   async updateNotificationPrefs(input: UpdateProfileNotificationPrefsInput, ctx: RequestContext): Promise<ProfileNotificationPrefs> {
     const payload: UpdateProfileNotificationPrefsInput = {
       channels: this.mergeFlags(DEFAULT_CHANNELS, input.channels),
-      events: this.mergeFlags(DEFAULT_EVENTS, input.events)
+      events: this.mergeFlags(DEFAULT_EVENTS, input.events),
+      projectScopeMode: input.projectScopeMode ?? DEFAULT_PROJECT_SCOPE_MODE,
+      includeArchivedProjects: input.includeArchivedProjects ?? DEFAULT_INCLUDE_ARCHIVED_PROJECTS
     };
     return this.repo.saveNotificationPrefs(ctx.accountId, payload, nowIso());
   }

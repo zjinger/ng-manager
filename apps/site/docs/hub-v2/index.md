@@ -41,6 +41,7 @@ features:
 - [12 内网部署与迁移执行](/hub-v2/12-deploy-intranet)：定义 192.168.1.31 的发布步骤、v1->v2 迁移命令、验收和回滚。
 - [13 Token 体系与 webapp 读写接入方案](/hub-v2/13-api-token-integration)：统一 Project Token 与 Personal Token、Issue 与 RD 的读取和写入流程、接口、权限与审计。
 - [14 WS 实时通知机制](/hub-v2/14-ws-realtime-notification)：统一 WS 事件类型、hints 刷新约定、Dashboard/通知/badge 的实时刷新矩阵。
+- [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)：统一内部/私有可见性、活跃/归档边界、成员规则与项目显示范围偏好。
 
 ## 推荐阅读顺序
 
@@ -52,7 +53,8 @@ features:
 6. 在准备演练和切流前，再读 [09 迁移执行 Runbook](/hub-v2/09-migration-runbook)，冻结执行顺序与回滚规则。
 7. 如需 webapp 直连 Hub V2 数据并推进 Issue/RD 可操作化，再读 [13 Token 体系与 webapp 读写接入方案](/hub-v2/13-api-token-integration)。
 8. 如需统一实时刷新链路，再读 [14 WS 实时通知机制](/hub-v2/14-ws-realtime-notification)。
-9. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
+9. 如需统一项目治理规则，再读 [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)。
+10. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
 
 ## 当前文档集覆盖范围
 
@@ -70,6 +72,7 @@ features:
 - webapp 通过 Token 体系读取与写入 Hub V2 Issue/RD 的接入规范
 - Personal Token 对关键写动作的鉴权与审计落地方案
 - WS 实时事件模型、hints 刷新约定与 Dashboard 实时同步方案
+- 项目内部/私有可见性、归档只读、成员角色与项目显示范围偏好规则
 
 <!-- ## 后续扩展建议
 

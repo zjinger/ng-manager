@@ -23,12 +23,17 @@ export class ProjectAccessService {
   }
 
   async requireProjectAccess(projectId: string, ctx: RequestContext, action: string): Promise<void> {
-    if (ctx.roles.includes("admin")) {
-      return;
-    }
     const project = this.repo.findById(projectId);
     if (!project) {
       throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+    }
+
+    if (project.status !== "active" && !this.isReadAction(action)) {
+      throw new AppError("PROJECT_INACTIVE", `${action} forbidden: project is archived`, 400);
+    }
+
+    if (ctx.roles.includes("admin")) {
+      return;
     }
 
     const userId = ctx.userId?.trim() || ctx.accountId?.trim();

@@ -48,7 +48,12 @@ import { ProjectContextStore } from '../../state/project-context.store';
                 }
               </span>
               <span class="switcher__info">
-                <span class="switcher__name">{{ project.name }}</span>
+                <span class="switcher__name">
+                  {{ project.name }}
+                  @if (project.status === 'inactive') {
+                    <span class="switcher__tag">已归档</span>
+                  }
+                </span>
               </span>
             </button>
           }
@@ -121,6 +126,21 @@ import { ProjectContextStore } from '../../state/project-context.store';
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .switcher__tag {
+        display: inline-flex;
+        align-items: center;
+        height: 18px;
+        padding: 0 6px;
+        border-radius: 999px;
+        font-size: 10px;
+        line-height: 16px;
+        color: rgba(226, 232, 240, 0.88);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        background: rgba(51, 65, 85, 0.48);
       }
       .switcher__key {
         color: rgba(226, 232, 240, 0.72);
