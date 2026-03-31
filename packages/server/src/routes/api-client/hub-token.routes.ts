@@ -72,7 +72,7 @@ async function resolveHubTokenConfig(
 
     const project = await app.core.project.get(body.projectId);
     const config = readHubTokenConfigFromProject(project);
-    const resolvedToken = tokenType === "personal" ? config.personalToken : config.token;
+    const resolvedToken = tokenType === "personal" ? body.personalToken?.trim() || config.personalToken : config.token;
     if (!config.baseUrl || !resolvedToken) {
         throw new AppError(
             "BAD_REQUEST",
