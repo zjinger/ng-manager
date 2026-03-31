@@ -137,6 +137,18 @@ RD：
 
 ---
 
+## 5.4 Personal Token 自检接口
+
+- `GET /api/personal/me`
+- `GET /api/personal/projects/:projectKey/capabilities`
+
+说明：
+
+- `me` 用于返回 token 当前身份与 scopes
+- `capabilities` 用于返回项目成员关系、项目状态、可执行动作矩阵（可用于按钮显隐与前置拦截）
+
+---
+
 ## 6. 权限方案
 
 ### 6.1 Scope 映射
@@ -274,4 +286,14 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<I
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues?page=1&pageSize=20" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+### 12.3 Personal Token 获取身份与能力
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/personal/me" -H "Authorization: Bearer <PERSONAL_TOKEN>"
+```
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/capabilities" -H "Authorization: Bearer <PERSONAL_TOKEN>"
 ```

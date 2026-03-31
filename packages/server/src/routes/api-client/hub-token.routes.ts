@@ -2,10 +2,15 @@ import { AppError } from "@yinuo-ngm/core";
 import { ProjectTokenApiClient } from "@yinuo-ngm/api";
 import type { FastifyInstance } from "fastify";
 
+type HubTokenType = "project" | "personal";
+type HubHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
 type HubTokenRequestBody = {
     projectId?: string;
     baseUrl?: string;
     token?: string;
+    personalToken?: string;
+    tokenType?: HubTokenType;
     path?: string;
     method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     query?: Record<string, string | number | boolean | undefined | null>;
@@ -19,6 +24,13 @@ type HubTokenResolveResult = {
     projectKey?: string;
 };
 
+type HubProjectConfig = {
+    baseUrl: string;
+    token: string;
+    personalToken: string;
+    projectKey?: string;
+};
+
 function normalizeNonEmptyString(value: unknown, field: string): string {
     if (typeof value !== "string" || value.trim() === "") {
         throw new AppError("BAD_REQUEST", `${field} is required`);
@@ -26,21 +38,30 @@ function normalizeNonEmptyString(value: unknown, field: string): string {
     return value.trim();
 }
 
-function readHubTokenConfigFromProject(project: any): Partial<HubTokenResolveResult> {
+function readHubTokenConfigFromProject(project: any): HubProjectConfig {
     const env = (project?.env ?? {}) as Record<string, string | undefined>;
     const baseUrl = env.NGM_HUB_V2_BASE_URL ?? env.HUB_V2_BASE_URL;
     const token = env.NGM_HUB_V2_TOKEN ?? env.HUB_V2_TOKEN;
+    const personalToken = env.NGM_HUB_V2_PERSONAL_TOKEN ?? env.HUB_V2_PERSONAL_TOKEN;
     const projectKey = env.NGM_HUB_V2_PROJECT_KEY ?? env.HUB_V2_PROJECT_KEY;
     return {
         baseUrl: baseUrl?.trim() || "",
         token: token?.trim() || "",
+        personalToken: personalToken?.trim() || "",
         projectKey: projectKey?.trim() || undefined,
     };
 }
 
-async function resolveHubTokenConfig(app: FastifyInstance, body: HubTokenRequestBody): Promise<HubTokenResolveResult> {
+async function resolveHubTokenConfig(
+    app: FastifyInstance,
+    body: HubTokenRequestBody,
+    tokenType: HubTokenType
+): Promise<HubTokenResolveResult> {
     const inlineBaseUrl = body.baseUrl?.trim();
-    const inlineToken = body.token?.trim();
+    const inlineToken =
+        tokenType === "personal"
+            ? body.personalToken?.trim() || body.token?.trim()
+            : body.token?.trim();
     if (inlineBaseUrl && inlineToken) {
         return { baseUrl: inlineBaseUrl, token: inlineToken };
     }
@@ -51,12 +72,18 @@ async function resolveHubTokenConfig(app: FastifyInstance, body: HubTokenRequest
 
     const project = await app.core.project.get(body.projectId);
     const config = readHubTokenConfigFromProject(project);
-    if (!config.baseUrl || !config.token) {
-        throw new AppError("BAD_REQUEST", "project hub-v2 config missing (NGM_HUB_V2_BASE_URL/NGM_HUB_V2_TOKEN)");
+    const resolvedToken = tokenType === "personal" ? config.personalToken : config.token;
+    if (!config.baseUrl || !resolvedToken) {
+        throw new AppError(
+            "BAD_REQUEST",
+            tokenType === "personal"
+                ? "project hub-v2 config missing (NGM_HUB_V2_BASE_URL/NGM_HUB_V2_PERSONAL_TOKEN)"
+                : "project hub-v2 config missing (NGM_HUB_V2_BASE_URL/NGM_HUB_V2_TOKEN)"
+        );
     }
     return {
         baseUrl: config.baseUrl,
-        token: config.token,
+        token: resolvedToken,
         projectKey: config.projectKey,
     };
 }
@@ -65,10 +92,10 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
     fastify.post("/request", async (req) => {
         const body = (req.body ?? {}) as HubTokenRequestBody;
         const path = normalizeNonEmptyString(body.path, "path");
-        const method = (body.method ?? "GET").toUpperCase() as HubTokenRequestBody["method"];
+        const method = (body.method ?? "GET").toUpperCase() as HubHttpMethod;
+        const tokenType: HubTokenType = body.tokenType === "personal" ? "personal" : "project";
 
-        const { baseUrl, token, projectKey } = await resolveHubTokenConfig(fastify, body);
-        const client = new ProjectTokenApiClient({ baseUrl, apiToken: token });
+        const { baseUrl, token, projectKey } = await resolveHubTokenConfig(fastify, body, tokenType);
 
         const query = { ...(body.query ?? {}) };
         if ((query as any).projectKey === undefined && projectKey) {
@@ -77,27 +104,114 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
             (query as any).projectKey = String((query as any).projectKey).trim();
         }
 
-        const normalizedPath = normalizeHubTokenPath(path, projectKey);
-        const data = await client.request({
-            method,
-            path: normalizedPath,
-            query,
-            body: body.body,
-            headers: body.headers,
-        });
+        const normalizedPath =
+            tokenType === "personal"
+                ? normalizeHubPersonalPath(path, projectKey)
+                : normalizeHubTokenPath(path, projectKey);
+
+        const data =
+            tokenType === "project"
+                ? await requestByProjectTokenClient(baseUrl, token, method, normalizedPath, query, body.body, body.headers)
+                : await requestHubApi(baseUrl, "/api/personal", token, method, normalizedPath, query, body.body, body.headers);
 
         return data;
     });
 
     fastify.post("/resolve", async (req) => {
-        const body = (req.body ?? {}) as Pick<HubTokenRequestBody, "projectId" | "baseUrl" | "token">;
-        const resolved = await resolveHubTokenConfig(fastify, body);
+        const body = (req.body ?? {}) as Pick<HubTokenRequestBody, "projectId" | "baseUrl" | "token" | "personalToken">;
+        const resolvedProject = await resolveHubTokenConfig(fastify, body, "project");
+        let personalTokenConfigured = false;
+        try {
+            await resolveHubTokenConfig(fastify, body, "personal");
+            personalTokenConfigured = true;
+        } catch {
+            personalTokenConfigured = false;
+        }
         return {
-            baseUrl: resolved.baseUrl,
-            tokenConfigured: !!resolved.token,
-            projectKey: resolved.projectKey ?? null,
+            baseUrl: resolvedProject.baseUrl,
+            tokenConfigured: !!resolvedProject.token,
+            personalTokenConfigured,
+            projectKey: resolvedProject.projectKey ?? null,
         };
     });
+}
+
+async function requestByProjectTokenClient(
+    baseUrl: string,
+    token: string,
+    method: HubHttpMethod,
+    path: string,
+    query?: Record<string, string | number | boolean | undefined | null>,
+    body?: unknown,
+    headers?: Record<string, string>
+) {
+    const client = new ProjectTokenApiClient({ baseUrl, apiToken: token });
+    return client.request({
+        method,
+        path,
+        query,
+        body,
+        headers,
+    });
+}
+
+async function requestHubApi(
+    baseUrl: string,
+    apiPrefix: "/api/token" | "/api/personal",
+    token: string,
+    method: HubHttpMethod,
+    path: string,
+    query?: Record<string, string | number | boolean | undefined | null>,
+    body?: unknown,
+    headers?: Record<string, string>
+) {
+    const root = baseUrl.replace(/\/+$/, "");
+    const url = new URL(`${root}${apiPrefix}${path}`);
+    for (const [key, value] of Object.entries(query ?? {})) {
+        if (value === undefined || value === null || value === "") {
+            continue;
+        }
+        url.searchParams.set(key, String(value));
+    }
+
+    const requestHeaders: Record<string, string> = {
+        authorization: `Bearer ${token}`,
+        ...(headers ?? {}),
+    };
+    if (body !== undefined) {
+        requestHeaders["content-type"] = "application/json";
+    }
+
+    const response = await fetch(url.toString(), {
+        method,
+        headers: requestHeaders,
+        body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    const payload = await parseJson(response);
+    if (!response.ok) {
+        throw new AppError("BAD_REQUEST", payload?.message || `hub-v2 request failed (${response.status})`, {
+            status: response.status,
+            response: payload,
+        });
+    }
+    if (payload && typeof payload === "object" && "code" in payload) {
+        if ((payload as { code?: string }).code !== "OK") {
+            throw new AppError("BAD_REQUEST", (payload as { message?: string }).message || "hub-v2 response error", {
+                response: payload,
+            });
+        }
+        return (payload as { data: unknown }).data;
+    }
+    return payload;
+}
+
+async function parseJson(response: Response): Promise<any> {
+    try {
+        return await response.json();
+    } catch {
+        return null;
+    }
 }
 
 function normalizeHubTokenPath(path: string, projectKey?: string): string {
@@ -112,4 +226,12 @@ function normalizeHubTokenPath(path: string, projectKey?: string): string {
         throw new AppError("BAD_REQUEST", "projectKey is required when path does not include /projects/:projectKey");
     }
     return `/projects/${projectKey}${p}`;
+}
+
+function normalizeHubPersonalPath(path: string, projectKey?: string): string {
+    const p = path.startsWith("/") ? path : `/${path}`;
+    if (/^\/me(?:\/|$)/i.test(p)) {
+        return p;
+    }
+    return normalizeHubTokenPath(p, projectKey);
 }

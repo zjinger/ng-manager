@@ -1,6 +1,7 @@
 import { HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
+import { LocalStateStore, LS_KEYS } from '@core/local-state';
 import { ApiHistoryEntity } from '@models/api-client/api-history.model';
 import { ApiCollectionCreateBody, ApiCollectionEntity, ApiCollectionUpdateBody, ApiRequestEntity, ApiScope, SendRequestBody, SendResponse } from '@models/api-client';
 import { ApiEnvEntity } from '@models/api-client/api-environment.model';
@@ -12,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class ApiClientService {
   private http = inject(ApiClient);
+  private ls = inject(LocalStateStore);
   private base = '/api/client';
 
   async listRequests(scope: ApiScope, projectId?: string) {
@@ -47,19 +49,29 @@ export class ApiClientService {
 
   async hubTokenRequest(body: {
     projectId: string;
+    tokenType?: 'project' | 'personal';
     path: string;
     method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     query?: Record<string, string | number | boolean | undefined | null>;
     payload?: unknown;
     headers?: Record<string, string>;
+    personalToken?: string;
   }) {
+    const tokenType = body.tokenType ?? 'project';
+    let personalToken = body.personalToken;
+    if (tokenType === 'personal' && !personalToken) {
+      const map = this.ls.get<Record<string, string>>(LS_KEYS.project.hubV2PersonalTokenMap, {});
+      personalToken = (map[body.projectId] ?? '').trim() || undefined;
+    }
     return await firstValueFrom(this.http.post<unknown>(`${this.base}/hub-token/request`, {
       projectId: body.projectId,
+      tokenType,
       path: body.path,
       method: body.method ?? "GET",
       query: body.query,
       body: body.payload,
       headers: body.headers,
+      personalToken,
     }));
   }
 

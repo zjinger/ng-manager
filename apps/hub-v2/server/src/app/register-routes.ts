@@ -14,6 +14,7 @@ import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
 import notificationRoutes from "../modules/notifications/notification.routes";
 import personalTokenAdminRoutes from "../modules/personal-token/personal-token-admin.routes";
+import personalTokenIntrospectRoutes from "../modules/personal-token/personal-token-introspect.routes";
 import personalTokenIssueRoutes from "../modules/personal-token/personal-token-issue.routes";
 import personalTokenRdRoutes from "../modules/personal-token/personal-token-rd.routes";
 import profileRoutes from "../modules/profile/profile.routes";
@@ -107,6 +108,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(sharedConfigPublicRoutes, { prefix: "/api/public" });
   await app.register(healthRoutes, { prefix: "/api/public" });
   await app.register(apiTokenRoutes, { prefix: "/api/token" });
+  await app.register(personalTokenIntrospectRoutes, { prefix: "/api/personal" });
   await app.register(personalTokenIssueRoutes, { prefix: "/api/personal" });
   await app.register(personalTokenRdRoutes, { prefix: "/api/personal" });
 

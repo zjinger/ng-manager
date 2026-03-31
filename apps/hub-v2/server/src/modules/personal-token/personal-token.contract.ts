@@ -3,6 +3,8 @@ import type {
   CreatePersonalApiTokenInput,
   CreatePersonalApiTokenResult,
   ListPersonalApiTokensResult,
+  PersonalProjectCapabilitiesResult,
+  PersonalTokenIdentityResult,
   VerifyPersonalApiTokenResult
 } from "./personal-token.types";
 
@@ -15,4 +17,6 @@ export interface PersonalTokenQueryContract {
   list(ctx: RequestContext): Promise<ListPersonalApiTokensResult>;
   verifyToken(rawToken: string): Promise<VerifyPersonalApiTokenResult | null>;
   resolveProjectId(projectKey: string): string;
+  getIdentity(ctx: RequestContext): PersonalTokenIdentityResult;
+  getProjectCapabilities(projectKey: string, ctx: RequestContext): PersonalProjectCapabilitiesResult;
 }

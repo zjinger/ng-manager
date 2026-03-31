@@ -13,6 +13,7 @@ export class ProjectStateService {
   private projectService = inject(ProjectApiService);
   private ls = inject(LocalStateStore);
   private router = inject(Router);
+  private readonly EMPTY_PERSONAL_TOKEN_MAP: Record<string, string> = {};
 
   currentProjectId = signal<string | null>(null);
   currentProject = signal<Project | null>(null);
@@ -127,6 +128,29 @@ export class ProjectStateService {
 
   isOpen(project: Project): boolean {
     return this.currentProjectId() === project.id;
+  }
+
+  getHubV2PersonalToken(projectId: string): string {
+    if (!projectId?.trim()) return '';
+    const map = this.ls.get<Record<string, string>>(LS_KEYS.project.hubV2PersonalTokenMap, this.EMPTY_PERSONAL_TOKEN_MAP);
+    return (map[projectId] ?? '').trim();
+  }
+
+  hasHubV2PersonalToken(projectId: string): boolean {
+    return !!this.getHubV2PersonalToken(projectId);
+  }
+
+  setHubV2PersonalToken(projectId: string, token: string): void {
+    if (!projectId?.trim()) return;
+    const nextToken = token.trim();
+    const current = this.ls.get<Record<string, string>>(LS_KEYS.project.hubV2PersonalTokenMap, this.EMPTY_PERSONAL_TOKEN_MAP);
+    const next = { ...current };
+    if (nextToken) {
+      next[projectId] = nextToken;
+    } else {
+      delete next[projectId];
+    }
+    this.ls.set(LS_KEYS.project.hubV2PersonalTokenMap, next);
   }
 
   /* ----------------- rename modal ----------------- */

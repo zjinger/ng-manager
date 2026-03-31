@@ -9,6 +9,8 @@ import type {
   CreatePersonalApiTokenInput,
   CreatePersonalApiTokenResult,
   ListPersonalApiTokensResult,
+  PersonalProjectCapabilitiesResult,
+  PersonalTokenIdentityResult,
   PersonalTokenScope,
   VerifyPersonalApiTokenResult
 } from "./personal-token.types";
@@ -142,6 +144,94 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectKey}`, 404);
     }
     return project.id;
+  }
+
+  getIdentity(ctx: RequestContext): PersonalTokenIdentityResult {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.TOKEN_OWNER_REQUIRED, "token owner required", 400);
+    }
+
+    return {
+      tokenId: ctx.tokenId ?? ctx.accountId,
+      userId,
+      nickname: ctx.nickname ?? null,
+      scopes: (ctx.authScopes ?? []) as PersonalTokenScope[]
+    };
+  }
+
+  getProjectCapabilities(projectKey: string, ctx: RequestContext): PersonalProjectCapabilitiesResult {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.TOKEN_OWNER_REQUIRED, "token owner required", 400);
+    }
+
+    const project = this.projectRepo.findByKey(projectKey.trim());
+    if (!project) {
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectKey}`, 404);
+    }
+
+    const member = this.projectRepo.findMemberByProjectAndUserId(project.id, userId);
+    const scopeSet = new Set((ctx.authScopes ?? []) as PersonalTokenScope[]);
+
+    const issueCaps = {
+      canComment: scopeSet.has("issue:comment:write"),
+      canTransition: scopeSet.has("issue:transition:write"),
+      canAssign: scopeSet.has("issue:assign:write"),
+      canManageParticipants: scopeSet.has("issue:participant:write")
+    };
+
+    const rdCaps = {
+      canTransition: scopeSet.has("rd:transition:write"),
+      canEdit: scopeSet.has("rd:edit:write"),
+      canDelete: scopeSet.has("rd:delete:write")
+    };
+
+    const hasWriteScope =
+      issueCaps.canComment ||
+      issueCaps.canTransition ||
+      issueCaps.canAssign ||
+      issueCaps.canManageParticipants ||
+      rdCaps.canTransition ||
+      rdCaps.canEdit ||
+      rdCaps.canDelete;
+
+    const isProjectMember = !!member;
+    const writable = project.status === "active" && isProjectMember && hasWriteScope;
+
+    let readOnlyReason: string | null = null;
+    if (project.status !== "active") {
+      readOnlyReason = "project_archived";
+    } else if (!isProjectMember) {
+      readOnlyReason = "not_project_member";
+    } else if (!hasWriteScope) {
+      readOnlyReason = "scope_missing";
+    }
+
+    return {
+      project: {
+        id: project.id,
+        key: project.projectKey,
+        name: project.name,
+        status: project.status,
+        visibility: project.visibility
+      },
+      actor: {
+        userId,
+        nickname: ctx.nickname ?? null,
+        isProjectMember,
+        memberRole: member?.roleCode ?? null,
+        isOwner: member?.isOwner ?? false,
+        isProjectAdmin: member ? member.isOwner || member.roleCode === "project_admin" : false
+      },
+      scopes: {
+        all: Array.from(scopeSet),
+        issue: issueCaps,
+        rd: rdCaps
+      },
+      writable,
+      readOnlyReason
+    };
   }
 
   private generateTokenValue(): string {
