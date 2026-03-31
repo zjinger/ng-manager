@@ -1,0 +1,35 @@
+<div class="migration-page">
+  <div class="migration-page__container">
+    <nz-card class="migration-card" [nzBordered]="true">
+      <div class="migration-card__header">
+        <h1>hub-v1 → hub-v2 升级说明</h1>
+        <p>
+          hub-v2 已正式成为系统唯一正式入口，hub-v1 不再继续承担业务使用职责。
+        </p>
+      </div>
+
+      <div class="migration-card__section">
+        <h3>说明</h3>
+        <ul>
+          <li>hub-v2 已正式替代 hub-v1。</li>
+          <li>项目、问题、文档、公告与协作能力均以 hub-v2 为准。</li>
+          <li>hub-v1 当前仅保留迁移提示与跳转能力。</li>
+          <li>建议你尽快更新浏览器收藏夹与常用访问入口。</li>
+        </ul>
+      </div>
+
+      <div class="migration-card__section">
+        <h3>新系统入口</h3>
+        <div class="migration-card__url">
+          {{ v2Url }}
+        </div>
+      </div>
+
+      <div class="migration-card__actions">
+        <button nz-button nzType="primary" nzSize="large" (click)="goToV2()">
+          进入 {{ v2Label }}
+        </button>
+      </div>
+    </nz-card>
+  </div>
+</div>

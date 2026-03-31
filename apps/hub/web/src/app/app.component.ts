@@ -1,6 +1,6 @@
 ﻿import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, TemplateRef, ViewChild } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -12,7 +12,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
-import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { filter, firstValueFrom } from 'rxjs';
 import { HubApiError } from './core/http/api-error.interceptor';
@@ -21,6 +21,8 @@ import { AdminAuthService } from './core/services/admin-auth.service';
 import { HubWsEventType, HubWebsocketService } from './core/services/hub-websocket.service';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { ProjectContextService } from './core/services/project-context.service';
+import { MigrationService } from './core/migration/migration.service';
+import { MigrationBannerComponent } from './shared/migration-banner/migration-banner.component';
 
 type AnnouncementStatus = 'draft' | 'published' | 'archived';
 
@@ -64,6 +66,7 @@ interface HeaderAnnouncementListResult {
     NzButtonModule,
     NzAlertModule,
     FormsModule,
+    MigrationBannerComponent
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.less'],
@@ -128,6 +131,11 @@ export class App {
   private readonly notification = inject(NzNotificationService);
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(HubApiService);
+  private readonly modal = inject(NzModalService);
+  private readonly migrationService = inject(MigrationService);
+
+  @ViewChild('migrationModalTpl', { static: true })
+  migrationModalTpl!: TemplateRef<void>;
 
   protected readonly passwordForm = this.fb.nonNullable.group({
     oldPassword: ['', [Validators.required]],
@@ -167,7 +175,7 @@ export class App {
       } else {
         this.mustChangePasswordVisible.set(false);
       }
-      
+
       // 登录后才执行加载项目列表,只加载一次
       if (profile && !this.projectsLoaded()) {
         this.projectContext.loadProjects();
@@ -189,6 +197,34 @@ export class App {
     });
   }
 
+
+  ngOnInit(): void {
+    const config = this.migrationService.config;
+
+    if (!config.enabled || !config.showModalOnEntry) {
+      return;
+    }
+
+    if (this.migrationService.hasAcknowledged()) {
+      return;
+    }
+
+    this.modal.create({
+      nzTitle: '系统已升级至 hub-v2',
+      nzContent: this.migrationModalTpl,
+      nzClosable: false,
+      nzMaskClosable: false,
+      nzOkText: '立即进入 hub-v2',
+      nzCancelText: '稍后再说',
+      nzOnOk: () => {
+        this.migrationService.acknowledge();
+        this.migrationService.redirectToV2();
+      },
+      nzOnCancel: () => {
+        this.migrationService.acknowledge();
+      }
+    });
+  }
   protected openProfile(): void {
     void this.router.navigate(['/profile']);
   }
@@ -332,11 +368,11 @@ export class App {
       items.map((item) =>
         item.id === announcementId
           ? {
-              ...item,
-              isRead: true,
-              readAt: new Date().toISOString(),
-              readVersion,
-            }
+            ...item,
+            isRead: true,
+            readAt: new Date().toISOString(),
+            readVersion,
+          }
           : item,
       ),
     );

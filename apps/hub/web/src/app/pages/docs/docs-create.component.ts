@@ -1,13 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { firstValueFrom } from 'rxjs';
 import { HubApiError } from '../../core/http/api-error.interceptor';
 import { HubApiService } from '../../core/http/hub-api.service';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
@@ -21,7 +21,6 @@ import { DocDetail, DocProjectOption, DocStatus } from './docs.model';
   selector: 'app-docs-create-page',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     NzAlertModule,
     NzButtonModule,
     NzCardModule,

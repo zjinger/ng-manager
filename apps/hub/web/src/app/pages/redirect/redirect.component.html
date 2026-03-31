@@ -1,0 +1,20 @@
+<div class="redirect-page">
+  <div class="redirect-page__container">
+    <nz-card class="redirect-card" [nzBordered]="true">
+      <div class="redirect-card__icon">↗</div>
+
+      <h1>正在跳转至 hub-v2</h1>
+
+      <p>
+        hub-v1 已停止使用，系统入口已统一迁移至 hub-v2。
+        页面将在 <strong>{{ countdown() }}</strong> 秒后自动跳转。
+      </p>
+
+      <div class="redirect-card__actions">
+        <button nz-button nzType="primary" nzSize="large" (click)="goNow()">
+          立即进入 hub-v2
+        </button>
+      </div>
+    </nz-card>
+  </div>
+</div>

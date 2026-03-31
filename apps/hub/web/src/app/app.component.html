@@ -218,3 +218,21 @@
     </ng-container>
   </nz-modal>
 }
+
+
+<app-migration-banner></app-migration-banner>
+
+<ng-template #migrationModalTpl>
+  <div style="line-height: 1.9; color: #4e5969;">
+    <p>
+      你当前访问的是旧版 <strong>hub-v1</strong>。
+    </p>
+    <p>
+      hub-v2 已正式替代 hub-v1，所有核心业务功能已迁移到新系统中。
+      建议你立即进入 hub-v2，并更新浏览器收藏夹。
+    </p>
+    <p style="margin-bottom: 0;">
+      hub-v1 当前仅保留迁移提示与跳转能力，不再作为正式业务入口。
+    </p>
+  </div>
+</ng-template>

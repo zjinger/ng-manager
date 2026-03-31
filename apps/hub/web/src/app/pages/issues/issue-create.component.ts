@@ -1,4 +1,3 @@
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   Component,
   DestroyRef,
@@ -8,8 +7,9 @@ import {
   inject,
   signal
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink, RouterModule } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -29,7 +29,7 @@ import type {
 } from '../projects/projects.model';
 import { IssueFormComponent } from './components/issue-form/issue-form.component';
 import { IssueManagementApiService } from './issue-management.api';
-import type { IssueFormSubmitEvent, IssueFormValue, ProjectOption } from './issues.model';
+import type { IssueFormSubmitEvent, ProjectOption } from './issues.model';
 
 interface PendingAttachmentFile {
   id: string;
@@ -41,7 +41,6 @@ interface PendingAttachmentFile {
   selector: 'app-issue-create-page',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     RouterModule,
     NzAlertModule,
     NzButtonModule,

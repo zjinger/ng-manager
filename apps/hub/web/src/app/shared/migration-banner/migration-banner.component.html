@@ -1,0 +1,23 @@
+@if (visible) {
+  <section class="migration-banner">
+    <div class="migration-banner__inner">
+      <div class="migration-banner__content">
+        <div class="migration-banner__title">
+          hub-v2 已正式上线
+        </div>
+        <div class="migration-banner__desc">
+          {{ notice }}
+        </div>
+      </div>
+
+      <div class="migration-banner__actions">
+        <button nz-button nzType="primary" (click)="goToV2()">
+          进入 hub-v2
+        </button>
+        <button nz-button nzType="default" (click)="goToMigrationPage()">
+          查看说明
+        </button>
+      </div>
+    </div>
+  </section>
+}
