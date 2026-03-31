@@ -17,6 +17,7 @@ import type {
   ProjectMetaItem,
   ProjectSummary,
   ProjectVersionItem,
+  UpdateProjectMemberInput,
   UpdateProjectInput,
   UpdateProjectMetaItemInput,
   UpdateProjectVersionItemInput
@@ -69,6 +70,10 @@ export class ProjectApiService {
 
   removeMember(projectId: string, memberId: string) {
     return this.api.delete<{ id: string }>(`/projects/${projectId}/members/${memberId}`);
+  }
+
+  updateMember(projectId: string, memberId: string, input: UpdateProjectMemberInput) {
+    return this.api.patch<ProjectMemberEntity, UpdateProjectMemberInput>(`/projects/${projectId}/members/${memberId}`, input);
   }
 
   listModules(projectId: string) {

@@ -13,7 +13,9 @@
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:seed": "tsx src/db/seed-cli.ts",
     "db:migrate:from-v1": "tsx src/db/migrate-from-v1.ts",
-    "db:verify:from-v1": "tsx src/db/migrate-from-v1.verify.ts"
+    "db:verify:from-v1": "tsx src/db/migrate-from-v1.verify.ts",
+    "project:normalize-display-code": "tsx src/scripts/normalize-project-display-code.ts",
+    "project:normalize-display-code:dist": "node dist/scripts/normalize-project-display-code.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
@@ -26,6 +28,7 @@
     "fastify": "^5.8.0",
     "fastify-plugin": "^5.0.1",
     "nanoid": "^5.1.5",
+    "pinyin-pro": "^3.27.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

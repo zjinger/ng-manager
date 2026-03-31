@@ -1,5 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
+import { ApiError } from '@core/http';
 import type { PageResult } from '@core/types';
 import type { CreateUserInput, UpdateUserInput, UserEntity, UserListQuery } from '../models/user.model';
 import { UserApiService } from '../services/user-api.service';
@@ -14,6 +16,7 @@ const DEFAULT_QUERY: UserListQuery = {
 @Injectable()
 export class UserStore {
   private readonly userApi = inject(UserApiService);
+  private readonly message = inject(NzMessageService);
 
   private readonly queryState = signal<UserListQuery>({ ...DEFAULT_QUERY });
   private readonly resultState = signal<PageResult<UserEntity> | null>(null);
@@ -61,8 +64,17 @@ export class UserStore {
         done?.();
         this.insertOrRefresh(created);
       },
-      error: () => {
+      error: (error: unknown) => {
         this.busyState.set(false);
+        if (error instanceof ApiError) {
+          if (error.code === 'USER_ALREADY_EXISTS') {
+            this.message.error('登录名已存在，请更换');
+            return;
+          }
+          this.message.error(error.message || '创建用户失败');
+          return;
+        }
+        this.message.error('创建用户失败');
       },
     });
   }
@@ -77,6 +89,25 @@ export class UserStore {
       },
       error: () => {
         this.busyState.set(false);
+      },
+    });
+  }
+
+  resetPassword(userId: string, done?: () => void): void {
+    this.busyState.set(true);
+    this.userApi.resetPassword(userId).subscribe({
+      next: (result) => {
+        this.busyState.set(false);
+        this.message.success(`已重置 ${result.username} 的密码：${result.temporaryPassword}`);
+        done?.();
+      },
+      error: (error: unknown) => {
+        this.busyState.set(false);
+        if (error instanceof ApiError) {
+          this.message.error(error.message || '重置密码失败');
+          return;
+        }
+        this.message.error('重置密码失败');
       },
     });
   }

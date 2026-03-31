@@ -7,6 +7,7 @@ import {
   createProjectSchema,
   createProjectVersionItemSchema,
   listProjectsQuerySchema,
+  updateProjectMemberSchema,
   updateProjectConfigItemSchema,
   updateProjectSchema,
   updateProjectVersionItemSchema
@@ -64,6 +65,14 @@ export default async function projectRoutes(app: FastifyInstance) {
     const params = request.params as { projectId: string; memberId: string };
     await app.container.projectCommand.removeMember(params.projectId, params.memberId, ctx);
     return ok({ id: params.memberId }, "project member removed");
+  });
+
+  app.patch("/projects/:projectId/members/:memberId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; memberId: string };
+    const body = updateProjectMemberSchema.parse(request.body);
+    const member = await app.container.projectCommand.updateMember(params.projectId, params.memberId, body, ctx);
+    return ok(member, "project member updated");
   });
 
   app.get("/projects/:projectId/modules", async (request) => {

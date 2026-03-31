@@ -51,6 +51,11 @@ export interface AddProjectMemberInput {
   isOwner?: boolean;
 }
 
+export interface UpdateProjectMemberInput {
+  roleCode?: ProjectMemberRole | 'member';
+  isOwner?: boolean;
+}
+
 export interface ProjectMemberEntity {
   id: string;
   projectId: string;
@@ -67,6 +72,7 @@ export interface ProjectMemberCandidate {
   id: string;
   username: string;
   displayName: string | null;
+  titleCode: ProjectMemberRole | null;
 }
 
 export interface ProjectMetaItem {

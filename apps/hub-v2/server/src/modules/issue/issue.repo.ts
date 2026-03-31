@@ -292,10 +292,33 @@ export class IssueRepo {
     return result.changes > 0;
   }
 
-  getNextIssueNo(type: IssueEntity["type"]): string {
-    const row = this.db.prepare("SELECT COUNT(*) as total FROM issues").get() as { total: number };
-    const prefix = ISSUE_NO_PREFIX_BY_TYPE[type] ?? "ISS";
-    return `${prefix}-${String(row.total + 1).padStart(6, "0")}`;
+  getNextIssueNo(projectId: string, type: IssueEntity["type"]): string {
+    const projectRow = this.db
+      .prepare(
+        `
+          SELECT COALESCE(NULLIF(display_code, ''), 'PRJ') AS display_code
+          FROM projects
+          WHERE id = ?
+          LIMIT 1
+        `
+      )
+      .get(projectId) as { display_code: string } | undefined;
+
+    const projectCode = (projectRow?.display_code || "PRJ").toUpperCase().slice(0, 3).padEnd(3, "X");
+    const typeCode = ISSUE_NO_PREFIX_BY_TYPE[type] ?? "ISS";
+    const row = this.db.prepare("SELECT COUNT(*) as total FROM issues WHERE project_id = ?").get(projectId) as { total: number };
+    let seq = row.total + 1;
+    while (seq <= 999999) {
+      const candidate = `${projectCode}-${typeCode}-${String(seq).padStart(4, "0")}`;
+      const exists = this.db.prepare("SELECT 1 as hit FROM issues WHERE issue_no = ? LIMIT 1").get(candidate) as
+        | { hit: number }
+        | undefined;
+      if (!exists) {
+        return candidate;
+      }
+      seq += 1;
+    }
+    throw new Error("ISSUE_NO_GENERATE_FAILED");
   }
 
   createLog(log: IssueLogEntity): void {

@@ -12,6 +12,7 @@ import type {
   ProjectMemberRole,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
+  UpdateProjectMemberInput,
   UpdateProjectInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
@@ -47,6 +48,7 @@ type UserCandidateRow = {
   id: string;
   username: string;
   display_name: string | null;
+  title_code: string | null;
 };
 
 type ProjectConfigRow = {
@@ -83,6 +85,11 @@ export class ProjectRepo {
 
   findByKey(projectKey: string): ProjectEntity | null {
     const row = this.db.prepare("SELECT * FROM projects WHERE project_key = ?").get(projectKey) as ProjectRow | undefined;
+    return row ? this.mapProject(row) : null;
+  }
+
+  findByDisplayCode(displayCode: string): ProjectEntity | null {
+    const row = this.db.prepare("SELECT * FROM projects WHERE display_code = ?").get(displayCode) as ProjectRow | undefined;
     return row ? this.mapProject(row) : null;
   }
 
@@ -201,7 +208,7 @@ export class ProjectRepo {
 
   listAccessibleByUserId(userId: string, query: ListProjectsQuery): ProjectListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = ["pm.user_id = ?"];
+    const conditions: string[] = ["(pm.user_id = ? OR p.visibility = 'internal')"];
     const params: unknown[] = [userId];
 
     if (query.status) {
@@ -222,7 +229,7 @@ export class ProjectRepo {
         `
           SELECT COUNT(DISTINCT p.id) as total
           FROM projects p
-          INNER JOIN project_members pm ON pm.project_id = p.id
+          LEFT JOIN project_members pm ON pm.project_id = p.id
           ${whereClause}
         `
       )
@@ -245,7 +252,7 @@ export class ProjectRepo {
             p.created_at,
             p.updated_at
           FROM projects p
-          INNER JOIN project_members pm ON pm.project_id = p.id
+          LEFT JOIN project_members pm ON pm.project_id = p.id
           LEFT JOIN (
             SELECT project_id, COUNT(*) AS member_count
             FROM project_members
@@ -303,7 +310,7 @@ export class ProjectRepo {
     const rows = this.db
       .prepare(
         `
-          SELECT id, username, display_name
+          SELECT id, username, display_name,title_code
           FROM users
           WHERE status = 'active'
           ORDER BY updated_at DESC, created_at DESC
@@ -314,7 +321,8 @@ export class ProjectRepo {
     return rows.map((row) => ({
       id: row.id,
       username: row.username,
-      displayName: row.display_name
+      displayName: row.display_name,
+      titleCode: row.title_code
     }));
   }
 
@@ -371,6 +379,33 @@ export class ProjectRepo {
         entity.createdAt,
         entity.updatedAt
       );
+  }
+
+  updateMember(projectId: string, memberId: string, patch: UpdateProjectMemberInput & { updatedAt: string }): boolean {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+
+    if (patch.roleCode !== undefined) {
+      fields.push("role_code = ?");
+      params.push(patch.roleCode);
+    }
+    if (patch.isOwner !== undefined) {
+      fields.push("is_owner = ?");
+      params.push(patch.isOwner ? 1 : 0);
+    }
+
+    if (fields.length === 0) {
+      return false;
+    }
+
+    fields.push("updated_at = ?");
+    params.push(patch.updatedAt);
+    params.push(projectId, memberId);
+
+    const result = this.db
+      .prepare(`UPDATE project_members SET ${fields.join(", ")} WHERE project_id = ? AND id = ?`)
+      .run(...params);
+    return result.changes > 0;
   }
 
   deleteMember(projectId: string, memberId: string): boolean {

@@ -87,6 +87,37 @@ export class AuthRepo {
     return row ? this.mapRow(row) : null;
   }
 
+  findByUserId(userId: string): AdminAccountEntity | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            a.id,
+            a.user_id,
+            a.username,
+            u.email,
+            u.mobile,
+            u.remark,
+            a.password_hash,
+            a.nickname,
+            ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
+            a.role,
+            a.status,
+            a.must_change_password,
+            a.last_login_at,
+            a.created_at,
+            a.updated_at
+          FROM admin_accounts a
+          LEFT JOIN users u ON u.id = a.user_id
+          WHERE a.user_id = ?
+          LIMIT 1
+        `
+      )
+      .get(userId) as AdminAccountRow | undefined;
+
+    return row ? this.mapRow(row) : null;
+  }
+
   create(account: AdminAccountEntity): void {
     this.db
       .prepare(
@@ -145,6 +176,18 @@ export class AuthRepo {
       .run(passwordHash, updatedAt, id);
   }
 
+  resetPassword(id: string, passwordHash: string, updatedAt: string): void {
+    this.db
+      .prepare(
+        `
+          UPDATE admin_accounts
+          SET password_hash = ?, must_change_password = 1, updated_at = ?
+          WHERE id = ?
+        `
+      )
+      .run(passwordHash, updatedAt, id);
+  }
+
   updateAvatar(id: string, avatarUploadId: string | null, updatedAt: string): void {
     if (!this.hasAvatarUploadColumn) {
       this.db
@@ -168,6 +211,18 @@ export class AuthRepo {
         `
       )
       .run(avatarUploadId, updatedAt, id);
+  }
+
+  updateStatus(id: string, status: "active" | "inactive", updatedAt: string): void {
+    this.db
+      .prepare(
+        `
+          UPDATE admin_accounts
+          SET status = ?, updated_at = ?
+          WHERE id = ?
+        `
+      )
+      .run(status, updatedAt, id);
   }
 
   private mapRow(row: AdminAccountRow): AdminAccountEntity {

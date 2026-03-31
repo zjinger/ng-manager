@@ -114,7 +114,7 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
   const authRepo = new AuthRepo(db);
   const authService = new AuthService(config, authRepo);
   const userRepo = new UserRepo(db);
-  const userService = new UserService(userRepo);
+  const userService = new UserService(userRepo, authRepo);
   const projectRepo = new ProjectRepo(db);
   const projectAccess = new ProjectAccessService(projectRepo);
   const projectService = new ProjectService(projectRepo, userRepo, projectAccess);

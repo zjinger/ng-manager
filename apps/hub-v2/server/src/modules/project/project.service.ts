@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import type { RequestContext } from "../../shared/context/request-context";
 import { customAlphabet } from "nanoid";
+import { pinyin } from "pinyin-pro";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
@@ -23,6 +24,7 @@ import type {
   ProjectMemberRole,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
+  UpdateProjectMemberInput,
   UpdateProjectInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
@@ -54,10 +56,11 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const projectKey = this.generateUniqueProjectKey();
 
     const now = nowIso();
+    const displayCode = this.resolveDisplayCodeForCreate(input.displayCode, projectName, projectKey);
     const entity: ProjectEntity = {
       id: genId("prj"),
       projectKey,
-      displayCode: this.normalizeDisplayCode(input.displayCode, projectName),
+      displayCode,
       name: projectName,
       description: input.description?.trim() || null,
       icon: input.icon?.trim() || null,
@@ -65,6 +68,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       avatarUrl: input.avatarUploadId?.trim() ? `/api/admin/uploads/${input.avatarUploadId.trim()}/raw` : null,
       status: "active",
       visibility: input.visibility ?? "internal",
+      memberCount: 1,
       createdAt: now,
       updatedAt: now
     };
@@ -96,12 +100,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const patch: UpdateProjectInput & { updatedAt: string } = {
       name: input.name?.trim(),
-      displayCode:
-        input.displayCode === undefined
-          ? undefined
-          : input.displayCode === null
-            ? null
-            : this.normalizeDisplayCode(input.displayCode, current.name),
+      displayCode: undefined,
       description: input.description === undefined ? undefined : input.description?.trim() || null,
       icon: input.icon === undefined ? undefined : input.icon?.trim() || null,
       avatarUploadId: input.avatarUploadId === undefined ? undefined : input.avatarUploadId?.trim() || null,
@@ -109,6 +108,11 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       visibility: input.visibility,
       updatedAt: nowIso()
     };
+
+    if (input.displayCode !== undefined) {
+      const effectiveName = patch.name?.trim() || current.name;
+      patch.displayCode = this.resolveDisplayCodeForUpdate(input.displayCode, effectiveName, projectId, current.projectKey);
+    }
 
     try {
       const changed = this.repo.update(projectId, patch);
@@ -184,6 +188,9 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     if (this.repo.hasMember(project.id, user.id)) {
       throw new AppError("PROJECT_MEMBER_EXISTS", "project member already exists", 409);
     }
+    if (input.isOwner === true) {
+      throw new AppError("PROJECT_OWNER_IMMUTABLE", "owner is unique and cannot be reassigned", 400);
+    }
 
     const now = nowIso();
     const member: ProjectMemberEntity = {
@@ -192,7 +199,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       userId: user.id,
       displayName: user.displayName || user.username,
       roleCode: (input.roleCode ?? "member") as ProjectMemberRole,
-      isOwner: input.isOwner === true,
+      isOwner: false,
       joinedAt: now,
       createdAt: now,
       updatedAt: now
@@ -200,6 +207,47 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     this.repo.createMember(member);
     return member;
+  }
+
+  async updateMember(
+    projectId: string,
+    memberId: string,
+    input: UpdateProjectMemberInput,
+    ctx: RequestContext
+  ): Promise<ProjectMemberEntity> {
+    await this.requireProjectMaintainer(projectId, ctx, "update project member");
+    const project = this.repo.findById(projectId);
+    if (!project) {
+      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+    }
+
+    const current = this.repo.findMemberById(projectId, memberId);
+    if (!current) {
+      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `project member not found: ${memberId}`, 404);
+    }
+
+    if (input.isOwner !== undefined && input.isOwner !== current.isOwner) {
+      throw new AppError("PROJECT_OWNER_IMMUTABLE", "owner is fixed to project creator", 400);
+    }
+
+    if (input.roleCode !== undefined && input.roleCode !== "project_admin") {
+      throw new AppError("PROJECT_MEMBER_ROLE_UNSUPPORTED", "only promote-to-project-admin is supported", 400);
+    }
+
+    const changed = this.repo.updateMember(projectId, memberId, {
+      roleCode: input.roleCode,
+      isOwner: input.isOwner,
+      updatedAt: nowIso()
+    });
+    if (!changed) {
+      return current;
+    }
+
+    const next = this.repo.findMemberById(projectId, memberId);
+    if (!next) {
+      throw new AppError("PROJECT_MEMBER_NOT_FOUND", `project member not found: ${memberId}`, 404);
+    }
+    return next;
   }
 
   async removeMember(projectId: string, memberId: string, ctx: RequestContext): Promise<void> {
@@ -212,6 +260,9 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const member = this.repo.findMemberById(projectId, memberId);
     if (!member) {
       throw new AppError("PROJECT_MEMBER_NOT_FOUND", `project member not found: ${memberId}`, 404);
+    }
+    if (member.isOwner) {
+      throw new AppError("PROJECT_OWNER_IMMUTABLE", "project owner cannot be removed", 400);
     }
 
     if (!this.repo.deleteMember(projectId, memberId)) {
@@ -402,9 +453,17 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
     }
 
-    const member = await this.access.requireProjectMember(projectId, userId, action);
+    let member: ProjectMemberEntity;
+    try {
+      member = await this.access.requireProjectMember(projectId, userId, action);
+    } catch (error) {
+      if (error instanceof AppError && error.code === "PROJECT_MEMBER_NOT_FOUND") {
+        throw new AppError("PROJECT_ACCESS_DENIED", "无权限执行该操作，需要项目管理员权限", 403);
+      }
+      throw error;
+    }
     if (member.roleCode !== "project_admin" && !member.isOwner) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+      throw new AppError("PROJECT_ACCESS_DENIED", "无权限执行该操作，需要项目管理员权限", 403);
     }
   }
 
@@ -421,22 +480,151 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   }
 
   private normalizeDisplayCode(value: string | null | undefined, projectName: string): string | null {
-    const input = value?.trim();
+    const explicit = value?.trim().toUpperCase() || "";
+    if (explicit) {
+      const normalized = explicit.replace(/[^A-Z0-9]/g, "").slice(0, 3);
+      if (normalized) {
+        return normalized;
+      }
+    }
+
+    const pinyinAbbr = this.toPinyinAbbr(projectName);
+    if (pinyinAbbr) {
+      return pinyinAbbr;
+    }
+
+    const compactAscii = projectName
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+    if (compactAscii.length >= 3) {
+      return compactAscii.slice(0, 3);
+    }
+    if (compactAscii.length > 0) {
+      return compactAscii.padEnd(3, "X");
+    }
+
+    const hash = this.hashName(projectName);
+    return `P${hash.toString(36).toUpperCase().slice(0, 2).padEnd(2, "0")}`;
+  }
+
+  private resolveDisplayCodeForCreate(value: string | undefined, projectName: string, projectKey: string): string | null {
+    const input = value?.trim() || "";
     if (input) {
-      return input.slice(0, 24);
+      const normalized = this.normalizeDisplayCode(input, projectName);
+      if (!normalized) {
+        return null;
+      }
+      if (this.repo.findByDisplayCode(normalized)) {
+        throw new AppError("PROJECT_DISPLAY_CODE_CONFLICT", `项目标识已存在：${normalized}`, 409);
+      }
+      return normalized;
     }
-    const words = projectName
-      .split(/[\s\-_.]+/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-    if (words.length >= 2) {
-      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    return this.resolveAutoUniqueDisplayCode(projectName, projectKey);
+  }
+
+  private resolveDisplayCodeForUpdate(
+    value: string | null | undefined,
+    projectName: string,
+    projectId: string,
+    projectKey: string
+  ): string | null {
+    if (value === null) {
+      return null;
     }
-    if (/^[a-z0-9\s\-_.]+$/i.test(projectName)) {
-      const compact = projectName.replace(/[\s\-_.]+/g, "");
-      return compact.slice(0, 2).toUpperCase() || null;
+    const input = value?.trim() || "";
+    if (input) {
+      const normalized = this.normalizeDisplayCode(input, projectName);
+      if (!normalized) {
+        return null;
+      }
+      const hit = this.repo.findByDisplayCode(normalized);
+      if (hit && hit.id !== projectId) {
+        throw new AppError("PROJECT_DISPLAY_CODE_CONFLICT", `项目标识已存在：${normalized}`, 409);
+      }
+      return normalized;
     }
-    return projectName.slice(0, 2) || null;
+    return this.resolveAutoUniqueDisplayCode(projectName, projectKey, projectId);
+  }
+
+  private resolveAutoUniqueDisplayCode(projectName: string, projectKeySeed: string, excludeProjectId?: string): string | null {
+    const base = this.normalizeDisplayCode(undefined, projectName);
+    if (!base) {
+      return null;
+    }
+    const candidates = this.buildAutoDisplayCodeCandidates(base, `${projectName}|${projectKeySeed}`);
+    for (const candidate of candidates) {
+      const hit = this.repo.findByDisplayCode(candidate);
+      if (!hit || hit.id === excludeProjectId) {
+        return candidate;
+      }
+    }
+    throw new AppError("PROJECT_DISPLAY_CODE_GENERATE_FAILED", "failed to generate unique displayCode", 500);
+  }
+
+  private buildAutoDisplayCodeCandidates(base: string, seed: string): string[] {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const normalizedBase = base.slice(0, 3).padEnd(3, "X");
+    const hash = this.hashName(seed);
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    const push = (value: string) => {
+      const candidate = value.slice(0, 3).padEnd(3, "X").toUpperCase();
+      if (!seen.has(candidate)) {
+        seen.add(candidate);
+        result.push(candidate);
+      }
+    };
+
+    push(normalizedBase);
+    push(`${normalizedBase.slice(0, 2)}${chars[hash % chars.length]}`);
+    push(`${normalizedBase.slice(0, 1)}${chars[Math.floor(hash / 23) % chars.length]}${chars[Math.floor(hash / 529) % chars.length]}`);
+
+    for (let i = 0; i < chars.length; i += 1) {
+      push(`${normalizedBase.slice(0, 2)}${chars[(hash + i) % chars.length]}`);
+    }
+    for (let i = 0; i < chars.length * chars.length; i += 1) {
+      const c1 = chars[(hash + i) % chars.length];
+      const c2 = chars[(Math.floor(hash / chars.length) + i) % chars.length];
+      push(`${normalizedBase.slice(0, 1)}${c1}${c2}`);
+    }
+
+    return result;
+  }
+
+  private toPinyinAbbr(projectName: string): string | null {
+    if (!/[\u3400-\u9FFF]/.test(projectName)) {
+      return null;
+    }
+
+    const result = pinyin(projectName, { toneType: "none", type: "array" }) as string[] | string;
+    const syllables = Array.isArray(result)
+      ? result
+      : String(result)
+          .split(/[\s,]+/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+    const letters = syllables
+      .map((item) => item.replace(/[^a-zA-Z]/g, ""))
+      .filter(Boolean)
+      .map((item) => item[0].toUpperCase());
+
+    if (letters.length === 0) {
+      return null;
+    }
+
+    return letters.join("").slice(0, 3).padEnd(3, "X");
+  }
+
+  private hashName(value: string): number {
+    let hash = 2166136261;
+    for (let i = 0; i < value.length; i += 1) {
+      hash ^= value.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return Math.abs(hash >>> 0);
   }
 
   private getNextSort(values: number[]): number {

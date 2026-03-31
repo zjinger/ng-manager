@@ -41,7 +41,7 @@ type EditDraft = {
             @if (avatarPreviewUrl()) {
               <img [src]="avatarPreviewUrl()!" alt="project avatar" />
             } @else {
-              {{ (draft().displayCode || draft().name || '项目').slice(0, 2).toUpperCase() }}
+              {{ (draft().displayCode || draft().name || '项目').slice(0, 3).toUpperCase() }}
             }
           </span>
           <div class="project-edit-overview__info">
@@ -89,7 +89,9 @@ type EditDraft = {
             </div>
             <div nz-col [nzSpan]="12">
               <nz-form-item>
-                <nz-form-label>可见性</nz-form-label>
+                <nz-form-label nzTooltipTitle="内部：所有登录用户可查看（仅成员可维护）；私有：仅项目成员可查看和维护" [nzTooltipIcon]="'question-circle'"
+                  >可见性</nz-form-label
+                >
                 <nz-form-control>
                   <nz-select
                     [ngModel]="draft().visibility"
@@ -125,7 +127,7 @@ type EditDraft = {
                       @if (avatarPreviewUrl()) {
                         <img [src]="avatarPreviewUrl()!" alt="project avatar" />
                       } @else {
-                        {{ (draft().displayCode || draft().name || '项目').slice(0, 2).toUpperCase() }}
+                        {{ (draft().displayCode || draft().name || '项目').slice(0, 3).toUpperCase() }}
                       }
                     </span>
                     <input #avatarInput type="file" accept="image/*" hidden (change)="onAvatarPicked($event)" />

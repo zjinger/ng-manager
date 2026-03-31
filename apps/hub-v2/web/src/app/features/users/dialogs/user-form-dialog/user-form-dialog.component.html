@@ -2,24 +2,54 @@
   [open]="open()"
   [width]="680"
   [title]="mode() === 'create' ? '新建用户' : '编辑用户'"
-  [subtitle]=" '' "
+  [subtitle]="''"
   [icon]="'user'"
   (cancel)="cancel.emit()"
 >
   <div dialog-body>
     <form nz-form [nzLayout]="'vertical'">
+      @if (mode() === 'edit') {
+        <div class="row" nz-row [nzGutter]="16">
+          <div class="col" nz-col [nzSpan]="12">
+            <div class="project-edit-overview">
+              <span class="project-edit-overview__avatar">
+                @if (avatarPreviewUrl()) {
+                  <img [src]="avatarPreviewUrl()!" alt="user avatar" />
+                } @else {
+                  {{ (draft().displayName || draft().username|| '未命名用户').slice(0, 1).toUpperCase() }}
+                }
+              </span>
+              <div class="project-edit-overview__info">
+                <h3>{{ draft().displayName || draft().username || '未命名用户' }}</h3>
+                <p>
+                  创建于 {{ user()?.createdAt | date: 'yyyy-MM-dd' }} ·
+                  {{ user()?.status === 'active' ? '活跃用户' : '已禁用' }}
+                </p>
+              </div>
+            </div>
+            <div class="project-edit-overview__divider"></div>
+          </div>
+        </div>
+      }
       <div class="row" nz-row [nzGutter]="16">
         <div class="col" nz-col [nzSpan]="12">
           <nz-form-item>
-            <nz-form-label nzRequired nzFor="username">登录名</nz-form-label>
+            <nz-form-label nzRequired nzFor="username" nzTooltipTitle="仅支持英文和数字，长度 4-24 位" [nzTooltipIcon]="'question-circle'"
+              >登录名</nz-form-label
+            >
             <nz-form-control nzErrorTip="请输入登录名">
               <input
                 nz-input
                 required="true"
                 [ngModel]="draft().username"
                 name="username"
+                [maxlength]="24"
+                [disabled]="mode() === 'edit'"
                 (ngModelChange)="updateField('username', $event)"
               />
+              @if (usernameInvalid()) {
+                <span class="user-form-error">登录名仅支持英文和数字，长度 4-24 位</span>
+              }
             </nz-form-control>
           </nz-form-item>
         </div>
@@ -102,6 +132,24 @@
         </div>
       </div>
       <div class="row" nz-row [nzGutter]="16">
+        <div class="col" nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label nzFor="loginEnabled" nzTooltipTitle="关闭后该用户不可登录后台，但保留用户资料" [nzTooltipIcon]="'question-circle'">
+              可登录后台
+            </nz-form-label>
+            <nz-form-control>
+              <nz-switch
+                [ngModel]="draft().loginEnabled"
+                name="loginEnabled"
+                [nzCheckedChildren]="'启用'"
+                [nzUnCheckedChildren]="'关闭'"
+                (ngModelChange)="updateField('loginEnabled', !!$event)"
+              ></nz-switch>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </div>
+      <div class="row" nz-row [nzGutter]="16">
         <div class="col" nz-col [nzSpan]="24">
           <nz-form-item>
             <nz-form-label nzFor="remark">备注</nz-form-label>
@@ -126,7 +174,7 @@
       nz-button
       nzType="primary"
       [nzLoading]="busy()"
-      [disabled]="!draft().username.trim() || !draft().displayName.trim()"
+      [disabled]="!canSubmit()"
       (click)="submitForm()"
       type="submit"
       form="user-form"

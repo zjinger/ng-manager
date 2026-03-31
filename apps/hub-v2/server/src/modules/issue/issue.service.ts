@@ -62,7 +62,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const entity: IssueEntity = {
       id: genId("iss"),
       projectId,
-      issueNo: this.repo.getNextIssueNo(issueType),
+      issueNo: this.repo.getNextIssueNo(projectId, issueType),
       title: input.title.trim(),
       description: input.description?.trim() || null,
       type: issueType,

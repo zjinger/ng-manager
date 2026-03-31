@@ -18,7 +18,7 @@ const DEFAULT_DRAFT: CreateProjectInput = {
   description: '',
   icon: '',
   avatarUploadId: '',
-  visibility: 'internal',
+  visibility: 'private',
 };
 
 @Component({
@@ -105,7 +105,7 @@ const DEFAULT_DRAFT: CreateProjectInput = {
                       @if (avatarPreviewUrl()) {
                         <img [src]="avatarPreviewUrl()!" alt="project avatar" />
                       } @else {
-                        {{ (draft().name || '项目').slice(0, 2) }}
+                        {{ (draft().name || '项目').slice(0, 3) }}
                       }
                     </span>
                     <input #avatarInput type="file" accept="image/*" hidden (change)="onAvatarPicked($event)" />
@@ -119,7 +119,13 @@ const DEFAULT_DRAFT: CreateProjectInput = {
             </div>
             <div class="col" nz-col  [nzSpan]="12">
               <nz-form-item >
-                <nz-form-label nzRequired nzTooltipTitle="内部公开：所有登录用户可见；私有：仅项目成员可见" [nzTooltipIcon]="'question-circle'" nzFor="visibility">可见性</nz-form-label>
+                <nz-form-label
+                  nzRequired
+                  nzTooltipTitle="内部：所有登录用户可查看（仅成员可维护）；私有：仅项目成员可查看和维护"
+                  [nzTooltipIcon]="'question-circle'"
+                  nzFor="visibility"
+                  >可见性</nz-form-label
+                >
                 <nz-form-control >
                   <nz-select [ngModel]="draft().visibility" name="visibility" (ngModelChange)="updateField('visibility', $event)">
                   <nz-option nzLabel="内部" nzValue="internal"></nz-option>

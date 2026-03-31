@@ -12,6 +12,7 @@ export interface UserEntity {
   titleCode: string | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
+  loginEnabled: boolean;
   status: UserStatus;
   source: UserSource;
   remark: string | null;
@@ -26,6 +27,7 @@ export interface CreateUserInput {
   mobile?: string;
   titleCode?: string;
   remark?: string;
+  loginEnabled?: boolean;
 }
 
 export interface UpdateUserInput {
@@ -35,6 +37,18 @@ export interface UpdateUserInput {
   titleCode?: string | null;
   status?: UserStatus;
   remark?: string | null;
+  loginEnabled?: boolean;
+}
+
+export interface ResetUserPasswordInput {
+  newPassword?: string;
+}
+
+export interface ResetUserPasswordResult {
+  userId: string;
+  username: string;
+  temporaryPassword: string;
+  mustChangePassword: true;
 }
 
 export interface ListUsersQuery {

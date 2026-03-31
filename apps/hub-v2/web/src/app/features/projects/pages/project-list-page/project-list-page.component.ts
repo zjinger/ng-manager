@@ -5,6 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { ApiError } from '@core/http';
 import { ProjectContextStore } from '@core/state';
 
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
@@ -138,9 +139,9 @@ export class ProjectListPageComponent {
         this.editDialogOpen.set(false);
         this.store.patchOrRefresh(updated);
       },
-      error: () => {
+      error: (error: unknown) => {
         this.editBusy.set(false);
-        this.message.error('项目更新失败');
+        this.showApiError(error, '项目更新失败');
       }
     });
   }
@@ -204,6 +205,25 @@ export class ProjectListPageComponent {
       error: () => {
         this.membersBusy.set(false);
         this.message.error('成员添加失败');
+      }
+    });
+  }
+
+  promoteMemberAdmin(member: ProjectMemberEntity): void {
+    const project = this.selectedProject();
+    if (!project) {
+      return;
+    }
+    this.membersBusy.set(true);
+    this.projectApi.updateMember(project.id, member.id, { roleCode: 'project_admin' }).subscribe({
+      next: () => {
+        this.membersBusy.set(false);
+        this.message.success('成员权限已更新');
+        this.loadMembers(project.id);
+      },
+      error: (error: unknown) => {
+        this.membersBusy.set(false);
+        this.showApiError(error, '更新成员失败');
       }
     });
   }
@@ -519,11 +539,21 @@ export class ProjectListPageComponent {
         this.message.success(status === 'inactive' ? '项目已归档' : '项目已恢复');
         this.store.patchOrRefresh(updated);
       },
-      error: () => {
+      error: (error: unknown) => {
         this.editBusy.set(false);
-        this.message.error('更新项目状态失败');
+        this.showApiError(error, '更新项目状态失败');
       }
     });
+  }
+
+  private showApiError(error: unknown, fallback: string): void {
+    if (error instanceof ApiError) {
+      this.message.error(error.message || fallback);
+      return;
+    }
+    const maybeMessage =
+      typeof error === 'object' && error && 'message' in error ? String((error as { message?: string }).message || '') : '';
+    this.message.error(maybeMessage || fallback);
   }
 
   private withConfigProject(handler: (projectId: string) => void): void {

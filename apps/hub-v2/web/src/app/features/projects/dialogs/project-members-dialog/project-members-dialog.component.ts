@@ -5,18 +5,23 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { DialogShellComponent } from '@shared/ui';
-import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmDirective, NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
-import type { AddProjectMemberInput, ProjectMemberCandidate, ProjectMemberEntity, ProjectMemberRole, ProjectSummary } from '../../models/project.model';
+import type {
+  AddProjectMemberInput,
+  ProjectMemberCandidate,
+  ProjectMemberEntity,
+  ProjectMemberRole,
+  ProjectSummary
+} from '../../models/project.model';
 import { ROLE_OPTIONS } from '@app/shared/constants';
 
 @Component({
   selector: 'app-project-members-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzCheckboxModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective],
+  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective],
   templateUrl: './project-members-dialog.component.html',
   styleUrls: ['./project-members-dialog.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,12 +35,12 @@ export class ProjectMembersDialogComponent {
   readonly busy = input(false);
 
   readonly add = output<AddProjectMemberInput>();
+  readonly promoteAdmin = output<ProjectMemberEntity>();
   readonly remove = output<ProjectMemberEntity>();
   readonly cancel = output<void>();
 
   readonly selectedUserId = signal('');
   readonly roleCode = signal<ProjectMemberRole>('member');
-  readonly isOwner = signal(false);
 
   readonly availableUsers = computed(() => {
     const memberIds = new Set(this.members().map((item) => item.userId));
@@ -50,12 +55,10 @@ export class ProjectMembersDialogComponent {
     }
     this.add.emit({
       userId: this.selectedUserId(),
-      roleCode: this.roleCode(),
-      isOwner: this.isOwner(),
+      roleCode: this.roleCode()
     });
     this.selectedUserId.set('');
     this.roleCode.set('member');
-    this.isOwner.set(false);
   }
 
   avatarText(name: string): string {
@@ -65,5 +68,13 @@ export class ProjectMembersDialogComponent {
   roleleLabel(roleCode: string): string {
     const option = this.roleOptions.find((item) => item.value === roleCode);
     return option ? option.label : roleCode;
+  }
+
+  userSelected(userId: string): void {
+    this.selectedUserId.set(userId);
+    const user = this.availableUsers().find((item) => item.id === userId);
+    if (user) {
+      this.roleCode.set(user.titleCode || 'member');
+    }
   }
 }

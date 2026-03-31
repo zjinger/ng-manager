@@ -10,6 +10,7 @@ type UserRow = {
   mobile: string | null;
   title_code: string | null;
   avatar_upload_id: string | null;
+  login_enabled: number;
   status: "active" | "inactive";
   source: "local" | "imported";
   remark: string | null;
@@ -36,6 +37,7 @@ export class UserRepo {
             u.mobile,
             u.title_code,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
+            CASE WHEN aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
             u.source,
             u.remark,
@@ -62,6 +64,7 @@ export class UserRepo {
             u.mobile,
             u.title_code,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
+            CASE WHEN aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
             u.source,
             u.remark,
@@ -160,6 +163,7 @@ export class UserRepo {
             u.mobile,
             u.title_code,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
+            CASE WHEN aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
             u.source,
             u.remark,
@@ -192,6 +196,7 @@ export class UserRepo {
       titleCode: row.title_code,
       avatarUploadId: row.avatar_upload_id ?? null,
       avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
+      loginEnabled: row.login_enabled === 1,
       status: row.status,
       source: row.source,
       remark: row.remark,

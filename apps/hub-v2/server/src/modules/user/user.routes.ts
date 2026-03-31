@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
-import { createUserSchema, listUsersQuerySchema, updateUserSchema } from "./user.schema";
+import { createUserSchema, listUsersQuerySchema, resetUserPasswordSchema, updateUserSchema } from "./user.schema";
 
 export default async function userRoutes(app: FastifyInstance) {
   app.get("/users", async (request) => {
@@ -28,5 +28,12 @@ export default async function userRoutes(app: FastifyInstance) {
     const params = request.params as { userId: string };
     const body = updateUserSchema.parse(request.body);
     return ok(await app.container.userCommand.update(params.userId, body, ctx), "user updated");
+  });
+
+  app.post("/users/:userId/reset-password", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { userId: string };
+    const body = resetUserPasswordSchema.parse(request.body ?? {});
+    return ok(await app.container.userCommand.resetPassword(params.userId, body, ctx), "password reset");
   });
 }

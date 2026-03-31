@@ -5,11 +5,12 @@ import { DataTableComponent } from '@shared/ui';
 import { USER_TITLE_OPTIONS, type UserEntity, type UserTitleCode } from '../../models/user.model';
 import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.component';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 @Component({
   selector: 'app-user-list-table',
   standalone: true,
-  imports: [NzIconModule, DatePipe, DataTableComponent, UserStatusTagComponent],
+  imports: [NzIconModule, NzPopconfirmModule, DatePipe, DataTableComponent, UserStatusTagComponent],
   template: `
     <app-data-table>
       <div table-head class="user-table__head" [class.user-table__head--editable]="canEdit()">
@@ -17,6 +18,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         <div>邮箱</div>
         <div>手机号</div>
         <div>职能</div>
+        <div>后台登录</div>
         <div>状态</div>
         <div>更新时间</div>
         @if (canEdit()) {
@@ -42,12 +44,27 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
             <div class="user-cell">{{ item.email || '—' }}</div>
             <div class="user-cell">{{ item.mobile || '—' }}</div>
             <div class="user-cell">{{ titleLabel(item.titleCode) }}</div>
+            <div class="user-cell">
+              <span class="login-tag" [class.login-tag--off]="!item.loginEnabled">
+                {{ item.loginEnabled ? '开启' : '关闭' }}
+              </span>
+            </div>
             <div class="user-cell"><app-user-status-tag [status]="item.status" /></div>
             <div class="user-cell user-cell--muted">{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
             @if (canEdit()) {
-              <div class="user-cell">
+              <div class="user-cell user-cell--actions">
                 <button class="edit-btn" type="button" (click)="edit.emit(item)">
                   <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
+                </button>
+                <button
+                  class="edit-btn"
+                  type="button"
+                  nz-popconfirm
+                  nzPopconfirmTitle="确认重置该用户密码为默认密码 12345678？"
+                  nzPopconfirmPlacement="topRight"
+                  (nzOnConfirm)="resetPassword.emit(item)"
+                >
+                  <nz-icon nzType="key" nzTheme="outline"></nz-icon>
                 </button>
               </div>
             }
@@ -61,13 +78,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
       .user-table__head,
       .user-row {
         display: grid;
-        grid-template-columns: 1.6fr 1.3fr 1fr 0.8fr 0.8fr 0.9fr;
+        grid-template-columns: 1.6fr 1.3fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr;
         gap: 16px;
         align-items: center;
       }
       .user-table__head--editable,
       .user-row--editable {
-        grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.9fr 0.6fr;
+        grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr 0.6fr;
       }
       .user-table__head {
         padding: 10px 16px;
@@ -92,6 +109,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         display: flex;
         align-items: center;
         gap: 10px;
+      }
+      .user-cell--actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
       }
       .user-avatar {
         width: 32px;
@@ -120,6 +142,24 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         font-size: 12px;
         color: var(--text-muted);
       }
+      .login-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(37, 99, 235, 0.22);
+        background: rgba(37, 99, 235, 0.08);
+        color: #2563eb;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 20px;
+      }
+      .login-tag--off {
+        border-color: var(--border-color);
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+      }
       .edit-btn {
         border: 0;
         background: transparent;
@@ -144,6 +184,7 @@ export class UserListTableComponent {
   readonly items = input.required<UserEntity[]>();
   readonly canEdit = input(false);
   readonly edit = output<UserEntity>();
+  readonly resetPassword = output<UserEntity>();
   private readonly brokenAvatarMap = signal<Record<string, true>>({});
 
   avatarText(name: string): string {

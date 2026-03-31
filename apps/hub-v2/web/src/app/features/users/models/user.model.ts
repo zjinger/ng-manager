@@ -22,6 +22,7 @@ export interface UserEntity {
   titleCode: UserTitleCode | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
+  loginEnabled: boolean;
   status: UserStatus;
   source: 'local' | 'imported';
   remark: string | null;
@@ -43,6 +44,7 @@ export interface CreateUserInput {
   mobile?: string;
   titleCode?: UserTitleCode;
   remark?: string;
+  loginEnabled?: boolean;
 }
 
 export interface UpdateUserInput {
@@ -52,6 +54,18 @@ export interface UpdateUserInput {
   titleCode?: UserTitleCode | null;
   status?: UserStatus;
   remark?: string | null;
+  loginEnabled?: boolean;
+}
+
+export interface ResetUserPasswordInput {
+  newPassword?: string;
+}
+
+export interface ResetUserPasswordResult {
+  userId: string;
+  username: string;
+  temporaryPassword: string;
+  mustChangePassword: true;
 }
 
 export type UserListResult = PageResult<UserEntity>;

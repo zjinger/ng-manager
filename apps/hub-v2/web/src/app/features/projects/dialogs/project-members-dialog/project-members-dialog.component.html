@@ -20,7 +20,7 @@
                   nzAllowClear
                   nzPlaceHolder="选择用户"
                   [ngModel]="selectedUserId()"
-                  (ngModelChange)="selectedUserId.set($event ?? '')"
+                  (ngModelChange)="userSelected($event)"
                   name="user"
                 >
                   @for (item of availableUsers(); track item.id) {
@@ -50,15 +50,7 @@
               </nz-form-control>
             </nz-form-item>
           </div>
-          <div class="col" nz-col [nzSpan]="5">
-            <nz-form-item>
-              <nz-form-label nzFor="isOwner">负责人</nz-form-label>
-              <nz-form-control>
-                <label for="isOwner" name="isOwner" nz-checkbox [(ngModel)]="isOwner"></label>
-              </nz-form-control>
-            </nz-form-item>
-          </div>
-          <div class="col" nz-col [nzSpan]="3">
+          <div class="col" nz-col [nzSpan]="8">
             <button
               nz-button
               nzType="primary"
@@ -103,17 +95,35 @@
                   
                 </div>
                 <div class="member-item__meta">{{roleleLabel( member.roleCode || 'member') }}</div>
+                <!-- <div class="member-item__edit">
+                  @if (member.isOwner) {
+                    <span class="member-item__hint">创建者（Owner）不可修改</span>
+                  }
+                </div> -->
               </div>
-              <a
-                nz-button
-                nzType="text"
-                nzDanger
-                [disabled]="busy()"
-                nz-popconfirm="确定要移除改成员吗？"
-                (nzOnConfirm)="remove.emit(member)"
-              >
-                <nz-icon nzType="minus" nzTheme="outline" />
-              </a>
+              <div class="member-item__actions">
+                @if (!member.isOwner && member.roleCode !== 'project_admin') {
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy()"
+                    nz-popconfirm="确定将该成员设为项目管理员吗？"
+                    (nzOnConfirm)="promoteAdmin.emit(member)"
+                  >
+                    设为管理员
+                  </button>
+                }
+                <a
+                  nz-button
+                  nzType="text"
+                  nzDanger
+                  [disabled]="busy() || member.isOwner"
+                  nz-popconfirm="确定要移除改成员吗？"
+                  (nzOnConfirm)="remove.emit(member)"
+                >
+                  <nz-icon nzType="minus" nzTheme="outline" />
+                </a>
+              </div>
             </div>
           }
         </div>

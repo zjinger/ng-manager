@@ -26,14 +26,25 @@ export class ProjectAccessService {
     if (ctx.roles.includes("admin")) {
       return;
     }
-    if (ctx.projectIds?.includes(projectId)) {
+    const project = this.repo.findById(projectId);
+    if (!project) {
+      throw new AppError("PROJECT_NOT_FOUND", `project not found: ${projectId}`, 404);
+    }
+
+    const userId = ctx.userId?.trim() || ctx.accountId?.trim();
+    if (!userId) {
+      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+    }
+
+    if (ctx.projectIds?.includes(projectId) || this.repo.findMemberByProjectAndUserId(projectId, userId)) {
       return;
     }
 
-    const userId = ctx.userId?.trim();
-    if (!userId || !this.repo.findMemberByProjectAndUserId(projectId, userId)) {
-      throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
+    if (project.visibility === "internal" && this.isReadAction(action)) {
+      return;
     }
+
+    throw new AppError("PROJECT_ACCESS_DENIED", `${action} forbidden`, 403);
   }
 
   async requireProjectMember(projectId: string, userId: string, action: string): Promise<ProjectMemberEntity> {
@@ -43,5 +54,10 @@ export class ProjectAccessService {
     }
 
     return member;
+  }
+
+  private isReadAction(action: string): boolean {
+    const normalized = action.trim().toLowerCase();
+    return normalized.startsWith("list ") || normalized.startsWith("get ") || normalized.startsWith("view ");
   }
 }

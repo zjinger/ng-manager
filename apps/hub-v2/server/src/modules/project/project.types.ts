@@ -71,6 +71,11 @@ export interface AddProjectMemberInput {
   isOwner?: boolean;
 }
 
+export interface UpdateProjectMemberInput {
+  roleCode?: ProjectMemberRole;
+  isOwner?: boolean;
+}
+
 export interface ProjectMemberCandidate {
   id: string;
   username: string;

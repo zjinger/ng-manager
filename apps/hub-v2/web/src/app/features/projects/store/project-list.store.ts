@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 import type { PageResult } from '@core/types';
 import type { CreateProjectInput, ProjectListQuery, ProjectSummary } from '../models/project.model';
@@ -14,6 +15,7 @@ const DEFAULT_QUERY: ProjectListQuery = {
 @Injectable()
 export class ProjectListStore {
   private readonly projectApi = inject(ProjectApiService);
+  private readonly message = inject(NzMessageService);
 
   private readonly queryState = signal<ProjectListQuery>({ ...DEFAULT_QUERY });
   private readonly resultState = signal<PageResult<ProjectSummary> | null>(null);
@@ -61,8 +63,10 @@ export class ProjectListStore {
         done?.(created);
         this.insertOrRefresh(created);
       },
-      error: () => {
+      error: (error: unknown) => {
         this.busyState.set(false);
+        const message = typeof error === 'object' && error && 'message' in error ? String((error as { message?: string }).message || '') : '';
+        this.message.error(message || '创建项目失败');
       },
     });
   }

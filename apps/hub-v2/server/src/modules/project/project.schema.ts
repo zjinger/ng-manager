@@ -2,7 +2,11 @@ import { z } from "zod";
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1),
-  displayCode: z.string().trim().max(24).optional(),
+  displayCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Z0-9]{1,3}$/, "displayCode must be uppercase A-Z/0-9 and max 3")
+    .optional(),
   description: z.string().trim().optional(),
   icon: z.string().trim().optional(),
   avatarUploadId: z.string().trim().optional(),
@@ -11,7 +15,12 @@ export const createProjectSchema = z.object({
 
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1).optional(),
-  displayCode: z.string().trim().max(24).nullable().optional(),
+  displayCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Z0-9]{1,3}$/, "displayCode must be uppercase A-Z/0-9 and max 3")
+    .nullable()
+    .optional(),
   description: z.string().trim().nullable().optional(),
   icon: z.string().trim().nullable().optional(),
   avatarUploadId: z.string().trim().nullable().optional(),
@@ -28,6 +37,11 @@ export const listProjectsQuerySchema = z.object({
 
 export const addProjectMemberSchema = z.object({
   userId: z.string().trim().min(1),
+  roleCode: z.enum(["member", "product", "ui", "frontend_dev", "backend_dev", "qa", "ops", "project_admin"]).optional(),
+  isOwner: z.boolean().optional()
+});
+
+export const updateProjectMemberSchema = z.object({
   roleCode: z.enum(["member", "product", "ui", "frontend_dev", "backend_dev", "qa", "ops", "project_admin"]).optional(),
   isOwner: z.boolean().optional()
 });

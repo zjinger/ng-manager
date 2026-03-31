@@ -10,6 +10,7 @@ import type {
   ProjectListResult,
   ProjectMemberCandidate,
   ProjectMemberEntity,
+  UpdateProjectMemberInput,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
   UpdateProjectInput,
@@ -20,6 +21,7 @@ export interface ProjectCommandContract {
   create(input: CreateProjectInput, ctx: RequestContext): Promise<ProjectEntity>;
   update(projectId: string, input: UpdateProjectInput, ctx: RequestContext): Promise<ProjectEntity>;
   addMember(projectId: string, input: AddProjectMemberInput, ctx: RequestContext): Promise<ProjectMemberEntity>;
+  updateMember(projectId: string, memberId: string, input: UpdateProjectMemberInput, ctx: RequestContext): Promise<ProjectMemberEntity>;
   removeMember(projectId: string, memberId: string, ctx: RequestContext): Promise<void>;
   addModule(projectId: string, input: CreateProjectConfigItemInput, ctx: RequestContext): Promise<ProjectConfigItemEntity>;
   updateModule(
