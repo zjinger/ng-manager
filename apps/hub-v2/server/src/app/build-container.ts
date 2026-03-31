@@ -175,6 +175,9 @@ export function buildContainer(config: AppConfig, db: Database.Database): AppCon
     projectRepo,
     projectAccess,
     issueService,
+    issueCommentService,
+    issueParticipantService,
+    issueAttachmentService,
     rdService,
     feedbackService
   );

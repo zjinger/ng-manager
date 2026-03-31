@@ -6,6 +6,9 @@ import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { FeedbackQueryContract } from "../feedback/feedback.contract";
 import type { IssueQueryContract } from "../issue/issue.contract";
+import type { IssueCommentQueryContract } from "../issue/comment/issue-comment.contract";
+import type { IssueParticipantQueryContract } from "../issue/participant/issue-participant.contract";
+import type { IssueAttachmentQueryContract } from "../issue/attachment/issue-attachment.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import { ProjectRepo } from "../project/project.repo";
 import type { RdQueryContract } from "../rd/rd.contract";
@@ -20,9 +23,12 @@ import type {
   TokenFeedbackListQuery,
   TokenFeedbackListResult,
   TokenIssueDetail,
+  TokenIssueAttachmentsResult,
+  TokenIssueCommentsResult,
   TokenIssueListQuery,
   TokenIssueListResult,
   TokenIssueLogsResult,
+  TokenIssueParticipantsResult,
   TokenRdDetail,
   TokenRdListQuery,
   TokenRdListResult,
@@ -39,6 +45,9 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     private readonly projectRepo: ProjectRepo,
     private readonly projectAccess: ProjectAccessContract,
     private readonly issueQuery: IssueQueryContract,
+    private readonly issueCommentQuery: IssueCommentQueryContract,
+    private readonly issueParticipantQuery: IssueParticipantQueryContract,
+    private readonly issueAttachmentQuery: IssueAttachmentQueryContract,
     private readonly rdQuery: RdQueryContract,
     private readonly feedbackQuery: FeedbackQueryContract
   ) {}
@@ -172,6 +181,41 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
       throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
     }
     return { items: await this.issueQuery.listLogs(issueId, ctx) };
+  }
+
+  async listIssueComments(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueCommentsResult> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    const issue = await this.issueQuery.getById(issueId, ctx);
+    if (issue.projectId !== project.id) {
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
+    }
+    return { items: await this.issueCommentQuery.list(issueId, ctx) };
+  }
+
+  async listIssueParticipants(
+    projectKey: string,
+    issueId: string,
+    ctx: RequestContext
+  ): Promise<TokenIssueParticipantsResult> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    const issue = await this.issueQuery.getById(issueId, ctx);
+    if (issue.projectId !== project.id) {
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
+    }
+    return { items: await this.issueParticipantQuery.list(issueId, ctx) };
+  }
+
+  async listIssueAttachments(
+    projectKey: string,
+    issueId: string,
+    ctx: RequestContext
+  ): Promise<TokenIssueAttachmentsResult> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    const issue = await this.issueQuery.getById(issueId, ctx);
+    if (issue.projectId !== project.id) {
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
+    }
+    return { items: await this.issueAttachmentQuery.list(issueId, ctx) };
   }
 
   async listRdItems(projectKey: string, query: TokenRdListQuery, ctx: RequestContext): Promise<TokenRdListResult> {

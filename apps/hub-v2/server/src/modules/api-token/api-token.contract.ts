@@ -7,9 +7,12 @@ import type {
   TokenFeedbackListQuery,
   TokenFeedbackListResult,
   TokenIssueDetail,
+  TokenIssueAttachmentsResult,
+  TokenIssueCommentsResult,
   TokenIssueListQuery,
   TokenIssueListResult,
   TokenIssueLogsResult,
+  TokenIssueParticipantsResult,
   TokenRdDetail,
   TokenRdListQuery,
   TokenRdListResult,
@@ -28,6 +31,9 @@ export interface ApiTokenQueryContract {
   listIssues(projectKey: string, query: TokenIssueListQuery, ctx: RequestContext): Promise<TokenIssueListResult>;
   getIssueById(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueDetail>;
   listIssueLogs(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueLogsResult>;
+  listIssueComments(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueCommentsResult>;
+  listIssueParticipants(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueParticipantsResult>;
+  listIssueAttachments(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueAttachmentsResult>;
   listRdItems(projectKey: string, query: TokenRdListQuery, ctx: RequestContext): Promise<TokenRdListResult>;
   getRdItemById(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdDetail>;
   listRdLogs(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdLogsResult>;

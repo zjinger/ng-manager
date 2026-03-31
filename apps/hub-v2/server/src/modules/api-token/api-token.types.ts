@@ -1,6 +1,9 @@
 import type { IssueEntity, IssueListResult, IssueLogEntity, ListIssuesQuery } from "../issue/issue.types";
 import type { ListRdItemsQuery, RdItemEntity, RdItemListResult, RdLogEntity } from "../rd/rd.types";
 import type { FeedbackEntity, FeedbackListResult, ListFeedbacksQuery } from "../feedback/feedback.types";
+import type { IssueCommentEntity } from "../issue/comment/issue-comment.types";
+import type { IssueParticipantEntity } from "../issue/participant/issue-participant.types";
+import type { IssueAttachmentEntity } from "../issue/attachment/issue-attachment.types";
 
 export type ApiTokenScope = "issues:read" | "rd:read" | "feedbacks:read";
 export type ApiTokenStatus = "active" | "revoked";
@@ -49,6 +52,9 @@ export type TokenFeedbackListQuery = Omit<ListFeedbacksQuery, "projectId" | "pro
 export type TokenIssueListResult = IssueListResult;
 export type TokenIssueDetail = IssueEntity;
 export type TokenIssueLogsResult = { items: IssueLogEntity[] };
+export type TokenIssueCommentsResult = { items: IssueCommentEntity[] };
+export type TokenIssueParticipantsResult = { items: IssueParticipantEntity[] };
+export type TokenIssueAttachmentsResult = { items: IssueAttachmentEntity[] };
 export type TokenRdListResult = RdItemListResult;
 export type TokenRdDetail = RdItemEntity;
 export type TokenRdLogsResult = { items: RdLogEntity[] };

@@ -94,6 +94,9 @@ Issue：
 - `GET /api/token/projects/:projectKey/issues`
 - `GET /api/token/projects/:projectKey/issues/:issueId`
 - `GET /api/token/projects/:projectKey/issues/:issueId/logs`
+- `GET /api/token/projects/:projectKey/issues/:issueId/comments`
+- `GET /api/token/projects/:projectKey/issues/:issueId/participants`
+- `GET /api/token/projects/:projectKey/issues/:issueId/attachments`
 
 RD：
 
