@@ -41,6 +41,13 @@ export class ProjectContextStore {
   readonly currentProject = computed(
     () => this.projectsState().find((item) => item.id === this.currentProjectIdState()) ?? null
   );
+  readonly currentProjectKey = computed(() => this.currentProject()?.projectKey ?? null);
+  // 是否已归档
+  readonly currentProjectIsArchived = computed(() => this.currentProject()?.status === 'inactive');
+  // 是否active
+  readonly currentProjectIsActive = computed(() => this.currentProject()?.status === 'active');
+
+
 
   loadProjects(options?: { refreshScope?: boolean }) {
     const source$ = options?.refreshScope ? this.loadScopeFromServer() : of(this.projectScopeModeState());

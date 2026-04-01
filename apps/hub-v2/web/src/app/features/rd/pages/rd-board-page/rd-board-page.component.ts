@@ -47,6 +47,7 @@ import { map } from 'rxjs';
       [stages]="store.stages()"
       [members]="members()"
       [viewMode]="viewMode()"
+      [canCreate]="projectContext.currentProjectIsActive()"
       (submit)="applyFilters($event)"
       (reset)="resetFilters()"
       (create)="createOpen.set(true)"
@@ -311,8 +312,10 @@ export class RdBoardPageComponent {
     return this.canEditSelectedBasic();
   });
   readonly subtitle = computed(() => {
-    const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
-    return `${projectName} · 共 ${this.store.total()} 个研发项`;
+    const project = this.projectContext.currentProject();
+    const projectName = project?.name ?? '当前项目';
+    const projectStatusText = project?.status === 'inactive' ? '（已归档）' : '';
+    return `${projectName} ${projectStatusText} · 共 ${this.store.total()} 个研发项`;
   });
   readonly activeFilterTags = computed(() => {
     const query = this.store.query();

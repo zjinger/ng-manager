@@ -16,6 +16,7 @@ import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-d
 import { IssueDetailStore } from '../../store/issue-detail.store';
 import type { IssueEntity } from '../../models/issue.model';
 import { MarkdownViewerComponent } from '@app/shared/ui';
+import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
 
 @Component({
   selector: 'app-issue-detail-drawer-page',
@@ -63,7 +64,7 @@ import { MarkdownViewerComponent } from '@app/shared/ui';
           />
 
           <section class="description-card">
-            <h3>问题描述</h3>
+            <h3>{{getIssueTitleByType(issue)}}</h3>
             <div class="description">
               @if (issue.description) {
                 <app-markdown-viewer
@@ -375,5 +376,10 @@ export class IssueDetailDrawerPageComponent {
     }
     this.store.close(value || undefined);
     this.closeOpen.set(false);
+  }
+
+  getIssueTitleByType(issue: IssueEntity): string {
+    const item = ISSUE_TITLE_BY_TYPE.find((i) => i.type === issue.type);
+    return item ? item.title : '问题描述';
   }
 }

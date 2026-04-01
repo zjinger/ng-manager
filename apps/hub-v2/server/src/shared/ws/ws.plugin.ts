@@ -34,7 +34,16 @@ export const wsPlugin = fp(async (app: FastifyInstance) => {
       let payload: AuthJwtPayload | null = null;
       try {
         payload = await request.jwtVerify<AuthJwtPayload>();
-      } catch {
+      } catch (error) {
+        app.log.warn(
+          {
+            reqId: request.id,
+            ip: request.ip,
+            path: request.url,
+            err: error
+          },
+          "[ws] jwt verify failed, close websocket"
+        );
         socket.close(1008, "unauthorized");
         return;
       }
@@ -55,12 +64,32 @@ export const wsPlugin = fp(async (app: FastifyInstance) => {
 
       let projectIds: string[] = [];
       try {
-        const accessibleProjects = await app.container.projectQuery.listAccessible(
-          { page: 1, pageSize: 500 },
-          requestContext
+        const pageSize = 200;
+        let page = 1;
+        let total = 0;
+        const collected = new Set<string>();
+        do {
+          const accessibleProjects = await app.container.projectQuery.listAccessible({ page, pageSize }, requestContext);
+          total = accessibleProjects.total;
+          for (const item of accessibleProjects.items) {
+            collected.add(item.id);
+          }
+          if (accessibleProjects.items.length === 0) {
+            break;
+          }
+          page += 1;
+        } while (collected.size < total);
+        projectIds = Array.from(collected);
+      } catch (error) {
+        app.log.error(
+          {
+            reqId: request.id,
+            accountId: payload.accountId,
+            userId: payload.userId ?? null,
+            err: error
+          },
+          "[ws] resolve accessible projects failed"
         );
-        projectIds = accessibleProjects.items.map((item) => item.id);
-      } catch {
         socket.close(1011, "project_scope_failed");
         return;
       }
@@ -74,6 +103,16 @@ export const wsPlugin = fp(async (app: FastifyInstance) => {
           projectIds
         },
         requestContext
+      );
+      app.log.info(
+        {
+          reqId: request.id,
+          sessionId: session.id,
+          accountId: payload.accountId,
+          userId: payload.userId ?? null,
+          projectCount: projectIds.length
+        },
+        "[ws] client connected"
       );
 
       const hello: WsServerMessage = {

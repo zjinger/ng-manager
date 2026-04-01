@@ -18,10 +18,12 @@ export type RdViewMode = 'board' | 'list';
   imports: [FormsModule, NzIconModule, NzButtonModule, NzSelectModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
   template: `
     <app-page-toolbar>
-      <button toolbar-primary nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
-        <nz-icon nzType="plus" nzTheme="outline"/>
-        新建研发项
-      </button>
+      @if(canCreate()){
+        <button toolbar-primary nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
+          <nz-icon nzType="plus" nzTheme="outline"/>
+          新建研发项
+        </button>
+      }
 
       <app-filter-bar toolbar-filters class="rd-toolbar__main">
         @if(stages().length > 0){
@@ -129,6 +131,7 @@ export class RdFilterBarComponent {
   readonly stages = input<RdStageEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly viewMode = input<RdViewMode>('list');
+  readonly canCreate = input(true);
   readonly submit = output<RdListQuery>();
   readonly reset = output<void>();
   readonly create = output<void>();

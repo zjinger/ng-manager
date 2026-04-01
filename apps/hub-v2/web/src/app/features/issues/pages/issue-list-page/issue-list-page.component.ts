@@ -40,6 +40,7 @@ import { IssueListStore } from '../../store/issue-list.store';
       [versions]="versions()"
       [environments]="environments()"
       [viewMode]="viewMode()"
+      [canCreate]="projectContext.currentProjectIsActive()"
       (submit)="onFilterSubmit($event)"
       (reset)="resetFilters()"
       (create)="createOpen.set(true)"
@@ -214,9 +215,12 @@ export class IssueListPageComponent {
     return this.store.items().find((item) => item.id === issueId) ?? null;
   });
   readonly subtitle = computed(() => {
-    const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
+    const project = this.projectContext.currentProject();
+    const projectStausText = project?.status === 'inactive' ? '(已归档)' : '';
+    const projectName = project?.name ?? '当前项目';
     const total = this.store.result()?.total ?? 0;
-    return `${projectName} · 共 ${total} 个问题`;
+
+    return `${projectName} ${projectStausText} · 共 ${total} 个问题`;
   });
   readonly activeFilterTags = computed(() => {
     const query = this.store.query();
@@ -230,17 +234,17 @@ export class IssueListPageComponent {
     };
     const tags: Array<{
       kind:
-        | 'status'
-        | 'priority'
-        | 'reporterIds'
-        | 'assigneeIds'
-        | 'moduleCodes'
-        | 'versionCodes'
-        | 'environmentCodes'
-        | 'includeAssigneeParticipants'
-        | 'sortBy'
-        | 'sortOrder'
-        | 'keyword';
+      | 'status'
+      | 'priority'
+      | 'reporterIds'
+      | 'assigneeIds'
+      | 'moduleCodes'
+      | 'versionCodes'
+      | 'environmentCodes'
+      | 'includeAssigneeParticipants'
+      | 'sortBy'
+      | 'sortOrder'
+      | 'keyword';
       value: string;
       label: string;
     }> = [];

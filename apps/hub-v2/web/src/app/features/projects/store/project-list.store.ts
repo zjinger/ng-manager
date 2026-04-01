@@ -65,8 +65,6 @@ export class ProjectListStore {
       },
       error: (error: unknown) => {
         this.busyState.set(false);
-        const message = typeof error === 'object' && error && 'message' in error ? String((error as { message?: string }).message || '') : '';
-        this.message.error(message || '创建项目失败');
       },
     });
   }

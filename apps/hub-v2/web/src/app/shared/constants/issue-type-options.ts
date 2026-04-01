@@ -15,3 +15,13 @@ export const ISSUE_TYPE_OPTIONS = [
   { label: '任务', value: 'task' },
   { label: '测试记录', value: 'test' },
 ];
+
+export const ISSUE_TITLE_BY_TYPE = [
+  { type: 'bug', title: '问题描述' },
+  { type: 'feature', title: '新功能描述' },
+  { type: 'change', title: '需求变更描述' },
+  { type: 'improvement', title: '改进描述' },
+  { type: 'task', title: '任务描述' },
+  { type: 'test', title: '测试记录' },
+]
+

@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CommonModule, DatePipe, NgClass } from '@angular/common';
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 
@@ -13,7 +13,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 @Component({
   selector: 'app-project-list-table',
   standalone: true,
-  imports: [DatePipe, ClipboardModule, DataTableComponent, NzButtonModule, NzIconModule, NzTooltipModule, NzButtonComponent, NzPopconfirmModule],
+  imports: [CommonModule,DatePipe, ClipboardModule, DataTableComponent, NzButtonModule, NzIconModule, NzTooltipModule, NzButtonComponent, NzPopconfirmModule, NgClass],
   template: `
     <app-data-table>
       <div table-head class="project-table__head">
@@ -28,7 +28,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
         @for (item of items(); track item.id) {
           <div class="project-row">
             <div class="project-cell project-cell--project">
-              <div class="project-avatar">
+              <div class="project-avatar" [ngClass]="{ 'project-avatar--without-url':!showAvatar(item)}">
                 @if (showAvatar(item)) {
                   <img [src]="item.avatarUrl!" [alt]="item.name" (error)="markAvatarError(item.id)" />
                 } @else {
@@ -122,13 +122,15 @@ import { NzMessageService } from 'ng-zorro-antd/message';
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
         color: #fff;
         font-size: 13px;
         font-weight: 700;
         flex-shrink: 0;
         box-shadow: 0 12px 24px rgba(79, 70, 229, 0.24);
         overflow: hidden;
+        &.project-avatar--without-url{
+          background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+        }
       }
       .project-avatar > img {
         width: 100%;
