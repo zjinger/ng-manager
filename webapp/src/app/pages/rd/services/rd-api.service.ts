@@ -13,38 +13,17 @@ export class RdApiService {
   private readonly apiClient = inject(ApiClient);
   private readonly rdTokenApi = inject(RdTokenApiService);
 
-  // async delete(
-  //   projectId: string,
-  //   projectKey: string,
-  //   headers: Record<string, string>,
-  //   itemId: string,
-  // ): Promise<RdItemEntity> {
-  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
-  //     projectId: projectId,
-  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}`,
-  //     method: 'DELETE',
-  //     headers: headers,
-  //   });
-  // }
-
   async delete(projectId: string, itemId: string) {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdDeleteReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'delete',
       payload: {},
     });
   }
 
-  // async close(projectId: string, projectKey: string, itemId: string): Promise<RdItemEntity> {
-  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
-  //     projectId: projectId,
-  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}/close`,
-  //     method: 'POST',
-  //   });
-  // }
 
   async close(projectId: string, itemId: string, summary: string): Promise<RdItemEntity> {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'close',
       payload: { summary },
@@ -52,46 +31,24 @@ export class RdApiService {
   }
 
   async accept(projectId: string, itemId: string) {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'accept',
       payload: {},
     });
   }
 
-  // async advanceStage(
-  //   projectId: string,
-  //   projectKey: string,
-  //   itemId: string,
-  //   input: AdvanceRdStageInput,
-  // ): Promise<RdItemEntity> {
-  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
-  //     projectId: projectId,
-  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}/progress`,
-  //     method: 'POST',
-  //     payload: input,
-  //   });
-  // }
-
   async resolve(projectId: string, issueId: string, summary?: string) {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: issueId,
-      action: 'resolve',
+      action: 'complete',
       payload: { summary },
     });
   }
 
-  // async resume(projectId: string, projectKey: string, itemId: string): Promise<RdItemEntity> {
-  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
-  //     projectId: projectId,
-  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}/resume`,
-  //     method: 'POST',
-  //   });
-  // }
-
   // 阻塞后重开
   async resume(projectId: string, itemId: string) :Promise<RdItemEntity> {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'resume',
       payload: {},
@@ -99,7 +56,7 @@ export class RdApiService {
   }
 
   async block(projectId: string, itemId: string, input: BlockRdItemInput): Promise<RdItemEntity> {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'block',
       payload: input,
@@ -107,7 +64,7 @@ export class RdApiService {
   }
 
   async start(projectId: string, itemId: string): Promise<RdItemEntity> {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       action: 'start',
       rdId: itemId,
       payload: {},
@@ -115,29 +72,15 @@ export class RdApiService {
   }
 
   async progress(projectId: string, itemId: string, progress: number): Promise<RdItemEntity> {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'progress',
       payload: { progress },
     });
   }
 
-  // async update(
-  //   projectId: string,
-  //   projectKey: string,
-  //   itemId: string,
-  //   input: UpdateRdItemInput,
-  // ): Promise<RdItemEntity> {
-  //   return await this.apiClient.hubRequestWithPrjId<RdItemEntity>({
-  //     projectId: projectId,
-  //     path: `/personal/projects/${projectKey}/rd-items/${itemId}`,
-  //     method: 'PATCH',
-  //     payload: { ...input },
-  //   });
-  // }
-
   async update(projectId: string, itemId: string, input: UpdateRdItemInput): Promise<RdItemEntity> {
-    return await this.rdTokenApi.hubRequestWithPersonalToken<RdItemEntity>({
+    return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'update',
       payload: { ...input },

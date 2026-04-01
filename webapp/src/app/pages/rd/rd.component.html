@@ -59,22 +59,6 @@
                     </ng-template>
                 </nz-form-item>
 
-
-                <!-- 负责人选择 -->
-                <nz-form-item class="form-item">
-                    <nz-form-control>
-                        <nz-select nzPlaceHolder="选择负责人" formControlName="assigneeId" nzAllowClear [nzMaxTagCount]="2"
-                            [nzPrefix]="assigneeTpl">
-                            @for (member of members(); track member.userId) {
-                            <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
-                            }
-                        </nz-select>
-                        <ng-template #assigneeTpl>
-                            <nz-icon nzType="user" nzTheme="outline" />
-                        </ng-template>
-                    </nz-form-control>
-                </nz-form-item>
-
             </form>
             <div class="right-col">
                 <!-- 新建按钮 -->

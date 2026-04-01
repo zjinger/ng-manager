@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -26,7 +26,7 @@ import { RdListTableComponent } from './rd-list-table/rd-list-table.component';
 import { RdStore } from './store/rd.store';
 import { RD_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
 import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
-import { debounceTime } from 'rxjs';
+import { debounceTime, filter } from 'rxjs';
 
 type viewType = 'list' | 'board';
 
@@ -105,6 +105,16 @@ export class RdComponent {
       this.rdStore.updateQuery({ ...value });
       this.rdStore.loadRdItems();
     });
+
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => {
+        const detailId = this.route.snapshot.queryParamMap.get('detail');
+        if (detailId) {
+          this.rdStore.loadCurrentRdItem(detailId);
+          this.detailDrawerOpen.set(true);
+        }
+      });
   }
 
   form = this.fb.group({
@@ -112,7 +122,6 @@ export class RdComponent {
     stage: this.fb.control<string[]>([]),
     status: this.fb.control<RdItemStatus[]>([]),
     priority: this.fb.control<RdItemPriority[]>([]),
-    assigneeId: this.fb.control<string>(''),
   });
 
   onPageChange(page: number) {
@@ -236,6 +245,4 @@ export class RdComponent {
     // this.rdStore.advanceStage(current.id, { stageId: stageId.trim() });
     // this.advanceStageOpen.set(false);
   }
-
-  
 }

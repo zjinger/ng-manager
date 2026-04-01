@@ -1,8 +1,9 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { ApiSuccess } from '@app/core';
+import { ApiClient, ApiSuccess } from '@app/core';
 import { firstValueFrom } from 'rxjs';
 import { unwrapApi } from '@app/core/api/api-executor';
+import { ProjectStateService } from '@pages/projects/services/project.state.service';
 type RdActionType =
   | 'accept'
   | 'start'
@@ -10,7 +11,7 @@ type RdActionType =
   | 'update'
   | 'block'
   | 'resume'
-  | 'resolve'
+  | 'complete'
   | 'close'
   | 'delete';
 
@@ -18,33 +19,44 @@ type RdActionType =
   providedIn: 'root',
 })
 export class RdTokenApiService {
-  private http: HttpClient = inject(HttpClient);
+  private apiClient: ApiClient = inject(ApiClient);
+  private projectState = inject(ProjectStateService);
+
   /**
    * 通过个人token 操作hub v2 的数据（写操作）
    */
-  async hubRequestWithPersonalToken<T>(body: {
+  async rdPostReqWithPK<T>(body: {
+    // projectId: string;
     rdId: string;
     // type: 'issues' | 'rd-items';
     action: RdActionType;
     payload: Object; //{content:string}
   }) {
-    const hubV2ProjectKey = 'HUB'; // Hub-ngm
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      Authorization: `ngm_uptk_c1a288dcfb661999a9d52597725cee43e61574d1536f1f1b`, // pm.hub
+    const projectId = this.projectState.currentProjectId()!;
+    return this.apiClient.hubRequestWithPersonalToken<T>({
+      projectId: projectId,
+      method: 'POST',
+      path: `/rd-items/${body.rdId}/${body.action}`,
+      payload: body.payload,
     });
-    return await firstValueFrom(
-      this.http
-        .post<ApiSuccess<T>>(
-          `/hubv2/api/personal/projects/${hubV2ProjectKey}/rd-items/${body.rdId}/${body.action}`,
-          {
-            ...body.payload,
-          },
-          {
-            headers,
-          },
-        )
-        .pipe(unwrapApi<T>()),
-    );
+  }
+
+  /**
+   * 通过个人token 操作hub v2 的数据（写操作）
+   */
+  async rdDeleteReqWithPK<T>(body: {
+    // projectId: string;
+    rdId: string;
+    // type: 'issues' | 'rd-items';
+    action: RdActionType;
+    payload: Object; //{content:string}
+  }) {
+    const projectId = this.projectState.currentProjectId()!;
+    return this.apiClient.hubRequestWithPersonalToken<T>({
+      projectId: projectId,
+      method: 'DELETE',
+      path: `/rd-items/${body.rdId}/${body.action}`,
+      payload: body.payload,
+    });
   }
 }

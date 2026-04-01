@@ -2,12 +2,12 @@
     [nzScroll]="{ y: '520px' }" class="rd-list">
     <thead>
         <tr>
-            <th nzWidth="7%">编号</th>
+            <th nzWidth="10%">编号</th>
             <th nzWidth="20%">研发项</th>
             <th nzWidth="8%">阶段</th>
-            <th nzWidth="8%">状态</th>
-            <th nzWidth="8%">优先级</th>
-            <th nzWidth="8%">负责人</th>
+            <th nzWidth="7%">状态</th>
+            <th nzWidth="7%">优先级</th>
+            <th nzWidth="7%">负责人</th>
             <th nzWidth="11%">进度</th>
             <th nzWidth="12%">更新时间</th>
         </tr>
@@ -22,7 +22,7 @@
             <td> <nz-tag [nzColor]="getPriorityColor(item.priority)">{{getPriorityLabel(item.priority)}}</nz-tag></td>
             <td>{{ item.assigneeName || '-' }}</td>
             <td> <nz-progress [nzPercent]="item.progress" nzSize="small" /> </td>
-            <td>{{ item.planEndAt | date:'yyyy-MM-dd HH:mm' }}</td>
+            <td>{{ item.planEndAt | date:'MM-dd HH:mm' }}</td>
         </tr>
         }
     </tbody>
