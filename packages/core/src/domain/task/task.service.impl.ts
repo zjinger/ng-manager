@@ -267,6 +267,36 @@ export class TaskServiceImpl implements TaskService {
         this.stopReliable(runId).catch(() => { });
         return rt;
     }
+
+    async restart(taskId: string): Promise<TaskRuntime> {
+        const cur = this.getActiveRuntime(taskId);
+        if (!cur) throw new AppError("RUN_NOT_FOUND", "Run not found", { taskId });
+        const { runId, rt } = cur;
+
+        if (rt.status !== "running") { // 非 running 状态，直接启动（或报错）
+            // throw new AppError("TASK_NOT_RUNNING", "Task is not running, cannot restart", { taskId });
+             return await this.start(taskId);
+        }
+
+        const projectId = rt.projectId;
+        let projectRoot = '';
+        try {
+            const project = await this.projectService.get(projectId);
+            projectRoot = project.root;
+        } catch { }
+
+        // 先停止当前任务
+        rt.status = "stopping";
+        this.runtimes.set(runId, rt);
+        this.events.emit(Events.TASK_STOP_REQUESTED, { taskId: rt.taskId, runId });
+
+        // 等待可靠停止完成
+        await this.stopReliable(runId);
+
+        // 重新启动任务
+        return await this.start(taskId);
+    }
+
     async status(taskId: string): Promise<TaskRuntime> {
         const cur = this.getActiveRuntime(taskId);
         if (!cur) throw new AppError("RUN_NOT_FOUND", `Run not found for task: ${taskId}`, { taskId });

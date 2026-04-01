@@ -189,6 +189,16 @@ export class TaskStateService {
     });
   }
 
+  /**
+   * 重启选中任务
+   * @param taskId 如果不传则重启 selectedTaskId 指定的任务
+   */
+  restartSelected(taskId?: string) {
+    taskId = taskId?.trim() || this.selectedTaskId();
+    if (!taskId) return;
+    this.api.restart(taskId).subscribe();
+  }
+
   /* ---------------- 给 popover 用 ---------------- */
 
   rowsViewOf(projectId: string): Signal<TaskRow[]> {

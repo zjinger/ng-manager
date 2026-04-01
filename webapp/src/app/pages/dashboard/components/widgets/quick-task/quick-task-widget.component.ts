@@ -129,6 +129,14 @@ export class QuickTaskWidgetComponent implements OnChanges {
     }
     this.goToTask();
   }
+
+  restartTask() {
+    if (this.curConfig() == null || !this.curConfig()!.taskId) return;
+    const taskId = this.curConfig()!.taskId;
+    this.taskState.restartSelected(taskId);
+    this.goToTask();
+  }
+
   async goToTask() {
     const cfg = this.curConfig();
     if (!cfg) return;
