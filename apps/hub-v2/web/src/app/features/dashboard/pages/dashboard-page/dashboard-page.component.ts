@@ -27,13 +27,13 @@ import { DashboardStore } from '../../store/dashboard.store';
   template: `
     <app-page-header
       title="Dashboard"
-      subtitle="聚合当前项目上下文下的待办、研发项与最新公告。"
+      subtitle="聚合我的待办、研发项与最新公告。"
     />
 
     @if (store.loading()) {
       <div class="empty">
         <div class="empty__title">正在加载首页数据…</div>
-        <div class="empty__hint">正在同步当前项目下的待办、动态和公告。</div>
+        <div class="empty__hint">正在同步与我相关的待办、动态和公告。</div>
       </div>
     } @else if (store.data(); as data) {
       <app-dashboard-stat-grid [stats]="data.stats" />
@@ -198,10 +198,7 @@ export class DashboardPageComponent {
   ];
 
   constructor() {
-    effect(() => {
-      this.projectContext.currentProjectId();
-      this.store.load({ force: true });
-    });
+    this.store.load({ force: true });
 
     let skipFirst = true;
     effect(() => {
