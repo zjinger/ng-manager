@@ -101,21 +101,10 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const current = await this.requireByIdWithAccess(id, ctx, "update issue");
     requireIssueEditAccess(current, ctx);
 
-    const members = await this.resolveMembers(
-      current.projectId,
-      input.assigneeId === undefined ? current.assigneeId : input.assigneeId,
-      input.verifierId === undefined ? current.verifierId : input.verifierId
-    );
     const updatedAt = nowIso();
     const updated = this.repo.update(id, {
       title: input.title?.trim() || current.title,
       description: input.description === undefined ? current.description : input.description?.trim() || null,
-      type: input.type ?? current.type,
-      priority: input.priority ?? current.priority,
-      assignee_id: members.assigneeId,
-      assignee_name: members.assigneeName,
-      verifier_id: members.verifierId,
-      verifier_name: members.verifierName,
       module_code: input.moduleCode === undefined ? current.moduleCode : input.moduleCode?.trim() || null,
       version_code: input.versionCode === undefined ? current.versionCode : input.versionCode?.trim() || null,
       environment_code:
@@ -129,7 +118,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
 
     const entity = this.requireById(id);
     this.repo.createLog(
-      this.createLog(id, "update", current.status, entity.status, ctx, this.createUpdateSummary(current, input, members))
+      this.createLog(id, "update", current.status, entity.status, ctx, this.createUpdateSummary(current, input))
     );
     await this.emitIssueEvent("issue.updated", "updated", entity, ctx);
     return entity;
@@ -432,7 +421,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     };
   }
 
-  private createUpdateSummary(current: IssueEntity, input: UpdateIssueInput, members: IssueMemberRef): string {
+  private createUpdateSummary(current: IssueEntity, input: UpdateIssueInput): string {
     const changes: string[] = [];
 
     if (input.title !== undefined && input.title.trim() !== current.title) {
@@ -440,18 +429,6 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     }
     if (input.description !== undefined && (input.description?.trim() || null) !== current.description) {
       changes.push("更新描述");
-    }
-    if (input.type !== undefined && input.type !== current.type) {
-      changes.push(`类型: ${current.type} -> ${input.type}`);
-    }
-    if (input.priority !== undefined && input.priority !== current.priority) {
-      changes.push(`优先级: ${current.priority} -> ${input.priority}`);
-    }
-    if (input.assigneeId !== undefined && members.assigneeId !== current.assigneeId) {
-      changes.push(`负责人: ${current.assigneeName || "未指派"} -> ${members.assigneeName || "未指派"}`);
-    }
-    if (input.verifierId !== undefined && members.verifierId !== current.verifierId) {
-      changes.push(`验证人: ${current.verifierName || "未指定"} -> ${members.verifierName || "未指定"}`);
     }
     if (input.moduleCode !== undefined && (input.moduleCode?.trim() || null) !== current.moduleCode) {
       changes.push("更新模块");

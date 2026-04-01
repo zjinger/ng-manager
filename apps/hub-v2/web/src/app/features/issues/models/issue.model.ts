@@ -129,6 +129,14 @@ export interface CreateIssueInput {
   environmentCode?: string;
 }
 
+export interface UpdateIssueInput {
+  title?: string;
+  description?: string | null;
+  moduleCode?: string | null;
+  versionCode?: string | null;
+  environmentCode?: string | null;
+}
+
 export interface AssignIssueInput {
   assigneeId: string;
 }

@@ -33,11 +33,14 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
           @if (canStart()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="start.emit()">开始处理</button>
           }
-          @if (canClaim()) {
+          @if (canClaim() && !canAssign()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="claim.emit()">认领</button>
           }
           @if (canAssign()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="assign.emit()">{{ assignActionLabel() }}</button>
+          }
+          @if (canEdit()) {
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="edit.emit()">编辑</button>
           }
           @if (canManageParticipants()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="addParticipants.emit()">添加协作人</button>
@@ -184,6 +187,7 @@ export class IssueDetailDrawerHeaderComponent {
   readonly canClaim = input(false);
   readonly canAssign = input(false);
   readonly assignActionLabel = input('重新指派');
+  readonly canEdit = input(false);
   readonly canManageParticipants = input(false);
   readonly canResolve = input(false);
   readonly canVerify = input(false);
@@ -193,6 +197,7 @@ export class IssueDetailDrawerHeaderComponent {
   readonly start = output<void>();
   readonly claim = output<void>();
   readonly assign = output<void>();
+  readonly edit = output<void>();
   readonly addParticipants = output<void>();
   readonly resolve = output<void>();
   readonly verify = output<void>();

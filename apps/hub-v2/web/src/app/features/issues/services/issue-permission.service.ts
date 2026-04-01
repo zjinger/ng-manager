@@ -5,6 +5,10 @@ import type { IssueEntity } from '../models/issue.model';
 
 @Injectable({ providedIn: 'root' })
 export class IssuePermissionService {
+  canEdit(issue: IssueEntity, user: AuthUser | null): boolean {
+    return this.matchActor(user, issue.reporterId);
+  }
+
   canAssign(issue: IssueEntity, user: AuthUser | null, isProjectAdmin = false): boolean {
     return !!this.getAssignActionLabel(issue, user, isProjectAdmin);
   }

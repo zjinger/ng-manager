@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { forkJoin, type Observable } from 'rxjs';
 
 import { AuthStore } from '@core/auth';
-import type { ProjectMemberEntity } from '../../projects/models/project.model';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../projects/models/project.model';
 import { ProjectApiService } from '../../projects/services/project-api.service';
 import type {
   IssueAttachmentEntity,
@@ -10,6 +10,7 @@ import type {
   IssueEntity,
   IssueLogEntity,
   IssueParticipantEntity,
+  UpdateIssueInput,
 } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
 import { IssuePermissionService } from '../services/issue-permission.service';
@@ -27,6 +28,9 @@ export class IssueDetailStore {
   private readonly participantsState = signal<IssueParticipantEntity[]>([]);
   private readonly attachmentsState = signal<IssueAttachmentEntity[]>([]);
   private readonly membersState = signal<ProjectMemberEntity[]>([]);
+  private readonly modulesState = signal<ProjectMetaItem[]>([]);
+  private readonly versionsState = signal<ProjectVersionItem[]>([]);
+  private readonly environmentsState = signal<ProjectMetaItem[]>([]);
   private readonly loadingState = signal(false);
   private readonly busyState = signal(false);
   private readonly actionTickState = signal(0);
@@ -49,6 +53,9 @@ export class IssueDetailStore {
   readonly participants = computed(() => this.participantsState());
   readonly attachments = computed(() => this.attachmentsState());
   readonly members = computed(() => this.membersState());
+  readonly modules = computed(() => this.modulesState());
+  readonly versions = computed(() => this.versionsState());
+  readonly environments = computed(() => this.environmentsState());
   readonly loading = computed(() => this.loadingState());
   readonly busy = computed(() => this.busyState());
   readonly actionTick = computed(() => this.actionTickState());
@@ -66,6 +73,13 @@ export class IssueDetailStore {
     }
     const member = this.membersState().find((item) => item.userId === userId);
     return !!member && (member.roleCode === 'project_admin' || member.isOwner);
+  });
+  readonly canEdit = computed(() => {
+    const issue = this.issueState();
+    if (!issue) {
+      return false;
+    }
+    return this.permissionService.canEdit(issue, this.currentUser());
   });
   readonly canAssign = computed(() => {
     const issue = this.issueState();
@@ -136,9 +150,17 @@ export class IssueDetailStore {
         this.commentsState.set(comments.items);
         this.participantsState.set(participants.items);
         this.attachmentsState.set(attachments.items);
-        this.projectApi.listMembers(issue.projectId).subscribe({
-          next: (members) => {
+        forkJoin({
+          members: this.projectApi.listMembers(issue.projectId),
+          modules: this.projectApi.listModules(issue.projectId),
+          versions: this.projectApi.listVersions(issue.projectId),
+          environments: this.projectApi.listEnvironments(issue.projectId),
+        }).subscribe({
+          next: ({ members, modules, versions, environments }) => {
             this.membersState.set(members);
+            this.modulesState.set(modules.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+            this.versionsState.set(versions.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+            this.environmentsState.set(environments.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
             this.loadingState.set(false);
           },
           error: () => {
@@ -150,6 +172,10 @@ export class IssueDetailStore {
         this.loadingState.set(false);
       },
     });
+  }
+
+  updateBasic(input: UpdateIssueInput): void {
+    this.runIssueAction((issueId) => this.issueApi.update(issueId, input));
   }
 
   postComment(content: string, mentions: string[] = []): void {
