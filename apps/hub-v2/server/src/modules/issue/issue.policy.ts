@@ -12,12 +12,7 @@ function matchActor(ctx: RequestContext, actorId: string | null): boolean {
 }
 
 export function requireIssueEditAccess(issue: IssueEntity, ctx: RequestContext): void {
-  if (
-    isAdmin(ctx) ||
-    matchActor(ctx, issue.reporterId) ||
-    matchActor(ctx, issue.assigneeId) ||
-    matchActor(ctx, issue.verifierId)
-  ) {
+  if (matchActor(ctx, issue.reporterId)) {
     return;
   }
 

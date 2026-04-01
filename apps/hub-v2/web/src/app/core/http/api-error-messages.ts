@@ -12,6 +12,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   USER_ALREADY_EXISTS: '登录名已存在，请更换',
   USER_NOT_FOUND: '用户不存在或已删除',
   ISSUE_NOT_FOUND: 'Issue 不存在或已删除',
+  ISSUE_EDIT_FORBIDDEN: '仅提报人可编辑该 Issue',
   ISSUE_ASSIGN_FORBIDDEN: '当前状态不允许指派负责人',
   ISSUE_CLAIM_FORBIDDEN: '当前 Issue 不可认领',
   ISSUE_PARTICIPANT_FORBIDDEN: '当前用户无权管理协作人',
@@ -33,4 +34,3 @@ export function resolveApiErrorMessage(code: string | undefined, fallback: strin
   }
   return API_ERROR_MESSAGES[code] || fallback;
 }
-

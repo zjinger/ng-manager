@@ -12,7 +12,18 @@ export async function createApp() {
   const migrationResult = runMigrations(db);
   const app = Fastify({
     logger: {
-      level: config.logLevel
+      level: config.logLevel,
+      transport:
+        config.logLevel === "debug"
+          ? {
+              target: "pino-pretty",
+              options: {
+                colorize: true,
+                translateTime: "yyyy-mm-dd HH:MM:ss.l o",
+                ignore: "pid,hostname"
+              }
+            }
+          : undefined
     }
   });
 

@@ -12,9 +12,10 @@ import { IssueDetailDrawerHeaderComponent } from '../../components/issue-detail-
 import { IssuePropsPanelComponent } from '../../components/issue-props-panel/issue-props-panel.component';
 import { IssueAssignDialogComponent } from '../../dialogs/issue-assign-dialog/issue-assign-dialog.component';
 import { IssueAddParticipantsDialogComponent } from '../../dialogs/issue-add-participants-dialog/issue-add-participants-dialog.component';
+import { IssueEditDialogComponent } from '../../dialogs/issue-edit-dialog/issue-edit-dialog.component';
 import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-dialog/issue-transition-dialog.component';
 import { IssueDetailStore } from '../../store/issue-detail.store';
-import type { IssueEntity } from '../../models/issue.model';
+import type { IssueEntity, UpdateIssueInput } from '../../models/issue.model';
 import { MarkdownViewerComponent } from '@app/shared/ui';
 import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
 
@@ -32,6 +33,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
     IssuePropsPanelComponent,
     IssueAssignDialogComponent,
     IssueAddParticipantsDialogComponent,
+    IssueEditDialogComponent,
     IssueTransitionDialogComponent,
     MarkdownViewerComponent
   ],
@@ -48,6 +50,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
             [canClaim]="store.canClaim()"
             [canAssign]="store.canAssign()"
             [assignActionLabel]="store.assignActionLabel()"
+            [canEdit]="store.canEdit()"
             [canManageParticipants]="store.canManageParticipants()"
             [canResolve]="store.canResolve()"
             [canVerify]="store.canVerify()"
@@ -56,6 +59,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
             (start)="confirmStart()"
             (claim)="confirmClaim()"
             (assign)="assignIssue()"
+            (edit)="openEdit()"
             (addParticipants)="openAddParticipants()"
             (resolve)="resolveIssue()"
             (verify)="store.verify()"
@@ -176,6 +180,17 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
         (cancel)="addParticipantsOpen.set(false)"
         (confirm)="confirmAddParticipants($event.userIds)"
       />
+
+      <app-issue-edit-dialog
+        [open]="editOpen()"
+        [busy]="store.busy()"
+        [issue]="store.issue()"
+        [modules]="store.modules()"
+        [versions]="store.versions()"
+        [environments]="store.environments()"
+        (cancel)="editOpen.set(false)"
+        (confirm)="confirmEdit($event)"
+      />
     </div>
   `,
   styles: [
@@ -264,6 +279,7 @@ export class IssueDetailDrawerPageComponent {
   readonly resolveOpen = signal(false);
   readonly reopenOpen = signal(false);
   readonly closeOpen = signal(false);
+  readonly editOpen = signal(false);
   private readonly loadedIssueId = signal<string | null>(null);
   private lastActionTick = 0;
 
@@ -308,6 +324,10 @@ export class IssueDetailDrawerPageComponent {
     this.addParticipantsOpen.set(true);
   }
 
+  openEdit(): void {
+    this.editOpen.set(true);
+  }
+
   confirmStart(): void {
     this.modal.confirm({
       nzTitle: '确认开始处理该问题？',
@@ -336,6 +356,11 @@ export class IssueDetailDrawerPageComponent {
   confirmAddParticipants(userIds: string[]): void {
     this.store.addParticipants(userIds);
     this.addParticipantsOpen.set(false);
+  }
+
+  confirmEdit(input: UpdateIssueInput): void {
+    this.store.updateBasic(input);
+    this.editOpen.set(false);
   }
 
   confirmResolve(summary: string): void {

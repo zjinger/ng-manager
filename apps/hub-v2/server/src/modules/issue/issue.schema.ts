@@ -57,10 +57,6 @@ export const createIssueSchema = z.object({
 export const updateIssueSchema = z.object({
   title: z.string().trim().optional(),
   description: z.string().nullable().optional(),
-  type: issueTypeSchema.optional(),
-  priority: issuePrioritySchema.optional(),
-  assigneeId: z.string().trim().nullable().optional(),
-  verifierId: z.string().trim().nullable().optional(),
   moduleCode: z.string().trim().nullable().optional(),
   versionCode: z.string().trim().nullable().optional(),
   environmentCode: z.string().trim().nullable().optional()

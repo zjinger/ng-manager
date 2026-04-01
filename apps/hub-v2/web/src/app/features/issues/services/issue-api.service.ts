@@ -12,6 +12,7 @@ import type {
   IssueListResult,
   IssueLogEntity,
   IssueParticipantEntity,
+  UpdateIssueInput,
   UploadEntity,
 } from '../models/issue.model';
 
@@ -38,6 +39,10 @@ export class IssueApiService {
 
   create(input: CreateIssueInput) {
     return this.api.post<IssueEntity, CreateIssueInput>('/issues', input);
+  }
+
+  update(issueId: string, input: UpdateIssueInput) {
+    return this.api.patch<IssueEntity, UpdateIssueInput>(`/issues/${issueId}`, input);
   }
 
   getById(issueId: string) {
