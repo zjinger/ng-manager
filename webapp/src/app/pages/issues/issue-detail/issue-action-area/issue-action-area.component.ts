@@ -7,11 +7,12 @@ import {
 import { IssueActionType, IssueEntity, IssueStatus } from '@pages/issues/models/issue.model';
 import { IssuePermissionService } from '@pages/issues/services/issue-permission.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
 
 @Component({
   selector: 'app-issue-action-area',
-  imports: [NzStepsModule, NzButtonModule],
+  imports: [NzStepsModule, NzButtonModule, NzModalModule],
   template: `
     <div class="action-area">
       <div class="steps">
@@ -42,7 +43,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
             认领
           </button>
         }
-        @if (canAssign()) {
+        <!-- @if (canAssign()) {
           <button
             nz-button
             nzType="default"
@@ -51,8 +52,8 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
           >
             {{ assignActionLabel() }}
           </button>
-        }
-        @if (canManageParticipants()) {
+        } -->
+        <!-- @if (canManageParticipants()) {
           <button
             nz-button
             nzType="default"
@@ -61,7 +62,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
           >
             添加协作人
           </button>
-        }
+        } -->
         @if (canResolve()) {
           <button
             nz-button
@@ -72,7 +73,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
             标记解决
           </button>
         }
-        @if (canVerify()) {
+        <!-- @if (canVerify()) {
           <button
             nz-button
             nzType="primary"
@@ -91,8 +92,8 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
           >
             重新打开
           </button>
-        }
-        @if (canClose()) {
+        } -->
+        <!-- @if (canClose()) {
           <button
             nz-button
             nzDanger
@@ -102,12 +103,12 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
           >
             关闭问题
           </button>
-        }
+        } -->
       </div>
     </div>
   `,
   styles: `
-    .action-btns{
+    .action-btns {
       margin-top: 20px;
       display: flex;
       gap: 10px;
@@ -115,9 +116,8 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
   `,
 })
 export class IssueActionAreaComponent {
-  private readonly issuePermissions = inject(IssuePermissionService);
+  private readonly modal = inject(NzModalService);
   readonly issue = input.required<IssueEntity>();
-
   readonly canStart = input(false);
   readonly canClaim = input(false);
   readonly canAssign = input(false);

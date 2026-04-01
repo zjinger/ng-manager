@@ -74,5 +74,11 @@
 
     <app-issue-detail [open]="open()" [issues]="selectedIssue()" [comments]="IssueComments()"
         [attachments]="IssueAttachments()" [participants]="IssueParticipants()" (commentSubmit)="commentSubmit($event)"
-        (close)="closeIssueDetail()"></app-issue-detail>
+        (close)="closeIssueDetail()" (actionClick)="handleActions($event)"></app-issue-detail>
+
+    <app-issue-close-dialog [open]="IssueCloseDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
+        (cancel)="cancelCloseDialog()" (confirm)="closeConfirm($event)"></app-issue-close-dialog>
+
+    <app-issue-resolve-dialog [open]="IssueResolveDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
+        (cancel)="cancelResolveDialog()" (confirm)="resolveConfirm($event)"></app-issue-resolve-dialog>
 </app-page-layout>
