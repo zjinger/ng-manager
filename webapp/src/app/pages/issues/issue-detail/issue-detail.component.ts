@@ -27,6 +27,7 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
+import { IssueAttachmentAreaComponent } from './issue-attachment-area/issue-attachment-area.component';
 
 @Component({
   selector: 'app-issue-detail',
@@ -46,6 +47,7 @@ import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-ed
     IssueActionAreaComponent,
     IssueCollaboratorsAreaComponent,
     IssueCommentAreaComponent,
+    IssueAttachmentAreaComponent,
     MarkdownViewerComponent,
     CommonModule,
   ],
@@ -162,11 +164,17 @@ import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-ed
 
               <nz-card class="detail-item">
                 <h2 class="wrap-title">合作人</h2>
-                <app-issue-collaborators-area [issue]="issue" [participants]="participants()"></app-issue-collaborators-area>
+                <app-issue-collaborators-area
+                  [issue]="issue"
+                  [participants]="participants()"
+                ></app-issue-collaborators-area>
               </nz-card>
 
               <nz-card class="detail-item">
                 <h2 class="wrap-title">附件</h2>
+                <app-issue-attachment-area
+                  [attachments]="attachments()"
+                ></app-issue-attachment-area>
               </nz-card>
             </div>
           </div>
@@ -242,7 +250,7 @@ export class IssueDetailComponent {
   readonly busy = input(false);
   readonly logs = input<IssueLogEntity[]>([]);
   readonly comments = input<IssueCommentEntity[]>([]);
-  readonly attachments = input<IssueAttachmentEntity[]>();
+  readonly attachments = input<IssueAttachmentEntity[]>([]);
   readonly participants = input<IssueParticipantEntity[]>([]);
 
   readonly placement = input<NzDrawerPlacement>('right');

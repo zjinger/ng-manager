@@ -128,7 +128,7 @@ export class IssuesComponent {
       case 'reopen':
       case 'close': {
         this.IssueCloseDialogOpen.set(true);
-        break;
+        break;  
       }
       case 'add_participants':
       case 'remove_participants':

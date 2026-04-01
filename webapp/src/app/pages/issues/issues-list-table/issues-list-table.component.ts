@@ -16,7 +16,7 @@ import { CommonModule } from '@angular/common';
     [nzFrontPagination]="false"
     [nzShowPagination]="false"
     [nzShowSizeChanger]="true"
-    [nzScroll]="{ y: '520px' }"
+    [nzScroll]="{ y: '500px' }"
     class="rd-list"
   >
     <thead>
