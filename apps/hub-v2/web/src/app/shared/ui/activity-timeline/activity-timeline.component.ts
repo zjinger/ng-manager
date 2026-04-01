@@ -52,7 +52,11 @@ export interface ActivityTimelineItem {
         border-top: 1px solid var(--border-color-soft);
         font-size: 13px;
       }
-
+      .timeline-log__icon,
+      .timeline-log__user,
+      .timeline-log__time{
+        flex: 0 0 auto;
+      }
       .timeline-log__icon {
         color: var(--primary-500);
         font-size: 13px;
