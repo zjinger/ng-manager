@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, map, Observable, of, switchMap, tap } from 'rxjs';
+import { catchError, from, map, Observable, of, switchMap, tap } from 'rxjs';
 
 import { ApiClientService } from '../http/api-client.service';
 import { AuthStore } from './auth.store';
@@ -17,15 +17,14 @@ export class AuthService {
     const username = input.username.trim();
     return this.api.get<LoginChallenge>('/auth/login/challenge').pipe(
       switchMap((challenge) => {
-        const encrypted = encryptLoginPassword(`${challenge.nonce}:${input.password}`, 'ngm_hub_login_aes_2026');
-        return this.api.post<AuthUser, { username: string; nonce: string; iv: string; cipherText: string }>(
-          '/auth/login',
-          {
-            username,
-            nonce: challenge.nonce,
-            iv: encrypted.iv,
-            cipherText: encrypted.cipherText,
-          }
+        return from(encryptLoginPassword(`${challenge.nonce}:${input.password}`, challenge.publicKey)).pipe(
+          switchMap((encrypted) =>
+            this.api.post<AuthUser, { username: string; nonce: string; cipherText: string }>('/auth/login', {
+              username,
+              nonce: challenge.nonce,
+              cipherText: encrypted.cipherText,
+            })
+          )
         );
       }),
       tap((user) => {

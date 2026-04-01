@@ -38,12 +38,12 @@ export interface AdminProfile {
 export interface LoginChallenge {
   nonce: string;
   expiresAt: string;
+  publicKey: string;
 }
 
 export interface EncryptedLoginInput {
   username: string;
   nonce: string;
-  iv: string;
   cipherText: string;
 }
 

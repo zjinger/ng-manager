@@ -1,4 +1,4 @@
-import { createDecipheriv, createHash, randomUUID } from "node:crypto";
+import { constants, privateDecrypt, randomUUID } from "node:crypto";
 import type { AppConfig } from "../../shared/env/env";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
@@ -19,11 +19,16 @@ import type {
 
 export class AuthService implements AuthCommandContract, AuthQueryContract {
   private readonly challenges = new Map<string, { expiresAt: number }>();
+  private readonly loginRsaPrivateKey: string;
+  private readonly loginRsaPublicKey: string;
 
   constructor(
     private readonly config: AppConfig,
     private readonly repo: AuthRepo
-  ) {}
+  ) {
+    this.loginRsaPrivateKey = this.normalizeRsaKey(config.loginRsaPrivateKey, "private");
+    this.loginRsaPublicKey = this.normalizeRsaKey(config.loginRsaPublicKey, "public");
+  }
 
   issueLoginChallenge(): LoginChallenge {
     this.cleanupChallenges();
@@ -32,7 +37,8 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     this.challenges.set(nonce, { expiresAt: expiresAtMs });
     return {
       nonce,
-      expiresAt: new Date(expiresAtMs).toISOString()
+      expiresAt: new Date(expiresAtMs).toISOString(),
+      publicKey: this.loginRsaPublicKey
     };
   }
 
@@ -154,7 +160,7 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       throw new AppError(ERROR_CODES.AUTH_CHALLENGE_EXPIRED, "login challenge has expired", 401);
     }
 
-    const decrypted = this.decryptLoginPassword(input.iv, input.cipherText);
+    const decrypted = this.decryptLoginPassword(input.cipherText);
     const expectedPrefix = `${input.nonce}:`;
     if (!decrypted.startsWith(expectedPrefix)) {
       throw new AppError(ERROR_CODES.AUTH_CHALLENGE_INVALID, "login challenge is invalid", 401);
@@ -163,20 +169,22 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     return decrypted.slice(expectedPrefix.length);
   }
 
-  private decryptLoginPassword(ivBase64: string, cipherTextBase64: string): string {
+  private decryptLoginPassword(cipherTextBase64: string): string {
     try {
-      const iv = Buffer.from(ivBase64, "base64");
       const encrypted = Buffer.from(cipherTextBase64, "base64");
 
-      if (iv.length !== 16 || encrypted.length === 0) {
+      if (encrypted.length === 0) {
         throw new Error("invalid cipher payload");
       }
 
-      const key = createHash("sha256").update(this.config.loginAesKey, "utf8").digest();
-      const decipher = createDecipheriv("aes-256-cbc", key, iv);
-      decipher.setAutoPadding(true);
-
-      const plain = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
+      const plain = privateDecrypt(
+        {
+          key: this.loginRsaPrivateKey,
+          padding: constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: "sha256"
+        },
+        encrypted
+      ).toString("utf8");
       if (!plain) {
         throw new Error("empty plain password");
       }
@@ -184,6 +192,35 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       return plain;
     } catch {
       throw new AppError(ERROR_CODES.AUTH_INVALID_ENCRYPTED_PASSWORD, "invalid encrypted password", 401);
+    }
+  }
+
+  private normalizeRsaKey(value: string, keyType: "private" | "public"): string {
+    const direct = value.replace(/\\n/g, "\n").trim();
+    if (this.isPemKey(direct)) {
+      return direct;
+    }
+
+    const decoded = this.decodeBase64ToUtf8(value);
+    if (decoded) {
+      const normalizedDecoded = decoded.replace(/\\n/g, "\n").trim();
+      if (this.isPemKey(normalizedDecoded)) {
+        return normalizedDecoded;
+      }
+    }
+
+    throw new Error(`[auth] invalid LOGIN_RSA_${keyType.toUpperCase()}_KEY format`);
+  }
+
+  private isPemKey(value: string): boolean {
+    return value.includes("-----BEGIN") && value.includes("-----END");
+  }
+
+  private decodeBase64ToUtf8(value: string): string | null {
+    try {
+      return Buffer.from(value.trim(), "base64").toString("utf8");
+    } catch {
+      return null;
     }
   }
 

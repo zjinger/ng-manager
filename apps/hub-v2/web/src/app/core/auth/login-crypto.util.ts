@@ -1,22 +1,52 @@
-import CryptoJS from 'crypto-js';
-
 export interface EncryptedLoginPayload {
-  iv: string;
   cipherText: string;
 }
 
-export function encryptLoginPassword(passwordWithNonce: string, secret: string): EncryptedLoginPayload {
-  const key = CryptoJS.SHA256(secret);
-  const iv = CryptoJS.lib.WordArray.random(16);
+export async function encryptLoginPassword(
+  plaintext: string,
+  publicKeyPem: string
+): Promise<EncryptedLoginPayload> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new Error('web crypto api is unavailable');
+  }
 
-  const encrypted = CryptoJS.AES.encrypt(passwordWithNonce, key, {
-    iv,
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7,
-  });
+  const keyData = pemToArrayBuffer(publicKeyPem);
+  const key = await subtle.importKey(
+    'spki',
+    keyData,
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false,
+    ['encrypt']
+  );
 
+  const encoded = new TextEncoder().encode(plaintext);
+  const encrypted = await subtle.encrypt({ name: 'RSA-OAEP' }, key, encoded);
   return {
-    iv: CryptoJS.enc.Base64.stringify(iv),
-    cipherText: encrypted.ciphertext.toString(CryptoJS.enc.Base64),
+    cipherText: arrayBufferToBase64(encrypted),
   };
+}
+
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const normalizedPem = pem.replace(/\\n/g, '\n').trim();
+  const base64 = normalizedPem
+    .replace(/-----BEGIN [A-Z ]+-----/g, '')
+    .replace(/-----END [A-Z ]+-----/g, '')
+    .replace(/\s+/g, '');
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary);
 }

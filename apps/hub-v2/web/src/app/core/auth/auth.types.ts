@@ -22,4 +22,5 @@ export interface LoginInput {
 export interface LoginChallenge {
   nonce: string;
   expiresAt: string;
+  publicKey: string;
 }
