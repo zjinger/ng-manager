@@ -93,6 +93,18 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     this.repo.create(entity);
     await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
     this.repo.createLog(this.createLog(entity.id, "create", null, entity.status, ctx, `创建问题 ${entity.issueNo}`));
+    if (entity.assigneeId) {
+      this.repo.createLog(
+        this.createLog(
+          entity.id,
+          "assign",
+          entity.status,
+          entity.status,
+          ctx,
+          `创建时指派负责人：${entity.assigneeName || entity.assigneeId}`
+        )
+      );
+    }
     await this.emitIssueEvent("issue.created", "created", entity, ctx);
     return entity;
   }

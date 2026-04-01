@@ -172,7 +172,8 @@ const DEFAULT_DRAFT: Draft = {
                   <nz-select
                     nzMode="multiple"
                     nzAllowClear
-                    nzPlaceHolder="加入协作人并收到通知"
+                    [nzDisabled]="!draft().assigneeId"
+                    [nzPlaceHolder]="draft().assigneeId ? '加入协作人并收到通知' : '请先指派负责人'"
                     [ngModel]="draft().participantIds"
                     name="participantIds"
                     (ngModelChange)="updateParticipantIds($event)"
@@ -181,6 +182,9 @@ const DEFAULT_DRAFT: Draft = {
                       <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
                     }
                   </nz-select>
+                  <!-- @if (!draft().assigneeId) {
+                    <div class="issue-create-hint">请先选择负责人，再添加协作人。</div>
+                  } -->
               </nz-form-control>
             </nz-form-item>   
             </div>
@@ -387,6 +391,11 @@ const DEFAULT_DRAFT: Draft = {
       .upload-picked {
         margin-top: 12px;
       }
+      .issue-create-hint {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
       .issue-field textarea.ant-input {
         border-radius: 0 0 8px 8px;
       }
@@ -441,6 +450,10 @@ export class IssueCreateDialogComponent implements OnDestroy {
       const assigneeId = this.draft().assigneeId;
       this.participantCandidates.set(this.members().filter((member) => member.userId !== assigneeId));
       if (!assigneeId) {
+        const participantIds = this.draft().participantIds ?? [];
+        if (participantIds.length > 0) {
+          this.updateField('participantIds', []);
+        }
         return;
       }
       const participantIds = this.draft().participantIds ?? [];
@@ -467,6 +480,11 @@ export class IssueCreateDialogComponent implements OnDestroy {
   }
 
   updateParticipantIds(value: unknown): void {
+    if (!this.draft().assigneeId) {
+      this.message.warning('请先选择负责人，再添加协作人');
+      this.updateField('participantIds', []);
+      return;
+    }
     const values = Array.isArray(value) ? value : [];
     const normalized = [...new Set(values.map((item) => `${item}`.trim()).filter(Boolean))];
     const assigneeId = this.draft().assigneeId;
@@ -584,6 +602,11 @@ export class IssueCreateDialogComponent implements OnDestroy {
 
   submitForm(): void {
     if (!this.draft().title.trim()) {
+      return;
+    }
+    if (!this.draft().assigneeId && (this.draft().participantIds?.length ?? 0) > 0) {
+      this.message.warning('未指定负责人时不能添加协作人');
+      this.updateField('participantIds', []);
       return;
     }
     this.create.emit({ ...this.draft(), title: this.draft().title.trim() });

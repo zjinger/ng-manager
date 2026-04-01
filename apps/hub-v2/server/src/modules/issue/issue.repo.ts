@@ -44,7 +44,7 @@ type IssueRow = {
 type IssueLogRow = {
   id: string;
   issue_id: string;
-  action_type: "create" | "update" | "assign" | "start" | "resolve" | "verify" | "reopen" | "close";
+  action_type: "create" | "update" | "comment" | "assign" | "start" | "resolve" | "verify" | "reopen" | "close";
   from_status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened" | null;
   to_status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened" | null;
   operator_id: string | null;

@@ -10,7 +10,11 @@ import { requireIssueParticipantManageAccess } from "../issue.policy";
 import type { IssueLogEntity } from "../issue.types";
 import type { IssueParticipantCommandContract, IssueParticipantQueryContract } from "./issue-participant.contract";
 import { IssueParticipantRepo } from "./issue-participant.repo";
-import type { AddIssueParticipantInput, IssueParticipantEntity } from "./issue-participant.types";
+import type {
+  AddIssueParticipantInput,
+  AddIssueParticipantsBatchInput,
+  IssueParticipantEntity
+} from "./issue-participant.types";
 
 export class IssueParticipantService implements IssueParticipantCommandContract, IssueParticipantQueryContract {
   constructor(
@@ -33,13 +37,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
       throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_EXISTS, "participant already exists", 409);
     }
 
-    const entity: IssueParticipantEntity = {
-      id: genId("isp"),
-      issueId: issue.id,
-      userId: member.userId,
-      userName: member.displayName,
-      createdAt: nowIso()
-    };
+    const entity = this.createParticipantEntity(issue.id, member.userId, member.displayName);
 
     this.participantRepo.create(entity);
     this.issueRepo.createLog(this.createParticipantLog(issue.id, ctx, member.displayName, "participant.added", entity.createdAt));
@@ -61,6 +59,67 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
     });
 
     return entity;
+  }
+
+  async addBatch(
+    issueId: string,
+    input: AddIssueParticipantsBatchInput,
+    ctx: RequestContext
+  ): Promise<IssueParticipantEntity[]> {
+    const issue = await this.requireIssueWithAccess(issueId, ctx, "add issue participants");
+    requireIssueParticipantManageAccess(issue, ctx, await this.isProjectAdmin(issue.projectId, ctx));
+
+    const userIds = [...new Set(input.userIds.map((item) => item.trim()).filter(Boolean))];
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    const entities: IssueParticipantEntity[] = [];
+    const names: string[] = [];
+
+    for (const userId of userIds) {
+      const member = await this.projectAccess.requireProjectMember(issue.projectId, userId, "add issue participant");
+      if (this.participantRepo.exists(issue.id, member.userId)) {
+        throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_EXISTS, "participant already exists", 409);
+      }
+      const entity = this.createParticipantEntity(issue.id, member.userId, member.displayName);
+      this.participantRepo.create(entity);
+      entities.push(entity);
+      names.push(member.displayName);
+    }
+
+    const createdAt = nowIso();
+    this.issueRepo.createLog({
+      id: genId("islog"),
+      issueId: issue.id,
+      actionType: "update",
+      fromStatus: null,
+      toStatus: null,
+      operatorId: ctx.userId?.trim() || ctx.accountId,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      summary: `添加协作人 ${names.join("、")}`,
+      metaJson: JSON.stringify({ kind: "participant.added.batch", userNames: names, userIds }),
+      createdAt
+    });
+
+    await this.eventBus.emit({
+      type: "issue.updated",
+      scope: "project",
+      projectId: issue.projectId,
+      entityType: "issue",
+      entityId: issue.id,
+      action: "participant.added",
+      actorId: ctx.accountId,
+      occurredAt: createdAt,
+      payload: {
+        issueNo: issue.issueNo,
+        participantIds: entities.map((item) => item.id),
+        userIds,
+        userNames: names
+      }
+    });
+
+    return entities;
   }
 
   async list(issueId: string, ctx: RequestContext): Promise<IssueParticipantEntity[]> {
@@ -135,6 +194,16 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
       summary: `${kind === "participant.added" ? "添加协作人" : "移除协作人"} ${userName}`,
       metaJson: JSON.stringify({ kind, userName }),
       createdAt
+    };
+  }
+
+  private createParticipantEntity(issueId: string, userId: string, userName: string): IssueParticipantEntity {
+    return {
+      id: genId("isp"),
+      issueId,
+      userId,
+      userName,
+      createdAt: nowIso()
     };
   }
 

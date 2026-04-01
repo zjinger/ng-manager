@@ -188,6 +188,7 @@ export class IssueDetailStore {
     this.issueApi.createComment(issueId, content.trim(), mentions).subscribe({
       next: (comment) => {
         this.commentsState.update((items) => [comment, ...items]);
+        this.refreshLogs(issueId);
         this.busyState.set(false);
       },
       error: () => {
@@ -237,6 +238,7 @@ export class IssueDetailStore {
     this.issueApi.addParticipant(issueId, userId).subscribe({
       next: (participant) => {
         this.participantsState.update((items) => [...items, participant]);
+        this.refreshLogs(issueId);
         this.busyState.set(false);
       },
       error: () => {
@@ -253,9 +255,10 @@ export class IssueDetailStore {
     }
 
     this.busyState.set(true);
-    forkJoin(ids.map((userId) => this.issueApi.addParticipant(issueId, userId))).subscribe({
-      next: (participants) => {
-        this.participantsState.update((items) => [...items, ...participants]);
+    this.issueApi.addParticipants(issueId, ids).subscribe({
+      next: ({ items }) => {
+        this.participantsState.update((current) => [...current, ...items]);
+        this.refreshLogs(issueId);
         this.busyState.set(false);
       },
       error: () => {
@@ -274,6 +277,7 @@ export class IssueDetailStore {
     this.issueApi.removeParticipant(issueId, participantId).subscribe({
       next: () => {
         this.participantsState.update((items) => items.filter((item) => item.id !== participantId));
+        this.refreshLogs(issueId);
         this.busyState.set(false);
       },
       error: () => {

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../../shared/auth/require-auth";
 import { ok } from "../../../shared/http/response";
-import { addIssueParticipantSchema } from "./issue-participant.schema";
+import { addIssueParticipantSchema, addIssueParticipantsBatchSchema } from "./issue-participant.schema";
 
 export default async function issueParticipantRoutes(app: FastifyInstance) {
   app.get("/issues/:issueId/participants", async (request) => {
@@ -16,6 +16,14 @@ export default async function issueParticipantRoutes(app: FastifyInstance) {
     const body = addIssueParticipantSchema.parse(request.body);
     const entity = await app.container.issueParticipantCommand.add(params.issueId, body, ctx);
     return reply.status(201).send(ok(entity, "issue participant added"));
+  });
+
+  app.post("/issues/:issueId/participants/batch", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { issueId: string };
+    const body = addIssueParticipantsBatchSchema.parse(request.body);
+    const entities = await app.container.issueParticipantCommand.addBatch(params.issueId, body, ctx);
+    return reply.status(201).send(ok({ items: entities }, "issue participants added"));
   });
 
   app.delete("/issues/:issueId/participants/:participantId", async (request) => {

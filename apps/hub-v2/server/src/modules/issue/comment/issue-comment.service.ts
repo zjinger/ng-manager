@@ -76,7 +76,7 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
     return {
       id: genId("islog"),
       issueId,
-      actionType: "update",
+      actionType: "comment",
       fromStatus: null,
       toStatus: null,
       operatorId: ctx.userId?.trim() || ctx.accountId,

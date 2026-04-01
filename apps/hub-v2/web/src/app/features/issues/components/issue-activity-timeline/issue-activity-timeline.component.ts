@@ -17,7 +17,7 @@ export class IssueActivityTimelineComponent {
   readonly timelineItems = computed(() =>
     this.logs().map((item) => ({
       id: item.id,
-      icon: this.iconType(item.actionType),
+      icon: this.iconType(item),
       actor: item.operatorName || '系统',
       action: this.logText(item),
       time: new Intl.DateTimeFormat('zh-CN', {
@@ -30,7 +30,16 @@ export class IssueActivityTimelineComponent {
     })),
   );
 
-  private iconType(actionType: string): string {
+  private iconType(item: IssueLogEntity): string {
+    const metaKind = this.readMetaKind(item.metaJson);
+    if (metaKind === 'participant.added' || metaKind === 'participant.added.batch') {
+      return 'user-add';
+    }
+    if (metaKind === 'participant.removed') {
+      return 'user-delete';
+    }
+
+    const actionType = item.actionType;
     return (
       {
         create: 'plus-circle',
@@ -49,5 +58,17 @@ export class IssueActivityTimelineComponent {
 
   private logText(item: IssueLogEntity): string {
     return item.summary || item.actionType;
+  }
+
+  private readMetaKind(metaJson: string | null): string | null {
+    if (!metaJson) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(metaJson) as { kind?: unknown };
+      return typeof parsed.kind === 'string' ? parsed.kind : null;
+    } catch {
+      return null;
+    }
   }
 }

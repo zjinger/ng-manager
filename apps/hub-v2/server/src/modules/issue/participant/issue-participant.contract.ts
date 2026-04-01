@@ -1,8 +1,13 @@
 import type { RequestContext } from "../../../shared/context/request-context";
-import type { AddIssueParticipantInput, IssueParticipantEntity } from "./issue-participant.types";
+import type {
+  AddIssueParticipantInput,
+  AddIssueParticipantsBatchInput,
+  IssueParticipantEntity
+} from "./issue-participant.types";
 
 export interface IssueParticipantCommandContract {
   add(issueId: string, input: AddIssueParticipantInput, ctx: RequestContext): Promise<IssueParticipantEntity>;
+  addBatch(issueId: string, input: AddIssueParticipantsBatchInput, ctx: RequestContext): Promise<IssueParticipantEntity[]>;
   remove(issueId: string, participantId: string, ctx: RequestContext): Promise<{ ok: true }>;
 }
 

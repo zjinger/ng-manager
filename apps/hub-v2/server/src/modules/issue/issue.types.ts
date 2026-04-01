@@ -6,6 +6,7 @@ export type IssueStatus = "open" | "in_progress" | "resolved" | "verified" | "cl
 export type IssueAction =
   | "create"
   | "update"
+  | "comment"
   | "assign"
   | "claim"
   | "start"

@@ -9,3 +9,7 @@ export interface IssueParticipantEntity {
 export interface AddIssueParticipantInput {
   userId: string;
 }
+
+export interface AddIssueParticipantsBatchInput {
+  userIds: string[];
+}

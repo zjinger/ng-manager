@@ -72,6 +72,12 @@ export class IssueApiService {
     return this.api.post<IssueParticipantEntity, { userId: string }>(`/issues/${issueId}/participants`, { userId });
   }
 
+  addParticipants(issueId: string, userIds: string[]) {
+    return this.api.post<{ items: IssueParticipantEntity[] }, { userIds: string[] }>(`/issues/${issueId}/participants/batch`, {
+      userIds,
+    });
+  }
+
   removeParticipant(issueId: string, participantId: string) {
     return this.api.delete<{ id: string }>(`/issues/${issueId}/participants/${participantId}`);
   }
