@@ -7,13 +7,15 @@ import {
   ISSUE_STATUS_LABELS,
 } from '@app/shared/constants/status-options';
 import { PRIORITY_LABELS, PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
-import { IssueStatus } from './models/issue.model';
+import { createCommentInput, IssueEntity, IssueStatus } from './models/issue.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { FormsModule } from '@angular/forms';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { IssuesListTableComponent } from './issues-list-table/issues-list-table.component';
+import { IssueDetailStore } from './store/issue-detail.store';
+import { IssueDetailComponent } from './issue-detail/issue-detail.component';
 
 type viewType = 'list' | 'board';
 
@@ -28,13 +30,15 @@ type viewType = 'list' | 'board';
     NzIconModule,
     NzPaginationModule,
     IssuesListTableComponent,
+    IssueDetailComponent,
   ],
   templateUrl: './issues.component.html',
   styleUrl: './issues.component.less',
-  providers: [IssueListStore],
+  providers: [IssueListStore, IssueDetailStore],
 })
 export class IssuesComponent {
   private readonly issueListStore = inject(IssueListStore);
+  private readonly issueDetailStore = inject(IssueDetailStore);
 
   // 视图模式
   protected readonly viewType = signal<viewType>('list');
@@ -43,10 +47,17 @@ export class IssuesComponent {
   protected readonly total = this.issueListStore.total;
   protected readonly query = this.issueListStore.query;
 
+  protected readonly selectedIssue = this.issueDetailStore.issue;
+  protected readonly IssueComments = this.issueDetailStore.comments;
+  protected readonly IssueAttachments = this.issueDetailStore.attachments;
+  protected readonly IssueParticipants = this.issueDetailStore.participants;
+
+  protected readonly open = signal(false);
+
   protected readonly currentPriority = signal<IssueStatus | ''>('');
 
   constructor() {
-    this.issueListStore.load();
+    this.issueListStore.initialize();
   }
 
   onPageChange(page: number) {
@@ -61,7 +72,20 @@ export class IssuesComponent {
 
   statusOptions = ISSUE_STATUS_FILTER_OPTIONS;
   priorityOptions = PRIORITY_OPTIONS;
-  
+
+  selectIssue(issue: IssueEntity) {
+    this.issueDetailStore.load(issue.id);
+    this.open.set(true);
+  }
+
+  closeIssueDetail() {
+    this.open.set(false);
+  }
+
+  // 提交评论
+  commentSubmit(comment: createCommentInput) {
+    this.issueDetailStore.postComment(comment);
+  }
 
   updateStatus(status: IssueStatus) {
     this.issueListStore.updateQuery({ status });

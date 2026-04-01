@@ -1,9 +1,17 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDrawerModule, NzDrawerPlacement } from 'ng-zorro-antd/drawer';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { IssueActionAreaComponent } from './issue-action-area/issue-action-area.component';
-import { IssueCommentEntity, IssueEntity, IssueLogEntity } from '../models/issue.model';
+import {
+  createCommentInput,
+  IssueActionType,
+  IssueAttachmentEntity,
+  IssueCommentEntity,
+  IssueEntity,
+  IssueLogEntity,
+  IssueParticipantEntity,
+} from '../models/issue.model';
 import { IssueDetailStore } from '../store/issue-detail.store';
 import { MarkdownComponent } from 'ngx-markdown';
 import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
@@ -13,6 +21,12 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { IssueCollaboratorsAreaComponent } from './issue-collaborators-area/issue-collaborators-panel.component';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzCommentModule } from 'ng-zorro-antd/comment';
+import { NzListModule } from 'ng-zorro-antd/list';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { FormsModule } from '@angular/forms';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
 
 @Component({
   selector: 'app-issue-detail',
@@ -24,8 +38,14 @@ import { NzInputModule } from 'ng-zorro-antd/input';
     NzTimelineModule,
     NzAvatarModule,
     NzInputModule,
+    NzCommentModule,
+    NzListModule,
+    NzFormModule,
+    FormsModule,
+    NzButtonModule,
     IssueActionAreaComponent,
     IssueCollaboratorsAreaComponent,
+    IssueCommentAreaComponent,
     MarkdownViewerComponent,
     CommonModule,
   ],
@@ -53,9 +73,9 @@ import { NzInputModule } from 'ng-zorro-antd/input';
       </ng-template>
 
       <ng-template nzDrawerContent>
-        @if (!issue()) {
+        @if (!issues()) {
           <nz-empty>正在加载测试单详情…</nz-empty>
-        } @else if (issue(); as issue) {
+        } @else if (issues(); as issue) {
           <div class="detail-wrap">
             <div class="left-column">
               <nz-card class="detail-item">
@@ -81,6 +101,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
                   <app-markdown-viewer
                     [content]="issue.description"
                     [showToc]="true"
+                    [tocVariant]="'floating'"
+                    [tocCollapsedByDefault]="true"
                   ></app-markdown-viewer>
                 } @else {
                   暂无描述
@@ -99,31 +121,12 @@ import { NzInputModule } from 'ng-zorro-antd/input';
                 }
               </nz-card>
 
-              <nz-card class="detail-item">
+              <nz-card class="detail-item comment">
                 <h2 class="wrap-title">评论/备注</h2>
-                @if (comments().length === 0) {
-                  <span class="comment-empty">暂无评论/备注</span>
-                } @else {
-                  @for (comment of comments(); track comment.id) {
-                    <div class="comment-item">
-                      <div class="comment-header">
-                        <nz-avatar [nzText]="comment.authorName.charAt(0)" nzSize="small" />
-                        <span class="name">{{ comment.authorName }}</span>
-                        <span class="meta"> 添加了评论 </span>
-                        <span class="time">{{ comment.createdAt | date: 'yyyy-MM-dd HH:mm' }}</span>
-                      </div>
-                      <div class="comment-content">
-                        <span>{{ comment.content }}</span>
-                      </div>
-                    </div>
-                  }
-                }
-                <div class="comment-input">
-                  <nz-avatar [nzText]="'我'" nzSize="small" />
-                  <textarea nz-input placeholder="添加评论...输入@提及成员">
-
-                  </textarea>
-                </div>
+                <app-issue-comment-area
+                  [comments]="comments()"
+                  (submit)="commentSubmit.emit($event)"
+                ></app-issue-comment-area>
               </nz-card>
             </div>
             <div class="right-column">
@@ -159,7 +162,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 
               <nz-card class="detail-item">
                 <h2 class="wrap-title">合作人</h2>
-                <app-issue-collaborators-area [issue]="issue"></app-issue-collaborators-area>
+                <app-issue-collaborators-area [issue]="issue" [participants]="participants()"></app-issue-collaborators-area>
               </nz-card>
 
               <nz-card class="detail-item">
@@ -200,20 +203,20 @@ import { NzInputModule } from 'ng-zorro-antd/input';
         border-bottom: 1px solid #bbbbbb;
       }
       .left-column {
+        width: 65%;
+
         display: flex;
         flex-direction: column;
         gap: 10px;
-        width: 70%;
       }
       .right-column {
-        width: 30%;
+        width: 35%;
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
       .resolution {
-        margin-top: 16px;
-        border-top: 1px solid #bbbbbb;
+        margin-top: 26px;
         .resolution-label {
           font-size: 0.8rem;
           font-weight: bold;
@@ -225,30 +228,38 @@ import { NzInputModule } from 'ng-zorro-antd/input';
         }
       }
     }
+    .comment {
+      .comment-item {
+      }
+    }
   `,
 })
 export class IssueDetailComponent {
   readonly store = inject(IssueDetailStore);
 
-  readonly issue = input<IssueEntity | null>();
+  readonly issues = input<IssueEntity | null>();
   readonly open = input(false);
   readonly busy = input(false);
   readonly logs = input<IssueLogEntity[]>([]);
   readonly comments = input<IssueCommentEntity[]>([]);
+  readonly attachments = input<IssueAttachmentEntity[]>();
+  readonly participants = input<IssueParticipantEntity[]>([]);
+
   readonly placement = input<NzDrawerPlacement>('right');
   readonly close = output();
-  readonly actionClick = output<string>();
+  readonly actionClick = output<IssueActionType>();
+  readonly commentSubmit = output<createCommentInput>();
   readonly progressChange = output<number>();
   readonly deleteClick = output<void>();
 
-  readonly subtitleText = computed(() => this.issue()?.issueNo || '');
-  readonly titleText = computed(() => this.issue()?.title || '问题详情');
+  readonly subtitleText = computed(() => this.issues()?.issueNo || '');
+  readonly titleText = computed(() => this.issues()?.title || '问题详情');
 
   closeDetaile() {
     this.close.emit();
   }
 
-  handleActionClick(action: string) {
+  handleActionClick(action: IssueActionType) {
     this.actionClick.emit(action);
   }
 }

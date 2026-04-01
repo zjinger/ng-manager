@@ -6,12 +6,12 @@ import type { PageResult } from '@app/core/types/page.types';
 import type { CreateIssueInput, IssueEntity, IssueListQuery } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { UserStore } from '@app/core/stores/user.store';
 
 const DEFAULT_QUERY: IssueListQuery = {
   page: 1,
   pageSize: 20,
   keyword: '',
-  projectId: '',
   status: '',
   priority: '',
 };
@@ -20,6 +20,7 @@ const DEFAULT_QUERY: IssueListQuery = {
 export class IssueListStore {
   private readonly issueApi = inject(IssueApiService);
   private readonly projectState = inject(ProjectStateService);
+  private readonly userStore = inject(UserStore);
 
   private readonly queryState = signal<IssueListQuery>({ ...DEFAULT_QUERY });
   private readonly resultState = signal<PageResult<IssueEntity> | null>(null);
@@ -33,16 +34,17 @@ export class IssueListStore {
   readonly page = computed(() => this.queryState().page ?? 1);
   readonly pageSize = computed(() => this.queryState().pageSize ?? 20);
 
+  private readonly currentProjectId = this.projectState.currentProjectId;
+
   initialize(): void {
-    const projectId = this.projectState.currentProjectId() ?? '';
-    this.queryState.update((query) => ({ ...query, projectId }));
+    this.userStore.ensureUserLoaded();
     this.load();
   }
 
   refreshForProject(projectId: string | null): void {
     this.queryState.update((query) => ({
       ...query,
-      projectId: projectId ?? '',
+      projectId: this.currentProjectId() ?? '',
       page: 1,
     }));
 
@@ -72,15 +74,12 @@ export class IssueListStore {
   }
 
   async load() {
+    const currentProjectId = this.currentProjectId();
+    if (!currentProjectId) return;
     const query = this.queryState();
-    if (!query.projectId) {
-      this.resultState.set({ items: [], page: 1, pageSize: queryPageSize(query), total: 0 });
-      this.loadingState.set(false);
-      return;
-    }
     this.loadingState.set(true);
     try {
-      const res = await this.issueApi.getIssuesList(query.projectId, query);
+      const res = await this.issueApi.getIssuesList(currentProjectId, query);
       this.resultState.set(res);
       this.loadingState.set(false);
     } catch (error) {
@@ -108,17 +107,14 @@ export class IssueListStore {
       //   projectId,
       //   title,
       // } as CreateIssueInput)) as any;
-
       // // 添加参与人
       // const participantPromises = participantIds.map((userId) =>
       //   this.issueApi.addParticipant(created.id, userId),
       // );
-
       // const attachmentPromises = files.map(async (file) => {
       //   const upload = await this.issueApi.uploadFile(file, created.id);
       //   await this.issueApi.addAttachment(created.id, upload.id);
       // });
-
       // await Promise.all([...participantPromises, ...attachmentPromises]);
     } catch (e) {
     } finally {

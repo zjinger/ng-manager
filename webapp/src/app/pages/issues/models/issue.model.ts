@@ -5,7 +5,17 @@ export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
 export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'verified' | 'closed' | 'reopened';
 
 // 行动类型
-export type IssueActionType = 'comments'| 'start' | 'claim' | 'assign' | 'resolve' | 'verify' | 'reopen' | 'close' | 'add_participants' | 'remove_participants';
+export type IssueActionType =
+  | 'comments'
+  | 'start'
+  | 'claim'
+  | 'assign'
+  | 'resolve'
+  | 'verify'
+  | 'reopen'
+  | 'close'
+  | 'add_participants'
+  | 'remove_participants';
 export interface IssueEntity {
   id: string;
   projectId: string;
@@ -119,6 +129,11 @@ export interface CreateIssueInput {
   moduleCode?: string;
   versionCode?: string;
   environmentCode?: string;
+}
+
+export interface createCommentInput {
+  content: string;
+  mentions?: string[];
 }
 
 export interface AssignIssueInput {

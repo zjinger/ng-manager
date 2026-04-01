@@ -45,7 +45,7 @@ export class IssueApiService {
   // }
 
   addComment(issueId: string, content: string) {
-    return this.issueTokenApi.hubRequestWithPersonalToken({
+    return this.issueTokenApi.issuePostReqWithPK({
       issueId,
       action: 'comments',
       payload: { content },
@@ -53,7 +53,7 @@ export class IssueApiService {
   }
 
   assignIssue(projectId: string, issueId: string, input: AssignIssueInput) {
-    return this.issueTokenApi.hubRequestWithPersonalToken<IssueEntity>({
+    return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'assign',
       payload: {},
@@ -61,7 +61,7 @@ export class IssueApiService {
   }
 
   claimIssue(projectId: string, issueId: string) {
-    return this.issueTokenApi.hubRequestWithPersonalToken<IssueEntity>({
+    return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'claim',
       payload: {},
@@ -69,7 +69,7 @@ export class IssueApiService {
   }
 
   startIssue(projectId: string, issueId: string) {
-    return this.issueTokenApi.hubRequestWithPersonalToken<IssueEntity>({
+    return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'start',
       payload: {},
@@ -77,7 +77,7 @@ export class IssueApiService {
   }
 
   resolveIssue(projectId: string, issueId: string, summary?: string) {
-    return this.issueTokenApi.hubRequestWithPersonalToken<IssueEntity>({
+    return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'resolve',
       payload: {},
@@ -85,7 +85,7 @@ export class IssueApiService {
   }
 
   completeIssue(projectId: string, issueId: string) {
-    return this.issueTokenApi.hubRequestWithPersonalToken<IssueEntity>({
+    return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'resolve',
       payload: {},
@@ -93,7 +93,7 @@ export class IssueApiService {
   }
 
   // verifyIssue(projectId: string, issueId: string) {
-  //   return this.issueTokenApi.hubRequestWithPersonalToken<IssueEntity>({
+  //   return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
   //     projectId,
   //     path: `/personal/projects/${projectId}/issues/${issueId}/verify`,
   //     method: 'POST',
@@ -101,7 +101,7 @@ export class IssueApiService {
   // }
 
   reopenIssue(projectId: string, issueId: string) {
-    return this.issueTokenApi.hubRequestWithPersonalToken<IssueEntity>({
+    return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'reopen',
       payload: {},
@@ -176,15 +176,11 @@ export class IssueApiService {
     });
   }
 
-  createIssueComment(projectId: string, issueId: string, content: string, mentions: string[] = []) {
-    return this.apiClient.hubRequestWithPrjId<IssueCommentEntity>({
-      projectId,
-      method: 'POST',
-      path: `/issues/${issueId}/comments`,
-      payload: {
-        content,
-        mentions: mentions.length > 0 ? mentions : undefined,
-      },
+  createIssueComment(issueId: string, content: string, mentions: string[] = []) {
+    return this.issueTokenApi.issuePostReqWithPK<IssueCommentEntity>({
+      issueId,
+      action: 'comments',
+      payload: { content },
     });
   }
 }

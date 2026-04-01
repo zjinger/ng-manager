@@ -1,51 +1,37 @@
-import {
-    HttpErrorResponse,
-    HttpInterceptorFn
-} from "@angular/common/http";
-import { inject } from "@angular/core";
-import { catchError, throwError } from "rxjs";
-import { ErrorDispatcher, ErrorPolicyCode } from "../error";
-import { ApiBizError } from "../api/api-biz-error";
-import { APP_CONFIG } from "@env/environment";
-import * as _ from "lodash";
-import { UserStore } from "../stores/user.store";
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { catchError, throwError } from 'rxjs';
+import { ErrorDispatcher, ErrorPolicyCode } from '../error';
+import { ApiBizError } from '../api/api-biz-error';
+import { APP_CONFIG } from '@env/environment';
+import * as _ from 'lodash';
+import { UserStore } from '../stores/user.store';
 
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
-    const dispatcher = inject(ErrorDispatcher);
-    const userStore = inject(UserStore);
-    // 注入 requestId
-    const requestId = _.uniqueId("req-");
-    req = req.clone({
-        setHeaders: { "X-Request-Id": requestId }
-    });
+  const dispatcher = inject(ErrorDispatcher);
 
-    if(userStore.isAuthenticated()) {
-        const token = userStore.currentUser()!.token;
-        req = req.clone({
-            setHeaders: { "Authorization": `Bearer ${token}` }
-        });
-    }
+  // 注入 requestId
+  const requestId = _.uniqueId('req-');
+  req = req.clone({
+    setHeaders: { 'X-Request-Id': requestId },
+  });
 
-    return next(req).pipe(
-        catchError((err: unknown) => {
-            if (!APP_CONFIG.production) {
-                console.error(`[HTTP][${requestId}] Error:`, err);
-            }
-            if (err instanceof ApiBizError) {
-                dispatcher.dispatch(err.code as ErrorPolicyCode, err.message, err.details);
-                return throwError(() => err);
-            }
-            if (err instanceof HttpErrorResponse) {
-                const code = err.error?.error?.code ?? "HTTP_ERROR" as ErrorPolicyCode;
-                dispatcher.dispatch(
-                    code,
-                    err.message,
-                    err.error
-                );
-                return throwError(() => err);
-            }
-            dispatcher.dispatch(ErrorPolicyCode.INTERNAL_ERROR);
-            return throwError(() => err);
-        })
-    );
+  return next(req).pipe(
+    catchError((err: unknown) => {
+      if (!APP_CONFIG.production) {
+        console.error(`[HTTP][${requestId}] Error:`, err);
+      }
+      if (err instanceof ApiBizError) {
+        dispatcher.dispatch(err.code as ErrorPolicyCode, err.message, err.details);
+        return throwError(() => err);
+      }
+      if (err instanceof HttpErrorResponse) {
+        const code = err.error?.error?.code ?? ('HTTP_ERROR' as ErrorPolicyCode);
+        dispatcher.dispatch(code, err.message, err.error);
+        return throwError(() => err);
+      }
+      dispatcher.dispatch(ErrorPolicyCode.INTERNAL_ERROR);
+      return throwError(() => err);
+    }),
+  );
 };

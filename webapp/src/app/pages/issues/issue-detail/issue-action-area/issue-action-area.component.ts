@@ -11,7 +11,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
 
 @Component({
   selector: 'app-issue-action-area',
-  imports: [NzStepsModule,NzButtonModule],
+  imports: [NzStepsModule, NzButtonModule],
   template: `
     <div class="action-area">
       <div class="steps">
@@ -95,6 +95,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
         @if (canClose()) {
           <button
             nz-button
+            nzDanger
             nzType="default"
             class="detail-header__action-btn"
             (click)="actionClick.emit('close')"
@@ -105,7 +106,13 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
       </div>
     </div>
   `,
-  styleUrl: './issue-action-area.component.less',
+  styles: `
+    .action-btns{
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+  `,
 })
 export class IssueActionAreaComponent {
   private readonly issuePermissions = inject(IssuePermissionService);

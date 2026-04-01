@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { forkJoin, from, type Observable } from 'rxjs';
 
 import { UserStore } from '@app/core/stores/user.store';
-import type { ProjectMemberEntity } from '../models/issue.model';
+import type { createCommentInput, ProjectMemberEntity } from '../models/issue.model';
 import { ProjectApiService } from '../../projects/services/project-api.service';
 import type {
   IssueAttachmentEntity,
@@ -47,6 +47,7 @@ export class IssueDetailStore {
   readonly busy = computed(() => this.busyState());
   readonly actionTick = computed(() => this.actionTickState());
   readonly currentUser = this.userStore.currentUser;
+
   readonly availableMembers = computed(() => {
     const issue = this.issueState();
     const assigneeId = issue?.assigneeId ?? null;
@@ -143,7 +144,7 @@ export class IssueDetailStore {
       this.permissionService.canVerify(issue, this.currentUser())
     );
   });
-  
+
   readonly canClose = computed(() => {
     const issue = this.issueState();
     return (
@@ -158,20 +159,21 @@ export class IssueDetailStore {
     if (!currentProjectId) {
       return;
     }
+    this.userStore.ensureUserLoaded();
     this.loadingState.set(true);
     forkJoin({
       issue: this.issueApi.getIssueDetail(currentProjectId, issueId),
       logs: this.issueApi.getIssueLogs(currentProjectId, issueId),
-      // comments: this.issueApi.getIssueComments(currentProjectId, issueId),
-      // participants: this.issueApi.getIssueParticipants(currentProjectId, issueId),
-      // attachments: this.issueApi.getIssueAttachments(currentProjectId, issueId),
+      comments: this.issueApi.getIssueComments(currentProjectId, issueId),
+      participants: this.issueApi.getIssueParticipants(currentProjectId, issueId),
+      attachments: this.issueApi.getIssueAttachments(currentProjectId, issueId),
     }).subscribe({
-      next: ({ issue, logs }) => {
+      next: ({ issue, logs, comments, participants, attachments }) => {
         this.issueState.set(issue);
         this.logsState.set(logs.items);
-        // this.commentsState.set(comments.items);
-        // this.participantsState.set(participants.items);
-        // this.attachmentsState.set(attachments.items);
+        this.commentsState.set(comments.items);
+        this.participantsState.set(participants.items);
+        this.attachmentsState.set(attachments.items);
         // from(this.issueApi.getProjectMembers(issue.projectId)).subscribe({
         //   next: (members) => {
         //     this.membersState.set(members.items);
@@ -188,19 +190,15 @@ export class IssueDetailStore {
     });
   }
 
-  postComment(content: string, mentions: string[] = []): void {
-    const currentProjectId = this.currentProjectId();
-    if (!currentProjectId) {
-      return;
-    }
+  postComment(comment: createCommentInput): void {
     const issueId = this.issueState()?.id;
-    if (!issueId || !content.trim()) {
+    if (!issueId || !comment.content.trim()) {
       return;
     }
 
     this.busyState.set(true);
     from(
-      this.issueApi.createIssueComment(currentProjectId, issueId, content.trim(), mentions),
+      this.issueApi.createIssueComment(issueId, comment.content.trim(), comment.mentions),
     ).subscribe({
       next: (comment) => {
         this.commentsState.update((items) => [comment, ...items]);

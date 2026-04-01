@@ -1,12 +1,17 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 
 import type { HubAuthUser } from './user.types';
+import { ApiClient, ApiSuccess } from '../api';
+import { HttpClient, HttpHandler } from '@angular/common/http';
+import { LocalStateStore, LS_KEYS } from '../local-state';
 
 @Injectable({ providedIn: 'root' })
 export class UserStore {
-  private readonly currentUserState = signal<HubAuthUser | null>({
-    token:'ngm_uptk_c1a288dcfb661999a9d52597725cee43e61574d1536f1f1b'
-  });
+  private readonly apiClient = inject(ApiClient);
+  private readonly http = inject(HttpClient);
+  private readonly ls = inject(LocalStateStore);
+
+  private readonly currentUserState = signal<HubAuthUser | null>(null);
   private readonly initializedState = signal(false);
 
   readonly currentUser = computed(() => this.currentUserState());
@@ -14,6 +19,35 @@ export class UserStore {
 
   //   是否已经绑定用户
   readonly isAuthenticated = computed(() => !!this.currentUserState());
+
+  loadCurrentUser(): void {
+    // TODO:后面换成apiClient
+    const token = this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim();
+    if (!token) return;
+    this.http
+      .get<ApiSuccess< HubAuthUser>>('/hubv2/api/personal/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .subscribe({
+        next: (data) => {
+          this.setCurrentUser(data.data);
+          this.currentUserState.update((user) => {
+            return { ...user, token };
+          });
+          console.log(this.currentUserState());
+          
+          this.markInitialized();
+        },
+      });
+  }
+
+  ensureUserLoaded(): void {
+    if (!this.initializedState()) {
+      this.loadCurrentUser();
+    }
+  }
 
   setCurrentUser(user: HubAuthUser | null): void {
     this.currentUserState.set(user);

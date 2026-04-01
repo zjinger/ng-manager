@@ -58,7 +58,8 @@
         <!-- 列表 -->
         <div class="list-content">
             @if(viewType() === 'list') {
-            <app-issues-list-table [issues]="issues()"></app-issues-list-table>
+            <app-issues-list-table [issues]="issues()" [selectedItem]="selectedIssue()"
+                (selectItem)="selectIssue($event)"></app-issues-list-table>
             } @else {
 
             }
@@ -70,4 +71,8 @@
             </div>
         </div>
     </div>
+
+    <app-issue-detail [open]="open()" [issues]="selectedIssue()" [comments]="IssueComments()"
+        [attachments]="IssueAttachments()" [participants]="IssueParticipants()" (commentSubmit)="commentSubmit($event)"
+        (close)="closeIssueDetail()"></app-issue-detail>
 </app-page-layout>

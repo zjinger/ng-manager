@@ -9,6 +9,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipDirective, NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { ProjectMemberEntity } from '@pages/rd/models/rd.model';
+import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 
 @Component({
   selector: 'app-issue-collaborators-area',
@@ -21,6 +22,7 @@ import { ProjectMemberEntity } from '@pages/rd/models/rd.model';
     NzTooltipModule,
     NzPopconfirmModule,
     NzTooltipDirective,
+    NzAvatarModule,
   ],
   template: `
     @if (participants().length > 0) {
@@ -28,7 +30,11 @@ import { ProjectMemberEntity } from '@pages/rd/models/rd.model';
         @for (item of participants(); track item.id) {
           <div class="participant-item">
             <div class="participant-chip">
-              <span class="mini-avatar">{{ item.userName.slice(0, 1) }}</span>
+              <nz-avatar
+                [nzText]="item.userName.charAt(0)"
+                nzSize="small"
+                style="background-color: #1890ff;"
+              ></nz-avatar>
               <span class="participant-item__name">{{ item.userName }}</span>
             </div>
             @if (canManageParticipants()) {
@@ -56,6 +62,30 @@ import { ProjectMemberEntity } from '@pages/rd/models/rd.model';
     `
       .participant-list {
         width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap:20px 8px;
+        padding: 10px 0;
+      }
+      .participant-item {
+        height: 20px;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+      .participant-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 10px 4px 4px;
+        border-radius: 999px;
+        background: #ecebeb;
+      }
+      .participant-item__name {
+        font-size: 16px;
+        font-weight: 600;
+        // color: #1890ff;
       }
     `,
   ],

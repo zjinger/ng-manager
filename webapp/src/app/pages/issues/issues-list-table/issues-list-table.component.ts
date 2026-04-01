@@ -6,10 +6,11 @@ import { RdItemStatus } from '@pages/rd/models/rd.model';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '@app/shared/constants/priority-options';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-issues-list-table',
-  imports: [NzTableModule, NzTagModule, NzProgressModule],
+  imports: [NzTableModule, NzTagModule, NzProgressModule, CommonModule],
   template: ` <nz-table
     [nzData]="issues()"
     [nzFrontPagination]="false"
@@ -20,13 +21,13 @@ import { NzProgressModule } from 'ng-zorro-antd/progress';
   >
     <thead>
       <tr>
-        <th nzWidth="7%">序号</th>
-        <th nzWidth="7%">编号</th>
-        <th nzWidth="20%">标题</th>
-        <th nzWidth="8%">状态</th>
-        <th nzWidth="8%">提报人</th>
-        <th nzWidth="8%">负责人</th>
-        <th nzWidth="12%">更新时间</th>
+        <th nzWidth="5%">序号</th>
+        <!-- <th nzWidth="7%">编号</th> -->
+        <th nzWidth="38%">标题</th>
+        <th nzWidth="6%">状态</th>
+        <th nzWidth="5%">提报人</th>
+        <th nzWidth="5%">负责人</th>
+        <th nzWidth="8%">更新时间</th>
       </tr>
     </thead>
     <tbody>
@@ -35,20 +36,28 @@ import { NzProgressModule } from 'ng-zorro-antd/progress';
           (click)="selectItem.emit(item)"
           [style.background-color]="item.id == selectedItem()?.id ? '#1890ff24' : ''"
         >
-          <td>{{ $index }}</td>
-          <td>{{ item.issueNo }}</td>
+          <td>{{ $index + 1  }}</td>
+          <!-- <td>{{ item.issueNo }}</td> -->
           <td>
-            <span class="rd-title"> {{ item.title }} </span>
-            <nz-tag [nzColor]="getPriorityColor(item.priority)">{{
-              getPriorityLabel(item.priority)
-            }}</nz-tag>
+            <div class="title-wrap">
+              <span class="rd-title">
+               [{{ item.issueNo }}] {{ item.title }}
+              </span>
+              <nz-tag [nzColor]="getPriorityColor(item.priority)">{{
+                getPriorityLabel(item.priority)
+              }}</nz-tag>
+              @if (item.moduleCode) {
+                <nz-tag nzColor="default">{{ item.moduleCode }}</nz-tag>
+              }
+            </div>
+            <div class="des">{{ item.description }}</div>
           </td>
           <td>
             <nz-tag nzColor="default"> {{ getStatusLabel(item.status) }}</nz-tag>
           </td>
           <td>{{ item.assigneeName || '-' }}</td>
           <td>{{ item.reporterName }}</td>
-          <td>{{ item.updatedAt }}</td>
+          <td>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</td>
         </tr>
       }
     </tbody>
