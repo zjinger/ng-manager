@@ -80,12 +80,10 @@ export class IssuesComponent {
 
   onPageChange(page: number) {
     this.issueListStore.updateQuery({ page });
-    this.issueListStore.load();
   }
 
   onPageSizeChange(size: number) {
     this.issueListStore.updateQuery({ pageSize: size });
-    this.issueListStore.load();
   }
 
   statusOptions = ISSUE_STATUS_FILTER_OPTIONS;

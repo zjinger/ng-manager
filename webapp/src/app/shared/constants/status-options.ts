@@ -9,6 +9,15 @@ export const ISSUE_STATUS_LABELS: Record<string, string> = {
   closed: '已关闭',
 };
 
+export const ISSUE_STATUS_COLORS: Record<string, string> = {
+  open: 'default',
+  in_progress: 'blue',
+  resolved: 'green',
+  verified: 'cyan',
+  reopened: 'default',
+  closed: 'lime',
+};
+
 export const ISSUE_STATUS_FILTER_OPTIONS = [
   { label: '所有状态', value: '' },
   { label: '待处理', value: 'open' },

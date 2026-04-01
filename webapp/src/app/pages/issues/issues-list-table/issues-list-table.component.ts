@@ -1,12 +1,13 @@
 import { Component, input, output } from '@angular/core';
-import { IssueEntity, IssuePriority, IssueStatus } from '../models/issue.model';
+import { IssueEntity, IssuePriority, IssueStatus, IssueType } from '../models/issue.model';
 import { NzTableModule } from 'ng-zorro-antd/table';
-import { ISSUE_STATUS_LABELS } from '@app/shared/constants/status-options';
+import { ISSUE_STATUS_COLORS, ISSUE_STATUS_LABELS } from '@app/shared/constants/status-options';
 import { RdItemStatus } from '@pages/rd/models/rd.model';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '@app/shared/constants/priority-options';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { CommonModule } from '@angular/common';
+import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issue-type-options';
 
 @Component({
   selector: 'app-issues-list-table',
@@ -36,16 +37,16 @@ import { CommonModule } from '@angular/common';
           (click)="selectItem.emit(item)"
           [style.background-color]="item.id == selectedItem()?.id ? '#1890ff24' : ''"
         >
-          <td>{{ $index + 1  }}</td>
-          <!-- <td>{{ item.issueNo }}</td> -->
+          <td>{{ $index + 1 }}</td>
           <td>
             <div class="title-wrap">
-              <span class="rd-title">
-               [{{ item.issueNo }}] {{ item.title }}
-              </span>
-              <nz-tag [nzColor]="getPriorityColor(item.priority)">{{
-                getPriorityLabel(item.priority)
-              }}</nz-tag>
+              <span class="rd-title"> [{{ item.issueNo }}] {{ item.title }} </span>
+              <nz-tag [nzColor]="getTypeColor(item.type)">
+                {{ getTypeLabel(item.type) }}
+              </nz-tag>
+              <nz-tag [nzColor]="getPriorityColor(item.priority)">
+                {{ getPriorityLabel(item.priority) }}
+              </nz-tag>
               @if (item.moduleCode) {
                 <nz-tag nzColor="default">{{ item.moduleCode }}</nz-tag>
               }
@@ -53,16 +54,44 @@ import { CommonModule } from '@angular/common';
             <div class="des">{{ item.description }}</div>
           </td>
           <td>
-            <nz-tag nzColor="default"> {{ getStatusLabel(item.status) }}</nz-tag>
+            <nz-tag [nzColor]="getStatusColor(item.status)">
+              {{ getStatusLabel(item.status) }}
+            </nz-tag>
           </td>
           <td>{{ item.assigneeName || '-' }}</td>
           <td>{{ item.reporterName }}</td>
-          <td>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</td>
+          <td>{{ (item.updatedAt | date: 'MM-dd HH:mm') ?? '_' }}</td>
         </tr>
       }
     </tbody>
   </nz-table>`,
-  styleUrl: './issues-list-table.component.less',
+  styles: `
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0; // 关键：让内部可以ellipsis
+    }
+
+    .rd-title {
+      font-weight: 600; // 标题加粗
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    .des {
+      font-size: 12px; // 描述变小
+      color: #999; // 变灰
+      margin-top: 2px;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  `,
 })
 export class IssuesListTableComponent {
   readonly issues = input.required<IssueEntity[]>();
@@ -73,11 +102,23 @@ export class IssuesListTableComponent {
     return ISSUE_STATUS_LABELS[status];
   }
 
+  getStatusColor(status: IssueStatus) {
+    return ISSUE_STATUS_COLORS[status];
+  }
+
   getPriorityColor(priority: IssuePriority) {
     return PRIORITY_COLORS[priority];
   }
 
   getPriorityLabel(priority: IssuePriority) {
     return PRIORITY_LABELS[priority];
+  }
+
+  getTypeLabel(type: IssueType) {
+    return ISSUE_TYPE_LABELS[type];
+  }
+
+  getTypeColor(type: IssueType) {
+    return ISSUE_TYPE_COLORS[type];
   }
 }

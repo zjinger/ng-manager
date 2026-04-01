@@ -10,7 +10,7 @@ import { UserStore } from '@app/core/stores/user.store';
 
 const DEFAULT_QUERY: IssueListQuery = {
   page: 1,
-  pageSize: 20,
+  pageSize: 10,
   keyword: '',
   status: '',
   priority: '',

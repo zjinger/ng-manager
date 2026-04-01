@@ -72,7 +72,7 @@
         </div>
     </div>
 
-    <app-issue-detail [open]="open()" [issues]="selectedIssue()" [comments]="IssueComments()"
+    <app-issue-detail [open]="open()" [issue]="selectedIssue()" [comments]="IssueComments()"
         [attachments]="IssueAttachments()" [participants]="IssueParticipants()" (commentSubmit)="commentSubmit($event)"
         (close)="closeIssueDetail()" (actionClick)="handleActions($event)"></app-issue-detail>
 

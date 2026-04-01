@@ -11,6 +11,9 @@ import {
   IssueEntity,
   IssueLogEntity,
   IssueParticipantEntity,
+  IssuePriority,
+  IssueStatus,
+  IssueType,
 } from '../models/issue.model';
 import { IssueDetailStore } from '../store/issue-detail.store';
 import { MarkdownComponent } from 'ngx-markdown';
@@ -28,6 +31,9 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
 import { IssueAttachmentAreaComponent } from './issue-attachment-area/issue-attachment-area.component';
+import { PRIORITY_LABELS } from '@app/shared/constants/priority-options';
+import { ISSUE_STATUS_LABELS, RD_STATUS_LABELS } from '@app/shared/constants/status-options';
+import { ISSUE_TYPE_LABELS } from '@app/shared/constants/issue-type-options';
 
 @Component({
   selector: 'app-issue-detail',
@@ -75,9 +81,9 @@ import { IssueAttachmentAreaComponent } from './issue-attachment-area/issue-atta
       </ng-template>
 
       <ng-template nzDrawerContent>
-        @if (!issues()) {
+        @if (!issue()) {
           <nz-empty>正在加载测试单详情…</nz-empty>
-        } @else if (issues(); as issue) {
+        } @else if (issue(); as issue) {
           <div class="detail-wrap">
             <div class="left-column">
               <nz-card class="detail-item">
@@ -136,16 +142,19 @@ import { IssueAttachmentAreaComponent } from './issue-attachment-area/issue-atta
                 <h2 class="wrap-title">基础信息</h2>
                 <nz-descriptions nzBordered nzSize="small" [nzColumn]="1">
                   <nz-descriptions-item nzTitle="状态">
-                    {{ issue.status }}
+                    {{ getStatusLabel(issue.status) }}
                   </nz-descriptions-item>
                   <nz-descriptions-item nzTitle="优先级">
-                    {{ issue.priority }}
+                    {{ getPriorityLabel(issue.priority) }}
                   </nz-descriptions-item>
                   <nz-descriptions-item nzTitle="类型">
-                    {{ issue.type }}
+                    {{ getTypeLabel(issue.type) }}
                   </nz-descriptions-item>
                   <nz-descriptions-item nzTitle="模块">
                     {{ issue.moduleCode || '-' }}
+                  </nz-descriptions-item>
+                  <nz-descriptions-item nzTitle="环境">
+                    {{ issue.environmentCode || '-' }}
                   </nz-descriptions-item>
                   <nz-descriptions-item nzTitle="提报人">
                     {{ issue.reporterName }}
@@ -245,7 +254,7 @@ import { IssueAttachmentAreaComponent } from './issue-attachment-area/issue-atta
 export class IssueDetailComponent {
   readonly store = inject(IssueDetailStore);
 
-  readonly issues = input<IssueEntity | null>();
+  readonly issue = input<IssueEntity | null>();
   readonly open = input(false);
   readonly busy = input(false);
   readonly logs = input<IssueLogEntity[]>([]);
@@ -260,8 +269,8 @@ export class IssueDetailComponent {
   readonly progressChange = output<number>();
   readonly deleteClick = output<void>();
 
-  readonly subtitleText = computed(() => this.issues()?.issueNo || '');
-  readonly titleText = computed(() => this.issues()?.title || '问题详情');
+  readonly subtitleText = computed(() => this.issue()?.issueNo || '');
+  readonly titleText = computed(() => this.issue()?.title || '问题详情');
 
   closeDetaile() {
     this.close.emit();
@@ -269,5 +278,17 @@ export class IssueDetailComponent {
 
   handleActionClick(action: IssueActionType) {
     this.actionClick.emit(action);
+  }
+
+  getPriorityLabel(priority: IssuePriority) {
+    return PRIORITY_LABELS[priority];
+  }
+
+  getStatusLabel(status: IssueStatus) {
+    return ISSUE_STATUS_LABELS[status];
+  }
+
+  getTypeLabel(type: IssueType) {
+    return ISSUE_TYPE_LABELS[type];
   }
 }
