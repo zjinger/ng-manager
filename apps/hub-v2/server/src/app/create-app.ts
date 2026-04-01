@@ -39,6 +39,14 @@ export async function createApp() {
     { appliedMigrations: migrationResult.applied },
     "[hub-v2] migrations completed"
   );
+  if (!config.authCookieSecure) {
+    app.log.warn(
+      {
+        authCookieSecure: config.authCookieSecure
+      },
+      "[auth] AUTH_COOKIE_SECURE=false, HTTPS is temporarily disabled"
+    );
+  }
 
   await registerPlugins(app);
   await registerRoutes(app);

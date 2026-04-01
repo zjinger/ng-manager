@@ -1,34 +1,79 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { AppError } from "../../shared/errors/app-error";
-import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { ok } from "../../shared/http/response";
 import { changePasswordSchema, loginSchema, updateAvatarSchema } from "./auth.schema";
+import type { AdminProfile } from "./auth.types";
 
 export default async function authRoutes(app: FastifyInstance) {
+  const logLoginResult = (
+    mode: "challenge",
+    outcome: "success" | "failed",
+    request: FastifyRequest,
+    username: string,
+    extra?: Record<string, unknown>
+  ): void => {
+    const payload = {
+      mode,
+      outcome,
+      username,
+      ip: request.ip,
+      userAgent:
+        typeof request.headers["user-agent"] === "string"
+          ? request.headers["user-agent"]
+          : request.headers["user-agent"]?.[0],
+      ...extra
+    };
+    if (outcome === "success") {
+      app.log.info(payload, "[auth] login");
+      return;
+    }
+    app.log.warn(payload, "[auth] login");
+  };
+
   app.get("/auth/login/challenge", async () => {
     return ok(app.container.authCommand.issueLoginChallenge());
   });
 
   app.post("/auth/login", async (request, reply) => {
     const body = loginSchema.parse(request.body);
-    const profile = await app.container.authCommand.login(
-      body,
-      request.requestContext ?? {
-        accountId: "anonymous",
-        roles: [],
-        projectIds: [],
-        authType: "anonymous",
-        source: "http"
+    const username = body.username.trim();
+    let profile: AdminProfile;
+    try {
+      profile = await app.container.authCommand.login(
+        body,
+        request.requestContext ?? {
+          accountId: "anonymous",
+          roles: [],
+          projectIds: [],
+          authType: "anonymous",
+          source: "http"
+        }
+      );
+    } catch (error) {
+      const appError = error instanceof AppError ? error : null;
+      logLoginResult("challenge", "failed", request, username, {
+        code: appError?.code,
+        statusCode: appError?.statusCode
+      });
+      throw error;
+    }
+
+    const token = await reply.jwtSign(
+      {
+        accountId: profile.id,
+        username: profile.username,
+        nickname: profile.nickname,
+        role: profile.role,
+        userId: profile.userId ?? null
+      },
+      {
+        expiresIn: app.config.authTokenExpiresIn
       }
     );
-
-    const token = await reply.jwtSign({
+    logLoginResult("challenge", "success", request, username, {
       accountId: profile.id,
-      username: profile.username,
-      nickname: profile.nickname,
-      role: profile.role,
-      userId: profile.userId ?? null
+      role: profile.role
     });
 
     reply.setCookie(app.config.authCookieName, token, {
@@ -39,41 +84,6 @@ export default async function authRoutes(app: FastifyInstance) {
     });
 
     return ok(profile, "login success");
-  });
-
-  app.post("/auth/login/plain", async (request, reply) => {
-    const body = loginSchema.parse(request.body);
-    if (!("password" in body)) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "plain login requires password", 400);
-    }
-
-    const profile = await app.container.authCommand.login(
-      body,
-      request.requestContext ?? {
-        accountId: "anonymous",
-        roles: [],
-        projectIds: [],
-        authType: "anonymous",
-        source: "http"
-      }
-    );
-
-    const token = await reply.jwtSign({
-      accountId: profile.id,
-      username: profile.username,
-      nickname: profile.nickname,
-      role: profile.role,
-      userId: profile.userId ?? null
-    });
-
-    reply.setCookie(app.config.authCookieName, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      secure: app.config.authCookieSecure
-    });
-
-    return ok(profile, "plain login success");
   });
 
   app.get("/auth/me", async (request) => {

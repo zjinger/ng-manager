@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { catchError, map, Observable, of, switchMap, tap } from 'rxjs';
 
 import { ApiClientService } from '../http/api-client.service';
 import { AuthStore } from './auth.store';
@@ -27,13 +27,6 @@ export class AuthService {
             cipherText: encrypted.cipherText,
           }
         );
-      }),
-      catchError((error) => {
-        const status = Number(error?.status ?? 0);
-        if (status !== 400 && status !== 404) {
-          return throwError(() => error);
-        }
-        return this.api.post<AuthUser, LoginInput>('/auth/login/plain', { username, password: input.password });
       }),
       tap((user) => {
         this.authStore.setCurrentUser(user);

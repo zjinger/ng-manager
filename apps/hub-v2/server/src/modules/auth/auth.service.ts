@@ -143,10 +143,6 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
   }
 
   private resolvePassword(input: LoginInput): string {
-    if ("password" in input) {
-      return input.password;
-    }
-
     const nonceState = this.challenges.get(input.nonce);
     this.challenges.delete(input.nonce);
 

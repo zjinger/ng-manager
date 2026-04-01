@@ -2,11 +2,6 @@ import { z } from "zod";
 
 const usernameSchema = z.string().trim().min(1).max(60);
 
-export const plainLoginSchema = z.object({
-  username: usernameSchema,
-  password: z.string().min(1).max(200)
-});
-
 export const encryptedLoginSchema = z.object({
   username: usernameSchema,
   nonce: z.string().trim().min(16).max(200),
@@ -14,7 +9,7 @@ export const encryptedLoginSchema = z.object({
   cipherText: z.string().trim().min(16).max(4096)
 });
 
-export const loginSchema = z.union([encryptedLoginSchema, plainLoginSchema]);
+export const loginSchema = encryptedLoginSchema;
 
 export const changePasswordSchema = z.object({
   oldPassword: z.string().min(1),

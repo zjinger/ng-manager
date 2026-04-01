@@ -40,11 +40,6 @@ export interface LoginChallenge {
   expiresAt: string;
 }
 
-export interface PlainLoginInput {
-  username: string;
-  password: string;
-}
-
 export interface EncryptedLoginInput {
   username: string;
   nonce: string;
@@ -52,7 +47,7 @@ export interface EncryptedLoginInput {
   cipherText: string;
 }
 
-export type LoginInput = PlainLoginInput | EncryptedLoginInput;
+export type LoginInput = EncryptedLoginInput;
 
 export interface ChangePasswordInput {
   oldPassword: string;

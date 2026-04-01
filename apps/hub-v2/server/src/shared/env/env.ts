@@ -24,13 +24,12 @@ export type AppConfig = ReturnType<typeof loadEnv>;
 export function loadEnv() {
   const cwd = process.cwd();
   const envFile = resolveEnvFile(cwd);
-
+  
   if (envFile) {
     dotenv.config({ path: envFile });
   } else {
     dotenv.config();
   }
-
   const parsed = envSchema.parse({
     NODE_ENV: process.env.NODE_ENV,
     HOST: process.env.HOST,
