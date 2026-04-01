@@ -2,15 +2,16 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inj
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { ProjectContextStore } from '../../state/project-context.store';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-project-switcher',
   standalone: true,
-  imports: [NzIconModule],
+  imports: [NzIconModule, CommonModule],
   template: `
     <div class="switcher">
-      <button class="switcher__trigger" type="button" (click)="toggleOpen()">
-        <span class="switcher__avatar">
+      <button class="switcher__trigger" [ngClass]="{ 'switcher__avatar--without-url': !showCurrentAvatar() }" type="button" (click)="toggleOpen()">
+        <span class="switcher__avatar" >
           @if (showCurrentAvatar()) {
             <img [src]="currentProject()?.avatarUrl!" [alt]="currentProject()?.name || 'project'" (error)="onCurrentAvatarError()" />
           } @else {
@@ -39,6 +40,7 @@ import { ProjectContextStore } from '../../state/project-context.store';
               class="switcher__option"
               [class.is-active]="project.id === projectContext.currentProjectId()"
               (click)="selectProject(project.id)"
+              [ngClass]="{ 'switcher__avatar--without-url': !showOptionAvatar(project.id, project.avatarUrl) }"
             >
               <span class="switcher__avatar switcher__avatar--option">
                 @if (showOptionAvatar(project.id, project.avatarUrl)) {
@@ -91,6 +93,7 @@ import { ProjectContextStore } from '../../state/project-context.store';
       .switcher__option.is-active {
         border-left: 2px solid var(--primary-500);
       }
+      
       .switcher__avatar {
         width: 36px;
         height: 30px;
@@ -99,18 +102,24 @@ import { ProjectContextStore } from '../../state/project-context.store';
         align-items: center;
         justify-content: center;
         border-radius: 12px;
-        background: var(--gradient-brand);
         color: #fff;
         font-size: 12px;
         font-weight: 600;
         overflow: hidden;
       }
+      
+      .switcher__trigger.switcher__avatar--without-url{
+        .switcher__avatar {
+          background: var(--gradient-brand);
+        }
+      }
+
       .switcher__avatar img {
         width: 100%;
         height: 100%;
         object-fit: cover;
       }
-      .switcher__avatar--option {
+      .switcher__avatar--option.switcher__avatar--without-url {
         background: linear-gradient(135deg, var(--color-info), var(--primary-600));
       }
       .switcher__info {
