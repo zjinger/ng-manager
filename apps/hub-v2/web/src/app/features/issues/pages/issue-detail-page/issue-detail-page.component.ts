@@ -4,16 +4,18 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
+import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
 import { MarkdownViewerComponent, SideDetailLayoutComponent } from '@shared/ui';
 import { IssueActivityTimelineComponent } from '../../components/issue-activity-timeline/issue-activity-timeline.component';
 import { IssueAttachmentsPanelComponent } from '../../components/issue-attachments-panel/issue-attachments-panel.component';
-import { IssueCommentEditorComponent } from '../../components/issue-comment-editor/issue-comment-editor.component';
 import { IssueCollaboratorsPanelComponent } from '../../components/issue-collaborators-panel/issue-collaborators-panel.component';
+import { IssueCommentEditorComponent } from '../../components/issue-comment-editor/issue-comment-editor.component';
 import { IssueDetailHeaderComponent } from '../../components/issue-detail-header/issue-detail-header.component';
 import { IssuePropsPanelComponent } from '../../components/issue-props-panel/issue-props-panel.component';
-import { IssueAssignDialogComponent } from '../../dialogs/issue-assign-dialog/issue-assign-dialog.component';
 import { IssueAddParticipantsDialogComponent } from '../../dialogs/issue-add-participants-dialog/issue-add-participants-dialog.component';
+import { IssueAssignDialogComponent } from '../../dialogs/issue-assign-dialog/issue-assign-dialog.component';
 import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-dialog/issue-transition-dialog.component';
+import { IssueEntity } from '../../models/issue.model';
 import { IssueDetailStore } from '../../store/issue-detail.store';
 
 @Component({
@@ -71,8 +73,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
           />
 
           <section class="description-card">
-            <h3>问题描述</h3>
-            <!-- <div class="description">{{ issue.description || '暂无描述' }}</div> -->
+            <h3>{{getIssueTitleByType(issue)}}</h3>
               @if (issue.description) {
                 <app-markdown-viewer [content]="issue.description" [showToc]="true"></app-markdown-viewer>
               } @else {
@@ -386,5 +387,9 @@ export class IssueDetailPageComponent {
     }
     this.store.close(value || undefined);
     this.closeOpen.set(false);
+  }
+  getIssueTitleByType(issue: IssueEntity): string {
+    const item = ISSUE_TITLE_BY_TYPE.find((i) => i.type === issue.type);
+    return item ? item.title : '问题描述';
   }
 }

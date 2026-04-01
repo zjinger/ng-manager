@@ -122,8 +122,10 @@ import { CommonModule } from '@angular/common';
         height: 100%;
         object-fit: cover;
       }
-      .switcher__avatar--option.switcher__avatar--without-url {
-        background: linear-gradient(135deg, var(--color-info), var(--primary-600));
+      .switcher__option.switcher__avatar--without-url{
+        .switcher__avatar--option {
+          background: linear-gradient(135deg, var(--color-info), var(--primary-600));
+        }
       }
       .switcher__info {
         flex: 1;
