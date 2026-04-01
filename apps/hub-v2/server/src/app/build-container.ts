@@ -32,6 +32,7 @@ import { IssueParticipantService } from "../modules/issue/participant/issue-part
 import { IssueRepo } from "../modules/issue/issue.repo";
 import { IssueService } from "../modules/issue/issue.service";
 import { createInMemoryEventBus } from "../shared/event/in-memory-event-bus";
+import type { EventBusLogger } from "../shared/event/in-memory-event-bus";
 import type { AppConfig } from "../shared/env/env";
 import { AuthRepo } from "../modules/auth/auth.repo";
 import { AuthService } from "../modules/auth/auth.service";
@@ -109,8 +110,14 @@ export type AppContainer = {
   eventBus: ReturnType<typeof createInMemoryEventBus>;
 };
 
-export function buildContainer(config: AppConfig, db: Database.Database): AppContainer {
-  const eventBus = createInMemoryEventBus();
+type BuildContainerOptions = {
+  eventBusLogger?: EventBusLogger;
+};
+
+export function buildContainer(config: AppConfig, db: Database.Database, options: BuildContainerOptions = {}): AppContainer {
+  const eventBus = createInMemoryEventBus({
+    logger: options.eventBusLogger
+  });
   const authRepo = new AuthRepo(db);
   const authService = new AuthService(config, authRepo);
   const userRepo = new UserRepo(db);

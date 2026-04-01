@@ -54,7 +54,11 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
         issueNo: issue.issueNo,
         participantId: entity.id,
         userId: entity.userId,
-        userName: entity.userName
+        userName: entity.userName,
+        assigneeId: issue.assigneeId,
+        reporterId: issue.reporterId,
+        verifierId: issue.verifierId,
+        participantUserIds: [entity.userId]
       }
     });
 
@@ -115,7 +119,11 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
         issueNo: issue.issueNo,
         participantIds: entities.map((item) => item.id),
         userIds,
-        userNames: names
+        userNames: names,
+        assigneeId: issue.assigneeId,
+        reporterId: issue.reporterId,
+        verifierId: issue.verifierId,
+        participantUserIds: userIds
       }
     });
 
@@ -155,7 +163,11 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
         issueNo: issue.issueNo,
         participantId: participant.id,
         userId: participant.userId,
-        userName: participant.userName
+        userName: participant.userName,
+        assigneeId: issue.assigneeId,
+        reporterId: issue.reporterId,
+        verifierId: issue.verifierId,
+        participantUserIds: [participant.userId]
       }
     });
 
@@ -208,10 +220,6 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
   }
 
   private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {
-    if (ctx.roles.includes("admin")) {
-      return true;
-    }
-
     const userId = ctx.userId?.trim();
     if (!userId) {
       return false;

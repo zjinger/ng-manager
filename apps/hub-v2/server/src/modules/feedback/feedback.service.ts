@@ -48,23 +48,17 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
   }
 
   async list(query: ListFeedbacksQuery, ctx: RequestContext): Promise<FeedbackListResult> {
+    const accessibleProjectKeys = await this.listAccessibleProjectKeys(ctx);
+
     if (query.projectId?.trim()) {
       const project = this.assertProjectIdExists(query.projectId.trim());
       if (!project) {
         throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${query.projectId}`, 400);
       }
-      if (ctx.roles.includes("admin")) {
-        return this.repo.list({ ...query, projectId: undefined, projectKey: project.projectKey });
+      if (!accessibleProjectKeys.includes(project.projectKey)) {
+        throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "list feedbacks forbidden", 403);
       }
-      await this.projectAccess.requireProjectAccess(project.id, ctx, "list feedbacks");
       return this.repo.list({ ...query, projectId: undefined, projectKey: project.projectKey });
-    }
-
-    if (ctx.roles.includes("admin")) {
-      if (query.projectKey) {
-        this.assertProjectKeyExists(query.projectKey);
-      }
-      return this.repo.list(query);
     }
 
     if (query.projectKey?.trim()) {
@@ -72,23 +66,16 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
       if (!project) {
         throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${query.projectKey}`, 400);
       }
-      await this.projectAccess.requireProjectAccess(project.id, ctx, "list feedbacks");
+      if (!accessibleProjectKeys.includes(project.projectKey)) {
+        throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "list feedbacks forbidden", 403);
+      }
       return this.repo.list({ ...query, projectKey: project.projectKey });
     }
 
-    const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
-    if (projectIds.length === 0) {
+    if (accessibleProjectKeys.length === 0) {
       return this.repo.list({ ...query, projectKeys: ["__none__"] });
     }
-    const projectKeys = projectIds
-      .map((projectId) => this.projectRepo.findById(projectId)?.projectKey ?? null)
-      .filter((key): key is string => Boolean(key));
-
-    if (projectKeys.length === 0) {
-      return this.repo.list({ ...query, projectKeys: ["__none__"] });
-    }
-
-    return this.repo.list({ ...query, projectKeys });
+    return this.repo.list({ ...query, projectKeys: accessibleProjectKeys });
   }
 
   async getById(id: string, ctx: RequestContext): Promise<FeedbackEntity> {
@@ -145,10 +132,6 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
   }
 
   private async ensureFeedbackAccess(feedback: FeedbackEntity, ctx: RequestContext, action: string) {
-    if (ctx.roles.includes("admin")) {
-      return;
-    }
-
     if (!feedback.projectKey) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
     }
@@ -160,10 +143,6 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
   }
 
   private async ensureFeedbackStatusManagePermission(feedback: FeedbackEntity, ctx: RequestContext) {
-    if (ctx.roles.includes("admin")) {
-      return;
-    }
-
     if (!feedback.projectKey) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "change feedback status forbidden", 403);
     }
@@ -183,5 +162,16 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
     if (!canManage) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "change feedback status forbidden", 403);
     }
+  }
+
+  private async listAccessibleProjectKeys(ctx: RequestContext): Promise<string[]> {
+    const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
+    if (projectIds.length === 0) {
+      return [];
+    }
+    const keys = projectIds
+      .map((projectId) => this.projectRepo.findById(projectId)?.projectKey ?? null)
+      .filter((key): key is string => Boolean(key));
+    return Array.from(new Set(keys));
   }
 }

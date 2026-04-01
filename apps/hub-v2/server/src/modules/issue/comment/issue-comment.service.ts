@@ -46,7 +46,12 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
       occurredAt: now,
       payload: {
         issueNo: issue.issueNo,
-        commentId: entity.id
+        commentId: entity.id,
+        assigneeId: issue.assigneeId,
+        reporterId: issue.reporterId,
+        verifierId: issue.verifierId,
+        authorId: entity.authorId,
+        mentionedUserIds: input.mentions ?? []
       }
     });
 

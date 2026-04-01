@@ -3,10 +3,6 @@ import { AppError } from "../../shared/errors/app-error";
 import type { RequestContext } from "../../shared/context/request-context";
 import type { IssueEntity } from "./issue.types";
 
-function isAdmin(ctx: RequestContext): boolean {
-  return ctx.roles.includes("admin");
-}
-
 function matchActor(ctx: RequestContext, actorId: string | null): boolean {
   return !!actorId && !!ctx.userId && actorId === ctx.userId;
 }
@@ -20,7 +16,7 @@ export function requireIssueEditAccess(issue: IssueEntity, ctx: RequestContext):
 }
 
 export function requireIssueAssignAccess(issue: IssueEntity, ctx: RequestContext, isProjectAdmin = false): void {
-  if (isAdmin(ctx) || isProjectAdmin) {
+  if (isProjectAdmin) {
     return;
   }
 
@@ -60,7 +56,7 @@ export function requireIssueParticipantManageAccess(
     throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_FORBIDDEN, "issue participant manage forbidden", 403);
   }
 
-  if (isAdmin(ctx) || isProjectAdmin || matchActor(ctx, issue.reporterId) || matchActor(ctx, issue.assigneeId)) {
+  if (isProjectAdmin || matchActor(ctx, issue.reporterId) || matchActor(ctx, issue.assigneeId)) {
     return;
   }
 
@@ -68,7 +64,7 @@ export function requireIssueParticipantManageAccess(
 }
 
 export function requireIssueStartAccess(issue: IssueEntity, ctx: RequestContext): void {
-  if (isAdmin(ctx) || matchActor(ctx, issue.assigneeId)) {
+  if (matchActor(ctx, issue.assigneeId)) {
     return;
   }
 
@@ -76,7 +72,7 @@ export function requireIssueStartAccess(issue: IssueEntity, ctx: RequestContext)
 }
 
 export function requireIssueResolveAccess(issue: IssueEntity, ctx: RequestContext): void {
-  if (isAdmin(ctx) || matchActor(ctx, issue.assigneeId)) {
+  if (matchActor(ctx, issue.assigneeId)) {
     return;
   }
 
@@ -84,7 +80,7 @@ export function requireIssueResolveAccess(issue: IssueEntity, ctx: RequestContex
 }
 
 export function requireIssueVerifyAccess(issue: IssueEntity, ctx: RequestContext): void {
-  if (isAdmin(ctx) || matchActor(ctx, issue.verifierId) || matchActor(ctx, issue.reporterId)) {
+  if (matchActor(ctx, issue.verifierId) || matchActor(ctx, issue.reporterId)) {
     return;
   }
 
@@ -92,7 +88,7 @@ export function requireIssueVerifyAccess(issue: IssueEntity, ctx: RequestContext
 }
 
 export function requireIssueReopenAccess(issue: IssueEntity, ctx: RequestContext): void {
-  if (isAdmin(ctx) || matchActor(ctx, issue.verifierId) || matchActor(ctx, issue.reporterId)) {
+  if (matchActor(ctx, issue.verifierId) || matchActor(ctx, issue.reporterId)) {
     return;
   }
 
@@ -100,10 +96,6 @@ export function requireIssueReopenAccess(issue: IssueEntity, ctx: RequestContext
 }
 
 export function requireIssueCloseAccess(issue: IssueEntity, ctx: RequestContext): void {
-  if (isAdmin(ctx)) {
-    return;
-  }
-
   // 提报人可在未进入处理流程前关闭（open/reopened），或验证通过后关闭（verified）。
   if (
     matchActor(ctx, issue.reporterId) &&

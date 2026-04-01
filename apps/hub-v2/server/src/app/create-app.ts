@@ -27,7 +27,9 @@ export async function createApp() {
     }
   });
 
-  const container = buildContainer(config, db);
+  const container = buildContainer(config, db, {
+    eventBusLogger: app.log
+  });
 
   app.decorate("config", config);
   app.decorate("container", container);

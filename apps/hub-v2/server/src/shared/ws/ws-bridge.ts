@@ -28,7 +28,8 @@ function createMessages(event: DomainEvent): WsServerMessage[] {
         entityType: event.entityType,
         entityId: event.entityId,
         action: event.action,
-        hints: ["notification", "dashboard"]
+        hints: ["notification", "dashboard"],
+        affectedUserIds: extractAffectedUserIds(event)
       }
     },
     {
@@ -59,6 +60,43 @@ function createMessages(event: DomainEvent): WsServerMessage[] {
   return messages;
 }
 
+function extractAffectedUserIds(event: DomainEvent): string[] {
+  const payload = event.payload ?? {};
+  const ids = new Set<string>();
+
+  const pick = (value: unknown): void => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) {
+        ids.add(trimmed);
+      }
+    }
+  };
+
+  const pickMany = (value: unknown): void => {
+    if (!Array.isArray(value)) {
+      return;
+    }
+    for (const item of value) {
+      pick(item);
+    }
+  };
+
+  pick(payload["assigneeId"]);
+  pick(payload["reporterId"]);
+  pick(payload["verifierId"]);
+  pick(payload["reviewerId"]);
+  pick(payload["creatorId"]);
+  pick(payload["authorId"]);
+  pick(payload["userId"]);
+  pickMany(payload["userIds"]);
+  pickMany(payload["mentionedUserIds"]);
+  pickMany(payload["participantUserIds"]);
+  pickMany(payload["affectedUserIds"]);
+
+  return Array.from(ids);
+}
+
 export function bindEventBusToWs(eventBus: EventBus, wsHub: WsHub): void {
   eventBus.subscribe("*", (event) => {
     const messages = createMessages(event);
@@ -66,9 +104,17 @@ export function bindEventBusToWs(eventBus: EventBus, wsHub: WsHub): void {
       return;
     }
 
+    const affectedUserIds = extractAffectedUserIds(event);
+    if (affectedUserIds.length > 0) {
+      for (const message of messages) {
+        wsHub.broadcastToUsers(affectedUserIds, message);
+      }
+      return;
+    }
+
     if (event.scope === "project" && event.projectId) {
       for (const message of messages) {
-        wsHub.broadcastToProject(event.projectId, message);
+        wsHub.broadcastToProjectMembers(event.projectId, message);
       }
       return;
     }

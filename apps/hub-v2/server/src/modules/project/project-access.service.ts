@@ -8,9 +8,6 @@ export class ProjectAccessService {
   constructor(private readonly repo: ProjectRepo) {}
 
   async listAccessibleProjectIds(ctx: RequestContext): Promise<string[]> {
-    if (ctx.roles.includes("admin")) {
-      return this.repo.listAllProjectIds();
-    }
     if (ctx.projectIds?.length) {
       return Array.from(new Set(ctx.projectIds.map((item) => item.trim()).filter((item) => item.length > 0)));
     }
@@ -31,10 +28,6 @@ export class ProjectAccessService {
 
     if (project.status !== "active" && !this.isReadAction(action)) {
       throw new AppError(ERROR_CODES.PROJECT_INACTIVE, `${action} forbidden: project is archived`, 400);
-    }
-
-    if (ctx.roles.includes("admin")) {
-      return;
     }
 
     const userId = ctx.userId?.trim() || ctx.accountId?.trim();

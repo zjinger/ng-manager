@@ -6,6 +6,9 @@ import type { AuthJwtPayload } from "../auth/jwt-payload";
 import { WsHub } from "./ws-hub";
 import type { WsClientMessage, WsServerMessage } from "./ws.types";
 
+const WS_INBOUND_WINDOW_MS = 10_000;
+const WS_INBOUND_LIMIT = 60;
+
 function parseIncomingMessage(raw: unknown): WsClientMessage | null {
   if (typeof raw !== "string") {
     return null;
@@ -44,7 +47,7 @@ export const wsPlugin = fp(async (app: FastifyInstance) => {
           },
           "[ws] jwt verify failed, close websocket"
         );
-        socket.close(1008, "unauthorized");
+        socket.close(1008, "forbidden");
         return;
       }
 
@@ -90,7 +93,7 @@ export const wsPlugin = fp(async (app: FastifyInstance) => {
           },
           "[ws] resolve accessible projects failed"
         );
-        socket.close(1011, "project_scope_failed");
+        socket.close(1011, "internal_error");
         return;
       }
 
@@ -124,7 +127,32 @@ export const wsPlugin = fp(async (app: FastifyInstance) => {
       };
       socket.send(JSON.stringify(hello));
 
+      let inboundCount = 0;
+      let inboundWindowStart = Date.now();
+
       socket.on("message", (raw: unknown) => {
+        const now = Date.now();
+        if (now - inboundWindowStart > WS_INBOUND_WINDOW_MS) {
+          inboundWindowStart = now;
+          inboundCount = 0;
+        }
+        inboundCount += 1;
+        if (inboundCount > WS_INBOUND_LIMIT) {
+          app.log.warn(
+            {
+              reqId: request.id,
+              sessionId: session.id,
+              accountId: payload.accountId,
+              inboundCount
+            },
+            "[ws] inbound message rate exceeded, close websocket"
+          );
+          try {
+            socket.close(1008, "forbidden");
+          } catch {}
+          return;
+        }
+
         const rawText =
           typeof raw === "string"
             ? raw
@@ -137,10 +165,6 @@ export const wsPlugin = fp(async (app: FastifyInstance) => {
         }
         if (message.type === "system.pong") {
           wsHub.touchPong(session.id);
-          return;
-        }
-        if (message.type === "subscribe.project") {
-          wsHub.setSubscribedProject(session.id, message.projectId?.trim() || null);
         }
       });
     }

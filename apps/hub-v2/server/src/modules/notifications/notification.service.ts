@@ -42,9 +42,7 @@ export class NotificationService implements NotificationQueryContract, Notificat
     const projectMap = new Map(projectResult.items.map((item) => [item.id, item.name]));
     const effectiveProjectIds = query.projectId?.trim()
       ? [query.projectId.trim()]
-      : ctx.roles.includes("admin")
-        ? []
-        : projectResult.items.map((item) => item.id);
+      : projectResult.items.map((item) => item.id);
     const pageValue = Number(query.page);
     const pageSizeValue = Number(query.pageSize);
     const limitValue = Number(query.limit);

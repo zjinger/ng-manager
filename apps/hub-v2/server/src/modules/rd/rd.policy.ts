@@ -3,18 +3,11 @@ import { AppError } from "../../shared/errors/app-error";
 import type { RequestContext } from "../../shared/context/request-context";
 import type { RdItemEntity } from "./rd.types";
 
-function isAdmin(ctx: RequestContext): boolean {
-  return ctx.roles.includes("admin");
-}
-
 function matchActor(ctx: RequestContext, actorId: string | null): boolean {
   return !!actorId && !!ctx.userId && actorId === ctx.userId;
 }
 
-export function requireRdStageManageAccess(ctx: RequestContext): void {
-  if (isAdmin(ctx)) {
-    return;
-  }
+export function requireRdStageManageAccess(_ctx: RequestContext): void {
   throw new AppError(ERROR_CODES.RD_STAGE_FORBIDDEN, "rd stage forbidden", 403);
 }
 

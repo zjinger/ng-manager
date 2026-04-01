@@ -84,7 +84,7 @@ export class DashboardService implements DashboardQueryContract {
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
     return {
       projectIds,
-      effectiveProjectIds: ctx.roles.includes("admin") ? [] : projectIds,
+      effectiveProjectIds: projectIds,
       userId: ctx.userId ?? null
     };
   }
@@ -96,9 +96,7 @@ export class DashboardService implements DashboardQueryContract {
   }> {
     const normalizedProjectId = projectId?.trim();
     if (normalizedProjectId) {
-      if (!ctx.roles.includes("admin")) {
-        await this.projectAccess.requireProjectAccess(normalizedProjectId, ctx, "view dashboard board");
-      }
+      await this.projectAccess.requireProjectAccess(normalizedProjectId, ctx, "view dashboard board");
       const project = await this.projectQuery.getById(normalizedProjectId, ctx).catch(() => null);
       if (!project) {
         throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${normalizedProjectId}`, 404);
@@ -107,14 +105,6 @@ export class DashboardService implements DashboardQueryContract {
         includeAll: false,
         projectIds: [normalizedProjectId],
         projectKey: project.projectKey
-      };
-    }
-
-    if (ctx.roles.includes("admin")) {
-      return {
-        includeAll: true,
-        projectIds: [],
-        projectKey: null
       };
     }
 

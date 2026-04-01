@@ -1,9 +1,8 @@
-import { Injectable, effect, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 
 import { NotificationStore } from '../../features/notifications/store/notification.store';
 import { NavigationBadgeStore } from '../navigation/navigation-badge.store';
-import { ProjectContextStore } from '../state/project-context.store';
 import { DashboardRefreshBusService } from './dashboard-refresh-bus.service';
 import { WsClientService } from './ws-client.service';
 import type { WsRefreshHint, WsServerMessage } from './ws-message.types';
@@ -13,7 +12,6 @@ export class RealtimeSyncService {
   private readonly wsClient = inject(WsClientService);
   private readonly notificationStore = inject(NotificationStore);
   private readonly navigationBadgeStore = inject(NavigationBadgeStore);
-  private readonly projectContext = inject(ProjectContextStore);
   private readonly dashboardRefreshBus = inject(DashboardRefreshBusService);
 
   private started = false;
@@ -22,12 +20,6 @@ export class RealtimeSyncService {
   private badgeReloadTimer: ReturnType<typeof setTimeout> | null = null;
   private dashboardReloadTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly pendingDashboardEntityTypes = new Set<string>();
-
-  constructor() {
-    effect(() => {
-      this.wsClient.setProject(this.projectContext.currentProjectId());
-    });
-  }
 
   start(): void {
     if (this.started) {
@@ -52,13 +44,6 @@ export class RealtimeSyncService {
   }
 
   private handleMessage(message: WsServerMessage): void {
-    const currentProjectId = this.projectContext.currentProjectId();
-    const messageProjectId = 'projectId' in message ? (message.projectId || null) : null;
-
-    if (messageProjectId && currentProjectId && messageProjectId !== currentProjectId) {
-      return;
-    }
-
     if (message.type === 'notification.changed') {
       const hints = this.resolveHints(message);
       if (hints.has('notification')) {
@@ -91,34 +76,23 @@ export class RealtimeSyncService {
 
   private resolveHints(message: WsServerMessage): Set<WsRefreshHint> {
     if (message.type === 'notification.changed') {
-      const incoming = message.payload.hints ?? [];
-      if (incoming.length > 0) {
-        return new Set(incoming);
-      }
-      const hints: WsRefreshHint[] = ['notification', 'dashboard'];
-      if (message.payload.entityType === 'issue' || message.payload.entityType === 'rd') {
-        hints.push('badge');
-      }
-      return new Set(hints);
+      return this.getIncomingHints(message.payload.hints, ['notification', 'dashboard']);
     }
 
     if (message.type === 'badge.changed') {
-      const incoming = message.payload.hints ?? [];
-      if (incoming.length > 0) {
-        return new Set(incoming);
-      }
-      return new Set<WsRefreshHint>(['badge']);
+      return this.getIncomingHints(message.payload.hints, ['badge']);
     }
 
     if (message.type === 'dashboard.changed') {
-      const incoming = message.payload.hints ?? [];
-      if (incoming.length > 0) {
-        return new Set(incoming);
-      }
-      return new Set<WsRefreshHint>(['dashboard']);
+      return this.getIncomingHints(message.payload.hints, ['dashboard']);
     }
 
-    return new Set<WsRefreshHint>();
+    return new Set();
+  }
+
+  private getIncomingHints(hints: WsRefreshHint[] | undefined, defaults: WsRefreshHint[]): Set<WsRefreshHint> {
+    const incoming = hints ?? [];
+    return incoming.length > 0 ? new Set(incoming) : new Set(defaults);
   }
 
   private scheduleNotificationReload(): void {
@@ -127,6 +101,9 @@ export class RealtimeSyncService {
     }
     this.notificationReloadTimer = setTimeout(() => {
       this.notificationReloadTimer = null;
+      if (!this.started) {
+        return;
+      }
       this.notificationStore.load();
     }, 120);
   }
@@ -137,6 +114,9 @@ export class RealtimeSyncService {
     }
     this.badgeReloadTimer = setTimeout(() => {
       this.badgeReloadTimer = null;
+      if (!this.started) {
+        return;
+      }
       this.navigationBadgeStore.load();
     }, 120);
   }
@@ -150,6 +130,10 @@ export class RealtimeSyncService {
     }
     this.dashboardReloadTimer = setTimeout(() => {
       this.dashboardReloadTimer = null;
+      if (!this.started) {
+        this.pendingDashboardEntityTypes.clear();
+        return;
+      }
       const entityTypes = Array.from(this.pendingDashboardEntityTypes);
       this.pendingDashboardEntityTypes.clear();
       this.dashboardRefreshBus.notify({ entityTypes, source: 'ws' });

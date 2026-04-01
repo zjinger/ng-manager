@@ -10,7 +10,6 @@ export class WsClientService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempt = 0;
   private shouldReconnect = false;
-  private subscribedProjectId: string | null = null;
 
   private readonly connectionStateSignal = signal<WsConnectionState>('offline');
   readonly connectionState = this.connectionStateSignal.asReadonly();
@@ -39,14 +38,6 @@ export class WsClientService {
     }
   }
 
-  setProject(projectId: string | null): void {
-    this.subscribedProjectId = projectId?.trim() || null;
-    this.send({
-      type: 'subscribe.project',
-      projectId: this.subscribedProjectId,
-    });
-  }
-
   private openSocket(): void {
     const windowRef = this.document.defaultView;
     if (!windowRef) {
@@ -62,10 +53,6 @@ export class WsClientService {
     socket.onopen = () => {
       this.reconnectAttempt = 0;
       this.connectionStateSignal.set('connected');
-      this.send({
-        type: 'subscribe.project',
-        projectId: this.subscribedProjectId,
-      });
     };
 
     socket.onmessage = (event) => {

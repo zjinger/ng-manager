@@ -18,6 +18,7 @@ export type WsServerMessage =
         entityId: string;
         action: string;
         hints?: WsRefreshHint[];
+        affectedUserIds?: string[];
       };
     }
   | {
@@ -49,8 +50,4 @@ export type WsClientMessage =
   | {
       type: 'system.pong';
       ts?: string;
-    }
-  | {
-      type: 'subscribe.project';
-      projectId?: string | null;
     };

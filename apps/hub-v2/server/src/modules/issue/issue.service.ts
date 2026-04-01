@@ -291,10 +291,6 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       return this.repo.list(normalizedQuery, [query.projectId.trim()]);
     }
 
-    if (ctx.roles.includes("admin")) {
-      return this.repo.list(normalizedQuery);
-    }
-
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
     return this.repo.list(normalizedQuery, projectIds);
   }
@@ -469,7 +465,10 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
         issueNo: entity.issueNo,
         title: entity.title,
         status: entity.status,
-        priority: entity.priority
+        priority: entity.priority,
+        assigneeId: entity.assigneeId,
+        reporterId: entity.reporterId,
+        verifierId: entity.verifierId
       }
     });
   }
@@ -500,10 +499,6 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   }
 
   private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {
-    if (ctx.roles.includes("admin")) {
-      return true;
-    }
-
     const userId = ctx.userId?.trim();
     if (!userId) {
       return false;

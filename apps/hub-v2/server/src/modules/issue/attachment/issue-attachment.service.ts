@@ -54,7 +54,10 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
       payload: {
         issueNo: issue.issueNo,
         uploadId: upload.id,
-        fileName: upload.originalName
+        fileName: upload.originalName,
+        assigneeId: issue.assigneeId,
+        reporterId: issue.reporterId,
+        verifierId: issue.verifierId
       }
     });
 
@@ -109,7 +112,10 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
       payload: {
         issueNo: issue.issueNo,
         uploadId: upload.id,
-        fileName: upload.originalName
+        fileName: upload.originalName,
+        assigneeId: issue.assigneeId,
+        reporterId: issue.reporterId,
+        verifierId: issue.verifierId
       }
     });
 

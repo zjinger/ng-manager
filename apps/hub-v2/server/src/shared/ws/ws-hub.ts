@@ -24,7 +24,6 @@ export type WsClientSession = {
   socket: WsLikeSocket;
   auth: WsClientAuth;
   requestContext: RequestContext;
-  subscribedProjectId: string | null;
   lastPongAt: number;
 };
 
@@ -35,13 +34,14 @@ type WsHubOptions = {
 
 export class WsHub {
   private readonly sessions = new Map<string, WsClientSession>();
+  private readonly userSessions = new Map<string, Set<string>>();
   private readonly pingIntervalMs: number;
   private readonly pongTimeoutMs: number;
   private heartbeatTimer: NodeJS.Timeout | null = null;
 
   constructor(options: WsHubOptions = {}) {
     this.pingIntervalMs = options.pingIntervalMs ?? 20_000;
-    this.pongTimeoutMs = options.pongTimeoutMs ?? 45_000;
+    this.pongTimeoutMs = options.pongTimeoutMs ?? 60_000;
   }
 
   addClient(socket: WsLikeSocket, auth: WsClientAuth, requestContext: RequestContext): WsClientSession {
@@ -50,11 +50,11 @@ export class WsHub {
       socket,
       auth,
       requestContext,
-      subscribedProjectId: null,
       lastPongAt: Date.now()
     };
 
     this.sessions.set(session.id, session);
+    this.addUserSession(session);
     this.ensureHeartbeat();
 
     socket.on("close", () => {
@@ -73,6 +73,10 @@ export class WsHub {
   }
 
   removeClient(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      this.removeUserSession(session);
+    }
     this.sessions.delete(sessionId);
     if (this.sessions.size === 0) {
       this.stopHeartbeat();
@@ -86,6 +90,7 @@ export class WsHub {
       } catch {}
     }
     this.sessions.clear();
+    this.userSessions.clear();
     this.stopHeartbeat();
   }
 
@@ -97,42 +102,32 @@ export class WsHub {
     session.lastPongAt = Date.now();
   }
 
-  setSubscribedProject(sessionId: string, projectId: string | null): void {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
-      return;
-    }
-    session.subscribedProjectId = projectId;
-  }
-
   broadcast(message: WsServerMessage): void {
     for (const session of this.sessions.values()) {
       this.send(session, message);
     }
   }
 
-  broadcastToProject(projectId: string, message: WsServerMessage): void {
-    for (const session of this.sessions.values()) {
-      if (!this.hasProjectAccess(session, projectId)) {
+  broadcastToUsers(userIds: string[], message: WsServerMessage): void {
+    const uniqueUserIds = new Set(userIds.map((id) => id.trim()).filter(Boolean));
+    for (const userId of uniqueUserIds) {
+      const sessionIds = this.userSessions.get(userId);
+      if (!sessionIds || sessionIds.size === 0) {
         continue;
       }
-      if (session.subscribedProjectId && session.subscribedProjectId !== projectId) {
-        continue;
+      for (const sessionId of sessionIds) {
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+          continue;
+        }
+        this.send(session, message);
       }
-      this.send(session, message);
     }
   }
 
-  broadcastToAccessibleProjects(projectIds: string[], message: WsServerMessage): void {
-    const projectSet = new Set(projectIds);
+  broadcastToProjectMembers(projectId: string, message: WsServerMessage): void {
     for (const session of this.sessions.values()) {
-      const hasAccess =
-        session.auth.roles.includes("admin") ||
-        session.auth.projectIds.some((projectId) => projectSet.has(projectId));
-      if (!hasAccess) {
-        continue;
-      }
-      if (session.subscribedProjectId && !projectSet.has(session.subscribedProjectId)) {
+      if (!this.hasProjectAccess(session, projectId)) {
         continue;
       }
       this.send(session, message);
@@ -151,7 +146,33 @@ export class WsHub {
   }
 
   private hasProjectAccess(session: WsClientSession, projectId: string): boolean {
-    return session.auth.roles.includes("admin") || session.auth.projectIds.includes(projectId);
+    return session.auth.projectIds.includes(projectId);
+  }
+
+  private resolveUserId(session: WsClientSession): string {
+    return session.auth.userId?.trim() || session.auth.accountId;
+  }
+
+  private addUserSession(session: WsClientSession): void {
+    const userId = this.resolveUserId(session);
+    const sessionIds = this.userSessions.get(userId);
+    if (sessionIds) {
+      sessionIds.add(session.id);
+      return;
+    }
+    this.userSessions.set(userId, new Set([session.id]));
+  }
+
+  private removeUserSession(session: WsClientSession): void {
+    const userId = this.resolveUserId(session);
+    const sessionIds = this.userSessions.get(userId);
+    if (!sessionIds) {
+      return;
+    }
+    sessionIds.delete(session.id);
+    if (sessionIds.size === 0) {
+      this.userSessions.delete(userId);
+    }
   }
 
   private ensureHeartbeat(): void {
@@ -163,7 +184,7 @@ export class WsHub {
       for (const session of this.sessions.values()) {
         if (now - session.lastPongAt > this.pongTimeoutMs) {
           try {
-            session.socket.close(1001, "pong_timeout");
+            session.socket.close(1001, "timeout");
           } catch {}
           this.removeClient(session.id);
           continue;

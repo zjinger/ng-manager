@@ -327,10 +327,6 @@ export class RdService implements RdCommandContract, RdQueryContract {
       return this.repo.listItems(normalizedQuery, [query.projectId.trim()]);
     }
 
-    if (ctx.roles.includes("admin")) {
-      return this.repo.listItems(normalizedQuery);
-    }
-
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
     return this.repo.listItems(normalizedQuery, projectIds);
   }
@@ -397,10 +393,6 @@ export class RdService implements RdCommandContract, RdQueryContract {
   }
 
   private async requireStageMaintainer(projectId: string, ctx: RequestContext, action: string): Promise<void> {
-    if (ctx.roles.includes("admin")) {
-      return;
-    }
-
     const userId = ctx.userId?.trim();
     if (!userId) {
       throw new AppError(ERROR_CODES.RD_STAGE_FORBIDDEN, `${action} forbidden`, 403);
@@ -621,7 +613,10 @@ export class RdService implements RdCommandContract, RdQueryContract {
         rdNo: item.rdNo,
         title: item.title,
         status: item.status,
-        priority: item.priority
+        priority: item.priority,
+        assigneeId: item.assigneeId,
+        creatorId: item.creatorId,
+        reviewerId: item.reviewerId
       }
     });
   }
