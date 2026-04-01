@@ -302,7 +302,7 @@ const DEFAULT_DRAFT: Draft = {
             form="issue-create-form"
           >
             <span nz-icon nzType="send"></span>
-            创建 测试单
+            创建测试单
           </button>
         </app-form-actions>
       </ng-container>

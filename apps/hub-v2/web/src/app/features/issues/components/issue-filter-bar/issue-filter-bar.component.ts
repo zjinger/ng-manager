@@ -20,11 +20,12 @@ export type IssueListViewMode = 'list' | 'card';
   imports: [CommonModule, FormsModule, NzButtonModule, NzSelectModule, NzDrawerModule, NzSwitchModule, NzIconModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
   template: `
     <app-page-toolbar>
+      @if(canCreate()){
       <button toolbar-primary nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
         <nz-icon nzType="plus" nzTheme="outline" />
         新建测试单
       </button>
-
+      }
       <app-filter-bar toolbar-filters class="issue-toolbar__main">
         <nz-select
           nzPlaceHolder="状态，支持多选"
@@ -243,6 +244,7 @@ export class IssueFilterBarComponent {
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
   readonly viewMode = input<IssueListViewMode>('list');
+  readonly canCreate = input(true);
   readonly submit = output<IssueListQuery>();
   readonly reset = output<void>();
   readonly create = output<void>();

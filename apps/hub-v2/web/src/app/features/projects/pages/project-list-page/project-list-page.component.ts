@@ -1,12 +1,11 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ProjectContextStore } from '@core/state';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { ApiError } from '@core/http';
-import { ProjectContextStore } from '@core/state';
 
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
@@ -141,7 +140,6 @@ export class ProjectListPageComponent {
       },
       error: (error: unknown) => {
         this.editBusy.set(false);
-        this.showApiError(error, '项目更新失败');
       }
     });
   }
@@ -223,7 +221,6 @@ export class ProjectListPageComponent {
       },
       error: (error: unknown) => {
         this.membersBusy.set(false);
-        this.showApiError(error, '更新成员失败');
       }
     });
   }
@@ -541,20 +538,10 @@ export class ProjectListPageComponent {
       },
       error: (error: unknown) => {
         this.editBusy.set(false);
-        this.showApiError(error, '更新项目状态失败');
       }
     });
   }
 
-  private showApiError(error: unknown, fallback: string): void {
-    if (error instanceof ApiError) {
-      this.message.error(error.message || fallback);
-      return;
-    }
-    const maybeMessage =
-      typeof error === 'object' && error && 'message' in error ? String((error as { message?: string }).message || '') : '';
-    this.message.error(maybeMessage || fallback);
-  }
 
   private withConfigProject(handler: (projectId: string) => void): void {
     const project = this.configProject();

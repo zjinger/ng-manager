@@ -15,11 +15,19 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
         const errorCode: string | undefined = error.error?.code;
         const rawMessage = error.error?.message || error.message || '请求失败';
         const friendlyMessage = resolveApiErrorMessage(errorCode, rawMessage);
-
+        if (error.status >= 400 && error.status < 500) {
+          message.error(friendlyMessage);
+        }
         if (error.status >= 500) {
           message.error(resolveApiErrorMessage('INTERNAL_ERROR', '服务暂时不可用'));
         }
-
+        console.error('API Error:', {
+          url: request.url,
+          method: request.method,
+          status: error.status,
+          code: errorCode,
+          message: rawMessage,
+        });
         return throwError(
           () =>
             new ApiError(

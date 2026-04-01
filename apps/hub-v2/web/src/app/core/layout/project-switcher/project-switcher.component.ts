@@ -19,9 +19,12 @@ import { CommonModule } from '@angular/common';
           }
         </span>
         <span class="switcher__info">
-          <span class="switcher__name">{{ currentProject()?.name || '选择项目' }}</span>
-          <span class="switcher__key">
-            <!-- {{ currentProject()?.projectKey || '暂无项目上下文' }} -->
+          <span class="switcher__name">{{ currentProject()?.name || '选择项目' }}
+          @if(currentProject()?.status==='inactive') {
+              <span class="switcher__tag">
+              已归档
+            </span>
+          }
           </span>
         </span>
         <span
