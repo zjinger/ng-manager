@@ -98,6 +98,8 @@ export const ERROR_CODES = {
   RELEASE_PUBLISH_FAILED: "RELEASE_PUBLISH_FAILED",
   RELEASE_ARCHIVE_FAILED: "RELEASE_ARCHIVE_FAILED",
   UPLOAD_NOT_FOUND: "UPLOAD_NOT_FOUND",
+  AI_SQL_FORBIDDEN: "AI_SQL_FORBIDDEN",
+  AI_SQL_INVALID: "AI_SQL_INVALID",
   NOT_FOUND: "NOT_FOUND",
   INTERNAL_ERROR: "INTERNAL_ERROR"
 } as const;
@@ -210,6 +212,8 @@ const BASE_ERROR_DEFINITIONS: Record<ErrorCode, Omit<ErrorDefinition, "code">> =
   RELEASE_PUBLISH_FAILED: { statusCode: 500, message: "failed to publish release" },
   RELEASE_ARCHIVE_FAILED: { statusCode: 500, message: "failed to archive release" },
   UPLOAD_NOT_FOUND: { statusCode: 404, message: "upload not found" },
+  AI_SQL_FORBIDDEN: { statusCode: 400, message: "AI generated SQL contains forbidden keywords" },
+  AI_SQL_INVALID: { statusCode: 400, message: "AI generated SQL is invalid" },
   NOT_FOUND: { statusCode: 404, message: "not found" },
   INTERNAL_ERROR: { statusCode: 500, message: "internal error" }
 };

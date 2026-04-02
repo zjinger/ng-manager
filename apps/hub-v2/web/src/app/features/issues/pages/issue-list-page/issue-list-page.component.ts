@@ -96,6 +96,7 @@ import { IssueListStore } from '../../store/issue-list.store';
       [environments]="environments()"
       [versions]="versions()"
       [projectName]="projectContext.currentProject()?.name || ''"
+      [projectId]="projectContext.currentProject()?.id || ''"
       (cancel)="createOpen.set(false)"
       (create)="createIssue($event)"
     />

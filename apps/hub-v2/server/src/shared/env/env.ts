@@ -50,7 +50,9 @@ export function loadEnv() {
     INIT_ADMIN_PASSWORD: process.env.INIT_ADMIN_PASSWORD,
     INIT_ADMIN_NICKNAME: process.env.INIT_ADMIN_NICKNAME,
     UPLOAD_DIR: process.env.UPLOAD_DIR,
-    UPLOAD_MAX_FILE_SIZE: process.env.UPLOAD_MAX_FILE_SIZE
+    UPLOAD_MAX_FILE_SIZE: process.env.UPLOAD_MAX_FILE_SIZE,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL
   });
 
   const dataDir = path.resolve(parsed.DATA_DIR || path.join(cwd, "data"));
@@ -80,6 +82,8 @@ export function loadEnv() {
     initAdminPassword: parsed.INIT_ADMIN_PASSWORD,
     initAdminNickname: parsed.INIT_ADMIN_NICKNAME,
     uploadDir,
-    uploadMaxFileSize: parsed.UPLOAD_MAX_FILE_SIZE
+    uploadMaxFileSize: parsed.UPLOAD_MAX_FILE_SIZE,
+    openaiApiKey: parsed.OPENAI_API_KEY ?? null,
+    openaiBaseUrl: parsed.OPENAI_BASE_URL ?? null
   };
 }

@@ -1,7 +1,7 @@
 import { AnnouncementRepo } from "../modules/announcement/announcement.repo";
 import { AnnouncementService } from "../modules/announcement/announcement.service";
-// import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
-// import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
+import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
+import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
 import { SearchRepo } from "../modules/search/search.repo";
 import { SearchService } from "../modules/search/search.service";
 import type { AnnouncementCommandContract, AnnouncementQueryContract } from "../modules/announcement/announcement.contract";
@@ -122,8 +122,8 @@ export type AppContainer = {
   uploadQuery: UploadQueryContract;
   eventBus: ReturnType<typeof createInMemoryEventBus>;
   aiIssueService: AiIssueService;
-  // aiReportSqlService: AiReportSqlService;
-  // aiReportRenderService: AiReportRenderService;
+  aiReportSqlService: AiReportSqlService;
+  aiReportRenderService: AiReportRenderService;
   searchService: SearchService;
 };
 
@@ -210,8 +210,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
       })
     : null;
   const aiIssueService = new AiIssueService(openaiClient, new AiRepo(db));
-  // const aiReportSqlService = new AiReportSqlService(config, projectAccess);
-  // const aiReportRenderService = new AiReportRenderService(db);
+  const aiReportSqlService = new AiReportSqlService(config, projectAccess);
+  const aiReportRenderService = new AiReportRenderService(db);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
 
   return {
@@ -259,8 +259,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     uploadQuery: uploadService,
     eventBus,
     aiIssueService,
-    // aiReportSqlService,
-    // aiReportRenderService,
+    aiReportSqlService,
+    aiReportRenderService,
     searchService
   };
 }

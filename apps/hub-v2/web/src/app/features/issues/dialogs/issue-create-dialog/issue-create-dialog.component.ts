@@ -14,8 +14,10 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
 import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
 import { NzUploadModule } from 'ng-zorro-antd/upload';
 import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
+import { AiRecommendPanelComponent } from '../../../ai/components/ai-recommend-panel/ai-recommend-panel.component';
+import { AiIssueStore } from '../../../ai/store/ai-issue.store';
 import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../projects/models/project.model';
-import type { CreateIssueInput, IssueType } from '../../models/issue.model';
+import type { CreateIssueInput, IssuePriority, IssueType } from '../../models/issue.model';
 
 type Draft = Omit<CreateIssueInput, 'projectId'> & {
   attachmentFiles: File[];
@@ -49,7 +51,8 @@ const DEFAULT_DRAFT: Draft = {
     AttachmentPreviewWallComponent,
     DialogShellComponent,
     FormActionsComponent,
-    MarkdownEditorComponent
+    MarkdownEditorComponent,
+    AiRecommendPanelComponent
   ],
   template: `
     <app-dialog-shell
@@ -75,12 +78,22 @@ const DEFAULT_DRAFT: Draft = {
                     placeholder="简要描述问题，例如：登录接口在高并发下返回 500"
                     [ngModel]="draft().title"
                     name="title"
-                    (ngModelChange)="updateField('title', $event)"
+                    (ngModelChange)="onTitleChange($event)"
                   />
                 </nz-form-control>
               </nz-form-item>
             </div>
           </div>
+          @if (projectId()) {
+            <app-ai-recommend-panel
+              [loading]="aiLoading()"
+              [assigneeLoading]="aiAssigneeLoading()"
+              [result]="aiResult()"
+              [assigneeResult]="aiAssigneeResult()"
+              (accept)="onAiAccept($event)"
+              (skip)="onAiSkip()"
+            />
+          }
           <div class="row" nz-row nzGutter="16">
             <div class="col" nz-col nzSpan="24">
               <nz-form-item>
@@ -92,7 +105,7 @@ const DEFAULT_DRAFT: Draft = {
                       [imageUploadHandler]="uploadMarkdownImage"
 	                    name="description"
 	                    [minHeight]="'240px'"
-	                    (contentChange)="updateField('description', $event)"
+	                    (contentChange)="onDescriptionChange($event)"
                       (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
 	                    [placeholder]="'**复现步骤：**&#10;1. &#10;2. &#10;3. &#10;&#10;**期望行为：**&#10;&#10;**实际行为：**&#10;&#10;'" />
                 </nz-form-control>
@@ -125,6 +138,7 @@ const DEFAULT_DRAFT: Draft = {
               </nz-form-item>
             </div>
           </div>
+          
           <div class="row" nz-row nzGutter="16">
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
@@ -391,6 +405,7 @@ const DEFAULT_DRAFT: Draft = {
 export class IssueCreateDialogComponent implements OnDestroy {
   private readonly message = inject(NzMessageService);
   private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+  private readonly aiStore = inject(AiIssueStore);
   private readonly previewUrlMap = new Map<string, string>();
 
   readonly open = input(false);
@@ -400,8 +415,14 @@ export class IssueCreateDialogComponent implements OnDestroy {
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
   readonly projectName = input<string>('');
+  readonly projectId = input<string>('');
   readonly create = output<Draft>();
   readonly cancel = output<void>();
+
+  readonly aiLoading = this.aiStore.loading;
+  readonly aiAssigneeLoading = this.aiStore.assigneeLoading;
+  readonly aiResult = this.aiStore.result;
+  readonly aiAssigneeResult = this.aiStore.assigneeResult;
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS.filter((option) => option.value !== '');
   readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
@@ -422,6 +443,21 @@ export class IssueCreateDialogComponent implements OnDestroy {
       if (this.open()) {
         this.clearPreviewUrls();
         this.draft.set({ ...DEFAULT_DRAFT });
+        this.aiStore.clear();
+        const projectId = this.projectId();
+        if (projectId) {
+          this.aiStore.setProject(projectId);
+        }
+      }
+    });
+
+    effect(() => {
+      if (!this.open()) {
+        return;
+      }
+      const projectId = this.projectId();
+      if (projectId) {
+        this.aiStore.setProject(projectId);
       }
     });
 
@@ -456,6 +492,32 @@ export class IssueCreateDialogComponent implements OnDestroy {
 
   updateType(value: IssueType): void {
     this.updateField('type', value);
+  }
+
+  onTitleChange(value: string): void {
+    this.updateField('title', value);
+    this.aiStore.updateTitle(value);
+  }
+
+  onDescriptionChange(value: string): void {
+    this.updateField('description', value);
+    this.aiStore.updateDescription(value || null);
+  }
+
+  onAiAccept(result: { type: IssueType | null; priority: IssuePriority | null; assigneeId?: string | null }): void {
+    if (result.type) {
+      this.updateType(result.type);
+    }
+    if (result.priority) {
+      this.updateField('priority', result.priority);
+    }
+    if (result.assigneeId) {
+      this.updateField('assigneeId', result.assigneeId);
+    }
+  }
+
+  onAiSkip(): void {
+    this.aiStore.clear();
   }
 
   updateParticipantIds(value: unknown): void {
