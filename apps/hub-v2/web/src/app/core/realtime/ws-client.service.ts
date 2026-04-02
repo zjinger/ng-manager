@@ -74,10 +74,15 @@ export class WsClientService {
       socket.close();
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (this.socket === socket) {
         this.socket = null;
       }
+      // 如果服务器主动断开连接，并且 reason 是 "forbidden"，则不再尝试重连，通常这是因为 JWT 验证失败导致的
+      if (event.code === 1008 && event.reason === "forbidden") {
+        this.shouldReconnect = false;
+      }
+
       if (!this.shouldReconnect) {
         this.connectionStateSignal.set('offline');
         return;
