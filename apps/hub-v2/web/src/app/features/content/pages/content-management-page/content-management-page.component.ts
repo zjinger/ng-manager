@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { map } from 'rxjs';
 
 import { ProjectContextStore } from '@core/state';
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
@@ -158,7 +161,7 @@ import { ContentStore } from '../../store/content.store';
       (edit)="editCurrentDetail()"
       (publish)="publishCurrentDetail()"
       (archive)="archiveCurrentDetail()"
-      (close)="closeDetailDrawer()"
+      (close)="closeDetailDrawer(true)"
     />
   `,
   styles: [
@@ -178,6 +181,8 @@ export class ContentManagementPageComponent {
   readonly store = inject(ContentStore);
   readonly projectContext = inject(ProjectContextStore);
   private readonly modal = inject(NzModalService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly keyword = signal('');
   readonly status = signal<ContentStatus>('');
@@ -192,6 +197,13 @@ export class ContentManagementPageComponent {
   readonly detailAnnouncement = signal<AnnouncementEntity | null>(null);
   readonly detailDocument = signal<DocumentEntity | null>(null);
   readonly detailRelease = signal<ReleaseEntity | null>(null);
+  private readonly handledRouteDetailKey = signal<string | null>(null);
+  private readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
+    initialValue: this.route.snapshot.queryParamMap.get('detail'),
+  });
+  private readonly tabQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('tab'))), {
+    initialValue: this.route.snapshot.queryParamMap.get('tab'),
+  });
 
   readonly subtitle = computed(() => {
     const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
@@ -243,13 +255,40 @@ export class ContentManagementPageComponent {
 
     effect(() => {
       this.store.refreshForProject(this.projectContext.currentProjectId());
-      this.closeDetailDrawer();
+      this.closeDetailDrawer(false);
+    });
+
+    effect(() => {
+      const detailId = this.normalizeDetailQuery(this.detailQuery());
+      if (!detailId) {
+        this.handledRouteDetailKey.set(null);
+        return;
+      }
+
+      const tab = this.normalizeTabQuery(this.tabQuery()) ?? this.store.activeTab();
+      const routeKey = `${tab}:${detailId}`;
+      if (this.handledRouteDetailKey() === routeKey) {
+        return;
+      }
+
+      if (this.store.activeTab() !== tab) {
+        this.store.setTab(tab);
+        return;
+      }
+
+      if (this.store.loading()) {
+        return;
+      }
+
+      if (this.openRouteDetail(tab, detailId)) {
+        this.handledRouteDetailKey.set(routeKey);
+      }
     });
   }
 
   switchTab(tab: ContentTab): void {
     this.store.setTab(tab);
-    this.closeDetailDrawer();
+    this.closeDetailDrawer(true);
   }
 
   applyFilters(): void {
@@ -429,12 +468,20 @@ export class ContentManagementPageComponent {
     this.editingRelease.set(null);
   }
 
-  closeDetailDrawer(): void {
+  closeDetailDrawer(clearRouteDetailQuery = false): void {
     this.detailDrawerOpen.set(false);
     this.detailTab.set(null);
     this.detailAnnouncement.set(null);
     this.detailDocument.set(null);
     this.detailRelease.set(null);
+    if (clearRouteDetailQuery && this.detailQuery()) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { detail: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
   }
 
   editCurrentDetail(): void {
@@ -564,5 +611,38 @@ export class ContentManagementPageComponent {
     if (this.detailTab() === 'releases' && this.detailRelease()?.id === entity.id) {
       this.detailRelease.set(entity);
     }
+  }
+
+  private normalizeTabQuery(tab: string | null): ContentTab | null {
+    if (tab === 'announcements' || tab === 'documents' || tab === 'releases') {
+      return tab;
+    }
+    return null;
+  }
+
+  private normalizeDetailQuery(value: string | null): string | null {
+    const normalized = value?.trim() ?? '';
+    return normalized || null;
+  }
+
+  private openRouteDetail(tab: ContentTab, detailId: string): boolean {
+    const item = this.store.items().find((entry) => entry.id === detailId);
+    if (!item) {
+      return false;
+    }
+
+    if (tab === 'announcements') {
+      this.openAnnouncementDetail(item as AnnouncementEntity);
+      return true;
+    }
+    if (tab === 'documents') {
+      this.openDocumentDetail(item as DocumentEntity);
+      return true;
+    }
+    if (tab === 'releases') {
+      this.openReleaseDetail(item as ReleaseEntity);
+      return true;
+    }
+    return false;
   }
 }

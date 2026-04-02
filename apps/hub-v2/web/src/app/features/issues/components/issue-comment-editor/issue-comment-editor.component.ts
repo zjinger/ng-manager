@@ -50,7 +50,7 @@ import type { IssueCommentEntity } from '../../models/issue.model';
         <div class="composer__avatar">{{ currentUserInitial() }}</div>
         <div class="composer__main">
           <nz-mention
-            [nzSuggestions]="mentionSuggestions()"
+            [nzSuggestions]="mentionOptions()"
             [nzValueWith]="mentionLabel"
             (nzOnSearchChange)="handleMentionSearch($event)"
             (nzOnSelect)="handleMentionSelect($event)"
@@ -171,9 +171,35 @@ import type { IssueCommentEntity } from '../../models/issue.model';
         color: var(--text-muted);
         font-size: 12px;
       }
+      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item {
+        margin: 2px 4px;
+        border-radius: 8px;
+        transition: background-color 0.15s ease;
+      }
+      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item:hover,
+      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active {
+        background: color-mix(in srgb, var(--primary-500) 24%, transparent);
+      }
+      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-name {
+        color: var(--primary-800, var(--primary-700));
+        font-weight: 700;
+      }
+      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-id {
+        color: var(--primary-700);
+      }
       :host-context(html[data-theme='dark']) .comment-mention {
         color: var(--primary-300);
         background: color-mix(in srgb, var(--primary-400) 26%, transparent);
+      }
+      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item:hover,
+      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active {
+        background: color-mix(in srgb, var(--primary-400) 34%, transparent);
+      }
+      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-name {
+        color: var(--primary-200);
+      }
+      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-id {
+        color: var(--primary-300);
       }
       .composer__actions {
         display: flex;
@@ -212,6 +238,20 @@ export class IssueCommentEditorComponent {
   readonly draft = signal('');
   readonly mentionKeyword = signal('');
   readonly currentUserInitial = computed(() => this.avatarText(this.authStore.currentUser()?.nickname || '我'));
+  readonly mentionOptions = computed(() => {
+    const keyword = this.mentionKeyword().trim().toLowerCase();
+    const members = this.members();
+    if (!keyword) {
+      return members.slice(0, 20);
+    }
+    return members
+      .filter((member) => {
+        const displayName = (member.displayName || '').toLowerCase();
+        const userId = (member.userId || '').toLowerCase();
+        return displayName.includes(keyword) || userId.includes(keyword);
+      })
+      .slice(0, 20);
+  });
 
   submitComment(): void {
     const raw = this.draft();
@@ -227,21 +267,6 @@ export class IssueCommentEditorComponent {
 
   avatarText(name: string): string {
     return name.slice(0, 1);
-  }
-
-  mentionSuggestions(): ProjectMemberEntity[] {
-    const keyword = this.mentionKeyword().trim().toLowerCase();
-    if (!keyword) {
-      return this.members().slice(0, 20);
-    }
-
-    return this.members()
-      .filter((member) => {
-        const displayName = (member.displayName || '').toLowerCase();
-        const userId = (member.userId || '').toLowerCase();
-        return displayName.includes(keyword) || userId.includes(keyword);
-      })
-      .slice(0, 20);
   }
 
   mentionLabel(member: ProjectMemberEntity): string {

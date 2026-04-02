@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ProjectContextStore } from '@core/state';
 import type { NotificationItem } from '../../models/notification.model';
 import { NotificationStore } from '../../store/notification.store';
+import { buildNotificationRouteTarget, type NotificationRouteTarget } from '../../utils/notification-route.util';
 
 @Component({
   selector: 'app-notification-list',
@@ -12,11 +13,13 @@ import { NotificationStore } from '../../store/notification.store';
   template: `
     <div class="notification-list">
       @for (item of items(); track item.id) {
+        @let target = routeTarget(item);
         <a
           class="notification-row"
-          [routerLink]="routeTarget(item).path"
-          [queryParams]="routeTarget(item).query"
-          (click)="onItemClick(item)"
+          [class.notification-row--disabled]="!target.path"
+          [routerLink]="target.path"
+          [queryParams]="target.query"
+          (click)="onItemClick($event, item, target)"
         >
           <div class="notification-row__main">
             <div class="notification-row__meta">
@@ -63,6 +66,9 @@ import { NotificationStore } from '../../store/notification.store';
       }
       .notification-row:hover {
         background: var(--bg-subtle);
+      }
+      .notification-row.notification-row--disabled {
+        cursor: default;
       }
       .notification-row__meta {
         display: flex;
@@ -136,47 +142,8 @@ export class NotificationListComponent {
   private readonly notificationStore = inject(NotificationStore);
   readonly items = input<NotificationItem[]>([]);
 
-  routeTarget(item: NotificationItem): { path: string[]; query?: Record<string, string> } {
-    const route = item.route || '';
-    const [path, query = ''] = route.split('?');
-    const params = new URLSearchParams(query);
-    const queryParams: Record<string, string> = {};
-    params.forEach((value, key) => {
-      queryParams[key] = value;
-    });
-
-    if (!queryParams['detail'] && path === '/rd') {
-      const entityId = this.resolveEntityId(item);
-      if (entityId) {
-        queryParams['detail'] = entityId;
-      }
-    }
-
-    if (!queryParams['detail'] && path === '/issues') {
-      const entityId = this.resolveEntityId(item);
-      if (entityId) {
-        queryParams['detail'] = entityId;
-      }
-    }
-
-    return Object.keys(queryParams).length > 0 ? { path: [path], query: queryParams } : { path: [path] };
-  }
-
-  private resolveEntityId(item: NotificationItem): string | null {
-    if (!item?.id) {
-      return null;
-    }
-    const parts = item.id.split(':');
-    if (parts.length < 3) {
-      return null;
-    }
-    if (parts[0] === 'todo') {
-      return parts[2] || null;
-    }
-    if (parts[0] === 'activity') {
-      return parts[2] || null;
-    }
-    return null;
+  routeTarget(item: NotificationItem): NotificationRouteTarget {
+    return buildNotificationRouteTarget(item);
   }
 
   categoryLabel(category: NotificationItem['category']): string {
@@ -241,8 +208,12 @@ export class NotificationListComponent {
     this.projectContext.setCurrentProjectId(item.projectId);
   }
 
-  onItemClick(item: NotificationItem): void {
+  onItemClick(event: MouseEvent, item: NotificationItem, target: NotificationRouteTarget): void {
     this.syncProjectContext(item);
     this.notificationStore.markAsRead(item.id);
+    if (!target.path) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   }
 }

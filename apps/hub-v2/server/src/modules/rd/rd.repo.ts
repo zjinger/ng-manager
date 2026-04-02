@@ -95,6 +95,13 @@ type UpdateRdItemRowInput = Partial<{
   updated_at: string;
 }>;
 
+const RD_NO_PREFIX_BY_TYPE: Record<RdItemEntity["type"], string> = {
+  feature_dev: "FEAT",
+  tech_refactor: "REF",
+  integration: "INT",
+  env_setup: "ENV"
+};
+
 export class RdRepo {
   constructor(private readonly db: Database.Database) {}
 
@@ -280,9 +287,37 @@ export class RdRepo {
     return result.changes > 0;
   }
 
-  getNextRdNo(): string {
-    const row = this.db.prepare("SELECT COUNT(*) as total FROM rd_items").get() as { total: number };
-    return `RD-${String(row.total + 1).padStart(6, "0")}`;
+  getNextRdNo(projectId: string, type: RdItemEntity["type"]): string {
+    const projectRow = this.db
+      .prepare(
+        `
+          SELECT COALESCE(NULLIF(display_code, ''), 'PRJ') AS display_code
+          FROM projects
+          WHERE id = ?
+          LIMIT 1
+        `
+      )
+      .get(projectId) as { display_code: string } | undefined;
+
+    const projectCode = (projectRow?.display_code || "PRJ").toUpperCase().slice(0, 3).padEnd(3, "X");
+    const typeCode = RD_NO_PREFIX_BY_TYPE[type] ?? "RD";
+    const row = this.db.prepare("SELECT COUNT(*) as total FROM rd_items WHERE project_id = ?").get(projectId) as {
+      total: number;
+    };
+
+    let seq = row.total + 1;
+    while (seq <= 999999) {
+      const candidate = `${projectCode}-${typeCode}-${String(seq).padStart(4, "0")}`;
+      const exists = this.db.prepare("SELECT 1 as hit FROM rd_items WHERE rd_no = ? LIMIT 1").get(candidate) as
+        | { hit: number }
+        | undefined;
+      if (!exists) {
+        return candidate;
+      }
+      seq += 1;
+    }
+
+    throw new Error("RD_NO_GENERATE_FAILED");
   }
 
   createLog(entity: RdLogEntity): void {

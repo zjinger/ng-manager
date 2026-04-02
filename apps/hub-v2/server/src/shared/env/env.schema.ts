@@ -39,5 +39,6 @@ export const envSchema = z.object({
   INIT_ADMIN_PASSWORD: z.string().min(8),
   INIT_ADMIN_NICKNAME: z.string().min(6),
   UPLOAD_DIR: z.string().optional(),
-  UPLOAD_MAX_FILE_SIZE: z.coerce.number().int().positive().default(10 * 1024 * 1024)
+  UPLOAD_MAX_FILE_SIZE: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+  OPENAI_API_KEY: z.string().min(1)
 });

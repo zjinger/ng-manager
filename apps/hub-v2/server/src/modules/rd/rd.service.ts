@@ -99,6 +99,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     const projectId = input.projectId.trim();
+    const itemType = input.type ?? "feature_dev";
     await this.projectAccess.requireProjectAccess(projectId, ctx, "create rd item");
     const members = await this.resolveMembers(projectId, input.assigneeId ?? null, input.reviewerId ?? null);
     const stageId = await this.resolveStageId(projectId, input.stageId);
@@ -106,11 +107,11 @@ export class RdService implements RdCommandContract, RdQueryContract {
     const entity: RdItemEntity = {
       id: genId("rdi"),
       projectId,
-      rdNo: this.repo.getNextRdNo(),
+      rdNo: this.repo.getNextRdNo(projectId, itemType),
       title: input.title.trim(),
       description: input.description?.trim() || null,
       stageId,
-      type: input.type ?? "feature_dev",
+      type: itemType,
       status: "todo",
       priority: input.priority ?? "medium",
       assigneeId: members.assigneeId,

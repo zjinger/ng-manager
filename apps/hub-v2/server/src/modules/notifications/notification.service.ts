@@ -329,7 +329,7 @@ export class NotificationService
       description: this.contentActionLabel(event.entityType, event.action),
       sourceLabel: this.contentSourceLabel(event.entityType),
       projectId: event.projectId ?? null,
-      route: "/content"
+      route: `/content?tab=${this.contentTabForEntity(event.entityType)}&detail=${event.entityId}`
     };
   }
 
@@ -694,6 +694,19 @@ export class NotificationService
         release: "版本"
       }[entityType] || "内容"
     );
+  }
+
+  private contentTabForEntity(entityType: string): "announcements" | "documents" | "releases" {
+    if (entityType === "announcement") {
+      return "announcements";
+    }
+    if (entityType === "document") {
+      return "documents";
+    }
+    if (entityType === "release") {
+      return "releases";
+    }
+    return "announcements";
   }
 
   private contentActionLabel(entityType: string, action: string): string {
