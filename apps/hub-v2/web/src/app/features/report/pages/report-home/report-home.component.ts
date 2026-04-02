@@ -1,29 +1,35 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
+import { catchError, finalize, from, map, mergeMap, of, toArray } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 
 import { PageHeaderComponent } from '@shared/ui';
 import { BlockRendererComponent } from '../../components/block-renderer/block-renderer.component';
-import type { AiReportPreviewResult, ReportBlock, ReportTemplate } from '../../models/report.model';
+import type {
+  AiReportPreviewResult,
+  ReportBlock,
+  ReportTemplate,
+  ReportTemplateExecuteResult,
+} from '../../models/report.model';
 import { ReportApiService } from '../../services/report-api.service';
+import { ReportBoardStore } from '../../services/report-board.store';
+import { ReportBoardPanelComponent } from '../../components/report-board-panel/report-board-panel.component';
+import { ReportTemplateSidebarComponent } from '../../components/report-template-sidebar/report-template-sidebar.component';
 
-interface TemplateBoardItem {
-  id: string;
-  title: string;
-  naturalQuery: string;
-  sql: string;
-  params: string[];
-  block: ReportBlock;
-}
+type BulkRenderResult =
+  | {
+      success: true;
+      template: ReportTemplate;
+      res: ReportTemplateExecuteResult;
+    }
+  | {
+      success: false;
+      template: ReportTemplate;
+    };
 
 @Component({
   selector: 'app-report-home-page',
@@ -31,540 +37,20 @@ interface TemplateBoardItem {
   imports: [
     FormsModule,
     NzButtonModule,
-    NzIconModule,
     NzInputModule,
-    NzPopconfirmModule,
-    NzSelectModule,
     NzSpinModule,
-    NzToolTipModule,
     PageHeaderComponent,
     BlockRendererComponent,
+    ReportBoardPanelComponent,
+    ReportTemplateSidebarComponent,
   ],
-  template: `
-    <app-page-header title="积木报表" subtitle="支持项目、成员、研发项、测试单等多维数据分析，输入自然语言即可生成。" />
-
-    <section class="report-layout">
-      <div class="report-layout__main">
-        <div class="card query-card">
-          <div class="query-card__label">报表需求</div>
-          <textarea
-            nz-input
-            rows="3"
-            [ngModel]="query()"
-            (ngModelChange)="query.set($event)"
-            placeholder="例如：最近 30 天各项目研发项完成情况，按项目对比"
-          ></textarea>
-
-          <div class="query-controls">
-            <div class="query-controls__hint">时间范围和项目范围请直接写在需求里，例如：最近30天、某某项目。</div>
-          </div>
-
-          <div class="query-card__actions">
-            <button nz-button nzType="primary" [disabled]="!canGenerate() || loading()" [nzLoading]="loading()" (click)="generate()">
-              生成报表
-            </button>
-            @for (item of suggestionQueries; track item) {
-              <button nz-button nzType="default" class="query-suggestion" (click)="useSuggestion(item)">
-                {{ item }}
-              </button>
-            }
-          </div>
-        </div>
-
-        @if (loading()) {
-          <div class="card loading-card">
-            <nz-spin nzSimple />
-            <span>AI 正在生成 SQL 与积木预览...</span>
-          </div>
-        }
-
-        @if (preview(); as current) {
-          <div class="card preview-card">
-            <div class="preview-card__header">
-              <div>
-                <h3>{{ current.title || 'AI 报表预览' }}</h3>
-                @if (current.description) {
-                  <p>{{ current.description }}</p>
-                }
-              </div>
-              <div class="preview-card__actions">
-                <input
-                  nz-input
-                  class="template-title-input"
-                  [ngModel]="templateTitle()"
-                  (ngModelChange)="templateTitle.set($event)"
-                  placeholder="模板名称"
-                />
-                <button nz-button nzType="primary" [disabled]="!canSaveTemplate()" [nzLoading]="saving()" (click)="saveTemplate()">
-                  保存为模板
-                </button>
-              </div>
-            </div>
-
-            <details class="sql-panel">
-              <summary>查看 SQL</summary>
-              <pre>{{ current.sql }}</pre>
-            </details>
-
-            <app-report-block-renderer [block]="current.block" />
-          </div>
-        }
-
-        @if (boardItems().length > 0) {
-          <div class="card board-card">
-            <div class="board-card__header">
-              <div>
-                <h3>模板看板</h3>
-                <p>同时展示多个模板图表，便于横向对比</p>
-              </div>
-              <div class="board-card__actions">
-                <button nz-button nzType="default" nzSize="small" (click)="clearBoard()">
-                  清空看板
-                </button>
-              </div>
-            </div>
-            <div class="board-list">
-              @for (item of boardItems(); track item.id) {
-                <div class="board-item" [class.board-item--compact]="isCompactBlock(item.block)">
-                  <button
-                    nz-button
-                    nzType="text"
-                    nzSize="small"
-                    class="board-item__close"
-                    nz-tooltip
-                    nzTooltipTitle="关闭模板"
-                    (click)="removeBoardItem(item.id, $event)"
-                  >
-                    <span nz-icon nzType="close"></span>
-                  </button>
-                  <app-report-block-renderer [block]="item.block" [showDescription]="true" />
-                </div>
-              }
-            </div>
-          </div>
-        }
-      </div>
-
-      <aside class="report-layout__side">
-        <div class="card template-card">
-          <div class="template-card__header">
-            <h4>我的模板</h4>
-            <div class="template-card__header-actions">
-              <button
-                nz-button
-                nzType="default"
-                nzSize="small"
-                [disabled]="templates().length === 0 || bulkRendering()"
-                [nzLoading]="bulkRendering()"
-                (click)="renderAllTemplates()"
-              >
-                渲染全部
-              </button>
-              <button nz-button nzType="text" nzSize="small" [disabled]="templatesLoading()" (click)="loadTemplates()">
-                刷新
-              </button>
-            </div>
-          </div>
-          <div class="template-card__filters">
-            <input
-              nz-input
-              nzSize="small"
-              [ngModel]="templateKeyword()"
-              (ngModelChange)="templateKeyword.set($event)"
-              placeholder="搜索模板名"
-            />
-            <nz-select
-              nzSize="small"
-              [ngModel]="templateSort()"
-              (ngModelChange)="templateSort.set($event)"
-              class="template-sort-select"
-            >
-              <nz-option nzLabel="最近更新" nzValue="updated_desc"></nz-option>
-              <nz-option nzLabel="最早更新" nzValue="updated_asc"></nz-option>
-            </nz-select>
-          </div>
-
-          @if (templatesLoading()) {
-            <div class="template-card__loading"><nz-spin nzSimple /></div>
-          } @else if (templates().length === 0) {
-            <div class="template-card__empty">还没有模板，先生成一个报表后保存。</div>
-          } @else if (filteredTemplates().length === 0) {
-            <div class="template-card__empty">没有匹配的模板</div>
-          } @else {
-            <div class="template-list">
-              @for (item of filteredTemplates(); track item.id) {
-                <div
-                  class="template-item"
-                  [class.template-item--active]="activeTemplateId() === item.id"
-                  [class.template-item--disabled]="executingTemplateId() === item.id"
-                  (click)="executeTemplate(item)"
-                >
-                  <div class="template-item__title-row">
-                    @if (editingTemplateId() === item.id) {
-                      <input
-                        nz-input
-                        nzSize="small"
-                        class="template-item__rename-input"
-                        [ngModel]="editingTitle()"
-                        (ngModelChange)="editingTitle.set($event)"
-                        (click)="stopEvent($event)"
-                        (keydown.enter)="confirmRename(item.id, $event)"
-                        (keydown.escape)="cancelRename($event)"
-                      />
-                    } @else {
-                      <span class="template-item__title">{{ item.title }}</span>
-                    }
-                    <span class="template-item__time">{{ formatTime(item.updatedAt) }}</span>
-                  </div>
-
-                  <div class="template-item__query">{{ item.naturalQuery }}</div>
-
-                  <div class="template-item__actions" (click)="stopEvent($event)">
-                    @if (editingTemplateId() === item.id) {
-                      <button
-                        nz-button
-                        nzType="primary"
-                        nzSize="small"
-                        [nzLoading]="renamingTemplateId() === item.id"
-                        (click)="confirmRename(item.id)"
-                      >
-                        保存
-                      </button>
-                      <button nz-button nzType="default" nzSize="small" (click)="cancelRename()">取消</button>
-                    } @else {
-                      <button nz-button nzType="default" nzSize="small" (click)="startRename(item, $event)">重命名</button>
-                      <button
-                        nz-button
-                        nzType="default"
-                        nzSize="small"
-                        [nzLoading]="boardExecutingTemplateId() === item.id"
-                        [disabled]="boardExecutingTemplateId() === item.id"
-                        (click)="renderTemplateToBoard(item, $event)"
-                      >
-                        加入看板
-                      </button>
-                      <button
-                        nz-button
-                        nzType="default"
-                        nzDanger
-                        nzSize="small"
-                        nz-popconfirm
-                        nzPopconfirmTitle="确认删除该模板？"
-                        nzPopconfirmOkText="删除"
-                        nzPopconfirmCancelText="取消"
-                        (nzOnConfirm)="deleteTemplate(item)"
-                        (click)="stopEvent($event)"
-                      >
-                        删除
-                      </button>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </aside>
-    </section>
-  `,
-  styles: [
-    `
-      .report-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 320px;
-        gap: 16px;
-      }
-      .report-layout__main {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-      .report-layout__side {
-        min-width: 0;
-      }
-      .card {
-        background: var(--bg-container);
-        border: 1px solid var(--border-color);
-        border-radius: 14px;
-        padding: 16px;
-      }
-      .query-card__label {
-        margin-bottom: 10px;
-        font-size: 13px;
-        color: var(--text-muted);
-      }
-      .query-card textarea {
-        resize: vertical;
-        min-height: 92px;
-      }
-      .query-controls {
-        margin-top: 12px;
-      }
-      .query-controls__hint {
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-      .control-select {
-        width: 100%;
-      }
-      .query-card__actions {
-        margin-top: 12px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .query-suggestion {
-        max-width: 100%;
-      }
-      .loading-card {
-        min-height: 120px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        color: var(--text-muted);
-      }
-      .preview-card {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-      .board-card {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-      .board-card__header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .board-card__header h3 {
-        margin: 0;
-        color: var(--text-primary);
-        font-size: 18px;
-      }
-      .board-card__header p {
-        margin: 8px 0 0;
-        color: var(--text-muted);
-      }
-      .board-card__actions {
-        display: inline-flex;
-        gap: 8px;
-      }
-      .board-list {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-      }
-      .board-item {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-        grid-column: 1 / -1;
-      }
-      .board-item--compact {
-        grid-column: auto;
-      }
-      .board-item__close {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        z-index: 2;
-        width: 28px;
-        height: 28px;
-        padding: 0;
-        border-radius: 999px;
-        border: 1px solid var(--border-color-soft);
-        background: color-mix(in srgb, var(--bg-container) 92%, #ffffff);
-        color: var(--text-muted);
-      }
-      .board-item__close:hover {
-        border-color: var(--border-color);
-        background: var(--bg-container);
-        color: var(--text-primary);
-      }
-      .board-item ::ng-deep .block {
-        min-height: 100%;
-        padding-right: 48px;
-      }
-      .preview-card__header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .preview-card__header h3 {
-        margin: 0;
-        color: var(--text-primary);
-        font-size: 18px;
-      }
-      .preview-card__header p {
-        margin: 8px 0 0;
-        color: var(--text-muted);
-      }
-      .preview-card__actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .template-title-input {
-        width: 220px;
-      }
-      .sql-panel {
-        border: 1px solid var(--border-color);
-        border-radius: 10px;
-        background: var(--bg-subtle);
-        padding: 0 12px;
-      }
-      .sql-panel summary {
-        cursor: pointer;
-        user-select: none;
-        padding: 10px 0;
-        color: var(--text-secondary);
-        font-size: 13px;
-      }
-      .sql-panel pre {
-        margin: 0 0 12px;
-        max-height: 220px;
-        overflow: auto;
-        white-space: pre-wrap;
-        word-break: break-word;
-        color: var(--text-primary);
-        font-size: 12px;
-        line-height: 1.6;
-      }
-      .template-card {
-        min-height: 360px;
-      }
-      .template-card__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-      }
-      .template-card__header-actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .template-card__filters {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 112px;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-      .template-sort-select {
-        width: 100%;
-      }
-      .template-card__header h4 {
-        margin: 0;
-        font-size: 15px;
-        color: var(--text-primary);
-      }
-      .template-card__loading,
-      .template-card__empty {
-        min-height: 100px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-muted);
-      }
-      .template-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .template-item {
-        border: 1px solid var(--border-color);
-        border-radius: 10px;
-        background: var(--bg-container);
-        padding: 10px 12px;
-        transition: border-color 0.2s ease, background-color 0.2s ease;
-        cursor: pointer;
-      }
-      .template-item:hover {
-        border-color: color-mix(in srgb, var(--primary-500) 48%, var(--border-color));
-        background: color-mix(in srgb, var(--primary-500) 5%, var(--bg-container));
-      }
-      .template-item--active {
-        border-color: color-mix(in srgb, var(--primary-500) 68%, var(--border-color));
-        background: color-mix(in srgb, var(--primary-500) 8%, var(--bg-container));
-      }
-      .template-item--disabled {
-        opacity: 0.72;
-      }
-      .template-item__title-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-      .template-item__title {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 13px;
-      }
-      .template-item__rename-input {
-        width: 100%;
-      }
-      .template-item__time {
-        flex-shrink: 0;
-        color: var(--text-muted);
-        font-size: 12px;
-      }
-      .template-item__query {
-        margin-top: 6px;
-        color: var(--text-secondary);
-        font-size: 12px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .template-item__actions {
-        margin-top: 10px;
-        display: inline-flex;
-        gap: 8px;
-      }
-      @media (max-width: 1160px) {
-        .report-layout {
-          grid-template-columns: 1fr;
-        }
-      }
-      @media (max-width: 780px) {
-        .board-list {
-          grid-template-columns: 1fr;
-        }
-        .template-card__filters {
-          grid-template-columns: 1fr;
-        }
-        .preview-card__header {
-          flex-direction: column;
-        }
-        .board-card__header {
-          flex-direction: column;
-        }
-        .preview-card__actions {
-          width: 100%;
-          flex-wrap: wrap;
-        }
-        .template-title-input {
-          width: 100%;
-        }
-      }
-    `,
-  ],
+  templateUrl: './report-home.component.html',
+  styleUrl: './report-home.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReportHomePageComponent {
   private readonly api = inject(ReportApiService);
+  private readonly boardStore = inject(ReportBoardStore);
   private readonly message = inject(NzMessageService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -576,17 +62,16 @@ export class ReportHomePageComponent {
   readonly templateTitle = signal('');
   readonly templates = signal<ReportTemplate[]>([]);
   readonly templatesLoading = signal(false);
-  readonly templateKeyword = signal('');
-  readonly templateSort = signal<'updated_desc' | 'updated_asc'>('updated_desc');
   readonly executingTemplateId = signal<string | null>(null);
   readonly renamingTemplateId = signal<string | null>(null);
   readonly activeTemplateId = signal<string | null>(null);
   readonly editingTemplateId = signal<string | null>(null);
   readonly editingTitle = signal('');
   readonly lastNaturalQuery = signal('');
-  readonly boardItems = signal<TemplateBoardItem[]>([]);
+  readonly boardItems = this.boardStore.boardItems;
   readonly boardExecutingTemplateId = signal<string | null>(null);
   readonly bulkRendering = signal(false);
+  readonly failedBulkTemplateIds = this.boardStore.failedTemplateIds;
 
   readonly suggestionQueries: ReadonlyArray<string> = [
     '最近 30 天各项目的测试单创建与关闭趋势',
@@ -604,20 +89,20 @@ export class ReportHomePageComponent {
       !this.saving()
     );
   });
-  readonly filteredTemplates = computed(() => {
-    const keyword = this.templateKeyword().trim().toLowerCase();
-    const sorted = [...this.templates()].sort((a, b) => {
-      const left = Date.parse(a.updatedAt);
-      const right = Date.parse(b.updatedAt);
-      const leftValue = Number.isNaN(left) ? 0 : left;
-      const rightValue = Number.isNaN(right) ? 0 : right;
-      return this.templateSort() === 'updated_asc' ? leftValue - rightValue : rightValue - leftValue;
-    });
-
-    if (!keyword) {
-      return sorted;
+  readonly retryableFailedTemplates = computed(() => {
+    const failedIdSet = new Set(this.failedBulkTemplateIds());
+    return this.templates().filter((item) => failedIdSet.has(item.id));
+  });
+  readonly previewBlocks = computed(() => {
+    const current = this.preview();
+    if (!current) {
+      return [] as ReportBlock[];
     }
-    return sorted.filter((item) => item.title.toLowerCase().includes(keyword));
+    const blocks = (current.blocks || []).filter((item): item is ReportBlock => !!item);
+    if (blocks.length > 0) {
+      return blocks;
+    }
+    return current.block ? [current.block] : [];
   });
 
   constructor() {
@@ -677,9 +162,14 @@ export class ReportHomePageComponent {
         finalize(() => this.saving.set(false)),
       )
       .subscribe({
-        next: (entity) => {
+        next: (result) => {
+          const entity = result.template;
           this.activeTemplateId.set(entity.id);
-          this.message.success('模板已保存');
+          if (result.duplicated) {
+            this.message.warning('已存在同名同SQL模板，已定位到现有模板');
+          } else {
+            this.message.success('模板已保存');
+          }
           this.loadTemplates(true);
         },
         error: () => {
@@ -702,12 +192,17 @@ export class ReportHomePageComponent {
       )
       .subscribe({
         next: (res) => {
+          const resolvedBlocks = (res.blocks && res.blocks.length > 0 ? res.blocks : [res.block]).filter(
+            (item): item is ReportBlock => !!item,
+          );
           this.preview.set({
             sql: res.sql,
             params: res.params,
             title: res.template.title,
             description: '',
-            block: res.block,
+            caliber: res.caliber,
+            blocks: resolvedBlocks,
+            block: resolvedBlocks[0] || res.block,
           });
           this.query.set(res.template.naturalQuery);
           this.lastNaturalQuery.set(res.template.naturalQuery);
@@ -796,7 +291,8 @@ export class ReportHomePageComponent {
       .subscribe({
         next: () => {
           this.templates.update((items) => items.filter((item) => item.id !== template.id));
-          this.boardItems.update((items) => items.filter((item) => item.id !== template.id));
+          this.boardStore.removeBoardItem(template.id);
+          this.boardStore.removeFailedTemplateId(template.id);
           if (this.activeTemplateId() === template.id) {
             this.activeTemplateId.set(null);
           }
@@ -826,14 +322,18 @@ export class ReportHomePageComponent {
       )
       .subscribe({
         next: (res) => {
-          this.upsertBoardItem({
+          const boardBlocks = (res.blocks && res.blocks.length > 0 ? res.blocks : [res.block]).filter(
+            (item): item is ReportBlock => !!item,
+          );
+          this.boardStore.upsertBoardItem({
             id: res.template.id,
             title: res.template.title,
             naturalQuery: res.template.naturalQuery,
             sql: res.sql,
             params: res.params,
-            block: res.block,
+            blocks: boardBlocks,
           });
+          this.boardStore.removeFailedTemplateId(template.id);
           this.message.success('已加入看板');
         },
         error: () => {
@@ -847,94 +347,113 @@ export class ReportHomePageComponent {
     if (templates.length === 0 || this.bulkRendering()) {
       return;
     }
+    this.executeTemplatesToBoard(templates);
+  }
 
-    this.bulkRendering.set(true);
-    let completed = 0;
-    let successCount = 0;
-
-    for (const template of templates) {
-      this.api
-        .executeTemplate(template.id)
-        .pipe(
-          takeUntilDestroyed(this.destroyRef),
-          finalize(() => {
-            completed += 1;
-            if (completed >= templates.length) {
-              this.bulkRendering.set(false);
-              if (successCount > 0) {
-                this.message.success(`已渲染 ${successCount} 个模板`);
-              } else {
-                this.message.error('模板渲染失败');
-              }
-            }
-          }),
-        )
-        .subscribe({
-          next: (res) => {
-            successCount += 1;
-            this.upsertBoardItem({
-              id: res.template.id,
-              title: res.template.title,
-              naturalQuery: res.template.naturalQuery,
-              sql: res.sql,
-              params: res.params,
-              block: res.block,
-            });
-          },
-          error: () => {
-            // 单个模板失败不阻塞其它模板渲染
-          },
-        });
+  retryFailedTemplates(): void {
+    const templates = this.retryableFailedTemplates();
+    if (templates.length === 0 || this.bulkRendering()) {
+      return;
     }
+    this.executeTemplatesToBoard(templates);
   }
 
   clearBoard(): void {
-    this.boardItems.set([]);
+    this.boardStore.clearBoard();
   }
 
-  removeBoardItem(id: string, event?: Event): void {
-    this.stopEvent(event);
-    this.boardItems.update((items) => items.filter((item) => item.id !== id));
+  removeBoardItem(id: string): void {
+    this.boardStore.removeBoardItem(id);
+    this.boardStore.removeFailedTemplateId(id);
   }
 
-  stopEvent(event?: Event): void {
+  toggleBoardItemLayout(id: string): void {
+    this.boardStore.toggleBoardItemLayout(id);
+  }
+
+  moveBoardItem(sourceId: string, targetId: string): void {
+    this.boardStore.moveBoardItem(sourceId, targetId);
+  }
+
+  private executeTemplatesToBoard(templates: ReportTemplate[]): void {
+    this.bulkRendering.set(true);
+    const concurrency = 4;
+
+    from(templates)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        mergeMap(
+          (template) =>
+            this.api.executeTemplate(template.id).pipe(
+              map((res) => ({ success: true as const, template, res })),
+              catchError(() => of({ success: false as const, template })),
+            ),
+          concurrency,
+        ),
+        toArray(),
+        finalize(() => this.bulkRendering.set(false)),
+      )
+      .subscribe({
+        next: (results) => {
+          let successCount = 0;
+          const failedTemplates: ReportTemplate[] = [];
+
+          for (const item of results as BulkRenderResult[]) {
+            if (item.success) {
+              successCount += 1;
+              const boardBlocks = (item.res.blocks && item.res.blocks.length > 0 ? item.res.blocks : [item.res.block]).filter(
+                (block): block is ReportBlock => !!block,
+              );
+              this.boardStore.upsertBoardItem({
+                id: item.res.template.id,
+                title: item.res.template.title,
+                naturalQuery: item.res.template.naturalQuery,
+                sql: item.res.sql,
+                params: item.res.params,
+                blocks: boardBlocks,
+              });
+              continue;
+            }
+            failedTemplates.push(item.template);
+          }
+          this.boardStore.setFailedTemplateIds(failedTemplates.map((item) => item.id));
+
+          if (failedTemplates.length === 0) {
+            this.message.success(`已渲染 ${successCount} 个模板`);
+            return;
+          }
+
+          const failedCount = failedTemplates.length;
+          const sampleNames = failedTemplates
+            .slice(0, 3)
+            .map((item) => item.title)
+            .join('、');
+          const nameSuffix = failedCount > 3 ? ` 等 ${failedCount} 个` : '';
+
+          if (successCount > 0) {
+            this.message.warning(`已渲染 ${successCount} 个模板，${failedCount} 个失败（${sampleNames}${nameSuffix}）`);
+            return;
+          }
+
+          this.message.error(`模板渲染失败（${sampleNames}${nameSuffix}）`);
+        },
+        error: () => {
+          this.boardStore.setFailedTemplateIds(templates.map((item) => item.id));
+          this.message.error('模板渲染失败');
+        },
+      });
+  }
+
+  private stopEvent(event?: Event): void {
     event?.stopPropagation();
     event?.preventDefault();
   }
 
-  private upsertBoardItem(next: TemplateBoardItem): void {
-    const normalizedNext: TemplateBoardItem = {
-      ...next,
-      block: {
-        ...next.block,
-        title: next.title,
-        description: next.naturalQuery,
-      },
-    };
-    this.boardItems.update((items) => {
-      const index = items.findIndex((item) => item.id === normalizedNext.id);
-      if (index < 0) {
-        return [normalizedNext, ...items];
-      }
-      const updated = [...items];
-      updated[index] = normalizedNext;
-      return updated;
-    });
-  }
-
   protected isCompactBlock(block: ReportBlock): boolean {
-    return block.type === 'distribution_chart';
+    return block.type === 'distribution_chart' && (block.chart?.type === 'pie' || block.chart?.type === 'donut');
   }
 
-  protected formatTime(value: string): string {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return value;
-    }
-    const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
-    const day = `${parsed.getDate()}`.padStart(2, '0');
-    const hour = `${parsed.getHours()}`.padStart(2, '0');
-    const minute = `${parsed.getMinutes()}`.padStart(2, '0');
-    return `${month}-${day} ${hour}:${minute}`;
+  protected isFullWidthBlock(block: ReportBlock): boolean {
+    return block.type === 'table';
   }
 }

@@ -8,6 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "rimraf dist && tsc -p tsconfig.json",
+    "test": "tsx --test src/modules/ai/ai-report-sql.service.test.ts",
     "uploads:migrate-paths": "tsx src/scripts/migrate-upload-paths.ts",
     "uploads:migrate-paths:dist": "node dist/scripts/migrate-upload-paths.js",
     "db:migrate": "tsx src/db/migrate-cli.ts",

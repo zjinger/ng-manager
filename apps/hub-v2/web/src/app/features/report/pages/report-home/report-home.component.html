@@ -1,0 +1,141 @@
+<app-page-header title="积木报表" subtitle="支持项目、成员、研发项、测试单等多维数据分析，输入自然语言即可生成。" />
+
+<section class="report-layout">
+  <div class="report-layout__main">
+    <div class="card query-card">
+      <div class="query-card__label">报表需求</div>
+      <textarea
+        nz-input
+        rows="3"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+        placeholder="例如：最近 30 天各项目研发项完成情况，按项目对比"
+      ></textarea>
+
+      <div class="query-controls">
+        <div class="query-controls__hint">时间范围和项目范围请直接写在需求里，例如：最近30天、某某项目。</div>
+      </div>
+
+      <div class="query-card__actions">
+        <button nz-button nzType="primary" [disabled]="!canGenerate() || loading()" [nzLoading]="loading()" (click)="generate()">
+          生成报表
+        </button>
+        @for (item of suggestionQueries; track item) {
+          <button nz-button nzType="default" class="query-suggestion" (click)="useSuggestion(item)">
+            {{ item }}
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="card loading-card">
+        <nz-spin nzSimple />
+        <span>AI 正在生成 SQL 与积木预览...</span>
+      </div>
+    }
+
+    @if (preview(); as current) {
+      <div class="card preview-card">
+        <div class="preview-card__header">
+          <div>
+            <h3>{{ current.title || 'AI 报表预览' }}</h3>
+            @if (current.description) {
+              <p>{{ current.description }}</p>
+            }
+          </div>
+          <div class="preview-card__actions">
+            <input
+              nz-input
+              class="template-title-input"
+              [ngModel]="templateTitle()"
+              (ngModelChange)="templateTitle.set($event)"
+              placeholder="模板名称"
+            />
+            <button nz-button nzType="primary" [disabled]="!canSaveTemplate()" [nzLoading]="saving()" (click)="saveTemplate()">
+              保存为模板
+            </button>
+          </div>
+        </div>
+
+        <details class="sql-panel">
+          <summary>查看 SQL</summary>
+          <pre>{{ current.sql }}</pre>
+        </details>
+
+        @if (current.caliber; as caliber) {
+          <details class="caliber-panel">
+            <summary>数据说明</summary>
+            <div class="caliber-panel__content">
+              <div class="caliber-panel__item">
+                <span class="label">摘要</span>
+                <span class="value">{{ caliber.summary }}</span>
+              </div>
+              <div class="caliber-panel__item">
+                <span class="label">统计范围</span>
+                <span class="value">{{ caliber.scope }}</span>
+              </div>
+              <div class="caliber-panel__item">
+                <span class="label">时间范围</span>
+                <span class="value">{{ caliber.timeRange }}</span>
+              </div>
+              <div class="caliber-panel__item">
+                <span class="label">核心指标</span>
+                <span class="value">{{ caliber.metric }}</span>
+              </div>
+              <div class="caliber-panel__item">
+                <span class="label">数据来源</span>
+                <span class="value">{{ caliber.dataSource }}</span>
+              </div>
+            </div>
+          </details>
+        }
+
+        <div class="preview-block-list" [class.preview-block-list--multi]="previewBlocks().length > 1">
+          @for (block of previewBlocks(); track $index) {
+            <div
+              class="preview-block-item"
+              [class.preview-block-item--compact]="isCompactBlock(block)"
+              [class.preview-block-item--full]="isFullWidthBlock(block)"
+            >
+              <app-report-block-renderer [block]="block" [dense]="true" />
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <app-report-board-panel
+      [items]="boardItems()"
+      (clearBoard)="clearBoard()"
+      (removeItem)="removeBoardItem($event)"
+      (toggleLayout)="toggleBoardItemLayout($event)"
+      (moveItem)="moveBoardItem($event.sourceId, $event.targetId)"
+    />
+  </div>
+
+  <aside class="report-layout__side">
+    <app-report-template-sidebar
+      [templates]="templates()"
+      [templatesLoading]="templatesLoading()"
+      [activeTemplateId]="activeTemplateId()"
+      [executingTemplateId]="executingTemplateId()"
+      [editingTemplateId]="editingTemplateId()"
+      [editingTitle]="editingTitle()"
+      [renamingTemplateId]="renamingTemplateId()"
+      [boardExecutingTemplateId]="boardExecutingTemplateId()"
+      [bulkRendering]="bulkRendering()"
+      [retryFailedCount]="retryableFailedTemplates().length"
+      (renderAll)="renderAllTemplates()"
+      (retryFailed)="retryFailedTemplates()"
+      (refresh)="loadTemplates()"
+      (selectTemplate)="executeTemplate($event)"
+      (startRename)="startRename($event)"
+      (editingTitleChange)="editingTitle.set($event)"
+      (confirmRename)="confirmRename($event)"
+      (cancelRename)="cancelRename()"
+      (renderToBoard)="renderTemplateToBoard($event)"
+      (deleteTemplate)="deleteTemplate($event)"
+    />
+  </aside>
+</section>

@@ -1,0 +1,64 @@
+.template-item {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-container);
+  padding: 10px 12px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.template-item:hover {
+  border-color: color-mix(in srgb, var(--primary-500) 48%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-500) 5%, var(--bg-container));
+}
+
+.template-item--active {
+  border-color: color-mix(in srgb, var(--primary-500) 68%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-500) 8%, var(--bg-container));
+}
+
+.template-item--disabled {
+  opacity: 0.72;
+}
+
+.template-item__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.template-item__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.template-item__rename-input {
+  width: 100%;
+}
+
+.template-item__time {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.template-item__query {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-item__actions {
+  margin-top: 10px;
+  display: inline-flex;
+  gap: 8px;
+}

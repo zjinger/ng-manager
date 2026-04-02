@@ -12,7 +12,7 @@ export interface RenderedBlock {
   subValue?: string;
   trend?: "up" | "down" | "flat";
   chart?: {
-    type: "bar" | "line" | "pie" | "donut";
+    type: "bar" | "line" | "pie" | "donut" | "radar";
     labels: string[];
     datasets: { label: string; data: number[]; color?: string }[];
   };
@@ -31,6 +31,7 @@ interface VisualizationType {
 export class AiReportRenderService {
   private readonly maxExecutionTimeMs = 5000;
   private readonly maxRows = 1000;
+  private readonly maxBlocks = 4;
   private readonly columnLabelMap: Record<string, string> = {
     id: "ID",
     project_id: "项目ID",
@@ -47,6 +48,10 @@ export class AiReportRenderService {
     type: "类型",
     status: "状态",
     priority: "优先级",
+    tracking: "测试单",
+    issue: "测试单",
+    issues: "测试单",
+    rd: "研发项",
     assignee: "负责人",
     reporter: "提出人",
     verifier: "验证人",
@@ -58,7 +63,23 @@ export class AiReportRenderService {
     resolved_at: "解决时间",
     closed_at: "关闭时间",
     count: "数量",
+    pending: "待处理",
+    completed: "已完成",
+    done: "已完成",
+    open: "待处理",
+    closed: "已关闭",
+    resolved: "已解决",
+    verified: "已验证",
+    reopened: "重新打开",
     total_count: "总数",
+    pending_count: "待处理数量",
+    completed_count: "已完成数量",
+    pending_tracking: "待处理测试单",
+    open_tracking: "待处理测试单",
+    in_progress_tracking: "处理中测试单",
+    reopened_tracking: "重新打开测试单",
+    pending_issue_count: "待处理测试单数量",
+    pending_tracking_count: "待处理测试单数量",
     tracking_count: "测试单数量",
     issue_count: "测试单数量",
     created_count: "新建数量",
@@ -105,12 +126,16 @@ export class AiReportRenderService {
   constructor(private readonly readonlyDb: Database.Database) {}
 
   executeAndRender(sql: string, params: string[]): RenderedBlock {
+    const blocks = this.executeAndRenderAll(sql, params);
+    return blocks[0] ?? { type: "empty", title: "暂无数据" };
+  }
+
+  executeAndRenderAll(sql: string, params: string[]): RenderedBlock[] {
     const rows = this.executeQuery(sql, params);
     if (rows.length === 0) {
-      return { type: "empty", title: "暂无数据" };
+      return [{ type: "empty", title: "暂无数据" }];
     }
-    const viz = this.inferVisualization(rows);
-    return this.render(rows, viz);
+    return this.composeBlocks(rows);
   }
 
   private executeQuery(sql: string, params: string[]): Record<string, unknown>[] {
@@ -184,6 +209,104 @@ export class AiReportRenderService {
     }
   }
 
+  private composeBlocks(rows: Record<string, unknown>[]): RenderedBlock[] {
+    const firstRow = rows[0];
+    const columns = Object.keys(firstRow);
+    const numericColumns = columns.filter((key) => this.isNumericValue(firstRow[key]));
+    const textColumns = columns.filter((key) => typeof firstRow[key] === "string");
+    const dateColumn = columns.find((key) => this.looksLikeDateColumn(key, firstRow[key]));
+    const categoryColumn = textColumns.find((key) => key !== dateColumn) || textColumns[0];
+
+    const blocks: RenderedBlock[] = [];
+
+    if (dateColumn && numericColumns.length > 0 && rows.length > 1) {
+      this.pushDistinctBlock(blocks, this.render(rows, { type: "trend_chart", dateCol: dateColumn }));
+    }
+
+    if (categoryColumn && numericColumns.length > 0 && rows.length > 1) {
+      this.pushDistinctBlock(
+        blocks,
+        this.render(rows, {
+          type: "distribution_chart",
+          categoryCol: categoryColumn,
+          valueCol: numericColumns[0]
+        })
+      );
+    }
+
+    if (categoryColumn && numericColumns.length > 1 && rows.length > 1 && rows.length <= 8) {
+      this.pushDistinctBlock(
+        blocks,
+        this.renderRadarChart(rows, categoryColumn, numericColumns.slice(0, 6))
+      );
+    }
+
+    if (categoryColumn && numericColumns.length > 0 && rows.length <= 24) {
+      this.pushDistinctBlock(
+        blocks,
+        this.renderCategoryBarChart(rows, categoryColumn, numericColumns.slice(0, 2))
+      );
+    }
+
+    if (categoryColumn && numericColumns.length > 0 && rows.length <= 50) {
+      this.pushDistinctBlock(
+        blocks,
+        this.render(rows, {
+          type: "leaderboard",
+          categoryCol: categoryColumn,
+          valueCol: numericColumns[0]
+        })
+      );
+    }
+
+    if (blocks.length === 0 && numericColumns.length > 0) {
+      this.pushDistinctBlock(blocks, this.renderSummaryStat(rows, numericColumns[0]));
+    }
+
+    if (blocks.length === 0) {
+      this.pushDistinctBlock(blocks, this.renderTable(rows));
+    }
+
+    if (blocks.length < 2 && numericColumns.length > 0 && rows.length > 1) {
+      this.pushDistinctBlock(blocks, this.renderSummaryStat(rows, numericColumns[0]));
+    }
+
+    if (blocks.length < 2) {
+      this.pushDistinctBlock(blocks, this.renderTable(rows));
+    }
+
+    return blocks.slice(0, this.maxBlocks);
+  }
+
+  private pushDistinctBlock(blocks: RenderedBlock[], next: RenderedBlock): void {
+    if (blocks.length >= this.maxBlocks) {
+      return;
+    }
+    if (blocks.some((item) => this.blockSignature(item) === this.blockSignature(next))) {
+      return;
+    }
+    blocks.push(next);
+  }
+
+  private blockSignature(block: RenderedBlock): string {
+    return `${block.type}:${block.chart?.type || ""}:${block.title || ""}`;
+  }
+
+  private renderSummaryStat(rows: Record<string, unknown>[], valueCol: string): RenderedBlock {
+    if (rows.length === 1) {
+      return this.renderStatCard(rows, { type: "stat_card", valueCol });
+    }
+    const total = rows.reduce((sum, row) => sum + (this.toNumber(row[valueCol]) ?? 0), 0);
+    const fixedValue = Number.isInteger(total) ? total : Number(total.toFixed(2));
+    return {
+      type: "stat_card",
+      title: `${this.humanizeColumnName(valueCol)}汇总`,
+      value: fixedValue,
+      subText: "记录数",
+      subValue: String(rows.length)
+    };
+  }
+
   private renderStatCard(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
     const row = rows[0];
     const valueCol = viz.valueCol || Object.keys(row)[0];
@@ -224,12 +347,13 @@ export class AiReportRenderService {
       viz.categoryCol || Object.keys(firstRow).find((key) => typeof firstRow[key] === "string") || "category";
     const valueCol =
       viz.valueCol || Object.keys(firstRow).find((key) => this.isNumericValue(firstRow[key])) || "value";
+    const chartType = rows.length <= 10 ? "donut" : "bar";
 
     return {
       type: "distribution_chart",
       title: "分布分析",
       chart: {
-        type: "donut",
+        type: chartType,
         labels: rows.map((row) => this.localizeValueByColumn(categoryCol, row[categoryCol])),
         datasets: [
           {
@@ -237,6 +361,45 @@ export class AiReportRenderService {
             data: rows.map((row) => this.toNumber(row[valueCol]) ?? 0)
           }
         ]
+      }
+    };
+  }
+
+  private renderCategoryBarChart(
+    rows: Record<string, unknown>[],
+    categoryCol: string,
+    valueCols: string[]
+  ): RenderedBlock {
+    return {
+      type: "trend_chart",
+      title: "对比分析",
+      chart: {
+        type: "bar",
+        labels: rows.map((row) => this.localizeValueByColumn(categoryCol, row[categoryCol])),
+        datasets: valueCols.map((col) => ({
+          label: this.humanizeColumnName(col),
+          data: rows.map((row) => this.toNumber(row[col]) ?? 0)
+        }))
+      }
+    };
+  }
+
+  private renderRadarChart(
+    rows: Record<string, unknown>[],
+    categoryCol: string,
+    valueCols: string[]
+  ): RenderedBlock {
+    const datasets = rows.map((row) => ({
+      label: this.localizeValueByColumn(categoryCol, row[categoryCol]),
+      data: valueCols.map((col) => this.toNumber(row[col]) ?? 0)
+    }));
+    return {
+      type: "trend_chart",
+      title: "雷达对比",
+      chart: {
+        type: "radar",
+        labels: valueCols.map((col) => this.humanizeColumnName(col)),
+        datasets
       }
     };
   }
@@ -321,10 +484,14 @@ export class AiReportRenderService {
       return `平均${this.humanizeColumnName(normalized.slice(4))}`;
     }
     if (/_count$/.test(normalized)) {
-      return `${this.humanizeColumnName(normalized.slice(0, -6))}数量`;
+      const base = this.humanizeColumnName(normalized.slice(0, -6));
+      const compactBase = /[\u4e00-\u9fa5]/.test(base) ? base.replace(/\s+/g, "") : base;
+      return `${compactBase}数量`;
     }
     if (/_rate$/.test(normalized)) {
-      return `${this.humanizeColumnName(normalized.slice(0, -5))}率`;
+      const base = this.humanizeColumnName(normalized.slice(0, -5));
+      const compactBase = /[\u4e00-\u9fa5]/.test(base) ? base.replace(/\s+/g, "") : base;
+      return `${compactBase}率`;
     }
     if (/count\(\*\)/i.test(normalized)) {
       return "数量";
@@ -336,7 +503,7 @@ export class AiReportRenderService {
       .trim();
     return readable
       .split(" ")
-      .map((part) => (this.columnLabelMap[part] ? this.columnLabelMap[part] : part.toUpperCase()))
+      .map((part) => (this.columnLabelMap[part] ? this.columnLabelMap[part] : part))
       .join(" ");
   }
 

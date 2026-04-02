@@ -68,6 +68,7 @@ users 表：
 3. 默认只查询最近 90 天内的数据
 4. 默认 LIMIT 1000 条结果
 5. SQL 必须至少包含一个项目级表（issues/rd_items/projects/project_members/rd_stages），权限系统会自动注入项目过滤，不要自己写 project_id IN 或 projects.id IN
+6. 优先返回可视化友好的聚合结果（按日期趋势、按分类对比），尽量避免只返回单值统计或大量明细行
 
 ## 输出格式（JSON）
 
@@ -111,10 +112,7 @@ users 表：
   "description": "最近 30 天各项目研发项总量与完成量"
 }`;
 
-export function buildReportSqlUserPrompt(
-  query: string,
-  projectCount: number
-): string {
+export function buildReportSqlUserPrompt(query: string, projectCount: number): string {
   return `用户需求：${query}
 
 可访问项目数：${projectCount} 个

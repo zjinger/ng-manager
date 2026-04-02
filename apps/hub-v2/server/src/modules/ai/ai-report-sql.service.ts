@@ -56,6 +56,15 @@ export class AiReportSqlService {
     rd_stages: "project_id",
     projects: "id"
   };
+  private readonly narrativeTokenMap: Record<string, string> = {
+    in_progress: "处理中",
+    reopened: "重新打开",
+    resolved: "已解决",
+    verified: "已验证",
+    closed: "已关闭",
+    pending: "待处理",
+    open: "待处理"
+  };
 
   constructor(
     private readonly config: AppConfig,
@@ -127,8 +136,8 @@ export class AiReportSqlService {
     const finalResult: SqlGenerationResult = {
       sql,
       params: projectIds,
-      title: (llmResult.title || normalizedQuery).trim().slice(0, 120),
-      description: (llmResult.description || "").trim().slice(0, 300)
+      title: this.localizeAiNarrative((llmResult.title || normalizedQuery).trim()).slice(0, 120),
+      description: this.localizeAiNarrative((llmResult.description || "").trim()).slice(0, 300)
     };
     this.setCache(cacheKey, finalResult);
     return finalResult;
@@ -199,12 +208,17 @@ export class AiReportSqlService {
       return sql;
     }
 
-    if (/\b(?:\w+\.)?project_id\s+IN\s*\(/i.test(sql)) {
+    const projectExpr = this.detectProjectExpression(sql);
+    const expressionPattern = new RegExp(`\\b${this.escapeForRegex(projectExpr)}\\s+IN\\s*\\(`, "i");
+    if (expressionPattern.test(sql) || /\b(?:\w+\.)?project_id\s+IN\s*\(/i.test(sql)) {
       return sql;
     }
 
-    const projectExpr = this.detectProjectExpression(sql);
     const placeholders = projectIds.map(() => "?").join(", ");
+    return this.injectProjectFilterByExpression(sql, projectExpr, placeholders);
+  }
+
+  private injectProjectFilterByExpression(sql: string, projectExpr: string, placeholders: string): string {
     const filterExpr = `${projectExpr} IN (${placeholders})`;
 
     if (/\bWHERE\b/i.test(sql)) {
@@ -221,12 +235,21 @@ export class AiReportSqlService {
 
   private bindProjectFilter(sql: string, projectIds: string[]): string {
     const placeholders = projectIds.map(() => "?").join(", ");
-    const existingFilterPattern = /(\b(?:\w+\.)?project_id\s+IN\s*)\(([^)]*)\)/i;
-    if (existingFilterPattern.test(sql)) {
-      return sql.replace(existingFilterPattern, `$1(${placeholders})`);
+    const projectExpr = this.detectProjectExpression(sql);
+    const expressionPattern = new RegExp(
+      `(\\b${this.escapeForRegex(projectExpr)}\\s+IN\\s*)\\(([^)]*)\\)`,
+      "i"
+    );
+    if (expressionPattern.test(sql)) {
+      return sql.replace(expressionPattern, `$1(${placeholders})`);
     }
 
-    return this.injectProjectFilter(sql, projectIds);
+    const legacyProjectIdPattern = /(\b(?:\w+\.)?project_id\s+IN\s*)\(([^)]*)\)/i;
+    if (legacyProjectIdPattern.test(sql)) {
+      return sql.replace(legacyProjectIdPattern, `$1(${placeholders})`);
+    }
+
+    return this.injectProjectFilterByExpression(sql, projectExpr, placeholders);
   }
 
   private detectProjectExpression(sql: string): string {
@@ -265,6 +288,10 @@ export class AiReportSqlService {
     return `${qualifier}.${projectColumn}`;
   }
 
+  private escapeForRegex(input: string): string {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
   private enforceLimit(sql: string): string {
     const limitMatch = /\bLIMIT\s+(\d+)\b/i.exec(sql);
     if (!limitMatch) {
@@ -292,7 +319,11 @@ export class AiReportSqlService {
     if (!entry || entry.expiresAt <= Date.now()) {
       return null;
     }
-    return entry.result;
+    return {
+      ...entry.result,
+      title: this.localizeAiNarrative(entry.result.title),
+      description: this.localizeAiNarrative(entry.result.description)
+    };
   }
 
   private setCache(key: string, result: SqlGenerationResult): void {
@@ -310,5 +341,25 @@ export class AiReportSqlService {
         this.cache.delete(key);
       }
     }
+  }
+
+  private localizeAiNarrative(input: string): string {
+    if (!input) {
+      return "";
+    }
+
+    let localized = input;
+    for (const [token, label] of Object.entries(this.narrativeTokenMap)) {
+      const pattern = new RegExp(`\\b${token}\\b`, "gi");
+      localized = localized.replace(pattern, label);
+    }
+
+    localized = localized
+      .replace(/(待处理|处理中|已解决|已验证|已关闭|重新打开)\s*,\s*/g, "$1、")
+      .replace(/、\s*\)/g, "）")
+      .replace(/\(\s*/g, "（")
+      .replace(/\s*\)/g, "）");
+
+    return localized;
   }
 }

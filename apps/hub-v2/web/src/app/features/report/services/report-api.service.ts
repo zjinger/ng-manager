@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { ApiClientService } from '@core/http';
 import type {
   AiReportPreviewResult,
+  ReportTemplateCreateResult,
   ReportTemplate,
   ReportTemplateExecuteResult,
   ReportTemplateListResult,
@@ -21,8 +22,8 @@ export class ReportApiService {
     return this.api.get<ReportTemplateListResult>('/ai/report-sql/templates');
   }
 
-  createTemplate(input: { title: string; naturalQuery: string; sql: string }): Observable<ReportTemplate> {
-    return this.api.post<ReportTemplate, typeof input>('/ai/report-sql/templates', input);
+  createTemplate(input: { title: string; naturalQuery: string; sql: string }): Observable<ReportTemplateCreateResult> {
+    return this.api.post<ReportTemplateCreateResult, typeof input>('/ai/report-sql/templates', input);
   }
 
   updateTemplateTitle(id: string, title: string): Observable<ReportTemplate> {

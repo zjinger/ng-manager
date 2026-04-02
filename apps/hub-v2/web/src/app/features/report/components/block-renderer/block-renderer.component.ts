@@ -10,15 +10,15 @@ import type { ReportBlock } from '../../models/report.model';
   imports: [EchartsChartComponent],
   template: `
     @if (!block()) {
-      <section class="block block--empty">
+      <section class="block block--empty" [class.block--dense]="dense()">
         <span>暂无可展示的数据</span>
       </section>
     } @else if (block()!.type === 'empty') {
-      <section class="block block--empty">
+      <section class="block block--empty" [class.block--dense]="dense()">
         <span>{{ block()!.title || '暂无数据' }}</span>
       </section>
     } @else if (block()!.type === 'stat_card') {
-      <section class="block block--stat">
+      <section class="block block--stat" [class.block--dense]="dense()">
         <div class="block__title">{{ block()!.title }}</div>
         @if (showDescription() && block()!.description) {
           <div class="block__desc">{{ block()!.description }}</div>
@@ -29,7 +29,7 @@ import type { ReportBlock } from '../../models/report.model';
         }
       </section>
     } @else if (block()!.type === 'leaderboard') {
-      <section class="block">
+      <section class="block" [class.block--dense]="dense()">
         <div class="block__title">{{ block()!.title || '排行榜' }}</div>
         @if (showDescription() && block()!.description) {
           <div class="block__desc">{{ block()!.description }}</div>
@@ -48,7 +48,7 @@ import type { ReportBlock } from '../../models/report.model';
         </div>
       </section>
     } @else if (block()!.type === 'table') {
-      <section class="block">
+      <section class="block" [class.block--dense]="dense()">
         <div class="block__title">{{ block()!.title || '数据列表' }}</div>
         @if (showDescription() && block()!.description) {
           <div class="block__desc">{{ block()!.description }}</div>
@@ -75,7 +75,7 @@ import type { ReportBlock } from '../../models/report.model';
         </div>
       </section>
     } @else {
-      <section class="block">
+      <section class="block" [class.block--dense]="dense()">
         <div class="block__title">{{ block()!.title }}</div>
         @if (showDescription() && block()!.description) {
           <div class="block__desc">{{ block()!.description }}</div>
@@ -94,6 +94,10 @@ import type { ReportBlock } from '../../models/report.model';
         background: var(--bg-container);
         padding: 16px;
       }
+      .block--dense {
+        border-radius: 12px;
+        padding: 12px;
+      }
       .block--empty {
         min-height: 180px;
         display: flex;
@@ -102,6 +106,9 @@ import type { ReportBlock } from '../../models/report.model';
         color: var(--text-muted);
         background: var(--bg-subtle);
       }
+      .block--dense.block--empty {
+        min-height: 120px;
+      }
       .block--stat {
         min-height: 220px;
         display: flex;
@@ -109,11 +116,19 @@ import type { ReportBlock } from '../../models/report.model';
         justify-content: center;
         gap: 12px;
       }
+      .block--dense.block--stat {
+        min-height: 160px;
+        gap: 8px;
+      }
       .block__title {
         margin-bottom: 10px;
         color: var(--text-primary);
         font-size: 16px;
         font-weight: 600;
+      }
+      .block--dense .block__title {
+        margin-bottom: 8px;
+        font-size: 14px;
       }
       .block__desc {
         margin: -4px 0 10px;
@@ -127,6 +142,9 @@ import type { ReportBlock } from '../../models/report.model';
         font-weight: 700;
         color: var(--text-heading);
       }
+      .block--dense .stat__value {
+        font-size: 30px;
+      }
       .stat__sub {
         color: var(--text-muted);
       }
@@ -135,11 +153,18 @@ import type { ReportBlock } from '../../models/report.model';
         flex-direction: column;
         gap: 10px;
       }
+      .block--dense .leaderboard {
+        gap: 8px;
+      }
       .leaderboard__row {
         display: grid;
         grid-template-columns: 34px minmax(0, 1fr) auto minmax(120px, 220px);
         align-items: center;
         gap: 12px;
+      }
+      .block--dense .leaderboard__row {
+        grid-template-columns: 28px minmax(0, 1fr) auto minmax(90px, 140px);
+        gap: 8px;
       }
       .leaderboard__rank {
         width: 28px;
@@ -152,11 +177,20 @@ import type { ReportBlock } from '../../models/report.model';
         color: var(--text-muted);
         background: var(--bg-subtle);
       }
+      .block--dense .leaderboard__rank {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+      }
       .leaderboard__label {
         color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .block--dense .leaderboard__label,
+      .block--dense .leaderboard__value {
+        font-size: 12px;
       }
       .leaderboard__value {
         color: var(--text-secondary);
@@ -189,6 +223,10 @@ import type { ReportBlock } from '../../models/report.model';
         border-bottom: 1px solid var(--border-color-soft);
         white-space: nowrap;
       }
+      .block--dense .result-table th,
+      .block--dense .result-table td {
+        padding: 8px 10px;
+      }
       .result-table th {
         color: var(--text-muted);
         font-size: 12px;
@@ -214,9 +252,19 @@ import type { ReportBlock } from '../../models/report.model';
 export class BlockRendererComponent {
   readonly block = input<ReportBlock | null>(null);
   readonly showDescription = input(false);
+  readonly dense = input(false);
 
   readonly chartHeight = computed(() => {
     const current = this.block();
+    if (this.dense()) {
+      if (current?.chart?.type === 'radar') {
+        return '260px';
+      }
+      return current?.type === 'distribution_chart' ? '240px' : '220px';
+    }
+    if (current?.chart?.type === 'radar') {
+      return '380px';
+    }
     return current?.type === 'distribution_chart' ? '360px' : '340px';
   });
 
@@ -225,10 +273,11 @@ export class BlockRendererComponent {
     if (!current?.chart) {
       return null;
     }
+    const chart = current.chart;
 
-    if (current.type === 'distribution_chart') {
-      const source = current.chart.datasets[0]?.data ?? [];
-      const data = current.chart.labels.map((label, index) => ({
+    if (chart.type === 'pie' || chart.type === 'donut') {
+      const source = chart.datasets[0]?.data ?? [];
+      const data = chart.labels.map((label, index) => ({
         name: label,
         value: source[index] ?? 0,
       }));
@@ -238,25 +287,52 @@ export class BlockRendererComponent {
         series: [
           {
             type: 'pie',
-            radius: current.chart.type === 'donut' ? ['44%', '70%'] : ['0%', '72%'],
+            radius: chart.type === 'donut' ? ['44%', '70%'] : ['0%', '72%'],
             data,
           },
         ],
       };
     }
 
-    const chartType = current.chart.type === 'bar' ? 'bar' : 'line';
+    if (chart.type === 'radar') {
+      const labels = chart.labels || [];
+      const maxByIndex = labels.map((_, index) =>
+        Math.max(...chart.datasets.map((dataset) => dataset.data[index] ?? 0), 1),
+      );
+      return {
+        tooltip: { trigger: 'item' },
+        legend: { top: 0, type: 'scroll' },
+        radar: {
+          indicator: labels.map((label, index) => ({
+            name: label,
+            max: maxByIndex[index],
+          })),
+          radius: '62%',
+        },
+        series: [
+          {
+            type: 'radar',
+            data: chart.datasets.map((dataset) => ({
+              name: dataset.label,
+              value: dataset.data,
+            })),
+          },
+        ],
+      };
+    }
+
+    const chartType = chart.type === 'bar' ? 'bar' : 'line';
     return {
       tooltip: { trigger: 'axis' },
       legend: { top: 0, type: 'scroll' },
       grid: { left: 12, right: 12, top: 36, bottom: 20, containLabel: true },
       xAxis: {
         type: 'category',
-        data: current.chart.labels,
+        data: chart.labels,
         boundaryGap: chartType === 'bar',
       },
       yAxis: { type: 'value' },
-      series: current.chart.datasets.map((dataset) => ({
+      series: chart.datasets.map((dataset) => ({
         name: dataset.label,
         type: chartType,
         smooth: chartType === 'line',

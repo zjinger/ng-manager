@@ -1,6 +1,6 @@
 export type ReportBlockType = "stat_card" | "trend_chart" | "distribution_chart" | "leaderboard" | "table" | "empty";
 
-export type ReportChartType = "bar" | "line" | "pie" | "donut";
+export type ReportChartType = "bar" | "line" | "pie" | "donut" | "radar";
 
 export interface ReportChartDataset {
   label: string;
@@ -26,11 +26,21 @@ export interface ReportBlock {
   items?: Array<{ rank: number; label: string; value: number; percent?: number }>;
 }
 
+export interface ReportCaliber {
+  summary: string;
+  scope: string;
+  timeRange: string;
+  metric: string;
+  dataSource: string;
+}
+
 export interface AiReportPreviewResult {
   sql: string;
   params: string[];
   title: string;
   description: string;
+  caliber?: ReportCaliber;
+  blocks?: ReportBlock[];
   block: ReportBlock;
 }
 
@@ -52,5 +62,22 @@ export interface ReportTemplateExecuteResult {
   template: ReportTemplate;
   sql: string;
   params: string[];
+  caliber?: ReportCaliber;
+  blocks?: ReportBlock[];
   block: ReportBlock;
+}
+
+export interface ReportTemplateCreateResult {
+  template: ReportTemplate;
+  duplicated: boolean;
+}
+
+export interface ReportBoardItem {
+  id: string;
+  title: string;
+  naturalQuery: string;
+  sql: string;
+  params: string[];
+  blocks: ReportBlock[];
+  layoutSize?: 'compact' | 'wide';
 }
