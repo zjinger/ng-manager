@@ -41,6 +41,9 @@ RELEASE_DIR="$RELEASES_DIR/$TIMESTAMP"
 CURRENT_LINK="$APP_ROOT/current"
 LOG_DIR="$APP_ROOT/logs"
 DATA_DIR="$APP_ROOT/data"
+SHARED_DIR="$APP_ROOT/shared"
+SHARED_ENV_FILE="$SHARED_DIR/.env.production"
+RELEASE_ENV_FILE="$RELEASE_DIR/.env.production"
 
 echo "[remote-deploy] app root: $APP_ROOT"
 echo "[remote-deploy] archive: $ARCHIVE_PATH"
@@ -52,12 +55,30 @@ mkdir -p "$APP_ROOT/incoming"
 mkdir -p "$RELEASES_DIR"
 mkdir -p "$LOG_DIR"
 mkdir -p "$DATA_DIR"
+mkdir -p "$SHARED_DIR"
 mkdir -p "$RELEASE_DIR"
 
 echo "[remote-deploy] extract archive"
 tar -xzf "$ARCHIVE_PATH" -C "$RELEASE_DIR"
 
 cd "$RELEASE_DIR"
+
+echo "[remote-deploy] link shared directories"
+rm -rf "$RELEASE_DIR/logs" "$RELEASE_DIR/data"
+ln -sfn "$LOG_DIR" "$RELEASE_DIR/logs"
+ln -sfn "$DATA_DIR" "$RELEASE_DIR/data"
+
+echo "[remote-deploy] prepare env file"
+if [ -f "$SHARED_ENV_FILE" ]; then
+  ln -sfn "$SHARED_ENV_FILE" "$RELEASE_ENV_FILE"
+fi
+if [ ! -f "$RELEASE_ENV_FILE" ]; then
+  echo "[remote-deploy] ERROR: .env.production not found in release or shared"
+  echo "[remote-deploy] expected one of:"
+  echo "  - $RELEASE_ENV_FILE"
+  echo "  - $SHARED_ENV_FILE"
+  exit 1
+fi
 
 if [ -f "package-lock.json" ]; then
   echo "[remote-deploy] npm ci --omit=dev"
@@ -68,13 +89,8 @@ else
 fi
 
 echo "[remote-deploy] run db migrations"
-npm run db:migrate
+NODE_ENV=production npm run db:migrate
 echo "[remote-deploy] db migrations done"
-
-echo "[remote-deploy] link shared directories"
-rm -rf "$RELEASE_DIR/logs" "$RELEASE_DIR/data"
-ln -sfn "$LOG_DIR" "$RELEASE_DIR/logs"
-ln -sfn "$DATA_DIR" "$RELEASE_DIR/data"
 
 echo "[remote-deploy] switch current symlink"
 ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"

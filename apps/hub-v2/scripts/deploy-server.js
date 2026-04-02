@@ -94,6 +94,7 @@ function installRemoteScripts(target) {
   const rollback = path.join(REMOTE_SCRIPTS_DIR, "rollback.sh");
   const clean = path.join(REMOTE_SCRIPTS_DIR, "clean-old-releases.sh");
   const serverInit = path.join(REMOTE_SCRIPTS_DIR, "server-init.sh");
+  const generateSelfSignedCert = path.join(REMOTE_SCRIPTS_DIR, "generate-self-signed-cert.sh");
 
   run(
     `${scp} ${quote(remoteDeploy)} ${target.user}@${target.host}:${target.remoteBinDir}/remote-deploy.sh`,
@@ -107,13 +108,16 @@ function installRemoteScripts(target) {
   run(
     `${scp} ${quote(serverInit)} ${target.user}@${target.host}:${target.remoteBinDir}/server-init.sh`,
   );
-
   run(
-    `${ssh} "sed -i 's/\\r$//' ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh ${target.remoteBinDir}/server-init.sh 2>/dev/null || true"`,
+    `${scp} ${quote(generateSelfSignedCert)} ${target.user}@${target.host}:${target.remoteBinDir}/generate-self-signed-cert.sh`,
   );
 
   run(
-    `${ssh} "chmod +x ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh ${target.remoteBinDir}/server-init.sh"`,
+    `${ssh} "sed -i 's/\\r$//' ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh ${target.remoteBinDir}/server-init.sh ${target.remoteBinDir}/generate-self-signed-cert.sh 2>/dev/null || true"`,
+  );
+
+  run(
+    `${ssh} "chmod +x ${target.remoteBinDir}/remote-deploy.sh ${target.remoteBinDir}/rollback.sh ${target.remoteBinDir}/clean-old-releases.sh ${target.remoteBinDir}/server-init.sh ${target.remoteBinDir}/generate-self-signed-cert.sh"`,
   );
 
   console.log("[deploy] remote scripts installed");
