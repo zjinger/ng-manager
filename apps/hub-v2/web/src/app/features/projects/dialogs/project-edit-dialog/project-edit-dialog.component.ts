@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -25,7 +25,7 @@ type EditDraft = {
 @Component({
   selector: 'app-project-edit-dialog',
   standalone: true,
-  imports: [DatePipe, FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent],
+  imports: [DatePipe, FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent, NgClass],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -37,7 +37,7 @@ type EditDraft = {
     >
       <div dialog-body>
         <div class="project-edit-overview">
-          <span class="project-edit-overview__avatar">
+          <span class="project-edit-overview__avatar" [ngClass]="{'without-avatar': !avatarPreviewUrl()}">
             @if (avatarPreviewUrl()) {
               <img [src]="avatarPreviewUrl()!" alt="project avatar" />
             } @else {
@@ -120,10 +120,10 @@ type EditDraft = {
             </div>
             <div nz-col [nzSpan]="24">
               <nz-form-item>
-                <nz-form-label>项目图标</nz-form-label>
+                <nz-form-label nzTooltipTitle="上传项目图标，尺寸建议为48x48、64x64像素" nzTooltipIcon="question-circle">项目图标</nz-form-label>
                 <nz-form-control>
                   <div class="project-avatar-field">
-                    <span class="project-avatar-preview">
+                    <span class="project-avatar-preview" [ngClass]="{'without-avatar': !avatarPreviewUrl()}">
                       @if (avatarPreviewUrl()) {
                         <img [src]="avatarPreviewUrl()!" alt="project avatar" />
                       } @else {
@@ -167,11 +167,13 @@ type EditDraft = {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
         color: #fff;
         font-size: 22px;
         font-weight: 700;
         overflow: hidden;
+        &.without-avatar{
+          background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+        }
       }
       .project-edit-overview__avatar img {
         width: 100%;
@@ -206,11 +208,13 @@ type EditDraft = {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
         color: #fff;
         font-size: 12px;
         font-weight: 700;
         overflow: hidden;
+        &.without-avatar{
+          background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+        }
       }
       .project-avatar-preview img {
         width: 100%;
