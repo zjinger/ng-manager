@@ -1,21 +1,21 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { Subscription } from 'rxjs';
 
 import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
 import { type AttachmentPreviewItem, AttachmentPreviewWallComponent, DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
-import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../projects/models/project.model';
-import type { CreateIssueInput, IssueType } from '../../models/issue.model';
-import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
-import { NzUploadModule } from 'ng-zorro-antd/upload';
 import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
+import { NzUploadModule } from 'ng-zorro-antd/upload';
+import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../projects/models/project.model';
+import type { CreateIssueInput, IssueType } from '../../models/issue.model';
 
 type Draft = Omit<CreateIssueInput, 'projectId'> & {
   attachmentFiles: File[];
@@ -86,27 +86,6 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
                 <nz-form-label nzFor="description">描述</nz-form-label>
                 <nz-form-control>
-                  <!-- <div class="md-toolbar">
-                    <button type="button" class="md-toolbar__btn">B</button>
-                    <button type="button" class="md-toolbar__btn">I</button>
-                    <button type="button" class="md-toolbar__btn">S</button>
-                    <span class="md-toolbar__sep"></span>
-                    <button type="button" class="md-toolbar__btn">H</button>
-                    <button type="button" class="md-toolbar__btn">•</button>
-                    <button type="button" class="md-toolbar__btn">1.</button>
-                    <span class="md-toolbar__sep"></span>
-                    <button type="button" class="md-toolbar__btn">&#123; &#125;</button>
-                    <button type="button" class="md-toolbar__btn">"</button>
-                    <button type="button" class="md-toolbar__btn">↗</button>
-                  </div> <textarea
-                    nz-input
-                    class="md-editor"
-                    rows="8"
-                    placeholder="**复现步骤：**&#10;1. &#10;2. &#10;3. &#10;&#10;**期望行为：**&#10;&#10;**实际行为：**&#10;&#10;**环境信息：**"
-                    [ngModel]="draft().description"
-                    name="description"
-                    (ngModelChange)="updateField('description', $event)"
-                  ></textarea> -->
 	                  <app-markdown-editor 
 	                    [ngModel]="draft().description" 
 	                    [config]="editorConfig"

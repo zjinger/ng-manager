@@ -1,5 +1,9 @@
 import { AnnouncementRepo } from "../modules/announcement/announcement.repo";
 import { AnnouncementService } from "../modules/announcement/announcement.service";
+// import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
+// import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
+import { SearchRepo } from "../modules/search/search.repo";
+import { SearchService } from "../modules/search/search.service";
 import type { AnnouncementCommandContract, AnnouncementQueryContract } from "../modules/announcement/announcement.contract";
 import type { ApiTokenCommandContract, ApiTokenQueryContract } from "../modules/api-token/api-token.contract";
 import { ApiTokenRepo } from "../modules/api-token/api-token.repo";
@@ -69,6 +73,9 @@ import type { UserCommandContract, UserQueryContract } from "../modules/user/use
 import { UserRepo } from "../modules/user/user.repo";
 import { UserService } from "../modules/user/user.service";
 import type Database from "better-sqlite3";
+import OpenAI from "openai";
+import { AiIssueService } from "../modules/ai/ai-issue.service";
+import { AiRepo } from "../modules/ai/ai.repo";
 
 export type AppContainer = {
   healthQuery: HealthQueryService;
@@ -114,6 +121,10 @@ export type AppContainer = {
   uploadCommand: UploadCommandContract;
   uploadQuery: UploadQueryContract;
   eventBus: ReturnType<typeof createInMemoryEventBus>;
+  aiIssueService: AiIssueService;
+  // aiReportSqlService: AiReportSqlService;
+  // aiReportRenderService: AiReportRenderService;
+  searchService: SearchService;
 };
 
 type BuildContainerOptions = {
@@ -192,6 +203,17 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
   authService.ensureDefaultAdmin();
 
+  const openaiClient = config.openaiApiKey
+    ? new OpenAI({
+        apiKey: config.openaiApiKey,
+        baseURL: config.openaiBaseUrl ?? undefined
+      })
+    : null;
+  const aiIssueService = new AiIssueService(openaiClient, new AiRepo(db));
+  // const aiReportSqlService = new AiReportSqlService(config, projectAccess);
+  // const aiReportRenderService = new AiReportRenderService(db);
+  const searchService = new SearchService(new SearchRepo(db), projectAccess);
+
   return {
     healthQuery: new HealthQueryService(config),
     authCommand: authService,
@@ -235,6 +257,10 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     sharedConfigQuery: sharedConfigService,
     uploadCommand: uploadService,
     uploadQuery: uploadService,
-    eventBus
+    eventBus,
+    aiIssueService,
+    // aiReportSqlService,
+    // aiReportRenderService,
+    searchService
   };
 }
