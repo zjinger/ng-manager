@@ -5,6 +5,13 @@ export interface ChangePasswordInput {
   newPassword: string;
 }
 
+export interface UpdateProfileInput {
+  nickname: string;
+  email: string | null;
+  mobile: string | null;
+  remark: string | null;
+}
+
 export interface ProfileViewModel {
   user: AuthUser | null;
   initials: string;

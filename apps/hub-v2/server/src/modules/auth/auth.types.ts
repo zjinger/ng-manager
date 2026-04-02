@@ -49,11 +49,26 @@ export interface EncryptedLoginInput {
 
 export type LoginInput = EncryptedLoginInput;
 
-export interface ChangePasswordInput {
+export interface PlainChangePasswordInput {
   oldPassword: string;
   newPassword: string;
 }
 
+export interface EncryptedChangePasswordInput {
+  nonce: string;
+  oldCipherText: string;
+  newCipherText: string;
+}
+
+export type ChangePasswordInput = PlainChangePasswordInput | EncryptedChangePasswordInput;
+
 export interface UpdateAvatarInput {
   uploadId: string | null;
+}
+
+export interface UpdateProfileInput {
+  nickname: string;
+  email: string | null;
+  mobile: string | null;
+  remark: string | null;
 }

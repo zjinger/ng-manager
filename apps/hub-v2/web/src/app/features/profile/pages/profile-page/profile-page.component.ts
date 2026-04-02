@@ -14,7 +14,7 @@ import { ProfilePasswordFormComponent } from '../../components/profile-password-
 import { ProfilePersonalTokenComponent } from '../../components/profile-personal-token/profile-personal-token.component';
 import { ProfileProjectVisibilitySettingsComponent } from '../../components/profile-project-visibility-settings/profile-project-visibility-settings.component';
 import { ProfileTabsComponent } from '../../components/profile-tabs/profile-tabs.component';
-import type { ChangePasswordInput, ProfileNotificationPrefs } from '../../models/profile.model';
+import type { ChangePasswordInput, ProfileNotificationPrefs, UpdateProfileInput } from '../../models/profile.model';
 import { ProfileApiService } from '../../services/profile-api.service';
 
 type ProfileTab = 'basic' | 'security' | 'notifications' | 'project-visibility' | 'tokens';
@@ -49,7 +49,12 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'project-visibility' 
 
     @switch (activeTab()) {
       @case ('basic') {
-        <app-profile-basic-form [user]="authStore.currentUser()" />
+        <app-profile-basic-form
+          [user]="authStore.currentUser()"
+          [busy]="basicSaving()"
+          [submittedVersion]="basicSubmittedVersion()"
+          (save)="saveBasicProfile($event)"
+        />
       }
 
       @case ('security') {
@@ -125,6 +130,7 @@ export class ProfilePageComponent {
 
   readonly activeTab = signal<ProfileTab>('basic');
   readonly busy = signal(false);
+  readonly basicSaving = signal(false);
   readonly prefsSaving = signal(false);
   readonly prefsEditing = signal(false);
   readonly prefsDirty = signal(false);
@@ -132,6 +138,7 @@ export class ProfilePageComponent {
   readonly projectScopeSaving = signal(false);
   readonly projectScopeDirty = signal(false);
   readonly submittedVersion = signal(0);
+  readonly basicSubmittedVersion = signal(0);
   readonly savedPrefs = signal<ProfileNotificationPrefs | null>(null);
   readonly projectScopeMode = signal<ProjectScopeMode>('all_accessible');
   readonly includeArchivedProjects = signal(false);
@@ -204,9 +211,27 @@ export class ProfilePageComponent {
       next: () => {
         this.busy.set(false);
         this.submittedVersion.update((version) => version + 1);
+        this.message.success('密码修改成功');
       },
       error: () => {
         this.busy.set(false);
+        this.message.error('密码修改失败，请检查当前密码后重试');
+      },
+    });
+  }
+
+  saveBasicProfile(input: UpdateProfileInput): void {
+    this.basicSaving.set(true);
+    this.profileApi.updateMyProfile(input).subscribe({
+      next: (user) => {
+        this.authStore.setCurrentUser(user);
+        this.basicSaving.set(false);
+        this.basicSubmittedVersion.update((value) => value + 1);
+        this.message.success('基本信息已保存');
+      },
+      error: () => {
+        this.basicSaving.set(false);
+        this.message.error('基本信息保存失败');
       },
     });
   }

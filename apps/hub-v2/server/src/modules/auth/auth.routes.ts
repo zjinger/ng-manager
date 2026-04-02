@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
-import { changePasswordSchema, loginSchema, updateAvatarSchema } from "./auth.schema";
+import { changePasswordSchema, loginSchema, updateAvatarSchema, updateProfileSchema } from "./auth.schema";
 import type { AdminProfile } from "./auth.types";
 
 export default async function authRoutes(app: FastifyInstance) {
@@ -66,6 +66,10 @@ export default async function authRoutes(app: FastifyInstance) {
     return ok(app.container.authCommand.issueLoginChallenge());
   });
 
+  app.get("/auth/password/challenge", async () => {
+    return ok(app.container.authCommand.issuePasswordChallenge());
+  });
+
   app.post("/auth/login", async (request, reply) => {
     const body = loginSchema.parse(request.body);
     const username = body.username.trim();
@@ -108,6 +112,23 @@ export default async function authRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const body = updateAvatarSchema.parse(request.body);
     return ok(await app.container.authCommand.updateAvatar({ uploadId: body.uploadId ?? null }, ctx), "avatar updated");
+  });
+
+  app.patch("/auth/profile", async (request) => {
+    const ctx = requireAuth(request);
+    const body = updateProfileSchema.parse(request.body);
+    return ok(
+      await app.container.authCommand.updateProfile(
+        {
+          nickname: body.nickname,
+          email: body.email ?? null,
+          mobile: body.mobile ?? null,
+          remark: body.remark ?? null
+        },
+        ctx
+      ),
+      "profile updated"
+    );
   });
 
   app.post("/auth/logout", async (request, reply) => {

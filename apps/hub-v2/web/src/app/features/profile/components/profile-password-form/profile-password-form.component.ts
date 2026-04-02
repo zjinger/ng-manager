@@ -22,36 +22,87 @@ const DEFAULT_FORM: PasswordFormValue = {
 @Component({
   selector: 'app-profile-password-form',
   standalone: true,
-  imports: [FormsModule, NzFormModule, NzGridModule, NzButtonModule, NzInputModule, NzIconModule, PanelCardComponent, FormActionsComponent],
+  imports: [
+    FormsModule,
+    NzFormModule,
+    NzGridModule,
+    NzButtonModule,
+    NzInputModule,
+    NzIconModule,
+    PanelCardComponent,
+    FormActionsComponent,
+  ],
   template: `
     <app-panel-card title="修改密码">
-       <div class="profile-form">
-       <form nz-form nzLayout="vertical" class="profile-form">
+      <div class="profile-form">
+        <form
+          nz-form
+          nzLayout="vertical"
+          class="profile-form"
+          autocomplete="off"
+          (ngSubmit)="submitForm()"
+        >
+          <!-- 用于干扰浏览器自动填充 -->
+          <input class="hidden-autofill" type="text" name="fake_account" autocomplete="username" tabindex="-1" />
+          <input class="hidden-autofill" type="password" name="fake_password" autocomplete="current-password" tabindex="-1" />
+
           <div nz-row nzGutter="24">
             <div nz-col nzSpan="12">
               <nz-form-item>
-                <nz-form-label nzRequired nzFor="oldPassword">当前密码</nz-form-label>
+                <nz-form-label nzRequired nzFor="old-password-input">当前密码</nz-form-label>
                 <nz-form-control>
-                  <input nz-input type="password" [ngModel]="form().oldPassword" name="oldPassword" (ngModelChange)="updateField('oldPassword', $event)" />
+                  <input
+                    id="old-password-input"
+                    nz-input
+                    type="password"
+                    autocomplete="current-password"
+                    readonly
+                    (focus)="unlockInput($event)"
+                    [ngModel]="form().oldPassword"
+                    name="current_pwd_value"
+                    (ngModelChange)="updateField('oldPassword', $event)"
+                  />
                 </nz-form-control>
               </nz-form-item>
             </div>
           </div>
+
           <div nz-row nzGutter="24">
             <div nz-col nzSpan="12">
               <nz-form-item>
-                <nz-form-label nzRequired nzFor="newPassword">新密码</nz-form-label>
+                <nz-form-label nzRequired nzFor="new-password-input">新密码</nz-form-label>
                 <nz-form-control>
-                  <input nz-input type="password" [ngModel]="form().newPassword" name="newPassword" (ngModelChange)="updateField('newPassword', $event)" />
+                  <input
+                    id="new-password-input"
+                    nz-input
+                    type="password"
+                    autocomplete="new-password"
+                    readonly
+                    (focus)="unlockInput($event)"
+                    [ngModel]="form().newPassword"
+                    name="next_pwd_value"
+                    (ngModelChange)="updateField('newPassword', $event)"
+                  />
                   <span class="password-note">密码长度 8~32 位，建议同时包含字母和数字。</span>
                 </nz-form-control>
               </nz-form-item>
             </div>
+
             <div nz-col nzSpan="12">
               <nz-form-item>
-                <nz-form-label nzRequired nzFor="confirmPassword">确认新密码</nz-form-label>
+                <nz-form-label nzRequired nzFor="confirm-password-input">确认新密码</nz-form-label>
                 <nz-form-control>
-                  <input nz-input type="password" [ngModel]="form().confirmPassword" name="confirmPassword" (ngModelChange)="updateField('confirmPassword', $event)" />
+                  <input
+                    id="confirm-password-input"
+                    nz-input
+                    type="password"
+                    autocomplete="new-password"
+                    readonly
+                    (focus)="unlockInput($event)"
+                    [ngModel]="form().confirmPassword"
+                    name="confirm_pwd_value"
+                    (ngModelChange)="updateField('confirmPassword', $event)"
+                  />
                   @if (form().confirmPassword && form().confirmPassword !== form().newPassword) {
                     <span class="password-error">两次输入的新密码不一致。</span>
                   }
@@ -59,31 +110,50 @@ const DEFAULT_FORM: PasswordFormValue = {
               </nz-form-item>
             </div>
           </div>
-           <app-form-actions>
+
+          <app-form-actions>
             <button nz-button type="button" (click)="resetForm()">取消</button>
-            <button nz-button nzType="primary" type="submit" [nzLoading]="busy()" (click)="submitForm()" [disabled]="!canSubmit()">
+            <button
+              nz-button
+              nzType="primary"
+              type="submit"
+              [nzLoading]="busy()"
+              [disabled]="!canSubmit()"
+            >
               <nz-icon nzType="check" />
               修改密码
             </button>
           </app-form-actions>
-       </form>
+        </form>
       </div>
     </app-panel-card>
   `,
   styles: [
     `
+      .profile-form {
+        padding: 24px;
+      }
+
       .password-note {
         display: block;
         margin-top: 4px;
         color: var(--text-muted);
       }
-      .profile-form {
-        padding: 24px;
-      }
-      .password-error{
+
+      .password-error {
         display: block;
         margin-top: 4px;
         color: var(--color-danger);
+      }
+
+      .hidden-autofill {
+        position: absolute;
+        width: 0;
+        height: 0;
+        opacity: 0;
+        pointer-events: none;
+        border: 0;
+        padding: 0;
       }
     `,
   ],
@@ -132,5 +202,10 @@ export class ProfilePasswordFormComponent {
 
   resetForm(): void {
     this.form.set({ ...DEFAULT_FORM });
+  }
+
+  unlockInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    input.removeAttribute('readonly');
   }
 }

@@ -12,9 +12,12 @@ import type {
   AdminAccountEntity,
   AdminProfile,
   ChangePasswordInput,
+  EncryptedChangePasswordInput,
   LoginChallenge,
   LoginInput,
-  UpdateAvatarInput
+  PlainChangePasswordInput,
+  UpdateAvatarInput,
+  UpdateProfileInput
 } from "./auth.types";
 
 const LOGIN_AES_KEY_SALT = "ngm_hub_v2_login_key_v1";
@@ -45,6 +48,10 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     };
   }
 
+  issuePasswordChallenge(): LoginChallenge {
+    return this.issueLoginChallenge();
+  }
+
   async login(input: LoginInput, _ctx: RequestContext): Promise<AdminProfile> {
     const username = input.username.trim();
     const password = this.resolvePassword(input);
@@ -66,12 +73,14 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "unauthorized", 401);
     }
 
-    if (!verifyPassword(input.oldPassword, account.passwordHash)) {
+    const resolved = this.resolveChangePasswordInput(input);
+
+    if (!verifyPassword(resolved.oldPassword, account.passwordHash)) {
       throw new AppError(ERROR_CODES.AUTH_PASSWORD_INVALID, "old password is invalid", 400);
     }
 
     const updatedAt = nowIso();
-    this.repo.updatePassword(account.id, hashPassword(input.newPassword), updatedAt);
+    this.repo.updatePassword(account.id, hashPassword(resolved.newPassword), updatedAt);
 
     return this.toProfile({
       ...account,
@@ -92,6 +101,31 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       avatarUploadId: input.uploadId?.trim() || null,
       updatedAt
     });
+  }
+
+  async updateProfile(input: UpdateProfileInput, ctx: RequestContext): Promise<AdminProfile> {
+    const account = this.repo.findById(ctx.accountId);
+    if (!account || account.status !== "active") {
+      throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "unauthorized", 401);
+    }
+
+    const updatedAt = nowIso();
+    this.repo.updateProfile(
+      account.id,
+      {
+        nickname: input.nickname.trim(),
+        email: input.email?.trim() || null,
+        mobile: input.mobile?.trim() || null,
+        remark: input.remark?.trim() || null
+      },
+      updatedAt
+    );
+
+    const next = this.repo.findById(account.id);
+    if (!next) {
+      throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "unauthorized", 401);
+    }
+    return this.toProfile(next);
   }
 
   async logout(_ctx: RequestContext): Promise<{ ok: true }> {
@@ -182,6 +216,45 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     }
 
     return this.decryptLoginPasswordByRsa(cipherTextBase64);
+  }
+
+  private resolveChangePasswordInput(input: ChangePasswordInput): PlainChangePasswordInput {
+    if ("oldPassword" in input) {
+      return input;
+    }
+
+    return this.decryptPasswordChangePayload(input);
+  }
+
+  private decryptPasswordChangePayload(input: EncryptedChangePasswordInput): PlainChangePasswordInput {
+    const nonceState = this.challenges.get(input.nonce);
+    this.challenges.delete(input.nonce);
+
+    if (!nonceState) {
+      throw new AppError(ERROR_CODES.AUTH_CHALLENGE_INVALID, "password challenge is invalid", 401);
+    }
+
+    if (Date.now() > nonceState.expiresAt) {
+      throw new AppError(ERROR_CODES.AUTH_CHALLENGE_EXPIRED, "password challenge has expired", 401);
+    }
+
+    const oldPassword = this.decryptPasswordField(input.oldCipherText, input.nonce);
+    const newPassword = this.decryptPasswordField(input.newCipherText, input.nonce);
+
+    if (!oldPassword || !newPassword) {
+      throw new AppError(ERROR_CODES.AUTH_INVALID_ENCRYPTED_PASSWORD, "invalid encrypted password", 401);
+    }
+
+    return { oldPassword, newPassword };
+  }
+
+  private decryptPasswordField(cipherTextBase64: string, nonce: string): string {
+    const decrypted = this.decryptLoginPassword(cipherTextBase64, nonce);
+    const expectedPrefix = `${nonce}:`;
+    if (!decrypted.startsWith(expectedPrefix)) {
+      throw new AppError(ERROR_CODES.AUTH_CHALLENGE_INVALID, "password challenge is invalid", 401);
+    }
+    return decrypted.slice(expectedPrefix.length);
   }
 
   private decryptLoginPasswordByAes(cipherTextBase64: string, nonce: string): string | null {

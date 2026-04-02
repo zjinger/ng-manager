@@ -213,6 +213,48 @@ export class AuthRepo {
       .run(avatarUploadId, updatedAt, id);
   }
 
+  updateProfile(
+    accountId: string,
+    input: {
+      nickname: string;
+      email: string | null;
+      mobile: string | null;
+      remark: string | null;
+    },
+    updatedAt: string
+  ): void {
+    const account = this.findById(accountId);
+    if (!account) {
+      return;
+    }
+
+    const tx = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `
+            UPDATE admin_accounts
+            SET nickname = ?, updated_at = ?
+            WHERE id = ?
+          `
+        )
+        .run(input.nickname, updatedAt, accountId);
+
+      if (account.userId) {
+        this.db
+          .prepare(
+            `
+              UPDATE users
+              SET display_name = ?, email = ?, mobile = ?, remark = ?, updated_at = ?
+              WHERE id = ?
+            `
+          )
+          .run(input.nickname, input.email, input.mobile, input.remark, updatedAt, account.userId);
+      }
+    });
+
+    tx();
+  }
+
   updateStatus(id: string, status: "active" | "inactive", updatedAt: string): void {
     this.db
       .prepare(
