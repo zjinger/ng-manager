@@ -1,0 +1,102 @@
+@if (store.open()) {
+  <div class="global-search-mask" (click)="close()"></div>
+  <section class="global-search-panel" role="dialog" aria-label="全局搜索" (click)="$event.stopPropagation()">
+    <header class="global-search-panel__header">
+      <span nz-icon nzType="search"></span>
+      <input
+        #searchInput
+        class="global-search-panel__input"
+        type="text"
+        [ngModel]="store.keyword()"
+        (ngModelChange)="onKeywordChange($event)"
+        (keydown)="onInputKeydown($event)"
+        placeholder="搜索测试单、研发项、文档、发布（至少2个字符）"
+      />
+      <button type="button" class="global-search-panel__close" (click)="close()" aria-label="关闭搜索">
+        <span nz-icon nzType="close"></span>
+      </button>
+    </header>
+
+    <div class="global-search-panel__filters">
+      @for (option of store.typeOptions; track option.value) {
+        <button
+          type="button"
+          class="global-search-filter-chip"
+          [class.is-active]="store.activeType() === option.value"
+          (click)="onTypeChange(option.value)"
+        >
+          <span>{{ option.label }}</span>
+          <em>{{ store.typeCounts()[option.value] }}</em>
+        </button>
+      }
+    </div>
+
+    <div class="global-search-panel__body">
+      @if (store.loading()) {
+        <div class="global-search-panel__state">
+          <nz-spin nzSimple />
+          <span>正在搜索...</span>
+        </div>
+      } @else if (store.error()) {
+        <div class="global-search-panel__state">{{ store.error() }}</div>
+      } @else if (store.items().length === 0) {
+        <div class="global-search-panel__state">
+          @if (store.keyword().trim().length < 2) {
+            输入关键词后开始搜索
+          } @else {
+            未找到匹配结果
+          }
+        </div>
+      } @else {
+        <div class="global-search-list">
+          @for (group of store.groupedEntries(); track group.type) {
+            <section class="global-search-group">
+              <div class="global-search-group__title">
+                <span>{{ group.label }}</span>
+                <span>{{ group.entries.length }}</span>
+              </div>
+
+              @for (entry of group.entries; track entry.item.type + ':' + entry.item.id) {
+                <button
+                  type="button"
+                  class="global-search-item"
+                  [class.is-active]="isActiveItem(entry.item)"
+                  (click)="openItem(entry.item)"
+                >
+                  <div class="global-search-item__top">
+                    <span class="global-search-item__type">{{ formatType(entry.item.type) }}</span>
+                    <span class="global-search-item__time">{{ formatTime(entry.item.updatedAt) }}</span>
+                  </div>
+                  <div class="global-search-item__title">
+                    @for (segment of getHighlightSegments(entry.item.title); track $index) {
+                      @if (segment.matched) {
+                        <mark>{{ segment.text }}</mark>
+                      } @else {
+                        <span>{{ segment.text }}</span>
+                      }
+                    }
+                  </div>
+                  <div class="global-search-item__snippet">
+                    @for (segment of getHighlightSegments(entry.item.snippet); track $index) {
+                      @if (segment.matched) {
+                        <mark>{{ segment.text }}</mark>
+                      } @else {
+                        <span>{{ segment.text }}</span>
+                      }
+                    }
+                  </div>
+                </button>
+              }
+            </section>
+          }
+        </div>
+      }
+    </div>
+
+    <footer class="global-search-panel__footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
+      <span><kbd>Enter</kbd> 打开</span>
+      <span><kbd>Esc</kbd> 关闭</span>
+    </footer>
+  </section>
+}
