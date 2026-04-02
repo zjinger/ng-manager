@@ -1,5 +1,11 @@
 import type { RequestContext } from "../../shared/context/request-context";
-import type { AdminProfile, ChangePasswordInput, LoginChallenge, LoginInput, UpdateAvatarInput } from "./auth.types";
+import type {
+  AdminProfile,
+  ChangePasswordInput,
+  LoginChallenge,
+  LoginInput,
+  UpdateAvatarInput
+} from "./auth.types";
 
 export interface AuthCommandContract {
   issueLoginChallenge(): LoginChallenge;

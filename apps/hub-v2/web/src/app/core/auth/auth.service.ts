@@ -17,7 +17,7 @@ export class AuthService {
     const username = input.username.trim();
     return this.api.get<LoginChallenge>('/auth/login/challenge').pipe(
       switchMap((challenge) => {
-        return from(encryptLoginPassword(`${challenge.nonce}:${input.password}`, challenge.publicKey)).pipe(
+        return from(encryptLoginPassword(`${challenge.nonce}:${input.password}`, challenge.nonce)).pipe(
           switchMap((encrypted) =>
             this.api.post<AuthUser, { username: string; nonce: string; cipherText: string }>('/auth/login', {
               username,

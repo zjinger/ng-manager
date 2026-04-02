@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
@@ -6,6 +6,37 @@ import { changePasswordSchema, loginSchema, updateAvatarSchema } from "./auth.sc
 import type { AdminProfile } from "./auth.types";
 
 export default async function authRoutes(app: FastifyInstance) {
+  const createAnonymousContext = () => ({
+    accountId: "anonymous" as const,
+    roles: [] as string[],
+    projectIds: [] as string[],
+    authType: "anonymous" as const,
+    source: "http" as const
+  });
+
+  const setAuthCookie = async (request: FastifyRequest, reply: FastifyReply, profile: AdminProfile) => {
+    const secure = app.config.authCookieSecure && request.protocol === "https";
+    const token = await reply.jwtSign(
+      {
+        accountId: profile.id,
+        username: profile.username,
+        nickname: profile.nickname,
+        role: profile.role,
+        userId: profile.userId ?? null
+      },
+      {
+        expiresIn: app.config.authTokenExpiresIn
+      }
+    );
+
+    reply.setCookie(app.config.authCookieName, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure
+    });
+  };
+
   const logLoginResult = (
     mode: "challenge",
     outcome: "success" | "failed",
@@ -42,13 +73,7 @@ export default async function authRoutes(app: FastifyInstance) {
     try {
       profile = await app.container.authCommand.login(
         body,
-        request.requestContext ?? {
-          accountId: "anonymous",
-          roles: [],
-          projectIds: [],
-          authType: "anonymous",
-          source: "http"
-        }
+        request.requestContext ?? createAnonymousContext()
       );
     } catch (error) {
       const appError = error instanceof AppError ? error : null;
@@ -59,28 +84,10 @@ export default async function authRoutes(app: FastifyInstance) {
       throw error;
     }
 
-    const token = await reply.jwtSign(
-      {
-        accountId: profile.id,
-        username: profile.username,
-        nickname: profile.nickname,
-        role: profile.role,
-        userId: profile.userId ?? null
-      },
-      {
-        expiresIn: app.config.authTokenExpiresIn
-      }
-    );
+    await setAuthCookie(request, reply, profile);
     logLoginResult("challenge", "success", request, username, {
       accountId: profile.id,
       role: profile.role
-    });
-
-    reply.setCookie(app.config.authCookieName, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      secure: app.config.authCookieSecure
     });
 
     return ok(profile, "login success");

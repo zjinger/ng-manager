@@ -1,52 +1,30 @@
+import CryptoJS from 'crypto-js';
+
 export interface EncryptedLoginPayload {
   cipherText: string;
 }
 
+const LOGIN_AES_KEY_SALT = 'ngm_hub_v2_login_key_v1';
+const LOGIN_AES_IV_SALT = 'ngm_hub_v2_login_iv_v1';
+
 export async function encryptLoginPassword(
   plaintext: string,
-  publicKeyPem: string
+  nonce: string
 ): Promise<EncryptedLoginPayload> {
-  const subtle = globalThis.crypto?.subtle;
-  if (!subtle) {
-    throw new Error('web crypto api is unavailable');
-  }
+  const key = CryptoJS.SHA256(`${nonce}:${LOGIN_AES_KEY_SALT}`);
+  const ivHex = CryptoJS.SHA256(`${nonce}:${LOGIN_AES_IV_SALT}`)
+    .toString(CryptoJS.enc.Hex)
+    .slice(0, 32);
+  const iv = CryptoJS.enc.Hex.parse(ivHex);
 
-  const keyData = pemToArrayBuffer(publicKeyPem);
-  const key = await subtle.importKey(
-    'spki',
-    keyData,
-    { name: 'RSA-OAEP', hash: 'SHA-256' },
-    false,
-    ['encrypt']
-  );
+  const encrypted = CryptoJS.AES.encrypt(plaintext, key, {
+    iv,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7,
+  });
 
-  const encoded = new TextEncoder().encode(plaintext);
-  const encrypted = await subtle.encrypt({ name: 'RSA-OAEP' }, key, encoded);
   return {
-    cipherText: arrayBufferToBase64(encrypted),
+    cipherText: CryptoJS.enc.Base64.stringify(encrypted.ciphertext),
   };
 }
 
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const normalizedPem = pem.replace(/\\n/g, '\n').trim();
-  const base64 = normalizedPem
-    .replace(/-----BEGIN [A-Z ]+-----/g, '')
-    .replace(/-----END [A-Z ]+-----/g, '')
-    .replace(/\s+/g, '');
-
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes.buffer;
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
-  }
-  return btoa(binary);
-}

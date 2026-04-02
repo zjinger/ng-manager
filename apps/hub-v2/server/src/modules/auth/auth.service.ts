@@ -1,4 +1,4 @@
-import { constants, privateDecrypt, randomUUID } from "node:crypto";
+import { constants, createDecipheriv, createHash, privateDecrypt, randomUUID } from "node:crypto";
 import type { AppConfig } from "../../shared/env/env";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
@@ -16,6 +16,9 @@ import type {
   LoginInput,
   UpdateAvatarInput
 } from "./auth.types";
+
+const LOGIN_AES_KEY_SALT = "ngm_hub_v2_login_key_v1";
+const LOGIN_AES_IV_SALT = "ngm_hub_v2_login_iv_v1";
 
 export class AuthService implements AuthCommandContract, AuthQueryContract {
   private readonly challenges = new Map<string, { expiresAt: number }>();
@@ -45,20 +48,7 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
   async login(input: LoginInput, _ctx: RequestContext): Promise<AdminProfile> {
     const username = input.username.trim();
     const password = this.resolvePassword(input);
-    const account = this.repo.findByUsername(username);
-
-    if (!account || account.status !== "active" || !verifyPassword(password, account.passwordHash)) {
-      throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "invalid username or password", 401);
-    }
-
-    const now = nowIso();
-    this.repo.updateLastLogin(account.id, now);
-
-    return this.toProfile({
-      ...account,
-      lastLoginAt: now,
-      updatedAt: now
-    });
+    return this.loginByPassword(username, password);
   }
 
   async me(ctx: RequestContext): Promise<AdminProfile> {
@@ -148,6 +138,22 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     };
   }
 
+  private loginByPassword(username: string, password: string): AdminProfile {
+    const account = this.repo.findByUsername(username);
+    if (!account || account.status !== "active" || !verifyPassword(password, account.passwordHash)) {
+      throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "invalid username or password", 401);
+    }
+
+    const now = nowIso();
+    this.repo.updateLastLogin(account.id, now);
+
+    return this.toProfile({
+      ...account,
+      lastLoginAt: now,
+      updatedAt: now
+    });
+  }
+
   private resolvePassword(input: LoginInput): string {
     const nonceState = this.challenges.get(input.nonce);
     this.challenges.delete(input.nonce);
@@ -160,7 +166,7 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       throw new AppError(ERROR_CODES.AUTH_CHALLENGE_EXPIRED, "login challenge has expired", 401);
     }
 
-    const decrypted = this.decryptLoginPassword(input.cipherText);
+    const decrypted = this.decryptLoginPassword(input.cipherText, input.nonce);
     const expectedPrefix = `${input.nonce}:`;
     if (!decrypted.startsWith(expectedPrefix)) {
       throw new AppError(ERROR_CODES.AUTH_CHALLENGE_INVALID, "login challenge is invalid", 401);
@@ -169,7 +175,31 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     return decrypted.slice(expectedPrefix.length);
   }
 
-  private decryptLoginPassword(cipherTextBase64: string): string {
+  private decryptLoginPassword(cipherTextBase64: string, nonce: string): string {
+    const aesPlain = this.decryptLoginPasswordByAes(cipherTextBase64, nonce);
+    if (aesPlain) {
+      return aesPlain;
+    }
+
+    return this.decryptLoginPasswordByRsa(cipherTextBase64);
+  }
+
+  private decryptLoginPasswordByAes(cipherTextBase64: string, nonce: string): string | null {
+    try {
+      const key = createHash("sha256").update(`${nonce}:${LOGIN_AES_KEY_SALT}`).digest();
+      const iv = createHash("sha256").update(`${nonce}:${LOGIN_AES_IV_SALT}`).digest().subarray(0, 16);
+      const decipher = createDecipheriv("aes-256-cbc", key, iv);
+      const plain = Buffer.concat([
+        decipher.update(cipherTextBase64, "base64"),
+        decipher.final()
+      ]).toString("utf8");
+      return plain || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private decryptLoginPasswordByRsa(cipherTextBase64: string): string {
     try {
       const encrypted = Buffer.from(cipherTextBase64, "base64");
 
