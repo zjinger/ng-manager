@@ -24,15 +24,27 @@ export interface ListNotificationsQuery {
 
 export interface NotificationListResult {
   total: number;
+  unreadTotal: number;
   page: number;
   pageSize: number;
   items: NotificationItem[];
 }
 
 export interface MarkNotificationReadsInput {
-  announcementIds?: string[];
+  notificationIds?: string[];
 }
 
 export interface MarkNotificationReadsResult {
   updated: number;
+  unreadCount: number;
+}
+
+export interface IngestedNotification {
+  userId: string;
+  unreadCount: number;
+  item: NotificationItem;
+}
+
+export interface NotificationIngestResult {
+  delivered: IngestedNotification[];
 }

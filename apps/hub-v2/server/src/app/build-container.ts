@@ -17,7 +17,12 @@ import { ContentLogService } from "../modules/content-log/content-log.service";
 import { DocumentRepo } from "../modules/document/document.repo";
 import { DocumentService } from "../modules/document/document.service";
 import type { DocumentCommandContract, DocumentQueryContract } from "../modules/document/document.contract";
-import type { NotificationCommandContract, NotificationQueryContract } from "../modules/notifications/notification.contract";
+import type {
+  NotificationCommandContract,
+  NotificationIngestContract,
+  NotificationQueryContract
+} from "../modules/notifications/notification.contract";
+import { NotificationRepo } from "../modules/notifications/notification.repo";
 import { NotificationService } from "../modules/notifications/notification.service";
 import type { IssueCommandContract, IssueQueryContract } from "../modules/issue/issue.contract";
 import type { IssueAttachmentCommandContract, IssueAttachmentQueryContract } from "../modules/issue/attachment/issue-attachment.contract";
@@ -85,6 +90,7 @@ export type AppContainer = {
   dashboardQuery: DashboardQueryContract;
   notificationQuery: NotificationQueryContract;
   notificationCommand: NotificationCommandContract;
+  notificationIngest: NotificationIngestContract;
   feedbackCommand: FeedbackCommandContract;
   feedbackQuery: FeedbackQueryContract;
   contentLogCommand: ContentLogCommandContract;
@@ -165,15 +171,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     new DashboardRepo(db),
     projectService
   );
-  const notificationService = new NotificationService(
-    projectService,
-    profileService,
-    announcementService,
-    announcementService,
-    contentLogService,
-    issueService,
-    rdService
-  );
+  const notificationService = new NotificationService(profileService, new NotificationRepo(db));
   const feedbackRepo = new FeedbackRepo(db);
   const feedbackService = new FeedbackService(feedbackRepo, projectRepo, projectAccess);
   const apiTokenRepo = new ApiTokenRepo(db);
@@ -212,6 +210,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     dashboardQuery: dashboardService,
     notificationQuery: notificationService,
     notificationCommand: notificationService,
+    notificationIngest: notificationService,
     feedbackCommand: feedbackService,
     feedbackQuery: feedbackService,
     contentLogCommand: contentLogService,

@@ -44,6 +44,17 @@ export class RealtimeSyncService {
   }
 
   private handleMessage(message: WsServerMessage): void {
+    // notification.new carries full item payload, so we can update store incrementally without full reload.
+    if (message.type === 'notification.new') {
+      this.notificationStore.upsertFromWs(message.payload.notification, message.payload.unreadCount);
+      return;
+    }
+
+    if (message.type === 'notification.unread') {
+      this.notificationStore.setUnreadCount(message.payload.unreadCount);
+      return;
+    }
+
     if (message.type === 'notification.changed') {
       const hints = this.resolveHints(message);
       if (hints.has('notification')) {
@@ -76,7 +87,7 @@ export class RealtimeSyncService {
 
   private resolveHints(message: WsServerMessage): Set<WsRefreshHint> {
     if (message.type === 'notification.changed') {
-      return this.getIncomingHints(message.payload.hints, ['notification', 'dashboard']);
+      return this.getIncomingHints(message.payload.hints, ['notification']);
     }
 
     if (message.type === 'badge.changed') {
@@ -96,6 +107,7 @@ export class RealtimeSyncService {
   }
 
   private scheduleNotificationReload(): void {
+    // Debounce fallback reload for legacy invalidation events.
     if (this.notificationReloadTimer) {
       return;
     }
@@ -122,6 +134,7 @@ export class RealtimeSyncService {
   }
 
   private scheduleDashboardReload(entityType?: string): void {
+    // Coalesce multiple ws signals and flush one dashboard refresh batch.
     if (entityType) {
       this.pendingDashboardEntityTypes.add(entityType);
     }

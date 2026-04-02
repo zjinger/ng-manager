@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { ProjectContextStore } from '@core/state';
 import type { NotificationItem } from '../../models/notification.model';
+import { NotificationStore } from '../../store/notification.store';
 
 @Component({
   selector: 'app-notification-dropdown',
@@ -31,7 +32,7 @@ import type { NotificationItem } from '../../models/notification.model';
               [class.is-unread]="item.unread"
               [routerLink]="routeTarget(item).path"
               [queryParams]="routeTarget(item).query"
-              (click)="syncProjectContext(item)"
+              (click)="onItemClick(item)"
             >
               <span class="notification-item__dot" [class.is-activity]="item.kind === 'activity'"></span>
               <div class="notification-item__body">
@@ -45,7 +46,12 @@ import type { NotificationItem } from '../../models/notification.model';
                   <span class="notification-item__project">{{ item.projectName }}</span>
                   <span class="notification-item__time-mobile">{{ formatRelativeTime(item.time) }}</span>
                 </div>
-                <div class="notification-item__title">{{ item.title }}</div>
+                <div class="notification-item__title-line">
+                  <div class="notification-item__title">{{ item.title }}</div>
+                  @if (item.unread) {
+                    <span class="notification-item__unread-dot"></span>
+                  }
+                </div>
                 <div class="notification-item__desc">{{ item.description }}</div>
               </div>
               <div class="notification-item__time">
@@ -148,6 +154,19 @@ import type { NotificationItem } from '../../models/notification.model';
         font-weight: 700;
         line-height: 1.4;
       }
+      .notification-item__title-line {
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .notification-item__unread-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #ef4444;
+        flex: 0 0 auto;
+      }
       .notification-item__desc {
         margin-top: 4px;
         color: var(--text-secondary);
@@ -212,6 +231,7 @@ import type { NotificationItem } from '../../models/notification.model';
 })
 export class NotificationDropdownComponent {
   private readonly projectContext = inject(ProjectContextStore);
+  private readonly notificationStore = inject(NotificationStore);
   readonly items = input<NotificationItem[]>([]);
   readonly totalCount = input<number | null>(null);
 
@@ -272,6 +292,11 @@ export class NotificationDropdownComponent {
       return;
     }
     this.projectContext.setCurrentProjectId(item.projectId);
+  }
+
+  onItemClick(item: NotificationItem): void {
+    this.syncProjectContext(item);
+    this.notificationStore.markAsRead(item.id);
   }
 
   formatRelativeTime(value: string): string {

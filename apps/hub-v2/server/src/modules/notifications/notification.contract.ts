@@ -1,5 +1,7 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import type { DomainEvent } from "../../shared/event/domain-event";
 import type {
+  NotificationIngestResult,
   ListNotificationsQuery,
   MarkNotificationReadsInput,
   MarkNotificationReadsResult,
@@ -12,4 +14,8 @@ export interface NotificationQueryContract {
 
 export interface NotificationCommandContract {
   markRead(input: MarkNotificationReadsInput, ctx: RequestContext): Promise<MarkNotificationReadsResult>;
+}
+
+export interface NotificationIngestContract {
+  ingestDomainEvent(event: DomainEvent): Promise<NotificationIngestResult>;
 }

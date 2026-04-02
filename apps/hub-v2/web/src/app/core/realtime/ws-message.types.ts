@@ -10,6 +10,37 @@ export type WsServerMessage =
       };
     }
   | {
+      type: 'notification.new';
+      ts: string;
+      projectId?: string;
+      payload: {
+        notificationId: string;
+        unreadCount: number;
+        notification: {
+          id: string;
+          kind: 'todo' | 'activity';
+          title: string;
+          description: string;
+          sourceLabel: string;
+          projectName: string;
+          time: string;
+          route: string;
+          unread: boolean;
+          projectId: string | null;
+        };
+        entityType: string;
+        entityId: string;
+        action: string;
+      };
+    }
+  | {
+      type: 'notification.unread';
+      ts: string;
+      payload: {
+        unreadCount: number;
+      };
+    }
+  | {
       type: 'notification.changed';
       ts: string;
       projectId?: string;

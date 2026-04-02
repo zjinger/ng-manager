@@ -18,20 +18,10 @@ function createMessages(event: DomainEvent): WsServerMessage[] {
     return [];
   }
 
+  // Keep ws-bridge focused on lightweight UI invalidation hints (dashboard/badge).
+  // Notification list updates are handled by notification-bridge via notification.new.
   const ts = event.occurredAt || new Date().toISOString();
   const messages: WsServerMessage[] = [
-    {
-      type: "notification.changed",
-      ts,
-      projectId: event.projectId,
-      payload: {
-        entityType: event.entityType,
-        entityId: event.entityId,
-        action: event.action,
-        hints: ["notification", "dashboard"],
-        affectedUserIds: extractAffectedUserIds(event)
-      }
-    },
     {
       type: "dashboard.changed",
       ts,
@@ -98,6 +88,8 @@ function extractAffectedUserIds(event: DomainEvent): string[] {
 }
 
 export function bindEventBusToWs(eventBus: EventBus, wsHub: WsHub): void {
+  // Broadcast scope resolution order:
+  // 1) affected users from payload, 2) project members, 3) fallback global broadcast.
   eventBus.subscribe("*", (event) => {
     const messages = createMessages(event);
     if (messages.length === 0) {

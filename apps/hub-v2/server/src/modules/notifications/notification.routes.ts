@@ -13,6 +13,17 @@ export default async function notificationRoutes(app: FastifyInstance) {
   app.post("/notifications/read", async (request) => {
     const ctx = requireAuth(request);
     const body = (request.body || {}) as MarkNotificationReadsInput;
-    return ok(await app.container.notificationCommand.markRead(body, ctx));
+    const result = await app.container.notificationCommand.markRead(body, ctx);
+    const userId = ctx.userId?.trim();
+    if (userId) {
+      app.wsHub.broadcastToUsers([userId], {
+        type: "notification.unread",
+        ts: new Date().toISOString(),
+        payload: {
+          unreadCount: result.unreadCount
+        }
+      });
+    }
+    return ok(result);
   });
 }

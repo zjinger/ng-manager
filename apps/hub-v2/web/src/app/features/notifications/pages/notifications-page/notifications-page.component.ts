@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 
 import { ProjectContextStore } from '@core/state';
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
@@ -17,6 +18,7 @@ import { NotificationStore } from '../../store/notification.store';
     NzCheckboxModule,
     NzPaginationModule,
     NzSelectModule,
+    NzButtonModule,
     PageHeaderComponent,
     PageToolbarComponent,
     FilterBarComponent,
@@ -68,6 +70,16 @@ import { NotificationStore } from '../../store/notification.store';
         >
           只看未读
         </label>
+
+        <button
+          nz-button
+          nzType="default"
+          class="notifications-page__mark-read"
+          [disabled]="store.unreadCount() === 0"
+          (click)="store.markAllAsRead()"
+        >
+          全部标记已读
+        </button>
       </app-filter-bar>
     </app-page-toolbar>
 
@@ -132,6 +144,10 @@ import { NotificationStore } from '../../store/notification.store';
 
       .notifications-page__toggle:hover {
         border-color: var(--primary-400);
+      }
+      .notifications-page__mark-read {
+        height: 36px;
+        border-radius: 10px;
       }
 
       .notifications-page__select {

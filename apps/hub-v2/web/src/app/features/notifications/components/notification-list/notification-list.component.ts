@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { ProjectContextStore } from '@core/state';
 import type { NotificationItem } from '../../models/notification.model';
+import { NotificationStore } from '../../store/notification.store';
 
 @Component({
   selector: 'app-notification-list',
@@ -16,14 +17,19 @@ import type { NotificationItem } from '../../models/notification.model';
           [class.is-unread]="item.unread"
           [routerLink]="routeTarget(item).path"
           [queryParams]="routeTarget(item).query"
-          (click)="syncProjectContext(item)"
+          (click)="onItemClick(item)"
         >
           <div class="notification-row__main">
             <div class="notification-row__meta">
               <span class="notification-row__tag">{{ item.sourceLabel }}</span>
               <span class="notification-row__project">{{ item.projectName }}</span>
             </div>
-            <div class="notification-row__title">{{ item.title }}</div>
+            <div class="notification-row__title-line">
+              <div class="notification-row__title">{{ item.title }}</div>
+              @if (item.unread) {
+                <span class="notification-row__unread-dot"></span>
+              }
+            </div>
             <div class="notification-row__desc">{{ item.description }}</div>
           </div>
           <div class="notification-row__time">
@@ -83,10 +89,22 @@ import type { NotificationItem } from '../../models/notification.model';
         font-size: 12px;
       }
       .notification-row__title {
-        margin-top: 8px;
         color: var(--text-primary);
         font-size: 14px;
         font-weight: 700;
+      }
+      .notification-row__title-line {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .notification-row__unread-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #ef4444;
+        flex: 0 0 auto;
       }
       .notification-row__desc {
         margin-top: 6px;
@@ -119,6 +137,7 @@ import type { NotificationItem } from '../../models/notification.model';
 })
 export class NotificationListComponent {
   private readonly projectContext = inject(ProjectContextStore);
+  private readonly notificationStore = inject(NotificationStore);
   readonly items = input<NotificationItem[]>([]);
 
   routeTarget(item: NotificationItem): { path: string[]; query?: Record<string, string> } {
@@ -208,5 +227,10 @@ export class NotificationListComponent {
       return;
     }
     this.projectContext.setCurrentProjectId(item.projectId);
+  }
+
+  onItemClick(item: NotificationItem): void {
+    this.syncProjectContext(item);
+    this.notificationStore.markAsRead(item.id);
   }
 }

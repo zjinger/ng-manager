@@ -6,6 +6,7 @@ import fastifyMultipart from "@fastify/multipart";
 import errorHandlerPlugin from "../plugins/error-handler.plugin";
 import { createRequestContext } from "../shared/context/request-context";
 import type { AuthJwtPayload } from "../shared/auth/jwt-payload";
+import { bindEventBusToNotifications } from "../shared/event/notification-bridge";
 import { wsPlugin } from "../shared/ws/ws.plugin";
 import { bindEventBusToWs } from "../shared/ws/ws-bridge";
 
@@ -27,6 +28,7 @@ export async function registerPlugins(app: FastifyInstance) {
   await app.register(errorHandlerPlugin);
   await app.register(wsPlugin);
   bindEventBusToWs(app.container.eventBus, app.wsHub);
+  bindEventBusToNotifications(app.container.eventBus, app.container.notificationIngest, app.wsHub);
 
   await app.register(
     fp(async (fastify) => {

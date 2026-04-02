@@ -16,12 +16,13 @@ export interface NotificationListQuery {
 export interface NotificationListResult {
   items: NotificationApiItem[];
   total: number;
+  unreadTotal: number;
   page: number;
   pageSize: number;
 }
 
 export interface MarkNotificationReadInput {
-  announcementIds?: string[];
+  notificationIds?: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -33,6 +34,6 @@ export class NotificationApiService {
   }
 
   markRead(input: MarkNotificationReadInput) {
-    return this.api.post<{ updated: number }, MarkNotificationReadInput>('/notifications/read', input);
+    return this.api.post<{ updated: number; unreadCount: number }, MarkNotificationReadInput>('/notifications/read', input);
   }
 }

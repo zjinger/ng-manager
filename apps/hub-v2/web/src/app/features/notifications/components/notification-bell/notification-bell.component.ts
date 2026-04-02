@@ -12,7 +12,7 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
   standalone: true,
   imports: [NzBadgeModule, NzButtonModule, NzDropDownModule, NzIconModule, NotificationDropdownComponent],
   template: `
-    <nz-badge [nzDot]="store.unreadCount() > 0">
+    <nz-badge [nzCount]="badgeCount()" [nzShowZero]="false" [nzOverflowCount]="99">
       <button
         nz-button
         nzType="text"
@@ -46,12 +46,12 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
 })
 export class NotificationBellComponent {
   readonly store = inject(NotificationStore);
+  readonly badgeCount = () => this.store.unreadCount();
   readonly dropdownItems = () => this.store.items().slice(0, 20);
 
   onVisibleChange(visible: boolean): void {
     if (visible) {
       this.store.updateQuery({ limit: 50, page: undefined, pageSize: undefined });
-      this.store.markAllAsRead();
     }
   }
 }
