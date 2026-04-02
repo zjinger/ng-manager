@@ -19,7 +19,7 @@ import { PageLayoutComponent } from '../../shared';
 import { RdAdvanceStageDialogComponent } from './dialog/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdBlockDialogComponent } from './dialog/rd-block-dialog/rd-block-dialog.component';
 import { RdCreateDialogComponent } from './dialog/rd-create-dialog/rd-create-dialog.component';
-import { RdDetailComponent } from './dialog/rd-detail/rd-detail.component';
+import { RdDetailComponent } from './rd-detail/rd-detail.component';
 import { CreateRdItemInput, RdItemEntity, RdItemPriority, RdItemStatus } from './models/rd.model';
 import { RdListBoardComponent } from './rd-list-board/rd-list-board.component';
 import { RdListTableComponent } from './rd-list-table/rd-list-table.component';

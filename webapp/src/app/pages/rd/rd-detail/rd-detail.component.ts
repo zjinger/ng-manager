@@ -1,18 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { PRIORITY_LABELS } from '@app/shared/constants/priority-options';
+import { RD_STATUS_LABELS } from '@app/shared/constants/status-options';
 import { RdItemEntity, RdItemPriority, RdItemStatus, RdLogEntity } from '@pages/rd/models/rd.model';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzDrawerModule, NzDrawerPlacement } from 'ng-zorro-antd/drawer';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTimelineModule } from 'ng-zorro-antd/timeline';
-import { NzButtonComponent } from 'ng-zorro-antd/button';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component';
-import { PRIORITY_LABELS } from '@app/shared/constants/priority-options';
-import { RD_STATUS_LABELS } from '@app/shared/constants/status-options';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzTimelineModule } from 'ng-zorro-antd/timeline';
+import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component';
 
 @Component({
   selector: 'app-rd-detail',

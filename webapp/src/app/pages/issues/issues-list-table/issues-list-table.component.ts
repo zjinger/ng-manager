@@ -17,18 +17,17 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
     [nzFrontPagination]="false"
     [nzShowPagination]="false"
     [nzShowSizeChanger]="true"
-    [nzScroll]="{ y: '500px' }"
     class="rd-list"
   >
     <thead>
       <tr>
-        <th nzWidth="5%">序号</th>
+        <th nzWidth="4%">序号</th>
         <!-- <th nzWidth="7%">编号</th> -->
-        <th nzWidth="38%">标题</th>
-        <th nzWidth="6%">状态</th>
-        <th nzWidth="5%">提报人</th>
-        <th nzWidth="5%">负责人</th>
-        <th nzWidth="8%">更新时间</th>
+        <th nzWidth="48%">标题</th>
+        <th nzWidth="8%">状态</th>
+        <th nzWidth="8%">提报人</th>
+        <th nzWidth="8%">负责人</th>
+        <th nzWidth="10%">更新时间</th>
       </tr>
     </thead>
     <tbody>
@@ -90,6 +89,9 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    :host ::ng-deep table[nz-table-content] {
+      table-layout: fixed !important;
     }
   `,
 })

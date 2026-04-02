@@ -1,8 +1,7 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
-import { NzCardModule } from 'ng-zorro-antd/card';
+import { CommonModule } from '@angular/common';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { NzDrawerModule, NzDrawerPlacement } from 'ng-zorro-antd/drawer';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
-import { IssueActionAreaComponent } from './issue-action-area/issue-action-area.component';
 import {
   createCommentInput,
   IssueActionType,
@@ -11,50 +10,26 @@ import {
   IssueEntity,
   IssueLogEntity,
   IssueParticipantEntity,
-  IssuePriority,
-  IssueStatus,
-  IssueType,
 } from '../models/issue.model';
 import { IssueDetailStore } from '../store/issue-detail.store';
-import { MarkdownComponent } from 'ngx-markdown';
-import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
-import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
-import { CommonModule } from '@angular/common';
-import { NzTimelineModule } from 'ng-zorro-antd/timeline';
-import { IssueCollaboratorsAreaComponent } from './issue-collaborators-area/issue-collaborators-panel.component';
-import { NzAvatarModule } from 'ng-zorro-antd/avatar';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzCommentModule } from 'ng-zorro-antd/comment';
-import { NzListModule } from 'ng-zorro-antd/list';
-import { NzFormModule } from 'ng-zorro-antd/form';
-import { FormsModule } from '@angular/forms';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
+import { IssueActionAreaComponent } from './issue-action-area/issue-action-area.component';
 import { IssueAttachmentAreaComponent } from './issue-attachment-area/issue-attachment-area.component';
-import { PRIORITY_LABELS } from '@app/shared/constants/priority-options';
-import { ISSUE_STATUS_LABELS, RD_STATUS_LABELS } from '@app/shared/constants/status-options';
-import { ISSUE_TYPE_LABELS } from '@app/shared/constants/issue-type-options';
+import { IssueBaseInfoAreaComponent } from './issue-base-info-area/issue-base-info-area.component';
+import { IssueCollaboratorsAreaComponent } from './issue-collaborators-area/issue-collaborators-panel.component';
+import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
+import { IssueDescriptionAreaComponent } from './issue-description-area/issue-description-area.component';
 
 @Component({
   selector: 'app-issue-detail',
   imports: [
     NzDrawerModule,
-    NzCardModule,
     NzEmptyModule,
-    NzDescriptionsModule,
-    NzTimelineModule,
-    NzAvatarModule,
-    NzInputModule,
-    NzCommentModule,
-    NzListModule,
-    NzFormModule,
-    FormsModule,
-    NzButtonModule,
     IssueActionAreaComponent,
     IssueCollaboratorsAreaComponent,
     IssueCommentAreaComponent,
     IssueAttachmentAreaComponent,
-    MarkdownViewerComponent,
+    IssueBaseInfoAreaComponent,
+    IssueDescriptionAreaComponent,
     CommonModule,
   ],
   template: `
@@ -86,105 +61,42 @@ import { ISSUE_TYPE_LABELS } from '@app/shared/constants/issue-type-options';
         } @else if (issue(); as issue) {
           <div class="detail-wrap">
             <div class="left-column">
-              <nz-card class="detail-item">
-                <h2 class="wrap-title">操作</h2>
+              <!-- 操作 -->
+              <app-issue-action-area
+                [issue]="issue"
+                (actionClick)="handleActionClick($event)"
+                [canStart]="store.canStart()"
+                [canClaim]="store.canClaim()"
+                [canAssign]="store.canAssign()"
+                [assignActionLabel]="store.assignActionLabel()"
+                [canManageParticipants]="store.canManageParticipants()"
+                [canResolve]="store.canResolve()"
+                [canVerify]="store.canVerify()"
+                [canReopen]="store.canReopen()"
+                [canClose]="store.canClose()"
+              ></app-issue-action-area>
 
-                <app-issue-action-area
-                  [issue]="issue"
-                  (actionClick)="handleActionClick($event)"
-                  [canStart]="store.canStart()"
-                  [canClaim]="store.canClaim()"
-                  [canAssign]="store.canAssign()"
-                  [assignActionLabel]="store.assignActionLabel()"
-                  [canManageParticipants]="store.canManageParticipants()"
-                  [canResolve]="store.canResolve()"
-                  [canVerify]="store.canVerify()"
-                  [canReopen]="store.canReopen()"
-                  [canClose]="store.canClose()"
-                ></app-issue-action-area>
-              </nz-card>
-              <nz-card class="detail-item">
-                <h2 class="wrap-title">详情</h2>
-                @if (issue.description) {
-                  <app-markdown-viewer
-                    [content]="issue.description"
-                    [showToc]="true"
-                    [tocVariant]="'floating'"
-                    [tocCollapsedByDefault]="true"
-                  ></app-markdown-viewer>
-                } @else {
-                  暂无描述
-                }
-                @if (issue.resolutionSummary) {
-                  <div class="resolution">
-                    <div class="resolution-label">解决说明</div>
-                    <div class="resolution-content">{{ issue.resolutionSummary }}</div>
-                  </div>
-                }
-                @if (issue.closeReason) {
-                  <div class="resolution">
-                    <div class="resolution-label">关闭原因</div>
-                    <div class="resolution-content">{{ issue.closeReason }}</div>
-                  </div>
-                }
-              </nz-card>
+              <!-- 详情 -->
+              <app-issue-description-area [issue]="issue"></app-issue-description-area>
 
-              <nz-card class="detail-item comment">
-                <h2 class="wrap-title">评论/备注</h2>
-                <app-issue-comment-area
-                  [comments]="comments()"
-                  (submit)="commentSubmit.emit($event)"
-                ></app-issue-comment-area>
-              </nz-card>
+              <!-- 评论 -->
+              <app-issue-comment-area
+                [comments]="comments()"
+                (submit)="commentSubmit.emit($event)"
+              ></app-issue-comment-area>
             </div>
             <div class="right-column">
-              <nz-card class="detail-item  base-info">
-                <h2 class="wrap-title">基础信息</h2>
-                <nz-descriptions nzBordered nzSize="small" [nzColumn]="1">
-                  <nz-descriptions-item nzTitle="状态">
-                    {{ getStatusLabel(issue.status) }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="优先级">
-                    {{ getPriorityLabel(issue.priority) }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="类型">
-                    {{ getTypeLabel(issue.type) }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="模块">
-                    {{ issue.moduleCode || '-' }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="环境">
-                    {{ issue.environmentCode || '-' }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="提报人">
-                    {{ issue.reporterName }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="负责人">
-                    {{ issue.assigneeName || '-' }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="验收人">
-                    {{ issue.verifierName || '-' }}
-                  </nz-descriptions-item>
-                  <nz-descriptions-item nzTitle="创建时间">
-                    {{ issue.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}
-                  </nz-descriptions-item>
-                </nz-descriptions>
-              </nz-card>
+              <!-- 基础信息 -->
+              <app-issue-base-info-area [issue]="issue"></app-issue-base-info-area>
 
-              <nz-card class="detail-item">
-                <h2 class="wrap-title">合作人</h2>
-                <app-issue-collaborators-area
-                  [issue]="issue"
-                  [participants]="participants()"
-                ></app-issue-collaborators-area>
-              </nz-card>
+              <!-- 合作人 -->
+              <app-issue-collaborators-area
+                [issue]="issue"
+                [participants]="participants()"
+              ></app-issue-collaborators-area>
 
-              <nz-card class="detail-item">
-                <h2 class="wrap-title">附件</h2>
-                <app-issue-attachment-area
-                  [attachments]="attachments()"
-                ></app-issue-attachment-area>
-              </nz-card>
+              <!-- 附件 -->
+              <app-issue-attachment-area [attachments]="attachments()"></app-issue-attachment-area>
             </div>
           </div>
         }
@@ -209,7 +121,7 @@ import { ISSUE_TYPE_LABELS } from '@app/shared/constants/issue-type-options';
     }
     .detail-wrap {
       width: 100%;
-      height: 100%;
+      // height: 100%;
       display: flex;
       gap: 10px;
       .wrap-title {
@@ -231,18 +143,6 @@ import { ISSUE_TYPE_LABELS } from '@app/shared/constants/issue-type-options';
         display: flex;
         flex-direction: column;
         gap: 10px;
-      }
-      .resolution {
-        margin-top: 26px;
-        .resolution-label {
-          font-size: 0.8rem;
-          font-weight: bold;
-          color: grey;
-        }
-        .resolution-content {
-          font-size: 0.8rem;
-          text-indent: 0.8rem;
-        }
       }
     }
     .comment {
@@ -278,17 +178,5 @@ export class IssueDetailComponent {
 
   handleActionClick(action: IssueActionType) {
     this.actionClick.emit(action);
-  }
-
-  getPriorityLabel(priority: IssuePriority) {
-    return PRIORITY_LABELS[priority];
-  }
-
-  getStatusLabel(status: IssueStatus) {
-    return ISSUE_STATUS_LABELS[status];
-  }
-
-  getTypeLabel(type: IssueType) {
-    return ISSUE_TYPE_LABELS[type];
   }
 }

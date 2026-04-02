@@ -10,18 +10,17 @@ import {
   RD_STATUS_FILTER_OPTIONS,
   RD_STATUS_LABELS,
 } from '@app/shared/constants/status-options';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-rd-list-table',
-  imports: [NzTableModule, NzButtonModule, NzProgressModule, NzTagModule, CommonModule],
+  imports: [NzTableModule, NzButtonModule, NzProgressModule, NzTagModule, CommonModule, DatePipe],
   template: `
     <nz-table
       [nzData]="rdItems()"
       [nzFrontPagination]="false"
       [nzShowPagination]="false"
       [nzShowSizeChanger]="true"
-      [nzScroll]="{ y: '520px' }"
       class="rd-list"
     >
       <thead>
@@ -32,7 +31,7 @@ import { CommonModule } from '@angular/common';
           <th nzWidth="7%">优先级</th>
           <th nzWidth="7%">负责人</th>
           <th nzWidth="11%">进度</th>
-          <th nzWidth="10%">更新时间</th>
+          <th nzWidth="10%">更新时间</th> 
         </tr>
       </thead>
       <tbody>
@@ -58,7 +57,7 @@ import { CommonModule } from '@angular/common';
             </td>
             <td>{{ item.assigneeName || '-' }}</td>
             <td><nz-progress [nzPercent]="item.progress" nzSize="small" /></td>
-            <td>{{ item.planEndAt | date: 'MM-dd HH:mm' }}</td>
+            <td>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</td>
           </tr>
         }
       </tbody>
@@ -67,13 +66,12 @@ import { CommonModule } from '@angular/common';
   styles: `
     .title-col {
       .rd-title {
-        color: #1677ff;
         font-weight: 500;
         font-size: 1rem;
         cursor: pointer;
       }
       .rd-no {
-        padding-left: .5rem;
+        padding-left: 0.5rem;
         color: gray;
         font-size: 0.8rem;
       }

@@ -22,6 +22,7 @@ import { NzListModule } from 'ng-zorro-antd/list';
 import { NzCommentModule } from 'ng-zorro-antd/comment';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzFormModule } from 'ng-zorro-antd/form';
+import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 
 @Component({
   selector: 'app-issue-comment-area',
@@ -37,47 +38,73 @@ import { NzFormModule } from 'ng-zorro-antd/form';
     NzFormModule,
     FormsModule,
     NzAvatarModule,
+    DetailItemCardComponent,
   ],
   template: `
-    @if (comments().length === 0) {
-      <span class="comment-empty">暂无评论/备注</span>
-    } @else {
-      <nz-list [nzDataSource]="comments()" [nzRenderItem]="item" nzItemLayout="horizontal">
-        <ng-template #item let-item>
-          <nz-comment [nzAuthor]="item.authorName" [nzDatetime]="formatDate(item.createdAt)">
-            <nz-avatar
-              nz-comment-avatar
-              [nzText]="item.authorName.charAt(0)"
-              nzSize="small"
-              style="background-color: #1890ff"
-            />
-            <nz-comment-content>
-              <p>{{ item.content }}</p>
-            </nz-comment-content>
-          </nz-comment>
-        </ng-template>
-      </nz-list>
-    }
-    <nz-comment>
-      <nz-avatar
-        nz-comment-avatar
-        [nzText]="'我'"
-        nzSize="small"
-        style="background-color:#87d068"
-      />
-      <nz-comment-content>
-        <nz-form-item>
-          <textarea [(ngModel)]="commentDraft" nz-input rows="4"></textarea>
-        </nz-form-item>
-        <nz-form-item>
-          <button nz-button nzType="primary" [nzLoading]="busy()" (click)="handleSubmit()">
-            发送评论
-          </button>
-        </nz-form-item>
-      </nz-comment-content>
-    </nz-comment>
+    <app-detail-item-card title="评论/备注">
+      @if (comments().length === 0) {
+        <div class="comment-empty">暂无评论/备注</div>
+      } @else {
+        <nz-list [nzDataSource]="comments()" [nzRenderItem]="item" nzItemLayout="horizontal">
+          <ng-template #item let-item>
+            <nz-comment [nzAuthor]="item.authorName" [nzDatetime]="formatDate(item.createdAt)">
+              <nz-avatar
+                nz-comment-avatar
+                [nzText]="item.authorName.charAt(0)"
+                nzSize="small"
+                style="background-color: #1890ff"
+              />
+              <nz-comment-content>
+                <p>{{ item.content }}</p>
+              </nz-comment-content>
+            </nz-comment>
+          </ng-template>
+        </nz-list>
+      }
+      <nz-comment>
+        <nz-avatar
+          nz-comment-avatar
+          [nzText]="'我'"
+          nzSize="small"
+          style="background-color:#87d068"
+        />
+        <nz-comment-content>
+          <nz-form-item>
+            <textarea [(ngModel)]="commentDraft" nz-input rows="4" class="comment-input"></textarea>
+          </nz-form-item>
+          <nz-form-item class="toolbar">
+            <button
+              nz-button
+              nzType="primary"
+              [nzLoading]="busy()"
+              (click)="handleSubmit()"
+              class="send"
+            >
+              发送评论
+            </button>
+          </nz-form-item>
+        </nz-comment-content>
+      </nz-comment>
+    </app-detail-item-card>
   `,
-  styles: [``],
+  styles: `
+    .comment-empty {
+      margin: 1rem;
+      text-align: center;
+      color: gray;
+    }
+    .comment-input {
+      width: 100%;
+      border-radius: 8px;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: end;
+    }
+    .send {
+      border-radius: 6px;
+    }
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueCommentAreaComponent {

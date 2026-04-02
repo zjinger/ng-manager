@@ -59,13 +59,17 @@ export class RdStore {
   readonly rdItemsLoading = computed(() => this.loadingState());
 
   async loadRdItems() {
-    const projectId = this.projectId();
-    if (!projectId) return;
-    this.loadingState.set(true);
-    const res = (await this.rdApi.getRdItemsList(this.projectId(), this.query())) as RdListResult;
-    this.rdItemsPageListState.set(res.items);
-    this.rdItemsCountState.set(res.total);
-    this.loadingState.set(false);
+    try {
+      const projectId = this.projectId();
+      if (!projectId) return;
+      this.loadingState.set(true);
+      const res = (await this.rdApi.getRdItemsList(this.projectId(), this.query())) as RdListResult;
+      this.rdItemsPageListState.set(res.items);
+      this.rdItemsCountState.set(res.total);
+      this.loadingState.set(false);
+    } catch (e) {
+      this.loadingState.set(false);
+    }
   }
 
   async loadCurrentRdItem(itemId: string) {
@@ -160,8 +164,8 @@ export class RdStore {
       },
       error: () => {
         this.busyState.set(false);
-      }
-    })
+      },
+    });
   }
 
   // private patchOrRefresh(updated: RdItemEntity): void {

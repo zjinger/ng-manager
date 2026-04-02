@@ -4,6 +4,7 @@ import {
   ISSUE_STATUS_FILTER_OPTIONS,
   ISSUE_STATUS_LABELS,
 } from '@app/shared/constants/status-options';
+import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { IssueActionType, IssueEntity, IssueStatus } from '@pages/issues/models/issue.model';
 import { IssuePermissionService } from '@pages/issues/services/issue-permission.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -12,38 +13,39 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
 
 @Component({
   selector: 'app-issue-action-area',
-  imports: [NzStepsModule, NzButtonModule, NzModalModule],
+  imports: [NzStepsModule, NzButtonModule, NzModalModule, DetailItemCardComponent],
   template: `
-    <div class="action-area">
-      <div class="steps">
-        <nz-steps [nzCurrent]="getStepIndex(issue().status)" nzSize="small">
-          @for (step of stepsOptions; track step.value) {
-            <nz-step [nzTitle]="step.label"></nz-step>
+    <app-detail-item-card title="操作">
+      <div class="action-area">
+        <div class="steps">
+          <nz-steps [nzCurrent]="getStepIndex(issue().status)" nzSize="small">
+            @for (step of stepsOptions; track step.value) {
+              <nz-step [nzTitle]="step.label"></nz-step>
+            }
+          </nz-steps>
+        </div>
+        <div class="action-btns">
+          @if (canStart()) {
+            <button
+              nz-button
+              nzType="default"
+              class="detail-header__action-btn"
+              (click)="actionClick.emit('start')"
+            >
+              开始处理
+            </button>
           }
-        </nz-steps>
-      </div>
-      <div class="action-btns">
-        @if (canStart()) {
-          <button
-            nz-button
-            nzType="default"
-            class="detail-header__action-btn"
-            (click)="actionClick.emit('start')"
-          >
-            开始处理
-          </button>
-        }
-        @if (canClaim()) {
-          <button
-            nz-button
-            nzType="default"
-            class="detail-header__action-btn"
-            (click)="actionClick.emit('claim')"
-          >
-            认领
-          </button>
-        }
-        <!-- @if (canAssign()) {
+          @if (canClaim()) {
+            <button
+              nz-button
+              nzType="default"
+              class="detail-header__action-btn"
+              (click)="actionClick.emit('claim')"
+            >
+              认领
+            </button>
+          }
+          <!-- @if (canAssign()) {
           <button
             nz-button
             nzType="default"
@@ -53,7 +55,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
             {{ assignActionLabel() }}
           </button>
         } -->
-        <!-- @if (canManageParticipants()) {
+          <!-- @if (canManageParticipants()) {
           <button
             nz-button
             nzType="default"
@@ -63,17 +65,17 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
             添加协作人
           </button>
         } -->
-        @if (canResolve()) {
-          <button
-            nz-button
-            nzType="primary"
-            class="detail-header__action-btn"
-            (click)="actionClick.emit('resolve')"
-          >
-            标记解决
-          </button>
-        }
-        <!-- @if (canVerify()) {
+          @if (canResolve()) {
+            <button
+              nz-button
+              nzType="primary"
+              class="detail-header__action-btn"
+              (click)="actionClick.emit('resolve')"
+            >
+              标记解决
+            </button>
+          }
+          <!-- @if (canVerify()) {
           <button
             nz-button
             nzType="primary"
@@ -93,7 +95,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
             重新打开
           </button>
         } -->
-        <!-- @if (canClose()) {
+          <!-- @if (canClose()) {
           <button
             nz-button
             nzDanger
@@ -104,8 +106,9 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
             关闭问题
           </button>
         } -->
+        </div>
       </div>
-    </div>
+    </app-detail-item-card>
   `,
   styles: `
     .action-btns {

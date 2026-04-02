@@ -1,18 +1,20 @@
 import { Component, input } from '@angular/core';
-import { AttachmentViewerComponent } from '@app/shared/components/attachment-viewer/attachment-viewer.component';
-import { AttachmentPreviewItem } from '@app/shared/components/attachment-viewer/attachment-viewer.component';
+import { AttachmentPreviewItem, AttachmentViewerComponent } from '@app/shared/components/attachment-viewer/attachment-viewer.component';
+import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { IssueAttachmentEntity } from '@pages/issues/models/issue.model';
 @Component({
   selector: 'app-issue-attachment-area',
-  imports: [AttachmentViewerComponent],
+  imports: [AttachmentViewerComponent, DetailItemCardComponent],
   template: `
-    @if (attachments().length > 0) {
-      @for (item of attachmentPreviewItems(); track $index) {
-        <app-attachment-viewer [item]="item"></app-attachment-viewer>
+    <app-detail-item-card title="附件">
+      @if (attachments().length > 0) {
+        @for (item of attachmentPreviewItems(); track $index) {
+          <app-attachment-viewer [item]="item"></app-attachment-viewer>
+        }
       }
-    }
+    </app-detail-item-card>
   `,
-  styleUrl: './issue-attachment-area.component.less',
+  styles: ``,
 })
 export class IssueAttachmentAreaComponent {
   readonly attachments = input<IssueAttachmentEntity[]>([]);
