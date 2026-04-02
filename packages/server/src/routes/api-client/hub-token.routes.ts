@@ -1,6 +1,7 @@
 import { AppError, Project } from "@yinuo-ngm/core";
 import { ProjectTokenApiClient } from "@yinuo-ngm/api";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
+import { Readable } from "node:stream";
 
 type HubTokenType = "project" | "personal";
 type HubHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -89,9 +90,35 @@ async function resolveHubTokenConfig(
 }
 
 export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
+    fastify.get("/projects/:projectId/issues/:issueId/attachments/:attachmentId/raw", async (req, reply) => {
+        const params = (req.params ?? {}) as { projectId?: string; issueId?: string; attachmentId?: string };
+        const projectId = normalizeNonEmptyString(params.projectId, "projectId");
+        const issueId = normalizeNonEmptyString(params.issueId, "issueId");
+        const attachmentId = normalizeNonEmptyString(params.attachmentId, "attachmentId");
+
+        const { baseUrl, token, projectKey } = await resolveHubTokenConfig(fastify, { projectId }, "project");
+        const normalizedPath = normalizeHubTokenPath(`/issues/${issueId}/attachments/${attachmentId}/raw`, projectKey);
+        const response = await requestHubApiRaw(baseUrl, "/api/token", token, "GET", normalizedPath);
+        if (!response.ok) {
+            const payload = await parseJson(response);
+            throw new AppError("BAD_REQUEST", payload?.message || `hub-v2 request failed (${response.status})`, {
+                status: response.status,
+                response: payload,
+            });
+        }
+
+        copyRawResponseHeaders(response, reply);
+        const body = response.body;
+        if (!body) {
+            return reply.status(response.status).send();
+        }
+        return reply.status(response.status).send(Readable.fromWeb(body as any));
+    });
+
     fastify.post("/request", async (req) => {
         const body = (req.body ?? {}) as HubTokenRequestBody;
         const path = normalizeNonEmptyString(body.path, "path");
+        assertPathProjectSegmentNotLocalProjectId(path, body.projectId);
         const method = (body.method ?? "GET").toUpperCase() as HubHttpMethod;
         const tokenType: HubTokenType = body.tokenType === "personal" ? "personal" : "project";
 
@@ -134,6 +161,25 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
             projectKey: resolvedProject.projectKey ?? null,
         };
     });
+}
+
+function copyRawResponseHeaders(response: Response, reply: FastifyReply) {
+    const passthroughHeaders = [
+        "content-type",
+        "content-disposition",
+        "content-length",
+        "cache-control",
+        "etag",
+        "last-modified",
+    ];
+
+    for (const key of passthroughHeaders) {
+        const value = response.headers.get(key);
+        if (!value) {
+            continue;
+        }
+        reply.header(key, value);
+    }
 }
 
 async function requestByProjectTokenClient(
@@ -206,11 +252,61 @@ async function requestHubApi(
     return payload;
 }
 
+async function requestHubApiRaw(
+    baseUrl: string,
+    apiPrefix: "/api/token" | "/api/personal",
+    token: string,
+    method: HubHttpMethod,
+    path: string,
+    query?: Record<string, string | number | boolean | undefined | null>,
+    headers?: Record<string, string>
+) {
+    const root = baseUrl.replace(/\/+$/, "");
+    const url = new URL(`${root}${apiPrefix}${path}`);
+    for (const [key, value] of Object.entries(query ?? {})) {
+        if (value === undefined || value === null || value === "") {
+            continue;
+        }
+        url.searchParams.set(key, String(value));
+    }
+
+    const requestHeaders: Record<string, string> = {
+        authorization: `Bearer ${token}`,
+        ...(headers ?? {}),
+    };
+
+    return fetch(url.toString(), {
+        method,
+        headers: requestHeaders,
+    });
+}
+
 async function parseJson(response: Response): Promise<any> {
     try {
         return await response.json();
     } catch {
         return null;
+    }
+}
+
+function assertPathProjectSegmentNotLocalProjectId(path: string, projectId?: string): void {
+    const localProjectId = projectId?.trim();
+    if (!localProjectId) {
+        return;
+    }
+
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const matched = normalizedPath.match(/^\/projects\/([^\/]+)(?:\/|$)/i);
+    if (!matched) {
+        return;
+    }
+
+    const projectSegment = (matched[1] ?? "").trim();
+    if (projectSegment && projectSegment === localProjectId) {
+        throw new AppError(
+            "BAD_REQUEST",
+            "path must use projectKey (or business relative path), not local projectId"
+        );
     }
 }
 

@@ -1,8 +1,13 @@
 import type { FastifyInstance } from "fastify";
+import { createReadStream, existsSync } from "node:fs";
+import path from "node:path";
 import { requireTokenAuth } from "../../shared/auth/require-token-auth";
+import { AppError } from "../../shared/errors/app-error";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { ok } from "../../shared/http/response";
 import {
   feedbackIdParamSchema,
+  issueAttachmentRawParamSchema,
   issueIdParamSchema,
   projectParamSchema,
   rdItemIdParamSchema,
@@ -51,6 +56,37 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     return ok(await app.container.apiTokenQuery.listIssueAttachments(params.projectKey, params.issueId, ctx));
   });
 
+  app.get("/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw", async (request, reply) => {
+    const ctx = requireTokenAuth(request, "issues:read");
+    const params = issueAttachmentRawParamSchema.parse(request.params);
+    const attachments = await app.container.apiTokenQuery.listIssueAttachments(params.projectKey, params.issueId, ctx);
+    const hit = attachments.items.find((item) => item.id === params.attachmentId.trim());
+    if (!hit) {
+      throw new AppError(ERROR_CODES.ISSUE_ATTACHMENT_NOT_FOUND, "attachment not found", 404);
+    }
+
+    const filePath = resolveUploadFilePath(hit.upload.storagePath, hit.upload.fileName, app.config.uploadDir);
+    if (hit.upload.status !== "active" || !filePath) {
+      throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
+    }
+
+    reply.header("Content-Type", hit.upload.mimeType || "application/octet-stream");
+    reply.header("Content-Disposition", `inline; filename="${encodeURIComponent(hit.upload.fileName)}"`);
+    return reply.send(createReadStream(filePath));
+  });
+
+  app.get("/projects/:projectKey/members", async (request) => {
+    const ctx = requireTokenAuth(request, "issues:read");
+    const params = projectParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listProjectMembers(params.projectKey, ctx));
+  });
+
+  app.get("/projects/:projectKey/rd-stages", async (request) => {
+    const ctx = requireTokenAuth(request, "rd:read");
+    const params = projectParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listRdStages(params.projectKey, ctx));
+  });
+
   app.get("/projects/:projectKey/rd-items", async (request) => {
     const ctx = requireTokenAuth(request, "rd:read");
     const params = projectParamSchema.parse(request.params);
@@ -82,4 +118,22 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     const params = feedbackIdParamSchema.parse(request.params);
     return ok(await app.container.apiTokenQuery.getFeedbackById(params.projectKey, params.feedbackId, ctx));
   });
+}
+
+function resolveUploadFilePath(storagePath: string, fileName: string, uploadDir: string): string | null {
+  if (storagePath && existsSync(storagePath)) {
+    return storagePath;
+  }
+
+  const byFileName = path.resolve(uploadDir, fileName);
+  if (existsSync(byFileName)) {
+    return byFileName;
+  }
+
+  const byBasename = path.resolve(uploadDir, path.basename(storagePath || fileName));
+  if (existsSync(byBasename)) {
+    return byBasename;
+  }
+
+  return null;
 }

@@ -13,10 +13,12 @@ import type {
   TokenIssueListResult,
   TokenIssueLogsResult,
   TokenIssueParticipantsResult,
+  TokenProjectMembersResult,
   TokenRdDetail,
   TokenRdListQuery,
   TokenRdListResult,
   TokenRdLogsResult,
+  TokenRdStagesResult,
   VerifyApiTokenResult
 } from "./api-token.types";
 
@@ -34,6 +36,8 @@ export interface ApiTokenQueryContract {
   listIssueComments(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueCommentsResult>;
   listIssueParticipants(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueParticipantsResult>;
   listIssueAttachments(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueAttachmentsResult>;
+  listProjectMembers(projectKey: string, ctx: RequestContext): Promise<TokenProjectMembersResult>;
+  listRdStages(projectKey: string, ctx: RequestContext): Promise<TokenRdStagesResult>;
   listRdItems(projectKey: string, query: TokenRdListQuery, ctx: RequestContext): Promise<TokenRdListResult>;
   getRdItemById(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdDetail>;
   listRdLogs(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdLogsResult>;

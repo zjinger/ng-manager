@@ -33,6 +33,12 @@ export const issueIdParamSchema = z.object({
   issueId: z.string().trim().min(1)
 });
 
+export const issueAttachmentRawParamSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80),
+  issueId: z.string().trim().min(1),
+  attachmentId: z.string().trim().min(1)
+});
+
 export const rdItemIdParamSchema = z.object({
   projectKey: z.string().trim().min(1).max(80),
   itemId: z.string().trim().min(1)

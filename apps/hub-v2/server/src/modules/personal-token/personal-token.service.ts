@@ -127,8 +127,12 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       return null;
     }
 
-    this.repo.touchLastUsed(entity.id, nowIso());
     const owner = this.userRepo.findById(entity.ownerUserId);
+    if (!owner || owner.status !== "active") {
+      return null;
+    }
+
+    this.repo.touchLastUsed(entity.id, nowIso());
     return {
       tokenId: entity.id,
       ownerUserId: entity.ownerUserId,

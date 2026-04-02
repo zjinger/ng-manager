@@ -5,10 +5,12 @@ import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { FeedbackQueryContract } from "../feedback/feedback.contract";
+import { AuthRepo } from "../auth/auth.repo";
 import type { IssueQueryContract } from "../issue/issue.contract";
 import type { IssueCommentQueryContract } from "../issue/comment/issue-comment.contract";
 import type { IssueParticipantQueryContract } from "../issue/participant/issue-participant.contract";
 import type { IssueAttachmentQueryContract } from "../issue/attachment/issue-attachment.contract";
+import type { ProjectQueryContract } from "../project/project.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import { ProjectRepo } from "../project/project.repo";
 import type { RdQueryContract } from "../rd/rd.contract";
@@ -29,10 +31,12 @@ import type {
   TokenIssueListResult,
   TokenIssueLogsResult,
   TokenIssueParticipantsResult,
+  TokenProjectMembersResult,
   TokenRdDetail,
   TokenRdListQuery,
   TokenRdListResult,
   TokenRdLogsResult,
+  TokenRdStagesResult,
   VerifyApiTokenResult
 } from "./api-token.types";
 
@@ -42,12 +46,14 @@ const TOKEN_PREFIX_LENGTH = 16;
 export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryContract {
   constructor(
     private readonly repo: ApiTokenRepo,
+    private readonly authRepo: AuthRepo,
     private readonly projectRepo: ProjectRepo,
     private readonly projectAccess: ProjectAccessContract,
     private readonly issueQuery: IssueQueryContract,
     private readonly issueCommentQuery: IssueCommentQueryContract,
     private readonly issueParticipantQuery: IssueParticipantQueryContract,
     private readonly issueAttachmentQuery: IssueAttachmentQueryContract,
+    private readonly projectQuery: ProjectQueryContract,
     private readonly rdQuery: RdQueryContract,
     private readonly feedbackQuery: FeedbackQueryContract
   ) {}
@@ -150,6 +156,12 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     if (entity.tokenHash !== expectedHash) {
       return null;
     }
+
+    const owner = this.authRepo.findById(entity.ownerUserId);
+    if (!owner || owner.status !== "active") {
+      return null;
+    }
+
     this.repo.touchLastUsed(entity.id, nowIso());
 
     return {
@@ -216,6 +228,16 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
       throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
     }
     return { items: await this.issueAttachmentQuery.list(issueId, ctx) };
+  }
+
+  async listProjectMembers(projectKey: string, ctx: RequestContext): Promise<TokenProjectMembersResult> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    return { items: await this.projectQuery.listMembers(project.id, ctx) };
+  }
+
+  async listRdStages(projectKey: string, ctx: RequestContext): Promise<TokenRdStagesResult> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    return { items: await this.rdQuery.listStages({ projectId: project.id }, ctx) };
   }
 
   async listRdItems(projectKey: string, query: TokenRdListQuery, ctx: RequestContext): Promise<TokenRdListResult> {

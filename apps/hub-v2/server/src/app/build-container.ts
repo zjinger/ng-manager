@@ -130,7 +130,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const userService = new UserService(userRepo, authRepo);
   const projectRepo = new ProjectRepo(db);
   const projectAccess = new ProjectAccessService(projectRepo);
-  const projectService = new ProjectService(projectRepo, userRepo, projectAccess);
+  const projectService = new ProjectService(projectRepo, userRepo, projectAccess, eventBus);
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
   const personalTokenRepo = new PersonalTokenRepo(db);
@@ -177,12 +177,14 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const apiTokenRepo = new ApiTokenRepo(db);
   const apiTokenService = new ApiTokenService(
     apiTokenRepo,
+    authRepo,
     projectRepo,
     projectAccess,
     issueService,
     issueCommentService,
     issueParticipantService,
     issueAttachmentService,
+    projectService,
     rdService,
     feedbackService
   );

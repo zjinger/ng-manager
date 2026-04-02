@@ -1,6 +1,6 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-03-27
+最后更新：2026-04-02
 
 ## 1. 背景与目标
 
@@ -23,9 +23,16 @@
 
 职责如下：
 
-- webapp 只传 `projectId` 与业务路径
-- packages/server 读取项目配置并补齐 `projectKey` 与鉴权信息
+- webapp 传 `projectId` 与业务路径（业务相对路径）
+- packages/server 基于 `projectId` 读取项目配置，解析 `projectKey` 与鉴权信息
 - hub-v2 负责 scope 校验、业务权限校验、状态机校验、审计落库
+
+映射关系：
+
+- webapp 本地项目：`projectId`
+- 项目配置：`projectId -> NGM_HUB_V2_PROJECT_KEY`
+- hub-v2 路由：`/api/token/projects/:projectKey/...`
+- hub-v2 内部：`projectKey -> hub-v2 projectId`（服务端解析）
 
 ---
 
@@ -57,11 +64,14 @@
 - `NGM_HUB_V2_BASE_URL`
 - `NGM_HUB_V2_PROJECT_KEY`
 - `NGM_HUB_V2_TOKEN`
+- `NGM_HUB_V2_PERSONAL_TOKEN`
 
 约束：
 
 - `projectKey` 按配置原值使用，仅做空白处理
-- 前端不拼接 `projectKey`，由 server 侧补齐
+- `webapp -> packages/server` 推荐统一传业务相对路径（如 `/issues`、`/rd-items`）
+- `packages/server` 负责将相对路径补齐为 `/projects/:projectKey/...` 后再转发到 hub-v2
+- 禁止在 `path` 中传本地 `projectId`（例如 `/projects/proj_xxx/...`）
 
 ---
 
@@ -85,6 +95,11 @@
 }
 ```
 
+说明：
+
+- webapp 推荐统一传业务相对路径（如 `/issues`、`/issues/:issueId/logs`、`/rd-items`）
+- packages/server 会基于 `projectId` 自动补齐到 `/projects/:projectKey/...` 后转发
+
 ---
 
 ## 5.2 读取接口
@@ -97,9 +112,12 @@ Issue：
 - `GET /api/token/projects/:projectKey/issues/:issueId/comments`
 - `GET /api/token/projects/:projectKey/issues/:issueId/participants`
 - `GET /api/token/projects/:projectKey/issues/:issueId/attachments`
+- `GET /api/token/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw`（附件展示）
+- `GET /api/token/projects/:projectKey/members`（用于评论 @ 成员候选）
 
 RD：
 
+- `GET /api/token/projects/:projectKey/rd-stages`（研发阶段字典）
 - `GET /api/token/projects/:projectKey/rd-items`
 - `GET /api/token/projects/:projectKey/rd-items/:itemId`
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/logs`
@@ -155,12 +173,13 @@ RD：
 
 | 模块 | 操作 | Scope |
 |---|---|---|
-| Issue | 列表与详情 | `issue:read` |
+| Issue | 列表与详情 | `issues:read` |
 | Issue | 评论 | `issue:comment:write` |
 | Issue | 状态流转 | `issue:transition:write` |
 | Issue | 指派与认领 | `issue:assign:write` |
 | Issue | 协作人管理 | `issue:participant:write` |
 | RD | 列表与详情 | `rd:read` |
+| Feedback | 列表与详情 | `feedbacks:read` |
 | RD | 状态流转与进度 | `rd:transition:write` |
 | RD | 编辑基础信息 | `rd:edit:write` |
 | RD | 删除 | `rd:delete:write` |
@@ -177,6 +196,11 @@ RD：
 
 - Issue 参照 [11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix)
 - RD 参照 [10 RD 权限矩阵](/hub-v2/10-rd-permission-matrix)
+
+安全补充（Token 鉴权阶段）：
+
+- Project Token 与 Personal Token 均校验持有者状态，持有者非 `active` 时拒绝通过鉴权
+- 对 `api/token` 与 `api/personal` 请求启用 token 级限流，超限返回 `429 TOKEN_RATE_LIMITED`
 
 ---
 
@@ -270,7 +294,7 @@ Personal Token 表：`personal_api_tokens`
 - Project Token 仅读，Personal Token 负责写
 - Issue 与 RD 写操作可定位到操作者身份
 - Scope 不匹配或角色不匹配返回 `403`
-- webapp 不承担 `projectKey` 拼接与 token 鉴权细节
+- webapp 只传 `projectId` + 业务相对路径，server 负责 `projectKey` 解析、token 鉴权与转发细节
 
 ---
 

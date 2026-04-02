@@ -4,6 +4,8 @@ import type { FeedbackEntity, FeedbackListResult, ListFeedbacksQuery } from "../
 import type { IssueCommentEntity } from "../issue/comment/issue-comment.types";
 import type { IssueParticipantEntity } from "../issue/participant/issue-participant.types";
 import type { IssueAttachmentEntity } from "../issue/attachment/issue-attachment.types";
+import type { ProjectMemberEntity } from "../project/project.types";
+import type { RdStageEntity } from "../rd/rd.types";
 
 export type ApiTokenScope = "issues:read" | "rd:read" | "feedbacks:read";
 export type ApiTokenStatus = "active" | "revoked";
@@ -55,8 +57,10 @@ export type TokenIssueLogsResult = { items: IssueLogEntity[] };
 export type TokenIssueCommentsResult = { items: IssueCommentEntity[] };
 export type TokenIssueParticipantsResult = { items: IssueParticipantEntity[] };
 export type TokenIssueAttachmentsResult = { items: IssueAttachmentEntity[] };
+export type TokenProjectMembersResult = { items: ProjectMemberEntity[] };
 export type TokenRdListResult = RdItemListResult;
 export type TokenRdDetail = RdItemEntity;
+export type TokenRdStagesResult = { items: RdStageEntity[] };
 export type TokenRdLogsResult = { items: RdLogEntity[] };
 export type TokenFeedbackListResult = FeedbackListResult;
 export type TokenFeedbackDetail = FeedbackEntity;
