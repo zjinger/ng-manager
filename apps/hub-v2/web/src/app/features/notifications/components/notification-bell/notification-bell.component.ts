@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
@@ -20,6 +20,7 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
         nzShape="circle"
         nz-dropdown
         [nzDropdownMenu]="notificationMenu"
+        [nzVisible]="menuVisible()"
         nzTrigger="click"
         nzPlacement="bottomRight"
         (nzVisibleChange)="onVisibleChange($event)"
@@ -29,7 +30,11 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
     </nz-badge>
 
     <nz-dropdown-menu #notificationMenu="nzDropdownMenu">
-      <app-notification-dropdown [items]="dropdownItems()" [totalCount]="store.items().length" />
+      <app-notification-dropdown
+        [items]="dropdownItems()"
+        [totalCount]="store.items().length"
+        (closeRequested)="closeMenu()"
+      />
     </nz-dropdown-menu>
   `,
   styles: [
@@ -46,12 +51,18 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
 })
 export class NotificationBellComponent {
   readonly store = inject(NotificationStore);
+  readonly menuVisible = signal(false);
   readonly badgeCount = () => this.store.unreadCount();
   readonly dropdownItems = () => this.store.items().slice(0, 20);
 
   onVisibleChange(visible: boolean): void {
+    this.menuVisible.set(visible);
     if (visible) {
       this.store.updateQuery({ limit: 50, page: undefined, pageSize: undefined });
     }
+  }
+
+  closeMenu(): void {
+    this.menuVisible.set(false);
   }
 }

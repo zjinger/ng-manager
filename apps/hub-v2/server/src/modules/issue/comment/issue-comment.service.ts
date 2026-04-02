@@ -51,6 +51,9 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
         reporterId: issue.reporterId,
         verifierId: issue.verifierId,
         authorId: entity.authorId,
+        authorName: entity.authorName,
+        // Keep a concise comment preview for inbox notification text.
+        commentPreview: this.toCommentPreview(entity.content),
         mentionedUserIds: input.mentions ?? []
       }
     });
@@ -90,5 +93,14 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
       metaJson: JSON.stringify({ kind: "comment" }),
       createdAt: nowIso()
     };
+  }
+
+  private toCommentPreview(content: string): string {
+    const normalized = content.replace(/\s+/g, " ").trim();
+    if (!normalized) {
+      return "";
+    }
+    const maxLen = 80;
+    return normalized.length > maxLen ? `${normalized.slice(0, maxLen - 3)}...` : normalized;
   }
 }

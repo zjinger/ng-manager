@@ -282,7 +282,7 @@ import type {
                   [ngModel]="tokenScopesDraft()"
                   (ngModelChange)="tokenScopesDraft.set($event)"
                 >
-                  <nz-option nzLabel="Issue 读取" nzValue="issues:read"></nz-option>
+                  <nz-option nzLabel="测试单读取" nzValue="issues:read"></nz-option>
                   <nz-option nzLabel="研发项读取" nzValue="rd:read"></nz-option>
                   <nz-option nzLabel="反馈读取" nzValue="feedbacks:read"></nz-option>
                 </nz-select>

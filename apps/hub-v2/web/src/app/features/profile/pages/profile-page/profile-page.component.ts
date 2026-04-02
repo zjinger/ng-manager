@@ -149,16 +149,15 @@ export class ProfilePageComponent {
   ]);
 
   readonly eventPrefs = signal<ProfileNotificationSetting[]>([
-    { id: 'issue_assigned', title: '测试单指派给我', description: '测试单成为你的待办时通知', enabled: true, icon: 'exclamation' },
-    { id: 'issue_participant', title: '测试单加入协作', description: '被添加为协作人时通知', enabled: true, icon: 'plus' },
-    { id: 'issue_status_changed', title: '测试单状态变化', description: '你提报/负责/协作的测试单状态变化时通知', enabled: true, icon: 'reload' },
-    { id: 'issue_commented', title: '测试单评论与@提及', description: '测试单收到新评论或被 @ 时通知', enabled: true, icon: 'edit' },
-    { id: 'rd_assigned', title: '研发项指派给我', description: '研发项分配到你时通知', enabled: true, icon: 'flag' },
-    { id: 'rd_status_changed', title: '研发项状态变化', description: '你参与的研发项进度或状态变化时通知', enabled: true, icon: 'appstore' },
-    { id: 'rd_commented', title: '研发项评论与@提及', description: '研发项收到新评论或被 @ 时通知', enabled: true, icon: 'edit' },
+    { id: 'issue_todo', title: '测试单待办', description: '测试单分配或待验证时通知', enabled: true, icon: 'exclamation' },
+    { id: 'issue_mentioned', title: '测试单评论@我', description: '评论中被 @ 时通知', enabled: true, icon: 'message' },
+    { id: 'issue_activity', title: '测试单动态', description: '与你相关的测试单关键状态变化时通知', enabled: true, icon: 'reload' },
+    { id: 'rd_todo', title: '研发项待办', description: '研发项分配到你或待你验收时通知', enabled: true, icon: 'flag' },
+    { id: 'rd_activity', title: '研发项动态', description: '你参与的研发项进度变化时通知', enabled: true, icon: 'appstore' },
     { id: 'announcement_published', title: '公告发布', description: '项目或全局公告发布时通知', enabled: true, icon: 'notification' },
+    { id: 'document_published', title: '文档发布', description: '项目文档发布时通知', enabled: true, icon: 'file-text' },
     { id: 'release_published', title: '版本发布', description: '项目版本发布时通知', enabled: true, icon: 'notification' },
-    { id: 'project_member_changed', title: '项目成员变更', description: '你所在项目成员变更时通知', enabled: false, icon: 'team' },
+    { id: 'project_member_changed', title: '项目成员变更', description: '你被加入、移出项目或角色变更时通知', enabled: true, icon: 'team' },
   ]);
 
   readonly initials = computed(() => {
@@ -175,7 +174,7 @@ export class ProfilePageComponent {
   ]);
 
   readonly heroStats = computed(() => [
-    { label: '已创建 Issue', value: this.authStore.currentUser()?.role === 'admin' ? 128 : 36 },
+    { label: '已创建测试单', value: this.authStore.currentUser()?.role === 'admin' ? 128 : 36 },
     { label: '研发项', value: this.authStore.currentUser()?.role === 'admin' ? 36 : 12 },
     { label: '项目', value: this.authStore.currentUser()?.role === 'admin' ? 12 : 4 },
   ]);

@@ -19,6 +19,16 @@ export type WsServerMessage =
         notification: {
           id: string;
           kind: "todo" | "activity";
+          category:
+            | "issue_todo"
+            | "issue_mention"
+            | "issue_activity"
+            | "rd_todo"
+            | "rd_activity"
+            | "announcement"
+            | "document"
+            | "release"
+            | "project_member";
           unread: boolean;
           sourceLabel: string;
           title: string;

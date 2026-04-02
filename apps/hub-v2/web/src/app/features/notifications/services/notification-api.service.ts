@@ -6,6 +6,7 @@ import { ApiClientService } from '@core/http';
 export interface NotificationListQuery {
   [key: string]: string | number | boolean | null | undefined;
   kind?: NotificationApiItem['kind'] | '';
+  category?: NotificationApiItem['category'] | '';
   projectId?: string;
   keyword?: string;
   page?: number;

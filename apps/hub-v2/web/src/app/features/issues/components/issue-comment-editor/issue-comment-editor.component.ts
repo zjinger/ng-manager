@@ -18,7 +18,7 @@ import type { IssueCommentEntity } from '../../models/issue.model';
   imports: [CommonModule, FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzMentionModule, PanelCardComponent],
   template: `
     <app-panel-card title="评论/备注" >
-      @if (comments().length > 0) {
+      <!-- @if (comments().length > 0) {
         <div class="comment-list">
           @for (item of comments(); track item.id) {
             <div class="comment-item">
@@ -44,7 +44,7 @@ import type { IssueCommentEntity } from '../../models/issue.model';
         </div>
       } @else {
         <div class="comment-empty">还没有讨论</div>
-      }
+      } -->
 
       <div class="composer">
         <div class="composer__avatar">{{ currentUserInitial() }}</div>

@@ -7,6 +7,7 @@ export interface ActivityTimelineItem {
   icon?: string | null;
   actor?: string | null;
   action: string;
+  actionSegments?: Array<{ text: string; mention?: boolean }>;
   time?: string | null;
 }
 
@@ -28,7 +29,19 @@ export interface ActivityTimelineItem {
               @if (item.actor) {
                 <span class="timeline-log__user">{{ item.actor }}</span>
               }
-              <span class="timeline-log__action">{{ item.action }}</span>
+              <span class="timeline-log__action">
+                @if (item.actionSegments?.length) {
+                  @for (segment of item.actionSegments!; track $index) {
+                    @if (segment.mention) {
+                      <span class="timeline-log__mention">{{ segment.text }}</span>
+                    } @else {
+                      <span>{{ segment.text }}</span>
+                    }
+                  }
+                } @else {
+                  {{ item.action }}
+                }
+              </span>
               @if (item.time) {
                 <span class="timeline-log__time">{{ item.time }}</span>
               }
@@ -69,6 +82,10 @@ export interface ActivityTimelineItem {
 
       .timeline-log__action {
         color: var(--text-secondary);
+      }
+      .timeline-log__mention {
+        color: var(--primary-700);
+        font-weight: 600;
       }
 
       .timeline-log__time {

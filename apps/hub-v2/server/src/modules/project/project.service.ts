@@ -6,6 +6,7 @@ import { pinyin } from "pinyin-pro";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
+import type { EventBus } from "../../shared/event/event-bus";
 import type { ProjectCommandContract, ProjectQueryContract } from "./project.contract";
 import type { ProjectAccessContract } from "./project-access.contract";
 import { UserRepo } from "../user/user.repo";
@@ -36,7 +37,8 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   constructor(
     private readonly repo: ProjectRepo,
     private readonly userRepo: UserRepo,
-    private readonly access: ProjectAccessContract
+    private readonly access: ProjectAccessContract,
+    private readonly eventBus: EventBus
   ) {}
 
   async create(input: CreateProjectInput, ctx: RequestContext): Promise<ProjectEntity> {
@@ -204,6 +206,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     };
 
     this.repo.createMember(member);
+    await this.emitProjectMemberEvent(project, "member.added", member, ctx);
     return member;
   }
 
@@ -245,6 +248,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     if (!next) {
       throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, `project member not found: ${memberId}`, 404);
     }
+    await this.emitProjectMemberEvent(project, "member.updated", next, ctx, current);
     return next;
   }
 
@@ -266,6 +270,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     if (!this.repo.deleteMember(projectId, memberId)) {
       throw new AppError(ERROR_CODES.PROJECT_MEMBER_DELETE_FAILED, "failed to remove project member", 500);
     }
+    await this.emitProjectMemberEvent(project, "member.removed", member, ctx);
   }
 
   async listModules(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]> {
@@ -654,5 +659,31 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       throw new AppError(ERROR_CODES.PROJECT_CONFLICT, "resource already exists", 409);
     }
     throw error;
+  }
+
+  private async emitProjectMemberEvent(
+    project: ProjectEntity,
+    action: "member.added" | "member.updated" | "member.removed",
+    target: ProjectMemberEntity,
+    ctx: RequestContext,
+    previous?: ProjectMemberEntity
+  ): Promise<void> {
+    await this.eventBus.emit({
+      type: `project.${action}`,
+      scope: "project",
+      projectId: project.id,
+      entityType: "project",
+      entityId: project.id,
+      action,
+      actorId: ctx.userId?.trim() || ctx.accountId,
+      occurredAt: nowIso(),
+      payload: {
+        projectName: project.name,
+        targetUserId: target.userId,
+        targetDisplayName: target.displayName,
+        roleCode: target.roleCode,
+        prevRoleCode: previous?.roleCode
+      }
+    });
   }
 }

@@ -13,21 +13,27 @@ import type { IssueLogEntity } from '../../models/issue.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueActivityTimelineComponent {
+  private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
+
   readonly logs = input.required<IssueLogEntity[]>();
   readonly timelineItems = computed(() =>
-    this.logs().map((item) => ({
-      id: item.id,
-      icon: this.iconType(item),
-      actor: item.operatorName || '系统',
-      action: this.logText(item),
-      time: new Intl.DateTimeFormat('zh-CN', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(new Date(item.createdAt)),
-    })),
+    this.logs().map((item) => {
+      const action = this.logText(item);
+      return {
+        id: item.id,
+        icon: this.iconType(item),
+        actor: item.operatorName || '系统',
+        action,
+        actionSegments: this.highlightMentionSegments(action),
+        time: new Intl.DateTimeFormat('zh-CN', {
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(new Date(item.createdAt)),
+      };
+    }),
   );
 
   private iconType(item: IssueLogEntity): string {
@@ -58,6 +64,21 @@ export class IssueActivityTimelineComponent {
 
   private logText(item: IssueLogEntity): string {
     return item.summary || item.actionType;
+  }
+
+  // Split log text into plain and @mention segments for timeline highlighting.
+  private highlightMentionSegments(text: string): Array<{ text: string; mention?: boolean }> | undefined {
+    if (!text || !text.includes('@')) {
+      return undefined;
+    }
+    const parts = text.split(this.mentionPattern).filter((part) => part.length > 0);
+    if (parts.length <= 1) {
+      return undefined;
+    }
+    return parts.map((part) => ({
+      text: part,
+      mention: part.startsWith('@'),
+    }));
   }
 
   private readMetaKind(metaJson: string | null): string | null {

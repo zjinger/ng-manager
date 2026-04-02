@@ -42,12 +42,19 @@ import { NotificationStore } from '../../store/notification.store';
         <nz-select
           nzPlaceHolder="全部类型"
           class="toolbar-select notifications-page__select"
-          [ngModel]="store.query().kind || ''"
-          (ngModelChange)="onFilterChange({ kind: $event || '' })"
+          [ngModel]="store.query().category || ''"
+          (ngModelChange)="onFilterChange({ category: $event || '' })"
         >
           <nz-option nzLabel="全部类型" nzValue=""></nz-option>
-          <nz-option nzLabel="待办" nzValue="todo"></nz-option>
-          <nz-option nzLabel="动态" nzValue="activity"></nz-option>
+          <nz-option nzLabel="测试单待办" nzValue="issue_todo"></nz-option>
+          <nz-option nzLabel="评论@我" nzValue="issue_mention"></nz-option>
+          <nz-option nzLabel="测试单动态" nzValue="issue_activity"></nz-option>
+          <nz-option nzLabel="研发项待办" nzValue="rd_todo"></nz-option>
+          <nz-option nzLabel="研发项动态" nzValue="rd_activity"></nz-option>
+          <nz-option nzLabel="公告" nzValue="announcement"></nz-option>
+          <nz-option nzLabel="文档" nzValue="document"></nz-option>
+          <nz-option nzLabel="版本" nzValue="release"></nz-option>
+          <nz-option nzLabel="成员变更" nzValue="project_member"></nz-option>
         </nz-select>
 
         <nz-select

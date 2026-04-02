@@ -140,14 +140,14 @@ export class IssueDetailStore {
     forkJoin({
       issue: this.issueApi.getById(issueId),
       logs: this.issueApi.listLogs(issueId),
-      comments: this.issueApi.listComments(issueId),
+      // comments: this.issueApi.listComments(issueId),
       participants: this.issueApi.listParticipants(issueId),
       attachments: this.issueApi.listAttachments(issueId),
     }).subscribe({
-      next: ({ issue, logs, comments, participants, attachments }) => {
+      next: ({ issue, logs,  participants, attachments }) => {
         this.issueState.set(issue);
         this.logsState.set(logs.items);
-        this.commentsState.set(comments.items);
+        // this.commentsState.set(comments.items);
         this.participantsState.set(participants.items);
         this.attachmentsState.set(attachments.items);
         forkJoin({

@@ -9,6 +9,7 @@ import type {
 } from "./notification.contract";
 import { NotificationRepo } from "./notification.repo";
 import type {
+  NotificationCategory,
   NotificationIngestResult,
   ListNotificationsQuery,
   MarkNotificationReadsInput,
@@ -27,6 +28,22 @@ type NormalizedNotification = {
   sourceLabel: string;
   projectId: string | null;
   route: string;
+};
+
+const DEFAULT_CHANNEL_FLAGS: Record<string, boolean> = {
+  inbox: true
+};
+
+const DEFAULT_EVENT_FLAGS: Record<string, boolean> = {
+  issue_todo: true,
+  issue_mentioned: true,
+  issue_activity: true,
+  rd_todo: true,
+  rd_activity: true,
+  announcement_published: true,
+  document_published: true,
+  release_published: true,
+  project_member_changed: true
 };
 
 /**
@@ -101,9 +118,13 @@ export class NotificationService
     if (userIds.length === 0) {
       return { delivered: [] };
     }
+    const filteredUserIds = this.filterRecipientsByPreferences(userIds, normalized);
+    if (filteredUserIds.length === 0) {
+      return { delivered: [] };
+    }
 
     const delivered = this.repo.createMany(
-      userIds.map((userId) => ({
+      filteredUserIds.map((userId) => ({
         userId,
         kind: normalized.kind,
         entityType: normalized.entityType,
@@ -149,7 +170,7 @@ export class NotificationService
   }
 
   private isSupportedEntityType(entityType: DomainEvent["entityType"]): boolean {
-    return ["issue", "rd", "announcement", "document", "release"].includes(entityType);
+    return ["issue", "rd", "announcement", "document", "release", "project"].includes(entityType);
   }
 
   // 按实体/操作的接收人策略来控制通知量。
@@ -161,6 +182,15 @@ export class NotificationService
 
     if (event.entityType === "rd") {
       return this.resolveRdRecipientUserIds(event, normalized.action);
+    }
+
+    if (event.entityType === "project") {
+      const payload = event.payload ?? {};
+      const actorIds = this.collectActorCandidateIds(event, payload);
+      return this.excludeActorIds(
+        this.collectUserIds(payload["targetUserId"], payload["affectedUserIds"], payload["userIds"]),
+        actorIds
+      );
     }
 
     if (event.entityType === "announcement" || event.entityType === "document" || event.entityType === "release") {
@@ -227,6 +257,9 @@ export class NotificationService
     if (event.entityType === "rd") {
       return this.normalizeRdEvent(event);
     }
+    if (event.entityType === "project") {
+      return this.normalizeProjectEvent(event);
+    }
     if (event.entityType === "announcement" || event.entityType === "document" || event.entityType === "release") {
       return this.normalizeContentEvent(event);
     }
@@ -236,7 +269,7 @@ export class NotificationService
   private normalizeIssueEvent(event: DomainEvent): NormalizedNotification | null {
     const payload = event.payload ?? {};
     const issueNo = this.pickString(payload["issueNo"]);
-    const title = this.pickString(payload["title"]) || `Issue ${issueNo || event.entityId}`;
+    const title = this.pickString(payload["title"]) || `测试单 ${issueNo || event.entityId}`;
     const action = this.normalizeIssueAction(event);
     if (!action) {
       return null;
@@ -249,8 +282,8 @@ export class NotificationService
       entityId: event.entityId,
       action,
       title,
-      description: `${issueNo || "Issue"} · ${this.issueActionLabel(action, kind)}`,
-      sourceLabel: kind === "todo" ? "Issue" : "测试单动态",
+      description: this.issueNotificationDescription(event, action, kind, issueNo),
+      sourceLabel: kind === "todo" ? "测试单" : "测试单动态",
       projectId: event.projectId ?? null,
       route: `/issues?detail=${event.entityId}`
     };
@@ -300,6 +333,35 @@ export class NotificationService
     };
   }
 
+  private normalizeProjectEvent(event: DomainEvent): NormalizedNotification | null {
+    if (!["member.added", "member.updated", "member.removed"].includes(event.action)) {
+      return null;
+    }
+    const payload = event.payload ?? {};
+    const projectName = this.pickString(payload["projectName"]) || "项目";
+    const targetName = this.pickString(payload["targetDisplayName"]) || this.pickString(payload["targetUserId"]) || "成员";
+    const roleCode = this.pickString(payload["roleCode"]);
+    const prevRoleCode = this.pickString(payload["prevRoleCode"]);
+    const actionLabel =
+      event.action === "member.added"
+        ? `已加入项目（角色：${this.projectRoleLabel(roleCode)}）`
+        : event.action === "member.updated"
+          ? `角色变更：${this.projectRoleLabel(prevRoleCode)} -> ${this.projectRoleLabel(roleCode)}`
+          : "已被移出项目";
+
+    return {
+      kind: "activity",
+      entityType: "project",
+      entityId: event.entityId,
+      action: event.action,
+      title: projectName,
+      description: `${targetName} · ${actionLabel}`,
+      sourceLabel: "成员变更",
+      projectId: event.projectId ?? null,
+      route: "/projects"
+    };
+  }
+
   private isIssueTodoAction(action: string): boolean {
     return action === "assign" || action === "claim" || action === "verify.pending";
   }
@@ -337,6 +399,25 @@ export class NotificationService
     );
   }
 
+  // Build issue notification description with comment preview for @ mention scenario.
+  private issueNotificationDescription(
+    event: DomainEvent,
+    action: string,
+    kind: NotificationKind,
+    issueNo: string
+  ): string {
+    if (action === "commented") {
+      const payload = event.payload ?? {};
+      const authorName = this.pickString(payload["authorName"]) || "有人";
+      const preview = this.pickString(payload["commentPreview"]);
+      if (preview) {
+        return `${issueNo || "测试单"} · ${authorName}: ${preview}`;
+      }
+      return `${issueNo || "测试单"} · ${authorName} 提到了你`;
+    }
+    return `${issueNo || "测试单"} · ${this.issueActionLabel(action, kind)}`;
+  }
+
   private rdActionLabel(action: string, kind: NotificationKind): string {
     if (kind === "todo") {
       if (action === "complete") {
@@ -363,12 +444,13 @@ export class NotificationService
 
   // Normalize issue actions into notification actions.
   // - resolve => verify.pending (todo for verifier flow)
-  // - start/updated/attachment/participant changes => no inbox notification
+  // - created/start/updated/attachment/participant changes => no inbox notification
   private normalizeIssueAction(event: DomainEvent): string | null {
     const action = event.action;
 
     if (
       [
+        "created",
         "start",
         "updated",
         "attachment.added",
@@ -406,13 +488,13 @@ export class NotificationService
     return action;
   }
 
-  // Issue recipients:
-  // - assign/claim -> assignee
-  // - resolve(verify.pending) -> reporter + verifier
-  // - verify/reopen -> assignee
-  // - commented -> only mentioned users
-  // - other status transitions -> reporter + assignee + verifier
-  // and always exclude actor/self when resolvable.
+  // 问题接收人：
+  // - assign/claim -> 被指派人
+  // - resolve(verify.pending) -> 报告人 + 验证人
+  // - verify/reopen -> 被指派人
+  // - commented -> 仅提及的用户
+  // - 其他状态转换 -> 报告人 + 被指派人 + 验证人
+  // 并在可解决时始终排除操作者/自己
   private resolveIssueRecipientUserIds(event: DomainEvent, action: string): string[] {
     const payload = event.payload ?? {};
     const actorIds = this.collectActorCandidateIds(event, payload);
@@ -431,7 +513,7 @@ export class NotificationService
     if (action === "commented") {
       return this.excludeActorIds(this.collectUserIds(payload["mentionedUserIds"]), actorIds);
     }
-    if (["created", "close"].includes(action)) {
+    if (action === "close") {
       return this.excludeActorIds(
         this.collectUserIds(payload["reporterId"], payload["assigneeId"], payload["verifierId"]),
         actorIds
@@ -496,6 +578,94 @@ export class NotificationService
 
   private collectActorCandidateIds(event: DomainEvent, payload: Record<string, unknown>): string[] {
     return this.collectUserIds(event.actorId, payload["authorId"], payload["creatorId"], payload["userId"]);
+  }
+
+  private filterRecipientsByPreferences(userIds: string[], normalized: NormalizedNotification): string[] {
+    const eventKey = this.mapToEventPreferenceKey(normalized);
+    if (!eventKey) {
+      return userIds;
+    }
+
+    const prefsByUser = this.repo.listNotificationPrefsByUserIds(userIds);
+    return userIds.filter((userId) => {
+      const prefs = prefsByUser.get(userId);
+      const inboxEnabled =
+        prefs?.channels?.["inbox"] ?? DEFAULT_CHANNEL_FLAGS["inbox"];
+      if (!inboxEnabled) {
+        return false;
+      }
+      return prefs?.events?.[eventKey] ?? DEFAULT_EVENT_FLAGS[eventKey] ?? true;
+    });
+  }
+
+  private mapToEventPreferenceKey(normalized: NormalizedNotification): keyof typeof DEFAULT_EVENT_FLAGS | null {
+    const category = this.toCategory(normalized);
+    if (category === "issue_todo") {
+      return "issue_todo";
+    }
+    if (category === "issue_mention") {
+      return "issue_mentioned";
+    }
+    if (category === "issue_activity") {
+      return "issue_activity";
+    }
+    if (category === "rd_todo") {
+      return "rd_todo";
+    }
+    if (category === "rd_activity") {
+      return "rd_activity";
+    }
+    if (category === "announcement") {
+      return "announcement_published";
+    }
+    if (category === "document") {
+      return "document_published";
+    }
+    if (category === "release") {
+      return "release_published";
+    }
+    if (category === "project_member") {
+      return "project_member_changed";
+    }
+    return null;
+  }
+
+  private toCategory(normalized: NormalizedNotification): NotificationCategory {
+    if (normalized.entityType === "issue") {
+      if (normalized.kind === "todo") {
+        return "issue_todo";
+      }
+      return normalized.action === "commented" ? "issue_mention" : "issue_activity";
+    }
+    if (normalized.entityType === "rd") {
+      return normalized.kind === "todo" ? "rd_todo" : "rd_activity";
+    }
+    if (
+      normalized.entityType === "announcement" ||
+      normalized.entityType === "document" ||
+      normalized.entityType === "release"
+    ) {
+      return normalized.entityType;
+    }
+    if (normalized.entityType === "project") {
+      return "project_member";
+    }
+    return "issue_activity";
+  }
+
+  private projectRoleLabel(roleCode: string): string {
+    return (
+      {
+        project_admin: "项目管理员",
+        member: "成员",
+        product: "产品",
+        ui: "UI",
+        frontend_dev: "前端",
+        backend_dev: "后端",
+        qa: "测试",
+        ops: "运维"
+      }[roleCode] || (roleCode || "成员")
+    );
   }
 
   private excludeActorIds(userIds: string[], actorIds: string[]): string[] {

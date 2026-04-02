@@ -297,13 +297,13 @@ export class ProfilePersonalTokenComponent {
   readonly expiresAt = signal<Date | null>(null);
 
   readonly scopeOptions: ScopeOption[] = [
-    { value: 'issue:comment:write', label: 'Issue 评论', desc: '创建评论与 @ 提及' },
-    { value: 'issue:transition:write', label: 'Issue 状态流转', desc: '开始、解决、验证、关闭等' },
-    { value: 'issue:assign:write', label: 'Issue 指派', desc: '指派/转派负责人' },
-    { value: 'issue:participant:write', label: 'Issue 协作人', desc: '添加或移除协作人' },
-    { value: 'rd:transition:write', label: 'RD 状态流转', desc: '开始、阻塞、恢复、完成' },
-    { value: 'rd:edit:write', label: 'RD 编辑', desc: '编辑标题、描述、计划时间等' },
-    { value: 'rd:delete:write', label: 'RD 删除', desc: '删除研发项' },
+    { value: 'issue:comment:write', label: '测试单评论', desc: '创建评论与 @ 提及' },
+    { value: 'issue:transition:write', label: '测试单状态流转', desc: '开始、解决、验证、关闭等' },
+    { value: 'issue:assign:write', label: '测试单指派', desc: '指派/转派负责人' },
+    { value: 'issue:participant:write', label: '测试单协作人', desc: '添加或移除协作人' },
+    { value: 'rd:transition:write', label: '研发项状态流转', desc: '开始、阻塞、恢复、完成' },
+    { value: 'rd:edit:write', label: '研发项编辑', desc: '编辑标题、描述、计划时间等' },
+    { value: 'rd:delete:write', label: '研发项删除', desc: '删除研发项' },
   ];
 
   constructor() {

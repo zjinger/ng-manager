@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { ProjectContextStore } from '@core/state';
@@ -17,7 +17,7 @@ import { NotificationStore } from '../../store/notification.store';
           <span>最新待办和动态</span>
         </div>
         <div class="notification-menu__header-side">
-          <a class="notification-menu__all" [routerLink]="['/notifications']">查看全部</a>
+          <a class="notification-menu__all" [routerLink]="['/notifications']" (click)="requestClose()">查看全部</a>
           <span class="notification-menu__count">{{ totalCount() ?? items().length }}</span>
         </div>
       </div>
@@ -29,28 +29,25 @@ import { NotificationStore } from '../../store/notification.store';
           @for (item of items(); track item.id) {
             <a
               class="notification-item"
-              [class.is-unread]="item.unread"
               [routerLink]="routeTarget(item).path"
               [queryParams]="routeTarget(item).query"
               (click)="onItemClick(item)"
             >
-              <span class="notification-item__dot" [class.is-activity]="item.kind === 'activity'"></span>
               <div class="notification-item__body">
                 <div class="notification-item__meta">
                   <span
                     class="notification-item__tag"
-                    [class.is-activity]="item.kind === 'activity'"
                 >
-                  {{ kindLabel(item.kind) }}
+                  {{ categoryLabel(item.category) }}
                 </span>
                   <span class="notification-item__project">{{ item.projectName }}</span>
                   <span class="notification-item__time-mobile">{{ formatRelativeTime(item.time) }}</span>
                 </div>
                 <div class="notification-item__title-line">
-                  <div class="notification-item__title">{{ item.title }}</div>
                   @if (item.unread) {
                     <span class="notification-item__unread-dot"></span>
                   }
+                  <div class="notification-item__title">{{ item.title }}</div>
                 </div>
                 <div class="notification-item__desc">{{ item.description }}</div>
               </div>
@@ -123,8 +120,8 @@ import { NotificationStore } from '../../store/notification.store';
       }
       .notification-item {
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
         padding: 14px 16px;
         text-decoration: none;
         color: inherit;
@@ -134,21 +131,7 @@ import { NotificationStore } from '../../store/notification.store';
       .notification-item:hover {
         background: var(--bg-subtle);
       }
-      .notification-item.is-unread {
-        background: linear-gradient(90deg, rgba(79, 70, 229, 0.08), transparent 72%);
-      }
-      .notification-item__dot {
-        width: 9px;
-        height: 9px;
-        margin-top: 7px;
-        border-radius: 999px;
-        background: var(--primary-600);
-      }
-      .notification-item__dot.is-activity {
-        background: var(--color-info);
-      }
       .notification-item__title {
-        margin-top: 6px;
         color: var(--text-primary);
         font-size: 13px;
         font-weight: 700;
@@ -161,8 +144,8 @@ import { NotificationStore } from '../../store/notification.store';
         gap: 8px;
       }
       .notification-item__unread-dot {
-        width: 7px;
-        height: 7px;
+        width: 5px;
+        height: 5px;
         border-radius: 999px;
         background: #ef4444;
         flex: 0 0 auto;
@@ -201,10 +184,6 @@ import { NotificationStore } from '../../store/notification.store';
         font-size: 11px;
         font-weight: 700;
       }
-      .notification-item__tag.is-activity {
-        background: rgba(14, 165, 233, 0.12);
-        color: var(--color-info);
-      }
       .notification-item__project {
         color: var(--text-muted);
         font-size: 11px;
@@ -216,7 +195,7 @@ import { NotificationStore } from '../../store/notification.store';
       }
       @media (max-width: 640px) {
         .notification-item {
-          grid-template-columns: auto minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1fr);
         }
         .notification-item__time {
           display: none;
@@ -234,6 +213,7 @@ export class NotificationDropdownComponent {
   private readonly notificationStore = inject(NotificationStore);
   readonly items = input<NotificationItem[]>([]);
   readonly totalCount = input<number | null>(null);
+  readonly closeRequested = output<void>();
 
   routeTarget(item: NotificationItem): { path: string[]; query?: Record<string, string> } {
     const route = item.route || '';
@@ -278,12 +258,19 @@ export class NotificationDropdownComponent {
     return null;
   }
 
-  kindLabel(kind: NotificationItem['kind']): string {
+  categoryLabel(category: NotificationItem['category']): string {
     return (
       {
-        todo: '待办',
-        activity: '动态',
-      }[kind] || '通知'
+        issue_todo: '测试单待办',
+        issue_mention: '@我的评论',
+        issue_activity: '测试单动态',
+        rd_todo: '研发项待办',
+        rd_activity: '研发项动态',
+        announcement: '公告',
+        document: '文档',
+        release: '版本',
+        project_member: '成员变更',
+      }[category] || '通知'
     );
   }
 
@@ -297,6 +284,11 @@ export class NotificationDropdownComponent {
   onItemClick(item: NotificationItem): void {
     this.syncProjectContext(item);
     this.notificationStore.markAsRead(item.id);
+    this.requestClose();
+  }
+
+  requestClose(): void {
+    this.closeRequested.emit();
   }
 
   formatRelativeTime(value: string): string {

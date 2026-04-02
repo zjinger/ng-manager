@@ -62,27 +62,27 @@ type EChartsInstance = import('echarts/core').ECharts;
       </div>
     } @else if (board(); as data) {
       <div class="overview-grid">
-        <app-stat-card label="未关闭 Issue" [value]="data.overview.openIssues" icon="bug" tone="blue" />
-        <app-stat-card label="待验证 Issue" [value]="data.overview.pendingVerifyIssues" icon="check-circle" tone="purple" />
+        <app-stat-card label="未关闭测试单" [value]="data.overview.openIssues" icon="bug" tone="blue" />
+        <app-stat-card label="待验证测试单" [value]="data.overview.pendingVerifyIssues" icon="check-circle" tone="purple" />
         <app-stat-card label="进行中研发项" [value]="data.overview.inProgressRdItems" icon="rocket" tone="green" />
         <app-stat-card label="近 7 天发布数" [value]="data.overview.recentReleaseCount" icon="notification" tone="orange" />
         <app-stat-card label="未处理反馈数" [value]="data.overview.unprocessedFeedbackCount" icon="message" tone="cyan" />
       </div>
 
       <div class="chart-grid">
-        <app-dashboard-panel title="Issue 新增/关闭趋势" icon="line-chart" [count]="data.trend.labels.length">
+        <app-dashboard-panel title="测试单新增/关闭趋势" icon="line-chart" [count]="data.trend.labels.length">
           <div class="chart-host" #issueTrendChart></div>
         </app-dashboard-panel>
 
-        <app-dashboard-panel title="RD 完成趋势" icon="area-chart" [count]="data.trend.labels.length">
+        <app-dashboard-panel title="研发项完成趋势" icon="area-chart" [count]="data.trend.labels.length">
           <div class="chart-host" #rdTrendChart></div>
         </app-dashboard-panel>
 
-        <app-dashboard-panel title="Issue 分布" icon="fund-projection-screen" [count]="distributionTotal(data.distribution.issueByStatus)">
+        <app-dashboard-panel title="测试单分布" icon="fund-projection-screen" [count]="distributionTotal(data.distribution.issueByStatus)">
           <div class="chart-host" #issueDistributionChart></div>
         </app-dashboard-panel>
 
-        <app-dashboard-panel title="RD 分布" icon="apartment" [count]="distributionTotal(data.distribution.rdByStatus)">
+        <app-dashboard-panel title="研发项分布" icon="apartment" [count]="distributionTotal(data.distribution.rdByStatus)">
           <div class="chart-host" #rdDistributionChart></div>
         </app-dashboard-panel>
       </div>

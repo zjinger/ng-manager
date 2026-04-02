@@ -20,7 +20,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         </div>
 
         <div class="detail-header__actions">
-          @if (canStart()) {
+          @if (canStart() && !canResolve()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="start.emit()">开始处理</button>
           }
           @if (canClaim() && !canAssign()) {

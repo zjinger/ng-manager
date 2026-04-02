@@ -14,16 +14,15 @@ const DEFAULT_CHANNELS: Record<string, boolean> = {
 };
 
 const DEFAULT_EVENTS: Record<string, boolean> = {
-  issue_assigned: true,
-  issue_participant: true,
-  issue_status_changed: true,
-  issue_commented: true,
-  rd_assigned: true,
-  rd_status_changed: true,
-  rd_commented: true,
+  issue_todo: true,
+  issue_mentioned: true,
+  issue_activity: true,
+  rd_todo: true,
+  rd_activity: true,
   announcement_published: true,
+  document_published: true,
   release_published: true,
-  project_member_changed: false
+  project_member_changed: true
 };
 
 const DEFAULT_PROJECT_SCOPE_MODE = "all_accessible" as const;

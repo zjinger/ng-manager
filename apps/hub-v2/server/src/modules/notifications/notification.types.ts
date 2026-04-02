@@ -1,8 +1,19 @@
 export type NotificationKind = "todo" | "activity";
+export type NotificationCategory =
+  | "issue_todo"
+  | "issue_mention"
+  | "issue_activity"
+  | "rd_todo"
+  | "rd_activity"
+  | "announcement"
+  | "document"
+  | "release"
+  | "project_member";
 
 export interface NotificationItem {
   id: string;
   kind: NotificationKind;
+  category: NotificationCategory;
   unread: boolean;
   sourceLabel: string;
   title: string;
@@ -15,6 +26,7 @@ export interface NotificationItem {
 
 export interface ListNotificationsQuery {
   kind?: NotificationKind;
+  category?: NotificationCategory;
   keyword?: string;
   projectId?: string;
   page?: number;

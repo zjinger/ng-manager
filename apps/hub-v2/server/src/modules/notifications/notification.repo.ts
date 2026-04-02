@@ -1,6 +1,12 @@
 import type Database from "better-sqlite3";
 import { genId } from "../../shared/utils/id";
-import type { IngestedNotification, ListNotificationsQuery, NotificationItem, NotificationListResult } from "./notification.types";
+import type {
+  IngestedNotification,
+  ListNotificationsQuery,
+  NotificationCategory,
+  NotificationItem,
+  NotificationListResult
+} from "./notification.types";
 
 const TODO_DEDUPE_WINDOW_MINUTES = 5;
 const ACTIVITY_DEDUPE_WINDOW_MINUTES = 10;
@@ -8,6 +14,8 @@ const ACTIVITY_DEDUPE_WINDOW_MINUTES = 10;
 type UserNotificationRow = {
   id: string;
   kind: "todo" | "activity";
+  entity_type: string;
+  action: string;
   title: string;
   description: string;
   source_label: string;
@@ -16,6 +24,17 @@ type UserNotificationRow = {
   route: string;
   unread: number;
   project_name: string | null;
+};
+
+type UserNotificationPrefsRow = {
+  user_id: string;
+  channels_json: string | null;
+  events_json: string | null;
+};
+
+export type UserNotificationPrefs = {
+  channels: Record<string, boolean>;
+  events: Record<string, boolean>;
 };
 
 export type CreateUserNotificationInput = {
@@ -99,6 +118,8 @@ export class NotificationRepo {
         SELECT
           n.id,
           n.kind,
+          n.entity_type,
+          n.action,
           n.title,
           n.description,
           n.source_label,
@@ -201,6 +222,11 @@ export class NotificationRepo {
       conditions.push("n.kind = ?");
       params.push(query.kind);
     }
+    if (query.category) {
+      const categoryFilter = this.buildCategoryFilter(query.category);
+      conditions.push(categoryFilter.clause);
+      params.push(...categoryFilter.params);
+    }
     if (query.projectId?.trim()) {
       conditions.push("n.project_id = ?");
       params.push(query.projectId.trim());
@@ -239,6 +265,8 @@ export class NotificationRepo {
           SELECT
             n.id,
             n.kind,
+            n.entity_type,
+            n.action,
             n.title,
             n.description,
             n.source_label,
@@ -326,10 +354,41 @@ export class NotificationRepo {
     return rows.map((row) => row.id).filter(Boolean);
   }
 
+  listNotificationPrefsByUserIds(userIds: string[]): Map<string, UserNotificationPrefs> {
+    const normalizedUserIds = Array.from(new Set(userIds.map((id) => id.trim()).filter(Boolean)));
+    if (normalizedUserIds.length === 0) {
+      return new Map();
+    }
+    const placeholders = normalizedUserIds.map(() => "?").join(", ");
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            a.user_id,
+            p.channels_json,
+            p.events_json
+          FROM admin_accounts a
+          LEFT JOIN profile_notification_prefs p ON p.account_id = a.id
+          WHERE a.user_id IN (${placeholders})
+        `
+      )
+      .all(...normalizedUserIds) as UserNotificationPrefsRow[];
+
+    const prefsByUser = new Map<string, UserNotificationPrefs>();
+    for (const row of rows) {
+      prefsByUser.set(row.user_id, {
+        channels: this.parseBooleanMap(row.channels_json),
+        events: this.parseBooleanMap(row.events_json)
+      });
+    }
+    return prefsByUser;
+  }
+
   private mapRow(row: UserNotificationRow): NotificationItem {
     return {
       id: row.id,
       kind: row.kind,
+      category: this.classifyCategory(row.entity_type, row.kind, row.action),
       unread: row.unread === 1,
       sourceLabel: row.source_label,
       title: row.title,
@@ -355,6 +414,65 @@ export class NotificationRepo {
       }
     }
     return Array.from(byKey.values());
+  }
+
+  private buildCategoryFilter(category: NotificationCategory): { clause: string; params: string[] } {
+    if (category === "issue_todo") {
+      return { clause: "(n.entity_type = ? AND n.kind = 'todo')", params: ["issue"] };
+    }
+    if (category === "issue_mention") {
+      return { clause: "(n.entity_type = ? AND n.action = ?)", params: ["issue", "commented"] };
+    }
+    if (category === "issue_activity") {
+      return {
+        clause: "(n.entity_type = ? AND n.kind = 'activity' AND n.action <> ?)",
+        params: ["issue", "commented"]
+      };
+    }
+    if (category === "rd_todo") {
+      return { clause: "(n.entity_type = ? AND n.kind = 'todo')", params: ["rd"] };
+    }
+    if (category === "rd_activity") {
+      return { clause: "(n.entity_type = ? AND n.kind = 'activity')", params: ["rd"] };
+    }
+    if (category === "project_member") {
+      return { clause: "(n.entity_type = ?)", params: ["project"] };
+    }
+    return { clause: "(n.entity_type = ?)", params: [category] };
+  }
+
+  private classifyCategory(entityType: string, kind: "todo" | "activity", action: string): NotificationCategory {
+    if (entityType === "issue") {
+      if (kind === "todo") {
+        return "issue_todo";
+      }
+      if (action === "commented") {
+        return "issue_mention";
+      }
+      return "issue_activity";
+    }
+    if (entityType === "rd") {
+      return kind === "todo" ? "rd_todo" : "rd_activity";
+    }
+    if (entityType === "project") {
+      return "project_member";
+    }
+    if (entityType === "announcement" || entityType === "document" || entityType === "release") {
+      return entityType;
+    }
+    return "issue_activity";
+  }
+
+  private parseBooleanMap(value: string | null): Record<string, boolean> {
+    if (!value?.trim()) {
+      return {};
+    }
+    try {
+      const data = JSON.parse(value) as Record<string, unknown>;
+      return Object.fromEntries(Object.entries(data).map(([key, item]) => [key, Boolean(item)]));
+    } catch {
+      return {};
+    }
   }
 
   private minusMinutesIso(sourceIso: string, minutes: number): string {

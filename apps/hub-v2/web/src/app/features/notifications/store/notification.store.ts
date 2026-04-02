@@ -172,6 +172,9 @@ export class NotificationStore {
     if (query.kind && item.kind !== query.kind) {
       return false;
     }
+    if (query.category && item.category !== query.category) {
+      return false;
+    }
 
     if (query.projectId && item.projectId !== query.projectId) {
       return false;

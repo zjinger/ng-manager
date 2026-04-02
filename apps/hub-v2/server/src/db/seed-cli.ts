@@ -175,9 +175,9 @@ const announcements = [
   {
     id: "ann_seed_hub_1",
     project_id: "prj_seed_hub",
-    title: "Issue 交互稿进入联调",
+    title: "测试单交互稿进入联调",
     summary: "列表视图、卡片视图与详情页样式均已切换到新设计稿。",
-    content_md: "请重点验证 Issue 列表、详情、评论和状态流转页面。",
+    content_md: "请重点验证测试单列表、详情、评论和状态流转页面。",
     scope: "project",
     pinned: 0,
     status: "published",

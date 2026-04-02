@@ -14,21 +14,20 @@ import { NotificationStore } from '../../store/notification.store';
       @for (item of items(); track item.id) {
         <a
           class="notification-row"
-          [class.is-unread]="item.unread"
           [routerLink]="routeTarget(item).path"
           [queryParams]="routeTarget(item).query"
           (click)="onItemClick(item)"
         >
           <div class="notification-row__main">
             <div class="notification-row__meta">
-              <span class="notification-row__tag">{{ item.sourceLabel }}</span>
+              <span class="notification-row__tag">{{ categoryLabel(item.category) }}</span>
               <span class="notification-row__project">{{ item.projectName }}</span>
             </div>
             <div class="notification-row__title-line">
-              <div class="notification-row__title">{{ item.title }}</div>
               @if (item.unread) {
                 <span class="notification-row__unread-dot"></span>
               }
+              <div class="notification-row__title">{{ item.title }}</div>
             </div>
             <div class="notification-row__desc">{{ item.description }}</div>
           </div>
@@ -65,9 +64,6 @@ import { NotificationStore } from '../../store/notification.store';
       .notification-row:hover {
         background: var(--bg-subtle);
       }
-      .notification-row.is-unread {
-        background: linear-gradient(90deg, rgba(79, 70, 229, 0.08), transparent 68%);
-      }
       .notification-row__meta {
         display: flex;
         align-items: center;
@@ -100,8 +96,8 @@ import { NotificationStore } from '../../store/notification.store';
         gap: 8px;
       }
       .notification-row__unread-dot {
-        width: 8px;
-        height: 8px;
+        width: 5px;
+        height: 5px;
         border-radius: 999px;
         background: #ef4444;
         flex: 0 0 auto;
@@ -181,6 +177,22 @@ export class NotificationListComponent {
       return parts[2] || null;
     }
     return null;
+  }
+
+  categoryLabel(category: NotificationItem['category']): string {
+    return (
+      {
+        issue_todo: '测试单待办',
+        issue_mention: '@我的评论',
+        issue_activity: '测试单动态',
+        rd_todo: '研发项待办',
+        rd_activity: '研发项动态',
+        announcement: '公告',
+        document: '文档',
+        release: '版本',
+        project_member: '成员变更',
+      }[category] || '通知'
+    );
   }
 
   formatRelativeTime(value: string): string {
