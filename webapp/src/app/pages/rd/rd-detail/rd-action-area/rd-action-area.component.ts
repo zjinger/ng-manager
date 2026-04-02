@@ -36,10 +36,10 @@ export class RdActionAreaComponent {
   readonly deleteClick = output<void>();
   readonly progressChange = output<number>();
 
-  // TODO:后面从外部传入 项目成员
-  members = signal<ProjectMemberEntity[]>([{ userId: 'usr_seed_dev_1' } as ProjectMemberEntity]);
-  // TODO:后面从外部传入 当前用户id
-  currentUserId = signal('usr_seed_dev_1');
+  // 项目成员
+  members = input.required<ProjectMemberEntity[]>();
+  // 当前用户id
+  currentUserId = input<string>('');
 
   readonly progressDraft = signal(0);
 
@@ -157,6 +157,7 @@ export class RdActionAreaComponent {
     const member = this.members().find((item) => item.userId === userId);
     return !!member && (member.roleCode === 'project_admin' || member.isOwner);
   });
+  
   readonly canDeleteSelectedItem = computed(() => {
     const current = this.selectedItem();
     const userId = this.currentUserId();

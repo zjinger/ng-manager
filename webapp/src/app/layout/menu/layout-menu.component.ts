@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, Input, OnInit } from '@angular/core';
+import { Component, computed, inject, Input, OnInit, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
@@ -18,17 +18,14 @@ import { NzBadgeModule } from 'ng-zorro-antd/badge';
 })
 export class LayoutMenuComponent implements OnInit {
   @Input() isCollapsed = false;
-  menus: MenuItem[] = [];
   public menuService: MenuService = inject(MenuService);
   private taskBootstrap = inject(TaskBootstrapServcie);
   private runtimeStore = inject(TaskRuntimeStore);
+  menus = this.menuService.currentMenus;
 
   readonly runningTaskCount = computed(() => this.runtimeStore.totalRunningCountSignal()());
 
   ngOnInit(): void {
-    this.menus = this.menuService.getMenus();
     this.taskBootstrap.initActiveSnapshot();
   }
-
-
 }

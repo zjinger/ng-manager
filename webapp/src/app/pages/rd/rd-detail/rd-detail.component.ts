@@ -3,7 +3,13 @@ import { Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PRIORITY_LABELS } from '@app/shared/constants/priority-options';
 import { RD_STATUS_LABELS } from '@app/shared/constants/status-options';
-import { RdItemEntity, RdItemPriority, RdItemStatus, RdLogEntity } from '@pages/rd/models/rd.model';
+import {
+  ProjectMemberEntity,
+  RdItemEntity,
+  RdItemPriority,
+  RdItemStatus,
+  RdLogEntity,
+} from '@pages/rd/models/rd.model';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzDrawerModule, NzDrawerPlacement } from 'ng-zorro-antd/drawer';
@@ -62,9 +68,11 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
                 (actionClick)="this.actionClick.emit($event)"
                 (progressChange)="this.progressChange.emit($event)"
                 (deleteClick)="this.deleteClick.emit()"
+                [members]="members()"
+                [currentUserId]="currentUserId()"
               ></app-rd-action-area>
             </nz-card>
-            
+
             <nz-card class="detail-item">
               <h2 class="wrap-title">研发项描述</h2>
               <nz-descriptions nzBordered nzSize="small">
@@ -199,11 +207,14 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
   `,
 })
 export class RdDetailComponent {
-  readonly rdItem = input<RdItemEntity | null>();
+  readonly rdItem = input.required<RdItemEntity | null>();
   readonly open = input(false);
   readonly busy = input(false);
   readonly logs = input<RdLogEntity[]>([]);
   readonly placement = input<NzDrawerPlacement>('right');
+  readonly members = input<ProjectMemberEntity[]>([]);
+  readonly currentUserId = input<string>('');
+
   readonly close = output();
   readonly actionClick = output<string>();
   readonly progressChange = output<number>();

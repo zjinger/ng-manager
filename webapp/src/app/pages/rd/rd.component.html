@@ -104,8 +104,9 @@
 
     <!-- 详情 -->
     <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" (close)="closeDetail()"
-        [logs]="currentRdLogs()" [placement]="drawerPlacement()" (actionClick)="handleSelectedAction($event)"
-        (progressChange)="updateSelectedProgress($event)" (deleteClick)="deleteSelectedItem()">
+        [logs]="currentRdLogs()" [placement]="drawerPlacement()" [currentUserId]="currentUserId()"
+        (actionClick)="handleSelectedAction($event)" (progressChange)="updateSelectedProgress($event)"
+        (deleteClick)="deleteSelectedItem()">
     </app-rd-detail>
 
     <!-- 阻塞弹窗 -->

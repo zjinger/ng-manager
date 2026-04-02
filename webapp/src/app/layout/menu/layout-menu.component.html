@@ -1,41 +1,45 @@
 <ul nz-menu nzMode="inline" [nzInlineCollapsed]="isCollapsed">
   <ng-container *ngTemplateOutlet="menuTpl; context: { $implicit: menus }"></ng-container>
   <ng-template #menuTpl let-menus>
-    @for (menu of menus; track menu) { @if (!menu.children) {
-    <li
-      nz-menu-item
-      [nzPaddingLeft]="menu.level * 24"
-      [nzDisabled]="menu.disabled"
-      [nzSelected]="menuService.isActive(menu.path!)"
-      (click)="menuService.clickMenu(menu)"
-      [nz-tooltip]="
-        menu.taskCountBadge === true && runningTaskCount() > 0
-          ? runningTaskCount() + '个任务正在运行'
-          : null
-      "
-      nzTooltipPlacement="right"
-    >
-      @if (menu.icon) {
-      <nz-icon [nzType]="menu.icon" nzTheme="outline" style="font-size: 18px" />
-      }
-      <span>{{ menu.title }}</span>
-      @if(menu.taskCountBadge === true && runningTaskCount() > 0) {
-      <nz-badge style="margin-left: 12px" nzStatus="processing"></nz-badge>
-      }
-    </li>
-    } @else {
-    <li
-      nz-submenu
-      [nzPaddingLeft]="menu.level * 24"
-      [nzOpen]="menu.open"
-      [nzTitle]="menu.title"
-      [nzIcon]="menu.icon"
-      [nzDisabled]="menu.disabled"
-    >
-      <ul>
-        <ng-container *ngTemplateOutlet="menuTpl; context: { $implicit: menu.children }" />
-      </ul>
-    </li>
-    } }
+    @for (menu of menus(); track menu) {
+      @if (!menu?.hidden){
+        @if (!menu.children) {
+        <li
+          nz-menu-item
+          [nzPaddingLeft]="menu.level * 24"
+          [nzDisabled]="menu.disabled"
+          [nzSelected]="menuService.isActive(menu.path!)"
+          (click)="menuService.clickMenu(menu)"
+          [nz-tooltip]="
+            menu.taskCountBadge === true && runningTaskCount() > 0
+              ? runningTaskCount() + '个任务正在运行'
+              : null
+          "
+          nzTooltipPlacement="right"
+        >
+          @if (menu.icon) {
+          <nz-icon [nzType]="menu.icon" nzTheme="outline" style="font-size: 18px" />
+          }
+          <span>{{ menu.title }}</span>
+          @if(menu.taskCountBadge === true && runningTaskCount() > 0) {
+          <nz-badge style="margin-left: 12px" nzStatus="processing"></nz-badge>
+          }
+        </li>
+        } @else {
+        <li
+          nz-submenu
+          [nzPaddingLeft]="menu.level * 24"
+          [nzOpen]="menu.open"
+          [nzTitle]="menu.title"
+          [nzIcon]="menu.icon"
+          [nzDisabled]="menu.disabled"
+        >
+          <ul>
+            <ng-container *ngTemplateOutlet="menuTpl; context: { $implicit: menu.children }" />
+          </ul>
+        </li>
+        }
+      } 
+    }
   </ng-template>
 </ul>

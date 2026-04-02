@@ -15,6 +15,7 @@ export class UserStore {
   private readonly initializedState = signal(false);
 
   readonly currentUser = computed(() => this.currentUserState());
+  readonly currentUserId = computed(() => this.currentUserState()?.userId);
   readonly initialized = computed(() => this.initializedState());
 
   //   是否已经绑定用户
@@ -25,7 +26,7 @@ export class UserStore {
     const token = this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim();
     if (!token) return;
     this.http
-      .get<ApiSuccess< HubAuthUser>>('/hubv2/api/personal/me', {
+      .get<ApiSuccess<HubAuthUser>>('/hubv2/api/personal/me', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -36,9 +37,10 @@ export class UserStore {
           this.currentUserState.update((user) => {
             return { ...user, token };
           });
-          console.log(this.currentUserState());
-          
           this.markInitialized();
+        },
+        error: () => {
+          this.setCurrentUser(null);
         },
       });
   }

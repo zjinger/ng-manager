@@ -1,25 +1,34 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { MenuItem } from './menu.model';
+import { ProjectStateService } from '@pages/projects/services/project.state.service';
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
+  private projectState = inject(ProjectStateService);
   currentMenu = signal<MenuItem | null>(null);
 
   private router = inject(Router);
 
-  private menus: MenuItem[] = [
+  private isHubProjectValid = this.projectState.isHubProjectValid;
+
+  private menus = signal<MenuItem[]>([
     { title: '仪表盘', path: '/dashboard', icon: 'dashboard', level: 1 },
     { title: '依赖', path: '/dependencies', icon: 'codepen', level: 1 },
     { title: '任务', path: '/tasks', icon: 'schedule', level: 1, taskCountBadge: true },
     { title: '配置', path: '/configuration', icon: 'setting', level: 1 },
     { title: 'API', path: '/rquest', icon: 'api', level: 1 },
     { title: '雪碧图', path: '/sprite', icon: 'smile', level: 1 },
-    { title: '研发项', path: '/rd', icon: 'rocket', level: 1 },
-    { title: '测试管理', path: '/issues', icon: 'bug', level: 1 },
+    { title: '研发项', path: '/rd', icon: 'rocket', level: 1, hidden: true },
+    { title: '测试跟踪', path: '/issues', icon: 'bug', level: 1, hidden: true },
     // { title: '系统设置', path: '/settings', icon: 'setting', level: 1 },
-  ];
+  ]);
+
+  // 当前菜单（所有）
+  readonly currentMenus = computed(() => {
+    return this.menus();
+  });
 
   constructor() {
     // 初始化时也同步一次
@@ -28,6 +37,21 @@ export class MenuService {
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((e) => this.syncByUrl(e.urlAfterRedirects));
+
+    // 当 `isHubProjectValid` 变化时，自动更新 `menus` 中的隐藏状态
+    effect((onCleanup) => {
+      const isValid = this.isHubProjectValid();
+      this.menus.update((menus) => {
+        return menus.map((menu) => {
+          if (menu.path && (menu.path.includes('/rd') || menu.path.includes('/issues'))) {
+            return { ...menu, hidden: !isValid };
+          }
+          return menu;
+        });
+      });
+
+      onCleanup(() => {});
+    });
   }
 
   isActive(path: string) {
@@ -40,10 +64,6 @@ export class MenuService {
     });
   }
 
-  getMenus(): MenuItem[] {
-    return this.menus;
-  }
-
   clickMenu(item: MenuItem) {
     if (item.path) this.router.navigateByUrl(item.path);
     // 这里可以不 set，让路由事件来驱动；也可以保留，体验更“即时”
@@ -52,7 +72,7 @@ export class MenuService {
 
   private syncByUrl(url: string) {
     const path = this.normalizeUrl(url);
-    const matched = this.findBestMatch(this.menus, path);
+    const matched = this.findBestMatch(this.menus(), path);
     this.currentMenu.set(matched);
   }
 

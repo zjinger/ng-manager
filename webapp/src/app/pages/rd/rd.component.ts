@@ -27,6 +27,7 @@ import { RdStore } from './store/rd.store';
 import { RD_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
 import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
 import { debounceTime, filter } from 'rxjs';
+import { UserStore } from '@app/core/stores/user.store';
 
 type viewType = 'list' | 'board';
 
@@ -64,6 +65,7 @@ export class RdComponent {
   protected readonly fb = inject(NonNullableFormBuilder);
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly userStore = inject(UserStore);
 
   // 视图模式
   protected readonly viewType = signal<viewType>('list');
@@ -82,11 +84,12 @@ export class RdComponent {
   // 推进研发项
   readonly advanceStageOpen = signal(false);
 
-  // stages = ['阶段1', '阶段2', '阶段3']; // 可替换成实际阶段
-  // statuses = ['待开始', '进行中', '阻塞', '已完成', '已取消'];
   readonly statusOptions = RD_STATUS_FILTER_OPTIONS;
   readonly members = this.rdStore.projectMembers;
   readonly priorityOptions = PRIORITY_OPTIONS;
+
+  // 用户
+  readonly currentUserId = this.userStore.currentUserId;
 
   priorities = ['低', '中', '高'];
 
@@ -115,6 +118,9 @@ export class RdComponent {
           this.detailDrawerOpen.set(true);
         }
       });
+
+    // 确保用户token绑定
+    this.userStore.ensureUserLoaded();
   }
 
   form = this.fb.group({

@@ -20,6 +20,16 @@ export class ProjectStateService {
 
   keyword = signal<string>('');
 
+  /* ---------------- HUB V2 EVN ------------------------*/
+  currentProjectKey = computed(() => this.currentProject()?.env?.['NGM_HUB_V2_PROJECT_KEY']);
+  currentProjectToken = computed(() => this.currentProject()?.env?.['NGM_HUB_V2_TOKEN']);
+  isHubProjectValid = computed(() => {
+    return !!(
+      this.currentProject()?.env?.['NGM_HUB_V2_PROJECT_KEY'] &&
+      this.currentProject()?.env?.['NGM_HUB_V2_TOKEN']
+    );
+  });
+
   /* ----------------- edit modal state ----------------- */
   isEditModalVisible = signal(false);
   isEditSaving = signal(false);
@@ -30,10 +40,10 @@ export class ProjectStateService {
   filteredProjects = computed(() => {
     const kw = this.keyword().trim().toLowerCase();
     if (!kw) return this.projects();
-    return this.projects().filter(p => p.name.toLowerCase().includes(kw));
+    return this.projects().filter((p) => p.name.toLowerCase().includes(kw));
   });
-  favoriteProjects = computed(() => this.filteredProjects().filter(p => p.isFavorite));
-  moreProjects = computed(() => this.filteredProjects().filter(p => !p.isFavorite));
+  favoriteProjects = computed(() => this.filteredProjects().filter((p) => p.isFavorite));
+  moreProjects = computed(() => this.filteredProjects().filter((p) => !p.isFavorite));
   recentProjects = computed(() =>
     this.projects()
       .slice()
@@ -42,17 +52,17 @@ export class ProjectStateService {
         const dateB = new Date(b.lastOpened || 0).getTime();
         return dateB - dateA;
       })
-      .slice(0, 5)
+      .slice(0, 5),
   );
 
   /** 点击列表项：切换当前项目 + 记录 lastOpened */
   selectProject(project: Project) {
     this.setCurrentProject(project);
     const lastOpened = Date.now();
-    this.projects.update(list =>
-      list.map(p => (p.id === project.id ? { ...p, lastOpened } : p))
+    this.projects.update((list) =>
+      list.map((p) => (p.id === project.id ? { ...p, lastOpened } : p)),
     );
-    this.currentProject.update(p => (p ? { ...p, lastOpened } : p));
+    this.currentProject.update((p) => (p ? { ...p, lastOpened } : p));
     // 异步落库
     this.projectService.setLastOpened(project.id, lastOpened).subscribe();
 
@@ -61,7 +71,7 @@ export class ProjectStateService {
 
   /** 用于服务端返回的更新（比如 toggleFavorite） */
   patchProject(updated: Project) {
-    this.projects.update(list => list.map(p => (p.id === updated.id ? updated : p)));
+    this.projects.update((list) => list.map((p) => (p.id === updated.id ? updated : p)));
     if (this.currentProjectId() === updated.id) {
       this.currentProject.set(updated);
     }
@@ -77,7 +87,7 @@ export class ProjectStateService {
   }
 
   toggleFavorite(projectId: string) {
-    this.projectService.toggleFavorite(projectId).subscribe(updated => {
+    this.projectService.toggleFavorite(projectId).subscribe((updated) => {
       this.patchProject(updated);
     });
   }
@@ -92,10 +102,9 @@ export class ProjectStateService {
 
       if (currentProjectId) {
         this.setCurrentProjectById(currentProjectId);
-      }
-      else {
+      } else {
         const cachedId = this.ls.getNullable<string>(LS_KEYS.project.currentProjectId);
-        const cached = cachedId ? data.find(p => p.id === cachedId) : null;
+        const cached = cachedId ? data.find((p) => p.id === cachedId) : null;
         if (cached) {
           this.setCurrentProject(cached);
           return;
@@ -108,7 +117,7 @@ export class ProjectStateService {
   }
 
   getProjectById(projectId: string): Project | null {
-    return this.projects().find(p => p.id === projectId) || null;
+    return this.projects().find((p) => p.id === projectId) || null;
   }
 
   setCurrentProject(project: Project | null) {
@@ -121,7 +130,7 @@ export class ProjectStateService {
   }
 
   setCurrentProjectById(projectId: string) {
-    const project = this.projects().find(p => p.id === projectId) || null;
+    const project = this.projects().find((p) => p.id === projectId) || null;
     this.setCurrentProject(project);
   }
 
@@ -202,7 +211,7 @@ export class ProjectStateService {
     }
 
     this.isEditSaving.set(true);
-    this.projectService.edit(id, { name, description: desc, repoPageUrl: repoPUrl, }).subscribe({
+    this.projectService.edit(id, { name, description: desc, repoPageUrl: repoPUrl }).subscribe({
       next: () => {
         const nextEnv = {
           ...(current?.env ?? {}),
@@ -241,7 +250,7 @@ export class ProjectStateService {
       nzOnOk: () => {
         this.projectService.delete(projectId).subscribe({
           next: () => {
-            this.projects.update(list => list.filter(p => p.id !== projectId));
+            this.projects.update((list) => list.filter((p) => p.id !== projectId));
             if (this.currentProjectId() === projectId) {
               // 删除的正是当前项目，切换到第一个
               const first = this.projects()[0] || null;
@@ -251,11 +260,9 @@ export class ProjectStateService {
               }
             }
             this.notify.success('项目已删除');
-          }
+          },
         });
-      }
-
+      },
     });
   }
 }
-

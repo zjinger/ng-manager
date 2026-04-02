@@ -22,9 +22,6 @@ export class RdStore {
   private readonly projectState = inject(ProjectStateService);
   private readonly userStore = inject(UserStore);
 
-  private readonly = computed(
-    () => this.projectState.currentProject()?.env?.['NGM_HUB_V2_PROJECT_KEY'],
-  );
   private readonly projectId = computed(() => this.projectState.currentProjectId()!);
   private readonly userToken = computed(() => this.userStore.currentUser()?.token ?? '');
 
@@ -154,8 +151,6 @@ export class RdStore {
   }
 
   private runAction(request: () => Promise<RdItemEntity>): void {
-    console.log(request);
-
     this.busyState.set(true);
     from(request()).subscribe({
       next: (updated) => {
@@ -168,58 +163,9 @@ export class RdStore {
     });
   }
 
-  // private patchOrRefresh(updated: RdItemEntity): void {
-  //   const list = this.rdItemsPageListState();
-  //   if (!list) {
-  //     this.loadRdItems();
-  //     return;
-  //   }
-
-  //   const query = this.queryState();
-  //   const hasComplexFilter =
-  //     !!query.stageId?.trim() ||
-  //     (query.stageIds?.length ?? 0) > 0 ||
-  //     (query.status?.length ?? 0) > 0 ||
-  //     (query.type?.length ?? 0) > 0 ||
-  //     (query.priority?.length ?? 0) > 0 ||
-  //     (query.assigneeIds?.length ?? 0) > 0 ||
-  //     !!query.keyword?.trim();
-
-  //   if (hasComplexFilter) {
-  //     this.loadRdItems();
-  //     return;
-  //   }
-
-  //   const index = list.findIndex((item) => item.id === updated.id);
-  //   if (index < 0) {
-  //     return;
-  //   }
-
-  //   const items = [...list];
-  //   items[index] = updated;
-  //   this.rdItemsPageListState.set(items);
-  // }
-
   private patchOrRefresh(updated: RdItemEntity): void {
-    console.log('刷新');
-
     const list = this.rdItemsPageListState();
     if (!list) {
-      this.loadRdItems();
-      return;
-    }
-
-    const query = this.queryState();
-    const hasComplexFilter =
-      !!query.stageId?.trim() ||
-      // (query.stageIds?.length ?? 0) > 0 ||
-      (query.status?.length ?? 0) > 0 ||
-      (query.type?.length ?? 0) > 0 ||
-      (query.priority?.length ?? 0) > 0 ||
-      // (query.assigneeIds?.length ?? 0) > 0 ||
-      !!query.keyword?.trim();
-
-    if (hasComplexFilter) {
       this.loadRdItems();
       return;
     }
@@ -229,6 +175,7 @@ export class RdStore {
       return;
     }
 
+    this.loadCurrentRdItem(updated.id);
     const items = [...list];
     items[index] = updated;
     this.rdItemsPageListState.set(items);

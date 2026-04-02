@@ -8,16 +8,15 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
   imports: [DetailItemCardComponent, MarkdownViewerComponent],
   template: `
     <app-detail-item-card title="详情" maxHeight="550px">
-      @if (issue().description) {
+      @if (issue().description; as des) {
         <app-markdown-viewer
-          [content]="issue().description"
+          [content]="des"
           [showToc]="true"
           [tocVariant]="'floating'"
           [tocCollapsedByDefault]="true"
         ></app-markdown-viewer>
       } @else {
         <div class="empty">暂无描述</div>
-        
       }
       @if (issue().resolutionSummary) {
         <div class="resolution">
