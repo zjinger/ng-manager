@@ -64,11 +64,17 @@
   font-size: 13px;
   transition: var(--transition-base);
   border: 1px solid transparent;
+  cursor: pointer;
 }
 
 .topbar__search:hover {
   background: var(--surface-overlay);
   border-color: var(--border-color-soft);
+}
+
+.topbar__search:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary-500) 60%, transparent);
+  outline-offset: 1px;
 }
 
 .topbar__search kbd {

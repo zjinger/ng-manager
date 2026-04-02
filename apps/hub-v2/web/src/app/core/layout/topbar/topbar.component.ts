@@ -11,6 +11,7 @@ import { WsClientService } from '../../realtime/ws-client.service';
 import { ProjectContextStore } from '../../state/project-context.store';
 import { UiStore } from '../../state/ui.store';
 import { NotificationBellComponent } from '../../../features/notifications/components/notification-bell/notification-bell.component';
+import { GlobalSearchStore } from '../../../features/search/store/global-search.store';
 
 @Component({
   selector: 'app-topbar',
@@ -28,6 +29,7 @@ export class TopbarComponent {
   readonly projectContext = inject(ProjectContextStore);
   readonly uiStore = inject(UiStore);
   readonly wsClient = inject(WsClientService);
+  private readonly globalSearchStore = inject(GlobalSearchStore);
 
   readonly currentUser = this.authStore.currentUser;
   readonly breadcrumbs = computed(() => this.breadcrumb.getBreadcrumbs(this.router.url));
@@ -86,5 +88,9 @@ export class TopbarComponent {
 
   onAvatarError(): void {
     this.avatarLoadFailed.set(true);
+  }
+
+  openGlobalSearch(): void {
+    this.globalSearchStore.openPanel();
   }
 }

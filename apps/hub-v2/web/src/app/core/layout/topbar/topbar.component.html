@@ -15,11 +15,19 @@
   </div>
 
   <div class="topbar__actions">
-    <!-- <div class="topbar__search">
+    <div
+      class="topbar__search"
+      role="button"
+      tabindex="0"
+      aria-label="打开全局搜索"
+      (click)="openGlobalSearch()"
+      (keydown.enter)="$event.preventDefault(); openGlobalSearch()"
+      (keydown.space)="$event.preventDefault(); openGlobalSearch()"
+    >
       <span nz-icon nzType="search"></span>
-      <span>搜索问题、研发项、文档…</span>
+      <span>搜索测试单、研发项、文档、发布…</span>
       <kbd>Ctrl K</kbd>
-    </div> -->
+    </div>
 
     <button
       nz-button
