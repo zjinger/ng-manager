@@ -4,6 +4,7 @@ export * from './data-table';
 export * from './dialog';
 export * from './dashboard-panel';
 export * from './form-actions';
+export * from './echarts';
 export * from './list-state';
 export * from './filter-bar';
 export * from './list-state';

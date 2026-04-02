@@ -1,24 +1,23 @@
 import type Database from "better-sqlite3";
 
+import { AppError } from "../../shared/errors/app-error";
+import { ERROR_CODES } from "../../shared/errors/error-codes";
+
 export interface RenderedBlock {
   type: "stat_card" | "trend_chart" | "distribution_chart" | "leaderboard" | "table" | "empty";
   title: string;
   description?: string;
-  // stat_card
   value?: number | string;
   subText?: string;
   subValue?: string;
   trend?: "up" | "down" | "flat";
-  // chart
   chart?: {
     type: "bar" | "line" | "pie" | "donut";
     labels: string[];
     datasets: { label: string; data: number[]; color?: string }[];
   };
-  // table
   columns?: { key: string; label: string }[];
   rows?: Record<string, unknown>[];
-  // leaderboard
   items?: { rank: number; label: string; value: number; percent?: number }[];
 }
 
@@ -30,72 +29,130 @@ interface VisualizationType {
 }
 
 export class AiReportRenderService {
+  private readonly maxExecutionTimeMs = 5000;
+  private readonly maxRows = 1000;
+  private readonly columnLabelMap: Record<string, string> = {
+    id: "ID",
+    project_id: "项目ID",
+    project_key: "项目标识",
+    project_name: "项目",
+    issue_no: "测试单编号",
+    rd_no: "需求编号",
+    title: "标题",
+    name: "名称",
+    date: "日期",
+    day: "日期",
+    week: "周",
+    month: "月",
+    type: "类型",
+    status: "状态",
+    priority: "优先级",
+    assignee: "负责人",
+    reporter: "提出人",
+    verifier: "验证人",
+    module_code: "模块",
+    version_code: "版本",
+    environment_code: "环境",
+    created_at: "创建时间",
+    updated_at: "更新时间",
+    resolved_at: "解决时间",
+    closed_at: "关闭时间",
+    count: "数量",
+    total_count: "总数",
+    tracking_count: "测试单数量",
+    issue_count: "测试单数量",
+    created_count: "新建数量",
+    closed_count: "关闭数量",
+    resolved_count: "已解决数量",
+    open_count: "待处理数量",
+    in_progress_count: "处理中数量",
+    verified_count: "已验证数量",
+    reopened_count: "重新打开数量",
+    completion_rate: "完成率"
+  };
+  private readonly statusValueMap: Record<string, string> = {
+    open: "待处理",
+    in_progress: "处理中",
+    resolved: "已解决",
+    verified: "已验证",
+    closed: "已关闭",
+    reopened: "重新打开"
+  };
+  private readonly priorityValueMap: Record<string, string> = {
+    low: "低",
+    medium: "中",
+    high: "高",
+    critical: "紧急"
+  };
+  private readonly typeValueMap: Record<string, string> = {
+    bug: "缺陷",
+    feature: "新功能",
+    change: "需求变更",
+    improvement: "优化改进",
+    task: "任务",
+    test: "测试"
+  };
+
   constructor(private readonly readonlyDb: Database.Database) {}
 
   executeAndRender(sql: string, params: string[]): RenderedBlock {
-    // 执行 SQL（只读），带超时保护
-    const startTime = Date.now();
-    const MAX_EXECUTION_TIME_MS = 5000; // 5 秒超时
-
-    // 使用 statement timeout 防止慢查询
-    const stmt = this.readonlyDb.prepare(sql);
-    stmt.raw(true); // 启用原始模式以提高性能
-
-    const rows = stmt.all(...params) as Record<string, unknown>[];
-
-    const executionTime = Date.now() - startTime;
-    if (executionTime > MAX_EXECUTION_TIME_MS) {
-      console.warn(`[AI Report] Slow query detected: ${executionTime}ms, SQL: ${sql.slice(0, 100)}...`);
+    const rows = this.executeQuery(sql, params);
+    if (rows.length === 0) {
+      return { type: "empty", title: "暂无数据" };
     }
-
-    // 分析结果结构，自动选择可视化方式
     const viz = this.inferVisualization(rows);
-
-    // 渲染
     return this.render(rows, viz);
   }
 
+  private executeQuery(sql: string, params: string[]): Record<string, unknown>[] {
+    const startTime = Date.now();
+    let rows: Record<string, unknown>[];
+    try {
+      const stmt = this.readonlyDb.prepare(sql);
+      rows = stmt.all(...params) as Record<string, unknown>[];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new AppError(ERROR_CODES.AI_SQL_INVALID, `Invalid SQL: ${message}`, 400);
+    }
+
+    const executionTime = Date.now() - startTime;
+    if (executionTime > this.maxExecutionTimeMs) {
+      console.warn(`[AI Report] Slow query detected: ${executionTime}ms`);
+    }
+
+    if (rows.length > this.maxRows) {
+      return rows.slice(0, this.maxRows);
+    }
+    return rows;
+  }
+
   private inferVisualization(rows: Record<string, unknown>[]): VisualizationType {
-    if (rows.length === 0) {
-      return { type: "empty" };
+    const firstRow = rows[0];
+    const columns = Object.keys(firstRow);
+    const numericColumns = columns.filter((key) => this.isNumericValue(firstRow[key]));
+    const dateColumn = columns.find((key) => this.looksLikeDateColumn(key, firstRow[key]));
+    const textColumns = columns.filter((key) => typeof firstRow[key] === "string");
+
+    if (rows.length === 1 && numericColumns.length === 1 && columns.length <= 2) {
+      return { type: "stat_card", valueCol: numericColumns[0] };
     }
 
-    const columns = Object.keys(rows[0]);
-    const sample = rows[0];
-
-    // 单行 + 单数值列 → 数字卡片
-    if (rows.length === 1) {
-      const numCols = columns.filter((c) => typeof sample[c] === "number");
-      if (numCols.length === 1 && columns.length === 1) {
-        return { type: "stat_card", valueCol: numCols[0] };
-      }
+    if (dateColumn && numericColumns.length > 0) {
+      return { type: "trend_chart", dateCol: dateColumn };
     }
 
-    // 有时间列 + 数值列 → 趋势图
-    const dateCol = columns.find(
-      (c) => /date|time|at$/i.test(c) && typeof sample[c] === "string"
-    );
-    const numCols = columns.filter((c) => typeof sample[c] === "number");
-    if (dateCol && numCols.length > 0) {
-      return { type: "trend_chart", dateCol };
-    }
-
-    // 分类列 + 数值列（≤10 类）→ 分布图
-    const strCols = columns.filter((c) => typeof sample[c] === "string");
-    if (strCols.length === 1 && numCols.length === 1 && rows.length <= 10) {
+    if (textColumns.length === 1 && numericColumns.length === 1 && rows.length <= 12) {
       return {
         type: "distribution_chart",
-        categoryCol: strCols[0],
-        valueCol: numCols[0]
+        categoryCol: textColumns[0],
+        valueCol: numericColumns[0]
       };
     }
 
-    // ≤20 行 + 有数值 → 排行榜
-    if (rows.length <= 20 && numCols.length > 0) {
-      return { type: "leaderboard", valueCol: numCols[0] };
+    if (rows.length <= 20 && numericColumns.length > 0) {
+      return { type: "leaderboard", valueCol: numericColumns[0] };
     }
 
-    // 默认表格
     return { type: "table" };
   }
 
@@ -118,33 +175,23 @@ export class AiReportRenderService {
     }
   }
 
-  private renderStatCard(
-    rows: Record<string, unknown>[],
-    viz: VisualizationType
-  ): RenderedBlock {
-    const valueCol = viz.valueCol || Object.keys(rows[0])[0];
-    const value = Number(rows[0][valueCol]) || 0;
-
+  private renderStatCard(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
+    const row = rows[0];
+    const valueCol = viz.valueCol || Object.keys(row)[0];
+    const value = row[valueCol];
     return {
       type: "stat_card",
       title: this.humanizeColumnName(valueCol),
-      value
+      value: this.toNumber(value) ?? String(value ?? "")
     };
   }
 
-  private renderTrendChart(
-    rows: Record<string, unknown>[],
-    viz: VisualizationType
-  ): RenderedBlock {
+  private renderTrendChart(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
     const dateCol = viz.dateCol || "date";
-    const numericColumns = Object.keys(rows[0]).filter(
-      (k) => typeof rows[0][k] === "number"
-    );
-
-    // 按日期排序
+    const numericColumns = Object.keys(rows[0]).filter((key) => this.isNumericValue(rows[0][key]));
     const sortedRows = [...rows].sort((a, b) => {
-      const aDate = String(a[dateCol]);
-      const bDate = String(b[dateCol]);
+      const aDate = String(a[dateCol] ?? "");
+      const bDate = String(b[dateCol] ?? "");
       return aDate.localeCompare(bDate);
     });
 
@@ -153,89 +200,180 @@ export class AiReportRenderService {
       title: "趋势分析",
       chart: {
         type: "line",
-        labels: sortedRows.map((r) => String(r[dateCol])),
+        labels: sortedRows.map((row) => String(row[dateCol] ?? "")),
         datasets: numericColumns.map((col) => ({
           label: this.humanizeColumnName(col),
-          data: sortedRows.map((r) => Number(r[col]) || 0)
+          data: sortedRows.map((row) => this.toNumber(row[col]) ?? 0)
         }))
       }
     };
   }
 
-  private renderDistributionChart(
-    rows: Record<string, unknown>[],
-    viz: VisualizationType
-  ): RenderedBlock {
-    const categoryCol = viz.categoryCol || Object.keys(rows[0]).find(
-      (k) => typeof rows[0][k] === "string"
-    ) || "category";
-    const valueCol = viz.valueCol || Object.keys(rows[0]).find(
-      (k) => typeof rows[0][k] === "number"
-    ) || "value";
+  private renderDistributionChart(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
+    const firstRow = rows[0];
+    const categoryCol =
+      viz.categoryCol || Object.keys(firstRow).find((key) => typeof firstRow[key] === "string") || "category";
+    const valueCol =
+      viz.valueCol || Object.keys(firstRow).find((key) => this.isNumericValue(firstRow[key])) || "value";
 
     return {
       type: "distribution_chart",
       title: "分布分析",
       chart: {
         type: "donut",
-        labels: rows.map((r) => String(r[categoryCol])),
+        labels: rows.map((row) => this.localizeValueByColumn(categoryCol, row[categoryCol])),
         datasets: [
           {
             label: this.humanizeColumnName(valueCol),
-            data: rows.map((r) => Number(r[valueCol]) || 0)
+            data: rows.map((row) => this.toNumber(row[valueCol]) ?? 0)
           }
         ]
       }
     };
   }
 
-  private renderLeaderboard(
-    rows: Record<string, unknown>[],
-    viz: VisualizationType
-  ): RenderedBlock {
-    const valueCol = viz.valueCol || Object.keys(rows[0]).find(
-      (k) => typeof rows[0][k] === "number"
-    ) || "value";
-    const labelCol = Object.keys(rows[0]).find(
-      (k) => typeof rows[0][k] === "string"
-    ) || Object.keys(rows[0])[0];
+  private renderLeaderboard(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
+    const firstRow = rows[0];
+    const valueCol =
+      viz.valueCol || Object.keys(firstRow).find((key) => this.isNumericValue(firstRow[key])) || "value";
+    const labelCol = Object.keys(firstRow).find((key) => typeof firstRow[key] === "string") || Object.keys(firstRow)[0];
 
-    // 按数值降序排序
-    const sortedRows = [...rows].sort(
-      (a, b) => (Number(b[valueCol]) || 0) - (Number(a[valueCol]) || 0)
-    );
-
-    const maxValue = Math.max(...sortedRows.map((r) => Number(r[valueCol]) || 0));
+    const sortedRows = [...rows].sort((a, b) => (this.toNumber(b[valueCol]) ?? 0) - (this.toNumber(a[valueCol]) ?? 0));
+    const maxValue = Math.max(...sortedRows.map((row) => this.toNumber(row[valueCol]) ?? 0), 0);
 
     return {
       type: "leaderboard",
       title: "排行榜",
-      items: sortedRows.map((r, index) => ({
-        rank: index + 1,
-        label: String(r[labelCol]),
-        value: Number(r[valueCol]) || 0,
-        percent: maxValue > 0 ? Math.round(((Number(r[valueCol]) || 0) / maxValue) * 100) : 0
-      }))
+      items: sortedRows.map((row, index) => {
+        const current = this.toNumber(row[valueCol]) ?? 0;
+        return {
+          rank: index + 1,
+          label: this.localizeValueByColumn(labelCol, row[labelCol]),
+          value: current,
+          percent: maxValue > 0 ? Math.round((current / maxValue) * 100) : 0
+        };
+      })
     };
   }
 
   private renderTable(rows: Record<string, unknown>[]): RenderedBlock {
-    const columns = Object.keys(rows[0]).map((key) => ({
+    const keys = Object.keys(rows[0]);
+    const columns = keys.map((key) => ({
       key,
       label: this.humanizeColumnName(key)
     }));
+    const localizedRows = rows.map((row) => {
+      const next: Record<string, unknown> = {};
+      for (const key of keys) {
+        next[key] = this.localizeValueByColumnRaw(key, row[key]);
+      }
+      return next;
+    });
 
     return {
       type: "table",
       title: "数据列表",
       columns,
-      rows
+      rows: localizedRows
     };
   }
 
+  private isNumericValue(value: unknown): boolean {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  private toNumber(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }
+
+  private looksLikeDateColumn(columnName: string, value: unknown): boolean {
+    if (typeof value !== "string") {
+      return false;
+    }
+    if (!/date|time|_at$/i.test(columnName)) {
+      return false;
+    }
+    return !Number.isNaN(Date.parse(value));
+  }
+
   private humanizeColumnName(key: string): string {
-    return key
+    const normalized = this.normalizeColumnKey(key);
+    if (this.columnLabelMap[normalized]) {
+      return this.columnLabelMap[normalized];
+    }
+    if (/^avg_/.test(normalized)) {
+      return `平均${this.humanizeColumnName(normalized.slice(4))}`;
+    }
+    if (/_count$/.test(normalized)) {
+      return `${this.humanizeColumnName(normalized.slice(0, -6))}数量`;
+    }
+    if (/_rate$/.test(normalized)) {
+      return `${this.humanizeColumnName(normalized.slice(0, -5))}率`;
+    }
+    if (/count\(\*\)/i.test(normalized)) {
+      return "数量";
+    }
+
+    const readable = normalized
       .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+      .replace(/\s+/g, " ")
+      .trim();
+    return readable
+      .split(" ")
+      .map((part) => (this.columnLabelMap[part] ? this.columnLabelMap[part] : part.toUpperCase()))
+      .join(" ");
+  }
+
+  private localizeValueByColumn(columnKey: string, value: unknown): string {
+    const localized = this.localizeValueByColumnRaw(columnKey, value);
+    return String(localized ?? "");
+  }
+
+  private localizeValueByColumnRaw(columnKey: string, value: unknown): unknown {
+    if (typeof value !== "string") {
+      return value;
+    }
+    const normalizedValue = value.trim().toLowerCase();
+    if (!normalizedValue) {
+      return value;
+    }
+
+    const normalizedColumn = this.normalizeColumnKey(columnKey);
+    if (this.isTypeColumn(normalizedColumn) && this.typeValueMap[normalizedValue]) {
+      return this.typeValueMap[normalizedValue];
+    }
+    if (this.isStatusColumn(normalizedColumn) && this.statusValueMap[normalizedValue]) {
+      return this.statusValueMap[normalizedValue];
+    }
+    if (this.isPriorityColumn(normalizedColumn) && this.priorityValueMap[normalizedValue]) {
+      return this.priorityValueMap[normalizedValue];
+    }
+    return value;
+  }
+
+  private isTypeColumn(columnKey: string): boolean {
+    return columnKey === "type" || columnKey.endsWith("_type");
+  }
+
+  private isStatusColumn(columnKey: string): boolean {
+    return columnKey === "status" || columnKey.endsWith("_status");
+  }
+
+  private isPriorityColumn(columnKey: string): boolean {
+    return columnKey === "priority" || columnKey.endsWith("_priority");
+  }
+
+  private normalizeColumnKey(key: string): string {
+    return key
+      .trim()
+      .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+      .toLowerCase();
   }
 }

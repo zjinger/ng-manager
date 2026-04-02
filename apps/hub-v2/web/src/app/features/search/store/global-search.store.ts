@@ -114,6 +114,7 @@ export class GlobalSearchStore {
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private currentSearchSub: Subscription | null = null;
+  private requestId = 0;
 
   openPanel(seedKeyword = ''): void {
     this.open.set(true);
@@ -123,6 +124,7 @@ export class GlobalSearchStore {
   }
 
   closePanel(): void {
+    this.requestId += 1;
     this.open.set(false);
     this.loading.set(false);
     this.error.set(null);
@@ -140,6 +142,9 @@ export class GlobalSearchStore {
 
     const normalized = value.trim();
     if (normalized.length < 2) {
+      this.requestId += 1;
+      this.currentSearchSub?.unsubscribe();
+      this.currentSearchSub = null;
       this.clearScheduledSearch();
       this.loading.set(false);
       this.items.set([]);
@@ -197,6 +202,7 @@ export class GlobalSearchStore {
       return;
     }
 
+    const currentRequestId = ++this.requestId;
     this.currentSearchSub?.unsubscribe();
     this.loading.set(true);
 
@@ -207,7 +213,7 @@ export class GlobalSearchStore {
       })
       .subscribe({
         next: (res) => {
-          if (this.keyword().trim() !== keyword) {
+          if (this.requestId !== currentRequestId || this.keyword().trim() !== keyword) {
             return;
           }
           this.items.set(res.items);
@@ -216,7 +222,7 @@ export class GlobalSearchStore {
           this.loading.set(false);
         },
         error: () => {
-          if (this.keyword().trim() !== keyword) {
+          if (this.requestId !== currentRequestId || this.keyword().trim() !== keyword) {
             return;
           }
           this.items.set([]);

@@ -90,6 +90,7 @@ const DEFAULT_DRAFT: Draft = {
               [assigneeLoading]="aiAssigneeLoading()"
               [result]="aiResult()"
               [assigneeResult]="aiAssigneeResult()"
+              [modules]="modules()"
               (accept)="onAiAccept($event)"
               (skip)="onAiSkip()"
             />
@@ -504,7 +505,7 @@ export class IssueCreateDialogComponent implements OnDestroy {
     this.aiStore.updateDescription(value || null);
   }
 
-  onAiAccept(result: { type: IssueType | null; priority: IssuePriority | null; assigneeId?: string | null }): void {
+  onAiAccept(result: { type: IssueType | null; priority: IssuePriority | null; assigneeId?: string | null; moduleCode?: string }): void {
     if (result.type) {
       this.updateType(result.type);
     }
@@ -513,6 +514,9 @@ export class IssueCreateDialogComponent implements OnDestroy {
     }
     if (result.assigneeId) {
       this.updateField('assigneeId', result.assigneeId);
+    }
+    if (result.moduleCode !== undefined) {
+      this.updateField('moduleCode', result.moduleCode);
     }
   }
 

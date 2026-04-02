@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
+import OpenAI from "openai";
+
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import type { AppConfig } from "../../shared/env/env";
 import type { ProjectAccessContract } from "../project/project-access.contract";
-import OpenAI from "openai";
 import {
   REPORT_SQL_SYSTEM_PROMPT,
   buildReportSqlUserPrompt
@@ -22,11 +23,18 @@ interface CacheEntry {
   expiresAt: number;
 }
 
+interface ReportSqlLlmResponse {
+  sql?: string;
+  title?: string;
+  description?: string;
+}
+
 export class AiReportSqlService {
-  private readonly openai: OpenAI;
+  private readonly openai: OpenAI | null;
   private readonly cache = new Map<string, CacheEntry>();
-  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟缓存
-  private readonly FORBIDDEN_KEYWORDS = [
+  private readonly cacheTtlMs = 5 * 60 * 1000;
+  private readonly maxLimit = 1000;
+  private readonly forbiddenKeywords = [
     "INSERT",
     "UPDATE",
     "DELETE",
@@ -46,36 +54,53 @@ export class AiReportSqlService {
     private readonly config: AppConfig,
     private readonly projectAccess: ProjectAccessContract
   ) {
-    if (!config.openaiApiKey) {
-      throw new Error("OPENAI_API_KEY is not configured. Please set it in your .env file.");
-    }
-    this.openai = new OpenAI({
-      apiKey: config.openaiApiKey,
-      baseURL: config.openaiBaseUrl ?? undefined
-    });
+    this.openai = config.openaiApiKey
+      ? new OpenAI({
+          apiKey: config.openaiApiKey,
+          baseURL: config.openaiBaseUrl ?? undefined
+        })
+      : null;
   }
 
-  async generateSql(query: string, ctx: RequestContext): Promise<SqlGenerationResult> {
-    // 1. 获取用户可访问的项目
-    const projectIds = await this.getAccessibleProjectIds(ctx);
+  async generateSql(
+    query: string,
+    ctx: RequestContext
+  ): Promise<SqlGenerationResult> {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) {
+      throw new AppError(ERROR_CODES.AI_SQL_INVALID, "AI query is empty", 400);
+    }
 
+    const projectIds = await this.getAccessibleProjectIds(ctx);
     if (projectIds.length === 0) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "No accessible projects", 403);
     }
 
-    // 2. 检查缓存（基于 query + projectIds 的 hash）
-    const cacheKey = this.buildCacheKey(query, projectIds);
+    const cacheKey = this.buildCacheKey(
+      normalizedQuery,
+      projectIds
+    );
     const cached = this.getFromCache(cacheKey);
     if (cached) {
       return cached;
     }
 
-    // 3. 调用 LLM 生成 SQL
+    if (!this.openai) {
+      throw new AppError(
+        ERROR_CODES.INTERNAL_ERROR,
+        "OPENAI_API_KEY is not configured. Please configure OPENAI_API_KEY first.",
+        500
+      );
+    }
+
     const response = await this.openai.chat.completions.create({
       model: "deepseek-chat",
       messages: [
         { role: "system", content: REPORT_SQL_SYSTEM_PROMPT },
-        { role: "user", content: buildReportSqlUserPrompt(query, projectIds.length) }
+        {
+          role: "user",
+          content: buildReportSqlUserPrompt(normalizedQuery, projectIds.length)
+        }
       ],
       response_format: { type: "json_object" },
       temperature: 0.1
@@ -83,109 +108,188 @@ export class AiReportSqlService {
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "AI response empty", 500);
+      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "AI response is empty", 500);
     }
 
-    let result: SqlGenerationResult;
-    try {
-      result = JSON.parse(content) as SqlGenerationResult;
-    } catch {
-      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "Invalid AI response format", 500);
-    }
+    const llmResult = this.parseLlmResponse(content);
+    let sql = this.normalizeSql(llmResult.sql ?? "");
+    this.validateSql(sql);
+    sql = this.bindProjectFilter(sql, projectIds);
+    sql = this.enforceLimit(sql);
 
-    // 4. 安全校验
-    this.validateSql(result.sql);
-
-    // 5. 自动注入权限过滤
-    result.sql = this.injectProjectFilter(result.sql, projectIds);
-
-    // 6. 确保有 LIMIT
-    if (!result.sql.match(/\bLIMIT\s+\d+\b/i)) {
-      result.sql = `${result.sql} LIMIT 1000`;
-    }
-
-    // 7. 构建完整结果并缓存
     const finalResult: SqlGenerationResult = {
-      ...result,
-      params: projectIds
+      sql,
+      params: projectIds,
+      title: (llmResult.title || normalizedQuery).trim().slice(0, 120),
+      description: (llmResult.description || "").trim().slice(0, 300)
     };
     this.setCache(cacheKey, finalResult);
-
     return finalResult;
   }
 
+  async prepareSqlForExecution(rawSql: string, ctx: RequestContext): Promise<{ sql: string; params: string[] }> {
+    const projectIds = await this.getAccessibleProjectIds(ctx);
+    if (projectIds.length === 0) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "No accessible projects", 403);
+    }
+
+    let sql = this.normalizeSql(rawSql);
+    this.validateSql(sql);
+    sql = this.bindProjectFilter(sql, projectIds);
+    sql = this.enforceLimit(sql);
+
+    return {
+      sql,
+      params: projectIds
+    };
+  }
+
   private async getAccessibleProjectIds(ctx: RequestContext): Promise<string[]> {
-    return this.projectAccess.listAccessibleProjectIds(ctx);
+    const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
+    return Array.from(new Set(projectIds.map((item) => item.trim()).filter((item) => item.length > 0)));
+  }
+
+  private parseLlmResponse(content: string): ReportSqlLlmResponse {
+    try {
+      return JSON.parse(content) as ReportSqlLlmResponse;
+    } catch {
+      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "Invalid AI response format", 500);
+    }
+  }
+
+  private normalizeSql(rawSql: string): string {
+    let sql = rawSql.trim();
+    if (!sql) {
+      throw new AppError(ERROR_CODES.AI_SQL_INVALID, "AI generated SQL is empty", 400);
+    }
+    sql = sql.replace(/^```sql\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
+    sql = sql.replace(/;+$/g, "").trim();
+    if (!sql) {
+      throw new AppError(ERROR_CODES.AI_SQL_INVALID, "AI generated SQL is empty", 400);
+    }
+    if (sql.includes(";")) {
+      throw new AppError(ERROR_CODES.AI_SQL_FORBIDDEN, "Multiple SQL statements are not allowed", 400);
+    }
+    return sql;
   }
 
   private validateSql(sql: string): void {
-    const upperSql = sql.toUpperCase().trim();
-
-    // 必须是 SELECT 开头
-    if (!upperSql.startsWith("SELECT")) {
-      throw new AppError(
-        ERROR_CODES.AI_SQL_FORBIDDEN,
-        "Only SELECT queries are allowed",
-        400
-      );
+    const normalized = sql.trim();
+    if (!/^(SELECT|WITH)\b/i.test(normalized)) {
+      throw new AppError(ERROR_CODES.AI_SQL_FORBIDDEN, "Only SELECT/CTE queries are allowed", 400);
     }
 
-    // 禁止危险关键字
-    for (const keyword of this.FORBIDDEN_KEYWORDS) {
-      if (upperSql.includes(keyword)) {
-        throw new AppError(
-          ERROR_CODES.AI_SQL_FORBIDDEN,
-          `Forbidden SQL keyword: ${keyword}`,
-          400
-        );
+    for (const keyword of this.forbiddenKeywords) {
+      const keywordPattern = new RegExp(`\\b${keyword}\\b`, "i");
+      if (keywordPattern.test(normalized)) {
+        throw new AppError(ERROR_CODES.AI_SQL_FORBIDDEN, `Forbidden SQL keyword: ${keyword}`, 400);
       }
     }
   }
 
   injectProjectFilter(sql: string, projectIds: string[]): string {
-    // 如果 SQL 已有 project_id 过滤，不再注入
-    if (sql.match(/project_id\s+IN\s*\(/i)) {
+    if (projectIds.length === 0) {
       return sql;
     }
 
-    // 在 WHERE 后注入，或在 FROM 后加 WHERE
-    const placeholders = projectIds.map(() => "?").join(",");
-
-    if (sql.match(/\bWHERE\b/i)) {
-      return sql.replace(/\bWHERE\b/i, `WHERE project_id IN (${placeholders}) AND`);
+    if (/\b(?:\w+\.)?project_id\s+IN\s*\(/i.test(sql)) {
+      return sql;
     }
 
-    // 没有 WHERE，找 FROM 子句
-    const fromMatch = sql.match(/\bFROM\s+\w+/i);
-    if (fromMatch) {
-      return sql.replace(
-        fromMatch[0],
-        `${fromMatch[0]} WHERE project_id IN (${placeholders})`
+    const projectExpr = this.detectProjectExpression(sql);
+    const placeholders = projectIds.map(() => "?").join(", ");
+    const filterExpr = `${projectExpr} IN (${placeholders})`;
+
+    if (/\bWHERE\b/i.test(sql)) {
+      return sql.replace(/\bWHERE\b/i, `WHERE ${filterExpr} AND`);
+    }
+
+    const clauseMatch = /\bGROUP\s+BY\b|\bORDER\s+BY\b|\bLIMIT\b/i.exec(sql);
+    if (clauseMatch?.index !== undefined) {
+      return `${sql.slice(0, clauseMatch.index)} WHERE ${filterExpr} ${sql.slice(clauseMatch.index)}`;
+    }
+
+    return `${sql} WHERE ${filterExpr}`;
+  }
+
+  private bindProjectFilter(sql: string, projectIds: string[]): string {
+    const placeholders = projectIds.map(() => "?").join(", ");
+    const existingFilterPattern = /(\b(?:\w+\.)?project_id\s+IN\s*)\(([^)]*)\)/i;
+    if (existingFilterPattern.test(sql)) {
+      return sql.replace(existingFilterPattern, `$1(${placeholders})`);
+    }
+
+    return this.injectProjectFilter(sql, projectIds);
+  }
+
+  private detectProjectExpression(sql: string): string {
+    const tableMatches = Array.from(
+      sql.matchAll(/\b(?:FROM|JOIN)\s+(issues|rd_items)\b(?:\s+(?:AS\s+)?([A-Za-z_][A-Za-z0-9_]*))?/gi),
+    );
+
+    if (tableMatches.length === 0) {
+      throw new AppError(
+        ERROR_CODES.AI_SQL_INVALID,
+        "AI SQL must query issues or rd_items to apply project permission filter",
+        400
       );
     }
 
+    const firstMatch = tableMatches[0];
+    const tableName = firstMatch[1];
+    const aliasCandidate = firstMatch[2];
+    const reservedWords = new Set([
+      "WHERE",
+      "JOIN",
+      "GROUP",
+      "ORDER",
+      "LIMIT",
+      "INNER",
+      "LEFT",
+      "RIGHT",
+      "FULL",
+      "ON"
+    ]);
+    const alias =
+      aliasCandidate && !reservedWords.has(aliasCandidate.toUpperCase()) ? aliasCandidate : undefined;
+    const qualifier = alias || tableName;
+    return `${qualifier}.project_id`;
+  }
+
+  private enforceLimit(sql: string): string {
+    const limitMatch = /\bLIMIT\s+(\d+)\b/i.exec(sql);
+    if (!limitMatch) {
+      return `${sql} LIMIT ${this.maxLimit}`;
+    }
+
+    const currentLimit = Number(limitMatch[1]);
+    if (!Number.isFinite(currentLimit) || currentLimit <= 0) {
+      return sql.replace(/\bLIMIT\s+\d+\b/i, `LIMIT ${this.maxLimit}`);
+    }
+    if (currentLimit > this.maxLimit) {
+      return sql.replace(/\bLIMIT\s+\d+\b/i, `LIMIT ${this.maxLimit}`);
+    }
     return sql;
   }
 
-  // 缓存相关方法
   private buildCacheKey(query: string, projectIds: string[]): string {
-    const data = `${query}:${projectIds.sort().join(",")}`;
+    const data = `${query}:${[...projectIds].sort().join(",")}`;
     return createHash("sha256").update(data).digest("hex");
   }
 
   private getFromCache(key: string): SqlGenerationResult | null {
     this.cleanupCache();
     const entry = this.cache.get(key);
-    if (entry && entry.expiresAt > Date.now()) {
-      return entry.result;
+    if (!entry || entry.expiresAt <= Date.now()) {
+      return null;
     }
-    return null;
+    return entry.result;
   }
 
   private setCache(key: string, result: SqlGenerationResult): void {
     this.cache.set(key, {
       result,
-      expiresAt: Date.now() + this.CACHE_TTL_MS
+      expiresAt: Date.now() + this.cacheTtlMs
     });
     this.cleanupCache();
   }

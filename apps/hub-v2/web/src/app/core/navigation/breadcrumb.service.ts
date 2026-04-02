@@ -38,6 +38,10 @@ export class BreadcrumbService {
       return [{ label: '内容管理' }];
     }
 
+    if (path.startsWith('/reports')) {
+      return [{ label: '积木报表' }];
+    }
+
     if (path.startsWith('/projects')) {
       return [{ label: '项目管理' }];
     }

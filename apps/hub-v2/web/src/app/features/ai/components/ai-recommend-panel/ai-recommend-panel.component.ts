@@ -9,7 +9,7 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 
 import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
 import type { IssuePriority, IssueType } from '../../../issues/models/issue.model';
-import type { AiIssueRecommendResult, AiAssigneeRecommendResult } from '../../models/ai.model';
+import type { AiIssueRecommendResult, AiAssigneeRecommendResult, ProjectModule } from '../../models/ai.model';
 
 @Component({
   selector: 'app-ai-recommend-panel',
@@ -88,6 +88,28 @@ import type { AiIssueRecommendResult, AiAssigneeRecommendResult } from '../../mo
               }
             </div>
           }
+          @if (modules().length > 0) {
+            <div class="ai-field">
+              <label>模块</label>
+              <nz-select
+                [ngModel]="selectedModule()"
+                (ngModelChange)="updateModule($event)"
+                nzSize="small"
+                nzAllowClear
+                nzPlaceHolder="未选择"
+              >
+                @for (item of modules(); track moduleValue(item)) {
+                  <nz-option [nzLabel]="item.name" [nzValue]="moduleValue(item)" />
+                }
+              </nz-select>
+              @if (recommendedModuleValue()) {
+                <nz-tag nzColor="success" nzSize="small">推荐</nz-tag>
+              }
+              @if (recommendedModuleValue() && selectedModule() !== recommendedModuleValue()) {
+                <span class="ai-field__modified">已修改</span>
+              }
+            </div>
+          }
           @if (result()?.reason) {
             <div class="ai-reason">
               <nz-icon nzType="info-circle" />
@@ -102,7 +124,8 @@ import type { AiIssueRecommendResult, AiAssigneeRecommendResult } from '../../mo
           <button nz-button nzType="primary" nzSize="small" (click)="accept.emit({
             type: selectedType(),
             priority: selectedPriority(),
-            assigneeId: assigneeResult()?.assigneeId
+            assigneeId: assigneeResult()?.assigneeId,
+            moduleCode: selectedModule() ?? ''
           })">
             采用推荐
           </button>
@@ -200,7 +223,8 @@ export class AiRecommendPanelComponent {
   readonly assigneeLoading = input(false);
   readonly result = input<AiIssueRecommendResult | null>(null);
   readonly assigneeResult = input<AiAssigneeRecommendResult | null>(null);
-  readonly accept = output<{ type: IssueType | null; priority: IssuePriority | null; assigneeId?: string | null }>();
+  readonly modules = input<ProjectModule[]>([]);
+  readonly accept = output<{ type: IssueType | null; priority: IssuePriority | null; assigneeId?: string | null; moduleCode?: string }>();
   readonly skip = output<void>();
 
   protected readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
@@ -208,6 +232,8 @@ export class AiRecommendPanelComponent {
 
   protected readonly selectedType = signal<IssueType | null>(null);
   protected readonly selectedPriority = signal<IssuePriority | null>(null);
+  protected readonly selectedModule = signal<string | null>(null);
+  protected readonly recommendedModuleValue = computed(() => this.moduleValue(this.result()?.module));
 
   protected readonly showConfidence = computed(() => {
     const r = this.result();
@@ -239,6 +265,7 @@ export class AiRecommendPanelComponent {
       if (r) {
         this.selectedType.set(r.type);
         this.selectedPriority.set(r.priority);
+        this.selectedModule.set(this.moduleValue(r.module) || null);
       }
     });
   }
@@ -249,5 +276,13 @@ export class AiRecommendPanelComponent {
 
   protected updatePriority(value: IssuePriority): void {
     this.selectedPriority.set(value);
+  }
+
+  protected updateModule(value: string | null): void {
+    this.selectedModule.set(value);
+  }
+
+  protected moduleValue(module: ProjectModule | null | undefined): string {
+    return module?.code?.trim() || module?.name?.trim() || '';
   }
 }

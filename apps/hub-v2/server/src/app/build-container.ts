@@ -209,7 +209,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
         baseURL: config.openaiBaseUrl ?? undefined
       })
     : null;
-  const aiIssueService = new AiIssueService(openaiClient, new AiRepo(db));
+  const aiIssueService = new AiIssueService(openaiClient);
   const aiReportSqlService = new AiReportSqlService(config, projectAccess);
   const aiReportRenderService = new AiReportRenderService(db);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);

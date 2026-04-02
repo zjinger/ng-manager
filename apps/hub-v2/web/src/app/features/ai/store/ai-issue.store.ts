@@ -102,6 +102,7 @@ export class AiIssueStore {
   async fetchAssigneeRecommendation(): Promise<void> {
     const projectId = this.projectId();
     const title = this.title().trim();
+    const latestResult = this.result();
     if (!projectId || title.length < 5) {
       this.assigneeResult.set(null);
       this.assigneeLoading.set(false);
@@ -116,6 +117,8 @@ export class AiIssueStore {
           title,
           description: this.description(),
           projectId,
+          type: latestResult?.type ?? undefined,
+          moduleCode: latestResult?.module?.code ?? null,
         }),
       );
       if (requestId !== this.assigneeRequestId) {

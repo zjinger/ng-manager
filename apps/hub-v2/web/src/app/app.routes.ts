@@ -35,6 +35,11 @@ export const routes: Routes = [
           import('./features/dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
       },
       {
+        path: 'reports',
+        loadChildren: () =>
+          import('./features/report/routes').then((m) => m.REPORT_ROUTES),
+      },
+      {
         path: 'issues',
         loadChildren: () =>
           import('./features/issues/routes').then((m) => m.ISSUE_ROUTES),

@@ -6,15 +6,16 @@ import type {
   AiAssigneeRecommendInput,
   AiAssigneeRecommendResult,
   HistoricalIssue,
-  HistoricalAssignee
+  HistoricalAssignee,
+  ProjectModule
 } from "./ai.types";
-import type { AiRepo } from "./ai.repo";
 
-const SYSTEM_PROMPT = `你是一个专业的 Issue 分析助手。
+const SYSTEM_PROMPT = `你是一个专业的测试单分析助手。
 
-给定 Issue 的标题和描述，请分析并推荐：
+给定测试单的标题和描述，请分析并推荐：
 1. type（类型）：bug / feature / task / change / improvement / test
 2. priority（优先级）：low / medium / high / critical
+3. module（模块）：从项目已有模块中选择最相关的
 
 分类依据：
 - bug=缺陷报告，如崩溃、报错、功能失效
@@ -34,28 +35,46 @@ const SYSTEM_PROMPT = `你是一个专业的 Issue 分析助手。
 {
   "type": "bug",
   "priority": "high",
+  "module": { "code": "<模块code>", "name": "<模块名称>" },
   "confidence": 0.92,
   "reason": "根据描述，该问题涉及用户无法正常登录，属于高优先级 bug"
 }
+
+如果未提供“项目可用模块”列表，module 必须为 null。
 
 confidence 为置信度 0~1，根据信息明确程度判断。`;
 
 function buildPrompt(
   title: string,
   description: string | null | undefined,
-  historicalIssues: HistoricalIssue[]
+  historicalIssues: HistoricalIssue[],
+  projectModules: ProjectModule[]
 ): string {
   let prompt = "";
 
+  // 项目已有模块
+  if (projectModules.length > 0) {
+    prompt += "项目可用模块：\n";
+    for (const m of projectModules) {
+      prompt += `- ${m.code}: ${m.name}\n`;
+    }
+    prompt += "仅可使用上述模块 code 作为 module.code，禁止输出列表外值。\n";
+    prompt += "\n";
+  } else {
+    prompt += "当前项目未配置功能模块，请不要推荐模块，module 输出为 null。\n\n";
+  }
+
+  // 历史测试单（含模块）
   if (historicalIssues.length > 0) {
-    prompt += "参考以下该项目的历史 Issue 分类模式：\n\n";
+    prompt += "参考以下该项目的历史测试单分类模式：\n\n";
     for (const issue of historicalIssues.slice(0, 30)) {
-      prompt += `- [${issue.type}] ${issue.title} → priority=${issue.priority}\n`;
+      const moduleInfo = issue.moduleCode ? ` [${issue.moduleCode}]` : "";
+      prompt += `- [${issue.type}]${moduleInfo} ${issue.title} → priority=${issue.priority}\n`;
     }
     prompt += "\n";
   }
 
-  prompt += `请分析新 Issue：\n标题：${title}\n`;
+  prompt += `请分析新测试单：\n标题：${title}\n`;
   if (description?.trim()) {
     prompt += `描述：${description.trim().slice(0, 500)}\n`;
   }
@@ -67,6 +86,7 @@ function buildPrompt(
 interface LlmResponse {
   type?: string;
   priority?: string;
+  module?: { code?: string; name?: string } | string;
   confidence?: number;
   reason?: string;
 }
@@ -75,23 +95,27 @@ export class AiIssueService {
   private readonly openai: OpenAI | null;
 
   constructor(
-    openaiClient: OpenAI | null,
-    private readonly aiRepo: AiRepo
+    openaiClient: OpenAI | null
   ) {
     this.openai = openaiClient;
   }
 
-  async recommend(input: AiIssueRecommendInput, historicalIssues: HistoricalIssue[]): Promise<AiIssueRecommendResult> {
+  async recommend(
+    input: AiIssueRecommendInput,
+    historicalIssues: HistoricalIssue[],
+    projectModules: ProjectModule[]
+  ): Promise<AiIssueRecommendResult> {
     if (!this.openai) {
       return {
         type: null,
         priority: null,
+        module: null,
         confidence: 0,
         reason: "AI 服务未配置"
       };
     }
 
-    const prompt = buildPrompt(input.title, input.description, historicalIssues);
+    const prompt = buildPrompt(input.title, input.description, historicalIssues, projectModules);
 
     try {
       const response = await this.openai.chat.completions.create({
@@ -110,25 +134,32 @@ export class AiIssueService {
         return {
           type: null,
           priority: null,
+          module: null,
           confidence: 0,
           reason: "AI 返回为空"
         };
       }
 
       const parsed = JSON.parse(content) as LlmResponse;
-      return this.normalizeResult(parsed);
+      return this.normalizeResult(parsed, projectModules, input, historicalIssues);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
         type: null,
         priority: null,
+        module: null,
         confidence: 0,
         reason: `AI 调用失败: ${message}`
       };
     }
   }
 
-  private normalizeResult(parsed: LlmResponse): AiIssueRecommendResult {
+  private normalizeResult(
+    parsed: LlmResponse,
+    projectModules: ProjectModule[],
+    input: AiIssueRecommendInput,
+    historicalIssues: HistoricalIssue[]
+  ): AiIssueRecommendResult {
     const validTypes: IssueType[] = ["bug", "feature", "task", "change", "improvement", "test"];
     const validPriorities: IssuePriority[] = ["low", "medium", "high", "critical"];
 
@@ -140,6 +171,14 @@ export class AiIssueService {
       ? (parsed.priority as IssuePriority)
       : null;
 
+    // 模块优先使用 LLM 结果；失败时用本地规则兜底，提升命中率。
+    const module = projectModules.length === 0
+      ? null
+      : this.resolveProjectModule(parsed.module, projectModules)
+        ?? this.inferModuleFromText(`${input.title}\n${input.description ?? ""}`, projectModules)
+        ?? this.inferModuleFromHistory(historicalIssues, projectModules)
+        ?? (projectModules.length === 1 ? projectModules[0] : null);
+
     const confidence = typeof parsed.confidence === "number"
       ? Math.max(0, Math.min(1, parsed.confidence))
       : 0;
@@ -147,9 +186,145 @@ export class AiIssueService {
     return {
       type,
       priority,
+      module,
       confidence,
       reason: parsed.reason?.trim() || ""
     };
+  }
+
+  private resolveProjectModule(
+    rawModule: LlmResponse["module"],
+    projectModules: ProjectModule[]
+  ): ProjectModule | null {
+    if (!rawModule || projectModules.length === 0) {
+      return null;
+    }
+
+    const candidates = this.getModuleCandidates(rawModule);
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    for (const normalized of candidates) {
+      const exact = projectModules.find((item) => {
+        const normalizedCode = this.normalizeText(item.code);
+        const normalizedName = this.normalizeText(item.name);
+        return normalized === normalizedCode || normalized === normalizedName;
+      });
+      if (exact) {
+        return exact;
+      }
+    }
+
+    for (const normalized of candidates) {
+      const fuzzy = projectModules.find((item) => {
+        const normalizedCode = this.normalizeText(item.code);
+        const normalizedName = this.normalizeText(item.name);
+        return this.isFuzzyModuleMatch(normalized, normalizedCode)
+          || this.isFuzzyModuleMatch(normalized, normalizedName);
+      });
+      if (fuzzy) {
+        return fuzzy;
+      }
+    }
+
+    return null;
+  }
+
+  private inferModuleFromText(text: string, projectModules: ProjectModule[]): ProjectModule | null {
+    if (projectModules.length === 0) {
+      return null;
+    }
+    const normalizedText = this.normalizeText(text);
+    if (!normalizedText) {
+      return null;
+    }
+
+    let best: { module: ProjectModule; score: number } | null = null;
+    for (const item of projectModules) {
+      const normalizedCode = this.normalizeText(item.code);
+      const normalizedName = this.normalizeText(item.name);
+      let score = 0;
+      if (normalizedCode && normalizedText.includes(normalizedCode)) {
+        score += 2;
+      }
+      if (normalizedName && normalizedText.includes(normalizedName)) {
+        score += 3;
+      }
+      if (!best || score > best.score) {
+        best = { module: item, score };
+      }
+    }
+
+    if (!best || best.score <= 0) {
+      return null;
+    }
+    return best.module;
+  }
+
+  private inferModuleFromHistory(
+    historicalIssues: HistoricalIssue[],
+    projectModules: ProjectModule[]
+  ): ProjectModule | null {
+    if (historicalIssues.length === 0 || projectModules.length === 0) {
+      return null;
+    }
+
+    const moduleCounter = new Map<string, number>();
+    for (const issue of historicalIssues) {
+      const normalized = this.normalizeText(issue.moduleCode);
+      if (!normalized) {
+        continue;
+      }
+      moduleCounter.set(normalized, (moduleCounter.get(normalized) ?? 0) + 1);
+    }
+
+    let best: { module: ProjectModule; score: number } | null = null;
+    for (const item of projectModules) {
+      const codeScore = moduleCounter.get(this.normalizeText(item.code)) ?? 0;
+      const nameScore = moduleCounter.get(this.normalizeText(item.name)) ?? 0;
+      const score = Math.max(codeScore, nameScore);
+      if (!best || score > best.score) {
+        best = { module: item, score };
+      }
+    }
+
+    if (!best || best.score <= 0) {
+      return null;
+    }
+    return best.module;
+  }
+
+  private getModuleCandidates(rawModule: LlmResponse["module"]): string[] {
+    if (!rawModule) {
+      return [];
+    }
+    if (typeof rawModule === "string") {
+      const normalized = this.normalizeText(rawModule);
+      return normalized ? [normalized] : [];
+    }
+
+    const candidates: string[] = [];
+    const normalizedCode = this.normalizeText(rawModule.code);
+    if (normalizedCode) {
+      candidates.push(normalizedCode);
+    }
+    const normalizedName = this.normalizeText(rawModule.name);
+    if (normalizedName && !candidates.includes(normalizedName)) {
+      candidates.push(normalizedName);
+    }
+    return candidates;
+  }
+
+  private isFuzzyModuleMatch(input: string, moduleValue: string): boolean {
+    if (!input || !moduleValue) {
+      return false;
+    }
+    return input.includes(moduleValue) || moduleValue.includes(input);
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    return value?.trim().toLowerCase() || "";
   }
 
   async recommendAssignee(
@@ -182,9 +357,9 @@ export class AiIssueService {
         messages: [
           {
             role: "system",
-            content: `你是一个专业的 Issue 指派助手。
+            content: `你是一个专业的测试单指派助手。
 
-根据 Issue 的类型和历史指派记录，推荐最合适的负责人。
+根据测试单的类型和历史指派记录，推荐最合适的负责人。
 
 输出格式（JSON）：
 {
@@ -195,7 +370,7 @@ export class AiIssueService {
 }
 
 优先选择：
-1. 处理过同类型 Issue 数量最多的人
+1. 处理过同类型测试单数量最多的人
 2. 最近活跃的成员
 3. 如果是 bug，优先选择熟悉该模块的人`
           },
@@ -239,7 +414,10 @@ export class AiIssueService {
     input: AiAssigneeRecommendInput,
     historicalAssignees: HistoricalAssignee[]
   ): string {
-    let prompt = `Issue 类型：${input.type}\n标题：${input.title}\n`;
+    let prompt = `测试单类型：${input.type}\n标题：${input.title}\n`;
+    if (input.moduleCode) {
+      prompt += `模块：${input.moduleCode}\n`;
+    }
     if (input.description?.trim()) {
       prompt += `描述：${input.description.trim().slice(0, 300)}\n`;
     }

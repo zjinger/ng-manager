@@ -20,14 +20,7 @@ export class SearchService {
 
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
     const isAdmin = ctx.roles.includes("admin");
-    const includeGlobalProjectNull = true;
     const globalProjectNullPublishedOnly = !isAdmin;
-    if (projectIds.length === 0 && !includeGlobalProjectNull) {
-      return {
-        items: [],
-        total: 0
-      };
-    }
 
     const matchExpression = this.buildMatchExpression(keyword);
     if (!matchExpression) {
@@ -37,16 +30,16 @@ export class SearchService {
       };
     }
 
-    const rows = this.repo.search({
+    const repoResult = this.repo.search({
       matchExpression,
       projectIds,
-      includeGlobalProjectNull,
+      includeGlobalProjectNull: true,
       globalProjectNullPublishedOnly,
       types: input.types,
       limit: input.limit
     });
 
-    const items = rows.map((row) => ({
+    const items = repoResult.items.map((row) => ({
       type: row.entityType,
       id: row.entityId,
       projectId: row.projectId,
@@ -59,7 +52,7 @@ export class SearchService {
 
     return {
       items,
-      total: items.length
+      total: repoResult.total
     };
   }
 

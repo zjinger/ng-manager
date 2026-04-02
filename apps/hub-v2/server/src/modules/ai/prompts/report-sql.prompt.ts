@@ -49,7 +49,7 @@ users 表：
 2. 必须使用参数化查询占位符（?），不要直接拼接用户输入
 3. 默认只查询最近 90 天内的数据
 4. 默认 LIMIT 1000 条结果
-5. 项目权限过滤使用 project_id IN (?)
+5. SQL 必须包含 issues 或 rd_items 之一（权限系统会自动注入 project_id 过滤，不要自己写 project_id IN）
 
 ## 输出格式（JSON）
 
@@ -61,26 +61,32 @@ users 表：
 
 ## 示例
 
-用户：最近 30 天各项目的 Issue 创建数量
+用户：最近 30 天各项目的测试单创建数量
 输出：
 {
-  "sql": "SELECT p.name as project_name, COUNT(*) as issue_count, DATE(i.created_at) as date FROM issues i JOIN projects p ON i.project_id = p.id WHERE i.created_at >= datetime('now', '-30 days') AND i.project_id IN (?) GROUP BY p.name, DATE(i.created_at) ORDER BY date DESC LIMIT 1000",
-  "title": "各项目 Issue 创建趋势",
-  "description": "最近 30 天各项目每日 Issue 创建数量统计"
+  "sql": "SELECT p.name as project_name, COUNT(*) as tracking_count, DATE(i.created_at) as date FROM issues i JOIN projects p ON i.project_id = p.id WHERE i.created_at >= datetime('now', '-30 days') GROUP BY p.name, DATE(i.created_at) ORDER BY date DESC LIMIT 1000",
+  "title": "各项目测试单创建趋势",
+  "description": "最近 30 天各项目每日测试单创建数量统计"
 }
 
-用户：谁处理的 Issue 最多
+用户：谁处理的测试单最多
 输出：
 {
-  "sql": "SELECT u.display_name as assignee, COUNT(*) as resolved_count FROM issues i JOIN users u ON i.assignee_id = u.id WHERE i.status = 'closed' AND i.closed_at >= datetime('now', '-30 days') AND i.project_id IN (?) GROUP BY i.assignee_id ORDER BY resolved_count DESC LIMIT 10",
-  "title": "Issue 处理排行榜",
-  "description": "最近 30 天处理 Issue 最多的前 10 名成员"
+  "sql": "SELECT u.display_name as assignee, COUNT(*) as resolved_count FROM issues i JOIN users u ON i.assignee_id = u.id WHERE i.status = 'closed' AND i.closed_at >= datetime('now', '-30 days') GROUP BY i.assignee_id ORDER BY resolved_count DESC LIMIT 10",
+  "title": "测试单处理排行榜",
+  "description": "最近 30 天处理测试单最多的前 10 名成员"
 }`;
 
-export function buildReportSqlUserPrompt(query: string, projectCount: number): string {
+export function buildReportSqlUserPrompt(
+  query: string,
+  projectCount: number
+): string {
   return `用户需求：${query}
 
 可访问项目数：${projectCount} 个
+说明：
+- 请仅根据用户自然语言理解时间范围与项目范围
+- 不要假设额外的项目/时间筛选参数
 
-请生成对应的 SQL 查询。只返回 JSON 格式，不要其他内容。`;
+请生成对应的 SQL 查询。只返回 JSON 格式，不要 Markdown 代码块、不要注释。`;
 }
