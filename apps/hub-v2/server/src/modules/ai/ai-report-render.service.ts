@@ -135,7 +135,8 @@ export class AiReportRenderService {
     if (rows.length === 0) {
       return [{ type: "empty", title: "暂无数据" }];
     }
-    return this.composeBlocks(rows);
+    const enrichedRows = this.enrichProjectDimensionRows(rows, params);
+    return this.composeBlocks(enrichedRows);
   }
 
   private executeQuery(sql: string, params: string[]): Record<string, unknown>[] {
@@ -158,6 +159,90 @@ export class AiReportRenderService {
       return rows.slice(0, this.maxRows);
     }
     return rows;
+  }
+
+  private enrichProjectDimensionRows(
+    rows: Record<string, unknown>[],
+    projectIds: string[]
+  ): Record<string, unknown>[] {
+    if (rows.length === 0 || projectIds.length === 0) {
+      return rows;
+    }
+
+    const firstRow = rows[0];
+    const keys = Object.keys(firstRow);
+    const dateColumn = keys.find((key) => this.looksLikeDateColumn(key, firstRow[key]));
+    if (dateColumn) {
+      return rows;
+    }
+
+    const projectLabelKey = this.detectProjectLabelKey(keys);
+    if (!projectLabelKey) {
+      return rows;
+    }
+
+    const numericColumns = keys.filter((key) => this.isNumericValue(firstRow[key]));
+    if (numericColumns.length === 0) {
+      return rows;
+    }
+
+    const placeholders = projectIds.map(() => "?").join(", ");
+    const projectRows = this.readonlyDb
+      .prepare(`SELECT id, name, project_key FROM projects WHERE id IN (${placeholders})`)
+      .all(...projectIds) as Array<{ id: string; name: string; project_key: string | null }>;
+
+    const expectedLabels = projectRows.map((item) => {
+      if (projectLabelKey === "project_name") {
+        return item.name?.trim() || item.id;
+      }
+      if (projectLabelKey === "project_key") {
+        return item.project_key?.trim() || item.id;
+      }
+      return item.id;
+    });
+    const existing = new Set(rows.map((row) => String(row[projectLabelKey] ?? "").trim()));
+    const missingLabels = expectedLabels.filter((label) => label && !existing.has(label));
+    if (missingLabels.length === 0) {
+      return rows;
+    }
+
+    const emptyRows = missingLabels.map((label) => this.buildEmptyProjectRow(keys, numericColumns, projectLabelKey, label));
+    return [...rows, ...emptyRows];
+  }
+
+  private detectProjectLabelKey(keys: string[]): string | null {
+    const normalized = keys.map((key) => this.normalizeColumnKey(key));
+    if (normalized.includes("project_name")) {
+      return keys[normalized.indexOf("project_name")];
+    }
+    if (normalized.includes("project_key")) {
+      return keys[normalized.indexOf("project_key")];
+    }
+    if (normalized.includes("project_id")) {
+      return keys[normalized.indexOf("project_id")];
+    }
+    return null;
+  }
+
+  private buildEmptyProjectRow(
+    keys: string[],
+    numericColumns: string[],
+    projectLabelKey: string,
+    projectLabel: string
+  ): Record<string, unknown> {
+    const row: Record<string, unknown> = {};
+    for (const key of keys) {
+      if (key === projectLabelKey) {
+        row[key] = projectLabel;
+        continue;
+      }
+      if (numericColumns.includes(key)) {
+        row[key] = 0;
+        continue;
+      }
+      row[key] = null;
+    }
+    return row;
   }
 
   private inferVisualization(rows: Record<string, unknown>[]): VisualizationType {
@@ -347,18 +432,19 @@ export class AiReportRenderService {
       viz.categoryCol || Object.keys(firstRow).find((key) => typeof firstRow[key] === "string") || "category";
     const valueCol =
       viz.valueCol || Object.keys(firstRow).find((key) => this.isNumericValue(firstRow[key])) || "value";
-    const chartType = rows.length <= 10 ? "donut" : "bar";
+    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, [valueCol]);
+    const chartType = aggregated.length <= 10 ? "donut" : "bar";
 
     return {
       type: "distribution_chart",
       title: "分布分析",
       chart: {
         type: chartType,
-        labels: rows.map((row) => this.localizeValueByColumn(categoryCol, row[categoryCol])),
+        labels: aggregated.map((item) => item.category),
         datasets: [
           {
             label: this.humanizeColumnName(valueCol),
-            data: rows.map((row) => this.toNumber(row[valueCol]) ?? 0)
+            data: aggregated.map((item) => item.values[0] ?? 0)
           }
         ]
       }
@@ -370,15 +456,16 @@ export class AiReportRenderService {
     categoryCol: string,
     valueCols: string[]
   ): RenderedBlock {
+    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, valueCols);
     return {
       type: "trend_chart",
       title: "对比分析",
       chart: {
         type: "bar",
-        labels: rows.map((row) => this.localizeValueByColumn(categoryCol, row[categoryCol])),
+        labels: aggregated.map((item) => item.category),
         datasets: valueCols.map((col) => ({
           label: this.humanizeColumnName(col),
-          data: rows.map((row) => this.toNumber(row[col]) ?? 0)
+          data: aggregated.map((item) => item.values[valueCols.indexOf(col)] ?? 0)
         }))
       }
     };
@@ -389,9 +476,10 @@ export class AiReportRenderService {
     categoryCol: string,
     valueCols: string[]
   ): RenderedBlock {
-    const datasets = rows.map((row) => ({
-      label: this.localizeValueByColumn(categoryCol, row[categoryCol]),
-      data: valueCols.map((col) => this.toNumber(row[col]) ?? 0)
+    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, valueCols);
+    const datasets = aggregated.map((item) => ({
+      label: item.category,
+      data: item.values
     }));
     return {
       type: "trend_chart",
@@ -409,23 +497,50 @@ export class AiReportRenderService {
     const valueCol =
       viz.valueCol || Object.keys(firstRow).find((key) => this.isNumericValue(firstRow[key])) || "value";
     const labelCol = Object.keys(firstRow).find((key) => typeof firstRow[key] === "string") || Object.keys(firstRow)[0];
+    const aggregated = this.aggregateRowsByCategory(rows, labelCol, [valueCol]);
 
-    const sortedRows = [...rows].sort((a, b) => (this.toNumber(b[valueCol]) ?? 0) - (this.toNumber(a[valueCol]) ?? 0));
-    const maxValue = Math.max(...sortedRows.map((row) => this.toNumber(row[valueCol]) ?? 0), 0);
+    const sortedRows = [...aggregated].sort((a, b) => (b.values[0] ?? 0) - (a.values[0] ?? 0));
+    const maxValue = Math.max(...sortedRows.map((row) => row.values[0] ?? 0), 0);
 
     return {
       type: "leaderboard",
       title: "排行榜",
       items: sortedRows.map((row, index) => {
-        const current = this.toNumber(row[valueCol]) ?? 0;
+        const current = row.values[0] ?? 0;
         return {
           rank: index + 1,
-          label: this.localizeValueByColumn(labelCol, row[labelCol]),
+          label: row.category,
           value: current,
           percent: maxValue > 0 ? Math.round((current / maxValue) * 100) : 0
         };
       })
     };
+  }
+
+  private aggregateRowsByCategory(
+    rows: Record<string, unknown>[],
+    categoryCol: string,
+    valueCols: string[]
+  ): Array<{ category: string; values: number[] }> {
+    const grouped = new Map<string, { category: string; values: number[] }>();
+
+    for (const row of rows) {
+      const category = this.localizeValueByColumn(categoryCol, row[categoryCol]);
+      const values = valueCols.map((col) => this.toNumber(row[col]) ?? 0);
+      const existing = grouped.get(category);
+      if (!existing) {
+        grouped.set(category, {
+          category,
+          values
+        });
+        continue;
+      }
+      for (let i = 0; i < values.length; i += 1) {
+        existing.values[i] = (existing.values[i] ?? 0) + values[i];
+      }
+    }
+
+    return Array.from(grouped.values());
   }
 
   private renderTable(rows: Record<string, unknown>[]): RenderedBlock {

@@ -87,7 +87,9 @@ export class EchartsChartComponent implements AfterViewInit {
       chartsModule.LineChart,
       chartsModule.BarChart,
       chartsModule.PieChart,
+      chartsModule.RadarChart,
       componentsModule.GridComponent,
+      componentsModule.RadarComponent,
       componentsModule.TooltipComponent,
       componentsModule.LegendComponent,
       componentsModule.TitleComponent,
@@ -109,4 +111,3 @@ export class EchartsChartComponent implements AfterViewInit {
     this.chart?.resize();
   };
 }
-

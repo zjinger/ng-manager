@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 import { BlockRendererComponent } from '../block-renderer/block-renderer.component';
 import type { ReportBlock, ReportBoardItem } from '../../models/report.model';
@@ -9,7 +9,7 @@ import type { ReportBlock, ReportBoardItem } from '../../models/report.model';
 @Component({
   selector: 'app-report-board-panel',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, NzToolTipModule, BlockRendererComponent],
+  imports: [NzButtonModule, NzIconModule, NzTooltipModule, BlockRendererComponent],
   template: `
     @if (items().length > 0) {
       <div class="card board-card">
