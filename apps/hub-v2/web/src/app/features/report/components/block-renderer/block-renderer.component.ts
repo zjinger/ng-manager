@@ -20,6 +20,9 @@ import type { ReportBlock } from '../../models/report.model';
     } @else if (block()!.type === 'stat_card') {
       <section class="block block--stat">
         <div class="block__title">{{ block()!.title }}</div>
+        @if (showDescription() && block()!.description) {
+          <div class="block__desc">{{ block()!.description }}</div>
+        }
         <div class="stat__value">{{ block()!.value ?? '-' }}</div>
         @if (block()!.subText || block()!.subValue) {
           <div class="stat__sub">{{ block()!.subText || '' }} {{ block()!.subValue || '' }}</div>
@@ -28,6 +31,9 @@ import type { ReportBlock } from '../../models/report.model';
     } @else if (block()!.type === 'leaderboard') {
       <section class="block">
         <div class="block__title">{{ block()!.title || '排行榜' }}</div>
+        @if (showDescription() && block()!.description) {
+          <div class="block__desc">{{ block()!.description }}</div>
+        }
         <div class="leaderboard">
           @for (item of block()!.items || []; track item.rank) {
             <div class="leaderboard__row">
@@ -44,6 +50,9 @@ import type { ReportBlock } from '../../models/report.model';
     } @else if (block()!.type === 'table') {
       <section class="block">
         <div class="block__title">{{ block()!.title || '数据列表' }}</div>
+        @if (showDescription() && block()!.description) {
+          <div class="block__desc">{{ block()!.description }}</div>
+        }
         <div class="table-wrap">
           <table class="result-table">
             <thead>
@@ -68,6 +77,9 @@ import type { ReportBlock } from '../../models/report.model';
     } @else {
       <section class="block">
         <div class="block__title">{{ block()!.title }}</div>
+        @if (showDescription() && block()!.description) {
+          <div class="block__desc">{{ block()!.description }}</div>
+        }
         @if (chartOption(); as option) {
           <app-echarts-chart [option]="option" [height]="chartHeight()" />
         }
@@ -102,6 +114,12 @@ import type { ReportBlock } from '../../models/report.model';
         color: var(--text-primary);
         font-size: 16px;
         font-weight: 600;
+      }
+      .block__desc {
+        margin: -4px 0 10px;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.6;
       }
       .stat__value {
         font-size: 44px;
@@ -195,6 +213,7 @@ import type { ReportBlock } from '../../models/report.model';
 })
 export class BlockRendererComponent {
   readonly block = input<ReportBlock | null>(null);
+  readonly showDescription = input(false);
 
   readonly chartHeight = computed(() => {
     const current = this.block();
@@ -256,4 +275,3 @@ export class BlockRendererComponent {
     return String(value);
   }
 }
-

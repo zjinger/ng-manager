@@ -1,6 +1,8 @@
-export const REPORT_SQL_SYSTEM_PROMPT = `你是一个数据分析 SQL 专家。根据用户的自然语言需求，生成 SQLite 查询语句。
+export const REPORT_SQL_SYSTEM_PROMPT = `你是一个测试追踪与研发数据分析 SQL 专家。根据用户的自然语言需求，生成 SQLite 查询语句。
 
 ## 可用表结构
+
+你可以统计的主题包括：项目、成员、研发项（RD）、测试单。
 
 issues 表：
 - id TEXT PRIMARY KEY
@@ -33,6 +35,22 @@ rd_items 表：
 - created_at TEXT
 - completed_at TEXT
 
+rd_stages 表：
+- id TEXT PRIMARY KEY
+- project_id TEXT
+- name TEXT
+- sort INTEGER
+- enabled INTEGER
+
+project_members 表：
+- id TEXT PRIMARY KEY
+- project_id TEXT
+- user_id TEXT
+- display_name TEXT
+- role_code TEXT
+- is_owner INTEGER
+- joined_at TEXT
+
 projects 表：
 - id TEXT PRIMARY KEY
 - project_key TEXT
@@ -49,7 +67,7 @@ users 表：
 2. 必须使用参数化查询占位符（?），不要直接拼接用户输入
 3. 默认只查询最近 90 天内的数据
 4. 默认 LIMIT 1000 条结果
-5. SQL 必须包含 issues 或 rd_items 之一（权限系统会自动注入 project_id 过滤，不要自己写 project_id IN）
+5. SQL 必须至少包含一个项目级表（issues/rd_items/projects/project_members/rd_stages），权限系统会自动注入项目过滤，不要自己写 project_id IN 或 projects.id IN
 
 ## 输出格式（JSON）
 
@@ -75,6 +93,22 @@ users 表：
   "sql": "SELECT u.display_name as assignee, COUNT(*) as resolved_count FROM issues i JOIN users u ON i.assignee_id = u.id WHERE i.status = 'closed' AND i.closed_at >= datetime('now', '-30 days') GROUP BY i.assignee_id ORDER BY resolved_count DESC LIMIT 10",
   "title": "测试单处理排行榜",
   "description": "最近 30 天处理测试单最多的前 10 名成员"
+}
+
+用户：各项目成员数量
+输出：
+{
+  "sql": "SELECT p.name as project_name, COUNT(pm.user_id) as member_count FROM projects p LEFT JOIN project_members pm ON pm.project_id = p.id GROUP BY p.id, p.name ORDER BY member_count DESC LIMIT 1000",
+  "title": "项目成员规模统计",
+  "description": "按项目统计当前成员数量"
+}
+
+用户：最近 30 天各项目研发项完成情况
+输出：
+{
+  "sql": "SELECT p.name as project_name, SUM(CASE WHEN r.status IN ('done','closed','completed') THEN 1 ELSE 0 END) as completed_rd_count, COUNT(*) as rd_count FROM rd_items r JOIN projects p ON p.id = r.project_id WHERE r.created_at >= datetime('now', '-30 days') GROUP BY p.id, p.name ORDER BY rd_count DESC LIMIT 1000",
+  "title": "项目研发项完成情况",
+  "description": "最近 30 天各项目研发项总量与完成量"
 }`;
 
 export function buildReportSqlUserPrompt(

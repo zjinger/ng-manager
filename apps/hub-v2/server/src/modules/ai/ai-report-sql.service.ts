@@ -49,6 +49,13 @@ export class AiReportSqlService {
     "DETACH",
     "VACUUM"
   ];
+  private readonly projectScopedTableColumns: Record<string, "project_id" | "id"> = {
+    issues: "project_id",
+    rd_items: "project_id",
+    project_members: "project_id",
+    rd_stages: "project_id",
+    projects: "id"
+  };
 
   constructor(
     private readonly config: AppConfig,
@@ -223,14 +230,15 @@ export class AiReportSqlService {
   }
 
   private detectProjectExpression(sql: string): string {
+    const tablePattern = Object.keys(this.projectScopedTableColumns).join("|");
     const tableMatches = Array.from(
-      sql.matchAll(/\b(?:FROM|JOIN)\s+(issues|rd_items)\b(?:\s+(?:AS\s+)?([A-Za-z_][A-Za-z0-9_]*))?/gi),
+      sql.matchAll(new RegExp(`\\b(?:FROM|JOIN)\\s+(${tablePattern})\\b(?:\\s+(?:AS\\s+)?([A-Za-z_][A-Za-z0-9_]*))?`, "gi")),
     );
 
     if (tableMatches.length === 0) {
       throw new AppError(
         ERROR_CODES.AI_SQL_INVALID,
-        "AI SQL must query issues or rd_items to apply project permission filter",
+        "AI SQL must query at least one project-scoped table (issues/rd_items/projects/project_members/rd_stages)",
         400
       );
     }
@@ -253,7 +261,8 @@ export class AiReportSqlService {
     const alias =
       aliasCandidate && !reservedWords.has(aliasCandidate.toUpperCase()) ? aliasCandidate : undefined;
     const qualifier = alias || tableName;
-    return `${qualifier}.project_id`;
+    const projectColumn = this.projectScopedTableColumns[tableName.toLowerCase()] ?? "project_id";
+    return `${qualifier}.${projectColumn}`;
   }
 
   private enforceLimit(sql: string): string {

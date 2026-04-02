@@ -68,7 +68,16 @@ export class AiReportRenderService {
     in_progress_count: "处理中数量",
     verified_count: "已验证数量",
     reopened_count: "重新打开数量",
-    completion_rate: "完成率"
+    completion_rate: "完成率",
+    member_count: "成员数量",
+    active_member_count: "活跃成员数量",
+    rd_count: "研发项数量",
+    completed_rd_count: "已完成研发项数量",
+    pending_rd_count: "待处理研发项数量",
+    avg_progress: "平均进度",
+    assignee_name: "负责人",
+    creator_name: "创建人",
+    reviewer_name: "评审人"
   };
   private readonly statusValueMap: Record<string, string> = {
     open: "待处理",
