@@ -31,7 +31,7 @@ export class RdStore {
   private readonly currentRdItemState = signal<RdItemEntity | null>(null);
   private readonly currentRdLogsState = signal<RdLogEntity[]>([]);
   private readonly stagesState = signal<RdStageEntity[]>([]);
-  private readonly projectMembersState = signal<{ id: string; name: string }[]>([]);
+  private readonly projectMembersState = this.projectState.currentProjectMembers;
   private readonly queryState = signal<RdListQuery>({
     page: 1,
     pageSize: 20,
@@ -55,17 +55,39 @@ export class RdStore {
   readonly busy = computed(() => this.busyState());
   readonly rdItemsLoading = computed(() => this.loadingState());
 
+  initialize(): void {
+    try {
+      const projectId = this.projectId();
+      if (!projectId) return;
+      this.loadStages();
+      this.loadRdItems();
+      this.projectState.loadProjectMembers(projectId);
+    } catch (e) {}
+  }
+
   async loadRdItems() {
     try {
       const projectId = this.projectId();
       if (!projectId) return;
       this.loadingState.set(true);
-      const res = (await this.rdApi.getRdItemsList(this.projectId(), this.query())) as RdListResult;
+      const res = await this.rdApi.getRdItemsList(this.projectId(), this.query());
       this.rdItemsPageListState.set(res.items);
       this.rdItemsCountState.set(res.total);
       this.loadingState.set(false);
     } catch (e) {
       this.loadingState.set(false);
+    }
+  }
+
+  async loadStages() {
+    const projectId = this.projectId();
+    try {
+      const stages = (await this.rdApi.getRdStages(projectId)).items;
+      this.stagesState.set(stages);
+      console.log(stages);
+      
+    } catch (e) {
+      this.stagesState.set([]);
     }
   }
 
@@ -124,12 +146,9 @@ export class RdStore {
     this.runAction(() => this.rdApi.resolve(projectId, itemId));
   }
 
-  // advanceStage(itemId: string, input: AdvanceRdStageInput): void {
-  //   const projectId = this.projectId();
-
-  //   if (!projectId) return;
-  //   this.runAction(() => this.rdApi.advanceStage(projectId, itemId, input));
-  // }
+  advanceStage(itemId: string, input: AdvanceRdStageInput): void {
+    // this.runAction(() => this.rdApi.advanceStage(itemId, input));
+  }
 
   accept(itemId: string): void {
     const projectId = this.projectId();

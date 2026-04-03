@@ -85,4 +85,12 @@ export class RdItemCardComponent {
     const stage = this.stages().find((s) => s.id === stageId);
     return stage ? stage.name : '-';
   }
+
+  getStagesName(stageId: string | null) {
+    if (!stageId) return '';
+    const stage = this.stages().find((stage) => {
+      return stage.id === stageId;
+    });
+    return stage?.name ?? '';
+  }
 }

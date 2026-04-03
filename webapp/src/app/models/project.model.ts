@@ -102,3 +102,16 @@ export interface ProjectAssets {
     iconsSvn: ProjectAssetSourceSvn; // 原始尺寸图标的 SVN 来源
     cutImageSvn?: ProjectAssetSourceSvn; // 可选：切图的 SVN 来源
 }
+
+
+export interface ProjectMemberEntity {
+  id: string;
+  projectId: string;
+  userId: string;
+  displayName: string;
+  roleCode: string;
+  isOwner: boolean;
+  joinedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}

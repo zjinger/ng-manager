@@ -9,6 +9,7 @@ import {
   RdItemPriority,
   RdItemStatus,
   RdLogEntity,
+  RdStageEntity,
 } from '@pages/rd/models/rd.model';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
@@ -70,6 +71,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
                 (deleteClick)="this.deleteClick.emit()"
                 [members]="members()"
                 [currentUserId]="currentUserId()"
+                [busy]="busy()"
               ></app-rd-action-area>
             </nz-card>
 
@@ -86,7 +88,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
                   {{ rdItem()!.assigneeName }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="验收人">
-                  {{ rdItem()!.reviewerName }}
+                  {{ rdItem()!.reviewerName ?? '_' }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="进度"
                   >{{ rdItem()!.progress }}%</nz-descriptions-item
@@ -97,15 +99,17 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
                 <nz-descriptions-item nzTitle="优先级">
                   {{ getPriorityLabel(rdItem()!.priority) }}
                 </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="阶段">{{ rdItem()!.stageId }}</nz-descriptions-item>
+                <nz-descriptions-item nzTitle="阶段">
+                  {{ getStagesName(rdItem()!.stageId) }}
+                </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="计划开始">
-                  {{ rdItem()!.planStartAt | date: 'yyyy-MM-dd' }}
+                  {{ (rdItem()!.planStartAt | date: 'yyyy-MM-dd') ?? '_' }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="计划结束">
-                  {{ rdItem()!.planEndAt | date: 'yyyy-MM-dd' }}
+                  {{ (rdItem()!.planEndAt | date: 'yyyy-MM-dd') ?? '_' }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="创建时间">
-                  {{ rdItem()!.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}
+                  {{ (rdItem()!.createdAt | date: 'yyyy-MM-dd HH:mm:ss') ?? '_' }}
                 </nz-descriptions-item>
               </nz-descriptions>
             </nz-card>
@@ -213,6 +217,7 @@ export class RdDetailComponent {
   readonly logs = input<RdLogEntity[]>([]);
   readonly placement = input<NzDrawerPlacement>('right');
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly stages = input<RdStageEntity[]>([]);
   readonly currentUserId = input<string>('');
 
   readonly close = output();
@@ -233,5 +238,13 @@ export class RdDetailComponent {
 
   closeDetaile() {
     this.close.emit();
+  }
+
+  getStagesName(stageId: string | null) {
+    if (!stageId) return '';
+    const stage = this.stages().find((stage) => {
+      return stage.id === stageId;
+    });
+    return stage?.name ?? '';
   }
 }

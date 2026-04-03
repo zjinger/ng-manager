@@ -1,6 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
-import { AdvanceRdStageInput, BlockRdItemInput, RdItemEntity, RdListQuery, RdListResult, RdStageEntity, UpdateRdItemInput } from '../models/rd.model';
+import {
+  AdvanceRdStageInput,
+  BlockRdItemInput,
+  RdItemEntity,
+  RdListQuery,
+  RdListResult,
+  RdStageEntity,
+  UpdateRdItemInput,
+} from '../models/rd.model';
 import { HttpParams } from '@angular/common/http';
 import { ApiClientService } from '@pages/api-client/services';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
@@ -20,7 +28,6 @@ export class RdApiService {
       payload: {},
     });
   }
-
 
   async close(projectId: string, itemId: string, summary: string): Promise<RdItemEntity> {
     return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
@@ -47,7 +54,7 @@ export class RdApiService {
   }
 
   // 阻塞后重开
-  async resume(projectId: string, itemId: string) :Promise<RdItemEntity> {
+  async resume(projectId: string, itemId: string): Promise<RdItemEntity> {
     return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'resume',
@@ -79,6 +86,14 @@ export class RdApiService {
     });
   }
 
+  async advanceStage(rdId:string, input: AdvanceRdStageInput){
+    // return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
+    //   rdId,
+    //   action:''
+    // })
+  }
+
+
   async update(projectId: string, itemId: string, input: UpdateRdItemInput): Promise<RdItemEntity> {
     return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
@@ -103,9 +118,9 @@ export class RdApiService {
   }
 
   async getRdStages(projectId: string) {
-    return await this.apiClient.hubRequestWithPrjId<RdStageEntity[]>({
+    return await this.apiClient.hubRequestWithPrjId<{ items: RdStageEntity[] }>({
       projectId: projectId,
-      path: '/rd/stages',
+      path: '/rd-stages',
     });
   }
 

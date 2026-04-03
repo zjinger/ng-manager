@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { NzTableModule } from 'ng-zorro-antd/table';
-import { RdItemEntity, RdItemPriority, RdItemStatus } from '../models/rd.model';
+import { RdItemEntity, RdItemPriority, RdItemStatus, RdStageEntity } from '../models/rd.model';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '@app/shared/constants/priority-options';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
@@ -31,7 +31,7 @@ import { CommonModule, DatePipe } from '@angular/common';
           <th nzWidth="7%">优先级</th>
           <th nzWidth="7%">负责人</th>
           <th nzWidth="11%">进度</th>
-          <th nzWidth="10%">更新时间</th> 
+          <th nzWidth="10%">更新时间</th>
         </tr>
       </thead>
       <tbody>
@@ -44,7 +44,7 @@ import { CommonModule, DatePipe } from '@angular/common';
               <span class="rd-title"> {{ item.title }} </span><br />
               <span class="rd-no">{{ item.rdNo }}</span>
             </td>
-            <td>{{ item.stageId || '-' }}</td>
+            <td>{{ getStagesName(item.stageId) || '-' }}</td>
             <td>
               <nz-tag [nzColor]="getStatusColor(item.status)">
                 {{ getStatusLabel(item.status) }}</nz-tag
@@ -81,6 +81,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 export class RdListTableComponent {
   readonly rdItems = input.required<RdItemEntity[]>();
   readonly selectedItem = input<RdItemEntity>();
+  readonly stages = input<RdStageEntity[]>([]);
   readonly selectItem = output<RdItemEntity>();
 
   getPriorityColor(priority: RdItemPriority) {
@@ -97,5 +98,13 @@ export class RdListTableComponent {
 
   getStatusColor(status: RdItemStatus) {
     return RD_STATUS_COLORS[status];
+  }
+
+  getStagesName(stageId: string | null) {
+    if(!stageId) return "";
+    const stage = this.stages().find((stage) => {
+      return stage.id === stageId;
+    });
+    return stage?.name ?? '';
   }
 }

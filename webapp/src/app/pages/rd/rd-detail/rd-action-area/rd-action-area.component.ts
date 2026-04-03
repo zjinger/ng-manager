@@ -37,7 +37,7 @@ export class RdActionAreaComponent {
   readonly progressChange = output<number>();
 
   // 项目成员
-  members = input.required<ProjectMemberEntity[]>();
+  members = input<ProjectMemberEntity[]>([]);
   // 当前用户id
   currentUserId = input<string>('');
 

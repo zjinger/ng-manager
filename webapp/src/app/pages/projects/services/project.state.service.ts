@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { EditingProjectDraft, Project } from '@models/project.model';
+import { EditingProjectDraft, Project, ProjectMemberEntity } from '@models/project.model';
 import { ProjectApiService } from './project-api.service';
 import { UiNotifierService } from '@core/ui-notifier.service';
 import { NzModalService } from 'ng-zorro-antd/modal';
@@ -21,8 +21,10 @@ export class ProjectStateService {
   keyword = signal<string>('');
 
   /* ---------------- HUB V2 EVN ------------------------*/
+  private members = signal<ProjectMemberEntity[]>([]);
   currentProjectKey = computed(() => this.currentProject()?.env?.['NGM_HUB_V2_PROJECT_KEY']);
   currentProjectToken = computed(() => this.currentProject()?.env?.['NGM_HUB_V2_TOKEN']);
+  currentProjectMembers = computed(() => this.members());
   isHubProjectValid = computed(() => {
     return !!(
       this.currentProject()?.env?.['NGM_HUB_V2_PROJECT_KEY'] &&
@@ -114,6 +116,15 @@ export class ProjectStateService {
         }
       }
     });
+  }
+
+  async loadProjectMembers(projectId: string) {
+    try {
+      const members = (await this.projectService.getProjectMembers(projectId)).items;
+      this.members.set(members);
+    } catch (e) {
+      this.members.set([]);
+    }
   }
 
   getProjectById(projectId: string): Project | null {

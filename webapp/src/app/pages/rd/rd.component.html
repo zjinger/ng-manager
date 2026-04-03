@@ -15,9 +15,12 @@
                 <!-- 阶段选择 -->
                 <nz-form-item class="form-item">
                     <nz-form-control>
-                        <nz-select formControlName="stage" nzPlaceHolder="选择阶段" [nzPrefix]="stageIconTpl"
+                        <nz-select formControlName="stageIds" nzPlaceHolder="选择阶段" [nzPrefix]="stageIconTpl"
                             nzMode="multiple" [nzMaxTagCount]="2" nzAllowClear>
-
+                            @for(stage of stages();track stage.id){
+                            <nz-option [nzLabel]="stage.name" [nzValue]="stage.id"
+                                [nzDisabled]="!stage.enabled"></nz-option>
+                            }
                         </nz-select>
                     </nz-form-control>
                     <ng-template #stageIconTpl>
@@ -82,10 +85,10 @@
         <!-- 列表 -->
         <div class="list-content">
             @if(viewType() === 'list') {
-            <app-rd-list-table [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()"
+            <app-rd-list-table [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()" [stages]="stages()"
                 (selectItem)="selectItem($event)"></app-rd-list-table>
             } @else {
-            <app-rd-list-board [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()"
+            <app-rd-list-board [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()" [stages]="stages()"
                 (selectItem)="selectItem($event)"></app-rd-list-board>
             }
 
@@ -103,8 +106,8 @@
         (create)="onCreate($event)"></app-rd-create-dialog>
 
     <!-- 详情 -->
-    <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" (close)="closeDetail()"
-        [logs]="currentRdLogs()" [placement]="drawerPlacement()" [currentUserId]="currentUserId()"
+    <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" (close)="closeDetail()" [busy]="busy()"
+        [logs]="currentRdLogs()" [placement]="drawerPlacement()" [currentUserId]="currentUserId()" [stages]="stages()"
         (actionClick)="handleSelectedAction($event)" (progressChange)="updateSelectedProgress($event)"
         (deleteClick)="deleteSelectedItem()">
     </app-rd-detail>

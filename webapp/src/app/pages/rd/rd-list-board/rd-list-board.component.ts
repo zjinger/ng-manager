@@ -3,7 +3,7 @@ import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { RdItemCardComponent } from '../rd-item-card/rd-item-card.component';
-import { RdItemEntity } from '../models/rd.model';
+import { RdItemEntity, RdStageEntity } from '../models/rd.model';
 
 const PRIORITY_ORDER = {
   critical: 4,
@@ -20,6 +20,7 @@ const PRIORITY_ORDER = {
 })
 export class RdListBoardComponent {
   readonly rdItems = input<RdItemEntity[]>([]);
+  readonly stages = input<RdStageEntity[]>([]);
   readonly selectedItem = input<RdItemEntity>();
   selectItem = output<RdItemEntity>();
 

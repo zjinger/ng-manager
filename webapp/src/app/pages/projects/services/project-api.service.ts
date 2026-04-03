@@ -1,14 +1,20 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@core/api';
-import { CheckRootResult, DetectResult, ImportCheckResult, Project, ProjectAssets } from '@models/project.model';
+import {
+  CheckRootResult,
+  DetectResult,
+  ImportCheckResult,
+  Project,
+  ProjectAssets,
+} from '@models/project.model';
 import { lastValueFrom, Observable } from 'rxjs';
 import { FsExplorerApiService } from '../components/fs-explorer';
 import { CreateProjectDraft } from '../models/project-draft';
+import { ProjectMemberEntity } from '@models/project.model';
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
-
-  api = inject(ApiClient)
-  fs = inject(FsExplorerApiService)
+  api = inject(ApiClient);
+  fs = inject(FsExplorerApiService);
 
   // 调用本地服务检查路径是否存在 & 是否重复注册
   async checkPathExists(path: string): Promise<boolean> {
@@ -16,7 +22,7 @@ export class ProjectApiService {
   }
 
   detect(rootPath: string): Observable<DetectResult> {
-    return this.api.post<DetectResult>("/api/projects/detect", { rootPath });
+    return this.api.post<DetectResult>('/api/projects/detect', { rootPath });
   }
 
   // Electron 里建议通过 preload 暴露 window.ngm.pickFolder()
@@ -24,9 +30,8 @@ export class ProjectApiService {
     return null;
   }
 
-
   bootstrapByCli(draft: CreateProjectDraft): Observable<{ taskId: string; rootPath: string }> {
-    return this.api.post("/api/projects/bootstrap/cli", {
+    return this.api.post('/api/projects/bootstrap/cli', {
       parentDir: draft.parentDir,
       name: draft.name,
       rootPath: draft.rootPath,
@@ -42,12 +47,14 @@ export class ProjectApiService {
   }
 
   bootstrapPickRoot(input: { taskId: string; pickedRoot: string }) {
-    return this.api.post<{ ok: boolean; reason?: string; projectId?: string; rootPath?: string; }>("/api/projects/bootstrap/pickRoot", input);
+    return this.api.post<{ ok: boolean; reason?: string; projectId?: string; rootPath?: string }>(
+      '/api/projects/bootstrap/pickRoot',
+      input,
+    );
   }
 
-
   bootstrapByGit(draft: CreateProjectDraft): Observable<{ taskId: string; rootPath: string }> {
-    return this.api.post("/api/projects/bootstrap/git", {
+    return this.api.post('/api/projects/bootstrap/git', {
       repoUrl: draft.repoUrl,
       parentDir: draft.parentDir,
       name: draft.name,
@@ -60,8 +67,16 @@ export class ProjectApiService {
     });
   }
 
+  // 从hub-v2中获取项目成员
+  getProjectMembers(projectId: string) {
+    return this.api.hubRequestWithPrjId<{ items: ProjectMemberEntity[] }>({
+      projectId: projectId,
+      path: '/members',
+    });
+  }
+
   list() {
-    return this.api.get<Project[]>("/api/projects/list");
+    return this.api.get<Project[]>('/api/projects/list');
   }
 
   get(id: string) {
@@ -69,20 +84,19 @@ export class ProjectApiService {
   }
 
   check(rootPath: string) {
-    return this.api.post<CheckRootResult>("/api/projects/check", { rootPath });
+    return this.api.post<CheckRootResult>('/api/projects/check', { rootPath });
   }
 
-
   createByPath(data: { root: string; name: string; syncTasks?: boolean }) {
-    return this.api.post<{ id: string }>("/api/projects/create", data);
+    return this.api.post<{ id: string }>('/api/projects/create', data);
   }
 
   checkImport(root: string) {
-    return this.api.post<ImportCheckResult>("/api/projects/checkImport", { root });
+    return this.api.post<ImportCheckResult>('/api/projects/checkImport', { root });
   }
 
   importByPath(data: { root: string; name?: string; syncTasks?: boolean }) {
-    return this.api.post<{ id: string }>("/api/projects/import", data);
+    return this.api.post<{ id: string }>('/api/projects/import', data);
   }
 
   delete(id: string) {
@@ -105,16 +119,18 @@ export class ProjectApiService {
     return this.api.post<Project>(`/api/projects/lastOpened/${id}`, { timestamp });
   }
 
-  openInEditor(id: string, editor: "code" | "system" = "code") {
+  openInEditor(id: string, editor: 'code' | 'system' = 'code') {
     return this.api.post<{ ok: boolean }>(`/api/projects/openInEditor/${id}`, { editor });
   }
 
-  edit(projectId: string, data: { name: string; description?: string; repoPageUrl?: string; }): Observable<Project> {
+  edit(
+    projectId: string,
+    data: { name: string; description?: string; repoPageUrl?: string },
+  ): Observable<Project> {
     return this.api.post<Project>(`/api/projects/edit/${projectId}`, data);
   }
 
   updateAssets(projectId: string, assets: ProjectAssets): Observable<Project> {
     return this.api.post<Project>(`/api/projects/updateAssets/${projectId}`, { assets });
   }
-
 }

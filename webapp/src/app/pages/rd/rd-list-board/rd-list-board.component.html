@@ -2,7 +2,7 @@
     @for (col of listCards; track col.key) {
     <nz-card [nzTitle]="cardTitleTpl" class="items-card">
         @for(item of ItemsGroupedByStatus().get(col.key); track item.id) {
-        <app-rd-item-card [rdItem]="item" (selectItem)="select($event)" [selected]="selectedItem()?.id === item.id" />
+        <app-rd-item-card [rdItem]="item" [stages]="stages()" (selectItem)="select($event)" [selected]="selectedItem()?.id === item.id" />
         }
     </nz-card>
     <ng-template #cardTitleTpl>

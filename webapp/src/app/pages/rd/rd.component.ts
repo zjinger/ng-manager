@@ -103,7 +103,7 @@ export class RdComponent {
   protected readonly query = this.rdStore.query;
 
   constructor() {
-    this.rdStore.loadRdItems();
+    this.rdStore.initialize();
     this.form.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       this.rdStore.updateQuery({ ...value });
       this.rdStore.loadRdItems();
@@ -125,7 +125,7 @@ export class RdComponent {
 
   form = this.fb.group({
     keyword: this.fb.control<string>(''),
-    stage: this.fb.control<string[]>([]),
+    stageIds: this.fb.control<string[]>([]),
     status: this.fb.control<RdItemStatus[]>([]),
     priority: this.fb.control<RdItemPriority[]>([]),
   });
@@ -192,6 +192,14 @@ export class RdComponent {
     this.rdStore.progress(current.id, progress);
   }
 
+  deleteSelectedItem(): void {
+    const current = this.currentRdItem();
+    if (!current) {
+      return;
+    }
+    this.rdStore.delete(current.id)
+  }
+
   handleAction(
     item: RdItemEntity,
     action: 'start' | 'block' | 'resume' | 'complete' | 'advance',
@@ -244,11 +252,11 @@ export class RdComponent {
   // 推进研发项
   confirmAdvanceStage(stageId: string): void {
     // TODO ：后面需要再添加
-    // const current = this.currentRdItem();
-    // if (!current || !stageId.trim()) {
-    //   return;
-    // }
-    // this.rdStore.advanceStage(current.id, { stageId: stageId.trim() });
-    // this.advanceStageOpen.set(false);
+    const current = this.currentRdItem();
+    if (!current || !stageId.trim()) {
+      return;
+    }
+    this.rdStore.advanceStage(current.id, { stageId: stageId.trim() });
+    this.advanceStageOpen.set(false);
   }
 }
