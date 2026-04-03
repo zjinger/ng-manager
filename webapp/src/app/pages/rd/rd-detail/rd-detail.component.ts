@@ -19,6 +19,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component';
+import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 
 @Component({
   selector: 'app-rd-detail',
@@ -33,6 +34,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
     NzEmptyModule,
     FormsModule,
     RdActionAreaComponent,
+    DetailItemCardComponent,
   ],
   template: `
     <nz-drawer
@@ -62,8 +64,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
           <nz-empty></nz-empty>
         } @else {
           <div class="detail-wrap">
-            <nz-card class="detail-item">
-              <h2 class="wrap-title">操作</h2>
+            <app-detail-item-card title="操作">
               <app-rd-action-area
                 [selectedItem]="rdItem()!"
                 (actionClick)="this.actionClick.emit($event)"
@@ -73,10 +74,9 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
                 [currentUserId]="currentUserId()"
                 [busy]="busy()"
               ></app-rd-action-area>
-            </nz-card>
+            </app-detail-item-card>
 
-            <nz-card class="detail-item">
-              <h2 class="wrap-title">研发项描述</h2>
+            <app-detail-item-card title="研发项描述">
               <nz-descriptions nzBordered nzSize="small">
                 <nz-descriptions-item nzTitle="研发项" [nzSpan]="3">
                   {{ titleText() }}
@@ -112,10 +112,9 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
                   {{ (rdItem()!.createdAt | date: 'yyyy-MM-dd HH:mm:ss') ?? '_' }}
                 </nz-descriptions-item>
               </nz-descriptions>
-            </nz-card>
+            </app-detail-item-card>
 
-            <nz-card class="detail-item">
-              <h2 class="wrap-title">研发动态</h2>
+            <app-detail-item-card title="研发动态">
               <nz-timeline>
                 @for (log of logs(); track log.id) {
                   <nz-timeline-item>
@@ -134,7 +133,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
                   </nz-timeline-item>
                 }
               </nz-timeline>
-            </nz-card>
+            </app-detail-item-card>
           </div>
         }
       </ng-template>

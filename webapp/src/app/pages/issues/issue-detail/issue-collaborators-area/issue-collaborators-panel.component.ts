@@ -31,7 +31,7 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
       @if (participants().length > 0) {
         <div class="participant-list">
           @for (item of participants(); track item.id) {
-            <div class="participant-item">
+            <div class="participant-item" [style.width]="canManageParticipants() ? '100%' : 'auto'">
               <div class="participant-chip">
                 <nz-avatar
                   [nzText]="item.userName.charAt(0)"
@@ -43,7 +43,8 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
               @if (canManageParticipants()) {
                 <button
                   nz-button
-                  nzType="text"
+                  nzType="default"
+                  nzShape="circle"
                   nz-popconfirm
                   nzPopconfirmTitle="确定要移除该参与人吗？"
                   nzPopconfirmOkText="移除"
@@ -52,8 +53,9 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
                   (nzOnConfirm)="removeParticipant.emit(item.id)"
                   nzSize="small"
                   [nzLoading]="busy()"
+                  class="remove-btn"
                 >
-                  <i nz-icon nzType="minus"></i>
+                  <nz-icon nzType="minus"></nz-icon>
                 </button>
               }
             </div>
@@ -90,6 +92,9 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
         font-size: 16px;
         font-weight: 600;
         // color: #1890ff;
+      }
+      .remove-btn {
+        margin-right: 8px;
       }
     `,
   ],

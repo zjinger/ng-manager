@@ -14,6 +14,7 @@ import {
   IssueParticipantEntity,
   IssueAttachmentEntity,
   ProjectMemberEntity,
+  AddParticipantsInput,
 } from '../models/issue.model';
 import { ApiClient } from '@core/api/api-client';
 import { IssueTokenApiService } from './issue-token-api.service';
@@ -27,12 +28,17 @@ export class IssueApiService {
   async addAttachment(id: string, id1: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
+
   uploadFile(file: File, id: string): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
-  addParticipant(id: any, userId: string): Promise<any> {
-    throw new Error('Method not implemented.');
+  addParticipant(issueId: string, input: { userId: string }) {
+    return this.issueTokenApi.issuePostReqWithPK<IssueParticipantEntity>({
+      issueId,
+      action: 'participants',
+      payload: input,
+    });
   }
 
   // createIssue(input: CreateIssueInput) {
@@ -56,7 +62,7 @@ export class IssueApiService {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'assign',
-      payload: {},
+      payload: input,
     });
   }
 
@@ -152,14 +158,6 @@ export class IssueApiService {
     });
   }
 
-  removeParticipant(projectId: string, issueId: string, participantId: string) {
-    return this.apiClient.hubRequestWithPrjId({
-      projectId,
-      path: `/personal/projects/${projectId}/issues/${issueId}/participants/${participantId}`,
-      method: 'DELETE',
-    });
-  }
-
   getIssueAttachments(projectId: string, issueId: string) {
     return this.apiClient.hubRequestWithPrjId<{
       items: IssueAttachmentEntity[];
@@ -181,6 +179,14 @@ export class IssueApiService {
       issueId,
       action: 'comments',
       payload: { content },
+    });
+  }
+
+  removeParticipant(issueId: string, participantId: string) {
+    return this.issueTokenApi.issueDeleteReqWithPK<IssueParticipantEntity[]>({
+      issueId,
+      action: 'participants',
+      deletedId: participantId,
     });
   }
 }

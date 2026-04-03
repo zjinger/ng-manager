@@ -8,6 +8,8 @@ import {
 } from '@app/shared/constants/status-options';
 import { PRIORITY_LABELS, PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
 import {
+  AddParticipantsInput,
+  AssignIssueInput,
   createCommentInput,
   IssueActionType,
   IssueEntity,
@@ -24,6 +26,11 @@ import { IssueDetailComponent } from './issue-detail/issue-detail.component';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { IssueCloseDialogComponent } from './dialogs/issue-close-dialog.component';
 import { IssueResolveDialogComponent } from './dialogs/issue-resolve-dialog.component';
+import { IssueAssignDialogComponent } from './dialogs/issue-assign-dialog.component';
+import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { IssueAddParticipantsDialogComponent } from './dialogs/issue-add-participants-dialog.component';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs';
 
 type viewType = 'list' | 'board';
 
@@ -42,6 +49,8 @@ type viewType = 'list' | 'board';
     IssueDetailComponent,
     IssueCloseDialogComponent,
     IssueResolveDialogComponent,
+    IssueAssignDialogComponent,
+    IssueAddParticipantsDialogComponent,
   ],
   templateUrl: './issues.component.html',
   styleUrl: './issues.component.less',
@@ -50,6 +59,9 @@ type viewType = 'list' | 'board';
 export class IssuesComponent {
   private readonly issueListStore = inject(IssueListStore);
   private readonly issueDetailStore = inject(IssueDetailStore);
+  private readonly projectState = inject(ProjectStateService);
+  protected readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
 
   // 视图模式
@@ -65,17 +77,33 @@ export class IssuesComponent {
   protected readonly IssueAttachments = this.issueDetailStore.attachments;
   protected readonly IssueParticipants = this.issueDetailStore.participants;
   protected readonly busy = this.issueDetailStore.busy;
+  protected readonly members = this.projectState.currentProjectMembers;
+  protected readonly IssueAssignActionLabel = this.issueDetailStore.assignActionLabel;
 
   // 操作弹窗开关
   protected readonly IssueCloseDialogOpen = signal(false);
   protected readonly IssueResolveDialogOpen = signal(false);
+  protected readonly IssueAssignDialogOpen = signal(false);
+  protected readonly IssueAddParticipantsDialogOpen = signal(false);
 
   protected readonly open = signal(false);
 
   protected readonly currentPriority = signal<IssueStatus | ''>('');
 
   constructor() {
+    const projectId = this.projectState.currentProjectId();
     this.issueListStore.initialize();
+    projectId && this.projectState.loadProjectMembers(projectId);
+
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => {
+        const detailId = this.route.snapshot.queryParamMap.get('detail');
+        if (detailId) {
+          this.issueDetailStore.load(detailId);
+          this.open.set(true);
+        }
+      });
   }
 
   onPageChange(page: number) {
@@ -90,6 +118,7 @@ export class IssuesComponent {
   priorityOptions = PRIORITY_OPTIONS;
 
   selectIssue(issue: IssueEntity) {
+    this.openDetail(issue);
     this.issueDetailStore.load(issue.id);
     this.open.set(true);
   }
@@ -107,9 +136,8 @@ export class IssuesComponent {
   handleActions(action: IssueActionType) {
     switch (action) {
       case 'comments':
+        break;
       case 'start': {
-        console.log('start');
-
         this.startConfirm();
         break;
       }
@@ -117,20 +145,37 @@ export class IssuesComponent {
         this.claimConfirm();
         break;
       }
-      case 'assign':
+      case 'assign': {
+        this.IssueAssignDialogOpen.set(true);
+        break;
+      }
       case 'resolve': {
         this.IssueResolveDialogOpen.set(true);
         break;
       }
       case 'verify':
+        break;
       case 'reopen':
+        break;
       case 'close': {
         this.IssueCloseDialogOpen.set(true);
-        break;  
+        break;
       }
-      case 'add_participants':
+      case 'add_participants': {
+        this.IssueAddParticipantsDialogOpen.set(true);
+        break;
+      }
       case 'remove_participants':
+        break;
     }
+  }
+
+  openDetail(item: IssueEntity): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { detail: item.id },
+      queryParamsHandling: 'merge',
+    });
   }
 
   private startConfirm() {
@@ -140,6 +185,15 @@ export class IssuesComponent {
       nzOnOk: () => {
         this.issueDetailStore.start();
       },
+    });
+  }
+
+  // 关闭详情抽屉
+  closeDetail() {
+    this.open.set(false);
+    this.issueDetailStore.setSelectedIssue(null);
+    this.router.navigate([], {
+      queryParams: {},
     });
   }
 
@@ -153,13 +207,35 @@ export class IssuesComponent {
     });
   }
 
-  closeConfirm(){
+  closeConfirm() {
     // this.issueDetailStore.close
   }
 
   resolveConfirm(summary: string) {
     this.issueDetailStore.resolve(summary);
     this.IssueResolveDialogOpen.set(false);
+  }
+
+  assignConfirm(input: AssignIssueInput) {
+    this.issueDetailStore.assign(input);
+    this.IssueAssignDialogOpen.set(false);
+  }
+
+  AddParticipantsConfirm(input: AddParticipantsInput) {
+    this.issueDetailStore.addParticipants(input);
+    this.IssueAddParticipantsDialogOpen.set(false);
+  }
+
+  removeParticipant(participantId: string) {
+    this.issueDetailStore.removeParticipant(participantId);
+  }
+
+  cancelAssignDialog() {
+    this.IssueAssignDialogOpen.set(false);
+  }
+
+  cancelAddParticipantsConfirm() {
+    this.IssueAddParticipantsDialogOpen.set(false);
   }
 
   cancelCloseDialog() {

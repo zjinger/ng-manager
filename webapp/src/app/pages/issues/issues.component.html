@@ -74,11 +74,19 @@
 
     <app-issue-detail [open]="open()" [issue]="selectedIssue()" [comments]="IssueComments()"
         [attachments]="IssueAttachments()" [participants]="IssueParticipants()" (commentSubmit)="commentSubmit($event)"
-        (close)="closeIssueDetail()" (actionClick)="handleActions($event)"></app-issue-detail>
+        (close)="closeIssueDetail()" (actionClick)="handleActions($event)" (removeParticipant)="removeParticipant($event)"></app-issue-detail>
 
     <app-issue-close-dialog [open]="IssueCloseDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
         (cancel)="cancelCloseDialog()" (confirm)="closeConfirm($event)"></app-issue-close-dialog>
 
     <app-issue-resolve-dialog [open]="IssueResolveDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
         (cancel)="cancelResolveDialog()" (confirm)="resolveConfirm($event)"></app-issue-resolve-dialog>
+
+    <app-issue-assign-dialog [open]="IssueAssignDialogOpen()" [busy]="busy()" [issue]="selectedIssue()"
+        [actionLabel]="IssueAssignActionLabel()" [members]="members()" (cancel)="cancelAssignDialog()"
+        (confirm)="assignConfirm($event)"></app-issue-assign-dialog>
+
+    <app-issue-add-participants-dialog [open]="IssueAddParticipantsDialogOpen()" [busy]="busy()"
+        [issue]="selectedIssue()" [members]="members()" [participants]="IssueParticipants()" (cancel)="cancelAddParticipantsConfirm()"
+        (confirm)="AddParticipantsConfirm($event)"></app-issue-add-participants-dialog>
 </app-page-layout>

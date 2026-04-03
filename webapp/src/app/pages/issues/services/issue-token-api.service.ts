@@ -11,24 +11,36 @@ import { ProjectStateService } from '@pages/projects/services/project.state.serv
 })
 export class IssueTokenApiService {
   private apiClient: ApiClient = inject(ApiClient);
-  private projectState = inject(ProjectStateService)
+  private projectState = inject(ProjectStateService);
   /**
    * 通过个人token 操作hub v2 的数据（写操作）
    */
   async issuePostReqWithPK<T>(body: {
-    // projectId: string;
     issueId: string;
-    // type: 'issues' | 'rd-items';
     action: IssueActionType;
     payload: Object; //{content:string}
   }) {
-    return this.apiClient.hubRequestWithPersonalToken<T>(
-      {
-        projectId: this.projectState.currentProjectId()!,
-        method: 'POST',
-        path: `/issues/${body.issueId}/${body.action}`,
-        payload: body.payload,
-      },
-    );
+    return this.apiClient.hubRequestWithPersonalToken<T>({
+      projectId: this.projectState.currentProjectId()!,
+      method: 'POST',
+      path: `/issues/${body.issueId}/${body.action}`,
+      payload: body.payload,
+    });
+  }
+
+  /**
+   * 通过个人token 操作hub v2 的数据（删除操作）
+   */
+  async issueDeleteReqWithPK<T>(body: {
+    issueId: string;
+    deletedId: string;
+    action: IssueActionType;
+  }) {
+    const projectId = this.projectState.currentProjectId()!;
+    return this.apiClient.hubRequestWithPersonalToken<T>({
+      projectId: projectId,
+      method: 'DELETE',
+      path: `/issues/${body.issueId}/${body.action}/${body.deletedId}`,
+    });
   }
 }

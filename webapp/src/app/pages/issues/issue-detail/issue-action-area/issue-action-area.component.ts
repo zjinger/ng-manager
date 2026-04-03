@@ -15,7 +15,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
   selector: 'app-issue-action-area',
   imports: [NzStepsModule, NzButtonModule, NzModalModule, DetailItemCardComponent],
   template: `
-    <app-detail-item-card title="操作">
+    <app-detail-item-card>
       <div class="action-area">
         <div class="steps">
           <nz-steps [nzCurrent]="getStepIndex(issue().status)" nzSize="small">
@@ -45,26 +45,26 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               认领
             </button>
           }
-          <!-- @if (canAssign()) {
-          <button
-            nz-button
-            nzType="default"
-            class="detail-header__action-btn"
-            (click)="actionClick.emit('assign')"
-          >
-            {{ assignActionLabel() }}
-          </button>
-        } -->
-          <!-- @if (canManageParticipants()) {
-          <button
-            nz-button
-            nzType="default"
-            class="detail-header__action-btn"
-            (click)="actionClick.emit('add_participants')"
-          >
-            添加协作人
-          </button>
-        } -->
+          @if (canAssign()) {
+            <button
+              nz-button
+              nzType="default"
+              class="detail-header__action-btn"
+              (click)="actionClick.emit('assign')"
+            >
+              {{ assignActionLabel() }}
+            </button>
+          }
+          @if (canManageParticipants()) {
+            <button
+              nz-button
+              nzType="default"
+              class="detail-header__action-btn"
+              (click)="actionClick.emit('add_participants')"
+            >
+              添加协作人
+            </button>
+          }
           @if (canResolve()) {
             <button
               nz-button

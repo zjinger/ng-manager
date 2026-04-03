@@ -1,8 +1,13 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { forkJoin, from, type Observable } from 'rxjs';
+import { forkJoin, from, mergeMap, type Observable } from 'rxjs';
 
 import { UserStore } from '@app/core/stores/user.store';
-import type { createCommentInput, ProjectMemberEntity } from '../models/issue.model';
+import type {
+  AddParticipantsInput,
+  AssignIssueInput,
+  createCommentInput,
+  ProjectMemberEntity,
+} from '../models/issue.model';
 import { ProjectApiService } from '../../projects/services/project-api.service';
 import type {
   IssueAttachmentEntity,
@@ -14,6 +19,7 @@ import type {
 import { IssueApiService } from '../services/issue-api.service';
 import { IssuePermissionService } from '../services/issue-permission.service';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { AttachmentPreviewItem } from '@app/shared/components/attachment-viewer/attachment-viewer.component';
 
 @Injectable()
 export class IssueDetailStore {
@@ -35,7 +41,7 @@ export class IssueDetailStore {
 
   // 当前项目
   // private readonly currentProject = this.projectState.currentProject;
-  private readonly currentProjectId = this.projectState.currentProjectId;
+  readonly currentProjectId = this.projectState.currentProjectId;
 
   readonly issue = computed(() => this.issueState());
   readonly logs = computed(() => this.logsState());
@@ -56,6 +62,14 @@ export class IssueDetailStore {
       (item) => !usedUserIds.has(item.userId) && item.userId !== assigneeId,
     );
   });
+
+  // // 未加载附件数量
+  // readonly unloadedAttachmentsCount = computed(() => {
+  //   const attachments = this.attachments();
+  //   const previews = this.attachmentPreviews();
+
+  //   return attachments.length - previews.length;
+  // });
 
   readonly isProjectAdmin = computed(() => {
     const userId = this.currentUser()?.userId;
@@ -174,21 +188,52 @@ export class IssueDetailStore {
         this.commentsState.set(comments.items);
         this.participantsState.set(participants.items);
         this.attachmentsState.set(attachments.items);
-        // from(this.issueApi.getProjectMembers(issue.projectId)).subscribe({
-        //   next: (members) => {
-        //     this.membersState.set(members.items);
-        //     this.loadingState.set(false);
-        //   },
-        //   error: () => {
-        //     this.loadingState.set(false);
-        //   },
-        // });
       },
       error: () => {
         this.loadingState.set(false);
       },
     });
   }
+
+  // // 加载附件的url
+  // async loadAttachmentPreviews() {
+  //   const attachments = this.attachments();
+  //   const issueId = this.issueState()?.id;
+  //   const projectId = this.currentProjectId();
+  //   if (!attachments.length || !issueId || !projectId) {
+  //     return;
+  //   }
+
+  //   // 先清空，避免重复
+  //   this.attachmentPreviewsState.set([]);
+
+  //   attachments.forEach(async (item) => {
+  //     const blob = await this.issueApi.getAttachmentRaw(projectId, issueId, item.id);
+
+  //     const previewItem = {
+  //       id: item.id,
+  //       name: item.upload.originalName,
+  //       url: URL.createObjectURL(blob),
+  //       kind: item.upload.mimeType,
+  //       meta: `${item.upload.mimeType || '文件'} · ${formatSize(item.upload.fileSize)}`,
+  //     } as AttachmentPreviewItem;
+
+  //     this.attachmentPreviewsState.update((items) => [...items, previewItem]);
+  //   });
+
+  //   function formatSize(size: number): string {
+  //     if (!Number.isFinite(size) || size < 0) {
+  //       return '-';
+  //     }
+  //     if (size < 1024) {
+  //       return `${size} B`;
+  //     }
+  //     if (size < 1024 * 1024) {
+  //       return `${(size / 1024).toFixed(1)} KB`;
+  //     }
+  //     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  //   }
+  // }
 
   postComment(comment: createCommentInput): void {
     const issueId = this.issueState()?.id;
@@ -226,17 +271,15 @@ export class IssueDetailStore {
     this.runIssueAction((issueId) => this.issueApi.claimIssue(currentProjectId, issueId));
   }
 
-  assign(assigneeId: string): void {
+  assign(input: AssignIssueInput): void {
     const currentProjectId = this.currentProjectId();
     if (!currentProjectId) {
       return;
     }
-    if (!assigneeId.trim()) {
+    if (!input.assigneeId.trim()) {
       return;
     }
-    this.runIssueAction((issueId) =>
-      this.issueApi.assignIssue(currentProjectId, issueId, { assigneeId }),
-    );
+    this.runIssueAction((issueId) => this.issueApi.assignIssue(currentProjectId, issueId, input));
   }
 
   resolve(summary?: string): void {
@@ -273,33 +316,35 @@ export class IssueDetailStore {
   //   this.runIssueAction((issueId) => this.issueApi.close(issueId, { reason, remark }));
   // }
 
-  addParticipant(userId: string): void {
-    const issueId = this.issueState()?.id;
-    if (!issueId || !userId.trim()) {
-      return;
-    }
+  // addParticipant(userId: string): void {
+  //   const issueId = this.issueState()?.id;
+  //   if (!issueId || !userId.trim()) {
+  //     return;
+  //   }
 
-    this.busyState.set(true);
-    from(this.issueApi.addParticipant(issueId, userId)).subscribe({
-      next: (participant) => {
-        this.participantsState.update((items) => [...items, participant]);
-        this.busyState.set(false);
-      },
-      error: () => {
-        this.busyState.set(false);
-      },
-    });
-  }
+  //   this.busyState.set(true);
+  //   from(this.issueApi.addParticipant(issueId, userId)).subscribe({
+  //     next: (participant) => {
+  //       this.participantsState.update((items) => [...items, participant]);
+  //       this.busyState.set(false);
+  //     },
+  //     error: () => {
+  //       this.busyState.set(false);
+  //     },
+  //   });
+  // }
 
-  addParticipants(userIds: string[]): void {
+  addParticipants(input: AddParticipantsInput): void {
     const issueId = this.issueState()?.id;
+    const userIds = input.userIds;
     const ids = [...new Set(userIds.map((item) => item.trim()).filter(Boolean))];
     if (!issueId || ids.length === 0) {
       return;
     }
+    // const inputFormated = { userIds: ids };
 
     this.busyState.set(true);
-    forkJoin(ids.map((userId) => this.issueApi.addParticipant(issueId, userId))).subscribe({
+    forkJoin(ids.map((userId) => this.issueApi.addParticipant(issueId, { userId }))).subscribe({
       next: (participants) => {
         this.participantsState.update((items) => [...items, ...participants]);
         this.busyState.set(false);
@@ -308,20 +353,26 @@ export class IssueDetailStore {
         this.busyState.set(false);
       },
     });
+
+    // from(this.issueApi.addParticipants(issueId, inputFormated)).subscribe({
+    //   next: (participants) => {
+    //     this.participantsState.update((items) => [...items, ...participants]);
+    //     this.busyState.set(false);
+    //   },
+    //   error: () => {
+    //     this.busyState.set(false);
+    //   },
+    // });
   }
 
   removeParticipant(participantId: string): void {
-    const currentProjectId = this.currentProjectId();
-    if (!currentProjectId) {
-      return;
-    }
     const issueId = this.issueState()?.id;
     if (!issueId) {
       return;
     }
 
     this.busyState.set(true);
-    from(this.issueApi.removeParticipant(currentProjectId, issueId, participantId)).subscribe({
+    from(this.issueApi.removeParticipant(issueId, participantId)).subscribe({
       next: () => {
         this.participantsState.update((items) => items.filter((item) => item.id !== participantId));
         this.busyState.set(false);
@@ -402,5 +453,9 @@ export class IssueDetailStore {
     from(this.issueApi.getIssueLogs(currentProjectId, issueId)).subscribe({
       next: (logs) => this.logsState.set(logs.items),
     });
+  }
+
+  setSelectedIssue(issue: IssueEntity | null): void {
+    this.issueState.set(issue);
   }
 }

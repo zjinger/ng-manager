@@ -42,7 +42,7 @@ export class RdTokenApiService {
   }
 
   /**
-   * 通过个人token 操作hub v2 的数据（写操作）
+   * 通过个人token 操作hub v2 的数据（删除操作）
    */
   async rdDeleteReqWithPK<T>(body: {
     // projectId: string;

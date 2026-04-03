@@ -15,7 +15,8 @@ export type IssueActionType =
   | 'reopen'
   | 'close'
   | 'add_participants'
-  | 'remove_participants';
+  | 'remove_participants'
+  | 'participants';
 export interface IssueEntity {
   id: string;
   projectId: string;
@@ -138,6 +139,10 @@ export interface createCommentInput {
 
 export interface AssignIssueInput {
   assigneeId: string;
+}
+
+export interface AddParticipantsInput {
+  userIds: string[];
 }
 
 export interface ProjectMemberEntity {

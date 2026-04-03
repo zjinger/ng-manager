@@ -6,7 +6,9 @@ import { NzCardModule } from 'ng-zorro-antd/card';
   imports: [NzCardModule],
   template: `
     <nz-card class="detail-item" [style]="{ maxHeight: maxHeight() }">
-      <h2 class="wrap-title">{{ title() }}</h2>
+      @if (title()) {
+        <h2 class="wrap-title">{{ title() }}</h2>
+      }
       <div class="content">
         <ng-content></ng-content>
       </div>
@@ -24,7 +26,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
       margin-bottom: 12px;
       font-size: 18px;
       font-weight: bold;
-      border-bottom: 1px solid #bbbbbb;
+      border-bottom: 1px solid #f0f0f0;
     }
 
     :host ::ng-deep .ant-card-body {
@@ -39,9 +41,13 @@ import { NzCardModule } from 'ng-zorro-antd/card';
       flex: 1;
       // min-height: 0;
     }
+
+    :host ::ng-deep .ant-card-bordered{
+      border-radius: 10px;
+    }
   `,
 })
 export class DetailItemCardComponent {
-  readonly title = input.required<string>();
+  readonly title = input<string>();
   readonly maxHeight = input<string>();
 }

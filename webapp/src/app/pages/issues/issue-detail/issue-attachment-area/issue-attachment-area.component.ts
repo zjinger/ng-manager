@@ -1,5 +1,8 @@
 import { Component, input } from '@angular/core';
-import { AttachmentPreviewItem, AttachmentViewerComponent } from '@app/shared/components/attachment-viewer/attachment-viewer.component';
+import {
+  AttachmentPreviewItem,
+  AttachmentViewerComponent,
+} from '@app/shared/components/attachment-viewer/attachment-viewer.component';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { IssueAttachmentEntity } from '@pages/issues/models/issue.model';
 @Component({
@@ -18,6 +21,7 @@ import { IssueAttachmentEntity } from '@pages/issues/models/issue.model';
 })
 export class IssueAttachmentAreaComponent {
   readonly attachments = input<IssueAttachmentEntity[]>([]);
+  readonly projectId = input<string>('');
   protected readonly apiBaseUrl = '';
 
   attachmentPreviewItems(): AttachmentPreviewItem[] {
@@ -39,7 +43,7 @@ export class IssueAttachmentAreaComponent {
   }
 
   private fileUrl(item: IssueAttachmentEntity): string {
-    return `${this.apiBaseUrl}/uploads/${item.upload.id}/raw`;
+    return `/api/client/hub-token/projects/${this.projectId()}/issues/${item.issueId}/attachments/${item.id}/raw`;
   }
 
   private formatSize(size: number): string {

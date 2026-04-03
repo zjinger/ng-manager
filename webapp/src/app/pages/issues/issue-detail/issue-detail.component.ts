@@ -62,6 +62,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
           <div class="detail-wrap">
             <div class="left-column">
               <!-- 操作 -->
+              <!-- TODO:这里可以优化，将store放到外层 -->
               <app-issue-action-area
                 [issue]="issue"
                 (actionClick)="handleActionClick($event)"
@@ -83,6 +84,8 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
               <app-issue-comment-area
                 [comments]="comments()"
                 (submit)="commentSubmit.emit($event)"
+                [busy]="busy()"
+                [logs]="store.logs()"
               ></app-issue-comment-area>
             </div>
             <div class="right-column">
@@ -93,10 +96,16 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
               <app-issue-collaborators-area
                 [issue]="issue"
                 [participants]="participants()"
+                [canManageParticipants]="store.canManageParticipants()"
+                [busy]="busy()"
+                (removeParticipant)="removeParticipant.emit($event)"
               ></app-issue-collaborators-area>
 
               <!-- 附件 -->
-              <app-issue-attachment-area [attachments]="attachments()"></app-issue-attachment-area>
+              <app-issue-attachment-area
+                [attachments]="store.attachments()"
+                [projectId]="store.currentProjectId()!"
+              ></app-issue-attachment-area>
             </div>
           </div>
         }
@@ -157,7 +166,7 @@ export class IssueDetailComponent {
   readonly issue = input<IssueEntity | null>();
   readonly open = input(false);
   readonly busy = input(false);
-  readonly logs = input<IssueLogEntity[]>([]);
+  // readonly logs = input<IssueLogEntity[]>([]);
   readonly comments = input<IssueCommentEntity[]>([]);
   readonly attachments = input<IssueAttachmentEntity[]>([]);
   readonly participants = input<IssueParticipantEntity[]>([]);
@@ -167,6 +176,7 @@ export class IssueDetailComponent {
   readonly actionClick = output<IssueActionType>();
   readonly commentSubmit = output<createCommentInput>();
   readonly progressChange = output<number>();
+  readonly removeParticipant = output<string>();
   readonly deleteClick = output<void>();
 
   readonly subtitleText = computed(() => this.issue()?.issueNo || '');
