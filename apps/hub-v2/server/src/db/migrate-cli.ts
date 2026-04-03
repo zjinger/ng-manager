@@ -1,9 +1,9 @@
-import { loadEnv } from "../shared/env/env";
+import { loadMigrationEnv } from "../shared/env/env";
 import { createSqliteDatabase } from "../shared/db/sqlite";
 import { runMigrations } from "../shared/db/migrate";
 
 function main() {
-  const config = loadEnv();
+  const config = loadMigrationEnv();
   const db = createSqliteDatabase(config);
 
   try {

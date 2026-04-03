@@ -77,7 +77,7 @@ export class ReportHomePageComponent {
     '最近 30 天各项目的测试单创建与关闭趋势',
     '各项目当前成员数量对比',
     '最近 30 天各项目研发项完成情况',
-    '成员维度：最近 30 天谁处理的测试单最多',
+    '成员维度：最近 30 天成员处理数量排行',
   ];
 
   readonly canGenerate = computed(() => this.query().trim().length >= 2);

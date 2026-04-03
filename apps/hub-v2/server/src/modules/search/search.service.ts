@@ -32,6 +32,7 @@ export class SearchService {
 
     const repoResult = this.repo.search({
       matchExpression,
+      rawKeyword: keyword,
       projectIds,
       includeGlobalProjectNull: true,
       globalProjectNullPublishedOnly,

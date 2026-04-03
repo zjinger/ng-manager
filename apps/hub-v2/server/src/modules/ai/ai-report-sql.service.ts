@@ -101,6 +101,23 @@ export class AiReportSqlService {
       return cached;
     }
 
+    const preset = this.buildPresetSqlResult(normalizedQuery);
+    if (preset) {
+      let sql = this.normalizeSql(preset.sql);
+      this.validateSql(sql);
+      sql = this.bindProjectFilter(sql, projectIds);
+      sql = this.enforceLimit(sql);
+
+      const presetResult: SqlGenerationResult = {
+        sql,
+        params: projectIds,
+        title: this.localizeAiNarrative(preset.title).slice(0, 120),
+        description: this.localizeAiNarrative(preset.description).slice(0, 300)
+      };
+      this.setCache(cacheKey, presetResult);
+      return presetResult;
+    }
+
     if (!this.openai) {
       throw new AppError(
         ERROR_CODES.INTERNAL_ERROR,
@@ -221,16 +238,20 @@ export class AiReportSqlService {
   private injectProjectFilterByExpression(sql: string, projectExpr: string, placeholders: string): string {
     const filterExpr = `${projectExpr} IN (${placeholders})`;
 
-    if (/\bWHERE\b/i.test(sql)) {
-      return sql.replace(/\bWHERE\b/i, `WHERE ${filterExpr} AND`);
+    const whereIndex = this.findTopLevelKeywordIndex(sql, "WHERE");
+    if (whereIndex >= 0) {
+      return (
+        `${sql.slice(0, whereIndex)}WHERE ${filterExpr} AND ` +
+        `${sql.slice(whereIndex + "WHERE".length).trimStart()}`
+      );
     }
 
-    const clauseMatch = /\bGROUP\s+BY\b|\bORDER\s+BY\b|\bLIMIT\b/i.exec(sql);
-    if (clauseMatch?.index !== undefined) {
-      return `${sql.slice(0, clauseMatch.index)} WHERE ${filterExpr} ${sql.slice(clauseMatch.index)}`;
+    const clauseIndex = this.findFirstTopLevelClauseIndex(sql, ["GROUP BY", "ORDER BY", "LIMIT"]);
+    if (clauseIndex >= 0) {
+      return `${sql.slice(0, clauseIndex).trimEnd()} WHERE ${filterExpr} ${sql.slice(clauseIndex).trimStart()}`;
     }
 
-    return `${sql} WHERE ${filterExpr}`;
+    return `${sql.trimEnd()} WHERE ${filterExpr}`;
   }
 
   private bindProjectFilter(sql: string, projectIds: string[]): string {
@@ -286,6 +307,83 @@ export class AiReportSqlService {
     const qualifier = alias || tableName;
     const projectColumn = this.projectScopedTableColumns[tableName.toLowerCase()] ?? "project_id";
     return `${qualifier}.${projectColumn}`;
+  }
+
+  private findFirstTopLevelClauseIndex(sql: string, clauses: string[]): number {
+    let min = -1;
+    for (const clause of clauses) {
+      const idx = this.findTopLevelKeywordIndex(sql, clause);
+      if (idx >= 0 && (min < 0 || idx < min)) {
+        min = idx;
+      }
+    }
+    return min;
+  }
+
+  private findTopLevelKeywordIndex(sql: string, keyword: string): number {
+    const source = sql;
+    const upper = source.toUpperCase();
+    const target = keyword.toUpperCase();
+    const targetLen = target.length;
+    let depth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+
+    for (let i = 0; i <= source.length - targetLen; i += 1) {
+      const ch = source[i];
+      const next = source[i + 1];
+      const prev = source[i - 1];
+
+      if (!inDoubleQuote && ch === "'") {
+        if (inSingleQuote && next === "'") {
+          i += 1;
+          continue;
+        }
+        inSingleQuote = !inSingleQuote;
+        continue;
+      }
+
+      if (!inSingleQuote && ch === "\"") {
+        if (inDoubleQuote && next === "\"") {
+          i += 1;
+          continue;
+        }
+        inDoubleQuote = !inDoubleQuote;
+        continue;
+      }
+
+      if (inSingleQuote || inDoubleQuote) {
+        continue;
+      }
+
+      if (ch === "(") {
+        depth += 1;
+        continue;
+      }
+      if (ch === ")") {
+        depth = Math.max(0, depth - 1);
+        continue;
+      }
+
+      if (depth !== 0) {
+        continue;
+      }
+
+      if (!upper.startsWith(target, i)) {
+        continue;
+      }
+
+      const beforeChar = prev ?? "";
+      const afterChar = source[i + targetLen] ?? "";
+      const isWordChar = (value: string) => /[A-Za-z0-9_]/.test(value);
+      if (isWordChar(beforeChar) || isWordChar(afterChar)) {
+        continue;
+      }
+
+      return i;
+    }
+
+    return -1;
   }
 
   private escapeForRegex(input: string): string {
@@ -361,5 +459,113 @@ export class AiReportSqlService {
       .replace(/\s*\)/g, "）");
 
     return localized;
+  }
+
+  private buildPresetSqlResult(query: string): Omit<SqlGenerationResult, "params"> | null {
+    const compactQuery = query.replace(/\s+/g, "");
+    const recentDays = this.extractRecentDays(query);
+    const daysExpr = `-${recentDays} days`;
+
+    const isMemberHandledStats =
+      (compactQuery.includes("成员") || compactQuery.includes("处理人") || compactQuery.includes("负责人")) &&
+      (compactQuery.includes("处理") || compactQuery.includes("最多") || compactQuery.includes("排行"));
+    if (isMemberHandledStats) {
+      const sql =
+        "SELECT " +
+        "COALESCE(NULLIF(u.display_name, ''), NULLIF(i.assignee_name, ''), '未指派') as assignee, " +
+        "COUNT(*) as handled_count, " +
+        "SUM(CASE WHEN i.status = 'resolved' THEN 1 ELSE 0 END) as resolved_count, " +
+        "SUM(CASE WHEN i.status = 'verified' THEN 1 ELSE 0 END) as verified_count, " +
+        "SUM(CASE WHEN i.status = 'closed' THEN 1 ELSE 0 END) as closed_count " +
+        "FROM issues i " +
+        "LEFT JOIN users u ON u.id = i.assignee_id " +
+        "WHERE i.assignee_id IS NOT NULL " +
+        "AND i.status IN ('resolved', 'verified', 'closed') " +
+        "AND ( " +
+        `  (i.status = 'resolved' AND i.resolved_at IS NOT NULL AND i.resolved_at >= datetime('now', '${daysExpr}')) ` +
+        "  OR " +
+        `  (i.status = 'verified' AND i.verified_at IS NOT NULL AND i.verified_at >= datetime('now', '${daysExpr}')) ` +
+        "  OR " +
+        `  (i.status = 'closed' AND i.closed_at IS NOT NULL AND i.closed_at >= datetime('now', '${daysExpr}')) ` +
+        ") " +
+        "GROUP BY i.assignee_id, COALESCE(NULLIF(u.display_name, ''), NULLIF(i.assignee_name, ''), '未指派') " +
+        "ORDER BY handled_count DESC, assignee ASC LIMIT 20";
+
+      return {
+        sql,
+        title: "成员处理数量排行",
+        description: `最近 ${recentDays} 天成员处理数量统计（已解决/已验证/已关闭按各自时间字段计入，不限制类型）`
+      };
+    }
+
+    const isCreateCloseTrend =
+      compactQuery.includes("测试单") &&
+      compactQuery.includes("创建") &&
+      compactQuery.includes("关闭") &&
+      compactQuery.includes("趋势");
+    if (!isCreateCloseTrend) {
+      const isRdCompletion =
+        compactQuery.includes("研发项") &&
+        (compactQuery.includes("完成情况") || compactQuery.includes("完成量") || compactQuery.includes("完成度"));
+      if (!isRdCompletion) {
+        return null;
+      }
+
+      const sql =
+        "SELECT p.id as project_id, p.name as project_name, " +
+        "COUNT(r.id) as rd_count, " +
+        "SUM(CASE WHEN r.status IN ('done','closed','completed') THEN 1 ELSE 0 END) as completed_rd_count " +
+        "FROM projects p " +
+        "LEFT JOIN rd_items r ON r.project_id = p.id " +
+        `AND r.created_at >= datetime('now', '${daysExpr}') ` +
+        "GROUP BY p.id, p.name " +
+        "ORDER BY rd_count DESC, p.name ASC LIMIT 1000";
+
+      return {
+        sql,
+        title: "项目研发项完成情况",
+        description: `最近 ${recentDays} 天各项目研发项总量与完成量（包含零值项目）`
+      };
+    }
+
+    const sql =
+      "SELECT p.id as project_id, p.name as project_name, d.date as date, " +
+      "COALESCE(c.created_count, 0) as created_count, COALESCE(cl.closed_count, 0) as closed_count " +
+      "FROM projects p " +
+      "JOIN (SELECT date FROM (" +
+      `SELECT DATE(i.created_at) as date FROM issues i WHERE i.type = 'test' AND i.created_at >= datetime('now', '${daysExpr}') ` +
+      "UNION " +
+      `SELECT DATE(i.closed_at) as date FROM issues i WHERE i.type = 'test' AND i.closed_at IS NOT NULL AND i.closed_at >= datetime('now', '${daysExpr}')` +
+      ")) d ON 1 = 1 " +
+      "LEFT JOIN (" +
+      `SELECT i.project_id, DATE(i.created_at) as date, COUNT(*) as created_count FROM issues i WHERE i.type = 'test' AND i.created_at >= datetime('now', '${daysExpr}') ` +
+      "GROUP BY i.project_id, DATE(i.created_at)" +
+      ") c ON c.project_id = p.id AND c.date = d.date " +
+      "LEFT JOIN (" +
+      `SELECT i.project_id, DATE(i.closed_at) as date, COUNT(*) as closed_count FROM issues i WHERE i.type = 'test' AND i.closed_at IS NOT NULL AND i.closed_at >= datetime('now', '${daysExpr}') ` +
+      "GROUP BY i.project_id, DATE(i.closed_at)" +
+      ") cl ON cl.project_id = p.id AND cl.date = d.date " +
+      "ORDER BY d.date DESC, p.name ASC LIMIT 1000";
+
+    return {
+      sql,
+      title: "各项目测试单创建与关闭趋势",
+      description: `最近 ${recentDays} 天各项目每日测试单创建数量与关闭数量统计（关闭按关闭时间）`
+    };
+  }
+
+  private extractRecentDays(query: string): number {
+    const matched = query.match(/最近\s*(\d+)\s*天/);
+    const parsed = matched ? Number(matched[1]) : NaN;
+    if (!Number.isFinite(parsed)) {
+      return 30;
+    }
+    if (parsed < 1) {
+      return 1;
+    }
+    if (parsed > 365) {
+      return 365;
+    }
+    return Math.floor(parsed);
   }
 }

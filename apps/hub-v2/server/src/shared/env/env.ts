@@ -21,15 +21,18 @@ function resolveEnvFile(cwd: string): string | null {
 
 export type AppConfig = ReturnType<typeof loadEnv>;
 
-export function loadEnv() {
-  const cwd = process.cwd();
+function loadDotEnvFromWorkspace(cwd: string): void {
   const envFile = resolveEnvFile(cwd);
-  
   if (envFile) {
     dotenv.config({ path: envFile });
-  } else {
-    dotenv.config();
+    return;
   }
+  dotenv.config();
+}
+
+export function loadEnv() {
+  const cwd = process.cwd();
+  loadDotEnvFromWorkspace(cwd);
   const parsed = envSchema.parse({
     NODE_ENV: process.env.NODE_ENV,
     HOST: process.env.HOST,
@@ -85,5 +88,18 @@ export function loadEnv() {
     uploadMaxFileSize: parsed.UPLOAD_MAX_FILE_SIZE,
     openaiApiKey: parsed.OPENAI_API_KEY ?? null,
     openaiBaseUrl: parsed.OPENAI_BASE_URL ?? null
+  };
+}
+
+export function loadMigrationEnv(): { dataDir: string; dbPath: string } {
+  const cwd = process.cwd();
+  loadDotEnvFromWorkspace(cwd);
+
+  const dataDir = path.resolve(process.env.DATA_DIR || path.join(cwd, "data"));
+  fs.mkdirSync(dataDir, { recursive: true });
+
+  return {
+    dataDir,
+    dbPath: path.join(dataDir, "hub-v2.db")
   };
 }

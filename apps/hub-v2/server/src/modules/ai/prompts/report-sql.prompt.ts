@@ -22,6 +22,7 @@ issues 表：
 - created_at TEXT (ISO 8601)
 - updated_at TEXT
 - resolved_at TEXT
+- verified_at TEXT
 - closed_at TEXT
 
 rd_items 表：
@@ -69,6 +70,11 @@ users 表：
 4. 默认 LIMIT 1000 条结果
 5. SQL 必须至少包含一个项目级表（issues/rd_items/projects/project_members/rd_stages），权限系统会自动注入项目过滤，不要自己写 project_id IN 或 projects.id IN
 6. 优先返回可视化友好的聚合结果（按日期趋势、按分类对比），尽量避免只返回单值统计或大量明细行
+7. 涉及“创建趋势/关闭趋势”时，必须使用对应时间字段：
+   - 创建趋势使用 created_at
+   - 关闭趋势使用 closed_at（不是 created_at）
+8. 涉及项目聚合时，优先按项目主键分组（p.id, p.name），避免仅按项目名分组导致同名项目合并
+9. 涉及“成员处理量/处理排行”时，处理口径必须包含状态 resolved、verified、closed，且分别使用 resolved_at、verified_at、closed_at 做时间过滤；除非用户明确要求，不要限制 i.type='test'
 
 ## 输出格式（JSON）
 
@@ -83,17 +89,25 @@ users 表：
 用户：最近 30 天各项目的测试单创建数量
 输出：
 {
-  "sql": "SELECT p.name as project_name, COUNT(*) as tracking_count, DATE(i.created_at) as date FROM issues i JOIN projects p ON i.project_id = p.id WHERE i.created_at >= datetime('now', '-30 days') GROUP BY p.name, DATE(i.created_at) ORDER BY date DESC LIMIT 1000",
+  "sql": "SELECT p.id as project_id, p.name as project_name, COUNT(*) as tracking_count, DATE(i.created_at) as date FROM issues i JOIN projects p ON i.project_id = p.id WHERE i.type = 'test' AND i.created_at >= datetime('now', '-30 days') GROUP BY p.id, p.name, DATE(i.created_at) ORDER BY date DESC LIMIT 1000",
   "title": "各项目测试单创建趋势",
   "description": "最近 30 天各项目每日测试单创建数量统计"
+}
+
+用户：最近 30 天各项目测试单创建与关闭趋势
+输出：
+{
+  "sql": "SELECT p.id as project_id, p.name as project_name, d.date as date, COALESCE(c.created_count, 0) as created_count, COALESCE(cl.closed_count, 0) as closed_count FROM projects p JOIN (SELECT date FROM (SELECT DATE(i.created_at) as date FROM issues i WHERE i.type = 'test' AND i.created_at >= datetime('now', '-30 days') UNION SELECT DATE(i.closed_at) as date FROM issues i WHERE i.type = 'test' AND i.closed_at IS NOT NULL AND i.closed_at >= datetime('now', '-30 days'))) d ON 1 = 1 LEFT JOIN (SELECT i.project_id, DATE(i.created_at) as date, COUNT(*) as created_count FROM issues i WHERE i.type = 'test' AND i.created_at >= datetime('now', '-30 days') GROUP BY i.project_id, DATE(i.created_at)) c ON c.project_id = p.id AND c.date = d.date LEFT JOIN (SELECT i.project_id, DATE(i.closed_at) as date, COUNT(*) as closed_count FROM issues i WHERE i.type = 'test' AND i.closed_at IS NOT NULL AND i.closed_at >= datetime('now', '-30 days') GROUP BY i.project_id, DATE(i.closed_at)) cl ON cl.project_id = p.id AND cl.date = d.date ORDER BY d.date DESC, p.name ASC LIMIT 1000",
+  "title": "各项目测试单创建与关闭趋势",
+  "description": "最近 30 天各项目每日测试单创建数量与关闭数量统计（关闭按关闭时间）"
 }
 
 用户：谁处理的测试单最多
 输出：
 {
-  "sql": "SELECT u.display_name as assignee, COUNT(*) as resolved_count FROM issues i JOIN users u ON i.assignee_id = u.id WHERE i.status = 'closed' AND i.closed_at >= datetime('now', '-30 days') GROUP BY i.assignee_id ORDER BY resolved_count DESC LIMIT 10",
-  "title": "测试单处理排行榜",
-  "description": "最近 30 天处理测试单最多的前 10 名成员"
+  "sql": "SELECT COALESCE(NULLIF(u.display_name, ''), NULLIF(i.assignee_name, ''), '未指派') as assignee, COUNT(*) as handled_count, SUM(CASE WHEN i.status = 'resolved' THEN 1 ELSE 0 END) as resolved_count, SUM(CASE WHEN i.status = 'verified' THEN 1 ELSE 0 END) as verified_count, SUM(CASE WHEN i.status = 'closed' THEN 1 ELSE 0 END) as closed_count FROM issues i LEFT JOIN users u ON u.id = i.assignee_id WHERE i.assignee_id IS NOT NULL AND i.status IN ('resolved', 'verified', 'closed') AND ((i.status = 'resolved' AND i.resolved_at IS NOT NULL AND i.resolved_at >= datetime('now', '-30 days')) OR (i.status = 'verified' AND i.verified_at IS NOT NULL AND i.verified_at >= datetime('now', '-30 days')) OR (i.status = 'closed' AND i.closed_at IS NOT NULL AND i.closed_at >= datetime('now', '-30 days'))) GROUP BY i.assignee_id, COALESCE(NULLIF(u.display_name, ''), NULLIF(i.assignee_name, ''), '未指派') ORDER BY handled_count DESC, assignee ASC LIMIT 20",
+  "title": "成员处理数量排行",
+  "description": "最近 30 天成员处理数量统计（已解决/已验证/已关闭按各自时间字段计入，不限制类型）"
 }
 
 用户：各项目成员数量
@@ -107,9 +121,9 @@ users 表：
 用户：最近 30 天各项目研发项完成情况
 输出：
 {
-  "sql": "SELECT p.name as project_name, SUM(CASE WHEN r.status IN ('done','closed','completed') THEN 1 ELSE 0 END) as completed_rd_count, COUNT(*) as rd_count FROM rd_items r JOIN projects p ON p.id = r.project_id WHERE r.created_at >= datetime('now', '-30 days') GROUP BY p.id, p.name ORDER BY rd_count DESC LIMIT 1000",
+  "sql": "SELECT p.id as project_id, p.name as project_name, COUNT(r.id) as rd_count, SUM(CASE WHEN r.status IN ('done','closed','completed') THEN 1 ELSE 0 END) as completed_rd_count FROM projects p LEFT JOIN rd_items r ON r.project_id = p.id AND r.created_at >= datetime('now', '-30 days') GROUP BY p.id, p.name ORDER BY rd_count DESC, p.name ASC LIMIT 1000",
   "title": "项目研发项完成情况",
-  "description": "最近 30 天各项目研发项总量与完成量"
+  "description": "最近 30 天各项目研发项总量与完成量（包含零值项目）"
 }`;
 
 export function buildReportSqlUserPrompt(query: string, projectCount: number): string {

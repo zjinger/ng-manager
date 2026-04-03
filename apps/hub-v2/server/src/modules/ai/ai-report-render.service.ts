@@ -85,6 +85,8 @@ export class AiReportRenderService {
     created_count: "新建数量",
     closed_count: "关闭数量",
     resolved_count: "已解决数量",
+    handled: "处理",
+    handled_count: "处理数量",
     open_count: "待处理数量",
     in_progress_count: "处理中数量",
     verified_count: "已验证数量",
@@ -136,7 +138,7 @@ export class AiReportRenderService {
       return [{ type: "empty", title: "暂无数据" }];
     }
     const enrichedRows = this.enrichProjectDimensionRows(rows, params);
-    return this.composeBlocks(enrichedRows);
+    return this.composeBlocks(enrichedRows, params);
   }
 
   private executeQuery(sql: string, params: string[]): Record<string, unknown>[] {
@@ -251,6 +253,7 @@ export class AiReportRenderService {
     const numericColumns = columns.filter((key) => this.isNumericValue(firstRow[key]));
     const dateColumn = columns.find((key) => this.looksLikeDateColumn(key, firstRow[key]));
     const textColumns = columns.filter((key) => typeof firstRow[key] === "string");
+    const preferredCategory = this.pickPreferredCategoryColumn(textColumns, dateColumn);
 
     if (rows.length === 1 && numericColumns.length === 1 && columns.length <= 2) {
       return { type: "stat_card", valueCol: numericColumns[0] };
@@ -260,10 +263,10 @@ export class AiReportRenderService {
       return { type: "trend_chart", dateCol: dateColumn };
     }
 
-    if (textColumns.length === 1 && numericColumns.length === 1 && rows.length <= 12) {
+    if (preferredCategory && numericColumns.length === 1 && rows.length <= 12) {
       return {
         type: "distribution_chart",
-        categoryCol: textColumns[0],
+        categoryCol: preferredCategory,
         valueCol: numericColumns[0]
       };
     }
@@ -275,16 +278,20 @@ export class AiReportRenderService {
     return { type: "table" };
   }
 
-  private render(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
+  private render(
+    rows: Record<string, unknown>[],
+    viz: VisualizationType,
+    projectIds: string[]
+  ): RenderedBlock {
     switch (viz.type) {
       case "stat_card":
         return this.renderStatCard(rows, viz);
       case "trend_chart":
         return this.renderTrendChart(rows, viz);
       case "distribution_chart":
-        return this.renderDistributionChart(rows, viz);
+        return this.renderDistributionChart(rows, viz, projectIds);
       case "leaderboard":
-        return this.renderLeaderboard(rows, viz);
+        return this.renderLeaderboard(rows, viz, projectIds);
       case "table":
         return this.renderTable(rows);
       case "empty":
@@ -294,18 +301,18 @@ export class AiReportRenderService {
     }
   }
 
-  private composeBlocks(rows: Record<string, unknown>[]): RenderedBlock[] {
+  private composeBlocks(rows: Record<string, unknown>[], projectIds: string[]): RenderedBlock[] {
     const firstRow = rows[0];
     const columns = Object.keys(firstRow);
     const numericColumns = columns.filter((key) => this.isNumericValue(firstRow[key]));
     const textColumns = columns.filter((key) => typeof firstRow[key] === "string");
     const dateColumn = columns.find((key) => this.looksLikeDateColumn(key, firstRow[key]));
-    const categoryColumn = textColumns.find((key) => key !== dateColumn) || textColumns[0];
+    const categoryColumn = this.pickPreferredCategoryColumn(textColumns, dateColumn);
 
     const blocks: RenderedBlock[] = [];
 
     if (dateColumn && numericColumns.length > 0 && rows.length > 1) {
-      this.pushDistinctBlock(blocks, this.render(rows, { type: "trend_chart", dateCol: dateColumn }));
+      this.pushDistinctBlock(blocks, this.render(rows, { type: "trend_chart", dateCol: dateColumn }, projectIds));
     }
 
     if (categoryColumn && numericColumns.length > 0 && rows.length > 1) {
@@ -315,21 +322,27 @@ export class AiReportRenderService {
           type: "distribution_chart",
           categoryCol: categoryColumn,
           valueCol: numericColumns[0]
-        })
+        }, projectIds)
       );
     }
 
-    if (categoryColumn && numericColumns.length > 1 && rows.length > 1 && rows.length <= 8) {
+    if (
+      categoryColumn &&
+      numericColumns.length > 2 &&
+      rows.length > 1 &&
+      this.countDistinctCategories(rows, categoryColumn) >= 3 &&
+      this.countDistinctCategories(rows, categoryColumn) <= 8
+    ) {
       this.pushDistinctBlock(
         blocks,
-        this.renderRadarChart(rows, categoryColumn, numericColumns.slice(0, 6))
+        this.renderRadarChart(rows, categoryColumn, numericColumns.slice(0, 6), projectIds)
       );
     }
 
     if (categoryColumn && numericColumns.length > 0 && rows.length <= 24) {
       this.pushDistinctBlock(
         blocks,
-        this.renderCategoryBarChart(rows, categoryColumn, numericColumns.slice(0, 2))
+        this.renderCategoryBarChart(rows, categoryColumn, numericColumns.slice(0, 2), projectIds)
       );
     }
 
@@ -340,7 +353,7 @@ export class AiReportRenderService {
           type: "leaderboard",
           categoryCol: categoryColumn,
           valueCol: numericColumns[0]
-        })
+        }, projectIds)
       );
     }
 
@@ -406,33 +419,49 @@ export class AiReportRenderService {
   private renderTrendChart(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
     const dateCol = viz.dateCol || "date";
     const numericColumns = Object.keys(rows[0]).filter((key) => this.isNumericValue(rows[0][key]));
-    const sortedRows = [...rows].sort((a, b) => {
-      const aDate = String(a[dateCol] ?? "");
-      const bDate = String(b[dateCol] ?? "");
-      return aDate.localeCompare(bDate);
-    });
+    const byDate = new Map<string, number[]>();
+    for (const row of rows) {
+      const dateKey = String(row[dateCol] ?? "");
+      if (!dateKey) {
+        continue;
+      }
+      const current = byDate.get(dateKey) ?? new Array(numericColumns.length).fill(0);
+      for (let i = 0; i < numericColumns.length; i += 1) {
+        const col = numericColumns[i];
+        current[i] = (current[i] ?? 0) + (this.toNumber(row[col]) ?? 0);
+      }
+      byDate.set(dateKey, current);
+    }
+    const sortedRows = Array.from(byDate.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, values]) => ({ date, values }));
 
     return {
       type: "trend_chart",
       title: "趋势分析",
       chart: {
         type: "line",
-        labels: sortedRows.map((row) => String(row[dateCol] ?? "")),
+        labels: sortedRows.map((row) => row.date),
         datasets: numericColumns.map((col) => ({
           label: this.humanizeColumnName(col),
-          data: sortedRows.map((row) => this.toNumber(row[col]) ?? 0)
+          data: sortedRows.map((row) => row.values[numericColumns.indexOf(col)] ?? 0)
         }))
       }
     };
   }
 
-  private renderDistributionChart(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
+  private renderDistributionChart(
+    rows: Record<string, unknown>[],
+    viz: VisualizationType,
+    projectIds: string[]
+  ): RenderedBlock {
     const firstRow = rows[0];
+    const textColumns = Object.keys(firstRow).filter((key) => typeof firstRow[key] === "string");
     const categoryCol =
-      viz.categoryCol || Object.keys(firstRow).find((key) => typeof firstRow[key] === "string") || "category";
+      viz.categoryCol || this.pickPreferredCategoryColumn(textColumns) || "category";
     const valueCol =
       viz.valueCol || Object.keys(firstRow).find((key) => this.isNumericValue(firstRow[key])) || "value";
-    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, [valueCol]);
+    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, [valueCol], projectIds);
     const chartType = aggregated.length <= 10 ? "donut" : "bar";
 
     return {
@@ -454,9 +483,10 @@ export class AiReportRenderService {
   private renderCategoryBarChart(
     rows: Record<string, unknown>[],
     categoryCol: string,
-    valueCols: string[]
+    valueCols: string[],
+    projectIds: string[]
   ): RenderedBlock {
-    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, valueCols);
+    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, valueCols, projectIds);
     return {
       type: "trend_chart",
       title: "对比分析",
@@ -474,9 +504,10 @@ export class AiReportRenderService {
   private renderRadarChart(
     rows: Record<string, unknown>[],
     categoryCol: string,
-    valueCols: string[]
+    valueCols: string[],
+    projectIds: string[]
   ): RenderedBlock {
-    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, valueCols);
+    const aggregated = this.aggregateRowsByCategory(rows, categoryCol, valueCols, projectIds);
     const datasets = aggregated.map((item) => ({
       label: item.category,
       data: item.values
@@ -492,12 +523,17 @@ export class AiReportRenderService {
     };
   }
 
-  private renderLeaderboard(rows: Record<string, unknown>[], viz: VisualizationType): RenderedBlock {
+  private renderLeaderboard(
+    rows: Record<string, unknown>[],
+    viz: VisualizationType,
+    projectIds: string[]
+  ): RenderedBlock {
     const firstRow = rows[0];
     const valueCol =
       viz.valueCol || Object.keys(firstRow).find((key) => this.isNumericValue(firstRow[key])) || "value";
-    const labelCol = Object.keys(firstRow).find((key) => typeof firstRow[key] === "string") || Object.keys(firstRow)[0];
-    const aggregated = this.aggregateRowsByCategory(rows, labelCol, [valueCol]);
+    const textColumns = Object.keys(firstRow).filter((key) => typeof firstRow[key] === "string");
+    const labelCol = this.pickPreferredCategoryColumn(textColumns) || Object.keys(firstRow)[0];
+    const aggregated = this.aggregateRowsByCategory(rows, labelCol, [valueCol], projectIds);
 
     const sortedRows = [...aggregated].sort((a, b) => (b.values[0] ?? 0) - (a.values[0] ?? 0));
     const maxValue = Math.max(...sortedRows.map((row) => row.values[0] ?? 0), 0);
@@ -520,7 +556,8 @@ export class AiReportRenderService {
   private aggregateRowsByCategory(
     rows: Record<string, unknown>[],
     categoryCol: string,
-    valueCols: string[]
+    valueCols: string[],
+    projectIds: string[]
   ): Array<{ category: string; values: number[] }> {
     const grouped = new Map<string, { category: string; values: number[] }>();
 
@@ -540,7 +577,91 @@ export class AiReportRenderService {
       }
     }
 
+    this.appendMissingProjectCategories(grouped, categoryCol, valueCols.length, projectIds);
     return Array.from(grouped.values());
+  }
+
+  private appendMissingProjectCategories(
+    grouped: Map<string, { category: string; values: number[] }>,
+    categoryCol: string,
+    valueColCount: number,
+    projectIds: string[]
+  ): void {
+    if (projectIds.length === 0) {
+      return;
+    }
+    const normalizedCategory = this.normalizeColumnKey(categoryCol);
+    if (!this.isProjectDimensionColumn(normalizedCategory)) {
+      return;
+    }
+
+    const placeholders = projectIds.map(() => "?").join(", ");
+    const projectRows = this.readonlyDb
+      .prepare(`SELECT id, name, project_key FROM projects WHERE id IN (${placeholders})`)
+      .all(...projectIds) as Array<{ id: string; name: string | null; project_key: string | null }>;
+
+    const labels = projectRows.map((item) => {
+      if (normalizedCategory === "project_id") {
+        return item.id;
+      }
+      if (normalizedCategory === "project_key") {
+        return item.project_key?.trim() || item.id;
+      }
+      return item.name?.trim() || item.project_key?.trim() || item.id;
+    });
+
+    for (const label of labels) {
+      if (!label || grouped.has(label)) {
+        continue;
+      }
+      grouped.set(label, {
+        category: label,
+        values: new Array(valueColCount).fill(0)
+      });
+    }
+  }
+
+  private countDistinctCategories(rows: Record<string, unknown>[], categoryCol: string): number {
+    const labels = new Set<string>();
+    for (const row of rows) {
+      const label = this.localizeValueByColumn(categoryCol, row[categoryCol]);
+      if (label) {
+        labels.add(label);
+      }
+    }
+    return labels.size;
+  }
+
+  private isProjectDimensionColumn(columnKey: string): boolean {
+    return columnKey === "project_name" || columnKey === "project_key" || columnKey === "project_id";
+  }
+
+  private pickPreferredCategoryColumn(textColumns: string[], dateColumn?: string): string | undefined {
+    const candidates = textColumns.filter((key) => key !== dateColumn);
+    if (candidates.length === 0) {
+      return undefined;
+    }
+
+    const normalized = candidates.map((key) => this.normalizeColumnKey(key));
+    const priority = [
+      "project_name",
+      "project_key",
+      "name",
+      "display_name",
+      "assignee_name",
+      "title",
+      "project_id",
+      "id"
+    ];
+
+    for (const expected of priority) {
+      const index = normalized.indexOf(expected);
+      if (index >= 0) {
+        return candidates[index];
+      }
+    }
+
+    return candidates[0];
   }
 
   private renderTable(rows: Record<string, unknown>[]): RenderedBlock {
