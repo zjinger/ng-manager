@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -9,7 +10,7 @@ import type { ReportBlock, ReportBoardItem } from '../../models/report.model';
 @Component({
   selector: 'app-report-board-panel',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, NzTooltipModule, BlockRendererComponent],
+  imports: [CommonModule, NzButtonModule, NzIconModule, NzTooltipModule, BlockRendererComponent],
   template: `
     @if (items().length > 0) {
       <div class="card board-card">
@@ -19,6 +20,18 @@ import type { ReportBlock, ReportBoardItem } from '../../models/report.model';
             <p>同时展示多个模板图表，便于横向对比</p>
           </div>
           <div class="board-card__actions">
+            @if (publicEnabled()) {
+              <button
+                nz-button
+                nzType="primary"
+                nzSize="small"
+                [nzLoading]="publishing()"
+                [disabled]="publishing() || items().length === 0"
+                (click)="publishBoard.emit()"
+              >
+                发布公开看板
+              </button>
+            }
             <button nz-button nzType="default" nzSize="small" (click)="clearBoard.emit()">
               清空看板
             </button>
@@ -81,6 +94,7 @@ import type { ReportBlock, ReportBoardItem } from '../../models/report.model';
             </div>
           }
         </div>
+
       </div>
     }
   `,
@@ -89,8 +103,11 @@ import type { ReportBlock, ReportBoardItem } from '../../models/report.model';
 })
 export class ReportBoardPanelComponent {
   readonly items = input<ReportBoardItem[]>([]);
+  readonly publishing = input(false);
+  readonly publicEnabled = input(false);
 
   readonly clearBoard = output<void>();
+  readonly publishBoard = output<void>();
   readonly removeItem = output<string>();
   readonly toggleLayout = output<string>();
   readonly moveItem = output<{ sourceId: string; targetId: string }>();

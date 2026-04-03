@@ -1,0 +1,239 @@
+<main class="public-report">
+  <section class="page-wrapper">
+    <header class="page-header">
+      <div class="header-left">
+        <div class="brand-icon">📊</div>
+        <div>
+          <div class="brand-title">
+            AI 积木报表
+            <!-- <span class="brand-badge">公开访问</span> -->
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="share-banner">
+      <div class="share-banner-text">
+        <h2>访问链接</h2>
+        <p>将此链接分享给访客，可直接访问公开报表页面</p>
+      </div>
+      <div class="share-url-box">
+        <div class="share-url">{{ shareLink() }}</div>
+        <button class="copy-btn" [class.copied]="copyState() === 'copied'" (click)="copyShareLink()">
+          {{ copyState() === 'copied' ? '已复制 ✓' : '复制链接' }}
+        </button>
+      </div>
+    </section>
+
+    <!-- <section class="view-controls">
+      <div class="view-tabs">
+        <button class="view-tab" [class.active]="activeView() === 'dashboard'" (click)="switchView('dashboard')">
+          整体视图
+        </button>
+        <button class="view-tab" [class.active]="activeView() === 'list'" (click)="switchView('list')">
+          列表视图
+        </button>
+      </div>
+      <div class="view-meta">{{ isBoardMode() ? '当前为公开看板快照' : '仅展示公开项目数据' }}</div>
+    </section> -->
+
+    @if (!isBoardMode()) {
+      <section class="input-section">
+        <div class="input-row">
+          <textarea
+            id="queryInput"
+            class="input-field"
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+            placeholder="输入报表需求，例如：最近 30 天各项目测试追踪创建与关闭趋势"
+          ></textarea>
+          <button class="submit-btn" [disabled]="!canGenerate()" [class.loading]="loadingPreview()" (click)="generate()">↗</button>
+        </div>
+        <div class="input-footer">
+          <div class="project-selector">
+            <label>项目范围：</label>
+            <nz-radio-group [ngModel]="projectRangeMode()" (ngModelChange)="projectRangeMode.set($event)">
+              <label nz-radio nzValue="all">全部可见项目</label>
+              <label nz-radio nzValue="project" [nzDisabled]="!showProjectSelector()">指定项目</label>
+            </nz-radio-group>
+            @if (projectRangeMode() === 'project') {
+              <nz-select
+                class="project-select"
+                [ngModel]="selectedProjectId()"
+                (ngModelChange)="selectedProjectId.set($event)"
+                [nzDisabled]="projects().length === 0"
+                nzPlaceHolder="请选择项目"
+              >
+                @for (project of projects(); track project.id) {
+                  <nz-option [nzValue]="project.id" [nzLabel]="project.name"></nz-option>
+                }
+              </nz-select>
+            }
+          </div>
+          <div class="powered-by">Powered by AI SQL + Blocks</div>
+        </div>
+      </section>
+
+      <section class="quick-actions">
+        <div class="section-label">快捷需求</div>
+        <div class="quick-chips">
+          @for (item of suggestionQueries; track item) {
+            <button class="chip" (click)="useSuggestion(item)">{{ item }}</button>
+          }
+        </div>
+      </section>
+    }
+
+    @if (loadingBoard()) {
+      <section class="state-card">
+        <nz-spin nzSimple />
+        <span>正在加载公开看板...</span>
+      </section>
+    }
+
+    @if (isBoardMode() && board(); as publicBoard) {
+      <section class="board-header">
+        <h3>{{ publicBoard.title }}</h3>
+        <p>已发布积木看板快照，访问时展示固定组合报表</p>
+      </section>
+
+      @if (activeView() === 'dashboard') {
+        <section class="dashboard-view">
+          @for (item of publicBoard.items; track item.id) {
+            <article class="dash-card board-item-card" [class.span-2]="item.layoutSize !== 'compact'">
+              <div class="dash-card-header">
+                <div>
+                  <div class="dash-card-title">{{ item.title }}</div>
+                  <div class="dash-card-desc">{{ item.naturalQuery }}</div>
+                </div>
+                <span class="dash-card-badge">{{ item.layoutSize === 'compact' ? '1x1' : '2x1' }}</span>
+              </div>
+              <div class="board-item-blocks" [class.board-item-blocks--multi]="item.blocks.length > 1">
+                @for (block of item.blocks; track $index) {
+                  <div
+                    class="board-item-block"
+                    [class.board-item-block--compact]="isCompactBlock(block)"
+                    [class.board-item-block--full]="isFullWidthBlock(block)"
+                  >
+                    <app-report-block-renderer [block]="block" [dense]="true" />
+                  </div>
+                }
+              </div>
+            </article>
+          }
+        </section>
+      } @else {
+        <section class="list-view">
+          @for (item of publicBoard.items; track item.id) {
+            <article class="report-card">
+              <div class="card-top">
+                <div class="card-title">{{ item.title }}</div>
+                <span class="status-badge status-done">{{ item.layoutSize === 'compact' ? '1x1' : '2x1' }}</span>
+              </div>
+              <div class="card-query">{{ item.naturalQuery }}</div>
+              <div class="detail-panel open">
+                <div class="board-item-blocks" [class.board-item-blocks--multi]="item.blocks.length > 1">
+                  @for (block of item.blocks; track $index) {
+                    <div
+                      class="board-item-block"
+                      [class.board-item-block--compact]="isCompactBlock(block)"
+                      [class.board-item-block--full]="isFullWidthBlock(block)"
+                    >
+                      <app-report-block-renderer [block]="block" [dense]="true" />
+                    </div>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </section>
+      }
+    }
+
+    @if (!isBoardMode() && loadingProjects()) {
+      <section class="state-card">
+        <nz-spin nzSimple />
+        <span>正在加载公开项目...</span>
+      </section>
+    }
+
+    @if (!isBoardMode() && preview(); as current) {
+      @if (activeView() === 'dashboard') {
+        <section class="dashboard-view">
+          @for (block of previewBlocks(); track $index) {
+            <article class="dash-card" [class.span-2]="isFullWidthBlock(block)">
+              <div class="dash-card-header">
+                <div class="dash-card-title">{{ block.title || blockTypeLabel(block) }}</div>
+                <span class="dash-card-badge">{{ blockTypeLabel(block) }}</span>
+              </div>
+              <div class="dash-card-body">
+                <app-report-block-renderer [block]="block" [dense]="true" />
+              </div>
+            </article>
+          }
+        </section>
+      } @else {
+        <section class="list-view">
+          @for (block of previewBlocks(); track $index) {
+            <article class="report-card" (click)="toggleListItem($index)">
+              <div class="card-top">
+                <div class="card-title">{{ block.title || blockTypeLabel(block) }}</div>
+                <span class="status-badge status-done">已完成</span>
+              </div>
+              <div class="card-meta">
+                <span class="meta-item">{{ blockTypeLabel(block) }}</span>
+              </div>
+              <div class="card-query">{{ current.title }}</div>
+              @if (isListItemExpanded($index)) {
+                <div class="detail-panel open">
+                  <app-report-block-renderer [block]="block" [dense]="true" />
+                </div>
+              }
+            </article>
+          }
+        </section>
+      }
+
+      <section class="panel sql-panel">
+        <details>
+          <summary>查看 SQL</summary>
+          <pre>{{ current.sql }}</pre>
+        </details>
+      </section>
+
+      @if (current.caliber; as caliber) {
+        <section class="panel caliber-panel">
+          <details>
+            <summary>数据口径说明</summary>
+            <div class="caliber-grid">
+              <div class="caliber-item">
+                <span class="caliber-key">摘要</span>
+                <span class="caliber-val">{{ caliber.summary }}</span>
+              </div>
+              <div class="caliber-item">
+                <span class="caliber-key">统计范围</span>
+                <span class="caliber-val">{{ caliber.scope }}</span>
+              </div>
+              <div class="caliber-item">
+                <span class="caliber-key">时间范围</span>
+                <span class="caliber-val">{{ caliber.timeRange }}</span>
+              </div>
+              <div class="caliber-item">
+                <span class="caliber-key">核心指标</span>
+                <span class="caliber-val">{{ caliber.metric }}</span>
+              </div>
+              <div class="caliber-item">
+                <span class="caliber-key">数据来源</span>
+                <span class="caliber-val">{{ caliber.dataSource }}</span>
+              </div>
+            </div>
+          </details>
+        </section>
+      }
+    }
+
+    <footer class="page-footer">
+      <p>AI 积木报表 · 公开版本 · 数据仅供参考</p>
+    </footer>
+  </section>
+</main>

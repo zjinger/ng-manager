@@ -16,6 +16,25 @@ export const routes: Routes = [
         (m) => m.PublicDocumentPageComponent
       ),
   },
+  // {
+  //   path: 'public/survey',
+  //   loadComponent: () =>
+  //     import('./features/feedback/pages/public-survey-page/public-survey-page.component').then(
+  //       (m) => m.PublicSurveyPageComponent
+  //     ),
+  // },
+  {
+    path: 'public/surveys/:slug',
+    loadComponent: () =>
+      import('./features/survey/pages/public-survey-form-page/public-survey-form-page.component').then(
+        (m) => m.PublicSurveyFormPageComponent
+      ),
+  },
+  {
+    path: 'public/report',
+    loadChildren: () =>
+      import('./features/public-report/routes').then((m) => m.PUBLIC_REPORT_ROUTES),
+  },
   {
     path: '',
     canActivate: [authGuard],
@@ -33,6 +52,11 @@ export const routes: Routes = [
         path: 'dashboard',
         loadChildren: () =>
           import('./features/dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
+      },
+      {
+        path: 'report',
+        pathMatch: 'full',
+        redirectTo: 'reports',
       },
       {
         path: 'reports',
@@ -58,6 +82,11 @@ export const routes: Routes = [
         path: 'feedbacks',
         loadChildren: () =>
           import('./features/feedback/routes').then((m) => m.FEEDBACK_ROUTES),
+      },
+      {
+        path: 'surveys',
+        loadChildren: () =>
+          import('./features/survey/routes').then((m) => m.SURVEY_ROUTES),
       },
       {
         path: 'projects',

@@ -1,4 +1,7 @@
-<app-page-header title="积木报表" subtitle="支持项目、成员、研发项、测试单等多维数据分析，输入自然语言即可生成。" />
+<app-page-header
+  title="积木报表"
+  subtitle="支持项目、成员、研发项、测试单等多维数据分析，输入自然语言即可生成。"
+/>
 
 <section class="report-layout">
   <div class="report-layout__main">
@@ -13,11 +16,19 @@
       ></textarea>
 
       <div class="query-controls">
-        <div class="query-controls__hint">时间范围和项目范围请直接写在需求里，例如：最近30天、某某项目。</div>
+        <div class="query-controls__hint">
+          时间范围和项目范围请直接写在需求里，例如：最近30天、某某项目。
+        </div>
       </div>
 
       <div class="query-card__actions">
-        <button nz-button nzType="primary" [disabled]="!canGenerate() || loading()" [nzLoading]="loading()" (click)="generate()">
+        <button
+          nz-button
+          nzType="primary"
+          [disabled]="!canGenerate() || loading()"
+          [nzLoading]="loading()"
+          (click)="generate()"
+        >
           生成报表
         </button>
         @for (item of suggestionQueries; track item) {
@@ -52,7 +63,13 @@
               (ngModelChange)="templateTitle.set($event)"
               placeholder="模板名称"
             />
-            <button nz-button nzType="primary" [disabled]="!canSaveTemplate()" [nzLoading]="saving()" (click)="saveTemplate()">
+            <button
+              nz-button
+              nzType="primary"
+              [disabled]="!canSaveTemplate()"
+              [nzLoading]="saving()"
+              (click)="saveTemplate()"
+            >
               保存为模板
             </button>
           </div>
@@ -91,7 +108,10 @@
           </details>
         }
 
-        <div class="preview-block-list" [class.preview-block-list--multi]="previewBlocks().length > 1">
+        <div
+          class="preview-block-list"
+          [class.preview-block-list--multi]="previewBlocks().length > 1"
+        >
           @for (block of previewBlocks(); track $index) {
             <div
               class="preview-block-item"
@@ -107,6 +127,9 @@
 
     <app-report-board-panel
       [items]="boardItems()"
+      [publishing]="publishingBoard()"
+      [publicEnabled]="reportPublicEnabled()"
+      (publishBoard)="publishBoard()"
       (clearBoard)="clearBoard()"
       (removeItem)="removeBoardItem($event)"
       (toggleLayout)="toggleBoardItemLayout($event)"
@@ -137,5 +160,80 @@
       (renderToBoard)="renderTemplateToBoard($event)"
       (deleteTemplate)="deleteTemplate($event)"
     />
+
+    @if (reportPublicEnabled()) {
+      <div class="card public-boards-card">
+        <div class="public-boards-card__header">
+          <h4>已发布看板</h4>
+          <button
+            nz-button
+            nzSize="small"
+            nzType="default"
+            [nzLoading]="loadingPublicBoards()"
+            (click)="loadPublicBoards()"
+          >
+            刷新
+          </button>
+        </div>
+
+        @if (loadingPublicBoards()) {
+          <div class="public-boards-card__empty">正在加载...</div>
+        } @else if (publicBoards().length === 0) {
+          <div class="public-boards-card__empty">暂无已发布看板</div>
+        } @else {
+          <div class="public-board-list">
+            @for (item of publicBoards(); track item.id) {
+              <div class="public-board-list__item">
+                <div class="public-board-list__meta">
+                  <div class="public-board-list__title">{{ item.title }}</div>
+                  <div class="public-board-list__sub">
+                    <span
+                      class="public-board-list__status"
+                      [class.public-board-list__status--inactive]="!item.isActive"
+                    >
+                      {{ item.isActive ? '已生效' : '已失效' }}
+                    </span>
+                    <span>报表 {{ item.itemCount }} 个</span>
+                    <span>更新 {{ formatDateTime(item.updatedAt) }}</span>
+                  </div>
+                </div>
+                <div class="public-board-list__actions">
+                  <button nz-button nzSize="small" (click)="copyPublicBoardLink(item.shareToken)">
+                    复制链接
+                  </button>
+                  <button
+                    nz-button
+                    nzSize="small"
+                    [disabled]="boardActionId() === item.id"
+                    nz-popconfirm
+                    [nzPopconfirmTitle]="
+                      item.isActive
+                        ? '确认失效该看板吗？失效后用户将无法访问该看板。'
+                        : '确认生效该看板吗？生效后用户将可以访问该看板。'
+                    "
+                    (nzOnConfirm)="confirmTogglePublicBoard(item)"
+                  >
+                    {{ item.isActive ? '失效' : '生效' }}
+                  </button>
+                  <button
+                    nz-button
+                    nzSize="small"
+                    nzDanger
+                    [disabled]="boardActionId() === item.id"
+                    nz-popconfirm
+                    [nzPopconfirmTitle]="'删除后不可恢复，是否删除「' + item.title + '」？'"
+                    nzPopconfirmOkText="删除"
+                    nzPopconfirmCancelText="取消"
+                    (nzOnConfirm)="confirmDeletePublicBoard(item)"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
   </aside>
 </section>

@@ -19,12 +19,19 @@ export const NAV_ITEMS: NavSection[] = [
     ],
   },
   {
-    key: "content",
-    label: "内容中心",
+    key: 'content-center',
+    label: '内容中心',
     items: [
       { key: 'content', label: '内容管理', icon: 'read', route: '/content' },
-      { key: 'feedbacks', label: '反馈管理', icon: 'message', route: '/feedbacks' },
-    ]
+    ],
+  },
+  {
+    key: 'feedback-center',
+    label: '反馈中心',
+    items: [
+      { key: 'feedbacks', label: '系统反馈', icon: 'message', route: '/feedbacks' },
+      { key: 'surveys', label: '问卷调查', icon: 'form', route: '/surveys' },
+    ],
   },
   {
     key: 'management',

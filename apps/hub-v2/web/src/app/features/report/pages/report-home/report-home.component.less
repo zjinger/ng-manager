@@ -13,6 +13,9 @@
 
 .report-layout__side {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .card {
@@ -183,6 +186,87 @@
   color: var(--text-secondary);
   line-height: 1.5;
   word-break: break-word;
+}
+
+.public-boards-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.public-boards-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.public-boards-card__header h4 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.public-boards-card__empty {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.public-board-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.public-board-list__item {
+  padding: 10px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.public-board-list__title {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.public-board-list__sub {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.public-board-list__status {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 12%, white);
+}
+
+.public-board-list__status--inactive {
+  color: var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 14%, white);
+}
+
+.public-board-list__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 1160px) {

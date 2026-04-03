@@ -1,0 +1,117 @@
+<div class="card public-card">
+  <div class="public-card__header">
+    <h4>公开项目范围管理</h4>
+  </div>
+
+  @if (loading()) {
+    <div class="public-card__loading">
+      <nz-spin nzSimple />
+    </div>
+  } @else {
+    <div class="public-card__hint">仅“加入公开范围”的项目会成为公开报表的数据来源。</div>
+
+    <section class="public-card__section">
+      <div class="public-card__section-title">公开范围项目</div>
+      <div class="public-card__add-row">
+        <nz-select
+          class="public-card__project-select"
+          nzPlaceHolder="选择项目加入公开范围"
+          [ngModel]="selectedProjectId()"
+          (ngModelChange)="selectedProjectId.set($event)"
+        >
+          @for (item of availableProjectOptions(); track item.id) {
+            <nz-option [nzValue]="item.id" [nzLabel]="item.name"></nz-option>
+          }
+        </nz-select>
+        <label nz-checkbox [ngModel]="allowAllProjects()" (ngModelChange)="allowAllProjects.set($event)">
+          本项目链接可访问全部公开范围项目
+        </label>
+        <button nz-button nzType="default" [disabled]="!canAdd()" [nzLoading]="addingProject()" (click)="addProject()">
+          加入公开范围
+        </button>
+      </div>
+
+      @if (publicProjects().length === 0) {
+        <div class="public-card__empty">当前还没有公开范围项目</div>
+      } @else {
+        <div class="public-list">
+          @for (item of publicProjects(); track item.id) {
+            <div class="public-list__item">
+              <div class="public-list__meta">
+                <div class="public-list__name">{{ item.projectName }}</div>
+                <div class="public-list__sub">
+                  <span>Token：{{ item.shareToken }}</span>
+                  @if (item.allowAllProjects) {
+                    <span class="tag">全公开范围可见</span>
+                  }
+                </div>
+              </div>
+              <div class="public-list__actions">
+                <button nz-button nzSize="small" (click)="copyShareLink(item)" [nzLoading]="copyingProjectId() === item.id">
+                  复制链接
+                </button>
+                <button nz-button nzSize="small" (click)="regenerateLink(item)" [nzLoading]="regeneratingProjectId() === item.id">
+                  重置链接
+                </button>
+                <button nz-button nzDanger nzSize="small" (click)="removeProject(item)" [nzLoading]="removingProjectId() === item.id">
+                  移除
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="public-card__section">
+      <div class="public-card__section-header">
+        <div class="public-card__section-title">我的公开看板</div>
+        <button nz-button nzType="default" nzSize="small" [disabled]="boardsLoading()" (click)="refreshBoards.emit()">
+          刷新
+        </button>
+      </div>
+
+      @if (!hasPublicProject()) {
+        <div class="public-card__empty">请先加入公开范围项目，再发布公开看板</div>
+      } @else if (boardsLoading()) {
+        <div class="public-card__empty">正在加载...</div>
+      } @else if (publicBoards().length === 0) {
+        <div class="public-card__empty">暂无公开看板</div>
+      } @else {
+        <div class="public-list">
+          @for (item of publicBoards(); track item.id) {
+            <div class="public-list__item">
+              <div class="public-list__meta">
+                <div class="public-list__name">{{ item.title }}</div>
+                <div class="public-list__sub">
+                  <span>报表 {{ item.itemCount }} 个</span>
+                  <span>更新 {{ item.updatedAt | slice: 0 : 16 }}</span>
+                </div>
+              </div>
+              <div class="public-list__actions">
+                <button nz-button nzSize="small" (click)="copyBoardLink.emit(item.shareToken)">复制链接</button>
+                <button
+                  nz-button
+                  nzSize="small"
+                  [disabled]="boardActionId() === item.id"
+                  (click)="invalidateBoard.emit(item.id)"
+                >
+                  失效
+                </button>
+                <button
+                  nz-button
+                  nzDanger
+                  nzSize="small"
+                  [disabled]="boardActionId() === item.id"
+                  (click)="deleteBoard.emit(item.id)"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

@@ -4,6 +4,9 @@ import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
 import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
 import { SearchRepo } from "../modules/search/search.repo";
 import { SearchService } from "../modules/search/search.service";
+import type { SurveyCommandContract, SurveyQueryContract } from "../modules/survey/survey.contract";
+import { SurveyRepo } from "../modules/survey/survey.repo";
+import { SurveyService } from "../modules/survey/survey.service";
 import type { AnnouncementCommandContract, AnnouncementQueryContract } from "../modules/announcement/announcement.contract";
 import type { ApiTokenCommandContract, ApiTokenQueryContract } from "../modules/api-token/api-token.contract";
 import { ApiTokenRepo } from "../modules/api-token/api-token.repo";
@@ -76,6 +79,8 @@ import type Database from "better-sqlite3";
 import OpenAI from "openai";
 import { AiIssueService } from "../modules/ai/ai-issue.service";
 import { AiRepo } from "../modules/ai/ai.repo";
+import { ReportPublicRepo } from "../modules/report-public/report-public.repo";
+import { ReportPublicService } from "../modules/report-public/report-public.service";
 
 export type AppContainer = {
   healthQuery: HealthQueryService;
@@ -124,7 +129,10 @@ export type AppContainer = {
   aiIssueService: AiIssueService;
   aiReportSqlService: AiReportSqlService;
   aiReportRenderService: AiReportRenderService;
+  reportPublicService: ReportPublicService;
   searchService: SearchService;
+  surveyCommand: SurveyCommandContract;
+  surveyQuery: SurveyQueryContract;
 };
 
 type BuildContainerOptions = {
@@ -212,7 +220,9 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const aiIssueService = new AiIssueService(openaiClient);
   const aiReportSqlService = new AiReportSqlService(config, projectAccess);
   const aiReportRenderService = new AiReportRenderService(db);
+  const reportPublicService = new ReportPublicService(config, new ReportPublicRepo(db), projectRepo);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
+  const surveyService = new SurveyService(new SurveyRepo(db));
 
   return {
     healthQuery: new HealthQueryService(config),
@@ -261,6 +271,9 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     aiIssueService,
     aiReportSqlService,
     aiReportRenderService,
-    searchService
+    reportPublicService,
+    searchService,
+    surveyCommand: surveyService,
+    surveyQuery: surveyService
   };
 }

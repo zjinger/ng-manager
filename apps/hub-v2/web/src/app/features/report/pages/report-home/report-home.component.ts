@@ -12,6 +12,7 @@ import { BlockRendererComponent } from '../../components/block-renderer/block-re
 import type {
   AiReportPreviewResult,
   ReportBlock,
+  ReportPublicBoardSummary,
   ReportTemplate,
   ReportTemplateExecuteResult,
 } from '../../models/report.model';
@@ -19,17 +20,18 @@ import { ReportApiService } from '../../services/report-api.service';
 import { ReportBoardStore } from '../../services/report-board.store';
 import { ReportBoardPanelComponent } from '../../components/report-board-panel/report-board-panel.component';
 import { ReportTemplateSidebarComponent } from '../../components/report-template-sidebar/report-template-sidebar.component';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 type BulkRenderResult =
   | {
-      success: true;
-      template: ReportTemplate;
-      res: ReportTemplateExecuteResult;
-    }
+    success: true;
+    template: ReportTemplate;
+    res: ReportTemplateExecuteResult;
+  }
   | {
-      success: false;
-      template: ReportTemplate;
-    };
+    success: false;
+    template: ReportTemplate;
+  };
 
 @Component({
   selector: 'app-report-home-page',
@@ -39,6 +41,7 @@ type BulkRenderResult =
     NzButtonModule,
     NzInputModule,
     NzSpinModule,
+    NzPopconfirmModule,
     PageHeaderComponent,
     BlockRendererComponent,
     ReportBoardPanelComponent,
@@ -52,6 +55,7 @@ export class ReportHomePageComponent {
   private readonly api = inject(ReportApiService);
   private readonly boardStore = inject(ReportBoardStore);
   private readonly message = inject(NzMessageService);
+  // private readonly modal = inject(NzModalService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly query = signal('');
@@ -72,6 +76,11 @@ export class ReportHomePageComponent {
   readonly boardExecutingTemplateId = signal<string | null>(null);
   readonly bulkRendering = signal(false);
   readonly failedBulkTemplateIds = this.boardStore.failedTemplateIds;
+  readonly publishingBoard = signal(false);
+  readonly reportPublicEnabled = signal(false);
+  readonly publicBoards = signal<ReportPublicBoardSummary[]>([]);
+  readonly loadingPublicBoards = signal(false);
+  readonly boardActionId = signal<string | null>(null);
 
   readonly suggestionQueries: ReadonlyArray<string> = [
     '最近 30 天各项目的测试单创建与关闭趋势',
@@ -107,6 +116,7 @@ export class ReportHomePageComponent {
 
   constructor() {
     this.loadTemplates();
+    this.loadReportPublicCapability();
   }
 
   useSuggestion(value: string): void {
@@ -136,8 +146,8 @@ export class ReportHomePageComponent {
           this.lastNaturalQuery.set(normalized);
           this.templateTitle.set((res.title || normalized).trim().slice(0, 120));
         },
-        error: () => {
-          this.message.error('生成报表失败，请稍后重试');
+        error: (error) => {
+          this.message.error(this.resolveErrorMessage(error, '生成报表失败，请稍后重试'));
         },
       });
   }
@@ -172,8 +182,8 @@ export class ReportHomePageComponent {
           }
           this.loadTemplates(true);
         },
-        error: () => {
-          this.message.error('保存模板失败');
+        error: (error) => {
+          this.message.error(this.resolveErrorMessage(error, '保存模板失败'));
         },
       });
   }
@@ -209,8 +219,8 @@ export class ReportHomePageComponent {
           this.templateTitle.set(res.template.title);
           this.activeTemplateId.set(res.template.id);
         },
-        error: () => {
-          this.message.error('执行模板失败');
+        error: (error) => {
+          this.message.error(this.resolveErrorMessage(error, '执行模板失败'));
         },
       });
   }
@@ -336,8 +346,8 @@ export class ReportHomePageComponent {
           this.boardStore.removeFailedTemplateId(template.id);
           this.message.success('已加入看板');
         },
-        error: () => {
-          this.message.error('加入看板失败');
+        error: (error) => {
+          this.message.error(this.resolveErrorMessage(error, '加入看板失败'));
         },
       });
   }
@@ -360,6 +370,51 @@ export class ReportHomePageComponent {
 
   clearBoard(): void {
     this.boardStore.clearBoard();
+  }
+
+  publishBoard(): void {
+    if (!this.reportPublicEnabled()) {
+      return;
+    }
+    const items = this.boardItems();
+    if (items.length === 0 || this.publishingBoard()) {
+      if (items.length === 0) {
+        this.message.warning('请先将模板加入看板');
+      }
+      return;
+    }
+
+    const payload: {
+      title: string;
+      items: Array<{ title: string; naturalQuery: string; sql: string; layoutSize: 'compact' | 'wide' }>;
+    } = {
+      title: `公开看板 · ${new Date().toLocaleString('zh-CN', { hour12: false })}`,
+      items: items.map((item) => ({
+        title: item.title,
+        naturalQuery: item.naturalQuery,
+        sql: item.sql,
+        layoutSize: item.layoutSize === 'compact' ? 'compact' : 'wide',
+      })),
+    };
+
+    this.publishingBoard.set(true);
+    this.api
+      .publishReportPublicBoard(payload)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.publishingBoard.set(false)),
+      )
+      .subscribe({
+        next: (board) => {
+          const shareLink = this.buildPublicBoardLink(board.shareToken);
+          this.copyToClipboard(shareLink);
+          this.loadPublicBoards(true);
+          this.message.success('公开看板链接已生成并复制');
+        },
+        error: (error) => {
+          this.message.error(this.resolveErrorMessage(error, '发布公开看板失败'));
+        },
+      });
   }
 
   removeBoardItem(id: string): void {
@@ -437,16 +492,177 @@ export class ReportHomePageComponent {
 
           this.message.error(`模板渲染失败（${sampleNames}${nameSuffix}）`);
         },
-        error: () => {
+        error: (error) => {
           this.boardStore.setFailedTemplateIds(templates.map((item) => item.id));
-          this.message.error('模板渲染失败');
+          this.message.error(this.resolveErrorMessage(error, '模板渲染失败'));
         },
       });
+  }
+
+  private loadReportPublicCapability(): void {
+    this.api
+      .getReportPublicCapability()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.reportPublicEnabled.set(!!res.enabled);
+          if (res.enabled) {
+            this.loadPublicBoards(true);
+          } else {
+            this.publicBoards.set([]);
+          }
+        },
+        error: () => {
+          this.reportPublicEnabled.set(false);
+          this.publicBoards.set([]);
+        },
+      });
+  }
+
+  loadPublicBoards(silent = false): void {
+    if (!silent) {
+      this.loadingPublicBoards.set(true);
+    }
+    this.api
+      .listReportPublicBoards()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.loadingPublicBoards.set(false)),
+      )
+      .subscribe({
+        next: (res) => {
+          this.publicBoards.set(res.items || []);
+        },
+        error: (error) => {
+          this.publicBoards.set([]);
+          if (!silent) {
+            this.message.error(this.resolveErrorMessage(error, '加载已发布看板失败'));
+          }
+        },
+      });
+  }
+
+  copyPublicBoardLink(shareToken: string): void {
+    this.copyToClipboard(this.buildPublicBoardLink(shareToken));
+    this.message.success('看板链接已复制');
+  }
+
+  confirmTogglePublicBoard(item: ReportPublicBoardSummary): void {
+    // const actionLabel = item.isActive ? '失效' : '生效';
+    // const content = item.isActive
+    //   ? '失效后外部链接将无法访问该看板，是否继续？'
+    //   : '生效后外部链接将恢复访问该看板，是否继续？';
+    // this.modal.confirm({
+    //   nzTitle: `确认${actionLabel}公开看板`,
+    //   nzContent: content,
+    //   nzOkText: `确认${actionLabel}`,
+    //   nzCancelText: '取消',
+    //   nzOnOk: () => this.togglePublicBoardActive(item),
+    // });
+    this.togglePublicBoardActive(item);
+  }
+
+  confirmDeletePublicBoard(item: ReportPublicBoardSummary): void {
+    this.deletePublicBoard(item.id);
+    // this.modal.confirm({
+    //   nzTitle: '确认删除公开看板',
+    //   nzContent: `删除后不可恢复，是否删除「${item.title}」？`,
+    //   nzOkText: '确认删除',
+    //   nzOkDanger: true,
+    //   nzCancelText: '取消',
+    //   nzOnOk: () => this.deletePublicBoard(item.id),
+    // });
+  }
+
+  private togglePublicBoardActive(item: ReportPublicBoardSummary): void {
+    const id = item.id;
+    if (this.boardActionId() === id) {
+      return;
+    }
+    this.boardActionId.set(id);
+    const request$ = item.isActive ? this.api.invalidateReportPublicBoard(id) : this.api.activateReportPublicBoard(id);
+    request$
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.boardActionId.set(null)),
+      )
+      .subscribe({
+        next: (entity) => {
+          this.publicBoards.update((items) => items.map((board) => (board.id === entity.id ? entity : board)));
+          this.message.success(entity.isActive ? '公开看板已生效' : '公开看板已失效');
+        },
+        error: (error) => {
+          this.message.error(this.resolveErrorMessage(error, item.isActive ? '公开看板失效失败' : '公开看板生效失败'));
+        },
+      });
+  }
+
+  private deletePublicBoard(id: string): void {
+    if (this.boardActionId() === id) {
+      return;
+    }
+    this.boardActionId.set(id);
+    this.api
+      .removeReportPublicBoard(id)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.boardActionId.set(null)),
+      )
+      .subscribe({
+        next: () => {
+          this.publicBoards.update((items) => items.filter((item) => item.id !== id));
+          this.message.success('已删除公开看板');
+        },
+        error: (error) => {
+          this.message.error(this.resolveErrorMessage(error, '删除公开看板失败'));
+        },
+      });
+  }
+
+  formatDateTime(value: string): string {
+    if (!value) {
+      return '-';
+    }
+    return value.replace('T', ' ').slice(0, 16);
   }
 
   private stopEvent(event?: Event): void {
     event?.stopPropagation();
     event?.preventDefault();
+  }
+
+  private buildPublicBoardLink(shareToken: string): string {
+    return `${window.location.origin}/public/report?share=${encodeURIComponent(shareToken)}`;
+  }
+
+  private copyToClipboard(text: string): void {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => this.fallbackCopy(text));
+      return;
+    }
+    this.fallbackCopy(text);
+  }
+
+  private fallbackCopy(content: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = content;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+
+  private resolveErrorMessage(error: unknown, fallback: string): string {
+    const rawMessage = (error as { error?: { message?: unknown } } | null)?.error?.message;
+    if (typeof rawMessage === 'string' && rawMessage.trim()) {
+      return rawMessage.trim();
+    }
+    return fallback;
   }
 
   protected isCompactBlock(block: ReportBlock): boolean {

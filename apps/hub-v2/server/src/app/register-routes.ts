@@ -33,7 +33,11 @@ import uploadRoutes from "../modules/upload/upload.routes";
 import userRoutes from "../modules/user/user.routes";
 import aiRoutes from "../modules/ai/ai.routes";
 import aiReportRoutes from "../modules/ai/ai-report.routes";
+import aiReportPublicRoutes from "../modules/ai/ai-report-public.routes";
 import searchRoutes from "../modules/search/search.routes";
+import surveyPublicRoutes from "../modules/survey/survey-public.routes";
+import surveyRoutes from "../modules/survey/survey.routes";
+import reportPublicRoutes from "../modules/report-public/report-public.routes";
 
 function resolveSpaRoot(cwd = process.cwd()) {
   const candidates = [
@@ -116,7 +120,11 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(personalTokenRdRoutes, { prefix: "/api/personal" });
   await app.register(aiRoutes, { prefix: "/api/admin" });
   await app.register(aiReportRoutes, { prefix: "/api/admin" });
+  await app.register(reportPublicRoutes, { prefix: "/api/admin" });
   await app.register(searchRoutes, { prefix: "/api/admin" });
+  await app.register(surveyRoutes, { prefix: "/api/admin" });
+  await app.register(surveyPublicRoutes, { prefix: "/api/public" });
+  await app.register(aiReportPublicRoutes, { prefix: "/api/public" });
 
   const spaRoot = resolveSpaRoot();
   if (!spaRoot) {

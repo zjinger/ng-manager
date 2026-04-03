@@ -72,6 +72,27 @@ export interface ReportTemplateCreateResult {
   duplicated: boolean;
 }
 
+export interface ReportPublicProject {
+  id: string;
+  projectId: string;
+  projectName: string;
+  projectKey: string;
+  projectDescription: string | null;
+  shareToken: string;
+  allowAllProjects: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportPublicCapability {
+  enabled: boolean;
+}
+
+export interface ReportPublicProjectListResult {
+  items: ReportPublicProject[];
+}
+
 export interface ReportBoardItem {
   id: string;
   title: string;
@@ -80,4 +101,40 @@ export interface ReportBoardItem {
   params: string[];
   blocks: ReportBlock[];
   layoutSize?: 'compact' | 'wide';
+}
+
+export interface ReportPublicBoardItem {
+  id: string;
+  boardId: string;
+  sortOrder: number;
+  title: string;
+  naturalQuery: string;
+  sql: string;
+  params: string[];
+  blocks: ReportBlock[];
+  layoutSize: 'compact' | 'wide';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportPublicBoard {
+  id: string;
+  title: string;
+  shareToken: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  items: ReportPublicBoardItem[];
+}
+
+export interface ReportPublicBoardSummary {
+  id: string;
+  title: string;
+  shareToken: string;
+  isActive: boolean;
+  createdBy: string;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
