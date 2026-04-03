@@ -48,6 +48,18 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
   }
 
   async list(query: ListFeedbacksQuery, ctx: RequestContext): Promise<FeedbackListResult> {
+    const clientName = query.clientName?.trim() || undefined;
+    const hasProjectFilter = Boolean(query.projectId?.trim() || query.projectKey?.trim());
+    if (clientName && this.isAdmin(ctx) && !hasProjectFilter) {
+      return this.repo.list({
+        ...query,
+        clientName,
+        projectId: undefined,
+        projectKey: undefined,
+        projectKeys: undefined
+      });
+    }
+
     const accessibleProjectKeys = await this.listAccessibleProjectKeys(ctx);
 
     if (query.projectId?.trim()) {
@@ -58,7 +70,7 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
       if (!accessibleProjectKeys.includes(project.projectKey)) {
         throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "list feedbacks forbidden", 403);
       }
-      return this.repo.list({ ...query, projectId: undefined, projectKey: project.projectKey });
+      return this.repo.list({ ...query, clientName, projectId: undefined, projectKey: project.projectKey });
     }
 
     if (query.projectKey?.trim()) {
@@ -69,13 +81,13 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
       if (!accessibleProjectKeys.includes(project.projectKey)) {
         throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "list feedbacks forbidden", 403);
       }
-      return this.repo.list({ ...query, projectKey: project.projectKey });
+      return this.repo.list({ ...query, clientName, projectKey: project.projectKey });
     }
 
     if (accessibleProjectKeys.length === 0) {
-      return this.repo.list({ ...query, projectKeys: ["__none__"] });
+      return this.repo.list({ ...query, clientName, projectKeys: ["__none__"] });
     }
-    return this.repo.list({ ...query, projectKeys: accessibleProjectKeys });
+    return this.repo.list({ ...query, clientName, projectKeys: accessibleProjectKeys });
   }
 
   async getById(id: string, ctx: RequestContext): Promise<FeedbackEntity> {
@@ -173,5 +185,9 @@ export class FeedbackService implements FeedbackCommandContract, FeedbackQueryCo
       .map((projectId) => this.projectRepo.findById(projectId)?.projectKey ?? null)
       .filter((key): key is string => Boolean(key));
     return Array.from(new Set(keys));
+  }
+
+  private isAdmin(ctx: RequestContext): boolean {
+    return ctx.roles.some((role) => role === "admin");
   }
 }

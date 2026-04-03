@@ -41,5 +41,8 @@ export const envSchema = z.object({
   UPLOAD_DIR: z.string().optional(),
   UPLOAD_MAX_FILE_SIZE: z.coerce.number().int().positive().default(10 * 1024 * 1024),
   OPENAI_API_KEY: z.string().trim().optional(),
-  OPENAI_BASE_URL: z.string().trim().optional()
+  OPENAI_BASE_URL: z.string().trim().optional(),
+  OPENAI_MODEL: z.string().trim().optional(),
+  REPORT_PUBLIC_ENABLED: booleanFromEnv.default(false),
+  REPORT_PUBLIC_RATE_LIMIT: z.coerce.number().int().positive().default(10)
 });

@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 积木报表 - 公开访问</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f6f8;
+      --card-bg: #ffffff;
+      --border: #e4e7ed;
+      --border-light: #f0f1f5;
+      --text-primary: #1f2329;
+      --text-secondary: #646a73;
+      --text-tertiary: #8f959e;
+      --text-placeholder: #c0c4cc;
+      --brand: #4d6df5;
+      --brand-light: #edf1ff;
+      --brand-hover: #3d5be0;
+      --success: #34b477;
+      --success-bg: #edfff5;
+      --warning: #f0983e;
+      --warning-bg: #fff8ed;
+      --danger: #e85454;
+      --danger-bg: #fff0f0;
+      --purple: #7c5df4;
+      --purple-bg: #f3eeff;
+      --cyan: #14b8a6;
+      --orange: #f97316;
+      --pink: #ec4899;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,.1);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --transition: .2s cubic-bezier(.4,0,.2,1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+                   "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page-wrapper { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    /* ===== Header ===== */
+    .page-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 8px; margin-bottom: 16px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--brand), var(--purple)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; box-shadow: 0 2px 8px rgba(77,109,245,.3); }
+    .brand-title { font-size: 20px; font-weight: 600; }
+    .brand-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--brand); background: var(--brand-light); padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle; }
+
+    /* ===== Share Banner ===== */
+    .share-banner { background: linear-gradient(135deg, var(--brand) 0%, #6b5df4 100%); border-radius: var(--radius-lg); padding: 18px 24px; margin-bottom: 20px; color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .share-banner-text h2 { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+    .share-banner-text p { font-size: 12px; opacity: .85; }
+    .share-url-box { display: flex; align-items: center; background: rgba(255,255,255,.15); border-radius: var(--radius-sm); padding: 0 4px 0 14px; flex-shrink: 0; }
+    .share-url { font-size: 12px; color: rgba(255,255,255,.9); font-family: "SF Mono","Fira Code",monospace; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 34px; }
+    .copy-btn { background: rgba(255,255,255,.2); border: none; color: #fff; font-size: 12px; padding: 7px 12px; border-radius: 4px; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+    .copy-btn:hover { background: rgba(255,255,255,.3); }
+    .copy-btn.copied { background: rgba(52,180,119,.4); }
+
+    /* ===== View Toggle ===== */
+    .view-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .view-tabs { display: flex; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+    .view-tab { padding: 8px 18px; font-size: 13px; color: var(--text-secondary); border: none; background: none; cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 6px; }
+    .view-tab:hover { color: var(--text-primary); background: var(--bg); }
+    .view-tab.active { color: var(--brand); background: var(--brand-light); font-weight: 500; }
+    .view-meta { font-size: 12px; color: var(--text-tertiary); display: flex; align-items: center; gap: 8px; }
+    .refresh-btn { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card-bg); color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); font-size: 14px; }
+    .refresh-btn:hover { border-color: var(--brand); color: var(--brand); }
+    .refresh-btn.spinning svg { animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== Input Section ===== */
+    .input-section { background: var(--card-bg); border-radius: var(--radius-lg); border: 1.5px solid var(--border); padding: 18px 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); transition: var(--transition); }
+    .input-section:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(77,109,245,.1); }
+    .input-row { display: flex; gap: 10px; align-items: flex-end; }
+    .input-field { flex: 1; border: none; outline: none; font-size: 15px; color: var(--text-primary); resize: none; min-height: 42px; max-height: 120px; line-height: 1.6; font-family: inherit; background: transparent; }
+    .input-field::placeholder { color: var(--text-placeholder); }
+    .submit-btn { width: 40px; height: 40px; border-radius: var(--radius-sm); border: none; background: var(--brand); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: var(--transition); }
+    .submit-btn:hover { background: var(--brand-hover); transform: scale(1.05); }
+    .submit-btn:active { transform: scale(.97); }
+    .input-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+    .project-selector { display: flex; align-items: center; gap: 8px; }
+    .project-selector label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+    .project-select { appearance: none; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 30px 6px 10px; font-size: 13px; color: var(--text-primary); cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238f959e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: var(--transition); min-width: 160px; }
+    .project-select:hover { border-color: var(--brand); }
+    .powered-by { font-size: 11px; color: var(--text-tertiary); }
+
+    /* ===== Quick Actions ===== */
+    .quick-actions { margin-bottom: 20px; }
+    .section-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .quick-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: var(--transition); user-select: none; }
+    .chip:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+
+    /* ===== Dashboard View (all done) ===== */
+    .dashboard-view { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto; gap: 16px; }
+    .dashboard-view.hidden { display: none; }
+
+    .dash-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 20px;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+    .dash-card:hover { box-shadow: var(--shadow-md); border-color: transparent; }
+
+    .dash-card.span-2 { grid-column: 1 / -1; }
+
+    .dash-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .dash-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .dash-card-title .icon { font-size: 16px; }
+    .dash-card-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--success-bg); color: var(--success); font-weight: 500; }
+
+    .dash-card-body { flex: 1; display: flex; flex-direction: column; }
+
+    /* KPI row inside cards */
+    .kpi-row { display: flex; gap: 16px; margin-bottom: 14px; }
+    .kpi-item { flex: 1; text-align: center; padding: 10px 0; background: var(--bg); border-radius: var(--radius-sm); }
+    .kpi-value { font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+    .kpi-label { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+    .kpi-value.brand { color: var(--brand); }
+    .kpi-value.success { color: var(--success); }
+    .kpi-value.purple { color: var(--purple); }
+    .kpi-value.warning { color: var(--warning); }
+    .kpi-value.danger { color: var(--danger); }
+
+    /* Charts */
+    .chart-area { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 160px; }
+
+    /* Donut */
+    .donut-wrap { display: flex; align-items: center; gap: 24px; width: 100%; justify-content: center; }
+    .donut { width: 140px; height: 140px; border-radius: 50%; position: relative; flex-shrink: 0; }
+    .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 72px; height: 72px; background: var(--card-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; box-shadow: var(--shadow-sm); }
+    .donut-total { font-size: 22px; font-weight: 700; }
+    .donut-label { font-size: 10px; color: var(--text-tertiary); }
+    .legend { display: flex; flex-direction: column; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .legend-pct { margin-left: auto; font-weight: 500; color: var(--text-primary); min-width: 36px; text-align: right; }
+
+    /* Horizontal bars */
+    .hbar-list { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+    .hbar-item { display: flex; align-items: center; gap: 10px; }
+    .hbar-label { width: 60px; font-size: 13px; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+    .hbar-track { flex: 1; height: 22px; background: var(--bg); border-radius: 11px; overflow: hidden; position: relative; }
+    .hbar-fill { height: 100%; border-radius: 11px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+    .hbar-value { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+    .hbar-count { font-size: 13px; font-weight: 600; min-width: 28px; text-align: right; flex-shrink: 0; }
+
+    /* Vertical bars */
+    .vbar-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; width: 100%; max-width: 500px; margin: 0 auto; }
+    .vbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+    .vbar { width: 100%; border-radius: 4px 4px 0 0; transition: height .6s cubic-bezier(.4,0,.2,1); min-height: 4px; }
+    .vbar-label { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; }
+    .vbar-val { font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 3px; }
+
+    /* Line spark */
+    .spark-area { width: 100%; height: 140px; position: relative; }
+    .spark-area svg { width: 100%; height: 100%; }
+    .spark-line { fill: none; stroke: var(--brand); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .spark-fill { fill: url(#sparkGrad); opacity: .15; }
+    .spark-dot { fill: var(--brand); stroke: var(--card-bg); stroke-width: 2; }
+    .spark-labels { display: flex; justify-content: space-between; padding: 0 4px; margin-top: 4px; }
+    .spark-labels span { font-size: 10px; color: var(--text-tertiary); }
+
+    /* Caliber */
+    .caliber { margin-top: 12px; background: var(--purple-bg); border-radius: var(--radius-sm); padding: 12px 14px; }
+    .caliber-title { font-size: 12px; font-weight: 500; color: var(--purple); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+    .caliber-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+    .caliber-item { display: flex; flex-direction: column; gap: 1px; }
+    .caliber-key { font-size: 10px; color: var(--text-tertiary); }
+    .caliber-val { font-size: 12px; color: var(--text-primary); font-weight: 500; }
+
+    /* Card actions */
+    .card-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-light); }
+    .action-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card-bg); color: var(--text-secondary); cursor: pointer; transition: var(--transition); }
+    .action-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+    /* ===== List View (cards) ===== */
+    .list-view { display: flex; flex-direction: column; gap: 12px; }
+    .list-view.hidden { display: none; }
+
+    .tabs-container { display: flex; border-bottom: 2px solid var(--border-light); margin-bottom: 16px; }
+    .tab-item { position: relative; padding: 10px 20px; font-size: 14px; color: var(--text-tertiary); cursor: pointer; border: none; background: none; transition: var(--transition); }
+    .tab-item:hover { color: var(--text-secondary); }
+    .tab-item.active { color: var(--brand); font-weight: 500; }
+    .tab-item.active::after { content: ''; position: absolute; bottom: -2px; left: 20px; right: 20px; height: 2px; background: var(--brand); border-radius: 1px 1px 0 0; }
+    .tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; background: var(--bg); border-radius: 10px; font-size: 11px; font-weight: 500; margin-left: 6px; color: var(--text-tertiary); }
+    .tab-item.active .tab-count { background: var(--brand-light); color: var(--brand); }
+
+    .report-card { background: var(--card-bg); border-radius: var(--radius-md); border: 1px solid var(--border); padding: 18px 20px; transition: var(--transition); cursor: pointer; }
+    .report-card:hover { box-shadow: var(--shadow-md); border-color: transparent; }
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .card-title { font-size: 15px; font-weight: 500; line-height: 1.4; }
+    .status-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; flex-shrink: 0; }
+    .status-done { background: var(--success-bg); color: var(--success); }
+    .status-running { background: var(--warning-bg); color: var(--warning); }
+    .status-queued { background: var(--bg); color: var(--text-tertiary); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-running .status-dot { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .card-meta { display: flex; gap: 14px; font-size: 12px; color: var(--text-tertiary); }
+    .meta-item { display: flex; align-items: center; gap: 4px; }
+    .card-query { font-size: 13px; color: var(--text-secondary); background: var(--bg); padding: 8px 12px; border-radius: var(--radius-sm); margin-top: 10px; border-left: 3px solid var(--brand); }
+
+    .detail-panel { display: none; margin-top: 14px; border-top: 1px solid var(--border-light); padding-top: 14px; }
+    .detail-panel.open { display: block; }
+    .chart-preview { background: var(--bg); border-radius: var(--radius-sm); padding: 16px; min-height: 120px; display: flex; align-items: center; justify-content: center; }
+    .skeleton { background: linear-gradient(90deg, var(--border-light) 25%, #e8e9ed 50%, var(--border-light) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: var(--radius-sm); }
+    @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+    .skeleton-line { height: 14px; margin-bottom: 8px; }
+    .skeleton-line.w60 { width: 60%; }
+    .skeleton-line.w80 { width: 80%; }
+    .skeleton-block { height: 120px; margin-top: 12px; }
+
+    .detail-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 12px; }
+    .detail-tabs { display: flex; gap: 0; margin-bottom: 12px; }
+    .detail-tab { padding: 6px 14px; font-size: 12px; color: var(--text-tertiary); border: none; background: none; cursor: pointer; border-radius: var(--radius-sm); transition: var(--transition); }
+    .detail-tab:hover { color: var(--text-secondary); }
+    .detail-tab.active { color: var(--brand); background: var(--brand-light); font-weight: 500; }
+
+    /* ===== Footer ===== */
+    .page-footer { text-align: center; padding: 32px 0 16px; font-size: 12px; color: var(--text-tertiary); }
+    .footer-links { display: flex; justify-content: center; gap: 16px; margin-bottom: 8px; }
+    .footer-links a { color: var(--text-tertiary); text-decoration: none; transition: var(--transition); }
+    .footer-links a:hover { color: var(--brand); }
+
+    /* ===== Dashboard Drag & Drop ===== */
+    .dash-card { position: relative; cursor: default; user-select: none; }
+    .dash-card .drag-handle {
+      position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+      width: 36px; height: 5px; border-radius: 3px;
+      background: var(--border); cursor: grab;
+      opacity: 0; transition: opacity .2s, background .2s;
+      z-index: 2;
+    }
+    .dash-card:hover .drag-handle { opacity: .7; }
+    .dash-card .drag-handle:hover { background: var(--brand); opacity: 1; }
+    .dash-card.dragging { opacity: .4; transform: scale(.97); transition: none; z-index: 100; }
+    .dash-card.drag-over { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(77,109,245,.15); }
+
+    /* Card controls (resize / collapse) */
+    .card-controls { display: flex; gap: 4px; align-items: center; }
+    .ctrl-btn {
+      width: 26px; height: 26px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--card-bg); color: var(--text-tertiary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; transition: var(--transition); padding: 0;
+    }
+    .ctrl-btn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+    .ctrl-btn.active { background: var(--brand-light); color: var(--brand); border-color: var(--brand); }
+
+    /* Collapsed card */
+    .dash-card.collapsed .dash-card-body { display: none; }
+    .dash-card.collapsed { padding-bottom: 12px; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .dashboard-view { grid-template-columns: 1fr; }
+      .share-banner { flex-direction: column; padding: 16px; }
+      .share-url-box { width: 100%; }
+      .input-footer { flex-direction: column; gap: 10px; align-items: flex-start; }
+      .donut-wrap { flex-direction: column; }
+      .kpi-row { flex-wrap: wrap; }
+    }
+    @media (max-width: 480px) {
+      .page-wrapper { padding: 16px 12px 48px; }
+      .vbar-chart { height: 100px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <!-- Header -->
+    <header class="page-header">
+      <div class="header-left">
+        <div class="brand-icon">📊</div>
+        <div>
+          <span class="brand-title">AI 积木报表</span>
+          <span class="brand-badge">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="currentColor"/><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 12.5a5.5 5.5 0 110-11 5.5 5.5 0 010 11z" fill="currentColor" opacity=".3"/></svg>
+            公开访问
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Share Banner -->
+    <div class="share-banner">
+      <div class="share-banner-text">
+        <h2>🔗 本页面已开放公开访问</h2>
+        <p>数据仅包含已授权开放的项目，无需登录即可查看报表</p>
+      </div>
+      <div class="share-url-box">
+        <span class="share-url">https://example.com/public/report?share=rpt_Km8nP2xR4vL7</span>
+        <button class="copy-btn" onclick="copyShareLink(this)">复制链接</button>
+      </div>
+    </div>
+
+    <!-- View Toggle -->
+    <div class="view-controls">
+      <div class="view-tabs">
+        <button class="view-tab active" data-view="dashboard" onclick="switchView('dashboard', this)">
+          <span>📊</span> 整体视图
+        </button>
+        <button class="view-tab" data-view="list" onclick="switchView('list', this)">
+          <span>📋</span> 列表视图
+        </button>
+      </div>
+      <div class="view-meta">
+        <span>最后更新：3分钟前</span>
+        <button class="refresh-btn" onclick="refreshReports(this)" title="刷新">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-section">
+      <div class="input-row">
+        <textarea class="input-field" id="queryInput" rows="1"
+          placeholder='输入你的需求，如"最近 30 天各项目 Issue 创建趋势"' oninput="autoResize(this)"></textarea>
+        <button class="submit-btn" onclick="handleSubmit()" title="生成报表">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="input-footer">
+        <div class="project-selector">
+          <label>📊 项目范围：</label>
+          <select class="project-select">
+            <option value="all">全部可见项目</option>
+            <option value="prj_001">测试项目 (TEST)</option>
+            <option value="prj_002">产品迭代 (PROD)</option>
+            <option value="prj_003">基础设施 (INFRA)</option>
+          </select>
+        </div>
+        <span class="powered-by">Powered by AI · 数据仅供参考</span>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <div class="section-label">💡 试试这些问题</div>
+      <div class="quick-chips">
+        <div class="chip" onclick="fillQuery('最近 30 天各项目 Issue 创建趋势')"><span>📈</span> Issue 创建趋势</div>
+        <div class="chip" onclick="fillQuery('按项目分类的 Issue 状态分布')"><span>🍩</span> Issue 状态分布</div>
+        <div class="chip" onclick="fillQuery('各模块 Bug 数量排行')"><span>🐛</span> Bug 数量排行</div>
+        <div class="chip" onclick="fillQuery('最近 7 天需求完成率')"><span>✅</span> 需求完成率</div>
+        <div class="chip" onclick="fillQuery('成员工作量分布')"><span>👥</span> 成员工作量</div>
+      </div>
+    </div>
+
+    <!-- ====== DASHBOARD VIEW ====== -->
+    <div class="dashboard-view" id="dashboardView">
+
+      <!-- Row 1: KPI Overview -->
+      <div class="dash-card span-2" draggable="true">
+        <div class="drag-handle" title="拖拽排序"></div>
+        <div class="dash-card-header">
+          <div class="dash-card-title"><span class="icon">📈</span> 数据总览</div>
+          <div class="card-controls">
+            <span class="dash-card-badge">✓ 全部完成</span>
+            <button class="ctrl-btn" onclick="toggleCollapse(this)" title="折叠/展开">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="kpi-row">
+            <div class="kpi-item"><div class="kpi-value brand">423</div><div class="kpi-label">总 Issues</div></div>
+            <div class="kpi-item"><div class="kpi-value success">267</div><div class="kpi-label">已完成</div></div>
+            <div class="kpi-item"><div class="kpi-value warning">98</div><div class="kpi-label">进行中</div></div>
+            <div class="kpi-item"><div class="kpi-value danger">58</div><div class="kpi-label">待处理</div></div>
+            <div class="kpi-item"><div class="kpi-value purple">63.1%</div><div class="kpi-label">完成率</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2 Left: Issue Status Donut -->
+      <div class="dash-card" draggable="true">
+        <div class="drag-handle" title="拖拽排序"></div>
+        <div class="dash-card-header">
+          <div class="dash-card-title"><span class="icon">🍩</span> Issue 状态分布</div>
+          <div class="card-controls">
+            <span class="dash-card-badge">✓ 完成</span>
+            <button class="ctrl-btn" onclick="toggleResize(this)" title="切换宽度">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="ctrl-btn" onclick="toggleCollapse(this)" title="折叠/展开">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="chart-area">
+            <div class="donut-wrap">
+              <div class="donut" style="background: conic-gradient(#4d6df5 0% 35%, #34b477 35% 58%, #f0983e 58% 78%, #e85454 78% 88%, #c0c4cc 88% 100%);">
+                <div class="donut-center">
+                  <span class="donut-total">423</span>
+                  <span class="donut-label">总 Issues</span>
+                </div>
+              </div>
+              <div class="legend">
+                <div class="legend-item"><span class="legend-dot" style="background:#4d6df5"></span> 待处理 <span class="legend-pct">35%</span></div>
+                <div class="legend-item"><span class="legend-dot" style="background:#34b477"></span> 进行中 <span class="legend-pct">23%</span></div>
+                <div class="legend-item"><span class="legend-dot" style="background:#f0983e"></span> 已完成 <span class="legend-pct">20%</span></div>
+                <div class="legend-item"><span class="legend-dot" style="background:#e85454"></span> 已关闭 <span class="legend-pct">10%</span></div>
+                <div class="legend-item"><span class="legend-dot" style="background:#c0c4cc"></span> 挂起 <span class="legend-pct">12%</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="caliber">
+            <div class="caliber-title">📐 数据口径</div>
+            <div class="caliber-grid">
+              <div class="caliber-item"><span class="caliber-key">统计范围</span><span class="caliber-val">全部可见项目</span></div>
+              <div class="caliber-item"><span class="caliber-key">时间范围</span><span class="caliber-val">最近 30 天</span></div>
+              <div class="caliber-item"><span class="caliber-key">数据来源</span><span class="caliber-val">测试单 (Issues)</span></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="action-btn">📋 SQL</button>
+            <button class="action-btn">📥 PNG</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2 Right: Bug Ranking -->
+      <div class="dash-card" draggable="true">
+        <div class="drag-handle" title="拖拽排序"></div>
+        <div class="dash-card-header">
+          <div class="dash-card-title"><span class="icon">🐛</span> 模块 Bug 排行</div>
+          <div class="card-controls">
+            <span class="dash-card-badge">✓ 完成</span>
+            <button class="ctrl-btn" onclick="toggleResize(this)" title="切换宽度">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="ctrl-btn" onclick="toggleCollapse(this)" title="折叠/展开">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="chart-area">
+            <div class="hbar-list">
+              <div class="hbar-item">
+                <span class="hbar-label">支付模块</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:100%;background:linear-gradient(90deg,#e85454,#f0983e)"></div><span class="hbar-value">42</span></div>
+                <span class="hbar-count" style="color:#e85454">42</span>
+              </div>
+              <div class="hbar-item">
+                <span class="hbar-label">用户中心</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:76%;background:linear-gradient(90deg,#f0983e,#fbbf24)"></div><span class="hbar-value">32</span></div>
+                <span class="hbar-count" style="color:#f0983e">32</span>
+              </div>
+              <div class="hbar-item">
+                <span class="hbar-label">订单系统</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:60%;background:linear-gradient(90deg,#4d6df5,#7c5df4)"></div><span class="hbar-value">25</span></div>
+                <span class="hbar-count" style="color:#4d6df5">25</span>
+              </div>
+              <div class="hbar-item">
+                <span class="hbar-label">消息推送</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:45%;background:linear-gradient(90deg,#14b8a6,#34b477)"></div><span class="hbar-value">19</span></div>
+                <span class="hbar-count" style="color:#14b8a6">19</span>
+              </div>
+              <div class="hbar-item">
+                <span class="hbar-label">权限管理</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:31%;background:linear-gradient(90deg,#8b5cf6,#c084fc)"></div><span class="hbar-value">13</span></div>
+                <span class="hbar-count" style="color:#8b5cf6">13</span>
+              </div>
+            </div>
+          </div>
+          <div class="caliber">
+            <div class="caliber-title">📐 数据口径</div>
+            <div class="caliber-grid">
+              <div class="caliber-item"><span class="caliber-key">统计范围</span><span class="caliber-val">基础设施 (INFRA)</span></div>
+              <div class="caliber-item"><span class="caliber-key">筛选条件</span><span class="caliber-val">类型=Bug, 状态≠已关闭</span></div>
+              <div class="caliber-item"><span class="caliber-key">排序方式</span><span class="caliber-val">按数量降序 Top 5</span></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="action-btn">📋 SQL</button>
+            <button class="action-btn">📥 PNG</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3 Left: Creation Trend (Line) -->
+      <div class="dash-card" draggable="true">
+        <div class="drag-handle" title="拖拽排序"></div>
+        <div class="dash-card-header">
+          <div class="dash-card-title"><span class="icon">📈</span> Issue 创建趋势（7天）</div>
+          <div class="card-controls">
+            <span class="dash-card-badge">✓ 完成</span>
+            <button class="ctrl-btn" onclick="toggleResize(this)" title="切换宽度">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="ctrl-btn" onclick="toggleCollapse(this)" title="折叠/展开">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="chart-area">
+            <div class="spark-area">
+              <svg viewBox="0 0 400 140" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#4d6df5" stop-opacity=".4"/>
+                    <stop offset="100%" stop-color="#4d6df5" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path class="spark-fill" d="M20,110 L77,75 L134,95 L191,40 L248,65 L305,20 L362,50 L362,130 L20,130 Z"/>
+                <polyline class="spark-line" points="20,110 77,75 134,95 191,40 248,65 305,20 362,50"/>
+                <circle class="spark-dot" cx="20" cy="110" r="4"/>
+                <circle class="spark-dot" cx="77" cy="75" r="4"/>
+                <circle class="spark-dot" cx="134" cy="95" r="4"/>
+                <circle class="spark-dot" cx="191" cy="40" r="4"/>
+                <circle class="spark-dot" cx="248" cy="65" r="4"/>
+                <circle class="spark-dot" cx="305" cy="20" r="4"/>
+                <circle class="spark-dot" cx="362" cy="50" r="4"/>
+              </svg>
+            </div>
+          </div>
+          <div class="spark-labels">
+            <span>3/27</span><span>3/28</span><span>3/29</span><span>3/30</span><span>3/31</span><span>4/1</span><span>4/2</span>
+          </div>
+          <div class="caliber">
+            <div class="caliber-title">📐 数据口径</div>
+            <div class="caliber-grid">
+              <div class="caliber-item"><span class="caliber-key">统计范围</span><span class="caliber-val">测试项目 (TEST)</span></div>
+              <div class="caliber-item"><span class="caliber-key">时间范围</span><span class="caliber-val">最近 7 天</span></div>
+              <div class="caliber-item"><span class="caliber-key">聚合方式</span><span class="caliber-val">按天创建时间计数</span></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="action-btn">📋 SQL</button>
+            <button class="action-btn">📥 PNG</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3 Right: Member Workload -->
+      <div class="dash-card" draggable="true">
+        <div class="drag-handle" title="拖拽排序"></div>
+        <div class="dash-card-header">
+          <div class="dash-card-title"><span class="icon">👥</span> 成员工作量排行</div>
+          <div class="card-controls">
+            <span class="dash-card-badge">✓ 完成</span>
+            <button class="ctrl-btn" onclick="toggleResize(this)" title="切换宽度">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button class="ctrl-btn" onclick="toggleCollapse(this)" title="折叠/展开">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="chart-area">
+            <div class="vbar-chart">
+              <div class="vbar-col">
+                <span class="vbar-val">38</span>
+                <div class="vbar" style="height:100%;background:linear-gradient(180deg,#7c5df4,#4d6df5)"></div>
+                <span class="vbar-label">张三</span>
+              </div>
+              <div class="vbar-col">
+                <span class="vbar-val">29</span>
+                <div class="vbar" style="height:76%;background:linear-gradient(180deg,#7c5df4,#4d6df5)"></div>
+                <span class="vbar-label">李四</span>
+              </div>
+              <div class="vbar-col">
+                <span class="vbar-val">24</span>
+                <div class="vbar" style="height:63%;background:linear-gradient(180deg,#9b7df4,#7c5df4)"></div>
+                <span class="vbar-label">王五</span>
+              </div>
+              <div class="vbar-col">
+                <span class="vbar-val">18</span>
+                <div class="vbar" style="height:47%;background:linear-gradient(180deg,#9b7df4,#7c5df4)"></div>
+                <span class="vbar-label">赵六</span>
+              </div>
+              <div class="vbar-col">
+                <span class="vbar-val">12</span>
+                <div class="vbar" style="height:32%;background:linear-gradient(180deg,#bba0f4,#9b7df4)"></div>
+                <span class="vbar-label">孙七</span>
+              </div>
+            </div>
+          </div>
+          <div class="caliber">
+            <div class="caliber-title">📐 数据口径</div>
+            <div class="caliber-grid">
+              <div class="caliber-item"><span class="caliber-key">统计范围</span><span class="caliber-val">产品迭代 (PROD)</span></div>
+              <div class="caliber-item"><span class="caliber-key">筛选条件</span><span class="caliber-val">状态非"已完成/已关闭"</span></div>
+              <div class="caliber-item"><span class="caliber-key">隐私保护</span><span class="caliber-val">仅展示姓名，不展示 ID</span></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="action-btn">📋 SQL</button>
+            <button class="action-btn">📥 PNG</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Completion Rate Bar -->
+      <div class="dash-card span-2" draggable="true">
+        <div class="drag-handle" title="拖拽排序"></div>
+        <div class="dash-card-header">
+          <div class="dash-card-title"><span class="icon">✅</span> 各项目需求完成率</div>
+          <div class="card-controls">
+            <span class="dash-card-badge">✓ 完成</span>
+            <button class="ctrl-btn" onclick="toggleCollapse(this)" title="折叠/展开">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="kpi-row">
+            <div class="kpi-item"><div class="kpi-value success">78.3%</div><div class="kpi-label">测试项目</div></div>
+            <div class="kpi-item"><div class="kpi-value brand">65.2%</div><div class="kpi-label">产品迭代</div></div>
+            <div class="kpi-item"><div class="kpi-value warning">52.1%</div><div class="kpi-label">基础设施</div></div>
+            <div class="kpi-item"><div class="kpi-value purple">63.1%</div><div class="kpi-label">综合完成率</div></div>
+          </div>
+          <div class="chart-area" style="min-height:80px;">
+            <div class="hbar-list" style="max-width:600px;margin:0 auto;">
+              <div class="hbar-item">
+                <span class="hbar-label" style="width:72px">测试项目</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:78.3%;background:linear-gradient(90deg,#34b477,#14b8a6)"></div></div>
+                <span class="hbar-count" style="color:#34b477">78.3%</span>
+              </div>
+              <div class="hbar-item">
+                <span class="hbar-label" style="width:72px">产品迭代</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:65.2%;background:linear-gradient(90deg,#4d6df5,#7c5df4)"></div></div>
+                <span class="hbar-count" style="color:#4d6df5">65.2%</span>
+              </div>
+              <div class="hbar-item">
+                <span class="hbar-label" style="width:72px">基础设施</span>
+                <div class="hbar-track"><div class="hbar-fill" style="width:52.1%;background:linear-gradient(90deg,#f0983e,#f97316)"></div></div>
+                <span class="hbar-count" style="color:#f0983e">52.1%</span>
+              </div>
+            </div>
+          </div>
+          <div class="caliber">
+            <div class="caliber-title">📐 数据口径</div>
+            <div class="caliber-grid">
+              <div class="caliber-item"><span class="caliber-key">完成率计算</span><span class="caliber-val">已完成需求数 / 总需求数</span></div>
+              <div class="caliber-item"><span class="caliber-key">时间范围</span><span class="caliber-val">最近 7 天创建</span></div>
+              <div class="caliber-item"><span class="caliber-key">需求定义</span><span class="caliber-val">类型 = "需求/Story"</span></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="action-btn">📋 SQL</button>
+            <button class="action-btn">📥 PNG</button>
+            <button class="action-btn" style="border-color:var(--brand);color:var(--brand);">📄 导出完整 PDF</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /dashboard-view -->
+
+    <!-- ====== LIST VIEW ====== -->
+    <div class="list-view hidden" id="listView">
+
+      <div class="tabs-container">
+        <button class="tab-item active" onclick="switchTab(this)">已分析 <span class="tab-count">3</span></button>
+        <button class="tab-item" onclick="switchTab(this)">执行中 <span class="tab-count">1</span></button>
+        <button class="tab-item" onclick="switchTab(this)">队列中 <span class="tab-count">0</span></button>
+      </div>
+
+      <div class="report-card" onclick="toggleDetail(this)">
+        <div class="card-top">
+          <div class="card-title">📊 按项目分类的 Issue 状态分布</div>
+          <span class="status-badge status-done"><span class="status-dot"></span>已完成</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-item">🕐 2分钟前</span>
+          <span class="meta-item">📁 全部可见项目</span>
+          <span class="meta-item">👁 128次查看</span>
+        </div>
+        <div class="card-query">按项目分类的 Issue 状态分布</div>
+        <div class="detail-panel">
+          <div class="chart-preview">
+            <div style="text-align:center;color:var(--text-tertiary);font-size:13px;">📊 图表预览区域 — 切换至整体视图查看完整图表</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-card" onclick="toggleDetail(this)">
+        <div class="card-top">
+          <div class="card-title">📈 最近 7 天 Issue 创建数量趋势</div>
+          <span class="status-badge status-done"><span class="status-dot"></span>已完成</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-item">🕐 15分钟前</span>
+          <span class="meta-item">📁 测试项目</span>
+          <span class="meta-item">👁 86次查看</span>
+        </div>
+        <div class="card-query">最近 7 天 Issue 创建数量趋势</div>
+        <div class="detail-panel">
+          <div class="chart-preview">
+            <div style="text-align:center;color:var(--text-tertiary);font-size:13px;">📊 图表预览区域</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-card" onclick="toggleDetail(this)">
+        <div class="card-top">
+          <div class="card-title">👥 各成员当前未完成 Issue 数量排行</div>
+          <span class="status-badge status-done"><span class="status-dot"></span>已完成</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-item">🕐 32分钟前</span>
+          <span class="meta-item">📁 产品迭代</span>
+          <span class="meta-item">👁 54次查看</span>
+        </div>
+        <div class="card-query">各成员当前未完成 Issue 数量排行</div>
+      </div>
+
+      <div class="report-card">
+        <div class="card-top">
+          <div class="card-title">🔄 各模块 Bug 数量排行 Top 10</div>
+          <span class="status-badge status-running"><span class="status-dot"></span>执行中</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-item">🕐 刚刚</span>
+          <span class="meta-item">📁 基础设施</span>
+        </div>
+        <div class="card-query">各模块 Bug 数量排行 Top 10</div>
+        <div style="margin-top:14px;">
+          <div class="skeleton skeleton-line w80"></div>
+          <div class="skeleton skeleton-line w60"></div>
+          <div class="skeleton skeleton-block"></div>
+        </div>
+      </div>
+
+    </div><!-- /list-view -->
+
+    <!-- Footer -->
+    <footer class="page-footer">
+      <div class="footer-links">
+        <a href="#">使用帮助</a>
+        <a href="#">数据安全说明</a>
+        <a href="#">隐私政策</a>
+      </div>
+      <p>AI 积木报表 · 公开版本 · 数据仅供参考</p>
+    </footer>
+  </div>
+
+  <script>
+    // ===== View switching =====
+    function switchView(view, btn) {
+      document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('dashboardView').classList.toggle('hidden', view !== 'dashboard');
+      document.getElementById('listView').classList.toggle('hidden', view !== 'list');
+    }
+
+    // ===== Tab switching in list view =====
+    function switchTab(el) {
+      el.parentElement.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    // ===== Toggle detail panel in list cards =====
+    function toggleDetail(card) {
+      const panel = card.querySelector('.detail-panel');
+      if (!panel) return;
+      panel.classList.toggle('open');
+    }
+
+    // ===== Collapse / Expand card =====
+    function toggleCollapse(btn) {
+      const card = btn.closest('.dash-card');
+      card.classList.toggle('collapsed');
+      btn.classList.toggle('active');
+      // Rotate chevron
+      const svg = btn.querySelector('svg');
+      if (card.classList.contains('collapsed')) {
+        svg.style.transform = 'rotate(-90deg)';
+      } else {
+        svg.style.transform = '';
+      }
+    }
+
+    // ===== Resize: toggle span-2 =====
+    function toggleResize(btn) {
+      const card = btn.closest('.dash-card');
+      card.classList.toggle('span-2');
+      btn.classList.toggle('active');
+    }
+
+    // ===== Drag & Drop =====
+    (function initDragDrop() {
+      const grid = document.getElementById('dashboardView');
+      let dragSrc = null;
+
+      grid.addEventListener('dragstart', function(e) {
+        const card = e.target.closest('.dash-card');
+        if (!card) return;
+        dragSrc = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+      });
+
+      grid.addEventListener('dragend', function(e) {
+        const card = e.target.closest('.dash-card');
+        if (card) card.classList.remove('dragging');
+        // Remove all drag-over hints
+        grid.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+        dragSrc = null;
+      });
+
+      grid.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const card = e.target.closest('.dash-card');
+        if (card && card !== dragSrc) {
+          // Clear previous
+          grid.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+          card.classList.add('drag-over');
+        }
+      });
+
+      grid.addEventListener('dragleave', function(e) {
+        const card = e.target.closest('.dash-card');
+        if (card) card.classList.remove('drag-over');
+      });
+
+      grid.addEventListener('drop', function(e) {
+        e.preventDefault();
+        const target = e.target.closest('.dash-card');
+        if (!target || !dragSrc || target === dragSrc) return;
+
+        // Get positions
+        const cards = [...grid.querySelectorAll('.dash-card')];
+        const fromIdx = cards.indexOf(dragSrc);
+        const toIdx = cards.indexOf(target);
+
+        if (fromIdx < toIdx) {
+          grid.insertBefore(dragSrc, target.nextSibling);
+        } else {
+          grid.insertBefore(dragSrc, target);
+        }
+
+        target.classList.remove('drag-over');
+      });
+    })();
+
+    // ===== Touch drag support =====
+    (function initTouchDrag() {
+      const grid = document.getElementById('dashboardView');
+      let dragCard = null, ghost = null, startX, startY, offsetX, offsetY;
+
+      grid.addEventListener('touchstart', function(e) {
+        const handle = e.target.closest('.drag-handle');
+        if (!handle) return;
+        dragCard = handle.closest('.dash-card');
+        if (!dragCard) return;
+
+        const rect = dragCard.getBoundingClientRect();
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        offsetX = touch.clientX - rect.left;
+        offsetY = touch.clientY - rect.top;
+
+        // Create ghost
+        ghost = dragCard.cloneNode(true);
+        ghost.style.cssText = `
+          position:fixed; left:${rect.left}px; top:${rect.top}px;
+          width:${rect.width}px; z-index:9999; opacity:.85;
+          pointer-events:none; box-shadow:0 12px 32px rgba(0,0,0,.18);
+          border-radius:var(--radius-lg); background:var(--card-bg);
+          transform:scale(1.03); transition: none;
+        `;
+        document.body.appendChild(ghost);
+        dragCard.classList.add('dragging');
+      }, { passive: true });
+
+      grid.addEventListener('touchmove', function(e) {
+        if (!ghost) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        ghost.style.left = (touch.clientX - offsetX) + 'px';
+        ghost.style.top = (touch.clientY - offsetY) + 'px';
+
+        // Highlight drop target
+        grid.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+        const underEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        const target = underEl?.closest('.dash-card');
+        if (target && target !== dragCard) target.classList.add('drag-over');
+      }, { passive: false });
+
+      grid.addEventListener('touchend', function(e) {
+        if (!ghost || !dragCard) return;
+        const touch = e.changedTouches[0];
+        const underEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        const target = underEl?.closest('.dash-card');
+
+        if (target && target !== dragCard) {
+          const cards = [...grid.querySelectorAll('.dash-card')];
+          const fromIdx = cards.indexOf(dragCard);
+          const toIdx = cards.indexOf(target);
+          if (fromIdx < toIdx) {
+            grid.insertBefore(dragCard, target.nextSibling);
+          } else {
+            grid.insertBefore(dragCard, target);
+          }
+        }
+
+        dragCard.classList.remove('dragging');
+        grid.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+        ghost.remove();
+        ghost = null;
+        dragCard = null;
+      }, { passive: true });
+    })();
+
+    // ===== Auto-resize textarea =====
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    // ===== Fill query =====
+    function fillQuery(text) {
+      const input = document.getElementById('queryInput');
+      input.value = text;
+      autoResize(input);
+      input.focus();
+    }
+
+    // ===== Copy share link =====
+    function copyShareLink(btn) {
+      const url = btn.previousElementSibling.textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        btn.textContent = '已复制 ✓';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '复制链接'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    // ===== Refresh =====
+    function refreshReports(btn) {
+      btn.classList.add('spinning');
+      setTimeout(() => btn.classList.remove('spinning'), 1000);
+    }
+
+    // ===== Submit =====
+    function handleSubmit() {
+      const input = document.getElementById('queryInput');
+      if (!input.value.trim()) return;
+      document.querySelector('[data-view="list"]').click();
+      input.value = '';
+      autoResize(input);
+    }
+
+    // Enter to submit
+    document.getElementById('queryInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+    });
+
+    // ===== Animate bars on load =====
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.hbar-fill').forEach(bar => {
+        const w = bar.style.width;
+        bar.style.width = '0';
+        requestAnimationFrame(() => { bar.style.width = w; });
+      });
+      document.querySelectorAll('.vbar').forEach(bar => {
+        const h = bar.style.height;
+        bar.style.height = '0';
+        requestAnimationFrame(() => { bar.style.height = h; });
+      });
+    });
+  </script>
+</body>
+</html>

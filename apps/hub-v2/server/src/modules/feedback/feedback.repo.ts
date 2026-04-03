@@ -97,6 +97,11 @@ export class FeedbackRepo {
       params.push(...query.source);
     }
 
+    if (query.clientName?.trim()) {
+      conditions.push("client_name = ?");
+      params.push(query.clientName.trim());
+    }
+
     if (query.projectKey?.trim()) {
       conditions.push("project_key = ?");
       params.push(query.projectKey.trim());

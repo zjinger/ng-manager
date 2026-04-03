@@ -30,7 +30,9 @@ interface ReportSqlLlmResponse {
 }
 
 export class AiReportSqlService {
+  private readonly noProjectAccessMessage = "当前不属于任何项目成员，无法生成报表";
   private readonly openai: OpenAI | null;
+  private readonly model: string;
   private readonly cache = new Map<string, CacheEntry>();
   private readonly cacheTtlMs = 5 * 60 * 1000;
   private readonly maxLimit = 1000;
@@ -70,6 +72,7 @@ export class AiReportSqlService {
     private readonly config: AppConfig,
     private readonly projectAccess: ProjectAccessContract
   ) {
+    this.model = config.openaiModel?.trim();
     this.openai = config.openaiApiKey
       ? new OpenAI({
           apiKey: config.openaiApiKey,
@@ -82,19 +85,27 @@ export class AiReportSqlService {
     query: string,
     ctx: RequestContext
   ): Promise<SqlGenerationResult> {
+    const projectIds = await this.getAccessibleProjectIds(ctx);
+    if (projectIds.length === 0) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, this.noProjectAccessMessage, 403);
+    }
+    return this.generateSqlForProjectIds(query, projectIds);
+  }
+
+  async generateSqlForProjectIds(query: string, projectIds: string[]): Promise<SqlGenerationResult> {
     const normalizedQuery = query.trim();
     if (!normalizedQuery) {
       throw new AppError(ERROR_CODES.AI_SQL_INVALID, "AI query is empty", 400);
     }
 
-    const projectIds = await this.getAccessibleProjectIds(ctx);
-    if (projectIds.length === 0) {
+    const normalizedProjectIds = this.normalizeProjectIds(projectIds);
+    if (normalizedProjectIds.length === 0) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "No accessible projects", 403);
     }
 
     const cacheKey = this.buildCacheKey(
       normalizedQuery,
-      projectIds
+      normalizedProjectIds
     );
     const cached = this.getFromCache(cacheKey);
     if (cached) {
@@ -105,12 +116,12 @@ export class AiReportSqlService {
     if (preset) {
       let sql = this.normalizeSql(preset.sql);
       this.validateSql(sql);
-      sql = this.bindProjectFilter(sql, projectIds);
+      sql = this.bindProjectFilter(sql, normalizedProjectIds);
       sql = this.enforceLimit(sql);
 
       const presetResult: SqlGenerationResult = {
         sql,
-        params: projectIds,
+        params: normalizedProjectIds,
         title: this.localizeAiNarrative(preset.title).slice(0, 120),
         description: this.localizeAiNarrative(preset.description).slice(0, 300)
       };
@@ -127,18 +138,18 @@ export class AiReportSqlService {
     }
 
     const response = await this.openai.chat.completions.create({
-      model: "deepseek-chat",
+      model: this.model,
       messages: [
         { role: "system", content: REPORT_SQL_SYSTEM_PROMPT },
         {
           role: "user",
-          content: buildReportSqlUserPrompt(normalizedQuery, projectIds.length)
+          content: buildReportSqlUserPrompt(normalizedQuery, normalizedProjectIds.length)
         }
       ],
       response_format: { type: "json_object" },
       temperature: 0.1
     });
-
+    console.log("AI SQL generation response:", JSON.stringify(response, null, 2));
     const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new AppError(ERROR_CODES.INTERNAL_ERROR, "AI response is empty", 500);
@@ -147,12 +158,12 @@ export class AiReportSqlService {
     const llmResult = this.parseLlmResponse(content);
     let sql = this.normalizeSql(llmResult.sql ?? "");
     this.validateSql(sql);
-    sql = this.bindProjectFilter(sql, projectIds);
+    sql = this.bindProjectFilter(sql, normalizedProjectIds);
     sql = this.enforceLimit(sql);
 
     const finalResult: SqlGenerationResult = {
       sql,
-      params: projectIds,
+      params: normalizedProjectIds,
       title: this.localizeAiNarrative((llmResult.title || normalizedQuery).trim()).slice(0, 120),
       description: this.localizeAiNarrative((llmResult.description || "").trim()).slice(0, 300)
     };
@@ -163,22 +174,34 @@ export class AiReportSqlService {
   async prepareSqlForExecution(rawSql: string, ctx: RequestContext): Promise<{ sql: string; params: string[] }> {
     const projectIds = await this.getAccessibleProjectIds(ctx);
     if (projectIds.length === 0) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, this.noProjectAccessMessage, 403);
+    }
+    return this.prepareSqlForProjectIds(rawSql, projectIds);
+  }
+
+  prepareSqlForProjectIds(rawSql: string, projectIds: string[]): { sql: string; params: string[] } {
+    const normalizedProjectIds = this.normalizeProjectIds(projectIds);
+    if (normalizedProjectIds.length === 0) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "No accessible projects", 403);
     }
 
     let sql = this.normalizeSql(rawSql);
     this.validateSql(sql);
-    sql = this.bindProjectFilter(sql, projectIds);
+    sql = this.bindProjectFilter(sql, normalizedProjectIds);
     sql = this.enforceLimit(sql);
 
     return {
       sql,
-      params: projectIds
+      params: normalizedProjectIds
     };
   }
 
   private async getAccessibleProjectIds(ctx: RequestContext): Promise<string[]> {
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
+    return this.normalizeProjectIds(projectIds);
+  }
+
+  private normalizeProjectIds(projectIds: string[]): string[] {
     return Array.from(new Set(projectIds.map((item) => item.trim()).filter((item) => item.length > 0)));
   }
 
@@ -465,6 +488,26 @@ export class AiReportSqlService {
     const compactQuery = query.replace(/\s+/g, "");
     const recentDays = this.extractRecentDays(query);
     const daysExpr = `-${recentDays} days`;
+
+    const isProjectMemberCountCompare =
+      (compactQuery.includes("各项目") || compactQuery.includes("项目")) &&
+      compactQuery.includes("成员") &&
+      (compactQuery.includes("数量") || compactQuery.includes("人数")) &&
+      (compactQuery.includes("对比") || compactQuery.includes("分布") || compactQuery.includes("排行"));
+    if (isProjectMemberCountCompare) {
+      const sql =
+        "SELECT p.id as project_id, p.name as project_name, COUNT(pm.id) as member_count " +
+        "FROM projects p " +
+        "LEFT JOIN project_members pm ON pm.project_id = p.id " +
+        "GROUP BY p.id, p.name " +
+        "ORDER BY member_count DESC, p.name ASC LIMIT 1000";
+
+      return {
+        sql,
+        title: "各项目当前成员数量对比",
+        description: "统计各项目当前成员数量（仅包含你有权限访问的项目）"
+      };
+    }
 
     const isMemberHandledStats =
       (compactQuery.includes("成员") || compactQuery.includes("处理人") || compactQuery.includes("负责人")) &&

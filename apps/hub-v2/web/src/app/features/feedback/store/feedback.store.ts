@@ -10,6 +10,7 @@ const DEFAULT_QUERY: FeedbackListQuery = {
   status: [],
   category: [],
   source: [],
+  clientName: '',
   projectId: '',
 };
 

@@ -103,4 +103,16 @@ describe("AiReportSqlService project filter binding", () => {
     assert.doesNotMatch(result.sql, /\bi\.type\s*=\s*'test'/i);
     assert.equal(result.title, "成员处理数量排行");
   });
+
+  it("uses project member count preset for member compare query", async () => {
+    const service = createService(["p1", "p2"]);
+
+    const result = await service.generateSql("各项目当前成员数量对比", ctx);
+
+    assert.deepEqual(result.params, ["p1", "p2"]);
+    assert.match(result.sql, /\bFROM\s+projects\s+p\b/i);
+    assert.match(result.sql, /\bLEFT\s+JOIN\s+project_members\s+pm\s+ON\s+pm\.project_id\s*=\s*p\.id\b/i);
+    assert.match(result.sql, /\bCOUNT\(pm\.id\)\s+as\s+member_count\b/i);
+    assert.equal(result.title, "各项目当前成员数量对比");
+  });
 });

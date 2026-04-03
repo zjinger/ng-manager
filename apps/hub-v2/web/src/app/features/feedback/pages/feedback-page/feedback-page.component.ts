@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -8,10 +8,13 @@ import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
+import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { DataTableComponent, FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import type { FeedbackCategory, FeedbackSource, FeedbackStatus } from '../../models/feedback.model';
 import { FeedbackStore } from '../../store/feedback.store';
+
+const PUBLIC_SURVEY_CLIENT_NAME = 'hub-v2-public-survey';
 
 @Component({
   selector: 'app-feedback-page',
@@ -34,7 +37,7 @@ import { FeedbackStore } from '../../store/feedback.store';
   ],
   providers: [FeedbackStore],
   template: `
-    <app-page-header title="反馈管理" [subtitle]="subtitle()" />
+    <app-page-header title="系统反馈" [subtitle]="subtitle()" />
 
     <app-page-toolbar>
       <app-filter-bar toolbar-filters class="toolbar__filters">
@@ -62,6 +65,11 @@ import { FeedbackStore } from '../../store/feedback.store';
 
         <button nz-button class="toolbar__filter-btn" (click)="applyFilters()">筛选</button>
         <button nz-button class="toolbar__filter-btn" (click)="resetFilters()">清空</button>
+        @if (canUseGlobalSurveyFilter()) {
+          <button nz-button class="toolbar__filter-btn" [nzType]="onlySurvey() ? 'primary' : 'default'" (click)="toggleSurveyOnly()">
+            仅看公开问卷
+          </button>
+        }
       </app-filter-bar>
 
       <app-search-box
@@ -255,6 +263,11 @@ import { FeedbackStore } from '../../store/feedback.store';
         border-color: rgba(236, 72, 153, 0.35);
         color: rgb(157, 23, 77);
       }
+      :host ::ng-deep .active-filters .ant-tag.filter-tag--client {
+        background: rgba(245, 158, 11, 0.14);
+        border-color: rgba(245, 158, 11, 0.35);
+        color: rgb(146, 64, 14);
+      }
       
       .feedback-table__head,
       .feedback-row {
@@ -368,15 +381,21 @@ import { FeedbackStore } from '../../store/feedback.store';
 })
 export class FeedbackPageComponent {
   readonly store = inject(FeedbackStore);
+  readonly authStore = inject(AuthStore);
   readonly projectContext = inject(ProjectContextStore);
 
   readonly keyword = signal('');
   readonly status = signal<FeedbackStatus[]>([]);
   readonly category = signal<FeedbackCategory[]>([]);
   readonly source = signal<FeedbackSource[]>([]);
+  readonly onlySurvey = signal(false);
   readonly pendingStatus = signal<FeedbackStatus>('open');
+  readonly canUseGlobalSurveyFilter = computed(() => this.authStore.currentUser()?.role === 'admin');
 
   readonly subtitle = computed(() => {
+    if (this.onlySurvey()) {
+      return `公开问卷 · 共 ${this.store.total()} 条反馈`;
+    }
     const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
     return `${projectName} · 共 ${this.store.total()} 条反馈`;
   });
@@ -389,7 +408,7 @@ export class FeedbackPageComponent {
       }
       return first ? `${prefix}: ${valueLabel}` : valueLabel;
     };
-    const tags: Array<{ kind: 'status' | 'category' | 'source' | 'keyword'; value: string; label: string }> = [];
+    const tags: Array<{ kind: 'status' | 'category' | 'source' | 'keyword' | 'client'; value: string; label: string }> = [];
     if (this.status().length > 0) {
       for (const status of this.status()) {
         tags.push({ kind: 'status', value: status, label: withPrefix('status', '状态', this.statusLabel(status)) });
@@ -416,6 +435,13 @@ export class FeedbackPageComponent {
         label: withPrefix('keyword', '关键词', this.keyword().trim()),
       });
     }
+    if (this.onlySurvey()) {
+      tags.push({
+        kind: 'client',
+        value: PUBLIC_SURVEY_CLIENT_NAME,
+        label: withPrefix('client', '来源类型', '公开问卷'),
+      });
+    }
     return tags;
   });
 
@@ -424,15 +450,17 @@ export class FeedbackPageComponent {
   constructor() {
     effect(() => {
       const projectId = this.projectContext.currentProject()?.id ?? null;
+      const surveyOnly = untracked(this.onlySurvey);
+      const effectiveProjectId = surveyOnly ? null : projectId;
       const isFirstRun = this.lastProjectId === undefined;
-      const projectChanged = !isFirstRun && projectId !== this.lastProjectId;
-      this.lastProjectId = projectId;
+      const projectChanged = !isFirstRun && effectiveProjectId !== this.lastProjectId;
+      this.lastProjectId = effectiveProjectId;
       if (isFirstRun) {
-        this.store.initialize(projectId);
+        this.store.initialize(effectiveProjectId);
         return;
       }
       if (projectChanged) {
-        this.store.refreshForProject(projectId);
+        this.store.refreshForProject(effectiveProjectId);
       }
     });
 
@@ -451,6 +479,8 @@ export class FeedbackPageComponent {
       status: this.status(),
       category: this.category(),
       source: this.source(),
+      clientName: this.onlySurvey() ? PUBLIC_SURVEY_CLIENT_NAME : '',
+      projectId: this.onlySurvey() ? '' : this.projectContext.currentProject()?.id ?? '',
     });
   }
 
@@ -459,16 +489,29 @@ export class FeedbackPageComponent {
     this.status.set([]);
     this.category.set([]);
     this.source.set([]);
+    this.onlySurvey.set(false);
     this.store.updateQuery({
       page: 1,
       keyword: '',
       status: [],
       category: [],
       source: [],
+      clientName: '',
+      projectId: this.projectContext.currentProject()?.id ?? '',
     });
   }
 
-  removeFilterTag(kind: 'status' | 'category' | 'source' | 'keyword', value: string): void {
+  toggleSurveyOnly(): void {
+    const enabled = this.canUseGlobalSurveyFilter() && !this.onlySurvey();
+    this.onlySurvey.set(enabled);
+    this.store.updateQuery({
+      page: 1,
+      clientName: enabled ? PUBLIC_SURVEY_CLIENT_NAME : '',
+      projectId: enabled ? '' : this.projectContext.currentProject()?.id ?? '',
+    });
+  }
+
+  removeFilterTag(kind: 'status' | 'category' | 'source' | 'keyword' | 'client', value: string): void {
     if (kind === 'status') {
       this.status.set(this.status().filter((item) => item !== value));
       this.applyFilters();
@@ -481,6 +524,11 @@ export class FeedbackPageComponent {
     }
     if (kind === 'source') {
       this.source.set(this.source().filter((item) => item !== value));
+      this.applyFilters();
+      return;
+    }
+    if (kind === 'client') {
+      this.onlySurvey.set(false);
       this.applyFilters();
       return;
     }
@@ -545,10 +593,11 @@ export class FeedbackPageComponent {
     return 'Web';
   }
 
-  filterTagClass(kind: 'status' | 'category' | 'source' | 'keyword'): string {
+  filterTagClass(kind: 'status' | 'category' | 'source' | 'keyword' | 'client'): string {
     if (kind === 'status') return 'filter-tag filter-tag--status';
     if (kind === 'category') return 'filter-tag filter-tag--category';
     if (kind === 'source') return 'filter-tag filter-tag--source';
+    if (kind === 'client') return 'filter-tag filter-tag--client';
     return 'filter-tag filter-tag--keyword';
   }
 }

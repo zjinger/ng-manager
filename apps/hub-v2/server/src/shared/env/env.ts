@@ -55,7 +55,10 @@ export function loadEnv() {
     UPLOAD_DIR: process.env.UPLOAD_DIR,
     UPLOAD_MAX_FILE_SIZE: process.env.UPLOAD_MAX_FILE_SIZE,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL
+    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+    OPENAI_MODEL: process.env.OPENAI_MODEL,
+    REPORT_PUBLIC_ENABLED: process.env.REPORT_PUBLIC_ENABLED,
+    REPORT_PUBLIC_RATE_LIMIT: process.env.REPORT_PUBLIC_RATE_LIMIT
   });
 
   const dataDir = path.resolve(parsed.DATA_DIR || path.join(cwd, "data"));
@@ -87,7 +90,10 @@ export function loadEnv() {
     uploadDir,
     uploadMaxFileSize: parsed.UPLOAD_MAX_FILE_SIZE,
     openaiApiKey: parsed.OPENAI_API_KEY ?? null,
-    openaiBaseUrl: parsed.OPENAI_BASE_URL ?? null
+    openaiBaseUrl: parsed.OPENAI_BASE_URL ?? null,
+    openaiModel: (parsed.OPENAI_MODEL ?? "").trim() ?? null,
+    reportPublicEnabled: parsed.REPORT_PUBLIC_ENABLED,
+    reportPublicRateLimit: parsed.REPORT_PUBLIC_RATE_LIMIT
   };
 }
 

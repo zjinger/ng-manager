@@ -26,6 +26,7 @@ export interface FeedbackListQuery {
   status?: FeedbackStatus[];
   category?: FeedbackCategory[];
   source?: FeedbackSource[];
+  clientName?: string;
   projectId?: string;
   projectKey?: string;
 }

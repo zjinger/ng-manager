@@ -12,12 +12,23 @@ export class ProjectAccessService {
       return Array.from(new Set(ctx.projectIds.map((item) => item.trim()).filter((item) => item.length > 0)));
     }
 
-    const userId = ctx.userId?.trim();
-    if (!userId) {
+    const candidates = Array.from(
+      new Set([ctx.userId?.trim(), ctx.accountId?.trim()].filter((item): item is string => !!item))
+    );
+    if (candidates.length === 0) {
       return [];
     }
 
-    return this.repo.listProjectIdsByUserId(userId);
+    const collected = new Set<string>();
+    for (const userId of candidates) {
+      for (const projectId of this.repo.listProjectIdsByUserId(userId)) {
+        const normalizedProjectId = projectId.trim();
+        if (normalizedProjectId) {
+          collected.add(normalizedProjectId);
+        }
+      }
+    }
+    return Array.from(collected);
   }
 
   async requireProjectAccess(projectId: string, ctx: RequestContext, action: string): Promise<void> {
