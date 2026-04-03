@@ -43,6 +43,7 @@ features:
 - [14 WS 实时通知机制](/hub-v2/14-ws-realtime-notification)：统一 WS 事件类型、hints 刷新约定、Dashboard/通知/badge 的实时刷新矩阵。
 - [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)：统一内部/私有可见性、活跃/归档边界、成员规则与项目显示范围偏好。
 - [16 全局错误码规范](/hub-v2/16-error-code-governance)：统一服务端错误码注册、抛错约束、全局错误处理与前端错误拦截映射。
+- [17 发布流程规范](/hub-v2/17-release-process)：统一版本号管理、升级说明生成、changelog 维护、部署与回滚流程。
 
 ## 推荐阅读顺序
 
@@ -56,7 +57,8 @@ features:
 8. 如需统一实时刷新链路，再读 [14 WS 实时通知机制](/hub-v2/14-ws-realtime-notification)。
 9. 如需统一项目治理规则，再读 [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)。
 10. 如需统一错误码与前端错误处理链路，再读 [16 全局错误码规范](/hub-v2/16-error-code-governance)。
-11. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
+11. 准备上线时读 [17 发布流程规范](/hub-v2/17-release-process)，按版本、升级说明、部署和回滚清单执行。
+12. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
 
 ## 当前文档集覆盖范围
 
