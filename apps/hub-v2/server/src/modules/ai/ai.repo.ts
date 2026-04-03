@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { HistoricalIssue, HistoricalAssignee } from "./ai.types";
+import type { HistoricalIssue, HistoricalAssignee, ProjectModule } from "./ai.types";
 
 /**
  * AI 模块数据访问层
@@ -57,7 +57,7 @@ export class AiRepo {
     const rows = this.db
       .prepare(
         `
-          SELECT title, type, priority
+          SELECT title, type, priority, module_code as moduleCode
           FROM issues
           WHERE project_id = ?
             AND status IN ('closed', 'resolved', 'verified')
@@ -94,6 +94,28 @@ export class AiRepo {
       .all(projectId, limit) as HistoricalAssignee[];
 
     return rows;
+  }
+
+  /**
+   * 获取项目可用模块（用于 AI 模块推荐）
+   */
+  listProjectModules(projectId: string): ProjectModule[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT code, name
+          FROM project_modules
+          WHERE project_id = ?
+            AND enabled = 1
+          ORDER BY sort ASC
+        `
+      )
+      .all(projectId) as Array<{ code: string | null; name: string }>;
+
+    return rows.map((row) => ({
+      code: row.code?.trim() || row.name,
+      name: row.name
+    }));
   }
 
   /**
