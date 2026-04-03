@@ -1,0 +1,124 @@
+@if (store.loading()) {
+  <section class="loading-state">
+    <nz-spin nzSimple></nz-spin>
+    <span>正在加载问卷...</span>
+  </section>
+} @else {
+  <div class="survey-editor">
+    <app-survey-editor-topbar
+      [title]="store.title()"
+      [statusLabel]="store.statusText()"
+      [status]="store.status()"
+      [canUndo]="store.canUndo()"
+      [canRedo]="store.canRedo()"
+      [saving]="store.saving()"
+      (undo)="store.undo()"
+      (redo)="store.redo()"
+      (save)="facade.save()"
+      (preview)="store.openPreview()"
+      (copyLink)="facade.copyPublicLink()"
+      (viewSubmissions)="facade.viewSubmissions()"
+      (statusChange)="facade.changeStatus($event)"
+      (back)="facade.backToList()"
+    />
+
+    <div class="layout">
+      <app-survey-editor-left-panel
+        [templateKeyword]="store.templateKeyword()"
+        [templates]="store.filteredTemplates()"
+        (templateKeywordChange)="store.setTemplateKeyword($event)"
+        (applyTemplate)="store.applyTemplate($event)"
+      />
+
+      <main class="canvas">
+        <div class="canvas__inner">
+          <section class="canvas-progress">
+            <div class="canvas-progress__track">
+              <div class="canvas-progress__fill" [style.width.%]="store.questions().length > 0 ? 100 : 0"></div>
+            </div>
+            <span>{{ store.questions().length }} 道题目</span>
+          </section>
+
+          <section class="canvas-pages">
+            <button nz-button type="button" class="canvas-page canvas-page--active">第 1 页</button>
+            <button nz-button type="button" class="canvas-page canvas-page--add" disabled>
+              <span nz-icon nzType="plus"></span>
+            </button>
+          </section>
+
+          <section class="survey-head card">
+            <input
+              class="survey-head__title"
+              [value]="store.title()"
+              (input)="store.setTitle($any($event.target).value)"
+              (blur)="store.markHistory()"
+              placeholder="输入问卷标题"
+            />
+            <textarea
+              class="survey-head__desc"
+              rows="2"
+              [value]="store.description()"
+              (input)="store.setDescription($any($event.target).value)"
+              (blur)="store.markHistory()"
+              placeholder="输入问卷描述（可选）"
+            ></textarea>
+            <div class="survey-head__meta">共 {{ store.questions().length }} 道题</div>
+          </section>
+
+          @for (question of store.questions(); track question.id; let i = $index) {
+            <app-survey-question-card
+              [question]="question"
+              [index]="i"
+              [active]="store.activeQuestionId() === question.id"
+              [questionTypes]="store.questionTypes"
+              (activate)="store.setActiveQuestion($event)"
+              (patch)="store.patchQuestion($event)"
+              (typeChange)="store.changeQuestionType($event)"
+              (move)="store.moveQuestion($event.id, $event.offset)"
+              (duplicate)="store.duplicateQuestion($event)"
+              (remove)="store.removeQuestion($event)"
+              (addBelow)="store.addQuestion('text', $event)"
+              (addOption)="store.addOption($event)"
+              (optionPatch)="store.patchOption($event)"
+              (removeOption)="store.removeOption($event)"
+              (markHistory)="store.markHistory()"
+            />
+          }
+
+          <button nz-button nzType="dashed" class="add-main" type="button" (click)="store.addQuestion('text')">
+            <span nz-icon nzType="plus"></span>
+            新增题目
+          </button>
+        </div>
+      </main>
+
+      <app-survey-editor-right-panel
+        [slug]="store.slug()"
+        [isPublic]="store.isPublic()"
+        [startAt]="store.startAt()"
+        [endAt]="store.endAt()"
+        [activeQuestion]="store.activeQuestion()"
+        [questionTypes]="store.questionTypes"
+        (slugChange)="store.setSlug($event)"
+        (isPublicChange)="store.setIsPublic($event)"
+        (startAtChange)="store.setStartAt($event)"
+        (endAtChange)="store.setEndAt($event)"
+        (addQuestion)="store.addQuestion($event)"
+        (activeTypeChange)="store.changeActiveQuestionType($event)"
+        (activeQuestionPatch)="store.patchQuestion($event)"
+        (minValueChange)="store.setActiveMinValue($event)"
+        (maxValueChange)="store.setActiveMaxValue($event)"
+        (maxSelectChange)="store.setActiveMaxSelect($event)"
+        (markHistory)="store.markHistory()"
+      />
+    </div>
+
+    <app-survey-preview-modal
+      [visible]="store.previewVisible()"
+      [title]="store.title()"
+      [description]="store.description()"
+      [questions]="store.questions()"
+      (close)="store.closePreview()"
+    />
+  </div>
+}

@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>问卷编辑器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --p:#6366f1;--pl:#818cf8;--pb:#eef2ff;--ph:#4f46e5;
+    --s:#fff;--bg:#f8fafc;--bd:#e2e8f0;--bl:#f1f5f9;
+    --t:#1e293b;--ts:#64748b;--tm:#94a3b8;
+    --ok:#10b981;--okb:#ecfdf5;--warn:#f59e0b;--warb:#fffbeb;
+    --err:#ef4444;--errb:#fef2f2;--inf:#3b82f6;--infb:#eff6ff;
+    --sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+    --shm:0 4px 6px -1px rgba(0,0,0,.07),0 2px 4px -2px rgba(0,0,0,.05);
+    --shl:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+    --r:10px;--rs:6px;--rl:14px;--tr:.2s cubic-bezier(.4,0,.2,1)
+  }
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--t);line-height:1.6;-webkit-font-smoothing:antialiased;overflow:hidden}
+
+  /* ===== TOPBAR ===== */
+  .topbar{background:var(--s);border-bottom:1px solid var(--bd);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .topbar-left{display:flex;align-items:center;gap:14px}
+  .logo{width:30px;height:30px;background:linear-gradient(135deg,var(--p),var(--pl));border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+  .breadcrumb{font-size:13px;color:var(--ts)}.breadcrumb b{color:var(--t);font-weight:600}
+  .topbar-center{display:flex;align-items:center;gap:6px}
+  .topbar-right{display:flex;align-items:center;gap:6px}
+  .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:var(--rs);font-size:12.5px;font-weight:500;border:none;cursor:pointer;transition:all var(--tr);white-space:nowrap;font-family:inherit}
+  .btn-g{background:0 0;color:var(--ts)}.btn-g:hover{background:var(--bl);color:var(--t)}
+  .btn-o{background:var(--s);color:var(--ts);border:1px solid var(--bd)}.btn-o:hover{border-color:var(--p);color:var(--p);background:var(--pb)}
+  .btn-p{background:var(--p);color:#fff;box-shadow:0 1px 2px rgba(99,102,241,.3)}.btn-p:hover{background:var(--ph);box-shadow:0 2px 8px rgba(99,102,241,.35)}
+  .btn-s{background:var(--ok);color:#fff}.btn-s:hover{background:#059669}
+  .btn-d{background:var(--err);color:#fff}.btn-d:hover{background:#dc2626}
+  .btn-i{width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:var(--rs);border:none;background:0 0;color:var(--tm);cursor:pointer;transition:all var(--tr)}
+  .btn-i:hover{background:var(--bl);color:var(--t)}
+  .dv{width:1px;height:18px;background:var(--bd)}
+
+  /* ===== LAYOUT ===== */
+  .app{display:grid;grid-template-columns:240px 1fr 260px;height:calc(100vh - 52px)}
+
+  /* ===== LEFT SIDEBAR ===== */
+  .sbl{background:var(--s);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+  .sb-sec{padding:14px 16px 0}
+  .sb-title{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:8px}
+  .search{position:relative;margin-bottom:4px}
+  .search input{width:100%;height:32px;padding:0 10px 0 30px;border:1px solid var(--bd);border-radius:var(--rs);font-size:12.5px;font-family:inherit;color:var(--t);background:var(--bg);transition:all var(--tr);outline:0}
+  .search input::placeholder{color:var(--tm)}.search input:focus{border-color:var(--p);background:var(--s);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+  .search .si{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tm);font-size:13px}
+  .tpl-list{flex:1;overflow-y:auto;padding:6px 10px 10px}
+  .tpl-list::-webkit-scrollbar{width:3px}.tpl-list::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+  .tpl{padding:10px 10px;border-radius:var(--rs);cursor:pointer;transition:all var(--tr);margin-bottom:2px;border:1px solid transparent;display:flex;align-items:center;gap:9px}
+  .tpl:hover{background:var(--pb);border-color:rgba(99,102,241,.12)}
+  .tpl.on{background:var(--pb);border-color:rgba(99,102,241,.22)}
+  .tpl-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .tpl-info{flex:1;min-width:0}
+  .tpl-name{font-size:12.5px;font-weight:500;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tpl-meta{font-size:10.5px;color:var(--tm);margin-top:1px}
+
+  /* ===== CANVAS ===== */
+  .canvas{background:var(--bg);overflow-y:auto;padding:20px 24px}
+  .canvas::-webkit-scrollbar{width:5px}.canvas::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  .canvas-inner{max-width:680px;margin:0 auto}
+
+  /* progress */
+  .pbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .ptrack{flex:1;height:3px;background:var(--bl);border-radius:2px;overflow:hidden}
+  .pfill{height:100%;background:linear-gradient(90deg,var(--p),var(--pl));border-radius:2px;transition:width .4s ease}
+  .ptxt{font-size:11px;color:var(--tm);white-space:nowrap}
+
+  /* page tabs */
+  .ptabs{display:flex;gap:4px;margin-bottom:14px}
+  .ptab{padding:5px 14px;border-radius:18px;font-size:11.5px;font-weight:500;border:1px solid var(--bd);background:var(--s);color:var(--ts);cursor:pointer;transition:all var(--tr);font-family:inherit}
+  .ptab.on{background:var(--p);color:#fff;border-color:var(--p)}.ptab:hover:not(.on){border-color:var(--p);color:var(--p)}
+  .ptab-add{width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:15px}
+
+  /* survey header */
+  .shcard{background:var(--s);border-radius:var(--rl);padding:26px 30px 20px;box-shadow:var(--sh);border:1px solid var(--bd);margin-bottom:12px;position:relative;overflow:hidden}
+  .shcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--p),var(--pl),#a78bfa)}
+  .sh-title{width:100%;border:0;font-size:20px;font-weight:700;color:var(--t);outline:0;font-family:inherit;background:0 0;padding:0;margin-bottom:6px}
+  .sh-title::placeholder{color:var(--tm)}
+  .sh-desc{width:100%;border:0;font-size:13px;color:var(--ts);outline:0;font-family:inherit;background:0 0;padding:0;resize:none;line-height:1.6}
+  .sh-desc::placeholder{color:var(--tm)}
+
+  /* question card */
+  .qcard{background:var(--s);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--bd);margin-bottom:10px;transition:all var(--tr);position:relative;animation:fadeUp .25s ease}
+  .qcard:hover{box-shadow:var(--shm);border-color:#c7d2fe}
+  .qcard.on{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.08),var(--shm)}
+  .qcard.dragging{opacity:.5;transform:rotate(.8deg)}
+  .qdrag{position:absolute;left:-1px;top:0;bottom:0;width:18px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--tm);opacity:0;transition:opacity var(--tr);font-size:11px;letter-spacing:1px}
+  .qcard:hover .qdrag{opacity:.6}.qdrag:hover{opacity:1!important;color:var(--p)}
+  .qinner{padding:18px 20px 16px 26px}
+  .qhead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px}
+  .qnum{width:24px;height:24px;background:var(--p);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;margin-top:2px}
+  .qtitle-area{flex:1}
+  .qtitle{width:100%;border:0;font-size:14px;font-weight:600;color:var(--t);outline:0;font-family:inherit;background:0 0;padding:1px 0}
+  .qtitle::placeholder{color:var(--tm)}
+  .qtype{display:inline-flex;align-items:center;gap:3px;padding:2px 9px;background:var(--pb);color:var(--p);border-radius:16px;font-size:11px;font-weight:500;border:0;cursor:pointer;font-family:inherit;transition:all var(--tr);white-space:nowrap;margin-top:4px}
+  .qtype:hover{background:#ddd6fe}
+  .qacts{display:flex;gap:1px;opacity:0;transition:opacity var(--tr)}.qcard:hover .qacts{opacity:1}
+
+  /* options */
+  .opts{display:flex;flex-direction:column;gap:6px;padding-left:34px}
+  .opt{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:var(--rs);transition:background var(--tr)}
+  .opt:hover{background:var(--bl)}
+  .opt-mark{width:16px;height:16px;border:2px solid #cbd5e1;border-radius:50%;flex-shrink:0;transition:all var(--tr)}
+  .opt-mark.chk{border-radius:3px}
+  .opt-txt{flex:1;border:0;font-size:13px;color:var(--t);outline:0;font-family:inherit;background:0 0;padding:1px 0}
+  .opt-txt::placeholder{color:var(--tm)}
+  .opt-rm{width:22px;height:22px;border:0;background:0 0;color:var(--tm);cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all var(--tr);font-size:12px}
+  .opt:hover .opt-rm{opacity:1}.opt-rm:hover{color:var(--err);background:var(--errb)}
+  .add-opt{display:inline-flex;align-items:center;gap:4px;margin-left:34px;margin-top:6px;font-size:12px;color:var(--p);background:0 0;border:0;cursor:pointer;font-family:inherit;font-weight:500;padding:3px 7px;border-radius:var(--rs);transition:all var(--tr)}
+  .add-opt:hover{background:var(--pb)}
+
+  /* text/textarea/dropdown preview */
+  .preview-box{margin-left:34px}
+  .preview-input{width:100%;padding:8px 12px;border:1px dashed var(--bd);border-radius:var(--rs);color:var(--tm);font-size:12.5px;background:var(--bl);font-family:inherit;outline:0}
+  .preview-textarea{min-height:60px;resize:vertical}
+  .preview-dropdown{width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--rs);color:var(--tm);font-size:12.5px;background:var(--s);display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+
+  /* scale */
+  .scale-row{margin-left:34px;display:flex;align-items:center;gap:2px;margin-top:4px}
+  .scale-num{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ts);cursor:pointer;transition:all var(--tr)}
+  .scale-num:hover,.scale-num.on{background:var(--p);color:#fff;border-color:var(--p)}
+  .scale-labels{display:flex;justify-content:space-between;margin-left:34px;margin-top:4px;font-size:11px;color:var(--tm)}
+
+  /* rating stars */
+  .stars{margin-left:34px;display:flex;gap:4px;margin-top:4px}
+  .star{font-size:22px;cursor:pointer;color:#e2e8f0;transition:color var(--tr)}.star.on{color:#f59e0b}.star:hover{color:#fbbf24}
+
+  /* date */
+  .date-preview{margin-left:34px;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--rs);color:var(--tm);font-size:12.5px;background:var(--s);display:flex;align-items:center;gap:6px}
+
+  /* file upload */
+  .upload-area{margin-left:34px;border:2px dashed var(--bd);border-radius:var(--rs);padding:20px;text-align:center;color:var(--tm);font-size:12.5px;transition:all var(--tr);cursor:pointer}
+  .upload-area:hover{border-color:var(--p);color:var(--p);background:var(--pb)}
+
+  /* description block */
+  .desc-block{margin-left:34px;padding:10px 14px;background:var(--infb);border-radius:var(--rs);font-size:13px;color:var(--ts);border-left:3px solid var(--inf)}
+
+  /* page break */
+  .pagebreak{margin-left:34px;border-top:2px dashed var(--bd);padding-top:8px;font-size:11px;color:var(--tm);text-align:center;letter-spacing:1px}
+
+  /* question footer */
+  .qfoot{display:flex;align-items:center;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bl);padding-left:34px;flex-wrap:wrap}
+  .tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:14px;font-size:10.5px;font-weight:500;cursor:pointer;transition:all var(--tr);border:1px solid transparent;user-select:none}
+  .tag-on{opacity:1}.tag-off{opacity:.35}
+  .tag-r{background:var(--errb);color:var(--err)}.tag-r:hover{border-color:var(--err)}
+  .tag-m{background:var(--infb);color:var(--inf)}.tag-m:hover{border-color:var(--inf)}
+  .tag-o{background:var(--okb);color:var(--ok)}.tag-o:hover{border-color:var(--ok)}
+  .tag-d{background:var(--warb);color:var(--warn)}.tag-d:hover{border-color:var(--warn)}
+
+  /* add question */
+  .addq{text-align:center;padding:16px}
+  .addq-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border:2px dashed var(--bd);border-radius:var(--r);background:var(--s);color:var(--tm);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all var(--tr)}
+  .addq-btn:hover{border-color:var(--p);color:var(--p);background:var(--pb)}
+  .addq-btn .plus{width:20px;height:20px;border-radius:50%;background:var(--bl);display:flex;align-items:center;justify-content:center;font-size:14px;transition:all var(--tr)}
+  .addq-btn:hover .plus{background:var(--p);color:#fff}
+
+  /* ===== RIGHT SIDEBAR ===== */
+  .sbr{background:var(--s);border-left:1px solid var(--bd);overflow-y:auto;padding:16px 14px}
+  .sbr::-webkit-scrollbar{width:3px}.sbr::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+  .sb-title{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:10px}
+  .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:20px}
+  .titem{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:var(--rs);border:1px solid var(--bd);background:var(--s);cursor:pointer;transition:all var(--tr);font-size:11.5px;color:var(--ts);font-weight:500;text-align:center}
+  .titem:hover{border-color:var(--p);color:var(--p);background:var(--pb);transform:translateY(-1px);box-shadow:0 1px 3px rgba(99,102,241,.12)}
+  .titem .ti{font-size:16px}
+  .set-sec{margin-top:4px}
+  .set-title{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:10px}
+  .set-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bl)}
+  .set-label{font-size:12.5px;color:var(--t)}
+  .toggle{width:34px;height:18px;background:#cbd5e1;border-radius:9px;position:relative;cursor:pointer;transition:background var(--tr);flex-shrink:0}
+  .toggle.on{background:var(--p)}.toggle::after{content:'';width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform var(--tr);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+  .toggle.on::after{transform:translateX(16px)}
+
+  /* ===== MODAL ===== */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--s);border-radius:var(--rl);box-shadow:var(--shl);width:560px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;animation:fadeUp .25s ease}
+  .modal-head{padding:18px 24px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+  .modal-title{font-size:15px;font-weight:600}
+  .modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+  .modal-foot{padding:14px 24px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px}
+
+  /* type dropdown */
+  .type-dropdown{position:absolute;background:var(--s);border:1px solid var(--bd);border-radius:var(--rs);box-shadow:var(--shl);z-index:50;min-width:140px;padding:4px;display:none}
+  .type-dropdown.show{display:block}
+  .type-dropdown-item{padding:7px 12px;font-size:12px;color:var(--ts);cursor:pointer;border-radius:4px;transition:all var(--tr);display:flex;align-items:center;gap:6px}
+  .type-dropdown-item:hover{background:var(--pb);color:var(--p)}
+
+  /* ===== TOAST ===== */
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--t);color:#fff;padding:8px 18px;border-radius:var(--r);font-size:12.5px;font-weight:500;box-shadow:var(--shl);z-index:300;opacity:0;transition:all .3s ease;pointer-events:none}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+  /* ===== PREVIEW MODE ===== */
+  .preview-overlay{position:fixed;inset:0;background:var(--bg);z-index:150;display:none;overflow-y:auto}
+  .preview-overlay.show{display:block}
+  .preview-topbar{background:var(--s);border-bottom:1px solid var(--bd);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .preview-content{max-width:680px;margin:0 auto;padding:28px}
+  .preview-q{background:var(--s);border-radius:var(--r);padding:20px 24px;box-shadow:var(--sh);border:1px solid var(--bd);margin-bottom:12px}
+  .preview-q-title{font-size:14px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+  .preview-q-num{color:var(--p);font-weight:700}
+  .preview-q .req{color:var(--err);font-size:12px}
+  .preview-opt{display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px}
+  .preview-opt input[type="radio"],.preview-opt input[type="checkbox"]{accent-color:var(--p)}
+  .preview-input-field{width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--rs);font-size:13px;font-family:inherit;outline:0;transition:all var(--tr)}
+  .preview-input-field:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+  .preview-textarea-field{min-height:80px;resize:vertical}
+  .preview-select{width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--rs);font-size:13px;font-family:inherit;outline:0;background:var(--s);cursor:pointer}
+  .preview-submit{display:flex;justify-content:center;margin-top:20px}
+
+  /* ===== RESULT ===== */
+  .result-overlay{position:fixed;inset:0;background:var(--bg);z-index:160;display:none;overflow-y:auto}
+  .result-overlay.show{display:block}
+  .result-topbar{background:var(--s);border-bottom:1px solid var(--bd);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .result-content{max-width:800px;margin:0 auto;padding:28px}
+  .result-card{background:var(--s);border-radius:var(--r);padding:20px 24px;box-shadow:var(--sh);border:1px solid var(--bd);margin-bottom:12px}
+  .result-title{font-size:14px;font-weight:600;margin-bottom:14px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .bar-label{width:80px;font-size:12px;color:var(--ts);text-align:right;flex-shrink:0}
+  .bar-track{flex:1;height:24px;background:var(--bl);border-radius:4px;overflow:hidden;position:relative}
+  .bar-fill{height:100%;border-radius:4px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-size:11px;color:#fff;font-weight:600}
+  .bar-pct{font-size:12px;color:var(--ts);width:40px;flex-shrink:0}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  .stat-card{background:var(--s);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh);border:1px solid var(--bd);text-align:center}
+  .stat-num{font-size:24px;font-weight:700;color:var(--p)}
+  .stat-label{font-size:11px;color:var(--tm);margin-top:2px}
+  .result-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .result-table th{background:var(--bl);padding:8px 12px;text-align:left;font-weight:600;font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--bd)}
+  .result-table td{padding:8px 12px;border-bottom:1px solid var(--bl)}
+  .result-table tr:hover td{background:var(--pb)}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Q</div>
+    <div class="breadcrumb">问卷编辑 · <b id="docTitle">未命名问卷</b></div>
+  </div>
+  <div class="topbar-center">
+    <button class="btn btn-g" onclick="undo()" title="Ctrl+Z">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 5.5H9a2.5 2.5 0 010 5H7"/><path d="M5.5 3L2.5 5.5 5.5 8"/></svg>
+      撤销
+    </button>
+    <button class="btn btn-g" onclick="redo()" title="Ctrl+Y">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10.5 5.5H4a2.5 2.5 0 000 5h1.5"/><path d="M7.5 3l3 2.5-3 2.5"/></svg>
+      重做
+    </button>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-g" onclick="saveDraft()">💾 保存</button>
+    <button class="btn btn-o" onclick="openPreview()">👁 预览</button>
+    <div class="dv"></div>
+    <button class="btn btn-p" onclick="openResults()">📊 查看报表</button>
+    <button class="btn btn-s" onclick="publishSurvey()">🚀 发布</button>
+  </div>
+</header>
+
+<!-- APP -->
+<div class="app">
+
+  <!-- LEFT -->
+  <aside class="sbl">
+    <div class="sb-sec">
+      <div class="sb-title">模板库</div>
+      <div class="search">
+        <span class="si">🔍</span>
+        <input type="text" placeholder="搜索模板..." id="tplSearch" oninput="filterTemplates(this.value)">
+      </div>
+    </div>
+    <div class="tpl-list" id="tplList"></div>
+  </aside>
+
+  <!-- CANVAS -->
+  <main class="canvas" id="canvas">
+    <div class="canvas-inner" id="canvasInner"></div>
+  </main>
+
+  <!-- RIGHT -->
+  <aside class="sbr" id="sbr"></aside>
+
+</div>
+
+<!-- PREVIEW OVERLAY -->
+<div class="preview-overlay" id="previewOverlay">
+  <div class="preview-topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo">Q</div>
+      <span style="font-weight:600;font-size:14px">问卷预览</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-o" onclick="closePreview()">✕ 关闭预览</button>
+      <button class="btn btn-s" onclick="submitPreview()">提交测试</button>
+    </div>
+  </div>
+  <div class="preview-content" id="previewContent"></div>
+</div>
+
+<!-- RESULT OVERLAY -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo">📊</div>
+      <span style="font-weight:600;font-size:14px" id="resultTitle">问卷报表</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-o" onclick="exportCSV()">📥 导出 CSV</button>
+      <button class="btn btn-o" onclick="closeResults()">✕ 关闭</button>
+    </div>
+  </div>
+  <div class="result-content" id="resultContent"></div>
+</div>
+
+<!-- TYPE DROPDOWN -->
+<div class="type-dropdown" id="typeDropdown"></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== DATA =====
+const TYPES = [
+  {id:'radio',icon:'◉',name:'单选题'},
+  {id:'checkbox',icon:'☑',name:'多选题'},
+  {id:'text',icon:'▭',name:'单行文本'},
+  {id:'textarea',icon:'▤',name:'多行文本'},
+  {id:'dropdown',icon:'▾',name:'下拉选择'},
+  {id:'scale',icon:'◐',name:'量表题'},
+  {id:'rating',icon:'★',name:'评分题'},
+  {id:'matrix_radio',icon:'⊞',name:'矩阵单选'},
+  {id:'date',icon:'📅',name:'日期选择'},
+  {id:'number',icon:'#',name:'数字输入'},
+  {id:'file',icon:'📎',name:'文件上传'},
+  {id:'desc',icon:'¶',name:'说明文字'},
+  {id:'pagebreak',icon:'⬌',name:'分页符'},
+];
+
+const TEMPLATES = [
+  {id:'blank',name:'空白问卷',icon:'📄',color:'#f1f5f9',tc:'#64748b',desc:'从零开始创建',questions:[]},
+  {id:'satisfaction',name:'满意度调查',icon:'📊',color:'#eef2ff',tc:'#6366f1',desc:'8 道题目',questions:[
+    {type:'radio',title:'您对我们的整体服务满意吗？',required:true,mutual:true,options:['非常满意','满意','一般','不满意','非常不满意']},
+    {type:'scale',title:'请为我们的服务打分（1-10）',required:true,min:1,max:10,minLabel:'非常不满意',maxLabel:'非常满意'},
+    {type:'checkbox',title:'您最看重以下哪些方面？（可多选）',required:true,mutual:true,other:true,options:['响应速度','专业能力','服务态度','价格合理性','售后支持']},
+    {type:'radio',title:'您是通过什么渠道了解我们的？',required:true,mutual:true,options:['朋友推荐','搜索引擎','社交媒体','线下广告','其他']},
+    {type:'textarea',title:'您对我们的服务有什么建议？',required:false},
+    {type:'text',title:'您的姓名（选填）',required:false},
+    {type:'text',title:'您的联系方式（选填）',required:false},
+    {type:'desc',title:'感谢您抽出宝贵时间填写本问卷，您的意见对我们非常重要！'}
+  ]},
+  {id:'event',name:'活动报名表',icon:'🎉',color:'#fef3c7',tc:'#d97706',desc:'5 道题目',questions:[
+    {type:'text',title:'您的姓名',required:true},
+    {type:'text',title:'手机号码',required:true},
+    {type:'radio',title:'您的身份',required:true,mutual:true,options:['学生','教师','企业员工','自由职业者','其他']},
+    {type:'checkbox',title:'您感兴趣的环节（可多选）',required:true,options:['主题演讲','圆桌讨论','社交晚宴','工作坊','展览参观']},
+    {type:'textarea',title:'特殊需求或饮食要求',required:false}
+  ]},
+  {id:'training',name:'培训效果评估',icon:'📚',color:'#e0f2fe',tc:'#0284c7',desc:'6 道题目',questions:[
+    {type:'radio',title:'您对本次培训的整体评价',required:true,mutual:true,options:['非常好','好','一般','差','非常差']},
+    {type:'scale',title:'培训内容的实用性（1-5）',required:true,min:1,max:5,minLabel:'不实用',maxLabel:'非常实用'},
+    {type:'scale',title:'讲师的专业水平（1-5）',required:true,min:1,max:5,minLabel:'一般',maxLabel:'优秀'},
+    {type:'checkbox',title:'您认为最有收获的部分',required:true,options:['理论讲解','案例分析','实操练习','小组讨论','答疑环节']},
+    {type:'radio',title:'您是否会向同事推荐此培训',required:true,mutual:true,options:['一定会','可能会','不确定','不会']},
+    {type:'textarea',title:'您的改进建议',required:false}
+  ]},
+  {id:'feedback',name:'用户反馈',icon:'💬',color:'#fff7ed',tc:'#ea580c',desc:'4 道题目',questions:[
+    {type:'rating',title:'您对产品的整体满意度',required:true},
+    {type:'checkbox',title:'您最喜欢产品的哪些功能？',required:true,options:['界面设计','操作便捷','响应速度','功能丰富','数据安全']},
+    {type:'radio',title:'您使用产品的频率',required:true,mutual:true,options:['每天','每周几次','每月几次','偶尔使用']},
+    {type:'textarea',title:'您希望我们改进什么？',required:false}
+  ]},
+  {id:'classroom',name:'课堂评价',icon:'⭐',color:'#faf5ff',tc:'#9333ea',desc:'5 道题目',questions:[
+    {type:'text',title:'课程名称',required:true},
+    {type:'radio',title:'授课教师',required:true,mutual:true,options:['张老师','李老师','王老师','赵老师']},
+    {type:'scale',title:'课程内容质量（1-10）',required:true,min:1,max:10,minLabel:'很差',maxLabel:'极好'},
+    {type:'rating',title:'教师授课水平',required:true},
+    {type:'textarea',title:'对课程的意见和建议',required:false}
+  ]},
+  {id:'product',name:'产品需求收集',icon:'💡',color:'#f0fdf4',tc:'#16a34a',desc:'7 道题目',questions:[
+    {type:'text',title:'您的职位/角色',required:true},
+    {type:'checkbox',title:'您最希望新增的功能（可多选）',required:true,options:['数据分析看板','团队协作','自动化流程','API 接口','移动端支持','第三方集成']},
+    {type:'radio',title:'您愿意为此功能付费吗？',required:true,mutual:true,options:['愿意','看价格','不愿意','不确定']},
+    {type:'scale',title:'需求紧急程度（1-5）',required:true,min:1,max:5,minLabel:'不紧急',maxLabel:'非常紧急'},
+    {type:'dropdown',title:'您的行业',required:true,options:['互联网','金融','教育','医疗','制造','零售','其他']},
+    {type:'textarea',title:'请详细描述您的需求场景',required:true},
+    {type:'desc',title:'我们会认真评估每一条反馈，并在后续版本中优先考虑高频需求。'}
+  ]},
+  {id:'sign_in',name:'会议签到表',icon:'✅',color:'#ecfdf5',tc:'#059669',desc:'3 道题目',questions:[
+    {type:'text',title:'您的姓名',required:true},
+    {type:'text',title:'所在部门',required:true},
+    {type:'dropdown',title:'参会场次',required:true,options:['上午场 9:00-12:00','下午场 14:00-17:00','全天']}
+  ]},
+  {id:'graduate',name:'毕业生调查',icon:'🎓',color:'#fce7f3',tc:'#db2777',desc:'10 道题目',questions:[
+    {type:'text',title:'您的姓名',required:true},
+    {type:'dropdown',title:'您的学院',required:true,options:['计算机学院','经济管理学院','外国语学院','理学院','文学院','其他']},
+    {type:'radio',title:'您的毕业去向',required:true,mutual:true,options:['继续深造','已就业','创业','待业','其他']},
+    {type:'text',title:'就业单位名称（如已就业）',required:false},
+    {type:'radio',title:'您对学校就业指导服务的满意度',required:true,mutual:true,options:['非常满意','满意','一般','不满意']},
+    {type:'checkbox',title:'您认为学校应加强哪些方面的培养',required:true,options:['专业技能','实践能力','沟通表达','职业规划','创新能力','团队协作']},
+    {type:'rating',title:'对母校的整体评价',required:true},
+    {type:'scale',title:'您向他人推荐母校的意愿（1-10）',required:true,min:1,max:10,minLabel:'不会推荐',maxLabel:'极力推荐'},
+    {type:'date',title:'您的毕业日期',required:true},
+    {type:'textarea',title:'对母校的寄语',required:false}
+  ]}
+];
+
+// ===== STATE =====
+let state = {
+  templateId: 'blank',
+  title: '未命名问卷',
+  desc: '',
+  questions: [],
+  settings: {anonymous:true,repeat:false,progress:true,modify:false,random:false},
+  history: [],
+  historyIdx: -1,
+};
+
+// ===== INIT =====
+function init() {
+  renderTemplateList();
+  loadTemplate('blank');
+}
+
+// ===== TEMPLATES =====
+function renderTemplateList() {
+  const el = document.getElementById('tplList');
+  el.innerHTML = TEMPLATES.map(t => `
+    <div class="tpl ${state.templateId===t.id?'on':''}" onclick="loadTemplate('${t.id}')" data-name="${t.name}">
+      <div class="tpl-icon" style="background:${t.color};color:${t.tc}">${t.icon}</div>
+      <div class="tpl-info">
+        <div class="tpl-name">${t.name}</div>
+        <div class="tpl-meta">${t.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterTemplates(q) {
+  document.querySelectorAll('.tpl').forEach(el => {
+    el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+
+function loadTemplate(id) {
+  const tpl = TEMPLATES.find(t => t.id === id);
+  if (!tpl) return;
+  state.templateId = id;
+  state.title = id === 'blank' ? '未命名问卷' : tpl.name;
+  state.desc = '';
+  state.questions = tpl.questions.map((q,i) => ({
+    id: genId(),
+    type: q.type,
+    title: q.title,
+    required: q.required || false,
+    mutual: q.mutual || false,
+    other: q.other || false,
+    desc: q.desc || '',
+    options: q.options ? [...q.options] : [],
+    min: q.min, max: q.max,
+    minLabel: q.minLabel, maxLabel: q.maxLabel,
+  }));
+  pushHistory();
+  renderTemplateList();
+  renderCanvas();
+  renderSettings();
+}
+
+// ===== RENDER CANVAS =====
+function renderCanvas() {
+  const el = document.getElementById('canvasInner');
+  const qCount = state.questions.filter(q => !['desc','pagebreak'].includes(q.type)).length;
+  
+  let html = `
+    <div class="pbar">
+      <div class="ptrack"><div class="pfill" style="width:${Math.min(100,qCount*12)}%"></div></div>
+      <span class="ptxt">${qCount} 道题目</span>
+    </div>
+    <div class="ptabs">
+      <button class="ptab on">第 1 页</button>
+      <button class="ptab ptab-add" onclick="showToast('已添加新分页')">+</button>
+    </div>
+    <div class="shcard">
+      <input type="text" class="sh-title" value="${esc(state.title)}" placeholder="输入问卷标题..." oninput="state.title=this.value;document.querySelector('.breadcrumb b').textContent=this.value||'未命名问卷'">
+      <textarea class="sh-desc" placeholder="点击输入问卷说明文字（可选）..." rows="2" oninput="state.desc=this.value">${esc(state.desc)}</textarea>
+    </div>
+  `;
+
+  state.questions.forEach((q, i) => {
+    html += renderQuestionCard(q, i);
+  });
+
+  html += `
+    <div class="addq">
+      <button class="addq-btn" onclick="showTypeMenu(event, -1)">
+        <span class="plus">+</span> 新增题目
+      </button>
+    </div>
+  `;
+
+  el.innerHTML = html;
+  document.getElementById('docTitle').textContent = state.title || '未命名问卷';
+}
+
+function renderQuestionCard(q, i) {
+  let body = '';
+  const num = i + 1;
+
+  if (q.type === 'radio' || q.type === 'checkbox') {
+    const isChk = q.type === 'checkbox';
+    body = `<div class="opts">${q.options.map((o,j) => `
+      <div class="opt">
+        <div class="opt-mark ${isChk?'chk':''}"></div>
+        <input type="text" class="opt-txt" value="${esc(o)}" placeholder="选项 ${j+1}" onchange="updateOption(${i},${j},this.value)">
+        <button class="opt-rm" onclick="removeOption(${i},${j})" title="删除">✕</button>
+      </div>
+    `).join('')}</div>
+    <button class="add-opt" onclick="addOption(${i})">+ 添加选项</button>`;
+  } else if (q.type === 'text') {
+    body = `<div class="preview-box"><div class="preview-input">请输入您的回答...</div></div>`;
+  } else if (q.type === 'textarea') {
+    body = `<div class="preview-box"><div class="preview-input preview-textarea">请输入您的回答...</div></div>`;
+  } else if (q.type === 'dropdown') {
+    body = `<div class="opts">${q.options.map((o,j) => `
+      <div class="opt">
+        <div class="opt-mark" style="border-radius:3px"></div>
+        <input type="text" class="opt-txt" value="${esc(o)}" placeholder="选项 ${j+1}" onchange="updateOption(${i},${j},this.value)">
+        <button class="opt-rm" onclick="removeOption(${i},${j})" title="删除">✕</button>
+      </div>
+    `).join('')}</div>
+    <button class="add-opt" onclick="addOption(${i})">+ 添加选项</button>`;
+  } else if (q.type === 'scale') {
+    const mn = q.min||1, mx = q.max||10;
+    body = `<div class="scale-row">${Array.from({length:mx-mn+1},(_,j)=>`<div class="scale-num">${mn+j}</div>`).join('')}</div>
+    <div class="scale-labels"><span>${esc(q.minLabel||'')}</span><span>${esc(q.maxLabel||'')}</span></div>`;
+  } else if (q.type === 'rating') {
+    body = `<div class="stars">${[1,2,3,4,5].map(j=>`<span class="star">★</span>`).join('')}</div>`;
+  } else if (q.type === 'date') {
+    body = `<div class="date-preview">📅 选择日期...</div>`;
+  } else if (q.type === 'number') {
+    body = `<div class="preview-box"><div class="preview-input">请输入数字...</div></div>`;
+  } else if (q.type === 'file') {
+    body = `<div class="upload-area">📎 点击或拖拽上传文件</div>`;
+  } else if (q.type === 'desc') {
+    body = `<div class="desc-block">${esc(q.title)}</div>`;
+  } else if (q.type === 'pagebreak') {
+    body = `<div class="pagebreak">—— 分页 ——</div>`;
+  }
+
+  const typeObj = TYPES.find(t=>t.id===q.type) || {icon:'?',name:'未知'};
+  const isSimple = ['desc','pagebreak'].includes(q.type);
+
+  let footer = '';
+  if (!isSimple) {
+    const tags = [];
+    tags.push(`<span class="tag tag-r ${q.required?'tag-on':'tag-off'}" onclick="toggleTag(${i},'required')">必答</span>`);
+    if (['radio','checkbox','dropdown'].includes(q.type)) {
+      tags.push(`<span class="tag tag-m ${q.mutual?'tag-on':'tag-off'}" onclick="toggleTag(${i},'mutual')">选项互斥</span>`);
+    }
+    if (q.type === 'checkbox') {
+      tags.push(`<span class="tag tag-o ${q.other?'tag-on':'tag-off'}" onclick="toggleTag(${i},'other')">+ 其他</span>`);
+    }
+    footer = `<div class="qfoot">${tags.join('')}</div>`;
+  }
+
+  return `
+  <div class="qcard ${q._active?'on':''}" onclick="activateQ(${i})" draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropQ(event,${i})">
+    <div class="qdrag" title="拖拽排序">⠿</div>
+    <div class="qinner">
+      <div class="qhead">
+        ${isSimple ? '' : `<div class="qnum">${num}</div>`}
+        <div class="qtitle-area">
+          <input type="text" class="qtitle" value="${esc(q.title)}" placeholder="输入题目标题..." onchange="state.questions[${i}].title=this.value;pushHistory()">
+          <button class="qtype" onclick="event.stopPropagation();showTypeMenu(event,${i})">${typeObj.icon} ${typeObj.name} ▾</button>
+        </div>
+        <div class="qacts">
+          <button class="btn-i" title="复制" onclick="event.stopPropagation();dupQ(${i})">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M9 4V2.5H2.5V9H4"/></svg>
+          </button>
+          <button class="btn-i" title="删除" onclick="event.stopPropagation();delQ(${i})">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h9M4.5 4V2.5h4V4M2.5 4l.5 7h7l.5-7"/></svg>
+          </button>
+        </div>
+      </div>
+      ${body}
+      ${footer}
+    </div>
+  </div>`;
+}
+
+// ===== RIGHT SIDEBAR =====
+function renderSettings() {
+  const el = document.getElementById('sbr');
+  const s = state.settings;
+  el.innerHTML = `
+    <div class="sb-title">题型</div>
+    <div class="tgrid">
+      ${TYPES.map(t=>`
+        <div class="titem" onclick="addQuestion('${t.id}')">
+          <div class="ti">${t.icon}</div>
+          ${t.name}
+        </div>
+      `).join('')}
+    </div>
+    <div class="set-sec">
+      <div class="set-title">问卷设置</div>
+      <div class="set-row">
+        <span class="set-label">匿名填写</span>
+        <div class="toggle ${s.anonymous?'on':''}" onclick="toggleSetting(this,'anonymous')"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">允许重复提交</span>
+        <div class="toggle ${s.repeat?'on':''}" onclick="toggleSetting(this,'repeat')"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">显示进度条</span>
+        <div class="toggle ${s.progress?'on':''}" onclick="toggleSetting(this,'progress')"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">提交后可修改</span>
+        <div class="toggle ${s.modify?'on':''}" onclick="toggleSetting(this,'modify')"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">随机排列题目</span>
+        <div class="toggle ${s.random?'on':''}" onclick="toggleSetting(this,'random')"></div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleSetting(el, key) {
+  el.classList.toggle('on');
+  state.settings[key] = el.classList.contains('on');
+}
+
+// ===== QUESTION OPERATIONS =====
+function addQuestion(type, idx) {
+  const typeObj = TYPES.find(t=>t.id===type);
+  const q = {
+    id:genId(), type, title:'', required:false, mutual:false, other:false,
+    options: ['radio','checkbox','dropdown'].includes(type) ? ['选项1','选项2'] : [],
+    min: type==='scale'?1:undefined, max: type==='scale'?10:undefined,
+    minLabel: '', maxLabel: '',
+  };
+  if (type === 'desc') q.title = '说明文字';
+  const insertIdx = idx === -1 ? state.questions.length : (idx !== undefined ? idx + 1 : state.questions.length);
+  state.questions.splice(insertIdx, 0, q);
+  pushHistory();
+  renderCanvas();
+  showToast(`已添加${typeObj.name}`);
+  // scroll to new question
+  setTimeout(()=>{
+    const cards = document.querySelectorAll('.qcard');
+    if(cards[insertIdx]) cards[insertIdx].scrollIntoView({behavior:'smooth',block:'center'});
+  },100);
+}
+
+function delQ(i) {
+  const name = state.questions[i].title || '未命名题目';
+  state.questions.splice(i,1);
+  pushHistory();
+  renderCanvas();
+  showToast(`已删除「${name}」`);
+}
+
+function dupQ(i) {
+  const orig = state.questions[i];
+  const copy = {...orig, id:genId(), options:[...orig.options], _active:false};
+  state.questions.splice(i+1,0,copy);
+  pushHistory();
+  renderCanvas();
+  showToast('已复制题目');
+}
+
+function activateQ(i) {
+  state.questions.forEach((q,j) => q._active = j===i);
+  document.querySelectorAll('.qcard').forEach((c,j) => c.classList.toggle('on', j===i));
+}
+
+function toggleTag(i, key) {
+  state.questions[i][key] = !state.questions[i][key];
+  pushHistory();
+  renderCanvas();
+}
+
+function addOption(qi) {
+  state.questions[qi].options.push(`选项${state.questions[qi].options.length+1}`);
+  pushHistory();
+  renderCanvas();
+}
+
+function removeOption(qi, oi) {
+  if (state.questions[qi].options.length <= 1) return showToast('至少保留一个选项');
+  state.questions[qi].options.splice(oi,1);
+  pushHistory();
+  renderCanvas();
+}
+
+function updateOption(qi, oi, val) {
+  state.questions[qi].options[oi] = val;
+  pushHistory();
+}
+
+// ===== DRAG & DROP =====
+let dragIdx = null;
+function dragStart(e, i) {
+  dragIdx = i;
+  e.dataTransfer.effectAllowed = 'move';
+  e.target.closest('.qcard').classList.add('dragging');
+}
+function dragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+function dropQ(e, targetIdx) {
+  e.preventDefault();
+  document.querySelectorAll('.qcard').forEach(c=>c.classList.remove('dragging'));
+  if (dragIdx === null || dragIdx === targetIdx) return;
+  const [item] = state.questions.splice(dragIdx,1);
+  state.questions.splice(targetIdx,0,item);
+  dragIdx = null;
+  pushHistory();
+  renderCanvas();
+}
+
+// ===== TYPE CHANGE =====
+function showTypeMenu(e, qi) {
+  e.stopPropagation();
+  const dd = document.getElementById('typeDropdown');
+  dd.innerHTML = TYPES.map(t=>`
+    <div class="type-dropdown-item" onclick="changeType(${qi},'${t.id}')">${t.icon} ${t.name}</div>
+  `).join('');
+  const rect = e.target.getBoundingClientRect();
+  dd.style.left = rect.left + 'px';
+  dd.style.top = rect.bottom + 4 + 'px';
+  dd.classList.add('show');
+  dd._qi = qi;
+  setTimeout(()=>document.addEventListener('click',closeTypeMenu,{once:true}),0);
+}
+function closeTypeMenu() {
+  document.getElementById('typeDropdown').classList.remove('show');
+}
+function changeType(qi, newType) {
+  if (qi === -1) {
+    addQuestion(newType);
+  } else {
+    const q = state.questions[qi];
+    q.type = newType;
+    if (['radio','checkbox','dropdown'].includes(newType) && q.options.length === 0) {
+      q.options = ['选项1','选项2'];
+    }
+    if (newType === 'scale') { q.min = 1; q.max = 10; q.minLabel = ''; q.maxLabel = ''; }
+    pushHistory();
+    renderCanvas();
+  }
+  closeTypeMenu();
+}
+
+// ===== HISTORY =====
+function pushHistory() {
+  const snap = JSON.stringify({title:state.title,desc:state.desc,questions:state.questions,settings:state.settings});
+  state.history = state.history.slice(0, state.historyIdx + 1);
+  state.history.push(snap);
+  state.historyIdx = state.history.length - 1;
+}
+function undo() {
+  if (state.historyIdx <= 0) return showToast('没有更多操作可撤销');
+  state.historyIdx--;
+  restoreHistory();
+  showToast('已撤销');
+}
+function redo() {
+  if (state.historyIdx >= state.history.length - 1) return showToast('没有更多操作可重做');
+  state.historyIdx++;
+  restoreHistory();
+  showToast('已重做');
+}
+function restoreHistory() {
+  const snap = JSON.parse(state.history[state.historyIdx]);
+  Object.assign(state, snap);
+  renderCanvas();
+}
+
+// ===== PREVIEW =====
+function openPreview() {
+  const ov = document.getElementById('previewOverlay');
+  const content = document.getElementById('previewContent');
+  
+  let html = `
+    <div class="shcard" style="margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">${esc(state.title)}</h2>
+      ${state.desc ? `<p style="font-size:13px;color:var(--ts)">${esc(state.desc)}</p>` : ''}
+    </div>
+  `;
+
+  state.questions.forEach((q,i) => {
+    if (q.type === 'desc') {
+      html += `<div class="preview-q"><div class="desc-block">${esc(q.title)}</div></div>`;
+      return;
+    }
+    if (q.type === 'pagebreak') {
+      html += `<div class="preview-q"><div class="pagebreak">—— 下一页 ——</div></div>`;
+      return;
+    }
+    const req = q.required ? '<span class="req">*必答</span>' : '';
+    html += `<div class="preview-q"><div class="preview-q-title"><span class="preview-q-num">${i+1}.</span> ${esc(q.title)} ${req}</div>`;
+    
+    if (q.type === 'radio') {
+      html += q.options.map((o,j)=>`<label class="preview-opt"><input type="radio" name="p${i}"> ${esc(o)}</label>`).join('');
+      if (q.other) html += `<label class="preview-opt"><input type="radio" name="p${i}"> 其他: <input type="text" class="preview-input-field" style="flex:1;padding:4px 8px;font-size:12px" placeholder="请说明"></label>`;
+    } else if (q.type === 'checkbox') {
+      html += q.options.map((o,j)=>`<label class="preview-opt"><input type="checkbox" name="p${i}"> ${esc(o)}</label>`).join('');
+      if (q.other) html += `<label class="preview-opt"><input type="checkbox" name="p${i}"> 其他: <input type="text" class="preview-input-field" style="flex:1;padding:4px 8px;font-size:12px" placeholder="请说明"></label>`;
+    } else if (q.type === 'text' || q.type === 'number') {
+      html += `<input type="${q.type==='number'?'number':'text'}" class="preview-input-field" placeholder="请输入...">`;
+    } else if (q.type === 'textarea') {
+      html += `<textarea class="preview-input-field preview-textarea-field" placeholder="请输入..."></textarea>`;
+    } else if (q.type === 'dropdown') {
+      html += `<select class="preview-select"><option value="">请选择...</option>${q.options.map(o=>`<option>${esc(o)}</option>`).join('')}</select>`;
+    } else if (q.type === 'scale') {
+      const mn=q.min||1, mx=q.max||10;
+      html += `<div style="display:flex;gap:4px;flex-wrap:wrap">${Array.from({length:mx-mn+1},(_,j)=>`<div class="scale-num" onclick="this.parentElement.querySelectorAll('.scale-num').forEach(s=>s.classList.remove('on'));this.classList.add('on')" style="cursor:pointer">${mn+j}</div>`).join('')}</div>`;
+      if(q.minLabel||q.maxLabel) html += `<div class="scale-labels"><span>${esc(q.minLabel||'')}</span><span>${esc(q.maxLabel||'')}</span></div>`;
+    } else if (q.type === 'rating') {
+      html += `<div class="stars">${[1,2,3,4,5].map(j=>`<span class="star" onclick="this.parentElement.querySelectorAll('.star').forEach((s,k)=>s.classList.toggle('on',k<${j}))" style="cursor:pointer">★</span>`).join('')}</div>`;
+    } else if (q.type === 'date') {
+      html += `<input type="date" class="preview-input-field">`;
+    } else if (q.type === 'file') {
+      html += `<div class="upload-area">📎 点击或拖拽上传文件</div>`;
+    }
+    html += `</div>`;
+  });
+
+  html += `<div class="preview-submit"><button class="btn btn-p" style="padding:10px 36px;font-size:14px" onclick="submitPreview()">提交问卷</button></div>`;
+  
+  content.innerHTML = html;
+  ov.classList.add('show');
+}
+
+function closePreview() {
+  document.getElementById('previewOverlay').classList.remove('show');
+}
+
+function submitPreview() {
+  closePreview();
+  showToast('✅ 预览提交成功（模拟）');
+  setTimeout(()=>openResults(),500);
+}
+
+// ===== RESULTS =====
+function openResults() {
+  const ov = document.getElementById('resultOverlay');
+  const content = document.getElementById('resultContent');
+  document.getElementById('resultTitle').textContent = state.title + ' - 数据报表';
+
+  const totalResponses = 156;
+  const completionRate = 87;
+  const avgTime = '4分32秒';
+  const todayNew = 12;
+
+  let html = `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num">${totalResponses}</div><div class="stat-label">总回复数</div></div>
+      <div class="stat-card"><div class="stat-num">${completionRate}%</div><div class="stat-label">完成率</div></div>
+      <div class="stat-card"><div class="stat-num">${avgTime}</div><div class="stat-label">平均用时</div></div>
+      <div class="stat-card"><div class="stat-num">+${todayNew}</div><div class="stat-label">今日新增</div></div>
+    </div>
+  `;
+
+  const colors = ['#6366f1','#818cf8','#a78bfa','#c084fc','#e879f9','#f472b6','#fb7185','#f59e0b','#10b981','#3b82f6'];
+
+  state.questions.forEach((q,i) => {
+    if (q.type === 'desc' || q.type === 'pagebreak') return;
+    html += `<div class="result-card"><div class="result-title">${i+1}. ${esc(q.title)}</div>`;
+
+    if (['radio','checkbox','dropdown'].includes(q.type)) {
+      const data = q.options.map((o,j) => ({
+        label: o,
+        count: Math.floor(Math.random()*80+20),
+      }));
+      const maxCount = Math.max(...data.map(d=>d.count));
+      data.forEach((d,j) => {
+        const pct = Math.round(d.count / totalResponses * 100);
+        const w = Math.max(8, d.count / maxCount * 100);
+        html += `<div class="bar-row">
+          <div class="bar-label">${esc(d.label)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${colors[j%colors.length]}">${d.count}</div></div>
+          <div class="bar-pct">${pct}%</div>
+        </div>`;
+      });
+    } else if (q.type === 'scale') {
+      const mn=q.min||1, mx=q.max||10;
+      const avg = (mn + Math.random()*(mx-mn)).toFixed(1);
+      html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span style="font-size:32px;font-weight:700;color:var(--p)">${avg}</span>
+        <span style="font-size:13px;color:var(--ts)">/ ${mx} 分（平均分）</span>
+      </div>`;
+      const data = Array.from({length:mx-mn+1},(_,j)=>({label:`${mn+j}`,count:Math.floor(Math.random()*30+5)}));
+      const maxC = Math.max(...data.map(d=>d.count));
+      data.forEach((d,j)=>{
+        const w = Math.max(8,d.count/maxC*100);
+        html += `<div class="bar-row"><div class="bar-label">${d.label}分</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${colors[j%colors.length]}">${d.count}</div></div><div class="bar-pct">${d.count}人</div></div>`;
+      });
+    } else if (q.type === 'rating') {
+      const avg = (3 + Math.random()*2).toFixed(1);
+      html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <span style="font-size:32px;font-weight:700;color:#f59e0b">${avg}</span>
+        <span style="font-size:20px;color:#f59e0b">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}</span>
+        <span style="font-size:13px;color:var(--ts)">/ 5.0</span>
+      </div>`;
+      [5,4,3,2,1].forEach(star=>{
+        const cnt = Math.floor(Math.random()*60+10);
+        const w = Math.max(8,cnt/80*100);
+        html += `<div class="bar-row"><div class="bar-label">${star}星</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:#f59e0b">${cnt}</div></div><div class="bar-pct">${cnt}人</div></div>`;
+      });
+    } else if (q.type === 'text' || q.type === 'textarea') {
+      const samples = ['非常好，继续保持','希望增加更多功能','体验不错','界面可以再优化','整体满意','服务很周到','速度需要提升'];
+      html += `<table class="result-table"><thead><tr><th>回复内容</th><th>提交时间</th></tr></thead><tbody>`;
+      for(let j=0;j<5;j++){
+        html += `<tr><td>${samples[Math.floor(Math.random()*samples.length)]}</td><td>2026-04-0${j+1} 1${j}:${j}0</td></tr>`;
+      }
+      html += `</tbody></table><div style="font-size:12px;color:var(--tm);margin-top:8px">共 ${Math.floor(Math.random()*100+50)} 条回复，显示前 5 条</div>`;
+    } else if (q.type === 'date' || q.type === 'number') {
+      html += `<div style="font-size:13px;color:var(--ts)">共 ${Math.floor(Math.random()*100+50)} 条数据</div>`;
+    } else if (q.type === 'file') {
+      html += `<div style="font-size:13px;color:var(--ts)">共收到 ${Math.floor(Math.random()*30+5)} 个文件</div>`;
+    }
+    html += `</div>`;
+  });
+
+  content.innerHTML = html;
+  ov.classList.add('show');
+
+  // animate bars
+  setTimeout(()=>{
+    document.querySelectorAll('.bar-fill').forEach(b=>{
+      const w = b.style.width;
+      b.style.width = '0%';
+      requestAnimationFrame(()=>{b.style.width = w;});
+    });
+  },100);
+}
+
+function closeResults() {
+  document.getElementById('resultOverlay').classList.remove('show');
+}
+
+function exportCSV() {
+  let csv = '题目,类型,回复数\n';
+  state.questions.forEach((q,i)=>{
+    if(['desc','pagebreak'].includes(q.type)) return;
+    csv += `"${q.title}",${q.type},${Math.floor(Math.random()*150+10)}\n`;
+  });
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.title||'问卷') + '_报表.csv';
+  a.click();
+  showToast('📥 CSV 已下载');
+}
+
+// ===== ACTIONS =====
+function saveDraft() { showToast('💾 已保存为草稿'); }
+function publishSurvey() { showToast('🚀 问卷已发布！'); }
+
+// ===== UTILS =====
+function genId() { return 'q'+Math.random().toString(36).slice(2,9); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+  if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+  if (e.key === 'Escape') {
+    closePreview();
+    closeResults();
+    closeTypeMenu();
+  }
+});
+
+// ===== START =====
+init();
+</script>
+</body>
+</html>
