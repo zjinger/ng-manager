@@ -1,6 +1,6 @@
 {
   "name": "ngm-hub-v2-server",
-  "version": "0.1.0",
+  "version": "2.1.0",
   "private": true,
   "description": "ng-manager hub v2 server",
   "type": "commonjs",

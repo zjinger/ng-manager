@@ -1,6 +1,6 @@
 {
   "name": "hub-v2-web",
-  "version": "0.0.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "ng": "ng",
