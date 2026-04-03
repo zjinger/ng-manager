@@ -190,6 +190,11 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
         align-items: center;
         gap: 8px;
         min-width: 0;
+        width: 100%;
+      }
+      .issue-row__title-text{
+        flex: 1 1 auto;
+        width: 0;
       }
       .issue-row__title-text,
       .issue-card__title {
