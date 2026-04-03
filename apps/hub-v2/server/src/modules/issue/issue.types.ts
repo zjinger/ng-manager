@@ -125,6 +125,7 @@ export interface ListIssuesQuery {
   keyword?: string;
   projectId?: string;
   status?: IssueStatus[];
+  types?: IssueType[];
   type?: IssueType;
   priority?: IssuePriority[];
   reporterIds?: string[];

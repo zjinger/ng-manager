@@ -102,6 +102,7 @@ export interface IssueListQuery {
   keyword?: string;
   projectId?: string;
   status: string[];
+  types: IssueType[];
   priority: string[];
   reporterIds: string[];
   assigneeIds: string[];

@@ -85,6 +85,7 @@ export const listIssuesQuerySchema = z.object({
   keyword: z.string().trim().optional(),
   projectId: z.string().trim().optional(),
   status: csvEnumArray(["open", "in_progress", "resolved", "verified", "closed", "reopened"]),
+  types: csvEnumArray(["bug", "feature", "change", "improvement", "task", "test"]),
   type: issueTypeSchema.optional(),
   priority: csvEnumArray(["low", "medium", "high", "critical"]),
   reporterIds: csvStringArray(),

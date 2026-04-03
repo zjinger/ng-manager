@@ -1,5 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
 import { DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
@@ -8,7 +10,16 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
 @Component({
   selector: 'app-issue-list-table',
   standalone: true,
-  imports: [CommonModule, DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent, DatePipe],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzCheckboxModule,
+    DataTableComponent,
+    PriorityBadgeComponent,
+    StatusBadgeComponent,
+    TypeBadgeComponent,
+    DatePipe,
+  ],
   template: `
     @if (viewMode() === 'card') {
         <div class="issue-card-grid">
@@ -38,7 +49,10 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
                   <span>未指派</span>
                 }
               </div>
-              <span class="issue-card__time">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
+              <div class="issue-card__time">
+                <div>创建 {{ item.createdAt | date: 'MM-dd HH:mm' }}</div>
+                <div>更新 {{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+              </div>
             </div>
           </button>
         }
@@ -46,13 +60,21 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
     } @else {
       <app-data-table>
         <div table-head class="issue-table__head">
+          <!-- <div class="issue-row__select">
+            <label
+              nz-checkbox
+              [ngModel]="isAllSelected()"
+              [nzIndeterminate]="isPartiallySelected()"
+              (ngModelChange)="toggleSelectAll($event)"
+            ></label>
+          </div> -->
           <div>序号</div>
           <div>编号</div>
           <div>标题</div>
           <div>状态</div>
           <div>提报人</div>
           <div>负责人</div>
-          <div>更新时间</div>
+          <div>时间</div>
         </div>
         <div table-body class="issue-table__body">
           @for (item of items(); track item.id; let i = $index) {
@@ -62,6 +84,13 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
               [class.is-active]="activeIssueId() === item.id"
               (click)="open.emit(item.id)"
             >
+              <!-- <div class="issue-row__select" (click)="stopRowOpen($event)">
+                <label
+                  nz-checkbox
+                  [ngModel]="isSelected(item.id)"
+                  (ngModelChange)="toggleSelect(item.id, $event)"
+                ></label> 
+              </div>-->
               <div class="issue-row__seq">{{ sequence(i) }}</div>
               <div class="issue-row__id">{{ item.issueNo }}</div>
               <div class="issue-row__title">
@@ -89,7 +118,10 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
                   <span class="issue-row__participant-inline">· {{ participantNamesText(item) }}</span>
                 }
               </div>
-              <div class="issue-row__time">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+              <div class="issue-row__time">
+                <div class="issue-row__time-line">创建 {{ item.createdAt | date: 'MM-dd HH:mm' }}</div>
+                <div class="issue-row__time-line">更新 {{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+              </div>
             </button>
           }
         </div>
@@ -101,7 +133,8 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
       .issue-table__head,
       .issue-row {
         display: grid;
-        grid-template-columns: 64px 110px minmax(0, 1.85fr) 110px 120px 130px 110px;
+        // grid-template-columns: 42px 64px 110px minmax(0, 1.85fr) 110px 120px 130px 140px;
+        grid-template-columns: 64px 110px minmax(0, 1.85fr) 110px 120px 130px 140px;
         gap: 16px;
         align-items: center;
       }
@@ -146,6 +179,11 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
       .issue-row__seq {
         font-size: 12px;
         color: var(--text-muted);
+      }
+      .issue-row__select {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
       .issue-row__title-main {
         display: inline-flex;
@@ -215,6 +253,10 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
       .issue-row__time {
         font-size: 12px;
         color: var(--gray-400);
+        line-height: 1.35;
+      }
+      .issue-row__time-line + .issue-row__time-line {
+        margin-top: 2px;
       }
       .mini-avatar {
         width: 24px;
@@ -349,9 +391,12 @@ export class IssueListTableComponent {
   readonly items = input.required<IssueEntity[]>();
   readonly viewMode = input<IssueListViewMode>('list');
   readonly activeIssueId = input<string | null>(null);
+  readonly selectedIds = input<string[]>([]);
   readonly page = input(1);
   readonly pageSize = input(20);
   readonly open = output<string>();
+  readonly selectionChange = output<string[]>();
+  private readonly selectedIdSet = computed(() => new Set(this.selectedIds()));
 
   avatarText(name: string): string {
     return name.slice(0, 1);
@@ -372,5 +417,52 @@ export class IssueListTableComponent {
       return names.join('、');
     }
     return `${names.slice(0, 2).join('、')} +${names.length - 2}`;
+  }
+
+  isSelected(issueId: string): boolean {
+    return this.selectedIdSet().has(issueId);
+  }
+
+  isAllSelected(): boolean {
+    const items = this.items();
+    return items.length > 0 && items.every((item) => this.selectedIdSet().has(item.id));
+  }
+
+  isPartiallySelected(): boolean {
+    const items = this.items();
+    if (items.length === 0) {
+      return false;
+    }
+    const selectedCount = items.filter((item) => this.selectedIdSet().has(item.id)).length;
+    return selectedCount > 0 && selectedCount < items.length;
+  }
+
+  toggleSelect(issueId: string, checked: boolean): void {
+    const next = new Set(this.selectedIdSet());
+    if (checked) {
+      next.add(issueId);
+    } else {
+      next.delete(issueId);
+    }
+    this.selectionChange.emit(Array.from(next));
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    const next = new Set(this.selectedIdSet());
+    if (checked) {
+      for (const item of this.items()) {
+        next.add(item.id);
+      }
+    } else {
+      for (const item of this.items()) {
+        next.delete(item.id);
+      }
+    }
+    this.selectionChange.emit(Array.from(next));
+  }
+
+  stopRowOpen(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
   }
 }

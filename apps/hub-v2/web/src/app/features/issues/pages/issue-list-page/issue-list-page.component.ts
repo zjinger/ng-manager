@@ -1,20 +1,23 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { forkJoin, map } from 'rxjs';
+import { catchError, finalize, forkJoin, from, map, mergeMap, of, toArray } from 'rxjs';
 
 import { ProjectContextStore } from '@core/state';
 import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
 import { ProjectApiService } from '@features/projects/services/project-api.service';
-import { ISSUE_PRIORITY_LABELS, ISSUE_STATUS_LABELS } from '@shared/constants';
+import { ISSUE_PRIORITY_LABELS, ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '@shared/constants';
 import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
 import { IssueDetailDrawerComponent } from '../../components/issue-detail-drawer/issue-detail-drawer.component';
 import { IssueFilterBarComponent, type IssueListViewMode } from '../../components/issue-filter-bar/issue-filter-bar.component';
 import { IssueListTableComponent } from '../../components/issue-list-table/issue-list-table.component';
 import { IssueCreateDialogComponent } from '../../dialogs/issue-create-dialog/issue-create-dialog.component';
 import type { IssueEntity, IssueListQuery } from '../../models/issue.model';
+import { IssueApiService } from '../../services/issue-api.service';
 import { IssueListStore } from '../../store/issue-list.store';
 
 @Component({
@@ -23,6 +26,7 @@ import { IssueListStore } from '../../store/issue-list.store';
   imports: [
     PageHeaderComponent,
     ListStateComponent,
+    NzButtonModule,
     IssueDetailDrawerComponent,
     IssueFilterBarComponent,
     IssueListTableComponent,
@@ -46,6 +50,23 @@ import { IssueListStore } from '../../store/issue-list.store';
       (create)="createOpen.set(true)"
       (viewModeChange)="viewMode.set($event)"
     />
+    <!-- <div class="issue-batch-actions">
+      <div class="issue-batch-actions__summary">
+        已选择 <strong>{{ selectedIssueIds().length }}</strong> 项
+      </div>
+      <button
+        nz-button
+        nzType="primary"
+        [disabled]="selectedIssueIds().length === 0 || batchResolving()"
+        [nzLoading]="batchResolving()"
+        (click)="batchResolveSelected()"
+      >
+        批量标记已解决
+      </button>
+      <button nz-button [disabled]="selectedIssueIds().length === 0 || batchResolving()" (click)="clearSelection()">
+        取消选择
+      </button>
+    </div> -->
     @if (activeFilterTags().length > 0) {
       <div class="active-filters">
         <span class="active-filters__label">当前筛选</span>
@@ -65,9 +86,11 @@ import { IssueListStore } from '../../store/issue-list.store';
         [items]="store.items()"
         [viewMode]="viewMode()"
         [activeIssueId]="selectedIssueId()"
+        [selectedIds]="selectedIssueIds()"
         [page]="store.page()"
         [pageSize]="store.pageSize()"
         (open)="openDetail($event)"
+        (selectionChange)="onSelectionChange($event)"
       />
 
       @if (store.total() > 0) {
@@ -185,6 +208,20 @@ import { IssueListStore } from '../../store/issue-list.store';
         border-color: rgba(100, 116, 139, 0.35);
         color: rgb(51, 65, 85);
       }
+      .issue-batch-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0 8px;
+      }
+      .issue-batch-actions__summary {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-right: 4px;
+      }
+      .issue-batch-actions__summary strong {
+        color: var(--text-primary);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -192,6 +229,8 @@ import { IssueListStore } from '../../store/issue-list.store';
 export class IssueListPageComponent {
   readonly store = inject(IssueListStore);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly issueApi = inject(IssueApiService);
+  private readonly message = inject(NzMessageService);
   readonly projectContext = inject(ProjectContextStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -201,6 +240,8 @@ export class IssueListPageComponent {
   readonly versions = signal<ProjectVersionItem[]>([]);
   readonly createOpen = signal(false);
   readonly viewMode = signal<IssueListViewMode>('list');
+  readonly selectedIssueIds = signal<string[]>([]);
+  readonly batchResolving = signal(false);
   readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
   });
@@ -236,6 +277,7 @@ export class IssueListPageComponent {
     const tags: Array<{
       kind:
       | 'status'
+      | 'type'
       | 'priority'
       | 'reporterIds'
       | 'assigneeIds'
@@ -255,6 +297,15 @@ export class IssueListPageComponent {
           kind: 'status',
           value: status,
           label: withPrefix('status', '状态', ISSUE_STATUS_LABELS[status] || status),
+        });
+      }
+    }
+    if (query.types.length > 0) {
+      for (const type of query.types) {
+        tags.push({
+          kind: 'type',
+          value: type,
+          label: withPrefix('type', '类型', ISSUE_TYPE_LABELS[type] || type),
         });
       }
     }
@@ -322,11 +373,11 @@ export class IssueListPageComponent {
         label: withPrefix('includeAssigneeParticipants', '负责人筛选', '不含协作人'),
       });
     }
-    if (query.sortBy !== 'updatedAt') {
+    if (query.sortBy !== 'createdAt') {
       tags.push({
         kind: 'sortBy',
         value: query.sortBy,
-        label: withPrefix('sortBy', '排序字段', query.sortBy === 'createdAt' ? '创建时间' : '更新时间'),
+        label: withPrefix('sortBy', '排序字段', '更新时间'),
       });
     }
     if (query.sortOrder !== 'desc') {
@@ -391,6 +442,11 @@ export class IssueListPageComponent {
       });
       onCleanup(() => subscription.unsubscribe());
     });
+
+    effect(() => {
+      const visible = new Set(this.store.items().map((item) => item.id));
+      this.selectedIssueIds.update((ids) => ids.filter((id) => visible.has(id)));
+    });
   }
 
   createIssue(input: Parameters<IssueListStore['create']>[0]): void {
@@ -399,6 +455,7 @@ export class IssueListPageComponent {
   }
 
   onFilterSubmit(query: IssueListQuery): void {
+    this.selectedIssueIds.set([]);
     this.store.updateQuery({ ...query, page: 1 });
   }
 
@@ -407,6 +464,7 @@ export class IssueListPageComponent {
       page: 1,
       keyword: '',
       status: [],
+      types: [],
       priority: [],
       reporterIds: [],
       assigneeIds: [],
@@ -414,9 +472,10 @@ export class IssueListPageComponent {
       versionCodes: [],
       environmentCodes: [],
       includeAssigneeParticipants: true,
-      sortBy: 'updatedAt',
+      sortBy: 'createdAt',
       sortOrder: 'desc',
     });
+    this.selectedIssueIds.set([]);
 
     effect(() => {
       const action = this.actionQuery();
@@ -435,6 +494,7 @@ export class IssueListPageComponent {
   removeFilterTag(
     kind:
       | 'status'
+      | 'type'
       | 'priority'
       | 'reporterIds'
       | 'assigneeIds'
@@ -452,6 +512,13 @@ export class IssueListPageComponent {
       this.store.updateQuery({
         page: 1,
         status: current.status.filter((item) => item !== value),
+      });
+      return;
+    }
+    if (kind === 'type') {
+      this.store.updateQuery({
+        page: 1,
+        types: current.types.filter((item) => item !== value),
       });
       return;
     }
@@ -507,7 +574,7 @@ export class IssueListPageComponent {
     if (kind === 'sortBy') {
       this.store.updateQuery({
         page: 1,
-        sortBy: 'updatedAt',
+        sortBy: 'createdAt',
       });
       return;
     }
@@ -525,6 +592,7 @@ export class IssueListPageComponent {
   }
 
   onPageIndexChange(page: number): void {
+    this.selectedIssueIds.set([]);
     this.store.updateQuery({ page });
   }
 
@@ -533,7 +601,63 @@ export class IssueListPageComponent {
     if (nextPageSize === this.store.pageSize()) {
       return;
     }
+    this.selectedIssueIds.set([]);
     this.store.updateQuery({ page: 1, pageSize: nextPageSize });
+  }
+
+  onSelectionChange(ids: string[]): void {
+    this.selectedIssueIds.set(ids);
+  }
+
+  clearSelection(): void {
+    this.selectedIssueIds.set([]);
+  }
+
+  batchResolveSelected(): void {
+    const selectedIds = this.selectedIssueIds();
+    if (selectedIds.length === 0 || this.batchResolving()) {
+      return;
+    }
+
+    const itemsById = new Map(this.store.items().map((item) => [item.id, item] as const));
+    const resolvableStatuses = new Set<IssueEntity['status']>(['in_progress', 'reopened']);
+    const eligibleIds = selectedIds.filter((id) => {
+      const item = itemsById.get(id);
+      return !!item && resolvableStatuses.has(item.status);
+    });
+    const skippedCount = selectedIds.length - eligibleIds.length;
+    if (eligibleIds.length === 0) {
+      this.message.warning('当前选中项不可执行“标记已解决”（仅支持进行中/已重开）');
+      return;
+    }
+
+    this.batchResolving.set(true);
+    from(eligibleIds)
+      .pipe(
+        mergeMap(
+          (issueId) =>
+            this.issueApi.resolve(issueId).pipe(
+              map(() => ({ issueId, success: true as const })),
+              catchError(() => of({ issueId, success: false as const }))
+            ),
+          6
+        ),
+        toArray(),
+        finalize(() => this.batchResolving.set(false))
+      )
+      .subscribe((results) => {
+        const successCount = results.filter((item) => item.success).length;
+        const failedCount = results.length - successCount;
+        this.selectedIssueIds.set([]);
+        this.store.refresh();
+
+        if (failedCount === 0 && skippedCount === 0) {
+          this.message.success(`已批量标记 ${successCount} 条为已解决`);
+          return;
+        }
+
+        this.message.warning(`批量操作完成：成功 ${successCount}，失败 ${failedCount}，跳过 ${skippedCount}`);
+      });
   }
 
   openDetail(issueId: string): void {
@@ -559,6 +683,7 @@ export class IssueListPageComponent {
   filterTagClass(
     kind:
       | 'status'
+      | 'type'
       | 'priority'
       | 'reporterIds'
       | 'assigneeIds'
@@ -571,6 +696,7 @@ export class IssueListPageComponent {
       | 'keyword'
   ): string {
     if (kind === 'status') return 'filter-tag filter-tag--status';
+    if (kind === 'type') return 'filter-tag filter-tag--scope';
     if (kind === 'priority') return 'filter-tag filter-tag--priority';
     if (kind === 'reporterIds' || kind === 'assigneeIds') return 'filter-tag filter-tag--people';
     if (kind === 'moduleCodes' || kind === 'versionCodes' || kind === 'environmentCodes') return 'filter-tag filter-tag--scope';

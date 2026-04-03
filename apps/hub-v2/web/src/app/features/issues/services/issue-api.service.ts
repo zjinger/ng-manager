@@ -24,6 +24,7 @@ export class IssueApiService {
     const normalizedQuery: Record<string, string | number | boolean | null | undefined> = {
       ...query,
       status: query.status && query.status.length > 0 ? query.status.join(',') : undefined,
+      types: query.types && query.types.length > 0 ? query.types.join(',') : undefined,
       priority: query.priority && query.priority.length > 0 ? query.priority.join(',') : undefined,
       reporterIds: query.reporterIds && query.reporterIds.length > 0 ? query.reporterIds.join(',') : undefined,
       assigneeIds: query.assigneeIds && query.assigneeIds.length > 0 ? query.assigneeIds.join(',') : undefined,

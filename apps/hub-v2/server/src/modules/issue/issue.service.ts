@@ -273,17 +273,25 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   }
 
   async list(query: ListIssuesQuery, ctx: RequestContext): Promise<IssueListResult> {
+    const normalizedTypes = Array.from(
+      new Set([
+        ...(query.types ?? []),
+        ...(query.type ? [query.type] : [])
+      ])
+    );
     const normalizedQuery: ListIssuesQuery = {
       ...query,
       reporterIds: query.reporterIds ?? [],
       assigneeIds: query.assigneeIds ?? (query.assigneeId?.trim() ? [query.assigneeId.trim()] : []),
+      types: normalizedTypes,
       moduleCodes: query.moduleCodes ?? [],
       versionCodes: query.versionCodes ?? [],
       environmentCodes: query.environmentCodes ?? [],
       includeAssigneeParticipants: query.includeAssigneeParticipants ?? true,
-      sortBy: query.sortBy ?? "updatedAt",
+      sortBy: query.sortBy ?? "createdAt",
       sortOrder: query.sortOrder ?? "desc",
       assigneeId: query.assigneeIds && query.assigneeIds.length > 0 ? undefined : query.assigneeId,
+      type: undefined,
     };
 
     if (query.projectId?.trim()) {

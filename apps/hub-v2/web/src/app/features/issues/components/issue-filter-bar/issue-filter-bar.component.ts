@@ -5,7 +5,7 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
-import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
+import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
 import { FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { IssueListQuery } from '../../models/issue.model';
@@ -28,6 +28,23 @@ export type IssueListViewMode = 'list' | 'card';
       }
       <app-filter-bar toolbar-filters class="issue-toolbar__main">
         <nz-select
+          nzPlaceHolder="类型，支持多选"
+          style="width: 260px"
+          class="toolbar-select"
+          [ngModel]="draft().types"
+          (ngModelChange)="updateField('types', $event)"
+          nzMode="multiple"
+          [nzMaxTagCount]="2"
+          [nzAllowClear]="true"
+          [nzMaxTagPlaceholder]="null"
+        >
+          @for (item of issueTypeOptions; track item.value) {
+            @if (item.value !== '') {
+              <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+            }
+          }
+        </nz-select>
+        <nz-select
           nzPlaceHolder="状态，支持多选"
           style="width: 250px"
           class="toolbar-select"
@@ -48,12 +65,12 @@ export type IssueListViewMode = 'list' | 'card';
         </nz-select>
         <nz-select
           nzPlaceHolder="优先级，支持多选"
-          style="width: 240px"
+          style="width: 200px"
           class="toolbar-select"
           [ngModel]="draft().priority"
           (ngModelChange)="updateField('priority', $event)"
           nzMode="multiple"
-          [nzMaxTagCount]="3"
+          [nzMaxTagCount]="2"
           [nzAllowClear]="true"
           [nzMaxTagPlaceholder]="null"
         >
@@ -178,8 +195,8 @@ export type IssueListViewMode = 'list' | 'card';
           <div class="advanced-field">
             <label>排序字段</label>
             <nz-select [ngModel]="draft().sortBy" (ngModelChange)="updateField('sortBy', $event)">
-              <nz-option nzLabel="更新时间" nzValue="updatedAt"></nz-option>
               <nz-option nzLabel="创建时间" nzValue="createdAt"></nz-option>
+              <nz-option nzLabel="更新时间" nzValue="updatedAt"></nz-option>
             </nz-select>
           </div>
           <div class="advanced-field">
@@ -252,6 +269,7 @@ export class IssueFilterBarComponent {
   readonly advancedOpen = signal(false);
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
+  readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
   readonly viewOptions = [
     { value: 'list' as const, icon: 'unordered-list', ariaLabel: '列表视图' },
     { value: 'card' as const, icon: 'appstore', ariaLabel: '卡片视图' },
@@ -261,6 +279,7 @@ export class IssueFilterBarComponent {
     pageSize: 20,
     keyword: '',
     status: [],
+    types: [],
     priority: [],
     reporterIds: [],
     assigneeIds: [],
@@ -268,7 +287,7 @@ export class IssueFilterBarComponent {
     versionCodes: [],
     environmentCodes: [],
     includeAssigneeParticipants: true,
-    sortBy: 'updatedAt',
+    sortBy: 'createdAt',
     sortOrder: 'desc',
     projectId: '',
   });
@@ -294,8 +313,9 @@ export class IssueFilterBarComponent {
       moduleCodes: [],
       versionCodes: [],
       environmentCodes: [],
+      types: [],
       includeAssigneeParticipants: true,
-      sortBy: 'updatedAt',
+      sortBy: 'createdAt',
       sortOrder: 'desc',
     }));
   }

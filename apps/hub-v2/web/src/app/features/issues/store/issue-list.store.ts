@@ -12,6 +12,7 @@ const DEFAULT_QUERY: IssueListQuery = {
   keyword: '',
   projectId: '',
   status: [],
+  types: [],
   priority: [],
   reporterIds: [],
   assigneeIds: [],
@@ -19,7 +20,7 @@ const DEFAULT_QUERY: IssueListQuery = {
   versionCodes: [],
   environmentCodes: [],
   includeAssigneeParticipants: true,
-  sortBy: 'updatedAt',
+  sortBy: 'createdAt',
   sortOrder: 'desc',
 };
 
@@ -88,6 +89,7 @@ export class IssueListStore {
     const query = this.queryState();
     const hasComplexFilter =
       (query.status?.length ?? 0) > 0 ||
+      (query.types?.length ?? 0) > 0 ||
       (query.priority?.length ?? 0) > 0 ||
       (query.reporterIds?.length ?? 0) > 0 ||
       (query.assigneeIds?.length ?? 0) > 0 ||

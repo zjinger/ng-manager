@@ -163,14 +163,16 @@ export class IssueRepo {
       params.push(...query.status);
     }
 
-    if (query.type) {
-      if (query.type === "task") {
-        conditions.push("(i.type = ? OR i.type = 'support')");
-        params.push(query.type);
+    if (query.types && query.types.length > 0) {
+      const normalizedTypes = Array.from(new Set(query.types));
+      const includesTask = normalizedTypes.includes("task");
+      const placeholders = normalizedTypes.map(() => "?").join(", ");
+      if (includesTask) {
+        conditions.push(`(i.type IN (${placeholders}) OR i.type = 'support')`);
       } else {
-        conditions.push("i.type = ?");
-        params.push(query.type);
+        conditions.push(`i.type IN (${placeholders})`);
       }
+      params.push(...normalizedTypes);
     }
 
     if (query.priority && query.priority.length > 0) {
