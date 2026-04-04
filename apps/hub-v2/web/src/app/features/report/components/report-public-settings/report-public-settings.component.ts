@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -22,6 +23,7 @@ type ProjectOption = {
   standalone: true,
   imports: [
     CommonModule,
+    ClipboardModule,
     FormsModule,
     NzButtonModule,
     NzCheckboxModule,
@@ -35,6 +37,7 @@ type ProjectOption = {
 export class ReportPublicSettingsComponent {
   private readonly api = inject(ReportApiService);
   private readonly message = inject(NzMessageService);
+  private readonly clipboard = inject(Clipboard);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly publicBoards = input<ReportPublicBoardSummary[]>([]);
@@ -103,24 +106,13 @@ export class ReportPublicSettingsComponent {
   copyShareLink(project: ReportPublicProject): void {
     const link = this.buildShareLink(project.shareToken);
     this.copyingProjectId.set(project.id);
-    const reset = () => this.copyingProjectId.set(null);
-
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard
-        .writeText(link)
-        .then(() => {
-          this.message.success('分享链接已复制');
-          reset();
-        })
-        .catch(() => {
-          this.fallbackCopy(link);
-          reset();
-        });
-      return;
+    const ok = this.clipboard.copy(link);
+    this.copyingProjectId.set(null);
+    if (ok) {
+      this.message.success('分享链接已复制');
+    } else {
+      this.message.error('复制失败，请手动复制');
     }
-
-    this.fallbackCopy(link);
-    reset();
   }
 
   regenerateLink(project: ReportPublicProject): void {
@@ -192,22 +184,5 @@ export class ReportPublicSettingsComponent {
 
   protected buildShareLink(shareToken: string): string {
     return `${window.location.origin}/public/report?share=${encodeURIComponent(shareToken)}`;
-  }
-
-  private fallbackCopy(content: string): void {
-    const textArea = document.createElement('textarea');
-    textArea.value = content;
-    textArea.style.position = 'fixed';
-    textArea.style.opacity = '0';
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      this.message.success('分享链接已复制');
-    } catch {
-      this.message.warning(`复制失败，请手动复制：${content}`);
-    } finally {
-      document.body.removeChild(textArea);
-    }
   }
 }

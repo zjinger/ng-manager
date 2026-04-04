@@ -122,8 +122,12 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(aiReportRoutes, { prefix: "/api/admin" });
   await app.register(reportPublicRoutes, { prefix: "/api/admin" });
   await app.register(searchRoutes, { prefix: "/api/admin" });
-  await app.register(surveyRoutes, { prefix: "/api/admin" });
-  await app.register(surveyPublicRoutes, { prefix: "/api/public" });
+  if (app.config.surveyEnabled) {
+    await app.register(surveyRoutes, { prefix: "/api/admin" });
+    await app.register(surveyPublicRoutes, { prefix: "/api/public" });
+  } else {
+    app.log.info("[hub-v2] survey routes are disabled by SURVEY_ENABLED=false");
+  }
   await app.register(aiReportPublicRoutes, { prefix: "/api/public" });
 
   const spaRoot = resolveSpaRoot();

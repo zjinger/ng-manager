@@ -1,6 +1,11 @@
 import type { SurveyCreateInput, SurveyEntity, SurveyQuestionInput, SurveyUpdateInput } from '../../models/survey.model';
 import { createQuestionDraft, type EditorQuestionDraft } from './survey-editor.utils';
 
+export interface EditorDraftPageState {
+  customTitle: string;
+  questions: EditorQuestionDraft[];
+}
+
 export interface EditorDraftState {
   title: string;
   description: string;
@@ -8,6 +13,7 @@ export interface EditorDraftState {
   isPublic: boolean;
   startAt: string;
   endAt: string;
+  pages: EditorDraftPageState[];
   questions: EditorQuestionDraft[];
 }
 
@@ -24,7 +30,8 @@ export type BuildPayloadResult =
     };
 
 export function mapEntityToEditorDraft(entity: SurveyEntity): EditorDraftState {
-  const questions = entity.questions
+  const groupedPages = new Map<number, EditorDraftPageState>();
+  const sortedQuestions = entity.questions
     .slice()
     .sort((a, b) => a.sort - b.sort)
     .map((question) =>
@@ -40,6 +47,26 @@ export function mapEntityToEditorDraft(entity: SurveyEntity): EditorDraftState {
         options: question.options.slice().sort((a, b) => a.sort - b.sort).map((option) => option.label),
       })
     );
+  entity.questions
+    .slice()
+    .sort((a, b) => a.sort - b.sort)
+    .forEach((question, index) => {
+      const pageIndex = toPageIndex(question.key);
+      const currentPage = groupedPages.get(pageIndex) ?? {
+        customTitle: '',
+        questions: [],
+      };
+      const pageTitle = (question.pageTitle || '').trim();
+      if (!currentPage.customTitle && pageTitle) {
+        currentPage.customTitle = pageTitle;
+      }
+      currentPage.questions.push(sortedQuestions[index]);
+      groupedPages.set(pageIndex, currentPage);
+    });
+
+  const pages = Array.from(groupedPages.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([, page]) => page);
 
   return {
     title: entity.title,
@@ -48,7 +75,8 @@ export function mapEntityToEditorDraft(entity: SurveyEntity): EditorDraftState {
     isPublic: entity.isPublic,
     startAt: toDatetimeLocal(entity.startAt),
     endAt: toDatetimeLocal(entity.endAt),
-    questions,
+    pages,
+    questions: pages.flatMap((page) => page.questions),
   };
 }
 
@@ -61,7 +89,18 @@ export function buildPayloadFromEditorDraft(draft: EditorDraftState): BuildPaylo
     };
   }
 
-  const questions = draft.questions.map((question, index) => toQuestionInput(question, index));
+  const sourcePages = draft.pages.length > 0 ? draft.pages : [{ customTitle: '', questions: draft.questions }];
+  const normalizedPages = sourcePages.length > 0 ? sourcePages : [{ customTitle: '', questions: [] }];
+  const questions = normalizedPages
+    .flatMap((page, pageIndex) =>
+      page.questions.map((question, questionIndexInPage) => ({
+        question,
+        pageIndex,
+        pageTitle: page.customTitle,
+        questionIndexInPage,
+      }))
+    )
+    .map((item, index) => toQuestionInput(item.question, index, item.pageIndex, item.pageTitle, item.questionIndexInPage));
   if (questions.length === 0) {
     return {
       ok: false,
@@ -92,7 +131,13 @@ export function buildPayloadFromEditorDraft(draft: EditorDraftState): BuildPaylo
   };
 }
 
-function toQuestionInput(question: EditorQuestionDraft, index: number): SurveyQuestionInput {
+function toQuestionInput(
+  question: EditorQuestionDraft,
+  index: number,
+  pageIndex: number,
+  pageTitle: string,
+  questionIndexInPage: number
+): SurveyQuestionInput {
   const normalizedType = question.type === 'scale' ? 'rating' : question.type;
   const normalizedOptions =
     normalizedType === 'single_choice' || normalizedType === 'multi_choice'
@@ -120,7 +165,8 @@ function toQuestionInput(question: EditorQuestionDraft, index: number): SurveyQu
       : undefined;
 
   return {
-    key: `q_${index + 1}`,
+    key: `p${pageIndex + 1}_q${questionIndexInPage + 1}`,
+    pageTitle: pageTitle.trim() || undefined,
     title: question.title.trim() || `题目 ${index + 1}`,
     description: question.description.trim() || undefined,
     type: normalizedType,
@@ -133,6 +179,19 @@ function toQuestionInput(question: EditorQuestionDraft, index: number): SurveyQu
     maxSelect: normalizedType === 'multi_choice' && question.maxSelect ? Math.max(1, Math.floor(question.maxSelect)) : undefined,
     options: fallbackOptions,
   };
+}
+
+function toPageIndex(questionKey: string | undefined): number {
+  const key = (questionKey || '').trim();
+  const match = /^p(\d+)_q\d+$/i.exec(key);
+  if (!match) {
+    return 0;
+  }
+  const parsed = Number(match[1]);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return 0;
+  }
+  return parsed - 1;
 }
 
 function toEditorQuestionType(type: SurveyQuestionInput['type'], maxValue: number | null): EditorQuestionDraft['type'] {

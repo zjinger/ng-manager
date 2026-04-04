@@ -31,6 +31,7 @@ type SurveyQuestionRow = {
   id: string;
   survey_id: string;
   question_key: string;
+  page_title: string | null;
   title: string;
   description: string | null;
   type: SurveyQuestionType;
@@ -304,9 +305,9 @@ export class SurveyRepo {
     const questionStmt = this.db.prepare(
       `
       INSERT INTO survey_questions (
-        id, survey_id, question_key, title, description, type, required, sort,
+        id, survey_id, question_key, page_title, title, description, type, required, sort,
         placeholder, min_value, max_value, max_select, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
     );
     const optionStmt = this.db.prepare(
@@ -322,6 +323,7 @@ export class SurveyRepo {
         question.id,
         entity.id,
         question.key,
+        question.pageTitle,
         question.title,
         question.description,
         question.type,
@@ -438,6 +440,7 @@ export class SurveyRepo {
       id: row.id,
       surveyId: row.survey_id,
       key: row.question_key,
+      pageTitle: row.page_title,
       title: row.title,
       description: row.description,
       type: row.type,

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { FEATURE_FLAGS } from './core/feature-flags';
 
 export const routes: Routes = [
   {
@@ -23,13 +24,17 @@ export const routes: Routes = [
   //       (m) => m.PublicSurveyPageComponent
   //     ),
   // },
-  {
-    path: 'public/surveys/:slug',
-    loadComponent: () =>
-      import('./features/survey/pages/public-survey-form-page/public-survey-form-page.component').then(
-        (m) => m.PublicSurveyFormPageComponent
-      ),
-  },
+  ...(FEATURE_FLAGS.survey
+    ? [
+        {
+          path: 'public/surveys/:slug',
+          loadComponent: () =>
+            import('./features/survey/pages/public-survey-form-page/public-survey-form-page.component').then(
+              (m) => m.PublicSurveyFormPageComponent
+            ),
+        },
+      ]
+    : []),
   {
     path: 'public/report',
     loadChildren: () =>
@@ -83,11 +88,15 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/feedback/routes').then((m) => m.FEEDBACK_ROUTES),
       },
-      {
-        path: 'surveys',
-        loadChildren: () =>
-          import('./features/survey/routes').then((m) => m.SURVEY_ROUTES),
-      },
+      ...(FEATURE_FLAGS.survey
+        ? [
+            {
+              path: 'surveys',
+              loadChildren: () =>
+                import('./features/survey/routes').then((m) => m.SURVEY_ROUTES),
+            },
+          ]
+        : []),
       {
         path: 'projects',
         loadChildren: () =>

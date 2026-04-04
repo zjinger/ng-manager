@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -20,6 +21,7 @@ import { PublicReportStore } from '../../store/public-report.store';
   standalone: true,
   imports: [
     CommonModule,
+    ClipboardModule,
     FormsModule,
     NzButtonModule,
     NzInputModule,
@@ -39,6 +41,7 @@ export class PublicReportPageComponent {
   private readonly store = inject(PublicReportStore);
   private readonly destroyRef = inject(DestroyRef);
   private readonly message = inject(NzMessageService);
+  private readonly clipboard = inject(Clipboard);
 
   readonly query = this.store.query;
   readonly share = this.store.share;
@@ -144,17 +147,13 @@ export class PublicReportPageComponent {
 
   copyShareLink(): void {
     const text = this.shareLink();
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          this.copyState.set('copied');
-          setTimeout(() => this.copyState.set('idle'), 1800);
-        })
-        .catch(() => this.fallbackCopy(text));
+    const ok = this.clipboard.copy(text);
+    if (!ok) {
+      this.message.error('复制失败，请手动复制');
       return;
     }
-    this.fallbackCopy(text);
+    this.copyState.set('copied');
+    setTimeout(() => this.copyState.set('idle'), 1800);
   }
 
   private loadProjects(): void {
@@ -237,22 +236,6 @@ export class PublicReportPageComponent {
       empty: '空数据',
     };
     return typeMap[block.type] || block.type;
-  }
-
-  private fallbackCopy(content: string): void {
-    const textArea = document.createElement('textarea');
-    textArea.value = content;
-    textArea.style.position = 'fixed';
-    textArea.style.opacity = '0';
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      this.copyState.set('copied');
-      setTimeout(() => this.copyState.set('idle'), 1800);
-    } finally {
-      document.body.removeChild(textArea);
-    }
   }
 
   private getOrigin(): string {

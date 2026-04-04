@@ -59,12 +59,12 @@ export function createQuestionDraft(
   type: SurveyQuestionType,
   patch: Partial<Omit<EditorQuestionDraft, 'id' | 'type' | 'options'>> & { options?: string[] } = {}
 ): EditorQuestionDraft {
-  const title = patch.title?.trim() || `未命名${QUESTION_TYPES.find((item) => item.value === type)?.label ?? '题目'}`;
+  const title = patch.title?.trim() || ''; //|| `未命名${QUESTION_TYPES.find((item) => item.value === type)?.label ?? '题目'}`;
   const options =
     type === 'single_choice' || type === 'multi_choice'
       ? (patch.options && patch.options.length >= 2 ? patch.options : ['选项1', '选项2']).map((item, index) =>
-          createOptionDraft(item, index)
-        )
+        createOptionDraft(item, index)
+      )
       : [];
 
   return {

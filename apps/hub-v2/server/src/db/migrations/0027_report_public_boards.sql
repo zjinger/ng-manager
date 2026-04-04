@@ -3,11 +3,14 @@ CREATE TABLE IF NOT EXISTS report_public_boards (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   share_token TEXT NOT NULL UNIQUE,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_report_public_boards_active
+  ON report_public_boards(is_active);
 CREATE INDEX IF NOT EXISTS idx_report_public_boards_created_by
   ON report_public_boards(created_by);
 

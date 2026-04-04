@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS survey_questions (
   id TEXT PRIMARY KEY,
   survey_id TEXT NOT NULL,
   question_key TEXT NOT NULL,
+  page_title TEXT,
   title TEXT NOT NULL,
   description TEXT,
   type TEXT NOT NULL,

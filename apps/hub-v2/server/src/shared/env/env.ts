@@ -57,6 +57,7 @@ export function loadEnv() {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
     OPENAI_MODEL: process.env.OPENAI_MODEL,
+    SURVEY_ENABLED: process.env.SURVEY_ENABLED,
     REPORT_PUBLIC_ENABLED: process.env.REPORT_PUBLIC_ENABLED,
     REPORT_PUBLIC_RATE_LIMIT: process.env.REPORT_PUBLIC_RATE_LIMIT
   });
@@ -92,6 +93,7 @@ export function loadEnv() {
     openaiApiKey: parsed.OPENAI_API_KEY ?? null,
     openaiBaseUrl: parsed.OPENAI_BASE_URL ?? null,
     openaiModel: (parsed.OPENAI_MODEL ?? "").trim() ?? null,
+    surveyEnabled: parsed.SURVEY_ENABLED,
     reportPublicEnabled: parsed.REPORT_PUBLIC_ENABLED,
     reportPublicRateLimit: parsed.REPORT_PUBLIC_RATE_LIMIT
   };

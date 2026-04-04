@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -7,14 +7,31 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzStepsModule } from 'ng-zorro-antd/steps';
 
 import type { SurveyEntity, SurveyQuestionEntity } from '../../models/survey.model';
 import { SurveyApiService } from '../../services/survey-api.service';
 
+interface PublicSurveyPage {
+  index: number;
+  title: string;
+  questions: SurveyQuestionEntity[];
+}
+
 @Component({
   selector: 'app-public-survey-form-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NzButtonModule, NzInputModule, NzRateModule, NzSelectModule, NzSpinModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    NzButtonModule,
+    NzInputModule,
+    NzRateModule,
+    NzSelectModule,
+    NzSpinModule,
+    NzStepsModule,
+  ],
   template: `
     <main class="public-survey">
       <section class="public-survey__card">
@@ -41,92 +58,111 @@ import { SurveyApiService } from '../../services/survey-api.service';
             <p>{{ currentSurvey.description || '请根据实际体验填写以下问题。' }}</p>
           </header>
 
+          @if (pages().length > 1) {
+            <section class="public-survey__steps-wrap">
+              <nz-steps nzSize="small" [nzCurrent]="currentPageIndex()" class="public-survey__steps">
+                @for (page of pages(); track page.index) {
+                  <nz-step [nzTitle]="page.title"></nz-step>
+                }
+              </nz-steps>
+            </section>
+          }
+
           <form class="public-survey__form" (ngSubmit)="submit()">
-            @for (question of currentSurvey.questions; track question.id; let i = $index) {
-              <section class="survey-question">
-                <h3>{{ i + 1 }}. {{ question.title }} @if (question.required) {<span>*</span>}</h3>
-
-                @if (question.type === 'text') {
-                  <input
-                    nz-input
-                    [name]="'q_' + question.id"
-                    [ngModel]="valueOf(question.id)"
-                    (ngModelChange)="setAnswer(question.id, $event)"
-                    [placeholder]="question.placeholder || '请输入'"
-                  />
-                }
-
-                @if (question.type === 'textarea') {
-                  <textarea
-                    nz-input
-                    rows="4"
-                    [name]="'q_' + question.id"
-                    [ngModel]="valueOf(question.id)"
-                    (ngModelChange)="setAnswer(question.id, $event)"
-                    [placeholder]="question.placeholder || '请输入'"
-                  ></textarea>
-                }
-
-                @if (question.type === 'single_choice') {
-                  <nz-select
-                    [name]="'q_' + question.id"
-                    [ngModel]="valueOf(question.id)"
-                    (ngModelChange)="setAnswer(question.id, $event)"
-                    nzPlaceHolder="请选择"
-                  >
-                    @for (option of question.options; track option.id) {
-                      <nz-option [nzValue]="option.value" [nzLabel]="option.label"></nz-option>
+            @if (currentPage(); as page) {
+              @for (question of page.questions; track question.id) {
+                <section class="survey-question">
+                  <h3>
+                    {{ question.sort + 1 }}. {{ question.title }}
+                    @if (question.required) {
+                      <span class="survey-question__required">*</span>
                     }
-                  </nz-select>
-                }
+                  </h3>
 
-                @if (question.type === 'multi_choice') {
-                  <nz-select
-                    nzMode="multiple"
-                    [name]="'q_' + question.id"
-                    [ngModel]="valueOf(question.id)"
-                    (ngModelChange)="setAnswer(question.id, $event)"
-                    nzPlaceHolder="请选择（可多选）"
-                    [nzMaxMultipleCount]="question.maxSelect || question.options.length"
-                  >
-                    @for (option of question.options; track option.id) {
-                      <nz-option [nzValue]="option.value" [nzLabel]="option.label"></nz-option>
-                    }
-                  </nz-select>
-                }
-
-                @if (isScaleQuestion(question)) {
-                  <div class="survey-question__scale">
-                    @for (score of scaleItems(question); track score) {
-                      <button
-                        type="button"
-                        class="survey-question__scale-item"
-                        [class.survey-question__scale-item--active]="valueOf(question.id) === score"
-                        (click)="setAnswer(question.id, score)"
-                      >
-                        {{ score }}
-                      </button>
-                    }
-                  </div>
-                }
-
-                @if (question.type === 'rating' && !isScaleQuestion(question)) {
-                  <div class="survey-question__rating">
-                    <nz-rate
+                  @if (question.type === 'text') {
+                    <input
+                      nz-input
+                      [name]="'q_' + question.id"
                       [ngModel]="valueOf(question.id)"
-                      [ngModelOptions]="{ standalone: true }"
                       (ngModelChange)="setAnswer(question.id, $event)"
-                    ></nz-rate>
-                    <span>{{ valueOf(question.id) || 0 }} 分</span>
-                  </div>
-                }
-              </section>
+                      [placeholder]="question.placeholder || '请输入'"
+                    />
+                  }
+
+                  @if (question.type === 'textarea') {
+                    <textarea
+                      nz-input
+                      rows="4"
+                      [name]="'q_' + question.id"
+                      [ngModel]="valueOf(question.id)"
+                      (ngModelChange)="setAnswer(question.id, $event)"
+                      [placeholder]="question.placeholder || '请输入'"
+                    ></textarea>
+                  }
+
+                  @if (question.type === 'single_choice') {
+                    <nz-select
+                      [name]="'q_' + question.id"
+                      [ngModel]="valueOf(question.id)"
+                      (ngModelChange)="setAnswer(question.id, $event)"
+                      nzPlaceHolder="请选择"
+                    >
+                      @for (option of question.options; track option.id) {
+                        <nz-option [nzValue]="option.value" [nzLabel]="option.label"></nz-option>
+                      }
+                    </nz-select>
+                  }
+
+                  @if (question.type === 'multi_choice') {
+                    <nz-select
+                      nzMode="multiple"
+                      [name]="'q_' + question.id"
+                      [ngModel]="valueOf(question.id)"
+                      (ngModelChange)="setAnswer(question.id, $event)"
+                      nzPlaceHolder="请选择（可多选）"
+                      [nzMaxMultipleCount]="question.maxSelect || question.options.length"
+                    >
+                      @for (option of question.options; track option.id) {
+                        <nz-option [nzValue]="option.value" [nzLabel]="option.label"></nz-option>
+                      }
+                    </nz-select>
+                  }
+
+                  @if (isScaleQuestion(question)) {
+                    <div class="survey-question__scale">
+                      @for (score of scaleItems(question); track score) {
+                        <button
+                          type="button"
+                          class="survey-question__scale-item"
+                          [class.survey-question__scale-item--active]="valueOf(question.id) === score"
+                          (click)="setAnswer(question.id, score)"
+                        >
+                          {{ score }}
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  @if (question.type === 'rating' && !isScaleQuestion(question)) {
+                    <div class="survey-question__rating">
+                      <nz-rate
+                        [ngModel]="valueOf(question.id)"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="setAnswer(question.id, $event)"
+                      ></nz-rate>
+                      <span>{{ valueOf(question.id) || 0 }} 分</span>
+                    </div>
+                  }
+                </section>
+              }
             }
 
-            <section class="survey-question">
-              <h3>联系方式（选填）</h3>
-              <input nz-input name="contact" [(ngModel)]="contact" placeholder="邮箱 / 企业微信 / 手机号" />
-            </section>
+            @if (isLastPage()) {
+              <section class="survey-question">
+                <h3>联系方式（选填）</h3>
+                <input nz-input name="contact" [(ngModel)]="contact" placeholder="邮箱 / 企业微信 / 手机号" />
+              </section>
+            }
 
             @if (submitError()) {
               <div class="public-survey__error">{{ submitError() }}</div>
@@ -134,7 +170,16 @@ import { SurveyApiService } from '../../services/survey-api.service';
 
             <div class="public-survey__actions">
               <button nz-button type="button" (click)="resetAnswers()">清空</button>
-              <button nz-button nzType="primary" [nzLoading]="submitting()">提交问卷</button>
+
+              @if (pages().length > 1) {
+                <button nz-button type="button" (click)="previousPage()" [disabled]="currentPageIndex() === 0">上一页</button>
+              }
+
+              @if (!isLastPage()) {
+                <button nz-button nzType="primary" type="button" (click)="nextPage()">下一页</button>
+              } @else {
+                <button nz-button nzType="primary" [nzLoading]="submitting()">提交问卷</button>
+              }
             </div>
           </form>
         }
@@ -182,6 +227,9 @@ import { SurveyApiService } from '../../services/survey-api.service';
         color: var(--text-muted);
         white-space: pre-wrap;
       }
+      .public-survey__steps-wrap {
+        margin-top: 14px;
+      }
       .public-survey__form {
         margin-top: 16px;
         display: grid;
@@ -196,8 +244,16 @@ import { SurveyApiService } from '../../services/survey-api.service';
         margin: 0;
         font-size: 15px;
       }
-      .survey-question h3 span {
-        color: var(--color-error);
+      .survey-question__required {
+        color: #ef4444;
+        font-weight: 700;
+        margin-left: 4px;
+      }
+      .survey-question nz-select {
+        width: 100%;
+      }
+      :host ::ng-deep .survey-question .ant-select {
+        width: 100%;
       }
       .survey-question p {
         margin: 8px 0 10px;
@@ -260,6 +316,32 @@ export class PublicSurveyFormPageComponent {
   readonly error = signal('');
   readonly submitError = signal('');
   readonly survey = signal<SurveyEntity | null>(null);
+  readonly currentPageIndex = signal(0);
+
+  readonly pages = computed<PublicSurveyPage[]>(() => {
+    const currentSurvey = this.survey();
+    if (!currentSurvey) {
+      return [];
+    }
+
+    const grouped = new Map<number, SurveyQuestionEntity[]>();
+    for (const question of currentSurvey.questions.slice().sort((a, b) => a.sort - b.sort)) {
+      const pageIndex = this.parsePageIndex(question.key);
+      const list = grouped.get(pageIndex) ?? [];
+      list.push(question);
+      grouped.set(pageIndex, list);
+    }
+
+    return Array.from(grouped.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([_, questions], index) => ({
+        index,
+        title: this.resolvePageTitle(questions, index),
+        questions,
+      }));
+  });
+
+  readonly currentPage = computed<PublicSurveyPage | null>(() => this.pages()[this.currentPageIndex()] ?? null);
 
   contact = '';
   private answers: Record<string, unknown> = {};
@@ -283,11 +365,13 @@ export class PublicSurveyFormPageComponent {
     this.submitError.set('');
     this.contact = '';
     this.answers = {};
+    this.currentPageIndex.set(0);
 
     this.surveyApi.getPublicBySlug(slug).subscribe({
       next: (survey) => {
         this.loading.set(false);
         this.survey.set(survey);
+        this.currentPageIndex.set(0);
         this.initializeAnswers(survey.questions);
       },
       error: (err: { error?: { message?: string } }) => {
@@ -309,18 +393,48 @@ export class PublicSurveyFormPageComponent {
     };
   }
 
+  previousPage(): void {
+    if (this.currentPageIndex() <= 0) {
+      return;
+    }
+    this.submitError.set('');
+    this.currentPageIndex.update((index) => Math.max(0, index - 1));
+  }
+
+  nextPage(): void {
+    const page = this.currentPage();
+    if (!page) {
+      return;
+    }
+
+    const pageValidationError = this.validateRequiredQuestions(page.questions);
+    if (pageValidationError) {
+      this.submitError.set(pageValidationError);
+      return;
+    }
+
+    this.submitError.set('');
+    this.currentPageIndex.update((index) => Math.min(this.pages().length - 1, index + 1));
+  }
+
+  isLastPage(): boolean {
+    const pageCount = this.pages().length;
+    if (pageCount <= 1) {
+      return true;
+    }
+    return this.currentPageIndex() >= pageCount - 1;
+  }
+
   submit(): void {
     const currentSurvey = this.survey();
     if (!currentSurvey) {
       return;
     }
 
-    for (const question of currentSurvey.questions) {
-      const value = this.answers[question.id];
-      if (question.required && !this.hasAnswer(value)) {
-        this.submitError.set(`请填写必填题：${question.title}`);
-        return;
-      }
+    const validationError = this.validateRequiredQuestions(currentSurvey.questions);
+    if (validationError) {
+      this.submitError.set(validationError);
+      return;
     }
 
     const answers = currentSurvey.questions
@@ -356,12 +470,23 @@ export class PublicSurveyFormPageComponent {
     }
     this.contact = '';
     this.submitError.set('');
+    this.currentPageIndex.set(0);
     this.initializeAnswers(currentSurvey.questions);
   }
 
   fillAgain(): void {
     this.submitted.set(false);
     this.resetAnswers();
+  }
+
+  private validateRequiredQuestions(questions: SurveyQuestionEntity[]): string | null {
+    for (const question of questions) {
+      const value = this.answers[question.id];
+      if (question.required && !this.hasAnswer(value)) {
+        return `请填写必填题：${question.title}`;
+      }
+    }
+    return null;
   }
 
   private hasAnswer(value: unknown): boolean {
@@ -383,6 +508,24 @@ export class PublicSurveyFormPageComponent {
       }
     }
     this.answers = next;
+  }
+
+  private parsePageIndex(key: string): number {
+    const normalized = (key || '').trim();
+    const match = /^p(\d+)_q\d+$/i.exec(normalized);
+    if (!match) {
+      return 0;
+    }
+    const parsed = Number(match[1]);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      return 0;
+    }
+    return parsed - 1;
+  }
+
+  private resolvePageTitle(questions: SurveyQuestionEntity[], index: number): string {
+    const customTitle = questions.map((question) => (question.pageTitle || '').trim()).find((title) => title.length > 0);
+    return customTitle || `第 ${index + 1} 页`;
   }
 
   isScaleQuestion(question: SurveyQuestionEntity): boolean {

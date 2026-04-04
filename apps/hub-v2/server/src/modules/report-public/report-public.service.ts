@@ -28,8 +28,8 @@ export class ReportPublicService {
     private readonly projectRepo: ProjectRepo
   ) {
     this.publicLimiter = new TokenRateLimiter({
-      limitPerWindow: Math.max(1, config.reportPublicRateLimit || 10),
-      windowMs: 60 * 1000
+      limitPerWindow: Math.max(1, config.reportPublicRateLimit || 10), // 每分钟每个 IP 的访问限制，默认为 10 次
+      windowMs: 60 * 1000 // 窗口时间为 1 分钟
     });
   }
 

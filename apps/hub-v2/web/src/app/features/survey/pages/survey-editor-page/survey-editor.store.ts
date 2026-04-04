@@ -3,14 +3,15 @@ import { signal } from '@angular/core';
 import type { SurveyEntity, SurveyQuestionType, SurveyStatus } from '../../models/survey.model';
 import { mapEntityToEditorDraft } from './survey-editor.mapper';
 import { SurveyEditorMetaStore, type EditorMetaDraft } from './survey-editor-meta.store';
-import { SurveyEditorQuestionStore } from './survey-editor-question.store';
+import { SurveyEditorQuestionStore, type EditorPageDraft, type EditorPageSeed } from './survey-editor-question.store';
 import { SnapshotHistory } from './survey-editor.snapshot-history';
 import { createQuestionDraft, type EditorOptionDraft, type EditorQuestionDraft } from './survey-editor.utils';
 
 interface EditorSnapshot {
   meta: EditorMetaDraft;
   question: {
-    questions: EditorQuestionDraft[];
+    pages: EditorPageDraft[];
+    activePageId: string;
     activeQuestionId: string;
   };
 }
@@ -34,6 +35,9 @@ export class SurveyEditorStore {
   readonly endAt = this.meta.endAt;
 
   readonly questions = this.question.questions;
+  readonly allQuestions = this.question.allQuestions;
+  readonly pages = this.question.pages;
+  readonly activePageId = this.question.activePageId;
   readonly activeQuestionId = this.question.activeQuestionId;
   readonly templateKeyword = this.question.templateKeyword;
 
@@ -74,7 +78,8 @@ export class SurveyEditorStore {
 
   applyEntity(entity: SurveyEntity): void {
     const mapped = mapEntityToEditorDraft(entity);
-    const questions = mapped.questions.length > 0 ? mapped.questions : [createQuestionDraft('text')];
+    const pages: EditorPageSeed[] =
+      mapped.pages.length > 0 ? mapped.pages : [{ customTitle: '', questions: [createQuestionDraft('text')] }];
 
     this.meta.applyMeta({
       ...mapped,
@@ -82,7 +87,7 @@ export class SurveyEditorStore {
       status: entity.status,
       isNew: false,
     });
-    this.question.setQuestions(questions);
+    this.question.setPages(pages);
     this.resetHistory();
   }
 
@@ -97,6 +102,30 @@ export class SurveyEditorStore {
       this.meta.setTitle(template.name === '空白问卷' ? '未命名问卷' : template.name);
       this.meta.setDescription('');
     }
+    this.recordHistory();
+  }
+
+  addPage(): void {
+    this.question.addPage();
+    this.recordHistory();
+  }
+
+  removePage(pageId: string): void {
+    this.question.removePage(pageId);
+    this.recordHistory();
+  }
+
+  setActivePage(pageId: string): void {
+    this.question.setActivePage(pageId);
+  }
+
+  setPageCustomTitle(pageId: string, customTitle: string): void {
+    this.question.setPageCustomTitle(pageId, customTitle);
+    this.recordHistory();
+  }
+
+  moveQuestionToPage(questionId: string, targetPageId: string): void {
+    this.question.moveQuestionToPage(questionId, targetPageId);
     this.recordHistory();
   }
 

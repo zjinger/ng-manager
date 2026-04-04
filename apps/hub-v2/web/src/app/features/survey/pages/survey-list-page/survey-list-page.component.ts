@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -25,6 +26,7 @@ import { SurveyApiService } from '../../services/survey-api.service';
   imports: [
     DatePipe,
     FormsModule,
+    ClipboardModule,
     NzButtonModule,
     NzPaginationModule,
     NzSelectModule,
@@ -188,6 +190,7 @@ export class SurveyListPageComponent {
   private readonly api = inject(SurveyApiService);
   private readonly router = inject(Router);
   private readonly message = inject(NzMessageService);
+  private readonly clipboard = inject(Clipboard);
 
   readonly loading = signal(false);
   readonly items = signal<SurveyEntity[]>([]);
@@ -254,10 +257,12 @@ export class SurveyListPageComponent {
 
   copyPublicLink(slug: string): void {
     const url = `${window.location.origin}/public/surveys/${encodeURIComponent(slug)}`;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => this.message.success('问卷公开链接已复制'))
-      .catch(() => this.message.error('复制失败，请手动复制'));
+    const ok = this.clipboard.copy(url);
+    if (ok) {
+      this.message.success('问卷公开链接已复制');
+    } else {
+      this.message.error('复制失败，请手动复制');
+    }
   }
 
   changeStatus(item: SurveyEntity, status: SurveyStatus): void {

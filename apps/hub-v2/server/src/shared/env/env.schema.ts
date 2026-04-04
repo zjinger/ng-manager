@@ -43,6 +43,7 @@ export const envSchema = z.object({
   OPENAI_API_KEY: z.string().trim().optional(),
   OPENAI_BASE_URL: z.string().trim().optional(),
   OPENAI_MODEL: z.string().trim().optional(),
+  SURVEY_ENABLED: booleanFromEnv.default(false),
   REPORT_PUBLIC_ENABLED: booleanFromEnv.default(false),
   REPORT_PUBLIC_RATE_LIMIT: z.coerce.number().int().positive().default(10)
 });

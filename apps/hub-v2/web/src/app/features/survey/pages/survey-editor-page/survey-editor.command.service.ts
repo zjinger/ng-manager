@@ -1,4 +1,5 @@
 import { inject, Injectable } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
 import { Router } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
@@ -12,6 +13,7 @@ export class SurveyEditorCommandService {
   private readonly router = inject(Router);
   private readonly api = inject(SurveyApiService);
   private readonly message = inject(NzMessageService);
+  private readonly clipboard = inject(Clipboard);
 
   save(store: SurveyEditorStore): void {
     if (store.saving()) {
@@ -25,7 +27,11 @@ export class SurveyEditorCommandService {
       isPublic: store.isPublic(),
       startAt: store.startAt(),
       endAt: store.endAt(),
-      questions: store.questions(),
+      pages: store.pages().map((page) => ({
+        customTitle: page.customTitle,
+        questions: page.questions,
+      })),
+      questions: store.allQuestions(),
     });
 
     if (!payloadResult.ok) {
@@ -96,10 +102,12 @@ export class SurveyEditorCommandService {
       return;
     }
 
-    navigator.clipboard
-      .writeText(link)
-      .then(() => this.message.success('公开链接已复制'))
-      .catch(() => this.message.error('复制失败，请手动复制'));
+    const ok = this.clipboard.copy(link);
+    if (ok) {
+      this.message.success('公开链接已复制');
+    } else {
+      this.message.error('复制失败，请手动复制');
+    }
   }
 
   viewSubmissions(store: SurveyEditorStore): void {

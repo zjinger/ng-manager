@@ -17,6 +17,7 @@ export interface SurveyQuestionEntity {
   id: string;
   surveyId: string;
   key: string;
+  pageTitle: string | null;
   title: string;
   description: string | null;
   type: SurveyQuestionType;
@@ -54,6 +55,7 @@ export interface SurveyQuestionOptionInput {
 
 export interface SurveyQuestionInput {
   key?: string;
+  pageTitle?: string;
   title: string;
   description?: string;
   type: SurveyQuestionType;

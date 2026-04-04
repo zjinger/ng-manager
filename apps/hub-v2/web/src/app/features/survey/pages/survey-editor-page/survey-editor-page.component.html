@@ -34,16 +34,56 @@
         <div class="canvas__inner">
           <section class="canvas-progress">
             <div class="canvas-progress__track">
-              <div class="canvas-progress__fill" [style.width.%]="store.questions().length > 0 ? 100 : 0"></div>
+              @for (page of pageDisplayList(); track page.id) {
+                <button
+                  type="button"
+                  class="canvas-progress__segment"
+                  [class.canvas-progress__segment--active]="store.activePageId() === page.id"
+                  (click)="store.setActivePage(page.id)"
+                ></button>
+              }
             </div>
-            <span>{{ store.questions().length }} 道题目</span>
+            <span>{{ store.questions().length }} 道题目 · {{ store.pages().length }} 页</span>
           </section>
 
           <section class="canvas-pages">
-            <button nz-button type="button" class="canvas-page canvas-page--active">第 1 页</button>
-            <button nz-button type="button" class="canvas-page canvas-page--add" disabled>
+            @for (page of pageDisplayList(); track page.id) {
+              <button
+                nz-button
+                type="button"
+                class="canvas-page"
+                [class.canvas-page--active]="store.activePageId() === page.id"
+                (click)="store.setActivePage(page.id)"
+              >
+                <span>{{ page.label }}</span>
+                @if (store.pages().length > 1) {
+                  <span
+                    class="canvas-page__close"
+                    nz-popconfirm
+                    nzPopconfirmTitle="确认移除该页面吗？"
+                    nzPopconfirmPlacement="bottom"
+                    nzOkText="确认"
+                    nzCancelText="取消"
+                    (click)="$event.stopPropagation()"
+                    (nzOnConfirm)="store.removePage(page.id)"
+                  >
+                    <span nz-icon nzType="close"></span>
+                  </span>
+                }
+              </button>
+            }
+            <button nz-button type="button" class="canvas-page canvas-page--add" (click)="store.addPage()">
               <span nz-icon nzType="plus"></span>
             </button>
+          </section>
+
+          <section class="canvas-page-title">
+            <input
+              nz-input
+              [value]="activePageCustomTitle()"
+              (blur)="store.setPageCustomTitle(store.activePageId(), $any($event.target).value)"
+              placeholder="页面小标题（可选）"
+            />
           </section>
 
           <section class="survey-head card">
@@ -62,7 +102,7 @@
               (blur)="store.markHistory()"
               placeholder="输入问卷描述（可选）"
             ></textarea>
-            <div class="survey-head__meta">共 {{ store.questions().length }} 道题</div>
+            <div class="survey-head__meta">共 {{ store.allQuestions().length }} 道题</div>
           </section>
 
           @for (question of store.questions(); track question.id; let i = $index) {
@@ -78,6 +118,8 @@
               (duplicate)="store.duplicateQuestion($event)"
               (remove)="store.removeQuestion($event)"
               (addBelow)="store.addQuestion('text', $event)"
+              [moveTargetPages]="moveTargetPages()"
+              (moveToPage)="store.moveQuestionToPage($event.questionId, $event.targetPageId)"
               (addOption)="store.addOption($event)"
               (optionPatch)="store.patchOption($event)"
               (removeOption)="store.removeOption($event)"
@@ -117,7 +159,7 @@
       [visible]="store.previewVisible()"
       [title]="store.title()"
       [description]="store.description()"
-      [questions]="store.questions()"
+      [questions]="store.allQuestions()"
       (close)="store.closePreview()"
     />
   </div>

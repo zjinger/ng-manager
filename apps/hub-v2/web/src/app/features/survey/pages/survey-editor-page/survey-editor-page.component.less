@@ -50,14 +50,23 @@
 
 .canvas-progress__track {
   flex: 1;
-  height: 3px;
-  border-radius: 2px;
-  background: #dbe2f3;
-  overflow: hidden;
+  height: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.canvas-progress__fill {
-  height: 100%;
+.canvas-progress__segment {
+  flex: 1;
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: #e8edf7;
+  cursor: pointer;
+  padding: 0;
+}
+
+.canvas-progress__segment--active {
   background: #6366f1;
 }
 
@@ -65,6 +74,15 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.canvas-page-title {
+  margin-top: -2px;
+}
+
+.canvas-page-title input {
+  height: 30px;
+  border-radius: 8px;
 }
 
 .canvas-page {
@@ -82,10 +100,29 @@
   gap: 4px;
 }
 
+.canvas-page__close {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f43f5e;
+  transition: background-color 0.2s ease;
+}
+
+.canvas-page__close:hover {
+  background: rgba(244, 63, 94, 0.14);
+}
+
 .canvas-page--active {
   border-color: #6366f1;
   background: #6366f1;
   color: #fff;
+}
+
+.canvas-page--active .canvas-page__close {
+  color: #fda4af;
 }
 
 .canvas-page--add {

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, finalize, from, map, mergeMap, of, toArray } from 'rxjs';
@@ -38,6 +39,7 @@ type BulkRenderResult =
   standalone: true,
   imports: [
     FormsModule,
+    ClipboardModule,
     NzButtonModule,
     NzInputModule,
     NzSpinModule,
@@ -55,6 +57,7 @@ export class ReportHomePageComponent {
   private readonly api = inject(ReportApiService);
   private readonly boardStore = inject(ReportBoardStore);
   private readonly message = inject(NzMessageService);
+  private readonly clipboard = inject(Clipboard);
   // private readonly modal = inject(NzModalService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -407,9 +410,13 @@ export class ReportHomePageComponent {
       .subscribe({
         next: (board) => {
           const shareLink = this.buildPublicBoardLink(board.shareToken);
-          this.copyToClipboard(shareLink);
+          const copied = this.copyToClipboard(shareLink);
           this.loadPublicBoards(true);
-          this.message.success('公开看板链接已生成并复制');
+          if (copied) {
+            this.message.success('公开看板链接已生成并复制');
+          } else {
+            this.message.warning('公开看板已生成，复制失败请手动复制');
+          }
         },
         error: (error) => {
           this.message.error(this.resolveErrorMessage(error, '发布公开看板失败'));
@@ -543,8 +550,10 @@ export class ReportHomePageComponent {
   }
 
   copyPublicBoardLink(shareToken: string): void {
-    this.copyToClipboard(this.buildPublicBoardLink(shareToken));
-    this.message.success('看板链接已复制');
+    const copied = this.copyToClipboard(this.buildPublicBoardLink(shareToken));
+    if (copied) {
+      this.message.success('看板链接已复制');
+    }
   }
 
   confirmTogglePublicBoard(item: ReportPublicBoardSummary): void {
@@ -635,26 +644,12 @@ export class ReportHomePageComponent {
     return `${window.location.origin}/public/report?share=${encodeURIComponent(shareToken)}`;
   }
 
-  private copyToClipboard(text: string): void {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).catch(() => this.fallbackCopy(text));
-      return;
+  private copyToClipboard(text: string): boolean {
+    const ok = this.clipboard.copy(text);
+    if (!ok) {
+      this.message.error('复制失败，请手动复制');
     }
-    this.fallbackCopy(text);
-  }
-
-  private fallbackCopy(content: string): void {
-    const textArea = document.createElement('textarea');
-    textArea.value = content;
-    textArea.style.position = 'fixed';
-    textArea.style.opacity = '0';
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-    } finally {
-      document.body.removeChild(textArea);
-    }
+    return ok;
   }
 
   private resolveErrorMessage(error: unknown, fallback: string): string {

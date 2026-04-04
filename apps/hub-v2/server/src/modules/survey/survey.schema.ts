@@ -12,6 +12,7 @@ const surveyOptionInputSchema = z.object({
 const surveyQuestionInputSchema = z
   .object({
     key: z.string().trim().min(1).max(40).optional(),
+    pageTitle: z.string().trim().max(40).optional(),
     title: z.string().trim().min(1).max(120),
     description: z.string().trim().max(400).optional(),
     type: surveyQuestionTypeSchema,

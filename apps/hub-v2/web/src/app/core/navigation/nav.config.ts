@@ -1,4 +1,5 @@
 import type { NavSection } from './menu.types';
+import { FEATURE_FLAGS } from '../feature-flags';
 
 export const NAV_ITEMS: NavSection[] = [
   {
@@ -30,7 +31,9 @@ export const NAV_ITEMS: NavSection[] = [
     label: '反馈中心',
     items: [
       { key: 'feedbacks', label: '系统反馈', icon: 'message', route: '/feedbacks' },
-      { key: 'surveys', label: '问卷调查', icon: 'form', route: '/surveys' },
+      ...(FEATURE_FLAGS.survey
+        ? [{ key: 'surveys', label: '问卷调查', icon: 'form', route: '/surveys' }]
+        : []),
     ],
   },
   {

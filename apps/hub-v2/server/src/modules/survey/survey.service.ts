@@ -328,6 +328,7 @@ export class SurveyService implements SurveyCommandContract, SurveyQueryContract
         id: questionId,
         surveyId,
         key: finalKey,
+        pageTitle: item.pageTitle?.trim() || null,
         title: item.title.trim(),
         description: item.description?.trim() || null,
         type,
