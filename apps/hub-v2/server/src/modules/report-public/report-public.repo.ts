@@ -84,6 +84,7 @@ export class ReportPublicRepo {
             rpp.updated_at
           FROM report_public_projects rpp
           INNER JOIN projects p ON p.id = rpp.project_id
+          WHERE p.status = 'active'
           ORDER BY rpp.updated_at DESC
         `
       )
@@ -114,7 +115,7 @@ export class ReportPublicRepo {
             rpp.updated_at
           FROM report_public_projects rpp
           INNER JOIN projects p ON p.id = rpp.project_id
-          WHERE rpp.project_id IN (${placeholders})
+          WHERE rpp.project_id IN (${placeholders}) AND p.status = 'active'
           ORDER BY rpp.updated_at DESC
         `
       )
@@ -140,7 +141,7 @@ export class ReportPublicRepo {
             rpp.updated_at
           FROM report_public_projects rpp
           INNER JOIN projects p ON p.id = rpp.project_id
-          WHERE rpp.id = ?
+          WHERE rpp.id = ? AND p.status = 'active'
           LIMIT 1
         `
       )
@@ -166,7 +167,7 @@ export class ReportPublicRepo {
             rpp.updated_at
           FROM report_public_projects rpp
           INNER JOIN projects p ON p.id = rpp.project_id
-          WHERE rpp.project_id = ?
+          WHERE rpp.project_id = ? AND p.status = 'active'
           LIMIT 1
         `
       )
@@ -192,7 +193,7 @@ export class ReportPublicRepo {
             rpp.updated_at
           FROM report_public_projects rpp
           INNER JOIN projects p ON p.id = rpp.project_id
-          WHERE rpp.share_token = ?
+          WHERE rpp.share_token = ? AND p.status = 'active'
           LIMIT 1
         `
       )

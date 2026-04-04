@@ -23,7 +23,11 @@ export class ProjectAccessService {
     for (const userId of candidates) {
       for (const projectId of this.repo.listProjectIdsByUserId(userId)) {
         const normalizedProjectId = projectId.trim();
-        if (normalizedProjectId) {
+        if (!normalizedProjectId) {
+          continue;
+        }
+        const project = this.repo.findById(normalizedProjectId);
+        if (project?.status === "active") {
           collected.add(normalizedProjectId);
         }
       }

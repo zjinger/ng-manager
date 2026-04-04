@@ -66,8 +66,12 @@ export class ReportPublicService {
     if (!normalizedProjectId) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, "projectId is required", 400);
     }
-    if (!this.projectRepo.findById(normalizedProjectId)) {
+    const project = this.projectRepo.findById(normalizedProjectId);
+    if (!project) {
       throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${normalizedProjectId}`, 404);
+    }
+    if (project.status !== "active") {
+      throw new AppError(ERROR_CODES.PROJECT_INACTIVE, "project is archived and read only", 400);
     }
 
     this.ensureCanManageProject(ctx, normalizedProjectId);
@@ -345,6 +349,10 @@ export class ReportPublicService {
     const projectIds = this.projectRepo.listProjectIdsByUserId(userId);
     const manageable: string[] = [];
     for (const projectId of projectIds) {
+      const project = this.projectRepo.findById(projectId);
+      if (!project || project.status !== "active") {
+        continue;
+      }
       const member = this.projectRepo.findMemberByProjectAndUserId(projectId, userId);
       if (member && (member.isOwner || member.roleCode === "project_admin")) {
         manageable.push(projectId);
