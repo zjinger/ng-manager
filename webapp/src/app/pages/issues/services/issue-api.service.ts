@@ -178,7 +178,7 @@ export class IssueApiService {
     return this.issueTokenApi.issuePostReqWithPK<IssueCommentEntity>({
       issueId,
       action: 'comments',
-      payload: { content },
+      payload: { content, mentions },
     });
   }
 

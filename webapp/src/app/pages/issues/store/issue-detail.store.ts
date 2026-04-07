@@ -247,6 +247,7 @@ export class IssueDetailStore {
     ).subscribe({
       next: (comment) => {
         this.commentsState.update((items) => [comment, ...items]);
+        this.refreshLogs(issueId);
         this.busyState.set(false);
       },
       error: () => {

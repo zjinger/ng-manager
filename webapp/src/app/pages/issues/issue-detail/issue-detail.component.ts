@@ -10,6 +10,7 @@ import {
   IssueEntity,
   IssueLogEntity,
   IssueParticipantEntity,
+  ProjectMemberEntity,
 } from '../models/issue.model';
 import { IssueDetailStore } from '../store/issue-detail.store';
 import { IssueActionAreaComponent } from './issue-action-area/issue-action-area.component';
@@ -86,6 +87,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 (submit)="commentSubmit.emit($event)"
                 [busy]="busy()"
                 [logs]="store.logs()"
+                [members]="members()"
               ></app-issue-comment-area>
             </div>
             <div class="right-column">
@@ -170,6 +172,7 @@ export class IssueDetailComponent {
   readonly comments = input<IssueCommentEntity[]>([]);
   readonly attachments = input<IssueAttachmentEntity[]>([]);
   readonly participants = input<IssueParticipantEntity[]>([]);
+  readonly members = input<ProjectMemberEntity[]>([]);
 
   readonly placement = input<NzDrawerPlacement>('right');
   readonly close = output();

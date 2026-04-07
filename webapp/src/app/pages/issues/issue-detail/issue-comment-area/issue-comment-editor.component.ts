@@ -28,6 +28,7 @@ import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
+import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
 
 @Component({
   selector: 'app-issue-comment-area',
@@ -41,6 +42,7 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
     NzListModule,
     NzCommentModule,
     NzTimelineModule,
+    NzMentionModule,
     NzFormModule,
     FormsModule,
     NzAvatarModule,
@@ -57,7 +59,26 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
         />
         <nz-comment-content>
           <nz-form-item>
-            <textarea [(ngModel)]="commentDraft" nz-input rows="4" class="comment-input"></textarea>
+            <nz-mention
+              [nzSuggestions]="mentionOptions()"
+              [nzValueWith]="mentionLabel"
+              (nzOnSearchChange)="handleMentionSearch($event)"
+              (nzOnSelect)="handleMentionSelect($event)"
+            >
+              <textarea
+                [(ngModel)]="commentDraft"
+                nz-input
+                nzMentionTrigger
+                rows="4"
+                class="comment-input"
+              ></textarea>
+              <ng-template nzMentionSuggestion let-member>
+                <div class="mention-option">
+                  <span class="mention-name">{{ member.displayName || member.userId }}</span>
+                  <span class="mention-id">{{ roleLabel(member.roleCode) }}</span>
+                </div>
+              </ng-template>
+            </nz-mention>
           </nz-form-item>
           <nz-form-item class="toolbar">
             <button
@@ -128,6 +149,20 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
     .send {
       border-radius: 6px;
     }
+    .mention-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .mention-name {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .mention-id {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
     .log-item {
       padding: 4px 0 0;
       .meta {
@@ -169,21 +204,57 @@ export class IssueCommentAreaComponent {
   readonly submit = output<createCommentInput>();
 
   readonly commentDraft = signal('');
+  readonly mentionKeyword = signal('');
+
+  readonly mentionOptions = computed(() => {
+    const keyword = this.mentionKeyword().trim().toLowerCase();
+    const members = this.members();
+    if (!keyword) {
+      return members.slice(0, 20);
+    }
+    return members
+      .filter((member) => {
+        const displayName = (member.displayName || '').toLowerCase();
+        const userId = (member.userId || '').toLowerCase();
+        return displayName.includes(keyword) || userId.includes(keyword);
+      })
+      .slice(0, 20);
+  });
 
   handleSubmit() {
     if (!this.commentDraft().trim()) return;
-    this.submit.emit({ content: this.commentDraft() });
+    this.submit.emit({
+      content: this.commentDraft(),
+      mentions: this.collectMentions(this.commentDraft()),
+    });
     this.commentDraft.set('');
+    this.mentionKeyword.set('');
   }
 
-  formatDate(isoString: string) {
-    const date = new Date(isoString);
+  roleLabel(roleCode: string): string {
+    return ROLE_LABELS[roleCode] || roleCode;
+  }
 
-    const MM = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    const HH = String(date.getHours()).padStart(2, '0');
-    const mm = String(date.getMinutes()).padStart(2, '0');
+  mentionLabel(member: ProjectMemberEntity): string {
+    return member.displayName?.trim() || member.userId;
+  }
 
-    return `${MM}-${dd} ${HH}:${mm}`;
+  handleMentionSearch(event: MentionOnSearchTypes): void {
+    this.mentionKeyword.set(event.value || '');
+  }
+
+  handleMentionSelect(_member: ProjectMemberEntity): void {
+    this.mentionKeyword.set('');
+  }
+
+  private collectMentions(content: string): string[] {
+    const result = new Set<string>();
+    for (const member of this.members()) {
+      const label = this.mentionLabel(member);
+      if (label && content.includes(`@${label}`)) {
+        result.add(member.userId);
+      }
+    }
+    return [...result];
   }
 }
