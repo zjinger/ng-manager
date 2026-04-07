@@ -20,6 +20,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
       width: 100%;
       display: flex;
       flex-direction: column;
+      margin-bottom: 1rem;
     }
     .wrap-title {
       width: 100%;

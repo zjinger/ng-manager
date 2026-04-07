@@ -95,15 +95,16 @@ export class IssuesComponent {
     this.issueListStore.initialize();
     projectId && this.projectState.loadProjectMembers(projectId);
 
-    this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => {
-        const detailId = this.route.snapshot.queryParamMap.get('detail');
-        if (detailId) {
-          this.issueDetailStore.load(detailId);
-          this.open.set(true);
-        }
-      });
+    this.route.queryParamMap.subscribe((params) => {
+      const detailId = params.get('detail');
+
+      if (detailId) {
+        this.issueDetailStore.load(detailId);
+        this.open.set(true);
+      } else {
+        this.open.set(false);
+      }
+    });
   }
 
   onPageChange(page: number) {
@@ -125,6 +126,10 @@ export class IssuesComponent {
 
   closeIssueDetail() {
     this.open.set(false);
+    this.issueDetailStore.setSelectedIssue(null);
+    this.router.navigate([], {
+      queryParams: {},
+    });
   }
 
   // 提交评论
@@ -185,15 +190,6 @@ export class IssuesComponent {
       nzOnOk: () => {
         this.issueDetailStore.start();
       },
-    });
-  }
-
-  // 关闭详情抽屉
-  closeDetail() {
-    this.open.set(false);
-    this.issueDetailStore.setSelectedIssue(null);
-    this.router.navigate([], {
-      queryParams: {},
     });
   }
 

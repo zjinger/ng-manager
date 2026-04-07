@@ -48,14 +48,13 @@ export class RdTokenApiService {
     // projectId: string;
     rdId: string;
     // type: 'issues' | 'rd-items';
-    action: RdActionType;
     payload: Object; //{content:string}
   }) {
     const projectId = this.projectState.currentProjectId()!;
     return this.apiClient.hubRequestWithPersonalToken<T>({
       projectId: projectId,
       method: 'DELETE',
-      path: `/rd-items/${body.rdId}/${body.action}`,
+      path: `/rd-items/${body.rdId}`,
       payload: body.payload,
     });
   }

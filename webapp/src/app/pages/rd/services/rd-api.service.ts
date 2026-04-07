@@ -24,7 +24,6 @@ export class RdApiService {
   async delete(projectId: string, itemId: string) {
     return await this.rdTokenApi.rdDeleteReqWithPK<RdItemEntity>({
       rdId: itemId,
-      action: 'delete',
       payload: {},
     });
   }

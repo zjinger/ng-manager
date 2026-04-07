@@ -195,46 +195,6 @@ export class IssueDetailStore {
     });
   }
 
-  // // 加载附件的url
-  // async loadAttachmentPreviews() {
-  //   const attachments = this.attachments();
-  //   const issueId = this.issueState()?.id;
-  //   const projectId = this.currentProjectId();
-  //   if (!attachments.length || !issueId || !projectId) {
-  //     return;
-  //   }
-
-  //   // 先清空，避免重复
-  //   this.attachmentPreviewsState.set([]);
-
-  //   attachments.forEach(async (item) => {
-  //     const blob = await this.issueApi.getAttachmentRaw(projectId, issueId, item.id);
-
-  //     const previewItem = {
-  //       id: item.id,
-  //       name: item.upload.originalName,
-  //       url: URL.createObjectURL(blob),
-  //       kind: item.upload.mimeType,
-  //       meta: `${item.upload.mimeType || '文件'} · ${formatSize(item.upload.fileSize)}`,
-  //     } as AttachmentPreviewItem;
-
-  //     this.attachmentPreviewsState.update((items) => [...items, previewItem]);
-  //   });
-
-  //   function formatSize(size: number): string {
-  //     if (!Number.isFinite(size) || size < 0) {
-  //       return '-';
-  //     }
-  //     if (size < 1024) {
-  //       return `${size} B`;
-  //     }
-  //     if (size < 1024 * 1024) {
-  //       return `${(size / 1024).toFixed(1)} KB`;
-  //     }
-  //     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  //   }
-  // }
-
   postComment(comment: createCommentInput): void {
     const issueId = this.issueState()?.id;
     if (!issueId || !comment.content.trim()) {
@@ -317,24 +277,6 @@ export class IssueDetailStore {
   //   this.runIssueAction((issueId) => this.issueApi.close(issueId, { reason, remark }));
   // }
 
-  // addParticipant(userId: string): void {
-  //   const issueId = this.issueState()?.id;
-  //   if (!issueId || !userId.trim()) {
-  //     return;
-  //   }
-
-  //   this.busyState.set(true);
-  //   from(this.issueApi.addParticipant(issueId, userId)).subscribe({
-  //     next: (participant) => {
-  //       this.participantsState.update((items) => [...items, participant]);
-  //       this.busyState.set(false);
-  //     },
-  //     error: () => {
-  //       this.busyState.set(false);
-  //     },
-  //   });
-  // }
-
   addParticipants(input: AddParticipantsInput): void {
     const issueId = this.issueState()?.id;
     const userIds = input.userIds;
@@ -354,16 +296,6 @@ export class IssueDetailStore {
         this.busyState.set(false);
       },
     });
-
-    // from(this.issueApi.addParticipants(issueId, inputFormated)).subscribe({
-    //   next: (participants) => {
-    //     this.participantsState.update((items) => [...items, ...participants]);
-    //     this.busyState.set(false);
-    //   },
-    //   error: () => {
-    //     this.busyState.set(false);
-    //   },
-    // });
   }
 
   removeParticipant(participantId: string): void {

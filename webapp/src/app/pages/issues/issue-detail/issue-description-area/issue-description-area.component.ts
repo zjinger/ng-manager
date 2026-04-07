@@ -7,7 +7,7 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
   selector: 'app-issue-description-area',
   imports: [DetailItemCardComponent, MarkdownViewerComponent],
   template: `
-    <app-detail-item-card title="详情" maxHeight="550px">
+    <app-detail-item-card title="描述" maxHeight="550px">
       @if (issue().description; as des) {
         <app-markdown-viewer
           [content]="des"
@@ -24,10 +24,10 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
           <div class="resolution-content">{{ issue().resolutionSummary }}</div>
         </div>
       }
-      @if (issue().closeReason) {
+      @if (issue().closeRemark) {
         <div class="resolution">
           <div class="resolution-label">关闭原因</div>
-          <div class="resolution-content">{{ issue().closeReason }}</div>
+          <div class="resolution-content">{{ issue().closeRemark }}</div>
         </div>
       }
     </app-detail-item-card>

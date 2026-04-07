@@ -85,7 +85,6 @@ export class RdStore {
       const stages = (await this.rdApi.getRdStages(projectId)).items;
       this.stagesState.set(stages);
       console.log(stages);
-      
     } catch (e) {
       this.stagesState.set([]);
     }
@@ -166,7 +165,29 @@ export class RdStore {
 
   delete(itemId: string): void {
     const projectId = this.projectId()!;
-    this.runAction(() => this.rdApi.delete(projectId, itemId));
+    this.busyState.set(true);
+    from(this.rdApi.delete(projectId, itemId)).subscribe({
+      next: () => {
+        this.busyState.set(false);
+        const list = this.rdItemsPageListState();
+        if (!list) {
+          this.loadRdItems();
+          return;
+        }
+
+        const items = list.filter((item) => item.id !== itemId);
+        if (items.length === list.length) {
+          this.loadRdItems();
+          return;
+        }
+
+        this.rdItemsCountState.update((count) => count - 1);
+        this.rdItemsPageListState.update((list) => items);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
   }
 
   private runAction(request: () => Promise<RdItemEntity>): void {

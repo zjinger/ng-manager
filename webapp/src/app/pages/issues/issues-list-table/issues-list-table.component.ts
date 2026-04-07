@@ -57,8 +57,15 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
               {{ getStatusLabel(item.status) }}
             </nz-tag>
           </td>
-          <td>{{ item.assigneeName || '-' }}</td>
-          <td>{{ item.reporterName }}</td>
+          <td>
+            {{ item.reporterName || '-' }}
+          </td>
+          <td>
+            {{ item.assigneeName }}<br />
+            @if ((item.participantNames?.length ?? 0) > 0) {
+              <span class="participant-inline">· {{ participantNamesText(item) }}</span>
+            }
+          </td>
           <td>{{ (item.updatedAt | date: 'MM-dd HH:mm') ?? '_' }}</td>
         </tr>
       }
@@ -93,6 +100,11 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
     :host ::ng-deep table[nz-table-content] {
       table-layout: fixed !important;
     }
+    .participant-inline {
+      font-size: 12px;
+      color: gray;
+      font-weight: 400;
+    }
   `,
 })
 export class IssuesListTableComponent {
@@ -122,5 +134,16 @@ export class IssuesListTableComponent {
 
   getTypeColor(type: IssueType) {
     return ISSUE_TYPE_COLORS[type];
+  }
+
+  participantNamesText(item: IssueEntity): string {
+    const names = (item.participantNames ?? []).filter(Boolean);
+    if (names.length === 0) {
+      return '';
+    }
+    if (names.length <= 2) {
+      return names.join('、');
+    }
+    return `${names.slice(0, 2).join('、')} +${names.length - 2}`;
   }
 }

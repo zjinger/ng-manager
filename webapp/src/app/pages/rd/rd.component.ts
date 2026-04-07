@@ -109,15 +109,14 @@ export class RdComponent {
       this.rdStore.loadRdItems();
     });
 
-    this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => {
-        const detailId = this.route.snapshot.queryParamMap.get('detail');
-        if (detailId) {
-          this.rdStore.loadCurrentRdItem(detailId);
-          this.detailDrawerOpen.set(true);
-        }
-      });
+    this.route.queryParamMap.subscribe((params) => {
+      const detailId = params.get('detail');
+
+      if (detailId) {
+        this.rdStore.loadCurrentRdItem(detailId);
+        this.detailDrawerOpen.set(true);
+      }
+    });
 
     // 确保用户token绑定
     this.userStore.ensureUserLoaded();
@@ -197,7 +196,8 @@ export class RdComponent {
     if (!current) {
       return;
     }
-    this.rdStore.delete(current.id)
+    this.rdStore.delete(current.id);
+    this.closeDetail();
   }
 
   handleAction(

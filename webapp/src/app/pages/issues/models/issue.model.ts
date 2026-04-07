@@ -30,6 +30,8 @@ export interface IssueEntity {
   reporterName: string;
   assigneeId: string | null;
   assigneeName: string | null;
+  participantCount?: number;
+  participantNames?: string[];
   verifierId: string | null;
   verifierName: string | null;
   moduleCode: string | null;
