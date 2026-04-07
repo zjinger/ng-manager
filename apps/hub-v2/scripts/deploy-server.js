@@ -20,6 +20,7 @@ const HUB_ROOT = path.resolve(__dirname, "..");
 const SCRIPTS_DIR = __dirname;
 const REMOTE_SCRIPTS_DIR = path.join(SCRIPTS_DIR, "remote");
 const CONFIG_PATH = path.join(SCRIPTS_DIR, "deploy-config.json");
+const EMPTY_SSH_CONFIG_PATH = path.join(SCRIPTS_DIR, ".ssh-empty-config");
 
 function parseArgs(argv) {
   const args = {
@@ -69,12 +70,42 @@ function quote(value) {
   return `"${value}"`;
 }
 
+/**
+ * HUB_V2_DEPLOY_USE_USER_SSH_CONFIG 环境变量的作用是控制部署脚本是否应该绕过用户的 SSH 配置。
+ * 当该环境变量设置为 "1" 时，部署脚本将使用一个空的 SSH 配置文件来执行 SSH 和 SCP 命令，从而避免用户本地的 SSH 配置干扰部署过程。
+ * 这对于确保部署过程的稳定性和一致性非常重要，特别是在用户的 SSH 配置中可能存在别名、端口转发或其他特殊设置的情况下。
+ * 通过使用一个空的 SSH 配置文件，部署脚本可以确保它与目标服务器的连接按照预期进行，而不会受到用户本地 SSH 配置的影响。
+ */
+function shouldBypassUserSshConfig() {
+  return process.env.HUB_V2_DEPLOY_USE_USER_SSH_CONFIG !== "1";
+}
+
+/**
+ * 为了确保部署过程中不受用户本地 SSH 配置的影响，我们提供了一个空的 SSH 配置文件，并在 SSH 和 SCP 命令中使用 -F 选项指定该配置文件。
+ * 这样可以避免用户本地的 SSH 配置（如别名、端口转发、身份验证方法等）干扰部署过程，确保部署脚本能够按照预期连接到目标服务器并执行命令。
+ */
+function ensureEmptySshConfig() {
+  if (!fs.existsSync(EMPTY_SSH_CONFIG_PATH)) {
+    fs.writeFileSync(EMPTY_SSH_CONFIG_PATH, "# intentionally empty\n", "utf-8");
+  }
+  return EMPTY_SSH_CONFIG_PATH;
+}
+
+function getSshConfigArg() {
+  if (!shouldBypassUserSshConfig()) {
+    return "";
+  }
+  return `-F ${quote(ensureEmptySshConfig())}`;
+}
+
 function getSshBase(target) {
-  return `ssh -p ${target.port} ${target.user}@${target.host}`;
+  const sshConfigArg = getSshConfigArg();
+  return `ssh ${sshConfigArg ? `${sshConfigArg} ` : ""}-p ${target.port} ${target.user}@${target.host}`;
 }
 
 function getScpBase(target) {
-  return `scp -P ${target.port}`;
+  const sshConfigArg = getSshConfigArg();
+  return `scp ${sshConfigArg ? `${sshConfigArg} ` : ""}-P ${target.port}`;
 }
 
 function buildAndPackage(skipBuild) {
