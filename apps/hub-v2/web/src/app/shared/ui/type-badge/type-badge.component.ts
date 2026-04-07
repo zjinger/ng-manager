@@ -17,6 +17,7 @@ import { ISSUE_TYPE_LABELS } from '@app/shared/constants';
         border: 1px solid transparent;
         background: var(--bg-subtle);
         color: var(--text-muted);
+        white-space: nowrap;
       }
       /**
         bug: '缺陷', // #ef4444

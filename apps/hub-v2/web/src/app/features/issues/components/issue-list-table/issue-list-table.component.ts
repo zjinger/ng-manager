@@ -191,10 +191,7 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
         gap: 8px;
         min-width: 0;
         width: 100%;
-      }
-      .issue-row__title-text{
-        flex: 1 1 auto;
-        width: 0;
+        justify-content: flex-start;
       }
       .issue-row__title-text,
       .issue-card__title {
