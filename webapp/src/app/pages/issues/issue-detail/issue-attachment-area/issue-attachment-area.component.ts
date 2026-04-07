@@ -14,10 +14,17 @@ import { IssueAttachmentEntity } from '@pages/issues/models/issue.model';
         @for (item of attachmentPreviewItems(); track $index) {
           <app-attachment-viewer [item]="item"></app-attachment-viewer>
         }
+      } @else {
+        <div class="empty">当前还没有附件</div>
       }
     </app-detail-item-card>
   `,
-  styles: ``,
+  styles: `
+    .empty {
+      text-align: center;
+      color: gray;
+    }
+  `,
 })
 export class IssueAttachmentAreaComponent {
   readonly attachments = input<IssueAttachmentEntity[]>([]);

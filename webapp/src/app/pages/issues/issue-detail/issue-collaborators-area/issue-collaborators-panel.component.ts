@@ -61,11 +61,17 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
             </div>
           }
         </div>
+      } @else {
+        <div class="empty">当前还没有合作人</div>
       }
     </app-detail-item-card>
   `,
   styles: [
     `
+      .empty {
+        text-align: center;
+        color: gray;
+      }
       .participant-list {
         width: 100%;
         display: flex;

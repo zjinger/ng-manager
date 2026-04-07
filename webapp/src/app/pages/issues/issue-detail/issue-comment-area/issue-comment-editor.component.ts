@@ -29,6 +29,7 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
+import { RdAction } from '@pages/rd/models/rd.model';
 
 @Component({
   selector: 'app-issue-comment-area',
@@ -71,6 +72,7 @@ import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
                 nzMentionTrigger
                 rows="4"
                 class="comment-input"
+                placeholder="添加评论...输入 @ 提及成员"
               ></textarea>
               <ng-template nzMentionSuggestion let-member>
                 <div class="mention-option">
@@ -93,7 +95,7 @@ import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
           </nz-form-item>
         </nz-comment-content>
       </nz-comment>
-      @if (comments().length === 0) {
+      @if (logs().length === 0) {
         <div class="comment-empty">暂无评论/备注</div>
       } @else {
         <!-- <nz-list [nzDataSource]="comments()" [nzRenderItem]="item" nzItemLayout="horizontal">
@@ -113,7 +115,10 @@ import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
         </nz-list> -->
         <nz-timeline>
           @for (log of logs(); track log.id) {
-            <nz-timeline-item>
+            <nz-timeline-item
+              [nzColor]="log.actionType === 'comment' ? 'green' : 'blue'"
+              [nzDot]="dotTemplate"
+            >
               <div class="log-item">
                 <div class="meta">
                   <span class="operator">{{ log.operatorName || '系统' }}</span>
@@ -122,11 +127,9 @@ import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
                 </div>
               </div>
             </nz-timeline-item>
-          }
-          @if (logs().length === 0) {
-            <nz-timeline-item>
-              <span class="empty">暂无动态</span>
-            </nz-timeline-item>
+            <ng-template #dotTemplate>
+              <nz-icon [nzType]="iconByAction(log.actionType)" nzTheme="outline" style="font-size: 16px;" />
+            </ng-template>
           }
         </nz-timeline>
       }
@@ -189,6 +192,10 @@ import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
       .empty {
         color: rgba(0, 0, 0, 0.45);
       }
+    }
+
+    :host ::ng-deep .ant-timeline-item {
+      margin-left: 6px;
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -256,5 +263,23 @@ export class IssueCommentAreaComponent {
       }
     }
     return [...result];
+  }
+
+  iconByAction(action: RdAction): string {
+    return (
+      {
+        create: 'plus-circle',
+        update: 'edit',
+        start: 'play-circle',
+        block: 'pause-circle',
+        resume: 'redo',
+        resolve: 'check-circle',
+        accept: 'safety-certificate',
+        close: 'close-circle',
+        advance_stage: 'right-circle',
+        delete: 'delete',
+        comment: 'message',
+      }[action] ?? 'history'
+    );
   }
 }

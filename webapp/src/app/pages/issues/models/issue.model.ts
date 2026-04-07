@@ -1,4 +1,5 @@
 import { PageResult } from '@app/core/types/page.types';
+import { RdAction } from '@pages/rd/models/rd.model';
 
 export type IssueType = 'bug' | 'feature' | 'change' | 'improvement' | 'task' | 'test';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
@@ -52,7 +53,7 @@ export interface IssueEntity {
 export interface IssueLogEntity {
   id: string;
   issueId: string;
-  actionType: string;
+  actionType: RdAction;
   fromStatus: string | null;
   toStatus: string | null;
   operatorId: string | null;

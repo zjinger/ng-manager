@@ -33,6 +33,7 @@
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
     "angular-gridster2": "^20.2.4",
+    "clipboard": "^2.0.11",
     "dayjs": "^1.11.19",
     "lodash": "^4.17.23",
     "marked": "^16.4.2",

@@ -41,7 +41,9 @@
                 "inject": false
               }
             ],
-            "scripts": [],
+            "scripts": [
+              "node_modules/clipboard/dist/clipboard.min.js"
+            ],
             "stylePreprocessorOptions": {
               "includePaths": ["src/styles/themes"]
             }

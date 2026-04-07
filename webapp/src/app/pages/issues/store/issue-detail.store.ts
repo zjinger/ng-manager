@@ -290,6 +290,7 @@ export class IssueDetailStore {
     forkJoin(ids.map((userId) => this.issueApi.addParticipant(issueId, { userId }))).subscribe({
       next: (participants) => {
         this.participantsState.update((items) => [...items, ...participants]);
+        this.refreshLogs(issueId);
         this.busyState.set(false);
       },
       error: () => {
@@ -308,6 +309,7 @@ export class IssueDetailStore {
     from(this.issueApi.removeParticipant(issueId, participantId)).subscribe({
       next: () => {
         this.participantsState.update((items) => items.filter((item) => item.id !== participantId));
+        this.refreshLogs(issueId);
         this.busyState.set(false);
       },
       error: () => {

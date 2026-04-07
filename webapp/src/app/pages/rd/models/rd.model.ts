@@ -9,11 +9,12 @@ export type RdAction =
   | 'start'
   | 'block'
   | 'resume'
-  | 'complete'
+  | 'resolve'
   | 'accept'
   | 'close'
   | 'advance_stage'
-  | 'delete';
+  | 'delete'
+  | 'comment';
 
 export interface RdStageEntity {
   id: string;
