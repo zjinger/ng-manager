@@ -31,7 +31,7 @@ function createService(projectIds: string[]): AiReportSqlService {
     }
   };
 
-  return new AiReportSqlService(config, projectAccess);
+  return new AiReportSqlService(config, null, projectAccess);
 }
 
 describe("AiReportSqlService project filter binding", () => {
@@ -88,6 +88,20 @@ describe("AiReportSqlService project filter binding", () => {
     assert.match(prepared.sql, /\bON\s+1\s*=\s*1\s+WHERE\s+p\.id\s+IN\s*\(\?, \?\)\s+ORDER\s+BY\b/i);
     assert.equal((prepared.sql.match(/\bp\.id\s+IN\s*\(/gi) ?? []).length, 1);
     assert.equal((prepared.sql.match(/\?/g) ?? []).length, prepared.params.length);
+  });
+
+  it("wraps existing WHERE expression when injecting filter to avoid OR precedence leak", async () => {
+    const service = createService(["p_active"]);
+    const rawSql =
+      "SELECT i.id, i.project_id FROM issues i WHERE i.status = 'closed' OR i.status = 'verified' ORDER BY i.created_at DESC";
+
+    const prepared = await service.prepareSqlForExecution(rawSql, ctx);
+
+    assert.deepEqual(prepared.params, ["p_active"]);
+    assert.match(
+      prepared.sql,
+      /\bWHERE\s+i\.project_id\s+IN\s*\(\?\)\s+AND\s+\(i\.status\s*=\s*'closed'\s+OR\s+i\.status\s*=\s*'verified'\)\s+ORDER\s+BY\b/i,
+    );
   });
 
   it("uses member handled preset with resolved/verified/closed time windows and no test-type restriction", async () => {

@@ -322,6 +322,7 @@ export class BlockRendererComponent {
     }
 
     const chartType = chart.type === 'bar' ? 'bar' : 'line';
+    const yAxis = this.buildReadableValueAxis(chart.datasets);
     return {
       tooltip: { trigger: 'axis' },
       legend: { top: 0, type: 'scroll' },
@@ -331,7 +332,7 @@ export class BlockRendererComponent {
         data: chart.labels,
         boundaryGap: chartType === 'bar',
       },
-      yAxis: { type: 'value' },
+      yAxis,
       series: chart.datasets.map((dataset) => ({
         name: dataset.label,
         type: chartType,
@@ -349,5 +350,78 @@ export class BlockRendererComponent {
       return JSON.stringify(value);
     }
     return String(value);
+  }
+
+  private buildReadableValueAxis(
+    datasets: Array<{ data: number[] }>,
+  ): {
+    type: 'value';
+    min: number;
+    max: number;
+    interval: number;
+    splitNumber: number;
+    minInterval?: number;
+  } {
+    const values = datasets
+      .flatMap((dataset) => dataset.data || [])
+      .filter((value): value is number => Number.isFinite(value) && value >= 0);
+
+    const maxValue = values.length > 0 ? Math.max(...values) : 0;
+    if (maxValue <= 0) {
+      return {
+        type: 'value',
+        min: 0,
+        max: 1,
+        interval: 1,
+        splitNumber: 1,
+        minInterval: 1,
+      };
+    }
+
+    const hasDecimal = values.some((value) => !Number.isInteger(value));
+    const targetSplitCount = 5;
+    const roughInterval = maxValue / targetSplitCount;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(roughInterval)));
+    const residual = roughInterval / magnitude;
+
+    let niceResidual = 1;
+    if (hasDecimal) {
+      if (residual <= 1) {
+        niceResidual = 1;
+      } else if (residual <= 2) {
+        niceResidual = 2;
+      } else if (residual <= 2.5) {
+        niceResidual = 2.5;
+      } else if (residual <= 5) {
+        niceResidual = 5;
+      } else {
+        niceResidual = 10;
+      }
+    } else {
+      if (residual <= 1) {
+        niceResidual = 1;
+      } else if (residual <= 2) {
+        niceResidual = 2;
+      } else if (residual <= 3) {
+        niceResidual = 3;
+      } else if (residual <= 5) {
+        niceResidual = 5;
+      } else {
+        niceResidual = 10;
+      }
+    }
+
+    const interval = Math.max(hasDecimal ? 0.1 : 1, niceResidual * magnitude);
+    const max = Math.ceil(maxValue / interval) * interval;
+    const splitNumber = Math.max(1, Math.round(max / interval));
+
+    return {
+      type: 'value',
+      min: 0,
+      max,
+      interval,
+      splitNumber,
+      minInterval: hasDecimal ? undefined : 1,
+    };
   }
 }

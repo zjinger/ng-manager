@@ -70,15 +70,11 @@ export class AiReportSqlService {
 
   constructor(
     private readonly config: AppConfig,
+    openaiClient: OpenAI | null,
     private readonly projectAccess: ProjectAccessContract
   ) {
     this.model = config.openaiModel?.trim();
-    this.openai = config.openaiApiKey
-      ? new OpenAI({
-          apiKey: config.openaiApiKey,
-          baseURL: config.openaiBaseUrl ?? undefined
-        })
-      : null;
+    this.openai = openaiClient;
   }
 
   async generateSql(
@@ -107,6 +103,7 @@ export class AiReportSqlService {
       normalizedQuery,
       normalizedProjectIds
     );
+    
     const cached = this.getFromCache(cacheKey);
     if (cached) {
       return cached;
@@ -149,7 +146,7 @@ export class AiReportSqlService {
       response_format: { type: "json_object" },
       temperature: 0.1
     });
-    console.log("AI SQL generation response:", JSON.stringify(response, null, 2));
+    
     const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new AppError(ERROR_CODES.INTERNAL_ERROR, "AI response is empty", 500);
@@ -263,10 +260,16 @@ export class AiReportSqlService {
 
     const whereIndex = this.findTopLevelKeywordIndex(sql, "WHERE");
     if (whereIndex >= 0) {
-      return (
-        `${sql.slice(0, whereIndex)}WHERE ${filterExpr} AND ` +
-        `${sql.slice(whereIndex + "WHERE".length).trimStart()}`
-      );
+      const beforeWhere = sql.slice(0, whereIndex);
+      const afterWhere = sql.slice(whereIndex + "WHERE".length).trimStart();
+      const clauseStartInAfterWhere = this.findFirstTopLevelClauseIndex(afterWhere, ["GROUP BY", "ORDER BY", "LIMIT"]);
+      if (clauseStartInAfterWhere >= 0) {
+        const originalWhereExpr = afterWhere.slice(0, clauseStartInAfterWhere).trim();
+        const tailClauses = afterWhere.slice(clauseStartInAfterWhere).trimStart();
+        return `${beforeWhere}WHERE ${filterExpr} AND (${originalWhereExpr}) ${tailClauses}`;
+      }
+      const originalWhereExpr = afterWhere.trim();
+      return `${beforeWhere}WHERE ${filterExpr} AND (${originalWhereExpr})`;
     }
 
     const clauseIndex = this.findFirstTopLevelClauseIndex(sql, ["GROUP BY", "ORDER BY", "LIMIT"]);
@@ -430,7 +433,12 @@ export class AiReportSqlService {
   }
 
   private buildCacheKey(query: string, projectIds: string[]): string {
-    const data = `${query}:${[...projectIds].sort().join(",")}`;
+    const normalizedQuery = query
+      .normalize("NFKC")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+    const data = `${normalizedQuery}:${[...projectIds].sort().join(",")}`;
     return createHash("sha256").update(data).digest("hex");
   }
 

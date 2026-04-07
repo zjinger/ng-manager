@@ -78,7 +78,6 @@ import { UserService } from "../modules/user/user.service";
 import type Database from "better-sqlite3";
 import OpenAI from "openai";
 import { AiIssueService } from "../modules/ai/ai-issue.service";
-import { AiRepo } from "../modules/ai/ai.repo";
 import { ReportPublicRepo } from "../modules/report-public/report-public.repo";
 import { ReportPublicService } from "../modules/report-public/report-public.service";
 
@@ -213,12 +212,12 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
 
   const openaiClient = config.openaiApiKey
     ? new OpenAI({
-        apiKey: config.openaiApiKey,
-        baseURL: config.openaiBaseUrl ?? undefined
-      })
+      apiKey: config.openaiApiKey,
+      baseURL: config.openaiBaseUrl ?? undefined
+    })
     : null;
-  const aiIssueService = new AiIssueService(openaiClient);
-  const aiReportSqlService = new AiReportSqlService(config, projectAccess);
+  const aiIssueService = new AiIssueService(config, openaiClient);
+  const aiReportSqlService = new AiReportSqlService(config, openaiClient, projectAccess);
   const aiReportRenderService = new AiReportRenderService(db);
   const reportPublicService = new ReportPublicService(config, new ReportPublicRepo(db), projectRepo);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);

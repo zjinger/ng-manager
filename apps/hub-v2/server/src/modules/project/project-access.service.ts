@@ -9,7 +9,11 @@ export class ProjectAccessService {
 
   async listAccessibleProjectIds(ctx: RequestContext): Promise<string[]> {
     if (ctx.projectIds?.length) {
-      return Array.from(new Set(ctx.projectIds.map((item) => item.trim()).filter((item) => item.length > 0)));
+      const activeIds = ctx.projectIds
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+        .filter((item) => this.repo.findById(item)?.status === "active");
+      return Array.from(new Set(activeIds));
     }
 
     const candidates = Array.from(

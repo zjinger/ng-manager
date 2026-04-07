@@ -28,15 +28,12 @@ export class ReportBoardStore {
   readonly failedTemplateIds = computed(() => this.failedTemplateIdsState());
 
   constructor() {
-    effect(
-      () => {
-        const key = this.storageKey();
-        this.boardItemsState.set(this.readBoardItems(key));
-        this.failedTemplateIdsState.set([]);
-        this.hydratedStorageKeyState.set(key);
-      },
-      { allowSignalWrites: true },
-    );
+    effect(() => {
+      const key = this.storageKey();
+      this.boardItemsState.set(this.readBoardItems(key));
+      this.failedTemplateIdsState.set([]);
+      this.hydratedStorageKeyState.set(key);
+    });
 
     effect(() => {
       const key = this.storageKey();

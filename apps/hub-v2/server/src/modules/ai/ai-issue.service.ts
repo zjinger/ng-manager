@@ -1,4 +1,4 @@
-import type OpenAI from "openai";
+import OpenAI from "openai";
 import type { IssuePriority, IssueType } from "../issue/issue.types";
 import type {
   AiIssueRecommendInput,
@@ -9,6 +9,7 @@ import type {
   HistoricalAssignee,
   ProjectModule
 } from "./ai.types";
+import { AppConfig } from "../../shared/env/env";
 
 const SYSTEM_PROMPT = `你是一个专业的测试单分析助手。
 
@@ -93,10 +94,12 @@ interface LlmResponse {
 
 export class AiIssueService {
   private readonly openai: OpenAI | null;
-
+  private readonly model: string;
   constructor(
+    config: AppConfig,
     openaiClient: OpenAI | null
   ) {
+    this.model = config.openaiModel?.trim();
     this.openai = openaiClient;
   }
 
@@ -119,7 +122,7 @@ export class AiIssueService {
 
     try {
       const response = await this.openai.chat.completions.create({
-        model: "deepseek-chat",
+        model: this.model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt }
@@ -175,9 +178,9 @@ export class AiIssueService {
     const module = projectModules.length === 0
       ? null
       : this.resolveProjectModule(parsed.module, projectModules)
-        ?? this.inferModuleFromText(`${input.title}\n${input.description ?? ""}`, projectModules)
-        ?? this.inferModuleFromHistory(historicalIssues, projectModules)
-        ?? (projectModules.length === 1 ? projectModules[0] : null);
+      ?? this.inferModuleFromText(`${input.title}\n${input.description ?? ""}`, projectModules)
+      ?? this.inferModuleFromHistory(historicalIssues, projectModules)
+      ?? (projectModules.length === 1 ? projectModules[0] : null);
 
     const confidence = typeof parsed.confidence === "number"
       ? Math.max(0, Math.min(1, parsed.confidence))
