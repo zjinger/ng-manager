@@ -115,20 +115,46 @@ import { RdAction } from '@pages/rd/models/rd.model';
         </nz-list> -->
         <nz-timeline>
           @for (log of logs(); track log.id) {
-            <nz-timeline-item
-              [nzColor]="log.actionType === 'comment' ? 'green' : 'blue'"
-              [nzDot]="dotTemplate"
-            >
-              <div class="log-item">
-                <div class="meta">
-                  <span class="operator">{{ log.operatorName || '系统' }}</span>
-                  <span class="content">{{ log.summary || log.actionType }}</span>
+            <nz-timeline-item [nzDot]="log.actionType === 'comment' ? undefined : dotTemplate">
+              @if (log.actionType === 'comment') {
+                <div class="comment-item">
+                  <nz-comment [nzAuthor]="log.operatorName!">
+                    <nz-avatar
+                      nz-comment-avatar
+                      [nzText]="log.operatorName!.charAt(0)"
+                      nzSize="small"
+                      style="background-color: #1890ff"
+                    />
+                    <nz-comment-content>
+                      <p class="summary">
+                        @for (seg of commentSegments(log.summary!); track $index) {
+                          @if (seg.mention) {
+                            <span class="mention">{{ seg.text }}</span>
+                          } @else {
+                            <span>{{ seg.text }}</span>
+                          }
+                        }
+                      </p>
+                    </nz-comment-content>
+                  </nz-comment>
                   <span class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</span>
                 </div>
-              </div>
+              } @else {
+                <div class="log-item">
+                  <div class="meta">
+                    <span class="operator">{{ log.operatorName || '系统' }}</span>
+                    <span class="content">{{ log.summary || log.actionType }}</span>
+                    <div class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</div>
+                  </div>
+                </div>
+              }
             </nz-timeline-item>
             <ng-template #dotTemplate>
-              <nz-icon [nzType]="iconByAction(log.actionType)" nzTheme="outline" style="font-size: 16px;" />
+              <nz-icon
+                [nzType]="iconByAction(log.actionType)"
+                nzTheme="outline"
+                style="font-size: 16px;"
+              />
             </ng-template>
           }
         </nz-timeline>
@@ -136,6 +162,11 @@ import { RdAction } from '@pages/rd/models/rd.model';
     </app-detail-item-card>
   `,
   styles: `
+    .mention {
+      color: #1677ff;
+      font-weight: 500;
+      cursor: pointer;
+    }
     .comment-empty {
       margin: 1rem;
       text-align: center;
@@ -182,20 +213,33 @@ import { RdAction } from '@pages/rd/models/rd.model';
           color: rgba(0, 0, 0, 0.85);
           font-size: 14px;
         }
-        .time {
-          fornsize: 10px;
-          font-weight: 300;
-          color: #bbbbbb;
-          margin-left: auto;
-        }
       }
       .empty {
         color: rgba(0, 0, 0, 0.45);
       }
     }
-
+    .comment-item {
+      display: flex;
+    }
+    .time {
+      padding-left: 10px;
+      display: flex;
+      align-items: center;
+      min-width: 100px;
+      font-size: 14px;
+      font-weight: 300;
+      color: #bbbbbb;
+      margin-left: auto;
+    }
+    .log-item {
+      padding-bottom: 16px;
+    }
+    .summary {
+      font-size: 14px;
+    }
     :host ::ng-deep .ant-timeline-item {
       margin-left: 6px;
+      padding-bottom: 0;
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -207,6 +251,7 @@ export class IssueCommentAreaComponent {
   readonly logs = input<IssueLogEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly busy = input(false);
+  private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
 
   readonly submit = output<createCommentInput>();
 
@@ -265,7 +310,7 @@ export class IssueCommentAreaComponent {
     return [...result];
   }
 
-  iconByAction(action: RdAction): string {
+  iconByAction(action: string): string {
     return (
       {
         create: 'plus-circle',
@@ -278,8 +323,51 @@ export class IssueCommentAreaComponent {
         close: 'close-circle',
         advance_stage: 'right-circle',
         delete: 'delete',
-        comment: 'message',
+        comment: '',
       }[action] ?? 'history'
     );
+  }
+
+  commentSegments(text: string): Array<{ text: string; mention?: boolean }> {
+    const segments: Array<{ text: string; mention?: boolean }> = [];
+
+    if (!text) return segments;
+
+    const regex = this.mentionPattern;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text))) {
+      const start = match.index;
+      const full = match[0]; // @陈墨
+      const name = full.slice(1); // 陈墨
+
+      // 普通文本
+      if (start > lastIndex) {
+        segments.push({
+          text: text.slice(lastIndex, start),
+        });
+      }
+
+      // mention（只对成员高亮）
+      segments.push({
+        text: full,
+        mention: this.isMember(name),
+      });
+
+      lastIndex = regex.lastIndex;
+    }
+
+    // 剩余文本
+    if (lastIndex < text.length) {
+      segments.push({
+        text: text.slice(lastIndex),
+      });
+    }
+
+    return segments;
+  }
+  isMember(name: string): boolean {
+    return !!this.members().find((member) => member.displayName === name);
   }
 }
