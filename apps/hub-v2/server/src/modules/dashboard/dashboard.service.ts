@@ -158,9 +158,9 @@ export class DashboardService implements DashboardQueryContract {
   }
 
   private async getActivitiesByScope(scope: DashboardScope, ctx: RequestContext): Promise<DashboardActivityItem[]> {
-    const contentActivities = await this.contentLogQuery.listRecent(scope.effectiveProjectIds, 8);
+    const recentContentLogs = await this.contentLogQuery.listRecent(scope.effectiveProjectIds, 50);
     if (!scope.userId) {
-      return contentActivities
+      return recentContentLogs
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, 8)
         .map((item) => ({
@@ -179,6 +179,7 @@ export class DashboardService implements DashboardQueryContract {
       this.issueQuery.listActivitiesForDashboard(scope.effectiveProjectIds, scope.userId, 6, ctx),
       this.rdQuery.listActivitiesForDashboard(scope.effectiveProjectIds, scope.userId, 6, ctx)
     ]);
+    const contentActivities = recentContentLogs.filter((item) => item.operatorId === scope.userId);
 
     return [
       ...issueActivities,
