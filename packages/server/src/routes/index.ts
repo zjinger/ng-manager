@@ -8,6 +8,7 @@ import { spriteRoutes } from './sprite.routes';
 import systemRoutes from './system.routes';
 import taskRoutes from './task.routes';
 import { apiClientCollectionsRoutes, apiClientEnvsRoutes, apiClientHistoryRoutes, apiClientHubTokenRoutes, apiClientRequestsRoutes, apiClientSendRoutes } from './api-client';
+import { nginxRoutes } from './nginx/nginx.routes';
 import { FastifyInstance } from 'fastify';
 import svnRoutes from './svn.routes';
 import spriteBrowseRoutes from './sprite-browse.routes';
@@ -52,4 +53,7 @@ export default async function routes(fastify: FastifyInstance) {
     await fastify.register(apiClientSendRoutes, { prefix: '/api/client/send' });
     await fastify.register(apiClientCollectionsRoutes, { prefix: '/api/client/collections' });
     await fastify.register(apiClientHubTokenRoutes, { prefix: '/api/client/hub-token' });
+
+    // nginx
+    await fastify.register(nginxRoutes, { prefix: '/api/nginx' });
 }

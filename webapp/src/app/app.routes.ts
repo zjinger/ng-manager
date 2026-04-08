@@ -47,6 +47,10 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/issues/issues.module').then(m => m.IssuesModule)
     },
     {
+        path: 'nginx',
+        loadComponent: () => import('./pages/nginx/nginx.component').then(m => m.NginxComponent)
+    },
+    {
         path: 'about',
         loadChildren: () => import('./pages/about/about-routing-module').then(m => m.AboutRoutingModule)
     },

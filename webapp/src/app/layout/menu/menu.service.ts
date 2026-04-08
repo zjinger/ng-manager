@@ -19,6 +19,7 @@ export class MenuService {
     { title: '任务', path: '/tasks', icon: 'schedule', level: 1, taskCountBadge: true },
     { title: '配置', path: '/configuration', icon: 'setting', level: 1 },
     { title: 'API', path: '/rquest', icon: 'api', level: 1 },
+    { title: 'Nginx', path: '/nginx', icon: 'deployment-unit', level: 1 },
     { title: '雪碧图', path: '/sprite', icon: 'smile', level: 1 },
     { title: '研发项', path: '/rd', icon: 'rocket', level: 1, hidden: true },
     { title: '测试跟踪', path: '/issues', icon: 'bug', level: 1, hidden: true },

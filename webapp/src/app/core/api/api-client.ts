@@ -28,6 +28,18 @@ export class ApiClient {
       .pipe(unwrapApi<T>());
   }
 
+  put<T>(url: string, body?: any, params?: HttpParams) {
+    return this.http
+      .put<ApiSuccess<T>>(url, body, { params })
+      .pipe(unwrapApi<T>());
+  }
+
+  patch<T>(url: string, body?: any, params?: HttpParams) {
+    return this.http
+      .patch<ApiSuccess<T>>(url, body, { params })
+      .pipe(unwrapApi<T>());
+  }
+
   /**
    * 通过prjectId获取hub v2 的数据（读操作）
    * token 已经本地配置完成
