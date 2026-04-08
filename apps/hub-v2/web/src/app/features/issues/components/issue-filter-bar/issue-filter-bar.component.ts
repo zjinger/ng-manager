@@ -57,7 +57,7 @@ export type IssueListViewMode = 'list' | 'card';
            [nzMaxTagPlaceholder]="null"
         >
           <nz-option nzLabel="待处理" nzValue="open"></nz-option>
-          <nz-option nzLabel="进行中" nzValue="in_progress"></nz-option>
+          <nz-option nzLabel="处理中" nzValue="in_progress"></nz-option>
           <nz-option nzLabel="待验证" nzValue="resolved"></nz-option>
           <nz-option nzLabel="已验证" nzValue="verified"></nz-option>
           <nz-option nzLabel="已重开" nzValue="reopened"></nz-option>

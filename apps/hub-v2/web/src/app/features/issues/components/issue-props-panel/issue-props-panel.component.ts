@@ -1,8 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-import { ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '@shared/constants';
-import { PanelCardComponent, StatusBadgeComponent, PriorityBadgeComponent, TypeBadgeComponent } from '@shared/ui';
+import { ISSUE_STATUS_LABELS } from '@shared/constants';
+import { PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
 import type { IssueEntity } from '../../models/issue.model';
 
 @Component({
@@ -27,23 +27,26 @@ import type { IssueEntity } from '../../models/issue.model';
         </div>
         <div>
           <dt>提报人</dt>
-          <dd class="person-cell"><span class="mini-avatar">{{ avatarText(issue().reporterName) }}</span><span>{{ issue().reporterName }}</span></dd>
+          <dd class="person-cell">
+            <!-- <span class="mini-avatar">{{ avatarText(issue().reporterName) }}</span> -->
+            <span>{{ issue().reporterName }}</span>
+          </dd>
         </div>
         <div>
           <dt>负责人</dt>
           <dd class="person-cell">
-            @if (issue().assigneeName) {
+            <!-- @if (issue().assigneeName) {
               <span class="mini-avatar">{{ avatarText(issue().assigneeName!) }}</span>
-            }
+            } -->
             <span>{{ issue().assigneeName || '未指派' }}</span>
           </dd>
         </div>
         <div>
           <dt>验证人</dt>
           <dd class="person-cell">
-            @if (issue().verifierName) {
+            <!-- @if (issue().verifierName) {
               <span class="mini-avatar">{{ avatarText(issue().verifierName!) }}</span>
-            }
+            } -->
             <span>{{ issue().verifierName || '-' }}</span>
           </dd>
         </div>

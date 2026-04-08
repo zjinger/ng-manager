@@ -5,7 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
-
+import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { ROLE_LABELS } from '@app/shared/constants';
 import { AuthStore } from '@core/auth';
 import { PanelCardComponent } from '@shared/ui';
@@ -15,216 +15,9 @@ import type { IssueCommentEntity } from '../../models/issue.model';
 @Component({
   selector: 'app-issue-comment-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzMentionModule, PanelCardComponent],
-  template: `
-    <app-panel-card title="评论/备注" >
-      <!-- @if (comments().length > 0) {
-        <div class="comment-list">
-          @for (item of comments(); track item.id) {
-            <div class="comment-item">
-              <div class="comment-item__avatar">{{ avatarText(item.authorName) }}</div>
-              <div class="comment-item__body">
-                <div class="comment-item__header">
-                  <span class="comment-item__author">{{ item.authorName }}</span>
-                  <span class="comment-item__action">添加了评论</span>
-                  <span class="comment-item__time">{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
-                </div>
-                <div class="comment-item__content">
-                  @for (segment of commentSegments(item); track $index) {
-                    @if (segment.mentioned) {
-                      <span class="comment-mention">{{ segment.text }}</span>
-                    } @else {
-                      <span>{{ segment.text }}</span>
-                    }
-                  }
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="comment-empty">还没有讨论</div>
-      } -->
-
-      <div class="composer">
-        <div class="composer__avatar">{{ currentUserInitial() }}</div>
-        <div class="composer__main">
-          <nz-mention
-            [nzSuggestions]="mentionOptions()"
-            [nzValueWith]="mentionLabel"
-            (nzOnSearchChange)="handleMentionSearch($event)"
-            (nzOnSelect)="handleMentionSelect($event)"
-          >
-            <textarea
-              nz-input
-              nzMentionTrigger
-              class="composer__textarea"
-              rows="4"
-              placeholder="添加评论… 输入 @ 提及成员"
-              [ngModel]="draft()"
-              (ngModelChange)="draft.set($event)"
-            ></textarea>
-            <ng-template nzMentionSuggestion let-member>
-              <div class="mention-option">
-                <span class="mention-name">{{ member.displayName || member.userId }}</span>
-                <span class="mention-id">{{roleLabel( member.roleCode) }}</span>
-              </div>
-            </ng-template>
-          </nz-mention>
-          <div class="composer__actions">
-            <button nz-button nzType="primary" [nzLoading]="busy()" (click)="submitComment()">
-              发送评论
-            </button>
-          </div>
-        </div>
-      </div>
-    </app-panel-card>
-  `,
-  styles: [
-    `
-      .comment-list {
-        display: grid;
-      }
-      .comment-empty {
-        padding: 20px;
-        text-align: center;
-        color: var(--text-muted);
-      }
-      .comment-item {
-        display: flex;
-        gap: 12px;
-        padding: 16px 20px;
-        border-top: 1px solid var(--border-color-soft);
-      }
-      .comment-item__avatar,
-      .composer__avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #f59e0b, #ef4444);
-        color: #fff;
-        font-size: 12px;
-        font-weight: 700;
-        flex-shrink: 0;
-      }
-      .comment-item__body {
-        flex: 1;
-      }
-      .comment-item__header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .comment-item__author {
-        font-weight: 700;
-        color: var(--text-primary);
-      }
-      .comment-item__action,
-      .comment-item__time {
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-      .comment-item__time {
-        margin-left: auto;
-      }
-      .comment-item__content {
-        margin-top: 8px;
-        color: var(--text-secondary);
-        white-space: pre-wrap;
-        line-height: 1.7;
-      }
-      .comment-mention {
-        color: var(--primary-700);
-        font-weight: 700;
-        background: color-mix(in srgb, var(--primary-500) 14%, transparent);
-        border-radius: 6px;
-        padding: 0 4px;
-      }
-      .composer {
-        display: flex;
-        gap: 12px;
-        padding: 16px 20px;
-        border-top: 1px solid var(--border-color-soft);
-      }
-      .composer__main {
-        flex: 1;
-      }
-      .composer__textarea {
-        min-height: 72px;
-        border-radius: 8px;
-      }
-      .mention-option {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .mention-name {
-        color: var(--text-primary);
-        font-weight: 600;
-      }
-      .mention-id {
-        color: var(--text-muted);
-        font-size: 12px;
-      }
-      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item {
-        margin: 2px 4px;
-        border-radius: 8px;
-        transition: background-color 0.15s ease;
-      }
-      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item:hover,
-      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active {
-        background: color-mix(in srgb, var(--primary-500) 24%, transparent);
-      }
-      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-name {
-        color: var(--primary-800, var(--primary-700));
-        font-weight: 700;
-      }
-      :host ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-id {
-        color: var(--primary-700);
-      }
-      :host-context(html[data-theme='dark']) .comment-mention {
-        color: var(--primary-300);
-        background: color-mix(in srgb, var(--primary-400) 26%, transparent);
-      }
-      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item:hover,
-      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active {
-        background: color-mix(in srgb, var(--primary-400) 34%, transparent);
-      }
-      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-name {
-        color: var(--primary-200);
-      }
-      :host-context(html[data-theme='dark']) ::ng-deep .ant-mentions-dropdown .ant-mentions-dropdown-menu-item-active .mention-id {
-        color: var(--primary-300);
-      }
-      .composer__actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-top: 10px;
-      }
-      .composer__tools {
-        display: flex;
-        gap: 8px;
-      }
-      .tool-btn {
-        color: var(--text-muted);
-      }
-      @media (max-width: 768px) {
-        .comment-item__time {
-          margin-left: 0;
-        }
-        .composer {
-          flex-direction: column;
-        }
-      }
-    `,
-  ],
+  imports: [CommonModule, FormsModule, NzAvatarModule, NzButtonModule, NzIconModule, NzInputModule, NzMentionModule, PanelCardComponent],
+  templateUrl: './issue-comment-editor.component.html',
+  styleUrls: ['./issue-comment-editor.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueCommentEditorComponent {
@@ -237,7 +30,8 @@ export class IssueCommentEditorComponent {
 
   readonly draft = signal('');
   readonly mentionKeyword = signal('');
-  readonly currentUserInitial = computed(() => this.avatarText(this.authStore.currentUser()?.nickname || '我'));
+  readonly currentUser = this.authStore.currentUser;
+  readonly currentUserInitial = computed(() => this.avatarText(this.currentUser()?.nickname || '我'));
   readonly mentionOptions = computed(() => {
     const keyword = this.mentionKeyword().trim().toLowerCase();
     const members = this.members();

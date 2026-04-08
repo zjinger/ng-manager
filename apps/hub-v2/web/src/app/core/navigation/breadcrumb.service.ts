@@ -19,10 +19,14 @@ export class BreadcrumbService {
       return [{ label: 'Dashboard' }];
     }
 
+    if (path === '/dashboard/board') {
+      return [{ label: '数据看板' }];
+    }
+
     if (path.startsWith('/issues/')) {
       return [
-        { label: '问题管理', route: '/issues' },
-        { label: '问题详情' },
+        { label: '测试跟踪', route: '/issues' },
+        { label: '测试单详情' },
       ];
     }
 
@@ -40,6 +44,10 @@ export class BreadcrumbService {
 
     if (path.startsWith('/reports')) {
       return [{ label: '积木报表' }];
+    }
+
+    if (path.startsWith('/feedbacks')) {
+      return [{ label: '系统反馈' }];
     }
 
     if (path.startsWith('/projects')) {

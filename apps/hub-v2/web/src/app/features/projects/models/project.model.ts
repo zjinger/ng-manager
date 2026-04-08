@@ -63,6 +63,7 @@ export interface ProjectMemberEntity {
   userId: string;
   displayName: string;
   roleCode: ProjectMemberRole;
+  avatarUrl: string | null;
   isOwner: boolean;
   joinedAt: string;
   createdAt: string;

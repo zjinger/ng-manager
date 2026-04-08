@@ -4,7 +4,9 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
+import { ROLE_OPTIONS } from '@app/shared/constants';
 import { DialogShellComponent } from '@shared/ui';
+import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -16,12 +18,11 @@ import type {
   ProjectMemberRole,
   ProjectSummary
 } from '../../models/project.model';
-import { ROLE_OPTIONS } from '@app/shared/constants';
 
 @Component({
   selector: 'app-project-members-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective],
+  imports: [FormsModule, NzAvatarModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective],
   templateUrl: './project-members-dialog.component.html',
   styleUrls: ['./project-members-dialog.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,

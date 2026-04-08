@@ -19,16 +19,24 @@ import { RD_STATUS_LABELS } from '../../constants';
         color: var(--text-muted);
       }
       .status-badge[data-status='verified'],
-      
       .status-badge[data-status='done'],
       .status-badge[data-status='published'] {
         background: rgba(34, 197, 94, 0.14);
         color: #16a34a;
       }
       .status-badge[data-status='open'],
-      .status-badge[data-status='doing'] {
-        background: rgba(79, 70, 229, 0.14);
-        color: var(--primary-600);
+      .status-badge[data-status='todo'] {
+        background: rgba(245, 158, 11, 0.18);
+        color: #b45309;
+      }
+      .status-badge[data-status='doing'],
+      .status-badge[data-status='in_progress'] {
+        background: rgba(6, 182, 212, 0.2);
+        color: #0e7490;
+      }
+      .status-badge[data-status='reopened'] {
+        background: rgba(245, 158, 11, 0.18);
+        color: #b45309;
       }
       .status-badge[data-status='blocked'] {
         background: rgba(239, 68, 68, 0.14);
@@ -54,9 +62,18 @@ import { RD_STATUS_LABELS } from '../../constants';
         color: #86efac;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='open'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='doing'] {
-        background: rgba(99, 102, 241, 0.22);
-        color: #c7d2fe;
+      :host-context(html[data-theme='dark']) .status-badge[data-status='todo'] {
+        background: rgba(245, 158, 11, 0.26);
+        color: #fcd34d;
+      }
+      :host-context(html[data-theme='dark']) .status-badge[data-status='doing'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='in_progress'] {
+        background: rgba(34, 211, 238, 0.26);
+        color: #67e8f9;
+      }
+      :host-context(html[data-theme='dark']) .status-badge[data-status='reopened'] {
+        background: rgba(245, 158, 11, 0.24);
+        color: #fcd34d;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='blocked'] {
         background: rgba(239, 68, 68, 0.22);
@@ -65,6 +82,11 @@ import { RD_STATUS_LABELS } from '../../constants';
       :host-context(html[data-theme='dark']) .status-badge[data-status='verified'] {
         background: rgba(14, 165, 233, 0.22);
         color: #7dd3fc;
+      }
+      :host-context(html[data-theme='dark']) .status-badge[data-status='closed'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='canceled'] {
+        background: rgba(100, 116, 139, 0.3);
+        color: #cbd5e1;
       }
     `,
   ],

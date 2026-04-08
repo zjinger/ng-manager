@@ -37,6 +37,7 @@ type ProjectMemberRow = {
   project_id: string;
   user_id: string;
   display_name: string;
+  avatar_upload_id?: string | null;
   role_code: string;
   is_owner: number;
   joined_at: string;
@@ -297,9 +298,13 @@ export class ProjectRepo {
     const rows = this.db
       .prepare(
         `
-          SELECT * FROM project_members
-          WHERE project_id = ?
-          ORDER BY is_owner DESC, updated_at DESC
+          SELECT
+            pm.*,
+            a.avatar_upload_id
+          FROM project_members pm
+          LEFT JOIN admin_accounts a ON a.user_id = pm.user_id
+          WHERE pm.project_id = ?
+          ORDER BY pm.is_owner DESC, pm.updated_at DESC
         `
       )
       .all(projectId) as ProjectMemberRow[];
@@ -667,6 +672,8 @@ export class ProjectRepo {
       projectId: row.project_id,
       userId: row.user_id,
       displayName: row.display_name,
+      avatarUploadId: row.avatar_upload_id ?? null,
+      avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
       roleCode: this.mapMemberRole(row.role_code),
       isOwner: row.is_owner === 1,
       joinedAt: row.joined_at,

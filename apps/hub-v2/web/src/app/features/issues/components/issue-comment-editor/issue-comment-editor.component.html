@@ -1,0 +1,68 @@
+<app-panel-card title="评论/备注">
+  <!-- @if (comments().length > 0) {
+        <div class="comment-list">
+          @for (item of comments(); track item.id) {
+            <div class="comment-item">
+              <div class="comment-item__avatar">{{ avatarText(item.authorName) }}</div>
+              <div class="comment-item__body">
+                <div class="comment-item__header">
+                  <span class="comment-item__author">{{ item.authorName }}</span>
+                  <span class="comment-item__action">添加了评论</span>
+                  <span class="comment-item__time">{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
+                </div>
+                <div class="comment-item__content">
+                  @for (segment of commentSegments(item); track $index) {
+                    @if (segment.mentioned) {
+                      <span class="comment-mention">{{ segment.text }}</span>
+                    } @else {
+                      <span>{{ segment.text }}</span>
+                    }
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="comment-empty">还没有讨论</div>
+      } -->
+
+  <div class="composer">
+    @if (currentUser()?.avatarUrl) {
+      <nz-avatar nzIcon="user" nzSrc="{{ currentUser()?.avatarUrl }}" />
+    } @else {
+      <div class="composer__avatar">
+        {{ currentUserInitial() }}
+      </div>
+    }
+    <div class="composer__main">
+      <nz-mention
+        [nzSuggestions]="mentionOptions()"
+        [nzValueWith]="mentionLabel"
+        (nzOnSearchChange)="handleMentionSearch($event)"
+        (nzOnSelect)="handleMentionSelect($event)"
+      >
+        <textarea
+          nz-input
+          nzMentionTrigger
+          class="composer__textarea"
+          rows="4"
+          placeholder="添加评论… 输入 @ 提及成员"
+          [ngModel]="draft()"
+          (ngModelChange)="draft.set($event)"
+        ></textarea>
+        <ng-template nzMentionSuggestion let-member>
+          <div class="mention-option">
+            <span class="mention-name">{{ member.displayName || member.userId }}</span>
+            <span class="mention-id">{{ roleLabel(member.roleCode) }}</span>
+          </div>
+        </ng-template>
+      </nz-mention>
+      <div class="composer__actions">
+        <button nz-button nzType="primary" [nzLoading]="busy()" (click)="submitComment()">
+          发送评论
+        </button>
+      </div>
+    </div>
+  </div>
+</app-panel-card>

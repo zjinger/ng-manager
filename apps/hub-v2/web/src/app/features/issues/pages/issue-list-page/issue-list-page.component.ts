@@ -627,7 +627,7 @@ export class IssueListPageComponent {
     });
     const skippedCount = selectedIds.length - eligibleIds.length;
     if (eligibleIds.length === 0) {
-      this.message.warning('当前选中项不可执行“标记已解决”（仅支持进行中/已重开）');
+      this.message.warning('当前选中项不可执行“标记已解决”（仅支持处理中/已重开）');
       return;
     }
 

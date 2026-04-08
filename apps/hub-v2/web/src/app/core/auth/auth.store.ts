@@ -23,4 +23,8 @@ export class AuthStore {
     this.currentUserState.set(null);
     this.initializedState.set(false);
   }
+
+  readonly userInitial = computed(() =>
+    (this.currentUser()?.nickname || this.currentUser()?.username || 'U').slice(0, 1)
+  );
 }

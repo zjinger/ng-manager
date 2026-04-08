@@ -1,7 +1,7 @@
 <app-dialog-shell
   [open]="open()"
   [width]="820"
-  [title]="project() ?'成员管理 · '+ project()!.name  : '项目成员'"
+  [title]="project() ? '成员管理 · ' + project()!.name : '项目成员'"
   [subtitle]="''"
   [icon]="'team'"
   (cancel)="cancel.emit()"
@@ -43,9 +43,9 @@
                   (ngModelChange)="roleCode.set($event || 'member')"
                   nzPlaceHolder="选择角色"
                 >
-                @for(option of roleOptions; track option.value) {
-                  <nz-option [nzLabel]="option.label" [nzValue]="option.value"></nz-option>
-                }
+                  @for (option of roleOptions; track option.value) {
+                    <nz-option [nzLabel]="option.label" [nzValue]="option.value"></nz-option>
+                  }
                 </nz-select>
               </nz-form-control>
             </nz-form-item>
@@ -80,21 +80,24 @@
         <div class="members-list">
           @for (member of members(); track member.id) {
             <div class="member-item">
-              <div class="member-item__avatar">{{ avatarText(member.displayName) }}</div>
+              @if (member.avatarUrl) {
+                <nz-avatar nzIcon="user" nzSrc="{{ member.avatarUrl }}" />
+              } @else {
+                <div class="member-item__avatar">{{ avatarText(member.displayName) }}</div>
+              }
               <div class="member-item__content">
                 <div class="member-item__name">
                   {{ member.displayName }}
                   @if (member.isOwner) {
                     <span class="member-item__tag">创建者</span>
                   }
-                  @if (member.roleCode==='project_admin') {
+                  @if (member.roleCode === 'project_admin') {
                     <span class="member-item__tag">项目管理员</span>
-                  }@else {
+                  } @else {
                     <span class="member-item__tag">项目成员</span>
                   }
-                  
                 </div>
-                <div class="member-item__meta">{{roleleLabel( member.roleCode || 'member') }}</div>
+                <div class="member-item__meta">{{ roleleLabel(member.roleCode || 'member') }}</div>
                 <!-- <div class="member-item__edit">
                   @if (member.isOwner) {
                     <span class="member-item__hint">创建者（Owner）不可修改</span>
