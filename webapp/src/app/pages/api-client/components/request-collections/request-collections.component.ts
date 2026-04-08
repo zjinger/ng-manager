@@ -81,24 +81,56 @@ import { CollectionTreeComponent } from './collection-tree.component';
     </ng-template>
   `,
   styles: [`
-    :host { height: 100%; display: flex; flex-direction: column; width: 320px; flex: 0 0 320px; }
-    .wrap { height: 100%; display: flex; flex-direction: column; border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 12px; overflow: hidden; }
+    :host { 
+      height: 100%; 
+      display: flex; 
+      flex-direction: column; 
+      width: 300px; 
+      flex: 0 0 300px; 
+    }
+    
+    .wrap { 
+      height: 100%; 
+      display: flex; 
+      flex-direction: column; 
+      border: 1px solid rgba(0, 0, 0, 0.08); 
+      border-radius: 8px; 
+      overflow: hidden; 
+      background: #fff;
+    }
+    
     .header {
       width: 100%;
-      padding: 10px 12px;
+      padding: 8px 10px;
       display: flex;
-      gap: 10px;
+      gap: 6px;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
       flex: 0 0 auto;
-
-      nz-input-wrapper {
-        width: 100%;
-        border-radius: 18px;
-      }
+      background: #fafafa;
     }
-    .body{
+    
+    .header nz-input-wrapper {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .header input[nz-input] {
+      font-size: 13px;
+    }
+    
+    .header button {
+      width: 32px;
+      height: 32px;
+      padding: 0 !important;
+    }
+    
+    .search-icon {
+      color: rgba(0, 0, 0, 0.35);
+    }
+    
+    .body {
       flex: 1 1 auto;
       height: 0;
       display: flex;

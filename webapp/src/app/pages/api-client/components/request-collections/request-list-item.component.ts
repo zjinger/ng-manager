@@ -8,6 +8,9 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
+/**
+ * 请求列表项组件
+ */
 @Component({
   selector: 'app-request-list-item',
   imports: [CommonModule, NzTagModule, NzIconModule, NzButtonModule, NzPopoverModule, NzMenuModule, NzTooltipModule],
@@ -20,7 +23,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
   },
   template: `
     <div class="content" [nz-tooltip]="r.url" [nzTooltipTrigger]="'hover'" nzTooltipPlacement="right">
-        <nz-tag class="method">{{r.method}}</nz-tag>
+        <nz-tag class="method" [nzColor]="getMethodColor(r.method)">{{r.method}}</nz-tag>
         <span class="name">{{r.name || '未命名'}}</span>
     </div>
     <button class="more-actions" nz-button nzType="text" nzSize="small" (click)="$event.stopPropagation();" 
@@ -31,13 +34,6 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
           [nzPopoverOverlayClassName]="'project-item-popover'"> 
         <nz-icon nzType="more" nzTheme="outline"  /> 
     </button>
-    <!-- <div class="row2">
-      <span class="url">{{r.url}}</span>
-    </div>
-
-    <div class="row3">
-      <span class="time">{{r.updatedAt ? (r.updatedAt | date:'MM-dd HH:mm') : ''}}</span>
-    </div> -->
     <ng-template #contentTemplate>
       <ul nz-menu>
         <li nz-menu-item class="menu-item">
@@ -66,52 +62,76 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
   `,
   styles: [
     `
-      :host.request-item{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:8px;
-        border:1px solid #f0f0f0;
-        border-radius:10px;
-        padding:10px;
-        cursor:pointer;
-        transition: background .15s, border-color .15s;
+      :host.request-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
       }
-      :host.request-item.active{
-        background:#f5f5f5;
-        border-color:#d9d9d9;
+      
+      :host.request-item:hover {
+        background-color: rgba(0, 0, 0, 0.04);
       }
-      .content{
-        display:flex;
-        align-items:center;
-        gap:8px;
-        flex:1;
-        overflow:hidden;
+      
+      :host.request-item.active {
+        background-color: #e6f7ff;
       }
-      button.more-actions{
-        flex:0 0 auto;
+      
+      :host.request-item.active:hover {
+        background-color: #bae7ff;
+      }
+      
+      .content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        overflow: hidden;
+      }
+      
+      button.more-actions {
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        padding: 0 !important;
         visibility: hidden;
+        opacity: 0.5;
       }
-      :host.request-item:hover button.more-actions{
+      
+      button.more-actions:hover {
+        opacity: 1;
+      }
+      
+      :host.request-item:hover button.more-actions {
         visibility: visible;
       }
-      .method{
-        flex:0 0 auto;
+      
+      .method {
+        flex: 0 0 auto;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1.4;
+        padding: 0 4px;
+        margin: 0;
       }
-      .name{
-        flex:1 1 auto;
-        font-weight:600;
-        overflow:hidden;
-        text-overflow:ellipsis;
-        white-space:nowrap;
+      
+      .name {
+        flex: 1 1 auto;
+        font-size: 13px;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: rgba(0, 0, 0, 0.85);
       }
-      .time{
-        font-size:12px;
-        color:rgba(0,0,0,.45);
-      }
-      .menu-item{
-        display:flex;
-        align-items:center;
+      
+      .menu-item {
+        display: flex;
+        align-items: center;
       }
     `
   ],
@@ -124,4 +144,19 @@ export class RequestListItemComponent {
 
   mouseover: boolean = false;
 
+  /**
+   * 获取方法对应的颜色
+   */
+  getMethodColor(method: string): string {
+    const colors: Record<string, string> = {
+      GET: '#61affe',
+      POST: '#49cc90',
+      PUT: '#fca130',
+      PATCH: '#50e3c2',
+      DELETE: '#f93e3e',
+      HEAD: '#909090',
+      OPTIONS: '#909090',
+    };
+    return colors[method.toUpperCase()] || '#909090';
+  }
 }

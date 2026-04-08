@@ -42,8 +42,20 @@ import { CollectionTreeItemComponent } from './collection-tree-item.component';
   `,
   styles: `
     :host.tree-body {
-      flex:1 1 auto; height:0; overflow:auto; padding:10px; display:flex; flex-direction:column; gap:8px; 
-      .empty{ padding:16px; opacity:.6; text-align:center; }
+      flex: 1 1 auto;
+      height: 0;
+      overflow: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    :host.tree-body .empty {
+      padding: 24px 16px;
+      opacity: 0.5;
+      text-align: center;
+      font-size: 13px;
     }
   `,
 })

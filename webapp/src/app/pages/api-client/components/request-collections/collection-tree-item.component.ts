@@ -9,6 +9,9 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
 
+/**
+ * 集合树项组件
+ */
 @Component({
   selector: 'app-collection-tree-item',
   imports: [CommonModule, NzButtonModule, FormsModule, NzIconModule, NzPopoverModule, NzMenuModule, NzTagModule, NzPopconfirmModule],
@@ -22,15 +25,17 @@ import { NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
           nzSize="small"
           (click)="toggle.emit(node.key); $event.stopPropagation()"
         >
-          <nz-icon [nzType]="hasChildren ? (expanded ? 'down' : 'right') : 'minus'"></nz-icon>
+          <nz-icon class="chev-icon" [class.expanded]="expanded" [nzType]="'right'"></nz-icon>
         </button>
       }
 
       <div class="main" (click)="onClick()">
-        <nz-icon class="icon" [nzType]="iconType"></nz-icon>
+        @if(iconType){
+          <nz-icon class="icon" [nzType]="iconType"></nz-icon>
+        }
 
         @if (node.kind === 'request') {
-          <nz-tag class="method">{{ node.method || '' }}</nz-tag>
+          <nz-tag class="method" [nzColor]="getMethodColor(node.method)">{{ node.method || '' }}</nz-tag>
         }
 
         <div class="texts">
@@ -87,10 +92,6 @@ import { NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
             </li>
 
           } @else {
-            <!-- <li nz-menu-item (click)="copyCurl.emit(node.id); visible = false">
-              <nz-icon nzType="copy"></nz-icon>
-              <span>复制 cURL</span>
-            </li> -->
             <li nz-menu-item (click)="move.emit(node.id); visible = false">
               <nz-icon nzType="folder"></nz-icon>
               <span>移动到</span>
@@ -119,26 +120,120 @@ import { NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
     '[class.ctree-item]': 'true',
   },
   styles: `
-    :host.item { display:block; }
-    .row{
-      display:flex; align-items:center; gap:6px;
-      padding:6px 8px;
-      border:1px solid #f0f0f0;
-      border-radius:10px;
-      cursor:pointer;
-      transition: background .15s, border-color .15s;
+    :host.ctree-item { 
+      display: block; 
     }
-    .row.active{ background:#f5f5f5; border-color:#d9d9d9; }
-    .chev{ flex:0 0 auto; nz-icon{font-size:12px;transition:transform .15s} }
-    .main{ display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
-    .icon{ opacity:.75; }
-    .method{ flex:0 0 auto; }
-    .texts{ flex:1; min-width:0; }
-    .title{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .sub{ font-size:12px; opacity:.65; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .more{ flex:0 0 auto; visibility:hidden; }
-    .row:hover .more{ visibility:visible; }
-    .children{ margin-left:18px; padding-top:6px; display:flex; flex-direction:column; gap:6px; }
+    
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    .row:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+    
+    .row.active {
+      background-color: #e6f7ff;
+    }
+    
+    .row.active:hover {
+      background-color: #bae7ff;
+    }
+    
+    .chev {
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+      padding: 0 !important;
+    }
+    
+    .chev-icon {
+      font-size: 12px;
+      transition: transform 0.2s ease;
+      color: rgba(0, 0, 0, 0.45);
+    }
+    
+    .chev-icon.expanded {
+      transform: rotate(90deg);
+    }
+    
+    .main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .icon {
+      opacity: 0.65;
+      font-size: 14px;
+    }
+    
+    .method {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.4;
+      padding: 0 4px;
+      margin: 0;
+    }
+    
+    .texts {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .title {
+      font-size: 13px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: rgba(0, 0, 0, 0.85);
+    }
+    
+    .sub {
+      font-size: 12px;
+      opacity: 0.5;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+    
+    .more {
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+      padding: 0 !important;
+      visibility: hidden;
+      opacity: 0.5;
+    }
+    
+    .more:hover {
+      opacity: 1;
+    }
+    
+    .row:hover .more {
+      visibility: visible;
+    }
+    
+    .children {
+      margin-left: 20px;
+      padding-left: 4px;
+      border-left: 1px dashed rgba(0, 0, 0, 0.08);
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
   `,
 })
 export class CollectionTreeItemComponent {
@@ -162,12 +257,28 @@ export class CollectionTreeItemComponent {
 
   get hasChildren() { return (this.node.children?.length ?? 0) > 0; }
   get iconType() {
-    if (this.node.kind === 'request') return 'api';
+    if (this.node.kind === 'request') return ''; //api
     return this.node.kind === 'folder' ? 'folder' : 'database';
   }
 
   onClick() {
     if (this.node.kind === 'request') this.selectRequest.emit(this.node.id);
     else this.selectCollection.emit(this.node.id);
+  }
+
+  /**
+   * 获取方法对应的颜色
+   */
+  getMethodColor(method: string | undefined): string {
+    const colors: Record<string, string> = {
+      GET: '#61affe',
+      POST: '#49cc90',
+      PUT: '#fca130',
+      PATCH: '#50e3c2',
+      DELETE: '#f93e3e',
+      HEAD: '#909090',
+      OPTIONS: '#909090',
+    };
+    return colors[method?.toUpperCase() || ''] || '#909090';
   }
 }

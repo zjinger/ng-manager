@@ -1,0 +1,169 @@
+:host {
+    display: block;
+    width: 100%;
+}
+
+.tabs-container {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+
+    &::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #d9d9d9;
+        border-radius: 2px;
+    }
+}
+
+.tab-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    min-width: 100px;
+    max-width: 200px;
+    height: 28px;
+    border-radius: 4px 4px 0 0;
+    background: #fff;
+    border: 1px solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+
+    &:hover {
+        background: #f5f5f5;
+    }
+
+    &.active {
+        background: #fff;
+        border-color: #1890ff;
+        border-bottom: 1px solid #fff;
+        margin-bottom: -1px;
+        z-index: 1;
+    }
+
+    &.dirty .title {
+        color: #1890ff;
+    }
+}
+
+.drag-handle {
+    display: flex;
+    align-items: center;
+    opacity: 0.3;
+    cursor: grab;
+    font-size: 10px;
+
+    &:hover {
+        opacity: 0.6;
+    }
+}
+
+.method {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    flex-shrink: 0;
+
+    &.get {
+        color: #61affe;
+    }
+
+    &.post {
+        color: #49cc90;
+    }
+
+    &.put {
+        color: #fca130;
+    }
+
+    &.patch {
+        color: #50e3c2;
+    }
+
+    &.delete {
+        color: #f93e3e;
+    }
+
+    &.head,
+    &.options {
+        color: #909090;
+    }
+}
+
+.title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: #333;
+}
+
+.dirty-dot {
+    color: #1890ff;
+    font-size: 8px;
+    flex-shrink: 0;
+}
+
+.title-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 12px;
+    min-width: 60px;
+    padding: 0 2px;
+}
+
+.close-btn {
+    padding: 0 2px !important;
+    height: 16px !important;
+    width: 16px !important;
+    font-size: 10px;
+    opacity: 0.3;
+    flex-shrink: 0;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.add-btn {
+    padding: 0 8px !important;
+    height: 28px !important;
+    opacity: 0.6;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+/* 右键菜单样式 */
+:host ::ng-deep .tab-context-menu {
+    .shortcut {
+        margin-left: auto;
+        opacity: 0.5;
+        font-size: 12px;
+        font-family: monospace;
+    }
+
+
+}
+
+.context-menu ::ng-deep {
+    .ant-menu-title-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+}

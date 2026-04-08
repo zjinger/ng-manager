@@ -1,0 +1,128 @@
+<div class="tabs-container" cdkDropList (cdkDropListDropped)="onDrop($event)">
+  @for (tab of tabs(); track tab.id; let i = $index) {
+    <div
+      class="tab-item"
+      [class.active]="tab.id === activeTabId()"
+      [class.dirty]="tab.isDirty"
+      [cdkDragData]="tab"
+      cdkDrag
+      (click)="onTabClick(tab.id)"
+      (contextmenu)="onContextMenu($event, tab, i)"
+    >
+      <!-- 拖拽手柄 -->
+      <span class="drag-handle" cdkDragHandle>
+        <nz-icon nzType="holder" nzTheme="outline" />
+      </span>
+
+      <!-- Tab 内容 -->
+      @if (editingTabId() === tab.id) {
+        <input
+          #editInput
+          class="title-input"
+          [ngModel]="editingTitle()"
+          (ngModelChange)="editingTitle.set($event)"
+          (blur)="finishEdit()"
+          (keydown.enter)="finishEdit()"
+          (keydown.escape)="cancelEdit()"
+        />
+      } @else {
+        <span class="method" [class]="getMethodClass(tab.request.method)">
+          {{ tab.request.method }}
+        </span>
+        <span
+          class="title"
+          (dblclick)="startEdit(tab)"
+          nz-tooltip
+          [nzTooltipTitle]="getFullTitle(tab)"
+        >
+          {{ getDisplayTitle(tab) }}
+        </span>
+        @if (tab.isDirty) {
+          <span class="dirty-dot" title="未保存">●</span>
+        }
+      }
+
+      <!-- 关闭按钮 -->
+      <button
+        class="close-btn"
+        nz-button
+        nzType="text"
+        nzSize="small"
+        (click)="onCloseClick(tab.id, $event)"
+      >
+        <nz-icon nzType="close" nzTheme="outline" />
+      </button>
+    </div>
+  }
+
+  <!-- 新建按钮 -->
+  @if (canOpenMore) {
+    <button
+      class="add-btn"
+      nz-button
+      nzType="text"
+      (click)="onAddClick()"
+      nz-tooltip
+      nzTooltipTitle="新建请求 (Ctrl+T)"
+    >
+      <nz-icon nzType="plus" nzTheme="outline" />
+    </button>
+  }
+</div>
+
+<!-- 右键菜单 -->
+<nz-dropdown-menu #contextMenu="nzDropdownMenu" nzOverlayClassName="tab-context-menu">
+  <ul nz-menu class="context-menu">
+    <!-- 关闭操作 -->
+    <li nz-menu-item (click)="onMenuAction('close')">
+      <nz-icon nzType="close" />
+      <span>关闭</span>
+      <!-- <span class="shortcut">Ctrl+W</span> -->
+    </li>
+    <li nz-menu-item (click)="onMenuAction('closeOthers')" [nzDisabled]="tabs().length <= 1">
+      <nz-icon nzType="close-circle" />
+      <span>关闭其他</span>
+    </li>
+    <li nz-menu-item (click)="onMenuAction('closeRight')" [nzDisabled]="!hasRightTabs()">
+      <nz-icon nzType="right-circle" />
+      <span>关闭右侧</span>
+    </li>
+    <li nz-menu-item (click)="onMenuAction('closeSaved')" [nzDisabled]="!hasSavedTabs()">
+      <nz-icon nzType="check-circle" />
+      <span>关闭已保存</span>
+    </li>
+    <li nz-menu-item (click)="onMenuAction('closeAll')" [nzDisabled]="tabs().length <= 1">
+      <nz-icon nzType="delete" />
+      <span>关闭所有</span>
+    </li>
+
+    <li nz-menu-divider></li>
+
+    <!-- 编辑操作 -->
+    <li nz-menu-item (click)="onMenuAction('rename')">
+      <nz-icon nzType="edit" />
+      <span>重命名</span>
+      <!-- <span class="shortcut">F2</span> -->
+    </li>
+    <li nz-menu-item (click)="onMenuAction('duplicate')">
+      <nz-icon nzType="copy" />
+      <span>复制请求</span>
+    </li>
+
+    <li nz-menu-divider></li>
+
+    <!-- 其他操作 -->
+    @if (contextTab()?.request?.url) {
+      <li nz-menu-item (click)="onMenuAction('copyUrl')">
+        <nz-icon nzType="link" />
+        <span>复制 URL</span>
+      </li>
+    }
+    @if (contextTab()?.requestId) {
+      <li nz-menu-item (click)="onMenuAction('moveTo')">
+        <nz-icon nzType="folder" />
+        <span>移动到</span>
+      </li>
+    }
+  </ul>
+</nz-dropdown-menu>

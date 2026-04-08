@@ -1,12 +1,13 @@
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { ApiClientService } from './api-client.service';
-import { ApiCollectionCreateBody, ApiCollectionEntity, ApiCollectionKind, ApiCollectionTreeNode, ApiCollectionUpdateBody, ApiRequestEntity, ApiRequestKvRow, ApiScope, SendResponse } from '@models/api-client';
-import { ApiHistoryEntity } from '@models/api-client/api-history.model';
+import { ApiCollectionCreateBody, ApiCollectionEntity, ApiCollectionKind, ApiCollectionTreeNode, ApiCollectionUpdateBody, ApiRequestEntity, ApiRequestKvRow, ApiScope } from '@models/api-client';
 import { ApiEnvEntity } from '@models/api-client/api-environment.model';
-import { envVarsToRecord, genCollectionTreeNodes } from '../utils';
+import { ApiHistoryEntity } from '@models/api-client/api-history.model';
+import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { uniqueId } from 'lodash';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { ApiClientTabStore } from '../store/api-client-tab.store';
+import { envVarsToRecord, genCollectionTreeNodes } from '../utils';
+import { ApiClientService } from './api-client.service';
 import { CollectionModalService } from './collection-modal.service';
 
 function now() {
@@ -25,6 +26,9 @@ export class ApiClientStateService {
   private msg = inject(NzMessageService);
   private projectState = inject(ProjectStateService);
   private collectionModal = inject(CollectionModalService);
+  
+  // Tab Store
+  readonly tabStore = inject(ApiClientTabStore);
 
   // request state
   scope = signal<ApiScope>('project');
@@ -32,11 +36,12 @@ export class ApiClientStateService {
 
   q = signal(''); // 搜索关键词
 
-  sending = signal(false);
+  // 使用 Tab Store 的 sending 状态
+  sending = this.tabStore.sending;
   requests = signal<ApiRequestEntity[]>([]); // 全部请求列表
 
-  // 当前选中请求 ID
-  activeRequestId = signal<string | null>(null);
+  // 当前选中请求 ID - 改用 Tab Store
+  activeRequestId = computed(() => this.tabStore.activeTab()?.requestId ?? null);
 
   readonly collections = signal<ApiCollectionEntity[]>([]);
 
@@ -61,15 +66,23 @@ export class ApiClientStateService {
   envLoading = signal(false);
   activeEnvId = signal<string | null>(null);
 
-  // send result
-  lastResult = signal<SendResponse | null>(null);
+  // send result - 改用 Tab Store
+  lastResult = this.tabStore.activeResponse;
 
   // project info
   projectId = computed(() => {
     const p = this.projectState.currentProject();
     return p?.id ?? '';
   });
-  activeRequest = signal<ApiRequestEntity | null>(null);
+  
+  // activeRequest 改用 Tab Store
+  activeRequest = this.tabStore.activeRequest;
+  
+  // Tab 相关
+  readonly tabs = this.tabStore.tabs;
+  readonly activeTabId = this.tabStore.activeTabId;
+  readonly activeTab = this.tabStore.activeTab;
+  readonly canOpenMore = this.tabStore.canOpenMore;
 
   activeEnv = computed(() => {
     const id = this.activeEnvId();
@@ -177,12 +190,9 @@ export class ApiClientStateService {
       const active = this.activeRequestId();
       if (active && list.some((x) => x.id === active)) return;
       if (list.length) {
-        this.setActive(list[0]);
+        this.selectRequest(list[0].id);
       } else {
-        this.setActive(null);
-        this.activeRequestId.set(null);
-        this.lastResult.set(null);
-        this.newRequest();
+        this.newTab();
       }
     } catch (e: any) {
       this.msg.error(e?.message ?? '加载请求失败');
@@ -192,13 +202,110 @@ export class ApiClientStateService {
   }
 
   /**
-   * 选择请求
+   * 选择请求 - 在新 Tab 中打开
    */
   selectRequest(id: string) {
     const req = this.requests().find((x) => x.id === id) || null;
-    this.setActive(req);
-    this.activeCollectionId.set(req?.collectionId ?? null);
+    if (req) {
+      this.tabStore.openRequestInTab(req, id);
+      this.activeCollectionId.set(req.collectionId ?? null);
+    }
+  }
+  
+  /**
+   * 切换 Tab
+   */
+  switchTab(tabId: string): void {
+    this.tabStore.switchTab(tabId);
+    const tab = this.tabStore.getTab(tabId);
+    if (tab?.request.collectionId) {
+      this.activeCollectionId.set(tab.request.collectionId);
+    }
+  }
+  
+  /**
+   * 关闭 Tab
+   */
+  closeTab(tabId: string): void {
+    this.tabStore.closeTab(tabId);
+  }
+  
+  /**
+   * 新建 Tab
+   */
+  newTab(collectionId?: string | null): void {
+    try {
+      this.tabStore.openNewTab(collectionId);
+      this.activeCollectionId.set(collectionId ?? null);
+    } catch (e: any) {
+      this.msg.warning(e.message);
+    }
+  }
+  
+  /**
+   * 重命名 Tab
+   */
+  renameTab(tabId: string, title: string): void {
+    this.tabStore.renameTab(tabId, title);
+  }
+  
+  /**
+   * 重排序 Tab
+   */
+  reorderTabs(from: number, to: number): void {
+    this.tabStore.reorderTabs(from, to);
+  }
 
+  /**
+   * 处理右键菜单操作
+   */
+  handleTabContextMenu(event: { tabId: string; action: string }): void {
+    switch (event.action) {
+      case 'close':
+        this.closeTab(event.tabId);
+        break;
+      case 'closeOthers':
+        this.tabStore.closeOtherTabs(event.tabId);
+        break;
+      case 'closeRight':
+        this.tabStore.closeRightTabs(event.tabId);
+        break;
+      case 'closeSaved':
+        this.tabStore.closeSavedTabs();
+        break;
+      case 'closeAll':
+        this.tabStore.closeAllTabs();
+        break;
+      case 'rename':
+        // 重命名由组件处理（启动编辑模式）
+        break;
+      case 'duplicate':
+        try {
+          this.tabStore.duplicateTab(event.tabId);
+          this.msg.success('已复制请求');
+        } catch (e: any) {
+          this.msg.warning(e.message);
+        }
+        break;
+      case 'copyUrl':
+        const url = this.tabStore.getTabUrl(event.tabId);
+        if (url) {
+          navigator.clipboard.writeText(url).then(() => {
+            this.msg.success('URL 已复制到剪贴板');
+          }).catch(() => {
+            this.msg.error('复制失败');
+          });
+        }
+        break;
+      case 'moveTo':
+        // 获取当前 Tab 的请求
+        const tab = this.tabStore.getTab(event.tabId);
+        if (tab?.requestId) {
+          // 打开移动对话框（复用集合移动逻辑）
+          this.moveCollection(tab.requestId, 'request');
+        }
+        break;
+    }
   }
 
   /**
@@ -294,7 +401,11 @@ export class ApiClientStateService {
       req.collectionId = parentId ?? null;
       await this.api.updateRequest(this.scope(), this.projectId(), updated);
       this.requests.update(list => list.map(r => r.id === id ? { ...r, collectionId: parentId ?? null } : r));
-      this.setActive(req.id === this.activeRequestId() ? { ...req, collectionId: parentId ?? null } : req);
+      // 更新 Tab 中的请求
+      const tab = this.tabs().find(t => t.requestId === id);
+      if (tab) {
+        this.tabStore.updateActiveRequest({ collectionId: parentId ?? null });
+      }
       this.msg.success('修改成功');
     } else {
       const updated: ApiCollectionUpdateBody = {
@@ -349,7 +460,7 @@ export class ApiClientStateService {
   }
 
   /**
-   * 新建请求
+   * 新建请求 - 在新 Tab 中打开
    */
   newRequest(input: { collectionId?: string | null } = {}) {
     const pid = this.projectId();
@@ -357,39 +468,18 @@ export class ApiClientStateService {
       this.msg.warning('请先选择项目');
       return;
     }
-    const t = now();
-    const req: ApiRequestEntity = {
-      id: newLocalId('req'),
-      name: '',
-      method: 'GET',
-      url: '',
-      collectionId: input.collectionId ?? null,
-      query: [],
-      pathParams: [],
-      headers: [],
-      body: { mode: 'none' },
-      auth: { type: 'none' },
-      options: { followRedirects: true, timeoutMs: 30_000 },
-      tags: [],
-      createdAt: t,
-      updatedAt: t,
-    };
-    this.setActive(req);
-    this.activeCollectionId.set(input.collectionId ?? null);
+    this.newTab(input.collectionId);
   }
 
   /**
-   * 更新当前请求字段
+   * 更新当前请求字段 - 使用 Tab Store
    */
   patchActive(patch: Partial<ApiRequestEntity>) {
-    const req = this.activeRequest();
-    if (!req) return;
-    const updated = { ...req, ...patch, updatedAt: Date.now() };
-    this.activeRequest.set(updated);
+    this.tabStore.updateActiveRequest(patch);
   }
 
   /**
-   * 保存当前请求
+   * 保存当前请求 - 使用 Tab Store
    */
   async saveActive() {
     const req = this.activeRequest();
@@ -415,13 +505,15 @@ export class ApiClientStateService {
         nodes,
       }) || {};
       req.collectionId = parentId ?? null;
+      this.tabStore.updateActiveRequest({ collectionId: req.collectionId });
     }
 
     this.loading.set(true);
     try {
-      await this.api.saveRequest(scope, pid, req);
+      const result = await this.api.saveRequest(scope, pid, req);
       this.msg.success('已保存');
-      this.activeRequest.set({ ...req }); // 更新引用
+      // 标记 Tab 为已保存
+      this.tabStore.markActiveSaved(result.id);
       await this.loadRequests(); // 重新加载列表
     } catch (e: any) {
       this.msg.error(e?.message ?? '保存失败');
@@ -431,7 +523,7 @@ export class ApiClientStateService {
   }
 
   /**
-   * 发送当前请求
+   * 发送当前请求 - 使用 Tab Store
    */
   async sendActive() {
     const req = this.activeRequest();
@@ -446,8 +538,8 @@ export class ApiClientStateService {
     }
 
     const startedAt = Date.now();
-    this.sending.set(true);
-    this.lastResult.set(null);
+    this.tabStore.setSending(true);
+    this.tabStore.updateActiveResponse(null);
     try {
       const data = await this.api.hubTokenRequest({
         projectId: project.id,
@@ -457,7 +549,7 @@ export class ApiClientStateService {
       });
       const bodyText = JSON.stringify(data, null, 2);
       const endedAt = Date.now();
-      this.lastResult.set({
+      this.tabStore.updateActiveResponse({
         historyId: `hub_token_${endedAt}`,
         response: {
           status: 200,
@@ -475,7 +567,7 @@ export class ApiClientStateService {
       this.msg.success(`Hub Issues 请求成功 (${Date.now() - startedAt}ms)`);
     } catch (e: any) {
       const endedAt = Date.now();
-      this.lastResult.set({
+      this.tabStore.updateActiveResponse({
         historyId: `hub_token_${endedAt}`,
         error: {
           code: 'HUB_TOKEN_REQUEST_ERROR',
@@ -489,7 +581,7 @@ export class ApiClientStateService {
       });
       this.msg.error(e?.message ?? 'Hub Issues 请求失败');
     } finally {
-      this.sending.set(false);
+      this.tabStore.setSending(false);
     }
   }
 
@@ -501,28 +593,16 @@ export class ApiClientStateService {
     this.msg.success('已删除');
     const list = this.requests().filter(r => r.id !== id);
     this.requests.set(list);
-    if (this.activeRequestId() === id) {
-      const next = list[0]?.id ?? null;
-      this.activeRequestId.set(next);
+    // 关闭对应的 Tab
+    const tab = this.tabs().find(t => t.requestId === id);
+    if (tab) {
+      this.tabStore.closeTab(tab.id);
     }
   }
-
-  private setActive(request: ApiRequestEntity | null) {
-    if (!request || !request.id || request.id === this.activeRequestId()) return;
-    if (request.headers.length) {
-      request.headers = this.ensureKvId(request.headers);
-    }
-    if (request.query.length) {
-      request.query = this.ensureKvId(request.query);
-    }
-    if (request.pathParams.length) {
-      request.pathParams = this.ensureKvId(request.pathParams);
-    }
-    this.activeRequest.set(request);
-    this.activeRequestId.set(request.id);
-    this.lastResult.set(null);
-  }
-
+  
+  /**
+   * 确保 Kv 行有 ID
+   */
   private ensureKvId(rows: ApiRequestKvRow[]): ApiRequestKvRow[] {
     return rows.map(ele => {
       if (!ele.id) {
@@ -561,14 +641,16 @@ export class ApiClientStateService {
   }
 
   /**
-   * 重放历史记录
+   * 重放历史记录 - 在新 Tab 中打开
    */
   async replayHistory(h: ApiHistoryEntity) {
+    // 在新 Tab 中打开历史请求
+    this.tabStore.openRequestInTab(h.requestSnapshot);
     await this.sendResolvedRequest(h.requestSnapshot);
   }
 
   /**
-   * 发送已解析的请求
+   * 发送已解析的请求 - 使用 Tab Store
    */
   private async sendResolvedRequest(request: ApiRequestEntity) {
     const scope = this.scope();
@@ -579,8 +661,8 @@ export class ApiClientStateService {
     }
 
     // 允许未保存直接发送：request 直传
-    this.sending.set(true);
-    this.lastResult.set(null);
+    this.tabStore.setSending(true);
+    this.tabStore.updateActiveResponse(null);
     try {
       const res = await this.api.send({
         scope,
@@ -589,7 +671,7 @@ export class ApiClientStateService {
         envId: this.activeEnvId() ?? undefined,
         projectRoot: (this.projectState.currentProject() as any)?.root, // 有就传，没有就 undefined
       });
-      this.lastResult.set(res);
+      this.tabStore.updateActiveResponse(res);
       if (res.error) {
         this.msg.error(`${res.error.code}: ${res.error.message}`);
       } else {
@@ -598,7 +680,7 @@ export class ApiClientStateService {
     } catch (e: any) {
       this.msg.error(e?.message ?? '发送失败');
     } finally {
-      this.sending.set(false);
+      this.tabStore.setSending(false);
     }
   }
 

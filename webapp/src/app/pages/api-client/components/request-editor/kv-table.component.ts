@@ -9,6 +9,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
+/**
+ * 生成唯一的行 ID
+ */
+function generateRowId(): string {
+  return `kv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 @Component({
   selector: 'app-kv-table',
   standalone: true,
@@ -37,7 +44,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         <div class="c-op"></div>
       </div>
       <div class="kv-body">
-        @for (r of rows;let idx = $index; track r.id;) {
+        @for (r of rows; let idx = $index; track r.id) {
           <div class="kv-row">
             <div class="c-check">
               <label nz-checkbox [ngModel]="r.enabled" [nzDisabled]="!keepTrailingBlank" (ngModelChange)="setEnabled($index, $event)"></label>
@@ -135,7 +142,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 export class KvTableComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['rows']) {
-      this.rows = this.withTrailingBlank(this.rows);
+      this.rows = this.withTrailingBlank(this.ensureRowIds(this.rows));
     }
   }
   @Input() rows: ApiRequestKvRow[] = [];
@@ -163,12 +170,24 @@ export class KvTableComponent implements OnChanges {
     this.rowsChange.emit(next);
   }
 
+  /**
+   * 确保所有行都有唯一 ID
+   */
+  private ensureRowIds(rows: ApiRequestKvRow[]): ApiRequestKvRow[] {
+    return rows.map(r => {
+      if (!r.id || r.id.trim() === '') {
+        return { ...r, id: generateRowId() };
+      }
+      return r;
+    });
+  }
+
   private withTrailingBlank(rows: ApiRequestKvRow[]) {
     return this.keepTrailingBlank ? this.ensureTrailingBlank(rows) : rows;
   }
 
   private createBlankRow(): ApiRequestKvRow {
-    return { id: uniqueId(), key: '', value: '', description: '', enabled: true };
+    return { id: generateRowId(), key: '', value: '', description: '', enabled: true };
   }
 
   private isBlankRow(r: ApiRequestKvRow | undefined | null): boolean {
