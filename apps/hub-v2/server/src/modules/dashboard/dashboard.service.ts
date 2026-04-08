@@ -28,6 +28,8 @@ type DashboardScope = {
 };
 
 export class DashboardService implements DashboardQueryContract {
+  private static readonly ISSUE_CREATE_ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
+
   constructor(
     private readonly projectAccess: ProjectAccessContract,
     private readonly announcementQuery: AnnouncementQueryContract,
@@ -176,13 +178,14 @@ export class DashboardService implements DashboardQueryContract {
     }
 
     const [issueActivities, rdActivities] = await Promise.all([
-      this.issueQuery.listActivitiesForDashboard(scope.effectiveProjectIds, scope.userId, 6, ctx),
+      this.issueQuery.listActivitiesForDashboard(scope.effectiveProjectIds, scope.userId, 20, ctx),
       this.rdQuery.listActivitiesForDashboard(scope.effectiveProjectIds, scope.userId, 6, ctx)
     ]);
     const contentActivities = recentContentLogs.filter((item) => item.operatorId === scope.userId);
+    const collapsedIssueActivities = this.collapseIssueCreateActivities(issueActivities);
 
     return [
-      ...issueActivities,
+      ...collapsedIssueActivities,
       ...rdActivities,
       ...contentActivities.map((item) => ({
         kind: "content_activity" as const,
@@ -197,6 +200,137 @@ export class DashboardService implements DashboardQueryContract {
     ]
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 8);
+  }
+
+  private collapseIssueCreateActivities(items: DashboardActivityItem[]): DashboardActivityItem[] {
+    const issueItems = items.filter((item) => item.kind === "issue_activity");
+    if (issueItems.length <= 1) {
+      return items;
+    }
+
+    const bundles = new Map<string, DashboardActivityItem[]>();
+    for (const item of issueItems) {
+      const list = bundles.get(item.entityId) ?? [];
+      list.push(item);
+      bundles.set(item.entityId, list);
+    }
+
+    const replacementByKey = new Map<string, DashboardActivityItem>();
+    const consumedKeys = new Set<string>();
+
+    for (const bundle of bundles.values()) {
+      const createItem = bundle.find((item) => item.action === "create" && item.summary?.startsWith("创建问题 "));
+      if (!createItem) {
+        continue;
+      }
+
+      const createAt = Date.parse(createItem.createdAt);
+      if (!Number.isFinite(createAt)) {
+        continue;
+      }
+
+      const related = bundle.filter((item) => this.shouldCollapseWithCreate(item, createAt));
+      if (related.length <= 1) {
+        continue;
+      }
+
+      const assigneeNames = Array.from(
+        new Set(
+          related
+            .map((item) => this.extractAssignedName(item.summary))
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+      const collaboratorNames = Array.from(
+        new Set(
+          related.flatMap((item) => this.extractCollaboratorNames(item.summary))
+        )
+      );
+
+      const fragments = [`创建问题 ${createItem.code}`];
+      if (assigneeNames.length > 0) {
+        fragments.push(`指派负责人 ${assigneeNames.join("、")}`);
+      }
+      if (collaboratorNames.length > 0) {
+        fragments.push(`添加协作人 ${collaboratorNames.join("、")}`);
+      }
+
+      const latest = related.reduce((current, item) => (item.createdAt > current.createdAt ? item : current), createItem);
+      const replacement: DashboardActivityItem = {
+        ...latest,
+        action: "create",
+        summary: fragments.join("；")
+      };
+
+      for (const item of related) {
+        consumedKeys.add(this.activityKey(item));
+      }
+      replacementByKey.set(this.activityKey(createItem), replacement);
+    }
+
+    const result: DashboardActivityItem[] = [];
+    for (const item of items) {
+      const key = this.activityKey(item);
+      if (!consumedKeys.has(key)) {
+        result.push(item);
+        continue;
+      }
+      const replacement = replacementByKey.get(key);
+      if (replacement) {
+        result.push(replacement);
+      }
+    }
+    return result;
+  }
+
+  private shouldCollapseWithCreate(item: DashboardActivityItem, createAt: number): boolean {
+    if (item.kind !== "issue_activity") {
+      return false;
+    }
+
+    const itemAt = Date.parse(item.createdAt);
+    if (!Number.isFinite(itemAt)) {
+      return false;
+    }
+    if (itemAt < createAt || itemAt - createAt > DashboardService.ISSUE_CREATE_ACTIVITY_WINDOW_MS) {
+      return false;
+    }
+
+    if (item.action === "create" && item.summary?.startsWith("创建问题 ")) {
+      return true;
+    }
+    if (item.action === "assign" && !!this.extractAssignedName(item.summary)) {
+      return true;
+    }
+    if (item.action === "update" && this.extractCollaboratorNames(item.summary).length > 0) {
+      return true;
+    }
+    return false;
+  }
+
+  private extractAssignedName(summary: string | null): string | null {
+    const text = summary?.trim();
+    if (!text) {
+      return null;
+    }
+    const matched = text.match(/^(?:创建时指派负责人[:：]|指派给)\s*(.+)$/);
+    return matched?.[1]?.trim() || null;
+  }
+
+  private extractCollaboratorNames(summary: string | null): string[] {
+    const text = summary?.trim();
+    if (!text || !text.startsWith("添加协作人 ")) {
+      return [];
+    }
+    return text
+      .slice("添加协作人 ".length)
+      .split("、")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  private activityKey(item: DashboardActivityItem): string {
+    return `${item.kind}::${item.entityId}::${item.createdAt}::${item.action}::${item.summary ?? ""}`;
   }
 
   private async getAnnouncementsByScope(scope: DashboardScope, ctx: RequestContext): Promise<DashboardAnnouncementSummary[]> {

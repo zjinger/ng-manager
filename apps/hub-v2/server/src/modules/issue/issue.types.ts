@@ -61,7 +61,7 @@ export interface IssueLogEntity {
 }
 
 export interface IssueDashboardTodo {
-  kind: "issue_assigned" | "issue_verify";
+  kind: "issue_assigned" | "issue_collaborating" | "issue_verify";
   entityId: string;
   code: string;
   title: string;

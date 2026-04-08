@@ -5,7 +5,11 @@ import type {
   AssignIssueInput,
   CloseIssueInput,
   CreateIssueInput,
+  CreateIssueBranchInput,
+  CompleteIssueBranchInput,
+  StartOwnIssueBranchInput,
   IssueAttachmentEntity,
+  IssueBranchEntity,
   IssueCommentEntity,
   IssueEntity,
   IssueListQuery,
@@ -67,6 +71,26 @@ export class IssueApiService {
 
   listParticipants(issueId: string) {
     return this.api.get<{ items: IssueParticipantEntity[] }>(`/issues/${issueId}/participants`);
+  }
+
+  listBranches(issueId: string) {
+    return this.api.get<{ items: IssueBranchEntity[] }>(`/issues/${issueId}/branches`);
+  }
+
+  createBranch(issueId: string, input: CreateIssueBranchInput) {
+    return this.api.post<IssueBranchEntity, CreateIssueBranchInput>(`/issues/${issueId}/branches`, input);
+  }
+
+  startOwnBranch(issueId: string, input: StartOwnIssueBranchInput) {
+    return this.api.post<IssueBranchEntity, StartOwnIssueBranchInput>(`/issues/${issueId}/branches/start-mine`, input);
+  }
+
+  startBranch(issueId: string, branchId: string) {
+    return this.api.post<IssueBranchEntity>(`/issues/${issueId}/branches/${branchId}/start`);
+  }
+
+  completeBranch(issueId: string, branchId: string, input: CompleteIssueBranchInput = {}) {
+    return this.api.post<IssueBranchEntity, CompleteIssueBranchInput>(`/issues/${issueId}/branches/${branchId}/complete`, input);
   }
 
   addParticipant(issueId: string, userId: string) {

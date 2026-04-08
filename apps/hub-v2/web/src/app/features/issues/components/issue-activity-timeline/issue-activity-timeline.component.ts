@@ -44,6 +44,15 @@ export class IssueActivityTimelineComponent {
     if (metaKind === 'participant.removed') {
       return 'user-delete';
     }
+    if (metaKind === 'issue_branch.created' || metaKind === 'issue_branch.claimed') {
+      return 'share-alt';
+    }
+    if (metaKind === 'issue_branch.started') {
+      return 'play-circle';
+    }
+    if (metaKind === 'issue_branch.completed') {
+      return 'check-circle';
+    }
 
     const actionType = item.actionType;
     return (

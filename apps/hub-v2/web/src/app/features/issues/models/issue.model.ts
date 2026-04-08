@@ -3,6 +3,7 @@ import type { PageResult } from '@core/types';
 export type IssueType = 'bug' | 'feature' | 'change' | 'improvement' | 'task' | 'test';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
 export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'verified' | 'closed' | 'reopened';
+export type IssueBranchStatus = 'todo' | 'in_progress' | 'done';
 
 export interface IssueEntity {
   id: string;
@@ -66,6 +67,22 @@ export interface IssueParticipantEntity {
   userId: string;
   userName: string;
   createdAt: string;
+}
+
+export interface IssueBranchEntity {
+  id: string;
+  issueId: string;
+  ownerUserId: string;
+  ownerUserName: string;
+  title: string;
+  status: IssueBranchStatus;
+  summary: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UploadEntity {
@@ -140,6 +157,19 @@ export interface UpdateIssueInput {
 
 export interface AssignIssueInput {
   assigneeId: string;
+}
+
+export interface CreateIssueBranchInput {
+  ownerUserId: string;
+  title: string;
+}
+
+export interface StartOwnIssueBranchInput {
+  title: string;
+}
+
+export interface CompleteIssueBranchInput {
+  summary?: string;
 }
 
 export interface CloseIssueInput {

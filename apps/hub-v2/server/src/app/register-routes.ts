@@ -19,6 +19,7 @@ import personalTokenIssueRoutes from "../modules/personal-token/personal-token-i
 import personalTokenRdRoutes from "../modules/personal-token/personal-token-rd.routes";
 import profileRoutes from "../modules/profile/profile.routes";
 import issueAttachmentRoutes from "../modules/issue/attachment/issue-attachment.routes";
+import issueBranchRoutes from "../modules/issue/branch/issue-branch.routes";
 import issueCommentRoutes from "../modules/issue/comment/issue-comment.routes";
 import issueParticipantRoutes from "../modules/issue/participant/issue-participant.routes";
 import issueRoutes from "../modules/issue/issue.routes";
@@ -100,6 +101,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(personalTokenAdminRoutes, { prefix: "/api/admin" });
   await app.register(issueRoutes, { prefix: "/api/admin" });
   await app.register(issueAttachmentRoutes, { prefix: "/api/admin" });
+  await app.register(issueBranchRoutes, { prefix: "/api/admin" });
   await app.register(issueCommentRoutes, { prefix: "/api/admin" });
   await app.register(issueParticipantRoutes, { prefix: "/api/admin" });
   await app.register(rdRoutes, { prefix: "/api/admin" });

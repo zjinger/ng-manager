@@ -156,7 +156,7 @@ export class ProfilePageComponent {
   ]);
 
   readonly eventPrefs = signal<ProfileNotificationSetting[]>([
-    { id: 'issue_todo', title: '测试单待办', description: '测试单分配或待验证时通知', enabled: true, icon: 'exclamation' },
+    { id: 'issue_todo', title: '测试单待办', description: '测试单分配、加入协作或待验证时通知', enabled: true, icon: 'exclamation' },
     { id: 'issue_mentioned', title: '测试单评论@我', description: '评论中被 @ 时通知', enabled: true, icon: 'message' },
     { id: 'issue_activity', title: '测试单动态', description: '与你相关的测试单关键状态变化时通知', enabled: true, icon: 'reload' },
     { id: 'rd_todo', title: '研发项待办', description: '研发项分配到你或待你验收时通知', enabled: true, icon: 'flag' },

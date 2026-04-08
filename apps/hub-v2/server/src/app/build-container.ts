@@ -41,6 +41,9 @@ import { IssueCommentService } from "../modules/issue/comment/issue-comment.serv
 import type { IssueParticipantCommandContract, IssueParticipantQueryContract } from "../modules/issue/participant/issue-participant.contract";
 import { IssueParticipantRepo } from "../modules/issue/participant/issue-participant.repo";
 import { IssueParticipantService } from "../modules/issue/participant/issue-participant.service";
+import type { IssueBranchCommandContract, IssueBranchQueryContract } from "../modules/issue/branch/issue-branch.contract";
+import { IssueBranchRepo } from "../modules/issue/branch/issue-branch.repo";
+import { IssueBranchService } from "../modules/issue/branch/issue-branch.service";
 import { IssueRepo } from "../modules/issue/issue.repo";
 import { IssueService } from "../modules/issue/issue.service";
 import { createInMemoryEventBus } from "../shared/event/in-memory-event-bus";
@@ -116,6 +119,8 @@ export type AppContainer = {
   issueCommentQuery: IssueCommentQueryContract;
   issueParticipantCommand: IssueParticipantCommandContract;
   issueParticipantQuery: IssueParticipantQueryContract;
+  issueBranchCommand: IssueBranchCommandContract;
+  issueBranchQuery: IssueBranchQueryContract;
   rdCommand: RdCommandContract;
   rdQuery: RdQueryContract;
   releaseCommand: ReleaseCommandContract;
@@ -175,6 +180,13 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const issueCommentService = new IssueCommentService(issueRepo, issueCommentRepo, projectAccess, eventBus);
   const issueParticipantRepo = new IssueParticipantRepo(db);
   const issueParticipantService = new IssueParticipantService(issueRepo, issueParticipantRepo, projectAccess, eventBus);
+  const issueBranchService = new IssueBranchService(
+    issueRepo,
+    new IssueBranchRepo(db),
+    issueParticipantRepo,
+    projectAccess,
+    eventBus
+  );
   const rdRepo = new RdRepo(db);
   const rdService = new RdService(rdRepo, projectAccess, eventBus);
   const releaseRepo = new ReleaseRepo(db);
@@ -258,6 +270,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     issueCommentQuery: issueCommentService,
     issueParticipantCommand: issueParticipantService,
     issueParticipantQuery: issueParticipantService,
+    issueBranchCommand: issueBranchService,
+    issueBranchQuery: issueBranchService,
     rdCommand: rdService,
     rdQuery: rdService,
     releaseCommand: releaseService,

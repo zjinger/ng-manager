@@ -28,6 +28,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
               <span class="todo__tag" [attr.data-kind]="item.kind">
                 {{ item.kind.startsWith('rd') ? '研发项' : '测试单' }}
               </span>
+              @if (roleLabel(item)) {
+                <span class="todo__role" [attr.data-kind]="item.kind">{{ roleLabel(item) }}</span>
+              }
               <span>{{ item.title }}</span>
             </div>
             <div class="todo__meta">
@@ -68,6 +71,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
       .todo__priority[data-kind='issue_verify'] {
         background: var(--color-warning);
       }
+      .todo__priority[data-kind='issue_collaborating'] {
+        background: var(--primary-500);
+      }
       .todo__body {
         min-width: 0;
       }
@@ -95,6 +101,29 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
       .todo__tag[data-kind^='rd'] {
         background: color-mix(in srgb, var(--primary-500) 14%, transparent);
         color: var(--primary-500);
+      }
+      .todo__role {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 6px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--bg-subtle);
+        color: var(--text-secondary);
+      }
+      .todo__role[data-kind='issue_assigned'],
+      .todo__role[data-kind='rd_assigned'] {
+        background: rgba(6, 182, 212, 0.14);
+        color: #0e7490;
+      }
+      .todo__role[data-kind='issue_collaborating'] {
+        background: color-mix(in srgb, var(--primary-500) 14%, transparent);
+        color: var(--primary-600);
+      }
+      .todo__role[data-kind='issue_verify'] {
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
       }
       .todo__meta {
         display: flex;
@@ -128,6 +157,19 @@ export class MyTodosCardComponent {
 
   projectLabel(projectId: string): string {
     return this.projectNames()[projectId] || '未知项目';
+  }
+
+  roleLabel(item: DashboardTodoItem): string {
+    if (item.kind === 'issue_collaborating') {
+      return '协作中';
+    }
+    if (item.kind === 'issue_verify') {
+      return '待验证';
+    }
+    if (item.kind === 'issue_assigned' || item.kind === 'rd_assigned') {
+      return '负责人';
+    }
+    return '';
   }
 
 }

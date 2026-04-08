@@ -1,4 +1,4 @@
-export type DashboardTodoItemKind = "issue_assigned" | "issue_verify" | "rd_assigned";
+export type DashboardTodoItemKind = "issue_assigned" | "issue_collaborating" | "issue_verify" | "rd_assigned";
 export type DashboardActivityItemKind = "issue_activity" | "rd_activity" | "content_activity";
 export interface DashboardTodoItem {
   kind: DashboardTodoItemKind;

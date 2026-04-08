@@ -363,7 +363,7 @@ export class NotificationService
   }
 
   private isIssueTodoAction(action: string): boolean {
-    return action === "assign" || action === "claim" || action === "verify.pending";
+    return action === "assign" || action === "claim" || action === "participant.added" || action === "verify.pending";
   }
 
   private isRdTodoAction(action: string): boolean {
@@ -374,6 +374,9 @@ export class NotificationService
     if (kind === "todo") {
       if (action === "verify.pending") {
         return "待我验证的问题";
+      }
+      if (action === "participant.added") {
+        return "需要我协作的问题";
       }
       return "分配给我的问题";
     }
@@ -444,7 +447,8 @@ export class NotificationService
 
   // Normalize issue actions into notification actions.
   // - resolve => verify.pending (todo for verifier flow)
-  // - created/start/updated/attachment/participant changes => no inbox notification
+  // - participant.added => todo for newly added collaborators
+  // - created/start/updated/attachment changes => no inbox notification
   private normalizeIssueAction(event: DomainEvent): string | null {
     const action = event.action;
 
@@ -455,7 +459,6 @@ export class NotificationService
         "updated",
         "attachment.added",
         "attachment.removed",
-        "participant.added",
         "participant.removed"
       ].includes(action)
     ) {
@@ -500,6 +503,9 @@ export class NotificationService
     const actorIds = this.collectActorCandidateIds(event, payload);
     if (action === "assign" || action === "claim") {
       return this.excludeActorIds(this.collectUserIds(payload["assigneeId"]), actorIds);
+    }
+    if (action === "participant.added") {
+      return this.excludeActorIds(this.collectUserIds(payload["participantUserIds"], payload["userId"], payload["userIds"]), actorIds);
     }
     if (action === "verify.pending") {
       return this.excludeActorIds(
@@ -577,7 +583,7 @@ export class NotificationService
   }
 
   private collectActorCandidateIds(event: DomainEvent, payload: Record<string, unknown>): string[] {
-    return this.collectUserIds(event.actorId, payload["authorId"], payload["creatorId"], payload["userId"]);
+    return this.collectUserIds(event.actorId, payload["authorId"], payload["creatorId"]);
   }
 
   private filterRecipientsByPreferences(userIds: string[], normalized: NormalizedNotification): string[] {

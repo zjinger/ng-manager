@@ -8,13 +8,16 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
 import { MarkdownViewerComponent, SideDetailLayoutComponent } from '@shared/ui';
 import { IssueActivityTimelineComponent } from '../../components/issue-activity-timeline/issue-activity-timeline.component';
 import { IssueAttachmentsPanelComponent } from '../../components/issue-attachments-panel/issue-attachments-panel.component';
+import { IssueBranchesPanelComponent } from '../../components/issue-branches-panel/issue-branches-panel.component';
 import { IssueCollaboratorsPanelComponent } from '../../components/issue-collaborators-panel/issue-collaborators-panel.component';
 import { IssueCommentEditorComponent } from '../../components/issue-comment-editor/issue-comment-editor.component';
 import { IssueDetailHeaderComponent } from '../../components/issue-detail-header/issue-detail-header.component';
 import { IssuePropsPanelComponent } from '../../components/issue-props-panel/issue-props-panel.component';
 import { IssueAddParticipantsDialogComponent } from '../../dialogs/issue-add-participants-dialog/issue-add-participants-dialog.component';
 import { IssueAssignDialogComponent } from '../../dialogs/issue-assign-dialog/issue-assign-dialog.component';
+import { IssueCreateBranchDialogComponent } from '../../dialogs/issue-create-branch-dialog/issue-create-branch-dialog.component';
 import { IssueEditDialogComponent } from '../../dialogs/issue-edit-dialog/issue-edit-dialog.component';
+import { IssueStartOwnBranchDialogComponent } from '../../dialogs/issue-start-own-branch-dialog/issue-start-own-branch-dialog.component';
 import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-dialog/issue-transition-dialog.component';
 import { IssueEntity, UpdateIssueInput } from '../../models/issue.model';
 import { IssueDetailStore } from '../../store/issue-detail.store';
@@ -29,13 +32,16 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
     SideDetailLayoutComponent,
     IssueActivityTimelineComponent,
     IssueAttachmentsPanelComponent,
+    IssueBranchesPanelComponent,
     IssueCommentEditorComponent,
     IssueCollaboratorsPanelComponent,
     IssueDetailHeaderComponent,
     IssuePropsPanelComponent,
     IssueAssignDialogComponent,
     IssueAddParticipantsDialogComponent,
+    IssueCreateBranchDialogComponent,
     IssueEditDialogComponent,
+    IssueStartOwnBranchDialogComponent,
     IssueTransitionDialogComponent,
     MarkdownViewerComponent
   ],
@@ -65,6 +71,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
             [canVerify]="store.canVerify()"
             [canReopen]="store.canReopen()"
             [canClose]="store.canClose()"
+            [branchSummaryText]="store.branchSummaryText()"
             (start)="confirmStart()"
             (claim)="confirmClaim()"
             (assign)="assignIssue()"
@@ -116,6 +123,18 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
 
             <div detail-side class="detail-side">
               <app-issue-props-panel [issue]="issue" />
+              <app-issue-branches-panel
+                [branches]="store.branches()"
+                [currentActorIds]="store.currentActorIds()"
+                [summaryText]="store.branchSummaryText()"
+                [canCreate]="store.canCreateBranches()"
+                [canStartOwn]="store.canStartOwnBranch()"
+                [busy]="store.busy()"
+                (create)="openCreateBranch()"
+                (startOwn)="openStartOwnBranch()"
+                (startBranch)="store.startBranch($event)"
+                (completeBranch)="store.completeBranch($event)"
+              />
               <app-issue-collaborators-panel
                 [issue]="issue"
                 [participants]="store.participants()"
@@ -185,6 +204,23 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         [members]="store.availableMembers()"
         (cancel)="addParticipantsOpen.set(false)"
         (confirm)="confirmAddParticipants($event.userIds)"
+      />
+
+      <app-issue-create-branch-dialog
+        [open]="createBranchOpen()"
+        [busy]="store.busy()"
+        [issue]="store.issue()"
+        [participants]="store.participants()"
+        (cancel)="createBranchOpen.set(false)"
+        (confirm)="confirmCreateBranch($event)"
+      />
+
+      <app-issue-start-own-branch-dialog
+        [open]="startOwnBranchOpen()"
+        [busy]="store.busy()"
+        [issue]="store.issue()"
+        (cancel)="startOwnBranchOpen.set(false)"
+        (confirm)="confirmStartOwnBranch($event.title)"
       />
 
       <app-issue-edit-dialog
@@ -301,6 +337,8 @@ export class IssueDetailPageComponent {
   readonly embedded = input(false);
   readonly assignOpen = signal(false);
   readonly addParticipantsOpen = signal(false);
+  readonly createBranchOpen = signal(false);
+  readonly startOwnBranchOpen = signal(false);
   readonly resolveOpen = signal(false);
   readonly reopenOpen = signal(false);
   readonly closeOpen = signal(false);
@@ -333,6 +371,14 @@ export class IssueDetailPageComponent {
 
   openAddParticipants(): void {
     this.addParticipantsOpen.set(true);
+  }
+
+  openCreateBranch(): void {
+    this.createBranchOpen.set(true);
+  }
+
+  openStartOwnBranch(): void {
+    this.startOwnBranchOpen.set(true);
   }
 
   openEdit(): void {
@@ -369,14 +415,36 @@ export class IssueDetailPageComponent {
     this.addParticipantsOpen.set(false);
   }
 
+  confirmCreateBranch(input: { ownerUserId: string; title: string }): void {
+    this.store.createBranch(input);
+    this.createBranchOpen.set(false);
+  }
+
+  confirmStartOwnBranch(title: string): void {
+    this.store.startOwnBranch({ title });
+    this.startOwnBranchOpen.set(false);
+  }
+
   confirmEdit(input: UpdateIssueInput): void {
     this.store.updateBasic(input);
     this.editOpen.set(false);
   }
 
   confirmResolve(summary: string): void {
-    this.store.resolve(summary);
     this.resolveOpen.set(false);
+    const value = summary.trim();
+    const pendingCount = this.store.pendingBranchCount();
+    if (pendingCount > 0) {
+      this.modal.confirm({
+        nzTitle: `还有 ${pendingCount} 个未完成协作分支，仍要标记解决吗？`,
+        nzContent: '协作分支不会自动关闭，主 issue 会按负责人操作继续进入待验证。',
+        nzOkText: '仍然解决',
+        nzCancelText: '取消',
+        nzOnOk: () => this.store.resolve(value || undefined),
+      });
+      return;
+    }
+    this.store.resolve(value || undefined);
   }
 
   confirmReopen(remark: string): void {

@@ -17,6 +17,9 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         <div class="detail-header__identity">
           <div class="detail-header__meta">{{ issue().issueNo }}</div>
           <h1>{{ issue().title }}</h1>
+          @if (branchSummaryText()) {
+            <div class="detail-header__summary">{{ branchSummaryText() }}</div>
+          }
         </div>
 
         <div class="detail-header__actions">
@@ -108,6 +111,11 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+      }
+      .detail-header__summary {
+        margin-top: 10px;
+        color: var(--text-secondary);
+        font-size: 13px;
       }
       h1 {
         margin: 10px 0 0;
@@ -205,6 +213,7 @@ export class IssueDetailHeaderComponent {
   readonly canVerify = input(false);
   readonly canReopen = input(false);
   readonly canClose = input(false);
+  readonly branchSummaryText = input('');
 
   readonly start = output<void>();
   readonly claim = output<void>();

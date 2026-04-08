@@ -29,7 +29,11 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         </div>
       </div>
       <div class="detail-header__bottom">
-        <div class="detail-header__actions">
+        <div class="detail-header__bottom-main">
+          @if (branchSummaryText()) {
+            <div class="detail-header__summary">{{ branchSummaryText() }}</div>
+          }
+          <div class="detail-header__actions">
           @if (canStart()&& !canResolve()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="start.emit()">开始处理</button>
           }
@@ -57,6 +61,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
           @if (canClose()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="close.emit()">关闭问题</button>
           }
+          </div>
         </div>
       </div>
     </section>
@@ -87,6 +92,11 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         padding-top: 18px;
         border-top: 1px solid var(--border-color-soft);
       }
+      .detail-header__bottom-main {
+        display: grid;
+        gap: 12px;
+        width: 100%;
+      }
       .detail-header__identity {
         min-width: 0;
       }
@@ -107,6 +117,10 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+      }
+      .detail-header__summary {
+        color: var(--text-secondary);
+        font-size: 13px;
       }
       .detail-header__actions {
         display: flex;
@@ -193,6 +207,7 @@ export class IssueDetailDrawerHeaderComponent {
   readonly canVerify = input(false);
   readonly canReopen = input(false);
   readonly canClose = input(false);
+  readonly branchSummaryText = input('');
 
   readonly start = output<void>();
   readonly claim = output<void>();

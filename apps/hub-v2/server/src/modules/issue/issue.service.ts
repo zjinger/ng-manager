@@ -106,6 +106,9 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       );
     }
     await this.emitIssueEvent("issue.created", "created", entity, ctx);
+    if (entity.assigneeId) {
+      await this.emitIssueEvent("issue.updated", "assign", entity, ctx);
+    }
     return entity;
   }
 

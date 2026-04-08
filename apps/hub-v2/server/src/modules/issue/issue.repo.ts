@@ -431,6 +431,29 @@ export class IssueRepo {
       project_id: string;
     }>;
 
+    const collaborating = this.db
+      .prepare(
+        `
+          SELECT DISTINCT i.id, i.issue_no as code, i.title, i.status, i.updated_at, i.project_id
+          FROM issues i
+          INNER JOIN issue_participants ip ON ip.issue_id = i.id
+          WHERE ip.user_id = ?
+            AND i.status IN ('open', 'in_progress', 'reopened')
+            AND COALESCE(i.assignee_id, '') <> ?
+            ${scope.clause}
+          ORDER BY i.updated_at DESC
+          LIMIT ?
+        `
+      )
+      .all(userId, userId, ...scope.params, limit) as Array<{
+      id: string;
+      code: string;
+      title: string;
+      status: string;
+      updated_at: string;
+      project_id: string;
+    }>;
+
     const verifying = this.db
       .prepare(
         `
@@ -454,6 +477,7 @@ export class IssueRepo {
 
     return [
       ...assigned.map((row) => this.mapDashboardTodo("issue_assigned", row)),
+      ...collaborating.map((row) => this.mapDashboardTodo("issue_collaborating", row)),
       ...verifying.map((row) => this.mapDashboardTodo("issue_verify", row))
     ]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))

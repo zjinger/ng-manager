@@ -6,10 +6,13 @@ import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '.
 import { ProjectApiService } from '../../projects/services/project-api.service';
 import type {
   IssueAttachmentEntity,
+  IssueBranchEntity,
   IssueCommentEntity,
   IssueEntity,
   IssueLogEntity,
+  CreateIssueBranchInput,
   IssueParticipantEntity,
+  StartOwnIssueBranchInput,
   UpdateIssueInput,
 } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
@@ -26,6 +29,7 @@ export class IssueDetailStore {
   private readonly logsState = signal<IssueLogEntity[]>([]);
   private readonly commentsState = signal<IssueCommentEntity[]>([]);
   private readonly participantsState = signal<IssueParticipantEntity[]>([]);
+  private readonly branchesState = signal<IssueBranchEntity[]>([]);
   private readonly attachmentsState = signal<IssueAttachmentEntity[]>([]);
   private readonly membersState = signal<ProjectMemberEntity[]>([]);
   private readonly modulesState = signal<ProjectMetaItem[]>([]);
@@ -51,6 +55,7 @@ export class IssueDetailStore {
   });
   readonly comments = computed(() => this.commentsState());
   readonly participants = computed(() => this.participantsState());
+  readonly branches = computed(() => this.branchesState());
   readonly attachments = computed(() => this.attachmentsState());
   readonly members = computed(() => this.membersState());
   readonly modules = computed(() => this.modulesState());
@@ -66,6 +71,39 @@ export class IssueDetailStore {
     const usedUserIds = new Set(this.participantsState().map((item) => item.userId));
     return this.membersState().filter((item) => !usedUserIds.has(item.userId) && item.userId !== assigneeId);
   });
+  readonly currentActorIds = computed(() => {
+    const user = this.currentUser();
+    return [user?.userId?.trim(), user?.id?.trim()].filter((value): value is string => !!value);
+  });
+  readonly branchStats = computed(() => {
+    const branches = this.branchesState();
+    const total = branches.length;
+    const done = branches.filter((item) => item.status === 'done').length;
+    const inProgress = branches.filter((item) => item.status === 'in_progress').length;
+    const todo = branches.filter((item) => item.status === 'todo').length;
+    return {
+      total,
+      done,
+      inProgress,
+      todo,
+      pending: total - done,
+    };
+  });
+  readonly branchSummaryText = computed(() => {
+    const stats = this.branchStats();
+    if (stats.total === 0) {
+      return '当前没有协作分支';
+    }
+    const parts = [`协作分支 ${stats.total} 个`, `已完成 ${stats.done}`];
+    if (stats.inProgress > 0) {
+      parts.push(`处理中 ${stats.inProgress}`);
+    }
+    if (stats.todo > 0) {
+      parts.push(`待开始 ${stats.todo}`);
+    }
+    return parts.join('，');
+  });
+  readonly pendingBranchCount = computed(() => this.branchStats().pending);
   readonly isProjectAdmin = computed(() => {
     const userId = this.currentUser()?.userId;
     if (!userId) {
@@ -134,6 +172,34 @@ export class IssueDetailStore {
       this.permissionService.canClose(issue, this.currentUser())
     );
   });
+  readonly canCreateBranches = computed(() => {
+    const issue = this.issueState();
+    if (!issue || ['verified', 'closed'].includes(issue.status)) {
+      return false;
+    }
+    if (this.participantsState().length === 0) {
+      return false;
+    }
+    return this.isProjectAdmin() || this.matchActor(issue.assigneeId);
+  });
+  readonly canStartOwnBranch = computed(() => {
+    const issue = this.issueState();
+    if (!issue || ['verified', 'closed'].includes(issue.status)) {
+      return false;
+    }
+    if (this.matchActor(issue.assigneeId)) {
+      return false;
+    }
+    const actorIds = new Set(this.currentActorIds());
+    if (actorIds.size === 0) {
+      return false;
+    }
+    const isParticipant = this.participantsState().some((item) => actorIds.has(item.userId));
+    if (!isParticipant) {
+      return false;
+    }
+    return !this.branchesState().some((item) => actorIds.has(item.ownerUserId) && item.status !== 'done');
+  });
 
   load(issueId: string): void {
     this.loadingState.set(true);
@@ -142,13 +208,15 @@ export class IssueDetailStore {
       logs: this.issueApi.listLogs(issueId),
       // comments: this.issueApi.listComments(issueId),
       participants: this.issueApi.listParticipants(issueId),
+      branches: this.issueApi.listBranches(issueId),
       attachments: this.issueApi.listAttachments(issueId),
     }).subscribe({
-      next: ({ issue, logs,  participants, attachments }) => {
+      next: ({ issue, logs, participants, branches, attachments }) => {
         this.issueState.set(issue);
         this.logsState.set(logs.items);
         // this.commentsState.set(comments.items);
         this.participantsState.set(participants.items);
+        this.branchesState.set(branches.items);
         this.attachmentsState.set(attachments.items);
         forkJoin({
           members: this.projectApi.listMembers(issue.projectId),
@@ -238,6 +306,7 @@ export class IssueDetailStore {
     this.issueApi.addParticipant(issueId, userId).subscribe({
       next: (participant) => {
         this.participantsState.update((items) => [...items, participant]);
+        this.refreshBranches(issueId);
         this.refreshLogs(issueId);
         this.busyState.set(false);
       },
@@ -258,6 +327,7 @@ export class IssueDetailStore {
     this.issueApi.addParticipants(issueId, ids).subscribe({
       next: ({ items }) => {
         this.participantsState.update((current) => [...current, ...items]);
+        this.refreshBranches(issueId);
         this.refreshLogs(issueId);
         this.busyState.set(false);
       },
@@ -277,6 +347,7 @@ export class IssueDetailStore {
     this.issueApi.removeParticipant(issueId, participantId).subscribe({
       next: () => {
         this.participantsState.update((items) => items.filter((item) => item.id !== participantId));
+        this.refreshBranches(issueId);
         this.refreshLogs(issueId);
         this.busyState.set(false);
       },
@@ -329,6 +400,79 @@ export class IssueDetailStore {
     });
   }
 
+  createBranch(input: CreateIssueBranchInput): void {
+    const issueId = this.issueState()?.id;
+    if (!issueId || !input.ownerUserId.trim() || !input.title.trim()) {
+      return;
+    }
+    this.busyState.set(true);
+    this.issueApi.createBranch(issueId, { ownerUserId: input.ownerUserId.trim(), title: input.title.trim() }).subscribe({
+      next: (branch) => {
+        this.branchesState.update((items) => [branch, ...items]);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  startOwnBranch(input: StartOwnIssueBranchInput): void {
+    const issueId = this.issueState()?.id;
+    const title = input.title.trim();
+    if (!issueId || !title) {
+      return;
+    }
+    this.busyState.set(true);
+    this.issueApi.startOwnBranch(issueId, { title }).subscribe({
+      next: () => {
+        this.refreshBranches(issueId);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  startBranch(branchId: string): void {
+    const issueId = this.issueState()?.id;
+    if (!issueId) {
+      return;
+    }
+    this.busyState.set(true);
+    this.issueApi.startBranch(issueId, branchId).subscribe({
+      next: () => {
+        this.refreshBranches(issueId);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  completeBranch(branchId: string): void {
+    const issueId = this.issueState()?.id;
+    if (!issueId) {
+      return;
+    }
+    this.busyState.set(true);
+    this.issueApi.completeBranch(issueId, branchId).subscribe({
+      next: () => {
+        this.refreshBranches(issueId);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
   private runIssueAction(request: (issueId: string) => Observable<IssueEntity>): void {
     const issueId = this.issueState()?.id;
     if (!issueId) {
@@ -353,6 +497,19 @@ export class IssueDetailStore {
     this.issueApi.listLogs(issueId).subscribe({
       next: (logs) => this.logsState.set(logs.items),
     });
+  }
+
+  private refreshBranches(issueId: string): void {
+    this.issueApi.listBranches(issueId).subscribe({
+      next: (branches) => this.branchesState.set(branches.items),
+    });
+  }
+
+  private matchActor(actorId: string | null): boolean {
+    if (!actorId) {
+      return false;
+    }
+    return this.currentActorIds().includes(actorId);
   }
 
   private extractReopenReason(log: IssueLogEntity): string | null {
