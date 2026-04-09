@@ -63,7 +63,7 @@ export class ProjectContextStore {
     this.setCurrentProject(project);
   }
 
-  setMembers(members: ProjectMemberEntity[]) {
+  private setMembers(members: ProjectMemberEntity[]) {
     this.membersState.set(members);
   }
 
@@ -97,9 +97,9 @@ export class ProjectContextStore {
   async loadProjectMembers(projectId: string) {
     try {
       const members = (await this.projectApi.getProjectMembers(projectId)).items;
-      this.membersState.set(members);
+      this.setMembers(members);
     } catch (e) {
-      this.membersState.set([]);
+      this.setMembers([]);
     }
   }
 

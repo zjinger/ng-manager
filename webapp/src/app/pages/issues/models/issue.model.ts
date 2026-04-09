@@ -152,6 +152,8 @@ export interface ProjectMemberEntity {
   projectId: string;
   userId: string;
   displayName: string;
+  avatarUrl?: string;
+  avatarUploadId?: string;
   roleCode: string;
   isOwner: boolean;
   joinedAt: string;

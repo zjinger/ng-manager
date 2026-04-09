@@ -21,7 +21,7 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
   >
     <thead>
       <tr>
-        <th nzWidth="4%">序号</th>
+        <th nzWidth="5%">序号</th>
         <!-- <th nzWidth="7%">编号</th> -->
         <th nzWidth="48%">标题</th>
         <th nzWidth="8%">状态</th>
@@ -35,6 +35,7 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
         <tr
           (click)="selectItem.emit(item)"
           [style.background-color]="item.id == selectedItem()?.id ? '#1890ff24' : ''"
+          class="issue-item-row"
         >
           <td>{{ $index + 1 }}</td>
           <td>
@@ -104,6 +105,9 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
       font-size: 12px;
       color: gray;
       font-weight: 400;
+    }
+    .issue-item-row{
+      cursor: pointer;
     }
   `,
 })

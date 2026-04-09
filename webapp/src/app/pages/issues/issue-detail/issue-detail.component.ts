@@ -79,7 +79,10 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
               ></app-issue-action-area>
 
               <!-- 详情 -->
-              <app-issue-description-area [issue]="issue" [projectId]="store.currentProjectId()!"></app-issue-description-area>
+              <app-issue-description-area
+                [issue]="issue"
+                [projectId]="store.currentProjectId()!"
+              ></app-issue-description-area>
 
               <!-- 评论 -->
               <app-issue-comment-area
@@ -88,6 +91,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 [busy]="busy()"
                 [logs]="store.logs()"
                 [members]="members()"
+                [projectId]="store.currentProjectId()!"
               ></app-issue-comment-area>
             </div>
             <div class="right-column">

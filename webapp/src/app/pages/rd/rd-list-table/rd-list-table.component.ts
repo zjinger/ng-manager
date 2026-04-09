@@ -39,6 +39,7 @@ import { CommonModule, DatePipe } from '@angular/common';
           <tr
             (click)="selectItem.emit(item)"
             [style.background-color]="item.id == selectedItem()?.id ? '#1890ff24' : ''"
+            class="rd-item-row"
           >
             <td class="title-col">
               <span class="rd-title"> {{ item.title }} </span><br />
@@ -75,6 +76,9 @@ import { CommonModule, DatePipe } from '@angular/common';
         color: gray;
         font-size: 0.8rem;
       }
+    }
+    .rd-item-row{
+      cursor: pointer;
     }
   `,
 })

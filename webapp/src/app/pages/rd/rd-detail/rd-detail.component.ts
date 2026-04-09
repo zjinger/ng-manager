@@ -23,6 +23,7 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
 
 @Component({
   selector: 'app-rd-detail',
+  standalone: true,
   imports: [
     NzDrawerModule,
     NzIconModule,
@@ -41,7 +42,7 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
       [nzVisible]="open()"
       [nzClosable]="true"
       [nzMaskClosable]="true"
-      [nzWidth]="850"
+      [nzWidth]="776"
       [nzWrapClassName]="'rd-detail-drawer'"
       [nzMask]="false"
       [nzTitle]="drawerTitleTpl"
@@ -206,6 +207,11 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
           color: rgba(0, 0, 0, 0.45);
         }
       }
+    }
+
+    ::ng-deep .ant-descriptions-item-content,
+    ::ng-deep .ant-descriptions-item-label {
+      font-size: 0.875rem;
     }
   `,
 })

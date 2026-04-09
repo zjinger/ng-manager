@@ -85,7 +85,7 @@ export class RdApiService {
   async advanceStage(rdId:string, input: AdvanceRdStageInput){
     // return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
     //   rdId,
-    //   action:''
+    //   action:'advance-stage',
     // })
   }
 

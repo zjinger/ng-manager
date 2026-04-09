@@ -1,24 +1,29 @@
 .cards-list {
-  width: 100%;
-  height: auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  // width: 100%;
+  // height: auto;
+  // display: flex;
+  // flex-wrap: wrap;
+  // gap: 16px;
   .items-card {
-    flex-basis: 22%;
+    // flex-basis: 22%;
     flex-grow: 1;
-    max-height: 420px;
-    max-width: 50%;
-    min-width: 260px;
-    min-height: 468px;
+    // max-height: 590px;
+    // max-width: 50%;
+    // min-width: 260px;
+    // min-height: 468px;
     overflow: hidden;
     // width: 25%;
   }
-  @media (width < 920px) {
-    .items-card {
-      max-width: 100%;
-    }
-  }
+  // @media (width < 920px) {
+  //   .items-card {
+  //     max-width: 100%;
+  //   }
+  // }
+
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat( auto-fit , minmax(260px, 1fr));
+  gap: 16px;
   .card-title {
     width: 100%;
     display: flex;
@@ -44,7 +49,7 @@
 
 :host ::ng-deep .ant-card-body {
   // height: 100%;
-  height: calc(100% - 48px);
+  // height: calc(100% - 60px);
   display: flex;
   flex-direction: column;
   gap: 10px;

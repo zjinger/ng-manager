@@ -132,12 +132,10 @@ export class RdComponent {
   onPageChange(page: number) {
     // this.pageIndex.set(page);
     this.rdStore.updateQuery({ page });
-    this.rdStore.loadRdItems();
   }
 
   onPageSizeChange(size: number) {
     this.rdStore.updateQuery({ pageSize: size });
-    this.rdStore.loadRdItems();
   }
 
   /** 新建研发项 */

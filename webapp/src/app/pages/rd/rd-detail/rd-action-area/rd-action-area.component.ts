@@ -96,14 +96,14 @@ export class RdActionAreaComponent {
               },
             ]
           : [];
-      case 'done':
-        return this.canAdvanceSelectedItem()
-          ? [{ key: 'advance' as const, label: '进入下一阶段', primary: true }]
-          : [];
-      case 'accepted':
-        return this.canAdvanceSelectedItem()
-          ? [{ key: 'advance' as const, label: '进入下一阶段', primary: true }]
-          : [];
+      // case 'done':
+      //   return this.canAdvanceSelectedItem()
+      //     ? [{ key: 'advance' as const, label: '进入下一阶段', primary: true }]
+      //     : [];
+      // case 'accepted':
+      //   return this.canAdvanceSelectedItem()
+      //     ? [{ key: 'advance' as const, label: '进入下一阶段', primary: true }]
+      //     : [];
       default:
         return [];
     }

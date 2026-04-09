@@ -15,7 +15,36 @@ const PRIORITY_ORDER = {
 @Component({
   selector: 'app-rd-list-board',
   imports: [NzCardModule, NzBadgeModule, NzTagModule, RdItemCardComponent],
-  templateUrl: './rd-list-board.component.html',
+  template: `
+    <div class="cards-list">
+      @if (rdItems().length > 0) {
+        @for (col of listCards; track col.key) {
+          <nz-card [nzTitle]="cardTitleTpl" class="items-card">
+            @for (item of ItemsGroupedByStatus().get(col.key); track item.id) {
+              <app-rd-item-card
+                [rdItem]="item"
+                [stages]="stages()"
+                (selectItem)="select($event)"
+                [selected]="selectedItem()?.id === item.id"
+              />
+            }
+          </nz-card>
+          <ng-template #cardTitleTpl>
+            <div class="card-title">
+              <nz-badge [nzColor]="col.color" />
+              <span>{{ col.title }}</span>
+              <nz-badge
+                nzStandalone
+                nzShowZero
+                [nzCount]="ItemsGroupedByStatus().get(col.key)?.length ?? 0"
+                [nzStyle]="{ backgroundColor: col.color }"
+              />
+            </div>
+          </ng-template>
+        }
+      }
+    </div>
+  `,
   styleUrl: './rd-list-board.component.less',
 })
 export class RdListBoardComponent {

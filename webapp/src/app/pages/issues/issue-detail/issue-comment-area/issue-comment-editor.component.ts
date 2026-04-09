@@ -54,6 +54,7 @@ import { RdAction } from '@pages/rd/models/rd.model';
       <nz-comment>
         <nz-avatar
           nz-comment-avatar
+          [nzSrc]=""
           [nzText]="'我'"
           nzSize="small"
           style="background-color:#87d068"
@@ -121,6 +122,7 @@ import { RdAction } from '@pages/rd/models/rd.model';
                   <nz-comment [nzAuthor]="log.operatorName!">
                     <nz-avatar
                       nz-comment-avatar
+                      [nzSrc]="getMemberAvatarUrl(log?.operatorId ?? '')"
                       [nzText]="log.operatorName!.charAt(0)"
                       nzSize="small"
                       style="background-color: #1890ff"
@@ -208,6 +210,7 @@ import { RdAction } from '@pages/rd/models/rd.model';
         margin-bottom: 4px;
         .operator {
           font-weight: bold;
+          white-space: nowrap;
         }
         .content {
           color: rgba(0, 0, 0, 0.85);
@@ -248,8 +251,9 @@ export class IssueCommentAreaComponent {
   private readonly authStore = inject(UserStore);
 
   readonly comments = input.required<IssueCommentEntity[]>();
-  readonly logs = input<IssueLogEntity[]>([]);
+  readonly logs = input.required<IssueLogEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly projectId = input<string>();
   readonly busy = input(false);
   private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
 
@@ -367,7 +371,35 @@ export class IssueCommentAreaComponent {
 
     return segments;
   }
+
   isMember(name: string): boolean {
     return !!this.members().find((member) => member.displayName === name);
+  }
+
+  getMemberAvatarUrl(userId: string): string {
+    if (!this.projectId()) return '';
+    const member = this.members().find((member) => member.userId === userId);
+    const avatarUrl = this.transformAvatarUrl(
+      member?.avatarUrl || '',
+      this.projectId()!,
+      this.logs()[0].issueId,
+    );
+    return avatarUrl;
+  }
+
+  transformAvatarUrl(url: string, projectKey: string, issueId: string): string {
+    // 使用正则表达式从原始路径中提取出 attachmentId
+    const regex = /\/api\/admin\/uploads\/(upl_[a-zA-Z0-9_-]+)\/raw/;
+    const match = url.match(regex);
+
+    if (match) {
+      // 提取出 attachmentId
+      const attachmentId = match[1];
+
+      // 返回转换后的 URL
+      return `/api/token/projects/${projectKey}/issues/${issueId}/attachments/${attachmentId}/raw`;
+    } else {
+      return '';
+    }
   }
 }
