@@ -142,7 +142,11 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   async assign(id: string, input: AssignIssueInput, ctx: RequestContext): Promise<IssueEntity> {
     const current = await this.requireByIdWithAccess(id, ctx, "assign issue");
     requireIssueAssignAccess(current, ctx, await this.isProjectAdmin(current.projectId, ctx));
-    const member = await this.projectAccess.requireProjectMember(current.projectId, input.assigneeId.trim(), "assign issue");
+    const nextAssigneeId = input.assigneeId.trim();
+    if (current.assigneeId?.trim() && current.assigneeId.trim() === nextAssigneeId) {
+      throw new AppError(ERROR_CODES.ISSUE_ACTION_FAILED, "issue assignee unchanged", 409);
+    }
+    const member = await this.projectAccess.requireProjectMember(current.projectId, nextAssigneeId, "assign issue");
     return this.applyAction(
       id,
       "assign",

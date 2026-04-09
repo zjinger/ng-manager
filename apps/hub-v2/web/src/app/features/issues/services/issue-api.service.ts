@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 
 import { ApiClientService } from '@core/http';
+import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
   AssignIssueInput,
   CloseIssueInput,
@@ -122,15 +123,10 @@ export class IssueApiService {
   }
 
   uploadFile(file: File, issueId?: string) {
-    const formData = new FormData();
-    formData.set('file', file);
-    formData.set('bucket', 'issues');
-    formData.set('category', 'attachment');
-    if (issueId?.trim()) {
-      formData.set('entityType', 'issue');
-      formData.set('entityId', issueId.trim());
-    }
-    formData.set('visibility', 'private');
+    const formData = buildUploadFormData(file, UPLOAD_TARGETS.issueAttachment, {
+      entityType: issueId?.trim() ? 'issue' : null,
+      entityId: issueId?.trim() || null,
+    });
     return this.api.post<UploadEntity, FormData>('/uploads', formData);
   }
 

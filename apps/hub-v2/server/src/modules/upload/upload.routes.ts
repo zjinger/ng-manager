@@ -1,9 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import { saveMultipartFile } from "../../shared/storage/file-storage";
+import { assertUploadAllowed, resolveUploadPolicy } from "./upload-policy";
 
 function getFieldValue(field: unknown): string | undefined {
   if (!field) {
@@ -71,28 +72,58 @@ export default async function uploadRoutes(app: FastifyInstance) {
     const visibility = getFieldValue(file.fields.visibility);
     const normalizedBucket = normalizeBucket(bucket, category);
     const normalizedCategory = sanitizePathSegment(category, "general");
+    const uploadPolicy = resolveUploadPolicy(normalizedBucket, normalizedCategory);
     const targetDir =
       normalizedBucket === "issues" && entityType === "issue" && entityId
         ? path.join(app.config.uploadDir, normalizedBucket, entityId)
         : path.join(app.config.uploadDir, normalizedBucket);
-    const saved = await saveMultipartFile(file, targetDir);
-    const upload = await app.container.uploadCommand.create(
+    let saved: Awaited<ReturnType<typeof saveMultipartFile>> | null = null;
+
+    assertUploadAllowed(
       {
-        bucket: normalizedBucket,
-        category: normalizedCategory,
-        visibility: visibility === "public" || visibility === "private" ? visibility : undefined,
-        fileName: saved.fileName,
-        originalName: saved.originalName,
-        fileExt: saved.fileExt,
-        mimeType: saved.mimeType,
-        fileSize: saved.fileSize,
-        checksum: saved.checksum,
-        storagePath: saved.storagePath
+        fileName: file.filename,
+        mimeType: file.mimetype,
+        fileSize: 0
       },
-      ctx
+      uploadPolicy,
+      app.config.uploadMaxFileSize
     );
 
-    return reply.status(201).send(ok(upload, "upload created"));
+    try {
+      saved = await saveMultipartFile(file, targetDir);
+      assertUploadAllowed(
+        {
+          fileName: saved.originalName,
+          mimeType: saved.mimeType,
+          fileSize: saved.fileSize
+        },
+        uploadPolicy,
+        app.config.uploadMaxFileSize
+      );
+
+      const upload = await app.container.uploadCommand.create(
+        {
+          bucket: normalizedBucket,
+          category: normalizedCategory,
+          visibility: visibility === "public" || visibility === "private" ? visibility : undefined,
+          fileName: saved.fileName,
+          originalName: saved.originalName,
+          fileExt: saved.fileExt,
+          mimeType: saved.mimeType,
+          fileSize: saved.fileSize,
+          checksum: saved.checksum,
+          storagePath: saved.storagePath
+        },
+        ctx
+      );
+
+      return reply.status(201).send(ok(upload, "upload created"));
+    } catch (error) {
+      if (saved?.storagePath) {
+        cleanupSavedFile(saved.storagePath);
+      }
+      throw error;
+    }
   });
 
   app.get("/uploads/:uploadId", async (request) => {
@@ -113,8 +144,22 @@ export default async function uploadRoutes(app: FastifyInstance) {
       });
     }
 
+    const fileStat = statSync(filePath);
+    const rangeHeader = typeof request.headers.range === "string" ? request.headers.range : request.headers.range?.[0];
+    const requestedRange = parseByteRange(rangeHeader, fileStat.size);
+
     reply.header("Content-Type", upload.mimeType || "application/octet-stream");
-    reply.header("Content-Disposition", `inline; filename="${encodeURIComponent(upload.fileName)}"`);
+    reply.header("Accept-Ranges", "bytes");
+    reply.header("Content-Disposition", buildInlineDisposition(upload.originalName || upload.fileName));
+    if (requestedRange) {
+      const { start, end } = requestedRange;
+      reply.code(206);
+      reply.header("Content-Length", String(end - start + 1));
+      reply.header("Content-Range", `bytes ${start}-${end}/${fileStat.size}`);
+      return reply.send(createReadStream(filePath, { start, end }));
+    }
+
+    reply.header("Content-Length", String(fileStat.size));
     return reply.send(createReadStream(filePath));
   });
 }
@@ -135,4 +180,58 @@ function resolveUploadFilePath(storagePath: string, fileName: string, uploadDir:
   }
 
   return null;
+}
+
+function cleanupSavedFile(filePath: string): void {
+  try {
+    rmSync(filePath, { force: true });
+  } catch {}
+}
+
+function buildInlineDisposition(fileName: string): string {
+  const normalizedName = (fileName || "file").trim() || "file";
+  const asciiFallback = normalizedName.replace(/[^\x20-\x7E]+/g, "_").replace(/["\\]/g, "");
+  const encodedName = encodeURIComponent(normalizedName);
+  return `inline; filename="${asciiFallback || "file"}"; filename*=UTF-8''${encodedName}`;
+}
+
+function parseByteRange(rangeHeader: string | undefined, fileSize: number): { start: number; end: number } | null {
+  if (!rangeHeader || fileSize <= 0) {
+    return null;
+  }
+
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim());
+  if (!match) {
+    return null;
+  }
+
+  const [, startRaw, endRaw] = match;
+  if (!startRaw && !endRaw) {
+    return null;
+  }
+
+  if (!startRaw) {
+    const suffixLength = Number.parseInt(endRaw, 10);
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) {
+      return null;
+    }
+    const start = Math.max(fileSize - suffixLength, 0);
+    return { start, end: fileSize - 1 };
+  }
+
+  const start = Number.parseInt(startRaw, 10);
+  if (!Number.isFinite(start) || start < 0 || start >= fileSize) {
+    return null;
+  }
+
+  if (!endRaw) {
+    return { start, end: fileSize - 1 };
+  }
+
+  const end = Number.parseInt(endRaw, 10);
+  if (!Number.isFinite(end) || end < start) {
+    return null;
+  }
+
+  return { start, end: Math.min(end, fileSize - 1) };
 }

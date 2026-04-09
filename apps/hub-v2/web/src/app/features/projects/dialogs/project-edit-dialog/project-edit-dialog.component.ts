@@ -9,6 +9,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
+import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { DialogShellComponent } from '@shared/ui';
 import type { ProjectSummary, UpdateProjectInput } from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
@@ -130,7 +131,7 @@ type EditDraft = {
                         {{ (draft().displayCode || draft().name || '项目').slice(0, 3).toUpperCase() }}
                       }
                     </span>
-                    <input #avatarInput type="file" accept="image/*" hidden (change)="onAvatarPicked($event)" />
+                    <input #avatarInput type="file" [accept]="avatarUploadPolicy.accept" hidden (change)="onAvatarPicked($event)" />
                     <button nz-button type="button" [nzLoading]="avatarUploading()" (click)="avatarInput.click()">上传图标</button>
                     @if (draft().avatarUploadId) {
                       <button nz-button nzType="default" type="button" (click)="clearAvatar()">移除</button>
@@ -239,6 +240,7 @@ type EditDraft = {
 export class ProjectEditDialogComponent {
   private readonly projectApi = inject(ProjectApiService);
   private readonly message = inject(NzMessageService);
+  readonly avatarUploadPolicy = UPLOAD_TARGETS.projectAvatar;
 
   readonly open = input(false);
   readonly busy = input(false);
@@ -316,15 +318,9 @@ export class ProjectEditDialogComponent {
     if (!file) {
       return;
     }
-    if (!file.type.startsWith('image/')) {
-      this.message.warning('仅支持图片文件');
-      if (input) {
-        input.value = '';
-      }
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      this.message.warning('图片大小不能超过 10MB');
+    const validationMessage = validateUploadFile(file, this.avatarUploadPolicy);
+    if (validationMessage) {
+      this.message.warning(validationMessage);
       if (input) {
         input.value = '';
       }

@@ -3,6 +3,7 @@ import { map } from 'rxjs';
 
 import { ApiClientService } from '@core/http';
 import type { PageResult } from '@core/types';
+import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
   AddProjectMemberInput,
   CreateProjectApiTokenInput,
@@ -28,11 +29,7 @@ export class ProjectApiService {
   private readonly api = inject(ApiClientService);
 
   uploadProjectAvatar(file: File) {
-    const formData = new FormData();
-    formData.set('file', file);
-    formData.set('bucket', 'project-avatars');
-    formData.set('category', 'project_avatar');
-    formData.set('visibility', 'private');
+    const formData = buildUploadFormData(file, UPLOAD_TARGETS.projectAvatar);
     return this.api.post<{ id: string }, FormData>('/uploads', formData);
   }
 

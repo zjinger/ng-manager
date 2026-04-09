@@ -89,7 +89,7 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
       toStatus: null,
       operatorId: ctx.userId?.trim() || ctx.accountId,
       operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
-      summary: content.length > 60 ? `${content.slice(0, 57)}...` : content,
+      summary: content,
       metaJson: JSON.stringify({ kind: "comment" }),
       createdAt: nowIso()
     };

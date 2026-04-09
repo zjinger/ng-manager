@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalService } from 'ng-zorro-antd/modal';
+import { map } from 'rxjs';
 
 import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
 import { MarkdownViewerComponent, SideDetailLayoutComponent } from '@shared/ui';
@@ -338,6 +340,9 @@ export class IssueDetailPageComponent {
   readonly store = inject(IssueDetailStore);
   private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
+  private readonly routeIssueId = toSignal(this.route.paramMap.pipe(map((params) => params.get('issueId'))), {
+    initialValue: this.route.snapshot.paramMap.get('issueId'),
+  });
   readonly issueId = input<string | null>(null);
   readonly embedded = input(false);
   readonly assignOpen = signal(false);
@@ -353,7 +358,7 @@ export class IssueDetailPageComponent {
 
   constructor() {
     effect(() => {
-      const issueId = this.issueId() ?? this.route.snapshot.paramMap.get('issueId');
+      const issueId = this.issueId() ?? this.routeIssueId();
       if (!issueId || this.loadedIssueId() === issueId) {
         return;
       }
@@ -396,7 +401,7 @@ export class IssueDetailPageComponent {
       nzContent:
         this.store.issue()?.status === 'pending_update'
           ? '继续处理后，状态将从“待提测”回到“处理中”。'
-          : '开始处理后，提报人将不能再重新指派负责人。',
+          : '开始处理后将进入处理流转，负责人可继续处理、转派或标记待提测。',
       nzOkText: this.store.issue()?.status === 'pending_update' ? '确认继续' : '确认开始',
       nzCancelText: '取消',
       nzOnOk: () => this.store.start(),

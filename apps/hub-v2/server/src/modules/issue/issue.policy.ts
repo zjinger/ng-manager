@@ -16,11 +16,12 @@ export function requireIssueEditAccess(issue: IssueEntity, ctx: RequestContext):
 }
 
 export function requireIssueAssignAccess(issue: IssueEntity, ctx: RequestContext, isProjectAdmin = false): void {
-  if (isProjectAdmin) {
+  // 未有负责人时：提报人或项目管理员可执行指派。
+  if (!issue.assigneeId && (isProjectAdmin || matchActor(ctx, issue.reporterId))) {
     return;
   }
 
-  // 当前负责人可在 open/reopened/in_progress 执行转派。
+  // 已有负责人后：仅当前负责人可执行转派。
   if (
     matchActor(ctx, issue.assigneeId) &&
     (issue.status === "open" ||
@@ -28,11 +29,6 @@ export function requireIssueAssignAccess(issue: IssueEntity, ctx: RequestContext
       issue.status === "in_progress" ||
       issue.status === "pending_update")
   ) {
-    return;
-  }
-
-  // 提报人仅能在“开始处理前”执行重新指派。
-  if (matchActor(ctx, issue.reporterId) && (issue.status === "open" || issue.status === "reopened")) {
     return;
   }
 

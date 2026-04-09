@@ -260,7 +260,7 @@ export class RdCreateDialogComponent {
     status: ['lines', 'words']
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> => {
-    return this.markdownImageUpload.uploadImage(file, 10);
+    return this.markdownImageUpload.uploadImage(file);
   };
 
   constructor() {

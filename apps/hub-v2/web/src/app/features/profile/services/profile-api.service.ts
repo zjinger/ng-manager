@@ -4,6 +4,7 @@ import { from, Observable, switchMap } from 'rxjs';
 import { ApiClientService } from '@core/http';
 import type { AuthUser } from '@core/auth';
 import { encryptLoginPassword } from '@core/auth/login-crypto.util';
+import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
   ChangePasswordInput,
   CreatePersonalApiTokenInput,
@@ -54,11 +55,7 @@ export class ProfileApiService {
   }
 
   uploadAvatar(file: File) {
-    const formData = new FormData();
-    formData.set('file', file);
-    formData.set('bucket', 'avatars');
-    formData.set('category', 'avatar');
-    formData.set('visibility', 'private');
+    const formData = buildUploadFormData(file, UPLOAD_TARGETS.profileAvatar);
     return this.api.post<UploadEntity, FormData>('/uploads', formData);
   }
 

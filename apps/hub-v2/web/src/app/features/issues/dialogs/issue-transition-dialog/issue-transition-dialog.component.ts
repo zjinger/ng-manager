@@ -110,7 +110,7 @@ export class IssueTransitionDialogComponent {
   });
   readonly placeholder = computed(() => {
     if (this.mode() === 'resolve') {
-      return '例如：已替换为主题变量，并补齐 hover 阴影。';
+      return '例如：已修复用户登录异常问题，涉及登录模块相关代码变更。';
     }
     if (this.mode() === 'reopen') {
       return '例如：验收时发现暗黑态还有一处浅色残留。';

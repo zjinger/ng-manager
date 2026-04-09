@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -13,6 +14,7 @@ import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-di
 import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
 import type { RdItemEntity, RdLogEntity, RdStageEntity } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
+import { map } from 'rxjs';
 
 @Component({
   selector: 'app-rd-detail-page',
@@ -116,6 +118,9 @@ export class RdDetailPageComponent {
   private readonly rdApi = inject(RdApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly authStore = inject(AuthStore);
+  private readonly routeItemId = toSignal(this.route.paramMap.pipe(map((params) => params.get('itemId'))), {
+    initialValue: this.route.snapshot.paramMap.get('itemId'),
+  });
 
   readonly item = signal<RdItemEntity | null>(null);
   readonly logs = signal<RdLogEntity[]>([]);
@@ -126,7 +131,7 @@ export class RdDetailPageComponent {
   readonly blockOpen = signal(false);
   readonly advanceStageOpen = signal(false);
 
-  readonly itemId = computed(() => this.route.snapshot.paramMap.get('itemId') ?? '');
+  readonly itemId = computed(() => this.routeItemId() ?? '');
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly subtitle = computed(() => this.item()?.rdNo || '通过 Dashboard 待办进入');
 

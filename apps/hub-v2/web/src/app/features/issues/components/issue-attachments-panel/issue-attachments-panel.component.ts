@@ -7,8 +7,10 @@ import { NzUploadModule } from 'ng-zorro-antd/upload';
 import { Subscription } from 'rxjs';
 
 import { type AttachmentPreviewItem, AttachmentPreviewWallComponent, PanelCardComponent } from '@shared/ui';
+import { formatUploadSizeLimit, resolveAttachmentPreviewKind, UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { IssueAttachmentEntity } from '../../models/issue.model';
+import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 
 @Component({
   selector: 'app-issue-attachments-panel',
@@ -19,7 +21,8 @@ import type { IssueAttachmentEntity } from '../../models/issue.model';
     NzUploadModule,
     PanelCardComponent,
     AttachmentPreviewWallComponent,
-  ],
+    NzTooltipDirective
+],
   template: `
     <app-panel-card title="附件" [count]="attachments().length" [empty]="attachments().length === 0" emptyText="当前还没有附件">
       <nz-upload
@@ -28,13 +31,13 @@ import type { IssueAttachmentEntity } from '../../models/issue.model';
         [nzShowUploadList]="false"
         [nzDisabled]="busy()"
         [nzMultiple]="false"
-        [nzAccept]="acceptTypes"
+        [nzAccept]="uploadPolicy.accept"  
         [nzBeforeUpload]="beforeUpload"
         [nzCustomRequest]="customRequest"
       >
-        <button nz-button [disabled]="busy()">
+        <button nz-button [disabled]="busy()" [nz-tooltip]="'支持上传图片/视频格式，单文件不超过 ' + attachmentUploadSizeText">
           <span nz-icon nzType="upload"></span>
-          上传附件
+          上传
         </button>
       </nz-upload>
 
@@ -73,7 +76,9 @@ export class IssueAttachmentsPanelComponent {
   readonly busy = input(false);
   readonly upload = output<File>();
   readonly remove = output<string>();
-  readonly acceptTypes = 'image/*,video/*';
+  readonly uploadPolicy = UPLOAD_TARGETS.issueAttachment;
+
+  readonly attachmentUploadSizeText = formatUploadSizeLimit(this.uploadPolicy);
 
   readonly beforeUpload = (file: NzUploadFile): boolean => {
     const rawFile = this.toRawFile(file);
@@ -81,8 +86,9 @@ export class IssueAttachmentsPanelComponent {
       this.message.warning('文件读取失败，请重试');
       return false;
     }
-    if (!this.isAllowedFile(rawFile)) {
-      this.message.warning('仅支持上传图片或视频文件');
+    const validationMessage = validateUploadFile(rawFile, this.uploadPolicy);
+    if (validationMessage) {
+      this.message.warning(validationMessage);
       return false;
     }
     this.upload.emit(rawFile);
@@ -101,17 +107,14 @@ export class IssueAttachmentsPanelComponent {
 
   attachmentPreviewItems(): AttachmentPreviewItem[] {
     return this.attachments().map((item) => {
-      const mime = (item.upload.mimeType || '').toLowerCase();
-      const kind: AttachmentPreviewItem['kind'] = mime.startsWith('image/')
-        ? 'image'
-        : mime.startsWith('video/')
-          ? 'video'
-          : 'file';
       return {
         id: item.id,
         name: item.upload.originalName,
         url: this.fileUrl(item),
-        kind,
+        kind: resolveAttachmentPreviewKind({
+          name: item.upload.originalName,
+          type: item.upload.mimeType || '',
+        }),
         meta: `${item.upload.mimeType || '文件'} · ${this.formatSize(item.upload.fileSize)}`,
       };
     });
@@ -126,20 +129,6 @@ export class IssueAttachmentsPanelComponent {
     }
     return null;
   }
-
-  private isAllowedFile(file: File): boolean {
-    const mime = (file.type || '').toLowerCase();
-    if (mime.startsWith('image/') || mime.startsWith('video/')) {
-      return true;
-    }
-
-    const name = file.name.toLowerCase();
-    return (
-      /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(name) ||
-      /\.(mp4|mov|webm|mkv|avi|m4v)$/.test(name)
-    );
-  }
-
   formatSize(size: number): string {
     if (!Number.isFinite(size) || size < 0) {
       return '-';

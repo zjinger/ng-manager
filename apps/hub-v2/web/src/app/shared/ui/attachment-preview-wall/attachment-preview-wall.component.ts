@@ -25,6 +25,14 @@ export interface AttachmentPreviewItem {
       <nz-image-group class="attachment-wall" >
         @for (item of items(); track item.id) {
           <div class="attachment-wall__item">
+            <div class="attachment-wall__badges">
+              <span class="attachment-wall__kind" [class.attachment-wall__kind--file]="item.kind === 'file'">
+                {{ kindLabel(item.kind) }}
+              </span>
+              @if (item.kind === 'file' && extensionLabel(item.name); as ext) {
+                <span class="attachment-wall__ext">{{ ext }}</span>
+              }
+            </div>
             @if (item.kind === 'image') {
               <img
                 nz-image
@@ -59,6 +67,15 @@ export interface AttachmentPreviewItem {
                 >
                   <span nz-icon nzType="eye"></span>
               </a>
+              } @else {
+                <a
+                  class="attachment-wall__preview"
+                  [href]="item.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span nz-icon nzType="eye"></span>
+                </a>
               }
             @if (removable() && !removeDisabled()) {
                 <a
@@ -100,6 +117,45 @@ export interface AttachmentPreviewItem {
         height: 100%;
         object-fit: cover;
         display: block;
+      }
+      .attachment-wall__badges {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        pointer-events: none;
+      }
+      .attachment-wall__kind {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--primary-500) 88%, white);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+      }
+      .attachment-wall__kind--file {
+        background: color-mix(in srgb, #334155 92%, white);
+      }
+      .attachment-wall__ext {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, #0f172a 78%, white);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
       }
       .attachment-wall__video {
         background: #000;
@@ -156,6 +212,7 @@ export interface AttachmentPreviewItem {
         opacity: 0;
         transition: opacity 0.16s ease;
         gap: 12px;
+        pointer-events: none;
       }
       .attachment-wall__item:hover .attachment-wall__mask {
         opacity: 1;
@@ -164,6 +221,7 @@ export interface AttachmentPreviewItem {
         font-size: 18px;
         color: #fff;
         border:none;
+        pointer-events: auto;
       }
       .attachment-wall__remove:hover,.attachment-wall__preview:hover {
         color: #fff;
@@ -180,6 +238,26 @@ export class AttachmentPreviewWallComponent {
   readonly removeDisabled = input(false);
   readonly showMeta = input(false);
   readonly remove = output<string>();
+
+  kindLabel(kind: AttachmentPreviewKind): string {
+    if (kind === 'image') {
+      return '图片';
+    }
+    if (kind === 'video') {
+      return '可预览视频';
+    }
+    return '文件附件';
+  }
+
+  extensionLabel(name: string): string | null {
+    const normalized = name.trim();
+    const lastDotIndex = normalized.lastIndexOf('.');
+    if (lastDotIndex < 0 || lastDotIndex === normalized.length - 1) {
+      return null;
+    }
+    const extension = normalized.slice(lastDotIndex + 1).trim();
+    return extension ? extension.toUpperCase() : null;
+  }
 
   openPreview(id: string): void {
     const target = this.document.querySelector(`img[data-preview-id="${id}"]`) as HTMLImageElement | null;

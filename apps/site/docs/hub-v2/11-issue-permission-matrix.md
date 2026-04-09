@@ -47,8 +47,8 @@
 - 认领后 `assignee = 当前用户`。
 
 重新指派约束（提报人）：
-- 提报人仅可在 `open/reopened` 阶段重新指派。
-- 一旦负责人开始处理进入 `in_progress`，或标记为 `pending_update`（待提测），提报人不能再重新指派。
+- 未有负责人时，提报人可执行“指派”。
+- 一旦已有负责人，仅当前负责人可执行“转派”；提报人不能再重新指派。
 
 关闭约束（提报人）：
 - 提报人可在未进入开始处理流程前关闭（`open/reopened`）。
@@ -63,7 +63,7 @@
 | 创建 Issue | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 更新基础信息（标题/描述/优先级/模块等） | ✅ | ⛔（当前实现） | ✅ | ✅ | ✅ | ⛔ |
 | 认领 Claim（仅未指派） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 重新指派 Assign | ✅ | ✅ | ✅（仅 open/reopened） | ✅（open/reopened/in_progress/pending_update，显示“转派”） | ⛔ | ⛔ |
+| 指派 / 转派 Assign | ⛔（当前实现） | ✅（仅未指派） | ✅（仅未指派） | ✅（open/reopened/in_progress/pending_update，显示“转派”） | ⛔ | ⛔ |
 | 开始处理 Start / 继续处理 | ✅ | ⛔（当前实现） | ⛔ | ✅（`open/reopened/pending_update`） | ⛔ | ⛔ |
 | 标记待提测 Wait Update | ✅ | ⛔（当前实现） | ⛔ | ✅（`in_progress/reopened`） | ⛔ | ⛔ |
 | 标记解决 Resolve | ✅ | ⛔（当前实现） | ⛔ | ✅（`in_progress/pending_update/reopened`） | ⛔ | ⛔ |
@@ -75,7 +75,7 @@
 - 上表是“当前实现口径 + 本次认领增强”。
 - 后续若要和 RD 权限风格统一，建议把 `project_admin` 纳入 `assign/close` 等管理动作。
 - `close` 新增 reporter 条件：提报人仅在 `open/reopened/verified` 可关闭。
-- `assign` 当前实现包含“负责人转派”：`assignee` 在 `open/reopened/in_progress/pending_update` 可转派。
+- `assign` 当前实现拆成两类：未指派时由 `reporter/project_admin` 指派；已指派后仅 `assignee` 可转派。
 - `wait_update` 用于“代码已提交，等待测试验证”的中间态，便于负责人从“我的问题”中单独筛选。
 
 ---

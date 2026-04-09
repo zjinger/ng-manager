@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { UPLOAD_TARGETS } from '@shared/constants';
 
 @Component({
   selector: 'app-profile-hero',
@@ -16,7 +17,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
           } @else {
             <span>{{ initials() || 'U' }}</span>
           }
-          <input #avatarInput type="file" accept="image/*" hidden (change)="onAvatarPicked($event)" />
+          <input #avatarInput type="file" [accept]="avatarAccept" hidden (change)="onAvatarPicked($event)" />
           <button class="profile-avatar-edit" type="button" nz-tooltip="更换头像" (click)="avatarInput.click()">
             <nz-icon nzType="camera" nzTheme="fill"/>
           </button>
@@ -232,6 +233,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfileHeroComponent {
+  readonly avatarAccept = UPLOAD_TARGETS.profileAvatar.accept;
   readonly initials = input('U');
   readonly name = input('当前账号');
   readonly subtitle = input('');

@@ -191,7 +191,7 @@ export class DocumentCreateDialogComponent {
     autosaveUniqueId: 'document-editor',
     status: ['lines', 'words'],
   };
-  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.markdownImageUpload.uploadImage(file, 10);
+  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.markdownImageUpload.uploadImage(file);
 
   constructor() {
     effect(() => {

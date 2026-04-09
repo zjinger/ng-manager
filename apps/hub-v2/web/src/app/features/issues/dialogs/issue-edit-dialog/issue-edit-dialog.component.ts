@@ -54,7 +54,7 @@ const EMPTY_DRAFT: EditDraft = {
                   <input
                     nz-input
                     maxlength="120"
-                    placeholder="简要描述问题"
+                    placeholder="简要描述问题，例如：登录接口返回 500"
                     [ngModel]="draft().title"
                     name="title"
                     (ngModelChange)="updateField('title', $event)"
@@ -172,7 +172,7 @@ export class IssueEditDialogComponent {
   readonly confirm = output<UpdateIssueInput>();
 
   readonly draft = signal<EditDraft>({ ...EMPTY_DRAFT });
-  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.markdownImageUpload.uploadImage(file, 10);
+  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.markdownImageUpload.uploadImage(file);
 
   constructor() {
     effect(() => {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -29,7 +29,7 @@ import type { IssueEntity } from '../../models/issue.model';
             [ngModel]="assigneeId()"
             (ngModelChange)="assigneeId.set($event || '')"
           >
-            @for (member of members(); track member.id) {
+            @for (member of candidateMembers(); track member.id) {
               <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
             }
           </nz-select>
@@ -60,11 +60,15 @@ export class IssueAssignDialogComponent {
   readonly cancel = output<void>();
 
   readonly assigneeId = signal('');
+  readonly candidateMembers = computed(() => {
+    const currentAssigneeId = this.issue()?.assigneeId?.trim() || '';
+    return this.members().filter((member) => member.userId !== currentAssigneeId);
+  });
 
   constructor() {
     effect(() => {
       if (this.open()) {
-        this.assigneeId.set(this.issue()?.assigneeId ?? '');
+        this.assigneeId.set('');
       }
     });
   }

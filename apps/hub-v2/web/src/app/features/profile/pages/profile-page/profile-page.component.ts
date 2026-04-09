@@ -3,6 +3,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore, type ProjectScopeMode } from '@core/state';
+import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { PageHeaderComponent } from '@shared/ui';
 import { ProfileBasicFormComponent } from '../../components/profile-basic-form/profile-basic-form.component';
 import { ProfileHeroComponent } from '../../components/profile-hero/profile-hero.component';
@@ -127,6 +128,7 @@ export class ProfilePageComponent {
   private readonly profileApi = inject(ProfileApiService);
   private readonly projectContext = inject(ProjectContextStore);
   private readonly message = inject(NzMessageService);
+  private readonly avatarUploadPolicy = UPLOAD_TARGETS.profileAvatar;
 
   readonly activeTab = signal<ProfileTab>('basic');
   readonly busy = signal(false);
@@ -344,12 +346,9 @@ export class ProfilePageComponent {
   }
 
   updateAvatar(file: File): void {
-    if (!file.type.startsWith('image/')) {
-      this.message.warning('仅支持图片文件');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      this.message.warning('头像图片不能超过 10MB');
+    const validationMessage = validateUploadFile(file, this.avatarUploadPolicy);
+    if (validationMessage) {
+      this.message.warning(validationMessage);
       return;
     }
     this.busy.set(true);

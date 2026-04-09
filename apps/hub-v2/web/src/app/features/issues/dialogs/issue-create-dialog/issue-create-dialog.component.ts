@@ -7,7 +7,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { Subscription } from 'rxjs';
 
-import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
+import { formatUploadSizeLimit, ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS, resolveAttachmentPreviewKind, UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { type AttachmentPreviewItem, AttachmentPreviewWallComponent, DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -75,7 +75,7 @@ const DEFAULT_DRAFT: Draft = {
                   <input
                     nz-input
                     maxlength="120"
-                    placeholder="简要描述问题，例如：登录接口在高并发下返回 500"
+                    placeholder="简要描述问题，例如：登录接口返回 500"
                     [ngModel]="draft().title"
                     name="title"
                     (ngModelChange)="onTitleChange($event)"
@@ -261,7 +261,7 @@ const DEFAULT_DRAFT: Draft = {
                     nzType="drag"
                     [nzMultiple]="true"
                     [nzShowUploadList]="false"
-                    [nzAccept]="acceptTypes"
+                    [nzAccept]="attachmentUploadPolicy.accept"
                     [nzBeforeUpload]="beforeUpload"
                     [nzCustomRequest]="customRequest"
                   >
@@ -269,7 +269,7 @@ const DEFAULT_DRAFT: Draft = {
                       <nz-icon nzType="plus" />
                     </p>
                     <div class="upload-zone__title">点击或拖拽文件到此区域上传</div>
-                    <div class="upload-zone__hint">支持图片/视频格式，单个文件最大 10MB</div>
+                    <div class="upload-zone__hint">支持图片/视频格式，单个文件最大 {{ attachmentUploadSizeText }}</div>
                 </nz-upload>
                 @if (draft().attachmentFiles.length > 0) {
                   <div class="upload-picked">
@@ -427,7 +427,8 @@ export class IssueCreateDialogComponent implements OnDestroy {
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS.filter((option) => option.value !== '');
   readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
-  readonly acceptTypes = 'image/*,video/*';
+  readonly attachmentUploadPolicy = UPLOAD_TARGETS.issueAttachment;
+  readonly attachmentUploadSizeText = formatUploadSizeLimit(this.attachmentUploadPolicy);
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
   readonly participantCandidates = signal<ProjectMemberEntity[]>([]);
   readonly editorConfig = {
@@ -436,7 +437,7 @@ export class IssueCreateDialogComponent implements OnDestroy {
     status: ['lines', 'words']
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> => {
-    return this.markdownImageUpload.uploadImage(file, 10);
+    return this.markdownImageUpload.uploadImage(file);
   };
 
   constructor() {
@@ -545,12 +546,9 @@ export class IssueCreateDialogComponent implements OnDestroy {
       this.message.warning('文件读取失败，请重试');
       return false;
     }
-    if (!this.isAllowedFile(rawFile)) {
-      this.message.warning('仅支持上传图片或视频文件');
-      return false;
-    }
-    if (rawFile.size > 10 * 1024 * 1024) {
-      this.message.warning('单个文件最大 10MB');
+    const validationMessage = validateUploadFile(rawFile, this.attachmentUploadPolicy);
+    if (validationMessage) {
+      this.message.warning(validationMessage);
       return false;
     }
 
@@ -594,12 +592,8 @@ export class IssueCreateDialogComponent implements OnDestroy {
       id: this.fileIdentity(file),
       name: file.name,
       url: this.previewUrl(file),
-      kind: this.isImage(file) ? 'image' : 'video',
+      kind: resolveAttachmentPreviewKind(file),
     }));
-  }
-
-  isImage(file: File): boolean {
-    return (file.type || '').toLowerCase().startsWith('image/');
   }
 
   previewUrl(file: File): string {
@@ -622,16 +616,6 @@ export class IssueCreateDialogComponent implements OnDestroy {
     }
     return null;
   }
-
-  private isAllowedFile(file: File): boolean {
-    const mime = (file.type || '').toLowerCase();
-    if (mime.startsWith('image/') || mime.startsWith('video/')) {
-      return true;
-    }
-    const name = file.name.toLowerCase();
-    return /\.(png|jpe?g|gif|webp|bmp|svg|mp4|mov|webm|mkv|avi|m4v)$/.test(name);
-  }
-
   formatSize(size: number): string {
     if (!Number.isFinite(size) || size < 0) {
       return '-';

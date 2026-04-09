@@ -23,26 +23,16 @@ export class IssuePermissionService {
     }
     const isReporter = this.matchActor(user, issue.reporterId);
     const isAssignee = this.matchActor(user, issue.assigneeId);
-    const isManager = this.isAdmin(user) || isProjectAdmin;
+    const isManager = isProjectAdmin;
 
-    // 已有负责人时：负责人显示“转派”。
-    if (issue.assigneeId && isAssignee) {
-      return '转派';
-    }
-
-    // 管理角色：未有负责人时“指派”，已有负责人时“重新指派”。
-    if (isManager) {
-      return issue.assigneeId ? '重新指派' : '指派';
-    }
-
-    // 未有负责人时：提报人显示“指派”。
-    if (!issue.assigneeId && isReporter) {
+    // 未有负责人时：提报人或管理角色可指派。
+    if (!issue.assigneeId && (isReporter || isManager)) {
       return '指派';
     }
 
-    // 已有负责人且处于开始处理前：提报人显示“重新指派”。
-    if (issue.assigneeId && isReporter && ['open', 'reopened'].includes(issue.status)) {
-      return '重新指派';
+    // 已有负责人后：仅当前负责人可转派。
+    if (issue.assigneeId && isAssignee) {
+      return '转派';
     }
 
     return null;
