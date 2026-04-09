@@ -14,6 +14,7 @@ import { IssueBranchesPanelComponent } from '../../components/issue-branches-pan
 import { IssueCollaboratorsPanelComponent } from '../../components/issue-collaborators-panel/issue-collaborators-panel.component';
 import { IssueCommentEditorComponent } from '../../components/issue-comment-editor/issue-comment-editor.component';
 import { IssueDetailHeaderComponent } from '../../components/issue-detail-header/issue-detail-header.component';
+import { IssueDetailNoteComponent } from '../../components/issue-detail-note/issue-detail-note.component';
 import { IssuePropsPanelComponent } from '../../components/issue-props-panel/issue-props-panel.component';
 import { IssueAddParticipantsDialogComponent } from '../../dialogs/issue-add-participants-dialog/issue-add-participants-dialog.component';
 import { IssueAssignDialogComponent } from '../../dialogs/issue-assign-dialog/issue-assign-dialog.component';
@@ -38,6 +39,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
     IssueCommentEditorComponent,
     IssueCollaboratorsPanelComponent,
     IssueDetailHeaderComponent,
+    IssueDetailNoteComponent,
     IssuePropsPanelComponent,
     IssueAssignDialogComponent,
     IssueAddParticipantsDialogComponent,
@@ -97,22 +99,13 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
                 暂无描述
               }
             @if (issue.resolutionSummary) {
-              <div class="resolution">
-                <div class="resolution__label">标记已解决原因</div>
-                <div>{{ issue.resolutionSummary }}</div>
-              </div>
+              <app-issue-detail-note [label]="'已解决说明'" [content]="issue.resolutionSummary" />
             }
             @if (store.reopenReason()) {
-              <div class="resolution">
-                <div class="resolution__label">重开原因</div>
-                <div>{{ store.reopenReason() }}</div>
-              </div>
+              <app-issue-detail-note [label]="'重开原因'" [content]="store.reopenReason()!" />
             }
             @if (issue.closeReason) {
-              <div class="resolution">
-                <div class="resolution__label">关闭原因</div>
-                <div>{{ issue.closeReason }}</div>
-              </div>
+              <app-issue-detail-note [label]="'关闭原因'" [content]="issue.closeReason" />
             }
           </section>
 
@@ -290,19 +283,6 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         color: var(--text-secondary);
         white-space: pre-wrap;
         line-height: 1.7;
-      }
-      .resolution {
-        margin-top: 22px;
-        padding: 18px 20px 0;
-        border-top: 1px solid var(--border-color);
-        color: var(--text-secondary);
-      }
-      .resolution__label {
-        margin-bottom: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--text-muted);
-        letter-spacing: 0.04em;
       }
       .detail-main,
       .detail-side {

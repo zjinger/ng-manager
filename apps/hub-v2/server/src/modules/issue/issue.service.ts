@@ -217,19 +217,21 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const current = await this.requireByIdWithAccess(id, ctx, "resolve issue");
     requireIssueResolveAccess(current, ctx);
     const now = nowIso();
+    const resolutionSummary = input.resolutionSummary?.trim() || null;
     return this.applyAction(
       id,
       "resolve",
       ctx,
       current,
       {
-        resolution_summary: input.resolutionSummary?.trim() || current.resolutionSummary,
+        resolution_summary: resolutionSummary || current.resolutionSummary,
         resolved_at: now,
         verified_at: null,
         closed_at: null
       },
-      "标记问题已解决",
-      now
+      resolutionSummary ? `标记问题已解决：${resolutionSummary}` : "标记问题已解决",
+      now,
+      resolutionSummary ? { reason: resolutionSummary } : undefined
     );
   }
 
@@ -277,18 +279,20 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const current = await this.requireByIdWithAccess(id, ctx, "close issue");
     requireIssueCloseAccess(current, ctx);
     const now = nowIso();
+    const closeReason = input.reason?.trim() || current.closeReason || null;
     return this.applyAction(
       id,
       "close",
       ctx,
       current,
       {
-        close_reason: input.reason?.trim() || current.closeReason,
+        close_reason: closeReason,
         close_remark: input.remark?.trim() || current.closeRemark,
         closed_at: now
       },
-      "关闭问题",
-      now
+      closeReason ? `关闭问题：${closeReason}` : "关闭问题",
+      now,
+      closeReason ? { reason: closeReason } : undefined
     );
   }
 

@@ -322,6 +322,10 @@ export class IssueDetailHeaderComponent {
       reached.add('pending_update');
     }
 
+    if (issue.status === 'reopened') {
+      reached.delete('closed');
+    }
+
     return reached;
   }
 

@@ -40,6 +40,8 @@ export class EchartsChartComponent implements AfterViewInit {
   private echartsCore: EChartsCoreModule | null = null;
   private chart?: EChartsInstance;
   private pendingOption: EChartsOption | null = null;
+  private resizeObserver?: ResizeObserver;
+  private resizeFrameId: number | null = null;
 
   constructor() {
     effect(() => {
@@ -49,15 +51,22 @@ export class EchartsChartComponent implements AfterViewInit {
         return;
       }
       this.chart.setOption(option, true);
+      this.scheduleResize();
     });
   }
 
   async ngAfterViewInit(): Promise<void> {
     await this.initChart();
     this.applyPendingOption();
+    this.observeHostResize();
     window.addEventListener('resize', this.handleResize);
     this.destroyRef.onDestroy(() => {
       window.removeEventListener('resize', this.handleResize);
+      this.resizeObserver?.disconnect();
+      if (this.resizeFrameId !== null) {
+        cancelAnimationFrame(this.resizeFrameId);
+        this.resizeFrameId = null;
+      }
       this.chart?.dispose();
       this.chart = undefined;
     });
@@ -69,6 +78,7 @@ export class EchartsChartComponent implements AfterViewInit {
     }
     const echarts = await this.ensureEchartsLoaded();
     this.chart = echarts.init(this.hostRef.nativeElement);
+    this.scheduleResize();
   }
 
   private async ensureEchartsLoaded(): Promise<EChartsCoreModule> {
@@ -105,9 +115,35 @@ export class EchartsChartComponent implements AfterViewInit {
       return;
     }
     this.chart.setOption(this.pendingOption, true);
+    this.scheduleResize();
   }
 
   private readonly handleResize = (): void => {
-    this.chart?.resize();
+    this.scheduleResize();
   };
+
+  private observeHostResize(): void {
+    const host = this.hostRef?.nativeElement;
+    if (!host || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = new ResizeObserver(() => {
+      this.scheduleResize();
+    });
+    this.resizeObserver.observe(host);
+  }
+
+  private scheduleResize(): void {
+    if (!this.chart) {
+      return;
+    }
+    if (this.resizeFrameId !== null) {
+      cancelAnimationFrame(this.resizeFrameId);
+    }
+    this.resizeFrameId = requestAnimationFrame(() => {
+      this.resizeFrameId = null;
+      this.chart?.resize();
+    });
+  }
 }

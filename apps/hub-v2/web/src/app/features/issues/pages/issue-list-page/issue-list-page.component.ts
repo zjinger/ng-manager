@@ -447,6 +447,19 @@ export class IssueListPageComponent {
       const visible = new Set(this.store.items().map((item) => item.id));
       this.selectedIssueIds.update((ids) => ids.filter((id) => visible.has(id)));
     });
+
+    effect(() => {
+      const action = this.actionQuery();
+      if (action !== 'create') {
+        return;
+      }
+      this.createOpen.set(true);
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { action: null },
+        queryParamsHandling: 'merge',
+      });
+    });
   }
 
   createIssue(input: Parameters<IssueListStore['create']>[0]): void {
@@ -476,19 +489,6 @@ export class IssueListPageComponent {
       sortOrder: 'desc',
     });
     this.selectedIssueIds.set([]);
-
-    effect(() => {
-      const action = this.actionQuery();
-      if (action !== 'create') {
-        return;
-      }
-      this.createOpen.set(true);
-      this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: { action: null },
-        queryParamsHandling: 'merge',
-      });
-    });
   }
 
   removeFilterTag(
