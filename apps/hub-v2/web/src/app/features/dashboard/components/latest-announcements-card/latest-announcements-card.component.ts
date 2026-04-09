@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 import { DashboardPanelComponent } from '@shared/ui';
 import type { DashboardAnnouncement } from '../../models/dashboard.model';
@@ -7,7 +8,7 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
 @Component({
   selector: 'app-latest-announcements-card',
   standalone: true,
-  imports: [CommonModule, DatePipe, DashboardPanelComponent],
+  imports: [CommonModule, DatePipe, RouterLink, DashboardPanelComponent],
   template: `
     <app-dashboard-panel
       title="最新公告"
@@ -17,7 +18,7 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
       emptyText="暂无公告"
     >
       @for (item of items(); track item.id) {
-        <div class="announcement">
+        <a class="announcement" [routerLink]="['/content', 'announcements', item.id]">
           <div class="announcement__title">
             @if (item.pinned) {
               <span class="pin">置顶</span>
@@ -31,7 +32,7 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
             <span>{{ projectLabel(item) }}</span>
             <span>{{ item.publishAt | date: 'yyyy-MM-dd HH:mm' }}</span>
           </div>
-        </div>
+        </a>
       }
     </app-dashboard-panel>
   `,
@@ -42,9 +43,12 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
         height: 100%;
       }
       .announcement {
+        display: block;
         padding: 16px 18px;
         border-top: 1px solid var(--border-color-soft);
         transition: var(--transition-base);
+        color: inherit;
+        text-decoration: none;
       }
       .announcement:hover {
         background: var(--bg-subtle);

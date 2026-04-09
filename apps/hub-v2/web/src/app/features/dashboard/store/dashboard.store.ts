@@ -49,6 +49,7 @@ export class DashboardStore {
 
     const shouldRefreshStats = [...unique].some((type) => type === 'issue' || type === 'rd');
     const shouldRefreshTodos = shouldRefreshStats;
+    const shouldRefreshReportedIssues = unique.has('issue');
     const shouldRefreshActivities = [...unique].some(
       (type) => type === 'issue' || type === 'rd' || type === 'announcement' || type === 'document' || type === 'release'
     );
@@ -58,6 +59,7 @@ export class DashboardStore {
     const requests: {
       stats?: ReturnType<DashboardApiService['getStats']>;
       todos?: ReturnType<DashboardApiService['getTodos']>;
+      reportedIssues?: ReturnType<DashboardApiService['getReportedIssues']>;
       activities?: ReturnType<DashboardApiService['getActivities']>;
       announcements?: ReturnType<DashboardApiService['getAnnouncements']>;
       documents?: ReturnType<DashboardApiService['getDocuments']>;
@@ -68,6 +70,9 @@ export class DashboardStore {
     }
     if (shouldRefreshTodos) {
       requests.todos = this.dashboardApi.getTodos();
+    }
+    if (shouldRefreshReportedIssues) {
+      requests.reportedIssues = this.dashboardApi.getReportedIssues();
     }
     if (shouldRefreshActivities) {
       requests.activities = this.dashboardApi.getActivities();
@@ -93,6 +98,7 @@ export class DashboardStore {
         this.dataState.set({
           stats: partial.stats ?? current.stats,
           todos: partial.todos ?? current.todos,
+          reportedIssues: partial.reportedIssues ?? current.reportedIssues,
           activities: partial.activities ?? current.activities,
           announcements: partial.announcements ?? current.announcements,
           documents: partial.documents ?? current.documents,

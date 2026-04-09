@@ -30,6 +30,11 @@ export default async function dashboardRoutes(app: FastifyInstance) {
     return ok(await app.container.dashboardQuery.getTodos(ctx));
   });
 
+  app.get("/dashboard/reported-issues", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.dashboardQuery.getReportedIssues(ctx));
+  });
+
   app.get("/dashboard/activities", async (request) => {
     const ctx = requireAuth(request);
     return ok(await app.container.dashboardQuery.getActivities(ctx));

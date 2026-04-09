@@ -8,6 +8,7 @@ import { LatestAnnouncementsCardComponent } from '../../components/latest-announ
 import { LatestDocumentsCardComponent } from '../../components/latest-documents-card/latest-documents-card.component';
 import { MyActivitiesCardComponent } from '../../components/my-activities-card/my-activities-card.component';
 import { MyTodosCardComponent } from '../../components/my-todos-card/my-todos-card.component';
+import { ReportedIssuesCardComponent } from '../../components/reported-issues-card/reported-issues-card.component';
 import { DashboardShortcutsComponent, type DashboardShortcutItem } from '../../components/dashboard-shortcuts/dashboard-shortcuts.component';
 import { DashboardStore } from '../../store/dashboard.store';
 
@@ -22,113 +23,11 @@ import { DashboardStore } from '../../store/dashboard.store';
     LatestAnnouncementsCardComponent,
     LatestDocumentsCardComponent,
     DashboardShortcutsComponent,
+    ReportedIssuesCardComponent,
   ],
   providers: [DashboardStore],
-  template: `
-    <app-page-header
-      title="Dashboard"
-      subtitle="聚合我的待办、研发项与最新公告。"
-    />
-
-    @if (store.loading()) {
-      <div class="empty">
-        <div class="empty__title">正在加载首页数据…</div>
-        <div class="empty__hint">正在同步与我相关的待办、动态和公告。</div>
-      </div>
-    } @else if (store.data(); as data) {
-      <app-dashboard-stat-grid [stats]="data.stats" />
-
-      <div class="dashboard-grid">
-        <app-my-todos-card [items]="data.todos" [projectNames]="projectNames()" />
-        <app-my-activities-card [items]="data.activities" [projectNames]="projectNames()" />
-        <div class="dashboard-side">
-          <app-latest-announcements-card
-            [items]="data.announcements"
-            [currentProjectId]="projectContext.currentProjectId()"
-            [currentProjectName]="projectContext.currentProject()?.name || null"
-            [projectNames]="projectNames()"
-          />
-          <app-latest-documents-card
-            [items]="data.documents"
-            [currentProjectId]="projectContext.currentProjectId()"
-            [currentProjectName]="projectContext.currentProject()?.name || null"
-            [projectNames]="projectNames()"
-          />
-        </div>
-      </div>
-
-      <app-dashboard-shortcuts [items]="shortcutItems" />
-    } @else {
-      <div class="empty">
-        <div class="empty__title">首页数据加载失败或当前项目暂无内容</div>
-        <div class="empty__hint">可以先创建用户、项目或录入协作数据后再返回首页查看。</div>
-      </div>
-    }
-  `,
-  styles: [
-    `
-      .dashboard-grid {
-        --dashboard-panel-height: clamp(440px, 62vh, 620px);
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 20px;
-        align-items: stretch;
-      }
-      .dashboard-grid > app-my-todos-card,
-      .dashboard-grid > app-my-activities-card {
-        height: var(--dashboard-panel-height);
-      }
-      .dashboard-grid > * {
-        min-height: 0;
-      }
-      .dashboard-side {
-        display: grid;
-        gap: 20px;
-        height: var(--dashboard-panel-height);
-        grid-template-rows: repeat(2, minmax(0, 1fr));
-      }
-      .empty {
-        padding: 32px;
-        border-radius: 16px;
-        border: 1px dashed var(--border-color);
-        background: var(--bg-container);
-        box-shadow: var(--shadow-sm);
-      }
-      .empty__title {
-        color: var(--text-primary);
-        font-weight: 600;
-      }
-      .empty__hint {
-        margin-top: 8px;
-        color: var(--text-muted);
-      }
-      :host-context(html[data-theme='dark']) .empty {
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 45%),
-          var(--bg-container);
-        border-color: rgba(148, 163, 184, 0.14);
-      }
-      @media (max-width: 1320px) {
-        .dashboard-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-      @media (max-width: 1100px) {
-        .dashboard-grid {
-          grid-template-columns: 1fr;
-        }
-        .dashboard-grid > app-my-todos-card,
-        .dashboard-grid > app-my-activities-card {
-          height: auto;
-        }
-        .dashboard-side {
-          gap: 16px;
-          height: auto;
-          grid-template-rows: none;
-        }
-      }
-    `,
-  ],
+  templateUrl: './dashboard-page.component.html',
+  styleUrls: ['./dashboard-page.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardPageComponent {

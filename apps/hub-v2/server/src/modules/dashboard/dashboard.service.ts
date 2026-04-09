@@ -17,6 +17,7 @@ import type {
   DashboardBoardRange,
   DashboardDocumentSummary,
   DashboardHomeData,
+  DashboardReportedIssueItem,
   DashboardStats,
   DashboardTodoItem
 } from "./dashboard.types";
@@ -46,6 +47,7 @@ export class DashboardService implements DashboardQueryContract {
     return {
       stats: await this.getStatsByScope(scope, ctx),
       todos: await this.getTodosByScope(scope, ctx),
+      reportedIssues: await this.getReportedIssuesByScope(scope, ctx),
       activities: await this.getActivitiesByScope(scope, ctx),
       announcements: await this.getAnnouncementsByScope(scope, ctx),
       documents: await this.getDocumentsByScope(scope, ctx)
@@ -65,6 +67,11 @@ export class DashboardService implements DashboardQueryContract {
   async getTodos(ctx: RequestContext): Promise<DashboardTodoItem[]> {
     const scope = await this.resolveScope(ctx);
     return this.getTodosByScope(scope, ctx);
+  }
+
+  async getReportedIssues(ctx: RequestContext): Promise<DashboardReportedIssueItem[]> {
+    const scope = await this.resolveScope(ctx);
+    return this.getReportedIssuesByScope(scope, ctx);
   }
 
   async getActivities(ctx: RequestContext): Promise<DashboardActivityItem[]> {
@@ -200,6 +207,39 @@ export class DashboardService implements DashboardQueryContract {
     ]
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 8);
+  }
+
+  private async getReportedIssuesByScope(scope: DashboardScope, ctx: RequestContext): Promise<DashboardReportedIssueItem[]> {
+    if (!scope.userId) {
+      return [];
+    }
+    const result = await this.issueQuery.list(
+      {
+        page: 1,
+        pageSize: 8,
+        reporterIds: [scope.userId],
+        assigneeIds: [],
+        status: ["open", "in_progress", "reopened"],
+        types: [],
+        priority: [],
+        moduleCodes: [],
+        versionCodes: [],
+        environmentCodes: [],
+        includeAssigneeParticipants: true,
+        sortBy: "updatedAt",
+        sortOrder: "desc"
+      },
+      ctx
+    );
+    return result.items.map((item) => ({
+      entityId: item.id,
+      code: item.issueNo,
+      title: item.title,
+      status: item.status,
+      updatedAt: item.updatedAt,
+      projectId: item.projectId,
+      assigneeName: item.assigneeName
+    }));
   }
 
   private collapseIssueCreateActivities(items: DashboardActivityItem[]): DashboardActivityItem[] {

@@ -41,6 +41,16 @@ export interface DashboardDocumentSummary {
   slug: string;
 }
 
+export interface DashboardReportedIssueItem {
+  entityId: string;
+  code: string;
+  title: string;
+  status: string;
+  updatedAt: string;
+  projectId: string;
+  assigneeName: string | null;
+}
+
 export interface DashboardStats {
   assignedIssues: number;
   verifyingIssues: number;
@@ -53,6 +63,7 @@ export interface DashboardStats {
 export interface DashboardHomeData {
   stats: DashboardStats;
   todos: DashboardTodoItem[];
+  reportedIssues: DashboardReportedIssueItem[];
   activities: DashboardActivityItem[];
   announcements: DashboardAnnouncementSummary[];
   documents: DashboardDocumentSummary[];

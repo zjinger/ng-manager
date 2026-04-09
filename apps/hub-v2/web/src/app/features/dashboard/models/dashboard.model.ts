@@ -18,6 +18,16 @@ export interface DashboardTodoItem {
   projectId: string;
 }
 
+export interface DashboardReportedIssueItem {
+  entityId: string;
+  code: string;
+  title: string;
+  status: string;
+  updatedAt: string;
+  projectId: string;
+  assigneeName: string | null;
+}
+
 export interface DashboardActivityItem {
   kind: DashboardActivityItemKind;
   entityId: string;
@@ -52,6 +62,7 @@ export interface DashboardDocument {
 export interface DashboardHomeData {
   stats: DashboardStats;
   todos: DashboardTodoItem[];
+  reportedIssues: DashboardReportedIssueItem[];
   activities: DashboardActivityItem[];
   announcements: DashboardAnnouncement[];
   documents: DashboardDocument[];

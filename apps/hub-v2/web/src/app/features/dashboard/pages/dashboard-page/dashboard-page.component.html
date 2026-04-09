@@ -1,0 +1,36 @@
+<app-page-header title="Dashboard" subtitle="聚合我的待办、研发项与最新公告。" />
+
+@if (store.loading()) {
+  <div class="empty">
+    <div class="empty__title">正在加载首页数据…</div>
+    <div class="empty__hint">正在同步与我相关的待办、动态和公告。</div>
+  </div>
+} @else if (store.data(); as data) {
+  <app-dashboard-stat-grid [stats]="data.stats" />
+
+  <div class="dashboard-grid">
+    <app-my-todos-card [items]="data.todos" [projectNames]="projectNames()" />
+    <app-reported-issues-card [items]="data.reportedIssues" [projectNames]="projectNames()" />
+    <app-my-activities-card [items]="data.activities" [projectNames]="projectNames()" />
+    <div class="dashboard-side">
+      <app-latest-announcements-card
+        [items]="data.announcements"
+        [currentProjectId]="projectContext.currentProjectId()"
+        [currentProjectName]="projectContext.currentProject()?.name || null"
+        [projectNames]="projectNames()"
+      />
+      <app-latest-documents-card
+        [items]="data.documents"
+        [currentProjectId]="projectContext.currentProjectId()"
+        [currentProjectName]="projectContext.currentProject()?.name || null"
+        [projectNames]="projectNames()"
+      />
+    </div>
+  </div>
+  <app-dashboard-shortcuts [items]="shortcutItems" />
+} @else {
+  <div class="empty">
+    <div class="empty__title">首页数据加载失败或当前项目暂无内容</div>
+    <div class="empty__hint">可以先创建用户、项目或录入协作数据后再返回首页查看。</div>
+  </div>
+}

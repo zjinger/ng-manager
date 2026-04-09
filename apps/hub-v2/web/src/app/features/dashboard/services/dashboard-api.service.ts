@@ -9,6 +9,7 @@ import type {
   DashboardBoardRange,
   DashboardDocument,
   DashboardHomeData,
+  DashboardReportedIssueItem,
   DashboardStats,
   DashboardTodoItem,
 } from '../models/dashboard.model';
@@ -27,6 +28,10 @@ export class DashboardApiService {
 
   getTodos(): Observable<DashboardTodoItem[]> {
     return this.api.get<DashboardTodoItem[]>('/dashboard/todos');
+  }
+
+  getReportedIssues(): Observable<DashboardReportedIssueItem[]> {
+    return this.api.get<DashboardReportedIssueItem[]>('/dashboard/reported-issues');
   }
 
   getActivities(): Observable<DashboardActivityItem[]> {

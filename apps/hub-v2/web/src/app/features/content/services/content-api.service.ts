@@ -25,12 +25,24 @@ export class ContentApiService {
     return this.api.get<AnnouncementListResult>('/announcements', query);
   }
 
+  getAnnouncementById(announcementId: string) {
+    return this.api.get<AnnouncementEntity>(`/announcements/${announcementId}`);
+  }
+
   listDocuments(query: Partial<ContentQuery>) {
     return this.api.get<DocumentListResult>('/documents', query);
   }
 
+  getDocumentById(documentId: string) {
+    return this.api.get<DocumentEntity>(`/documents/${documentId}`);
+  }
+
   listReleases(query: Partial<ContentQuery>) {
     return this.api.get<ReleaseListResult>('/releases', query);
+  }
+
+  getReleaseById(releaseId: string) {
+    return this.api.get<ReleaseEntity>(`/releases/${releaseId}`);
   }
 
   createAnnouncement(input: CreateAnnouncementInput) {

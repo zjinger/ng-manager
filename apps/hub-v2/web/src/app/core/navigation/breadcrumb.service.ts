@@ -31,11 +31,18 @@ export class BreadcrumbService {
     }
 
     if (path.startsWith('/issues')) {
-      return [{ label: '问题管理' }];
+      return [{ label: '测试跟踪' }];
+    }
+
+    if (path.startsWith('/rd/')) {
+      return [
+        { label: '研发管理', route: '/rd' },
+        { label: '研发单详情' }
+      ];
     }
 
     if (path.startsWith('/rd')) {
-      return [{ label: '研发项' }];
+      return [{ label: '研发管理' }];
     }
 
     if (path.startsWith('/content')) {

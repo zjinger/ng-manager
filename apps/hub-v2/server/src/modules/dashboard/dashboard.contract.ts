@@ -6,6 +6,7 @@ import type {
   DashboardBoardRange,
   DashboardDocumentSummary,
   DashboardHomeData,
+  DashboardReportedIssueItem,
   DashboardStats,
   DashboardTodoItem
 } from "./dashboard.types";
@@ -15,6 +16,7 @@ export interface DashboardQueryContract {
   getBoardData(input: { projectId?: string; range: DashboardBoardRange }, ctx: RequestContext): Promise<DashboardBoardData>;
   getStats(ctx: RequestContext): Promise<DashboardStats>;
   getTodos(ctx: RequestContext): Promise<DashboardTodoItem[]>;
+  getReportedIssues(ctx: RequestContext): Promise<DashboardReportedIssueItem[]>;
   getActivities(ctx: RequestContext): Promise<DashboardActivityItem[]>;
   getAnnouncements(ctx: RequestContext): Promise<DashboardAnnouncementSummary[]>;
   getDocuments(ctx: RequestContext): Promise<DashboardDocumentSummary[]>;

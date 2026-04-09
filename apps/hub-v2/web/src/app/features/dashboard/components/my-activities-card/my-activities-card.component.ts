@@ -134,7 +134,7 @@ export class MyActivitiesCardComponent {
 
   detailLink(item: DashboardActivityItem): { path: string[]; query?: Record<string, string> } {
     if (item.kind === 'content_activity') {
-      return { path: ['/content'] };
+      return { path: this.contentDetailPath(item) };
     }
     if (item.kind === 'rd_activity') {
       return { path: ['/rd', item.entityId] };
@@ -157,6 +157,21 @@ export class MyActivitiesCardComponent {
       return '内容动态';
     }
     return '测试单';
+  }
+
+  private contentDetailPath(item: DashboardActivityItem): string[] {
+    const action = item.action.trim();
+    const [category] = action.split('.');
+    if (category === 'announcement') {
+      return ['/content', 'announcements', item.entityId];
+    }
+    if (category === 'document') {
+      return ['/content', 'documents', item.entityId];
+    }
+    if (category === 'release') {
+      return ['/content', 'releases', item.entityId];
+    }
+    return ['/content'];
   }
 
 }

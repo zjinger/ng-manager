@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 import { DashboardPanelComponent } from '@shared/ui';
 import type { DashboardDocument } from '../../models/dashboard.model';
@@ -7,7 +8,7 @@ import type { DashboardDocument } from '../../models/dashboard.model';
 @Component({
   selector: 'app-latest-documents-card',
   standalone: true,
-  imports: [CommonModule, DatePipe, DashboardPanelComponent],
+  imports: [CommonModule, DatePipe, RouterLink, DashboardPanelComponent],
   template: `
     <app-dashboard-panel
       title="最新文档"
@@ -17,7 +18,7 @@ import type { DashboardDocument } from '../../models/dashboard.model';
       emptyText="暂无文档"
     >
       @for (item of items(); track item.id) {
-        <div class="document">
+        <a class="document" [routerLink]="['/content', 'documents', item.id]">
           <div class="document__title">{{ item.title }}</div>
           @if (item.summary) {
             <div class="document__summary">{{ item.summary }}</div>
@@ -30,7 +31,7 @@ import type { DashboardDocument } from '../../models/dashboard.model';
             <span>{{ projectLabel(item) }}</span>
             <span>{{ item.publishAt | date: 'yyyy-MM-dd HH:mm' }}</span>
           </div>
-        </div>
+        </a>
       }
     </app-dashboard-panel>
   `,
@@ -41,9 +42,12 @@ import type { DashboardDocument } from '../../models/dashboard.model';
         height: 100%;
       }
       .document {
+        display: block;
         padding: 16px 18px;
         border-top: 1px solid var(--border-color-soft);
         transition: var(--transition-base);
+        color: inherit;
+        text-decoration: none;
       }
       .document:hover {
         background: var(--bg-subtle);
