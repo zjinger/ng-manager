@@ -15,7 +15,7 @@ import type { IssueBranchEntity } from '../../models/issue.model';
   template: `
     <app-panel-card title="协作分支" [count]="branches().length" [empty]="branches().length === 0" emptyText="当前还没有协作分支">
       <div panel-actions class="panel-actions">
-        @if (canStartOwn()) {
+        @if (canStartActions() && canStartOwn()) {
           <button nz-button nz-tooltip="点击开始协作" nzType="default" nzSize="small" [nzLoading]="busy()" (click)="startOwn.emit()">开始</button>
         }
         @if (canCreate()) {
@@ -44,7 +44,7 @@ import type { IssueBranchEntity } from '../../models/issue.model';
                   <div class="branch-card__summary">{{ branch.summary }}</div>
                 }
                 <div class="branch-card__actions">
-                @if (isMine(branch) && branch.status === 'todo') {
+                @if (canStartActions() && isMine(branch) && branch.status === 'todo') {
                   <button nz-button nzType="default" nzSize="small" [nzLoading]="busy()" (click)="startBranch.emit(branch.id)">
                     开始处理
                   </button>
@@ -157,6 +157,7 @@ export class IssueBranchesPanelComponent {
   readonly currentActorIds = input<string[]>([]);
   readonly summaryText = input('当前没有协作分支');
   readonly canCreate = input(false);
+  readonly canStartActions = input(false);
   readonly canStartOwn = input(false);
   readonly busy = input(false);
 

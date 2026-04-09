@@ -128,6 +128,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
                 [currentActorIds]="store.currentActorIds()"
                 [summaryText]="store.branchSummaryText()"
                 [canCreate]="store.canCreateBranches()"
+                [canStartActions]="store.canStartBranchActions()"
                 [canStartOwn]="store.canStartOwnBranch()"
                 [busy]="store.busy()"
                 (create)="openCreateBranch()"

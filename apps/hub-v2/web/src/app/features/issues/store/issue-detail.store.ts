@@ -182,9 +182,13 @@ export class IssueDetailStore {
     }
     return this.isProjectAdmin() || this.matchActor(issue.assigneeId);
   });
+  readonly canStartBranchActions = computed(() => {
+    const issue = this.issueState();
+    return !!issue && !['resolved', 'verified', 'closed'].includes(issue.status);
+  });
   readonly canStartOwnBranch = computed(() => {
     const issue = this.issueState();
-    if (!issue || ['verified', 'closed'].includes(issue.status)) {
+    if (!issue || ['resolved', 'verified', 'closed'].includes(issue.status)) {
       return false;
     }
     if (this.matchActor(issue.assigneeId)) {

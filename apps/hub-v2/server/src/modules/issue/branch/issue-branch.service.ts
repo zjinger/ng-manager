@@ -77,7 +77,7 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
 
   async start(issueId: string, branchId: string, ctx: RequestContext): Promise<IssueBranchEntity> {
     const issue = await this.requireIssueWithAccess(issueId, ctx, "start issue branch");
-    this.assertIssueBranchEditable(issue.status);
+    this.assertIssueBranchStartable(issue.status);
     const branch = this.requireBranch(issue.id, branchId);
     this.requireBranchOwner(branch, ctx);
 
@@ -110,7 +110,7 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
 
   async startMine(issueId: string, input: StartOwnIssueBranchInput, ctx: RequestContext): Promise<IssueBranchEntity> {
     const issue = await this.requireIssueWithAccess(issueId, ctx, "start my issue branch");
-    this.assertIssueBranchEditable(issue.status);
+    this.assertIssueBranchStartable(issue.status);
 
     const userId = ctx.userId?.trim();
     if (!userId) {
@@ -213,6 +213,12 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
   private assertIssueBranchEditable(status: string): void {
     if (status === "verified" || status === "closed") {
       throw new AppError(ERROR_CODES.ISSUE_ACTION_FAILED, "issue branches are locked", 409);
+    }
+  }
+
+  private assertIssueBranchStartable(status: string): void {
+    if (status === "resolved" || status === "verified" || status === "closed") {
+      throw new AppError(ERROR_CODES.ISSUE_ACTION_FAILED, "issue branch start is locked", 409);
     }
   }
 

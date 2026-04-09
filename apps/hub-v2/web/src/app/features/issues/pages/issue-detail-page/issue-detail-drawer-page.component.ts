@@ -124,6 +124,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
               [currentActorIds]="store.currentActorIds()"
               [summaryText]="store.branchSummaryText()"
               [canCreate]="store.canCreateBranches()"
+              [canStartActions]="store.canStartBranchActions()"
               [canStartOwn]="store.canStartOwnBranch()"
               [busy]="store.busy()"
               (create)="openCreateBranch()"
