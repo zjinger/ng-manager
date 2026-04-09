@@ -1,6 +1,4 @@
 import { inject, Injectable } from '@angular/core';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
-import { get } from 'lodash';
 import {
   CreateIssueInput,
   IssueEntity,

@@ -1,37 +1,35 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { RdApiService } from '../services/rd-api.service';
+import { ProjectContextStore } from '@app/core/stores/project-context/project-context.store';
+import { UserStore } from '@app/core/stores/user/user.store';
+import { from } from 'rxjs';
 import {
   AdvanceRdStageInput,
   BlockRdItemInput,
   RdItemEntity,
   RdListQuery,
-  RdListResult,
   RdLogEntity,
   RdStageEntity,
-  UpdateRdItemInput,
+  UpdateRdItemInput
 } from '../models/rd.model';
-import { from, Observable } from 'rxjs';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
-import { UserStore } from '@app/core/stores/user.store';
+import { RdApiService } from '../services/rd-api.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RdStore {
   private readonly rdApi = inject(RdApiService);
-  private readonly projectState = inject(ProjectStateService);
+  private readonly projectContextStore = inject(ProjectContextStore);
   private readonly userStore = inject(UserStore);
 
-  private readonly projectId = computed(() => this.projectState.currentProjectId()!);
+  private readonly projectId = computed(() => this.projectContextStore.currentProjectId());
   private readonly userToken = computed(() => this.userStore.currentUser()?.token ?? '');
 
-  // private readonly projectId = computed(() => this.projectState.currentProjectId());
   private readonly rdItemsPageListState = signal<RdItemEntity[]>([]);
   private readonly rdItemsCountState = signal(0);
   private readonly currentRdItemState = signal<RdItemEntity | null>(null);
   private readonly currentRdLogsState = signal<RdLogEntity[]>([]);
   private readonly stagesState = signal<RdStageEntity[]>([]);
-  private readonly projectMembersState = this.projectState.currentProjectMembers;
+  private readonly projectMembersState = this.projectContextStore.currentProjectMembers;
   private readonly queryState = signal<RdListQuery>({
     page: 1,
     pageSize: 20,
@@ -61,7 +59,7 @@ export class RdStore {
       if (!projectId) return;
       this.loadStages();
       this.loadRdItems();
-      this.projectState.loadProjectMembers(projectId);
+      this.projectContextStore.loadProjectMembers(projectId);
     } catch (e) {}
   }
 
@@ -70,7 +68,7 @@ export class RdStore {
       const projectId = this.projectId();
       if (!projectId) return;
       this.loadingState.set(true);
-      const res = await this.rdApi.getRdItemsList(this.projectId(), this.query());
+      const res = await this.rdApi.getRdItemsList(projectId, this.query());
       this.rdItemsPageListState.set(res.items);
       this.rdItemsCountState.set(res.total);
       this.loadingState.set(false);
@@ -81,6 +79,7 @@ export class RdStore {
 
   async loadStages() {
     const projectId = this.projectId();
+    if(!projectId) return;
     try {
       const stages = (await this.rdApi.getRdStages(projectId)).items;
       this.stagesState.set(stages);
@@ -94,8 +93,8 @@ export class RdStore {
     const projectId = this.projectId();
     if (!projectId) return;
     this.busyState.set(true);
-    const itemRes = (await this.rdApi.getRdItem(this.projectId(), itemId)) as RdItemEntity;
-    const logsRes = (await this.rdApi.getRdItemLogs(this.projectId(), itemId))
+    const itemRes = (await this.rdApi.getRdItem(projectId, itemId)) as RdItemEntity;
+    const logsRes = (await this.rdApi.getRdItemLogs(projectId, itemId))
       .items as RdLogEntity[];
     this.currentRdItemState.set(itemRes);
     this.currentRdLogsState.set(logsRes);
@@ -131,11 +130,11 @@ export class RdStore {
   }
 
   block(itemId: string, input: BlockRdItemInput): void {
-    this.runAction(() => this.rdApi.block(this.projectId(), itemId, input));
+    this.runAction(() => this.rdApi.block(this.projectId()!, itemId, input));
   }
 
   resume(itemId: string): void {
-    this.runAction(() => this.rdApi.resume(this.projectId(), itemId));
+    this.runAction(() => this.rdApi.resume(this.projectId()!, itemId));
   }
 
   resolve(itemId: string): void {

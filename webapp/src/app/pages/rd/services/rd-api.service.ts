@@ -9,9 +9,6 @@ import {
   RdStageEntity,
   UpdateRdItemInput,
 } from '../models/rd.model';
-import { HttpParams } from '@angular/common/http';
-import { ApiClientService } from '@pages/api-client/services';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { RdTokenApiService } from './rd-token-api.service';
 
 @Injectable({

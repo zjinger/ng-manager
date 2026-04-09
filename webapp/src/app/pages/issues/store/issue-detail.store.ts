@@ -1,33 +1,29 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { forkJoin, from, mergeMap, type Observable } from 'rxjs';
+import { forkJoin, from } from 'rxjs';
 
-import { UserStore } from '@app/core/stores/user.store';
+import { ProjectContextStore } from '@app/core/stores';
+import { UserStore } from '@app/core/stores/user/user.store';
 import type {
   AddParticipantsInput,
   AssignIssueInput,
   createCommentInput,
-  ProjectMemberEntity,
-} from '../models/issue.model';
-import { ProjectApiService } from '../../projects/services/project-api.service';
-import type {
   IssueAttachmentEntity,
   IssueCommentEntity,
   IssueEntity,
   IssueLogEntity,
   IssueParticipantEntity,
+  ProjectMemberEntity,
 } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
 import { IssuePermissionService } from '../services/issue-permission.service';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
-import { AttachmentPreviewItem } from '@app/shared/components/attachment-viewer/attachment-viewer.component';
 
 @Injectable()
 export class IssueDetailStore {
   private readonly issueApi = inject(IssueApiService);
   private readonly userStore = inject(UserStore);
   private readonly permissionService = inject(IssuePermissionService);
-  // private readonly projectApi = inject(ProjectApiService);
-  private readonly projectState = inject(ProjectStateService);
+
+  private readonly projectContext = inject(ProjectContextStore);
 
   private readonly issueState = signal<IssueEntity | null>(null);
   private readonly logsState = signal<IssueLogEntity[]>([]);
@@ -40,8 +36,7 @@ export class IssueDetailStore {
   private readonly actionTickState = signal(0);
 
   // 当前项目
-  // private readonly currentProject = this.projectState.currentProject;
-  readonly currentProjectId = this.projectState.currentProjectId;
+  readonly currentProjectId = this.projectContext.currentProjectId;
 
   readonly issue = computed(() => this.issueState());
   readonly logs = computed(() => this.logsState());

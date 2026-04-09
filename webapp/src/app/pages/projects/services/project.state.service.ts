@@ -5,32 +5,20 @@ import { UiNotifierService } from '@core/ui-notifier.service';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { LocalStateStore, LS_KEYS } from '@core/local-state';
 import { Router } from '@angular/router';
+import { ProjectContextStore } from '@app/core/stores/project-context/project-context.store';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectStateService {
   private modal = inject(NzModalService);
   private notify = inject(UiNotifierService);
   private projectService = inject(ProjectApiService);
+  private projectContext = inject(ProjectContextStore);
   private ls = inject(LocalStateStore);
   private router = inject(Router);
 
-  currentProjectId = signal<string | null>(null);
-  currentProject = signal<Project | null>(null);
-  projects = signal<Project[]>([]);
+  projects = computed(() => this.projectContext.projects());
 
   keyword = signal<string>('');
-
-  /* ---------------- HUB V2 EVN ------------------------*/
-  private members = signal<ProjectMemberEntity[]>([]);
-  currentProjectKey = computed(() => this.currentProject()?.env?.['NGM_HUB_V2_PROJECT_KEY']);
-  currentProjectToken = computed(() => this.currentProject()?.env?.['NGM_HUB_V2_TOKEN']);
-  currentProjectMembers = computed(() => this.members());
-  isHubProjectValid = computed(() => {
-    return !!(
-      this.currentProject()?.env?.['NGM_HUB_V2_PROJECT_KEY'] &&
-      this.currentProject()?.env?.['NGM_HUB_V2_TOKEN']
-    );
-  });
 
   /* ----------------- edit modal state ----------------- */
   isEditModalVisible = signal(false);
@@ -43,7 +31,7 @@ export class ProjectStateService {
     const kw = this.keyword().trim().toLowerCase();
     if (!kw) return this.projects();
     return this.projects().filter((p) => p.name.toLowerCase().includes(kw));
-  });
+  }); 
   favoriteProjects = computed(() => this.filteredProjects().filter((p) => p.isFavorite));
   moreProjects = computed(() => this.filteredProjects().filter((p) => !p.isFavorite));
   recentProjects = computed(() =>
@@ -59,24 +47,14 @@ export class ProjectStateService {
 
   /** 点击列表项：切换当前项目 + 记录 lastOpened */
   selectProject(project: Project) {
-    this.setCurrentProject(project);
+    // this.setCurrentProject(project);
+    this.projectContext.setCurrentProject(project);
     const lastOpened = Date.now();
-    this.projects.update((list) =>
-      list.map((p) => (p.id === project.id ? { ...p, lastOpened } : p)),
-    );
-    this.currentProject.update((p) => (p ? { ...p, lastOpened } : p));
+    this.projectContext.patchProject({ ...project, lastOpened });
     // 异步落库
     this.projectService.setLastOpened(project.id, lastOpened).subscribe();
 
     this.router.navigate(['/dashboard']);
-  }
-
-  /** 用于服务端返回的更新（比如 toggleFavorite） */
-  patchProject(updated: Project) {
-    this.projects.update((list) => list.map((p) => (p.id === updated.id ? updated : p)));
-    if (this.currentProjectId() === updated.id) {
-      this.currentProject.set(updated);
-    }
   }
 
   openInEditor(projectId: string) {
@@ -90,65 +68,25 @@ export class ProjectStateService {
 
   toggleFavorite(projectId: string) {
     this.projectService.toggleFavorite(projectId).subscribe((updated) => {
-      this.patchProject(updated);
+      // this.patchProject(updated);
+      this.projectContext.patchProject(updated);
     });
   }
 
   getProjects(currentProjectId?: string) {
-    this.projectService.list().subscribe((data: Project[]) => {
-      this.projects.set(data);
-      if (!data.length) {
-        this.setCurrentProject(null);
-        return;
-      }
-
-      if (currentProjectId) {
-        this.setCurrentProjectById(currentProjectId);
-      } else {
-        const cachedId = this.ls.getNullable<string>(LS_KEYS.project.currentProjectId);
-        const cached = cachedId ? data.find((p) => p.id === cachedId) : null;
-        if (cached) {
-          this.setCurrentProject(cached);
-          return;
-        }
-        if (!this.currentProjectId()) {
-          this.setCurrentProject(data[0]);
-        }
-      }
-    });
-  }
-
-  async loadProjectMembers(projectId: string) {
-    try {
-      const members = (await this.projectService.getProjectMembers(projectId)).items;
-      this.members.set(members);
-    } catch (e) {
-      this.members.set([]);
-    }
-  }
-
-  getProjectById(projectId: string): Project | null {
-    return this.projects().find((p) => p.id === projectId) || null;
-  }
-
-  setCurrentProject(project: Project | null) {
-    this.currentProject.set(project);
-    const id = project ? project.id : null;
-    this.currentProjectId.set(id);
-
-    if (id) this.ls.set(LS_KEYS.project.currentProjectId, id);
-    else this.ls.remove(LS_KEYS.project.currentProjectId);
+    this.projectContext.loadProjects(currentProjectId).subscribe();
   }
 
   setCurrentProjectById(projectId: string) {
-    const project = this.projects().find((p) => p.id === projectId) || null;
-    this.setCurrentProject(project);
+    this.projectContext.setCurrentProjectById(projectId);
   }
 
   isOpen(project: Project): boolean {
-    return this.currentProjectId() === project.id;
+    // return this.currentProjectId() === project.id;
+    return this.projectContext.isOpen(project);
   }
 
+  // TODO：移动到userstore
   getHubV2PersonalToken(): string {
     return this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim();
   }
@@ -206,7 +144,7 @@ export class ProjectStateService {
       projectKey: hubV2.projectKey.trim(),
       token: hubV2.token.trim(),
     };
-    const current = this.getProjectById(id);
+    const current = this.projectContext.getProjectById(id);
     const currentEnv = current?.env ?? {};
     if (
       current &&
@@ -232,7 +170,7 @@ export class ProjectStateService {
         };
         this.projectService.update(id, { env: nextEnv }).subscribe({
           next: (updated) => {
-            this.patchProject(updated);
+            this.projectContext.patchProject(updated);
             this.notify.success('修改成功');
             this.closeEditModal();
             this.isEditSaving.set(false);
@@ -261,14 +199,10 @@ export class ProjectStateService {
       nzOnOk: () => {
         this.projectService.delete(projectId).subscribe({
           next: () => {
-            this.projects.update((list) => list.filter((p) => p.id !== projectId));
-            if (this.currentProjectId() === projectId) {
-              // 删除的正是当前项目，切换到第一个
-              const first = this.projects()[0] || null;
-              this.setCurrentProject(first);
-              if (!first) {
-                this.notify.info('当前没有项目，请先创建或导入项目');
-              }
+            this.projectContext.removeProject(projectId);
+
+            if (!this.projectContext.currentProject()) {
+              this.notify.info('当前没有项目，请先创建或导入项目');
             }
             this.notify.success('项目已删除');
           },

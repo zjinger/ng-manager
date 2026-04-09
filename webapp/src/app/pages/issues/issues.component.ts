@@ -27,10 +27,9 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { IssueCloseDialogComponent } from './dialogs/issue-close-dialog.component';
 import { IssueResolveDialogComponent } from './dialogs/issue-resolve-dialog.component';
 import { IssueAssignDialogComponent } from './dialogs/issue-assign-dialog.component';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { IssueAddParticipantsDialogComponent } from './dialogs/issue-add-participants-dialog.component';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
-import { filter } from 'rxjs';
+import { ProjectContextStore } from '@app/core/stores/project-context/project-context.store';
 
 type viewType = 'list' | 'board';
 
@@ -59,7 +58,7 @@ type viewType = 'list' | 'board';
 export class IssuesComponent {
   private readonly issueListStore = inject(IssueListStore);
   private readonly issueDetailStore = inject(IssueDetailStore);
-  private readonly projectState = inject(ProjectStateService);
+  private readonly projectContextStore = inject(ProjectContextStore)
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
@@ -77,7 +76,7 @@ export class IssuesComponent {
   protected readonly IssueAttachments = this.issueDetailStore.attachments;
   protected readonly IssueParticipants = this.issueDetailStore.participants;
   protected readonly busy = this.issueDetailStore.busy;
-  protected readonly members = this.projectState.currentProjectMembers;
+  protected readonly members = this.projectContextStore.currentProjectMembers;
   protected readonly IssueAssignActionLabel = this.issueDetailStore.assignActionLabel;
 
   // 操作弹窗开关
@@ -91,9 +90,9 @@ export class IssuesComponent {
   protected readonly currentPriority = signal<IssueStatus | ''>('');
 
   constructor() {
-    const projectId = this.projectState.currentProjectId();
+    const projectId = this.projectContextStore.currentProjectId();
     this.issueListStore.initialize();
-    projectId && this.projectState.loadProjectMembers(projectId);
+    projectId && this.projectContextStore.loadProjectMembers(projectId);
 
     this.route.queryParamMap.subscribe((params) => {
       const detailId = params.get('detail');

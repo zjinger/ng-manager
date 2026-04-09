@@ -27,7 +27,7 @@ import { RdStore } from './store/rd.store';
 import { RD_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
 import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
 import { debounceTime, filter } from 'rxjs';
-import { UserStore } from '@app/core/stores/user.store';
+import { UserStore } from '@app/core/stores/user/user.store';
 
 type viewType = 'list' | 'board';
 

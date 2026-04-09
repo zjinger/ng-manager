@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgDevtoolComponent } from '@app/shared/devtools/ng-devtool.component';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -26,6 +25,7 @@ import { ConfigNavNodeVM, DocStateVM, DomainDocMetaVM, DomainSchemaDiffResult, D
 import { ConfApiService, } from './services';
 import { flattenPatch, mapResolvedToNav } from './utils';
 import { PageLayoutComponent } from '@app/shared';
+import { ProjectContextStore } from '@app/core/stores';
 
 @Component({
   selector: 'app-project-conf.component',
@@ -110,12 +110,12 @@ import { PageLayoutComponent } from '@app/shared';
 })
 export class ProjectConfComponent {
   private api = inject(ConfApiService);
-  private projectState = inject(ProjectStateService);
+  private projectContext = inject(ProjectContextStore);
   private msg = inject(NzMessageService);
   private modal = inject(NzModalService);
 
 
-  projectId = computed(() => this.projectState.currentProjectId() || '');
+  projectId = computed(() => this.projectContext.currentProjectId() || '');
 
   loading = signal(false);
   isModalVisible = signal(false);

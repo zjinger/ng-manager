@@ -1,24 +1,24 @@
-import { Component, computed, effect, inject, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { finalize } from "rxjs/operators";
 
-import { NzButtonModule } from "ng-zorro-antd/button";
-import { NzInputModule } from "ng-zorro-antd/input";
-import { NzIconModule } from "ng-zorro-antd/icon";
-import { NzMessageService } from "ng-zorro-antd/message";
-import { NzTagModule } from "ng-zorro-antd/tag";
-import { NzSpinModule } from "ng-zorro-antd/spin";
-import { NzDividerModule } from "ng-zorro-antd/divider";
-import { NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
-import { DepsApiService } from "./deps-api.service";
-import { NzTooltipModule } from "ng-zorro-antd/tooltip";
-import { DepItem } from "@models/deps.model";
-import { NzGridModule } from "ng-zorro-antd/grid";
-import { ProjectStateService } from "@pages/projects/services/project.state.service";
-import { NzPopoverModule } from "ng-zorro-antd/popover";
-import { NgDevtoolComponent } from "@app/shared/devtools/ng-devtool.component";
+import { ProjectContextStore } from "@app/core/stores";
 import { PageLayoutComponent } from "@app/shared";
+import { NgDevtoolComponent } from "@app/shared/devtools/ng-devtool.component";
+import { DepItem } from "@models/deps.model";
+import { NzButtonModule } from "ng-zorro-antd/button";
+import { NzDividerModule } from "ng-zorro-antd/divider";
+import { NzGridModule } from "ng-zorro-antd/grid";
+import { NzIconModule } from "ng-zorro-antd/icon";
+import { NzInputModule } from "ng-zorro-antd/input";
+import { NzMessageService } from "ng-zorro-antd/message";
+import { NzPopconfirmModule } from "ng-zorro-antd/popconfirm";
+import { NzPopoverModule } from "ng-zorro-antd/popover";
+import { NzSpinModule } from "ng-zorro-antd/spin";
+import { NzTagModule } from "ng-zorro-antd/tag";
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
+import { DepsApiService } from "./deps-api.service";
 @Component({
   selector: 'app-project-deps.component',
   imports: [
@@ -154,8 +154,10 @@ import { PageLayoutComponent } from "@app/shared";
 export class ProjectDepsComponent {
   private api = inject(DepsApiService);
   private msg = inject(NzMessageService);
+  private projectContext = inject(ProjectContextStore)
 
-  projectId = computed(() => this.projectState.currentProjectId() || "");
+
+  projectId = computed(() => this.projectContext.currentProjectId() || "");
 
   loading = signal(false);
   keyword = signal("");
@@ -175,7 +177,6 @@ export class ProjectDepsComponent {
   );
 
   runningCount = computed(() => this.items().filter((x) => x.hasUpdate).length);
-  projectState = inject(ProjectStateService);
   depsState = inject(DepsApiService);
 
   constructor() {

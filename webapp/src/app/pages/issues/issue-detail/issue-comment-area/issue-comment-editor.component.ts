@@ -14,7 +14,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
 import { ROLE_LABELS } from '@app/shared/constants/role-options';
-import { UserStore } from '@app/core/stores/user.store';
+import { UserStore } from '@app/core/stores/user/user.store';
 
 import {
   IssueLogEntity,

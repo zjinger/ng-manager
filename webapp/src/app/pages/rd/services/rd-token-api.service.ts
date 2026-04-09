@@ -1,9 +1,6 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { ApiClient, ApiSuccess } from '@app/core';
-import { firstValueFrom } from 'rxjs';
-import { unwrapApi } from '@app/core/api/api-executor';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { ApiClient } from '@app/core';
+import { ProjectContextStore } from '@app/core/stores';
 type RdActionType =
   | 'accept'
   | 'start'
@@ -20,7 +17,7 @@ type RdActionType =
 })
 export class RdTokenApiService {
   private apiClient: ApiClient = inject(ApiClient);
-  private projectState = inject(ProjectStateService);
+  private projectContext = inject(ProjectContextStore)
 
   /**
    * 通过个人token 操作hub v2 的数据（写操作）
@@ -32,7 +29,7 @@ export class RdTokenApiService {
     action: RdActionType;
     payload: Object; //{content:string}
   }) {
-    const projectId = this.projectState.currentProjectId()!;
+    const projectId = this.projectContext.currentProjectId()!;
     return this.apiClient.hubRequestWithPersonalToken<T>({
       projectId: projectId,
       method: 'POST',
@@ -50,7 +47,7 @@ export class RdTokenApiService {
     // type: 'issues' | 'rd-items';
     payload: Object; //{content:string}
   }) {
-    const projectId = this.projectState.currentProjectId()!;
+    const projectId = this.projectContext.currentProjectId()!;
     return this.apiClient.hubRequestWithPersonalToken<T>({
       projectId: projectId,
       method: 'DELETE',

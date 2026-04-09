@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 
-import type { UserStore } from '@app/core/stores/user.store';
+import type { UserStore } from '@app/core/stores/user/user.store';
 import type { IssueEntity } from '../models/issue.model';
-import { HubAuthUser } from '@app/core/stores/user.types';
+import { HubAuthUser } from '@app/core/stores/user/user.types';
 
 @Injectable({ providedIn: 'root' })
 export class IssuePermissionService {

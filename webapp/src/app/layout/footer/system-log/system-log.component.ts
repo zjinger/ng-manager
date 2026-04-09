@@ -9,8 +9,8 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 import { SyslogStreamService } from '@app/core/log/syslog-stream.service';
 import { LogLevel } from '@models/log.model';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { RouterModule } from '@angular/router';
+import { ProjectContextStore } from '@app/core/stores';
 
 @Component({
   selector: 'app-system-log',
@@ -30,14 +30,14 @@ import { RouterModule } from '@angular/router';
 })
 export class SystemLogDrawerComponent implements OnInit {
   private sysLogStream = inject(SyslogStreamService);
-  private projectState = inject(ProjectStateService);
+  private projectContext = inject(ProjectContextStore);
   private logBox = viewChild<ElementRef<HTMLDivElement>>('logBox');
   // 自动跟随（可选开关，默认开更符合日志体验）
   readonly autoFollow = signal(true);
   // signal 化，便于模板调用 isOpen()
   readonly isOpen = signal(false);
 
-  readonly curProjectPath = computed(() => this.projectState.currentProject()?.root || '');
+  readonly curProjectPath = computed(() => this.projectContext.currentProject()?.root || '');
 
   // lines 是 computed，跟随 logs signal 更新
   readonly lines = computed(() => this.sysLogStream.logs());

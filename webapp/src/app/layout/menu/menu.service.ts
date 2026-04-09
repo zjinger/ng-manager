@@ -2,16 +2,16 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { MenuItem } from './menu.model';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { ProjectContextStore } from '@app/core/stores';
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
-  private projectState = inject(ProjectStateService);
+  private projectContext = inject(ProjectContextStore);
   currentMenu = signal<MenuItem | null>(null);
 
   private router = inject(Router);
 
-  private isHubProjectValid = this.projectState.isHubProjectValid;
+  private isHubProjectValid = this.projectContext.isHubProjectValid;
 
   private menus = signal<MenuItem[]>([
     { title: '仪表盘', path: '/dashboard', icon: 'dashboard', level: 1 },

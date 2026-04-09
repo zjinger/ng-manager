@@ -1,17 +1,14 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { ApiClient, ApiSuccess } from '@app/core';
-import { firstValueFrom } from 'rxjs';
+import { ApiClient } from '@app/core';
 import { IssueActionType } from '../models/issue.model';
-import { unwrapApi } from '@app/core/api/api-executor';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { ProjectContextStore } from '@app/core/stores';
 
 @Injectable({
   providedIn: 'root',
 })
 export class IssueTokenApiService {
   private apiClient: ApiClient = inject(ApiClient);
-  private projectState = inject(ProjectStateService);
+  private projectContext = inject(ProjectContextStore);
   /**
    * 通过个人token 操作hub v2 的数据（写操作）
    */
@@ -21,7 +18,7 @@ export class IssueTokenApiService {
     payload: Object; //{content:string}
   }) {
     return this.apiClient.hubRequestWithPersonalToken<T>({
-      projectId: this.projectState.currentProjectId()!,
+      projectId: this.projectContext.currentProjectId()!,
       method: 'POST',
       path: `/issues/${body.issueId}/${body.action}`,
       payload: body.payload,
@@ -36,7 +33,7 @@ export class IssueTokenApiService {
     deletedId: string;
     action: IssueActionType;
   }) {
-    const projectId = this.projectState.currentProjectId()!;
+    const projectId = this.projectContext.currentProjectId()!;
     return this.apiClient.hubRequestWithPersonalToken<T>({
       projectId: projectId,
       method: 'DELETE',

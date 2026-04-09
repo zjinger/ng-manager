@@ -1,21 +1,21 @@
 import { computed, inject, Injectable } from '@angular/core';
+import { ProjectContextStore } from '@app/core/stores';
 import { ProjectAssets } from '@models/project.model';
 import { SpriteConfig, SpriteSnapshot } from '@models/sprite.model';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
-import { firstValueFrom } from 'rxjs';
-import { SpriteApiService } from './sprite-api.service';
 import { SvnRuntime, SvnSyncResult } from '@models/svn.model';
+import { firstValueFrom } from 'rxjs';
 import { SvnCheckoutOptions } from '../models';
+import { SpriteApiService } from './sprite-api.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SpriteStateService {
-  private projectState = inject(ProjectStateService)
+  private projectContext = inject(ProjectContextStore)
   private api = inject(SpriteApiService)
 
   project = computed(() => {
-    return this.projectState.currentProject()
+    return this.projectContext.currentProject()
   })
 
   async loadConfig(): Promise<SpriteConfig | null> {
@@ -32,7 +32,7 @@ export class SpriteStateService {
     }
     const projectId = this.project()!.id;
     const data = await firstValueFrom(this.api.createConfig(projectId, assets, config));
-    this.projectState.patchProject(data.project); // 更新项目状态以反映新的资产配置
+    this.projectContext.patchProject(data.project);  // 更新项目状态以反映新的资产配置
     return data.cfg;
   }
 

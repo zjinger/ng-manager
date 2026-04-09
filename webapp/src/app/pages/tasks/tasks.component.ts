@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { ProjectContextStore } from '@app/core/stores';
+import { PageLayoutComponent } from '@app/shared';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -16,7 +17,6 @@ import { TaskActionsComponent } from './task-actions/task-actions.component';
 import { TaskConsoleComponent } from './task-console/task-console.component';
 import { TaskHeaderComponent } from './task-header/task-header.component';
 import { TaskListComponent } from './task-list/task-list.component';
-import { PageLayoutComponent } from '@app/shared';
 @Component({
   selector: 'app-tasks',
   imports: [
@@ -92,7 +92,7 @@ import { PageLayoutComponent } from '@app/shared';
   ],
 })
 export class TasksComponent {
-  projectState = inject(ProjectStateService);
+  projectContext = inject(ProjectContextStore)
   taskState = inject(TaskStateService);
 
   selectedTask = this.taskState.selectedRow;
@@ -101,7 +101,7 @@ export class TasksComponent {
   constructor() {
     // currentProjectId 变化时，自动 setProject + refresh
     effect(async () => {
-      const pid = this.projectState.currentProjectId();
+      const pid = this.projectContext.currentProjectId();
       if (pid) {
         await this.taskState.setProject(pid);
       }

@@ -9,6 +9,7 @@ import { ApiClientTabStore } from '../store/api-client-tab.store';
 import { envVarsToRecord, genCollectionTreeNodes } from '../utils';
 import { ApiClientService } from './api-client.service';
 import { CollectionModalService } from './collection-modal.service';
+import { ProjectContextStore } from '@app/core/stores';
 
 function now() {
   return Date.now();
@@ -24,7 +25,7 @@ function newLocalId(prefix: string) {
 export class ApiClientStateService {
   private api = inject(ApiClientService);
   private msg = inject(NzMessageService);
-  private projectState = inject(ProjectStateService);
+  private projectContext = inject(ProjectContextStore);
   private collectionModal = inject(CollectionModalService);
   
   // Tab Store
@@ -71,7 +72,7 @@ export class ApiClientStateService {
 
   // project info
   projectId = computed(() => {
-    const p = this.projectState.currentProject();
+    const p = this.projectContext.currentProject();
     return p?.id ?? '';
   });
   
@@ -117,7 +118,7 @@ export class ApiClientStateService {
   });
 
   private projectCtx = computed(() => {
-    const p = this.projectState.currentProject();
+    const p = this.projectContext.currentProject();
     if (!p) return null;
     return {
       scope: 'project' as const,
@@ -531,7 +532,7 @@ export class ApiClientStateService {
     await this.sendResolvedRequest(req);
   }
   async sendHubV2Issues() {
-    const project = this.projectState.currentProject();
+    const project = this.projectContext.currentProject();
     if (!project?.id) {
       this.msg.warning('请先选择项目');
       return;
@@ -669,7 +670,7 @@ export class ApiClientStateService {
         projectId: pid || undefined,
         request,
         envId: this.activeEnvId() ?? undefined,
-        projectRoot: (this.projectState.currentProject() as any)?.root, // 有就传，没有就 undefined
+        projectRoot:(this.projectContext.currentProject() as any)?.root, // 有就传，没有就 undefined
       });
       this.tabStore.updateActiveResponse(res);
       if (res.error) {

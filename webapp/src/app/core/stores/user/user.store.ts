@@ -1,16 +1,16 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
 import type { HubAuthUser } from './user.types';
-import { ApiClient, ApiSuccess } from '../api';
+import { ApiClient, ApiSuccess } from '../../api';
 import { HttpClient, HttpHandler } from '@angular/common/http';
-import { LocalStateStore, LS_KEYS } from '../local-state';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { LocalStateStore, LS_KEYS } from '../../local-state';
 import { from } from 'rxjs';
+import { ProjectContextStore } from '../project-context/project-context.store';
 
 @Injectable({ providedIn: 'root' })
 export class UserStore {
   private readonly apiClient = inject(ApiClient);
-  private readonly projectState = inject(ProjectStateService);
+  private readonly projectContextStore = inject(ProjectContextStore);
   private readonly http = inject(HttpClient);
   private readonly ls = inject(LocalStateStore);
 
@@ -25,9 +25,10 @@ export class UserStore {
   readonly isAuthenticated = computed(() => !!this.currentUserState());
 
   loadCurrentUser(): void {
-    // TODO:后面换成apiClient
+    // TODO:不注入projectContext防止循环依赖
     const token = this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim();
-    const projectId = this.projectState.currentProjectId();
+    // const projectId = this.projectState.currentProjectId();
+    const projectId = this.projectContextStore.currentProjectId();
     if (!token || !projectId) return;
 
     from(

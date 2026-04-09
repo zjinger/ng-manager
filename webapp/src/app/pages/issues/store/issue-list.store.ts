@@ -1,12 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { forkJoin, of, switchMap } from 'rxjs';
 
 // import { ProjectContextStore } from '@core/state';
+import { ProjectContextStore } from '@app/core/stores';
+import { UserStore } from '@app/core/stores/user/user.store';
 import type { PageResult } from '@app/core/types/page.types';
 import type { CreateIssueInput, IssueEntity, IssueListQuery } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
-import { UserStore } from '@app/core/stores/user.store';
 
 const DEFAULT_QUERY: IssueListQuery = {
   page: 1,
@@ -19,7 +18,7 @@ const DEFAULT_QUERY: IssueListQuery = {
 @Injectable()
 export class IssueListStore {
   private readonly issueApi = inject(IssueApiService);
-  private readonly projectState = inject(ProjectStateService);
+  private readonly projectContext = inject(ProjectContextStore)
   private readonly userStore = inject(UserStore);
 
   private readonly queryState = signal<IssueListQuery>({ ...DEFAULT_QUERY });
@@ -34,7 +33,7 @@ export class IssueListStore {
   readonly page = computed(() => this.queryState().page ?? 1);
   readonly pageSize = computed(() => this.queryState().pageSize ?? 20);
 
-  private readonly currentProjectId = this.projectState.currentProjectId;
+  private readonly currentProjectId = this.projectContext.currentProjectId
 
   initialize(): void {
     this.userStore.ensureUserLoaded();
@@ -88,7 +87,7 @@ export class IssueListStore {
   }
 
   async createIssue(issueInput: Omit<CreateIssueInput, 'projectId'>, attachmentFiles?: File[]) {
-    const projectId = this.projectState.currentProjectId() ?? '';
+    const projectId = this.currentProjectId() ?? '';
     const title = issueInput.title.trim();
     if (!projectId || !title) {
       return;

@@ -5,7 +5,7 @@ import { ErrorDispatcher, ErrorPolicyCode } from '../error';
 import { ApiBizError } from '../api/api-biz-error';
 import { APP_CONFIG } from '@env/environment';
 import * as _ from 'lodash';
-import { UserStore } from '../stores/user.store';
+import { UserStore } from '../stores/user/user.store';
 
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
   const dispatcher = inject(ErrorDispatcher);

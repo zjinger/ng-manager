@@ -14,10 +14,10 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { PageLayoutComponent } from '@app/shared';
-import { ProjectStateService } from '@pages/projects/services/project.state.service';
 import { AddWidgetDrawerComponent, DashboardCanvasComponent } from './components';
 import { DashboardItem } from './dashboard.model';
 import { DashboardLayoutService } from './services/dashboard-layout.service';
+import { ProjectContextStore } from '@app/core/stores';
 
 @Component({
   selector: 'app-dashboard.component',
@@ -106,12 +106,12 @@ import { DashboardLayoutService } from './services/dashboard-layout.service';
   `],
 })
 export class DashboardComponent {
-  private projectState = inject(ProjectStateService);
+  private projectContext = inject(ProjectContextStore)
   public layout = inject(DashboardLayoutService);
 
   private envInjector = inject(EnvironmentInjector);
 
-  projectId = computed(() => this.projectState.currentProjectId() || '');
+  projectId = computed(() => this.projectContext.currentProjectId() || '');
   editMode = signal(false);
 
   items = computed(() => this.layout.items());
