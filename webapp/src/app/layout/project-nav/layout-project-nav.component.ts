@@ -11,6 +11,7 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { ProjectEditModalComponent } from "@pages/projects/project-list/project-edit-modal.component";
 import { HubV2PersonalTokenModalComponent } from './hub-v2-personal-token-modal.component';
 import { ProjectContextStore } from '@app/core/stores/project-context/project-context.store';
+import { UserStore } from '@app/core/stores';
 
 @Component({
   selector: 'ngm-project-nav',
@@ -35,6 +36,7 @@ export class LayoutProjectNavComponent implements OnInit {
   @ViewChild(HubV2PersonalTokenModalComponent) personalTokenModal?: HubV2PersonalTokenModalComponent;
 
   private readonly projectContext = inject(ProjectContextStore);
+  private readonly userStore = inject(UserStore)
   private readonly projectState = inject(ProjectStateService);
   readonly currentProject = this.projectContext.currentProject;
   readonly favoriteProjects = this.projectContext.favoriteProjects;
@@ -47,6 +49,7 @@ export class LayoutProjectNavComponent implements OnInit {
 
   ngOnInit() {
     this.projectContext.loadProjects().subscribe();
+    this.userStore.ensureHubUserTokenLoaded();
   }
 
   openPersonalTokenModal(): void {

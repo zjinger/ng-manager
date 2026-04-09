@@ -19,10 +19,8 @@ import { RdApiService } from '../services/rd-api.service';
 export class RdStore {
   private readonly rdApi = inject(RdApiService);
   private readonly projectContextStore = inject(ProjectContextStore);
-  private readonly userStore = inject(UserStore);
 
   private readonly projectId = computed(() => this.projectContextStore.currentProjectId());
-  private readonly userToken = computed(() => this.userStore.currentUser()?.token ?? '');
 
   private readonly rdItemsPageListState = signal<RdItemEntity[]>([]);
   private readonly rdItemsCountState = signal(0);
@@ -83,7 +81,6 @@ export class RdStore {
     try {
       const stages = (await this.rdApi.getRdStages(projectId)).items;
       this.stagesState.set(stages);
-      console.log(stages);
     } catch (e) {
       this.stagesState.set([]);
     }

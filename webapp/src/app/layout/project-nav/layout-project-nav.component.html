@@ -50,8 +50,8 @@
     <li nz-menu-item class="item" (click)="openPersonalTokenModal()">
       <nz-icon nzType="safety-certificate"></nz-icon>
       <span>Hub V2 Personal Token</span>
-      <span class="token-status" [class.ok]="projectState.hasHubV2PersonalToken()">
-        {{ projectState.hasHubV2PersonalToken() ? '已配置' : '未配置' }}
+      <span class="token-status" [class.ok]="userStore.hasHubUserToken()">
+        {{ userStore.hasHubUserToken() ? '已配置' : '未配置' }}
       </span>
     </li>
     }

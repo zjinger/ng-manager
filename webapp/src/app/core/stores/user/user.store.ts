@@ -6,31 +6,35 @@ import { HttpClient, HttpHandler } from '@angular/common/http';
 import { LocalStateStore, LS_KEYS } from '../../local-state';
 import { from } from 'rxjs';
 import { ProjectContextStore } from '../project-context/project-context.store';
+import { UiNotifierService } from '@app/core/ui-notifier.service';
+import { set } from 'lodash';
 
 @Injectable({ providedIn: 'root' })
 export class UserStore {
   private readonly apiClient = inject(ApiClient);
   private readonly projectContextStore = inject(ProjectContextStore);
-  private readonly http = inject(HttpClient);
   private readonly ls = inject(LocalStateStore);
+  private readonly notify = inject(UiNotifierService);
 
   private readonly currentUserState = signal<HubAuthUser | null>(null);
+  private readonly hubUserTokenState = signal<string | null>(null);
   private readonly initializedState = signal(false);
 
   readonly currentUser = computed(() => this.currentUserState());
   readonly currentUserId = computed(() => this.currentUserState()?.userId);
+  readonly hubUserToken = computed(() => this.hubUserTokenState());
   readonly initialized = computed(() => this.initializedState());
 
   //   是否已经绑定用户
   readonly isAuthenticated = computed(() => !!this.currentUserState());
+  readonly hasHubUserToken = computed(() => !!this.hubUserTokenState());
 
+  // 获取当前用户(包括token信息)
   loadCurrentUser(): void {
-    // TODO:不注入projectContext防止循环依赖
     const token = this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim();
-    // const projectId = this.projectState.currentProjectId();
     const projectId = this.projectContextStore.currentProjectId();
     if (!token || !projectId) return;
-
+    this.setHubUserToken(token);
     from(
       this.apiClient.hubRequestWithPersonalToken<HubAuthUser>({
         path: '/me',
@@ -39,12 +43,10 @@ export class UserStore {
     ).subscribe({
       next: (data) => {
         this.setCurrentUser(data);
-        this.currentUserState.update((user) => {
-          return { ...user, token };
-        });
         this.markInitialized();
       },
       error: () => {
+        this.notify.error('Personal Token 验证失败');
         this.setCurrentUser(null);
       },
     });
@@ -58,6 +60,24 @@ export class UserStore {
 
   setCurrentUser(user: HubAuthUser | null): void {
     this.currentUserState.set(user);
+  }
+
+  setHubUserToken(token: string | null): void {
+    const nextToken = !!token ? token.trim() : '';
+    if (nextToken) {
+      this.ls.set(LS_KEYS.token.hubV2PersonalToken, nextToken);
+      this.hubUserTokenState.set(nextToken);
+      return;
+    }
+    this.hubUserTokenState.set(null);
+    this.currentUserState.set(null);
+    this.ls.remove(LS_KEYS.token.hubV2PersonalToken);
+  }
+
+  ensureHubUserTokenLoaded(): void {
+    if (!this.hubUserTokenState()) {
+      this.setHubUserToken(this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, ''));
+    }
   }
 
   markInitialized(): void {

@@ -86,24 +86,6 @@ export class ProjectStateService {
     return this.projectContext.isOpen(project);
   }
 
-  // TODO：移动到userstore
-  getHubV2PersonalToken(): string {
-    return this.ls.get<string>(LS_KEYS.token.hubV2PersonalToken, '').trim();
-  }
-
-  hasHubV2PersonalToken(): boolean {
-    return !!this.getHubV2PersonalToken();
-  }
-
-  setHubV2PersonalToken(token: string): void {
-    const nextToken = token.trim();
-    if (nextToken) {
-      this.ls.set(LS_KEYS.token.hubV2PersonalToken, nextToken);
-      return;
-    }
-    this.ls.remove(LS_KEYS.token.hubV2PersonalToken);
-  }
-
   /* ----------------- rename modal ----------------- */
   /** 打开重命名弹窗：默认带入当前名称 */
   openEditModal(project: Project) {

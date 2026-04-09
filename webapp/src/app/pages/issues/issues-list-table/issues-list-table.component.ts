@@ -23,10 +23,10 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
       <tr>
         <th nzWidth="5%">序号</th>
         <!-- <th nzWidth="7%">编号</th> -->
-        <th nzWidth="48%">标题</th>
+        <th nzWidth="44%">标题</th>
         <th nzWidth="8%">状态</th>
         <th nzWidth="8%">提报人</th>
-        <th nzWidth="8%">负责人</th>
+        <th nzWidth="10%">负责人</th>
         <th nzWidth="10%">更新时间</th>
       </tr>
     </thead>

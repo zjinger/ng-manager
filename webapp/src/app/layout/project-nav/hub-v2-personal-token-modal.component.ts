@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { ProjectStateService } from '@pages/projects/services/project.state.service';
+import { UserStore } from '@app/core/stores';
 
 @Component({
   selector: 'app-hub-v2-personal-token-modal',
@@ -24,12 +25,7 @@ import { ProjectStateService } from '@pages/projects/services/project.state.serv
         <div class="modal-body">
           <label class="label">Personal Token</label>
           <nz-input-wrapper>
-            <input
-              nz-input
-              type="password"
-              [(ngModel)]="draft"
-              placeholder="粘贴 ngm_uptk_xxx"
-            />
+            <input nz-input type="password" [(ngModel)]="draft" placeholder="粘贴 ngm_uptk_xxx" />
             <nz-icon nzInputPrefix nzType="safety-certificate" nzTheme="outline" />
           </nz-input-wrapper>
           <div class="hint">仅保存在当前浏览器本地，用于 webapp 调用 Hub V2 /api/personal。</div>
@@ -42,13 +38,21 @@ import { ProjectStateService } from '@pages/projects/services/project.state.serv
       </ng-container>
     </nz-modal>
   `,
-  styles: [`
-    .modal-body { display: grid; gap: 12px; }
-    .hint { font-size: 12px; opacity: .75; }
-  `]
+  styles: [
+    `
+      .modal-body {
+        display: grid;
+        gap: 12px;
+      }
+      .hint {
+        font-size: 12px;
+        opacity: 0.75;
+      }
+    `,
+  ],
 })
 export class HubV2PersonalTokenModalComponent {
-  private projectState = inject(ProjectStateService);
+  private userStore = inject(UserStore);
 
   @Input() visible = false;
   @Output() visibleChange = new EventEmitter<boolean>();
@@ -56,7 +60,8 @@ export class HubV2PersonalTokenModalComponent {
   draft = '';
 
   open(): void {
-    this.draft = this.projectState.getHubV2PersonalToken();
+    this.userStore.ensureUserLoaded();
+    this.draft = this.userStore.hubUserToken()!;
   }
 
   close(): void {
@@ -64,12 +69,13 @@ export class HubV2PersonalTokenModalComponent {
   }
 
   save(): void {
-    this.projectState.setHubV2PersonalToken(this.draft);
+    this.userStore.setHubUserToken(this.draft);
+    this.userStore.loadCurrentUser();
     this.visibleChange.emit(false);
   }
 
   clear(): void {
-    this.projectState.setHubV2PersonalToken('');
+    this.userStore.setHubUserToken('');
     this.draft = '';
   }
 }
