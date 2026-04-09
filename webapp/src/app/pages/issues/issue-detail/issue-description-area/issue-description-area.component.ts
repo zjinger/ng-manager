@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { IssueEntity } from '@pages/issues/models/issue.model';
@@ -8,7 +8,7 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
   imports: [DetailItemCardComponent, MarkdownViewerComponent],
   template: `
     <app-detail-item-card title="描述" maxHeight="550px">
-      @if (issue().description; as des) {
+      @if (mdContent(); as des) {
         <app-markdown-viewer
           [content]="des"
           [showToc]="true"
@@ -54,4 +54,32 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
 })
 export class IssueDescriptionAreaComponent {
   readonly issue = input.required<IssueEntity>();
+  readonly projectId = input<string>('');
+
+  readonly mdContent = computed(() => {
+    return this.replaceImagePaths(
+      this.issue().description || '',
+      this.projectId(),
+      this.issue().id,
+    );
+  });
+
+  private replaceImagePaths(mdContent: string, projectId: string, issueId: string) {
+    // 正则表达式匹配Markdown中的图片路径
+    const regex = /!\[.*?\]\((\/api\/admin\/uploads\/[a-zA-Z0-9_-]+\/raw)\)/g;
+
+    // 替换匹配到的图片路径
+    return mdContent.replace(regex, (match: string, originalPath: string) => {
+      // 提取原路径中的 uploadId (例如upl_mnk0hxvl4xt7)
+      const matchResult = originalPath.match(/uploads\/([a-zA-Z0-9_-]+)/);
+
+      if (!matchResult) {
+        return match;
+      }
+      const itemId = matchResult[1];
+      const newPath = `/api/client/hub-token/projects/${projectId}/issues/${issueId}/attachments/${itemId}/raw`;
+
+      return match.replace(originalPath, newPath);
+    });
+  }
 }

@@ -79,7 +79,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
               ></app-issue-action-area>
 
               <!-- 详情 -->
-              <app-issue-description-area [issue]="issue"></app-issue-description-area>
+              <app-issue-description-area [issue]="issue" [projectId]="store.currentProjectId()!"></app-issue-description-area>
 
               <!-- 评论 -->
               <app-issue-comment-area
@@ -173,8 +173,8 @@ export class IssueDetailComponent {
   readonly attachments = input<IssueAttachmentEntity[]>([]);
   readonly participants = input<IssueParticipantEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
-
   readonly placement = input<NzDrawerPlacement>('right');
+
   readonly close = output();
   readonly actionClick = output<IssueActionType>();
   readonly commentSubmit = output<createCommentInput>();
