@@ -256,33 +256,44 @@ export class NginxService {
    */
   private async getPaths(path: string): Promise<{ configPath: string; prefixPath: string }> {
     try {
-      // 使用 -V 获取编译参数
-      const { stdout } = await execFileAsync(path, ['-V']);
+      // 使用 -V 获取编译参数（Windows 输出到 stderr，Unix 输出到 stdout）
+      const { stdout, stderr } = await execFileAsync(path, ['-V']);
+      
+      // 合并 stdout 和 stderr，Windows 下版本信息在 stderr
+      const output = `${stdout}${stderr}`;
       
       // 解析 --conf-path 和 --prefix
-      const confMatch = stdout.match(/--conf-path=(\S+)/);
-      const prefixMatch = stdout.match(/--prefix=(\S+)/);
+      const confMatch = output.match(/--conf-path=(\S+)/);
+      const prefixMatch = output.match(/--prefix=(\S+)/);
 
       let configPath = confMatch?.[1];
       let prefixPath = prefixMatch?.[1];
 
       // 如果没有找到，使用默认值
       if (!prefixPath) {
-        prefixPath = dirname(dirname(path));
+        // Windows: nginx.exe 同级目录作为 prefix
+        if (platform() === 'win32') {
+          prefixPath = dirname(path);
+        } else {
+          // Unix: 父级目录
+          prefixPath = dirname(dirname(path));
+        }
       }
+      
       if (!configPath) {
         configPath = join(prefixPath, 'conf', 'nginx.conf');
       }
 
       // 如果是相对路径，转换为绝对路径
-      if (!configPath.startsWith('/') && platform() !== 'win32') {
+      if (!configPath.startsWith('/') && !/^[a-zA-Z]:/.test(configPath)) {
         configPath = resolve(prefixPath, configPath);
       }
 
       return { configPath, prefixPath };
     } catch (error: any) {
       // 使用默认路径
-      const prefixPath = dirname(dirname(path));
+      const isWin = platform() === 'win32';
+      const prefixPath = isWin ? dirname(path) : dirname(dirname(path));
       return {
         configPath: join(prefixPath, 'conf', 'nginx.conf'),
         prefixPath,

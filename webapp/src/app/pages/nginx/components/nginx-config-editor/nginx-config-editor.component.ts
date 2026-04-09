@@ -6,10 +6,12 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzCodeEditorModule } from 'ng-zorro-antd/code-editor';
-
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { JoinedEditorOptions, NzCodeEditorModule } from 'ng-zorro-antd/code-editor';
+import type { editor } from 'monaco-editor';
 import { NginxService } from '../../services/nginx.service';
 import type { NginxConfig } from '../../models/nginx.types';
+import { registerNginxLanguage } from '../../../../utils/monaco-languages';
 
 /**
  * Nginx 配置编辑器组件
@@ -24,7 +26,8 @@ import type { NginxConfig } from '../../models/nginx.types';
     NzCardModule,
     NzIconModule,
     NzSpinModule,
-    NzCodeEditorModule,
+    NzInputModule,
+    NzCodeEditorModule
   ],
   template: `
     <div class="config-editor">
@@ -69,10 +72,17 @@ import type { NginxConfig } from '../../models/nginx.types';
             <nz-spin nzTip="加载中..."></nz-spin>
           </div>
         } @else {
+          <!-- <textarea
+            class="config-textarea"
+            [(ngModel)]="editorContent"
+            placeholder="加载中..."
+            spellcheck="false"
+          ></textarea> -->
           <nz-code-editor
             class="code-editor"
             [(ngModel)]="editorContent"
             [nzEditorOption]="editorOptions"
+            (nzEditorInitialized)="onEditorInit($event)"
           ></nz-code-editor>
         }
       </div>
@@ -110,7 +120,7 @@ import type { NginxConfig } from '../../models/nginx.types';
     .config-editor {
       display: flex;
       flex-direction: column;
-      height: 500px;
+      height: 100%;
       border: 1px solid #f0f0f0;
       border-radius: 8px;
       overflow: hidden;
@@ -144,6 +154,9 @@ import type { NginxConfig } from '../../models/nginx.types';
 
     .editor-container {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
       position: relative;
 
       .loading {
@@ -155,6 +168,9 @@ import type { NginxConfig } from '../../models/nginx.types';
       }
 
       .code-editor {
+        flex: 1;
+        min-height: 500px;
+        border: 1px solid #d9d9d9;
         height: 100%;
       }
     }
@@ -211,18 +227,21 @@ export class NginxConfigEditorComponent implements OnInit {
   saving = signal(false);
   validating = signal(false);
   validationResult = signal<{ valid: boolean; errors?: string[]; warnings?: string[] } | null>(null);
-
-  editorOptions = {
+  editorOptions: JoinedEditorOptions = {
     language: 'nginx',
-    theme: 'vs-light',
+    theme: 'vs-dark',
     minimap: { enabled: false },
     fontSize: 14,
     lineNumbers: 'on',
     automaticLayout: true,
   };
-
   ngOnInit() {
     this.loadConfig();
+  }
+
+  /** Monaco editor init 回调，确保只注册一次 */
+  onEditorInit(_editor: editor.IStandaloneCodeEditor | editor.IStandaloneDiffEditor): void {
+    registerNginxLanguage();
   }
 
   async loadConfig() {

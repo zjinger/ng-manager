@@ -16,7 +16,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "less",
-            "allowedCommonJsDependencies": ["lodash","dayjs"],
+            "allowedCommonJsDependencies": ["lodash", "dayjs"],
             "assets": [
               {
                 "glob": "**/*",
@@ -26,6 +26,11 @@
                 "glob": "**/*",
                 "input": "./node_modules/@ant-design/icons-angular/src/inline-svg/",
                 "output": "/assets/"
+              },
+              {
+                "glob": "**/*",
+                "input": "./node_modules/monaco-editor/min/vs",
+                "output": "/assets/vs/"
               }
             ],
             "styles": [
@@ -41,9 +46,7 @@
                 "inject": false
               }
             ],
-            "scripts": [
-              "node_modules/clipboard/dist/clipboard.min.js"
-            ],
+            "scripts": ["node_modules/clipboard/dist/clipboard.min.js"],
             "stylePreprocessorOptions": {
               "includePaths": ["src/styles/themes"]
             }
