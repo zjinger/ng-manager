@@ -153,10 +153,10 @@ export class DashboardService implements DashboardQueryContract {
       return [];
     }
     const [issueTodos, rdTodos] = await Promise.all([
-      this.issueQuery.listTodosForDashboard(scope.effectiveProjectIds, scope.userId, 10, ctx),
+      this.issueQuery.listTodosForDashboard(scope.effectiveProjectIds, scope.userId, 20, ctx),
       this.rdQuery.listTodosForDashboard(scope.effectiveProjectIds, scope.userId, 10, ctx)
     ]);
-    return [...issueTodos, ...rdTodos].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 10);
+    return this.mergeTodos(issueTodos, rdTodos, 10);
   }
 
   private async getActivitiesByScope(scope: DashboardScope, ctx: RequestContext): Promise<DashboardActivityItem[]> {
@@ -364,5 +364,39 @@ export class DashboardService implements DashboardQueryContract {
     if (type === "document") return "DOC";
     if (type === "release") return "REL";
     return "CNT";
+  }
+
+  private mergeTodos(issueTodos: DashboardTodoItem[], rdTodos: DashboardTodoItem[], limit: number): DashboardTodoItem[] {
+    const merged = [...issueTodos, ...rdTodos]
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, limit);
+
+    const activeRdTodo = rdTodos.find((item) => item.status === "doing" || item.status === "blocked");
+    if (!activeRdTodo) {
+      return merged;
+    }
+
+    const alreadyIncluded = merged.some((item) => item.entityId === activeRdTodo.entityId);
+    if (alreadyIncluded) {
+      return merged;
+    }
+
+    const replacementIndex = merged.length < limit
+      ? -1
+      : merged
+          .map((item, index) => ({ item, index }))
+          .reverse()
+          .find(({ item }) => !item.kind.startsWith("rd"))?.index ?? -1;
+
+    const next = [...merged];
+    if (replacementIndex >= 0) {
+      next.splice(replacementIndex, 1, activeRdTodo);
+    } else {
+      next.push(activeRdTodo);
+    }
+
+    return next
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, limit);
   }
 }
