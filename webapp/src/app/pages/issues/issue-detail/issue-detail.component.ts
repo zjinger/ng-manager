@@ -86,7 +86,6 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
 
               <!-- 评论 -->
               <app-issue-comment-area
-                [comments]="comments()"
                 (submit)="commentSubmit.emit($event)"
                 [busy]="busy()"
                 [logs]="store.logs()"
@@ -173,7 +172,6 @@ export class IssueDetailComponent {
   readonly open = input(false);
   readonly busy = input(false);
   // readonly logs = input<IssueLogEntity[]>([]);
-  readonly comments = input<IssueCommentEntity[]>([]);
   readonly attachments = input<IssueAttachmentEntity[]>([]);
   readonly participants = input<IssueParticipantEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);

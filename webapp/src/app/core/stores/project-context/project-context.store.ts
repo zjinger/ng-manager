@@ -26,10 +26,7 @@ export class ProjectContextStore {
   currentProjectToken = computed(() => this.currentProjectState()?.env?.['NGM_HUB_V2_TOKEN']);
   currentProjectMembers = computed(() => this.membersState());
   isHubProjectValid = computed(() => {
-    return !!(
-      this.currentProjectState()?.env?.['NGM_HUB_V2_PROJECT_KEY'] &&
-      this.currentProjectState()?.env?.['NGM_HUB_V2_TOKEN']
-    );
+    return !!this.currentProjectState()?.env?.['NGM_HUB_V2_TOKEN'];
   });
 
   /* ---------------- list ------------------------ */

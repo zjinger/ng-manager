@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { PageLayoutComponent } from '@app/shared';
 import { IssueListStore } from './store/issue-list.store';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -72,7 +72,7 @@ export class IssuesComponent {
 
   // 详情相关
   protected readonly selectedIssue = this.issueDetailStore.issue;
-  protected readonly IssueComments = this.issueDetailStore.comments;
+  // protected readonly IssueComments = this.issueDetailStore.comments;
   protected readonly IssueAttachments = this.issueDetailStore.attachments;
   protected readonly IssueParticipants = this.issueDetailStore.participants;
   protected readonly busy = this.issueDetailStore.busy;
@@ -104,6 +104,18 @@ export class IssuesComponent {
         this.open.set(false);
       }
     });
+
+    // 筛选变化时
+    let queryTimer:ReturnType<typeof setTimeout>;
+    effect(()=>{
+      const query = this.issueListStore.query();
+      if(query){
+        clearTimeout(queryTimer);
+        queryTimer = setTimeout(() => {
+          this.issueListStore.load();
+        }, 500);
+      }
+    })
   }
 
   onPageChange(page: number) {

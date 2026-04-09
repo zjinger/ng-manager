@@ -250,7 +250,6 @@ import { RdAction } from '@pages/rd/models/rd.model';
 export class IssueCommentAreaComponent {
   private readonly authStore = inject(UserStore);
 
-  readonly comments = input.required<IssueCommentEntity[]>();
   readonly logs = input.required<IssueLogEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly projectId = input<string>();

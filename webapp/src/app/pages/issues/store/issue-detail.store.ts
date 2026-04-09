@@ -40,7 +40,7 @@ export class IssueDetailStore {
 
   readonly issue = computed(() => this.issueState());
   readonly logs = computed(() => this.logsState());
-  readonly comments = computed(() => this.commentsState());
+  // readonly comments = computed(() => this.commentsState());
   readonly participants = computed(() => this.participantsState());
   readonly attachments = computed(() => this.attachmentsState());
   readonly members = computed(() => this.membersState());
@@ -173,14 +173,14 @@ export class IssueDetailStore {
     forkJoin({
       issue: this.issueApi.getIssueDetail(currentProjectId, issueId),
       logs: this.issueApi.getIssueLogs(currentProjectId, issueId),
-      comments: this.issueApi.getIssueComments(currentProjectId, issueId),
+      // comments: this.issueApi.getIssueComments(currentProjectId, issueId),
       participants: this.issueApi.getIssueParticipants(currentProjectId, issueId),
       attachments: this.issueApi.getIssueAttachments(currentProjectId, issueId),
     }).subscribe({
-      next: ({ issue, logs, comments, participants, attachments }) => {
+      next: ({ issue, logs, participants, attachments }) => {
         this.issueState.set(issue);
         this.logsState.set(logs.items);
-        this.commentsState.set(comments.items);
+        // this.commentsState.set(comments.items);
         this.participantsState.set(participants.items);
         this.attachmentsState.set(attachments.items);
       },

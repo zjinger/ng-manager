@@ -6,7 +6,7 @@
                     <nz-input-wrapper>
                         <nz-icon nzInputPrefix nzType="search" nzTheme="outline"></nz-icon>
                         <input nz-input type="text" [ngModel]="query().keyword" (ngModelChange)="updateKeyword($event)"
-                            placeholder="请输入研发项..." />
+                            placeholder="搜索标题、编号或提报人" />
                     </nz-input-wrapper>
                 </div>
 
@@ -72,7 +72,7 @@
         </div>
     </div>
 
-    <app-issue-detail [open]="open()" [issue]="selectedIssue()" [comments]="IssueComments()" [members]="members()"
+    <app-issue-detail [open]="open()" [issue]="selectedIssue()" [members]="members()"
         [attachments]="IssueAttachments()" [participants]="IssueParticipants()" (commentSubmit)="commentSubmit($event)"
         (close)="closeIssueDetail()" (actionClick)="handleActions($event)" (removeParticipant)="removeParticipant($event)"></app-issue-detail>
 

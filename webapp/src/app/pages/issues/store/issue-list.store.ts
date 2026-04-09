@@ -69,7 +69,6 @@ export class IssueListStore {
       ...patch,
       page: patch.page ?? query.page ?? 1,
     }));
-    this.load();
   }
 
   async load() {

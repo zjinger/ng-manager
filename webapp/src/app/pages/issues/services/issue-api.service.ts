@@ -142,12 +142,12 @@ export class IssueApiService {
     });
   }
 
-  getIssueComments(projectId: string, issueId: string) {
-    return this.apiClient.hubRequestWithPrjId<{ items: IssueCommentEntity[] }>({
-      projectId,
-      path: `/issues/${issueId}/comments`,
-    });
-  }
+  // getIssueComments(projectId: string, issueId: string) {
+  //   return this.apiClient.hubRequestWithPrjId<{ items: IssueCommentEntity[] }>({
+  //     projectId,
+  //     path: `/issues/${issueId}/comments`,
+  //   });
+  // }
 
   getIssueParticipants(projectId: string, issueId: string) {
     return this.apiClient.hubRequestWithPrjId<{ items: IssueParticipantEntity[] }>({
