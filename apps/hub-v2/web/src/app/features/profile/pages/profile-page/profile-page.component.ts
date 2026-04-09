@@ -4,6 +4,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore, type ProjectScopeMode } from '@core/state';
 import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
+import { AvatarImageNormalizerService } from '@shared/services/avatar-image-normalizer.service';
 import { PageHeaderComponent } from '@shared/ui';
 import { ProfileBasicFormComponent } from '../../components/profile-basic-form/profile-basic-form.component';
 import { ProfileHeroComponent } from '../../components/profile-hero/profile-hero.component';
@@ -129,6 +130,7 @@ export class ProfilePageComponent {
   private readonly projectContext = inject(ProjectContextStore);
   private readonly message = inject(NzMessageService);
   private readonly avatarUploadPolicy = UPLOAD_TARGETS.profileAvatar;
+  private readonly avatarNormalizer = inject(AvatarImageNormalizerService);
 
   readonly activeTab = signal<ProfileTab>('basic');
   readonly busy = signal(false);
@@ -345,14 +347,23 @@ export class ProfilePageComponent {
     });
   }
 
-  updateAvatar(file: File): void {
+  async updateAvatar(file: File): Promise<void> {
     const validationMessage = validateUploadFile(file, this.avatarUploadPolicy);
     if (validationMessage) {
       this.message.warning(validationMessage);
       return;
     }
+
+    let normalizedFile: File;
+    try {
+      normalizedFile = await this.avatarNormalizer.normalize(file);
+    } catch (error) {
+      this.message.error(error instanceof Error ? error.message : '头像处理失败');
+      return;
+    }
+
     this.busy.set(true);
-    this.profileApi.uploadAvatar(file).subscribe({
+    this.profileApi.uploadAvatar(normalizedFile).subscribe({
       next: (upload) => {
         this.profileApi.updateMyAvatar(upload.id).subscribe({
           next: (user) => {

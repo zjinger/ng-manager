@@ -6,6 +6,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
+import { AvatarImageNormalizerService } from '@shared/services/avatar-image-normalizer.service';
 import { DialogShellComponent } from '@shared/ui';
 import type { CreateProjectInput } from '../../models/project.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -186,6 +187,7 @@ const DEFAULT_DRAFT: CreateProjectInput = {
 export class ProjectCreateDialogComponent {
   private readonly projectApi = inject(ProjectApiService);
   private readonly message = inject(NzMessageService);
+  private readonly avatarNormalizer = inject(AvatarImageNormalizerService);
   readonly avatarUploadPolicy = UPLOAD_TARGETS.projectAvatar;
 
   readonly open = input(false);
@@ -241,7 +243,7 @@ export class ProjectCreateDialogComponent {
     });
   }
 
-  onAvatarPicked(event: Event): void {
+  async onAvatarPicked(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement | null;
     const file = input?.files?.[0] ?? null;
     if (!file) {
@@ -256,12 +258,23 @@ export class ProjectCreateDialogComponent {
       return;
     }
 
+    let normalizedFile: File;
+    try {
+      normalizedFile = await this.avatarNormalizer.normalize(file);
+    } catch (error) {
+      this.message.error(error instanceof Error ? error.message : '项目图标处理失败');
+      if (input) {
+        input.value = '';
+      }
+      return;
+    }
+
     this.avatarUploading.set(true);
-    this.projectApi.uploadProjectAvatar(file).subscribe({
+    this.projectApi.uploadProjectAvatar(normalizedFile).subscribe({
       next: (upload) => {
         this.avatarUploading.set(false);
         this.draft.update((draft) => ({ ...draft, avatarUploadId: upload.id }));
-        this.avatarPreviewUrl.set(URL.createObjectURL(file));
+        this.avatarPreviewUrl.set(URL.createObjectURL(normalizedFile));
       },
       error: () => {
         this.avatarUploading.set(false);

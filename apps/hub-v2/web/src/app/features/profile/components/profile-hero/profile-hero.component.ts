@@ -76,8 +76,11 @@ import { UPLOAD_TARGETS } from '@shared/constants';
         position: relative;
         display: grid;
         place-items: center;
+        flex: 0 0 104px;
         width: 104px;
         height: 104px;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
         border-radius: 32px;
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.14));
         border: 1px solid rgba(255, 255, 255, 0.24);
@@ -95,6 +98,8 @@ import { UPLOAD_TARGETS } from '@shared/constants';
         width: 100%;
         height: 100%;
         object-fit: cover;
+        object-position: center;
+        display: block;
         border-radius: 32px;
       }
 
