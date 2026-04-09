@@ -38,7 +38,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
       [nzVisible]="open()"
       [nzClosable]="true"
       [nzMaskClosable]="true"
-      [nzWidth]="950"
+      [nzWidth]="850"
       [nzWrapClassName]="'rd-detail-drawer'"
       [nzMask]="false"
       [nzTitle]="drawerTitleTpl"
@@ -61,11 +61,11 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
           <nz-empty>正在加载测试单详情…</nz-empty>
         } @else if (issue(); as issue) {
           <div class="detail-wrap">
-            <div class="left-column">
+            <div class="detail-header">
               <!-- 操作 -->
-              <!-- TODO:这里可以优化，将store放到外层 -->
               <app-issue-action-area
                 [issue]="issue"
+                [logs]="store.logs()"
                 (actionClick)="handleActionClick($event)"
                 [canStart]="store.canStart()"
                 [canClaim]="store.canClaim()"
@@ -77,40 +77,43 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 [canReopen]="store.canReopen()"
                 [canClose]="store.canClose()"
               ></app-issue-action-area>
-
-              <!-- 详情 -->
-              <app-issue-description-area
-                [issue]="issue"
-                [projectId]="store.currentProjectId()!"
-              ></app-issue-description-area>
-
-              <!-- 评论 -->
-              <app-issue-comment-area
-                (submit)="commentSubmit.emit($event)"
-                [busy]="busy()"
-                [logs]="store.logs()"
-                [members]="members()"
-                [projectId]="store.currentProjectId()!"
-              ></app-issue-comment-area>
             </div>
-            <div class="right-column">
-              <!-- 基础信息 -->
-              <app-issue-base-info-area [issue]="issue"></app-issue-base-info-area>
+            <div class="detail-content">
+              <div class="left-column">
+                <!-- 详情 -->
+                <app-issue-description-area
+                  [issue]="issue"
+                  [projectId]="store.currentProjectId()!"
+                ></app-issue-description-area>
 
-              <!-- 合作人 -->
-              <app-issue-collaborators-area
-                [issue]="issue"
-                [participants]="participants()"
-                [canManageParticipants]="store.canManageParticipants()"
-                [busy]="busy()"
-                (removeParticipant)="removeParticipant.emit($event)"
-              ></app-issue-collaborators-area>
+                <!-- 评论 -->
+                <app-issue-comment-area
+                  (submit)="commentSubmit.emit($event)"
+                  [busy]="busy()"
+                  [logs]="store.logs()"
+                  [members]="members()"
+                  [projectId]="store.currentProjectId()!"
+                ></app-issue-comment-area>
+              </div>
+              <div class="right-column">
+                <!-- 基础信息 -->
+                <app-issue-base-info-area [issue]="issue"></app-issue-base-info-area>
 
-              <!-- 附件 -->
-              <app-issue-attachment-area
-                [attachments]="store.attachments()"
-                [projectId]="store.currentProjectId()!"
-              ></app-issue-attachment-area>
+                <!-- 合作人 -->
+                <app-issue-collaborators-area
+                  [issue]="issue"
+                  [participants]="participants()"
+                  [canManageParticipants]="store.canManageParticipants()"
+                  [busy]="busy()"
+                  (removeParticipant)="removeParticipant.emit($event)"
+                ></app-issue-collaborators-area>
+
+                <!-- 附件 -->
+                <app-issue-attachment-area
+                  [attachments]="store.attachments()"
+                  [projectId]="store.currentProjectId()!"
+                ></app-issue-attachment-area>
+              </div>
             </div>
           </div>
         }
@@ -136,8 +139,17 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
     .detail-wrap {
       width: 100%;
       // height: 100%;
-      display: flex;
+      // display: flex;
+      // flex-direction: ;
       gap: 10px;
+      .detail-header {
+        width: 100%;
+      }
+      .detail-content {
+        width: 100%;
+        display: flex;
+        gap: 10px;
+      }
       .wrap-title {
         width: 100%;
         margin-bottom: 12px;
@@ -146,14 +158,14 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
         border-bottom: 1px solid #bbbbbb;
       }
       .left-column {
-        width: 65%;
+        width: 60%;
 
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
       .right-column {
-        width: 35%;
+        width: 40%;
         display: flex;
         flex-direction: column;
         gap: 10px;

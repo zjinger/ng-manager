@@ -1,4 +1,6 @@
-export const ISSUE_STATUS = ['open', 'in_progress', 'resolved', 'verified', 'reopened', 'closed'];
+import { IssueActionType, IssueStatus } from '@pages/issues/models/issue.model';
+
+export const ISSUE_STATUS = ['open', 'in_progress', 'pending_update','resolved', 'verified', 'reopened', 'closed'];
 
 export const ISSUE_STATUS_LABELS: Record<string, string> = {
   open: '待处理',
@@ -18,10 +20,11 @@ export const ISSUE_STATUS_COLORS: Record<string, string> = {
   closed: 'lime',
 };
 
-export const ISSUE_STATUS_FILTER_OPTIONS = [
+export const ISSUE_STATUS_FILTER_OPTIONS: { label: string; value: IssueStatus | '' }[] = [
   { label: '所有状态', value: '' },
   { label: '待处理', value: 'open' },
   { label: '处理中', value: 'in_progress' },
+  { label: '待提测', value: 'pending_update' },
   { label: '待验证', value: 'resolved' },
   { label: '已验证', value: 'verified' },
   { label: '已重开', value: 'reopened' },

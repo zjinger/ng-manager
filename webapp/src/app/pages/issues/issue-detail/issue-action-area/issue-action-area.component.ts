@@ -1,11 +1,16 @@
-import { Component, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import {
   ISSUE_STATUS,
   ISSUE_STATUS_FILTER_OPTIONS,
   ISSUE_STATUS_LABELS,
 } from '@app/shared/constants/status-options';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
-import { IssueActionType, IssueEntity, IssueStatus } from '@pages/issues/models/issue.model';
+import {
+  IssueActionType,
+  IssueEntity,
+  IssueLogEntity,
+  IssueStatus,
+} from '@pages/issues/models/issue.model';
 import { IssuePermissionService } from '@pages/issues/services/issue-permission.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
@@ -20,7 +25,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
         <div class="steps">
           <nz-steps [nzCurrent]="getStepIndex(issue().status)" nzSize="small">
             @for (step of stepsOptions; track step.value) {
-              <nz-step [nzTitle]="step.label"></nz-step>
+              <nz-step [nzTitle]="step.label" [nzStatus]="stepState(step.value)"></nz-step>
             }
           </nz-steps>
         </div>
@@ -116,11 +121,15 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
       display: flex;
       gap: 10px;
     }
+    :host ::ng-deep .ant-steps-item-title::after {
+      background-color: #d3d3d3 !important;
+    }
   `,
 })
 export class IssueActionAreaComponent {
   private readonly modal = inject(NzModalService);
   readonly issue = input.required<IssueEntity>();
+  readonly logs = input<IssueLogEntity[]>([]);
   readonly canStart = input(false);
   readonly canClaim = input(false);
   readonly canAssign = input(false);
@@ -132,16 +141,39 @@ export class IssueActionAreaComponent {
   readonly canClose = input(false);
 
   readonly actionClick = output<IssueActionType>();
+
+  readonly excutedStatuses = computed(() => {
+    const executedStatusesSet = new Set();
+    this.logs().forEach((log) => {
+      executedStatusesSet.add(log.toStatus);
+    });
+    return executedStatusesSet;
+  });
+
   readonly stepsOptions = ISSUE_STATUS_FILTER_OPTIONS.filter((opt) => {
     if (opt.value === 'reopened' || opt.value === '') {
       return false;
     }
     return true;
-  });
+  }) as { label: string; value: Exclude<IssueStatus, 'reopened'> }[];
+
+  stepState(stepOptValue: Exclude<IssueStatus, 'reopened'>) {
+    // TODO：reopen的情况
+    if (
+      this.issue().status === stepOptValue ||
+      (stepOptValue === 'open' && this.issue().status === 'reopened')
+    ) {
+      return 'process';
+    }
+    if (this.excutedStatuses().has(stepOptValue)) {
+      return 'finish';
+    }
+    return 'wait';
+  }
 
   getStepIndex(status: IssueStatus): number {
     if (status === 'reopened') {
-      return 1; // 重新打开状态特殊处理，显示在处理中
+      return 0; // 重新打开状态特殊处理，显示在待处理
     }
     if (status === 'closed') {
       return 4; // 关闭状态显示在最后

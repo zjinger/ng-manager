@@ -1,5 +1,6 @@
 import { Component, computed, input, signal } from '@angular/core';
 import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
+import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants/issue-type-options';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { IssueEntity } from '@pages/issues/models/issue.model';
 
@@ -7,7 +8,7 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
   selector: 'app-issue-description-area',
   imports: [DetailItemCardComponent, MarkdownViewerComponent],
   template: `
-    <app-detail-item-card title="描述" maxHeight="550px">
+    <app-detail-item-card [title]="getIssueTitleByType(issue())" maxHeight="550px">
       @if (mdContent(); as des) {
         <app-markdown-viewer
           [content]="des"
@@ -24,9 +25,15 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
           <div class="resolution-content">{{ issue().resolutionSummary }}</div>
         </div>
       }
-      @if (issue().closeRemark) {
+      @if (issue().closeReason) {
         <div class="resolution">
           <div class="resolution-label">关闭原因</div>
+          <div class="resolution-content">{{ issue().closeReason }}</div>
+        </div>
+      }
+      @if (issue().closeRemark) {
+        <div class="resolution">
+          <div class="resolution-label">重开原因</div>
           <div class="resolution-content">{{ issue().closeRemark }}</div>
         </div>
       }
@@ -81,5 +88,11 @@ export class IssueDescriptionAreaComponent {
 
       return match.replace(originalPath, newPath);
     });
+  }
+
+  // 获取描述标题
+  getIssueTitleByType(issue: IssueEntity): string {
+    const item = ISSUE_TITLE_BY_TYPE.find((i) => i.type === issue.type);
+    return item ? item.title : '问题描述';
   }
 }

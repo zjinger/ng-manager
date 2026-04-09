@@ -2,7 +2,7 @@ import { PageResult } from '@app/core/types/page.types';
 
 export type IssueType = 'bug' | 'feature' | 'change' | 'improvement' | 'task' | 'test';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
-export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'verified' | 'closed' | 'reopened';
+export type IssueStatus = 'open' | 'in_progress' | 'pending_update' | 'resolved' | 'verified' | 'closed' | 'reopened';
 
 // 行动类型
 export type IssueActionType =
