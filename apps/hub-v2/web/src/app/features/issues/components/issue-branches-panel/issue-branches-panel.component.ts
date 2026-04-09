@@ -5,20 +5,21 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { PanelCardComponent, StatusBadgeComponent } from '@shared/ui';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import type { IssueBranchEntity } from '../../models/issue.model';
 
 @Component({
   selector: 'app-issue-branches-panel',
   standalone: true,
-  imports: [DatePipe, NzButtonModule, NzIconModule, NzPopconfirmModule, PanelCardComponent, StatusBadgeComponent],
+  imports: [DatePipe, NzButtonModule, NzIconModule, NzTooltipModule, NzPopconfirmModule, PanelCardComponent, StatusBadgeComponent],
   template: `
     <app-panel-card title="协作分支" [count]="branches().length" [empty]="branches().length === 0" emptyText="当前还没有协作分支">
       <div panel-actions class="panel-actions">
         @if (canStartOwn()) {
-          <button nz-button nzType="default" nzSize="small" [nzLoading]="busy()" (click)="startOwn.emit()">开始协作</button>
+          <button nz-button nz-tooltip="点击开始协作" nzType="default" nzSize="small" [nzLoading]="busy()" (click)="startOwn.emit()">开始</button>
         }
         @if (canCreate()) {
-          <button nz-button nzType="primary" nzSize="small" [disabled]="busy()" (click)="create.emit()">新建分支</button>
+          <button nz-button nz-tooltip="点击新建协作分支" nzType="primary" nzSize="small" [disabled]="busy()" (click)="create.emit()">新建</button>
         }
       </div>
 

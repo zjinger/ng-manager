@@ -426,7 +426,7 @@ export class IssueDetailDrawerPageComponent {
     if (pendingCount > 0) {
       this.modal.confirm({
         nzTitle: `还有 ${pendingCount} 个未完成协作分支，仍要标记解决吗？`,
-        nzContent: '协作分支不会自动关闭，主 issue 会按负责人操作继续进入待验证。',
+        nzContent: '协作分支不会自动关闭，主测试单会按负责人操作继续进入待验证。',
         nzOkText: '仍然解决',
         nzCancelText: '取消',
         nzOnOk: () => this.store.resolve(value || undefined),
