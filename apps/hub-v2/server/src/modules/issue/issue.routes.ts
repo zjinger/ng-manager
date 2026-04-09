@@ -64,6 +64,12 @@ export default async function issueRoutes(app: FastifyInstance) {
     return ok(await app.container.issueCommand.start(params.issueId, ctx), "issue started");
   });
 
+  app.post("/issues/:issueId/wait-update", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { issueId: string };
+    return ok(await app.container.issueCommand.waitUpdate(params.issueId, ctx), "issue waiting for environment update");
+  });
+
   app.post("/issues/:issueId/resolve", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { issueId: string };

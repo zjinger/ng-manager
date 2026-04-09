@@ -2,7 +2,14 @@ import type { PageResult } from "../../shared/http/pagination";
 
 export type IssueType = "bug" | "feature" | "change" | "improvement" | "task" | "test";
 export type IssuePriority = "low" | "medium" | "high" | "critical";
-export type IssueStatus = "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
+export type IssueStatus =
+  | "open"
+  | "in_progress"
+  | "pending_update"
+  | "resolved"
+  | "verified"
+  | "closed"
+  | "reopened";
 export type IssueAction =
   | "create"
   | "update"
@@ -10,6 +17,7 @@ export type IssueAction =
   | "assign"
   | "claim"
   | "start"
+  | "wait_update"
   | "resolve"
   | "verify"
   | "reopen"

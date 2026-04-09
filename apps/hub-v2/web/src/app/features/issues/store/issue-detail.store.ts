@@ -150,11 +150,22 @@ export class IssueDetailStore {
   });
   readonly canStart = computed(() => {
     const issue = this.issueState();
-    return !!issue && ['open', 'reopened'].includes(issue.status) && this.permissionService.canStart(issue, this.currentUser());
+    return !!issue && ['open', 'reopened', 'pending_update'].includes(issue.status) && this.permissionService.canStart(issue, this.currentUser());
+  });
+  readonly startActionLabel = computed(() => {
+    const issue = this.issueState();
+    if (!issue) {
+      return '开始处理';
+    }
+    return issue.status === 'pending_update' ? '继续处理' : '开始处理';
+  });
+  readonly canWaitForUpdate = computed(() => {
+    const issue = this.issueState();
+    return !!issue && ['in_progress', 'reopened'].includes(issue.status) && this.permissionService.canResolve(issue, this.currentUser());
   });
   readonly canResolve = computed(() => {
     const issue = this.issueState();
-    return !!issue && ['in_progress', 'reopened'].includes(issue.status) && this.permissionService.canResolve(issue, this.currentUser());
+    return !!issue && ['in_progress', 'pending_update', 'reopened'].includes(issue.status) && this.permissionService.canResolve(issue, this.currentUser());
   });
   readonly canVerify = computed(() => {
     const issue = this.issueState();
@@ -271,6 +282,10 @@ export class IssueDetailStore {
 
   start(): void {
     this.runIssueAction((issueId) => this.issueApi.start(issueId));
+  }
+
+  waitForUpdate(): void {
+    this.runIssueAction((issueId) => this.issueApi.waitUpdate(issueId));
   }
 
   claim(): void {

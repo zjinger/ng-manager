@@ -80,18 +80,15 @@ export class ProjectRepo {
   constructor(private readonly db: Database.Database) {}
 
   findById(id: string): ProjectEntity | null {
-    const row = this.db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as ProjectRow | undefined;
-    return row ? this.mapProject(row) : null;
+    return this.findSingleProject("p.id = ?", id);
   }
 
   findByKey(projectKey: string): ProjectEntity | null {
-    const row = this.db.prepare("SELECT * FROM projects WHERE project_key = ?").get(projectKey) as ProjectRow | undefined;
-    return row ? this.mapProject(row) : null;
+    return this.findSingleProject("p.project_key = ?", projectKey);
   }
 
   findByDisplayCode(displayCode: string): ProjectEntity | null {
-    const row = this.db.prepare("SELECT * FROM projects WHERE display_code = ?").get(displayCode) as ProjectRow | undefined;
-    return row ? this.mapProject(row) : null;
+    return this.findSingleProject("p.display_code = ?", displayCode);
   }
 
   create(entity: ProjectEntity): void {
@@ -664,6 +661,28 @@ export class ProjectRepo {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  private findSingleProject(whereClause: string, value: string): ProjectEntity | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            p.*,
+            COALESCE(mc.member_count, 0) AS member_count
+          FROM projects p
+          LEFT JOIN (
+            SELECT project_id, COUNT(*) AS member_count
+            FROM project_members
+            GROUP BY project_id
+          ) mc ON mc.project_id = p.id
+          WHERE ${whereClause}
+          LIMIT 1
+        `
+      )
+      .get(value) as ProjectRow | undefined;
+
+    return row ? this.mapProject(row) : null;
   }
 
   private mapMember(row: ProjectMemberRow): ProjectMemberEntity {

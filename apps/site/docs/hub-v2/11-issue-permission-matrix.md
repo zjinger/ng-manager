@@ -25,19 +25,21 @@
 状态：
 - `open` 待处理
 - `in_progress` 处理中
+- `pending_update` 待提测
 - `resolved` 待验证
 - `verified` 已验证
 - `reopened` 已重开
 - `closed` 已关闭
 
 动作与迁移：
-- `claim`：`open|reopened|in_progress -> 原状态`（仅变更负责人）
-- `assign`：`open|in_progress|reopened -> 原状态`（仅变更负责人）
-- `start`：`open|reopened -> in_progress`
-- `resolve`：`in_progress|reopened -> resolved`
+- `claim`：`open|reopened|in_progress|pending_update -> 原状态`（仅变更负责人）
+- `assign`：`open|in_progress|pending_update|reopened -> 原状态`（仅变更负责人）
+- `start`：`open|reopened|pending_update -> in_progress`
+- `wait_update`：`in_progress|reopened -> pending_update`
+- `resolve`：`in_progress|pending_update|reopened -> resolved`
 - `verify`：`resolved -> verified`
 - `reopen`：`resolved|verified|closed -> reopened`
-- `close`：`open|in_progress|resolved|verified|reopened -> closed`
+- `close`：`open|in_progress|pending_update|resolved|verified|reopened -> closed`
 - `update`：允许在各可编辑状态下原状态更新
 
 认领约束：
@@ -46,7 +48,7 @@
 
 重新指派约束（提报人）：
 - 提报人仅可在 `open/reopened` 阶段重新指派。
-- 一旦负责人开始处理进入 `in_progress`，提报人不能再重新指派。
+- 一旦负责人开始处理进入 `in_progress`，或标记为 `pending_update`（待提测），提报人不能再重新指派。
 
 关闭约束（提报人）：
 - 提报人可在未进入开始处理流程前关闭（`open/reopened`）。
@@ -61,9 +63,10 @@
 | 创建 Issue | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 更新基础信息（标题/描述/优先级/模块等） | ✅ | ⛔（当前实现） | ✅ | ✅ | ✅ | ⛔ |
 | 认领 Claim（仅未指派） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 重新指派 Assign | ✅ | ✅ | ✅（仅 open/reopened） | ✅（open/reopened/in_progress，显示“转派”） | ⛔ | ⛔ |
-| 开始处理 Start | ✅ | ⛔（当前实现） | ⛔ | ✅ | ⛔ | ⛔ |
-| 标记解决 Resolve | ✅ | ⛔（当前实现） | ⛔ | ✅ | ⛔ | ⛔ |
+| 重新指派 Assign | ✅ | ✅ | ✅（仅 open/reopened） | ✅（open/reopened/in_progress/pending_update，显示“转派”） | ⛔ | ⛔ |
+| 开始处理 Start / 继续处理 | ✅ | ⛔（当前实现） | ⛔ | ✅（`open/reopened/pending_update`） | ⛔ | ⛔ |
+| 标记待提测 Wait Update | ✅ | ⛔（当前实现） | ⛔ | ✅（`in_progress/reopened`） | ⛔ | ⛔ |
+| 标记解决 Resolve | ✅ | ⛔（当前实现） | ⛔ | ✅（`in_progress/pending_update/reopened`） | ⛔ | ⛔ |
 | 验证通过 Verify | ✅ | ⛔（当前实现） | ✅ | ⛔ | ✅ | ⛔ |
 | 重新打开 Reopen | ✅ | ⛔（当前实现） | ✅ | ⛔ | ✅ | ⛔ |
 | 关闭 Close | ✅ | ⛔（当前实现） | ✅（仅 open/reopened/verified） | ⛔ | ⛔ | ⛔ |
@@ -72,7 +75,8 @@
 - 上表是“当前实现口径 + 本次认领增强”。
 - 后续若要和 RD 权限风格统一，建议把 `project_admin` 纳入 `assign/close` 等管理动作。
 - `close` 新增 reporter 条件：提报人仅在 `open/reopened/verified` 可关闭。
-- `assign` 当前实现包含“负责人转派”：`assignee` 在 `open/reopened/in_progress` 可转派。
+- `assign` 当前实现包含“负责人转派”：`assignee` 在 `open/reopened/in_progress/pending_update` 可转派。
+- `wait_update` 用于“代码已提交，等待测试验证”的中间态，便于负责人从“我的问题”中单独筛选。
 
 ---
 
@@ -82,8 +86,8 @@
 |---|---|---|---|---|---|---|
 | 评论 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | @成员通知 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 添加协作人 | ✅ | ✅ | ✅（仅 open/in_progress） | ✅（仅 open/in_progress） | ⛔ | ⛔ |
-| 移除协作人 | ✅ | ✅ | ✅（仅 open/in_progress） | ✅（仅 open/in_progress） | ⛔ | ⛔ |
+| 添加协作人 | ✅ | ✅ | ✅（仅 open/in_progress/pending_update） | ✅（仅 open/in_progress/pending_update） | ⛔ | ⛔ |
+| 移除协作人 | ✅ | ✅ | ✅（仅 open/in_progress/pending_update） | ✅（仅 open/in_progress/pending_update） | ⛔ | ⛔ |
 | 上传附件 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 删除附件 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
@@ -112,4 +116,6 @@
 
 - 已补齐认领动作：任何项目成员均可认领“未指派”的 Issue。
 - 认领不改变状态，只变更负责人，并写入日志。
+- 已新增 `pending_update`（待提测）状态，位于 `in_progress` 与 `resolved` 之间。
+- 负责人可先标记“待提测”，待测试验证就绪后再“继续处理”或直接“标记解决”。
 - 后续所有权限改写，先以本文为基线；若变更，先改本文再改代码。

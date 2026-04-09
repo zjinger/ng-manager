@@ -29,7 +29,7 @@ export type RdViewMode = 'board' | 'list';
         @if(stages().length > 0){
         <nz-select
           nzPlaceHolder="阶段，支持多选"
-          style="width:250px"
+          style="width:270px"
           class="toolbar-select"
           [ngModel]="draft().stageIds"
           (ngModelChange)="updateField('stageIds', $event)"

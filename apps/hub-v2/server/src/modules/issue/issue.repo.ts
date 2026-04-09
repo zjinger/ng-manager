@@ -16,7 +16,7 @@ type IssueRow = {
   title: string;
   description: string | null;
   type: "bug" | "feature" | "change" | "improvement" | "task" | "test" | "support";
-  status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
+  status: "open" | "in_progress" | "pending_update" | "resolved" | "verified" | "closed" | "reopened";
   priority: "low" | "medium" | "high" | "critical";
   reporter_id: string;
   reporter_name: string;
@@ -44,9 +44,9 @@ type IssueRow = {
 type IssueLogRow = {
   id: string;
   issue_id: string;
-  action_type: "create" | "update" | "comment" | "assign" | "start" | "resolve" | "verify" | "reopen" | "close";
-  from_status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened" | null;
-  to_status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened" | null;
+  action_type: "create" | "update" | "comment" | "assign" | "claim" | "start" | "wait_update" | "resolve" | "verify" | "reopen" | "close";
+  from_status: "open" | "in_progress" | "pending_update" | "resolved" | "verified" | "closed" | "reopened" | null;
+  to_status: "open" | "in_progress" | "pending_update" | "resolved" | "verified" | "closed" | "reopened" | null;
   operator_id: string | null;
   operator_name: string | null;
   summary: string | null;
@@ -58,7 +58,7 @@ type UpdateIssueRowInput = Partial<{
   title: string;
   description: string | null;
   type: "bug" | "feature" | "change" | "improvement" | "task" | "test";
-  status: "open" | "in_progress" | "resolved" | "verified" | "closed" | "reopened";
+  status: "open" | "in_progress" | "pending_update" | "resolved" | "verified" | "closed" | "reopened";
   priority: "low" | "medium" | "high" | "critical";
   assignee_id: string | null;
   assignee_name: string | null;
@@ -245,8 +245,8 @@ export class IssueRepo {
 
     if (query.keyword?.trim()) {
       const keyword = `%${query.keyword.trim()}%`;
-      conditions.push("(i.title LIKE ? OR i.issue_no LIKE ? OR i.description LIKE ?)");
-      params.push(keyword, keyword, keyword);
+      conditions.push("(i.title LIKE ? OR i.issue_no LIKE ? OR i.description LIKE ? OR i.reporter_name LIKE ? OR i.reporter_id LIKE ?)");
+      params.push(keyword, keyword, keyword, keyword, keyword);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -368,7 +368,7 @@ export class IssueRepo {
           SELECT COUNT(*) as total
           FROM issues
           WHERE assignee_id = ?
-            AND status IN ('open', 'in_progress', 'reopened')
+            AND status IN ('open', 'in_progress', 'pending_update', 'reopened')
             ${scope.clause}
         `
       )
@@ -400,7 +400,7 @@ export class IssueRepo {
           SELECT COUNT(*) as total
           FROM issues
           WHERE reporter_id = ?
-            AND status IN ('open', 'in_progress', 'reopened')
+            AND status IN ('open', 'in_progress', 'pending_update', 'reopened')
             ${scope.clause}
         `
       )
@@ -416,7 +416,7 @@ export class IssueRepo {
           SELECT id, issue_no as code, title, status, updated_at, project_id
           FROM issues
           WHERE assignee_id = ?
-            AND status IN ('open', 'in_progress', 'reopened')
+            AND status IN ('open', 'in_progress', 'pending_update', 'reopened')
             ${scope.clause}
           ORDER BY updated_at DESC
           LIMIT ?
@@ -438,7 +438,7 @@ export class IssueRepo {
           FROM issues i
           INNER JOIN issue_participants ip ON ip.issue_id = i.id
           WHERE ip.user_id = ?
-            AND i.status IN ('open', 'in_progress', 'reopened')
+            AND i.status IN ('open', 'in_progress', 'pending_update', 'reopened')
             AND COALESCE(i.assignee_id, '') <> ?
             ${scope.clause}
           ORDER BY i.updated_at DESC

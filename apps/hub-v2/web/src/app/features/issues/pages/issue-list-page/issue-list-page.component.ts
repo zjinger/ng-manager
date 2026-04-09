@@ -620,14 +620,14 @@ export class IssueListPageComponent {
     }
 
     const itemsById = new Map(this.store.items().map((item) => [item.id, item] as const));
-    const resolvableStatuses = new Set<IssueEntity['status']>(['in_progress', 'reopened']);
+    const resolvableStatuses = new Set<IssueEntity['status']>(['in_progress', 'pending_update', 'reopened']);
     const eligibleIds = selectedIds.filter((id) => {
       const item = itemsById.get(id);
       return !!item && resolvableStatuses.has(item.status);
     });
     const skippedCount = selectedIds.length - eligibleIds.length;
     if (eligibleIds.length === 0) {
-      this.message.warning('当前选中项不可执行“标记已解决”（仅支持处理中/已重开）');
+      this.message.warning('当前选中项不可执行“标记已解决”（仅支持处理中/待提测/已重开）');
       return;
     }
 

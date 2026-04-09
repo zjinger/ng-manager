@@ -196,6 +196,19 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     );
   }
 
+  async waitUpdate(id: string, ctx: RequestContext): Promise<IssueEntity> {
+    const current = await this.requireByIdWithAccess(id, ctx, "mark issue waiting for environment update");
+    requireIssueResolveAccess(current, ctx);
+    return this.applyAction(
+      id,
+      "wait_update",
+      ctx,
+      current,
+      {},
+      "代码已提交，标记为待提测"
+    );
+  }
+
   async resolve(id: string, input: ResolveIssueInput, ctx: RequestContext): Promise<IssueEntity> {
     const current = await this.requireByIdWithAccess(id, ctx, "resolve issue");
     requireIssueResolveAccess(current, ctx);

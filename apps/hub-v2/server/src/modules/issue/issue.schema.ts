@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const issueTypeSchema = z.enum(["bug", "feature", "change", "improvement", "task", "test"]);
-const issueStatusSchema = z.enum(["open", "in_progress", "resolved", "verified", "closed", "reopened"]);
+const issueStatusSchema = z.enum(["open", "in_progress", "pending_update", "resolved", "verified", "closed", "reopened"]);
 const issuePrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 
 function csvEnumArray<T extends [string, ...string[]]>(values: T) {
@@ -84,7 +84,7 @@ export const listIssuesQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().optional(),
   keyword: z.string().trim().optional(),
   projectId: z.string().trim().optional(),
-  status: csvEnumArray(["open", "in_progress", "resolved", "verified", "closed", "reopened"]),
+  status: csvEnumArray(["open", "in_progress", "pending_update", "resolved", "verified", "closed", "reopened"]),
   types: csvEnumArray(["bug", "feature", "change", "improvement", "task", "test"]),
   type: issueTypeSchema.optional(),
   priority: csvEnumArray(["low", "medium", "high", "critical"]),

@@ -14,6 +14,15 @@ const transitions: Record<IssueStatus, Partial<Record<IssueAction, IssueStatus>>
     assign: "in_progress",
     claim: "in_progress",
     update: "in_progress",
+    wait_update: "pending_update",
+    resolve: "resolved",
+    close: "closed"
+  },
+  pending_update: {
+    assign: "pending_update",
+    claim: "pending_update",
+    update: "pending_update",
+    start: "in_progress",
     resolve: "resolved",
     close: "closed"
   },
@@ -33,6 +42,7 @@ const transitions: Record<IssueStatus, Partial<Record<IssueAction, IssueStatus>>
     claim: "reopened",
     update: "reopened",
     start: "in_progress",
+    wait_update: "pending_update",
     resolve: "resolved",
     close: "closed"
   },

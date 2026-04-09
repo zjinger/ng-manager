@@ -146,6 +146,10 @@ export class IssueApiService {
     return this.api.post<IssueEntity>(`/issues/${issueId}/start`);
   }
 
+  waitUpdate(issueId: string) {
+    return this.api.post<IssueEntity>(`/issues/${issueId}/wait-update`);
+  }
+
   verify(issueId: string) {
     return this.api.post<IssueEntity>(`/issues/${issueId}/verify`);
   }

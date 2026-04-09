@@ -89,7 +89,12 @@ export class ProjectListStore {
     }
 
     const items = [...result.items];
-    items[index] = updated;
+    const current = result.items[index];
+    items[index] = {
+      ...current,
+      ...updated,
+      memberCount: updated.memberCount ?? current.memberCount,
+    };
     this.resultState.set({
       ...result,
       items,

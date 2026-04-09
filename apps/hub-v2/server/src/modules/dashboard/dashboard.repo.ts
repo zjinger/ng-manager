@@ -40,6 +40,7 @@ const ISSUE_PRIORITY_LABELS: Record<string, string> = {
 const ISSUE_STATUS_LABELS: Record<string, string> = {
   open: "待处理",
   in_progress: "处理中",
+  pending_update: "待提测",
   resolved: "待验证",
   verified: "已验证",
   closed: "已关闭",
@@ -78,7 +79,7 @@ export class DashboardRepo {
       `
         SELECT COUNT(*) as total
         FROM issues
-        WHERE status IN ('open', 'in_progress', 'resolved', 'reopened')
+        WHERE status IN ('open', 'in_progress', 'pending_update', 'resolved', 'reopened')
           ${issueScope.clause}
       `,
       issueScope.params

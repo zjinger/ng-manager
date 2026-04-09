@@ -513,6 +513,7 @@ export class ProjectListPageComponent {
     this.projectApi.listMembers(projectId).subscribe({
       next: (items) => {
         this.members.set(items);
+        this.syncProjectMemberCount(projectId, items.length);
         this.membersLoading.set(false);
       },
       error: () => {
@@ -526,6 +527,23 @@ export class ProjectListPageComponent {
       next: (items) => this.users.set(items),
       error: () => this.users.set([])
     });
+  }
+
+  private syncProjectMemberCount(projectId: string, memberCount: number): void {
+    const selectedProject = this.selectedProject();
+    if (selectedProject?.id === projectId) {
+      const updatedSelectedProject = { ...selectedProject, memberCount };
+      this.selectedProject.set(updatedSelectedProject);
+      this.store.patchOrRefresh(updatedSelectedProject);
+      return;
+    }
+
+    const currentProject = this.store.items().find((item) => item.id === projectId);
+    if (!currentProject) {
+      return;
+    }
+
+    this.store.patchOrRefresh({ ...currentProject, memberCount });
   }
 
   private updateProjectStatus(projectId: string, status: ProjectStatus): void {

@@ -52,18 +52,22 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
         <section class="detail-stack">
           <app-issue-detail-drawer-header
             [issue]="issue"
+            [logs]="store.logs()"
             [canStart]="store.canStart()"
+            [startActionLabel]="store.startActionLabel()"
             [canClaim]="store.canClaim()"
             [canAssign]="store.canAssign()"
             [assignActionLabel]="store.assignActionLabel()"
             [canEdit]="store.canEdit()"
             [canManageParticipants]="store.canManageParticipants()"
+            [canWaitForUpdate]="store.canWaitForUpdate()"
             [canResolve]="store.canResolve()"
             [canVerify]="store.canVerify()"
             [canReopen]="store.canReopen()"
             [canClose]="store.canClose()"
             [branchSummaryText]="store.branchSummaryText()"
             (start)="confirmStart()"
+            (waitForUpdate)="confirmWaitForUpdate()"
             (claim)="confirmClaim()"
             (assign)="assignIssue()"
             (edit)="openEdit()"
@@ -377,11 +381,24 @@ export class IssueDetailDrawerPageComponent {
 
   confirmStart(): void {
     this.modal.confirm({
-      nzTitle: '确认开始处理该问题？',
-      nzContent: '开始处理后，提报人将不能再重新指派负责人。',
-      nzOkText: '确认开始',
+      nzTitle: this.store.issue()?.status === 'pending_update' ? '确认继续处理该问题？' : '确认开始处理该问题？',
+      nzContent:
+        this.store.issue()?.status === 'pending_update'
+          ? '继续处理后，状态将从“待提测”回到“处理中”。'
+          : '开始处理后，提报人将不能再重新指派负责人。',
+      nzOkText: this.store.issue()?.status === 'pending_update' ? '确认继续' : '确认开始',
       nzCancelText: '取消',
       nzOnOk: () => this.store.start(),
+    });
+  }
+
+  confirmWaitForUpdate(): void {
+    this.modal.confirm({
+      nzTitle: '标记为待提测？',
+      nzContent: '适用于代码已提交、等待测试验证的情况，方便后续单独筛选。',
+      nzOkText: '确认标记',
+      nzCancelText: '取消',
+      nzOnOk: () => this.store.waitForUpdate(),
     });
   }
 

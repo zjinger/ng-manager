@@ -34,6 +34,10 @@ import { RD_STATUS_LABELS } from '../../constants';
         background: rgba(6, 182, 212, 0.2);
         color: #0e7490;
       }
+      .status-badge[data-status='pending_update'] {
+        background: rgba(99, 102, 241, 0.16);
+        color: #4338ca;
+      }
       .status-badge[data-status='reopened'] {
         background: rgba(245, 158, 11, 0.18);
         color: #b45309;
@@ -70,6 +74,10 @@ import { RD_STATUS_LABELS } from '../../constants';
       :host-context(html[data-theme='dark']) .status-badge[data-status='in_progress'] {
         background: rgba(34, 211, 238, 0.26);
         color: #67e8f9;
+      }
+      :host-context(html[data-theme='dark']) .status-badge[data-status='pending_update'] {
+        background: rgba(129, 140, 248, 0.22);
+        color: #c7d2fe;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='reopened'] {
         background: rgba(245, 158, 11, 0.24);
@@ -110,6 +118,7 @@ const STATUS_TEXT_MAP: Record<string, string> = {
   inactive: '停用',
   open: '待处理',
   in_progress: '处理中',
+  pending_update: '待提测',
   reopened: '已重开',
   resolved: '待验证',
   verified: '已验证',

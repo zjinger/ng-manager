@@ -219,7 +219,7 @@ export class DashboardService implements DashboardQueryContract {
         pageSize: 8,
         reporterIds: [scope.userId],
         assigneeIds: [],
-        status: ["open", "in_progress", "reopened"],
+        status: ["open", "in_progress", "pending_update", "reopened"],
         types: [],
         priority: [],
         moduleCodes: [],

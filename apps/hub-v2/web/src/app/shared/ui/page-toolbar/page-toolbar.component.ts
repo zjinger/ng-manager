@@ -41,7 +41,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       }
 
       .page-toolbar__end {
-        flex: 1 1 320px;
+        flex: 1 1 auto;
         justify-content: flex-end;
       }
 

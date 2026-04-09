@@ -61,6 +61,7 @@ export class IssueActivityTimelineComponent {
         assign: 'user-add',
         claim: 'user-add',
         start: 'play-circle',
+        wait_update: 'clock-circle',
         resolve: 'check-circle',
         verify: 'safety-certificate',
         reopen: 'redo',

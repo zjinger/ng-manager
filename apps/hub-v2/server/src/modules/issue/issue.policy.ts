@@ -23,7 +23,10 @@ export function requireIssueAssignAccess(issue: IssueEntity, ctx: RequestContext
   // 当前负责人可在 open/reopened/in_progress 执行转派。
   if (
     matchActor(ctx, issue.assigneeId) &&
-    (issue.status === "open" || issue.status === "reopened" || issue.status === "in_progress")
+    (issue.status === "open" ||
+      issue.status === "reopened" ||
+      issue.status === "in_progress" ||
+      issue.status === "pending_update")
   ) {
     return;
   }
@@ -51,8 +54,8 @@ export function requireIssueParticipantManageAccess(
   ctx: RequestContext,
   isProjectAdmin = false
 ): void {
-  // 仅在“未处理(open)”或“处理中(in_progress)”允许管理协作人。
-  if (issue.status !== "open" && issue.status !== "in_progress") {
+  // 仅在“未处理(open)”“处理中(in_progress)”或“待提测(pending_update)”允许管理协作人。
+  if (issue.status !== "open" && issue.status !== "in_progress" && issue.status !== "pending_update") {
     throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_FORBIDDEN, "issue participant manage forbidden", 403);
   }
 
