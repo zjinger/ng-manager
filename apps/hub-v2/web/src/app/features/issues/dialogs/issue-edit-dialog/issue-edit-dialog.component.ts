@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
+import { MarkdownImageUploadService } from '@shared/services/markdown-image-upload.service';
+import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { IssueEntity, UpdateIssueInput } from '../../models/issue.model';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 
 type EditDraft = {
   title: string;
@@ -71,7 +73,9 @@ const EMPTY_DRAFT: EditDraft = {
                     [ngModel]="draft().description"
                     name="description"
                     [minHeight]="'240px'"
+                    [imageUploadHandler]="uploadMarkdownImage"
                     (contentChange)="updateField('description', $event)"
+                    (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
                     [placeholder]="'补充问题背景、复现步骤和期望结果'"
                   />
                 </nz-form-control>
@@ -154,6 +158,9 @@ const EMPTY_DRAFT: EditDraft = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueEditDialogComponent {
+  private readonly message = inject(NzMessageService);
+  private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+
   readonly open = input(false);
   readonly busy = input(false);
   readonly issue = input<IssueEntity | null>(null);
@@ -165,6 +172,7 @@ export class IssueEditDialogComponent {
   readonly confirm = output<UpdateIssueInput>();
 
   readonly draft = signal<EditDraft>({ ...EMPTY_DRAFT });
+  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.markdownImageUpload.uploadImage(file, 10);
 
   constructor() {
     effect(() => {
@@ -180,6 +188,10 @@ export class IssueEditDialogComponent {
         environmentCode: issue?.environmentCode || '',
       });
     });
+  }
+
+  onMarkdownImageUploadFailed(message: string): void {
+    this.message.error(message || '图片上传失败');
   }
 
   updateField<K extends keyof EditDraft>(key: K, value: EditDraft[K]): void {
@@ -202,4 +214,3 @@ export class IssueEditDialogComponent {
     this.confirm.emit(payload);
   }
 }
-
