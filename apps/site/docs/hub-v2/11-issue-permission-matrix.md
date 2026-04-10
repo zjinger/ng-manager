@@ -7,7 +7,7 @@
 
 ## 1. 角色定义
 
-- `admin`：系统管理员，拥有全局操作权限。
+- `admin`：系统管理角色，不参与 Issue 业务流转；不因 `admin` 身份获得额外业务权限。
 - `project_admin`：项目管理员（项目创建者或被授权管理员）。
 - `reporter`：问题提报人。
 - `assignee`：问题负责人（执行人）。
@@ -17,6 +17,7 @@
 说明：
 - 同一用户可同时具备多个业务身份（如 `reporter + verifier`）。
 - 本文“成员”默认前提：已通过项目访问校验（在项目可访问范围内）。
+- 若系统管理员同时以项目成员身份参与项目，则按 `project_admin / reporter / assignee / verifier / member` 业务身份判定，而不是按 `admin` 身份判定。
 
 ---
 
@@ -60,22 +61,23 @@
 
 | 操作 | admin | project_admin | reporter | assignee | verifier | member |
 |---|---|---|---|---|---|---|
-| 创建 Issue | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 更新基础信息（标题/描述/优先级/模块等） | ✅ | ⛔（当前实现） | ✅ | ✅ | ✅ | ⛔ |
-| 认领 Claim（仅未指派） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 指派 / 转派 Assign | ⛔（当前实现） | ✅（仅未指派） | ✅（仅未指派） | ✅（open/reopened/in_progress/pending_update，显示“转派”） | ⛔ | ⛔ |
-| 开始处理 Start / 继续处理 | ✅ | ⛔（当前实现） | ⛔ | ✅（`open/reopened/pending_update`） | ⛔ | ⛔ |
-| 标记待提测 Wait Update | ✅ | ⛔（当前实现） | ⛔ | ✅（`in_progress/reopened`） | ⛔ | ⛔ |
-| 标记解决 Resolve | ✅ | ⛔（当前实现） | ⛔ | ✅（`in_progress/pending_update/reopened`） | ⛔ | ⛔ |
-| 验证通过 Verify | ✅ | ⛔（当前实现） | ✅ | ⛔ | ✅ | ⛔ |
-| 重新打开 Reopen | ✅ | ⛔（当前实现） | ✅ | ⛔ | ✅ | ⛔ |
-| 关闭 Close | ✅ | ⛔（当前实现） | ✅（仅 open/reopened/verified） | ⛔ | ⛔ | ⛔ |
+| 创建 Issue | ⛔ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 更新基础信息（标题/描述/优先级/模块等） | ⛔ | ⛔ | ✅ | ✅ | ✅ | ⛔ |
+| 认领 Claim（仅未指派） | ⛔ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 指派 / 转派 Assign | ⛔ | ✅（仅未指派） | ✅（仅未指派） | ✅（open/reopened/in_progress/pending_update，显示“转派”） | ⛔ | ⛔ |
+| 开始处理 Start / 继续处理 | ⛔ | ⛔ | ⛔ | ✅（`open/reopened/pending_update`） | ⛔ | ⛔ |
+| 标记待提测 Wait Update | ⛔ | ⛔ | ⛔ | ✅（`in_progress/reopened`） | ⛔ | ⛔ |
+| 标记解决 Resolve | ⛔ | ⛔ | ⛔ | ✅（`in_progress/pending_update/reopened`） | ⛔ | ⛔ |
+| 验证通过 Verify | ⛔ | ⛔ | ✅ | ⛔ | ✅ | ⛔ |
+| 重新打开 Reopen | ⛔ | ⛔ | ✅ | ⛔ | ✅ | ⛔ |
+| 关闭 Close | ⛔ | ⛔ | ✅（仅 open/reopened/verified） | ⛔ | ⛔ | ⛔ |
 
 说明：
-- 上表是“当前实现口径 + 本次认领增强”。
-- 后续若要和 RD 权限风格统一，建议把 `project_admin` 纳入 `assign/close` 等管理动作。
+- 上表是当前冻结口径，前后端后续改动均应以此为准。
+- `admin` 列表示“仅凭 admin 身份”时的权限，不叠加任何业务身份。
+- 若后续需要和 RD 权限风格统一，应先更新本文，再调整 `project_admin` 的管理动作边界。
 - `close` 新增 reporter 条件：提报人仅在 `open/reopened/verified` 可关闭。
-- `assign` 当前实现拆成两类：未指派时由 `reporter/project_admin` 指派；已指派后仅 `assignee` 可转派。
+- `assign` 冻结规则分两类：未指派时由 `reporter/project_admin` 指派；已指派后仅 `assignee` 可转派。
 - `wait_update` 用于“代码已提交，等待测试验证”的中间态，便于负责人从“我的问题”中单独筛选。
 
 ---
@@ -84,15 +86,18 @@
 
 | 操作 | admin | project_admin | reporter | assignee | verifier | member |
 |---|---|---|---|---|---|---|
-| 评论 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| @成员通知 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 添加协作人 | ✅ | ✅ | ✅（仅 open/in_progress/pending_update） | ✅（仅 open/in_progress/pending_update） | ⛔ | ⛔ |
-| 移除协作人 | ✅ | ✅ | ✅（仅 open/in_progress/pending_update） | ✅（仅 open/in_progress/pending_update） | ⛔ | ⛔ |
-| 上传附件 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 删除附件 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 评论 | ⛔ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| @成员通知 | ⛔ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 添加协作人 | ⛔ | ✅（仅已存在负责人，且 open/in_progress/pending_update） | ✅（仅已存在负责人，且 open/in_progress/pending_update） | ✅（仅已存在负责人，且 open/in_progress/pending_update） | ⛔ | ⛔ |
+| 移除协作人 | ⛔ | ✅（仅已存在负责人，且 open/in_progress/pending_update） | ✅（仅已存在负责人，且 open/in_progress/pending_update） | ✅（仅已存在负责人，且 open/in_progress/pending_update） | ⛔ | ⛔ |
+| 上传附件 | ⛔ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 删除附件 | ⛔ | ✅ | ✅（仅本人上传） | ✅（仅本人上传） | ✅（仅本人上传） | ✅（仅本人上传） |
 
 说明：
-- 当前代码层面对评论/协作/附件主要以“项目可访问”作为准入。
+- 评论/协作/附件当前冻结规则主要以“项目可访问”作为准入。
+- `admin` 不作为 Issue 业务参与角色；若管理员同时具备项目业务身份，仍按对应业务身份判断。
+- 协作人管理额外前提：Issue 必须已存在负责人；未指派前不能添加或移除协作人。
+- 删除附件额外前提：仅项目管理员或该附件上传者本人可删除。
 - 若后续要收紧，可增加“仅 reporter/assignee/project_admin 可移除协作人或附件”的细则。
 
 ---
