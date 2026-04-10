@@ -9,33 +9,39 @@ export class NotificationStore {
   private readonly api = inject(NotificationApiService);
   private readonly router = inject(Router);
   private readonly itemsState = signal<NotificationItem[]>([]);
+  private readonly previewItemsState = signal<NotificationItem[]>([]);
   private readonly loadingState = signal(false);
   private readonly totalState = signal(0);
+  private readonly previewTotalState = signal(0);
   private readonly unreadCountState = signal(0);
-  private readonly queryState = signal<NotificationListQuery>({ limit: 50 });
+  private readonly queryState = signal<NotificationListQuery>({ page: 1, pageSize: 20 });
   private readonly unreadOnlyState = signal(false);
   private loadingInFlight = false;
   private queuedQuery: NotificationListQuery | null = null;
+  private readonly previewLimit = 20;
   private readonly realtimeListCap = 200;
 
   readonly items = computed(() => this.itemsState());
+  readonly previewItems = computed(() => this.previewItemsState());
   readonly query = computed(() => this.queryState());
   readonly loading = computed(() => this.loadingState());
   readonly total = computed(() => this.totalState());
+  readonly previewTotal = computed(() => this.previewTotalState());
   readonly unreadOnly = computed(() => this.unreadOnlyState());
-  readonly filteredItems = computed(() =>
-    this.unreadOnlyState() ? this.itemsState().filter((item) => item.unread) : this.itemsState()
-  );
+  readonly filteredItems = computed(() => this.itemsState());
   readonly unreadCount = computed(() => this.unreadCountState());
 
   constructor() {
-    this.load();
+    this.loadPreview();
   }
 
   load(query?: NotificationListQuery): void {
     const nextQuery = query ? { ...this.queryState(), ...query } : this.queryState();
     if (query) {
       this.queryState.set(nextQuery);
+      if (Object.prototype.hasOwnProperty.call(query, 'unreadOnly')) {
+        this.unreadOnlyState.set(Boolean(query.unreadOnly));
+      }
     }
     if (this.loadingInFlight) {
       this.queuedQuery = nextQuery;
@@ -58,10 +64,29 @@ export class NotificationStore {
       },
       error: () => {
         this.totalState.set(0);
-        this.unreadCountState.set(0);
         this.onLoadSettled();
       },
     });
+  }
+
+  loadPreview(limit = this.previewLimit): void {
+    this.api
+      .list({
+        page: 1,
+        pageSize: limit,
+        limit: undefined,
+      })
+      .subscribe({
+        next: (result) => {
+          this.previewItemsState.set(result.items);
+          this.previewTotalState.set(Number(result.total) || 0);
+          this.unreadCountState.set(Number(result.unreadTotal) || 0);
+        },
+        error: () => {
+          this.previewItemsState.set([]);
+          this.previewTotalState.set(0);
+        },
+      });
   }
 
   markAllAsRead(): void {
@@ -76,7 +101,9 @@ export class NotificationStore {
   }
 
   markAsRead(notificationId: string): void {
-    const target = this.itemsState().find((item) => item.id === notificationId);
+    const target =
+      this.itemsState().find((item) => item.id === notificationId) ??
+      this.previewItemsState().find((item) => item.id === notificationId);
     if (!target || !target.unread) {
       return;
     }
@@ -89,7 +116,12 @@ export class NotificationStore {
   }
 
   setUnreadOnly(value: boolean): void {
-    this.unreadOnlyState.set(value);
+    this.load({
+      unreadOnly: value,
+      page: 1,
+      pageSize: this.queryState().pageSize,
+      limit: this.queryState().limit,
+    });
   }
 
   upsertFromWs(item: NotificationItem, unreadCount?: number): void {
@@ -97,8 +129,19 @@ export class NotificationStore {
       this.unreadCountState.set(Math.max(0, Math.floor(unreadCount)));
     }
 
-    // Route-aware insert:
-    // on notifications page we respect current query/page to avoid mixing unrelated rows.
+    let previewInserted = false;
+    this.previewItemsState.update((items) => {
+      const index = items.findIndex((current) => current.id === item.id);
+      if (index >= 0) {
+        return [item, ...items.slice(0, index), ...items.slice(index + 1)].slice(0, this.previewLimit);
+      }
+      previewInserted = true;
+      return [item, ...items].slice(0, this.previewLimit);
+    });
+    if (previewInserted) {
+      this.previewTotalState.update((value) => value + 1);
+    }
+
     const isNotificationsPage = this.isNotificationsPageActive();
     if (isNotificationsPage) {
       const query = this.queryState();
@@ -132,26 +175,56 @@ export class NotificationStore {
     this.unreadCountState.set(Math.max(0, Math.floor(unreadCount)));
   }
 
-  private markReadLocally(notificationIds: string[]): void {
-    // Optimistic update for fast interaction; server state is reconciled in syncReadState().
-    const idSet = new Set(notificationIds);
-    const unreadHits = this.itemsState().reduce((count, item) => count + (item.unread && idSet.has(item.id) ? 1 : 0), 0);
-    if (unreadHits > 0) {
-      this.unreadCountState.update((value) => Math.max(0, value - unreadHits));
+  reloadPageIfActive(): void {
+    if (this.isNotificationsPageActive()) {
+      this.load();
     }
-    this.itemsState.update((items) =>
+  }
+
+  private markReadLocally(notificationIds: string[]): void {
+    const idSet = new Set(notificationIds);
+    const unreadHits = new Set<string>();
+    for (const item of this.itemsState()) {
+      if (item.unread && idSet.has(item.id)) {
+        unreadHits.add(item.id);
+      }
+    }
+    for (const item of this.previewItemsState()) {
+      if (item.unread && idSet.has(item.id)) {
+        unreadHits.add(item.id);
+      }
+    }
+    if (unreadHits.size > 0) {
+      this.unreadCountState.update((value) => Math.max(0, value - unreadHits.size));
+    }
+
+    const pageUnreadHits = this.itemsState().reduce(
+      (count, item) => count + (item.unread && idSet.has(item.id) ? 1 : 0),
+      0
+    );
+    this.itemsState.update((items) => {
+      const next = items.map((item) => (idSet.has(item.id) ? { ...item, unread: false } : item));
+      return this.unreadOnlyState() ? next.filter((item) => item.unread) : next;
+    });
+    if (this.unreadOnlyState() && pageUnreadHits > 0) {
+      this.totalState.update((value) => Math.max(0, value - pageUnreadHits));
+    }
+
+    this.previewItemsState.update((items) =>
       items.map((item) => (idSet.has(item.id) ? { ...item, unread: false } : item))
     );
   }
 
   private syncReadState(notificationIds: string[]): void {
-    // Authoritative unread count comes from server response.
     this.api.markRead({ notificationIds }).subscribe({
       next: (result) => {
         this.unreadCountState.set(Number(result.unreadCount) || 0);
+        this.loadPreview();
+        this.reloadPageIfActive();
       },
       error: () => {
-        this.load();
+        this.loadPreview();
+        this.reloadPageIfActive();
       },
     });
   }
@@ -177,6 +250,9 @@ export class NotificationStore {
     }
 
     if (query.projectId && item.projectId !== query.projectId) {
+      return false;
+    }
+    if (query.unreadOnly && !item.unread) {
       return false;
     }
 

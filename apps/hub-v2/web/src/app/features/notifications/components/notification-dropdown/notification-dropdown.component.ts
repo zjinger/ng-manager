@@ -19,7 +19,7 @@ import { buildNotificationRouteTarget, type NotificationRouteTarget } from '../.
         </div>
         <div class="notification-menu__header-side">
           <a class="notification-menu__all" [routerLink]="['/notifications']" (click)="requestClose()">查看全部</a>
-          <span class="notification-menu__count">{{ totalCount() ?? items().length }}</span>
+          <span class="notification-menu__count">{{ formatTotalCount(totalCount() ?? items().length) }}</span>
         </div>
       </div>
 
@@ -161,6 +161,11 @@ import { buildNotificationRouteTarget, type NotificationRouteTarget } from '../.
         color: var(--text-secondary);
         font-size: 12px;
         line-height: 1.5;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
       }
       .notification-item__time {
         color: var(--text-muted);
@@ -260,6 +265,11 @@ export class NotificationDropdownComponent {
 
   requestClose(): void {
     this.closeRequested.emit();
+  }
+
+  formatTotalCount(value: number): string {
+    const total = Math.max(0, Math.floor(Number(value) || 0));
+    return total > 999 ? '999+' : `${total}`;
   }
 
   formatRelativeTime(value: string): string {

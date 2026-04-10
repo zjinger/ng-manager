@@ -116,7 +116,8 @@ export class RealtimeSyncService {
       if (!this.started) {
         return;
       }
-      this.notificationStore.load();
+      this.notificationStore.loadPreview();
+      this.notificationStore.reloadPageIfActive();
     }, 120);
   }
 

@@ -98,7 +98,7 @@ import { NotificationStore } from '../../store/notification.store';
     >
       <app-notification-list [items]="store.filteredItems()" />
 
-      @if (store.total() > 0 && !store.unreadOnly()) {
+      @if (store.total() > 0) {
         <div class="notifications-page__pagination">
           <nz-pagination
             [nzTotal]="store.total()"

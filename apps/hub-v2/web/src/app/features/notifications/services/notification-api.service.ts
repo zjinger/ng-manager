@@ -9,6 +9,7 @@ export interface NotificationListQuery {
   category?: NotificationApiItem['category'] | '';
   projectId?: string;
   keyword?: string;
+  unreadOnly?: boolean;
   page?: number;
   pageSize?: number;
   limit?: number;

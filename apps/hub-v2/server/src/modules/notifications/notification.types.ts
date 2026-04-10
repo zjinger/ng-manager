@@ -29,6 +29,7 @@ export interface ListNotificationsQuery {
   category?: NotificationCategory;
   keyword?: string;
   projectId?: string;
+  unreadOnly?: boolean | "true" | "false";
   page?: number;
   pageSize?: number;
   limit?: number;

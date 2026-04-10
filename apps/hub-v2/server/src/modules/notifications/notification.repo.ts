@@ -231,6 +231,9 @@ export class NotificationRepo {
       conditions.push("n.project_id = ?");
       params.push(query.projectId.trim());
     }
+    if (this.isTruthyQueryFlag(query.unreadOnly)) {
+      conditions.push("n.unread = 1");
+    }
     if (query.keyword?.trim()) {
       const keyword = `%${query.keyword.trim()}%`;
       conditions.push("(n.title LIKE ? OR n.description LIKE ? OR COALESCE(p.name, '') LIKE ? OR n.source_label LIKE ?)");
@@ -479,5 +482,9 @@ export class NotificationRepo {
     const sourceMs = Date.parse(sourceIso);
     const base = Number.isFinite(sourceMs) ? sourceMs : Date.now();
     return new Date(base - minutes * 60_000).toISOString();
+  }
+
+  private isTruthyQueryFlag(value: unknown): boolean {
+    return value === true || value === "true" || value === 1 || value === "1";
   }
 }

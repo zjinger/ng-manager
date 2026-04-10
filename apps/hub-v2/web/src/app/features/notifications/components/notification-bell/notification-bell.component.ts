@@ -31,8 +31,8 @@ import { NotificationDropdownComponent } from '../notification-dropdown/notifica
 
     <nz-dropdown-menu #notificationMenu="nzDropdownMenu">
       <app-notification-dropdown
-        [items]="dropdownItems()"
-        [totalCount]="store.items().length"
+        [items]="store.previewItems()"
+        [totalCount]="store.previewTotal()"
         (closeRequested)="closeMenu()"
       />
     </nz-dropdown-menu>
@@ -53,12 +53,11 @@ export class NotificationBellComponent {
   readonly store = inject(NotificationStore);
   readonly menuVisible = signal(false);
   readonly badgeCount = () => this.store.unreadCount();
-  readonly dropdownItems = () => this.store.items().slice(0, 20);
 
   onVisibleChange(visible: boolean): void {
     this.menuVisible.set(visible);
     if (visible) {
-      this.store.updateQuery({ limit: 50, page: undefined, pageSize: undefined });
+      this.store.loadPreview();
     }
   }
 
