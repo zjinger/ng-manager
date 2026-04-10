@@ -72,6 +72,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 [canAssign]="store.canAssign()"
                 [assignActionLabel]="store.assignActionLabel()"
                 [canManageParticipants]="store.canManageParticipants()"
+                [canPendingUpdate]="store.canPendingUpdate()"
                 [canResolve]="store.canResolve()"
                 [canVerify]="store.canVerify()"
                 [canReopen]="store.canReopen()"

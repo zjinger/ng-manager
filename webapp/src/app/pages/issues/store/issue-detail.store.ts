@@ -136,6 +136,15 @@ export class IssueDetailStore {
     );
   });
 
+  readonly canPendingUpdate = computed(() => {
+    const issue = this.issueState();
+    return (
+      !!issue &&
+      ['in_progress', 'reopened'].includes(issue.status) &&
+      this.permissionService.canResolve(issue, this.currentUser())
+    );
+  });
+
   readonly canVerify = computed(() => {
     const issue = this.issueState();
     return (
@@ -212,40 +221,26 @@ export class IssueDetailStore {
   }
 
   start(): void {
-    const currentProjectId = this.currentProjectId();
-    if (!currentProjectId) {
-      return;
-    }
-    this.runIssueAction((issueId) => this.issueApi.startIssue(currentProjectId, issueId));
+    this.runIssueAction((issueId) => this.issueApi.startIssue(issueId));
   }
 
   claim(): void {
-    const currentProjectId = this.currentProjectId();
-    if (!currentProjectId) {
-      return;
-    }
-    this.runIssueAction((issueId) => this.issueApi.claimIssue(currentProjectId, issueId));
+    this.runIssueAction((issueId) => this.issueApi.claimIssue(issueId));
   }
 
   assign(input: AssignIssueInput): void {
-    const currentProjectId = this.currentProjectId();
-    if (!currentProjectId) {
-      return;
-    }
     if (!input.assigneeId.trim()) {
       return;
     }
-    this.runIssueAction((issueId) => this.issueApi.assignIssue(currentProjectId, issueId, input));
+    this.runIssueAction((issueId) => this.issueApi.assignIssue(issueId, input));
+  }
+
+  waitForUpdate(): void {
+    this.runIssueAction((issueId) => this.issueApi.waitUpdateIssue(issueId));
   }
 
   resolve(summary?: string): void {
-    const currentProjectId = this.currentProjectId();
-    if (!currentProjectId) {
-      return;
-    }
-    this.runIssueAction((issueId) =>
-      this.issueApi.resolveIssue(currentProjectId, issueId, summary),
-    );
+    this.runIssueAction((issueId) => this.issueApi.resolveIssue(issueId, summary));
   }
 
   // verify(): void {

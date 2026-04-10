@@ -56,7 +56,7 @@ export class IssueApiService {
     });
   }
 
-  assignIssue(projectId: string, issueId: string, input: AssignIssueInput) {
+  assignIssue( issueId: string, input: AssignIssueInput) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'assign',
@@ -64,7 +64,7 @@ export class IssueApiService {
     });
   }
 
-  claimIssue(projectId: string, issueId: string) {
+  claimIssue( issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'claim',
@@ -72,7 +72,7 @@ export class IssueApiService {
     });
   }
 
-  startIssue(projectId: string, issueId: string) {
+  startIssue( issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'start',
@@ -80,15 +80,15 @@ export class IssueApiService {
     });
   }
 
-  resolveIssue(projectId: string, issueId: string, summary?: string) {
+  waitUpdateIssue(issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
-      action: 'resolve',
+      action: 'wait_update',
       payload: {},
     });
   }
 
-  completeIssue(projectId: string, issueId: string) {
+  resolveIssue( issueId: string, summary?: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'resolve',
@@ -104,7 +104,7 @@ export class IssueApiService {
   //   });
   // }
 
-  reopenIssue(projectId: string, issueId: string) {
+  reopenIssue( issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'reopen',

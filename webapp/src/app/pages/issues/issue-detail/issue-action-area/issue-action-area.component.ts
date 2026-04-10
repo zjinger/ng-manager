@@ -70,6 +70,16 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               添加协作人
             </button>
           }
+          @if (canPendingUpdate()) {
+            <button
+              nz-button
+              nzType="default"
+              class="detail-header__action-btn"
+              (click)="actionClick.emit('wait_update')"
+            >
+              标记待提测
+            </button>
+          }
           @if (canResolve()) {
             <button
               nz-button
@@ -80,6 +90,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               标记解决
             </button>
           }
+
           <!-- @if (canVerify()) {
           <button
             nz-button
@@ -136,6 +147,7 @@ export class IssueActionAreaComponent {
   readonly assignActionLabel = input('重新指派');
   readonly canManageParticipants = input(false);
   readonly canResolve = input(false);
+  readonly canPendingUpdate = input(false);
   readonly canVerify = input(false);
   readonly canReopen = input(false);
   readonly canClose = input(false);

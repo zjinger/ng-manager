@@ -6,6 +6,10 @@ import { HubAuthUser } from '@app/core/stores/user/user.types';
 
 @Injectable({ providedIn: 'root' })
 export class IssuePermissionService {
+  canEdit(issue: IssueEntity, user: HubAuthUser | null): boolean {
+    return this.matchActor(user, issue.reporterId);
+  }
+
   canAssign(issue: IssueEntity, user: HubAuthUser | null, isProjectAdmin = false): boolean {
     return !!this.getAssignActionLabel(issue, user, isProjectAdmin);
   }
@@ -15,7 +19,7 @@ export class IssuePermissionService {
       return null;
     }
 
-    if (!['open', 'reopened', 'in_progress'].includes(issue.status)) {
+    if (!['open', 'reopened', 'in_progress', 'pending_update'].includes(issue.status)) {
       return null;
     }
     const isReporter = this.matchActor(user, issue.reporterId);
@@ -46,7 +50,7 @@ export class IssuePermissionService {
   }
 
   canManageParticipants(issue: IssueEntity, user: HubAuthUser | null, isProjectAdmin = false): boolean {
-    if (!['open', 'in_progress'].includes(issue.status)) {
+    if (!['open', 'in_progress', 'pending_update'].includes(issue.status)) {
       return false;
     }
 
@@ -59,7 +63,7 @@ export class IssuePermissionService {
   }
 
   canClaim(issue: IssueEntity, user: HubAuthUser | null): boolean {
-    return !!user?.userId && !issue.assigneeId && ['open', 'reopened', 'in_progress'].includes(issue.status);
+    return !!user?.userId && !issue.assigneeId && ['open', 'reopened', 'in_progress', 'pending_update'].includes(issue.status);
   }
 
   canStart(issue: IssueEntity, user: HubAuthUser | null): boolean {

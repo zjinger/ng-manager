@@ -165,6 +165,10 @@ export class IssuesComponent {
         this.IssueAssignDialogOpen.set(true);
         break;
       }
+      case 'wait_update':{
+        this.waitForUpdateConfirm();
+        break;
+      }
       case 'resolve': {
         this.IssueResolveDialogOpen.set(true);
         break;
@@ -211,6 +215,16 @@ export class IssuesComponent {
       nzOnOk: () => {
         this.issueDetailStore.claim();
       },
+    });
+  }
+
+  private waitForUpdateConfirm() {
+    this.modal.confirm({
+      nzTitle: '标记为待提测？',
+      nzContent: '适用于代码已提交、等待测试验证的情况，方便后续单独筛选。',
+      nzOkText: '确认标记',
+      nzCancelText: '取消',
+      nzOnOk: () => this.issueDetailStore.waitForUpdate(),
     });
   }
 
