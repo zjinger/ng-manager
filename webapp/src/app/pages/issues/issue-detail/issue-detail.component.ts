@@ -57,7 +57,9 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
       </ng-template>
 
       <ng-template nzDrawerContent>
-        @if (!issue()) {
+        @if (store.canRead()) {
+          <nz-empty [nzNotFoundContent]="'您没有权限查看该问题详情'"></nz-empty>
+        } @else if (!issue()) {
           <nz-empty>正在加载测试单详情…</nz-empty>
         } @else if (issue(); as issue) {
           <div class="detail-wrap">
@@ -71,6 +73,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 [canClaim]="store.canClaim()"
                 [canAssign]="store.canAssign()"
                 [assignActionLabel]="store.assignActionLabel()"
+                [startActionLabel]="store.startActionLabel()"
                 [canManageParticipants]="store.canManageParticipants()"
                 [canPendingUpdate]="store.canPendingUpdate()"
                 [canResolve]="store.canResolve()"
@@ -94,6 +97,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                   [logs]="store.logs()"
                   [members]="members()"
                   [projectId]="store.currentProjectId()!"
+                  [canComment]="store.canComment()"
                 ></app-issue-comment-area>
               </div>
               <div class="right-column">
@@ -113,6 +117,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 <app-issue-attachment-area
                   [attachments]="store.attachments()"
                   [projectId]="store.currentProjectId()!"
+                  [members]="members()"
                 ></app-issue-attachment-area>
               </div>
             </div>

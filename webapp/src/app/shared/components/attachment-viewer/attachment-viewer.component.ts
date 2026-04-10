@@ -1,124 +1,7 @@
-// // attachment-preview.component.ts
-// import { Component, input, signal, HostListener } from '@angular/core';
-
-// export interface AttachmentPreviewItem {
-//   id: string;
-//   name: string;
-//   url: string;
-//   kind: 'image' | 'video' | 'file';
-//   meta?: string;
-// }
-
-// @Component({
-//   selector: 'app-attachment-viewer',
-//   standalone: true,
-//   template: `
-//     <!-- thumbnail -->
-//     <div class="thumb" (click)="open()">
-//       @if (item().kind === 'image') {
-//         <img [src]="item().url" />
-//       } @else if (item().kind === 'video') {
-//         <video [src]="item().url"></video>
-//       } @else {
-//         <div class="file">
-//           <span>{{ item().name }}</span>
-//         </div>
-//       }
-//     </div>
-
-//     <!-- fullscreen preview -->
-//     @if (visible()) {
-//       <div class="overlay" (click)="close()">
-//         <div class="viewer" (click)="$event.stopPropagation()">
-//           @if (item().kind === 'image') {
-//             <img class="content" [src]="item().url" />
-//           } @else if (item().kind === 'video') {
-//             <video class="content" [src]="item().url" controls autoplay></video>
-//           } @else {
-//             <div class="file-preview">
-//               <p>{{ item().name }}</p>
-//               <a [href]="item().url" target="_blank">打开文件</a>
-//             </div>
-//           }
-//         </div>
-//       </div>
-//     }
-//   `,
-//   styles: [
-//     `
-//       .thumb {
-//         width: 120px;
-//         height: 120px;
-//         border-radius: 8px;
-//         overflow: hidden;
-//         cursor: pointer;
-//         background: #f5f5f5;
-//         display: flex;
-//         align-items: center;
-//         justify-content: center;
-//       }
-
-//       img,
-//       video {
-//         width: 100%;
-//         height: 100%;
-//         object-fit: cover;
-//       }
-
-//       .file {
-//         font-size: 12px;
-//         padding: 6px;
-//         text-align: center;
-//       }
-
-//       .overlay {
-//         position: fixed;
-//         inset: 0;
-//         background: rgba(0, 0, 0, 0.9);
-//         display: flex;
-//         align-items: center;
-//         justify-content: center;
-//         z-index: 1000;
-//       }
-
-//       .viewer {
-//         max-width: 90vw;
-//         max-height: 90vh;
-//       }
-
-//       .content {
-//         max-width: 100%;
-//         max-height: 100%;
-//       }
-
-//       .file-preview {
-//         color: #fff;
-//         text-align: center;
-//       }
-//     `,
-//   ],
-// })
-// export class AttachmentViewerComponent {
-//   readonly item = input.required<AttachmentPreviewItem>();
-
-//   visible = signal(false);
-
-//   open() {
-//     this.visible.set(true);
-//   }
-
-//   close() {
-//     this.visible.set(false);
-//   }
-
-//   @HostListener('document:keydown.escape')
-//   onEsc() {
-//     this.close();
-//   }
-// }
-import { Component, input, signal } from '@angular/core';
+import { Component, inject, input, signal, TemplateRef, ViewChild } from '@angular/core';
 import { NzImageModule } from 'ng-zorro-antd/image';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 
 export interface AttachmentPreviewItem {
   id: string;
@@ -131,7 +14,7 @@ export interface AttachmentPreviewItem {
 @Component({
   selector: 'app-attachment-viewer',
   standalone: true,
-  imports: [NzImageModule, NzIconModule],
+  imports: [NzImageModule, NzIconModule, NzModalModule],
   template: `
     <div class="attachment-viewer__item">
       <!-- 内容 -->
@@ -144,7 +27,7 @@ export interface AttachmentPreviewItem {
           [attr.data-preview-id]="item().id"
         />
       } @else if (item().kind === 'video') {
-        <video class="attachment-viewer__video" [src]="item().url" controls></video>
+        <video class="attachment-viewer__video" [src]="item().url"></video>
       } @else {
         <div class="attachment-viewer__file">
           <span nz-icon nzType="file"></span>
@@ -166,18 +49,36 @@ export interface AttachmentPreviewItem {
       </div>
 
       <!-- 遮罩层 -->
-      <div class="attachment-viewer__mask" (click)="openPreview(item().id)">
+      <div class="attachment-viewer__mask" (click)="openPreview(item())">
         @if (item().kind === 'image') {
-          <span class="attachment-viewer__preview" >
+          <span class="attachment-viewer__preview">
             <span nz-icon nzType="eye"></span>
+          </span>
+        } @else if (item().kind === 'video') {
+          <span class="attachment-viewer__preview">
+            <span nz-icon nzType="play-circle"></span>
+          </span>
+        } @else if (item().kind === 'file') {
+          <span class="attachment-viewer__preview">
+            <span nz-icon nzType="download"></span>
           </span>
         }
       </div>
+
+      <ng-template #videoTpl>
+        <video
+          [src]="previewUrl()"
+          controls
+          autoplay
+          style="width:100%;height:100%;background:#000"
+        ></video>
+      </ng-template>
     </div>
   `,
   styles: [
     `
       .attachment-viewer__item {
+        margin: 6px;
         position: relative;
         height: 120px;
         border-radius: 8px;
@@ -276,11 +177,48 @@ export interface AttachmentPreviewItem {
   ],
 })
 export class AttachmentViewerComponent {
+  private readonly modal = inject(NzModalService);
   readonly item = input.required<AttachmentPreviewItem>();
 
-  openPreview(id: string) {
-    const el = document.querySelector(`img[data-preview-id="${id}"]`) as HTMLImageElement | null;
+  @ViewChild('videoTpl', { static: true }) videoTpl!: TemplateRef<any>;
+  previewUrl = signal('');
 
-    el?.click();
+  openPreview(item: AttachmentPreviewItem) {
+    if (item.kind === 'image') {
+      const el = document.querySelector(
+        `img[data-preview-id="${item.id}"]`,
+      ) as HTMLImageElement | null;
+
+      el?.click();
+      return;
+    }
+
+    if (item.kind === 'video') {
+      this.previewUrl.set(item.url);
+
+      this.modal.create({
+        nzContent: this.videoTpl,
+        nzFooter: null,
+        nzWidth: '80vw',
+        nzBodyStyle: {
+          padding: '0',
+          background: '#000',
+        },
+        nzCentered: true,
+      });
+    }
+
+    if (item.kind === 'file') {
+      this.downloadFile(item);
+    }
+  }
+
+  private downloadFile(item: AttachmentPreviewItem) {
+    const link = document.createElement('a');
+    link.href = item.url;
+    link.download = item.name; // 指定文件名
+    link.target = '_blank'; // 防止某些浏览器拦截
+    link.click();
+    link.remove();
   }
 }

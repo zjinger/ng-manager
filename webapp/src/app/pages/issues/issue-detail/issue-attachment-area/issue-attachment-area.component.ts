@@ -4,6 +4,7 @@ import {
   AttachmentViewerComponent,
 } from '@app/shared/components/attachment-viewer/attachment-viewer.component';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
+import { ProjectMemberEntity } from '@models/project.model';
 import { IssueAttachmentEntity } from '@pages/issues/models/issue.model';
 @Component({
   selector: 'app-issue-attachment-area',
@@ -29,11 +30,16 @@ import { IssueAttachmentEntity } from '@pages/issues/models/issue.model';
 export class IssueAttachmentAreaComponent {
   readonly attachments = input<IssueAttachmentEntity[]>([]);
   readonly projectId = input<string>('');
+  readonly members = input<ProjectMemberEntity[]>([]);
   protected readonly apiBaseUrl = '';
 
   attachmentPreviewItems(): AttachmentPreviewItem[] {
     return this.attachments().map((item) => {
       const mime = (item.upload.mimeType || '').toLowerCase();
+      const uploaderName = this.resolveUploaderName(
+        item.upload.uploaderId,
+        item.upload.uploaderName,
+      );
       const kind: AttachmentPreviewItem['kind'] = mime.startsWith('image/')
         ? 'image'
         : mime.startsWith('video/')
@@ -44,7 +50,7 @@ export class IssueAttachmentAreaComponent {
         name: item.upload.originalName,
         url: this.fileUrl(item),
         kind,
-        meta: `${item.upload.mimeType || '文件'} · ${this.formatSize(item.upload.fileSize)}`,
+        meta: `${uploaderName} · ${item.upload.mimeType || 'file'} · ${this.formatSize(item.upload.fileSize)}`,
       };
     });
   }
@@ -64,5 +70,17 @@ export class IssueAttachmentAreaComponent {
       return `${(size / 1024).toFixed(1)} KB`;
     }
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  private resolveUploaderName(uploaderId: string | null, uploaderName: string | null): string {
+    const normalizedName = uploaderName?.trim();
+    if (normalizedName) {
+      return normalizedName;
+    }
+    const normalizedId = uploaderId?.trim();
+    if (!normalizedId) {
+      return '未知上传者';
+    }
+    return this.members().find((item) => item.userId === normalizedId)?.displayName || normalizedId;
   }
 }

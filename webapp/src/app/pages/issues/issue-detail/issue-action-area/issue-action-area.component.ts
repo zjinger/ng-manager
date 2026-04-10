@@ -25,7 +25,12 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
         <div class="steps">
           <nz-steps [nzCurrent]="getStepIndex(issue().status)" nzSize="small">
             @for (step of stepsOptions; track step.value) {
-              <nz-step [nzTitle]="step.label" [nzStatus]="stepState(step.value)"></nz-step>
+              @if (issue().status === 'closed') {
+                <!-- 关闭时才会出现中间进度跳过的情况，根据logs设置状态 -->
+                <nz-step [nzTitle]="step.label" [nzStatus]="stepState(step.value)"></nz-step>
+              } @else {
+                <nz-step [nzTitle]="step.label"></nz-step>
+              }
             }
           </nz-steps>
         </div>
@@ -37,7 +42,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               class="detail-header__action-btn"
               (click)="actionClick.emit('start')"
             >
-              开始处理
+              {{ startActionLabel() }}
             </button>
           }
           @if (canClaim()) {
@@ -75,7 +80,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               nz-button
               nzType="default"
               class="detail-header__action-btn"
-              (click)="actionClick.emit('wait_update')"
+              (click)="actionClick.emit('wait-update')"
             >
               标记待提测
             </button>
@@ -144,13 +149,15 @@ export class IssueActionAreaComponent {
   readonly canStart = input(false);
   readonly canClaim = input(false);
   readonly canAssign = input(false);
-  readonly assignActionLabel = input('重新指派');
   readonly canManageParticipants = input(false);
   readonly canResolve = input(false);
   readonly canPendingUpdate = input(false);
   readonly canVerify = input(false);
   readonly canReopen = input(false);
   readonly canClose = input(false);
+
+  readonly assignActionLabel = input('重新指派');
+  readonly startActionLabel = input('开始处理');
 
   readonly actionClick = output<IssueActionType>();
 
@@ -169,8 +176,8 @@ export class IssueActionAreaComponent {
     return true;
   }) as { label: string; value: Exclude<IssueStatus, 'reopened'> }[];
 
+  // 根据logs标记经过的历史状态
   stepState(stepOptValue: Exclude<IssueStatus, 'reopened'>) {
-    // TODO：reopen的情况
     if (
       this.issue().status === stepOptValue ||
       (stepOptValue === 'open' && this.issue().status === 'reopened')

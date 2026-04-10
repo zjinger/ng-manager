@@ -58,7 +58,7 @@ type viewType = 'list' | 'board';
 export class IssuesComponent {
   private readonly issueListStore = inject(IssueListStore);
   private readonly issueDetailStore = inject(IssueDetailStore);
-  private readonly projectContextStore = inject(ProjectContextStore)
+  private readonly projectContextStore = inject(ProjectContextStore);
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
@@ -77,6 +77,8 @@ export class IssuesComponent {
   protected readonly IssueParticipants = this.issueDetailStore.participants;
   protected readonly busy = this.issueDetailStore.busy;
   protected readonly members = this.projectContextStore.currentProjectMembers;
+
+  // 详情操作相关
   protected readonly IssueAssignActionLabel = this.issueDetailStore.assignActionLabel;
 
   // 操作弹窗开关
@@ -106,16 +108,16 @@ export class IssuesComponent {
     });
 
     // 筛选变化时
-    let queryTimer:ReturnType<typeof setTimeout>;
-    effect(()=>{
+    let queryTimer: ReturnType<typeof setTimeout>;
+    effect(() => {
       const query = this.issueListStore.query();
-      if(query){
+      if (query) {
         clearTimeout(queryTimer);
         queryTimer = setTimeout(() => {
           this.issueListStore.load();
         }, 500);
       }
-    })
+    });
   }
 
   onPageChange(page: number) {
@@ -165,7 +167,7 @@ export class IssuesComponent {
         this.IssueAssignDialogOpen.set(true);
         break;
       }
-      case 'wait_update':{
+      case 'wait-update': {
         this.waitForUpdateConfirm();
         break;
       }
@@ -200,11 +202,18 @@ export class IssuesComponent {
 
   private startConfirm() {
     this.modal.confirm({
-      nzTitle: '确定开始处理该问题？',
-      nzContent: '开始处理后，将不能改变该任务负责人。',
-      nzOnOk: () => {
-        this.issueDetailStore.start();
-      },
+      nzTitle:
+        this.issueDetailStore.issue()?.status === 'pending_update'
+          ? '确认继续处理该问题？'
+          : '确认开始处理该问题？',
+      nzContent:
+        this.issueDetailStore.issue()?.status === 'pending_update'
+          ? '继续处理后，状态将从“待提测”回到“处理中”。'
+          : '开始处理后将进入处理流转，负责人可继续处理、转派或标记待提测。',
+      nzOkText:
+        this.issueDetailStore.issue()?.status === 'pending_update' ? '确认继续' : '确认开始',
+      nzCancelText: '取消',
+      nzOnOk: () => this.issueDetailStore.start(),
     });
   }
 

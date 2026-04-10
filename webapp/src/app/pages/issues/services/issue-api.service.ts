@@ -83,7 +83,7 @@ export class IssueApiService {
   waitUpdateIssue(issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
-      action: 'wait_update',
+      action: 'wait-update',
       payload: {},
     });
   }

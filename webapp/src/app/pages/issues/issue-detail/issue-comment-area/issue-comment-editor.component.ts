@@ -92,8 +92,13 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
               [nzLoading]="busy()"
               (click)="handleSubmit()"
               class="send"
+              [disabled]="!canComment()"
             >
-              发送评论
+              @if (canComment()) {
+                发送评论
+              } @else {
+                没有评论权限
+              }
             </button>
           </nz-form-item>
         </nz-comment-content>
@@ -132,7 +137,7 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
                     />
                     <nz-comment-content>
                       <p class="summary">
-                        <app-ellipsis-text [text]="log.summary || log.actionType" [lines]="2">
+                        <app-ellipsis-text [lines]="2">
                           @for (seg of commentSegments(log.summary!); track $index) {
                             @if (seg.mention) {
                               <span class="mention">{{ seg.text }}</span>
@@ -151,11 +156,9 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
                 <div class="log-item">
                   <div class="meta">
                     <span class="operator">{{ log.operatorName || '系统' }}</span>
-
                     <app-ellipsis-text [text]="log.summary || log.actionType" [lines]="2">
                       <span class="content">{{ log.summary || log.actionType }}</span>
                     </app-ellipsis-text>
-
                     <div class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</div>
                   </div>
                 </div>
@@ -258,6 +261,7 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
 export class IssueCommentAreaComponent {
   private readonly authStore = inject(UserStore);
 
+  readonly canComment = input(false);
   readonly logs = input.required<IssueLogEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly projectId = input<string>();

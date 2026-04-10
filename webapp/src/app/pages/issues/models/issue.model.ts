@@ -11,7 +11,7 @@ export type IssueActionType =
   | 'claim'
   | 'assign'
   | 'resolve'
-  | 'wait_update'
+  | 'wait-update'
   | 'verify'
   | 'reopen'
   | 'close'

@@ -58,30 +58,37 @@ export class IssueDetailStore {
     );
   });
 
-  // // 未加载附件数量
-  // readonly unloadedAttachmentsCount = computed(() => {
-  //   const attachments = this.attachments();
-  //   const previews = this.attachmentPreviews();
-
-  //   return attachments.length - previews.length;
-  // });
-
+  /*---------------------------------权限（user的scopes内是token权限，优先级最高的）--------------------------- */
   readonly isProjectAdmin = computed(() => {
-    const userId = this.currentUser()?.userId;
-    if (!userId) {
+    const user = this.currentUser();
+    if (!user) {
       return false;
     }
-    const member = this.membersState().find((item) => item.userId === userId);
+    const member = this.membersState().find((item) => item.userId === user.userId);
     return !!member && (member.roleCode === 'project_admin' || member.isOwner);
   });
 
   readonly canAssign = computed(() => {
     const issue = this.issueState();
     const currentUser = this.currentUser();
-    if (!issue) {
+    if (!issue || !currentUser) {
       return false;
     }
-    return this.permissionService.canAssign(issue, currentUser, this.isProjectAdmin());
+    //
+    if (currentUser.scopes?.includes('issue:assign:write')) {
+      return this.permissionService.canAssign(issue, currentUser, this.isProjectAdmin());
+    } else {
+      return false;
+    }
+  });
+
+  readonly startActionLabel = computed(() => {
+    const issue = this.issueState();
+    if (!issue) {
+      return '开始处理';
+    }
+
+    return issue.status === 'pending_update' ? '继续处理' : '开始处理';
   });
 
   readonly assignActionLabel = computed(() => {
@@ -100,76 +107,160 @@ export class IssueDetailStore {
 
   readonly canManageParticipants = computed(() => {
     const issue = this.issueState();
-    if (!issue) {
+    const user = this.currentUser();
+    if (!issue || !user) {
       return false;
     }
-    return this.permissionService.canManageParticipants(
-      issue,
-      this.currentUser(),
-      this.isProjectAdmin(),
-    );
+    if (user.scopes?.includes('issue:participant:write')) {
+      return this.permissionService.canManageParticipants(
+        issue,
+        this.currentUser(),
+        this.isProjectAdmin(),
+      );
+    } else {
+      return false;
+    }
   });
 
   readonly canClaim = computed(() => {
     const issue = this.issueState();
+    const user = this.currentUser();
     if (!issue) {
       return false;
     }
-    return this.permissionService.canClaim(issue, this.currentUser());
+    if (user?.scopes?.includes('issue:transition:write')) {
+      return this.permissionService.canClaim(issue, this.currentUser());
+    } else {
+      return false;
+    }
   });
 
   readonly canStart = computed(() => {
     const issue = this.issueState();
-    return (
-      !!issue &&
-      ['open', 'reopened'].includes(issue.status) &&
-      this.permissionService.canStart(issue, this.currentUser())
-    );
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:transition:write')) {
+      return (
+        !!issue &&
+        ['open', 'pending_update'].includes(issue.status) &&
+        this.permissionService.canStart(issue, this.currentUser())
+      );
+    } else {
+      return false;
+    }
   });
 
   readonly canResolve = computed(() => {
     const issue = this.issueState();
-    return (
-      !!issue &&
-      ['in_progress', 'reopened'].includes(issue.status) &&
-      this.permissionService.canResolve(issue, this.currentUser())
-    );
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:transition:write')) {
+      return (
+        !!issue &&
+        ['in_progress', 'pending_update', 'reopened'].includes(issue.status) &&
+        this.permissionService.canResolve(issue, this.currentUser())
+      );
+    } else {
+      return false;
+    }
   });
 
   readonly canPendingUpdate = computed(() => {
     const issue = this.issueState();
-    return (
-      !!issue &&
-      ['in_progress', 'reopened'].includes(issue.status) &&
-      this.permissionService.canResolve(issue, this.currentUser())
-    );
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:transition:write')) {
+      return (
+        !!issue &&
+        ['in_progress', 'reopened'].includes(issue.status) &&
+        this.permissionService.canResolve(issue, this.currentUser())
+      );
+    } else {
+      return false;
+    }
   });
 
   readonly canVerify = computed(() => {
     const issue = this.issueState();
-    return (
-      !!issue &&
-      issue.status === 'resolved' &&
-      this.permissionService.canVerify(issue, this.currentUser())
-    );
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:transition:write')) {
+      return (
+        !!issue &&
+        issue.status === 'resolved' &&
+        this.permissionService.canVerify(issue, this.currentUser())
+      );
+    } else {
+      return false;
+    }
   });
 
   readonly canReopen = computed(() => {
     const issue = this.issueState();
-    return (
-      !!issue &&
-      ['resolved', 'verified', 'closed'].includes(issue.status) &&
-      this.permissionService.canVerify(issue, this.currentUser())
-    );
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:transition:write')) {
+      return (
+        !!issue &&
+        ['resolved', 'verified', 'closed'].includes(issue.status) &&
+        this.permissionService.canVerify(issue, this.currentUser())
+      );
+    } else {
+      return false;
+    }
+  });
+
+  canComment = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:comment:write')) {
+      return true;
+    } else {
+      return false;
+    }
+  });
+
+  canRead = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:read')) {
+      return true;
+    } else {
+      return false;
+    }
   });
 
   readonly canClose = computed(() => {
     const issue = this.issueState();
-    return (
-      !!issue &&
-      ['open', 'in_progress', 'resolved', 'verified', 'reopened'].includes(issue.status) &&
-      this.permissionService.canClose(issue, this.currentUser())
-    );
+    const user = this.currentUser();
+    if (!issue || !user) {
+      return false;
+    }
+    if (user.scopes?.includes('issue:transition:write')) {
+      return (
+        !!issue &&
+        ['open', 'in_progress', 'resolved', 'verified', 'reopened'].includes(issue.status) &&
+        this.permissionService.canClose(issue, this.currentUser())
+      );
+    } else {
+      return false;
+    }
   });
 
   load(issueId: string): void {
