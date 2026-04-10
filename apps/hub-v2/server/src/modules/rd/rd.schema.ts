@@ -70,6 +70,7 @@ export const createRdItemSchema = z.object({
 });
 
 export const updateRdItemSchema = z.object({
+  version: z.coerce.number().int().min(1),
   title: z.string().trim().optional(),
   description: z.string().nullable().optional(),
   stageId: z.string().trim().nullable().optional(),

@@ -19,6 +19,7 @@ import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-d
 import { RdCreateDialogComponent } from '../../dialogs/rd-create-dialog/rd-create-dialog.component';
 import type { CreateRdItemInput, RdItemEntity, RdListQuery, RdLogEntity } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
+import { RdPermissionService } from '../../services/rd-permission.service';
 import { RdStore } from '../../store/rd.store';
 import { map } from 'rxjs';
 
@@ -236,6 +237,7 @@ export class RdBoardPageComponent {
   readonly projectContext = inject(ProjectContextStore);
   private readonly projectApi = inject(ProjectApiService);
   private readonly rdApi = inject(RdApiService);
+  private readonly rdPermission = inject(RdPermissionService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -257,60 +259,24 @@ export class RdBoardPageComponent {
   readonly members = signal<ProjectMemberEntity[]>([]);
   readonly selectedLogs = signal<RdLogEntity[]>([]);
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
-  readonly canEditSelectedProgress = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    return !!current && !!userId && !!current.assigneeId && current.assigneeId === userId;
-  });
-  readonly canStartSelectedItem = computed(() => this.canEditSelectedProgress());
-  readonly canCompleteSelectedItem = computed(() => this.canEditSelectedProgress());
-  readonly canEditSelectedBasic = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.creatorId === userId || current.assigneeId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-  readonly canDeleteSelectedItem = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.creatorId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-  readonly canBlockSelectedItem = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.assigneeId && current.assigneeId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-  readonly canResumeSelectedItem = computed(() => this.canBlockSelectedItem());
-  readonly canAdvanceSelectedItem = computed(() => {
-    const current = this.selectedItem();
-    if (!current) {
-      return false;
-    }
-    if (current.status !== 'done' && current.status !== 'accepted') {
-      return false;
-    }
-    return this.canEditSelectedBasic();
-  });
+  readonly canEditSelectedProgress = computed(() => this.rdPermission.canEditProgress(this.selectedItem(), this.currentUserId()));
+  readonly canStartSelectedItem = computed(() => this.rdPermission.canStart(this.selectedItem(), this.currentUserId()));
+  readonly canCompleteSelectedItem = computed(() => this.rdPermission.canComplete(this.selectedItem(), this.currentUserId()));
+  readonly canEditSelectedBasic = computed(() =>
+    this.rdPermission.canEditBasic(this.selectedItem(), this.currentUserId(), this.members())
+  );
+  readonly canDeleteSelectedItem = computed(() =>
+    this.rdPermission.canDelete(this.selectedItem(), this.currentUserId(), this.members())
+  );
+  readonly canBlockSelectedItem = computed(() =>
+    this.rdPermission.canBlock(this.selectedItem(), this.currentUserId(), this.members())
+  );
+  readonly canResumeSelectedItem = computed(() =>
+    this.rdPermission.canResume(this.selectedItem(), this.currentUserId(), this.members())
+  );
+  readonly canAdvanceSelectedItem = computed(() =>
+    this.rdPermission.canAdvance(this.selectedItem(), this.currentUserId(), this.members())
+  );
   readonly subtitle = computed(() => {
     const project = this.projectContext.currentProject();
     const projectName = project?.name ?? '当前项目';
@@ -590,7 +556,7 @@ export class RdBoardPageComponent {
     if (!current) {
       return;
     }
-    this.store.update(current.id, { progress });
+    this.store.update(current.id, { version: current.version, progress });
   }
 
   saveSelectedBasic(input: { title: string; description: string | null }): void {
@@ -602,6 +568,7 @@ export class RdBoardPageComponent {
       return;
     }
     this.store.update(current.id, {
+      version: current.version,
       title: input.title,
       description: input.description,
     });

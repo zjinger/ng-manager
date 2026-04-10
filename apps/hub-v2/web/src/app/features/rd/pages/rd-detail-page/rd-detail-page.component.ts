@@ -14,6 +14,7 @@ import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-di
 import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
 import type { RdItemEntity, RdLogEntity, RdStageEntity } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
+import { RdPermissionService } from '../../services/rd-permission.service';
 import { map } from 'rxjs';
 
 @Component({
@@ -118,6 +119,7 @@ export class RdDetailPageComponent {
   private readonly rdApi = inject(RdApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly authStore = inject(AuthStore);
+  private readonly rdPermission = inject(RdPermissionService);
   private readonly routeItemId = toSignal(this.route.paramMap.pipe(map((params) => params.get('itemId'))), {
     initialValue: this.route.snapshot.paramMap.get('itemId'),
   });
@@ -135,60 +137,14 @@ export class RdDetailPageComponent {
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly subtitle = computed(() => this.item()?.rdNo || '通过 Dashboard 待办进入');
 
-  readonly canEditProgress = computed(() => {
-    const current = this.item();
-    const userId = this.currentUserId();
-    return !!current && !!userId && !!current.assigneeId && current.assigneeId === userId;
-  });
-  readonly canStart = computed(() => this.canEditProgress());
-  readonly canComplete = computed(() => this.canEditProgress());
-  readonly canEditBasic = computed(() => {
-    const current = this.item();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.creatorId === userId || current.assigneeId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-  readonly canDelete = computed(() => {
-    const current = this.item();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.creatorId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-  readonly canBlock = computed(() => {
-    const current = this.item();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.assigneeId && current.assigneeId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-  readonly canResume = computed(() => this.canBlock());
-  readonly canAdvance = computed(() => {
-    const current = this.item();
-    if (!current) {
-      return false;
-    }
-    if (current.status !== 'done' && current.status !== 'accepted') {
-      return false;
-    }
-    return this.canEditBasic();
-  });
+  readonly canEditProgress = computed(() => this.rdPermission.canEditProgress(this.item(), this.currentUserId()));
+  readonly canStart = computed(() => this.rdPermission.canStart(this.item(), this.currentUserId()));
+  readonly canComplete = computed(() => this.rdPermission.canComplete(this.item(), this.currentUserId()));
+  readonly canEditBasic = computed(() => this.rdPermission.canEditBasic(this.item(), this.currentUserId(), this.members()));
+  readonly canDelete = computed(() => this.rdPermission.canDelete(this.item(), this.currentUserId(), this.members()));
+  readonly canBlock = computed(() => this.rdPermission.canBlock(this.item(), this.currentUserId(), this.members()));
+  readonly canResume = computed(() => this.rdPermission.canResume(this.item(), this.currentUserId(), this.members()));
+  readonly canAdvance = computed(() => this.rdPermission.canAdvance(this.item(), this.currentUserId(), this.members()));
 
   constructor() {
     effect(() => {
@@ -239,7 +195,7 @@ export class RdDetailPageComponent {
     if (!current || !this.canEditProgress()) {
       return;
     }
-    this.runAction(() => this.rdApi.update(current.id, { progress }));
+    this.runAction(() => this.rdApi.update(current.id, { version: current.version, progress }));
   }
 
   saveBasic(input: { title: string; description: string | null }): void {
@@ -247,7 +203,7 @@ export class RdDetailPageComponent {
     if (!current || !this.canEditBasic()) {
       return;
     }
-    this.runAction(() => this.rdApi.update(current.id, input));
+    this.runAction(() => this.rdApi.update(current.id, { version: current.version, ...input }));
   }
 
   deleteItem(): void {

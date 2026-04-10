@@ -24,6 +24,7 @@ type RdItemRow = {
   id: string;
   project_id: string;
   rd_no: string;
+  version: number;
   title: string;
   description: string | null;
   stage_id: string | null;
@@ -157,17 +158,18 @@ export class RdRepo {
       .prepare(
         `
           INSERT INTO rd_items (
-            id, project_id, rd_no, title, description, stage_id, type, status, priority,
+            id, project_id, rd_no, version, title, description, stage_id, type, status, priority,
             assignee_id, assignee_name, creator_id, creator_name, reviewer_id, reviewer_name,
             progress, plan_start_at, plan_end_at, actual_start_at, actual_end_at, blocker_reason,
             created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
         entity.id,
         entity.projectId,
         entity.rdNo,
+        entity.version,
         entity.title,
         entity.description,
         entity.stageId,
@@ -271,14 +273,17 @@ export class RdRepo {
     };
   }
 
-  updateItem(id: string, input: UpdateRdItemRowInput): boolean {
+  updateItem(id: string, input: UpdateRdItemRowInput, expectedVersion?: number): boolean {
     const entries = Object.entries(input);
     if (entries.length === 0) {
       return false;
     }
-    const assignments = entries.map(([key]) => `${key} = ?`).join(", ");
+    const assignments = [...entries.map(([key]) => `${key} = ?`), "version = version + 1"].join(", ");
     const params = entries.map(([, value]) => value);
-    const result = this.db.prepare(`UPDATE rd_items SET ${assignments} WHERE id = ?`).run(...params, id);
+    const whereClause = expectedVersion === undefined ? "id = ?" : "id = ? AND version = ?";
+    const result = this.db
+      .prepare(`UPDATE rd_items SET ${assignments} WHERE ${whereClause}`)
+      .run(...params, id, ...(expectedVersion === undefined ? [] : [expectedVersion]));
     return result.changes > 0;
   }
 
@@ -491,6 +496,7 @@ export class RdRepo {
       id: row.id,
       projectId: row.project_id,
       rdNo: row.rd_no,
+      version: row.version,
       title: row.title,
       description: row.description,
       stageId: row.stage_id,

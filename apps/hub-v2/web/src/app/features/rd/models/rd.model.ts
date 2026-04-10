@@ -29,6 +29,7 @@ export interface RdItemEntity {
   id: string;
   projectId: string;
   rdNo: string;
+  version: number;
   title: string;
   description: string | null;
   stageId: string | null;
@@ -101,6 +102,7 @@ export interface AdvanceRdStageInput {
 }
 
 export interface UpdateRdItemInput {
+  version: number;
   title?: string;
   description?: string | null;
   stageId?: string | null;

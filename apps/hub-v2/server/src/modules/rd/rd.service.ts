@@ -108,6 +108,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       id: genId("rdi"),
       projectId,
       rdNo: this.repo.getNextRdNo(projectId, itemType),
+      version: 1,
       title: input.title.trim(),
       description: input.description?.trim() || null,
       stageId,
@@ -138,10 +139,11 @@ export class RdService implements RdCommandContract, RdQueryContract {
   async updateItem(id: string, input: UpdateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "update rd item");
     await this.requireBasicEditAccess(current, ctx, "update rd item");
+    this.requireItemVersion(current, input.version);
     if (input.progress !== undefined) {
       this.requireAssignee(current, ctx, "update rd progress");
       if (input.progress >= 100 && current.status === "doing") {
-        return this.complete(id, ctx);
+        return this.complete(id, ctx, input.version);
       }
       if (input.progress < 100 && (current.status === "done" || current.status === "accepted")) {
         return this.applyAction(
@@ -155,7 +157,9 @@ export class RdService implements RdCommandContract, RdQueryContract {
             blocker_reason: null
           },
           // `resumed rd item by progress update: ${current.progress}% -> ${input.progress}%`
-          `更新研发项进度: ${current.progress}% -> ${input.progress}%`
+          `更新研发项进度: ${current.progress}% -> ${input.progress}%`,
+          undefined,
+          input.version
         );
       }
     }
@@ -180,9 +184,9 @@ export class RdService implements RdCommandContract, RdQueryContract {
       plan_start_at: input.planStartAt === undefined ? current.planStartAt : input.planStartAt?.trim() || null,
       plan_end_at: input.planEndAt === undefined ? current.planEndAt : input.planEndAt?.trim() || null,
       updated_at: nowIso()
-    });
+    }, input.version);
     if (!updated) {
-      throw new AppError(ERROR_CODES.RD_ITEM_UPDATE_FAILED, "failed to update rd item", 500);
+      throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
     }
     const entity = this.requireItem(id);
     this.repo.createLog(this.createLog(entity, "update", ctx, this.createUpdateLogContent(current, input)));
@@ -230,7 +234,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     return this.applyAction(id, "resume", ctx, current, { blocker_reason: null }, "标记研发项已恢复");
   }
 
-  async complete(id: string, ctx: RequestContext): Promise<RdItemEntity> {
+  async complete(id: string, ctx: RequestContext, expectedVersion?: number): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "complete rd item");
     this.requireAssignee(current, ctx, "complete rd item");
     const now = nowIso();
@@ -245,7 +249,8 @@ export class RdService implements RdCommandContract, RdQueryContract {
         blocker_reason: null
       },
       "标记研发项完成",
-      now
+      now,
+      expectedVersion
     );
   }
 
@@ -533,7 +538,8 @@ export class RdService implements RdCommandContract, RdQueryContract {
     current: RdItemEntity,
     extra: Record<string, unknown>,
     content: string,
-    actionAt?: string
+    actionAt?: string,
+    expectedVersion?: number
   ): Promise<RdItemEntity> {
     const nextStatus = transitionRdItem(current.status, action);
     const updatedAt = actionAt ?? nowIso();
@@ -541,8 +547,11 @@ export class RdService implements RdCommandContract, RdQueryContract {
       status: nextStatus,
       updated_at: updatedAt,
       ...extra
-    });
+    }, expectedVersion);
     if (!updated) {
+      if (expectedVersion !== undefined) {
+        throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
+      }
       throw new AppError(ERROR_CODES.RD_ACTION_FAILED, `failed to ${action} rd item`, 500);
     }
     const entity = this.requireItem(id);
@@ -563,6 +572,12 @@ export class RdService implements RdCommandContract, RdQueryContract {
       metaJson: null,
       createdAt: nowIso()
     };
+  }
+
+  private requireItemVersion(item: RdItemEntity, version: number): void {
+    if (item.version !== version) {
+      throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
+    }
   }
 
   private createUpdateLogContent(current: RdItemEntity, input: UpdateRdItemInput): string {
