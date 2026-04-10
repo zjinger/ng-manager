@@ -141,6 +141,15 @@ export class IssueDetailStore {
     }
     return this.permissionService.canManageParticipants(issue, this.currentUser(), this.isProjectAdmin());
   });
+  readonly removableAttachmentIds = computed(() => {
+    const currentUser = this.currentUser();
+    const isProjectAdmin = this.isProjectAdmin();
+    return new Set(
+      this.attachmentsState()
+        .filter((attachment) => this.permissionService.canDeleteAttachment(attachment, currentUser, isProjectAdmin))
+        .map((attachment) => attachment.id)
+    );
+  });
   readonly canClaim = computed(() => {
     const issue = this.issueState();
     if (!issue) {

@@ -93,6 +93,9 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
     }
 
     const upload = await this.uploadQuery.getById(record.uploadId, ctx);
+    if (!(this.matchActor(ctx, upload.uploaderId) || (await this.isProjectAdmin(issue.projectId, ctx)))) {
+      throw new AppError(ERROR_CODES.ISSUE_ATTACHMENT_DELETE_FAILED, "issue attachment delete forbidden", 403);
+    }
     const deleted = this.attachmentRepo.delete(issue.id, attachmentId);
     if (!deleted) {
       throw new AppError(ERROR_CODES.ISSUE_ATTACHMENT_DELETE_FAILED, "failed to delete attachment", 500);
@@ -155,5 +158,23 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
       metaJson: JSON.stringify({ kind, fileName }),
       createdAt
     };
+  }
+
+  private matchActor(ctx: RequestContext, actorId: string | null): boolean {
+    if (!actorId) {
+      return false;
+    }
+    const userId = ctx.userId?.trim();
+    const accountId = ctx.accountId?.trim();
+    return actorId === userId || actorId === accountId;
+  }
+
+  private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      return false;
+    }
+    const member = await this.projectAccess.requireProjectMember(projectId, userId, "issue attachment role check");
+    return member.roleCode === "project_admin" || member.isOwner;
   }
 }

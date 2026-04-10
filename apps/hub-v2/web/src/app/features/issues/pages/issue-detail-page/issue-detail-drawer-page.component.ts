@@ -144,6 +144,8 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
             />
             <app-issue-attachments-panel
               [attachments]="store.attachments()"
+              [members]="store.members()"
+              [removableAttachmentIds]="store.removableAttachmentIds()"
               [busy]="store.busy()"
               (upload)="store.uploadAttachment($event)"
               (remove)="store.removeAttachment($event)"

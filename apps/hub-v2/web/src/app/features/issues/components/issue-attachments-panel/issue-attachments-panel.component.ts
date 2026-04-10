@@ -73,6 +73,8 @@ export class IssueAttachmentsPanelComponent {
   private readonly apiBaseUrl = inject(API_BASE_URL);
 
   readonly attachments = input<IssueAttachmentEntity[]>([]);
+  readonly members = input<Array<{ userId: string; displayName: string }>>([]);
+  readonly removableAttachmentIds = input<Set<string>>(new Set());
   readonly busy = input(false);
   readonly upload = output<File>();
   readonly remove = output<string>();
@@ -107,6 +109,12 @@ export class IssueAttachmentsPanelComponent {
 
   attachmentPreviewItems(): AttachmentPreviewItem[] {
     return this.attachments().map((item) => {
+      const uploaderName = this.resolveUploaderName(item.upload.uploaderId, item.upload.uploaderName);
+      const metaParts = [
+        uploaderName,
+        item.upload.mimeType || '文件',
+        this.formatSize(item.upload.fileSize),
+      ];
       return {
         id: item.id,
         name: item.upload.originalName,
@@ -115,7 +123,8 @@ export class IssueAttachmentsPanelComponent {
           name: item.upload.originalName,
           type: item.upload.mimeType || '',
         }),
-        meta: `${item.upload.mimeType || '文件'} · ${this.formatSize(item.upload.fileSize)}`,
+        meta: metaParts.join(' · '),
+        removable: this.removableAttachmentIds().has(item.id),
       };
     });
   }
@@ -140,5 +149,17 @@ export class IssueAttachmentsPanelComponent {
       return `${(size / 1024).toFixed(1)} KB`;
     }
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  private resolveUploaderName(uploaderId: string | null, uploaderName: string | null): string {
+    const normalizedName = uploaderName?.trim();
+    if (normalizedName) {
+      return normalizedName;
+    }
+    const normalizedId = uploaderId?.trim();
+    if (!normalizedId) {
+      return '未知上传者';
+    }
+    return this.members().find((item) => item.userId === normalizedId)?.displayName || normalizedId;
   }
 }

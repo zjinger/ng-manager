@@ -148,6 +148,8 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
               />
               <app-issue-attachments-panel
                 [attachments]="store.attachments()"
+                [members]="store.members()"
+                [removableAttachmentIds]="store.removableAttachmentIds()"
                 [busy]="store.busy()"
                 (upload)="store.uploadAttachment($event)"
                 (remove)="store.removeAttachment($event)"
@@ -240,12 +242,12 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
       .detail-page {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 16px;
       }
       .detail-stack {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 16px;
       }
       .detail-page.is-embedded {
         gap: 0;
@@ -287,9 +289,12 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
       .detail-main,
       .detail-side {
         min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
       .detail-page.is-embedded .detail-stack {
-        gap: 18px;
+        gap: 12px;
       }
       .detail-page.is-embedded .state-card,
       .detail-page.is-embedded .description-card {

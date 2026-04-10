@@ -32,7 +32,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
       visibility: input.visibility ?? "private",
       status: "active",
       uploaderId: input.uploaderId ?? ctx.userId ?? null,
-      uploaderName: input.uploaderName ?? null,
+      uploaderName: input.uploaderName ?? (ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId),
       createdAt: now,
       updatedAt: now
     };

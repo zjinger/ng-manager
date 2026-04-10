@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import type { AuthUser } from '@core/auth';
-import type { IssueEntity } from '../models/issue.model';
+import type { IssueAttachmentEntity, IssueEntity } from '../models/issue.model';
 
 @Injectable({ providedIn: 'root' })
 export class IssuePermissionService {
@@ -42,9 +42,11 @@ export class IssuePermissionService {
     if (!['open', 'in_progress', 'pending_update'].includes(issue.status)) {
       return false;
     }
+    if (!issue.assigneeId) {
+      return false;
+    }
 
     return (
-      this.isAdmin(user) ||
       isProjectAdmin ||
       this.matchActor(user, issue.reporterId) ||
       this.matchActor(user, issue.assigneeId)
@@ -56,7 +58,7 @@ export class IssuePermissionService {
   }
 
   canStart(issue: IssueEntity, user: AuthUser | null): boolean {
-    return this.isAdmin(user) || this.matchActor(user, issue.assigneeId);
+    return this.matchActor(user, issue.assigneeId);
   }
 
   canResolve(issue: IssueEntity, user: AuthUser | null): boolean {
@@ -64,21 +66,18 @@ export class IssuePermissionService {
   }
 
   canVerify(issue: IssueEntity, user: AuthUser | null): boolean {
-    return this.isAdmin(user) || this.matchActor(user, issue.verifierId) || this.matchActor(user, issue.reporterId);
+    return this.matchActor(user, issue.verifierId) || this.matchActor(user, issue.reporterId);
   }
 
   canClose(issue: IssueEntity, user: AuthUser | null): boolean {
-    if (this.isAdmin(user)) {
-      return true;
-    }
     if (!this.matchActor(user, issue.reporterId)) {
       return false;
     }
     return ['open', 'reopened', 'verified'].includes(issue.status);
   }
 
-  private isAdmin(user: AuthUser | null): boolean {
-    return user?.role === 'admin';
+  canDeleteAttachment(attachment: IssueAttachmentEntity, user: AuthUser | null, isProjectAdmin = false): boolean {
+    return isProjectAdmin || this.matchActor(user, attachment.upload.uploaderId);
   }
 
   private matchActor(user: AuthUser | null, actorId: string | null): boolean {

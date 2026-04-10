@@ -21,6 +21,9 @@ import { AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, Component, El
         }
       </div>
       @if (isOverflowing()) {
+        @if (!expanded()) {
+          <div class="resolution__ellipsis">......</div>
+        }
         <button type="button" class="resolution__toggle" (click)="toggleExpanded()">
           {{ expanded() ? '收起' : '展开' }}
         </button>
@@ -67,13 +70,11 @@ import { AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, Component, El
         overflow: hidden;
       }
 
-      .resolution__content.is-collapsed::after {
-        content: '......';
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        padding-left: 10px;
-        background: linear-gradient(90deg, transparent, var(--bg-container) 40%);
+      .resolution__ellipsis {
+        margin-top: 2px;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1;
       }
 
       .resolution__toggle {
@@ -91,10 +92,6 @@ import { AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, Component, El
 
       .resolution__toggle:hover {
         color: var(--primary-700);
-      }
-
-      :host-context(html[data-theme='dark']) .resolution__content.is-collapsed::after {
-        background: linear-gradient(90deg, transparent, var(--bg-container) 34%);
       }
     `,
   ],

@@ -14,6 +14,7 @@ export interface AttachmentPreviewItem {
   url: string;
   kind: AttachmentPreviewKind;
   meta?: string;
+  removable?: boolean;
 }
 
 @Component({
@@ -77,7 +78,7 @@ export interface AttachmentPreviewItem {
                   <span nz-icon nzType="eye"></span>
                 </a>
               }
-            @if (removable() && !removeDisabled()) {
+            @if (removable() && item.removable !== false && !removeDisabled()) {
                 <a
                   class="attachment-wall__remove"
                   nz-tooltip="删除"
@@ -244,9 +245,9 @@ export class AttachmentPreviewWallComponent {
       return '图片';
     }
     if (kind === 'video') {
-      return '可预览视频';
+      return '视频';
     }
-    return '文件附件';
+    return '文件';
   }
 
   extensionLabel(name: string): string | null {

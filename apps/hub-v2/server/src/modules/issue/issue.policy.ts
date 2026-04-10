@@ -54,6 +54,10 @@ export function requireIssueParticipantManageAccess(
   if (issue.status !== "open" && issue.status !== "in_progress" && issue.status !== "pending_update") {
     throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_FORBIDDEN, "issue participant manage forbidden", 403);
   }
+  // 未指定负责人前，不允许维护协作人，避免执行关系尚未确定。
+  if (!issue.assigneeId) {
+    throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_FORBIDDEN, "issue participant manage forbidden", 403);
+  }
 
   if (isProjectAdmin || matchActor(ctx, issue.reporterId) || matchActor(ctx, issue.assigneeId)) {
     return;
