@@ -30,6 +30,7 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
 import { RdAction } from '@pages/rd/models/rd.model';
+import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
 
 @Component({
   selector: 'app-issue-comment-area',
@@ -48,6 +49,7 @@ import { RdAction } from '@pages/rd/models/rd.model';
     FormsModule,
     NzAvatarModule,
     DetailItemCardComponent,
+    EllipsisTextComponent,
   ],
   template: `
     <app-detail-item-card title="研发动态">
@@ -116,8 +118,9 @@ import { RdAction } from '@pages/rd/models/rd.model';
         </nz-list> -->
         <nz-timeline>
           @for (log of logs(); track log.id) {
-            <nz-timeline-item [nzDot]="log.actionType === 'comment' ? undefined : dotTemplate">
+            <nz-timeline-item [nzDot]="dotTemplate">
               @if (log.actionType === 'comment') {
+                <!-- 用户评论 -->
                 <div class="comment-item">
                   <nz-comment [nzAuthor]="log.operatorName!">
                     <nz-avatar
@@ -129,23 +132,30 @@ import { RdAction } from '@pages/rd/models/rd.model';
                     />
                     <nz-comment-content>
                       <p class="summary">
-                        @for (seg of commentSegments(log.summary!); track $index) {
-                          @if (seg.mention) {
-                            <span class="mention">{{ seg.text }}</span>
-                          } @else {
-                            <span>{{ seg.text }}</span>
+                        <app-ellipsis-text [text]="log.summary || log.actionType" [lines]="2">
+                          @for (seg of commentSegments(log.summary!); track $index) {
+                            @if (seg.mention) {
+                              <span class="mention">{{ seg.text }}</span>
+                            } @else {
+                              <span>{{ seg.text }}</span>
+                            }
                           }
-                        }
+                        </app-ellipsis-text>
                       </p>
                     </nz-comment-content>
                   </nz-comment>
                   <span class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</span>
                 </div>
               } @else {
+                <!-- 评论以外的操作 -->
                 <div class="log-item">
                   <div class="meta">
                     <span class="operator">{{ log.operatorName || '系统' }}</span>
-                    <span class="content">{{ log.summary || log.actionType }}</span>
+
+                    <app-ellipsis-text [text]="log.summary || log.actionType" [lines]="2">
+                      <span class="content">{{ log.summary || log.actionType }}</span>
+                    </app-ellipsis-text>
+
                     <div class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</div>
                   </div>
                 </div>
@@ -192,21 +202,19 @@ import { RdAction } from '@pages/rd/models/rd.model';
       gap: 12px;
     }
     .mention-name {
-      color: var(--text-primary);
       font-weight: 600;
     }
     .mention-id {
-      color: var(--text-muted);
       font-size: 12px;
     }
     .log-item {
       padding: 4px 0 0;
       .meta {
         display: flex;
-        align-items: center;
+        align-items: start;
         gap: 0.875rem;
         color: rgba(0, 0, 0, 0.65);
-        font-size: 1rem;
+        font-size: 0.875rem;
         margin-bottom: 4px;
         .operator {
           font-weight: bold;
@@ -326,7 +334,7 @@ export class IssueCommentAreaComponent {
         close: 'close-circle',
         advance_stage: 'right-circle',
         delete: 'delete',
-        comment: '',
+        comment: 'message',
       }[action] ?? 'history'
     );
   }

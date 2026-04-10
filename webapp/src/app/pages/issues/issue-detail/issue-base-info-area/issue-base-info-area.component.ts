@@ -52,7 +52,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
           {{ issue().environmentCode || '-' }}
         </nz-descriptions-item>
         <nz-descriptions-item nzTitle="创建时间">
-          {{ issue().createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}
+          {{ issue().createdAt | date: 'yyyy-MM-dd HH:mm' }}
         </nz-descriptions-item>
       </nz-descriptions>
     </app-detail-item-card>

@@ -159,14 +159,14 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
         border-bottom: 1px solid #bbbbbb;
       }
       .left-column {
-        width: 60%;
+        width: 62%;
 
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
       .right-column {
-        width: 40%;
+        width: 38%;
         display: flex;
         flex-direction: column;
         gap: 10px;

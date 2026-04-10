@@ -1,4 +1,5 @@
 import { Component, computed, input, signal } from '@angular/core';
+import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
 import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
 import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants/issue-type-options';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
@@ -6,7 +7,7 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
 
 @Component({
   selector: 'app-issue-description-area',
-  imports: [DetailItemCardComponent, MarkdownViewerComponent],
+  imports: [DetailItemCardComponent, MarkdownViewerComponent, EllipsisTextComponent],
   template: `
     <app-detail-item-card [title]="getIssueTitleByType(issue())" maxHeight="550px">
       @if (mdContent(); as des) {
@@ -22,19 +23,31 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
       @if (issue().resolutionSummary) {
         <div class="resolution">
           <div class="resolution-label">解决说明</div>
-          <div class="resolution-content">{{ issue().resolutionSummary }}</div>
+          <div class="resolution-content">
+            <app-ellipsis-text [lines]="2">
+              {{ issue().resolutionSummary }}
+            </app-ellipsis-text>
+          </div>
         </div>
       }
       @if (issue().closeReason) {
         <div class="resolution">
           <div class="resolution-label">关闭原因</div>
-          <div class="resolution-content">{{ issue().closeReason }}</div>
+          <div class="resolution-content">
+            <app-ellipsis-text [lines]="2">
+              {{ issue().closeReason }}
+            </app-ellipsis-text>
+          </div>
         </div>
       }
       @if (issue().closeRemark) {
         <div class="resolution">
           <div class="resolution-label">重开原因</div>
-          <div class="resolution-content">{{ issue().closeRemark }}</div>
+          <div class="resolution-content">
+            <app-ellipsis-text [lines]="2">
+              {{ issue().closeRemark }}
+            </app-ellipsis-text>
+          </div>
         </div>
       }
     </app-detail-item-card>
