@@ -396,6 +396,7 @@ export class NotificationService
         "participant.removed": "协作人已移除",
         "attachment.added": "附件已添加",
         "attachment.removed": "附件已移除",
+        "branch.completed": "协作分支已完成",
         assign: "已重新指派",
         claim: "已认领"
       }[action] || "状态已更新"
@@ -417,6 +418,12 @@ export class NotificationService
         return `${issueNo || "测试单"} · ${authorName}: ${preview}`;
       }
       return `${issueNo || "测试单"} · ${authorName} 提到了你`;
+    }
+    if (action === "branch.completed") {
+      const payload = event.payload ?? {};
+      const operatorName = this.pickString(payload["operatorName"]) || this.pickString(payload["branchOwnerUserName"]) || "协作人";
+      const branchTitle = this.pickString(payload["branchTitle"]) || "未命名分支";
+      return `${issueNo || "测试单"} · ${operatorName} 完成了协作分支：${branchTitle}`;
     }
     return `${issueNo || "测试单"} · ${this.issueActionLabel(action, kind)}`;
   }
@@ -514,6 +521,9 @@ export class NotificationService
       );
     }
     if (action === "verify" || action === "reopen") {
+      return this.excludeActorIds(this.collectUserIds(payload["assigneeId"]), actorIds);
+    }
+    if (action === "branch.completed") {
       return this.excludeActorIds(this.collectUserIds(payload["assigneeId"]), actorIds);
     }
     if (action === "commented") {

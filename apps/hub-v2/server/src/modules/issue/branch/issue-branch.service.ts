@@ -189,7 +189,20 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
       branchId: entity.id,
       title: entity.title
     }, now));
-    await this.emitIssueUpdated(issue, ctx, now, [entity.ownerUserId]);
+    await this.emitIssueUpdated(
+      issue,
+      ctx,
+      now,
+      [entity.ownerUserId],
+      "branch.completed",
+      {
+        branchId: entity.id,
+        branchTitle: entity.title,
+        branchOwnerUserId: entity.ownerUserId,
+        branchOwnerUserName: entity.ownerUserName,
+        operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId
+      }
+    );
     return entity;
   }
 
@@ -268,7 +281,9 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
     issue: { id: string; projectId: string; issueNo: string; title: string; status: string; priority: string; assigneeId: string | null; reporterId: string; verifierId: string | null; },
     ctx: RequestContext,
     occurredAt: string,
-    affectedUserIds: string[]
+    affectedUserIds: string[],
+    action = "updated",
+    extraPayload: Record<string, unknown> = {}
   ): Promise<void> {
     await this.eventBus.emit({
       type: "issue.updated",
@@ -276,7 +291,7 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
       projectId: issue.projectId,
       entityType: "issue",
       entityId: issue.id,
-      action: "updated",
+      action,
       actorId: ctx.accountId,
       occurredAt,
       payload: {
@@ -287,7 +302,8 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
         assigneeId: issue.assigneeId,
         reporterId: issue.reporterId,
         verifierId: issue.verifierId,
-        affectedUserIds
+        affectedUserIds,
+        ...extraPayload
       }
     });
   }
