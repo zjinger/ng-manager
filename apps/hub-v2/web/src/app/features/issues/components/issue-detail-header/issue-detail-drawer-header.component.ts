@@ -79,7 +79,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .detail-header {
         display: grid;
         gap: 18px;
-        padding: 26px 28px;
+        padding: 22px 20px;
         border: 1px solid var(--border-color);
         border-radius: 24px;
         background:
@@ -90,14 +90,14 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .detail-header__top {
         display: flex;
         justify-content: space-between;
-        gap: 20px;
+        gap: 16px;
       }
       .detail-header__bottom {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding-top: 18px;
+        padding-top: 16px;
         border-top: 1px solid var(--border-color-soft);
       }
       .detail-header__bottom-main {
@@ -133,7 +133,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .detail-header__actions {
         display: flex;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         justify-content: flex-start;
       }
@@ -141,12 +141,13 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: nowrap;
         width: 100%;
         min-width: 0;
         overflow-x: auto;
         overflow-y: hidden;
+        padding-right: 4px;
         padding-bottom: 2px;
         scrollbar-width: thin;
       }
@@ -155,9 +156,9 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
-        min-width: 72px;
-        height: 32px;
-        padding: 0 12px;
+        min-width: 64px;
+        height: 30px;
+        padding: 0 10px;
         border-radius: 999px;
         background: var(--bg-subtle);
         border: 1px solid transparent;
@@ -187,7 +188,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .state-flow__arrow {
         flex: 0 0 auto;
         color: var(--gray-300);
-        font-size: 12px;
+        font-size: 11px;
         transition: color 160ms ease;
       }
       .state-flow__arrow.is-done {
@@ -215,9 +216,9 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         color: rgba(165, 180, 252, 0.55);
       }
       .detail-header__action-btn {
-        min-width: 84px;
+        min-width: 76px;
         border-radius: 999px;
-        height: 40px;
+        height: 36px;
       }
       @media (max-width: 960px) {
         .detail-header__top,
@@ -311,11 +312,15 @@ export class IssueDetailDrawerHeaderComponent {
       reached.add('closed');
     }
 
-    if (reached.has('resolved') || reached.has('verified')) {
+    if (issue.status !== 'reopened' && (reached.has('resolved') || reached.has('verified'))) {
       reached.add('pending_update');
     }
 
     if (issue.status === 'reopened') {
+      reached.add('in_progress');
+      reached.delete('pending_update');
+      reached.delete('resolved');
+      reached.delete('verified');
       reached.delete('closed');
     }
 
@@ -325,7 +330,7 @@ export class IssueDetailDrawerHeaderComponent {
   private currentStep(reached: Set<(typeof this.flowSteps)[number]['value']>): (typeof this.flowSteps)[number]['value'] {
     const status = this.issue().status;
     if (status === 'reopened') {
-      return reached.has('in_progress') ? 'in_progress' : 'open';
+      return 'in_progress';
     }
     if (status === 'open' || status === 'in_progress' || status === 'pending_update' || status === 'resolved' || status === 'verified' || status === 'closed') {
       return status;

@@ -159,7 +159,7 @@ export class IssueDetailStore {
   });
   readonly canStart = computed(() => {
     const issue = this.issueState();
-    return !!issue && ['open', 'reopened', 'pending_update'].includes(issue.status) && this.permissionService.canStart(issue, this.currentUser());
+    return !!issue && ['open', 'pending_update'].includes(issue.status) && this.permissionService.canStart(issue, this.currentUser());
   });
   readonly startActionLabel = computed(() => {
     const issue = this.issueState();

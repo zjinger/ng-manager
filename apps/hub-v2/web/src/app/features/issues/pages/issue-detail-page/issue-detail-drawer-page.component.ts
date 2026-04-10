@@ -116,7 +116,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
             <app-issue-activity-timeline [logs]="store.logs()" />
           </div>
         </section>
-        <div  class="detail-side">
+        <div class="detail-side detail-side--drawer">
             <app-issue-props-panel [issue]="issue" />
             <app-issue-branches-panel
               [branches]="store.branches()"
@@ -234,19 +234,22 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
   styles: [
     `
       .detail-page {
-        display:grid;
-        gap:12px;
-        grid-template-columns: 2fr 1fr;
+        display: grid;
+        align-items: start;
+        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) minmax(272px, 288px);
       }
       .detail-stack {
         display: flex;
         flex-direction: column;
-        gap:12px;
+        gap: 12px;
+        min-width: 0;
       }
-      .detail-side{
+      .detail-side {
         display: flex;
         flex-direction: column;
-        gap:12px;
+        gap: 12px;
+        min-width: 0;
       }
       
       .state-card,

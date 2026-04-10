@@ -77,6 +77,7 @@ import type { IssueBranchEntity } from '../../models/issue.model';
       .panel-actions {
         display: inline-flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 8px;
       }
       .branch-summary {
@@ -116,6 +117,7 @@ import type { IssueBranchEntity } from '../../models/issue.model';
         font-weight: 700;
         line-height: 1.5;
         flex: 1;
+        overflow-wrap: anywhere;
       }
       .branch-card__meta {
         display: flex;
@@ -137,17 +139,48 @@ import type { IssueBranchEntity } from '../../models/issue.model';
       .branch-card__actions {
         display: inline-flex;
         align-items: center;
+        flex-wrap: wrap;
         justify-content: flex-end;
         gap: 8px;
       }
-      // @media (max-width: 768px) {
-      //   .branch-card {
-      //     grid-template-columns: minmax(0, 1fr);
-      //   }
-      //   .branch-card__actions {
-      //     justify-content: flex-start;
-      //   }
-      // }
+
+      :host-context(.detail-side--drawer) .panel-actions {
+        justify-content: flex-start;
+        width: 100%;
+      }
+
+      :host-context(.detail-side--drawer) .branch-summary {
+        padding: 10px 16px 0;
+      }
+
+      :host-context(.detail-side--drawer) .branch-list {
+        gap: 10px;
+        padding: 10px 16px 16px;
+      }
+
+      :host-context(.detail-side--drawer) .branch-card {
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+      }
+
+      :host-context(.detail-side--drawer) .branch-card__head {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      :host-context(.detail-side--drawer) .branch-card__title {
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      :host-context(.detail-side--drawer) .branch-card__meta {
+        gap: 6px 10px;
+      }
+
+      :host-context(.detail-side--drawer) .branch-card__actions {
+        justify-content: flex-start;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

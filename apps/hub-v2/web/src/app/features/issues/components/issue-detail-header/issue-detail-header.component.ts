@@ -318,11 +318,15 @@ export class IssueDetailHeaderComponent {
     }
 
     // Historical issues reached "待验证" before "待提测" existed; visually treat it as passed.
-    if (reached.has('resolved') || reached.has('verified')) {
+    if (issue.status !== 'reopened' && (reached.has('resolved') || reached.has('verified'))) {
       reached.add('pending_update');
     }
 
     if (issue.status === 'reopened') {
+      reached.add('in_progress');
+      reached.delete('pending_update');
+      reached.delete('resolved');
+      reached.delete('verified');
       reached.delete('closed');
     }
 
@@ -332,7 +336,7 @@ export class IssueDetailHeaderComponent {
   private currentStep(reached: Set<(typeof this.flowSteps)[number]['value']>): (typeof this.flowSteps)[number]['value'] {
     const status = this.issue().status;
     if (status === 'reopened') {
-      return reached.has('in_progress') ? 'in_progress' : 'open';
+      return 'in_progress';
     }
     if (status === 'open' || status === 'in_progress' || status === 'pending_update' || status === 'resolved' || status === 'verified' || status === 'closed') {
       return status;

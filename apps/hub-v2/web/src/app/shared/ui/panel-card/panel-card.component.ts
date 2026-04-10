@@ -44,8 +44,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
       .panel__header {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         gap: 16px;
         padding: 12px 16px;
         border-bottom: 1px solid var(--border-color);
@@ -54,6 +55,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       .panel__title {
         display: flex;
         align-items: center;
+        flex: 1 1 auto;
         gap: 8px;
         min-width: 0;
       }
@@ -77,7 +79,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       .panel__actions {
         display: inline-flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 10px;
+        justify-content: flex-end;
+        margin-left: auto;
+        max-width: 100%;
       }
 
       .panel__empty {
