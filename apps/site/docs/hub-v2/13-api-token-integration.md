@@ -136,6 +136,7 @@ Issue：
 - `POST /api/personal/projects/:projectKey/issues/:issueId/assign`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/claim`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/start`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/wait-update`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/resolve`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/verify`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/reopen`

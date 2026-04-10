@@ -40,6 +40,13 @@ export default async function personalTokenIssueRoutes(app: FastifyInstance) {
     return ok(await app.container.issueCommand.start(params.issueId, ctx), "issue started");
   });
 
+  app.post("/projects/:projectKey/issues/:issueId/wait-update", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "issue:transition:write");
+    const params = personalIssueIdParamSchema.parse(request.params);
+    await assertIssueProjectAccess(app, params.projectKey, params.issueId, ctx);
+    return ok(await app.container.issueCommand.waitUpdate(params.issueId, ctx), "issue waiting for environment update");
+  });
+
   app.post("/projects/:projectKey/issues/:issueId/resolve", async (request) => {
     const ctx = requirePersonalTokenAuth(request, "issue:transition:write");
     const params = personalIssueIdParamSchema.parse(request.params);
