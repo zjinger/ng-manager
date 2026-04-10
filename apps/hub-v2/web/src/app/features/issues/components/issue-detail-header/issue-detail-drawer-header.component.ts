@@ -287,6 +287,7 @@ export class IssueDetailDrawerHeaderComponent {
   private reachedSteps(): Set<(typeof this.flowSteps)[number]['value']> {
     const issue = this.issue();
     const reached = new Set<(typeof this.flowSteps)[number]['value']>(['open']);
+    const reopenCutoff = this.latestReopenAt();
     const addStep = (status: string | null | undefined) => {
       if (status === 'open' || status === 'in_progress' || status === 'pending_update' || status === 'resolved' || status === 'verified' || status === 'closed') {
         reached.add(status);
@@ -294,12 +295,15 @@ export class IssueDetailDrawerHeaderComponent {
     };
 
     for (const log of this.logs()) {
+      if (reopenCutoff !== null && Date.parse(log.createdAt) <= reopenCutoff) {
+        continue;
+      }
       addStep(log.fromStatus);
       addStep(log.toStatus);
     }
 
     addStep(issue.status);
-    if (issue.startedAt) {
+    if (reopenCutoff === null && issue.startedAt) {
       reached.add('in_progress');
     }
     if (issue.resolvedAt) {
@@ -312,12 +316,12 @@ export class IssueDetailDrawerHeaderComponent {
       reached.add('closed');
     }
 
-    if (issue.status !== 'reopened' && (reached.has('resolved') || reached.has('verified'))) {
+    if (reopenCutoff === null && issue.status !== 'reopened' && (reached.has('resolved') || reached.has('verified'))) {
       reached.add('pending_update');
     }
 
     if (issue.status === 'reopened') {
-      reached.add('in_progress');
+      reached.delete('in_progress');
       reached.delete('pending_update');
       reached.delete('resolved');
       reached.delete('verified');
@@ -330,11 +334,28 @@ export class IssueDetailDrawerHeaderComponent {
   private currentStep(reached: Set<(typeof this.flowSteps)[number]['value']>): (typeof this.flowSteps)[number]['value'] {
     const status = this.issue().status;
     if (status === 'reopened') {
-      return 'in_progress';
+      return 'open';
     }
     if (status === 'open' || status === 'in_progress' || status === 'pending_update' || status === 'resolved' || status === 'verified' || status === 'closed') {
       return status;
     }
     return 'open';
+  }
+
+  private latestReopenAt(): number | null {
+    let latest: number | null = null;
+    for (const log of this.logs()) {
+      if (log.actionType !== 'reopen' && log.toStatus !== 'reopened') {
+        continue;
+      }
+      const timestamp = Date.parse(log.createdAt);
+      if (Number.isNaN(timestamp)) {
+        continue;
+      }
+      if (latest === null || timestamp > latest) {
+        latest = timestamp;
+      }
+    }
+    return latest;
   }
 }

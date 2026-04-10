@@ -159,7 +159,7 @@ export class IssueDetailStore {
   });
   readonly canStart = computed(() => {
     const issue = this.issueState();
-    return !!issue && ['open', 'pending_update'].includes(issue.status) && this.permissionService.canStart(issue, this.currentUser());
+    return !!issue && ['open', 'reopened', 'pending_update'].includes(issue.status) && this.permissionService.canStart(issue, this.currentUser());
   });
   readonly startActionLabel = computed(() => {
     const issue = this.issueState();
@@ -170,11 +170,11 @@ export class IssueDetailStore {
   });
   readonly canWaitForUpdate = computed(() => {
     const issue = this.issueState();
-    return !!issue && ['in_progress', 'reopened'].includes(issue.status) && this.permissionService.canResolve(issue, this.currentUser());
+    return !!issue && issue.status === 'in_progress' && this.permissionService.canResolve(issue, this.currentUser());
   });
   readonly canResolve = computed(() => {
     const issue = this.issueState();
-    return !!issue && ['in_progress', 'pending_update', 'reopened'].includes(issue.status) && this.permissionService.canResolve(issue, this.currentUser());
+    return !!issue && ['in_progress', 'pending_update'].includes(issue.status) && this.permissionService.canResolve(issue, this.currentUser());
   });
   readonly canVerify = computed(() => {
     const issue = this.issueState();
