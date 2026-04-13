@@ -82,7 +82,6 @@ export function buildUploadFormData(
   options?: { entityType?: string | null; entityId?: string | null },
 ): FormData {
   const formData = new FormData();
-  formData.set('file', file);
   formData.set('bucket', policy.bucket);
   formData.set('category', policy.category);
   formData.set('visibility', policy.visibility);
@@ -93,6 +92,7 @@ export function buildUploadFormData(
     formData.set('entityType', entityType);
     formData.set('entityId', entityId);
   }
+  formData.set('file', file);
 
   return formData;
 }

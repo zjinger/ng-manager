@@ -5,6 +5,7 @@ import type { EventBus } from "../../shared/event/event-bus";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ProjectAccessContract } from "../project/project-access.contract";
+import type { UploadCommandContract } from "../upload/upload.contract";
 import {
   requireRdAcceptAccess
 } from "./rd.policy";
@@ -40,7 +41,8 @@ export class RdService implements RdCommandContract, RdQueryContract {
   constructor(
     private readonly repo: RdRepo,
     private readonly projectAccess: ProjectAccessContract,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly uploadCommand: UploadCommandContract
   ) {}
 
   async createStage(input: CreateRdStageInput, ctx: RequestContext): Promise<RdStageEntity> {
@@ -131,6 +133,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       updatedAt: now
     };
     this.repo.createItem(entity);
+    await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
     this.repo.createLog(this.createLog(entity, "create", ctx, `创建研发项 ${entity.rdNo}`));
     await this.emitRdEvent("rd.created", "created", entity, ctx);
     return entity;
@@ -189,6 +192,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
     }
     const entity = this.requireItem(id);
+    await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
     this.repo.createLog(this.createLog(entity, "update", ctx, this.createUpdateLogContent(current, input)));
     await this.emitRdEvent("rd.updated", "updated", entity, ctx);
     return entity;
@@ -635,5 +639,16 @@ export class RdService implements RdCommandContract, RdQueryContract {
         reviewerId: item.reviewerId
       }
     });
+  }
+
+  private async promoteTempMarkdownUploads(itemId: string, description: string | null, ctx: RequestContext): Promise<void> {
+    await this.uploadCommand.promoteMarkdownUploads(
+      {
+        content: description,
+        bucket: "rd",
+        entityId: itemId
+      },
+      ctx
+    );
   }
 }

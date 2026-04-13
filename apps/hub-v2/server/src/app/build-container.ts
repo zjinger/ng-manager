@@ -163,9 +163,9 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus, contentLogService);
   const documentRepo = new DocumentRepo(db);
-  const documentService = new DocumentService(documentRepo, projectAccess, eventBus, contentLogService);
   const uploadRepo = new UploadRepo(db);
   const uploadService = new UploadService(uploadRepo, config.uploadDir);
+  const documentService = new DocumentService(documentRepo, projectAccess, eventBus, contentLogService, uploadService);
   const issueRepo = new IssueRepo(db);
   const issueService = new IssueService(issueRepo, projectAccess, eventBus, uploadService);
   const issueAttachmentRepo = new IssueAttachmentRepo(db);
@@ -188,7 +188,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     eventBus
   );
   const rdRepo = new RdRepo(db);
-  const rdService = new RdService(rdRepo, projectAccess, eventBus);
+  const rdService = new RdService(rdRepo, projectAccess, eventBus, uploadService);
   const releaseRepo = new ReleaseRepo(db);
   const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus, contentLogService);
   const dashboardService = new DashboardService(

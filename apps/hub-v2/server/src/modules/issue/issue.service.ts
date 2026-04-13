@@ -132,6 +132,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     }
 
     const entity = this.requireById(id);
+    await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
     this.repo.createLog(
       this.createLog(id, "update", current.status, entity.status, ctx, this.createUpdateSummary(current, input))
     );
@@ -506,28 +507,14 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
   }
 
   private async promoteTempMarkdownUploads(issueId: string, description: string | null, ctx: RequestContext): Promise<void> {
-    if (!description) {
-      return;
-    }
-    const uploadIds = this.extractUploadIdsFromMarkdown(description);
-    if (uploadIds.length === 0) {
-      return;
-    }
-    await this.uploadCommand.promoteIssueMarkdownUploads(uploadIds, issueId, ctx);
-  }
-
-  private extractUploadIdsFromMarkdown(content: string): string[] {
-    const ids = new Set<string>();
-    const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_]+)\/raw/g;
-    let match = pattern.exec(content);
-    while (match) {
-      const id = match[1]?.trim();
-      if (id) {
-        ids.add(id);
-      }
-      match = pattern.exec(content);
-    }
-    return Array.from(ids);
+    await this.uploadCommand.promoteMarkdownUploads(
+      {
+        content: description,
+        bucket: "issues",
+        entityId: issueId
+      },
+      ctx
+    );
   }
 
   private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {

@@ -6,6 +6,7 @@ import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ContentLogCommandContract } from "../content-log/content-log.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
+import type { UploadCommandContract } from "../upload/upload.contract";
 import { requireAdmin } from "../utils/require-admin";
 import type { DocumentCommandContract, DocumentQueryContract } from "./document.contract";
 import { DocumentRepo } from "./document.repo";
@@ -22,7 +23,8 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     private readonly repo: DocumentRepo,
     private readonly projectAccess: ProjectAccessContract,
     private readonly eventBus: EventBus,
-    private readonly contentLogCommand: ContentLogCommandContract
+    private readonly contentLogCommand: ContentLogCommandContract,
+    private readonly uploadCommand: UploadCommandContract
   ) {}
 
   async create(input: CreateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
@@ -50,6 +52,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     };
 
     this.repo.create(entity);
+    await this.promoteTempMarkdownUploads(entity.id, entity.contentMd, ctx);
     this.recordContentLog("created", entity, ctx, "创建文档");
     return entity;
   }
@@ -84,6 +87,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     }
 
     const entity = this.requireById(id);
+    await this.promoteTempMarkdownUploads(entity.id, entity.contentMd, ctx);
     await this.eventBus.emit({
       type: "document.updated",
       scope: entity.projectId ? "project" : "global",
@@ -261,5 +265,15 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
       createdAt: nowIso()
     });
   }
-}
 
+  private async promoteTempMarkdownUploads(documentId: string, contentMd: string | null, ctx: RequestContext): Promise<void> {
+    await this.uploadCommand.promoteMarkdownUploads(
+      {
+        content: contentMd,
+        bucket: "documents",
+        entityId: documentId
+      },
+      ctx
+    );
+  }
+}

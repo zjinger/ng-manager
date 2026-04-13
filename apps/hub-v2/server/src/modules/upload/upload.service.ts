@@ -4,7 +4,7 @@ import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import { UploadRepo } from "./upload.repo";
-import type { UploadCommandContract, UploadQueryContract } from "./upload.contract";
+import type { PromoteMarkdownUploadsInput, UploadCommandContract, UploadQueryContract } from "./upload.contract";
 import type { CreateUploadInput, UploadEntity } from "./upload.types";
 import fs from "node:fs";
 import path from "node:path";
@@ -49,12 +49,14 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
     return upload;
   }
 
-  async promoteIssueMarkdownUploads(uploadIds: string[], issueId: string, _ctx: RequestContext): Promise<void> {
-    const normalizedIssueId = issueId.trim();
-    if (!normalizedIssueId) {
+  async promoteMarkdownUploads(input: PromoteMarkdownUploadsInput, _ctx: RequestContext): Promise<void> {
+    const normalizedBucket = input.bucket.trim();
+    const normalizedEntityId = input.entityId.trim();
+    if (!normalizedBucket || !normalizedEntityId) {
       return;
     }
 
+    const uploadIds = this.extractUploadIdsFromMarkdown(input.content);
     const uniqueIds = Array.from(new Set(uploadIds.map((item) => item.trim()).filter(Boolean)));
     if (uniqueIds.length === 0) {
       return;
@@ -77,7 +79,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
         continue;
       }
 
-      const targetDir = path.resolve(this.uploadDir, "issues", normalizedIssueId);
+      const targetDir = path.resolve(this.uploadDir, normalizedBucket, normalizedEntityId);
       const targetPath = path.join(targetDir, upload.fileName);
       fs.mkdirSync(targetDir, { recursive: true });
 
@@ -87,7 +89,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
         }
       }
 
-      this.repo.updateStorageAndBucket(upload.id, "issues", "markdown", targetPath, nowIso());
+      this.repo.updateStorageAndBucket(upload.id, normalizedBucket, "markdown", targetPath, nowIso());
     }
   }
 
@@ -122,5 +124,23 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
 
     fs.copyFileSync(sourcePath, targetPath);
     fs.unlinkSync(sourcePath);
+  }
+
+  private extractUploadIdsFromMarkdown(content: string | null | undefined): string[] {
+    if (!content) {
+      return [];
+    }
+
+    const ids = new Set<string>();
+    const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_-]+)\/raw/g;
+    let match = pattern.exec(content);
+    while (match) {
+      const id = match[1]?.trim();
+      if (id) {
+        ids.add(id);
+      }
+      match = pattern.exec(content);
+    }
+    return Array.from(ids);
   }
 }
