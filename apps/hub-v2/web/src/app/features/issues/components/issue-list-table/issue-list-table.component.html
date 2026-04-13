@@ -130,7 +130,11 @@
               <span class="issue-row__assignee-name">未指派</span>
             }
             @if ((item.participantNames?.length ?? 0) > 0) {
-              <span class="issue-row__participant-inline">· {{ participantNamesText(item) }}</span>
+              <span
+                class="issue-row__participant-inline"
+                [nz-tooltip]="'协作人：' + participantNamesText(item)"
+                >· {{ participantNamesText(item) }}</span
+              >
             }
           </div>
           <div class="issue-row__time">
@@ -144,7 +148,11 @@
 }
 
 @if (hoveredPreview(); as preview) {
-  <div class="issue-image-hover-preview" [style.left.px]="preview.left" [style.top.px]="preview.top">
+  <div
+    class="issue-image-hover-preview"
+    [style.left.px]="preview.left"
+    [style.top.px]="preview.top"
+  >
     <img class="issue-image-hover-preview__image" [src]="preview.src" [alt]="preview.alt" />
   </div>
 }

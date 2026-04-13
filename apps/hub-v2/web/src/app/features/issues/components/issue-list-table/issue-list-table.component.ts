@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
 import { DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
+import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import type { IssueEntity } from '../../models/issue.model';
 import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.component';
 
@@ -19,6 +20,7 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
     StatusBadgeComponent,
     TypeBadgeComponent,
     DatePipe,
+    NzTooltipModule
   ],
   templateUrl: './issue-list-table.component.html',
   styleUrls: ['./issue-list-table.component.less'],
@@ -54,15 +56,19 @@ export class IssueListTableComponent {
     return (page - 1) * pageSize + index + 1;
   }
 
+  /**
+   * 显示参与者名称，最多显示两位，超过两位显示 "+N"
+   */
   participantNamesText(item: IssueEntity): string {
     const names = (item.participantNames ?? []).filter(Boolean);
     if (names.length === 0) {
       return '';
     }
-    if (names.length <= 2) {
-      return names.join('、');
-    }
-    return `${names.slice(0, 2).join('、')} +${names.length - 2}`;
+    return names.join('、');
+    // if (names.length <= 2) {
+    //   return names.join('、');
+    // }
+    // return `${names.slice(0, 2).join('、')} +${names.length - 2}`;
   }
 
   previewSummary(item: IssueEntity): string {
