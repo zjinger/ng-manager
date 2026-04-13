@@ -226,7 +226,7 @@ export type IssueListViewMode = 'list' | 'card';
       .toolbar-search {
         min-width: 240px;
         max-width: 320px;
-        flex: 0 0 clamp(240px, 28vw, 320px);
+        // flex: 0 0 clamp(240px, 28vw, 320px);
       }
       .advanced-panel {
         display: grid;

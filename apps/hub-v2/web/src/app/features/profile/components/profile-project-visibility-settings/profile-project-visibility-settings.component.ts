@@ -30,16 +30,16 @@ import type { ProjectScopeMode } from '@core/state';
         [nzDisabled]="!editable() || saving()"
         (ngModelChange)="modeChange.emit($event)"
       >
-        <label nz-radio nzValue="all_accessible" class="scope-item">
-          <span class="scope-item__content">
-            <span class="scope-item__title">显示所有可访问项目</span>
-            <span class="scope-item__desc">包含内部项目和你参与的项目。</span>
-          </span>
-        </label>
         <label nz-radio nzValue="member_only" class="scope-item">
           <span class="scope-item__content">
             <span class="scope-item__title">仅显示我参与的项目</span>
             <span class="scope-item__desc">项目选择器仅展示你是成员的项目。</span>
+          </span>
+        </label>
+        <label nz-radio nzValue="all_accessible" class="scope-item">
+          <span class="scope-item__content">
+            <span class="scope-item__title">显示所有可访问项目</span>
+            <span class="scope-item__desc">包含内部项目和你参与的项目。</span>
           </span>
         </label>
       </nz-radio-group>

@@ -64,7 +64,7 @@ export class ProfileRepo {
     return {
       channels: this.parseBooleanMap(row.channels_json),
       events: this.parseBooleanMap(row.events_json),
-      projectScopeMode: row.project_scope_mode ?? "all_accessible",
+      projectScopeMode: row.project_scope_mode ?? "member_only",
       includeArchivedProjects: (row.include_archived_projects ?? 0) === 1,
       updatedAt: row.updated_at
     };
@@ -76,7 +76,7 @@ export class ProfileRepo {
       .get(accountId) as { ok: number } | undefined;
     const channelsJson = JSON.stringify(input.channels);
     const eventsJson = JSON.stringify(input.events);
-    const projectScopeMode = input.projectScopeMode ?? "all_accessible";
+    const projectScopeMode = input.projectScopeMode ?? "member_only";
     const includeArchivedProjects = input.includeArchivedProjects ? 1 : 0;
 
     if (exists) {

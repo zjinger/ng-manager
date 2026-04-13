@@ -33,11 +33,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
         display: flex;
         align-items: center;
         gap: 12px;
-        flex-wrap: wrap;
       }
-
+      
       .page-toolbar__start {
         flex: 1 1 auto;
+        flex-wrap: wrap;
       }
 
       .page-toolbar__end {

@@ -27,8 +27,8 @@ export class ProjectContextStore {
   );
   private readonly projectScopeModeState = signal<ProjectScopeMode>(
     typeof localStorage === 'undefined'
-      ? 'all_accessible'
-      : ((localStorage.getItem(PROJECT_SCOPE_STORAGE_KEY) as ProjectScopeMode | null) ?? 'all_accessible')
+      ? 'member_only'
+      : ((localStorage.getItem(PROJECT_SCOPE_STORAGE_KEY) as ProjectScopeMode | null) ?? 'member_only')
   );
   private readonly includeArchivedProjectsState = signal<boolean>(
     typeof localStorage === 'undefined' ? false : localStorage.getItem(INCLUDE_ARCHIVED_STORAGE_KEY) === '1'
@@ -102,14 +102,14 @@ export class ProjectContextStore {
   reset(): void {
     this.projectsState.set([]);
     this.setCurrentProjectId(null);
-    this.setProjectScopeMode('all_accessible');
+    this.setProjectScopeMode('member_only');
     this.setIncludeArchivedProjects(false);
   }
 
   private loadScopeFromServer(): Observable<ProjectScopeMode> {
     return this.api.get<ProfilePreferencesResponse>('/profile/preferences').pipe(
       map((prefs): ProjectScopeMode => {
-        const mode: ProjectScopeMode = prefs?.projectScopeMode === 'member_only' ? 'member_only' : 'all_accessible';
+        const mode: ProjectScopeMode = prefs?.projectScopeMode === 'all_accessible' ? 'all_accessible' : 'member_only';
         this.setProjectScopeMode(mode);
         if (typeof prefs?.includeArchivedProjects === 'boolean') {
           this.setIncludeArchivedProjects(prefs.includeArchivedProjects);

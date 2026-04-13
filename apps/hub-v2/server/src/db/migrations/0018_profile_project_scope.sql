@@ -1,6 +1,6 @@
--- 新增 profile_notification_prefs.project_scope_mode 字段，默认值为 'all_accessible'，表示用户在项目范围内的通知偏好设置。
+-- 新增 profile_notification_prefs.project_scope_mode 字段，默认值为 'member_only'，表示用户在项目范围内默认仅查看自己参与的项目。
 ALTER TABLE profile_notification_prefs
-  ADD COLUMN project_scope_mode TEXT NOT NULL DEFAULT 'all_accessible';
+  ADD COLUMN project_scope_mode TEXT NOT NULL DEFAULT 'member_only';
 
 
 -- 新增 profile_notification_prefs.include_archived_projects 字段，默认值为 0

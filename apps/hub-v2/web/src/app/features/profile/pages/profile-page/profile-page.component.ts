@@ -144,7 +144,7 @@ export class ProfilePageComponent {
   readonly submittedVersion = signal(0);
   readonly basicSubmittedVersion = signal(0);
   readonly savedPrefs = signal<ProfileNotificationPrefs | null>(null);
-  readonly projectScopeMode = signal<ProjectScopeMode>('all_accessible');
+  readonly projectScopeMode = signal<ProjectScopeMode>('member_only');
   readonly includeArchivedProjects = signal(false);
 
   readonly tabs = [
@@ -269,7 +269,7 @@ export class ProfilePageComponent {
   cancelEditProjectScope(): void {
     const saved = this.savedPrefs();
     if (saved) {
-      this.projectScopeMode.set(saved.projectScopeMode ?? 'all_accessible');
+      this.projectScopeMode.set(saved.projectScopeMode ?? 'member_only');
       this.includeArchivedProjects.set(!!saved.includeArchivedProjects);
     }
     this.projectScopeDirty.set(false);
@@ -310,11 +310,11 @@ export class ProfilePageComponent {
         this.projectScopeSaving.set(false);
         this.savedPrefs.set(saved);
         this.applyNotificationPrefs(saved);
-        this.projectScopeMode.set(saved.projectScopeMode ?? 'all_accessible');
+        this.projectScopeMode.set(saved.projectScopeMode ?? 'member_only');
         this.includeArchivedProjects.set(!!saved.includeArchivedProjects);
         this.projectScopeDirty.set(false);
         this.projectScopeEditing.set(false);
-        this.projectContext.setProjectScopeMode(saved.projectScopeMode ?? 'all_accessible');
+        this.projectContext.setProjectScopeMode(saved.projectScopeMode ?? 'member_only');
         this.projectContext.refreshIncludeArchivedProjects(!!saved.includeArchivedProjects).subscribe();
         this.message.success('项目显示范围已保存');
       },
@@ -413,7 +413,7 @@ export class ProfilePageComponent {
   private applyNotificationPrefs(prefs: ProfileNotificationPrefs): void {
     this.channelPrefs.update((items) => items.map((item) => ({ ...item, enabled: prefs.channels[item.id] ?? item.enabled })));
     this.eventPrefs.update((items) => items.map((item) => ({ ...item, enabled: prefs.events[item.id] ?? item.enabled })));
-    this.projectScopeMode.set(prefs.projectScopeMode ?? 'all_accessible');
+    this.projectScopeMode.set(prefs.projectScopeMode ?? 'member_only');
     this.includeArchivedProjects.set(!!prefs.includeArchivedProjects);
   }
 
@@ -431,7 +431,7 @@ export class ProfilePageComponent {
 
   private updateProjectScopeDirty(): void {
     const saved = this.savedPrefs();
-    const sameScope = (saved?.projectScopeMode ?? 'all_accessible') === this.projectScopeMode();
+    const sameScope = (saved?.projectScopeMode ?? 'member_only') === this.projectScopeMode();
     const sameArchivedFlag = !!saved?.includeArchivedProjects === this.includeArchivedProjects();
     this.projectScopeDirty.set(!(sameScope && sameArchivedFlag));
   }

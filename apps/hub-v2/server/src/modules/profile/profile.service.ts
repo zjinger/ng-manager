@@ -25,7 +25,7 @@ const DEFAULT_EVENTS: Record<string, boolean> = {
   project_member_changed: true
 };
 
-const DEFAULT_PROJECT_SCOPE_MODE = "all_accessible" as const;
+const DEFAULT_PROJECT_SCOPE_MODE = "member_only" as const;
 const DEFAULT_INCLUDE_ARCHIVED_PROJECTS = false;
 
 const ISSUE_ACTION_LABELS: Record<string, string> = {
