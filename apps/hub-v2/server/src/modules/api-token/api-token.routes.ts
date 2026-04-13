@@ -9,6 +9,7 @@ import {
   feedbackIdParamSchema,
   issueAttachmentRawParamSchema,
   issueIdParamSchema,
+  issueUploadRawParamSchema,
   projectParamSchema,
   rdItemIdParamSchema,
   tokenFeedbackListQuerySchema,
@@ -75,6 +76,25 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     return reply.send(createReadStream(filePath));
   });
 
+  app.get("/projects/:projectKey/issues/:issueId/uploads/:uploadId/raw", async (request, reply) => {
+    const ctx = requireTokenAuth(request, "issues:read");
+    const params = issueUploadRawParamSchema.parse(request.params);
+    const issue = await app.container.apiTokenQuery.getIssueById(params.projectKey, params.issueId, ctx);
+    const upload = await app.container.uploadQuery.getById(params.uploadId, ctx);
+    if (!isIssueMarkdownUploadReferenced(issue.description, upload.id) || !upload.category.startsWith("markdown")) {
+      throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
+    }
+
+    const filePath = resolveUploadFilePath(upload.storagePath, upload.fileName, app.config.uploadDir);
+    if (upload.status !== "active" || !filePath) {
+      throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
+    }
+
+    reply.header("Content-Type", upload.mimeType || "application/octet-stream");
+    reply.header("Content-Disposition", buildInlineDisposition(upload.originalName || upload.fileName));
+    return reply.send(createReadStream(filePath));
+  });
+
   app.get("/projects/:projectKey/members", async (request) => {
     const ctx = requireTokenAuth(request, "issues:read");
     const params = projectParamSchema.parse(request.params);
@@ -136,4 +156,33 @@ function resolveUploadFilePath(storagePath: string, fileName: string, uploadDir:
   }
 
   return null;
+}
+
+function isIssueMarkdownUploadReferenced(description: string | null, uploadId: string): boolean {
+  if (!description) {
+    return false;
+  }
+
+  const normalizedUploadId = uploadId.trim();
+  if (!normalizedUploadId) {
+    return false;
+  }
+
+  const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_-]+)\/raw/g;
+  let match = pattern.exec(description);
+  while (match) {
+    if ((match[1] ?? "").trim() === normalizedUploadId) {
+      return true;
+    }
+    match = pattern.exec(description);
+  }
+
+  return false;
+}
+
+function buildInlineDisposition(fileName: string): string {
+  const normalizedName = (fileName || "file").trim() || "file";
+  const asciiFallback = normalizedName.replace(/[^\x20-\x7E]+/g, "_").replace(/["\\]/g, "");
+  const encodedName = encodeURIComponent(normalizedName);
+  return `inline; filename="${asciiFallback || "file"}"; filename*=UTF-8''${encodedName}`;
 }

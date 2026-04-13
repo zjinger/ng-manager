@@ -1,6 +1,6 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-04-02
+最后更新：2026-04-13
 
 ## 1. 背景与目标
 
@@ -99,6 +99,9 @@
 
 - webapp 推荐统一传业务相对路径（如 `/issues`、`/issues/:issueId/logs`、`/rd-items`）
 - packages/server 会基于 `projectId` 自动补齐到 `/projects/:projectKey/...` 后转发
+- 二进制直连读取场景可通过 packages/server 代理：
+  - `GET /api/client/hub-token/projects/:projectId/issues/:issueId/attachments/:attachmentId/raw`
+  - `GET /api/client/hub-token/projects/:projectId/issues/:issueId/uploads/:uploadId/raw`
 
 ---
 
@@ -112,8 +115,15 @@ Issue：
 - `GET /api/token/projects/:projectKey/issues/:issueId/comments`
 - `GET /api/token/projects/:projectKey/issues/:issueId/participants`
 - `GET /api/token/projects/:projectKey/issues/:issueId/attachments`
-- `GET /api/token/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw`（附件展示）
+- `GET /api/token/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw`（显式附件展示）
+- `GET /api/token/projects/:projectKey/issues/:issueId/uploads/:uploadId/raw`（Issue 描述中的 Markdown 图片展示）
 - `GET /api/token/projects/:projectKey/members`（用于评论 @ 成员候选）
+
+说明：
+
+- `attachmentId` 对应 `issue_attachments.id`，仅用于显式附件
+- `uploadId` 对应 Markdown 图片上传后的 `uploads.id`
+- Markdown 图片不要求存在 `issue_attachment` 记录，但要求该 `uploadId` 已被当前 Issue 描述引用，且上传分类为 `markdown`
 
 RD：
 
@@ -313,7 +323,13 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<I
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues?page=1&pageSize=20" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 12.3 Personal Token 获取身份与能力
+### 12.3 Project Token 读取 Issue Markdown 图片
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/uploads/<UPLOAD_ID>/raw" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+### 12.4 Personal Token 获取身份与能力
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/personal/me" -H "Authorization: Bearer <PERSONAL_TOKEN>"

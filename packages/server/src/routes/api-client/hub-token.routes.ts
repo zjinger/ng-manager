@@ -115,6 +115,31 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
         return reply.status(response.status).send(Readable.fromWeb(body as any));
     });
 
+    fastify.get("/projects/:projectId/issues/:issueId/uploads/:uploadId/raw", async (req, reply) => {
+        const params = (req.params ?? {}) as { projectId?: string; issueId?: string; uploadId?: string };
+        const projectId = normalizeNonEmptyString(params.projectId, "projectId");
+        const issueId = normalizeNonEmptyString(params.issueId, "issueId");
+        const uploadId = normalizeNonEmptyString(params.uploadId, "uploadId");
+
+        const { baseUrl, token, projectKey } = await resolveHubTokenConfig(fastify, { projectId }, "project");
+        const normalizedPath = normalizeHubTokenPath(`/issues/${issueId}/uploads/${uploadId}/raw`, projectKey);
+        const response = await requestHubApiRaw(baseUrl, "/api/token", token, "GET", normalizedPath);
+        if (!response.ok) {
+            const payload = await parseJson(response);
+            throw new AppError("BAD_REQUEST", payload?.message || `hub-v2 request failed (${response.status})`, {
+                status: response.status,
+                response: payload,
+            });
+        }
+
+        copyRawResponseHeaders(response, reply);
+        const body = response.body;
+        if (!body) {
+            return reply.status(response.status).send();
+        }
+        return reply.status(response.status).send(Readable.fromWeb(body as any));
+    });
+
     fastify.post("/request", async (req) => {
         const body = (req.body ?? {}) as HubTokenRequestBody;
         const path = normalizeNonEmptyString(body.path, "path");
