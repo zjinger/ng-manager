@@ -214,7 +214,7 @@ const DEFAULT_DRAFT: Draft = {
                 (ngModelChange)="updateField('moduleCode', $event)"
               >
                 @for (item of modules(); track item.id) {
-                  <nz-option [nzLabel]="item.name" [nzValue]="item.code || item.name"></nz-option>
+                  <nz-option [nzLabel]="moduleLabel(item)" [nzValue]="item.code || item.name"></nz-option>
                 }
               </nz-select>
               </nz-form-control>
@@ -664,5 +664,9 @@ export class IssueCreateDialogComponent implements OnDestroy {
 
   private fileIdentity(file: File): string {
     return `${file.name}|${file.size}|${file.lastModified}`;
+  }
+
+  moduleLabel(item: ProjectMetaItem): string {
+    return item.parentName ? `${item.parentName} / ${item.name}` : item.name;
   }
 }

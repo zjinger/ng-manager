@@ -83,11 +83,16 @@ export class ProjectListPageComponent {
   readonly stages = signal<RdStageEntity[]>([]);
   readonly apiTokens = signal<ProjectApiTokenEntity[]>([]);
   readonly latestCreatedToken = signal<string | null>(null);
+  readonly expandedProjectIds = signal<string[]>([]);
+  readonly modulePreviewMap = signal<Record<string, ProjectMetaItem[]>>({});
+  readonly memberPreviewMap = signal<Record<string, ProjectMemberEntity[]>>({});
   readonly membersLoading = signal(false);
   readonly configLoading = signal(false);
   readonly membersBusy = signal(false);
   readonly editBusy = signal(false);
   readonly configBusy = signal(false);
+  readonly previewLoadingMap = signal<Record<string, true>>({});
+  readonly memberPreviewLoadingMap = signal<Record<string, true>>({});
   readonly pendingModuleMap = signal<Record<string, true>>({});
   readonly pendingEnvironmentMap = signal<Record<string, true>>({});
   readonly pendingVersionMap = signal<Record<string, true>>({});
@@ -98,6 +103,8 @@ export class ProjectListPageComponent {
   readonly pendingVersionIds = computed(() => Object.keys(this.pendingVersionMap()));
   readonly pendingStageIds = computed(() => Object.keys(this.pendingStageMap()));
   readonly pendingTokenIds = computed(() => Object.keys(this.pendingTokenMap()));
+  readonly previewLoadingIds = computed(() => Object.keys(this.previewLoadingMap()));
+  readonly memberPreviewLoadingIds = computed(() => Object.keys(this.memberPreviewLoadingMap()));
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个项目`);
 
   constructor() {
@@ -172,6 +179,21 @@ export class ProjectListPageComponent {
     this.pendingVersionMap.set({});
     this.pendingStageMap.set({});
     this.pendingTokenMap.set({});
+  }
+
+  toggleProjectExpand(project: ProjectSummary): void {
+    const expanded = this.expandedProjectIds();
+    if (expanded.includes(project.id)) {
+      this.expandedProjectIds.set(expanded.filter((item) => item !== project.id));
+      return;
+    }
+    this.expandedProjectIds.set([...expanded, project.id]);
+    if (!this.modulePreviewMap()[project.id] && !this.previewLoadingMap()[project.id]) {
+      this.loadProjectModulePreview(project.id);
+    }
+    if (!this.memberPreviewMap()[project.id] && !this.memberPreviewLoadingMap()[project.id]) {
+      this.loadProjectMemberPreview(project.id);
+    }
   }
 
   openMembersDialog(project: ProjectSummary): void {
@@ -250,12 +272,12 @@ export class ProjectListPageComponent {
       this.configBusy.set(true);
       this.projectApi.addModule(projectId, input).subscribe({
         next: () => {
-          this.message.success('模块已新增');
+          this.message.success('子项目（系统）/模块已新增');
           this.reloadMeta(projectId);
         },
         error: () => {
           this.configBusy.set(false);
-          this.message.error('新增模块失败');
+          this.message.error('新增子项目（系统）/模块失败');
         }
       });
     });
@@ -268,12 +290,12 @@ export class ProjectListPageComponent {
       this.projectApi.updateModule(projectId, event.id, event.patch).subscribe({
         next: () => {
           this.setPending(this.pendingModuleMap, event.id, false);
-          this.message.success('模块已更新');
+          this.message.success('子项目（系统）/模块已更新');
           this.reloadMeta(projectId);
         },
         error: () => {
           this.setPending(this.pendingModuleMap, event.id, false);
-          this.message.error('更新模块失败');
+          this.message.error('更新子项目（系统）/模块失败');
           this.reloadMeta(projectId);
         }
       });
@@ -286,12 +308,12 @@ export class ProjectListPageComponent {
       this.projectApi.removeModule(projectId, moduleId).subscribe({
         next: () => {
           this.setPending(this.pendingModuleMap, moduleId, false);
-          this.message.success('模块已删除');
+          this.message.success('子项目（系统）/模块已删除');
           this.reloadMeta(projectId);
         },
         error: () => {
           this.setPending(this.pendingModuleMap, moduleId, false);
-          this.message.error('删除模块失败');
+          this.message.error('删除子项目（系统）/模块失败');
         }
       });
     });
@@ -513,6 +535,7 @@ export class ProjectListPageComponent {
     this.projectApi.listMembers(projectId).subscribe({
       next: (items) => {
         this.members.set(items);
+        this.setMemberPreview(projectId, items);
         this.syncProjectMemberCount(projectId, items.length);
         this.membersLoading.set(false);
       },
@@ -578,7 +601,9 @@ export class ProjectListPageComponent {
     this.configLoading.set(true);
     this.projectApi.listModules(projectId).subscribe({
       next: (modules) => {
-        this.modules.set(modules);
+        const sortedModules = this.sortMetaItems(modules);
+        this.modules.set(sortedModules);
+        this.setModulePreview(projectId, sortedModules);
         this.projectApi.listEnvironments(projectId).subscribe({
           next: (environments) => {
             this.environments.set(environments);
@@ -626,6 +651,35 @@ export class ProjectListPageComponent {
     });
   }
 
+  private loadProjectModulePreview(projectId: string): void {
+    this.setPending(this.previewLoadingMap, projectId, true);
+    this.projectApi.listModules(projectId).subscribe({
+      next: (items) => {
+        this.setPending(this.previewLoadingMap, projectId, false);
+        this.setModulePreview(projectId, this.sortMetaItems(items));
+      },
+      error: () => {
+        this.setPending(this.previewLoadingMap, projectId, false);
+        this.setModulePreview(projectId, []);
+      }
+    });
+  }
+
+  private loadProjectMemberPreview(projectId: string): void {
+    this.setPending(this.memberPreviewLoadingMap, projectId, true);
+    this.projectApi.listMembers(projectId).subscribe({
+      next: (items) => {
+        this.setPending(this.memberPreviewLoadingMap, projectId, false);
+        this.setMemberPreview(projectId, items);
+        this.syncProjectMemberCount(projectId, items.length);
+      },
+      error: () => {
+        this.setPending(this.memberPreviewLoadingMap, projectId, false);
+        this.setMemberPreview(projectId, []);
+      }
+    });
+  }
+
   private loadProjectApiTokens(projectKey: string, done?: () => void): void {
     if (!projectKey) {
       this.apiTokens.set([]);
@@ -655,8 +709,39 @@ export class ProjectListPageComponent {
     });
   }
 
+  private setModulePreview(projectId: string, items: ProjectMetaItem[]): void {
+    this.modulePreviewMap.update((current) => ({ ...current, [projectId]: items }));
+  }
+
+  private setMemberPreview(projectId: string, items: ProjectMemberEntity[]): void {
+    this.memberPreviewMap.update((current) => ({ ...current, [projectId]: items }));
+  }
+
   private sortMetaItems(items: ProjectMetaItem[]): ProjectMetaItem[] {
-    return [...items].sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
+    const sorted = [...items].sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
+    const byParent = new Map<string, ProjectMetaItem[]>();
+    const roots: ProjectMetaItem[] = [];
+    const knownIds = new Set(sorted.map((item) => item.id));
+
+    for (const item of sorted) {
+      if (item.parentId && knownIds.has(item.parentId)) {
+        const siblings = byParent.get(item.parentId) ?? [];
+        siblings.push(item);
+        byParent.set(item.parentId, siblings);
+        continue;
+      }
+      roots.push(item);
+    }
+
+    const result: ProjectMetaItem[] = [];
+    for (const root of roots) {
+      result.push(root);
+      const children = byParent.get(root.id);
+      if (children?.length) {
+        result.push(...children);
+      }
+    }
+    return result;
   }
 
   private sortVersionItems(items: ProjectVersionItem[]): ProjectVersionItem[] {
@@ -676,6 +761,8 @@ export class ProjectListPageComponent {
               ...item,
               name: patch.name ?? item.name,
               code: patch.code === undefined ? item.code : patch.code,
+              parentId: patch.parentId === undefined ? item.parentId : patch.parentId,
+              nodeType: patch.nodeType ?? item.nodeType,
               description: patch.description === undefined ? item.description : patch.description,
               sort: patch.sort ?? item.sort,
               enabled: patch.enabled ?? item.enabled

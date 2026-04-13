@@ -152,19 +152,20 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const userRepo = new UserRepo(db);
   const userService = new UserService(userRepo, authRepo);
   const projectRepo = new ProjectRepo(db);
+  const rdRepo = new RdRepo(db);
   const projectAccess = new ProjectAccessService(projectRepo);
-  const projectService = new ProjectService(projectRepo, userRepo, projectAccess, eventBus);
+  const projectService = new ProjectService(projectRepo, userRepo, rdRepo, projectAccess, eventBus, db);
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
   const personalTokenRepo = new PersonalTokenRepo(db);
   const personalTokenService = new PersonalTokenService(personalTokenRepo, projectRepo, userRepo);
   const contentLogRepo = new ContentLogRepo(db);
   const contentLogService = new ContentLogService(contentLogRepo);
+  const uploadRepo = new UploadRepo(db);
+  const uploadService = new UploadService(uploadRepo, config.uploadDir);
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus, contentLogService);
   const documentRepo = new DocumentRepo(db);
-  const uploadRepo = new UploadRepo(db);
-  const uploadService = new UploadService(uploadRepo, config.uploadDir);
   const documentService = new DocumentService(documentRepo, projectAccess, eventBus, contentLogService, uploadService);
   const issueRepo = new IssueRepo(db);
   const issueService = new IssueService(issueRepo, projectAccess, eventBus, uploadService);
@@ -187,7 +188,6 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     projectAccess,
     eventBus
   );
-  const rdRepo = new RdRepo(db);
   const rdService = new RdService(rdRepo, projectAccess, eventBus, uploadService);
   const releaseRepo = new ReleaseRepo(db);
   const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus, contentLogService);

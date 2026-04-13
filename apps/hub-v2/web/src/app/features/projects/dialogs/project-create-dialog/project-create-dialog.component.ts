@@ -4,33 +4,51 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 
 import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { AvatarImageNormalizerService } from '@shared/services/avatar-image-normalizer.service';
 import { DialogShellComponent } from '@shared/ui';
-import type { CreateProjectInput } from '../../models/project.model';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzFormModule } from 'ng-zorro-antd/form';
-import { NzGridModule } from 'ng-zorro-antd/grid';
+import { PROJECT_TYPE_OPTIONS, type CreateProjectInput, type ProjectType } from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
 
-const DEFAULT_DRAFT: CreateProjectInput = {
+type CreateProjectDraft = {
+  name: string;
+  projectNo: string;
+  projectType: ProjectType | '';
+  displayCode: string;
+  description: string;
+  icon: string;
+  avatarUploadId: string;
+  contractNo: string;
+  deliveryDate: string;
+  visibility: 'internal' | 'private';
+};
+
+const DEFAULT_DRAFT: CreateProjectDraft = {
   name: '',
+  projectNo: '',
+  projectType: '',
   displayCode: '',
   description: '',
   icon: '',
   avatarUploadId: '',
+  contractNo: '',
+  deliveryDate: '',
   visibility: 'private',
 };
 
 @Component({
   selector: 'app-project-create-dialog',
   standalone: true,
-  imports: [FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzFormModule, NzInputModule, NzSelectModule, DialogShellComponent],
+  imports: [FormsModule, NzGridModule, NzButtonModule, NzIconModule, NzFormModule, NzInputModule, NzSelectModule, NzDatePickerModule, DialogShellComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
-      [width]="720"
+      [width]="820"
       [title]="'新建项目'"
       [subtitle]="''"
       [icon]="'folder-add'"
@@ -38,28 +56,82 @@ const DEFAULT_DRAFT: CreateProjectInput = {
     >
       <div dialog-body>
         <form nz-form [nzLayout]="'vertical'">
-          <div class="row" nz-row  [nzGutter]="16"> 
-            <div class="col" nz-col  [nzSpan]="12">
-              <nz-form-item >
-              <nz-form-label nzRequired nzFor="email">项目名称</nz-form-label>
-              <nz-form-control nzErrorTip="请输入项目名称">
-                <input nz-input required="true" [ngModel]="draft().name" name="name" (ngModelChange)="updateField('name', $event)" />
-              </nz-form-control>
-            </nz-form-item>
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>项目名称</nz-form-label>
+                <nz-form-control nzErrorTip="请输入项目名称">
+                  <input nz-input required="true" [ngModel]="draft().name" name="name" (ngModelChange)="updateField('name', $event)" />
+                </nz-form-control>
+              </nz-form-item>
             </div>
             <div class="col" nz-col [nzSpan]="12">
               <nz-form-item>
                 <nz-form-label
-                  nzFor="displayCode"
-                  nzTooltipTitle="规则：全大写，最多 3 个字符（A-Z/0-9）"
+                  nzRequired
+                  nzTooltipTitle="项目内部编号，唯一且必填"
                   [nzTooltipIcon]="'question-circle'"
                 >
+                  项目编号
+                </nz-form-label>
+                <nz-form-control nzErrorTip="请输入项目编号">
+                  <input
+                    nz-input
+                    required="true"
+                    placeholder="例如 PROJ-2026-001"
+                    [ngModel]="draft().projectNo"
+                    maxlength="64"
+                    name="projectNo"
+                    (ngModelChange)="updateField('projectNo', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>项目类型</nz-form-label>
+                <nz-form-control>
+                  <nz-select
+                    nzPlaceHolder="请选择项目类型"
+                    [ngModel]="draft().projectType"
+                    name="projectType"
+                    (ngModelChange)="updateField('projectType', $event || '')"
+                  >
+                    @for (item of projectTypeOptions; track item.value) {
+                      <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzRequired nzTooltipTitle="内部：所有登录用户可查看（仅成员可维护）；私有：仅项目成员可查看和维护" [nzTooltipIcon]="'question-circle'">
+                  可见性
+                </nz-form-label>
+                <nz-form-control>
+                  <nz-select [ngModel]="draft().visibility" name="visibility" (ngModelChange)="updateField('visibility', $event)">
+                    <nz-option nzLabel="内部" nzValue="internal"></nz-option>
+                    <nz-option nzLabel="私有" nzValue="private"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzTooltipTitle="即项目缩写，应用在工单编号上，规则：全大写，最多 3 个字符（A-Z/0-9）" [nzTooltipIcon]="'question-circle'">
                   项目标识
                 </nz-form-label>
                 <nz-form-control>
                   <input
                     nz-input
-                    placeholder="用于展示，默认按项目名生成"
+                    placeholder="可选，默认按项目名生成"
                     [ngModel]="draft().displayCode"
                     maxlength="3"
                     name="displayCode"
@@ -71,34 +143,60 @@ const DEFAULT_DRAFT: CreateProjectInput = {
                 </nz-form-control>
               </nz-form-item>
             </div>
-           
-          </div>
-          <div class="row" nz-row  [nzGutter]="16">
-            <div class="col" nz-col  [nzSpan]="24" >
-            <nz-form-item >
-              <nz-form-label  nzFor="email">项目描述</nz-form-label>
-              <nz-form-control >
-                <textarea nz-input rows="4" placeholder="描述项目的业务边界、协作对象或当前阶段。" [ngModel]="draft().description" name="description" (ngModelChange)="updateField('description', $event)"></textarea>
-              </nz-form-control>
-            </nz-form-item>
-            </div>
-          </div>
-          <div class="row" nz-row  [nzGutter]="16">
-            <!-- <div class="col" nz-col  [nzSpan]="12">
-              <nz-form-item >
-                <nz-form-label  nzFor="visibility">图标</nz-form-label>
-                <nz-form-control >
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>合同编号</nz-form-label>
+                <nz-form-control>
                   <input
                     nz-input
-                    placeholder="可先填写 emoji 或简写"
-                    [ngModel]="draft().icon"
-                    name="icon"
-                    (ngModelChange)="updateField('icon', $event)"
+                    placeholder="可选，例如 HT-2026-001"
+                    [ngModel]="draft().contractNo"
+                    name="contractNo"
+                    (ngModelChange)="updateField('contractNo', $event)"
                   />
                 </nz-form-control>
               </nz-form-item>
-            </div> -->
-             <div class="col" nz-col [nzSpan]="12">
+            </div>
+          </div>
+
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>交付时间</nz-form-label>
+                <nz-form-control>
+                  <nz-date-picker
+                    style="width: 100%"
+                    nzFormat="yyyy-MM-dd"
+                    nzPlaceHolder="可选"
+                    [ngModel]="deliveryDateValue()"
+                    name="deliveryDate"
+                    (ngModelChange)="updateDeliveryDate($event)"
+                  ></nz-date-picker>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="24">
+              <nz-form-item>
+                <nz-form-label>项目描述</nz-form-label>
+                <nz-form-control>
+                  <textarea
+                    nz-input
+                    rows="4"
+                    placeholder="描述项目的业务边界、协作对象或当前阶段。"
+                    [ngModel]="draft().description"
+                    name="description"
+                    (ngModelChange)="updateField('description', $event)"
+                  ></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="12">
               <nz-form-item>
                 <nz-form-label nzFor="avatar">项目图标</nz-form-label>
                 <nz-form-control>
@@ -119,31 +217,14 @@ const DEFAULT_DRAFT: CreateProjectInput = {
                 </nz-form-control>
               </nz-form-item>
             </div>
-            <div class="col" nz-col  [nzSpan]="12">
-              <nz-form-item >
-                <nz-form-label
-                  nzRequired
-                  nzTooltipTitle="内部：所有登录用户可查看（仅成员可维护）；私有：仅项目成员可查看和维护"
-                  [nzTooltipIcon]="'question-circle'"
-                  nzFor="visibility"
-                  >可见性</nz-form-label
-                >
-                <nz-form-control >
-                  <nz-select [ngModel]="draft().visibility" name="visibility" (ngModelChange)="updateField('visibility', $event)">
-                  <nz-option nzLabel="内部" nzValue="internal"></nz-option>
-                  <nz-option nzLabel="私有" nzValue="private"></nz-option>
-                </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
           </div>
         </form>
       </div>
 
       <ng-container dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
-        <button nz-button nzType="primary" [nzLoading]="busy()" (click)="submitForm()" [disabled]="!canSubmit()" type="submit" >
-          <nz-icon nzType="check" nzTheme="outline"/>
+        <button nz-button nzType="primary" [nzLoading]="busy()" (click)="submitForm()" [disabled]="!canSubmit()" type="submit">
+          <nz-icon nzType="check" nzTheme="outline" />
           创建项目
         </button>
       </ng-container>
@@ -195,7 +276,9 @@ export class ProjectCreateDialogComponent {
   readonly create = output<CreateProjectInput>();
   readonly cancel = output<void>();
 
-  readonly draft = signal<CreateProjectInput>({ ...DEFAULT_DRAFT });
+  readonly projectTypeOptions = PROJECT_TYPE_OPTIONS;
+  readonly draft = signal<CreateProjectDraft>({ ...DEFAULT_DRAFT });
+  readonly deliveryDateValue = signal<Date | null>(null);
   readonly avatarUploading = signal(false);
   readonly avatarPreviewUrl = signal<string | null>(null);
   readonly displayCodeInvalid = computed(() => {
@@ -207,25 +290,31 @@ export class ProjectCreateDialogComponent {
     effect(() => {
       if (this.open()) {
         this.draft.set({ ...DEFAULT_DRAFT });
+        this.deliveryDateValue.set(null);
         this.avatarUploading.set(false);
         this.avatarPreviewUrl.set(null);
       }
     });
   }
 
-  updateField<K extends keyof CreateProjectInput>(key: K, value: CreateProjectInput[K]): void {
+  updateField<K extends keyof CreateProjectDraft>(key: K, value: CreateProjectDraft[K]): void {
     if (key === 'displayCode') {
       const normalized = String(value ?? '')
         .toUpperCase()
-        .slice(0, 3) as CreateProjectInput[K];
+        .slice(0, 3) as CreateProjectDraft[K];
       this.draft.update((draft) => ({ ...draft, [key]: normalized }));
       return;
     }
     this.draft.update((draft) => ({ ...draft, [key]: value }));
   }
 
+  updateDeliveryDate(value: Date | null): void {
+    this.deliveryDateValue.set(value);
+    this.updateField('deliveryDate', this.formatDate(value));
+  }
+
   canSubmit(): boolean {
-    return !!this.draft().name?.trim() && !this.avatarUploading() && !this.displayCodeInvalid();
+    return !!this.draft().name?.trim() && !!this.draft().projectNo?.trim() && !!this.draft().projectType && !this.avatarUploading() && !this.displayCodeInvalid();
   }
 
   submitForm(): void {
@@ -235,10 +324,14 @@ export class ProjectCreateDialogComponent {
     const draft = this.draft();
     this.create.emit({
       name: draft.name.trim(),
+      projectNo: draft.projectNo.trim(),
+      projectType: draft.projectType as ProjectType,
       displayCode: draft.displayCode?.trim() || undefined,
       description: draft.description?.trim() || undefined,
       icon: draft.icon?.trim() || undefined,
       avatarUploadId: draft.avatarUploadId?.trim() || undefined,
+      contractNo: draft.contractNo?.trim() || undefined,
+      deliveryDate: draft.deliveryDate?.trim() || undefined,
       visibility: draft.visibility || 'internal',
     });
   }
@@ -289,5 +382,15 @@ export class ProjectCreateDialogComponent {
   clearAvatar(): void {
     this.draft.update((draft) => ({ ...draft, avatarUploadId: '' }));
     this.avatarPreviewUrl.set(null);
+  }
+
+  private formatDate(value: Date | null): string {
+    if (!value || Number.isNaN(value.getTime())) {
+      return '';
+    }
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

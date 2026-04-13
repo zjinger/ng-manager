@@ -154,7 +154,7 @@ export type IssueListViewMode = 'list' | 'card';
               (ngModelChange)="updateField('moduleCodes', $event)"
             >
               @for (item of modules(); track item.id) {
-                <nz-option [nzLabel]="item.name" [nzValue]="item.code || item.name"></nz-option>
+                <nz-option [nzLabel]="moduleLabel(item)" [nzValue]="item.code || item.name"></nz-option>
               }
             </nz-select>
           </div>
@@ -319,5 +319,9 @@ export class IssueFilterBarComponent {
       sortBy: 'createdAt',
       sortOrder: 'desc',
     }));
+  }
+
+  moduleLabel(item: ProjectMetaItem): string {
+    return item.parentName ? `${item.parentName} / ${item.name}` : item.name;
   }
 }

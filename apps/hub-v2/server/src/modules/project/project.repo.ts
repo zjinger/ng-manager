@@ -20,11 +20,17 @@ import type {
 type ProjectRow = {
   id: string;
   project_key: string;
+  project_no: string;
   display_code: string | null;
   name: string;
   description: string | null;
   icon: string | null;
   avatar_upload_id: string | null;
+  project_type: "entrust_dev" | "self_dev" | "tech_service";
+  contract_no: string | null;
+  delivery_date: string | null;
+  product_line: string | null;
+  sla_level: string | null;
   status: "active" | "inactive";
   visibility: "internal" | "private";
   member_count?: number | null;
@@ -57,6 +63,9 @@ type ProjectConfigRow = {
   project_id: string;
   name: string;
   code: string | null;
+  parent_id: string | null;
+  parent_name: string | null;
+  node_type: "subsystem" | "module";
   enabled: number;
   sort: number;
   desc: string | null;
@@ -87,6 +96,10 @@ export class ProjectRepo {
     return this.findSingleProject("p.project_key = ?", projectKey);
   }
 
+  findByProjectNo(projectNo: string): ProjectEntity | null {
+    return this.findSingleProject("p.project_no = ? COLLATE NOCASE", projectNo);
+  }
+
   findByDisplayCode(displayCode: string): ProjectEntity | null {
     return this.findSingleProject("p.display_code = ?", displayCode);
   }
@@ -96,18 +109,24 @@ export class ProjectRepo {
       .prepare(
         `
         INSERT INTO projects (
-          id, project_key, display_code, name, description, icon, avatar_upload_id, status, visibility, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, project_key, project_no, display_code, name, description, icon, avatar_upload_id, project_type, contract_no, delivery_date, product_line, sla_level, status, visibility, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
         entity.id,
         entity.projectKey,
+        entity.projectNo,
         entity.displayCode,
         entity.name,
         entity.description,
         entity.icon,
         entity.avatarUploadId,
+        entity.projectType,
+        entity.contractNo,
+        entity.deliveryDate,
+        entity.productLine,
+        entity.slaLevel,
         entity.status,
         entity.visibility,
         entity.createdAt,
@@ -122,6 +141,10 @@ export class ProjectRepo {
     if (patch.name !== undefined) {
       fields.push("name = ?");
       params.push(patch.name);
+    }
+    if (patch.projectNo !== undefined) {
+      fields.push("project_no = ?");
+      params.push(patch.projectNo);
     }
     if (patch.displayCode !== undefined) {
       fields.push("display_code = ?");
@@ -138,6 +161,26 @@ export class ProjectRepo {
     if (patch.avatarUploadId !== undefined) {
       fields.push("avatar_upload_id = ?");
       params.push(patch.avatarUploadId ?? null);
+    }
+    if (patch.projectType !== undefined) {
+      fields.push("project_type = ?");
+      params.push(patch.projectType);
+    }
+    if (patch.contractNo !== undefined) {
+      fields.push("contract_no = ?");
+      params.push(patch.contractNo ?? null);
+    }
+    if (patch.deliveryDate !== undefined) {
+      fields.push("delivery_date = ?");
+      params.push(patch.deliveryDate ?? null);
+    }
+    if (patch.productLine !== undefined) {
+      fields.push("product_line = ?");
+      params.push(patch.productLine ?? null);
+    }
+    if (patch.slaLevel !== undefined) {
+      fields.push("sla_level = ?");
+      params.push(patch.slaLevel ?? null);
     }
     if (patch.status !== undefined) {
       fields.push("status = ?");
@@ -167,9 +210,9 @@ export class ProjectRepo {
     }
 
     if (query.keyword?.trim()) {
-      conditions.push("(name LIKE ? OR project_key LIKE ?)");
+      conditions.push("(name LIKE ? OR project_key LIKE ? OR project_no LIKE ?)");
       const keyword = `%${query.keyword.trim()}%`;
-      params.push(keyword, keyword);
+      params.push(keyword, keyword, keyword);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -216,9 +259,9 @@ export class ProjectRepo {
     }
 
     if (query.keyword?.trim()) {
-      conditions.push("(p.name LIKE ? OR p.project_key LIKE ?)");
+      conditions.push("(p.name LIKE ? OR p.project_key LIKE ? OR p.project_no LIKE ?)");
       const keyword = `%${query.keyword.trim()}%`;
-      params.push(keyword, keyword);
+      params.push(keyword, keyword, keyword);
     }
 
     const whereClause = `WHERE ${conditions.join(" AND ")}`;
@@ -240,11 +283,17 @@ export class ProjectRepo {
           SELECT DISTINCT
             p.id,
             p.project_key,
+            p.project_no,
             p.display_code,
             p.name,
             p.description,
             p.icon,
             p.avatar_upload_id,
+            p.project_type,
+            p.contract_no,
+            p.delivery_date,
+            p.product_line,
+            p.sla_level,
             p.status,
             p.visibility,
             COALESCE(mc.member_count, 0) AS member_count,
@@ -420,10 +469,18 @@ export class ProjectRepo {
     const rows = this.db
       .prepare(
         `
-      SELECT *
-      FROM project_modules
-      WHERE project_id = ?
-      ORDER BY sort ASC, updated_at DESC, created_at DESC
+      SELECT
+        pm.*,
+        parent.name AS parent_name
+      FROM project_modules pm
+      LEFT JOIN project_modules parent ON parent.id = pm.parent_id
+      WHERE pm.project_id = ?
+      ORDER BY
+        COALESCE(parent.sort, pm.sort) ASC,
+        CASE WHEN pm.parent_id IS NULL THEN 0 ELSE 1 END ASC,
+        pm.sort ASC,
+        pm.updated_at DESC,
+        pm.created_at DESC
     `
       )
       .all(projectId) as ProjectConfigRow[];
@@ -435,8 +492,8 @@ export class ProjectRepo {
     this.db
       .prepare(
         `
-      INSERT INTO project_modules (id, project_id, name, code, enabled, sort, "desc", created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO project_modules (id, project_id, name, code, parent_id, node_type, enabled, sort, "desc", created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -444,6 +501,8 @@ export class ProjectRepo {
         projectId,
         input.name,
         input.code ?? null,
+        input.parentId ?? null,
+        input.nodeType ?? "module",
         input.enabled === false ? 0 : 1,
         input.sort ?? 0,
         input.description?.trim() || null,
@@ -615,6 +674,14 @@ export class ProjectRepo {
       fields.push("code = ?");
       params.push(patch.code ?? null);
     }
+    if (table === "project_modules" && patch.parentId !== undefined) {
+      fields.push("parent_id = ?");
+      params.push(patch.parentId ?? null);
+    }
+    if (table === "project_modules" && patch.nodeType !== undefined) {
+      fields.push("node_type = ?");
+      params.push(patch.nodeType);
+    }
     if (patch.enabled !== undefined) {
       fields.push("enabled = ?");
       params.push(patch.enabled ? 1 : 0);
@@ -649,12 +716,18 @@ export class ProjectRepo {
     return {
       id: row.id,
       projectKey: row.project_key,
+      projectNo: row.project_no,
       displayCode: row.display_code,
       name: row.name,
       description: row.description,
       icon: row.icon,
       avatarUploadId: row.avatar_upload_id ?? null,
       avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
+      projectType: row.project_type,
+      contractNo: row.contract_no ?? null,
+      deliveryDate: row.delivery_date ?? null,
+      productLine: row.product_line ?? null,
+      slaLevel: row.sla_level ?? null,
       memberCount: Number(row.member_count ?? 0),
       status: row.status,
       visibility: row.visibility,
@@ -707,6 +780,9 @@ export class ProjectRepo {
       projectId: row.project_id,
       name: row.name,
       code: row.code,
+      parentId: row.parent_id ?? null,
+      parentName: row.parent_name ?? null,
+      nodeType: row.node_type ?? "module",
       enabled: row.enabled === 1,
       sort: row.sort,
       description: row.desc,

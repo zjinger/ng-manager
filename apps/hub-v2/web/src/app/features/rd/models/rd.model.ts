@@ -80,6 +80,20 @@ export interface RdListQuery {
 
 export type RdListResult = PageResult<RdItemEntity>;
 
+export const RD_TYPE_OPTIONS: Array<{ label: string; value: RdItemType }> = [
+  { label: '功能实现', value: 'feature_dev' },
+  { label: '技术改造', value: 'tech_refactor' },
+  { label: '联调协作', value: 'integration' },
+  { label: '环境准备', value: 'env_setup' },
+];
+
+export const RD_TYPE_LABELS: Record<RdItemType, string> = {
+  feature_dev: '功能实现',
+  tech_refactor: '技术改造',
+  integration: '联调协作',
+  env_setup: '环境准备',
+};
+
 export interface CreateRdItemInput {
   projectId: string;
   title: string;

@@ -96,7 +96,7 @@ const EMPTY_DRAFT: EditDraft = {
                     (ngModelChange)="updateField('moduleCode', $event || '')"
                   >
                     @for (item of modules(); track item.id) {
-                      <nz-option [nzLabel]="item.name" [nzValue]="item.code || item.name"></nz-option>
+                      <nz-option [nzLabel]="moduleLabel(item)" [nzValue]="item.code || item.name"></nz-option>
                     }
                   </nz-select>
                 </nz-form-control>
@@ -212,5 +212,9 @@ export class IssueEditDialogComponent {
       environmentCode: draft.environmentCode.trim() ? draft.environmentCode.trim() : null,
     };
     this.confirm.emit(payload);
+  }
+
+  moduleLabel(item: ProjectMetaItem): string {
+    return item.parentName ? `${item.parentName} / ${item.name}` : item.name;
   }
 }

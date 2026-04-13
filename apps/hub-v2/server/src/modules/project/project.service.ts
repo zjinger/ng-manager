@@ -11,6 +11,7 @@ import type { ProjectCommandContract, ProjectQueryContract } from "./project.con
 import type { ProjectAccessContract } from "./project-access.contract";
 import { UserRepo } from "../user/user.repo";
 import { requireAdmin } from "../utils/require-admin";
+import { RdRepo } from "../rd/rd.repo";
 import { ProjectRepo } from "./project.repo";
 import type {
   AddProjectMemberInput,
@@ -24,21 +25,33 @@ import type {
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMemberRole,
+  ProjectType,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
   UpdateProjectMemberInput,
   UpdateProjectInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
+import type { RdStageEntity } from "../rd/rd.types";
 
 const projectKeyNanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 24);
+const DEFAULT_RD_STAGE_NAMES = [
+  "需求确认",
+  "方案设计",
+  "功能开发",
+  "测试验证",
+  "交付上线",
+  "项目结项"
+] as const;
 
 export class ProjectService implements ProjectCommandContract, ProjectQueryContract {
   constructor(
     private readonly repo: ProjectRepo,
     private readonly userRepo: UserRepo,
+    private readonly rdRepo: RdRepo,
     private readonly access: ProjectAccessContract,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly db: Database.Database
   ) {}
 
   async create(input: CreateProjectInput, ctx: RequestContext): Promise<ProjectEntity> {
@@ -56,27 +69,33 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     if (!projectName) {
       throw new AppError(ERROR_CODES.PROJECT_NAME_REQUIRED, "project name is required", 400);
     }
+    const projectNo = this.resolveProjectNoForCreate(input.projectNo);
     const projectKey = this.generateUniqueProjectKey();
 
     const now = nowIso();
     const displayCode = this.resolveDisplayCodeForCreate(input.displayCode, projectName, projectKey);
+    const typeFields = this.resolveProjectTypeFields(input);
     const entity: ProjectEntity = {
       id: genId("prj"),
       projectKey,
+      projectNo,
       displayCode,
       name: projectName,
       description: input.description?.trim() || null,
       icon: input.icon?.trim() || null,
       avatarUploadId: input.avatarUploadId?.trim() || null,
       avatarUrl: input.avatarUploadId?.trim() ? `/api/admin/uploads/${input.avatarUploadId.trim()}/raw` : null,
+      projectType: typeFields.projectType,
+      contractNo: typeFields.contractNo,
+      deliveryDate: typeFields.deliveryDate,
+      productLine: typeFields.productLine,
+      slaLevel: typeFields.slaLevel,
       status: "active",
       visibility: input.visibility ?? "internal",
       memberCount: 1,
       createdAt: now,
       updatedAt: now
     };
-
-    this.repo.create(entity);
 
     const creatorMember: ProjectMemberEntity = {
       id: genId("pm"),
@@ -89,7 +108,18 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       createdAt: now,
       updatedAt: now
     };
-    this.repo.createMember(creatorMember);
+
+    try {
+      this.db.transaction(() => {
+        this.repo.create(entity);
+        this.repo.createMember(creatorMember);
+        for (const stage of this.buildDefaultRdStages(entity.id, now)) {
+          this.rdRepo.createStage(stage);
+        }
+      })();
+    } catch (error) {
+      this.handleSqliteError(error);
+    }
 
     return entity;
   }
@@ -103,10 +133,16 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const patch: UpdateProjectInput & { updatedAt: string } = {
       name: input.name?.trim(),
+      projectNo: undefined,
+      projectType: undefined,
       displayCode: undefined,
       description: input.description === undefined ? undefined : input.description?.trim() || null,
       icon: input.icon === undefined ? undefined : input.icon?.trim() || null,
       avatarUploadId: input.avatarUploadId === undefined ? undefined : input.avatarUploadId?.trim() || null,
+      contractNo: undefined,
+      deliveryDate: undefined,
+      productLine: undefined,
+      slaLevel: undefined,
       status: input.status,
       visibility: input.visibility,
       updatedAt: nowIso()
@@ -116,6 +152,15 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       const effectiveName = patch.name?.trim() || current.name;
       patch.displayCode = this.resolveDisplayCodeForUpdate(input.displayCode, effectiveName, projectId, current.projectKey);
     }
+    if (input.projectNo !== undefined) {
+      patch.projectNo = this.resolveProjectNoForUpdate(input.projectNo, projectId);
+    }
+    const typeFields = this.resolveProjectTypeFields(input, current);
+    patch.projectType = typeFields.projectType;
+    patch.contractNo = typeFields.contractNo;
+    patch.deliveryDate = typeFields.deliveryDate;
+    patch.productLine = typeFields.productLine;
+    patch.slaLevel = typeFields.slaLevel;
 
     try {
       const changed = this.repo.update(projectId, patch);
@@ -284,13 +329,17 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const now = nowIso();
     const id = genId("pmod");
+    const existingModules = this.repo.listModules(projectId);
+    this.assertValidModuleParent(existingModules, input.parentId ?? null, null, input.nodeType ?? "module");
     try {
       this.repo.addModule(projectId, {
         id,
         name: input.name.trim(),
         code: input.code?.trim(),
+        parentId: input.parentId?.trim() || null,
+        nodeType: input.nodeType ?? "module",
         enabled: input.enabled,
-        sort: input.sort ?? this.getNextSort(this.repo.listModules(projectId).map((item) => item.sort)),
+        sort: input.sort ?? this.getNextSort(existingModules.map((item) => item.sort)),
         description: input.description?.trim(),
         createdAt: now,
         updatedAt: now
@@ -309,9 +358,18 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     ctx: RequestContext
   ): Promise<ProjectConfigItemEntity> {
     await this.requireProjectMaintainer(projectId, ctx, "update project module");
+    const current = this.findConfigById(this.repo.listModules(projectId), moduleId, ERROR_CODES.PROJECT_MODULE_NOT_FOUND);
+    this.assertValidModuleParent(
+      this.repo.listModules(projectId),
+      input.parentId === undefined ? current.parentId : input.parentId,
+      moduleId,
+      input.nodeType ?? current.nodeType
+    );
     const changed = this.repo.updateModule(projectId, moduleId, {
       name: input.name?.trim(),
       code: input.code === undefined ? undefined : input.code?.trim() || null,
+      parentId: input.parentId === undefined ? undefined : input.parentId?.trim() || null,
+      nodeType: input.nodeType,
       enabled: input.enabled,
       sort: input.sort,
       description: input.description === undefined ? undefined : input.description?.trim() || null,
@@ -482,6 +540,29 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     throw new AppError(ERROR_CODES.PROJECT_KEY_GENERATE_FAILED, "failed to generate unique project key", 500);
   }
 
+  private resolveProjectNoForCreate(value: string): string {
+    const projectNo = value.trim();
+    if (!projectNo) {
+      throw new AppError(ERROR_CODES.PROJECT_NO_REQUIRED, "project number is required", 400);
+    }
+    if (this.repo.findByProjectNo(projectNo)) {
+      throw new AppError(ERROR_CODES.PROJECT_NO_CONFLICT, `项目编号已存在：${projectNo}`, 409);
+    }
+    return projectNo;
+  }
+
+  private resolveProjectNoForUpdate(value: string, projectId: string): string {
+    const projectNo = value.trim();
+    if (!projectNo) {
+      throw new AppError(ERROR_CODES.PROJECT_NO_REQUIRED, "project number is required", 400);
+    }
+    const hit = this.repo.findByProjectNo(projectNo);
+    if (hit && hit.id !== projectId) {
+      throw new AppError(ERROR_CODES.PROJECT_NO_CONFLICT, `项目编号已存在：${projectNo}`, 409);
+    }
+    return projectNo;
+  }
+
   private normalizeDisplayCode(value: string | null | undefined, projectName: string): string | null {
     const explicit = value?.trim().toUpperCase() || "";
     if (explicit) {
@@ -635,12 +716,71 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return maxSort + 10;
   }
 
+  private resolveProjectTypeFields(
+    input: Pick<UpdateProjectInput, "projectType" | "contractNo" | "deliveryDate" | "productLine" | "slaLevel">,
+    current?: ProjectEntity
+  ): {
+    projectType: ProjectType;
+    contractNo: string | null;
+    deliveryDate: string | null;
+    productLine: string | null;
+    slaLevel: string | null;
+  } {
+    const projectType = input.projectType ?? current?.projectType;
+    if (!projectType) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "项目类型不能为空", 400);
+    }
+
+    const contractNo = this.trimToNull(input.contractNo === undefined ? current?.contractNo : input.contractNo);
+    const deliveryDate = this.trimToNull(input.deliveryDate === undefined ? current?.deliveryDate : input.deliveryDate);
+    const productLine = this.trimToNull(input.productLine === undefined ? current?.productLine : input.productLine);
+    const slaLevel = this.trimToNull(input.slaLevel === undefined ? current?.slaLevel : input.slaLevel);
+
+    if (deliveryDate && !/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "交付日期格式必须为 yyyy-MM-dd", 400);
+    }
+    return {
+      projectType,
+      contractNo,
+      deliveryDate,
+      productLine: null,
+      slaLevel: null
+    };
+  }
+
+  private trimToNull(value: string | null | undefined): string | null {
+    const normalized = value?.trim();
+    return normalized ? normalized : null;
+  }
+
   private findConfigById(items: ProjectConfigItemEntity[], id: string, code: string): ProjectConfigItemEntity {
     const hit = items.find((item) => item.id === id);
     if (!hit) {
       throw new AppError(code, "config item not found", 500);
     }
     return hit;
+  }
+
+  private assertValidModuleParent(
+    items: ProjectConfigItemEntity[],
+    parentId: string | null | undefined,
+    selfId: string | null,
+    nodeType: "subsystem" | "module"
+  ): void {
+    const normalizedParentId = parentId?.trim() || null;
+    if (nodeType === "subsystem" && normalizedParentId) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "子项目（系统）不能挂在其他节点下", 400);
+    }
+    if (!normalizedParentId) {
+      return;
+    }
+    if (selfId && normalizedParentId === selfId) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "模块不能选择自己作为父节点", 400);
+    }
+    const parent = items.find((item) => item.id === normalizedParentId);
+    if (!parent || parent.nodeType !== "subsystem") {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "父节点必须是同项目下的子项目（系统）", 400);
+    }
   }
 
   private findVersionById(items: ProjectVersionItemEntity[], id: string, code: string): ProjectVersionItemEntity {
@@ -651,11 +791,27 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return hit;
   }
 
+  private buildDefaultRdStages(projectId: string, timestamp: string): RdStageEntity[] {
+    return DEFAULT_RD_STAGE_NAMES.map((name, index) => ({
+      id: genId("rds"),
+      projectId,
+      name,
+      sort: (index + 1) * 10,
+      enabled: true,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }));
+  }
+
   private handleSqliteError(error: unknown): never {
     if (error instanceof AppError) {
       throw error;
     }
     if (error instanceof Database.SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      const message = error.message || "";
+      if (message.includes("idx_projects_project_no") || message.includes("projects.project_no")) {
+        throw new AppError(ERROR_CODES.PROJECT_NO_CONFLICT, "project number already exists", 409);
+      }
       throw new AppError(ERROR_CODES.PROJECT_CONFLICT, "resource already exists", 409);
     }
     throw error;

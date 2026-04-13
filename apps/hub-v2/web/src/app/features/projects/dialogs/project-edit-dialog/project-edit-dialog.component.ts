@@ -8,30 +8,35 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 
 import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { AvatarImageNormalizerService } from '@shared/services/avatar-image-normalizer.service';
 import { DialogShellComponent } from '@shared/ui';
-import type { ProjectSummary, UpdateProjectInput } from '../../models/project.model';
+import { PROJECT_TYPE_LABELS, PROJECT_TYPE_OPTIONS, type ProjectSummary, type ProjectType, type UpdateProjectInput } from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
 
 type EditDraft = {
   name: string;
+  projectNo: string;
+  projectType: ProjectType | '';
   displayCode: string;
   description: string;
   icon: string;
   avatarUploadId: string;
+  contractNo: string;
+  deliveryDate: string;
   visibility: 'internal' | 'private';
 };
 
 @Component({
   selector: 'app-project-edit-dialog',
   standalone: true,
-  imports: [DatePipe, FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent, NgClass],
+  imports: [DatePipe, FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, NzDatePickerModule, DialogShellComponent, NgClass],
   template: `
     <app-dialog-shell
       [open]="open()"
-      [width]="720"
+      [width]="820"
       [title]="'编辑项目'"
       [subtitle]="''"
       [icon]="'edit'"
@@ -49,7 +54,8 @@ type EditDraft = {
           <div class="project-edit-overview__info">
             <h3>{{ draft().name || project()?.name || '未命名项目' }}</h3>
             <p>
-             {{ project()?.displayCode || '-' }}
+              {{ project()?.projectNo || '-' }}
+              · {{ project() ? projectTypeLabel(project()!.projectType) : '-' }}
               · 创建于 {{ project()?.createdAt | date: 'yyyy-MM-dd' }}
               · {{ project()?.status === 'active' ? '活跃项目' : '已归档' }}
             </p>
@@ -59,7 +65,7 @@ type EditDraft = {
 
         <form nz-form [nzLayout]="'vertical'">
           <div nz-row [nzGutter]="16">
-            <div nz-col [nzSpan]="24">
+            <div nz-col [nzSpan]="12">
               <nz-form-item>
                 <nz-form-label nzRequired>项目名称</nz-form-label>
                 <nz-form-control>
@@ -70,15 +76,47 @@ type EditDraft = {
             <div nz-col [nzSpan]="12">
               <nz-form-item>
                 <nz-form-label
-                  nzTooltipTitle="规则：全大写，最多 3 个字符（A-Z/0-9）"
+                  nzRequired
+                  nzTooltipTitle="项目内部编号，唯一且必填"
                   [nzTooltipIcon]="'question-circle'"
                 >
+                  项目编号
+                </nz-form-label>
+                <nz-form-control nzErrorTip="请输入项目编号">
+                  <input
+                    nz-input
+                    required="true"
+                    placeholder="例如 PROJ-2026-001"
+                    maxlength="64"
+                    [ngModel]="draft().projectNo"
+                    name="projectNo"
+                    (ngModelChange)="update('projectNo', $event)"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>项目类型</nz-form-label>
+                <nz-form-control>
+                  <nz-select [ngModel]="draft().projectType" name="projectType" (ngModelChange)="update('projectType', $event || '')">
+                    @for (item of projectTypeOptions; track item.value) {
+                      <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzTooltipTitle="即项目缩写，应用在工单编号上，规则：全大写，最多 3 个字符（A-Z/0-9）" [nzTooltipIcon]="'question-circle'">
                   项目标识
                 </nz-form-label>
                 <nz-form-control>
                   <input
                     nz-input
                     maxlength="3"
+                    placeholder="可选，默认按项目名生成"
                     [ngModel]="draft().displayCode"
                     name="displayCode"
                     (ngModelChange)="update('displayCode', $event)"
@@ -91,18 +129,37 @@ type EditDraft = {
             </div>
             <div nz-col [nzSpan]="12">
               <nz-form-item>
-                <nz-form-label nzTooltipTitle="内部：所有登录用户可查看（仅成员可维护）；私有：仅项目成员可查看和维护" [nzTooltipIcon]="'question-circle'"
-                  >可见性</nz-form-label
-                >
+                <nz-form-label nzTooltipTitle="内部：所有登录用户可查看（仅成员可维护）；私有：仅项目成员可查看和维护" [nzTooltipIcon]="'question-circle'">
+                  可见性
+                </nz-form-label>
                 <nz-form-control>
-                  <nz-select
-                    [ngModel]="draft().visibility"
-                    name="visibility"
-                    (ngModelChange)="update('visibility', $event || 'internal')"
-                  >
+                  <nz-select [ngModel]="draft().visibility" name="visibility" (ngModelChange)="update('visibility', $event || 'internal')">
                     <nz-option nzLabel="内部" nzValue="internal"></nz-option>
                     <nz-option nzLabel="私有" nzValue="private"></nz-option>
                   </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>合同编号</nz-form-label>
+                <nz-form-control>
+                  <input nz-input [ngModel]="draft().contractNo" name="contractNo" (ngModelChange)="update('contractNo', $event)" />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>交付时间</nz-form-label>
+                <nz-form-control>
+                  <nz-date-picker
+                    style="width: 100%"
+                    nzFormat="yyyy-MM-dd"
+                    nzPlaceHolder="可选"
+                    [ngModel]="deliveryDateValue()"
+                    name="deliveryDate"
+                    (ngModelChange)="updateDeliveryDate($event)"
+                  ></nz-date-picker>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -249,22 +306,30 @@ export class ProjectEditDialogComponent {
   readonly project = input<ProjectSummary | null>(null);
   readonly cancel = output<void>();
   readonly save = output<UpdateProjectInput>();
+  readonly projectTypeOptions = PROJECT_TYPE_OPTIONS;
 
   readonly draft = signal<EditDraft>({
     name: '',
+    projectNo: '',
+    projectType: '',
     displayCode: '',
     description: '',
     icon: '',
     avatarUploadId: '',
+    contractNo: '',
+    deliveryDate: '',
     visibility: 'internal'
   });
+  readonly deliveryDateValue = signal<Date | null>(null);
   readonly avatarUploading = signal(false);
   readonly avatarPreviewUrl = signal<string | null>(null);
   readonly displayCodeInvalid = computed(() => {
     const value = this.draft().displayCode.trim();
     return value.length > 0 && !/^[A-Z0-9]{1,3}$/.test(value);
   });
-  readonly canSubmit = computed(() => !!this.draft().name.trim() && !this.displayCodeInvalid());
+  readonly canSubmit = computed(
+    () => !!this.draft().name.trim() && !!this.draft().projectNo.trim() && !!this.draft().projectType && !this.displayCodeInvalid() && !this.avatarUploading()
+  );
 
   constructor() {
     effect(() => {
@@ -277,12 +342,17 @@ export class ProjectEditDialogComponent {
       }
       this.draft.set({
         name: project.name,
+        projectNo: project.projectNo,
+        projectType: project.projectType,
         displayCode: project.displayCode ?? '',
         description: project.description ?? '',
         icon: project.icon ?? '',
         avatarUploadId: project.avatarUploadId ?? '',
+        contractNo: project.contractNo ?? '',
+        deliveryDate: project.deliveryDate ?? '',
         visibility: project.visibility === 'private' ? 'private' : 'internal'
       });
+      this.deliveryDateValue.set(this.parseDate(project.deliveryDate));
       this.avatarPreviewUrl.set(project.avatarUrl ?? null);
       this.avatarUploading.set(false);
     });
@@ -299,6 +369,15 @@ export class ProjectEditDialogComponent {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
   }
 
+  updateDeliveryDate(value: Date | null): void {
+    this.deliveryDateValue.set(value);
+    this.update('deliveryDate', this.formatDate(value));
+  }
+
+  projectTypeLabel(value: ProjectType): string {
+    return PROJECT_TYPE_LABELS[value] ?? value;
+  }
+
   submit(): void {
     if (!this.canSubmit()) {
       return;
@@ -306,10 +385,14 @@ export class ProjectEditDialogComponent {
     const draft = this.draft();
     this.save.emit({
       name: draft.name.trim(),
+      projectNo: draft.projectNo.trim(),
+      projectType: draft.projectType as ProjectType,
       displayCode: draft.displayCode.trim() || null,
       description: draft.description.trim() || null,
       icon: draft.icon.trim() || null,
       avatarUploadId: draft.avatarUploadId.trim() || null,
+      contractNo: draft.contractNo.trim() || null,
+      deliveryDate: draft.deliveryDate.trim() || null,
       visibility: draft.visibility
     });
   }
@@ -360,5 +443,23 @@ export class ProjectEditDialogComponent {
   clearAvatar(): void {
     this.draft.update((draft) => ({ ...draft, avatarUploadId: '' }));
     this.avatarPreviewUrl.set(null);
+  }
+
+  private formatDate(value: Date | null): string {
+    if (!value || Number.isNaN(value.getTime())) {
+      return '';
+    }
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDate(value: string | null): Date | null {
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 }

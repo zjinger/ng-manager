@@ -2,16 +2,36 @@ export type ProjectMemberRole = 'member' | 'product' | 'ui' | 'frontend_dev' | '
 
 export type ProjectStatus = "active" | "inactive";
 export type ProjectVisibility = "internal" | "private";
+export type ProjectType = 'entrust_dev' | 'self_dev' | 'tech_service';
+export type ProjectModuleNodeType = 'subsystem' | 'module';
+
+export const PROJECT_TYPE_OPTIONS: Array<{ label: string; value: ProjectType }> = [
+  { label: '受托研发', value: 'entrust_dev' },
+  { label: '自主研发', value: 'self_dev' },
+  { label: '技术服务', value: 'tech_service' },
+];
+
+export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
+  entrust_dev: '受托研发',
+  self_dev: '自主研发',
+  tech_service: '技术服务',
+};
 
 export interface ProjectSummary {
   id: string;
   projectKey: string;
+  projectNo: string;
   displayCode: string | null;
   name: string;
   description: string | null;
   icon: string | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
+  projectType: ProjectType;
+  contractNo: string | null;
+  deliveryDate: string | null;
+  productLine: string | null;
+  slaLevel: string | null;
   memberCount?: number;
   status: string;
   visibility: string;
@@ -29,19 +49,31 @@ export interface ProjectListQuery {
 
 export interface CreateProjectInput {
   name: string;
+  projectNo: string;
+  projectType: ProjectType;
   displayCode?: string;
   description?: string;
   icon?: string;
   avatarUploadId?: string;
+  contractNo?: string;
+  deliveryDate?: string;
+  productLine?: string;
+  slaLevel?: string;
   visibility?: ProjectVisibility;
 }
 
 export interface UpdateProjectInput {
   name?: string;
+  projectNo?: string;
+  projectType?: ProjectType;
   displayCode?: string | null;
   description?: string | null;
   icon?: string | null;
   avatarUploadId?: string | null;
+  contractNo?: string | null;
+  deliveryDate?: string | null;
+  productLine?: string | null;
+  slaLevel?: string | null;
   visibility?: ProjectVisibility;
   status?: ProjectStatus;
 }
@@ -82,6 +114,9 @@ export interface ProjectMetaItem {
   projectId: string;
   name: string;
   code: string | null;
+  parentId: string | null;
+  parentName?: string | null;
+  nodeType: ProjectModuleNodeType;
   enabled: boolean;
   sort: number;
   description: string | null;
@@ -104,6 +139,8 @@ export interface ProjectVersionItem {
 export interface CreateProjectMetaItemInput {
   name: string;
   code?: string;
+  parentId?: string | null;
+  nodeType?: ProjectModuleNodeType;
   enabled?: boolean;
   sort?: number;
   description?: string;
@@ -112,6 +149,8 @@ export interface CreateProjectMetaItemInput {
 export interface UpdateProjectMetaItemInput {
   name?: string;
   code?: string | null;
+  parentId?: string | null;
+  nodeType?: ProjectModuleNodeType;
   enabled?: boolean;
   sort?: number;
   description?: string | null;

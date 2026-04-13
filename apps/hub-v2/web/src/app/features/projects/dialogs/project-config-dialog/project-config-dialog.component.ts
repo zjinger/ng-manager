@@ -20,6 +20,7 @@ import type {
   ProjectApiTokenEntity,
   ProjectApiTokenScope,
   ProjectMetaItem,
+  ProjectModuleNodeType,
   ProjectSummary,
   ProjectVersionItem,
   UpdateProjectMetaItemInput,
@@ -48,16 +49,32 @@ import type {
       [open]="open()"
       [width]="1040"
       [title]="project() ? project()!.name + ' · 项目配置' : '项目配置'"
-      [subtitle]="'维护模块、环境、版本和研发阶段。'"
+      [subtitle]="'维护子项目（系统）/模块、环境、版本和研发阶段。'"
       [icon]="'setting'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body class="config-dialog">
         <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="true">
-          <nz-tab nzTitle="模块">
+          <nz-tab nzTitle="子项目（系统）/模块">
             <section class="section">
               <div class="creator">
-                <input nz-input placeholder="新增模块名称，如用户管理" [ngModel]="moduleDraft()" (ngModelChange)="moduleDraft.set($event)" />
+                <nz-select style="width:130px" [ngModel]="moduleNodeTypeDraft()" (ngModelChange)="moduleNodeTypeDraft.set($event || 'module')">
+                  <nz-option nzLabel="子项目(系统)" nzValue="subsystem"></nz-option>
+                  <nz-option nzLabel="模块" nzValue="module"></nz-option>
+                </nz-select>
+                <nz-select
+                  nzAllowClear
+                  nzPlaceHolder="所属子项目/系统（仅模块）"
+                  [ngModel]="moduleParentDraft()"
+                  [nzDisabled]="moduleNodeTypeDraft() === 'subsystem'"
+                  (ngModelChange)="moduleParentDraft.set($event || null)"
+                  style="width: 200px"
+                >
+                  @for (item of subsystemItems(); track item.id) {
+                    <nz-option [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                  }
+                </nz-select>
+                <input nz-input placeholder="新增子项目(系统)/模块" [ngModel]="moduleDraft()" (ngModelChange)="moduleDraft.set($event)" />
                 <button nz-button nzType="primary" [disabled]="!moduleDraft().trim() || busy()" (click)="submitModuleCreate()">
                   <nz-icon nzType="plus" nzTheme="outline" />新增
                 </button>
@@ -65,6 +82,21 @@ import type {
               <div class="list">
                 @for (item of modules(); track item.id) {
                   <div class="row">
+                    <nz-select style="width:100%;" #nodeTypeRef="ngModel" [ngModel]="item.nodeType" [name]="'nodeType-' + item.id">
+                      <nz-option nzLabel="子项目(系统)" nzValue="subsystem"></nz-option>
+                      <nz-option nzLabel="模块" nzValue="module"></nz-option>
+                    </nz-select>
+                    <nz-select
+                      #parentRef="ngModel"
+                      [ngModel]="item.parentId"
+                      [name]="'parentId-' + item.id"
+                      nzAllowClear
+                      [nzDisabled]="nodeTypeRef.value === 'subsystem'"
+                    >
+                      @for (option of subsystemItems(item.id); track option.id) {
+                        <nz-option [nzLabel]="option.name" [nzValue]="option.id"></nz-option>
+                      }
+                    </nz-select>
                     <input #nameRef nz-input [ngModel]="item.name" />
                     <input #descRef nz-input [ngModel]="item.description || ''" placeholder="描述（可选）" />
                     <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
@@ -78,7 +110,7 @@ import type {
                       nzType="default"
                       [disabled]="busy() || isModulePending(item.id)"
                       [nzLoading]="isModulePending(item.id)"
-                      (click)="saveModule(item, nameRef.value, descRef.value, asNumber(sortRef.value))"
+                      (click)="saveModule(item, nameRef.value, descRef.value, asNumber(sortRef.value), nodeTypeRef.value, parentRef.value)"
                     >
                       保存
                     </button>
@@ -89,14 +121,14 @@ import type {
                       [disabled]="busy() || isModulePending(item.id)"
                       [nzLoading]="isModulePending(item.id)"
                       nz-popconfirm
-                      nzPopconfirmTitle="确认删除该模块？"
+                      nzPopconfirmTitle="确认删除该项？"
                       (nzOnConfirm)="removeModule.emit(item.id)"
                     >
                       删除
                     </button>
                   </div>
                 } @empty {
-                  <div class="empty">暂无模块配置</div>
+                  <div class="empty">暂无子项目（系统）/模块配置</div>
                 }
               </div>
             </section>
@@ -360,9 +392,10 @@ import type {
       .creator {
         display: flex;
         gap: 10px;
+        flex-wrap: wrap;
       }
       .creator input {
-        flex: 1;
+        flex: 1 1 220px;
       }
       .list {
         display: grid;
@@ -370,12 +403,12 @@ import type {
       }
       .row {
         display: grid;
-        grid-template-columns: 1.4fr 1.2fr 110px 72px auto auto;
+        grid-template-columns: 130px 150px 1.2fr 1.1fr 70px 72px auto auto;  
         gap: 10px;
         align-items: center;
       }
       .row--stage {
-        grid-template-columns: 1.6fr 110px 72px auto auto;
+        grid-template-columns: 1.6fr 70px 72px auto auto;
       }
       .token-once {
         border: 1px solid var(--primary-300);
@@ -482,6 +515,8 @@ export class ProjectConfigDialogComponent {
   readonly clearLatestToken = output<void>();
 
   readonly moduleDraft = signal('');
+  readonly moduleNodeTypeDraft = signal<ProjectModuleNodeType>('module');
+  readonly moduleParentDraft = signal<string | null>(null);
   readonly environmentDraft = signal('');
   readonly versionDraft = signal('');
   readonly stageDraft = signal('');
@@ -509,6 +544,10 @@ export class ProjectConfigDialogComponent {
     return this.pendingTokenIds().includes(id);
   }
 
+  subsystemItems(excludeId?: string): ProjectMetaItem[] {
+    return this.modules().filter((item) => item.nodeType === 'subsystem' && item.id !== excludeId);
+  }
+
   asNumber(value: unknown): number {
     const n = Number(value);
     return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -519,8 +558,14 @@ export class ProjectConfigDialogComponent {
     if (!name) {
       return;
     }
-    this.createModule.emit({ name });
+    this.createModule.emit({
+      name,
+      nodeType: this.moduleNodeTypeDraft(),
+      parentId: this.moduleNodeTypeDraft() === 'module' ? this.moduleParentDraft() : null
+    });
     this.moduleDraft.set('');
+    this.moduleNodeTypeDraft.set('module');
+    this.moduleParentDraft.set(null);
   }
 
   submitEnvironmentCreate(): void {
@@ -551,11 +596,21 @@ export class ProjectConfigDialogComponent {
     this.stageDraft.set('');
   }
 
-  saveModule(item: ProjectMetaItem, name: string, description: string, sort: number): void {
+  saveModule(
+    item: ProjectMetaItem,
+    name: string,
+    description: string,
+    sort: number,
+    nodeType: ProjectModuleNodeType,
+    parentId: string | null
+  ): void {
     const patch: UpdateProjectMetaItemInput = {};
     if (name.trim() !== item.name) patch.name = name.trim();
     if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
     if (sort !== item.sort) patch.sort = sort;
+    if (nodeType !== item.nodeType) patch.nodeType = nodeType;
+    const normalizedParentId = nodeType === 'module' ? parentId || null : null;
+    if (normalizedParentId !== item.parentId) patch.parentId = normalizedParentId;
     if (Object.keys(patch).length > 0) {
       this.updateModule.emit({ id: item.id, patch });
     }

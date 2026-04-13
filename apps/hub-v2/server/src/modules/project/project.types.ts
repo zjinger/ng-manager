@@ -2,6 +2,7 @@ import type { PageResult } from "../../shared/http/pagination";
 
 export type ProjectStatus = "active" | "inactive";
 export type ProjectVisibility = "internal" | "private";
+export type ProjectType = "entrust_dev" | "self_dev" | "tech_service";
 export type ProjectMemberRole =
   | "member"
   | "product"
@@ -14,12 +15,18 @@ export type ProjectMemberRole =
 export interface ProjectEntity {
   id: string;
   projectKey: string;
+  projectNo: string;
   displayCode: string | null;
   name: string;
   description: string | null;
   icon: string | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
+  projectType: ProjectType;
+  contractNo: string | null;
+  deliveryDate: string | null;
+  productLine: string | null;
+  slaLevel: string | null;
   memberCount?: number;
   status: ProjectStatus;
   visibility: ProjectVisibility;
@@ -43,19 +50,31 @@ export interface ProjectMemberEntity {
 
 export interface CreateProjectInput {
   name: string;
+  projectNo: string;
+  projectType: ProjectType;
   displayCode?: string;
   description?: string;
   icon?: string;
   avatarUploadId?: string;
+  contractNo?: string;
+  deliveryDate?: string;
+  productLine?: string;
+  slaLevel?: string;
   visibility?: ProjectVisibility;
 }
 
 export interface UpdateProjectInput {
   name?: string;
+  projectNo?: string;
+  projectType?: ProjectType;
   displayCode?: string | null;
   description?: string | null;
   icon?: string | null;
   avatarUploadId?: string | null;
+  contractNo?: string | null;
+  deliveryDate?: string | null;
+  productLine?: string | null;
+  slaLevel?: string | null;
   status?: ProjectStatus;
   visibility?: ProjectVisibility;
 }
@@ -90,6 +109,9 @@ export interface ProjectConfigItemEntity {
   projectId: string;
   name: string;
   code: string | null;
+  parentId: string | null;
+  parentName?: string | null;
+  nodeType: "subsystem" | "module";
   enabled: boolean;
   sort: number;
   description: string | null;
@@ -112,6 +134,8 @@ export interface ProjectVersionItemEntity {
 export interface CreateProjectConfigItemInput {
   name: string;
   code?: string;
+  parentId?: string | null;
+  nodeType?: "subsystem" | "module";
   enabled?: boolean;
   sort?: number;
   description?: string;
@@ -120,6 +144,8 @@ export interface CreateProjectConfigItemInput {
 export interface UpdateProjectConfigItemInput {
   name?: string;
   code?: string | null;
+  parentId?: string | null;
+  nodeType?: "subsystem" | "module";
   enabled?: boolean;
   sort?: number;
   description?: string | null;

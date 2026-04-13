@@ -13,7 +13,7 @@ import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
-import type { CreateRdItemInput, RdItemType, RdStageEntity } from '../../models/rd.model';
+import { RD_TYPE_OPTIONS, type CreateRdItemInput, type RdItemType, type RdStageEntity } from '../../models/rd.model';
 
 type Draft = Omit<CreateRdItemInput, 'projectId'>;
 
@@ -126,10 +126,9 @@ const DEFAULT_DRAFT: Draft = {
                 <nz-form-label nzRequired nzFor="type">类型</nz-form-label>
                 <nz-form-control>
                   <nz-select [ngModel]="draft().type" name="type" (ngModelChange)="updateType($event)">
-                    <nz-option nzLabel="功能开发" nzValue="feature_dev"></nz-option>
-                    <nz-option nzLabel="技术改造" nzValue="tech_refactor"></nz-option>
-                    <nz-option nzLabel="联调协作" nzValue="integration"></nz-option>
-                    <nz-option nzLabel="环境准备" nzValue="env_setup"></nz-option>
+                    @for (item of typeOptions; track item.value) {
+                      <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                    }
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -251,6 +250,7 @@ export class RdCreateDialogComponent {
   readonly projectName = input<string>('');
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
+  readonly typeOptions = RD_TYPE_OPTIONS;
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
   readonly planStartDate = signal<Date | null>(null);
   readonly planEndDate = signal<Date | null>(null);
