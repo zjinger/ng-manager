@@ -1,9 +1,5 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
-import {
-  ISSUE_STATUS,
-  ISSUE_STATUS_FILTER_OPTIONS,
-  ISSUE_STATUS_LABELS,
-} from '@app/shared/constants/status-options';
+import { Component, computed, inject, input, output } from '@angular/core';
+import { ISSUE_STATUS, ISSUE_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import {
   IssueActionType,
@@ -11,8 +7,8 @@ import {
   IssueLogEntity,
   IssueStatus,
 } from '@pages/issues/models/issue.model';
-import { IssuePermissionService } from '@pages/issues/services/issue-permission.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { log } from 'ng-zorro-antd/core/logger';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
 
@@ -25,12 +21,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
         <div class="steps">
           <nz-steps [nzCurrent]="getStepIndex(issue().status)" nzSize="small">
             @for (step of stepsOptions; track step.value) {
-              @if (issue().status === 'closed') {
-                <!-- 关闭时才会出现中间进度跳过的情况，根据logs设置状态 -->
-                <nz-step [nzTitle]="step.label" [nzStatus]="stepState(step.value)"></nz-step>
-              } @else {
-                <nz-step [nzTitle]="step.label"></nz-step>
-              }
+              <nz-step [nzTitle]="step.label" [nzStatus]="stepState(step.value)"></nz-step>
             }
           </nz-steps>
         </div>
@@ -143,7 +134,6 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
   `,
 })
 export class IssueActionAreaComponent {
-  private readonly modal = inject(NzModalService);
   readonly issue = input.required<IssueEntity>();
   readonly logs = input<IssueLogEntity[]>([]);
   readonly canStart = input(false);
@@ -163,9 +153,19 @@ export class IssueActionAreaComponent {
 
   readonly excutedStatuses = computed(() => {
     const executedStatusesSet = new Set();
-    this.logs().forEach((log) => {
+    const openCutoff = this.latestOpenAt();
+    this.logs().forEach((log, index) => {
+      // 只显示最近一次打开（重新打开）之后的状态变更，之前的状态变更不再展示为已执行
+      console.log(index, openCutoff !== null && Date.parse(log.createdAt) < openCutoff);
+
+      if (openCutoff !== null && Date.parse(log.createdAt) < openCutoff) {
+        return;
+      }
       executedStatusesSet.add(log.toStatus);
     });
+    if(executedStatusesSet.has('resolved')) {
+      executedStatusesSet.add('pending_update');
+    }
     return executedStatusesSet;
   });
 
@@ -184,7 +184,10 @@ export class IssueActionAreaComponent {
     ) {
       return 'process';
     }
-    if (this.excutedStatuses().has(stepOptValue)) {
+    if (
+      this.excutedStatuses().has(stepOptValue) ||
+      (stepOptValue === 'open' && this.excutedStatuses().has('reopened'))
+    ) {
       return 'finish';
     }
     return 'wait';
@@ -199,5 +202,25 @@ export class IssueActionAreaComponent {
     }
     const index = ISSUE_STATUS.findIndex((s) => s === status) ?? -1;
     return index;
+  }
+
+  // 获取最近一次打开（重新打开）的时间戳
+  private latestOpenAt(): number | null {
+    let latest: number | null = null;
+    for (const log of this.logs()) {
+      const isReopen = log.actionType === 'reopen' && log.toStatus === 'reopened';
+      const isOpen = log.actionType === 'create' && log.toStatus === 'open';
+      if (!isReopen && !isOpen) {
+        continue;
+      }
+      const timestamp = Date.parse(log.createdAt);
+      if (Number.isNaN(timestamp)) {
+        continue;
+      }
+      if (latest === null || timestamp > latest) {
+        latest = timestamp;
+      }
+    }
+    return latest;
   }
 }

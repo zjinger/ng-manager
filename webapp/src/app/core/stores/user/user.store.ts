@@ -1,13 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
-import type { HubAuthUser } from './user.types';
-import { ApiClient, ApiSuccess } from '../../api';
-import { HttpClient, HttpHandler } from '@angular/common/http';
-import { LocalStateStore, LS_KEYS } from '../../local-state';
-import { from } from 'rxjs';
-import { ProjectContextStore } from '../project-context/project-context.store';
 import { UiNotifierService } from '@app/core/ui-notifier.service';
-import { set } from 'lodash';
+import { from } from 'rxjs';
+import { ApiClient } from '../../api';
+import { LocalStateStore, LS_KEYS } from '../../local-state';
+import { ProjectContextStore } from '../project-context/project-context.store';
+import type { HubAuthUser } from './user.types';
 
 @Injectable({ providedIn: 'root' })
 export class UserStore {
@@ -21,7 +19,9 @@ export class UserStore {
   private readonly initializedState = signal(false);
 
   readonly currentUser = computed(() => this.currentUserState());
-  readonly currentUserId = computed(() => this.currentUserState()?.userId);
+  readonly currentUserId = computed(() =>
+    !!this.currentUserState() ? this.currentUserState()!.userId : null,
+  );
   readonly hubUserToken = computed(() => this.hubUserTokenState());
   readonly initialized = computed(() => this.initializedState());
 

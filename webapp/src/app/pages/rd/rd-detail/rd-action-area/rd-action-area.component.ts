@@ -1,6 +1,8 @@
-import { Component, computed, effect, input, OnInit, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { UserStore } from '@app/core/stores';
 import { ProjectMemberEntity, RdItemEntity } from '@pages/rd/models/rd.model';
+import { RdPermissionService } from '@pages/rd/services/rd-permission.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSliderModule } from 'ng-zorro-antd/slider';
@@ -29,7 +31,9 @@ interface ActionButton {
   styleUrl: './rd-action-area.component.less',
 })
 export class RdActionAreaComponent {
-  readonly selectedItem = input.required<RdItemEntity>();
+  private readonly rdPermission = inject(RdPermissionService);
+  private readonly userStore = inject(UserStore);
+  readonly item = input.required<RdItemEntity>();
   readonly busy = input();
 
   readonly actionClick = output<'start' | 'block' | 'resume' | 'complete' | 'advance'>();
@@ -39,29 +43,28 @@ export class RdActionAreaComponent {
   // 项目成员
   members = input<ProjectMemberEntity[]>([]);
   // 当前用户id
-  currentUserId = input<string>('');
+  currentUser = computed(() => this.userStore.currentUser());
+  currentUserId = computed(() => this.userStore.currentUserId());
 
   readonly progressDraft = signal(0);
 
   constructor() {
-    effect(()=>{
-      this.selectedItem()?.progress && this.progressDraft.set(this.selectedItem()?.progress);
-    })
+    effect(() => {
+      this.item()?.progress && this.progressDraft.set(this.item()?.progress);
+    });
   }
 
   // 行动按钮
   readonly actionButtons = computed<ActionButton[]>(() => {
-    const current = this.selectedItem();
+    const current = this.item();
     if (!current) {
       return [];
     }
     switch (current.status) {
       case 'todo':
-        return this.canStartSelectedItem()
-          ? [{ key: 'start' as const, label: '开始', primary: true }]
-          : [];
+        return this.canStart() ? [{ key: 'start' as const, label: '开始', primary: true }] : [];
       case 'doing':
-        if (this.canBlockSelectedItem() && this.canCompleteSelectedItem()) {
+        if (this.canBlock() && this.canComplete()) {
           return [
             { key: 'block' as const, label: '阻塞', primary: false },
             {
@@ -72,10 +75,10 @@ export class RdActionAreaComponent {
             },
           ];
         }
-        if (this.canBlockSelectedItem()) {
+        if (this.canBlock()) {
           return [{ key: 'block' as const, label: '阻塞', primary: false }];
         }
-        return this.canCompleteSelectedItem()
+        return this.canComplete()
           ? [
               {
                 key: 'complete' as const,
@@ -86,7 +89,7 @@ export class RdActionAreaComponent {
             ]
           : [];
       case 'blocked':
-        return this.canResumeSelectedItem()
+        return this.canResume()
           ? [
               {
                 key: 'resume' as const,
@@ -97,11 +100,11 @@ export class RdActionAreaComponent {
             ]
           : [];
       // case 'done':
-      //   return this.canAdvanceSelectedItem()
+      //   return this.canAdvance()
       //     ? [{ key: 'advance' as const, label: '进入下一阶段', primary: true }]
       //     : [];
       // case 'accepted':
-      //   return this.canAdvanceSelectedItem()
+      //   return this.canAdvance()
       //     ? [{ key: 'advance' as const, label: '进入下一阶段', primary: true }]
       //     : [];
       default:
@@ -123,77 +126,54 @@ export class RdActionAreaComponent {
 
   // 重置进度
   resetProgress(): void {
-    this.progressDraft.set(this.selectedItem()?.progress ?? 0);
+    this.progressDraft.set(this.item()?.progress ?? 0);
   }
 
-  readonly progressDirty = computed(
-    () => this.progressDraft() !== (this.selectedItem()?.progress ?? 0),
-  );
+  readonly progressDirty = computed(() => this.progressDraft() !== (this.item()?.progress ?? 0));
 
-  readonly canEditSelectedProgress = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    return !!current && !!userId && !!current.assigneeId && current.assigneeId === userId;
+  // 权限相关计算属性
+  readonly canEditProgress = computed(() => {
+    if (!this.rdPermission.hasPermissionToTransition(this.currentUser())) return false;
+    return this.rdPermission.canEditProgress(this.item(), this.currentUserId());
+  });
+
+  readonly canStart = computed(() => {
+    if (!this.rdPermission.hasPermissionToTransition(this.currentUser())) return false;
+    return this.rdPermission.canStart(this.item(), this.currentUserId());
+  });
+
+  readonly canComplete = computed(() => {
+    if (!this.rdPermission.hasPermissionToTransition(this.currentUser())) return false;
+    return this.rdPermission.canComplete(this.item(), this.currentUserId());
+  });
+
+  readonly canEditBasic = computed(() => {
+    if (!this.rdPermission.hasPermissionToEdit(this.currentUser())) return false;
+    return this.rdPermission.canEditBasic(this.item(), this.currentUserId(), this.members());
+  });
+
+  readonly canDelete = computed(() => {
+    if (!this.rdPermission.hasPermissionToDelete(this.currentUser())) return false;
+    return this.rdPermission.canDelete(this.item(), this.currentUserId(), this.members());
+  });
+
+  readonly canBlock = computed(() => {
+    if (!this.rdPermission.hasPermissionToTransition(this.currentUser())) return false;
+    return this.rdPermission.canBlock(this.item(), this.currentUserId(), this.members());
+  });
+
+  readonly canResume = computed(() => {
+    if (!this.rdPermission.hasPermissionToTransition(this.currentUser())) return false;
+    return this.rdPermission.canResume(this.item(), this.currentUserId(), this.members());
+  });
+
+  readonly canAdvance = computed(() => {
+    if (!this.rdPermission.hasPermissionToTransition(this.currentUser())) return false;
+    return this.rdPermission.canAdvance(this.item(), this.currentUserId(), this.members());
   });
 
   readonly allowProgressEdit = computed(() => {
-    const status = this.selectedItem()?.status;
-    return this.canEditSelectedProgress() && !!status && status !== 'closed';
-  });
-
-  readonly canStartSelectedItem = computed(() => this.canEditSelectedProgress());
-
-  readonly canCompleteSelectedItem = computed(() => this.canEditSelectedProgress());
-
-  readonly canEditSelectedBasic = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.creatorId === userId || current.assigneeId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-  
-  readonly canDeleteSelectedItem = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.creatorId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-
-  readonly canBlockSelectedItem = computed(() => {
-    const current = this.selectedItem();
-    const userId = this.currentUserId();
-    if (!current || !userId) {
-      return false;
-    }
-    if (current.assigneeId && current.assigneeId === userId) {
-      return true;
-    }
-    const member = this.members().find((item) => item.userId === userId);
-    return !!member && (member.roleCode === 'project_admin' || member.isOwner);
-  });
-
-  readonly canResumeSelectedItem = computed(() => this.canBlockSelectedItem());
-
-  readonly canAdvanceSelectedItem = computed(() => {
-    const current = this.selectedItem();
-    if (!current) {
-      return false;
-    }
-    if (current.status !== 'done' && current.status !== 'accepted') {
-      return false;
-    }
-    return this.canEditSelectedBasic();
+    const status = this.item()?.status;
+    return this.canEditProgress() && !!status && status !== 'closed';
   });
 }

@@ -8,6 +8,7 @@ import {
   RdListResult,
   RdStageEntity,
   UpdateRdItemInput,
+  UpdateRdProgressInput,
 } from '../models/rd.model';
 import { RdTokenApiService } from './rd-token-api.service';
 
@@ -74,21 +75,24 @@ export class RdApiService {
     });
   }
 
-  async progress(projectId: string, itemId: string, progress: number): Promise<RdItemEntity> {
+  async progress(
+    projectId: string,
+    itemId: string,
+    input: UpdateRdProgressInput,
+  ): Promise<RdItemEntity> {
     return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'progress',
-      payload: { progress },
+      payload: input,
     });
   }
 
-  async advanceStage(rdId:string, input: AdvanceRdStageInput){
+  async advanceStage(rdId: string, input: AdvanceRdStageInput) {
     // return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
     //   rdId,
     //   action:'advance-stage',
     // })
   }
-
 
   async update(projectId: string, itemId: string, input: UpdateRdItemInput): Promise<RdItemEntity> {
     return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({

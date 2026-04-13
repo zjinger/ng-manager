@@ -186,7 +186,7 @@ export class RdComponent {
     if (!current) {
       return;
     }
-    this.rdStore.progress(current.id, progress);
+    this.rdStore.progress(current.id, {version: current.version, progress});
   }
 
   deleteSelectedItem(): void {

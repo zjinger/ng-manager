@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import type { UserStore } from '@app/core/stores/user/user.store';
-import type { IssueEntity } from '../models/issue.model';
+import type { IssueAttachmentEntity, IssueEntity } from '../models/issue.model';
 import { HubAuthUser } from '@app/core/stores/user/user.types';
 
 @Injectable({ providedIn: 'root' })
@@ -87,6 +87,35 @@ export class IssuePermissionService {
       return false;
     }
     return ['open', 'reopened', 'verified'].includes(issue.status);
+  }
+
+  canDeleteAttachment(
+    attachment: IssueAttachmentEntity,
+    user: HubAuthUser | null,
+    isProjectAdmin = false,
+  ): boolean {
+    return isProjectAdmin || this.matchActor(user, attachment.upload.uploaderId);
+  }
+
+  // 权限检查函数
+  hasPermissionToRead(user: HubAuthUser): boolean {
+    return user.scopes?.includes('issues:read') ?? false;
+  }
+
+  hasPermissionToComment(user: HubAuthUser): boolean {
+    return user.scopes?.includes('issue:comment:write') ?? false;
+  }
+
+  hasPermissionToTransition(user: HubAuthUser): boolean {
+    return user.scopes?.includes('issue:transition:write') ?? false;
+  }
+
+  hasPermissionToAssign(user: HubAuthUser): boolean {
+    return user.scopes?.includes('issue:assign:write') ?? false;
+  }
+
+  hasPermissionToManageParticipants(user: HubAuthUser): boolean {
+    return user.scopes?.includes('issue:participant:write') ?? false;
   }
 
   private matchActor(user: HubAuthUser | null, actorId: string | null): boolean {

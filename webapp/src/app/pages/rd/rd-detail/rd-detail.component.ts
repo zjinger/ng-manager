@@ -67,12 +67,11 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
           <div class="detail-wrap">
             <app-detail-item-card title="操作">
               <app-rd-action-area
-                [selectedItem]="rdItem()!"
+                [item]="rdItem()!"
                 (actionClick)="this.actionClick.emit($event)"
                 (progressChange)="this.progressChange.emit($event)"
                 (deleteClick)="this.deleteClick.emit()"
                 [members]="members()"
-                [currentUserId]="currentUserId()"
                 [busy]="busy()"
               ></app-rd-action-area>
             </app-detail-item-card>
@@ -223,7 +222,6 @@ export class RdDetailComponent {
   readonly placement = input<NzDrawerPlacement>('right');
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
-  readonly currentUserId = input<string>('');
 
   readonly close = output();
   readonly actionClick = output<string>();

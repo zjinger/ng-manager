@@ -9,7 +9,8 @@ import {
   RdListQuery,
   RdLogEntity,
   RdStageEntity,
-  UpdateRdItemInput
+  UpdateRdItemInput,
+  UpdateRdProgressInput
 } from '../models/rd.model';
 import { RdApiService } from '../services/rd-api.service';
 
@@ -122,8 +123,8 @@ export class RdStore {
     this.runAction(() => this.rdApi.start(projectId, itemId));
   }
 
-  progress(itemId: string, progress: number): void {
-    this.runAction(() => this.rdApi.progress(this.projectId()!, itemId, progress));
+  progress(itemId: string, input: UpdateRdProgressInput): void {
+    this.runAction(() => this.rdApi.progress(this.projectId()!, itemId, input));
   }
 
   block(itemId: string, input: BlockRdItemInput): void {

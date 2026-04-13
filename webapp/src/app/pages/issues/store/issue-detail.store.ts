@@ -71,15 +71,128 @@ export class IssueDetailStore {
   readonly canAssign = computed(() => {
     const issue = this.issueState();
     const currentUser = this.currentUser();
-    if (!issue || !currentUser) {
+    if (!issue || !currentUser || !this.permissionService.hasPermissionToAssign(currentUser)) {
       return false;
     }
-    //
-    if (currentUser.scopes?.includes('issue:assign:write')) {
-      return this.permissionService.canAssign(issue, currentUser, this.isProjectAdmin());
-    } else {
+    return this.permissionService.canAssign(issue, currentUser, this.isProjectAdmin());
+  });
+
+  readonly canManageParticipants = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToManageParticipants(user)) {
       return false;
     }
+    return this.permissionService.canManageParticipants(
+      issue,
+      this.currentUser(),
+      this.isProjectAdmin(),
+    );
+  });
+
+  readonly canClaim = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToTransition(user)) {
+      return false;
+    }
+    return this.permissionService.canClaim(issue, this.currentUser());
+  });
+
+  readonly canStart = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToTransition(user)) {
+      return false;
+    }
+    return (
+      !!issue &&
+      ['open', 'reopened', 'pending_update'].includes(issue.status) &&
+      this.permissionService.canStart(issue, this.currentUser())
+    );
+  });
+
+  readonly canResolve = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToTransition(user)) {
+      return false;
+    }
+    return (
+      !!issue &&
+      ['in_progress', 'pending_update'].includes(issue.status) &&
+      this.permissionService.canResolve(issue, this.currentUser())
+    );
+  });
+
+  readonly canPendingUpdate = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToTransition(user)) {
+      return false;
+    }
+    return (
+      !!issue &&
+      issue.status === 'in_progress' &&
+      this.permissionService.canResolve(issue, this.currentUser())
+    );
+  });
+
+  readonly canVerify = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToTransition(user)) {
+      return false;
+    }
+    return (
+      !!issue &&
+      issue.status === 'resolved' &&
+      this.permissionService.canVerify(issue, this.currentUser())
+    );
+  });
+
+  readonly canReopen = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToTransition(user)) {
+      return false;
+    }
+    return (
+      !!issue &&
+      ['resolved', 'verified', 'closed'].includes(issue.status) &&
+      this.permissionService.canVerify(issue, this.currentUser())
+    );
+  });
+
+  canComment = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToComment(user)) {
+      return false;
+    }
+    return true;
+  });
+
+  canRead = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToRead(user)) {
+      return false;
+    }
+    return true;
+  });
+
+  readonly canClose = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToTransition(user)) {
+      return false;
+    }
+    return (
+      !!issue &&
+      ['open', 'in_progress', 'resolved', 'verified', 'reopened'].includes(issue.status) &&
+      this.permissionService.canClose(issue, this.currentUser())
+    );
   });
 
   readonly startActionLabel = computed(() => {
@@ -103,164 +216,6 @@ export class IssueDetailStore {
         this.isProjectAdmin(),
       ) ?? '重新指派'
     );
-  });
-
-  readonly canManageParticipants = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:participant:write')) {
-      return this.permissionService.canManageParticipants(
-        issue,
-        this.currentUser(),
-        this.isProjectAdmin(),
-      );
-    } else {
-      return false;
-    }
-  });
-
-  readonly canClaim = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue) {
-      return false;
-    }
-    if (user?.scopes?.includes('issue:transition:write')) {
-      return this.permissionService.canClaim(issue, this.currentUser());
-    } else {
-      return false;
-    }
-  });
-
-  readonly canStart = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:transition:write')) {
-      return (
-        !!issue &&
-        ['open', 'pending_update'].includes(issue.status) &&
-        this.permissionService.canStart(issue, this.currentUser())
-      );
-    } else {
-      return false;
-    }
-  });
-
-  readonly canResolve = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:transition:write')) {
-      return (
-        !!issue &&
-        ['in_progress', 'pending_update', 'reopened'].includes(issue.status) &&
-        this.permissionService.canResolve(issue, this.currentUser())
-      );
-    } else {
-      return false;
-    }
-  });
-
-  readonly canPendingUpdate = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:transition:write')) {
-      return (
-        !!issue &&
-        ['in_progress', 'reopened'].includes(issue.status) &&
-        this.permissionService.canResolve(issue, this.currentUser())
-      );
-    } else {
-      return false;
-    }
-  });
-
-  readonly canVerify = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:transition:write')) {
-      return (
-        !!issue &&
-        issue.status === 'resolved' &&
-        this.permissionService.canVerify(issue, this.currentUser())
-      );
-    } else {
-      return false;
-    }
-  });
-
-  readonly canReopen = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:transition:write')) {
-      return (
-        !!issue &&
-        ['resolved', 'verified', 'closed'].includes(issue.status) &&
-        this.permissionService.canVerify(issue, this.currentUser())
-      );
-    } else {
-      return false;
-    }
-  });
-
-  canComment = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:comment:write')) {
-      return true;
-    } else {
-      return false;
-    }
-  });
-
-  canRead = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:read')) {
-      return true;
-    } else {
-      return false;
-    }
-  });
-
-  readonly canClose = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user) {
-      return false;
-    }
-    if (user.scopes?.includes('issue:transition:write')) {
-      return (
-        !!issue &&
-        ['open', 'in_progress', 'resolved', 'verified', 'reopened'].includes(issue.status) &&
-        this.permissionService.canClose(issue, this.currentUser())
-      );
-    } else {
-      return false;
-    }
   });
 
   load(issueId: string): void {

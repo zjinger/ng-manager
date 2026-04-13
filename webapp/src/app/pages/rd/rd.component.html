@@ -107,7 +107,7 @@
 
     <!-- 详情 -->
     <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" (close)="closeDetail()" [busy]="busy()"
-        [logs]="currentRdLogs()" [placement]="drawerPlacement()" [currentUserId]="currentUserId()" [stages]="stages()"
+        [logs]="currentRdLogs()" [placement]="drawerPlacement()" [stages]="stages()"
         (actionClick)="handleSelectedAction($event)" (progressChange)="updateSelectedProgress($event)"
         (deleteClick)="deleteSelectedItem()">
     </app-rd-detail>

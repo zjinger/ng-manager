@@ -26,7 +26,7 @@
   @if (actionButtons().length === 0) {
     <span class="action-empty">当前状态无可执行操作</span>
   }
-  @if (canDeleteSelectedItem()) {
+  @if (canDelete()) {
       <button
         nz-button
         nzType="default"
@@ -41,7 +41,7 @@
         删除研发项
       </button>
   }
-  @if (canEditSelectedProgress()) {
+  @if (allowProgressEdit()) {
     <div class="progress-wrap">
       <div class="progress-head">
         <span>进度调节</span>     
