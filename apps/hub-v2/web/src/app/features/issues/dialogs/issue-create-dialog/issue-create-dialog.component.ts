@@ -498,12 +498,12 @@ export class IssueCreateDialogComponent implements OnDestroy {
 
   onTitleChange(value: string): void {
     this.updateField('title', value);
-    this.aiStore.updateTitle(value);
+    // this.aiStore.updateTitle(value);
   }
 
   onDescriptionChange(value: string): void {
     this.updateField('description', value);
-    this.aiStore.updateDescription(value || null);
+    // this.aiStore.updateDescription(value || null);
   }
 
   onAiAccept(result: { type: IssueType | null; priority: IssuePriority | null; assigneeId?: string | null; moduleCode?: string }): void {
