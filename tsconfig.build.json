@@ -9,6 +9,7 @@
     { "path": "packages/core" },
     { "path": "packages/sprite" },
     { "path": "packages/ais" },
+    { "path": "packages/nginx" },
     { "path": "packages/server" },
     { "path": "packages/cli" },
     { "path": "packages/api" }
