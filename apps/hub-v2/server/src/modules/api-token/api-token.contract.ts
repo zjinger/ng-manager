@@ -8,6 +8,7 @@ import type {
   TokenFeedbackListResult,
   TokenIssueDetail,
   TokenIssueAttachmentsResult,
+  TokenIssueBranchesResult,
   TokenIssueCommentsResult,
   TokenIssueListQuery,
   TokenIssueListResult,
@@ -36,6 +37,7 @@ export interface ApiTokenQueryContract {
   listIssueComments(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueCommentsResult>;
   listIssueParticipants(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueParticipantsResult>;
   listIssueAttachments(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueAttachmentsResult>;
+  listIssueBranches(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueBranchesResult>;
   listProjectMembers(projectKey: string, ctx: RequestContext): Promise<TokenProjectMembersResult>;
   listRdStages(projectKey: string, ctx: RequestContext): Promise<TokenRdStagesResult>;
   listRdItems(projectKey: string, query: TokenRdListQuery, ctx: RequestContext): Promise<TokenRdListResult>;

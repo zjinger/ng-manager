@@ -10,6 +10,7 @@ import type { IssueQueryContract } from "../issue/issue.contract";
 import type { IssueCommentQueryContract } from "../issue/comment/issue-comment.contract";
 import type { IssueParticipantQueryContract } from "../issue/participant/issue-participant.contract";
 import type { IssueAttachmentQueryContract } from "../issue/attachment/issue-attachment.contract";
+import type { IssueBranchQueryContract } from "../issue/branch/issue-branch.contract";
 import type { ProjectQueryContract } from "../project/project.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import { ProjectRepo } from "../project/project.repo";
@@ -26,6 +27,7 @@ import type {
   TokenFeedbackListResult,
   TokenIssueDetail,
   TokenIssueAttachmentsResult,
+  TokenIssueBranchesResult,
   TokenIssueCommentsResult,
   TokenIssueListQuery,
   TokenIssueListResult,
@@ -53,6 +55,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     private readonly issueCommentQuery: IssueCommentQueryContract,
     private readonly issueParticipantQuery: IssueParticipantQueryContract,
     private readonly issueAttachmentQuery: IssueAttachmentQueryContract,
+    private readonly issueBranchQuery: IssueBranchQueryContract,
     private readonly projectQuery: ProjectQueryContract,
     private readonly rdQuery: RdQueryContract,
     private readonly feedbackQuery: FeedbackQueryContract
@@ -228,6 +231,15 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
       throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
     }
     return { items: await this.issueAttachmentQuery.list(issueId, ctx) };
+  }
+
+  async listIssueBranches(projectKey: string, issueId: string, ctx: RequestContext): Promise<TokenIssueBranchesResult> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    const issue = await this.issueQuery.getById(issueId, ctx);
+    if (issue.projectId !== project.id) {
+      throw new AppError(ERROR_CODES.ISSUE_NOT_FOUND, "issue not found", 404);
+    }
+    return { items: await this.issueBranchQuery.list(issueId, ctx) };
   }
 
   async listProjectMembers(projectKey: string, ctx: RequestContext): Promise<TokenProjectMembersResult> {

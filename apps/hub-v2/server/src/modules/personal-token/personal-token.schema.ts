@@ -8,6 +8,7 @@ export const createPersonalTokenSchema = z.object({
         "issue:comment:write",
         "issue:transition:write",
         "issue:assign:write",
+        "issue:branch:write",
         "issue:participant:write",
         "rd:transition:write",
         "rd:edit:write",
@@ -36,6 +37,12 @@ export const personalIssueParticipantParamSchema = z.object({
   projectKey: z.string().trim().min(1).max(80),
   issueId: z.string().trim().min(1),
   participantId: z.string().trim().min(1)
+});
+
+export const personalIssueBranchParamSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80),
+  issueId: z.string().trim().min(1),
+  branchId: z.string().trim().min(1)
 });
 
 export const personalRdItemIdParamSchema = z.object({

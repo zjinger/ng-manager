@@ -57,6 +57,12 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     return ok(await app.container.apiTokenQuery.listIssueAttachments(params.projectKey, params.issueId, ctx));
   });
 
+  app.get("/projects/:projectKey/issues/:issueId/branches", async (request) => {
+    const ctx = requireTokenAuth(request, "issues:read");
+    const params = issueIdParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listIssueBranches(params.projectKey, params.issueId, ctx));
+  });
+
   app.get("/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw", async (request, reply) => {
     const ctx = requireTokenAuth(request, "issues:read");
     const params = issueAttachmentRawParamSchema.parse(request.params);

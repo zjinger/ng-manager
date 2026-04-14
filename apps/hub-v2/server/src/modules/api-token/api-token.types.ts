@@ -4,6 +4,7 @@ import type { FeedbackEntity, FeedbackListResult, ListFeedbacksQuery } from "../
 import type { IssueCommentEntity } from "../issue/comment/issue-comment.types";
 import type { IssueParticipantEntity } from "../issue/participant/issue-participant.types";
 import type { IssueAttachmentEntity } from "../issue/attachment/issue-attachment.types";
+import type { IssueBranchEntity } from "../issue/branch/issue-branch.types";
 import type { ProjectMemberEntity } from "../project/project.types";
 import type { RdStageEntity } from "../rd/rd.types";
 
@@ -57,6 +58,7 @@ export type TokenIssueLogsResult = { items: IssueLogEntity[] };
 export type TokenIssueCommentsResult = { items: IssueCommentEntity[] };
 export type TokenIssueParticipantsResult = { items: IssueParticipantEntity[] };
 export type TokenIssueAttachmentsResult = { items: IssueAttachmentEntity[] };
+export type TokenIssueBranchesResult = { items: IssueBranchEntity[] };
 export type TokenProjectMembersResult = { items: ProjectMemberEntity[] };
 export type TokenRdListResult = RdItemListResult;
 export type TokenRdDetail = RdItemEntity;

@@ -1,6 +1,6 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-04-13
+最后更新：2026-04-14
 
 ## 1. 背景与目标
 
@@ -115,6 +115,7 @@ Issue：
 - `GET /api/token/projects/:projectKey/issues/:issueId/comments`
 - `GET /api/token/projects/:projectKey/issues/:issueId/participants`
 - `GET /api/token/projects/:projectKey/issues/:issueId/attachments`
+- `GET /api/token/projects/:projectKey/issues/:issueId/branches`
 - `GET /api/token/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw`（显式附件展示）
 - `GET /api/token/projects/:projectKey/issues/:issueId/uploads/:uploadId/raw`（Issue 描述中的 Markdown 图片展示）
 - `GET /api/token/projects/:projectKey/members`（用于评论 @ 成员候选）
@@ -145,6 +146,10 @@ Issue：
 - `POST /api/personal/projects/:projectKey/issues/:issueId/comments`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/assign`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/claim`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/branches`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/branches/start-mine`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/branches/:branchId/start`
+- `POST /api/personal/projects/:projectKey/issues/:issueId/branches/:branchId/complete`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/start`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/wait-update`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/resolve`
@@ -188,6 +193,7 @@ RD：
 | Issue | 评论 | `issue:comment:write` |
 | Issue | 状态流转 | `issue:transition:write` |
 | Issue | 指派与认领 | `issue:assign:write` |
+| Issue | 协作分支管理 | `issue:branch:write` |
 | Issue | 协作人管理 | `issue:participant:write` |
 | RD | 列表与详情 | `rd:read` |
 | Feedback | 列表与详情 | `feedbacks:read` |
@@ -337,4 +343,16 @@ curl -X GET "http://<HUB_V2_HOST>/api/personal/me" -H "Authorization: Bearer <PE
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/capabilities" -H "Authorization: Bearer <PERSONAL_TOKEN>"
+```
+
+### 12.5 Project Token 读取协作分支列表
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+### 12.6 Personal Token 开始协作
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches/start-mine" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"协作分支标题\"}"
 ```

@@ -182,6 +182,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       canComment: scopeSet.has("issue:comment:write"),
       canTransition: scopeSet.has("issue:transition:write"),
       canAssign: scopeSet.has("issue:assign:write"),
+      canManageBranches: scopeSet.has("issue:branch:write"),
       canManageParticipants: scopeSet.has("issue:participant:write")
     };
 
@@ -195,6 +196,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       issueCaps.canComment ||
       issueCaps.canTransition ||
       issueCaps.canAssign ||
+      issueCaps.canManageBranches ||
       issueCaps.canManageParticipants ||
       rdCaps.canTransition ||
       rdCaps.canEdit ||
@@ -252,6 +254,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       scope === "issue:comment:write" ||
       scope === "issue:transition:write" ||
       scope === "issue:assign:write" ||
+      scope === "issue:branch:write" ||
       scope === "issue:participant:write" ||
       scope === "rd:transition:write" ||
       scope === "rd:edit:write" ||

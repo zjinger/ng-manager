@@ -214,6 +214,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     issueCommentService,
     issueParticipantService,
     issueAttachmentService,
+    issueBranchService,
     projectService,
     rdService,
     feedbackService

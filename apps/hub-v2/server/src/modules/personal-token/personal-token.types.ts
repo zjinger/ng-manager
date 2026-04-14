@@ -2,6 +2,7 @@ export type PersonalTokenScope =
   | "issue:comment:write" // 评论权限
   | "issue:transition:write" // 流转权限
   | "issue:assign:write" // 分配权限
+  | "issue:branch:write" // 协作分支权限
   | "issue:participant:write" // 参与者管理权限
   | "rd:transition:write" // 需求流转权限
   | "rd:edit:write" // 需求编辑权限
@@ -73,6 +74,7 @@ export interface PersonalProjectCapabilitiesResult {
       canComment: boolean;
       canTransition: boolean;
       canAssign: boolean;
+      canManageBranches: boolean;
       canManageParticipants: boolean;
     };
     rd: {

@@ -4,9 +4,14 @@ import { requirePersonalTokenAuth } from "../../shared/auth/require-personal-tok
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
 import { assignIssueSchema, closeIssueSchema, reopenIssueSchema, resolveIssueSchema } from "../issue/issue.schema";
+import { completeIssueBranchSchema, createIssueBranchSchema, startOwnIssueBranchSchema } from "../issue/branch/issue-branch.schema";
 import { createIssueCommentSchema } from "../issue/comment/issue-comment.schema";
 import { addIssueParticipantSchema } from "../issue/participant/issue-participant.schema";
-import { personalIssueIdParamSchema, personalIssueParticipantParamSchema } from "./personal-token.schema";
+import {
+  personalIssueBranchParamSchema,
+  personalIssueIdParamSchema,
+  personalIssueParticipantParamSchema
+} from "./personal-token.schema";
 
 export default async function personalTokenIssueRoutes(app: FastifyInstance) {
   app.post("/projects/:projectKey/issues/:issueId/comments", async (request, reply) => {
@@ -31,6 +36,45 @@ export default async function personalTokenIssueRoutes(app: FastifyInstance) {
     const params = personalIssueIdParamSchema.parse(request.params);
     await assertIssueProjectAccess(app, params.projectKey, params.issueId, ctx);
     return ok(await app.container.issueCommand.claim(params.issueId, ctx), "issue claimed");
+  });
+
+  app.post("/projects/:projectKey/issues/:issueId/branches", async (request, reply) => {
+    const ctx = requirePersonalTokenAuth(request, "issue:branch:write");
+    const params = personalIssueIdParamSchema.parse(request.params);
+    await assertIssueProjectAccess(app, params.projectKey, params.issueId, ctx);
+    const body = createIssueBranchSchema.parse(request.body);
+    const entity = await app.container.issueBranchCommand.create(params.issueId, body, ctx);
+    return reply.status(201).send(ok(entity, "issue branch created"));
+  });
+
+  app.post("/projects/:projectKey/issues/:issueId/branches/start-mine", async (request, reply) => {
+    const ctx = requirePersonalTokenAuth(request, "issue:branch:write");
+    const params = personalIssueIdParamSchema.parse(request.params);
+    await assertIssueProjectAccess(app, params.projectKey, params.issueId, ctx);
+    const body = startOwnIssueBranchSchema.parse(request.body);
+    const entity = await app.container.issueBranchCommand.startMine(params.issueId, body, ctx);
+    return reply.status(201).send(ok(entity, "issue branch started"));
+  });
+
+  app.post("/projects/:projectKey/issues/:issueId/branches/:branchId/start", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "issue:branch:write");
+    const params = personalIssueBranchParamSchema.parse(request.params);
+    await assertIssueProjectAccess(app, params.projectKey, params.issueId, ctx);
+    return ok(
+      await app.container.issueBranchCommand.start(params.issueId, params.branchId, ctx),
+      "issue branch started"
+    );
+  });
+
+  app.post("/projects/:projectKey/issues/:issueId/branches/:branchId/complete", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "issue:branch:write");
+    const params = personalIssueBranchParamSchema.parse(request.params);
+    await assertIssueProjectAccess(app, params.projectKey, params.issueId, ctx);
+    const body = completeIssueBranchSchema.parse(request.body);
+    return ok(
+      await app.container.issueBranchCommand.complete(params.issueId, params.branchId, body, ctx),
+      "issue branch completed"
+    );
   });
 
   app.post("/projects/:projectKey/issues/:issueId/start", async (request) => {
