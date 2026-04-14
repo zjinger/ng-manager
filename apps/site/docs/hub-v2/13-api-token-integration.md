@@ -264,78 +264,28 @@ Personal Token 表：`personal_api_tokens`
 
 ---
 
-## 9. 审计方案
 
-关键写操作日志字段：
+## 9. Curl 验证示例
 
-- `action`
-- `projectId`
-- `entityId`
-- `actorUserId`
-- `actorName`
-- `tokenId`
-- `before`
-- `after`
-- `createdAt`
-
-说明：
-
-- `entityId` 在 Issue 场景为 `issueId`，在 RD 场景为 `rdItemId`
-- 日志文案统一中文
-
----
-
-## 10. 实施计划
-
-### 阶段 1
-
-- 打通读取链路
-- webapp 可读取 Issue 与 RD
-
-### 阶段 2
-
-- 落地 Personal Token 管理接口
-- 落地 `/api/personal` 写接口
-- 落地审计字段
-
-### 阶段 3
-
-- webapp 写操作切换到 Personal Token
-- Project Token 收敛为只读
-- 完成回归与灰度发布
-
----
-
-## 11. 验收标准
-
-- Project Token 仅读，Personal Token 负责写
-- Issue 与 RD 写操作可定位到操作者身份
-- Scope 不匹配或角色不匹配返回 `403`
-- webapp 只传 `projectId` + 业务相对路径，server 负责 `projectKey` 解析、token 鉴权与转发细节
-
----
-
-## 12. Curl 验证示例
-
-### 12.1 Personal Token 写评论
+### 9.1 Personal Token 写评论
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/comments" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"content\":\"[PTK验证] 评论写入测试\"}"
 ```
 
-### 12.2 Project Token 读取 Issue 列表
+### 9.2 Project Token 读取 Issue 列表
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues?page=1&pageSize=20" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 12.3 Project Token 读取 Issue Markdown 图片
+### 9.3 Project Token 读取 Issue Markdown 图片
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/uploads/<UPLOAD_ID>/raw" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 12.4 Personal Token 获取身份与能力
+### 9.4 Personal Token 获取身份与能力
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/personal/me" -H "Authorization: Bearer <PERSONAL_TOKEN>"
@@ -345,13 +295,13 @@ curl -X GET "http://<HUB_V2_HOST>/api/personal/me" -H "Authorization: Bearer <PE
 curl -X GET "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/capabilities" -H "Authorization: Bearer <PERSONAL_TOKEN>"
 ```
 
-### 12.5 Project Token 读取协作分支列表
+### 9.5 Project Token 读取协作分支列表
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 12.6 Personal Token 开始协作
+### 9.6 Personal Token 开始协作
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches/start-mine" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"协作分支标题\"}"
