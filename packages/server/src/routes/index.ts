@@ -8,7 +8,7 @@ import { spriteRoutes } from './sprite.routes';
 import systemRoutes from './system.routes';
 import taskRoutes from './task.routes';
 import { apiClientCollectionsRoutes, apiClientEnvsRoutes, apiClientHistoryRoutes, apiClientHubTokenRoutes, apiClientRequestsRoutes, apiClientSendRoutes } from './api-client';
-import { nginxRoutes } from './nginx/nginx.routes';
+import { nginxRoutes } from './nginx.routes';
 import { FastifyInstance } from 'fastify';
 import svnRoutes from './svn.routes';
 import spriteBrowseRoutes from './sprite-browse.routes';
