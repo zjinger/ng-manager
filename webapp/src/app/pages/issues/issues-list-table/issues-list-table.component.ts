@@ -34,7 +34,7 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
       @for (item of issues(); track item.id) {
         <tr
           (click)="selectItem.emit(item)"
-          [style.background-color]="item.id == selectedItem()?.id ? '#1890ff24' : ''"
+          [style.background-color]="item.id === selectedItem()?.id ? '#1890ff24' : ''"
           class="issue-item-row"
         >
           <td>{{ $index + 1 }}</td>
@@ -113,7 +113,7 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
 })
 export class IssuesListTableComponent {
   readonly issues = input.required<IssueEntity[]>();
-  readonly selectedItem = input<IssueEntity>();
+  readonly selectedItem = input<IssueEntity | null>();
   readonly selectItem = output<IssueEntity>();
 
   getStatusLabel(status: IssueStatus) {

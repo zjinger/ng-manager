@@ -103,13 +103,12 @@
 
     <!-- 新建 -->
     <app-rd-create-dialog [open]="createDialogOpen()" (cancel)="createDialogOpen.set(false)"
-        (create)="onCreate($event)"></app-rd-create-dialog>
+        (create)="createRd($event)"></app-rd-create-dialog>
 
     <!-- 详情 -->
     <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" (close)="closeDetail()" [busy]="busy()"
-        [logs]="currentRdLogs()" [placement]="drawerPlacement()" [stages]="stages()"
-        (actionClick)="handleSelectedAction($event)" (progressChange)="updateSelectedProgress($event)"
-        (deleteClick)="deleteSelectedItem()">
+        [logs]="currentRdLogs()" [stages]="stages()" (actionClick)="handleSelectedAction($event)"
+        (progressChange)="updateSelectedProgress($event)" (deleteClick)="deleteSelectedItem()">
     </app-rd-detail>
 
     <!-- 阻塞弹窗 -->

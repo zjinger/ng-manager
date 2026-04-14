@@ -38,7 +38,7 @@ import { CommonModule, DatePipe } from '@angular/common';
         @for (item of rdItems(); track item.id) {
           <tr
             (click)="selectItem.emit(item)"
-            [style.background-color]="item.id == selectedItem()?.id ? '#1890ff24' : ''"
+            [style.background-color]="item.id === selectedItem()?.id ? '#1890ff24' : ''"
             class="rd-item-row"
           >
             <td class="title-col">
@@ -77,14 +77,14 @@ import { CommonModule, DatePipe } from '@angular/common';
         font-size: 0.8rem;
       }
     }
-    .rd-item-row{
+    .rd-item-row {
       cursor: pointer;
     }
   `,
 })
 export class RdListTableComponent {
   readonly rdItems = input.required<RdItemEntity[]>();
-  readonly selectedItem = input<RdItemEntity>();
+  readonly selectedItem = input<RdItemEntity | null>(null);
   readonly stages = input<RdStageEntity[]>([]);
   readonly selectItem = output<RdItemEntity>();
 
@@ -105,7 +105,7 @@ export class RdListTableComponent {
   }
 
   getStagesName(stageId: string | null) {
-    if(!stageId) return "";
+    if (!stageId) return '';
     const stage = this.stages().find((stage) => {
       return stage.id === stageId;
     });

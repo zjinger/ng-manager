@@ -237,7 +237,7 @@ export class IssuesComponent {
     });
   }
 
-  closeConfirm() {
+  closeConfirm(reason: string) {
     // this.issueDetailStore.close
   }
 
@@ -276,7 +276,7 @@ export class IssuesComponent {
     this.IssueResolveDialogOpen.set(false);
   }
 
-  updateStatus(status: IssueStatus) {
+  updateStatus(status: IssueStatus | '') {
     this.issueListStore.updateQuery({ status });
   }
 

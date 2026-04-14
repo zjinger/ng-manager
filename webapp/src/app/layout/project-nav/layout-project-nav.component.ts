@@ -8,7 +8,7 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
-import { ProjectEditModalComponent } from "@pages/projects/project-list/project-edit-modal.component";
+import { ProjectEditModalComponent } from '@pages/projects/project-list/project-edit-modal.component';
 import { HubV2PersonalTokenModalComponent } from './hub-v2-personal-token-modal.component';
 import { ProjectContextStore } from '@app/core/stores/project-context/project-context.store';
 import { UserStore } from '@app/core/stores';
@@ -25,25 +25,27 @@ import { UserStore } from '@app/core/stores';
     NzButtonModule,
     RouterModule,
     ProjectEditModalComponent,
-    HubV2PersonalTokenModalComponent
+    HubV2PersonalTokenModalComponent,
   ],
   templateUrl: './layout-project-nav.component.html',
   styleUrl: './layout-project-nav.component.less',
 })
 export class LayoutProjectNavComponent implements OnInit {
+  readonly userStore = inject(UserStore);
+  readonly projectContext = inject(ProjectContextStore);
+  readonly projectState = inject(ProjectStateService);
+
   isCollapsed = model(false);
   personalTokenModalVisible = false;
-  @ViewChild(HubV2PersonalTokenModalComponent) personalTokenModal?: HubV2PersonalTokenModalComponent;
+  @ViewChild(HubV2PersonalTokenModalComponent)
+  personalTokenModal?: HubV2PersonalTokenModalComponent;
 
-  private readonly projectContext = inject(ProjectContextStore);
-  private readonly userStore = inject(UserStore)
-  private readonly projectState = inject(ProjectStateService);
   readonly currentProject = this.projectContext.currentProject;
   readonly favoriteProjects = this.projectContext.favoriteProjects;
   readonly recentProjects = this.projectContext.recentProjects;
 
   readonly curProjectName = computed(() => {
-    const name = this.projectContext.currentProject()?.name || '请选择项目'
+    const name = this.projectContext.currentProject()?.name || '请选择项目';
     return this.isCollapsed() ? name?.charAt(0).toUpperCase() : name;
   });
 
@@ -56,4 +58,4 @@ export class LayoutProjectNavComponent implements OnInit {
     this.personalTokenModalVisible = true;
     queueMicrotask(() => this.personalTokenModal?.open());
   }
-} 
+}

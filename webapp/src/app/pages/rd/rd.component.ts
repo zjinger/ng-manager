@@ -149,19 +149,10 @@ export class RdComponent {
   }
 
   async selectItem(item: RdItemEntity) {
-    if (this.viewType() === 'board' && (item.status === 'blocked' || item.status === 'done')) {
-      this.updateDetailDrawerPlacement('left');
-    } else {
-      this.updateDetailDrawerPlacement('right');
-    }
     this.openDetail(item);
     this.detailDrawerOpen.set(true);
     await this.rdStore.loadCurrentRdItem(item.id);
     this.rdStore.setCurrentRdItem(this.rdStore.currentRdItem() ?? item);
-  }
-
-  updateDetailDrawerPlacement(pla: NzDrawerPlacement) {
-    this.drawerPlacement.set(pla);
   }
 
   // 关闭详情抽屉

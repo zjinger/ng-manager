@@ -50,7 +50,7 @@ const PRIORITY_ORDER = {
 export class RdListBoardComponent {
   readonly rdItems = input<RdItemEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
-  readonly selectedItem = input<RdItemEntity>();
+  readonly selectedItem = input<RdItemEntity | null>(null);
   selectItem = output<RdItemEntity>();
 
   listCards = [

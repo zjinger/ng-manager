@@ -46,7 +46,6 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
       [nzWrapClassName]="'rd-detail-drawer'"
       [nzMask]="false"
       [nzTitle]="drawerTitleTpl"
-      [nzPlacement]="placement()"
       (nzOnClose)="closeDetaile()"
     >
       <ng-template #drawerTitleTpl>
@@ -219,12 +218,11 @@ export class RdDetailComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly logs = input<RdLogEntity[]>([]);
-  readonly placement = input<NzDrawerPlacement>('right');
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
 
   readonly close = output();
-  readonly actionClick = output<string>();
+  readonly actionClick = output<'start' | 'block' | 'resume' | 'complete' | 'advance'>();
   readonly progressChange = output<number>();
   readonly deleteClick = output<void>();
 
