@@ -4,8 +4,9 @@ import { ErrorCode } from "../common/errors";
 import { LogLine } from "../infra/log/log.types";
 import { SvnEventMsg } from "./ws.svn.types";
 import { TaskEventMsg, TaskOutputMsg } from "./ws.task.types";
+import { NginxLogAppendMsg, NginxLogTailMsg, NginxSubMsg, NginxUnsubMsg } from "./ws.nginx.types";
 
-export type WsTopic = "task" | "syslog" | "svn";
+export type WsTopic = "task" | "syslog" | "svn" | "nginx";
 
 export type WsState = "idle" | "connecting" | "open" | "closed" | "error";
 
@@ -26,6 +27,8 @@ export type WsServerMsg =
     | SvnEventMsg
     | { op: "syslog.append"; entry: LogLine }
     | { op: "syslog.tail"; entries: LogLine[] }
+    | NginxLogTailMsg
+    | NginxLogAppendMsg
     | { op: "error"; code: ErrorCode; message: string; details?: any; ts: number; fatal?: boolean };
 
 
@@ -37,4 +40,6 @@ export type WsClientMsg =
     | { op: "sub"; topic: "syslog"; tail?: number }
     | { op: "unsub"; topic: "syslog" }
     | { op: "sub"; topic: "svn"; projectId: string; tail?: number }
-    | { op: "unsub"; topic: "svn"; projectId: string; };
+    | { op: "unsub"; topic: "svn"; projectId: string; }
+    | NginxSubMsg
+    | NginxUnsubMsg;

@@ -25,5 +25,6 @@ export type {
     WsClientMsg,
     TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg,
     TaskStartedPayload, TaskStopRequestedPayload,
-    SvnEventType, SvnTaskStatus, SvnSyncOutputPayload, SvnSyncDonePayload, SvnSyncProgressPayload, SvnSyncStartedPayload, SvnSyncFailedPayload, SvnEventPayloadMap, SvnEventMsg
+    SvnEventType, SvnTaskStatus, SvnSyncOutputPayload, SvnSyncDonePayload, SvnSyncProgressPayload, SvnSyncStartedPayload, SvnSyncFailedPayload, SvnEventPayloadMap, SvnEventMsg,
+    NginxSubMsg, NginxUnsubMsg, NginxLogTailMsg, NginxLogAppendMsg, NginxLogType
 } from "./protocol"

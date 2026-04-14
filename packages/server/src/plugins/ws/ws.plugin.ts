@@ -3,7 +3,7 @@ import { Events } from "@yinuo-ngm/core";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
-import { createTaskTopicHandler, createSyslogTopicHandler, createSvnSyncTopicHandler } from "./topics";
+import { createTaskTopicHandler, createSyslogTopicHandler, createSvnSyncTopicHandler, createNginxTopicHandler } from "./topics";
 import { WsContext } from "./ws.context";
 import { WsRouter } from "./ws.router";
 
@@ -43,6 +43,13 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
     }, () => clients.values()
     );
     router.register(svnSyncHandler);
+
+    // nginx log
+    const nginxHandler = createNginxTopicHandler(
+        { logService: fastify.nginx.log },
+        () => clients.values()
+    );
+    router.register(nginxHandler);
 
     // 事件订阅：拿到 disposer，onClose 释放
     const offs: Array<() => void> = [];
@@ -104,6 +111,8 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         offs.forEach((off) => {
             try { off(); } catch { }
         });
+        // 停止 nginx 日志监听
+        fastify.nginx.log.stopAll();
         clients.clear();
     });
 

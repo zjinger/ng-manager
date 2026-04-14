@@ -52,7 +52,7 @@ export async function createServer() {
         }
     });
 
-    //  基础插件：request-id + error handler + success handler
+    // 基础插件：request-id + error handler + success handler
     await fastify.register(requestIdPlugin);
     await fastify.register(errorHandlerPlugin);
     await fastify.register(successHandlerPlugin);
@@ -60,14 +60,14 @@ export async function createServer() {
     // core
     await fastify.register(corePlugin);
 
+    // nginx (需要在 ws 之前，因为 ws 需要 nginx log service)
+    await fastify.register(nginxPlugin);
+
     // websocket
     await fastify.register(wsPlugin);
 
     // api client
     await fastify.register(apiClientPlugin);
-
-    // nginx
-    await fastify.register(nginxPlugin);
 
     // routes
     await fastify.register(routesPlugin);

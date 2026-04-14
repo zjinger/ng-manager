@@ -640,4 +640,76 @@ export async function nginxRoutes(fastify: FastifyInstance) {
             }
         }
     );
+
+    // ========== 日志管理 ==========
+
+    /**
+     * GET /nginx/logs/error
+     * 获取错误日志尾部
+     */
+    fastify.get<{ Querystring: { tail?: string } }>(
+        '/logs/error',
+        async (request: FastifyRequest<{ Querystring: { tail?: string } }>, reply: FastifyReply) => {
+            try {
+                const tail = Math.max(1, Math.min(1000, Number(request.query?.tail ?? 100)));
+                const lines = await nginx.log.readLogTail('error', tail);
+                return reply.send({
+                    success: true,
+                    lines,
+                });
+            } catch (error: any) {
+                return reply.status(400).send({
+                    success: false,
+                    error: error.message,
+                });
+            }
+        }
+    );
+
+    /**
+     * GET /nginx/logs/access
+     * 获取访问日志尾部
+     */
+    fastify.get<{ Querystring: { tail?: string } }>(
+        '/logs/access',
+        async (request: FastifyRequest<{ Querystring: { tail?: string } }>, reply: FastifyReply) => {
+            try {
+                const tail = Math.max(1, Math.min(1000, Number(request.query?.tail ?? 100)));
+                const lines = await nginx.log.readLogTail('access', tail);
+                return reply.send({
+                    success: true,
+                    lines,
+                });
+            } catch (error: any) {
+                return reply.status(400).send({
+                    success: false,
+                    error: error.message,
+                });
+            }
+        }
+    );
+
+    /**
+     * GET /nginx/logs/info
+     * 获取日志文件信息
+     */
+    fastify.get(
+        '/logs/info',
+        async (_request: FastifyRequest, reply: FastifyReply) => {
+            try {
+                const errorPath = nginx.log.getLogFilePath('error');
+                const accessPath = nginx.log.getLogFilePath('access');
+                return reply.send({
+                    success: true,
+                    errorLog: errorPath,
+                    accessLog: accessPath,
+                });
+            } catch (error: any) {
+                return reply.status(400).send({
+                    success: false,
+                    error: error.message,
+                });
+            }
+        }
+    );
 }
