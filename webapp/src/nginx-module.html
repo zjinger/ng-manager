@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ng-manager — nginx 模块</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg-page: #f5f7fa;
+    --bg-white: #ffffff;
+    --bg-hover: #f8f9fc;
+    --bg-input: #f7f8fa;
+    --bg-code: #1b2332;
+    --border: #e8ebf0;
+    --border-light: #eef1f5;
+    --text-1: #1d2129;
+    --text-2: #4e5969;
+    --text-3: #86909c;
+    --text-4: #c9cdd4;
+    --blue: #165dff;
+    --blue-bg: #f2f6ff;
+    --blue-border: rgba(22,93,255,0.15);
+    --green: #00b42a;
+    --green-bg: #f2fff6;
+    --green-border: rgba(0,180,42,0.15);
+    --red: #f53f3f;
+    --red-bg: #fff2f2;
+    --red-border: rgba(245,63,63,0.15);
+    --orange: #ff7d00;
+    --orange-bg: #fff7e8;
+    --orange-border: rgba(255,125,0,0.15);
+    --purple: #722ed1;
+    --purple-bg: #f8f2ff;
+    --purple-border: rgba(114,46,209,0.15);
+    --yellow: #f7ba1e;
+    --yellow-bg: #fffce8;
+    --yellow-border: rgba(247,186,30,0.15);
+    --teal: #14c9c9;
+    --teal-bg: #f2fffe;
+    --teal-border: rgba(20,201,201,0.15);
+    --radius: 8px;
+    --shadow-card: 0 1px 4px rgba(0,0,0,0.04);
+    --shadow-hover: 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-page);
+    color: var(--text-1);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== SHELL ===== */
+  .ng-shell { display: grid; grid-template-columns: 200px 1fr; min-height: 100vh; }
+
+  /* ===== SIDEBAR ===== */
+  .ng-sidebar {
+    background: var(--bg-white);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+
+  .ng-sidebar-header { padding: 18px 16px 14px; border-bottom: 1px solid var(--border-light); }
+
+  .ng-project-name {
+    font-size: 15px; font-weight: 700; color: var(--text-1);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .ng-project-name svg { width: 16px; height: 16px; color: var(--text-3); }
+  .ng-project-meta { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+  .ng-nav { padding: 12px 8px; flex: 1; }
+
+  .ng-nav-section {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-4); padding: 12px 10px 6px;
+  }
+
+  .ng-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; color: var(--text-2);
+    cursor: pointer; transition: all 120ms ease; margin-bottom: 2px;
+  }
+
+  .ng-nav-item:hover { background: var(--bg-hover); color: var(--text-1); }
+  .ng-nav-item.active { background: var(--blue-bg); color: var(--blue); font-weight: 600; }
+  .ng-nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.7; }
+  .ng-nav-item.active svg { opacity: 1; }
+
+  .ng-nav-badge {
+    margin-left: auto; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 8px;
+    background: var(--bg-input); color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .ng-nav-item.active .ng-nav-badge { background: rgba(22,93,255,0.12); color: var(--blue); }
+
+  /* ===== MAIN ===== */
+  .ng-main { display: flex; flex-direction: column; }
+
+  .ng-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; background: var(--bg-white); border-bottom: 1px solid var(--border);
+  }
+
+  .ng-topbar-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .ng-topbar-title svg { width: 18px; height: 18px; color: var(--orange); }
+  .ng-topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+  .ng-status-pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; background: var(--green-bg);
+    border: 1px solid var(--green-border); border-radius: 20px;
+    font-size: 12px; font-weight: 600; color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .ng-status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .ng-content { flex: 1; padding: 20px 24px 40px; overflow-y: auto; }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1px solid transparent; transition: all 140ms ease;
+    font-family: inherit; white-space: nowrap;
+  }
+
+  .btn svg { width: 13px; height: 13px; }
+  .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn-primary:hover { background: #0e4fd4; }
+  .btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-outline { background: #fff; color: var(--text-2); border-color: var(--border); }
+  .btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+  .btn-ghost { background: transparent; color: var(--text-2); border-color: transparent; }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--blue); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+  /* ===== STATS ===== */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+
+  .stat-card {
+    background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    box-shadow: var(--shadow-card); transition: all 140ms ease;
+  }
+
+  .stat-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+  .stat-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 24px; font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.5px; margin-bottom: 3px; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.purple { color: var(--purple); }
+  .stat-value.orange { color: var(--orange); }
+  .stat-sub { font-size: 10px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+
+  /* ===== CARD ===== */
+  .card {
+    background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-card);
+    margin-bottom: 14px; overflow: hidden; position: relative;
+  }
+
+  .card::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px; }
+  .card.blue::before { background: var(--blue); }
+  .card.green::before { background: var(--green); }
+  .card.orange::before { background: var(--orange); }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px 12px 18px; border-bottom: 1px solid var(--border-light);
+  }
+
+  .card-header-left { display: flex; align-items: center; gap: 8px; }
+  .card-title { font-size: 14px; font-weight: 700; }
+  .card-subtitle { font-size: 11px; color: var(--text-3); font-weight: 400; margin-left: 6px; }
+  .card-body { padding: 14px 18px; }
+
+  /* ===== GRID ===== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+  /* ===== TABLE ===== */
+  .tbl { width: 100%; border-collapse: collapse; }
+
+  .tbl th {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-3); text-align: left;
+    padding: 10px 14px; background: var(--bg-input); border-bottom: 1px solid var(--border);
+  }
+
+  .tbl td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+  .tbl tbody tr { transition: background 120ms ease; }
+  .tbl tbody tr:hover { background: var(--bg-hover); }
+
+  .sname { font-weight: 600; color: var(--text-1); }
+
+  .tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .tag-http { background: var(--blue-bg); color: var(--blue); }
+  .tag-https { background: var(--green-bg); color: var(--green); }
+  .tag-strategy { background: var(--purple-bg); color: var(--purple); }
+
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-2); }
+  .mono-dim { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
+
+  /* Toggle */
+  .toggle { position: relative; display: inline-block; width: 32px; height: 18px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track { position: absolute; inset: 0; background: #c9cdd4; border-radius: 9px; transition: all 140ms ease; }
+  .toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: all 140ms ease; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+  .toggle input:checked + .toggle-track { background: var(--green); }
+  .toggle input:checked + .toggle-track::after { transform: translateX(14px); }
+
+  /* Row actions */
+  .row-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 120ms; justify-content: flex-end; }
+  .tbl tbody tr:hover .row-actions { opacity: 1; }
+
+  .ra-btn {
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; background: none; border: 1px solid transparent;
+    color: var(--text-3); cursor: pointer; transition: all 120ms ease;
+  }
+
+  .ra-btn svg { width: 13px; height: 13px; }
+  .ra-btn:hover { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-border); }
+  .ra-btn.del:hover { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+
+  /* ===== TAB SYSTEM (secondary content) ===== */
+  .sec-tabs {
+    display: flex; gap: 0; padding: 0 18px;
+    border-bottom: 1px solid var(--border-light); background: var(--bg-white);
+  }
+
+  .sec-tab {
+    padding: 10px 16px; font-size: 13px; font-weight: 500;
+    color: var(--text-3); cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: all 120ms ease; background: none;
+    border-top: none; border-left: none; border-right: none; font-family: inherit;
+  }
+
+  .sec-tab:hover { color: var(--text-2); }
+  .sec-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+  .sec-panel { display: none; padding: 18px; }
+  .sec-panel.active { display: block; }
+
+  /* ===== SUB-CARD (inside tab panels) ===== */
+  .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .sub-card {
+    background: var(--bg-input); border: 1px solid var(--border-light);
+    border-radius: 6px; padding: 14px; transition: border-color 120ms;
+  }
+
+  .sub-card:hover { border-color: var(--blue-border); }
+
+  .sub-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .sub-name { font-size: 13px; font-weight: 700; }
+
+  .sub-info {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-2); line-height: 1.8; margin-bottom: 8px;
+  }
+
+  .sub-status { font-size: 12px; font-weight: 600; }
+  .sub-status.ok { color: var(--green); }
+  .sub-status.warn { color: var(--orange); }
+
+  /* Settings rows */
+  .s-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border-light);
+  }
+
+  .s-row:last-child { border-bottom: none; }
+  .s-label { font-size: 12px; font-weight: 600; color: var(--text-1); }
+  .s-desc { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+  .s-ctrl { display: flex; align-items: center; gap: 6px; }
+
+  .s-input {
+    padding: 5px 10px; background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text-1);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    width: 220px; outline: none; transition: border-color 120ms;
+  }
+
+  .s-input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-border); }
+
+  .s-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    color: var(--blue); padding: 4px 10px;
+    background: var(--blue-bg); border: 1px solid var(--blue-border); border-radius: 4px;
+  }
+
+  .danger-box {
+    border: 1px solid var(--red-border); border-radius: 6px;
+    background: var(--red-bg); padding: 10px 14px; margin-top: 4px;
+  }
+
+  /* ===== COLLAPSIBLE CONFIG CARD ===== */
+  .cfg-collapsed {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px 10px 20px;
+    cursor: pointer; transition: background 120ms;
+  }
+
+  .cfg-collapsed:hover { background: var(--bg-hover); }
+
+  .cfg-collapsed-left {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .cfg-collapsed-files {
+    display: flex; gap: 6px; margin-left: 8px;
+  }
+
+  .cfg-file-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+    background: var(--bg-input); color: var(--text-2);
+    border: 1px solid var(--border-light);
+    transition: all 120ms;
+  }
+
+  .cfg-file-chip:hover { border-color: var(--green-border); color: var(--green); }
+
+  .cfg-expand-icon {
+    width: 16px; height: 16px; color: var(--text-3);
+    transition: transform 200ms ease;
+  }
+
+  .cfg-collapsed.open .cfg-expand-icon { transform: rotate(180deg); }
+
+  .cfg-expand-area {
+    display: none; border-top: 1px solid var(--border-light);
+  }
+
+  .cfg-expand-area.open { display: block; }
+
+  .cfg-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cfg-tabs { display: flex; gap: 3px; }
+
+  .cfg-tab {
+    padding: 4px 12px; font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-3); border-radius: 4px; cursor: pointer;
+    transition: all 120ms; border: none; background: none; font-weight: 500;
+  }
+
+  .cfg-tab:hover { color: var(--text-2); background: #eef1f6; }
+  .cfg-tab.active { color: var(--green); background: var(--green-bg); font-weight: 600; }
+
+  .cfg-body {
+    display: grid; grid-template-columns: 1fr 1fr; min-height: 260px;
+  }
+
+  .cfg-pane { position: relative; }
+  .cfg-pane + .cfg-pane { border-left: 1px solid var(--border); }
+
+  .cfg-pane-label {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 14px; background: var(--bg-white);
+    border-bottom: 1px solid var(--border-light);
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-3);
+  }
+
+  .diff-badge { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+  .diff-add { background: var(--green-bg); color: var(--green); }
+  .diff-del { background: var(--red-bg); color: var(--red); }
+
+  .ln-nums {
+    position: absolute; left: 0; top: 29px; bottom: 0; width: 40px;
+    background: var(--bg-input); border-right: 1px solid var(--border-light);
+    padding: 10px 0; text-align: right; user-select: none;
+  }
+
+  .ln { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 18px; color: var(--text-4); padding-right: 8px; }
+
+  .cfg-textarea {
+    width: 100%; height: 100%; min-height: 240px;
+    background: transparent; border: none; color: var(--text-1);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 18px;
+    padding: 10px 12px 10px 50px; resize: none; outline: none; tab-size: 4;
+  }
+
+  .cfg-readonly { color: var(--text-2); cursor: default; overflow: auto; white-space: pre; }
+
+  /* ===== LOG ===== */
+  .log-panel { background: var(--bg-code); border-radius: 6px; overflow: hidden; }
+
+  .log-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; background: rgba(0,0,0,0.15);
+  }
+
+  .log-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+  .log-live { font-size: 10px; color: var(--green); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  .log-body {
+    padding: 10px 14px; max-height: 180px; overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.8;
+  }
+
+  .log-line { display: flex; gap: 10px; }
+  .log-time { color: rgba(255,255,255,0.2); flex-shrink: 0; }
+  .log-lvl { font-weight: 700; flex-shrink: 0; width: 32px; }
+  .log-lvl.info { color: var(--blue); }
+  .log-lvl.warn { color: var(--orange); }
+  .log-lvl.error { color: var(--red); }
+  .log-lvl.ok { color: var(--green); }
+  .log-msg { color: rgba(255,255,255,0.55); }
+
+  /* ===== DRAWER ===== */
+  .drawer-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(3px);
+    z-index: 100; opacity: 0; visibility: hidden; transition: all 180ms ease;
+  }
+
+  .drawer-overlay.open { opacity: 1; visibility: visible; }
+
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 480px;
+    background: var(--bg-white); border-left: 1px solid var(--border);
+    z-index: 101; transform: translateX(100%);
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex; flex-direction: column;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.06);
+  }
+
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+  }
+
+  .drawer-hd h3 { font-size: 15px; font-weight: 700; }
+
+  .drawer-close {
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; background: none; border: none;
+    color: var(--text-3); cursor: pointer; transition: all 120ms;
+  }
+
+  .drawer-close:hover { background: var(--bg-hover); color: var(--text-1); }
+
+  .drawer-bd { flex: 1; overflow-y: auto; padding: 20px; }
+
+  .drawer-ft {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px; padding: 12px 20px;
+    border-top: 1px solid var(--border); background: var(--bg-input);
+  }
+
+  .fg { margin-bottom: 16px; }
+  .fg label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+  .fg label .req { color: var(--red); }
+
+  .fg-input, .fg-textarea {
+    width: 100%; padding: 7px 12px; background: var(--bg-input);
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-1); font-family: inherit; font-size: 13px;
+    transition: all 120ms; outline: none;
+  }
+
+  .fg-input:focus, .fg-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-border); }
+  .fg-input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .fg-textarea { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5; min-height: 120px; resize: vertical; }
+  .fg-hint { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+  .fg-divider { height: 1px; background: var(--border-light); margin: 18px 0; }
+  .fg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ===== TOAST ===== */
+  .toast-c { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column-reverse; gap: 6px; }
+
+  .toast {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; background: var(--bg-white);
+    border: 1px solid var(--border); border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    font-size: 12px; font-weight: 500;
+    animation: tin 260ms cubic-bezier(0.22,1,0.36,1); min-width: 240px;
+  }
+
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--blue); }
+
+  .toast svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .toast.success svg { color: var(--green); }
+  .toast.error svg { color: var(--red); }
+  .toast.info svg { color: var(--blue); }
+
+  @keyframes tin {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d4d8de; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="ng-shell">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="ng-sidebar">
+    <div class="ng-sidebar-header">
+      <div class="ng-project-name">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        测试项目
+      </div>
+      <div class="ng-project-meta">创建于 2026.04.10 18:48:02</div>
+    </div>
+    <nav class="ng-nav">
+      <div class="ng-nav-section">服务</div>
+      <div class="ng-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        项目概览
+      </div>
+      <div class="ng-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        访问控制
+      </div>
+      <div class="ng-nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        nginx
+        <span class="ng-nav-badge">4</span>
+      </div>
+      <div class="ng-nav-section">工具</div>
+      <div class="ng-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        工具箱
+      </div>
+      <div class="ng-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        脚本管理
+      </div>
+      <div class="ng-nav-section">配置</div>
+      <div class="ng-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        版本管理
+      </div>
+      <div class="ng-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        扩展插件
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="ng-main">
+    <div class="ng-topbar">
+      <div class="ng-topbar-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        nginx 管理
+      </div>
+      <div class="ng-topbar-actions">
+        <div class="ng-status-pill">
+          <div class="ng-status-dot"></div>
+          nginx/1.24.0 · PID 8241
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="doAction('reload')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          重载
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openDrawer('new')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          新增 Server
+        </button>
+      </div>
+    </div>
+
+    <div class="ng-content">
+
+      <!-- ===== STATS ===== -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">服务状态</div>
+          <div class="stat-value green" id="svcStatus">运行中</div>
+          <div class="stat-sub">PID 8241</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">运行时长</div>
+          <div class="stat-value blue">3d 7h</div>
+          <div class="stat-sub">since 04/10 08:21</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">活跃连接</div>
+          <div class="stat-value purple">128</div>
+          <div class="stat-sub">accepts: 45.2k</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Server 块</div>
+          <div class="stat-value orange">4</div>
+          <div class="stat-sub">3 启用 / 1 禁用</div>
+        </div>
+      </div>
+
+      <!-- ===== CORE: 基础配置 ===== -->
+      <div class="card blue">
+        <div class="card-header">
+          <div class="card-header-left">
+            <span class="card-title">基础配置</span>
+            <span class="card-subtitle">Server 块管理</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-outline btn-sm" onclick="doAction('start')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              启动
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="doAction('stop')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              停止
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="doAction('restart')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+              重启
+            </button>
+          </div>
+        </div>
+        <div style="padding:0">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th style="width:44px">状态</th>
+                <th>Server 名称</th>
+                <th>监听端口</th>
+                <th>域名</th>
+                <th>根目录</th>
+                <th style="text-align:right;width:100px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div></label></td>
+                <td><span class="sname">main-site</span></td>
+                <td><span class="tag tag-http">:80</span></td>
+                <td><span class="mono">example.com</span></td>
+                <td><span class="mono-dim">/var/www/html</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="ra-btn" title="编辑" onclick="openDrawer('edit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="ra-btn" title="复制"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                    <button class="ra-btn del" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div></label></td>
+                <td><span class="sname">api-gateway</span></td>
+                <td><span class="tag tag-https">:443 ssl</span></td>
+                <td><span class="mono">api.example.com</span></td>
+                <td><span class="mono-dim">/var/www/api</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="ra-btn" title="编辑" onclick="openDrawer('edit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="ra-btn" title="复制"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                    <button class="ra-btn del" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div></label></td>
+                <td><span class="sname">admin-panel</span></td>
+                <td><span class="tag tag-http">:8080</span></td>
+                <td><span class="mono">admin.local</span></td>
+                <td><span class="mono-dim">/var/www/admin</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="ra-btn" title="编辑" onclick="openDrawer('edit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="ra-btn" title="复制"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                    <button class="ra-btn del" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+              <tr style="opacity:0.5">
+                <td><label class="toggle"><input type="checkbox"><div class="toggle-track"></div></label></td>
+                <td><span class="sname">legacy-app</span></td>
+                <td><span class="tag tag-http">:3000</span></td>
+                <td><span class="mono">legacy.local</span></td>
+                <td><span class="mono-dim">/var/www/legacy</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="ra-btn" title="编辑" onclick="openDrawer('edit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="ra-btn" title="复制"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                    <button class="ra-btn del" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== CORE: 配置文件 (collapsible, source only) ===== -->
+      <div class="card green">
+        <!-- Collapsed summary bar -->
+        <div class="cfg-collapsed" id="cfgToggle" onclick="toggleConfig()">
+          <div class="cfg-collapsed-left">
+            <span class="card-title">配置文件</span>
+            <div class="cfg-collapsed-files">
+              <span class="cfg-file-chip">nginx.conf</span>
+              <span class="cfg-file-chip">main-site</span>
+              <span class="cfg-file-chip">api-gateway</span>
+              <span class="cfg-file-chip">upstream.conf</span>
+            </div>
+          </div>
+          <svg class="cfg-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <!-- Expanded area -->
+        <div class="cfg-expand-area" id="cfgArea">
+          <div class="cfg-toolbar">
+            <div class="cfg-tabs">
+              <button class="cfg-tab active">nginx.conf</button>
+              <button class="cfg-tab">sites-enabled/main-site</button>
+              <button class="cfg-tab">sites-enabled/api-gateway</button>
+              <button class="cfg-tab">conf.d/upstream.conf</button>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="saveConfig()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+              保存并重载
+            </button>
+          </div>
+          <div class="cfg-body">
+            <div class="cfg-pane">
+              <div class="cfg-pane-label"><span>当前配置</span><span class="diff-badge diff-del">-2 行</span></div>
+              <div class="ln-nums" id="lnL"></div>
+              <div class="cfg-textarea cfg-readonly" id="cfgOrig"></div>
+            </div>
+            <div class="cfg-pane">
+              <div class="cfg-pane-label"><span>编辑器</span><span class="diff-badge diff-add">+3 行</span></div>
+              <div class="ln-nums" id="lnR"></div>
+              <textarea class="cfg-textarea" id="cfgEdit" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SECONDARY: Tabbed Section ===== -->
+      <div class="card orange">
+        <div class="sec-tabs" id="secTabs">
+          <button class="sec-tab active" data-panel="upstream">Upstream 管理</button>
+          <button class="sec-tab" data-panel="ssl">SSL 证书</button>
+          <button class="sec-tab" data-panel="traffic">流量控制</button>
+          <button class="sec-tab" data-panel="perf">性能优化</button>
+          <button class="sec-tab" data-panel="logs">日志</button>
+          <button class="sec-tab" data-panel="test">配置检测</button>
+          <button class="sec-tab" data-panel="settings">设置</button>
+        </div>
+
+        <!-- Upstream 管理 -->
+        <div class="sec-panel active" data-panel="upstream">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <span style="font-size:12px;color:var(--text-3)">管理后端服务集群的负载均衡配置</span>
+            <button class="btn btn-outline btn-sm" onclick="openUpstreamDrawer('new')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              新增 Upstream
+            </button>
+          </div>
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>负载策略</th>
+                <th>后端节点</th>
+                <th>健康状态</th>
+                <th style="text-align:right;width:100px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="sname">backend_cluster</span></td>
+                <td><span class="tag tag-strategy">round-robin</span></td>
+                <td><span class="mono-dim">127.0.0.1:3001, 127.0.0.1:3002, 127.0.0.1:3003</span></td>
+                <td><span class="sub-status ok">● 3/3 健康</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="ra-btn" title="编辑" onclick="openUpstreamDrawer('edit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="ra-btn del" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="sname">static_assets</span></td>
+                <td><span class="tag tag-strategy">ip-hash</span></td>
+                <td><span class="mono-dim">127.0.0.1:4001, 127.0.0.1:4002</span></td>
+                <td><span class="sub-status warn">● 1/2 健康</span></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="ra-btn" title="编辑" onclick="openUpstreamDrawer('edit')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="ra-btn del" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SSL -->
+        <div class="sec-panel" data-panel="ssl">
+          <div class="sub-grid">
+            <div class="sub-card">
+              <div class="sub-header">
+                <span class="sub-name">api.example.com</span>
+                <span class="tag" style="background:var(--green-bg);color:var(--green)">有效</span>
+              </div>
+              <div class="sub-info">证书: /etc/nginx/ssl/api.crt<br>私钥: /etc/nginx/ssl/api.key<br>到期: 2026-12-20</div>
+              <div class="sub-status ok">● 剩余 250 天</div>
+            </div>
+            <div class="sub-card">
+              <div class="sub-header">
+                <span class="sub-name">example.com</span>
+                <span class="tag" style="background:var(--orange-bg);color:var(--orange)">即将过期</span>
+              </div>
+              <div class="sub-info">证书: /etc/nginx/ssl/www.crt<br>私钥: /etc/nginx/ssl/www.key<br>到期: 2026-05-01</div>
+              <div class="sub-status warn">● 剩余 17 天</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 流量控制 -->
+        <div class="sec-panel" data-panel="traffic">
+          <div class="s-row">
+            <div><div class="s-label">请求限流</div><div class="s-desc">每个 IP 每秒最大请求数</div></div>
+            <div class="s-ctrl"><input class="s-input" value="20r/s" style="width:100px;text-align:center"><label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">连接限制</div><div class="s-desc">单 IP 最大并发连接数</div></div>
+            <div class="s-ctrl"><input class="s-input" value="50" style="width:100px;text-align:center"><label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">黑名单 IP</div><div class="s-desc">已封禁的 IP 地址</div></div>
+            <div class="s-ctrl"><span class="s-tag">3 个</span></div>
+          </div>
+        </div>
+
+        <!-- 性能优化 -->
+        <div class="sec-panel" data-panel="perf">
+          <div class="s-row">
+            <div><div class="s-label">Gzip 压缩</div><div class="s-desc">text/plain, text/css, application/json</div></div>
+            <div class="s-ctrl"><label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div></label></div>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">Keepalive 超时</div><div class="s-desc">空闲连接保持时间</div></div>
+            <div class="s-ctrl"><input class="s-input" value="65s" style="width:100px;text-align:center"></div>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">Worker 进程</div><div class="s-desc">worker_processes</div></div>
+            <div class="s-ctrl"><span class="s-tag">auto</span></div>
+          </div>
+        </div>
+
+        <!-- 日志 -->
+        <div class="sec-panel" data-panel="logs">
+          <div style="display:flex;gap:0;margin-bottom:12px">
+            <button class="sec-tab active" style="padding:6px 12px;font-size:12px" data-sub="error">error.log</button>
+            <button class="sec-tab" style="padding:6px 12px;font-size:12px" data-sub="access">access.log</button>
+          </div>
+          <div class="log-panel">
+            <div class="log-header">
+              <span class="log-title">error.log</span>
+              <span class="log-live">● 实时</span>
+            </div>
+            <div class="log-body">
+              <div class="log-line"><span class="log-time">15:28</span><span class="log-lvl ok">OK</span><span class="log-msg">signal process started</span></div>
+              <div class="log-line"><span class="log-time">15:27</span><span class="log-lvl info">INFO</span><span class="log-msg">graceful shutdown of worker process 8242</span></div>
+              <div class="log-line"><span class="log-time">15:25</span><span class="log-lvl warn">WARN</span><span class="log-msg">could not open error log file (13: Permission denied)</span></div>
+              <div class="log-line"><span class="log-time">15:20</span><span class="log-lvl error">ERR</span><span class="log-msg">connect() failed (111: Connection refused) upstream</span></div>
+              <div class="log-line"><span class="log-time">15:10</span><span class="log-lvl ok">OK</span><span class="log-msg">reconfiguration completed successfully</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 配置检测 -->
+        <div class="sec-panel" data-panel="test">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:13px;color:var(--text-2)">验证 Nginx 配置文件语法正确性</span>
+            <button class="btn btn-green btn-sm" onclick="testConfig()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              执行检测
+            </button>
+          </div>
+          <div class="log-panel">
+            <div class="log-header">
+              <span class="log-title">结果</span>
+              <span class="log-live" style="color:var(--green)">✓ syntax is ok</span>
+            </div>
+            <div class="log-body">
+              <div class="log-line"><span class="log-time">15:28</span><span class="log-lvl ok">OK</span><span class="log-msg">nginx: configuration file syntax is ok</span></div>
+              <div class="log-line"><span class="log-time">15:28</span><span class="log-lvl ok">OK</span><span class="log-msg">nginx: configuration test is successful</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 设置 -->
+        <div class="sec-panel" data-panel="settings">
+          <div class="s-row">
+            <div><div class="s-label">Nginx 路径</div><div class="s-desc">可执行文件位置</div></div>
+            <div class="s-ctrl"><input class="s-input" value="/usr/local/nginx/sbin/nginx"></div>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">配置目录</div><div class="s-desc">nginx.conf 所在目录</div></div>
+            <div class="s-ctrl"><input class="s-input" value="/usr/local/nginx/conf"></div>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">错误日志路径</div><div class="s-desc">error.log 文件位置</div></div>
+            <div class="s-ctrl"><input class="s-input" value="/var/log/nginx/error.log"></div>
+          </div>
+          <div class="s-row">
+            <div><div class="s-label">Nginx 版本</div><div class="s-desc">当前绑定实例版本</div></div>
+            <div class="s-ctrl"><span class="s-tag">nginx/1.24.0</span></div>
+          </div>
+          <div class="danger-box">
+            <div class="s-label" style="color:var(--red);font-size:11px;margin-bottom:6px">危险操作</div>
+            <div class="s-row" style="border:none;padding:4px 0">
+              <div><div class="s-label">解绑实例</div><div class="s-desc">不影响 Nginx 服务本身</div></div>
+              <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red-border)">解绑</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- .card (tabbed section) -->
+
+    </div><!-- .ng-content -->
+  </main>
+</div>
+
+<!-- DRAWER -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hd">
+    <h3 id="drawerTitle">新增 Server 块</h3>
+    <button class="drawer-close" onclick="closeDrawer()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-bd">
+    <div class="fg">
+      <label>Server 名称 <span class="req">*</span></label>
+      <input type="text" class="fg-input" placeholder="例如：main-site">
+      <div class="fg-hint">用于在 ng-manager 中标识此 Server 块</div>
+    </div>
+    <div class="fg-row">
+      <div class="fg">
+        <label>监听端口 <span class="req">*</span></label>
+        <input type="text" class="fg-input mono" placeholder="80">
+      </div>
+      <div class="fg">
+        <label>协议</label>
+        <select class="fg-input" style="cursor:pointer"><option>HTTP</option><option>HTTPS (SSL)</option></select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>域名</label>
+      <input type="text" class="fg-input mono" placeholder="example.com, *.example.com">
+      <div class="fg-hint">多个域名以逗号分隔</div>
+    </div>
+    <div class="fg">
+      <label>根目录</label>
+      <input type="text" class="fg-input mono" placeholder="/var/www/html">
+    </div>
+    <div class="fg-divider"></div>
+    <div class="fg">
+      <label>SSL 证书路径</label>
+      <input type="text" class="fg-input mono" placeholder="/etc/nginx/ssl/cert.pem">
+    </div>
+    <div class="fg">
+      <label>SSL 私钥路径</label>
+      <input type="text" class="fg-input mono" placeholder="/etc/nginx/ssl/key.pem">
+    </div>
+    <div class="fg-divider"></div>
+    <div class="fg">
+      <label>自定义配置</label>
+      <textarea class="fg-textarea" placeholder="location /api {&#10;    proxy_pass http://backend_cluster;&#10;}"></textarea>
+      <div class="fg-hint">将追加到 server { } 块内</div>
+    </div>
+  </div>
+  <div class="drawer-ft">
+    <button class="btn btn-ghost" onclick="closeDrawer()">取消</button>
+    <button class="btn btn-outline" onclick="toast('配置预览已生成','info')">预览</button>
+    <button class="btn btn-primary" onclick="saveServer()">保存</button>
+  </div>
+</div>
+
+<!-- UPSTREAM DRAWER -->
+<div class="drawer-overlay" id="upDrawerOverlay" onclick="closeUpstreamDrawer()"></div>
+<div class="drawer" id="upDrawer">
+  <div class="drawer-hd">
+    <h3 id="upDrawerTitle">新增 Upstream</h3>
+    <button class="drawer-close" onclick="closeUpstreamDrawer()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-bd">
+    <div class="fg">
+      <label>Upstream 名称 <span class="req">*</span></label>
+      <input type="text" class="fg-input mono" placeholder="backend_cluster">
+      <div class="fg-hint">用于在 proxy_pass 中引用的名称</div>
+    </div>
+    <div class="fg">
+      <label>负载均衡策略</label>
+      <select class="fg-input" style="cursor:pointer">
+        <option>round-robin（轮询）</option>
+        <option>least_conn（最少连接）</option>
+        <option>ip_hash（IP 哈希）</option>
+        <option>hash $request_uri（URI 哈希）</option>
+      </select>
+    </div>
+    <div class="fg-divider"></div>
+    <div class="fg">
+      <label>后端节点 <span class="req">*</span></label>
+      <div id="upNodes">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" class="fg-input mono" placeholder="127.0.0.1:3001" style="flex:1">
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0" onclick="this.parentElement.remove()">移除</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" class="fg-input mono" placeholder="127.0.0.1:3002" style="flex:1">
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0" onclick="this.parentElement.remove()">移除</button>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="addUpstreamNode()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        添加节点
+      </button>
+    </div>
+    <div class="fg-divider"></div>
+    <div class="fg">
+      <label>健康检查</label>
+      <div class="fg-row">
+        <div class="fg">
+          <label style="font-size:11px;color:var(--text-3)">检查间隔</label>
+          <input type="text" class="fg-input mono" placeholder="30s" value="30s">
+        </div>
+        <div class="fg">
+          <label style="font-size:11px;color:var(--text-3)">超时时间</label>
+          <input type="text" class="fg-input mono" placeholder="10s" value="10s">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-ft">
+    <button class="btn btn-ghost" onclick="closeUpstreamDrawer()">取消</button>
+    <button class="btn btn-primary" onclick="saveUpstream()">保存</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-c" id="toastC"></div>
+
+<script>
+  // Config editor
+  const cfg = `user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    keepalive_timeout  65;
+    types_hash_max_size 2048;
+
+    gzip  on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+}`;
+
+  function renderLn(id, n) {
+    document.getElementById(id).innerHTML =
+      Array.from({length:n},(_,i)=>`<span class="ln">${i+1}</span>`).join('');
+  }
+
+  const lines = cfg.split('\n');
+  document.getElementById('cfgOrig').textContent = cfg;
+  document.getElementById('cfgEdit').value = cfg;
+  renderLn('lnL', lines.length);
+  renderLn('lnR', lines.length);
+
+  document.getElementById('cfgEdit').addEventListener('input', function(){
+    renderLn('lnR', this.value.split('\n').length);
+  });
+
+  // Collapse/expand config
+  function toggleConfig() {
+    const toggle = document.getElementById('cfgToggle');
+    const area = document.getElementById('cfgArea');
+    toggle.classList.toggle('open');
+    area.classList.toggle('open');
+  }
+
+  // Config file tabs
+  document.querySelectorAll('.cfg-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.cfg-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+    });
+  });
+
+  // Secondary section tabs
+  document.querySelectorAll('#secTabs .sec-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#secTabs .sec-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.sec-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelector(`.sec-panel[data-panel="${tab.dataset.panel}"]`).classList.add('active');
+    });
+  });
+
+  // Drawer
+  function openDrawer(mode) {
+    document.getElementById('drawerTitle').textContent = mode === 'new' ? '新增 Server 块' : '编辑 Server 块';
+    document.getElementById('drawerOverlay').classList.add('open');
+    document.getElementById('drawer').classList.add('open');
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('drawer').classList.remove('open');
+  }
+
+  // Toast
+  function toast(msg, type='success') {
+    const icons = {
+      success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
+      error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+      info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `${icons[type]}<span>${msg}</span>`;
+    document.getElementById('toastC').appendChild(el);
+    setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateY(8px)'; el.style.transition='all 180ms'; setTimeout(()=>el.remove(),180); }, 2800);
+  }
+
+  function doAction(a) {
+    toast(`Nginx ${({start:'启动',stop:'停止',reload:'重载',restart:'重启'})[a]}命令已执行`, a==='stop'?'error':'success');
+  }
+
+  function saveConfig() { toast('配置已保存，Nginx 正在重载...','success'); }
+  function saveServer() { closeDrawer(); toast('Server 块已保存','success'); }
+  function testConfig() { toast('配置检测通过 ✓','success'); }
+
+  // Upstream drawer
+  function openUpstreamDrawer(mode) {
+    document.getElementById('upDrawerTitle').textContent = mode === 'new' ? '新增 Upstream' : '编辑 Upstream';
+    document.getElementById('upDrawerOverlay').classList.add('open');
+    document.getElementById('upDrawer').classList.add('open');
+  }
+
+  function closeUpstreamDrawer() {
+    document.getElementById('upDrawerOverlay').classList.remove('open');
+    document.getElementById('upDrawer').classList.remove('open');
+  }
+
+  function saveUpstream() { closeUpstreamDrawer(); toast('Upstream 已保存','success'); }
+
+  function addUpstreamNode() {
+    const container = document.getElementById('upNodes');
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
+    div.innerHTML = `<input type="text" class="fg-input mono" placeholder="127.0.0.1:port" style="flex:1"><button class="btn btn-outline btn-sm" style="flex-shrink:0" onclick="this.parentElement.remove()">移除</button>`;
+    container.appendChild(div);
+    div.querySelector('input').focus();
+  }
+</script>
+</body>
+</html>

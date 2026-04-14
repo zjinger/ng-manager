@@ -28,6 +28,8 @@ export interface NginxStatus {
   pid?: number;
   /** 运行时间 */
   uptime?: string;
+  /** 活跃连接数（尽力统计，可能为空） */
+  activeConnections?: number;
   /** worker 进程数 */
   workerProcesses?: number;
 }
@@ -80,12 +82,22 @@ export interface NginxServer {
   name: string;
   /** 监听端口 */
   listen: string[];
+  /** 域名列表 */
+  domains?: string[];
+  /** 根目录 */
+  root?: string;
   /** location 块列表 */
   locations: NginxLocation[];
   /** 是否启用 SSL */
   ssl: boolean;
+  /** SSL 证书路径 */
+  sslCert?: string;
+  /** SSL 密钥路径 */
+  sslKey?: string;
   /** 是否启用 */
   enabled: boolean;
+  /** 自定义配置片段 */
+  extraConfig?: string;
   /** 原始配置文本 */
   configText: string;
   /** 配置文件路径 */
@@ -100,10 +112,24 @@ export interface CreateNginxServerRequest {
   name: string;
   /** 监听端口 */
   listen: string[];
+  /** 域名列表 */
+  domains?: string[];
+  /** 根目录 */
+  root?: string;
   /** location 块列表 */
   locations: NginxLocation[];
   /** 是否启用 SSL */
   ssl?: boolean;
+  /** 协议 */
+  protocol?: 'http' | 'https';
+  /** SSL 证书路径 */
+  sslCert?: string;
+  /** SSL 密钥路径 */
+  sslKey?: string;
+  /** 是否立即启用 */
+  enabled?: boolean;
+  /** 自定义配置片段 */
+  extraConfig?: string;
 }
 
 /**
@@ -114,10 +140,24 @@ export interface UpdateNginxServerRequest {
   name?: string;
   /** 监听端口 */
   listen?: string[];
+  /** 域名列表 */
+  domains?: string[];
+  /** 根目录 */
+  root?: string;
   /** location 块列表 */
   locations?: NginxLocation[];
   /** 是否启用 SSL */
   ssl?: boolean;
+  /** 协议 */
+  protocol?: 'http' | 'https';
+  /** SSL 证书路径 */
+  sslCert?: string;
+  /** SSL 密钥路径 */
+  sslKey?: string;
+  /** 是否启用 */
+  enabled?: boolean;
+  /** 自定义配置片段 */
+  extraConfig?: string;
 }
 
 /**
@@ -154,6 +194,20 @@ export interface NginxStatusResponse {
   status: NginxStatus;
 }
 
+export interface NginxServerSummary {
+  total: number;
+  enabled: number;
+  disabled: number;
+}
+
+export interface NginxStatsResponse {
+  success: boolean;
+  instance?: NginxInstance | null;
+  status?: NginxStatus;
+  serverSummary?: NginxServerSummary;
+  error?: string;
+}
+
 /**
  * Nginx 绑定响应
  */
@@ -161,4 +215,62 @@ export interface NginxBindResponse {
   success: boolean;
   instance?: NginxInstance;
   error?: string;
+}
+
+/**
+ * Upstream 负载策略
+ */
+export type NginxUpstreamStrategy = 'round-robin' | 'least_conn' | 'ip_hash' | 'hash';
+
+/**
+ * Upstream 配置
+ */
+export interface NginxUpstream {
+  id: string;
+  name: string;
+  strategy: NginxUpstreamStrategy;
+  nodes: string[];
+  health?: string;
+  healthy?: boolean;
+}
+
+/**
+ * SSL 状态
+ */
+export type NginxSslStatus = 'valid' | 'expiring' | 'expired' | 'pending';
+
+/**
+ * SSL 证书配置
+ */
+export interface NginxSslCertificate {
+  id: string;
+  domain: string;
+  certPath: string;
+  keyPath: string;
+  expireAt: string;
+  status: NginxSslStatus;
+  autoRenew: boolean;
+}
+
+/**
+ * 流量控制配置
+ */
+export interface NginxTrafficConfig {
+  rateLimitEnabled: boolean;
+  rateLimit: string;
+  connLimitEnabled: boolean;
+  connLimit: number;
+  blacklistIps: string[];
+}
+
+/**
+ * 性能优化配置
+ */
+export interface NginxPerformanceConfig {
+  gzipEnabled: boolean;
+  gzipTypes: string;
+  keepaliveTimeout: string;
+  workerProcesses: string;
+  sendfile: boolean;
+  tcpNopush: boolean;
 }

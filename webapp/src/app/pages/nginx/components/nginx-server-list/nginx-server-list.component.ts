@@ -1,26 +1,30 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
-import { NzSwitchModule } from 'ng-zorro-antd/switch';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzFormModule } from 'ng-zorro-antd/form';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 import { NginxService } from '../../services/nginx.service';
-import type { NginxServer, NginxLocation, CreateNginxServerRequest } from '../../models/nginx.types';
+import { NginxServerDrawerComponent } from '../nginx-server-drawer/nginx-server-drawer.component';
+import type { NginxServer } from '../../models/nginx.types';
 
 /**
  * Nginx Server 列表组件
+ * 对齐设计稿 nginx.html 中 server-block-list 样式
  */
 @Component({
   selector: 'app-nginx-server-list',
@@ -29,211 +33,113 @@ import type { NginxServer, NginxLocation, CreateNginxServerRequest } from '../..
     CommonModule,
     FormsModule,
     NzButtonModule,
-    NzCardModule,
     NzIconModule,
     NzModalModule,
     NzSpinModule,
-    NzTableModule,
-    NzTagModule,
-    NzToolTipModule,
-    NzSwitchModule,
-    NzInputModule,
-    NzFormModule,
-    NzSelectModule,
-    NzCheckboxModule,
+    NzTooltipModule,
+    NginxServerDrawerComponent,
   ],
   template: `
     <div class="server-list">
-      <div class="list-header">
-        <h3>Server 列表</h3>
-        <button nz-button nzType="primary" (click)="showCreateModal()">
-          <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
-          新增 Server
-        </button>
-      </div>
-
-      <nz-table
-        #serverTable
-        [nzData]="servers()"
-        [nzLoading]="loading()"
-        nzSize="middle"
-      >
-        <thead>
-          <tr>
-            <th nzWidth="80px">状态</th>
-            <th>名称</th>
-            <th>监听</th>
-            <th>Locations</th>
-            <th nzWidth="200px">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (server of serverTable.data; track server.id) {
-            <tr>
-              <td>
-                <nz-switch
-                  [ngModel]="server.enabled"
-                  (ngModelChange)="toggleServer(server.id, $event)"
-                  nzCheckedChildren="启用"
-                  nzUnCheckedChildren="禁用"
-                ></nz-switch>
-              </td>
-              <td>
-                <strong>{{ server.name }}</strong>
-                @if (server.ssl) {
-                  <nz-tag nzColor="blue">SSL</nz-tag>
-                }
-              </td>
-              <td>
-                @for (port of server.listen; track $index) {
-                  <nz-tag>{{ port }}</nz-tag>
-                }
-              </td>
-              <td>
-                <span class="location-count">
-                  {{ server.locations.length }} 个 location
-                </span>
-              </td>
-              <td>
-                <button
-                  nz-button
-                  nzType="text"
-                  nz-tooltip
-                  nzTooltipTitle="编辑"
-                  (click)="editServer(server)"
-                >
-                  <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
-                </button>
-                <button
-                  nz-button
-                  nzType="text"
-                  nz-tooltip
-                  nzTooltipTitle="查看配置"
-                  (click)="viewConfig(server)"
-                >
-                  <nz-icon nzType="file-text" nzTheme="outline"></nz-icon>
-                </button>
-                <button
-                  nz-button
-                  nzType="text"
-                  nzDanger
-                  nz-tooltip
-                  nzTooltipTitle="删除"
-                  (click)="deleteServer(server)"
-                >
-                  <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
-                </button>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </nz-table>
-
-      @if (servers().length === 0 && !loading()) {
-        <div class="empty-state">
-          <nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></nz-icon>
-          <p>暂无 Server 配置</p>
-          <button nz-button nzType="primary" (click)="showCreateModal()">
-            创建第一个 Server
-          </button>
+      <!-- 顶部操作栏 -->
+      @if (showToolbar) {
+        <div class="list-header">
+          <div class="header-left">
+            <button nz-button nzType="default" (click)="importServer()">
+              <nz-icon nzType="upload" nzTheme="outline"></nz-icon>
+              导入
+            </button>
+            <button nz-button nzType="primary" (click)="openDrawer(null)">
+              <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+              新增 Server
+            </button>
+          </div>
         </div>
       }
-    </div>
 
-    <!-- 创建/编辑 Server 模态框 -->
-    <nz-modal
-      [(nzVisible)]="modalVisible"
-      [nzTitle]="editingServer() ? '编辑 Server' : '新增 Server'"
-      (nzOnOk)="saveServer()"
-      (nzOnCancel)="modalVisible = false"
-      [nzOkLoading]="saving()"
-      nzWidth="700px"
-    >
-      <ng-container *nzModalContent>
-        <form nz-form [nzLayout]="'vertical'">
-          <nz-form-item>
-            <nz-form-label nzRequired>Server Name</nz-form-label>
-            <nz-form-control>
-              <input
-                nz-input
-                [(ngModel)]="formData.name"
-                name="name"
-                placeholder="例如: example.com"
-              />
-            </nz-form-control>
-          </nz-form-item>
+      <div class="server-grid-shell">
+        <div class="server-grid-head">
+          <div class="cell status-col">状态</div>
+          <div class="cell">Server 名称</div>
+          <div class="cell listen-col">监听端口</div>
+          <div class="cell domain-col">域名</div>
+          <div class="cell root-col">根目录</div>
+          <div class="cell action-col">操作</div>
+        </div>
 
-          <nz-form-item>
-            <nz-form-label nzRequired>监听端口</nz-form-label>
-            <nz-form-control>
-              <nz-select
-                [(ngModel)]="formData.listen"
-                name="listen"
-                nzMode="tags"
-                nzPlaceHolder="输入端口号，按回车确认"
-              >
-                <nz-option nzValue="80" nzLabel="80 (HTTP)"></nz-option>
-                <nz-option nzValue="443" nzLabel="443 (HTTPS)"></nz-option>
-                <nz-option nzValue="8080" nzLabel="8080"></nz-option>
-                <nz-option nzValue="3000" nzLabel="3000"></nz-option>
-              </nz-select>
-            </nz-form-control>
-          </nz-form-item>
-
-          <nz-form-item>
-            <nz-form-label>SSL</nz-form-label>
-            <nz-form-control>
-              <label nz-checkbox [(ngModel)]="formData.ssl" name="ssl">
-                启用 SSL
-              </label>
-            </nz-form-control>
-          </nz-form-item>
-
-          <div class="locations-section">
-            <div class="locations-header">
-              <h4>Location 配置</h4>
-              <button nz-button nzType="dashed" (click)="addLocation()">
-                <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
-                添加 Location
-              </button>
-            </div>
-
-            @for (location of formData.locations; track $index; let i = $index) {
-              <div class="location-item">
-                <div class="location-fields">
-                  <input
-                    nz-input
-                    [(ngModel)]="location.path"
-                    [name]="'path_' + i"
-                    placeholder="路径，例如: / 或 /api"
-                  />
-                  <input
-                    nz-input
-                    [(ngModel)]="location.proxyPass"
-                    [name]="'proxy_' + i"
-                    placeholder="代理目标，例如: http://localhost:3000"
-                  />
-                  <input
-                    nz-input
-                    [(ngModel)]="location.root"
-                    [name]="'root_' + i"
-                    placeholder="根目录（可选）"
-                  />
-                </div>
-                <button
-                  nz-button
-                  nzType="text"
-                  nzDanger
-                  (click)="removeLocation(i)"
-                >
-                  <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
-                </button>
+        <nz-spin [nzSpinning]="loading()">
+          <div class="server-grid-body">
+            @if (!loading() && !servers().length) {
+              <div class="empty-state">
+                <nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></nz-icon>
+                <p>暂无 Server 配置</p>
               </div>
+            } @else {
+              @for (server of servers(); track server.id) {
+                <div class="server-grid-row" [class.disabled-row]="!server.enabled">
+                  <div class="cell status-col">
+                    <label class="status-toggle">
+                      <input
+                        type="checkbox"
+                        [checked]="server.enabled"
+                        (change)="toggleServer(server.id, !server.enabled)"
+                      />
+                      <div class="toggle-track"></div>
+                    </label>
+                  </div>
+
+                  <div class="cell">
+                    <div class="server-name">
+                      <nz-icon nzType="file" nzTheme="outline" class="conf-icon"></nz-icon>
+                      {{ server.name }}
+                    </div>
+                  </div>
+
+                  <div class="cell listen-col">
+                    @for (port of server.listen; track $index) {
+                      @if (port === '443' || server.ssl) {
+                        <span class="server-listen ssl">:{{ port }} ssl</span>
+                      } @else {
+                        <span class="server-listen">:{{ port }}</span>
+                      }
+                    }
+                  </div>
+
+                  <div class="cell domain-col">
+                    <span class="server-domain">{{ (server.domains || []).join(', ') || '—' }}</span>
+                  </div>
+
+                  <div class="cell root-col">
+                    <span class="server-root" [title]="server.root || ''">{{ server.root || '—' }}</span>
+                  </div>
+
+                  <div class="cell action-col">
+                    <div class="row-actions">
+                      <button class="row-action-btn" title="编辑" (click)="openDrawer(server)">
+                        <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
+                      </button>
+                      <button class="row-action-btn" title="复制" (click)="copyServer(server)">
+                        <nz-icon nzType="copy" nzTheme="outline"></nz-icon>
+                      </button>
+                      <button class="row-action-btn danger" title="删除" (click)="deleteServer(server)">
+                        <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
             }
           </div>
-        </form>
-      </ng-container>
-    </nz-modal>
+        </nz-spin>
+      </div>
+    </div>
+
+    <!-- Server 新增/编辑 Drawer -->
+    <app-nginx-server-drawer
+      [(visible)]="drawerVisible"
+      [editingServer]="editingServer()"
+      (saved)="onSaved()"
+    ></app-nginx-server-drawer>
 
     <!-- 查看配置模态框 -->
     <nz-modal
@@ -249,107 +155,288 @@ import type { NginxServer, NginxLocation, CreateNginxServerRequest } from '../..
     </nz-modal>
   `,
   styles: [`
+    /* ========== LIST HEADER ========== */
     .server-list {
       .list-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
 
-        h3 {
-          margin: 0;
-          font-size: 16px;
-          font-weight: 500;
+        .header-left {
+          display: flex;
+          gap: 8px;
         }
-      }
-
-      .location-count {
-        color: rgba(0, 0, 0, 0.45);
-        font-size: 13px;
       }
     }
 
+    /* ========== SERVER GRID ========== */
+    .server-grid-shell {
+      border: none;
+      border-radius: 0;
+      overflow: hidden;
+    }
+
+    .server-grid-head,
+    .server-grid-row {
+      display: grid;
+      grid-template-columns: 72px minmax(180px, 1.2fr) minmax(150px, 0.9fr) minmax(180px, 1fr) minmax(180px, 1fr) 120px;
+      align-items: center;
+      column-gap: 8px;
+      padding: 0 12px;
+    }
+
+    .server-grid-head {
+      min-height: 42px;
+      background: #fafafa;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+
+      .cell {
+        font-size: var(--nginx-font-size-sm, 12px);
+        color: rgba(0, 0, 0, 0.45);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        font-weight: 700;
+      }
+    }
+
+    .server-grid-body {
+      background: #fff;
+    }
+
+    .server-grid-row {
+      min-height: 56px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: background 120ms ease;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.02);
+      }
+    }
+
+    .cell {
+      min-width: 0;
+    }
+
+    .action-col {
+      justify-self: end;
+    }
+
+    /* ========== STATUS TOGGLE ========== */
+    .status-toggle {
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .status-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #434343;
+      border: 1px solid #434343;
+      border-radius: 9px;
+      transition: all 200ms ease;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      transition: all 200ms ease;
+    }
+
+    .status-toggle input:checked + .toggle-track {
+      background: #3dd68c;
+      border-color: #3dd68c;
+    }
+
+    .status-toggle input:checked + .toggle-track::after {
+      transform: translateX(16px);
+    }
+
+    /* ========== SERVER COLUMNS ========== */
+    .server-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      font-size: var(--nginx-font-size-base, 14px);
+    }
+
+    .conf-icon {
+      color: rgba(0, 0, 0, 0.35);
+      flex-shrink: 0;
+    }
+
+    .server-listen {
+      font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+      font-size: var(--nginx-font-size-sm, 12px);
+      color: #e5a832;
+      background: rgba(229, 168, 50, 0.12);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
+
+    .server-listen.ssl {
+      color: #5ea6f7;
+      background: rgba(94, 166, 247, 0.12);
+    }
+
+    .server-domain {
+      font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+      font-size: var(--nginx-font-size-sm, 12px);
+      color: rgba(0, 0, 0, 0.55);
+    }
+
+    .server-root {
+      font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+      font-size: var(--nginx-font-size-sm, 12px);
+      color: rgba(0, 0, 0, 0.4);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+    }
+
+    /* ========== ROW ACTIONS ========== */
+    .row-actions {
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+      opacity: 0.5;
+      transition: opacity 120ms ease;
+    }
+
+    .server-grid-row:hover .row-actions {
+      opacity: 1;
+    }
+
+    .row-action-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: none;
+      border: 1px solid transparent;
+      color: rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: all 120ms ease;
+      padding: 0;
+    }
+
+    .row-action-btn:hover {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.1);
+      color: rgba(0, 0, 0, 0.75);
+    }
+
+    .row-action-btn.danger:hover {
+      color: #ef5350;
+      border-color: rgba(239, 83, 80, 0.3);
+      background: rgba(239, 83, 80, 0.08);
+    }
+
+    .disabled-row {
+      opacity: 0.5;
+    }
+
+    /* ========== EMPTY STATE ========== */
     .empty-state {
       text-align: center;
       padding: 48px 0;
 
       .empty-icon {
         font-size: 48px;
-        color: rgba(0, 0, 0, 0.25);
+        color: rgba(0, 0, 0, 0.2);
         margin-bottom: 16px;
       }
 
       p {
-        color: rgba(0, 0, 0, 0.45);
-        margin-bottom: 16px;
+        color: rgba(0, 0, 0, 0.4);
+        margin: 0;
       }
     }
 
-    .locations-section {
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid #f0f0f0;
-
-      .locations-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-
-        h4 {
-          margin: 0;
-        }
+    @media (max-width: 1100px) {
+      .server-grid-head {
+        display: none;
       }
 
-      .location-item {
-        display: flex;
+      .server-grid-row {
+        grid-template-columns: 1fr;
         gap: 8px;
-        margin-bottom: 12px;
-        align-items: flex-start;
+        padding: 12px;
+        align-items: stretch;
+      }
 
-        .location-fields {
-          flex: 1;
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 8px;
-        }
+      .status-col,
+      .listen-col,
+      .domain-col,
+      .root-col,
+      .action-col {
+        justify-self: start;
+      }
+
+      .action-col {
+        width: 100%;
+      }
+
+      .row-actions {
+        opacity: 1;
       }
     }
 
+    /* ========== CONFIG PREVIEW ========== */
     .config-preview {
       background: #f6ffed;
       border: 1px solid #b7eb8f;
       border-radius: 4px;
       padding: 16px;
       margin: 0;
-      font-family: monospace;
-      font-size: 13px;
+      font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+      font-size: var(--nginx-font-size-base, 14px);
       line-height: 1.6;
       overflow-x: auto;
       white-space: pre-wrap;
     }
   `],
 })
-export class NginxServerListComponent implements OnInit {
+export class NginxServerListComponent implements OnInit, OnChanges {
+  @Input() showToolbar = true;
+  @Input() openCreateToken = 0;
+  @Output() summaryChange = new EventEmitter<{ total: number; enabled: number }>();
+  @Output() serverListMutated = new EventEmitter<void>();
+
   private nginxService = inject(NginxService);
   private message = inject(NzMessageService);
   private modal = inject(NzModalService);
 
   servers = signal<NginxServer[]>([]);
   loading = signal(false);
-  saving = signal(false);
 
-  // 模态框状态
-  modalVisible = false;
+  drawerVisible = false;
   editingServer = signal<NginxServer | null>(null);
-  formData: CreateNginxServerRequest = {
-    name: '',
-    listen: ['80'],
-    locations: [],
-    ssl: false,
-  };
 
-  // 查看配置
   configModalVisible = false;
   viewingConfig = signal('');
 
@@ -357,14 +444,23 @@ export class NginxServerListComponent implements OnInit {
     this.loadServers();
   }
 
-  async loadServers() {
+  ngOnChanges(changes: SimpleChanges): void {
+    const openCreate = changes['openCreateToken'];
+    if (openCreate && !openCreate.firstChange) {
+      this.openDrawer(null);
+    }
+  }
+
+  async loadServers(): Promise<void> {
     this.loading.set(true);
     try {
       const res = await this.nginxService.getServers();
       if (res.success && res.servers) {
         this.servers.set(res.servers);
-      } else {
-        this.message.error(res.error || '加载失败');
+        this.summaryChange.emit({
+          total: res.servers.length,
+          enabled: res.servers.filter(server => server.enabled).length,
+        });
       }
     } catch (err: any) {
       this.message.error('加载失败: ' + err.message);
@@ -373,100 +469,28 @@ export class NginxServerListComponent implements OnInit {
     }
   }
 
-  showCreateModal() {
-    this.editingServer.set(null);
-    this.formData = {
-      name: '',
-      listen: ['80'],
-      locations: [{ path: '/' }],
-      ssl: false,
-    };
-    this.modalVisible = true;
-  }
-
-  editServer(server: NginxServer) {
+  openDrawer(server: NginxServer | null): void {
     this.editingServer.set(server);
-    this.formData = {
-      name: server.name,
-      listen: [...server.listen],
-      locations: server.locations.map((l) => ({ ...l })),
-      ssl: server.ssl,
-    };
-    this.modalVisible = true;
+    this.drawerVisible = true;
   }
 
-  async saveServer() {
-    if (!this.formData.name.trim()) {
-      this.message.warning('请输入 Server Name');
-      return;
-    }
-
-    if (this.formData.listen.length === 0) {
-      this.message.warning('请至少添加一个监听端口');
-      return;
-    }
-
-    this.saving.set(true);
-
-    try {
-      if (this.editingServer()) {
-        // 更新
-        const res = await this.nginxService.updateServer(this.editingServer()!.id, this.formData);
-        if (res.success) {
-          this.message.success('更新成功');
-          this.modalVisible = false;
-          this.loadServers();
-        } else {
-          this.message.error(res.error || '更新失败');
-        }
-      } else {
-        // 创建
-        const res = await this.nginxService.createServer(this.formData);
-        if (res.success) {
-          this.message.success('创建成功');
-          this.modalVisible = false;
-          this.loadServers();
-        } else {
-          this.message.error(res.error || '创建失败');
-        }
-      }
-    } catch (err: any) {
-      this.message.error('操作失败: ' + err.message);
-    } finally {
-      this.saving.set(false);
-    }
+  onSaved(): void {
+    this.loadServers();
+    this.serverListMutated.emit();
   }
 
-  deleteServer(server: NginxServer) {
-    this.modal.confirm({
-      nzTitle: '确认删除',
-      nzContent: `确定要删除 Server "${server.name}" 吗？`,
-      nzOkText: '删除',
-      nzOkType: 'primary',
-      nzOnOk: async () => {
-        try {
-          const res = await this.nginxService.deleteServer(server.id);
-          if (res.success) {
-            this.message.success('删除成功');
-            this.loadServers();
-          } else {
-            this.message.error(res.error || '删除失败');
-          }
-        } catch (err: any) {
-          this.message.error('删除失败: ' + err.message);
-        }
-      },
-    });
+  importServer(): void {
+    this.message.info('导入功能开发中');
   }
 
-  async toggleServer(id: string, enabled: boolean) {
+  async toggleServer(id: string, enabled: boolean): Promise<void> {
     try {
       const res = enabled
         ? await this.nginxService.enableServer(id)
         : await this.nginxService.disableServer(id);
 
       if (res.success) {
-        this.message.success(enabled ? '启用成功' : '禁用成功');
+        this.message.success(enabled ? '已启用' : '已禁用');
         this.loadServers();
       } else {
         this.message.error(res.error || '操作失败');
@@ -476,16 +500,33 @@ export class NginxServerListComponent implements OnInit {
     }
   }
 
-  viewConfig(server: NginxServer) {
-    this.viewingConfig.set(server.configText);
-    this.configModalVisible = true;
+  copyServer(server: NginxServer): void {
+    this.editingServer.set(server);
+    this.drawerVisible = true;
+    this.message.info('复制 Server - 请修改名称后保存');
   }
 
-  addLocation() {
-    this.formData.locations.push({ path: '/' });
-  }
-
-  removeLocation(index: number) {
-    this.formData.locations.splice(index, 1);
+  deleteServer(server: NginxServer): void {
+    this.modal.confirm({
+      nzTitle: '确认删除',
+      nzContent: `确定要删除 Server "${server.name}" 吗？`,
+      nzOkText: '删除',
+      nzOkType: 'primary',
+      nzOnOk: async () => {
+        try {
+          const res = await this.nginxService.deleteServer(server.id);
+          if (res.success) {
+            this.message.success('已删除');
+            this.loadServers();
+            this.serverListMutated.emit();
+          } else {
+            this.message.error(res.error || '删除失败');
+          }
+        } catch (err: any) {
+          this.message.error('删除失败: ' + err.message);
+        }
+      },
+    });
   }
 }
+

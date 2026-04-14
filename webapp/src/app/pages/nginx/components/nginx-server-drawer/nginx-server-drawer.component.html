@@ -1,0 +1,195 @@
+<nz-drawer
+  [nzVisible]="visible"
+  [nzPlacement]="'right'"
+  [nzWidth]="520"
+  [nzTitle]="drawerTitle"
+  (nzOnClose)="onClose()"
+  [nzClosable]="true"
+  [nzMaskClosable]="true"
+>
+  <ng-container *nzDrawerContent>
+    <div class="drawer-body">
+      <form nz-form nzLayout="vertical">
+        <!-- Server 名称 -->
+        <nz-form-item>
+          <nz-form-label nzRequired>Server 名称</nz-form-label>
+          <nz-form-control nzHasFeedback nzErrorTip="请输入 Server 名称">
+            <input
+              nz-input
+              [(ngModel)]="formData.name"
+              name="serverName"
+              placeholder="例如：main-site"
+            />
+          </nz-form-control>
+        </nz-form-item>
+
+        <!-- 监听端口 + 协议 -->
+        <nz-form-item>
+          <nz-form-label nzRequired>监听端口</nz-form-label>
+          <nz-form-control nzHasFeedback nzErrorTip="请输入 1-65535 之间的端口号">
+            <nz-select
+              nzMode="tags"
+              [(ngModel)]="listenValues"
+              name="listenPort"
+              nzPlaceHolder="可输入或选择多个端口"
+              [nzTokenSeparators]="[',', ' ']"
+            >
+              @for (port of commonListenOptions; track port) {
+                <nz-option [nzValue]="port" [nzLabel]="port"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+          <div class="field-hint">支持多个端口，例如 80, 443, 8080</div>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>协议</nz-form-label>
+          <nz-form-control>
+            <nz-select [(ngModel)]="formData.protocol" name="protocol" nzPlaceHolder="HTTP">
+              <nz-option nzValue="http" nzLabel="HTTP"></nz-option>
+              <nz-option nzValue="https" nzLabel="HTTPS (SSL)"></nz-option>
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+
+        <!-- 域名 -->
+        <nz-form-item>
+          <nz-form-label>域名</nz-form-label>
+          <nz-form-control>
+            <nz-select
+              nzMode="tags"
+              [(ngModel)]="domainValues"
+              name="domains"
+              nzPlaceHolder="可输入或选择多个域名"
+              [nzTokenSeparators]="[',', ' ']"
+              (ngModelChange)="syncDomains()"
+            >
+              @for (domain of commonDomainOptions; track domain) {
+                <nz-option [nzValue]="domain" [nzLabel]="domain"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+          <div class="field-hint">支持多个域名，输入后回车即可添加，支持通配符</div>
+        </nz-form-item>
+
+        <!-- 根目录 -->
+        <nz-form-item>
+          <nz-form-label nzTooltipTitle="静态资源根目录，通常用于提供静态文件服务，如index.html所在目录"
+                  [nzTooltipIcon]="'question-circle'">根目录</nz-form-label>
+          <nz-form-control>
+            <input
+              nz-input
+              class="mono-input"
+              [(ngModel)]="formData.root"
+              name="root"
+              placeholder="如：D:\\dist\\www"
+            />
+          </nz-form-control>
+        </nz-form-item>
+
+        <!-- Location 规则 -->
+        <nz-form-item>
+          <nz-form-label nzTooltipTitle="用于定义请求路径的处理规则，如 API 代理服务或静态资源路径"
+                  [nzTooltipIcon]="'question-circle'">Location 规则</nz-form-label>
+          <nz-form-control>
+            <div class="location-toolbar">
+              <button nz-button nzType="default" type="button" (click)="addLocation('empty')">
+                <span nz-icon nzType="plus"></span>
+                新增规则
+              </button>
+              <!-- <button nz-button nzType="default" type="button" (click)="addLocation('api')">
+                快速新增 API 代理
+              </button> -->
+            </div>
+
+            @for (loc of formData.locations; track $index) {
+              <div class="location-item">
+                <div class="location-item-head">
+                  <span>Location {{ $index + 1 }}</span>
+                  <button
+                    nz-button
+                    nzType="link"
+                    nzDanger
+                    type="button"
+                    [disabled]="(formData.locations || []).length <= 1"
+                    (click)="removeLocation($index)"
+                  >
+                    删除
+                  </button>
+                </div>
+
+                <div class="location-grid">
+                  <input
+                    nz-input
+                    [(ngModel)]="loc.path"
+                    [name]="'locationPath' + $index"
+                    placeholder="/api/"
+                  />
+                  <input
+                    nz-input
+                    class="mono-input"
+                    [(ngModel)]="loc.proxyPass"
+                    [name]="'locationProxy' + $index"
+                    placeholder="http://127.0.0.1:6808"
+                  />
+                </div>
+              </div>
+            }
+          </nz-form-control>
+          <div class="field-hint">常见场景：`location /api/` + `proxy_pass http://127.0.0.1:6808;`</div>
+        </nz-form-item>
+
+        <!-- SSL 配置（协议为 HTTPS 时显示） -->
+        @if (formData.protocol === 'https') {
+          <nz-form-item>
+            <nz-form-label nzRequired>SSL 证书路径</nz-form-label>
+            <nz-form-control nzHasFeedback nzErrorTip="请填写 SSL 证书路径">
+              <input
+                nz-input
+                [(ngModel)]="formData.sslCert"
+                name="sslCert"
+                placeholder="/etc/nginx/ssl/cert.pem"
+                class="mono-input"
+              />
+            </nz-form-control>
+          </nz-form-item>
+
+          <nz-form-item>
+            <nz-form-label nzRequired>SSL 私钥路径</nz-form-label>
+            <nz-form-control nzHasFeedback nzErrorTip="请填写 SSL 私钥路径">
+              <input
+                nz-input
+                [(ngModel)]="formData.sslKey"
+                name="sslKey"
+                placeholder="/etc/nginx/ssl/key.pem"
+                class="mono-input"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        }
+
+        <!-- 自定义配置 -->
+        <nz-form-item>
+          <nz-form-label>自定义配置片段</nz-form-label>
+          <nz-form-control>
+            <textarea
+              nz-input
+              [(ngModel)]="formData.extraConfig"
+              name="extraConfig"
+              class="mono-textarea"
+              rows="4"
+              placeholder="# 在此添加自定义 nginx 配置&#10;location /api {&#10;    proxy_pass http://backend_cluster;&#10;}"
+            ></textarea>
+          </nz-form-control>
+          <div class="field-hint">用于补充高级指令（`location` 常规场景建议在上面的 Location 规则中配置）</div>
+        </nz-form-item>
+      </form>
+    </div>
+
+    <div class="drawer-footer">
+      <button nz-button nzType="default" (click)="onClose()">取消</button>
+      <!-- <button nz-button nzType="default" (click)="previewConfig()">预览配置</button> -->
+      <button nz-button nzType="primary" (click)="save()" [nzLoading]="saving()">保存</button>
+    </div>
+  </ng-container>
+</nz-drawer>

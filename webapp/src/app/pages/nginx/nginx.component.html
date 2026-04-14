@@ -1,137 +1,227 @@
-<app-page-layout [title]="'Nginx 管理'" [loading]="loading()">
+<app-page-layout [title]="'nginx 管理'" [loading]="loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
   <ng-container ngProjectAs="actions">
     @if (instance()) {
-      <button nz-button (click)="refreshStatus()">
+      <span class="top-status" [class.running]="status()?.isRunning">
+        <span class="status-dot"></span>
+        {{ instance()?.version || 'unknown' }} · {{ pidText }}
+      </span>
+
+      <button nz-button nzType="default" (click)="refreshAll()" [nzLoading]="configLoading()">
         <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
         刷新
       </button>
-      <button nz-button nzDanger (click)="unbind()">
-        <nz-icon nzType="disconnect" nzTheme="outline"></nz-icon>
-        解绑
-      </button>
-    } @else {
-      <button nz-button nzType="primary" (click)="showBindModal()">
-        <nz-icon nzType="link" nzTheme="outline"></nz-icon>
-        绑定 Nginx
+
+      <button nz-button nzType="text" nz-tooltip nzTooltipTitle="设置" (click)="switchSecondaryTab('settings')">
+        <nz-icon nzType="setting" nzTheme="outline"></nz-icon>
       </button>
     }
   </ng-container>
 
-  <!-- 未绑定状态 -->
   @if (!instance()) {
-    <nz-empty
-      nzNotFoundImage="simple"
-      [nzNotFoundContent]="'请先绑定本地 Nginx 实例'"
-      [nzNotFoundFooter]="bindFooter"
-    >
-      <ng-template #bindFooter>
-        <button nz-button nzType="primary" (click)="showBindModal()">绑定 Nginx</button>
-      </ng-template>
-    </nz-empty>
+    <nz-layout class="console-shell">
+      <nz-content class="unbound-content">
+        <nz-empty
+          nzNotFoundImage="simple"
+          [nzNotFoundContent]="'请先绑定本地 Nginx 实例'"
+          [nzNotFoundFooter]="bindFooter"
+        >
+          <ng-template #bindFooter>
+            <button nz-button nzType="primary" (click)="showBindModal()">绑定 Nginx</button>
+          </ng-template>
+        </nz-empty>
+      </nz-content>
+    </nz-layout>
   } @else {
-    <!-- 状态和控制面板 -->
-    <div class="status-row">
-      <!-- 状态卡片 -->
-      <nz-card class="status-card">
-        <div class="status-header">
-          <h3>运行状态</h3>
-          <nz-badge
-            [nzStatus]="status()?.isRunning ? 'success' : 'error'"
-            [nzText]="status()?.isRunning ? '运行中' : '已停止'"
-          ></nz-badge>
-        </div>
-        <nz-descriptions [nzColumn]="1" nzSize="small">
-          <nz-descriptions-item nzTitle="版本">
-            {{ instance()?.version || '-' }}
-          </nz-descriptions-item>
-          <nz-descriptions-item nzTitle="进程 ID">
-            {{ status()?.pid || '-' }}
-          </nz-descriptions-item>
-          <nz-descriptions-item nzTitle="运行时间">
-            {{ status()?.uptime || '-' }}
-          </nz-descriptions-item>
-        </nz-descriptions>
-      </nz-card>
+    <nz-layout class="console-shell">
+      <nz-content class="console-content">
+        <div class="stats-row">
+          <app-nginx-stat-card
+            label="服务状态"
+            [value]="serviceStatusText"
+            [toneClass]="status()?.isRunning ? 'green' : 'red'"
+            [sub]="pidText"
+          ></app-nginx-stat-card>
 
-      <!-- 控制卡片 -->
-      <nz-card class="control-card">
-        <h3>服务控制</h3>
-        <div class="control-buttons">
-          <button
-            nz-button
-            nzType="primary"
-            [disabled]="status()?.isRunning"
-            (click)="startNginx()"
+          <app-nginx-stat-card
+            label="运行时长"
+            [value]="uptimeText"
+            toneClass="blue"
+            sub="基于当前 master 进程"
+          ></app-nginx-stat-card>
+
+          <app-nginx-stat-card
+            label="活跃连接"
+            [value]="activeConnectionText"
+            toneClass="purple"
+            [sub]="activeConnectionSubText"
+          ></app-nginx-stat-card>
+
+          <app-nginx-stat-card
+            label="Server 块"
+            [value]="serverSummary().total"
+            toneClass="orange"
+            [sub]="enabledServerText"
+          ></app-nginx-stat-card>
+        </div>
+
+        <div class="service-control-row">
+          <div class="service-control-left">
+            <span class="service-control-label">服务控制</span>
+            <button nz-button nzType="default" (click)="startNginx()" [disabled]="status()?.isRunning">
+              <nz-icon nzType="caret-right" nzTheme="outline"></nz-icon>
+              启动
+            </button>
+            <button nz-button nzType="default" (click)="stopNginx()" [disabled]="!status()?.isRunning">
+              <nz-icon nzType="pause" nzTheme="outline"></nz-icon>
+              停止
+            </button>
+            <button nz-button nzType="default" (click)="reloadNginx()" [disabled]="!status()?.isRunning">
+              <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
+              重载
+            </button>
+            <button nz-button nzType="default" (click)="testConfig()">
+              <nz-icon nzType="check-circle" nzTheme="outline"></nz-icon>
+              检测
+            </button>
+          </div>
+          <span class="service-control-path mono">{{ instance()?.path || '-' }}</span>
+        </div>
+
+        <app-nginx-section-card
+          accent="blue"
+          [showHeader]="true"
+          title="基础配置"
+          subtitle="Server 管理"
+          [noBodyPadding]="true"
+        >
+          <ng-container nginxCardActions>
+              <button nz-button nzType="default"  (click)="importServer()">
+                <nz-icon nzType="upload" nzTheme="outline"></nz-icon>
+                导入
+              </button>
+              <button nz-button nzType="primary" (click)="requestCreateServer()">
+                <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+                新增 Server
+              </button>
+          </ng-container>
+          <app-nginx-server-list
+            [showToolbar]="false"
+            [openCreateToken]="openServerDrawerToken()"
+            (summaryChange)="onServerSummaryChange($event)"
+            (serverListMutated)="onServerListMutated()"
+          ></app-nginx-server-list>
+        </app-nginx-section-card>
+
+        <app-nginx-section-card accent="green" [noBodyPadding]="true">
+          <button type="button" class="config-summary" [class.open]="configExpanded()" (click)="toggleConfigExpanded()">
+            <div class="config-summary-left">
+              <span class="config-title">配置文件</span>
+            </div>
+            <nz-icon nzType="down" nzTheme="outline" class="expand-icon"></nz-icon>
+          </button>
+
+          @if (configExpanded()) {
+            <div class="config-expanded">
+              <app-nginx-config-editor [refreshToken]="configEditorRefreshToken()"></app-nginx-config-editor>
+            </div>
+          }
+        </app-nginx-section-card>
+
+        <app-nginx-section-card accent="orange" [noBodyPadding]="true">
+          <nz-tabs
+            class="secondary-tabset"
+            [nzSelectedIndex]="secondaryTabIndex()"
+            (nzSelectedIndexChange)="onSecondaryTabIndexChange($event)"
           >
-            <nz-icon nzType="caret-right" nzTheme="outline"></nz-icon>
-            启动
-          </button>
-          <button nz-button nzDanger [disabled]="!status()?.isRunning" (click)="stopNginx()">
-            <nz-icon nzType="pause" nzTheme="outline"></nz-icon>
-            停止
-          </button>
-          <button nz-button [disabled]="!status()?.isRunning" (click)="reloadNginx()">
-            <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
-            重载
-          </button>
-          <button nz-button (click)="testConfig()">
-            <nz-icon nzType="check-circle" nzTheme="outline"></nz-icon>
-            测试配置
-          </button>
-        </div>
-        <div class="config-info">
-          <div class="info-item">
-            <span class="label">配置路径:</span>
-            <span class="value" nz-tooltip [nzTooltipTitle]="instance()?.configPath">
-              {{ instance()?.configPath | slice: 0 : 40
-              }}{{ (instance()?.configPath?.length || 0) > 40 ? '...' : '' }}
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="label">前缀路径:</span>
-            <span class="value" nz-tooltip [nzTooltipTitle]="instance()?.prefixPath">
-              {{ instance()?.prefixPath | slice: 0 : 40
-              }}{{ (instance()?.prefixPath?.length || 0) > 40 ? '...' : '' }}
-            </span>
-          </div>
-        </div>
-      </nz-card>
-    </div>
-
-    <!-- Tab 切换 -->
-    <nz-tabs class="nginx-tabs">
-      <nz-tab nzTitle="配置编辑器">
-        <app-nginx-config-editor></app-nginx-config-editor>
-      </nz-tab>
-      <nz-tab nzTitle="Server 管理">
-        <app-nginx-server-list></app-nginx-server-list>
-      </nz-tab>
-    </nz-tabs>
+            <nz-tab nzTitle="Upstream 管理">
+              <app-nginx-secondary-upstream-tab></app-nginx-secondary-upstream-tab>
+            </nz-tab>
+            <nz-tab nzTitle="SSL 证书">
+              <app-nginx-secondary-ssl-tab></app-nginx-secondary-ssl-tab>
+            </nz-tab>
+            <nz-tab nzTitle="流量控制">
+              <app-nginx-secondary-traffic-tab></app-nginx-secondary-traffic-tab>
+            </nz-tab>
+            <nz-tab nzTitle="性能优化">
+              <app-nginx-secondary-perf-tab></app-nginx-secondary-perf-tab>
+            </nz-tab>
+            <nz-tab nzTitle="日志">
+              <app-nginx-secondary-logs-tab [logs]="recentLogs()"></app-nginx-secondary-logs-tab>
+            </nz-tab>
+            <nz-tab nzTitle="配置检测">
+              <app-nginx-secondary-test-tab
+                [loading]="loading()"
+                [logs]="recentLogs()"
+                (runTest)="testConfig()"
+              ></app-nginx-secondary-test-tab>
+            </nz-tab>
+            <nz-tab nzTitle="设置">
+              <app-nginx-secondary-settings-tab
+                [instance]="instance()"
+                [configFileCount]="configFiles().length"
+                (unbind)="unbind()"
+              ></app-nginx-secondary-settings-tab>
+            </nz-tab>
+          </nz-tabs>
+        </app-nginx-section-card>
+      </nz-content>
+    </nz-layout>
   }
 
-  <!-- 绑定模态框 -->
   <nz-modal
     [(nzVisible)]="bindModalVisible"
-    nzTitle="绑定 Nginx 实例"
-    (nzOnOk)="bindNginx()"
     (nzOnCancel)="bindModalVisible = false"
-    [nzOkLoading]="binding()"
+    [nzFooter]="null"
+    [nzWidth]="560"
+    [nzCentered]="true"
+    [nzBodyStyle]="{ padding: '0' }"
   >
     <ng-container *nzModalContent>
-      <div class="bind-form">
-        <p>请输入 Nginx 可执行文件的完整路径：</p>
-        <input nz-input [(ngModel)]="bindPath" placeholder="例如: /usr/local/nginx/sbin/nginx" />
-        <div class="path-hints">
-          <p>常见路径：</p>
-          <ul>
-            <li>
-              macOS (Homebrew): <code>/opt/homebrew/bin/nginx</code> 或
-              <code>/usr/local/bin/nginx</code>
-            </li>
-            <li>Linux (apt/yum): <code>/usr/sbin/nginx</code></li>
-            <li>Windows: <code>C:\nginx\nginx.exe</code></li>
-          </ul>
+      <div class="bind-modal">
+        <div class="bind-icon">
+          <nz-icon nzType="link" nzTheme="outline"></nz-icon>
         </div>
+
+        <div class="bind-title">绑定本地 Nginx</div>
+        <div class="bind-desc">
+          指定本机 Nginx 可执行文件路径，完成实例绑定后即可使用可视化管理功能
+        </div>
+
+        <div class="bind-input-group">
+          <input
+            nz-input
+            class="mono bind-path-input"
+            [(ngModel)]="bindPath"
+            placeholder="/usr/local/nginx/sbin/nginx"
+            (keyup.enter)="bindNginx()"
+          />
+          <button nz-button nzType="default" (click)="showPathHint()">
+            <nz-icon nzType="folder-open" nzTheme="outline"></nz-icon>
+            浏览
+          </button>
+        </div>
+
+        <!-- <div class="bind-or">— 或 —</div>
+
+        <button type="button" class="bind-auto-detect" (click)="autoDetectBindPath()">
+          <nz-icon nzType="search" nzTheme="outline"></nz-icon>
+          <div class="bind-auto-detect-text">
+            <div class="bind-auto-detect-title">自动检测</div>
+            <div class="bind-auto-detect-hint">填充常见安装路径，确认后即可绑定</div>
+          </div>
+        </button> -->
+
+        <button
+          nz-button
+          nzType="primary"
+          class="bind-submit-btn"
+          (click)="bindNginx()"
+          [nzLoading]="binding()"
+          [disabled]="!bindPath.trim()"
+        >
+          <nz-icon nzType="link" nzTheme="outline"></nz-icon>
+          绑定 Nginx
+        </button>
       </div>
     </ng-container>
   </nz-modal>
