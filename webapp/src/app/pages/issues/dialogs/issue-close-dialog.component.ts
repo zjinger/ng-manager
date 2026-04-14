@@ -31,7 +31,7 @@ import { IssueEntity } from '../models/issue.model';
 
       <!-- body -->
       <ng-container *nzModalContent>
-        <form class="block-form" (ngSubmit)="submitForm()">
+        <form class="block-form">
           <textarea
             nz-input
             rows="6"

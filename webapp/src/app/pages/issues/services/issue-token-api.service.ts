@@ -12,11 +12,7 @@ export class IssueTokenApiService {
   /**
    * 通过个人token 操作hub v2 的数据（写操作）
    */
-  async issuePostReqWithPK<T>(body: {
-    issueId: string;
-    action: IssueActionType;
-    payload: Object; //{content:string}
-  }) {
+  async issuePostReqWithPK<T>(body: { issueId: string; action: string; payload: Object }) {
     return this.apiClient.hubRequestWithPersonalToken<T>({
       projectId: this.projectContext.currentProjectId()!,
       method: 'POST',
@@ -28,11 +24,7 @@ export class IssueTokenApiService {
   /**
    * 通过个人token 操作hub v2 的数据（删除操作）
    */
-  async issueDeleteReqWithPK<T>(body: {
-    issueId: string;
-    deletedId: string;
-    action: IssueActionType;
-  }) {
+  async issueDeleteReqWithPK<T>(body: { issueId: string; deletedId: string; action: string }) {
     const projectId = this.projectContext.currentProjectId()!;
     return this.apiClient.hubRequestWithPersonalToken<T>({
       projectId: projectId,

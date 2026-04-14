@@ -75,6 +75,7 @@ export class IssuesComponent {
   // protected readonly IssueComments = this.issueDetailStore.comments;
   protected readonly IssueAttachments = this.issueDetailStore.attachments;
   protected readonly IssueParticipants = this.issueDetailStore.participants;
+  protected readonly IssueBranches = this.issueDetailStore.branches;
   protected readonly busy = this.issueDetailStore.busy;
   protected readonly members = this.projectContextStore.currentProjectMembers;
 

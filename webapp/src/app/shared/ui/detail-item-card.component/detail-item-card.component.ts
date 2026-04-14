@@ -7,10 +7,17 @@ import { NzCardModule } from 'ng-zorro-antd/card';
   template: `
     <nz-card class="detail-item" [style]="{ maxHeight: maxHeight() }">
       @if (title()) {
-        <h2 class="wrap-title">{{ title() }}</h2>
+        <div class="actions">
+          <h2 class="wrap-title">{{ title() }}</h2>
+          <ng-content select="[actions]"></ng-content>
+        </div>
       }
       <div class="content">
-        <ng-content></ng-content>
+        @if (emptyStatus()) {
+          <div class="empty">{{ emptyText() }}</div>
+        } @else {
+          <ng-content></ng-content>
+        }
       </div>
     </nz-card>
   `,
@@ -21,13 +28,18 @@ import { NzCardModule } from 'ng-zorro-antd/card';
       display: flex;
       flex-direction: column;
       margin-bottom: 1rem;
-    }
-    .wrap-title {
-      width: 100%;
-      margin-bottom: 12px;
-      font-size: 18px;
-      font-weight: bold;
-      border-bottom: 1px solid #f0f0f0;
+      .actions {
+        margin-bottom: 12px;
+        display: flex;
+        border-bottom: 1px solid #f0f0f0;
+
+        .wrap-title {
+          margin-bottom: 0;
+          width: 100%;
+          font-size: 18px;
+          font-weight: bold;
+        }
+      }
     }
 
     :host ::ng-deep .ant-card-body {
@@ -43,7 +55,13 @@ import { NzCardModule } from 'ng-zorro-antd/card';
       // min-height: 0;
     }
 
-    :host ::ng-deep .ant-card-bordered{
+    .empty {
+      font-size: 0.875rem;
+      text-align: center;
+      color: gray;
+    }
+
+    :host ::ng-deep .ant-card-bordered {
       border-radius: 10px;
     }
   `,
@@ -51,4 +69,6 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 export class DetailItemCardComponent {
   readonly title = input<string>();
   readonly maxHeight = input<string>();
+  readonly emptyStatus = input<boolean>(false);
+  readonly emptyText = input<string>('暂无数据');
 }

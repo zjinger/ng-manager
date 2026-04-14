@@ -72,9 +72,9 @@
         </div>
     </div>
 
-    <app-issue-detail [open]="open()" [issue]="selectedIssue()" [members]="members()"
-        [attachments]="IssueAttachments()" [participants]="IssueParticipants()" (commentSubmit)="commentSubmit($event)"
-        (close)="closeIssueDetail()" (actionClick)="handleActions($event)" (removeParticipant)="removeParticipant($event)"></app-issue-detail>
+    <app-issue-detail [open]="open()" (commentSubmit)="commentSubmit($event)"
+        (close)="closeIssueDetail()" (actionClick)="handleActions($event)"
+        (removeParticipant)="removeParticipant($event)"></app-issue-detail>
 
     <app-issue-close-dialog [open]="IssueCloseDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
         (cancel)="cancelCloseDialog()" (confirm)="closeConfirm($event)"></app-issue-close-dialog>
@@ -87,6 +87,7 @@
         (confirm)="assignConfirm($event)"></app-issue-assign-dialog>
 
     <app-issue-add-participants-dialog [open]="IssueAddParticipantsDialogOpen()" [busy]="busy()"
-        [issue]="selectedIssue()" [members]="members()" [participants]="IssueParticipants()" (cancel)="cancelAddParticipantsConfirm()"
+        [issue]="selectedIssue()" [members]="members()" [participants]="IssueParticipants()"
+        (cancel)="cancelAddParticipantsConfirm()"
         (confirm)="AddParticipantsConfirm($event)"></app-issue-add-participants-dialog>
 </app-page-layout>

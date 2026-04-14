@@ -95,7 +95,7 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
         background: #ecebeb;
       }
       .participant-item__name {
-        font-size: 16px;
+        font-size: .875rem;
         font-weight: 600;
         // color: #1890ff;
       }

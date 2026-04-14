@@ -2,7 +2,14 @@ import { PageResult } from '@app/core/types/page.types';
 
 export type IssueType = 'bug' | 'feature' | 'change' | 'improvement' | 'task' | 'test';
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
-export type IssueStatus = 'open' | 'in_progress' | 'pending_update' | 'resolved' | 'verified' | 'closed' | 'reopened';
+export type IssueStatus =
+  | 'open'
+  | 'in_progress'
+  | 'pending_update'
+  | 'resolved'
+  | 'verified'
+  | 'closed'
+  | 'reopened';
 
 // 行动类型
 export type IssueActionType =
@@ -18,6 +25,9 @@ export type IssueActionType =
   | 'add_participants'
   | 'remove_participants'
   | 'participants';
+
+export type IssueBranchStatus = 'todo' | 'in_progress' | 'done';
+
 export interface IssueEntity {
   id: string;
   projectId: string;
@@ -72,6 +82,29 @@ export interface IssueCommentEntity {
   mentionsJson: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface IssueBranchEntity {
+  id: string;
+  issueId: string;
+  ownerUserId: string;
+  ownerUserName: string;
+  title: string;
+  status: IssueBranchStatus;
+  summary: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueBranchSummary {
+  total: number;
+  todo: number;
+  inProgress: number;
+  done: number;
 }
 
 export interface IssueParticipantEntity {
@@ -138,6 +171,18 @@ export interface CreateIssueInput {
 export interface createCommentInput {
   content: string;
   mentions?: string[];
+}
+export interface CreateIssueBranchInput {
+  ownerUserId: string;
+  title: string;
+}
+
+export interface StartOwnIssueBranchInput {
+  title: string;
+}
+
+export interface CompleteIssueBranchInput {
+  summary?: string;
 }
 
 export interface AssignIssueInput {

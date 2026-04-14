@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { NzDrawerModule, NzDrawerPlacement } from 'ng-zorro-antd/drawer';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import {
   createCommentInput,
   IssueActionType,
   IssueAttachmentEntity,
+  IssueBranchEntity,
   IssueCommentEntity,
   IssueEntity,
   IssueLogEntity,
@@ -19,6 +20,9 @@ import { IssueBaseInfoAreaComponent } from './issue-base-info-area/issue-base-in
 import { IssueCollaboratorsAreaComponent } from './issue-collaborators-area/issue-collaborators-panel.component';
 import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
 import { IssueDescriptionAreaComponent } from './issue-description-area/issue-description-area.component';
+import { IssueBranchesComponent } from './issue-branches/issue-branches.component';
+import { IssueStartOwnBranchDialogComponent } from '../dialogs/issue-start-own-branch-dialog.component';
+import { IssueCreateBranchDialogComponent } from '../dialogs/issue-create-branch-dialog.component';
 
 @Component({
   selector: 'app-issue-detail',
@@ -31,6 +35,9 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
     IssueAttachmentAreaComponent,
     IssueBaseInfoAreaComponent,
     IssueDescriptionAreaComponent,
+    IssueBranchesComponent,
+    IssueStartOwnBranchDialogComponent,
+    IssueCreateBranchDialogComponent,
     CommonModule,
   ],
   template: `
@@ -38,11 +45,10 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
       [nzVisible]="open()"
       [nzClosable]="true"
       [nzMaskClosable]="true"
-      [nzWidth]="850"
+      [nzWidth]="900"
       [nzWrapClassName]="'rd-detail-drawer'"
       [nzMask]="false"
       [nzTitle]="drawerTitleTpl"
-      [nzPlacement]="placement()"
       (nzOnClose)="closeDetaile()"
     >
       <ng-template #drawerTitleTpl>
@@ -59,9 +65,9 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
       <ng-template nzDrawerContent>
         @if (store.canRead()) {
           <nz-empty [nzNotFoundContent]="'您没有权限查看该问题详情'"></nz-empty>
-        } @else if (!issue()) {
-          <nz-empty>正在加载测试单详情…</nz-empty>
-        } @else if (issue(); as issue) {
+        } @else if (!store.issue()) {
+          <nz-empty [nzNotFoundContent]="'正在加载测试单详情…'"></nz-empty>
+        } @else if (store.issue(); as issue) {
           <div class="detail-wrap">
             <div class="detail-header">
               <!-- 操作 -->
@@ -95,7 +101,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                   (submit)="commentSubmit.emit($event)"
                   [busy]="busy()"
                   [logs]="store.logs()"
-                  [members]="members()"
+                  [members]="store.members()"
                   [projectId]="store.currentProjectId()!"
                   [canComment]="store.canComment()"
                 ></app-issue-comment-area>
@@ -104,10 +110,25 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 <!-- 基础信息 -->
                 <app-issue-base-info-area [issue]="issue"></app-issue-base-info-area>
 
+                <!-- 分支 -->
+                <app-issue-branches
+                  [branches]="store.branches()"
+                  [canStartActions]="store.canStartBranchActions()"
+                  [canCreate]="store.canCreateBranches()"
+                  [canStartOwn]="store.canStartOwnBranch()"
+                  [canCompleteBranch]="store.canCompleteBranch()"
+                  [summary]="store.branchSummary()"
+                  [busy]="busy()"
+                  (startOwn)="openStartOwnBranch()"
+                  (create)="openCreateBranch()"
+                  (startBranch)="store.startBranch($event)"
+                  (completeBranch)="store.completeBranch($event)"
+                ></app-issue-branches>
+
                 <!-- 合作人 -->
                 <app-issue-collaborators-area
                   [issue]="issue"
-                  [participants]="participants()"
+                  [participants]="store.participants()"
                   [canManageParticipants]="store.canManageParticipants()"
                   [busy]="busy()"
                   (removeParticipant)="removeParticipant.emit($event)"
@@ -117,13 +138,30 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 <app-issue-attachment-area
                   [attachments]="store.attachments()"
                   [projectId]="store.currentProjectId()!"
-                  [members]="members()"
+                  [members]="store.members()"
                 ></app-issue-attachment-area>
               </div>
             </div>
           </div>
         }
       </ng-template>
+
+      <app-issue-start-own-branch-dialog
+        [open]="startOwnBranchOpen()"
+        [issue]="store.issue()"
+        [busy]="store.busy()"
+        (confirm)="confirmStartOwnBranch($event)"
+        (cancel)="startOwnBranchOpen.set(false)"
+      ></app-issue-start-own-branch-dialog>
+
+      <app-issue-create-branch-dialog
+        [open]="createBranchOpen()"
+        [busy]="store.busy()"
+        [issue]="store.issue()"
+        [participants]="store.participants()"
+        (cancel)="createBranchOpen.set(false)"
+        (confirm)="confirmCreateBranch($event)"
+      />
     </nz-drawer>
   `,
   styles: `
@@ -164,14 +202,14 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
         border-bottom: 1px solid #bbbbbb;
       }
       .left-column {
-        width: 62%;
+        width: 60%;
 
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
       .right-column {
-        width: 38%;
+        width: 40%;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -185,15 +223,8 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
 })
 export class IssueDetailComponent {
   readonly store = inject(IssueDetailStore);
-
-  readonly issue = input<IssueEntity | null>();
   readonly open = input(false);
   readonly busy = input(false);
-  // readonly logs = input<IssueLogEntity[]>([]);
-  readonly attachments = input<IssueAttachmentEntity[]>([]);
-  readonly participants = input<IssueParticipantEntity[]>([]);
-  readonly members = input<ProjectMemberEntity[]>([]);
-  readonly placement = input<NzDrawerPlacement>('right');
 
   readonly close = output();
   readonly actionClick = output<IssueActionType>();
@@ -202,8 +233,12 @@ export class IssueDetailComponent {
   readonly removeParticipant = output<string>();
   readonly deleteClick = output<void>();
 
-  readonly subtitleText = computed(() => this.issue()?.issueNo || '');
-  readonly titleText = computed(() => this.issue()?.title || '问题详情');
+  // 对话框
+  readonly startOwnBranchOpen = signal<boolean>(false);
+  readonly createBranchOpen = signal<boolean>(false);
+
+  readonly subtitleText = computed(() => this.store.issue()?.issueNo || '');
+  readonly titleText = computed(() => this.store.issue()?.title || '问题详情');
 
   closeDetaile() {
     this.close.emit();
@@ -211,5 +246,25 @@ export class IssueDetailComponent {
 
   handleActionClick(action: IssueActionType) {
     this.actionClick.emit(action);
+  }
+
+  // 开始协作
+  openStartOwnBranch(): void {
+    this.startOwnBranchOpen.set(true);
+  }
+
+  confirmStartOwnBranch(input: { title: string }): void {
+    this.store.startOwnBranch(input);
+    this.startOwnBranchOpen.set(false);
+  }
+
+  // 创建协作分支
+  openCreateBranch(): void {
+    this.createBranchOpen.set(true);
+  }
+
+  confirmCreateBranch(input: { ownerUserId: string; title: string }): void {
+    this.store.createBranch(input);
+    this.createBranchOpen.set(false);
   }
 }

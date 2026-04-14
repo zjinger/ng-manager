@@ -97,7 +97,7 @@ export class IssueDescriptionAreaComponent {
         return match;
       }
       const itemId = matchResult[1];
-      const newPath = `/api/client/hub-token/projects/${projectId}/issues/${issueId}/attachments/${itemId}/raw`;
+      const newPath = `/api/client/hub-token/projects/${projectId}/issues/${issueId}/uploads/${itemId}/raw`;
 
       return match.replace(originalPath, newPath);
     });

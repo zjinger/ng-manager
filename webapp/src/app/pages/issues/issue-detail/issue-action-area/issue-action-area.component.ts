@@ -156,14 +156,12 @@ export class IssueActionAreaComponent {
     const openCutoff = this.latestOpenAt();
     this.logs().forEach((log, index) => {
       // 只显示最近一次打开（重新打开）之后的状态变更，之前的状态变更不再展示为已执行
-      console.log(index, openCutoff !== null && Date.parse(log.createdAt) < openCutoff);
-
       if (openCutoff !== null && Date.parse(log.createdAt) < openCutoff) {
         return;
       }
       executedStatusesSet.add(log.toStatus);
     });
-    if(executedStatusesSet.has('resolved')) {
+    if (executedStatusesSet.has('resolved')) {
       executedStatusesSet.add('pending_update');
     }
     return executedStatusesSet;

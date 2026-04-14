@@ -3,16 +3,20 @@ import { forkJoin, from } from 'rxjs';
 
 import { ProjectContextStore } from '@app/core/stores';
 import { UserStore } from '@app/core/stores/user/user.store';
-import type {
-  AddParticipantsInput,
-  AssignIssueInput,
-  createCommentInput,
-  IssueAttachmentEntity,
-  IssueCommentEntity,
-  IssueEntity,
-  IssueLogEntity,
-  IssueParticipantEntity,
-  ProjectMemberEntity,
+import {
+  CreateIssueBranchInput,
+  IssueBranchSummary,
+  StartOwnIssueBranchInput,
+  type AddParticipantsInput,
+  type AssignIssueInput,
+  type createCommentInput,
+  type IssueAttachmentEntity,
+  type IssueBranchEntity,
+  type IssueCommentEntity,
+  type IssueEntity,
+  type IssueLogEntity,
+  type IssueParticipantEntity,
+  type ProjectMemberEntity,
 } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
 import { IssuePermissionService } from '../services/issue-permission.service';
@@ -30,7 +34,7 @@ export class IssueDetailStore {
   private readonly commentsState = signal<IssueCommentEntity[]>([]);
   private readonly participantsState = signal<IssueParticipantEntity[]>([]);
   private readonly attachmentsState = signal<IssueAttachmentEntity[]>([]);
-  private readonly membersState = signal<ProjectMemberEntity[]>([]);
+  private readonly branchesState = signal<IssueBranchEntity[]>([]);
   private readonly loadingState = signal(false);
   private readonly busyState = signal(false);
   private readonly actionTickState = signal(0);
@@ -41,19 +45,35 @@ export class IssueDetailStore {
   readonly issue = computed(() => this.issueState());
   readonly logs = computed(() => this.logsState());
   // readonly comments = computed(() => this.commentsState());
+  readonly branches = computed(() => this.branchesState());
   readonly participants = computed(() => this.participantsState());
   readonly attachments = computed(() => this.attachmentsState());
-  readonly members = computed(() => this.membersState());
+  readonly members = computed(() => this.projectContext.currentProjectMembers());
   readonly loading = computed(() => this.loadingState());
   readonly busy = computed(() => this.busyState());
   readonly actionTick = computed(() => this.actionTickState());
+
+  readonly branchSummary = computed<IssueBranchSummary>(() => {
+    const branches = this.branchesState();
+    const total = branches.length;
+    const done = branches.filter((item) => item.status === 'done').length;
+    const inProgress = branches.filter((item) => item.status === 'in_progress').length;
+    const todo = branches.filter((item) => item.status === 'todo').length;
+    return {
+      total,
+      done,
+      inProgress,
+      todo,
+    };
+  });
+
   readonly currentUser = this.userStore.currentUser;
 
   readonly availableMembers = computed(() => {
     const issue = this.issueState();
     const assigneeId = issue?.assigneeId ?? null;
     const usedUserIds = new Set(this.participantsState().map((item) => item.userId));
-    return this.membersState().filter(
+    return this.members().filter(
       (item) => !usedUserIds.has(item.userId) && item.userId !== assigneeId,
     );
   });
@@ -64,7 +84,7 @@ export class IssueDetailStore {
     if (!user) {
       return false;
     }
-    const member = this.membersState().find((item) => item.userId === user.userId);
+    const member = this.members().find((item) => item.userId === user.userId);
     return !!member && (member.roleCode === 'project_admin' || member.isOwner);
   });
 
@@ -195,6 +215,56 @@ export class IssueDetailStore {
     );
   });
 
+  /*---------------------------------- 协作分支权限 ------------------------------------- */
+  readonly canCreateBranches = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToBranchOperation(user)) {
+      return false;
+    }
+
+    return (
+      this.isProjectAdmin() ||
+      this.permissionService.canCreateBranches(issue, this.currentUser(), this.participants())
+    );
+  });
+
+  readonly canStartBranchActions = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToBranchOperation(user)) {
+      return false;
+    }
+    return !!issue && this.permissionService.canStartBranchActions(issue, this.currentUser());
+  });
+
+  // 主动开始协作
+  readonly canStartOwnBranch = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToBranchOperation(user)) {
+      return false;
+    }
+    if (!this.permissionService.canStartOwnBranch(issue, user, this.participantsState())) {
+      return false;
+    }
+
+    // 如果有未完成的分支，则不允许再创建新的分支了
+    return !this.branchesState().some(
+      (item) => item.ownerUserId === user?.userId && item.status !== 'done',
+    );
+  });
+
+  // 完成分支(组件内需要进一步确认是否属于自己的分支)
+  readonly canCompleteBranch = computed(() => {
+    const issue = this.issueState();
+    const user = this.currentUser();
+    if (!issue || !user || !this.permissionService.hasPermissionToBranchOperation(user)) {
+      return false;
+    }
+    return true;
+  });
+
   readonly startActionLabel = computed(() => {
     const issue = this.issueState();
     if (!issue) {
@@ -229,12 +299,14 @@ export class IssueDetailStore {
       issue: this.issueApi.getIssueDetail(currentProjectId, issueId),
       logs: this.issueApi.getIssueLogs(currentProjectId, issueId),
       // comments: this.issueApi.getIssueComments(currentProjectId, issueId),
+      branches: this.issueApi.getBranches(currentProjectId, issueId),
       participants: this.issueApi.getIssueParticipants(currentProjectId, issueId),
       attachments: this.issueApi.getIssueAttachments(currentProjectId, issueId),
     }).subscribe({
-      next: ({ issue, logs, participants, attachments }) => {
+      next: ({ issue, logs, branches, participants, attachments }) => {
         this.issueState.set(issue);
         this.logsState.set(logs.items);
+        this.branchesState.set(branches.items);
         // this.commentsState.set(comments.items);
         this.participantsState.set(participants.items);
         this.attachmentsState.set(attachments.items);
@@ -397,6 +469,84 @@ export class IssueDetailStore {
   //   });
   // }
 
+  createBranch(input: CreateIssueBranchInput): void {
+    const issueId = this.issueState()?.id;
+    if (!issueId || !input.ownerUserId.trim() || !input.title.trim()) {
+      return;
+    }
+    this.busyState.set(true);
+    from(
+      this.issueApi.createBranch(issueId, {
+        ownerUserId: input.ownerUserId.trim(),
+        title: input.title.trim(),
+      }),
+    ).subscribe({
+      next: (branch) => {
+        this.branchesState.update((items) => [branch, ...items]);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  startOwnBranch(input: StartOwnIssueBranchInput): void {
+    const issueId = this.issueState()?.id;
+    const title = input.title.trim();
+    if (!issueId || !title) {
+      return;
+    }
+    this.busyState.set(true);
+    from(this.issueApi.startOwnBranch(issueId, { title })).subscribe({
+      next: () => {
+        this.refreshBranches(issueId);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  startBranch(branchId: string): void {
+    const issueId = this.issueState()?.id;
+    if (!issueId) {
+      return;
+    }
+    this.busyState.set(true);
+    from(this.issueApi.startBranch(issueId, branchId)).subscribe({
+      next: () => {
+        this.refreshBranches(issueId);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  completeBranch(branchId: string): void {
+    const issueId = this.issueState()?.id;
+    if (!issueId) {
+      return;
+    }
+    this.busyState.set(true);
+    from(this.issueApi.completeBranch(issueId, branchId)).subscribe({
+      next: () => {
+        this.refreshBranches(issueId);
+        this.refreshLogs(issueId);
+        this.busyState.set(false);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
   private runIssueAction(request: (issueId: string) => Promise<IssueEntity>): void {
     const issueId = this.issueState()?.id;
     if (!issueId) {
@@ -423,6 +573,16 @@ export class IssueDetailStore {
     }
     from(this.issueApi.getIssueLogs(currentProjectId, issueId)).subscribe({
       next: (logs) => this.logsState.set(logs.items),
+    });
+  }
+
+  private refreshBranches(issueId: string): void {
+    const projuectId = this.currentProjectId();
+    if (!projuectId) {
+      return;
+    }
+    from(this.issueApi.getBranches(projuectId, issueId)).subscribe({
+      next: (branches) => this.branchesState.set(branches.items),
     });
   }
 

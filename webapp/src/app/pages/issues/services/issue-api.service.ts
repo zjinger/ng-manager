@@ -13,6 +13,10 @@ import {
   IssueAttachmentEntity,
   ProjectMemberEntity,
   AddParticipantsInput,
+  IssueBranchEntity,
+  CreateIssueBranchInput,
+  StartOwnIssueBranchInput,
+  CompleteIssueBranchInput,
 } from '../models/issue.model';
 import { ApiClient } from '@core/api/api-client';
 import { IssueTokenApiService } from './issue-token-api.service';
@@ -31,6 +35,47 @@ export class IssueApiService {
     throw new Error('Method not implemented.');
   }
 
+  // branch
+  getBranches(projectId: string, issueId: string): Promise<{ items: IssueBranchEntity[] }> {
+    return this.apiClient.hubRequestWithPrjId<{ items: IssueBranchEntity[] }>({
+      projectId,
+      path: `/issues/${issueId}/branches`,
+    });
+  }
+
+  createBranch(issueId: string, input: CreateIssueBranchInput) {
+    return this.issueTokenApi.issuePostReqWithPK<IssueBranchEntity>({
+      issueId,
+      action: 'branches',
+      payload: input,
+    });
+  }
+
+  startOwnBranch(issueId: string, input: StartOwnIssueBranchInput) {
+    return this.issueTokenApi.issuePostReqWithPK<IssueBranchEntity>({
+      issueId,
+      action: 'branches/start-mine',
+      payload: input,
+    });
+  }
+
+  startBranch(issueId: string, branchId: string) {
+    return this.issueTokenApi.issuePostReqWithPK<IssueBranchEntity>({
+      issueId,
+      action: `branches/${branchId}/start`,
+      payload: {},
+    });
+  }
+
+  completeBranch(issueId: string, branchId: string, input: CompleteIssueBranchInput = {}) {
+    return this.issueTokenApi.issuePostReqWithPK<IssueBranchEntity>({
+      issueId,
+      action: `branches/${branchId}/complete`,
+      payload: input,
+    });
+  }
+
+  // participants
   addParticipant(issueId: string, input: { userId: string }) {
     return this.issueTokenApi.issuePostReqWithPK<IssueParticipantEntity>({
       issueId,
@@ -39,15 +84,22 @@ export class IssueApiService {
     });
   }
 
-  // createIssue(input: CreateIssueInput) {
-  //   return this.apiClient.hubTokenRequest({
-  //     projectId: input.projectId,
-  //     path: `/issues`,
-  //     method: 'POST',
-  //     payload: input,
-  //   });
-  // }
+  getIssueParticipants(projectId: string, issueId: string) {
+    return this.apiClient.hubRequestWithPrjId<{ items: IssueParticipantEntity[] }>({
+      projectId,
+      path: `/issues/${issueId}/participants`,
+    });
+  }
 
+  // log
+  getIssueLogs(projectId: string, issueId: string) {
+    return this.apiClient.hubRequestWithPrjId<{ items: IssueLogEntity[] }>({
+      projectId,
+      path: `/issues/${issueId}/logs`,
+    });
+  }
+
+  // comment
   addComment(issueId: string, content: string) {
     return this.issueTokenApi.issuePostReqWithPK({
       issueId,
@@ -56,7 +108,15 @@ export class IssueApiService {
     });
   }
 
-  assignIssue( issueId: string, input: AssignIssueInput) {
+  createIssueComment(issueId: string, content: string, mentions: string[] = []) {
+    return this.issueTokenApi.issuePostReqWithPK<IssueCommentEntity>({
+      issueId,
+      action: 'comments',
+      payload: { content, mentions },
+    });
+  }
+
+  assignIssue(issueId: string, input: AssignIssueInput) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'assign',
@@ -64,7 +124,7 @@ export class IssueApiService {
     });
   }
 
-  claimIssue( issueId: string) {
+  claimIssue(issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'claim',
@@ -72,7 +132,7 @@ export class IssueApiService {
     });
   }
 
-  startIssue( issueId: string) {
+  startIssue(issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'start',
@@ -88,7 +148,7 @@ export class IssueApiService {
     });
   }
 
-  resolveIssue( issueId: string, summary?: string) {
+  resolveIssue(issueId: string, summary?: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'resolve',
@@ -104,7 +164,7 @@ export class IssueApiService {
   //   });
   // }
 
-  reopenIssue( issueId: string) {
+  reopenIssue(issueId: string) {
     return this.issueTokenApi.issuePostReqWithPK<IssueEntity>({
       issueId,
       action: 'reopen',
@@ -135,26 +195,12 @@ export class IssueApiService {
     });
   }
 
-  getIssueLogs(projectId: string, issueId: string) {
-    return this.apiClient.hubRequestWithPrjId<{ items: IssueLogEntity[] }>({
-      projectId,
-      path: `/issues/${issueId}/logs`,
-    });
-  }
-
   // getIssueComments(projectId: string, issueId: string) {
   //   return this.apiClient.hubRequestWithPrjId<{ items: IssueCommentEntity[] }>({
   //     projectId,
   //     path: `/issues/${issueId}/comments`,
   //   });
   // }
-
-  getIssueParticipants(projectId: string, issueId: string) {
-    return this.apiClient.hubRequestWithPrjId<{ items: IssueParticipantEntity[] }>({
-      projectId,
-      path: `/issues/${issueId}/participants`,
-    });
-  }
 
   getIssueAttachments(projectId: string, issueId: string) {
     return this.apiClient.hubRequestWithPrjId<{
@@ -169,14 +215,6 @@ export class IssueApiService {
     return this.apiClient.hubRequestWithPrjId<{ items: ProjectMemberEntity[] }>({
       projectId,
       path: `/projects/${projectId}/members`,
-    });
-  }
-
-  createIssueComment(issueId: string, content: string, mentions: string[] = []) {
-    return this.issueTokenApi.issuePostReqWithPK<IssueCommentEntity>({
-      issueId,
-      action: 'comments',
-      payload: { content, mentions },
     });
   }
 
