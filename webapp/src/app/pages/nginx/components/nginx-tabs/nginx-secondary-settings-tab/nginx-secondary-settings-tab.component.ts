@@ -1,13 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 import type { NginxInstance } from '../../../models/nginx.types';
+import { NginxModuleStore } from '../../../services/nginx-module.store';
 
 @Component({
   selector: 'app-nginx-secondary-settings-tab',
   standalone: true,
-  imports: [CommonModule, NzButtonModule],
+  imports: [CommonModule, FormsModule, NzButtonModule, NzInputModule],
   template: `
     <div class="setting-row">
       <div>
@@ -34,6 +38,54 @@ import type { NginxInstance } from '../../../models/nginx.types';
       </div>
       <div class="setting-ctrl">
         <span class="mono strong">{{ configFileCount }}</span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">状态备份保留数</div>
+        <div class="setting-desc">.ngm-nginx-module.json.backup-* 最多保留数量</div>
+      </div>
+      <div class="setting-ctrl">
+        <input
+          nz-input
+          type="number"
+          min="1"
+          class="retention-input mono"
+          [ngModel]="backupRetention()"
+          (ngModelChange)="setBackupRetention($event)"
+        />
+        <button
+          nz-button
+          nzType="default"
+          (click)="saveBackupRetention()"
+          [disabled]="!retentionDirty() || saving()"
+        >
+          保存
+        </button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">配置备份保留数</div>
+        <div class="setting-desc">*.conf.backup-* 最多保留数量</div>
+      </div>
+      <div class="setting-ctrl">
+        <input
+          nz-input
+          type="number"
+          min="1"
+          class="retention-input mono"
+          [ngModel]="configBackupRetention()"
+          (ngModelChange)="setConfigBackupRetention($event)"
+        />
+        <button
+          nz-button
+          nzType="default"
+          (click)="saveBackupRetention()"
+          [disabled]="!retentionDirty() || saving()"
+        >
+          保存
+        </button>
       </div>
     </div>
     <div class="danger-box">
@@ -91,6 +143,10 @@ import type { NginxInstance } from '../../../models/nginx.types';
       gap: 8px;
     }
 
+    .retention-input {
+      width: 92px;
+    }
+
     .mono {
       font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
 
@@ -116,10 +172,64 @@ import type { NginxInstance } from '../../../models/nginx.types';
     }
   `],
 })
-export class NginxSecondarySettingsTabComponent {
+export class NginxSecondarySettingsTabComponent implements OnInit {
+  private moduleStore = inject(NginxModuleStore);
+  private message = inject(NzMessageService);
+
   @Input() instance: NginxInstance | null = null;
   @Input() configFileCount = 0;
   @Output() unbind = new EventEmitter<void>();
+
+  backupRetention = signal(5);
+  configBackupRetention = signal(20);
+  retentionDirty = signal(false);
+  saving = signal(false);
+
+  async ngOnInit(): Promise<void> {
+    try {
+      const res = await this.moduleStore.loadModuleSettings();
+      if (res.success && res.settings) {
+        this.backupRetention.set(Math.max(1, Number(res.settings.backupRetention ?? 5)));
+        this.configBackupRetention.set(Math.max(1, Number(res.settings.configBackupRetention ?? 20)));
+      }
+    } catch {
+      // 忽略，使用默认值
+    }
+  }
+
+  setBackupRetention(value: number | string): void {
+    const parsed = Number(value);
+    const normalized = Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : 1;
+    this.backupRetention.set(normalized);
+    this.retentionDirty.set(true);
+  }
+
+  setConfigBackupRetention(value: number | string): void {
+    const parsed = Number(value);
+    const normalized = Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : 1;
+    this.configBackupRetention.set(normalized);
+    this.retentionDirty.set(true);
+  }
+
+  async saveBackupRetention(): Promise<void> {
+    this.saving.set(true);
+    try {
+      const res = await this.moduleStore.saveModuleSettings({
+        backupRetention: this.backupRetention(),
+        configBackupRetention: this.configBackupRetention(),
+      });
+      if (res.success && res.settings) {
+        this.backupRetention.set(Math.max(1, Number(res.settings.backupRetention ?? 5)));
+        this.configBackupRetention.set(Math.max(1, Number(res.settings.configBackupRetention ?? 20)));
+        this.retentionDirty.set(false);
+        this.message.success('备份保留数量已保存');
+      } else {
+        this.message.error(res.error || '保存备份保留数量失败');
+      }
+    } catch (err: any) {
+      this.message.error('保存备份保留数量失败: ' + err.message);
+    } finally {
+      this.saving.set(false);
+    }
+  }
 }
-
-

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PageLayoutComponent } from '@app/shared';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -73,7 +73,7 @@ interface ServerSummary {
   templateUrl: './nginx.component.html',
   styleUrls: ['./nginx.component.less'],
 })
-export class NginxComponent implements OnInit {
+export class NginxComponent implements OnInit, OnDestroy {
   private nginxService = inject(NginxService);
   private message = inject(NzMessageService);
   private modal = inject(NzModalService);
@@ -83,6 +83,9 @@ export class NginxComponent implements OnInit {
   status = signal<NginxStatus | null>(null);
   loading = signal(false);
   binding = signal(false);
+
+  // 操作中状态，防止重复点击
+  controlling = signal(false);
 
   // UI state
   bindModalVisible = false;
@@ -96,12 +99,14 @@ export class NginxComponent implements OnInit {
   // Data state
   configFiles = signal<string[]>([]);
   serverSummary = signal<ServerSummary>({ total: 0, enabled: 0 });
-  recentLogs = signal<LogEntry[]>([
-    { time: '16:10:23', level: 'info', msg: 'nginx started' },
-    { time: '16:10:24', level: 'info', msg: 'worker process started' },
-    { time: '16:11:05', level: 'warn', msg: 'upstream server 192.168.1.10:8080 down' },
-    { time: '16:12:30', level: 'error', msg: 'connect() failed to 192.168.1.10:8080' },
-  ]);
+  recentLogs = signal<LogEntry[]>([]);
+  runtimeDisplay = signal('-');
+  runtimeStartedAtLabel = signal('-');
+
+  private runtimeBaseSeconds: number | null = null;
+  private runtimeBaseTimestamp = 0;
+  private runtimeRafId: number | null = null;
+  private runtimeRenderBucket: number | null = null;
 
   readonly secondaryTabs: Array<{ id: SecondaryTab; label: string }> = [
     { id: 'upstream', label: 'Upstream 管理' },
@@ -116,6 +121,10 @@ export class NginxComponent implements OnInit {
   async ngOnInit() {
     await this.loadStatus();
     await this.loadConfigFiles();
+  }
+
+  ngOnDestroy(): void {
+    this.stopRuntimeTicker();
   }
 
   switchSecondaryTab(tab: SecondaryTab) {
@@ -162,7 +171,21 @@ export class NginxComponent implements OnInit {
   }
 
   get uptimeText(): string {
-    return this.status()?.uptime || '-';
+    if (!this.status()?.isRunning) {
+      return '-';
+    }
+    return this.runtimeDisplay() || this.status()?.uptime || '-';
+  }
+
+  get uptimeSubText(): string {
+    if (!this.status()?.isRunning) {
+      return '服务未运行';
+    }
+    const startedAt = this.runtimeStartedAtLabel();
+    if (startedAt && startedAt !== '-') {
+      return `开始时间 ${startedAt}`;
+    }
+    return '开始时间未知';
   }
 
   get pidText(): string {
@@ -205,6 +228,7 @@ export class NginxComponent implements OnInit {
       if (stats.success && stats.status) {
         this.instance.set(stats.instance || null);
         this.status.set(stats.status);
+        this.syncRuntimeState(stats.status);
         if (stats.serverSummary) {
           this.serverSummary.set({
             total: stats.serverSummary.total,
@@ -217,6 +241,7 @@ export class NginxComponent implements OnInit {
       const res = await this.nginxService.getStatus();
       this.instance.set(res.instance);
       this.status.set(res.status);
+      this.syncRuntimeState(res.status);
     } catch {
       // 静默失败，等待用户手动绑定
     } finally {
@@ -291,6 +316,7 @@ export class NginxComponent implements OnInit {
           await this.nginxService.unbind();
           this.instance.set(null);
           this.status.set(null);
+          this.syncRuntimeState(null);
           this.serverSummary.set({ total: 0, enabled: 0 });
           this.configFiles.set([]);
           this.message.success('解绑成功');
@@ -302,6 +328,8 @@ export class NginxComponent implements OnInit {
   }
 
   async startNginx() {
+    if (this.controlling()) return;
+    this.controlling.set(true);
     this.loading.set(true);
     try {
       const res = await this.nginxService.start();
@@ -316,10 +344,13 @@ export class NginxComponent implements OnInit {
       this.message.error('启动失败: ' + err.message);
     } finally {
       this.loading.set(false);
+      this.controlling.set(false);
     }
   }
 
   async stopNginx() {
+    if (this.controlling()) return;
+    this.controlling.set(true);
     this.loading.set(true);
     try {
       const res = await this.nginxService.stop();
@@ -334,10 +365,13 @@ export class NginxComponent implements OnInit {
       this.message.error('停止失败: ' + err.message);
     } finally {
       this.loading.set(false);
+      this.controlling.set(false);
     }
   }
 
   async reloadNginx() {
+    if (this.controlling()) return;
+    this.controlling.set(true);
     this.loading.set(true);
     try {
       const res = await this.nginxService.reload();
@@ -352,6 +386,35 @@ export class NginxComponent implements OnInit {
       this.message.error('重载失败: ' + err.message);
     } finally {
       this.loading.set(false);
+      this.controlling.set(false);
+    }
+  }
+
+  async restartNginx() {
+    if (this.controlling()) return;
+    this.controlling.set(true);
+    this.loading.set(true);
+    try {
+      // 先停止
+      const stopRes = await this.nginxService.stop();
+      if (!stopRes.success) {
+        this.message.error('重启失败: ' + (stopRes.error || '停止失败'));
+        return;
+      }
+      // 再启动
+      const startRes = await this.nginxService.start();
+      if (startRes.success) {
+        this.appendLog('info', 'nginx restart executed');
+        this.message.success('重启成功');
+        await this.loadStatus();
+      } else {
+        this.message.error('重启失败: ' + (startRes.error || '启动失败'));
+      }
+    } catch (err: any) {
+      this.message.error('重启失败: ' + err.message);
+    } finally {
+      this.loading.set(false);
+      this.controlling.set(false);
     }
   }
 
@@ -400,5 +463,150 @@ export class NginxComponent implements OnInit {
     }
 
     return ['/usr/sbin/nginx', '/usr/local/nginx/sbin/nginx', '/usr/local/bin/nginx'];
+  }
+
+  private syncRuntimeState(status: NginxStatus | null): void {
+    if (!status?.isRunning) {
+      this.stopRuntimeTicker();
+      this.runtimeBaseSeconds = null;
+      this.runtimeBaseTimestamp = 0;
+      this.runtimeDisplay.set('-');
+      this.runtimeStartedAtLabel.set('-');
+      return;
+    }
+
+    const seconds = this.parseUptimeSeconds(status.uptime);
+    if (seconds === null) {
+      this.stopRuntimeTicker();
+      this.runtimeBaseSeconds = null;
+      this.runtimeBaseTimestamp = 0;
+      this.runtimeDisplay.set(status.uptime || '-');
+      this.runtimeStartedAtLabel.set('-');
+      return;
+    }
+
+    this.runtimeBaseSeconds = seconds;
+    this.runtimeBaseTimestamp = Date.now();
+    this.runtimeRenderBucket = null;
+    const startedAt = new Date(this.runtimeBaseTimestamp - seconds * 1000);
+    this.runtimeStartedAtLabel.set(this.formatDateTime(startedAt));
+    this.updateRuntimeDisplay();
+    this.startRuntimeTicker();
+  }
+
+  private startRuntimeTicker(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.runtimeRafId !== null) {
+      return;
+    }
+
+    const tick = () => {
+      if (this.runtimeBaseSeconds === null || !this.status()?.isRunning) {
+        this.stopRuntimeTicker();
+        return;
+      }
+      this.updateRuntimeDisplay();
+      this.runtimeRafId = window.requestAnimationFrame(tick);
+    };
+
+    this.runtimeRafId = window.requestAnimationFrame(tick);
+  }
+
+  private stopRuntimeTicker(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.runtimeRafId !== null) {
+      window.cancelAnimationFrame(this.runtimeRafId);
+      this.runtimeRafId = null;
+    }
+    this.runtimeRenderBucket = null;
+  }
+
+  private updateRuntimeDisplay(): void {
+    if (this.runtimeBaseSeconds === null) {
+      return;
+    }
+
+    const elapsed = this.runtimeBaseSeconds + Math.max(0, Math.floor((Date.now() - this.runtimeBaseTimestamp) / 1000));
+    const useMinuteBucket = elapsed >= 86400;
+    const bucket = useMinuteBucket ? Math.floor(elapsed / 60) : elapsed;
+    if (this.runtimeRenderBucket === bucket) {
+      return;
+    }
+    this.runtimeRenderBucket = bucket;
+    this.runtimeDisplay.set(this.formatElapsed(elapsed));
+  }
+
+  private parseUptimeSeconds(value?: string): number | null {
+    const text = String(value || '').trim();
+    if (!text) {
+      return null;
+    }
+
+    let match = text.match(/^(\d+)\s*d\s*(\d{1,2}):(\d{1,2}):(\d{1,2})$/i);
+    if (match) {
+      const days = Number(match[1]);
+      const hours = Number(match[2]);
+      const minutes = Number(match[3]);
+      const seconds = Number(match[4]);
+      return days * 86400 + hours * 3600 + minutes * 60 + seconds;
+    }
+
+    match = text.match(/^(\d+)-(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
+    if (match) {
+      const days = Number(match[1]);
+      const hours = Number(match[2]);
+      const minutes = Number(match[3]);
+      const seconds = Number(match[4]);
+      return days * 86400 + hours * 3600 + minutes * 60 + seconds;
+    }
+
+    match = text.match(/^(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
+    if (match) {
+      const hours = Number(match[1]);
+      const minutes = Number(match[2]);
+      const seconds = Number(match[3]);
+      return hours * 3600 + minutes * 60 + seconds;
+    }
+
+    match = text.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (match) {
+      const minutes = Number(match[1]);
+      const seconds = Number(match[2]);
+      return minutes * 60 + seconds;
+    }
+
+    return null;
+  }
+
+  private formatElapsed(seconds: number): string {
+    const total = Math.max(0, Math.floor(seconds));
+    if (total >= 86400) {
+      const days = Math.floor(total / 86400);
+      const hours = Math.floor((total % 86400) / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      return `${days}天 ${hours}小时 ${minutes}分钟`;
+    }
+
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const remainSeconds = total % 60;
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(remainSeconds).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  private formatDateTime(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
 }

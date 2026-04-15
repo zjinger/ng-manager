@@ -5,13 +5,14 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { NginxService } from '../../../services/nginx.service';
+import { NginxModuleStore } from '../../../services/nginx-module.store';
 import type { NginxTrafficConfig } from '../../../models/nginx.types';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 @Component({
   selector: 'app-nginx-secondary-traffic-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, NzIconModule],
+  imports: [CommonModule, FormsModule, NzButtonModule, NzIconModule, NzSwitchModule],
   template: `
     <div class="panel-header-row">
       <span class="panel-tip">流量控制策略</span>
@@ -33,14 +34,12 @@ import type { NginxTrafficConfig } from '../../../models/nginx.types';
           (ngModelChange)="markDirty()"
           placeholder="20r/s"
         />
-        <label class="toggle">
-          <input
-            type="checkbox"
-            [checked]="config().rateLimitEnabled"
-            (change)="setRateLimitEnabled($any($event.target).checked)"
-          />
-          <div class="toggle-track"></div>
-        </label>
+        <nz-switch
+          name="rateLimitEnabled"
+          nzSize="small"
+          [ngModel]="config().rateLimitEnabled"
+          (ngModelChange)="setRateLimitEnabled($event)"
+        ></nz-switch>
       </div>
     </div>
 
@@ -57,14 +56,12 @@ import type { NginxTrafficConfig } from '../../../models/nginx.types';
           [(ngModel)]="config().connLimit"
           (ngModelChange)="markDirty()"
         />
-        <label class="toggle">
-          <input
-            type="checkbox"
-            [checked]="config().connLimitEnabled"
-            (change)="setConnLimitEnabled($any($event.target).checked)"
-          />
-          <div class="toggle-track"></div>
-        </label>
+        <nz-switch
+          name="connLimitEnabled"
+          nzSize="small"
+          [ngModel]="config().connLimitEnabled"
+          (ngModelChange)="setConnLimitEnabled($event)"
+        ></nz-switch>
       </div>
     </div>
 
@@ -166,78 +163,19 @@ import type { NginxTrafficConfig } from '../../../models/nginx.types';
     .mono {
       font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
     }
-
-    .toggle {
-      position: relative;
-      display: inline-block;
-      width: 32px;
-      height: 18px;
-      cursor: pointer;
-    }
-
-    .toggle input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-track {
-      position: absolute;
-      inset: 0;
-      border-radius: 9px;
-      background: #c9cdd4;
-      transition: all 120ms ease;
-    }
-
-    .toggle-track::after {
-      content: '';
-      position: absolute;
-      left: 2px;
-      top: 2px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #fff;
-      transition: all 120ms ease;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-    }
-
-    .toggle input:checked + .toggle-track {
-      background: var(--green);
-    }
-
-    .toggle input:checked + .toggle-track::after {
-      transform: translateX(14px);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    @media (max-width: 768px) {
-      .panel-header-row,
-      .setting-row {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .setting-ctrl {
-        width: 100%;
-      }
-    }
   `],
 })
 export class NginxSecondaryTrafficTabComponent implements OnInit {
-  private nginxService = inject(NginxService);
+  private moduleStore = inject(NginxModuleStore);
   private message = inject(NzMessageService);
 
   saving = signal(false);
   dirty = signal(false);
   config = signal<NginxTrafficConfig>({
-    rateLimitEnabled: true,
-    rateLimit: '20r/s',
-    connLimitEnabled: true,
-    connLimit: 50,
+    rateLimitEnabled: false,
+    rateLimit: '',
+    connLimitEnabled: false,
+    connLimit: 0,
     blacklistIps: [],
   });
   blacklistText = signal('');
@@ -248,13 +186,14 @@ export class NginxSecondaryTrafficTabComponent implements OnInit {
 
   async load() {
     try {
-      const res = await this.nginxService.getTrafficConfig();
+      const res = await this.moduleStore.loadTrafficConfig();
       if (res.success && res.traffic) {
+        const traffic = this.moduleStore.trafficConfig();
         this.config.set({
-          ...res.traffic,
-          connLimit: Number(res.traffic.connLimit || 50),
+          ...traffic,
+          connLimit: Math.max(0, Number(traffic.connLimit ?? 0)),
         });
-        this.blacklistText.set((res.traffic.blacklistIps || []).join('\n'));
+        this.blacklistText.set((traffic.blacklistIps || []).join('\n'));
         this.dirty.set(false);
       } else {
         this.message.error(res.error || '加载流量配置失败');
@@ -287,7 +226,9 @@ export class NginxSecondaryTrafficTabComponent implements OnInit {
     const payload: NginxTrafficConfig = {
       ...this.config(),
       rateLimit: this.config().rateLimit.trim(),
-      connLimit: Math.max(1, Number(this.config().connLimit || 1)),
+      connLimit: this.config().connLimitEnabled
+        ? Math.max(1, Number(this.config().connLimit || 1))
+        : Math.max(0, Number(this.config().connLimit || 0)),
       blacklistIps: this.blacklistText()
         .split(/[\n,]/)
         .map(item => item.trim())
@@ -296,7 +237,7 @@ export class NginxSecondaryTrafficTabComponent implements OnInit {
 
     this.saving.set(true);
     try {
-      const res = await this.nginxService.saveTrafficConfig(payload);
+      const res = await this.moduleStore.saveTrafficConfig(payload);
       if (res.success) {
         this.message.success('流量控制配置已保存');
         this.dirty.set(false);
@@ -311,5 +252,3 @@ export class NginxSecondaryTrafficTabComponent implements OnInit {
     }
   }
 }
-
-

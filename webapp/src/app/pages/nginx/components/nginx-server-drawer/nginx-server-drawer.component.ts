@@ -1,4 +1,15 @@
-import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnDestroy,
+  Output,
+  SimpleChanges,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -32,7 +43,7 @@ import type { NginxLocation, NginxServer, CreateNginxServerRequest } from '../..
   templateUrl:'./nginx-server-drawer.component.html',
   styleUrls: ['./nginx-server-drawer.component.less'],
 })
-export class NginxServerDrawerComponent {
+export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   @Input() visible = false;
   @Input() editingServer: NginxServer | null = null;
   @Output() visibleChange = new EventEmitter<boolean>();
@@ -40,20 +51,26 @@ export class NginxServerDrawerComponent {
 
   private nginxService = inject(NginxService);
   private message = inject(NzMessageService);
+  private cdr = inject(ChangeDetectorRef);
+  private resetTimer: ReturnType<typeof setTimeout> | null = null;
+  private visibleEmitTimer: ReturnType<typeof setTimeout> | null = null;
 
   saving = signal(false);
 
   readonly commonListenOptions = ['80', '443', '8080', '8443'];
-  readonly commonDomainOptions = ['localhost', '127.0.0.1', 'example.com'];
+  readonly commonDomainOptions = [ '127.0.0.1','localhost','example.com'];
+  readonly commonIndexOptions = ['index.html'];
 
   listenValues: string[] = [];
   domainValues: string[] = ['127.0.0.1'];
+  indexValues: string[] = ['index.html'];
 
   formData: CreateNginxServerRequest = {
     name: '',
     listen: [],
     domains: ['127.0.0.1'],
     root: '',
+    index: ['index.html'],
     locations: [],
     ssl: false,
     protocol: 'http',
@@ -64,20 +81,51 @@ export class NginxServerDrawerComponent {
   };
 
   get drawerTitle() {
-    return this.editingServer ? '编辑 Server 块' : '新增 Server 块';
+    return this.editingServer ? '编辑 Server ' : '新增 Server ';
   }
 
-  /** 外部传入 editingServer 时同步表单数据 */
-  set serverData(value: NginxServer | null) {
-    this.editingServer = value;
-    this.resetForm();
-  }
+  ngOnChanges(changes: SimpleChanges): void {
+    const visibleChanged = 'visible' in changes;
+    const serverChanged = 'editingServer' in changes;
+    const shouldReset =
+      (visibleChanged && this.visible) ||
+      (serverChanged && this.visible && !changes['editingServer']?.firstChange);
 
-  /** 每次 visible 变为 true 时重置表单 */
-  ngOnChanges(): void {
-    if (this.visible) {
-      this.resetForm();
+    if (shouldReset) {
+      this.scheduleResetForm();
     }
+  }
+
+  ngOnDestroy(): void {
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+      this.resetTimer = null;
+    }
+    if (this.visibleEmitTimer) {
+      clearTimeout(this.visibleEmitTimer);
+      this.visibleEmitTimer = null;
+    }
+  }
+
+  private scheduleResetForm(): void {
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+    }
+    this.resetTimer = setTimeout(() => {
+      this.resetTimer = null;
+      this.resetForm();
+      this.cdr.detectChanges();
+    }, 0);
+  }
+
+  private emitVisibleChange(nextVisible: boolean): void {
+    if (this.visibleEmitTimer) {
+      clearTimeout(this.visibleEmitTimer);
+    }
+    this.visibleEmitTimer = setTimeout(() => {
+      this.visibleEmitTimer = null;
+      this.visibleChange.emit(nextVisible);
+    }, 0);
   }
 
   private resetForm(): void {
@@ -88,6 +136,7 @@ export class NginxServerDrawerComponent {
         listen: parsedListen.length ? parsedListen : ['80'],
         domains: [...(this.editingServer.domains || [])],
         root: this.editingServer.root || '',
+        index: [...(this.editingServer.index?.length ? this.editingServer.index : ['index.html'])],
         locations: this.editingServer.locations.map((l) => ({ ...l })),
         ssl: this.editingServer.ssl,
         protocol: this.editingServer.ssl ? 'https' : 'http',
@@ -98,13 +147,15 @@ export class NginxServerDrawerComponent {
       };
       this.listenValues = [...this.formData.listen];
       this.domainValues = [...(this.formData.domains || [])];
+      this.indexValues = [...(this.formData.index || ['index.html'])];
     } else {
       this.formData = {
         name: '',
         listen: [],
         domains: ['127.0.0.1'],
         root: '',
-        locations: [{ path: '/', proxyPass: '' }],
+        index: ['index.html'],
+        locations: [],//{ path: '/', proxyPass: '' }
         ssl: false,
         protocol: 'http',
         enabled: true,
@@ -114,6 +165,7 @@ export class NginxServerDrawerComponent {
       };
       this.listenValues = [];
       this.domainValues = ['127.0.0.1'];
+      this.indexValues = ['index.html'];
     }
   }
 
@@ -126,7 +178,18 @@ export class NginxServerDrawerComponent {
   }
 
   onClose(): void {
-    this.visibleChange.emit(false);
+    this.emitVisibleChange(false);
+  }
+
+  syncIndex(): void {
+    const normalized = (this.indexValues || [])
+      .flatMap(item => String(item || '').split(/[,\s]+/))
+      .map(item => item.trim())
+      .filter(Boolean)
+      .filter((item, index, arr) => arr.indexOf(item) === index);
+
+    this.indexValues = normalized.length ? normalized : ['index.html'];
+    this.formData.index = [...this.indexValues];
   }
 
   addLocation(template: 'empty' | 'api' = 'empty'): void {
@@ -138,7 +201,7 @@ export class NginxServerDrawerComponent {
       });
     } else {
       list.push({
-        path: '/',
+        path: '',
         proxyPass: '',
       });
     }
@@ -154,6 +217,7 @@ export class NginxServerDrawerComponent {
   previewConfig(): void {
     this.syncListen();
     this.syncDomains();
+    this.syncIndex();
     this.normalizeLocations();
     this.message.info('配置预览功能开发中');
   }
@@ -161,6 +225,12 @@ export class NginxServerDrawerComponent {
   async save(): Promise<void> {
     if (!this.formData.name.trim()) {
       this.message.warning('请输入 Server 名称');
+      return;
+    }
+
+    this.syncDomains();
+    if (!this.formData.domains?.length) {
+      this.message.warning('请至少填写一个域名');
       return;
     }
 
@@ -181,7 +251,7 @@ export class NginxServerDrawerComponent {
       }
     }
 
-    this.syncDomains();
+    this.syncIndex();
     this.normalizeLocations();
 
     this.saving.set(true);
@@ -196,12 +266,12 @@ export class NginxServerDrawerComponent {
       if (res.success) {
         this.message.success(this.editingServer ? 'Server 已更新' : 'Server 已创建');
         this.saved.emit();
-        this.visibleChange.emit(false);
+        this.emitVisibleChange(false);
       } else {
         this.message.error(res.error || '操作失败');
       }
     } catch (err: any) {
-      this.message.error('操作失败: ' + err.message);
+      this.message.error('操作失败: ' + this.extractErrorMessage(err));
     } finally {
       this.saving.set(false);
     }
@@ -273,20 +343,34 @@ export class NginxServerDrawerComponent {
         const root = normalizeText(location.root);
         const index = parseList(location.index as unknown as string | string[]);
         const tryFiles = parseList(location.tryFiles as unknown as string | string[]);
+        const rawConfig = normalizeText(location.rawConfig);
         return {
           path,
           proxyPass,
           root,
           index,
           tryFiles,
+          rawConfig,
         };
       })
-      .filter(location => Boolean(location.proxyPass || location.root || location.index?.length || location.tryFiles?.length));
+      .filter(location => Boolean(
+        location.proxyPass ||
+        location.root ||
+        location.index?.length ||
+        location.tryFiles?.length ||
+        location.rawConfig
+      ));
 
-    if (!normalized.length) {
-      this.formData.locations = [{ path: '/', proxyPass: '' }];
-      return;
-    }
     this.formData.locations = normalized;
+  }
+
+  private extractErrorMessage(err: unknown): string {
+    const error = err as any;
+    return (
+      error?.error?.error?.message ||
+      error?.error?.message ||
+      error?.message ||
+      '请求失败'
+    );
   }
 }

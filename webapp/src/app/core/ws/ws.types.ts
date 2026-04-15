@@ -2,9 +2,25 @@ import { LogLine } from "@models/log.model";
 import { TaskEventMsg, TaskOutputMsg } from "./ws.task.types";
 import { SvnEventMsg } from "./ws.svn.types";
 
-export type WsTopic = "task" | "syslog" | "svn";
+export type WsTopic = "task" | "syslog" | "svn" | "nginx";
+
+export type NginxLogType = "error" | "access";
 
 export type WsState = "idle" | "connecting" | "open" | "closed" | "error";
+
+export interface NginxLogTailMsg {
+    op: "nginx.log.tail";
+    logType: NginxLogType;
+    lines: string[];
+    ts: number;
+}
+
+export interface NginxLogAppendMsg {
+    op: "nginx.log.append";
+    logType: NginxLogType;
+    line: string;
+    ts: number;
+}
 
 export type WsServerMsg =
     | { op: "hello"; connId: string; ts: number }
@@ -14,6 +30,8 @@ export type WsServerMsg =
     | SvnEventMsg
     | { op: "syslog.append"; entry: LogLine }
     | { op: "syslog.tail"; entries: LogLine[] }
+    | NginxLogTailMsg
+    | NginxLogAppendMsg
     | { op: "error"; code: string; message: string; details?: any; ts: number; fatal?: boolean };
 
 
@@ -25,6 +43,8 @@ export type WsClientMsg =
     | { op: "sub"; topic: "syslog"; tail?: number }
     | { op: "unsub"; topic: "syslog" }
     | { op: "sub"; topic: "svn"; projectId: string; }
-    | { op: "unsub"; topic: "svn"; projectId: string; };
+    | { op: "unsub"; topic: "svn"; projectId: string; }
+    | { op: "sub"; topic: "nginx"; logType: NginxLogType; tail?: number }
+    | { op: "unsub"; topic: "nginx"; logType?: NginxLogType };
 
 

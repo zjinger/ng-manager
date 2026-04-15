@@ -1,4 +1,4 @@
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { access, constants } from 'fs/promises';
 import { platform } from 'os';
 import { dirname, join, resolve } from 'path';
@@ -67,7 +67,7 @@ export class NginxService {
     }
 
     const uptime = await this.getProcessUptime(pid);
-    const activeConnections = await this.getActiveConnections(pid);
+    const activeConnections = await this.getActiveConnections(await this.findAllPids(pid));
 
     return {
       isRunning: true,
@@ -91,20 +91,67 @@ export class NginxService {
     }
 
     try {
-      const { stdout } = await execFileAsync(this.instance.path, [], {
-        cwd: this.instance.prefixPath,
+      const startArgs = this.buildRuntimeArgs();
+      await new Promise<void>((resolve, reject) => {
+        const isWindows = process.platform === 'win32';
+        
+        // Windows: 使用 spawn + detached 避免阻塞
+        // Linux/Mac: 同样使用 spawn
+        const child = spawn(this.instance!.path, startArgs, {
+          cwd: this.instance!.prefixPath,
+          detached: !isWindows,      // Linux/Mac 使用 detached
+          windowsHide: isWindows,    // Windows 隐藏窗口
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        let stderr = '';
+        child.stderr?.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        child.on('error', (err) => {
+          reject(err);
+        });
+
+        if (isWindows) {
+          // Windows: 等待一小段时间确认启动成功
+          setTimeout(() => {
+            resolve();
+          }, 500);
+        } else {
+          // Linux/Mac: unref 让父进程可以退出
+          child.unref();
+          child.on('spawn', () => resolve());
+        }
       });
 
-      return {
-        success: true,
-        output: stdout || 'Nginx 启动成功',
-      };
+      // 等待 nginx 完全启动
+      await this.waitForStart(3000);
+
+      const finalStatus = await this.getStatus();
+      if (finalStatus.isRunning) {
+        return { success: true, output: 'Nginx 启动成功' };
+      } else {
+        return { success: false, error: 'Nginx 启动失败，请检查配置' };
+      }
     } catch (error: any) {
       return {
         success: false,
         error: error.message || error.stderr || '启动失败',
         exitCode: error.code,
       };
+    }
+  }
+
+  /**
+   * 等待 nginx 进程启动
+   */
+  private async waitForStart(timeout: number): Promise<void> {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const status = await this.getStatus();
+      if (status.isRunning) return;
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
   }
 
@@ -116,23 +163,66 @@ export class NginxService {
       return { success: false, error: 'Nginx 未绑定' };
     }
 
+    // 先检查是否在运行
+    const status = await this.getStatus();
+    if (!status.isRunning) {
+      return { success: true, output: 'Nginx 未在运行' };
+    }
+
+    const isWindows = process.platform === 'win32';
+
     try {
-      const { stdout } = await execFileAsync(
-        this.instance.path,
-        ['-s', 'stop'],
-        { cwd: this.instance.prefixPath }
-      );
+      if (isWindows) {
+        // Windows: 优先使用 nginx -s quit（优雅退出），失败则用 taskkill
+        try {
+          await execFileAsync(this.instance.path, this.buildSignalArgs('quit'), {
+            cwd: this.instance.prefixPath,
+            timeout: 5000
+          });
+        } catch {
+          // nginx -s quit 在 Windows 上可能失败，使用 taskkill
+          await execFileAsync('taskkill', ['/F', '/IM', 'nginx.exe'], {
+            timeout: 5000
+          });
+        }
+      } else {
+        // Linux/Mac: 使用 nginx -s stop
+        await execFileAsync(this.instance.path, this.buildSignalArgs('stop'), {
+          cwd: this.instance.prefixPath
+        });
+      }
+
+      // 等待进程退出
+      await this.waitForStop(3000);
 
       return {
         success: true,
-        output: stdout || 'Nginx 停止成功',
+        output: 'Nginx 停止成功',
       };
     } catch (error: any) {
+      // 检查是否实际已停止
+      const currentStatus = await this.getStatus();
+      if (!currentStatus.isRunning) {
+        return { success: true, output: 'Nginx 已停止' };
+      }
+
       return {
         success: false,
-        error: error.message || error.stderr || '停止失败',
+        error: error.stderr || error.message || '停止失败',
         exitCode: error.code,
       };
+    }
+  }
+
+  /**
+   * 等待 nginx 进程停止
+   */
+  private async waitForStop(timeout: number): Promise<void> {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const status = await this.getStatus();
+      if (!status.isRunning) return;
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
   }
 
@@ -144,10 +234,16 @@ export class NginxService {
       return { success: false, error: 'Nginx 未绑定' };
     }
 
+    // 先检查是否在运行
+    const status = await this.getStatus();
+    if (!status.isRunning) {
+      return { success: false, error: 'Nginx 未在运行，无法重载配置' };
+    }
+
     try {
       const { stdout } = await execFileAsync(
         this.instance.path,
-        ['-s', 'reload'],
+        this.buildSignalArgs('reload'),
         { cwd: this.instance.prefixPath }
       );
 
@@ -156,9 +252,35 @@ export class NginxService {
         output: stdout || '配置重载成功',
       };
     } catch (error: any) {
+      const stderrText = String(error?.stderr || '');
+      const messageText = String(error?.message || '');
+      const mayBeWindowsSignalMismatch =
+        platform() === 'win32' &&
+        (stderrText.includes('OpenEvent(') ||
+          stderrText.includes('OpenEvent "') ||
+          messageText.includes('OpenEvent(') ||
+          messageText.includes('OpenEvent "'));
+
+      if (mayBeWindowsSignalMismatch) {
+        const stopResult = await this.stop();
+        if (stopResult.success) {
+          const startResult = await this.start();
+          if (startResult.success) {
+            return {
+              success: true,
+              output: 'reload 信号失败，已自动重启并应用配置',
+            };
+          }
+          return {
+            success: false,
+            error: `reload 信号失败，自动重启启动失败: ${startResult.error || '未知错误'}`,
+          };
+        }
+      }
+
       return {
         success: false,
-        error: error.message || error.stderr || '重载失败',
+        error: error.stderr || error.message || '重载失败',
         exitCode: error.code,
       };
     }
@@ -172,10 +294,7 @@ export class NginxService {
       return { valid: false, errors: ['Nginx 未绑定'] };
     }
 
-    const args = ['-t'];
-    if (configPath) {
-      args.push('-c', configPath);
-    }
+    const args = ['-t', ...this.buildRuntimeArgs(configPath)];
 
     try {
       const { stdout, stderr } = await execFileAsync(
@@ -286,6 +405,20 @@ export class NginxService {
 
     try {
       if (plat === 'win32') {
+        try {
+          const { stdout } = await execFileAsync('powershell', [
+            '-NoProfile',
+            '-Command',
+            "$p = Get-Process nginx -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1; if ($p) { $p.Id }",
+          ]);
+          const pid = parseInt(stdout.trim(), 10);
+          if (!isNaN(pid)) {
+            return pid;
+          }
+        } catch {
+          // fallback to tasklist
+        }
+
         const { stdout } = await execFileAsync('tasklist', ['/FI', 'IMAGENAME eq nginx.exe', '/FO', 'CSV']);
         const lines = stdout.split('\n').filter(l => l.includes('nginx.exe'));
         if (lines.length > 0) {
@@ -316,6 +449,15 @@ export class NginxService {
 
     try {
       if (plat === 'win32') {
+        const byPid = await this.getWindowsProcessUptimeSecondsByPid(pid);
+        if (byPid !== undefined) {
+          return this.formatDuration(byPid);
+        }
+
+        const earliestNginx = await this.getWindowsOldestNginxUptimeSeconds();
+        if (earliestNginx !== undefined) {
+          return this.formatDuration(earliestNginx);
+        }
         return undefined;
       } else {
         const { stdout } = await execFileAsync('ps', ['-p', pid.toString(), '-o', 'etime=']);
@@ -330,8 +472,16 @@ export class NginxService {
    * 获取活跃连接数（ESTABLISHED）
    * 尽力统计，不保证所有平台都可用
    */
-  private async getActiveConnections(pid: number): Promise<number | undefined> {
+  private async getActiveConnections(pids: number[]): Promise<number | undefined> {
     const plat = platform();
+    const pidSet = new Set(
+      (pids || [])
+        .map(item => Number(item))
+        .filter(item => Number.isInteger(item) && item > 0)
+    );
+    if (!pidSet.size) {
+      return undefined;
+    }
 
     try {
       if (plat === 'win32') {
@@ -345,7 +495,7 @@ export class NginxService {
           }
           const parts = line.split(/\s+/);
           const linePid = Number(parts[parts.length - 1]);
-          if (linePid === pid) {
+          if (pidSet.has(linePid)) {
             count += 1;
           }
         }
@@ -362,7 +512,8 @@ export class NginxService {
           if (!line || !line.startsWith('ESTAB')) {
             continue;
           }
-          if (line.includes(`pid=${pid},`)) {
+          const pidMatches = line.match(/pid=(\d+),/g) || [];
+          if (pidMatches.some(token => pidSet.has(Number(token.replace(/[^\d]/g, ''))))) {
             count += 1;
           }
         }
@@ -377,7 +528,8 @@ export class NginxService {
           if (!line || !/\sESTABLISHED\s/i.test(line)) {
             continue;
           }
-          if (line.includes(`${pid}/`)) {
+          const pidProgramMatches = line.match(/\s(\d+)\/[^\s]+/g) || [];
+          if (pidProgramMatches.some(token => pidSet.has(Number(token.replace(/[^\d]/g, ''))))) {
             count += 1;
           }
         }
@@ -412,5 +564,133 @@ export class NginxService {
     }
 
     return warnings;
+  }
+
+  private async findAllPids(primaryPid?: number): Promise<number[]> {
+    const result = new Set<number>();
+    if (Number.isInteger(primaryPid) && Number(primaryPid) > 0) {
+      result.add(Number(primaryPid));
+    }
+
+    const plat = platform();
+    try {
+      if (plat === 'win32') {
+        try {
+          const { stdout } = await execFileAsync('powershell', [
+            '-NoProfile',
+            '-Command',
+            'Get-Process nginx -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id',
+          ]);
+          stdout
+            .split(/\r?\n/)
+            .map(line => Number(line.trim()))
+            .filter(pid => Number.isInteger(pid) && pid > 0)
+            .forEach(pid => result.add(pid));
+        } catch {
+          // ignore
+        }
+
+        if (!result.size) {
+          const { stdout } = await execFileAsync('tasklist', ['/FI', 'IMAGENAME eq nginx.exe', '/FO', 'CSV']);
+          const lines = stdout.split('\n').filter(line => line.includes('nginx.exe'));
+          for (const line of lines) {
+            const parts = line.split(',');
+            const pid = Number(parts[1]?.replace(/"/g, ''));
+            if (Number.isInteger(pid) && pid > 0) {
+              result.add(pid);
+            }
+          }
+        }
+      } else {
+        try {
+          const { stdout } = await execFileAsync('pgrep', ['-x', 'nginx']);
+          stdout
+            .split(/\r?\n/)
+            .map(line => Number(line.trim()))
+            .filter(pid => Number.isInteger(pid) && pid > 0)
+            .forEach(pid => result.add(pid));
+        } catch {
+          // ignore
+        }
+
+        if (!result.size) {
+          const { stdout } = await execFileAsync('pidof', ['nginx']);
+          stdout
+            .trim()
+            .split(/\s+/)
+            .map(line => Number(line.trim()))
+            .filter(pid => Number.isInteger(pid) && pid > 0)
+            .forEach(pid => result.add(pid));
+        }
+      }
+    } catch {
+      // ignore and fallback to primary pid
+    }
+
+    return Array.from(result);
+  }
+
+  private buildRuntimeArgs(configPath?: string): string[] {
+    if (!this.instance) {
+      return [];
+    }
+    const args = ['-p', this.instance.prefixPath];
+    args.push('-c', configPath || this.instance.configPath);
+    return args;
+  }
+
+  private buildSignalArgs(signal: 'stop' | 'quit' | 'reload'): string[] {
+    return [...this.buildRuntimeArgs(), '-s', signal];
+  }
+
+  private async getWindowsProcessUptimeSecondsByPid(pid: number): Promise<number | undefined> {
+    try {
+      const { stdout } = await execFileAsync('powershell', [
+        '-NoProfile',
+        '-Command',
+        `(New-TimeSpan -Start (Get-Process -Id ${pid} -ErrorAction Stop).StartTime -End (Get-Date)).TotalSeconds`,
+      ]);
+      const raw = stdout.trim().replace(',', '.');
+      const seconds = Number(raw);
+      if (!Number.isFinite(seconds) || seconds < 0) {
+        return undefined;
+      }
+      return Math.floor(seconds);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async getWindowsOldestNginxUptimeSeconds(): Promise<number | undefined> {
+    try {
+      const { stdout } = await execFileAsync('powershell', [
+        '-NoProfile',
+        '-Command',
+        '(New-TimeSpan -Start ((Get-Process nginx -ErrorAction Stop | Sort-Object StartTime | Select-Object -First 1).StartTime) -End (Get-Date)).TotalSeconds',
+      ]);
+      const raw = stdout.trim().replace(',', '.');
+      const seconds = Number(raw);
+      if (!Number.isFinite(seconds) || seconds < 0) {
+        return undefined;
+      }
+      return Math.floor(seconds);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private formatDuration(totalSeconds: number): string {
+    const total = Math.max(0, Math.floor(totalSeconds));
+    const days = Math.floor(total / 86400);
+    const hours = Math.floor((total % 86400) / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+    if (days > 0) {
+      return `${days}d ${hh}:${mm}:${ss}`;
+    }
+    return `${hh}:${mm}:${ss}`;
   }
 }

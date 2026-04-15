@@ -1,4 +1,4 @@
-<app-page-layout [title]="'nginx 管理'" [loading]="loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
+<app-page-layout [title]="'Nginx 管理'" [loading]="loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
   <ng-container ngProjectAs="actions">
     @if (instance()) {
       <span class="top-status" [class.running]="status()?.isRunning">
@@ -46,7 +46,7 @@
             label="运行时长"
             [value]="uptimeText"
             toneClass="blue"
-            sub="基于当前 master 进程"
+            [sub]="uptimeSubText"
           ></app-nginx-stat-card>
 
           <app-nginx-stat-card
@@ -67,15 +67,15 @@
         <div class="service-control-row">
           <div class="service-control-left">
             <span class="service-control-label">服务控制</span>
-            <button nz-button nzType="default" (click)="startNginx()" [disabled]="status()?.isRunning">
+            <button nz-button nzType="default" (click)="startNginx()" [disabled]="controlling() || status()?.isRunning">
               <nz-icon nzType="caret-right" nzTheme="outline"></nz-icon>
               启动
             </button>
-            <button nz-button nzType="default" (click)="stopNginx()" [disabled]="!status()?.isRunning">
+            <button nz-button nzType="default" (click)="stopNginx()" [disabled]="controlling() || !status()?.isRunning">
               <nz-icon nzType="pause" nzTheme="outline"></nz-icon>
               停止
             </button>
-            <button nz-button nzType="default" (click)="reloadNginx()" [disabled]="!status()?.isRunning">
+            <button nz-button nzType="default" (click)="reloadNginx()" [disabled]="controlling() || !status()?.isRunning">
               <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
               重载
             </button>
@@ -134,33 +134,47 @@
             (nzSelectedIndexChange)="onSecondaryTabIndexChange($event)"
           >
             <nz-tab nzTitle="Upstream 管理">
-              <app-nginx-secondary-upstream-tab></app-nginx-secondary-upstream-tab>
+              @if (secondaryTab() === 'upstream') {
+                <app-nginx-secondary-upstream-tab></app-nginx-secondary-upstream-tab>
+              }
             </nz-tab>
             <nz-tab nzTitle="SSL 证书">
-              <app-nginx-secondary-ssl-tab></app-nginx-secondary-ssl-tab>
+              @if (secondaryTab() === 'ssl') {
+                <app-nginx-secondary-ssl-tab></app-nginx-secondary-ssl-tab>
+              }
             </nz-tab>
             <nz-tab nzTitle="流量控制">
-              <app-nginx-secondary-traffic-tab></app-nginx-secondary-traffic-tab>
+              @if (secondaryTab() === 'traffic') {
+                <app-nginx-secondary-traffic-tab></app-nginx-secondary-traffic-tab>
+              }
             </nz-tab>
             <nz-tab nzTitle="性能优化">
-              <app-nginx-secondary-perf-tab></app-nginx-secondary-perf-tab>
+              @if (secondaryTab() === 'perf') {
+                <app-nginx-secondary-perf-tab></app-nginx-secondary-perf-tab>
+              }
             </nz-tab>
             <nz-tab nzTitle="日志">
-              <app-nginx-secondary-logs-tab [logs]="recentLogs()"></app-nginx-secondary-logs-tab>
+              @if (secondaryTab() === 'logs') {
+                <app-nginx-secondary-logs-tab></app-nginx-secondary-logs-tab>
+              }
             </nz-tab>
             <nz-tab nzTitle="配置检测">
-              <app-nginx-secondary-test-tab
-                [loading]="loading()"
-                [logs]="recentLogs()"
-                (runTest)="testConfig()"
-              ></app-nginx-secondary-test-tab>
+              @if (secondaryTab() === 'test') {
+                <app-nginx-secondary-test-tab
+                  [loading]="loading()"
+                  [logs]="recentLogs()"
+                  (runTest)="testConfig()"
+                ></app-nginx-secondary-test-tab>
+              }
             </nz-tab>
             <nz-tab nzTitle="设置">
-              <app-nginx-secondary-settings-tab
-                [instance]="instance()"
-                [configFileCount]="configFiles().length"
-                (unbind)="unbind()"
-              ></app-nginx-secondary-settings-tab>
+              @if (secondaryTab() === 'settings') {
+                <app-nginx-secondary-settings-tab
+                  [instance]="instance()"
+                  [configFileCount]="configFiles().length"
+                  (unbind)="unbind()"
+                ></app-nginx-secondary-settings-tab>
+              }
             </nz-tab>
           </nz-tabs>
         </app-nginx-section-card>

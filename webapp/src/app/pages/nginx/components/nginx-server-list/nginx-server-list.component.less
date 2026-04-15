@@ -1,0 +1,203 @@
+/* ========== LIST HEADER ========== */
+.server-list {
+    .list-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+
+        .header-left {
+            display: flex;
+            gap: 8px;
+        }
+    }
+}
+
+/* ========== SERVER GRID ========== */
+.server-grid-shell {
+    border: none;
+    border-radius: 0;
+    overflow: hidden;
+}
+
+.server-grid-head,
+.server-grid-row {
+    display: grid;
+    grid-template-columns: 72px minmax(160px, 1.1fr) minmax(130px, 0.8fr) minmax(150px, 1fr) minmax(220px, 1.2fr) minmax(180px, 1fr) 120px;
+    align-items: center;
+    column-gap: 8px;
+    padding: 0 12px;
+}
+
+.server-grid-head {
+    min-height: 42px;
+    background: #fafafa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+
+    .cell {
+        font-size: var(--nginx-font-size-sm, 12px);
+        color: rgba(0, 0, 0, 0.45);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        font-weight: 700;
+    }
+}
+
+.server-grid-body {
+    background: #fff;
+}
+
+.server-grid-row {
+    min-height: 56px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    transition: background 120ms ease;
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.02);
+    }
+}
+
+.cell {
+    min-width: 0;
+}
+
+.action-col {
+    justify-self: end;
+}
+/* ========== SERVER COLUMNS ========== */
+.server-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    font-size: var(--nginx-font-size-base, 14px);
+}
+
+.conf-icon {
+    color: rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+}
+
+.server-listen {
+    font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+    font-size: var(--nginx-font-size-sm, 12px);
+    color: #e5a832;
+    background: rgba(229, 168, 50, 0.12);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+}
+
+.server-listen.ssl {
+    color: #5ea6f7;
+    background: rgba(94, 166, 247, 0.12);
+}
+
+.server-domain {
+    font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+    font-size: var(--nginx-font-size-sm, 12px);
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.server-root {
+    font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+    font-size: var(--nginx-font-size-sm, 12px);
+    color: rgba(0, 0, 0, 0.4);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+.access-link {
+    font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+    font-size: var(--nginx-font-size-sm, 12px);
+    color: var(--blue);
+    text-decoration: none;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.access-links {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* ========== ROW ACTIONS ========== */
+.row-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+}
+/* ========== EMPTY STATE ========== */
+.empty-state {
+    text-align: center;
+    padding: 48px 0;
+
+    .empty-icon {
+        font-size: 48px;
+        color: rgba(0, 0, 0, 0.2);
+        margin-bottom: 16px;
+    }
+
+    p {
+        color: rgba(0, 0, 0, 0.4);
+        margin: 0;
+    }
+}
+
+@media (max-width: 1100px) {
+    .server-grid-head {
+        display: none;
+    }
+
+    .server-grid-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 12px;
+        align-items: stretch;
+    }
+
+    .status-col,
+    .listen-col,
+    .domain-col,
+    .access-col,
+    .root-col,
+    .action-col {
+        justify-self: start;
+    }
+
+    .action-col {
+        width: 100%;
+    }
+
+    .row-actions {
+        opacity: 1;
+    }
+}
+
+/* ========== CONFIG PREVIEW ========== */
+.config-preview {
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    border-radius: 4px;
+    padding: 16px;
+    margin: 0;
+    font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+    font-size: var(--nginx-font-size-base, 14px);
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}

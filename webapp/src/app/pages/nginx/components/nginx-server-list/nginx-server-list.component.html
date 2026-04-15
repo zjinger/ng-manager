@@ -1,0 +1,144 @@
+<div class="server-list">
+  <!-- 顶部操作栏 -->
+  @if (showToolbar) {
+    <div class="list-header">
+      <div class="header-left">
+        <button nz-button nzType="default" (click)="importServer()">
+          <nz-icon nzType="upload" nzTheme="outline"></nz-icon>
+          导入
+        </button>
+        <button nz-button nzType="primary" (click)="openDrawer(null)">
+          <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+          新增 Server
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="server-grid-shell">
+    <div class="server-grid-head">
+      <div class="cell status-col">状态</div>
+      <div class="cell">Server 名称</div>
+      <div class="cell listen-col">监听端口</div>
+      <div class="cell domain-col">域名</div>
+      <div class="cell access-col">访问地址</div>
+      <div class="cell root-col">根目录</div>
+      <div class="cell action-col">操作</div>
+    </div>
+
+    <nz-spin [nzSpinning]="loading()">
+      <div class="server-grid-body">
+        @if (!loading() && !servers().length) {
+          <div class="empty-state">
+            <nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></nz-icon>
+            <p>暂无 Server 配置</p>
+          </div>
+        } @else {
+          @for (server of servers(); track server.id) {
+            <div class="server-grid-row" [class.disabled-row]="!server.enabled">
+              <div class="cell status-col">
+                <nz-switch
+                  nzSize="small"
+                  [ngModel]="server.enabled"
+                  (ngModelChange)="toggleServer(server.id, $event)"
+                ></nz-switch>
+              </div>
+
+              <div class="cell">
+                <div class="server-name">
+                  <nz-icon nzType="file" nzTheme="outline" class="conf-icon"></nz-icon>
+                  {{ server.name }}
+                </div>
+              </div>
+
+              <div class="cell listen-col">
+                @for (port of server.listen; track $index) {
+                  @if (port === '443' || server.ssl) {
+                    <span class="server-listen ssl">:{{ port }} ssl</span>
+                  } @else {
+                    <span class="server-listen">:{{ port }}</span>
+                  }
+                }
+              </div>
+
+              <div class="cell domain-col">
+                <span class="server-domain">{{ (server.domains || []).join(', ') || '—' }}</span>
+              </div>
+
+              <div class="cell access-col">
+                @if (getAccessUrls(server).length) {
+                  <div class="access-links">
+                    @for (url of getAccessUrls(server); track url) {
+                      <a
+                        class="access-link"
+                        [href]="url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {{ url }}
+                      </a>
+                    }
+                  </div>
+                } @else {
+                  <span class="server-domain">—</span>
+                }
+              </div>
+
+              <div class="cell root-col">
+                <span class="server-root" [title]="server.root || ''">{{
+                  server.root || '—'
+                }}</span>
+              </div>
+
+              <div class="cell action-col">
+                <div class="row-actions">
+                  <button nz-button nzType="link" nzSize="small" (click)="openDrawer(server)">
+                    <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
+                  </button>
+                  <button nz-button nzType="link" nzSize="small" (click)="copyServer(server)">
+                    <nz-icon nzType="copy" nzTheme="outline"></nz-icon>
+                  </button>
+                  <button
+                    nz-button
+                    nzDanger
+                    nzType="link"
+                    nzSize="small"
+                    nz-popconfirm
+                    [nzPopconfirmTitle]="'删除后无法恢复，确认删除' + server.name + '吗？'"
+                    [nzOkButtonProps]="{ nzDanger: true }"
+                    nzPopconfirmOkText="删除"
+                    nzPopconfirmCancelText="取消"
+                    (nzOnConfirm)="deleteServer(server)"
+                  >
+                    <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </nz-spin>
+  </div>
+</div>
+
+<!-- Server 新增/编辑 Drawer -->
+<app-nginx-server-drawer
+  [visible]="drawerVisible"
+  (visibleChange)="onDrawerVisibleChange($event)"
+  [editingServer]="editingServer()"
+  (saved)="onSaved()"
+></app-nginx-server-drawer>
+
+<!-- 查看配置模态框 -->
+<nz-modal
+  [(nzVisible)]="configModalVisible"
+  nzTitle="Server 配置"
+  (nzOnCancel)="configModalVisible = false"
+  [nzFooter]="null"
+  nzWidth="800px"
+>
+  <ng-container *nzModalContent>
+    <pre class="config-preview">{{ viewingConfig() }}</pre>
+  </ng-container>
+</nz-modal>

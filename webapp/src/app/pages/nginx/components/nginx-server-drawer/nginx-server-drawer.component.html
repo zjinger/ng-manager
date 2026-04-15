@@ -23,68 +23,81 @@
           </nz-form-control>
         </nz-form-item>
 
-        <!-- 监听端口 + 协议 -->
+        <!-- 协议 + 域名 + 监听端口 -->
         <nz-form-item>
-          <nz-form-label nzRequired>监听端口</nz-form-label>
-          <nz-form-control nzHasFeedback nzErrorTip="请输入 1-65535 之间的端口号">
-            <nz-select
-              nzMode="tags"
-              [(ngModel)]="listenValues"
-              name="listenPort"
-              nzPlaceHolder="可输入或选择多个端口"
-              [nzTokenSeparators]="[',', ' ']"
-            >
-              @for (port of commonListenOptions; track port) {
-                <nz-option [nzValue]="port" [nzLabel]="port"></nz-option>
-              }
-            </nz-select>
-          </nz-form-control>
-          <div class="field-hint">支持多个端口，例如 80, 443, 8080</div>
-        </nz-form-item>
-
-        <nz-form-item>
-          <nz-form-label nzRequired>协议</nz-form-label>
+          <nz-form-label nzRequired>域名</nz-form-label>
           <nz-form-control>
-            <nz-select [(ngModel)]="formData.protocol" name="protocol" nzPlaceHolder="HTTP">
-              <nz-option nzValue="http" nzLabel="HTTP"></nz-option>
-              <nz-option nzValue="https" nzLabel="HTTPS (SSL)"></nz-option>
-            </nz-select>
+            <div nz-input-group nzCompact class="domain-row-wrapper">
+              <nz-select
+                class="domain-row-protocol"
+                [(ngModel)]="formData.protocol"
+                name="protocol"
+                nzPlaceHolder="HTTP"
+              >
+                <nz-option nzValue="http" nzLabel="HTTP"></nz-option>
+                <nz-option nzValue="https" nzLabel="HTTPS (SSL)"></nz-option>
+              </nz-select>
+
+              <nz-select
+                class="domain-row-domain"
+                nzMode="tags"
+                [(ngModel)]="domainValues"
+                name="domains"
+                nzPlaceHolder="可输入或选择多个域名"
+                [nzTokenSeparators]="[',', ' ']"
+                (ngModelChange)="syncDomains()"
+              >
+                @for (domain of commonDomainOptions; track domain) {
+                  <nz-option [nzValue]="domain" [nzLabel]="domain"></nz-option>
+                }
+              </nz-select>
+
+              <nz-select
+                class="domain-row-listen"
+                nzMode="tags"
+                [(ngModel)]="listenValues"
+                name="listenPort"
+                nzPlaceHolder="端口"
+                [nzTokenSeparators]="[',', ' ']"
+              >
+                @for (port of commonListenOptions; track port) {
+                  <nz-option [nzValue]="port" [nzLabel]="port"></nz-option>
+                }
+              </nz-select>
+            </div>
           </nz-form-control>
+          <div class="field-hint">域名和端口均支持多个值，例如：localhost, 127.0.0.1 / 80, 443</div>
         </nz-form-item>
 
-        <!-- 域名 -->
-        <nz-form-item>
-          <nz-form-label>域名</nz-form-label>
-          <nz-form-control>
-            <nz-select
-              nzMode="tags"
-              [(ngModel)]="domainValues"
-              name="domains"
-              nzPlaceHolder="可输入或选择多个域名"
-              [nzTokenSeparators]="[',', ' ']"
-              (ngModelChange)="syncDomains()"
-            >
-              @for (domain of commonDomainOptions; track domain) {
-                <nz-option [nzValue]="domain" [nzLabel]="domain"></nz-option>
-              }
-            </nz-select>
-          </nz-form-control>
-          <div class="field-hint">支持多个域名，输入后回车即可添加，支持通配符</div>
-        </nz-form-item>
-
-        <!-- 根目录 -->
+        <!-- 根目录 + 默认首页 -->
         <nz-form-item>
           <nz-form-label nzTooltipTitle="静态资源根目录，通常用于提供静态文件服务，如index.html所在目录"
                   [nzTooltipIcon]="'question-circle'">根目录</nz-form-label>
           <nz-form-control>
-            <input
-              nz-input
-              class="mono-input"
-              [(ngModel)]="formData.root"
-              name="root"
-              placeholder="如：D:\\dist\\www"
-            />
+            <div nz-input-group nzCompact class="root-row-wrapper">
+              <input
+                nz-input
+                class="mono-input root-row-root"
+                [(ngModel)]="formData.root"
+                name="root"
+                placeholder="如：D:\\dist\\www"
+              />
+              <nz-select
+                class="root-row-index"
+                nzMode="tags"
+                [(ngModel)]="indexValues"
+                name="serverIndex"
+                nzPlaceHolder="默认首页"
+                [nzTokenSeparators]="[',', ' ']"
+                (ngModelChange)="syncIndex()"
+              >
+                @for (item of commonIndexOptions; track item) {
+                  <nz-option [nzValue]="item" [nzLabel]="item"></nz-option>
+                }
+              </nz-select>
+            </div>
           </nz-form-control>
+          <div class="field-hint">根目录示例：D:\dist\www；默认首页示例：index.html, index.htm</div>
         </nz-form-item>
 
         <!-- Location 规则 -->
@@ -111,7 +124,6 @@
                     nzType="link"
                     nzDanger
                     type="button"
-                    [disabled]="(formData.locations || []).length <= 1"
                     (click)="removeLocation($index)"
                   >
                     删除
@@ -133,6 +145,15 @@
                     placeholder="http://127.0.0.1:6808"
                   />
                 </div>
+
+                <textarea
+                  nz-input
+                  class="mono-textarea location-extra-textarea"
+                  rows="3"
+                  [(ngModel)]="loc.rawConfig"
+                  [name]="'locationExtra' + $index"
+                  placeholder="额外 location 指令，如：&#10;proxy_http_version 1.1;&#10;proxy_set_header Upgrade $http_upgrade;&#10;proxy_set_header Connection &quot;upgrade&quot;;"
+                ></textarea>
               </div>
             }
           </nz-form-control>

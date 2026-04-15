@@ -86,6 +86,8 @@ export interface NginxServer {
   domains?: string[];
   /** 根目录 */
   root?: string;
+  /** server 级默认首页 */
+  index?: string[];
   /** location 块列表 */
   locations: NginxLocation[];
   /** 是否启用 SSL */
@@ -116,6 +118,8 @@ export interface CreateNginxServerRequest {
   domains?: string[];
   /** 根目录 */
   root?: string;
+  /** server 级默认首页 */
+  index?: string[];
   /** location 块列表 */
   locations: NginxLocation[];
   /** 是否启用 SSL */
@@ -144,6 +148,8 @@ export interface UpdateNginxServerRequest {
   domains?: string[];
   /** 根目录 */
   root?: string;
+  /** server 级默认首页 */
+  index?: string[];
   /** location 块列表 */
   locations?: NginxLocation[];
   /** 是否启用 SSL */
@@ -203,6 +209,12 @@ export interface NginxUpstream {
   strategy: NginxUpstreamStrategy;
   /** 后端节点地址列表 */
   nodes: string[];
+  /** 来源配置文件 */
+  sourceFile?: string;
+  /** 是否由 ng-manager 托管（ngm-upstreams.conf） */
+  managed?: boolean;
+  /** 是否只读 */
+  readonly?: boolean;
   /** 健康检查文案（占位） */
   health?: string;
   /** 是否健康 */
@@ -266,4 +278,14 @@ export interface NginxPerformanceConfig {
   sendfile: boolean;
   /** tcp_nopush 开关 */
   tcpNopush: boolean;
+}
+
+/**
+ * Nginx 模块运行设置
+ */
+export interface NginxModuleSettings {
+  /** 状态文件备份保留数量 */
+  backupRetention: number;
+  /** 配置文件备份保留数量（*.conf.backup-*） */
+  configBackupRetention: number;
 }

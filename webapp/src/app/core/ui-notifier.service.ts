@@ -7,6 +7,7 @@ export class UiNotifierService {
     // private modalService: NzModalService = inject(NzModalService);
     private msg: NzMessageService = inject(NzMessageService);
     error(text: string, meta?: any) {
+        console.error("[UI ERROR]", text, meta);
         this.msg.error(text);
     }
 

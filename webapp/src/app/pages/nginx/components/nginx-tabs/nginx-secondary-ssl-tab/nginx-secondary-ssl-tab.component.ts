@@ -11,7 +11,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
-import { NginxService } from '../../../services/nginx.service';
+import { NginxModuleStore } from '../../../services/nginx-module.store';
 import type { NginxSslCertificate, NginxSslStatus } from '../../../models/nginx.types';
 
 interface SslEditRow extends NginxSslCertificate {}
@@ -374,7 +374,7 @@ interface SslDrawerForm {
   `],
 })
 export class NginxSecondarySslTabComponent implements OnInit {
-  private nginxService = inject(NginxService);
+  private moduleStore = inject(NginxModuleStore);
   private message = inject(NzMessageService);
 
   loading = signal(false);
@@ -393,9 +393,9 @@ export class NginxSecondarySslTabComponent implements OnInit {
   async loadData() {
     this.loading.set(true);
     try {
-      const res = await this.nginxService.getSslCertificates();
+      const res = await this.moduleStore.loadSslCertificates();
       if (res.success && res.certificates) {
-        this.rows.set(res.certificates.map(item => ({ ...item })));
+        this.rows.set(this.moduleStore.sslCertificates().map(item => ({ ...item })));
         this.dirty.set(false);
       } else {
         this.message.error(res.error || '加载 SSL 配置失败');
@@ -446,6 +446,10 @@ export class NginxSecondarySslTabComponent implements OnInit {
       this.message.warning('私钥路径不能为空');
       return;
     }
+    if (this.drawerForm.expireAt.trim() && !this.isValidDateString(this.drawerForm.expireAt.trim())) {
+      this.message.warning('到期时间格式无效，请使用 YYYY-MM-DD');
+      return;
+    }
 
     const normalized: SslEditRow = {
       id: this.editingId() || this.makeId(),
@@ -456,6 +460,17 @@ export class NginxSecondarySslTabComponent implements OnInit {
       status: this.normalizeStatus(this.drawerForm.status),
       autoRenew: this.drawerForm.autoRenew,
     };
+
+    const duplicate = this.rows().find(item => {
+      if (this.editingId() && item.id === this.editingId()) {
+        return false;
+      }
+      return this.buildSslUniqueKey(item) === this.buildSslUniqueKey(normalized);
+    });
+    if (duplicate) {
+      this.message.warning('证书域名 + 证书路径 + 私钥路径重复');
+      return;
+    }
 
     if (this.editingId()) {
       this.rows.update(rows => rows.map(item => (item.id === normalized.id ? normalized : item)));
@@ -491,6 +506,7 @@ export class NginxSecondarySslTabComponent implements OnInit {
 
   async saveAll() {
     const payload: NginxSslCertificate[] = [];
+    const uniqueSet = new Set<string>();
 
     for (const row of this.rows()) {
       const domain = row.domain.trim();
@@ -498,21 +514,42 @@ export class NginxSecondarySslTabComponent implements OnInit {
         this.message.warning('证书域名不能为空');
         return;
       }
+      const certPath = row.certPath.trim();
+      const keyPath = row.keyPath.trim();
+      if (!certPath) {
+        this.message.warning(`域名 "${domain}" 的证书路径不能为空`);
+        return;
+      }
+      if (!keyPath) {
+        this.message.warning(`域名 "${domain}" 的私钥路径不能为空`);
+        return;
+      }
+      const expireAt = row.expireAt.trim();
+      if (expireAt && !this.isValidDateString(expireAt)) {
+        this.message.warning(`域名 "${domain}" 的到期时间格式无效，请使用 YYYY-MM-DD`);
+        return;
+      }
+      const uniqueKey = this.buildSslUniqueKey({ domain, certPath, keyPath } as SslEditRow);
+      if (uniqueSet.has(uniqueKey)) {
+        this.message.warning(`检测到重复证书记录: ${domain}`);
+        return;
+      }
+      uniqueSet.add(uniqueKey);
 
       payload.push({
         ...row,
         id: row.id || this.makeId(),
         domain,
-        certPath: row.certPath.trim(),
-        keyPath: row.keyPath.trim(),
-        expireAt: row.expireAt.trim(),
+        certPath,
+        keyPath,
+        expireAt,
         status: this.normalizeStatus(row.status),
       });
     }
 
     this.saving.set(true);
     try {
-      const res = await this.nginxService.saveSslCertificates(payload);
+      const res = await this.moduleStore.saveSslCertificates(payload);
       if (res.success) {
         this.message.success('SSL 配置已保存');
         this.dirty.set(false);
@@ -538,6 +575,28 @@ export class NginxSecondarySslTabComponent implements OnInit {
     return `ssl-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   }
 
+  private isValidDateString(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return false;
+    }
+    const [year, month, day] = value.split('-').map(item => Number(item));
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+      return false;
+    }
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    );
+  }
+
+  private buildSslUniqueKey(input: Pick<SslEditRow, 'domain' | 'certPath' | 'keyPath'>): string {
+    return `${input.domain.trim().toLowerCase()}|${input.certPath.trim().toLowerCase()}|${input.keyPath
+      .trim()
+      .toLowerCase()}`;
+  }
+
   private createEmptyForm(): SslDrawerForm {
     return {
       domain: '',
@@ -549,5 +608,3 @@ export class NginxSecondarySslTabComponent implements OnInit {
     };
   }
 }
-
-

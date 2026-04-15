@@ -4,7 +4,7 @@ import { Subscription } from "rxjs";
 
 import { WsClientService } from "@app/core/ws/ws-client.service";
 import type { WsServerMsg, WsState } from "@app/core/ws/ws.types";
-import type { LogLine } from "@models/log.model";
+import type { LogLine, LogLevel } from "@models/log.model";
 
 export type SyslogFilter = {
     scope?: string;               // task / project / ws / server ...
@@ -145,6 +145,31 @@ export class SyslogStreamService {
     clear() {
         this.logs.set([]);
         this.unread.set(0);
+    }
+
+    /**
+     * 前端本地追加日志（不走 WebSocket，仅显示在系统日志面板）
+     * @param text 日志内容
+     * @param level 日志级别
+     * @param scope 归属范围
+     */
+    appendLocal(text: string, level: LogLevel = 'info', scope: LogLine['scope'] = 'server') {
+        const entry: LogLine = {
+            ts: Date.now(),
+            level,
+            source: 'system',
+            scope,
+            text,
+        };
+
+        const cur = this.logs();
+        const next = cur.length >= this.capacity ? cur.slice(1) : cur.slice();
+        next.push(entry);
+        this.logs.set(next);
+
+        if (!this.drawerOpen()) {
+            this.unread.set(this.unread() + 1);
+        }
     }
 
     private sendSubIfNeeded() {

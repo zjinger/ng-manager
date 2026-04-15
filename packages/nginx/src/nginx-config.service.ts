@@ -1,5 +1,5 @@
-import { access, constants, mkdir, readdir, readFile, writeFile } from 'fs/promises';
-import { dirname, isAbsolute, join, resolve } from 'path';
+import { access, constants, mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises';
+import { basename, dirname, isAbsolute, join, resolve } from 'path';
 import { NginxService } from './nginx.service';
 import type { NginxConfig, NginxConfigValidation } from './nginx.types';
 
@@ -54,6 +54,7 @@ export class NginxConfigService {
     try {
       await this.backupConfig(configPath);
       await writeFile(configPath, content, 'utf-8');
+      await this.cleanupConfigBackups(configPath, await this.getConfigBackupRetention());
     } catch (error: any) {
       throw new Error(`写入配置文件失败: ${error.message}`);
     }
@@ -183,8 +184,21 @@ export class NginxConfigService {
 
       await this.backupConfig(filePath);
       await writeFile(filePath, content, 'utf-8');
+      await this.cleanupConfigBackups(filePath, await this.getConfigBackupRetention());
     } catch (error: any) {
       throw new Error(`写入配置文件失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 按保留数量清理所有已纳入管理的配置备份文件（*.conf.backup-*）
+   */
+  async cleanupAllConfigBackups(keep: number): Promise<void> {
+    const keepCount = this.normalizeConfigBackupRetention(keep);
+    const includedFiles = await this.getIncludedConfigs();
+    const uniqueFiles = new Set<string>(includedFiles);
+    for (const filePath of uniqueFiles) {
+      await this.cleanupConfigBackups(filePath, keepCount);
     }
   }
 
@@ -255,6 +269,61 @@ export class NginxConfigService {
       await writeFile(backupPath, content, 'utf-8');
     } catch {
       // 备份失败，继续
+    }
+  }
+
+  private async getConfigBackupRetention(): Promise<number> {
+    const settingsPath = this.getModuleSettingsPath();
+    if (!settingsPath) {
+      return 20;
+    }
+
+    try {
+      const raw = await readFile(settingsPath, 'utf-8');
+      const parsed = JSON.parse(raw) as { configBackupRetention?: unknown };
+      return this.normalizeConfigBackupRetention(parsed?.configBackupRetention);
+    } catch {
+      return 20;
+    }
+  }
+
+  private normalizeConfigBackupRetention(input: unknown): number {
+    const raw = Number(input);
+    const normalized = Number.isFinite(raw) ? Math.trunc(raw) : 20;
+    return Math.max(1, Math.min(200, normalized));
+  }
+
+  private getModuleSettingsPath(): string | null {
+    const instance = this.nginxService.getInstance();
+    if (!instance) {
+      return null;
+    }
+    return join(dirname(instance.configPath), '.ngm-nginx-module.settings.json');
+  }
+
+  private async cleanupConfigBackups(filePath: string, keep: number): Promise<void> {
+    const keepCount = this.normalizeConfigBackupRetention(keep);
+    const dir = dirname(filePath);
+    const prefix = `${basename(filePath)}.backup-`;
+
+    try {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const names = entries
+        .filter(entry => entry.isFile() && entry.name.startsWith(prefix))
+        .map(entry => entry.name)
+        .sort((a, b) => a.localeCompare(b));
+      const remove = names.slice(0, Math.max(0, names.length - keepCount));
+      await Promise.all(
+        remove.map(async name => {
+          try {
+            await unlink(join(dir, name));
+          } catch {
+            // ignore
+          }
+        })
+      );
+    } catch {
+      // ignore cleanup failures
     }
   }
 

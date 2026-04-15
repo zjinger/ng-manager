@@ -2189,7 +2189,7 @@
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-header">
-    <div class="drawer-title" id="drawerTitle">新增 Server 块</div>
+    <div class="drawer-title" id="drawerTitle">新增 Server </div>
     <button class="drawer-close" onclick="closeDrawer()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
@@ -2343,7 +2343,7 @@ http {
     const overlay = document.getElementById('drawerOverlay');
     const drawer = document.getElementById('drawer');
     const title = document.getElementById('drawerTitle');
-    title.textContent = mode === 'new' ? '新增 Server 块' : '编辑 Server 块';
+    title.textContent = mode === 'new' ? '新增 Server ' : '编辑 Server ';
     overlay.classList.add('open');
     drawer.classList.add('open');
   }

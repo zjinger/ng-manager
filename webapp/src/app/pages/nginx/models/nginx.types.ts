@@ -86,6 +86,8 @@ export interface NginxServer {
   domains?: string[];
   /** 根目录 */
   root?: string;
+  /** server 级默认首页 */
+  index?: string[];
   /** location 块列表 */
   locations: NginxLocation[];
   /** 是否启用 SSL */
@@ -116,6 +118,8 @@ export interface CreateNginxServerRequest {
   domains?: string[];
   /** 根目录 */
   root?: string;
+  /** server 级默认首页 */
+  index?: string[];
   /** location 块列表 */
   locations: NginxLocation[];
   /** 是否启用 SSL */
@@ -144,6 +148,8 @@ export interface UpdateNginxServerRequest {
   domains?: string[];
   /** 根目录 */
   root?: string;
+  /** server 级默认首页 */
+  index?: string[];
   /** location 块列表 */
   locations?: NginxLocation[];
   /** 是否启用 SSL */
@@ -230,6 +236,9 @@ export interface NginxUpstream {
   name: string;
   strategy: NginxUpstreamStrategy;
   nodes: string[];
+  sourceFile?: string;
+  managed?: boolean;
+  readonly?: boolean;
   health?: string;
   healthy?: boolean;
 }
@@ -273,4 +282,9 @@ export interface NginxPerformanceConfig {
   workerProcesses: string;
   sendfile: boolean;
   tcpNopush: boolean;
+}
+
+export interface NginxModuleSettings {
+  backupRetention: number;
+  configBackupRetention: number;
 }

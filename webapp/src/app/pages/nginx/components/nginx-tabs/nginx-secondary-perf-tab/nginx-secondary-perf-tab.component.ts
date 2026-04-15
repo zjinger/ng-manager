@@ -5,13 +5,14 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { NginxService } from '../../../services/nginx.service';
+import { NginxModuleStore } from '../../../services/nginx-module.store';
 import type { NginxPerformanceConfig } from '../../../models/nginx.types';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 @Component({
   selector: 'app-nginx-secondary-perf-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, NzIconModule],
+  imports: [CommonModule, FormsModule, NzButtonModule, NzIconModule, NzSwitchModule],
   template: `
     <div class="panel-header-row">
       <span class="panel-tip">性能优化配置</span>
@@ -27,14 +28,12 @@ import type { NginxPerformanceConfig } from '../../../models/nginx.types';
         <div class="setting-desc">是否启用 gzip</div>
       </div>
       <div class="setting-ctrl">
-        <label class="toggle">
-          <input
-            type="checkbox"
-            [checked]="config().gzipEnabled"
-            (change)="setBoolean('gzipEnabled', $any($event.target).checked)"
-          />
-          <div class="toggle-track"></div>
-        </label>
+        <nz-switch
+          nzSize="small"
+          name="gzipEnabled"
+          [ngModel]="config().gzipEnabled"
+          (ngModelChange)="setBoolean('gzipEnabled', $event)"
+        ></nz-switch>
       </div>
     </div>
 
@@ -74,14 +73,12 @@ import type { NginxPerformanceConfig } from '../../../models/nginx.types';
         <div class="setting-desc">静态文件零拷贝</div>
       </div>
       <div class="setting-ctrl">
-        <label class="toggle">
-          <input
-            type="checkbox"
-            [checked]="config().sendfile"
-            (change)="setBoolean('sendfile', $any($event.target).checked)"
-          />
-          <div class="toggle-track"></div>
-        </label>
+        <nz-switch
+          nzSize="small"
+          name="sendfile"
+          [ngModel]="config().sendfile"
+          (ngModelChange)="setBoolean('sendfile', $event)"
+        ></nz-switch>
       </div>
     </div>
 
@@ -91,14 +88,12 @@ import type { NginxPerformanceConfig } from '../../../models/nginx.types';
         <div class="setting-desc">优化大文件传输</div>
       </div>
       <div class="setting-ctrl">
-        <label class="toggle">
-          <input
-            type="checkbox"
-            [checked]="config().tcpNopush"
-            (change)="setBoolean('tcpNopush', $any($event.target).checked)"
-          />
-          <div class="toggle-track"></div>
-        </label>
+        <nz-switch
+          nzSize="small"
+          name="tcpNopush"
+          [ngModel]="config().tcpNopush"
+          (ngModelChange)="setBoolean('tcpNopush', $event)"
+        ></nz-switch>
       </div>
     </div>
 
@@ -195,80 +190,24 @@ import type { NginxPerformanceConfig } from '../../../models/nginx.types';
       resize: vertical;
       outline: none;
     }
-
     .mono {
       font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
-    }
-
-    .toggle {
-      position: relative;
-      display: inline-block;
-      width: 32px;
-      height: 18px;
-      cursor: pointer;
-    }
-
-    .toggle input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-track {
-      position: absolute;
-      inset: 0;
-      border-radius: 9px;
-      background: #c9cdd4;
-      transition: all 120ms ease;
-    }
-
-    .toggle-track::after {
-      content: '';
-      position: absolute;
-      left: 2px;
-      top: 2px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #fff;
-      transition: all 120ms ease;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-    }
-
-    .toggle input:checked + .toggle-track {
-      background: var(--green);
-    }
-
-    .toggle input:checked + .toggle-track::after {
-      transform: translateX(14px);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    @media (max-width: 768px) {
-      .panel-header-row,
-      .setting-row {
-        flex-direction: column;
-        align-items: flex-start;
-      }
     }
   `],
 })
 export class NginxSecondaryPerfTabComponent implements OnInit {
-  private nginxService = inject(NginxService);
+  private moduleStore = inject(NginxModuleStore);
   private message = inject(NzMessageService);
 
   saving = signal(false);
   dirty = signal(false);
   config = signal<NginxPerformanceConfig>({
-    gzipEnabled: true,
-    gzipTypes: 'text/plain text/css application/json application/javascript',
-    keepaliveTimeout: '65s',
-    workerProcesses: 'auto',
-    sendfile: true,
-    tcpNopush: true,
+    gzipEnabled: false,
+    gzipTypes: '',
+    keepaliveTimeout: '',
+    workerProcesses: '',
+    sendfile: false,
+    tcpNopush: false,
   });
 
   async ngOnInit() {
@@ -277,10 +216,10 @@ export class NginxSecondaryPerfTabComponent implements OnInit {
 
   async load() {
     try {
-      const res = await this.nginxService.getPerformanceConfig();
+      const res = await this.moduleStore.loadPerformanceConfig();
       if (res.success && res.performance) {
         this.config.set({
-          ...res.performance,
+          ...this.moduleStore.performanceConfig(),
         });
         this.dirty.set(false);
       } else {
@@ -316,7 +255,7 @@ export class NginxSecondaryPerfTabComponent implements OnInit {
 
     this.saving.set(true);
     try {
-      const res = await this.nginxService.savePerformanceConfig(payload);
+      const res = await this.moduleStore.savePerformanceConfig(payload);
       if (res.success) {
         this.message.success('性能优化配置已保存');
         this.dirty.set(false);
@@ -331,5 +270,3 @@ export class NginxSecondaryPerfTabComponent implements OnInit {
     }
   }
 }
-
-

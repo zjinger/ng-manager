@@ -3,8 +3,10 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "strict": true
   },
+  "include": ["src", "typing.d.ts"],
   "references": [
     { "path": "../core" },
     { "path": "../api" },

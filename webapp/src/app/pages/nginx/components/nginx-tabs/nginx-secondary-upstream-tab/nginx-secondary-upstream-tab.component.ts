@@ -10,14 +10,17 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 
-import { NginxService } from '../../../services/nginx.service';
 import type { NginxUpstream, NginxUpstreamStrategy } from '../../../models/nginx.types';
+import { NginxModuleStore } from '../../../services/nginx-module.store';
 
 interface UpstreamEditRow {
   id: string;
   name: string;
   strategy: NginxUpstreamStrategy;
-  nodesText: string;
+  nodes: string[];
+  sourceFile: string;
+  managed: boolean;
+  readonly: boolean;
 }
 
 interface UpstreamDrawerForm {
@@ -41,7 +44,7 @@ interface UpstreamDrawerForm {
     NzSpinModule,
   ],
   template: `
-    <div class="panel-header-row">
+    <div class="list-header">
       <span class="panel-tip">管理后端服务集群的负载均衡配置</span>
       <div class="header-actions">
         <button nz-button nzType="default" (click)="openCreateDrawer()">
@@ -55,31 +58,68 @@ interface UpstreamDrawerForm {
       </div>
     </div>
 
-    <nz-spin [nzSpinning]="loading()">
-      <div class="upstream-list">
-        @if (!rows().length) {
-          <div class="empty-row">暂无 Upstream，点击“新增 Upstream”开始配置</div>
-        } @else {
-          @for (row of rows(); track row.id) {
-            <div class="upstream-row">
-              <div class="row-main">
-                <div class="row-title-wrap">
-                  <span class="row-title mono">{{ row.name }}</span>
-                  <span class="strategy-pill">{{ row.strategy }}</span>
-                  <span class="node-count">节点 {{ nodeCount(row) }}</span>
-                </div>
-                <div class="node-lines mono">{{ row.nodesText }}</div>
-              </div>
-
-              <div class="row-actions">
-                <button nz-button nzType="default" nzSize="small" (click)="openEditDrawer(row)">编辑</button>
-                <button nz-button nzType="default" nzDanger nzSize="small" (click)="removeRow(row.id)">删除</button>
-              </div>
-            </div>
-          }
-        }
+    <div class="upstream-grid-shell">
+      <div class="upstream-grid-head">
+        <div class="cell name-col">UPSTREAM 名称</div>
+        <div class="cell source-col">来源</div>
+        <div class="cell strategy-col">策略</div>
+        <div class="cell nodes-col">节点</div>
+        <div class="cell count-col">节点数</div>
+        <div class="cell action-col">操作</div>
       </div>
-    </nz-spin>
+
+      <nz-spin [nzSpinning]="loading()">
+        <div class="upstream-grid-body">
+          @if (!loading() && !rows().length) {
+            <div class="empty-state">
+              <nz-icon nzType="cluster" nzTheme="outline" class="empty-icon"></nz-icon>
+              <p>暂无 Upstream 配置</p>
+            </div>
+          } @else {
+            @for (row of rows(); track row.id) {
+              <div class="upstream-grid-row" [class.readonly-row]="row.readonly">
+                <div class="cell name-col">
+                  <span class="upstream-name mono">{{ row.name }}</span>
+                </div>
+
+                <div class="cell source-col">
+                  <span class="source-badge" [class.managed]="row.managed" [title]="sourceHint(row)">
+                    {{ sourceLabel(row) }}
+                  </span>
+                </div>
+
+                <div class="cell strategy-col">
+                  <span class="strategy-pill mono">{{ row.strategy }}</span>
+                </div>
+
+                <div class="cell nodes-col">
+                  <div class="nodes-wrap">
+                    @for (node of row.nodes; track node + '-' + $index) {
+                      <span class="node-chip mono">{{ node }}</span>
+                    }
+                  </div>
+                </div>
+
+                <div class="cell count-col">
+                  <span class="node-count">{{ row.nodes.length }}</span>
+                </div>
+
+                <div class="cell action-col">
+                  <div class="row-actions">
+                    <button nz-button nzSize="small" nzType="link" (click)="openEditDrawer(row)" [disabled]="row.readonly">
+                      <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
+                    </button>
+                    <button nz-button nzSize="small" nzType="link" nzDanger (click)="removeRow(row.id)" [disabled]="row.readonly">
+                      <nz-icon nzType="delete" nzTheme="outline"></nz-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </nz-spin>
+    </div>
 
     <nz-drawer
       [nzVisible]="drawerVisible()"
@@ -117,7 +157,7 @@ interface UpstreamDrawerForm {
             </nz-form-item>
 
             <nz-form-item>
-              <nz-form-label nzRequired>节点（逗号分隔）</nz-form-label>
+              <nz-form-label nzRequired>节点（逗号或换行分隔）</nz-form-label>
               <nz-form-control>
                 <textarea
                   nz-input
@@ -144,11 +184,11 @@ interface UpstreamDrawerForm {
       display: block;
     }
 
-    .panel-header-row {
+    .list-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      gap: 10px;
       margin-bottom: 12px;
     }
 
@@ -160,47 +200,77 @@ interface UpstreamDrawerForm {
     .header-actions {
       display: flex;
       gap: 8px;
+      flex-shrink: 0;
     }
 
-    .upstream-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    .upstream-grid-shell {
+      border: none;
+      border-radius: 0;
+      overflow: hidden;
     }
 
-    .upstream-row {
-      display: flex;
-      justify-content: space-between;
+    .upstream-grid-head,
+    .upstream-grid-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.9fr) minmax(130px, 0.7fr) minmax(220px, 1.6fr) 88px 116px;
       align-items: center;
-      gap: 10px;
-      border: 1px solid var(--border-light);
-      border-radius: 6px;
-      padding: 10px;
+      column-gap: 8px;
+      padding: 0 12px;
+    }
+
+    .upstream-grid-head {
+      min-height: 42px;
+      background: #fafafa;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+
+      .cell {
+        font-size: var(--nginx-font-size-sm, 12px);
+        color: rgba(0, 0, 0, 0.45);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        font-weight: 700;
+      }
+    }
+
+    .upstream-grid-body {
       background: #fff;
     }
 
-    .row-main {
-      flex: 1;
+    .upstream-grid-row {
+      min-height: 58px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: background 120ms ease;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.02);
+      }
+    }
+
+    .readonly-row {
+      background: rgba(0, 0, 0, 0.015);
+    }
+
+    .cell {
       min-width: 0;
     }
-
-    .row-title-wrap {
+    .row-actions{
       display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-      min-height: 24px;
-      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: flex-end;
     }
-
-    .row-title {
+    .upstream-name {
+      display: inline-block;
       font-size: var(--nginx-font-size-base, 14px);
       font-weight: 600;
       color: var(--text-1);
+      word-break: break-all;
     }
 
-    .strategy-pill,
-    .node-count {
+    .strategy-pill {
       display: inline-flex;
       align-items: center;
       height: 22px;
@@ -208,24 +278,78 @@ interface UpstreamDrawerForm {
       padding: 0 10px;
       font-size: var(--nginx-font-size-sm, 12px);
       line-height: 22px;
-      color: var(--text-3);
+      color: var(--text-2);
       background: var(--bg-input);
       border: 1px solid var(--border-light);
     }
 
-    .node-lines {
-      color: var(--text-2);
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-3);
+      border: 1px solid rgba(0, 0, 0, 0.08);
       font-size: var(--nginx-font-size-sm, 12px);
-      line-height: 1.6;
-      white-space: normal;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-badge.managed {
+      background: rgba(22, 93, 255, 0.08);
+      color: #165dff;
+      border-color: rgba(22, 93, 255, 0.2);
+    }
+
+    .nodes-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 0;
+    }
+
+    .node-chip {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(22, 93, 255, 0.2);
+      background: rgba(22, 93, 255, 0.08);
+      color: #165dff;
+      font-size: var(--nginx-font-size-sm, 12px);
+      max-width: 100%;
       word-break: break-all;
     }
 
-    .row-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
+    .node-count {
+      font-size: var(--nginx-font-size-base, 14px);
+      color: var(--text-2);
+      font-weight: 600;
+    }
+
+    .action-col {
+      justify-self: end;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 0;
+
+      .empty-icon {
+        font-size: 48px;
+        color: rgba(0, 0, 0, 0.2);
+        margin-bottom: 16px;
+      }
+
+      p {
+        color: rgba(0, 0, 0, 0.4);
+        margin: 0;
+      }
     }
 
     .mono {
@@ -248,31 +372,10 @@ interface UpstreamDrawerForm {
       gap: 8px;
       background: #fff;
     }
-
-    .empty-row {
-      border: 1px dashed var(--border);
-      border-radius: 6px;
-      color: var(--text-3);
-      font-size: var(--nginx-font-size-sm, 12px);
-      text-align: center;
-      padding: 20px 12px;
-      background: #fff;
-    }
-
-    @media (max-width: 992px) {
-      .panel-header-row {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .header-actions {
-        width: 100%;
-      }
-    }
   `],
 })
 export class NginxSecondaryUpstreamTabComponent implements OnInit {
-  private nginxService = inject(NginxService);
+  private moduleStore = inject(NginxModuleStore);
   private message = inject(NzMessageService);
 
   loading = signal(false);
@@ -291,14 +394,17 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
   async loadData() {
     this.loading.set(true);
     try {
-      const res = await this.nginxService.getUpstreams();
+      const res = await this.moduleStore.loadUpstreams();
       if (res.success && res.upstreams) {
         this.rows.set(
-          res.upstreams.map(item => ({
+          this.moduleStore.upstreams().map(item => ({
             id: item.id,
             name: item.name,
             strategy: item.strategy,
-            nodesText: item.nodes.join(', '),
+            nodes: (item.nodes || []).map(node => node.trim()).filter(Boolean),
+            sourceFile: item.sourceFile || '',
+            managed: item.managed !== false,
+            readonly: item.readonly === true || item.managed === false,
           })),
         );
         this.dirty.set(false);
@@ -319,11 +425,15 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
   }
 
   openEditDrawer(row: UpstreamEditRow) {
+    if (row.readonly) {
+      this.message.info('该 Upstream 来自外部配置文件，当前为只读展示');
+      return;
+    }
     this.editingId.set(row.id);
     this.drawerForm = {
       name: row.name,
       strategy: row.strategy,
-      nodesText: row.nodesText,
+      nodesText: row.nodes.join(', '),
     };
     this.drawerVisible.set(true);
   }
@@ -349,11 +459,25 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
       id: this.editingId() || this.makeId(),
       name,
       strategy: this.drawerForm.strategy,
-      nodesText: nodes.join(', '),
+      nodes,
+      sourceFile: '',
+      managed: true,
+      readonly: false,
     };
 
     if (this.editingId()) {
-      this.rows.update(rows => rows.map(item => (item.id === normalizedRow.id ? normalizedRow : item)));
+      this.rows.update(rows =>
+        rows.map(item =>
+          item.id === normalizedRow.id
+            ? {
+                ...normalizedRow,
+                sourceFile: item.sourceFile,
+                managed: item.managed,
+                readonly: item.readonly,
+              }
+            : item,
+        ),
+      );
     } else {
       this.rows.update(rows => [...rows, normalizedRow]);
     }
@@ -363,6 +487,11 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
   }
 
   removeRow(id: string) {
+    const target = this.rows().find(row => row.id === id);
+    if (target?.readonly) {
+      this.message.info('该 Upstream 来自外部配置文件，当前不可删除');
+      return;
+    }
     this.rows.update(rows => rows.filter(row => row.id !== id));
     this.markDirty();
   }
@@ -371,22 +500,25 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
     this.dirty.set(true);
   }
 
-  nodeCount(row: UpstreamEditRow): number {
-    return this.parseNodes(row.nodesText).length;
-  }
-
   async saveAll() {
     const payload: NginxUpstream[] = [];
 
     for (const row of this.rows()) {
+      if (row.readonly) {
+        continue;
+      }
+
       const name = row.name.trim();
       if (!name) {
         this.message.warning('Upstream 名称不能为空');
         return;
       }
+      if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+        this.message.warning(`Upstream 名称不合法: ${name}`);
+        return;
+      }
 
-      const nodes = this.parseNodes(row.nodesText);
-
+      const nodes = (row.nodes || []).map(item => item.trim()).filter(Boolean);
       if (!nodes.length) {
         this.message.warning(`Upstream "${name}" 至少需要一个节点`);
         return;
@@ -397,12 +529,15 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
         name,
         strategy: row.strategy,
         nodes,
+        sourceFile: row.sourceFile,
+        managed: true,
+        readonly: false,
       });
     }
 
     this.saving.set(true);
     try {
-      const res = await this.nginxService.saveUpstreams(payload);
+      const res = await this.moduleStore.saveUpstreams(payload);
       if (res.success) {
         this.message.success('Upstream 配置已保存');
         this.dirty.set(false);
@@ -435,6 +570,18 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
       nodesText: '',
     };
   }
+
+  sourceLabel(row: UpstreamEditRow): string {
+    const raw = row.sourceFile || '';
+    const normalized = raw.replace(/\\/g, '/');
+    const name = normalized.split('/').pop() || normalized;
+    return name || (row.managed ? '托管文件' : '外部文件');
+  }
+
+  sourceHint(row: UpstreamEditRow): string {
+    if (!row.sourceFile) {
+      return row.managed ? '托管 upstream（来源未解析）' : '外部 upstream（来源未解析）';
+    }
+    return `${row.managed ? '托管' : '外部'}: ${row.sourceFile}`;
+  }
 }
-
-

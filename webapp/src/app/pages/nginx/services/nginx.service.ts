@@ -16,6 +16,7 @@ import type {
   NginxSslCertificate,
   NginxTrafficConfig,
   NginxPerformanceConfig,
+  NginxModuleSettings,
 } from '../models/nginx.types';
 
 /**
@@ -296,6 +297,64 @@ export class NginxService {
   ): Promise<{ success: boolean; error?: string }> {
     return await firstValueFrom(
       this.http.put<{ success: boolean; error?: string }>(`${this.baseUrl}/performance`, performance)
+    );
+  }
+
+  async getModuleSettings(): Promise<{ success: boolean; settings?: NginxModuleSettings; error?: string }> {
+    return await firstValueFrom(
+      this.http.get<{ success: boolean; settings?: NginxModuleSettings; error?: string }>(
+        `${this.baseUrl}/module/settings`
+      )
+    );
+  }
+
+  async saveModuleSettings(
+    settings: Partial<NginxModuleSettings>
+  ): Promise<{ success: boolean; settings?: NginxModuleSettings; error?: string }> {
+    return await firstValueFrom(
+      this.http.put<{ success: boolean; settings?: NginxModuleSettings; error?: string }>(
+        `${this.baseUrl}/module/settings`,
+        settings
+      )
+    );
+  }
+
+  // ========== 日志管理 ==========
+
+  /**
+   * 获取错误日志尾部
+   */
+  async getErrorLogs(tail: number = 100): Promise<{ success: boolean; lines?: string[]; error?: string }> {
+    const params = new HttpParams().set('tail', tail.toString());
+    return await firstValueFrom(
+      this.http.get<{ success: boolean; lines?: string[]; error?: string }>(
+        `${this.baseUrl}/logs/error`,
+        params
+      )
+    );
+  }
+
+  /**
+   * 获取访问日志尾部
+   */
+  async getAccessLogs(tail: number = 100): Promise<{ success: boolean; lines?: string[]; error?: string }> {
+    const params = new HttpParams().set('tail', tail.toString());
+    return await firstValueFrom(
+      this.http.get<{ success: boolean; lines?: string[]; error?: string }>(
+        `${this.baseUrl}/logs/access`,
+        params
+      )
+    );
+  }
+
+  /**
+   * 获取日志文件路径信息
+   */
+  async getLogsInfo(): Promise<{ success: boolean; errorLog?: string; accessLog?: string; error?: string }> {
+    return await firstValueFrom(
+      this.http.get<{ success: boolean; errorLog?: string; accessLog?: string; error?: string }>(
+        `${this.baseUrl}/logs/info`
+      )
     );
   }
 }

@@ -19,7 +19,7 @@ export class NginxApp {
         this.service = new NginxService();
         this.config = new NginxConfigService(this.service);
         this.server = new NginxServerService(this.service, this.config);
-        this.module = new NginxModuleService(this.service);
+        this.module = new NginxModuleService(this.service, this.config);
         this.log = new NginxLogService(this.service);
     }
 

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 export interface LogEntry {
@@ -31,7 +31,7 @@ export interface LogEntry {
           }
         </span>
       </div>
-      <div class="log-body" [style.maxHeight.px]="maxHeight">
+      <div class="log-body" [style.maxHeight.px]="maxHeight" #logBody>
         @if (logs.length === 0) {
           <div class="log-empty">暂无日志</div>
         }
@@ -157,7 +157,7 @@ export interface LogEntry {
     }
 
     .log-time {
-      color: rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.5);
       flex-shrink: 0;
       min-width: 46px;
     }
@@ -199,6 +199,14 @@ export class NginxLogViewerComponent {
   @Input() showRealtime: boolean = false;
   @Input() maxHeight: number = 0;
   @Input() logs: LogEntry[] = [];
+
+  @ViewChild('logBody') logBody!: ElementRef<HTMLDivElement>;
+
+  scrollToBottom() {
+    if (this.logBody) {
+      this.logBody.nativeElement.scrollTop = this.logBody.nativeElement.scrollHeight;
+    }
+  }
 
   getLevelClass(level: string): string {
     return level;
