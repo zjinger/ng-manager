@@ -323,14 +323,14 @@ export class NginxConfigEditorComponent implements OnInit, OnChanges, AfterViewI
 
   editorOptions: editor.IStandaloneEditorConstructionOptions & editor.IDiffEditorConstructionOptions = {
     language: 'nginx',
-    automaticLayout: true,
-    renderSideBySide: false,
-    ignoreTrimWhitespace: false,
-    originalEditable: false,
-    enableSplitViewResizing: true,
-    lineNumbers: 'on',
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
+    // automaticLayout: true,
+    // renderSideBySide: false,
+    // ignoreTrimWhitespace: false,
+    // originalEditable: false,
+    // enableSplitViewResizing: true,
+    // lineNumbers: 'on',
+    // minimap: { enabled: false },
+    // scrollBeyondLastLine: false,
   };
 
   private mainConfigPath = '';
@@ -363,9 +363,8 @@ export class NginxConfigEditorComponent implements OnInit, OnChanges, AfterViewI
     editorInstance: editor.IStandaloneCodeEditor | editor.IStandaloneDiffEditor,
   ): void {
     registerNginxLanguage();
-    const monacoRef = (globalThis as any).monaco;
-    monacoRef?.editor?.setTheme?.('nginx-theme');
-
+    // const monacoRef = (globalThis as any).monaco;
+    // monacoRef?.editor?.setTheme?.('nginx-theme');
     if (this.isDiffEditor(editorInstance)) {
       this.diffEditor = editorInstance;
     }
