@@ -64,7 +64,7 @@ const DEFAULT_DRAFT: Draft = {
                   <input
                     nz-input
                     maxlength="120"
-                    placeholder="例如：Dashboard 暗黑主题验收收口"
+                    placeholder="例如：登录功能开发"
                     [ngModel]="draft().title"
                     name="title"
                     (ngModelChange)="updateField('title', $event)"

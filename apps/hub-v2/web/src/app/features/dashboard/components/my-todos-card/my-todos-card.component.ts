@@ -88,6 +88,7 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         gap: 8px;
         font-weight: 600;
         color: var(--text-primary);
+        flex-wrap: wrap;
       }
       .todo__tag {
         display: inline-flex;
@@ -97,6 +98,7 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         color: var(--color-info);
         font-size: 11px;
         font-weight: 600;
+        flex: 0 0 auto;
       }
       .todo__tag[data-kind^='rd'] {
         background: color-mix(in srgb, var(--primary-500) 14%, transparent);
@@ -111,6 +113,7 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         font-weight: 600;
         background: var(--bg-subtle);
         color: var(--text-secondary);
+        flex: 0 0 auto;
       }
       .todo__role[data-kind='issue_assigned'],
       .todo__role[data-kind='rd_assigned'] {
