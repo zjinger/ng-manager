@@ -769,7 +769,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   ): void {
     const normalizedParentId = parentId?.trim() || null;
     if (nodeType === "subsystem" && normalizedParentId) {
-      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "子项目（系统）不能挂在其他节点下", 400);
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "子项目不能挂在其他节点下", 400);
     }
     if (!normalizedParentId) {
       return;

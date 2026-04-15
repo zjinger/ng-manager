@@ -28,9 +28,9 @@ import { PROJECT_TYPE_LABELS, type ProjectMemberEntity, type ProjectMetaItem, ty
       <div table-body class="project-table__body">
         @for (item of items(); track item.id) {
           <div class="project-row">
-            <div class="project-cell project-cell--project">
-              <button nz-button nzType="text" class="project-expand-btn" type="button" (click)="toggleExpand.emit(item)">
-                <nz-icon [nzType]="isExpanded(item.id) ? 'down' : 'right'" nzTheme="outline" />
+            <div class="project-cell project-cell--project" (click)="toggleExpand.emit(item)">
+              <button nz-button nzType="link" class="project-expand-btn" type="button"  [class.expanded]="isExpanded(item.id)">
+                <nz-icon [nzType]="'right'" nzTheme="outline"  />
               </button>
               <div class="project-avatar" [ngClass]="{ 'project-avatar--without-url': !showAvatar(item) }">
                 @if (showAvatar(item)) {
@@ -126,7 +126,7 @@ import { PROJECT_TYPE_LABELS, type ProjectMemberEntity, type ProjectMetaItem, ty
                 @if (isModuleLoading(item.id) || subsystemRows(item.id).length > 0) {
                   <div class="project-sub-list">
                     <div class="project-sub-header">
-                      <span><nz-icon nzType="cluster" nzTheme="outline" /> 子项目/模块</span>
+                      <span><nz-icon nzType="cluster" nzTheme="outline" /> 子项目</span>
                       @if (isModuleLoading(item.id)) {
                         <span class="project-cell--muted">正在加载…</span>
                       }
@@ -192,12 +192,22 @@ import { PROJECT_TYPE_LABELS, type ProjectMemberEntity, type ProjectMetaItem, ty
         display: flex;
         align-items: center;
         gap: 12px;
+        cursor: pointer;
       }
       .project-expand-btn {
         color: var(--text-muted);
         padding: 0;
         width: 24px;
         min-width: 24px;
+        border:none;
+        transition: all 0.2s ease;
+        nz-icon{
+          font-size: 12px;
+        }
+        &.expanded {
+            transform: rotate(90deg);
+        }
+        
       }
       .project-avatar {
         width: 38px;

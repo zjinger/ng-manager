@@ -49,22 +49,22 @@ import type {
       [open]="open()"
       [width]="1040"
       [title]="project() ? project()!.name + ' · 项目配置' : '项目配置'"
-      [subtitle]="'维护子项目（系统）/模块、环境、版本和研发阶段。'"
+      [subtitle]="'维护子项目/模块、环境、版本和研发阶段。'"
       [icon]="'setting'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body class="config-dialog">
         <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="true">
-          <nz-tab nzTitle="子项目（系统）/模块">
+          <nz-tab nzTitle="子项目/模块">
             <section class="section">
               <div class="creator">
                 <nz-select style="width:130px" [ngModel]="moduleNodeTypeDraft()" (ngModelChange)="moduleNodeTypeDraft.set($event || 'module')">
-                  <nz-option nzLabel="子项目(系统)" nzValue="subsystem"></nz-option>
+                  <nz-option nzLabel="子项目" nzValue="subsystem"></nz-option>
                   <nz-option nzLabel="模块" nzValue="module"></nz-option>
                 </nz-select>
                 <nz-select
                   nzAllowClear
-                  nzPlaceHolder="所属子项目/系统（仅模块）"
+                  nzPlaceHolder="所属子项目"
                   [ngModel]="moduleParentDraft()"
                   [nzDisabled]="moduleNodeTypeDraft() === 'subsystem'"
                   (ngModelChange)="moduleParentDraft.set($event || null)"
@@ -74,7 +74,7 @@ import type {
                     <nz-option [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
                   }
                 </nz-select>
-                <input nz-input placeholder="新增子项目(系统)/模块" [ngModel]="moduleDraft()" (ngModelChange)="moduleDraft.set($event)" />
+                <input nz-input placeholder="新增子项目/模块" [ngModel]="moduleDraft()" (ngModelChange)="moduleDraft.set($event)" />
                 <button nz-button nzType="primary" [disabled]="!moduleDraft().trim() || busy()" (click)="submitModuleCreate()">
                   <nz-icon nzType="plus" nzTheme="outline" />新增
                 </button>
@@ -83,7 +83,7 @@ import type {
                 @for (item of modules(); track item.id) {
                   <div class="row">
                     <nz-select style="width:100%;" #nodeTypeRef="ngModel" [ngModel]="item.nodeType" [name]="'nodeType-' + item.id">
-                      <nz-option nzLabel="子项目(系统)" nzValue="subsystem"></nz-option>
+                      <nz-option nzLabel="子项目" nzValue="subsystem"></nz-option>
                       <nz-option nzLabel="模块" nzValue="module"></nz-option>
                     </nz-select>
                     <nz-select
@@ -128,7 +128,7 @@ import type {
                     </button>
                   </div>
                 } @empty {
-                  <div class="empty">暂无子项目（系统）/模块配置</div>
+                  <div class="empty">暂无子项目/模块配置</div>
                 }
               </div>
             </section>

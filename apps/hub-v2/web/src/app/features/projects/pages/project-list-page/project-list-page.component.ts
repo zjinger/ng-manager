@@ -272,12 +272,12 @@ export class ProjectListPageComponent {
       this.configBusy.set(true);
       this.projectApi.addModule(projectId, input).subscribe({
         next: () => {
-          this.message.success('子项目（系统）/模块已新增');
+          this.message.success('子项目/模块已新增');
           this.reloadMeta(projectId);
         },
         error: () => {
           this.configBusy.set(false);
-          this.message.error('新增子项目（系统）/模块失败');
+          this.message.error('新增子项目/模块失败');
         }
       });
     });
@@ -290,12 +290,12 @@ export class ProjectListPageComponent {
       this.projectApi.updateModule(projectId, event.id, event.patch).subscribe({
         next: () => {
           this.setPending(this.pendingModuleMap, event.id, false);
-          this.message.success('子项目（系统）/模块已更新');
+          this.message.success('子项目/模块已更新');
           this.reloadMeta(projectId);
         },
         error: () => {
           this.setPending(this.pendingModuleMap, event.id, false);
-          this.message.error('更新子项目（系统）/模块失败');
+          this.message.error('更新子项目/模块失败');
           this.reloadMeta(projectId);
         }
       });
@@ -308,12 +308,12 @@ export class ProjectListPageComponent {
       this.projectApi.removeModule(projectId, moduleId).subscribe({
         next: () => {
           this.setPending(this.pendingModuleMap, moduleId, false);
-          this.message.success('子项目（系统）/模块已删除');
+          this.message.success('子项目/模块已删除');
           this.reloadMeta(projectId);
         },
         error: () => {
           this.setPending(this.pendingModuleMap, moduleId, false);
-          this.message.error('删除子项目（系统）/模块失败');
+          this.message.error('删除子项目/模块失败');
         }
       });
     });
