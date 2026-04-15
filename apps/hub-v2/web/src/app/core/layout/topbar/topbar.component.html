@@ -3,7 +3,7 @@
     <button nz-button nzType="text" class="topbar__icon-btn topbar__sidebar-toggle" (click)="toggleSidebar()">
       <span nz-icon [nzType]="sidebarCollapsed() ? 'menu-unfold' : 'menu-fold'"></span>
     </button>
-    <a [routerLink]="['/dashboard']">NGM Hub</a>
+    <a [routerLink]="['/dashboard']">首页</a>
     @for (item of breadcrumbs(); track $index) {
       <span class="breadcrumb__sep">/</span>
       @if (item.route) {

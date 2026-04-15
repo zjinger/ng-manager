@@ -135,7 +135,7 @@ export class RdDetailPageComponent {
 
   readonly itemId = computed(() => this.routeItemId() ?? '');
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
-  readonly subtitle = computed(() => this.item()?.rdNo || '通过 Dashboard 待办进入');
+  readonly subtitle = computed(() => this.item()?.rdNo || '通过 工作台 待办进入');
 
   readonly canEditProgress = computed(() => this.rdPermission.canEditProgress(this.item(), this.currentUserId()));
   readonly canStart = computed(() => this.rdPermission.canStart(this.item(), this.currentUserId()));

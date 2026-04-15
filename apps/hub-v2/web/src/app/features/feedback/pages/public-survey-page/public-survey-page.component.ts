@@ -95,7 +95,7 @@ type SurveySubmitPayload = {
               <nz-form-label [nzSpan]="24">你最常用的模块（最多 3 项）</nz-form-label>
               <nz-form-control [nzSpan]="24" [nzErrorTip]="'请至少选择 1 项'">
                 <nz-select formControlName="focusModules" nzMode="multiple" [nzMaxMultipleCount]="3" [nzMaxTagCount]="3" nzPlaceHolder="请选择模块">
-                  <nz-option nzValue="dashboard" nzLabel="Dashboard"></nz-option>
+                  <nz-option nzValue="dashboard" nzLabel="工作台"></nz-option>
                   <nz-option nzValue="issues" nzLabel="测试跟踪"></nz-option>
                   <nz-option nzValue="rd" nzLabel="研发管理"></nz-option>
                   <nz-option nzValue="content" nzLabel="内容中心"></nz-option>

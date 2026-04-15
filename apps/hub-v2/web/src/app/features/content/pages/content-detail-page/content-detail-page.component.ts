@@ -273,13 +273,13 @@ export class ContentDetailPageComponent {
   });
   readonly subtitle = computed(() => {
     if (this.tab() === 'announcements') {
-      return this.announcement()?.title || '通过 Dashboard 动态进入';
+      return this.announcement()?.title || '通过 工作台 动态进入';
     }
     if (this.tab() === 'documents') {
-      return this.document()?.title || '通过 Dashboard 动态进入';
+      return this.document()?.title || '通过 工作台 动态进入';
     }
     if (this.tab() === 'releases') {
-      return this.release()?.title || '通过 Dashboard 动态进入';
+      return this.release()?.title || '通过 工作台 动态进入';
     }
     return '内容详情';
   });

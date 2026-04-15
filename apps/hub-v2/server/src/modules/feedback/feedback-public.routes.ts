@@ -19,7 +19,7 @@ const surveyFrequencyLabelMap = {
 } as const;
 
 const surveyModuleLabelMap = {
-  dashboard: "Dashboard",
+  dashboard: "工作台",
   issues: "测试跟踪",
   rd: "研发管理",
   content: "内容中心",

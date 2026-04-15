@@ -16,7 +16,7 @@ export class BreadcrumbService {
     const path = url.split('?')[0].split('#')[0];
 
     if (path === '/' || path === '/dashboard') {
-      return [{ label: 'Dashboard' }];
+      return [];
     }
 
     if (path === '/dashboard/board') {
