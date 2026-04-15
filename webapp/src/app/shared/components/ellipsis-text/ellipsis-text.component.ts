@@ -27,7 +27,7 @@ import {
       </ng-template>
     </span>
 
-    @if (showToggle()) {
+    @if (showToggle() && enableToggle()) {
       <a class="toggle" (click)="toggle()">
         {{ expanded() ? '收起' : '展开' }}
       </a>
@@ -58,8 +58,8 @@ import {
 })
 export class EllipsisTextComponent implements AfterViewInit, OnDestroy {
   text = input<string>('');
-
   lines = input<number>(2);
+  enableToggle = input<boolean>(true);
 
   @ViewChild('textRef') textRef!: ElementRef;
 

@@ -13,6 +13,7 @@ import {
   createCommentInput,
   IssueActionType,
   IssueEntity,
+  IssueListQuery,
   IssueStatus,
 } from './models/issue.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -78,6 +79,7 @@ export class IssuesComponent {
   protected readonly IssueBranches = this.issueDetailStore.branches;
   protected readonly busy = this.issueDetailStore.busy;
   protected readonly members = this.projectContextStore.currentProjectMembers;
+  protected readonly currentProjectId = this.projectContextStore.currentProjectId;
 
   // 详情操作相关
   protected readonly IssueAssignActionLabel = this.issueDetailStore.assignActionLabel;
@@ -110,9 +112,28 @@ export class IssuesComponent {
 
     // 筛选变化时
     let queryTimer: ReturnType<typeof setTimeout>;
+    let prevQuery: IssueListQuery | null = null;
     effect(() => {
       const query = this.issueListStore.query();
-      if (query) {
+      let timeout = 500;
+      const isPaginationChange =
+        prevQuery && (prevQuery.page !== query.page || prevQuery.pageSize !== query.pageSize);
+      const isFilterChange =
+        !prevQuery ||
+        prevQuery.keyword !== query.keyword ||
+        prevQuery.status !== query.status ||
+        prevQuery.priority !== query.priority ||
+        prevQuery.projectId !== query.projectId;
+
+      prevQuery = { ...query };
+      // 如果是变更页码或页大小，则立即加载
+      if (isPaginationChange) {
+        clearTimeout(queryTimer);
+        this.issueListStore.load();
+        return;
+      }
+
+      if (isFilterChange) {
         clearTimeout(queryTimer);
         queryTimer = setTimeout(() => {
           this.issueListStore.load();

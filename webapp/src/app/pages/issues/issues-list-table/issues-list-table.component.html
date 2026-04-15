@@ -1,0 +1,65 @@
+<nz-table [nzData]="issues()" [nzFrontPagination]="false" [nzShowPagination]="false" [nzShowSizeChanger]="true"
+    [nzLoading]="loading()" nzTableLayout="fixed" class="rd-list">
+    <thead>
+        <tr>
+            <th nzWidth="66px">序号</th>
+            <th [nzEllipsis]="true">标题</th>
+            <th nzWidth="100px">状态</th>
+            <th nzWidth="80px">提报人</th>
+            <th nzWidth="120px" [nzEllipsis]="true">负责人</th>
+            <th nzWidth="140px">更新时间</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (item of issues(); track item.id) {
+        <tr (click)="selectItem.emit(item)" [style.background-color]="item.id === selectedItem()?.id ? '#1890ff24' : ''"
+            class="issue-item-row">
+            <td>{{ $index + 1 }}</td>
+            <td>
+                <div class="title-wrap" (mouseenter)="showPreview($event, item)" (mousemove)="movePreview($event, item)"
+                    (mouseleave)="hidePreview()">
+                    <p class="issue-title">
+                        <span class="issue-no"> [{{ item.issueNo }}] </span>
+                        <span> {{ item.title }} </span>
+                    </p>
+                    <nz-tag [nzColor]="getTypeColor(item.type)">
+                        {{ getTypeLabel(item.type) }}
+                    </nz-tag>
+                    <nz-tag [nzColor]="getPriorityColor(item.priority)">
+                        {{ getPriorityLabel(item.priority) }}
+                    </nz-tag>
+                    @if (item.moduleCode) {
+                    <nz-tag nzColor="default">{{ item.moduleCode }}</nz-tag>
+                    }
+                </div>
+                <div class="des">
+                    <app-ellipsis-text [lines]="2" [enableToggle]="false">
+                        {{ previewSummary(item) }}
+                    </app-ellipsis-text>
+                </div>
+            </td>
+            <td>
+                <nz-tag [nzColor]="getStatusColor(item.status)">
+                    {{ getStatusLabel(item.status) }}
+                </nz-tag>
+            </td>
+            <td>
+                {{ item.reporterName || '-' }}
+            </td>
+            <td>
+                {{ item.assigneeName }}<br />
+                @if ((item.participantNames?.length ?? 0) > 0) {
+                <span class="participant-inline" [nz-tooltip]="'协作人：' + participantNamesText(item)">· {{
+                    participantNamesText(item) }}</span>
+                }
+            </td>
+            <td>{{ (item.updatedAt | date: 'MM-dd HH:mm') ?? '_' }}</td>
+        </tr>
+        }
+    </tbody>
+</nz-table>
+@if (hoveredPreview()) {
+<div class="preview-float" [style.left.px]="hoveredPreview()!.left" [style.top.px]="hoveredPreview()!.top">
+    <img [src]="hoveredPreview()!.src" [alt]="hoveredPreview()!.alt" (error)="onImageError(hoveredPreview()!.src)" />
+</div>
+}

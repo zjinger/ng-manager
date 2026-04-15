@@ -58,8 +58,8 @@
         <!-- 列表 -->
         <div class="list-content">
             @if(viewType() === 'list') {
-            <app-issues-list-table [issues]="issues()" [selectedItem]="selectedIssue()"
-                (selectItem)="selectIssue($event)"></app-issues-list-table>
+            <app-issues-list-table [issues]="issues()" [selectedItem]="selectedIssue()" [projectId]="currentProjectId()"
+                [loading]="loading()" (selectItem)="selectIssue($event)"></app-issues-list-table>
             } @else {
 
             }
@@ -72,9 +72,8 @@
         </div>
     </div>
 
-    <app-issue-detail [open]="open()" (commentSubmit)="commentSubmit($event)"
-        (close)="closeIssueDetail()" (actionClick)="handleActions($event)"
-        (removeParticipant)="removeParticipant($event)"></app-issue-detail>
+    <app-issue-detail [open]="open()" (commentSubmit)="commentSubmit($event)" (close)="closeIssueDetail()"
+        (actionClick)="handleActions($event)" (removeParticipant)="removeParticipant($event)"></app-issue-detail>
 
     <app-issue-close-dialog [open]="IssueCloseDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
         (cancel)="cancelCloseDialog()" (confirm)="closeConfirm($event)"></app-issue-close-dialog>

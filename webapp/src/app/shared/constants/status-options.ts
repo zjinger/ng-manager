@@ -20,12 +20,12 @@ export const ISSUE_STATUS_LABELS: Record<string, string> = {
 };
 
 export const ISSUE_STATUS_COLORS: Record<string, string> = {
-  open: 'default',
+  open: 'volcano',
   in_progress: 'cyan',
-  resolved: 'green',
-  verified: 'cyan',
-  reopened: 'default',
-  closed: 'lime',
+  resolved: 'blue',
+  verified: 'green',
+  reopened: 'volcano',
+  closed: 'default',
 };
 
 export const ISSUE_BRANCH_STATUS_COLORS: Record<IssueBranchStatus, string> = {
@@ -61,11 +61,11 @@ export const RD_STATUS_LABELS: Record<string, string> = {
 };
 
 export const RD_STATUS_COLORS: Record<string, string> = {
-  todo: 'default',
-  doing: 'processing',
+  todo: 'volcano',
+  doing: 'cyan',
   blocked: 'error',
-  done: 'success',
-  accepted: 'success',
+  done: 'green',
+  accepted: 'green',
   closed: 'default',
 };
 

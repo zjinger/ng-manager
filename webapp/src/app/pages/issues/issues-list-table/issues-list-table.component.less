@@ -1,0 +1,72 @@
+.title-wrap {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0; // 关键：让内部可以ellipsis
+}
+
+.issue-title {
+  margin-bottom: 0;
+  font-weight: 600; // 标题加粗
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 100%;
+  .issue-no {
+    color: #1890ff;
+    // font-size: small;
+  }
+}
+
+.des {
+  font-size: 12px; // 描述变小
+  color: #999; // 变灰
+  margin-top: 2px;
+
+  // overflow: hidden;
+  // text-overflow: ellipsis;
+  // white-space: nowrap;
+}
+
+.participant-inline {
+  font-size: 12px;
+  color: gray;
+  font-weight: 400;
+
+  max-width: 100%;
+  display: inline-block;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issue-item-row {
+  cursor: pointer;
+}
+
+.preview-float {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+
+  width: 320px;
+  height: 200px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.preview-float img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
