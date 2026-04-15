@@ -57,6 +57,7 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
       margin: 1rem;
       text-align: center;
       color: gray;
+      font-size: .875rem;
     }
     .resolution {
       margin-top: 26px;

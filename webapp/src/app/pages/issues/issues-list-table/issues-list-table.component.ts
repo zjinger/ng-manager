@@ -119,7 +119,7 @@ export class IssuesListTableComponent {
     }
 
     const summary = source
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, ' ')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '【图片】')
       .replace(/<img\b[^>]*>/gi, ' ')
       .replace(/```[\s\S]*?```/g, ' ')
       .replace(/`([^`]*)`/g, '$1')

@@ -17,6 +17,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
     <app-detail-item-card
       title="协作分支"
       [emptyStatus]="!branches().length"
+      [count]="branches().length"
       emptyText="当前还没有协作分支"
     >
       <div actions>

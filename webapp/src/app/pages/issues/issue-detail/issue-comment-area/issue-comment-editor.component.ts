@@ -32,6 +32,8 @@ import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
 import { RdAction } from '@pages/rd/models/rd.model';
 import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
 
+type LogViewType = 'comment' | 'all';
+
 @Component({
   selector: 'app-issue-comment-area',
   standalone: true,
@@ -52,7 +54,16 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
     EllipsisTextComponent,
   ],
   template: `
-    <app-detail-item-card title="研发动态">
+    <app-detail-item-card title="活动记录">
+      <div actions>
+        <button nz-button nzSize="small" (click)="toggleViewMode()">
+          @if (viewMode() === 'all') {
+            仅看评论
+          } @else {
+            查看全部
+          }
+        </button>
+      </div>
       <nz-comment>
         <nz-avatar
           nz-comment-avatar
@@ -106,23 +117,8 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
       @if (logs().length === 0) {
         <div class="comment-empty">暂无评论/备注</div>
       } @else {
-        <!-- <nz-list [nzDataSource]="comments()" [nzRenderItem]="item" nzItemLayout="horizontal">
-          <ng-template #item let-item>
-            <nz-comment [nzAuthor]="item.authorName" [nzDatetime]="formatDate(item.createdAt)">
-              <nz-avatar
-                nz-comment-avatar
-                [nzText]="item.authorName.charAt(0)"
-                nzSize="small"
-                style="background-color: #1890ff"
-              />
-              <nz-comment-content>
-                <p>{{ item.content }}</p>
-              </nz-comment-content>
-            </nz-comment>
-          </ng-template>
-        </nz-list> -->
         <nz-timeline>
-          @for (log of logs(); track log.id) {
+          @for (log of viewLogs(); track log.id) {
             <nz-timeline-item [nzDot]="dotTemplate">
               @if (log.actionType === 'comment') {
                 <!-- 用户评论 -->
@@ -165,11 +161,7 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
               }
             </nz-timeline-item>
             <ng-template #dotTemplate>
-              <nz-icon
-                [nzType]="iconByAction(log.actionType)"
-                nzTheme="outline"
-                style="font-size: 16px;"
-              />
+              <nz-icon [nzType]="iconType(log)" nzTheme="outline" style="font-size: 16px;" />
             </ng-template>
           }
         </nz-timeline>
@@ -259,16 +251,17 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueCommentAreaComponent {
-  private readonly authStore = inject(UserStore);
+  private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
 
   readonly canComment = input(false);
   readonly logs = input.required<IssueLogEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly projectId = input<string>();
   readonly busy = input(false);
-  private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
-
   readonly submit = output<createCommentInput>();
+
+  // 查看模式
+  readonly viewMode = signal<LogViewType>('all');
 
   readonly commentDraft = signal('');
   readonly mentionKeyword = signal('');
@@ -286,6 +279,15 @@ export class IssueCommentAreaComponent {
         return displayName.includes(keyword) || userId.includes(keyword);
       })
       .slice(0, 20);
+  });
+
+  readonly commontLogs = computed(() => this.logs().filter((log) => log.actionType === 'comment'));
+
+  readonly viewLogs = computed(() => {
+    if (this.viewMode() === 'comment') {
+      return this.commontLogs();
+    }
+    return this.logs();
   });
 
   handleSubmit() {
@@ -325,21 +327,38 @@ export class IssueCommentAreaComponent {
     return [...result];
   }
 
-  iconByAction(action: string): string {
+  iconType(item: IssueLogEntity): string {
+    const metaKind = this.readMetaKind(item.metaJson);
+    if (metaKind === 'participant.added' || metaKind === 'participant.added.batch') {
+      return 'user-add';
+    }
+    if (metaKind === 'participant.removed') {
+      return 'user-delete';
+    }
+    if (metaKind === 'issue_branch.created' || metaKind === 'issue_branch.claimed') {
+      return 'share-alt';
+    }
+    if (metaKind === 'issue_branch.started') {
+      return 'play-circle';
+    }
+    if (metaKind === 'issue_branch.completed') {
+      return 'check-circle';
+    }
+
     return (
       {
         create: 'plus-circle',
-        update: 'edit',
+        assign: 'user-add',
+        claim: 'user-add',
         start: 'play-circle',
-        block: 'pause-circle',
-        resume: 'redo',
+        wait_update: 'clock-circle',
         resolve: 'check-circle',
-        accept: 'safety-certificate',
+        verify: 'safety-certificate',
+        reopen: 'redo',
         close: 'close-circle',
-        advance_stage: 'right-circle',
-        delete: 'delete',
         comment: 'message',
-      }[action] ?? 'history'
+        update: 'edit',
+      }[item.actionType] || 'clock-circle'
     );
   }
 
@@ -388,17 +407,24 @@ export class IssueCommentAreaComponent {
   }
 
   getMemberAvatarUrl(userId: string): string {
-    if (!this.projectId()) return '';
-    const member = this.members().find((member) => member.userId === userId);
-    const avatarUrl = this.transformAvatarUrl(
-      member?.avatarUrl || '',
-      this.projectId()!,
-      this.logs()[0].issueId,
-    );
-    return avatarUrl;
+    // if (!this.projectId()) return '';
+    // const member = this.members().find((member) => member.userId === userId);
+    // const avatarUrl = this.transformAvatarUrl(
+    //   member?.avatarUrl || '',
+    //   this.projectId()!,
+    //   this.logs()[0].issueId,
+    // );
+    // return avatarUrl;
+    return '';
   }
 
-  transformAvatarUrl(url: string, projectKey: string, issueId: string): string {
+  toggleViewMode(mode?: LogViewType) {
+    if (mode) this.viewMode.set(mode);
+    const m = this.viewMode() === 'all' ? 'comment' : 'all';
+    this.viewMode.set(m);
+  }
+
+  private transformAvatarUrl(url: string, projectKey: string, issueId: string): string {
     // 使用正则表达式从原始路径中提取出 attachmentId
     const regex = /\/api\/admin\/uploads\/(upl_[a-zA-Z0-9_-]+)\/raw/;
     const match = url.match(regex);
@@ -411,6 +437,23 @@ export class IssueCommentAreaComponent {
       return `/api/token/projects/${projectKey}/issues/${issueId}/attachments/${attachmentId}/raw`;
     } else {
       return '';
+    }
+  }
+
+  private readMetaKind(metaJson: string | null): string | null {
+    const parsed = this.parseMeta(metaJson);
+    return typeof parsed?.['kind'] === 'string' ? parsed['kind'] : null;
+  }
+
+  private parseMeta(metaJson: string | null): Record<string, unknown> | null {
+    if (!metaJson) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(metaJson) as Record<string, unknown>;
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
     }
   }
 }

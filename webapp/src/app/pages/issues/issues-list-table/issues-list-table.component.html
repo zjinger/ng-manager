@@ -5,7 +5,7 @@
             <th nzWidth="66px">序号</th>
             <th [nzEllipsis]="true">标题</th>
             <th nzWidth="100px">状态</th>
-            <th nzWidth="80px">提报人</th>
+            <th nzWidth="100px">提报人</th>
             <th nzWidth="120px" [nzEllipsis]="true">负责人</th>
             <th nzWidth="140px">更新时间</th>
         </tr>
@@ -49,8 +49,9 @@
             <td>
                 {{ item.assigneeName }}<br />
                 @if ((item.participantNames?.length ?? 0) > 0) {
-                <span class="participant-inline" [nz-tooltip]="'协作人：' + participantNamesText(item)">· {{
-                    participantNamesText(item) }}</span>
+                <span class="participant-inline" [nz-tooltip]="'协作人：' + participantNamesText(item)">
+                    · {{ participantNamesText(item) }}
+                </span>
                 }
             </td>
             <td>{{ (item.updatedAt | date: 'MM-dd HH:mm') ?? '_' }}</td>

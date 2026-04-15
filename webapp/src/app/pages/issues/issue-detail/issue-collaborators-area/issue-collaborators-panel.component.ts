@@ -27,43 +27,44 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
     DetailItemCardComponent,
   ],
   template: `
-    <app-detail-item-card title="合作人">
-      @if (participants().length > 0) {
-        <div class="participant-list">
-          @for (item of participants(); track item.id) {
-            <div class="participant-item" [style.width]="canManageParticipants() ? '100%' : 'auto'">
-              <div class="participant-chip">
-                <nz-avatar
-                  [nzText]="item.userName.charAt(0)"
-                  nzSize="small"
-                  style="background-color: #1890ff;"
-                ></nz-avatar>
-                <span class="participant-item__name">{{ item.userName }}</span>
-              </div>
-              @if (canManageParticipants()) {
-                <button
-                  nz-button
-                  nzType="default"
-                  nzShape="circle"
-                  nz-popconfirm
-                  nzPopconfirmTitle="确定要移除该参与人吗？"
-                  nzPopconfirmOkText="移除"
-                  nzPopconfirmCancelText="取消"
-                  nz-tooltip="移除参与人"
-                  (nzOnConfirm)="removeParticipant.emit(item.id)"
-                  nzSize="small"
-                  [nzLoading]="busy()"
-                  class="remove-btn"
-                >
-                  <nz-icon nzType="minus"></nz-icon>
-                </button>
-              }
+    <app-detail-item-card
+      title="合作人"
+      [emptyStatus]="participants().length <= 0"
+      [count]="participants().length"
+      emptyText="当前还没有合作人"
+    >
+      <div class="participant-list">
+        @for (item of participants(); track item.id) {
+          <div class="participant-item" [style.width]="canManageParticipants() ? '100%' : 'auto'">
+            <div class="participant-chip">
+              <nz-avatar
+                [nzText]="item.userName.charAt(0)"
+                nzSize="small"
+                style="background-color: #1890ff;"
+              ></nz-avatar>
+              <span class="participant-item__name">{{ item.userName }}</span>
             </div>
-          }
-        </div>
-      } @else {
-        <div class="empty">当前还没有合作人</div>
-      }
+            @if (canManageParticipants()) {
+              <button
+                nz-button
+                nzType="default"
+                nzShape="circle"
+                nz-popconfirm
+                nzPopconfirmTitle="确定要移除该参与人吗？"
+                nzPopconfirmOkText="移除"
+                nzPopconfirmCancelText="取消"
+                nz-tooltip="移除参与人"
+                (nzOnConfirm)="removeParticipant.emit(item.id)"
+                nzSize="small"
+                [nzLoading]="busy()"
+                class="remove-btn"
+              >
+                <nz-icon nzType="minus"></nz-icon>
+              </button>
+            }
+          </div>
+        }
+      </div>
     </app-detail-item-card>
   `,
   styles: [
@@ -92,10 +93,11 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
         gap: 8px;
         padding: 4px 10px 4px 4px;
         border-radius: 999px;
-        background: #ecebeb;
+        background: #fafafa;
+        border: 1px solid #f0f0f0;
       }
       .participant-item__name {
-        font-size: .875rem;
+        font-size: 0.875rem;
         font-weight: 600;
         // color: #1890ff;
       }

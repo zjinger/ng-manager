@@ -10,13 +10,14 @@ import { IssueAttachmentEntity } from '@pages/issues/models/issue.model';
   selector: 'app-issue-attachment-area',
   imports: [AttachmentViewerComponent, DetailItemCardComponent],
   template: `
-    <app-detail-item-card title="附件">
-      @if (attachments().length > 0) {
-        @for (item of attachmentPreviewItems(); track $index) {
-          <app-attachment-viewer [item]="item"></app-attachment-viewer>
-        }
-      } @else {
-        <div class="empty">当前还没有附件</div>
+    <app-detail-item-card
+      title="附件"
+      [emptyStatus]="attachments().length <= 0"
+      [count]="attachments().length"
+      emptyText="当前还没有附件"
+    >
+      @for (item of attachmentPreviewItems(); track $index) {
+        <app-attachment-viewer [item]="item"></app-attachment-viewer>
       }
     </app-detail-item-card>
   `,
