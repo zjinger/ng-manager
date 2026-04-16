@@ -8,11 +8,13 @@ import {
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { IssueBranchEntity, IssueBranchSummary } from '@pages/issues/models/issue.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
 @Component({
   selector: 'app-issue-branches',
-  imports: [DetailItemCardComponent, NzButtonModule, NzTagModule, CommonModule],
+  imports: [DetailItemCardComponent, NzButtonModule, NzTagModule, NzPopconfirmModule, CommonModule],
   template: `
     <app-detail-item-card
       title="协作分支"
@@ -20,7 +22,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
       [count]="branches().length"
       emptyText="当前还没有协作分支"
     >
-      <div actions>
+      <div actions style="display: flex; gap: 6px;">
         @if (canStartActions() && canStartOwn()) {
           <button
             nz-button
