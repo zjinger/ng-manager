@@ -293,18 +293,7 @@ export class ProfilePersonalTokenComponent {
   readonly revealOpen = signal(false);
   readonly revealToken = signal('');
   readonly createName = signal('');
-  readonly selectedScopes = signal<PersonalTokenScope[]>(
-    [
-      'issue:comment:write',
-      'issue:transition:write',
-      'issue:assign:write',
-      'issue:branch:write',
-      'issue:participant:write',
-      'rd:transition:write',
-      'rd:edit:write',
-      'rd:delete:write'
-    ]
-  );
+  readonly selectedScopes = signal<PersonalTokenScope[]>( [ 'issue:comment:write' ] );
   readonly expiresAt = signal<Date | null>(null);
 
   readonly scopeOptions: ScopeOption[] = [
@@ -338,7 +327,17 @@ export class ProfilePersonalTokenComponent {
 
   openCreateModal(): void {
     this.createName.set('');
-    this.selectedScopes.set(['issue:comment:write']);
+    this.selectedScopes.set(
+      [
+        'issue:comment:write',
+        'issue:transition:write',
+        'issue:assign:write',
+        'issue:branch:write',
+        'issue:participant:write',
+        'rd:transition:write',
+        'rd:edit:write',
+        'rd:delete:write'
+      ]);
     this.expiresAt.set(null);
     this.createOpen.set(true);
   }
