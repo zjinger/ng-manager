@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="72px" height="72px" viewBox="0 0 72 72" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>深蓝logo1备份</title>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="72.0002741" height="72" rx="12.65625"></rect>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="linearGradient-3">
+            <stop stop-color="#2F77BC" offset="0%"></stop>
+            <stop stop-color="#1D5E9A" offset="100%"></stop>
+        </linearGradient>
+        <filter x="-17.6%" y="-20.0%" width="135.3%" height="140.0%" filterUnits="objectBoundingBox" id="filter-4">
+            <feGaussianBlur stdDeviation="4" in="SourceGraphic"></feGaussianBlur>
+        </filter>
+    </defs>
+    <g id="深蓝logo1备份" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="编组" transform="translate(0.000000, 0.000000)">
+            <g id="底部">
+                <mask id="mask-2" fill="white">
+                    <use xlink:href="#path-1"></use>
+                </mask>
+                <use id="蒙版" fill="#015198" fill-rule="nonzero" xlink:href="#path-1"></use>
+                <path d="M0.108339875,58.000112 C0.737493614,61.7904244 4.03125303,64.6803896 8,64.6803896 L8,64.6803896 L36,64.68 L36,72 L0,72 L0,58.0003569 Z" id="形状结合" fill="#137CC8" mask="url(#mask-2)"></path>
+                <path d="M72,58.0003569 L72,72 L36,72 L36,64.68 L64,64.6803896 C67.968747,64.6803896 71.2625064,61.7904244 71.8916601,58.000112 L72,58.0003569 Z" id="形状结合" fill="#7BCAEB" mask="url(#mask-2)"></path>
+                <rect id="蒙版" fill="url(#linearGradient-3)" fill-rule="nonzero" filter="url(#filter-4)" mask="url(#mask-2)" x="2" y="2" width="68" height="60" rx="12"></rect>
+            </g>
+            <path d="M40.7625498,21.1802667 L41.4449941,26.2717867 L29.7015773,26.2717867 L30.9970267,13.5037867 L39.7329102,13.5037867 L40.3108225,17.8142933 L58.0319729,15.7191467 C52.9061746,9.19253333 44.9423341,5 35.9996267,5 C20.5356195,5 8,17.5357867 8,33 C8,33.22176 8.00298663,33.4427733 8.00821322,33.6637867 L42.4350609,33.6637867 L44.9595072,52.49696 L27.0397461,52.49696 L28.6480447,36.6504533 L8.23669018,36.6504533 C10.0256797,50.3898667 21.7735764,61 36.0003733,61 C51.4643805,61 64,48.4642133 64,33 C64,29.3077333 63.2847029,25.7819733 61.9862668,22.55488 L40.7625498,21.1802667 Z" id="路径" fill="#FFFFFF" fill-rule="nonzero"></path>
+        </g>
+    </g>
+</svg>
