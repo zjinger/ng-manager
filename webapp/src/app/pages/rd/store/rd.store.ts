@@ -110,7 +110,6 @@ export class RdStore {
       ...patch,
       page: patch.page ?? query.page ?? 1,
     }));
-    this.loadRdItems();
   }
 
   update(itemId: string, input: UpdateRdItemInput): void {

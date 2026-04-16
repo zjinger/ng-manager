@@ -20,7 +20,13 @@ import { RdAdvanceStageDialogComponent } from './dialog/rd-advance-stage-dialog/
 import { RdBlockDialogComponent } from './dialog/rd-block-dialog/rd-block-dialog.component';
 import { RdCreateDialogComponent } from './dialog/rd-create-dialog/rd-create-dialog.component';
 import { RdDetailComponent } from './rd-detail/rd-detail.component';
-import { CreateRdItemInput, RdItemEntity, RdItemPriority, RdItemStatus } from './models/rd.model';
+import {
+  CreateRdItemInput,
+  RdItemEntity,
+  RdItemPriority,
+  RdItemStatus,
+  RdListQuery,
+} from './models/rd.model';
 import { RdListBoardComponent } from './rd-list-board/rd-list-board.component';
 import { RdListTableComponent } from './rd-list-table/rd-list-table.component';
 import { RdStore } from './store/rd.store';
@@ -28,6 +34,7 @@ import { RD_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
 import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
 import { debounceTime, filter } from 'rxjs';
 import { UserStore } from '@app/core/stores/user/user.store';
+import { RdFilterBarComponent } from './rd-filter-bar/rd-filter-bar.component';
 
 type viewType = 'list' | 'board';
 
@@ -56,6 +63,7 @@ type viewType = 'list' | 'board';
     RdDetailComponent,
     RdBlockDialogComponent,
     RdAdvanceStageDialogComponent,
+    RdFilterBarComponent,
   ],
   templateUrl: './rd.component.html',
   styleUrl: './rd.component.less',
@@ -84,9 +92,9 @@ export class RdComponent {
   // 推进研发项
   readonly advanceStageOpen = signal(false);
 
-  readonly statusOptions = RD_STATUS_FILTER_OPTIONS;
-  readonly members = this.rdStore.projectMembers;
-  readonly priorityOptions = PRIORITY_OPTIONS;
+  // readonly statusOptions = RD_STATUS_FILTER_OPTIONS;
+  // readonly members = this.rdStore.projectMembers;
+  // readonly priorityOptions = PRIORITY_OPTIONS;
 
   // 用户
   readonly currentUserId = this.userStore.currentUserId;
@@ -104,11 +112,6 @@ export class RdComponent {
 
   constructor() {
     this.rdStore.initialize();
-    this.form.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
-      this.rdStore.updateQuery({ ...value });
-      this.rdStore.loadRdItems();
-    });
-
     this.route.queryParamMap.subscribe((params) => {
       const detailId = params.get('detail');
 
@@ -122,20 +125,20 @@ export class RdComponent {
     this.userStore.ensureUserLoaded();
   }
 
-  form = this.fb.group({
-    keyword: this.fb.control<string>(''),
-    stageIds: this.fb.control<string[]>([]),
-    status: this.fb.control<RdItemStatus[]>([]),
-    priority: this.fb.control<RdItemPriority[]>([]),
-  });
-
   onPageChange(page: number) {
     // this.pageIndex.set(page);
     this.rdStore.updateQuery({ page });
+    this.rdStore.loadRdItems();
   }
 
   onPageSizeChange(size: number) {
     this.rdStore.updateQuery({ pageSize: size });
+    this.rdStore.loadRdItems();
+  }
+
+  updateQueryByFilter(query: Partial<RdListQuery>): void {
+    this.rdStore.updateQuery(query);
+    this.rdStore.loadRdItems();
   }
 
   /** 新建研发项 */
@@ -177,7 +180,7 @@ export class RdComponent {
     if (!current) {
       return;
     }
-    this.rdStore.progress(current.id, {version: current.version, progress});
+    this.rdStore.progress(current.id, { version: current.version, progress });
   }
 
   deleteSelectedItem(): void {
@@ -223,7 +226,6 @@ export class RdComponent {
   }
 
   // 阻塞处理
-
   confirmBlock(blockerReason: string): void {
     const item = this.blockingItem();
     if (!item) {
