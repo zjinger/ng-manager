@@ -293,13 +293,25 @@ export class ProfilePersonalTokenComponent {
   readonly revealOpen = signal(false);
   readonly revealToken = signal('');
   readonly createName = signal('');
-  readonly selectedScopes = signal<PersonalTokenScope[]>(['issue:comment:write']);
+  readonly selectedScopes = signal<PersonalTokenScope[]>(
+    [
+      'issue:comment:write',
+      'issue:transition:write',
+      'issue:assign:write',
+      'issue:branch:write',
+      'issue:participant:write',
+      'rd:transition:write',
+      'rd:edit:write',
+      'rd:delete:write'
+    ]
+  );
   readonly expiresAt = signal<Date | null>(null);
 
   readonly scopeOptions: ScopeOption[] = [
     { value: 'issue:comment:write', label: '测试单评论', desc: '创建评论与 @ 提及' },
     { value: 'issue:transition:write', label: '测试单状态流转', desc: '开始、解决、验证、关闭等' },
     { value: 'issue:assign:write', label: '测试单指派', desc: '指派/转派负责人' },
+    { value: 'issue:branch:write', label: '测试单协作分支', desc: '创建/删除测试单关联的协作分支' },
     { value: 'issue:participant:write', label: '测试单协作人', desc: '添加或移除协作人' },
     { value: 'rd:transition:write', label: '研发项状态流转', desc: '开始、阻塞、恢复、完成' },
     { value: 'rd:edit:write', label: '研发项编辑', desc: '编辑标题、描述、计划时间等' },
