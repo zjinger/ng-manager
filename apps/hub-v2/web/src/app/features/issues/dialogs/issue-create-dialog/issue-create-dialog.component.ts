@@ -143,7 +143,7 @@ const DEFAULT_DRAFT: Draft = {
           <div class="row" nz-row nzGutter="16">
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
-              <nz-form-label nzFor="assigneeId">指派给</nz-form-label>
+              <nz-form-label nzFor="assigneeId" [nzTooltipIcon]="'question-circle'" nzTooltipTitle="指派给某人以负责处理此问题，或后续等待成员自行认领">指派给</nz-form-label>
               <nz-form-control>
                 <nz-select
                 nzAllowClear
@@ -161,13 +161,14 @@ const DEFAULT_DRAFT: Draft = {
             </div>
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
-                <nz-form-label >协作人</nz-form-label>
+                <nz-form-label nzFor="participantIds">协作人</nz-form-label>
                 <nz-form-control>
                   <nz-select
                     nzMode="multiple"
                     nzAllowClear
                     [nzDisabled]="!draft().assigneeId"
                     [nzPlaceHolder]="draft().assigneeId ? '加入协作人并收到通知' : '请先指派负责人'"
+                    [nzMaxTagCount]="3"
                     [ngModel]="draft().participantIds"
                     name="participantIds"
                     (ngModelChange)="updateParticipantIds($event)"
