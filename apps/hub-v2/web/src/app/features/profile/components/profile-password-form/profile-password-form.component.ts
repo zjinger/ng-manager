@@ -51,6 +51,7 @@ const DEFAULT_FORM: PasswordFormValue = {
               <nz-form-item>
                 <nz-form-label nzRequired nzFor="old-password-input">当前密码</nz-form-label>
                 <nz-form-control>
+                  <nz-input-password>
                   <input
                     id="old-password-input"
                     nz-input
@@ -62,6 +63,7 @@ const DEFAULT_FORM: PasswordFormValue = {
                     name="current_pwd_value"
                     (ngModelChange)="updateField('oldPassword', $event)"
                   />
+                  </nz-input-password>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -72,7 +74,8 @@ const DEFAULT_FORM: PasswordFormValue = {
               <nz-form-item>
                 <nz-form-label nzRequired nzFor="new-password-input">新密码</nz-form-label>
                 <nz-form-control>
-                  <input
+                  <nz-input-password>
+                     <input
                     id="new-password-input"
                     nz-input
                     type="password"
@@ -83,6 +86,8 @@ const DEFAULT_FORM: PasswordFormValue = {
                     name="next_pwd_value"
                     (ngModelChange)="updateField('newPassword', $event)"
                   />
+                  </nz-input-password>
+                 
                   <span class="password-note">密码长度 8~32 位，建议同时包含字母和数字。</span>
                 </nz-form-control>
               </nz-form-item>
@@ -92,6 +97,7 @@ const DEFAULT_FORM: PasswordFormValue = {
               <nz-form-item>
                 <nz-form-label nzRequired nzFor="confirm-password-input">确认新密码</nz-form-label>
                 <nz-form-control>
+                  <nz-input-password>
                   <input
                     id="confirm-password-input"
                     nz-input
@@ -103,6 +109,7 @@ const DEFAULT_FORM: PasswordFormValue = {
                     name="confirm_pwd_value"
                     (ngModelChange)="updateField('confirmPassword', $event)"
                   />
+                  </nz-input-password>
                   @if (form().confirmPassword && form().confirmPassword !== form().newPassword) {
                     <span class="password-error">两次输入的新密码不一致。</span>
                   }
