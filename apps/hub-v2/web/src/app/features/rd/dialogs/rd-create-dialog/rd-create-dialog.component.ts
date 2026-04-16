@@ -9,7 +9,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
-import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
+import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
@@ -43,7 +43,7 @@ const DEFAULT_DRAFT: Draft = {
     NzIconModule,
     DialogShellComponent,
     FormActionsComponent,
-    // MarkdownEditorComponent
+    MarkdownEditorComponent
   ],
   template: `
     <app-dialog-shell
@@ -79,16 +79,15 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
                 <nz-form-label nzFor="description">描述</nz-form-label>
                 <nz-form-control>
-                  <textarea
+                  <!-- <textarea
                     nz-input
                     rows="6"
                     placeholder="简要描述背景、目标和预期交付。"
                     [ngModel]="draft().description"
                     name="description"
                     (ngModelChange)="updateField('description', $event)"
-                  ></textarea>
-                  <!-- <app-markdown-editor
-                    [minHeight]="'240px'"
+                  ></textarea> -->
+                  <app-markdown-editor
                     [ngModel]="draft().description"
                     name="description"
                     [config]="editorConfig"
@@ -96,7 +95,7 @@ const DEFAULT_DRAFT: Draft = {
                     (contentChange)="updateField('description', $event)"
                     (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
                     [placeholder]="'简要描述背景、目标和预期交付。'"
-                  /> -->
+                  />
                 </nz-form-control>
               </nz-form-item>
             </div>
