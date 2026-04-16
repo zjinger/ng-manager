@@ -10,7 +10,7 @@ import {
   RdLogEntity,
   RdStageEntity,
   UpdateRdItemInput,
-  UpdateRdProgressInput
+  UpdateRdProgressInput,
 } from '../models/rd.model';
 import { RdApiService } from '../services/rd-api.service';
 
@@ -56,9 +56,11 @@ export class RdStore {
     try {
       const projectId = this.projectId();
       if (!projectId) return;
-      this.loadStages();
-      this.loadRdItems();
-      this.projectContextStore.loadProjectMembers(projectId);
+      Promise.all([
+        this.loadStages(),
+        this.loadRdItems(),
+        this.projectContextStore.loadProjectMembers(projectId),
+      ]);
     } catch (e) {}
   }
 
@@ -78,7 +80,7 @@ export class RdStore {
 
   async loadStages() {
     const projectId = this.projectId();
-    if(!projectId) return;
+    if (!projectId) return;
     try {
       const stages = (await this.rdApi.getRdStages(projectId)).items;
       this.stagesState.set(stages);
@@ -92,8 +94,7 @@ export class RdStore {
     if (!projectId) return;
     this.busyState.set(true);
     const itemRes = (await this.rdApi.getRdItem(projectId, itemId)) as RdItemEntity;
-    const logsRes = (await this.rdApi.getRdItemLogs(projectId, itemId))
-      .items as RdLogEntity[];
+    const logsRes = (await this.rdApi.getRdItemLogs(projectId, itemId)).items as RdLogEntity[];
     this.currentRdItemState.set(itemRes);
     this.currentRdLogsState.set(logsRes);
     this.busyState.set(false);

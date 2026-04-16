@@ -162,6 +162,9 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
       border-bottom: 1px solid #bbbbbb;
     }
     .detail-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
       .detail-item {
         margin-bottom: 20px;
       }

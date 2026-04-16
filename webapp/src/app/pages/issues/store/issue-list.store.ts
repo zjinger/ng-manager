@@ -94,33 +94,33 @@ export class IssueListStore {
     }));
   }
 
-  updateQueryPriority(priority: IssuePriority | '') {
-    if (priority === '') {
-      this.updateQuery({ priority: [] });
-      return;
-    }
-    if (this.query().priority.includes(priority)) {
-      this.updateQuery({
-        priority: this.query().priority.filter((s) => s !== priority),
-      });
-      return;
-    }
-    this.updateQuery({ priority: [...this.query().priority, priority] });
-  }
+  // updateQueryPriority(priority: IssuePriority | '') {
+  //   if (priority === '') {
+  //     this.updateQuery({ priority: [] });
+  //     return;
+  //   }
+  //   if (this.query().priority.includes(priority)) {
+  //     this.updateQuery({
+  //       priority: this.query().priority.filter((s) => s !== priority),
+  //     });
+  //     return;
+  //   }
+  //   this.updateQuery({ priority: [...this.query().priority, priority] });
+  // }
 
-  updateQueryStatus(status: IssueStatus | '') {
-    if (status === '') {
-      this.updateQuery({ status: [] });
-      return;
-    }
-    if (this.query().status.includes(status)) {
-      this.updateQuery({
-        status: this.query().status.filter((s) => s !== status),
-      });
-      return;
-    }
-    this.updateQuery({ status: [...this.query().status, status] });
-  }
+  // updateQueryStatus(status: IssueStatus | '') {
+  //   if (status === '') {
+  //     this.updateQuery({ status: [] });
+  //     return;
+  //   }
+  //   if (this.query().status.includes(status)) {
+  //     this.updateQuery({
+  //       status: this.query().status.filter((s) => s !== status),
+  //     });
+  //     return;
+  //   }
+  //   this.updateQuery({ status: [...this.query().status, status] });
+  // }
 
   async load() {
     const currentProjectId = this.currentProjectId();

@@ -33,7 +33,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
       width: 100%;
       display: flex;
       flex-direction: column;
-      margin-bottom: 1rem;
+      // margin-bottom: 1rem;
       .actions {
         margin-bottom: 12px;
         padding: 0 4px 4px;

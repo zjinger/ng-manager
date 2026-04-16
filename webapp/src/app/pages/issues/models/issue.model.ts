@@ -23,8 +23,7 @@ export type IssueActionType =
   | 'reopen'
   | 'close'
   | 'add_participants'
-  | 'remove_participants'
-  | 'participants';
+  | 'remove_participants';
 
 export type IssueBranchStatus = 'todo' | 'in_progress' | 'done';
 
@@ -148,9 +147,9 @@ export interface IssueListQuery {
   pageSize: number;
   keyword?: string;
   projectId?: string;
-  status: string[];
+  status: IssueStatus[];
   types: IssueType[];
-  priority: string[];
+  priority: IssuePriority[];
   reporterIds: string[];
   assigneeIds: string[];
   moduleCodes: string[];

@@ -1,37 +1,22 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { PageLayoutComponent } from '@app/shared';
-import { IssueListStore } from './store/issue-list.store';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import {
-  ISSUE_STATUS_FILTER_OPTIONS,
-  ISSUE_STATUS_LABELS,
-} from '@app/shared/constants/status-options';
-import { PRIORITY_LABELS, PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
-import {
-  AddParticipantsInput,
-  AssignIssueInput,
-  createCommentInput,
-  IssueActionType,
-  IssueEntity,
-  IssueListQuery,
-  IssuePriority,
-  IssueStatus,
-} from './models/issue.model';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { FormsModule } from '@angular/forms';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzPaginationModule } from 'ng-zorro-antd/pagination';
-import { IssuesListTableComponent } from './issues-list-table/issues-list-table.component';
-import { IssueDetailStore } from './store/issue-detail.store';
-import { IssueDetailComponent } from './issue-detail/issue-detail.component';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
-import { IssueCloseDialogComponent } from './dialogs/issue-close-dialog.component';
-import { IssueResolveDialogComponent } from './dialogs/issue-resolve-dialog.component';
-import { IssueAssignDialogComponent } from './dialogs/issue-assign-dialog.component';
-import { IssueAddParticipantsDialogComponent } from './dialogs/issue-add-participants-dialog.component';
-import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ProjectContextStore } from '@app/core/stores/project-context/project-context.store';
+import { PageLayoutComponent } from '@app/shared';
+import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
+import { ISSUE_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
+import { IssueDetailComponent } from './issue-detail/issue-detail.component';
+import { IssuesListTableComponent } from './issues-list-table/issues-list-table.component';
+import { IssueEntity, IssueListQuery, IssuePriority, IssueStatus } from './models/issue.model';
+import { IssueDetailStore } from './store/issue-detail.store';
+import { IssueListStore } from './store/issue-list.store';
+import { IssueFilterBarComponent } from './issue-filter-bar/issue-filter-bar.component';
 
 type viewType = 'list' | 'board';
 
@@ -47,11 +32,8 @@ type viewType = 'list' | 'board';
     NzPaginationModule,
     NzModalModule,
     IssuesListTableComponent,
+    IssueFilterBarComponent,
     IssueDetailComponent,
-    IssueCloseDialogComponent,
-    IssueResolveDialogComponent,
-    IssueAssignDialogComponent,
-    IssueAddParticipantsDialogComponent,
   ],
   templateUrl: './issues.component.html',
   styleUrl: './issues.component.less',
@@ -64,6 +46,8 @@ export class IssuesComponent {
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
+  statusOptions = ISSUE_STATUS_FILTER_OPTIONS;
+  priorityOptions = PRIORITY_OPTIONS;
 
   // 视图模式
   protected readonly viewType = signal<viewType>('list');
@@ -74,22 +58,10 @@ export class IssuesComponent {
 
   // 详情相关
   protected readonly selectedIssue = this.issueDetailStore.issue;
-  // protected readonly IssueComments = this.issueDetailStore.comments;
-  protected readonly IssueAttachments = this.issueDetailStore.attachments;
-  protected readonly IssueParticipants = this.issueDetailStore.participants;
-  protected readonly IssueBranches = this.issueDetailStore.branches;
-  protected readonly busy = this.issueDetailStore.busy;
-  protected readonly members = this.projectContextStore.currentProjectMembers;
   protected readonly currentProjectId = this.projectContextStore.currentProjectId;
 
   // 详情操作相关
   protected readonly IssueAssignActionLabel = this.issueDetailStore.assignActionLabel;
-
-  // 操作弹窗开关
-  protected readonly IssueCloseDialogOpen = signal(false);
-  protected readonly IssueResolveDialogOpen = signal(false);
-  protected readonly IssueAssignDialogOpen = signal(false);
-  protected readonly IssueAddParticipantsDialogOpen = signal(false);
 
   protected readonly open = signal(false);
 
@@ -148,9 +120,6 @@ export class IssuesComponent {
     this.issueListStore.updateQuery({ pageSize: size });
   }
 
-  statusOptions = ISSUE_STATUS_FILTER_OPTIONS;
-  priorityOptions = PRIORITY_OPTIONS;
-
   selectIssue(issue: IssueEntity) {
     this.openDetail(issue);
     this.issueDetailStore.load(issue.id);
@@ -165,53 +134,6 @@ export class IssuesComponent {
     });
   }
 
-  // 提交评论
-  commentSubmit(comment: createCommentInput) {
-    this.issueDetailStore.postComment(comment);
-  }
-
-  // 操作
-  handleActions(action: IssueActionType) {
-    switch (action) {
-      case 'comments':
-        break;
-      case 'start': {
-        this.startConfirm();
-        break;
-      }
-      case 'claim': {
-        this.claimConfirm();
-        break;
-      }
-      case 'assign': {
-        this.IssueAssignDialogOpen.set(true);
-        break;
-      }
-      case 'wait-update': {
-        this.waitForUpdateConfirm();
-        break;
-      }
-      case 'resolve': {
-        this.IssueResolveDialogOpen.set(true);
-        break;
-      }
-      case 'verify':
-        break;
-      case 'reopen':
-        break;
-      case 'close': {
-        this.IssueCloseDialogOpen.set(true);
-        break;
-      }
-      case 'add_participants': {
-        this.IssueAddParticipantsDialogOpen.set(true);
-        break;
-      }
-      case 'remove_participants':
-        break;
-    }
-  }
-
   openDetail(item: IssueEntity): void {
     this.router.navigate([], {
       relativeTo: this.route,
@@ -220,111 +142,7 @@ export class IssuesComponent {
     });
   }
 
-  private startConfirm() {
-    this.modal.confirm({
-      nzTitle:
-        this.issueDetailStore.issue()?.status === 'pending_update'
-          ? '确认继续处理该问题？'
-          : '确认开始处理该问题？',
-      nzContent:
-        this.issueDetailStore.issue()?.status === 'pending_update'
-          ? '继续处理后，状态将从“待提测”回到“处理中”。'
-          : '开始处理后将进入处理流转，负责人可继续处理、转派或标记待提测。',
-      nzOkText:
-        this.issueDetailStore.issue()?.status === 'pending_update' ? '确认继续' : '确认开始',
-      nzCancelText: '取消',
-      nzOnOk: () => this.issueDetailStore.start(),
-    });
-  }
-
-  private claimConfirm() {
-    this.modal.confirm({
-      nzTitle: '确定认领该问题？',
-      nzContent: '认领后你将成为负责人，可继续开始处理。（转派需前往NGM Hub V2）',
-      nzOnOk: () => {
-        this.issueDetailStore.claim();
-      },
-    });
-  }
-
-  private waitForUpdateConfirm() {
-    this.modal.confirm({
-      nzTitle: '标记为待提测？',
-      nzContent: '适用于代码已提交、等待测试验证的情况，方便后续单独筛选。',
-      nzOkText: '确认标记',
-      nzCancelText: '取消',
-      nzOnOk: () => this.issueDetailStore.waitForUpdate(),
-    });
-  }
-
-  closeConfirm(reason: string) {
-    // this.issueDetailStore.close
-  }
-
-  resolveConfirm(summary: string) {
-    this.issueDetailStore.resolve(summary);
-    this.IssueResolveDialogOpen.set(false);
-  }
-
-  assignConfirm(input: AssignIssueInput) {
-    this.issueDetailStore.assign(input);
-    this.IssueAssignDialogOpen.set(false);
-  }
-
-  AddParticipantsConfirm(input: AddParticipantsInput) {
-    this.issueDetailStore.addParticipants(input);
-    this.IssueAddParticipantsDialogOpen.set(false);
-  }
-
-  removeParticipant(participantId: string) {
-    this.issueDetailStore.removeParticipant(participantId);
-  }
-
-  cancelAssignDialog() {
-    this.IssueAssignDialogOpen.set(false);
-  }
-
-  cancelAddParticipantsConfirm() {
-    this.IssueAddParticipantsDialogOpen.set(false);
-  }
-
-  cancelCloseDialog() {
-    this.IssueCloseDialogOpen.set(false);
-  }
-
-  cancelResolveDialog() {
-    this.IssueResolveDialogOpen.set(false);
-  }
-
-  updateStatus(status: IssueStatus | '') {
-    this.issueListStore.updateQueryStatus(status);
-  }
-
-  updatePriority(priority: IssuePriority | '') {
-    this.issueListStore.updateQueryPriority(priority);
-  }
-
-  statusBtnTypeByType(status: IssueStatus | '') {
-    if (status === '' && this.query().status.length === 0) {
-      return 'primary';
-    }
-    if (this.query().status.includes(status)) {
-      return 'primary';
-    }
-    return 'default';
-  }
-
-  priorityBtnTypeByType(priority: IssuePriority | '') {
-    if (priority === '' && this.query().priority.length === 0) {
-      return 'primary';
-    }
-    if (this.query().priority.includes(priority)) {
-      return 'primary';
-    }
-    return 'default';
-  }
-
-  updateKeyword(keyword: string) {
-    this.issueListStore.updateQuery({ keyword });
+  updateQuery(patch: Partial<IssueListQuery>) {
+    this.issueListStore.updateQuery(patch);
   }
 }

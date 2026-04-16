@@ -6,43 +6,10 @@
   flex-direction: column;
   align-items: center;
   overflow: auto;
-  .toolbar {
-    width: calc(100% - 48px * 2);
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    margin-top: 16px;
-    padding: 16px;
-    .filter-group {
-      width: 80%;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      justify-content: space-between;
-      .keyword-wrap {
-        width: 100%;
-      }
-    }
-    .status-filter-wrap {
-      min-width: 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .right-col {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: end;
-      justify-content: end;
-      .view-type {
-        display: flex;
-        justify-content: end;
-      }
-    }
+  .filter-container {
+    padding: 0 48px;
   }
-  
+
   .list-content {
     width: 100%;
     padding: 12px 48px 8px;

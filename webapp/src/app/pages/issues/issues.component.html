@@ -1,55 +1,9 @@
 <app-page-layout [title]="'测试跟踪'" [loading]="loading()" [isFullscreen]="true" [isOverflowYAuto]="false">
     <div class="issues-content">
-        <div class="toolbar">
-            <div class="filter-group">
-                <div class="keyword-wrap">
-                    <nz-input-wrapper>
-                        <nz-icon nzInputPrefix nzType="search" nzTheme="outline"></nz-icon>
-                        <input nz-input type="text" [ngModel]="query().keyword" (ngModelChange)="updateKeyword($event)"
-                            placeholder="搜索标题、编号或提报人" />
-                    </nz-input-wrapper>
-                </div>
 
-                <div class="status-filter-wrap">
-                    <span class="label">
-                        <nz-icon nzType="tags" nzTheme="fill" /> 状态：
-                    </span>
-                    @for (item of statusOptions ; track item.value) {
-                    <button nz-button type="button" nzShape="round" [nzType]="statusBtnTypeByType(item.value)"
-                        (click)="updateStatus(item.value)">
-                        {{ item.label }}
-                    </button>
-                    }
-                </div>
-                <div class="priority-filter-wrap">
-                    <span class="label">
-                        <nz-icon nzType="experiment" nzTheme="fill" />
-                        优先级：
-                    </span>
-                    @for(item of priorityOptions; track item.value){
-                    <button nz-button type="button" [nzType]="priorityBtnTypeByType(item.value)"
-                        (click)="updatePriority(item.value)">
-                        {{item.label}}
-                    </button>
-                    }
-                </div>
-            </div>
-            <div class="right-col">
-                <!-- 新建按钮 -->
-                <!-- <button nz-button nzType="primary" type="button" (click)="openCreateDialog()">
-                    <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
-                    新建研发项
-                </button> -->
-                <!-- 列表视图切换 -->
-                <nz-radio-group [(ngModel)]="viewType" class="view-type">
-                    <label nz-radio-button nzValue="list">
-                        <nz-icon nzType="unordered-list" nzTheme="outline"></nz-icon>
-                    </label>
-                    <!-- <label nz-radio-button nzValue="board">
-                        <nz-icon nzType="book" nzTheme="outline"></nz-icon>
-                    </label> -->
-                </nz-radio-group>
-            </div>
+        <!-- 过滤 -->
+        <div class="filter-container">
+            <app-issue-filter-bar [query]="query()" (queryChange)="updateQuery($event)"></app-issue-filter-bar>
         </div>
 
         <!-- 列表 -->
@@ -69,21 +23,5 @@
         </div>
     </div>
 
-    <app-issue-detail [open]="open()" (commentSubmit)="commentSubmit($event)" (close)="closeIssueDetail()"
-        (actionClick)="handleActions($event)" (removeParticipant)="removeParticipant($event)"></app-issue-detail>
-
-    <app-issue-close-dialog [open]="IssueCloseDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
-        (cancel)="cancelCloseDialog()" (confirm)="closeConfirm($event)"></app-issue-close-dialog>
-
-    <app-issue-resolve-dialog [open]="IssueResolveDialogOpen()" [busy]="busy()" [item]="selectedIssue()"
-        (cancel)="cancelResolveDialog()" (confirm)="resolveConfirm($event)"></app-issue-resolve-dialog>
-
-    <app-issue-assign-dialog [open]="IssueAssignDialogOpen()" [busy]="busy()" [issue]="selectedIssue()"
-        [actionLabel]="IssueAssignActionLabel()" [members]="members()" (cancel)="cancelAssignDialog()"
-        (confirm)="assignConfirm($event)"></app-issue-assign-dialog>
-
-    <app-issue-add-participants-dialog [open]="IssueAddParticipantsDialogOpen()" [busy]="busy()"
-        [issue]="selectedIssue()" [members]="members()" [participants]="IssueParticipants()"
-        (cancel)="cancelAddParticipantsConfirm()"
-        (confirm)="AddParticipantsConfirm($event)"></app-issue-add-participants-dialog>
+    <app-issue-detail [open]="open()" (close)="closeIssueDetail()"></app-issue-detail>
 </app-page-layout>
