@@ -26,14 +26,6 @@
                         <nz-icon nzType="experiment" nzTheme="fill" />
                         优先级：
                     </span>
-                    <!-- <nz-radio-group [ngModel]="query().priority" (ngModelChange)="updatePriority($event)"
-                        name="priority">
-                        @for (item of priorityOptions; track item.value) {
-                        <label nz-radio-button [nzValue]="item.value">
-                            {{ item.label }}
-                        </label>
-                        }
-                    </nz-radio-group> -->
                     @for(item of priorityOptions; track item.value){
                     <button nz-button type="button" [nzType]="priorityBtnTypeByType(item.value)"
                         (click)="updatePriority(item.value)">

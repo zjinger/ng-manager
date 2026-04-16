@@ -22,7 +22,7 @@ import { IssueApiService } from '../services/issue-api.service';
 // };
 const DEFAULT_QUERY: IssueListQuery = {
   page: 1,
-  pageSize: 20,
+  pageSize: 10,
   keyword: '',
   projectId: '',
   status: ['open', 'in_progress', 'reopened'],

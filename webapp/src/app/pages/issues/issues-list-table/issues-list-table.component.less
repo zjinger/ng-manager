@@ -45,6 +45,18 @@
 
 .issue-item-row {
   cursor: pointer;
+
+  &.selected-row > td:first-child {
+    border-left: 4px solid #91d5ff;
+  }
+
+  &.selected-row:hover > td {
+    background-color: #e6f7ff;
+  }
+
+  &.selected-row > td {
+    background-color: #e6f7ff;
+  }
 }
 
 .preview-float {

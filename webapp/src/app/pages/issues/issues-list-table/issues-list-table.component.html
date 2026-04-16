@@ -12,7 +12,7 @@
     </thead>
     <tbody>
         @for (item of issues(); track item.id) {
-        <tr (click)="selectItem.emit(item)" [style.background-color]="item.id === selectedItem()?.id ? '#1890ff24' : ''"
+        <tr (click)="selectItem.emit(item)" [class.selected-row]="item.id === selectedItem()?.id"
             class="issue-item-row">
             <td>{{ $index + 1 }}</td>
             <td>

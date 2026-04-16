@@ -38,7 +38,7 @@ import { CommonModule, DatePipe } from '@angular/common';
         @for (item of rdItems(); track item.id) {
           <tr
             (click)="selectItem.emit(item)"
-            [style.background-color]="item.id === selectedItem()?.id ? '#1890ff24' : ''"
+            [class.selected-row]="item.id === selectedItem()?.id"
             class="rd-item-row"
           >
             <td class="title-col">
@@ -79,6 +79,17 @@ import { CommonModule, DatePipe } from '@angular/common';
     }
     .rd-item-row {
       cursor: pointer;
+      &.selected-row > td:first-child {
+        border-left: 4px solid #91d5ff;
+      }
+
+      &.selected-row > td {
+        background-color: #e6f7ff;
+      }
+      
+      &.selected-row:hover > td {
+        background-color: #e6f7ff;
+      }
     }
   `,
 })

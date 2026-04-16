@@ -36,7 +36,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               {{ startActionLabel() }}
             </button>
           }
-          @if (canClaim()) {
+          @if (canClaim() && !canAssign()) {
             <button
               nz-button
               nzType="default"
