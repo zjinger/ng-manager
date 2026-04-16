@@ -5,7 +5,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSliderModule } from 'ng-zorro-antd/slider';
 
-import { PanelCardComponent } from '@shared/ui';
+import { MarkdownEditorComponent, MarkdownViewerComponent, PanelCardComponent } from '@shared/ui';
 import type { RdItemEntity, RdLogEntity, RdStageEntity } from '../../models/rd.model';
 import { RdActivityTimelineComponent } from '../rd-activity-timeline/rd-activity-timeline.component';
 import { RdPropsPanelComponent } from '../rd-props-panel/rd-props-panel.component';
@@ -22,6 +22,8 @@ import { RdPropsPanelComponent } from '../rd-props-panel/rd-props-panel.componen
     PanelCardComponent,
     RdPropsPanelComponent,
     RdActivityTimelineComponent,
+    MarkdownViewerComponent,
+    MarkdownEditorComponent,
   ],
   template: `
     @if (item(); as current) {
@@ -36,20 +38,26 @@ import { RdPropsPanelComponent } from '../rd-props-panel/rd-props-panel.componen
             @if (editingBasic()) {
               <div class="summary-card__edit">
                 <input nz-input [ngModel]="basicTitleDraft()" (ngModelChange)="basicTitleDraft.set($event)" maxlength="120" />
-                <textarea
-                  nz-input
-                  rows="5"
+                <app-markdown-editor
                   [ngModel]="basicDescriptionDraft()"
                   (ngModelChange)="basicDescriptionDraft.set($event)"
-                  placeholder="请输入描述"
-                ></textarea>
+                  [minHeight]="'200px'"
+                  [placeholder]="'请输入描述（支持 Markdown 格式）'"
+                ></app-markdown-editor>
                 <div class="summary-card__edit-actions">
                   <button nz-button nzType="default" [disabled]="busy()" (click)="cancelBasicEdit()">取消</button>
                   <button nz-button nzType="primary" [disabled]="busy() || !basicDirty()" (click)="saveBasic()">保存</button>
                 </div>
               </div>
             } @else {
-              <p>{{ current.description || '暂无描述' }}</p>
+              @if (current.description) {
+                <app-markdown-viewer
+                  [content]="current.description"
+                  [showToc]="false"
+                ></app-markdown-viewer>
+              } @else {
+                <p class="empty-hint">暂无描述</p>
+              }
             }
           </div>
         </app-panel-card>
@@ -195,12 +203,13 @@ import { RdPropsPanelComponent } from '../rd-props-panel/rd-props-panel.componen
         line-height: 1.7;
         white-space: pre-wrap;
       }
+      .summary-card .empty-hint {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
       .summary-card__edit {
         display: grid;
         gap: 10px;
-      }
-      .summary-card__edit textarea {
-        resize: vertical;
       }
       .summary-card__edit-actions {
         display: flex;
