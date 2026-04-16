@@ -148,8 +148,17 @@ export interface IssueListQuery {
   pageSize: number;
   keyword?: string;
   projectId?: string;
-  status?: string;
-  priority?: string;
+  status: string[];
+  types: IssueType[];
+  priority: string[];
+  reporterIds: string[];
+  assigneeIds: string[];
+  moduleCodes: string[];
+  versionCodes: string[];
+  environmentCodes: string[];
+  includeAssigneeParticipants: boolean;
+  sortBy: 'updatedAt' | 'createdAt';
+  sortOrder: 'desc' | 'asc';
 }
 
 export type IssueListResult = PageResult<IssueEntity>;

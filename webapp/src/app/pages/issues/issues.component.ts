@@ -14,6 +14,7 @@ import {
   IssueActionType,
   IssueEntity,
   IssueListQuery,
+  IssuePriority,
   IssueStatus,
 } from './models/issue.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -299,11 +300,31 @@ export class IssuesComponent {
   }
 
   updateStatus(status: IssueStatus | '') {
-    this.issueListStore.updateQuery({ status });
+    this.issueListStore.updateQueryStatus(status);
   }
 
-  updatePriority(priority: IssueStatus) {
-    this.issueListStore.updateQuery({ priority });
+  updatePriority(priority: IssuePriority | '') {
+    this.issueListStore.updateQueryPriority(priority);
+  }
+
+  statusBtnTypeByType(status: IssueStatus | '') {
+    if (status === '' && this.query().status.length === 0) {
+      return 'primary';
+    }
+    if (this.query().status.includes(status)) {
+      return 'primary';
+    }
+    return 'default';
+  }
+
+  priorityBtnTypeByType(priority: IssuePriority | '') {
+    if (priority === '' && this.query().priority.length === 0) {
+      return 'primary';
+    }
+    if (this.query().priority.includes(priority)) {
+      return 'primary';
+    }
+    return 'default';
   }
 
   updateKeyword(keyword: string) {

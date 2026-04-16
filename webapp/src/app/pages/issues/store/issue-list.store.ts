@@ -4,21 +4,44 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { ProjectContextStore } from '@app/core/stores';
 import { UserStore } from '@app/core/stores/user/user.store';
 import type { PageResult } from '@app/core/types/page.types';
-import type { CreateIssueInput, IssueEntity, IssueListQuery } from '../models/issue.model';
+import type {
+  CreateIssueInput,
+  IssueEntity,
+  IssueListQuery,
+  IssuePriority,
+  IssueStatus,
+} from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
 
+// const DEFAULT_QUERY: IssueListQuery = {
+//   page: 1,
+//   pageSize: 10,
+//   keyword: '',
+//   status: '',
+//   priority: '',
+// };
 const DEFAULT_QUERY: IssueListQuery = {
   page: 1,
-  pageSize: 10,
+  pageSize: 20,
   keyword: '',
-  status: '',
-  priority: '',
+  projectId: '',
+  status: ['open', 'in_progress', 'reopened'],
+  types: [],
+  priority: [],
+  reporterIds: [],
+  assigneeIds: [],
+  moduleCodes: [],
+  versionCodes: [],
+  environmentCodes: [],
+  includeAssigneeParticipants: true,
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
 };
 
 @Injectable()
 export class IssueListStore {
   private readonly issueApi = inject(IssueApiService);
-  private readonly projectContext = inject(ProjectContextStore)
+  private readonly projectContext = inject(ProjectContextStore);
   private readonly userStore = inject(UserStore);
 
   private readonly queryState = signal<IssueListQuery>({ ...DEFAULT_QUERY });
@@ -33,7 +56,7 @@ export class IssueListStore {
   readonly page = computed(() => this.queryState().page ?? 1);
   readonly pageSize = computed(() => this.queryState().pageSize ?? 20);
 
-  private readonly currentProjectId = this.projectContext.currentProjectId
+  private readonly currentProjectId = this.projectContext.currentProjectId;
 
   initialize(): void {
     this.userStore.ensureUserLoaded();
@@ -69,6 +92,34 @@ export class IssueListStore {
       ...patch,
       page: patch.page ?? query.page ?? 1,
     }));
+  }
+
+  updateQueryPriority(priority: IssuePriority | '') {
+    if (priority === '') {
+      this.updateQuery({ priority: [] });
+      return;
+    }
+    if (this.query().priority.includes(priority)) {
+      this.updateQuery({
+        priority: this.query().priority.filter((s) => s !== priority),
+      });
+      return;
+    }
+    this.updateQuery({ priority: [...this.query().priority, priority] });
+  }
+
+  updateQueryStatus(status: IssueStatus | '') {
+    if (status === '') {
+      this.updateQuery({ status: [] });
+      return;
+    }
+    if (this.query().status.includes(status)) {
+      this.updateQuery({
+        status: this.query().status.filter((s) => s !== status),
+      });
+      return;
+    }
+    this.updateQuery({ status: [...this.query().status, status] });
   }
 
   async load() {

@@ -1,3 +1,5 @@
+import { IssuePriority } from "@pages/issues/models/issue.model";
+
 export const PRIORITY_LABELS: Record<string, string> = {
   low: '低',
   medium: '中',
@@ -5,7 +7,7 @@ export const PRIORITY_LABELS: Record<string, string> = {
   critical: '紧急',
 };
 
-export const PRIORITY_OPTIONS = [
+export const PRIORITY_OPTIONS: Array<{ label: string; value: "" | IssuePriority }> = [
   { label: '全部优先级', value: '' },
   { label: '低', value: 'low' },
   { label: '中', value: 'medium' },
