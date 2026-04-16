@@ -1,6 +1,7 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -64,6 +65,7 @@ export class ProjectListPageComponent {
   private readonly projectApi = inject(ProjectApiService);
   private readonly rdApi = inject(RdApiService);
   private readonly projectContext = inject(ProjectContextStore);
+  private readonly authStore = inject(AuthStore);
   private readonly message = inject(NzMessageService);
   private readonly clipboard = inject(Clipboard);
 
@@ -105,6 +107,28 @@ export class ProjectListPageComponent {
   readonly pendingTokenIds = computed(() => Object.keys(this.pendingTokenMap()));
   readonly previewLoadingIds = computed(() => Object.keys(this.previewLoadingMap()));
   readonly memberPreviewLoadingIds = computed(() => Object.keys(this.memberPreviewLoadingMap()));
+  readonly canTransferOwner = computed(() => {
+    const current = this.authStore.currentUser();
+    if (!current) {
+      return false;
+    }
+    if (current.role === 'admin') {
+      return true;
+    }
+    const userId = current.userId?.trim();
+    if (!userId) {
+      return false;
+    }
+    return this.members().some((member) => member.userId === userId && member.isOwner);
+  });
+  readonly canPromoteAdmin = computed(() => {
+    const current = this.authStore.currentUser();
+    const userId = current?.userId?.trim();
+    if (!userId) {
+      return false;
+    }
+    return this.members().some((member) => member.userId === userId && member.isOwner);
+  });
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个项目`);
 
   constructor() {
@@ -243,6 +267,44 @@ export class ProjectListPageComponent {
       },
       error: (error: unknown) => {
         this.membersBusy.set(false);
+      }
+    });
+  }
+
+  revokeMemberAdmin(member: ProjectMemberEntity): void {
+    const project = this.selectedProject();
+    if (!project) {
+      return;
+    }
+    this.membersBusy.set(true);
+    this.projectApi.updateMember(project.id, member.id, { roleCode: 'member' }).subscribe({
+      next: () => {
+        this.membersBusy.set(false);
+        this.message.success('成员管理员权限已取消');
+        this.loadMembers(project.id);
+      },
+      error: () => {
+        this.membersBusy.set(false);
+        this.message.error('取消管理员权限失败');
+      }
+    });
+  }
+
+  transferOwner(member: ProjectMemberEntity): void {
+    const project = this.selectedProject();
+    if (!project) {
+      return;
+    }
+    this.membersBusy.set(true);
+    this.projectApi.updateMember(project.id, member.id, { isOwner: true }).subscribe({
+      next: () => {
+        this.membersBusy.set(false);
+        this.message.success('项目负责人已变更，原项目负责人已降级为普通成员');
+        this.loadMembers(project.id);
+      },
+      error: () => {
+        this.membersBusy.set(false);
+        this.message.error('项目负责人变更失败');
       }
     });
   }

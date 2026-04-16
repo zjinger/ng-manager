@@ -676,15 +676,12 @@ export class ProjectListTableComponent {
 
   memberRoleLabel(member: ProjectMemberEntity): string {
     if (member.isOwner) {
-      return 'Owner';
+      return '项目负责人';
     }
     if (member.roleCode === 'project_admin') {
-      return 'Manager';
+      return '项目管理员';
     }
-    if (member.roleCode === 'qa') {
-      return 'Tester';
-    }
-    return 'Member';
+    return '成员';
   }
 
   memberRoleTone(member: ProjectMemberEntity): 'owner' | 'manager' | 'tester' | 'member' {

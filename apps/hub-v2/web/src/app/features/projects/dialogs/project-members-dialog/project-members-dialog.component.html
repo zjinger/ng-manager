@@ -64,6 +64,12 @@
           </div>
         </div>
       </form>
+      <div class="member-admin-tip">
+        <div class="member-admin-tip__title">项目负责人说明</div>
+        <div class="member-admin-tip__text">
+          项目负责人通常是项目创建者，可管理成员与项目配置；项目管理员可协助进行成员管理和项目配置维护。
+        </div>
+      </div>
     </section>
 
     <section class="members-panel">
@@ -89,7 +95,7 @@
                 <div class="member-item__name">
                   {{ member.displayName }}
                   @if (member.isOwner) {
-                    <span class="member-item__tag">创建者</span>
+                    <span class="member-item__tag">项目负责人</span>
                   }
                   @if (member.roleCode === 'project_admin') {
                     <span class="member-item__tag">项目管理员</span>
@@ -100,12 +106,23 @@
                 <div class="member-item__meta">{{ roleleLabel(member.roleCode || 'member') }}</div>
                 <!-- <div class="member-item__edit">
                   @if (member.isOwner) {
-                    <span class="member-item__hint">创建者（Owner）不可修改</span>
+                    <span class="member-item__hint">项目负责人不可修改</span>
                   }
                 </div> -->
               </div>
               <div class="member-item__actions">
-                @if (!member.isOwner && member.roleCode !== 'project_admin') {
+                @if (canTransferOwner() && !member.isOwner) {
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy()"
+                    nz-popconfirm="确认将该成员设为项目负责人吗？当前项目负责人将降级为普通成员。"
+                    (nzOnConfirm)="transferOwner.emit(member)"
+                  >
+                    设为项目负责人
+                  </button>
+                }
+                @if (canPromoteAdmin() && !member.isOwner && member.roleCode !== 'project_admin') {
                   <button
                     nz-button
                     nzType="default"
@@ -116,12 +133,23 @@
                     设为管理员
                   </button>
                 }
+                @if (!member.isOwner && member.roleCode === 'project_admin') {
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy()"
+                    nz-popconfirm="确定取消该成员的项目管理员权限吗？"
+                    (nzOnConfirm)="revokeAdmin.emit(member)"
+                  >
+                    取消管理员
+                  </button>
+                }
                 <a
                   nz-button
                   nzType="text"
                   nzDanger
                   [disabled]="busy() || member.isOwner"
-                  nz-popconfirm="确定要移除改成员吗？"
+                  nz-popconfirm="确定要移除该成员吗？"
                   (nzOnConfirm)="remove.emit(member)"
                 >
                   <nz-icon nzType="minus" nzTheme="outline" />

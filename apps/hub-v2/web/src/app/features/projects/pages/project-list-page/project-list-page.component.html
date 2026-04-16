@@ -111,8 +111,12 @@
   [users]="users()"
   [loading]="membersLoading()"
   [busy]="membersBusy()"
+  [canTransferOwner]="canTransferOwner()"
+  [canPromoteAdmin]="canPromoteAdmin()"
   (cancel)="closeMembersDialog()"
   (add)="addMember($event)"
   (promoteAdmin)="promoteMemberAdmin($event)"
+  (revokeAdmin)="revokeMemberAdmin($event)"
+  (transferOwner)="transferOwner($event)"
   (remove)="removeMember($event)"
 />

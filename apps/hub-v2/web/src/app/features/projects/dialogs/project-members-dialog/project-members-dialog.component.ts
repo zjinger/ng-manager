@@ -34,9 +34,13 @@ export class ProjectMembersDialogComponent {
   readonly users = input<ProjectMemberCandidate[]>([]);
   readonly loading = input(false);
   readonly busy = input(false);
+  readonly canTransferOwner = input(false);
+  readonly canPromoteAdmin = input(false);
 
   readonly add = output<AddProjectMemberInput>();
   readonly promoteAdmin = output<ProjectMemberEntity>();
+  readonly revokeAdmin = output<ProjectMemberEntity>();
+  readonly transferOwner = output<ProjectMemberEntity>();
   readonly remove = output<ProjectMemberEntity>();
   readonly cancel = output<void>();
 

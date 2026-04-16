@@ -1,6 +1,7 @@
 .members-dialog {
   display: grid;
   gap: 18px;
+  font-size: 13px;
 }
 
 .members-panel {
@@ -14,6 +15,27 @@
   background: linear-gradient(180deg, rgba(79, 70, 229, 0.04), rgba(79, 70, 229, 0.01)), var(--bg-container);
 }
 
+.member-admin-tip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-color);
+  background: var(--bg-subtle);
+}
+
+.member-admin-tip__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.member-admin-tip__text {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
 .members-panel__header {
   display: flex;
   align-items: center;
@@ -23,7 +45,7 @@
 }
 
 .members-panel__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-heading);
 }
@@ -38,7 +60,7 @@
   border-radius: 999px;
   background: var(--bg-subtle);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -77,6 +99,7 @@
 .members-empty {
   padding: 18px 0 8px;
   color: var(--text-muted);
+  font-size: 12px;
 }
 
 .members-list {
@@ -130,13 +153,13 @@
   border-radius: 999px;
   background: rgba(79, 70, 229, 0.14);
   color: var(--primary-600);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .member-item__meta {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -149,7 +172,7 @@
 
 .member-item__hint {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .member-item__actions {

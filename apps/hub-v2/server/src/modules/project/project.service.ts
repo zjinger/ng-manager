@@ -272,12 +272,46 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, `project member not found: ${memberId}`, 404);
     }
 
-    if (input.isOwner !== undefined && input.isOwner !== current.isOwner) {
-      throw new AppError(ERROR_CODES.PROJECT_OWNER_IMMUTABLE, "owner is fixed to project creator", 400);
+    const isRoleChanged = input.roleCode !== undefined && input.roleCode !== current.roleCode;
+    const isOwnerChanged = input.isOwner !== undefined && input.isOwner !== current.isOwner;
+    if (!isRoleChanged && !isOwnerChanged) {
+      return current;
     }
 
-    if (input.roleCode !== undefined && input.roleCode !== "project_admin") {
-      throw new AppError(ERROR_CODES.PROJECT_MEMBER_ROLE_UNSUPPORTED, "only promote-to-project-admin is supported", 400);
+    // Promote a member to owner: only current owner or global admin can transfer ownership.
+    if (input.isOwner === true && !current.isOwner) {
+      this.assertCanTransferOwner(projectId, ctx);
+      const now = nowIso();
+      const owners = this.repo.listMembers(projectId).filter((item) => item.isOwner && item.id !== current.id);
+
+      this.db.transaction(() => {
+        for (const owner of owners) {
+          this.repo.updateMember(projectId, owner.id, {
+            roleCode: "member",
+            isOwner: false,
+            updatedAt: now
+          });
+        }
+        this.repo.updateMember(projectId, current.id, {
+          roleCode: "project_admin",
+          isOwner: true,
+          updatedAt: now
+        });
+      })();
+
+      const next = this.repo.findMemberById(projectId, memberId);
+      if (!next) {
+        throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, `project member not found: ${memberId}`, 404);
+      }
+      await this.emitProjectMemberEvent(project, "member.updated", next, ctx, current);
+      return next;
+    }
+
+    if (input.isOwner === false && current.isOwner) {
+      const ownerCount = this.repo.listMembers(projectId).filter((item) => item.isOwner).length;
+      if (ownerCount <= 1) {
+        throw new AppError(ERROR_CODES.PROJECT_OWNER_IMMUTABLE, "project must keep at least one owner", 400);
+      }
     }
 
     const changed = this.repo.updateMember(projectId, memberId, {
@@ -525,6 +559,20 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     }
     if (member.roleCode !== "project_admin" && !member.isOwner) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限执行该操作，需要项目管理员权限", 403);
+    }
+  }
+
+  private assertCanTransferOwner(projectId: string, ctx: RequestContext): void {
+    if (ctx.roles.includes("admin")) {
+      return;
+    }
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限转移项目 Owner", 403);
+    }
+    const operator = this.repo.findMemberByProjectAndUserId(projectId, userId);
+    if (!operator?.isOwner) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "仅项目 Owner 可转移拥有者", 403);
     }
   }
 
