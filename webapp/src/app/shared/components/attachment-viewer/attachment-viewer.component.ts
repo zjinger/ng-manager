@@ -17,6 +17,17 @@ export interface AttachmentPreviewItem {
   imports: [NzImageModule, NzIconModule, NzModalModule],
   template: `
     <div class="attachment-viewer__item">
+      <!-- 类型角标 -->
+      <div class="attachment-viewer__type">
+        @if (item().kind === 'image') {
+          图片
+        } @else if (item().kind === 'video') {
+          视频
+        } @else {
+          文件
+        }
+      </div>
+
       <!-- 内容 -->
       @if (item().kind === 'image') {
         <img
@@ -84,6 +95,23 @@ export interface AttachmentPreviewItem {
         border-radius: 8px;
         overflow: hidden;
         background: #f5f5f5;
+        // 类型角标
+        .attachment-viewer__type {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          z-index: 2;
+
+          padding: 4px 8px;
+          font-size: .75rem;
+          line-height: 1;
+          border-radius: 4px;
+
+          color: #fff;
+          background: #1890ff;
+
+          pointer-events: none; /* 不影响点击 */
+        }
       }
 
       .attachment-viewer__image,
