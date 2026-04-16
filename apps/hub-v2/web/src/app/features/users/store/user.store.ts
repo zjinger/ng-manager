@@ -8,7 +8,7 @@ import { UserApiService } from '../services/user-api.service';
 
 const DEFAULT_QUERY: UserListQuery = {
   page: 1,
-  pageSize: 20,
+  pageSize: 100,
   keyword: '',
   status: '',
 };
