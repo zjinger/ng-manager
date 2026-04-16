@@ -66,6 +66,7 @@
   [open]="editDialogOpen()"
   [busy]="editBusy()"
   [project]="selectedProject()"
+  [canEditProjects]="isProjectAdmin()"
   (cancel)="editDialogOpen.set(false)"
   (save)="saveProject($event)"
 />
@@ -85,6 +86,7 @@
   [pendingVersionIds]="pendingVersionIds()"
   [pendingStageIds]="pendingStageIds()"
   [pendingTokenIds]="pendingTokenIds()"
+  [canManageConfig]="isProjectAdmin()"
   (cancel)="closeConfigDialog()"
   (createModule)="createModule($event)"
   (updateModule)="updateModule($event)"
@@ -113,6 +115,7 @@
   [busy]="membersBusy()"
   [canTransferOwner]="canTransferOwner()"
   [canPromoteAdmin]="canPromoteAdmin()"
+  [canManageMembers]="isProjectAdmin()"
   (cancel)="closeMembersDialog()"
   (add)="addMember($event)"
   (promoteAdmin)="promoteMemberAdmin($event)"

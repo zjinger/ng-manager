@@ -18,11 +18,12 @@ import type {
   ProjectMemberRole,
   ProjectSummary
 } from '../../models/project.model';
+import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
 
 @Component({
   selector: 'app-project-members-dialog',
   standalone: true,
-  imports: [FormsModule, NzAvatarModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective],
+  imports: [FormsModule, NzAvatarModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzPopconfirmModule, NzFormModule, NzIconModule, NzGridModule, DialogShellComponent, NzPopconfirmDirective, NzTooltipDirective],
   templateUrl: './project-members-dialog.component.html',
   styleUrls: ['./project-members-dialog.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +37,8 @@ export class ProjectMembersDialogComponent {
   readonly busy = input(false);
   readonly canTransferOwner = input(false);
   readonly canPromoteAdmin = input(false);
+  readonly canManageMembers = input(false);
+  
 
   readonly add = output<AddProjectMemberInput>();
   readonly promoteAdmin = output<ProjectMemberEntity>();

@@ -15,6 +15,7 @@ import { AvatarImageNormalizerService } from '@shared/services/avatar-image-norm
 import { DialogShellComponent } from '@shared/ui';
 import { PROJECT_TYPE_LABELS, PROJECT_TYPE_OPTIONS, type ProjectSummary, type ProjectType, type UpdateProjectInput } from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 type EditDraft = {
   name: string;
@@ -32,7 +33,7 @@ type EditDraft = {
 @Component({
   selector: 'app-project-edit-dialog',
   standalone: true,
-  imports: [DatePipe, FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, NzDatePickerModule, DialogShellComponent, NgClass],
+  imports: [NgClass, DatePipe, FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, NzDatePickerModule, DialogShellComponent, NzPopconfirmModule],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -189,10 +190,12 @@ type EditDraft = {
                         {{ (draft().displayCode || draft().name || '项目').slice(0, 3).toUpperCase() }}
                       }
                     </span>
-                    <input #avatarInput type="file" [accept]="avatarUploadPolicy.accept" hidden (change)="onAvatarPicked($event)" />
-                    <button nz-button type="button" [nzLoading]="avatarUploading()" (click)="avatarInput.click()">上传图标</button>
-                    @if (draft().avatarUploadId) {
-                      <button nz-button nzType="default" type="button" (click)="clearAvatar()">移除</button>
+                    @if(canEditProjects()) {
+                      <input #avatarInput type="file" [accept]="avatarUploadPolicy.accept" hidden (change)="onAvatarPicked($event)" />
+                      <button nz-button type="button" [nzLoading]="avatarUploading()" (click)="avatarInput.click()">上传图标</button>
+                      @if (draft().avatarUploadId) {
+                        <button nz-popconfirm nzPopconfirmTitle="确定要移除项目图标吗？" nzPopconfirmPlacement="top" (nzOnConfirm)="clearAvatar()" nz-button nzType="default" type="button">移除</button>
+                      }
                     }
                   </div>
                 </nz-form-control>
@@ -201,14 +204,16 @@ type EditDraft = {
           </div>
         </form>
       </div>
-
-      <ng-container dialog-footer>
+      @if(canEditProjects()){
+        <ng-container dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
         <button nz-button nzType="primary" [nzLoading]="busy()" [disabled]="!canSubmit()" (click)="submit()">
           <nz-icon nzType="save" nzTheme="outline" />
           保存
         </button>
       </ng-container>
+      }
+      
     </app-dialog-shell>
   `,
   styles: [
@@ -303,6 +308,7 @@ export class ProjectEditDialogComponent {
 
   readonly open = input(false);
   readonly busy = input(false);
+  readonly canEditProjects = input(false);
   readonly project = input<ProjectSummary | null>(null);
   readonly cancel = output<void>();
   readonly save = output<UpdateProjectInput>();

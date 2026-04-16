@@ -107,20 +107,29 @@ export class ProjectListPageComponent {
   readonly pendingTokenIds = computed(() => Object.keys(this.pendingTokenMap()));
   readonly previewLoadingIds = computed(() => Object.keys(this.previewLoadingMap()));
   readonly memberPreviewLoadingIds = computed(() => Object.keys(this.memberPreviewLoadingMap()));
-  readonly canTransferOwner = computed(() => {
+  // 项目负责人
+  readonly isProjectOwner = computed(() => {
     const current = this.authStore.currentUser();
-    if (!current) {
-      return false;
-    }
-    if (current.role === 'admin') {
-      return true;
-    }
-    const userId = current.userId?.trim();
+    const userId = current?.userId?.trim();
     if (!userId) {
       return false;
     }
     return this.members().some((member) => member.userId === userId && member.isOwner);
+  })
+
+  readonly isProjectAdmin = computed(() => {
+    const current = this.authStore.currentUser();
+    const userId = current?.userId?.trim();
+    if (!userId) {
+      return false;
+    }
+    return this.members().some((member) => member.userId === userId && (member.isOwner || member.roleCode === 'project_admin'));
   });
+
+  readonly canTransferOwner = computed(() => {
+    return this.isProjectOwner();
+  });
+
   readonly canPromoteAdmin = computed(() => {
     const current = this.authStore.currentUser();
     const userId = current?.userId?.trim();
@@ -154,6 +163,8 @@ export class ProjectListPageComponent {
   openEditDialog(project: ProjectSummary): void {
     this.selectedProject.set(project);
     this.editDialogOpen.set(true);
+    this.loadMembers(project.id);
+    this.loadMemberCandidates(project.id);
   }
 
   saveProject(input: UpdateProjectInput): void {

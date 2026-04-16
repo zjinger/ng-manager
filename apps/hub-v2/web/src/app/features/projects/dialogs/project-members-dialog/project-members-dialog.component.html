@@ -55,7 +55,8 @@
               nz-button
               nzType="primary"
               class="member-form__submit"
-              [disabled]="!selectedUserId()"
+              [nz-tooltip]="!canManageMembers() ? '没有权限管理成员' : ''"
+              [disabled]="!selectedUserId() || !canManageMembers()"
               [nzLoading]="busy()"
               (click)="submitAdd()"
             >
@@ -110,51 +111,55 @@
                   }
                 </div> -->
               </div>
-              <div class="member-item__actions">
-                @if (canTransferOwner() && !member.isOwner) {
-                  <button
+              @if (canManageMembers()) {
+                <div class="member-item__actions">
+                  @if (canTransferOwner() && !member.isOwner) {
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy()"
+                      nz-popconfirm="确认将该成员设为项目负责人吗？当前项目负责人将降级为普通成员。"
+                      (nzOnConfirm)="transferOwner.emit(member)"
+                    >
+                      设为项目负责人
+                    </button>
+                  }
+                  @if (
+                    canPromoteAdmin() && !member.isOwner && member.roleCode !== 'project_admin'
+                  ) {
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy()"
+                      nz-popconfirm="确定将该成员设为项目管理员吗？"
+                      (nzOnConfirm)="promoteAdmin.emit(member)"
+                    >
+                      设为管理员
+                    </button>
+                  }
+                  @if (!member.isOwner && member.roleCode === 'project_admin') {
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy()"
+                      nz-popconfirm="确定取消该成员的项目管理员权限吗？"
+                      (nzOnConfirm)="revokeAdmin.emit(member)"
+                    >
+                      取消管理员
+                    </button>
+                  }
+                  <a
                     nz-button
-                    nzType="default"
-                    [disabled]="busy()"
-                    nz-popconfirm="确认将该成员设为项目负责人吗？当前项目负责人将降级为普通成员。"
-                    (nzOnConfirm)="transferOwner.emit(member)"
+                    nzType="text"
+                    nzDanger
+                    [disabled]="busy() || member.isOwner"
+                    nz-popconfirm="确定要移除该成员吗？"
+                    (nzOnConfirm)="remove.emit(member)"
                   >
-                    设为项目负责人
-                  </button>
-                }
-                @if (canPromoteAdmin() && !member.isOwner && member.roleCode !== 'project_admin') {
-                  <button
-                    nz-button
-                    nzType="default"
-                    [disabled]="busy()"
-                    nz-popconfirm="确定将该成员设为项目管理员吗？"
-                    (nzOnConfirm)="promoteAdmin.emit(member)"
-                  >
-                    设为管理员
-                  </button>
-                }
-                @if (!member.isOwner && member.roleCode === 'project_admin') {
-                  <button
-                    nz-button
-                    nzType="default"
-                    [disabled]="busy()"
-                    nz-popconfirm="确定取消该成员的项目管理员权限吗？"
-                    (nzOnConfirm)="revokeAdmin.emit(member)"
-                  >
-                    取消管理员
-                  </button>
-                }
-                <a
-                  nz-button
-                  nzType="text"
-                  nzDanger
-                  [disabled]="busy() || member.isOwner"
-                  nz-popconfirm="确定要移除该成员吗？"
-                  (nzOnConfirm)="remove.emit(member)"
-                >
-                  <nz-icon nzType="minus" nzTheme="outline" />
-                </a>
-              </div>
+                    <nz-icon nzType="minus" nzTheme="outline" />
+                  </a>
+                </div>
+              }
             </div>
           }
         </div>

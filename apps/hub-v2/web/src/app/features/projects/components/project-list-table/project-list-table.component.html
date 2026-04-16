@@ -1,0 +1,224 @@
+<app-data-table>
+  <div table-head class="project-table__head">
+    <div>项目</div>
+    <div>类型</div>
+    <div>成员数</div>
+    <div>可见性</div>
+    <div>状态</div>
+    <div>更新时间</div>
+    <div>操作</div>
+  </div>
+  <div table-body class="project-table__body">
+    @for (item of items(); track item.id) {
+      <div class="project-row">
+        <div class="project-cell project-cell--project" (click)="toggleExpand.emit(item)">
+          <button
+            nz-button
+            nzType="link"
+            class="project-expand-btn"
+            type="button"
+            [class.expanded]="isExpanded(item.id)"
+          >
+            <nz-icon [nzType]="'right'" nzTheme="outline" />
+          </button>
+          <div
+            class="project-avatar"
+            [ngClass]="{ 'project-avatar--without-url': !showAvatar(item) }"
+          >
+            @if (showAvatar(item)) {
+              <img [src]="item.avatarUrl!" [alt]="item.name" (error)="markAvatarError(item.id)" />
+            } @else {
+              {{ avatarText(item.displayCode || item.name) }}
+            }
+          </div>
+          <div class="project-info">
+            <div class="project-name">
+              <strong>{{ item.name }}</strong>
+              <a
+                nz-icon
+                nz-tooltip="复制项目Key"
+                (click)="copyProjectKey(item.projectKey)"
+                nzType="copy"
+                nzTheme="outline"
+              ></a>
+            </div>
+            <div class="project-meta">{{ item.description || '暂无项目描述' }}</div>
+          </div>
+        </div>
+        <div class="project-cell">
+          <div class="project-type-cell">
+            <span class="project-tag" [attr.data-type]="item.projectType">{{
+              projectTypeLabel(item.projectType)
+            }}</span>
+            @if (projectTypeDetail(item); as detail) {
+              <span class="project-cell--muted">{{ detail }}</span>
+            }
+          </div>
+        </div>
+        <div class="project-cell">
+          <span class="project-member-count">{{ item.memberCount ?? 0 }} 人</span>
+        </div>
+        <div class="project-cell">
+          <span class="project-tag" [attr.data-visibility]="item.visibility">
+            {{ item.visibility === 'private' ? '私有' : '内部' }}
+          </span>
+        </div>
+        <div class="project-cell">
+          <span class="project-tag" [attr.data-status]="item.status">
+            {{ item.status === 'active' ? '活跃' : '归档' }}
+          </span>
+        </div>
+        <div class="project-cell project-cell--muted">
+          {{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}
+        </div>
+        <div class="project-cell">
+          <a
+            nz-button
+            nz-tooltip="编辑"
+            nzType="text"
+            class="project-action"
+            type="button"
+            (click)="edit.emit(item)"
+          >
+            <nz-icon nzType="edit" nzTheme="outline" />
+          </a>
+          <a
+            nz-button
+            nz-tooltip="成员"
+            nzType="text"
+            class="project-action"
+            type="button"
+            (click)="manageMembers.emit(item)"
+          >
+            <nz-icon nzType="team" nzTheme="outline" />
+          </a>
+          <a
+            nz-button
+            nz-tooltip="项目配置"
+            nzType="text"
+            class="project-action"
+            type="button"
+            (click)="manageConfig.emit(item)"
+          >
+            <nz-icon nzType="setting" nzTheme="outline" />
+          </a>
+          @if (item.status === 'active') {
+            <a
+              nz-button
+              nz-tooltip="归档"
+              nz-popconfirm="确定要归档该项目吗？"
+              nzType="text"
+              class="project-action"
+              type="button"
+              (nzOnConfirm)="archive.emit(item)"
+            >
+              <nz-icon nzType="delete" nzTheme="outline" />
+            </a>
+          } @else {
+            <a
+              nz-button
+              nz-tooltip="恢复"
+              nz-popconfirm="确定要恢复该项目吗？"
+              nzType="text"
+              class="project-action"
+              type="button"
+              (nzOnConfirm)="restore.emit(item)"
+            >
+              <nz-icon nzType="reload" nzTheme="outline" />
+            </a>
+          }
+        </div>
+      </div>
+      <div
+        class="project-row project-row--expanded"
+        [class.project-row--expanded-open]="isExpanded(item.id)"
+      >
+        <div class="project-expand-wrap">
+          <div class="project-expand">
+            <div class="project-detail-grid">
+              <div class="project-detail-section">
+                <div class="project-detail-label">项目信息</div>
+                <div class="project-detail-content">
+                  <span class="project-type-badge" [attr.data-type]="item.projectType">{{
+                    projectTypeLabel(item.projectType)
+                  }}</span>
+                  @if (projectTypeDetail(item); as detail) {
+                    <span class="project-type-badge">{{ detail }}</span>
+                  }
+                  <span class="project-type-badge">项目编号 {{ item.projectNo }}</span>
+                </div>
+              </div>
+              <div class="project-detail-section">
+                <div class="project-detail-label">
+                  项目成员 ({{ memberItems(item.id).length }}人)
+                </div>
+                @if (isMemberLoading(item.id)) {
+                  <div class="project-cell--muted">正在加载成员…</div>
+                } @else if (memberItems(item.id).length === 0) {
+                  <div class="project-cell--muted">暂无成员</div>
+                } @else {
+                  <div class="project-detail-content project-members-list">
+                    @for (member of memberItems(item.id); track member.id) {
+                      <div class="project-member-chip">
+                        @if (member.avatarUrl) {
+                          <nz-avatar [nzSize]="20" [nzSrc]="member.avatarUrl"></nz-avatar>
+                        } @else {
+                          <span class="project-member-avatar">
+                            {{ memberInitial(member.displayName) }}
+                          </span>
+                        }
+                        <span>{{ member.displayName }}</span>
+                        <span class="member-role" [attr.data-role]="memberRoleTone(member)">{{
+                          memberRoleLabel(member)
+                        }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+            @if (isModuleLoading(item.id) || subsystemRows(item.id).length > 0) {
+              <div class="project-sub-list">
+                <div class="project-sub-header">
+                  <span><nz-icon nzType="cluster" nzTheme="outline" /> 子项目</span>
+                  @if (isModuleLoading(item.id)) {
+                    <span class="project-cell--muted">正在加载…</span>
+                  }
+                </div>
+                @for (subsystem of subsystemRows(item.id); track subsystem.id; let index = $index) {
+                  <div class="project-sub-item">
+                    <div class="project-sub-left">
+                      <div class="project-sub-icon" [attr.data-index]="index">
+                        {{ subsystemInitial(subsystem.name) }}
+                      </div>
+                      <div class="project-sub-info">
+                        <div class="project-sub-name">{{ subsystem.name }}</div>
+                        <div class="project-sub-meta">
+                          {{ subsystem.description || '包含 ' + subsystem.moduleCount + ' 个模块' }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="project-sub-right">
+                      <span class="project-sub-status">进行中</span>
+                      <div class="project-sub-progress">
+                        <div class="project-sub-progress-bar">
+                          <div
+                            class="project-sub-progress-bar-fill"
+                            [style.width.%]="placeholderProgress(subsystem)"
+                          ></div>
+                        </div>
+                        <span class="project-sub-progress-text"
+                          >{{ placeholderProgress(subsystem) }}%</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</app-data-table>

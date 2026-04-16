@@ -1,0 +1,447 @@
+<app-dialog-shell
+  [open]="open()"
+  [width]="1040"
+  [title]="project() ? project()!.name + ' · 项目配置' : '项目配置'"
+  [subtitle]="'维护子项目/模块、环境、版本和研发阶段。'"
+  [icon]="'setting'"
+  (cancel)="cancel.emit()"
+>
+  <div dialog-body class="config-dialog">
+    <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="true">
+      <nz-tab nzTitle="子项目/模块">
+        <section class="section">
+          <div class="creator">
+            <nz-select
+              style="width: 130px"
+              [ngModel]="moduleNodeTypeDraft()"
+              (ngModelChange)="moduleNodeTypeDraft.set($event || 'module')"
+            >
+              <nz-option nzLabel="子项目" nzValue="subsystem"></nz-option>
+              <nz-option nzLabel="模块" nzValue="module"></nz-option>
+            </nz-select>
+            <nz-select
+              nzAllowClear
+              nzPlaceHolder="所属子项目"
+              [ngModel]="moduleParentDraft()"
+              [nzDisabled]="moduleNodeTypeDraft() === 'subsystem'"
+              (ngModelChange)="moduleParentDraft.set($event || null)"
+              style="width: 200px"
+            >
+              @for (item of subsystemItems(); track item.id) {
+                <nz-option [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+              }
+            </nz-select>
+            <input
+              nz-input
+              placeholder="新增子项目/模块"
+              [ngModel]="moduleDraft()"
+              (ngModelChange)="moduleDraft.set($event)"
+            />
+            @if (canManageConfig()) {
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="!moduleDraft().trim() || busy()"
+                (click)="submitModuleCreate()"
+              >
+                <nz-icon nzType="plus" nzTheme="outline" />新增
+              </button>
+            }
+          </div>
+          <div class="list">
+            @for (item of modules(); track item.id) {
+              <div class="row">
+                <nz-select
+                  style="width: 100%"
+                  #nodeTypeRef="ngModel"
+                  [ngModel]="item.nodeType"
+                  [name]="'nodeType-' + item.id"
+                >
+                  <nz-option nzLabel="子项目" nzValue="subsystem"></nz-option>
+                  <nz-option nzLabel="模块" nzValue="module"></nz-option>
+                </nz-select>
+                <nz-select
+                  #parentRef="ngModel"
+                  [ngModel]="item.parentId"
+                  [name]="'parentId-' + item.id"
+                  nzAllowClear
+                  [nzDisabled]="nodeTypeRef.value === 'subsystem'"
+                >
+                  @for (option of subsystemItems(item.id); track option.id) {
+                    <nz-option [nzLabel]="option.name" [nzValue]="option.id"></nz-option>
+                  }
+                </nz-select>
+                <input #nameRef nz-input [ngModel]="item.name" />
+                <input
+                  #descRef
+                  nz-input
+                  [ngModel]="item.description || ''"
+                  placeholder="描述（可选）"
+                />
+                <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                @if (canManageConfig()) {
+                  <nz-switch
+                    [ngModel]="item.enabled"
+                    [nzDisabled]="busy() || isModulePending(item.id)"
+                    (ngModelChange)="
+                      updateModule.emit({ id: item.id, patch: { enabled: !!$event } })
+                    "
+                  ></nz-switch>
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy() || isModulePending(item.id)"
+                    [nzLoading]="isModulePending(item.id)"
+                    (click)="
+                      saveModule(
+                        item,
+                        nameRef.value,
+                        descRef.value,
+                        asNumber(sortRef.value),
+                        nodeTypeRef.value,
+                        parentRef.value
+                      )
+                    "
+                  >
+                    保存
+                  </button>
+                  <button
+                    nz-button
+                    nzType="default"
+                    nzDanger
+                    [disabled]="busy() || isModulePending(item.id)"
+                    [nzLoading]="isModulePending(item.id)"
+                    nz-popconfirm
+                    nzPopconfirmTitle="确认删除该项？"
+                    (nzOnConfirm)="removeModule.emit(item.id)"
+                  >
+                    删除
+                  </button>
+                }
+              </div>
+            } @empty {
+              <div class="empty">暂无子项目/模块配置</div>
+            }
+          </div>
+        </section>
+      </nz-tab>
+
+      <nz-tab nzTitle="环境">
+        <section class="section">
+          <div class="creator">
+            <input
+              nz-input
+              placeholder="新增环境名称，如19号机测试环境"
+              [ngModel]="environmentDraft()"
+              (ngModelChange)="environmentDraft.set($event)"
+            />
+            <button
+              nz-button
+              nzType="primary"
+              [disabled]="!environmentDraft().trim() || busy()"
+              (click)="submitEnvironmentCreate()"
+            >
+              <nz-icon nzType="plus" nzTheme="outline" />新增
+            </button>
+          </div>
+          <div class="list">
+            @for (item of environments(); track item.id) {
+              <div class="row">
+                <input #nameRef nz-input [ngModel]="item.name" />
+                <input
+                  #descRef
+                  nz-input
+                  [ngModel]="item.description || ''"
+                  placeholder="描述（可选）"
+                />
+                <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                @if (canManageConfig()) {
+                  <nz-switch
+                    [ngModel]="item.enabled"
+                    [nzDisabled]="busy() || isEnvironmentPending(item.id)"
+                    (ngModelChange)="
+                      updateEnvironment.emit({ id: item.id, patch: { enabled: !!$event } })
+                    "
+                  ></nz-switch>
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy() || isEnvironmentPending(item.id)"
+                    [nzLoading]="isEnvironmentPending(item.id)"
+                    (click)="
+                      saveEnvironment(item, nameRef.value, descRef.value, asNumber(sortRef.value))
+                    "
+                  >
+                    保存
+                  </button>
+                  <button
+                    nz-button
+                    nzType="default"
+                    nzDanger
+                    [disabled]="busy() || isEnvironmentPending(item.id)"
+                    [nzLoading]="isEnvironmentPending(item.id)"
+                    nz-popconfirm
+                    nzPopconfirmTitle="确认删除该环境？"
+                    (nzOnConfirm)="removeEnvironment.emit(item.id)"
+                  >
+                    删除
+                  </button>
+                }
+              </div>
+            } @empty {
+              <div class="empty">暂无环境配置</div>
+            }
+          </div>
+        </section>
+      </nz-tab>
+
+      <nz-tab nzTitle="版本">
+        <section class="section">
+          <div class="creator">
+            <input
+              nz-input
+              placeholder="新增版本号，如v1.0.0"
+              [ngModel]="versionDraft()"
+              (ngModelChange)="versionDraft.set($event)"
+            />
+            @if (canManageConfig()) {
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="!versionDraft().trim() || busy()"
+                (click)="submitVersionCreate()"
+              >
+                <nz-icon nzType="plus" nzTheme="outline" />新增
+              </button>
+            }
+          </div>
+          <div class="list">
+            @for (item of versions(); track item.id) {
+              <div class="row">
+                <input #versionRef nz-input [ngModel]="item.version" />
+                <input
+                  #descRef
+                  nz-input
+                  [ngModel]="item.description || ''"
+                  placeholder="描述（可选）"
+                />
+                <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                @if (canManageConfig()) {
+                  <nz-switch
+                    [ngModel]="item.enabled"
+                    [nzDisabled]="busy() || isVersionPending(item.id)"
+                    (ngModelChange)="
+                      updateVersion.emit({ id: item.id, patch: { enabled: !!$event } })
+                    "
+                  ></nz-switch>
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy() || isVersionPending(item.id)"
+                    [nzLoading]="isVersionPending(item.id)"
+                    (click)="
+                      saveVersion(item, versionRef.value, descRef.value, asNumber(sortRef.value))
+                    "
+                  >
+                    保存
+                  </button>
+                  <button
+                    nz-button
+                    nzType="default"
+                    nzDanger
+                    [disabled]="busy() || isVersionPending(item.id)"
+                    [nzLoading]="isVersionPending(item.id)"
+                    nz-popconfirm
+                    nzPopconfirmTitle="确认删除该版本？"
+                    (nzOnConfirm)="removeVersion.emit(item.id)"
+                  >
+                    删除
+                  </button>
+                }
+              </div>
+            } @empty {
+              <div class="empty">暂无版本配置</div>
+            }
+          </div>
+        </section>
+      </nz-tab>
+
+      <nz-tab nzTitle="研发阶段">
+        <section class="section">
+          <div class="creator">
+            <input
+              nz-input
+              placeholder="新增阶段名称，如开发阶段"
+              [ngModel]="stageDraft()"
+              (ngModelChange)="stageDraft.set($event)"
+            />
+            @if (canManageConfig()) {
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="!stageDraft().trim() || busy()"
+                (click)="submitStageCreate()"
+              >
+                <nz-icon nzType="plus" nzTheme="outline" />新增
+              </button>
+            }
+          </div>
+          <div class="list">
+            @for (item of stages(); track item.id) {
+              <div class="row row--stage">
+                <input #nameRef nz-input [ngModel]="item.name" />
+                <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                @if (canManageConfig()) {
+                  <nz-switch
+                    [ngModel]="item.enabled"
+                    [nzDisabled]="busy() || isStagePending(item.id)"
+                    (ngModelChange)="
+                      updateStage.emit({ id: item.id, patch: { enabled: !!$event } })
+                    "
+                  ></nz-switch>
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy() || isStagePending(item.id)"
+                    [nzLoading]="isStagePending(item.id)"
+                    (click)="saveStage(item, nameRef.value, asNumber(sortRef.value))"
+                  >
+                    保存
+                  </button>
+                  <button
+                    nz-button
+                    nzType="default"
+                    nzDanger
+                    [disabled]="busy() || isStagePending(item.id)"
+                    [nzLoading]="isStagePending(item.id)"
+                    nz-popconfirm
+                    nzPopconfirmTitle="确认停用该阶段？"
+                    (nzOnConfirm)="removeStage.emit(item.id)"
+                  >
+                    停用
+                  </button>
+                }
+              </div>
+            } @empty {
+              <div class="empty">暂无研发阶段配置</div>
+            }
+          </div>
+        </section>
+      </nz-tab>
+
+      <nz-tab nzTitle="API Token">
+        <section class="section">
+          @if (latestCreatedToken()) {
+            <div class="token-once">
+              <div class="token-once__title">新 Token（仅展示一次）</div>
+              <div class="token-once__value">
+                {{ latestCreatedToken() }}
+                <button
+                  type="button"
+                  nz-button
+                  nzType="default"
+                  (click)="copyLatestToken.emit(latestCreatedToken()!)"
+                >
+                  <nz-icon nzType="copy" nzTheme="outline" />
+                  复制Token
+                </button>
+              </div>
+              <div class="token-once__actions">
+                <button type="button" nz-button nzType="default" (click)="clearLatestToken.emit()">
+                  <nz-icon nzType="check" nzTheme="outline" />
+                  已保存，关闭展示
+                </button>
+              </div>
+            </div>
+          }
+
+          <div class="token-creator">
+            <input
+              nz-input
+              placeholder="Token 名称，如 webapp-readonly"
+              [ngModel]="tokenNameDraft()"
+              (ngModelChange)="tokenNameDraft.set($event)"
+            />
+            <nz-select
+              nzMode="multiple"
+              nzPlaceHolder="选择读取权限"
+              [ngModel]="tokenScopesDraft()"
+              (ngModelChange)="tokenScopesDraft.set($event)"
+            >
+              <nz-option nzLabel="测试单读取" nzValue="issues:read"></nz-option>
+              <nz-option nzLabel="研发项读取" nzValue="rd:read"></nz-option>
+              <!-- <nz-option nzLabel="反馈读取" nzValue="feedbacks:read"></nz-option> -->
+            </nz-select>
+            <nz-date-picker
+              nzShowTime
+              nzPlaceHolder="过期时间（可选）"
+              [ngModel]="tokenExpiresAt()"
+              (ngModelChange)="tokenExpiresAt.set($event)"
+            ></nz-date-picker>
+            @if (canManageConfig()) {
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="busy() || !canSubmitTokenCreate()"
+                (click)="submitTokenCreate()"
+              >
+                <nz-icon nzType="plus" nzTheme="outline" />生成 Token
+              </button>
+            }
+          </div>
+
+          <div class="token-list">
+            <div class="token-list__head">
+              <div>名称</div>
+              <div>权限</div>
+              <div>状态</div>
+              <div>过期时间</div>
+              <div>最近使用</div>
+              <div>前缀</div>
+              @if (canManageConfig()) {
+                <div>操作</div>
+              }
+            </div>
+            @for (item of apiTokens(); track item.id) {
+              <div class="token-list__row">
+                <div>{{ item.name }}</div>
+                <div>{{ renderScopes(item.scopes) }}</div>
+                <div>{{ item.status === 'active' ? '生效中' : '已吊销' }}</div>
+                <div>
+                  {{ item.expiresAt ? (item.expiresAt | date: 'yyyy-MM-dd HH:mm') : '永不过期' }}
+                </div>
+                <div>{{ item.lastUsedAt ? (item.lastUsedAt | date: 'MM-dd HH:mm') : '-' }}</div>
+                <div class="token-list__prefix">{{ item.tokenPrefix }}</div>
+                @if (canManageConfig()) {
+                  <div>
+                    @if (item.status == 'active') {
+                      <button
+                        nz-button
+                        nzType="default"
+                        nzDanger
+                        [disabled]="busy() || isTokenPending(item.id)"
+                        [nzLoading]="isTokenPending(item.id)"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认注销该 Token？吊销后不可恢复。"
+                        (nzOnConfirm)="revokeApiToken.emit(item.id)"
+                      >
+                        <nz-icon nzType="minus" nzTheme="outline" />
+                      </button>
+                    } @else {
+                      <span style="color: var(--text-muted)">已注销</span>
+                    }
+                  </div>
+                }
+              </div>
+            } @empty {
+              <div class="empty">暂无 API Token</div>
+            }
+          </div>
+        </section>
+      </nz-tab>
+    </nz-tabs>
+  </div>
+  <ng-container dialog-footer>
+    <button nz-button type="button" (click)="cancel.emit()">关闭</button>
+  </ng-container>
+</app-dialog-shell>
