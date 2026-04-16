@@ -112,7 +112,7 @@ export class RdComponent {
     this.route.queryParamMap.subscribe((params) => {
       const detailId = params.get('detail');
 
-      if (detailId) {
+      if (detailId && !this.currentRdItem()) {
         this.rdStore.loadCurrentRdItem(detailId);
         this.detailDrawerOpen.set(true);
       }

@@ -30,11 +30,6 @@ export class IssuesListTableComponent {
   readonly projectId = input<string | null>(null);
   readonly loading = input(false);
   readonly selectItem = output<IssueEntity>();
-  constructor() {
-    effect(() => {
-      console.log('IssuesListTableComponent issues updated:', this.issues(), this.loading());
-    });
-  }
 
   // hover 预览状态
   readonly hoveredPreview = signal<{

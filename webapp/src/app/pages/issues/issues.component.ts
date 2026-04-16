@@ -103,20 +103,17 @@ export class IssuesComponent {
     this.route.queryParamMap.subscribe((params) => {
       const detailId = params.get('detail');
 
-      if (detailId) {
+      if (detailId && !this.selectedIssue()) {
         this.issueDetailStore.load(detailId);
         this.open.set(true);
-      } else {
-        this.open.set(false);
       }
     });
 
     // 筛选变化时
     let queryTimer: ReturnType<typeof setTimeout>;
-    let prevQuery: IssueListQuery | null = null;
+    let prevQuery: IssueListQuery | null = this.issueListStore.query();
     effect(() => {
       const query = this.issueListStore.query();
-      let timeout = 500;
       const isPaginationChange =
         prevQuery && (prevQuery.page !== query.page || prevQuery.pageSize !== query.pageSize);
       const isFilterChange =
