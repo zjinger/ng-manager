@@ -109,6 +109,7 @@ export interface ProjectConfigItemEntity {
   projectId: string;
   name: string;
   code: string | null;
+  projectNo?: string | null;
   parentId: string | null;
   parentName?: string | null;
   nodeType: "subsystem" | "module";
@@ -134,6 +135,7 @@ export interface ProjectVersionItemEntity {
 export interface CreateProjectConfigItemInput {
   name: string;
   code?: string;
+  projectNo?: string;
   parentId?: string | null;
   nodeType?: "subsystem" | "module";
   enabled?: boolean;
@@ -144,6 +146,7 @@ export interface CreateProjectConfigItemInput {
 export interface UpdateProjectConfigItemInput {
   name?: string;
   code?: string | null;
+  projectNo?: string | null;
   parentId?: string | null;
   nodeType?: "subsystem" | "module";
   enabled?: boolean;

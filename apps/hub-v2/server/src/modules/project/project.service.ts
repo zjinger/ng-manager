@@ -363,15 +363,17 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
     const now = nowIso();
     const id = genId("pmod");
+    const nodeType = input.nodeType ?? "module";
     const existingModules = this.repo.listModules(projectId);
-    this.assertValidModuleParent(existingModules, input.parentId ?? null, null, input.nodeType ?? "module");
+    this.assertValidModuleParent(existingModules, input.parentId ?? null, null, nodeType);
     try {
       this.repo.addModule(projectId, {
         id,
         name: input.name.trim(),
         code: input.code?.trim(),
+        projectNo: nodeType === "subsystem" ? (this.trimToNull(input.projectNo) ?? undefined) : undefined,
         parentId: input.parentId?.trim() || null,
-        nodeType: input.nodeType ?? "module",
+        nodeType,
         enabled: input.enabled,
         sort: input.sort ?? this.getNextSort(existingModules.map((item) => item.sort)),
         description: input.description?.trim(),
@@ -393,15 +395,23 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   ): Promise<ProjectConfigItemEntity> {
     await this.requireProjectMaintainer(projectId, ctx, "update project module");
     const current = this.findConfigById(this.repo.listModules(projectId), moduleId, ERROR_CODES.PROJECT_MODULE_NOT_FOUND);
+    const targetNodeType = input.nodeType ?? current.nodeType;
     this.assertValidModuleParent(
       this.repo.listModules(projectId),
       input.parentId === undefined ? current.parentId : input.parentId,
       moduleId,
-      input.nodeType ?? current.nodeType
+      targetNodeType
     );
+    let nextProjectNo: string | null | undefined = undefined;
+    if (input.projectNo !== undefined) {
+      nextProjectNo = targetNodeType === "subsystem" ? this.trimToNull(input.projectNo) : null;
+    } else if (targetNodeType !== "subsystem" && current.projectNo) {
+      nextProjectNo = null;
+    }
     const changed = this.repo.updateModule(projectId, moduleId, {
       name: input.name?.trim(),
       code: input.code === undefined ? undefined : input.code?.trim() || null,
+      projectNo: nextProjectNo,
       parentId: input.parentId === undefined ? undefined : input.parentId?.trim() || null,
       nodeType: input.nodeType,
       enabled: input.enabled,

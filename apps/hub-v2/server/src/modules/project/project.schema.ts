@@ -65,6 +65,7 @@ export const updateProjectMemberSchema = z.object({
 export const createProjectConfigItemSchema = z.object({
   name: z.string().trim().min(1),
   code: z.string().trim().optional(),
+  projectNo: z.string().trim().max(64).optional(),
   parentId: z.string().trim().nullable().optional(),
   nodeType: z.enum(["subsystem", "module"]).optional(),
   enabled: z.boolean().optional(),
@@ -75,6 +76,7 @@ export const createProjectConfigItemSchema = z.object({
 export const updateProjectConfigItemSchema = z.object({
   name: z.string().trim().min(1).optional(),
   code: z.string().trim().nullable().optional(),
+  projectNo: z.string().trim().max(64).nullable().optional(),
   parentId: z.string().trim().nullable().optional(),
   nodeType: z.enum(["subsystem", "module"]).optional(),
   enabled: z.boolean().optional(),

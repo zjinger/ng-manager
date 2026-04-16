@@ -31,6 +31,15 @@
                 <nz-option [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
               }
             </nz-select>
+            @if (moduleNodeTypeDraft() === 'subsystem') {
+              <input
+                nz-input
+                placeholder="项目编号（可选）"
+                [ngModel]="moduleNoDraft()"
+                (ngModelChange)="moduleNoDraft.set($event)"
+                style="width: 160px"
+              />
+            }
             <input
               nz-input
               placeholder="新增子项目/模块"
@@ -65,12 +74,20 @@
                   [ngModel]="item.parentId"
                   [name]="'parentId-' + item.id"
                   nzAllowClear
-                  [nzDisabled]="nodeTypeRef.value === 'subsystem'"
+                  [class.hidden]="nodeTypeRef.value === 'subsystem'"
                 >
                   @for (option of subsystemItems(item.id); track option.id) {
                     <nz-option [nzLabel]="option.name" [nzValue]="option.id"></nz-option>
                   }
                 </nz-select>
+                <input
+                  #projectNoRef="ngModel"
+                  nz-input
+                  [ngModel]="item.projectNo || ''"
+                  name="projectNo-{{ item.id }}"
+                  placeholder="项目编号"
+                  [class.hidden]="nodeTypeRef.value !== 'subsystem'"
+                />
                 <input #nameRef nz-input [ngModel]="item.name" />
                 <input
                   #descRef
@@ -99,7 +116,8 @@
                         descRef.value,
                         asNumber(sortRef.value),
                         nodeTypeRef.value,
-                        parentRef.value
+                        nodeTypeRef.value !== 'subsystem' ? parentRef.value : null,
+                        nodeTypeRef.value === 'subsystem' ? projectNoRef.value : null
                       )
                     "
                   >

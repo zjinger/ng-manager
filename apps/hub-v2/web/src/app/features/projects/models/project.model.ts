@@ -114,6 +114,7 @@ export interface ProjectMetaItem {
   projectId: string;
   name: string;
   code: string | null;
+  projectNo?: string | null;
   parentId: string | null;
   parentName?: string | null;
   nodeType: ProjectModuleNodeType;
@@ -139,6 +140,7 @@ export interface ProjectVersionItem {
 export interface CreateProjectMetaItemInput {
   name: string;
   code?: string;
+  projectNo?: string;
   parentId?: string | null;
   nodeType?: ProjectModuleNodeType;
   enabled?: boolean;
@@ -149,6 +151,7 @@ export interface CreateProjectMetaItemInput {
 export interface UpdateProjectMetaItemInput {
   name?: string;
   code?: string | null;
+  projectNo?: string | null;
   parentId?: string | null;
   nodeType?: ProjectModuleNodeType;
   enabled?: boolean;

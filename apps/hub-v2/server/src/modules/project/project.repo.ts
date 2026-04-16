@@ -63,6 +63,7 @@ type ProjectConfigRow = {
   project_id: string;
   name: string;
   code: string | null;
+  project_no?: string | null;
   parent_id: string | null;
   parent_name: string | null;
   node_type: "subsystem" | "module";
@@ -492,8 +493,8 @@ export class ProjectRepo {
     this.db
       .prepare(
         `
-      INSERT INTO project_modules (id, project_id, name, code, parent_id, node_type, enabled, sort, "desc", created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO project_modules (id, project_id, name, code, project_no, parent_id, node_type, enabled, sort, "desc", created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -501,6 +502,7 @@ export class ProjectRepo {
         projectId,
         input.name,
         input.code ?? null,
+        input.projectNo ?? null,
         input.parentId ?? null,
         input.nodeType ?? "module",
         input.enabled === false ? 0 : 1,
@@ -674,6 +676,10 @@ export class ProjectRepo {
       fields.push("code = ?");
       params.push(patch.code ?? null);
     }
+    if (table === "project_modules" && patch.projectNo !== undefined) {
+      fields.push("project_no = ?");
+      params.push(patch.projectNo ?? null);
+    }
     if (table === "project_modules" && patch.parentId !== undefined) {
       fields.push("parent_id = ?");
       params.push(patch.parentId ?? null);
@@ -780,6 +786,7 @@ export class ProjectRepo {
       projectId: row.project_id,
       name: row.name,
       code: row.code,
+      projectNo: row.project_no ?? null,
       parentId: row.parent_id ?? null,
       parentName: row.parent_name ?? null,
       nodeType: row.node_type ?? "module",

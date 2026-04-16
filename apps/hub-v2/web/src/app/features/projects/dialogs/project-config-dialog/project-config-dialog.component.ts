@@ -84,6 +84,7 @@ export class ProjectConfigDialogComponent {
   readonly clearLatestToken = output<void>();
 
   readonly moduleDraft = signal('');
+  readonly moduleNoDraft = signal('');
   readonly moduleNodeTypeDraft = signal<ProjectModuleNodeType>('module');
   readonly moduleParentDraft = signal<string | null>(null);
   readonly environmentDraft = signal('');
@@ -127,12 +128,15 @@ export class ProjectConfigDialogComponent {
     if (!name) {
       return;
     }
+    const nodeType = this.moduleNodeTypeDraft();
     this.createModule.emit({
       name,
-      nodeType: this.moduleNodeTypeDraft(),
-      parentId: this.moduleNodeTypeDraft() === 'module' ? this.moduleParentDraft() : null
+      projectNo: nodeType === 'subsystem' ? this.moduleNoDraft().trim() || undefined : undefined,
+      nodeType,
+      parentId: nodeType === 'module' ? this.moduleParentDraft() : null
     });
     this.moduleDraft.set('');
+    this.moduleNoDraft.set('');
     this.moduleNodeTypeDraft.set('module');
     this.moduleParentDraft.set(null);
   }
@@ -171,15 +175,20 @@ export class ProjectConfigDialogComponent {
     description: string,
     sort: number,
     nodeType: ProjectModuleNodeType,
-    parentId: string | null
+    parentId: string | null,
+    projectNo: string | null
   ): void {
     const patch: UpdateProjectMetaItemInput = {};
     if (name.trim() !== item.name) patch.name = name.trim();
     if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
     if (sort !== item.sort) patch.sort = sort;
     if (nodeType !== item.nodeType) patch.nodeType = nodeType;
-    const normalizedParentId = nodeType === 'module' ? parentId || null : null;
+    const normalizedParentId = nodeType === 'module' ? (parentId || null) : null;
     if (normalizedParentId !== item.parentId) patch.parentId = normalizedParentId;
+    if (nodeType === 'subsystem') {
+      const normalizedProjectNo = projectNo?.trim() || null;
+      if (normalizedProjectNo !== item.projectNo) patch.projectNo = normalizedProjectNo;
+    }
     if (Object.keys(patch).length > 0) {
       this.updateModule.emit({ id: item.id, patch });
     }

@@ -198,6 +198,8 @@ export class ProjectListPageComponent {
     this.configProject.set(project);
     this.configDialogOpen.set(true);
     this.loadProjectMeta(project.id);
+    this.loadMembers(project.id);
+    this.loadMemberCandidates(project.id);
   }
 
   closeConfigDialog(): void {
@@ -834,6 +836,7 @@ export class ProjectListPageComponent {
               ...item,
               name: patch.name ?? item.name,
               code: patch.code === undefined ? item.code : patch.code,
+              projectNo: patch.projectNo === undefined ? item.projectNo : patch.projectNo,
               parentId: patch.parentId === undefined ? item.parentId : patch.parentId,
               nodeType: patch.nodeType ?? item.nodeType,
               description: patch.description === undefined ? item.description : patch.description,
