@@ -21,7 +21,7 @@ export class RdStore {
   private readonly rdApi = inject(RdApiService);
   private readonly projectContextStore = inject(ProjectContextStore);
 
-  private readonly projectId = computed(() => this.projectContextStore.currentProjectId());
+  readonly projectId = computed(() => this.projectContextStore.currentProjectId());
 
   private readonly rdItemsPageListState = signal<RdItemEntity[]>([]);
   private readonly rdItemsCountState = signal(0);

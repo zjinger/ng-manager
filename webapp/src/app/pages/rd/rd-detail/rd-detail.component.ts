@@ -64,13 +64,13 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
       </ng-template>
 
       <ng-template nzDrawerContent>
-        @if (loading()) {
+        @if (loading() && !rdItem()) {
           <nz-spin nzSize="large" nzTip="正在加载研发项...." class="loading"></nz-spin>
-        } @else {
+        } @else if(rdItem(); as rdItem) {
           <div class="detail-wrap">
             <app-detail-item-card title="操作">
               <app-rd-action-area
-                [item]="rdItem()!"
+                [item]="rdItem"
                 (actionClick)="this.actionClick.emit($event)"
                 (progressChange)="this.progressChange.emit($event)"
                 (deleteClick)="this.deleteClick.emit()"
@@ -91,31 +91,31 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
                   ></app-markdown-viewer>
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="执行人">
-                  {{ rdItem()!.assigneeName }}
+                  {{ rdItem.assigneeName }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="验收人">
-                  {{ rdItem()!.reviewerName ?? '_' }}
+                  {{ rdItem.reviewerName ?? '_' }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="进度">
-                  {{ rdItem()!.progress }}%
+                  {{ rdItem.progress }}%
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="状态">
-                  {{ getStatusLabel(rdItem()!.status) }}
+                  {{ getStatusLabel(rdItem.status) }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="优先级">
-                  {{ getPriorityLabel(rdItem()!.priority) }}
+                  {{ getPriorityLabel(rdItem.priority) }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="阶段">
-                  {{ getStagesName(rdItem()!.stageId) }}
+                  {{ getStagesName(rdItem.stageId) }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="计划开始">
-                  {{ (rdItem()!.planStartAt | date: 'yyyy-MM-dd') ?? '_' }}
+                  {{ (rdItem.planStartAt | date: 'yyyy-MM-dd') ?? '_' }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="计划结束">
-                  {{ (rdItem()!.planEndAt | date: 'yyyy-MM-dd') ?? '_' }}
+                  {{ (rdItem.planEndAt | date: 'yyyy-MM-dd') ?? '_' }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="创建时间">
-                  {{ (rdItem()!.createdAt | date: 'yyyy-MM-dd HH:mm') ?? '_' }}
+                  {{ (rdItem.createdAt | date: 'yyyy-MM-dd HH:mm') ?? '_' }}
                 </nz-descriptions-item>
               </nz-descriptions>
             </app-detail-item-card>
@@ -235,7 +235,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
   `,
 })
 export class RdDetailComponent {
-  readonly rdItem = input.required<RdItemEntity | null>();
+  readonly rdItem = input<RdItemEntity | null>();
   readonly loading = input(false);
   readonly open = input(false);
   readonly busy = input(false);

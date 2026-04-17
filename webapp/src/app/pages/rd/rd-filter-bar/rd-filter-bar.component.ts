@@ -117,10 +117,10 @@ type viewType = 'list' | 'board';
       </form>
       <div class="right-col">
         <!-- 新建按钮 -->
-        <!-- <button nz-button nzType="primary" type="button" (click)="openCreateDialog()">
-                    <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
-                    新建研发项
-                </button> -->
+        <!-- <button nz-button nzType="primary" type="button" (click)="openCreateDialog.emit()">
+          <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+          新建研发项
+        </button> -->
         <!-- 列表视图切换 -->
         <nz-radio-group [(ngModel)]="viewType" class="view-type">
           <label nz-radio-button nzValue="list">
@@ -144,6 +144,7 @@ export class RdFilterBarComponent implements OnInit {
   readonly stages = input<RdStageEntity[]>([]);
   readonly viewType = model<viewType>();
   readonly valueChange = output<Partial<RdListQuery>>();
+  readonly openCreateDialog = output();
 
   constructor() {
     this.form.valueChanges.pipe(debounceTime(500)).subscribe((value) => {

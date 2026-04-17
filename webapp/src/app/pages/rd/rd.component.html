@@ -2,7 +2,7 @@
     <div class="rd-content">
         <div class="filter-container">
             <app-rd-filter-bar [query]="query()" [stages]="stages()" [(viewType)]="viewType"
-                (valueChange)="updateQueryByFilter($event)"></app-rd-filter-bar>
+                (openCreateDialog)="openCreateDialog()" (valueChange)="updateQueryByFilter($event)"></app-rd-filter-bar>
         </div>
 
         <!-- 列表 -->
@@ -25,14 +25,14 @@
     </div>
 
     <!-- 新建 -->
-    <app-rd-create-dialog [open]="createDialogOpen()" (cancel)="createDialogOpen.set(false)"
-        (create)="createRd($event)"></app-rd-create-dialog>
+    <!-- <app-rd-create-dialog [open]="createDialogOpen()" [stages]="stages()" [members]="members()"
+        (cancel)="createDialogOpen.set(false)" (create)="createRd($event)"></app-rd-create-dialog> -->
 
     <!-- 详情 -->
     <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" [projectId]="currentProjectId()"
-        [busy]="busy()" [logs]="currentRdLogs()" [stages]="stages()" [loading]="currentRdLoading()" (close)="closeDetail()"
-        (actionClick)="handleSelectedAction($event)" (progressChange)="updateSelectedProgress($event)"
-        (deleteClick)="deleteSelectedItem()">
+        [busy]="busy()" [logs]="currentRdLogs()" [stages]="stages()" [loading]="currentRdLoading()"
+        (close)="closeDetail()" (actionClick)="handleSelectedAction($event)"
+        (progressChange)="updateSelectedProgress($event)" (deleteClick)="deleteSelectedItem()">
     </app-rd-detail>
 
     <!-- 阻塞弹窗 -->

@@ -94,15 +94,12 @@ export class RdComponent {
   // 推进研发项
   readonly advanceStageOpen = signal(false);
 
-  // readonly statusOptions = RD_STATUS_FILTER_OPTIONS;
-  // readonly members = this.rdStore.projectMembers;
-  // readonly priorityOptions = PRIORITY_OPTIONS;
-
   // 用户
   readonly currentUserId = this.userStore.currentUserId;
 
   // 项目相关
-  readonly currentProjectId = computed(() => this.projectContext.currentProjectId() || '');
+  readonly currentProjectId = computed(() => this.rdStore.projectId() || '');
+  readonly members = this.rdStore.projectMembers;
 
   priorities = ['低', '中', '高'];
 
