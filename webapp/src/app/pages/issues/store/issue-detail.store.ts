@@ -53,6 +53,7 @@ export class IssueDetailStore {
   readonly busy = computed(() => this.busyState());
   readonly actionTick = computed(() => this.actionTickState());
 
+
   readonly branchSummary = computed<IssueBranchSummary>(() => {
     const branches = this.branchesState();
     const total = branches.length;
@@ -66,6 +67,7 @@ export class IssueDetailStore {
       todo,
     };
   });
+  readonly pendingBranchCount = computed(() => this.branchSummary().total - this.branchSummary().done);
 
   readonly currentUser = this.userStore.currentUser;
 

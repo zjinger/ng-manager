@@ -62,7 +62,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
       </ng-template>
 
       <ng-template nzDrawerContent>
-        @if (store.canRead()) {
+        @if (!store.canRead()) {
           <nz-empty [nzNotFoundContent]="'您没有权限查看该问题详情'"></nz-empty>
         } @else if (!store.issue()) {
           <nz-empty [nzNotFoundContent]="'正在加载测试单详情…'"></nz-empty>
@@ -349,8 +349,20 @@ export class IssueDetailComponent {
 
   // issue标记完成
   resolveConfirm(summary: string) {
-    this.store.resolve(summary);
     this.IssueResolveDialogOpen.set(false);
+    const value = summary.trim();
+    const pendingCount = this.store.pendingBranchCount();
+    if (pendingCount > 0) {
+      this.modal.confirm({
+        nzTitle: `还有 ${pendingCount} 个未完成协作分支，仍要标记解决吗？`,
+        nzContent: '协作分支不会自动关闭，主测试单会按负责人操作继续进入待验证。',
+        nzOkText: '仍然解决',
+        nzCancelText: '取消',
+        nzOnOk: () => this.store.resolve(value || undefined),
+      });
+      return;
+    }
+    this.store.resolve(value || undefined);
   }
   cancelResolveDialog() {
     this.IssueResolveDialogOpen.set(false);

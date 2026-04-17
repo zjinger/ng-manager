@@ -86,7 +86,7 @@ export class IssueResolveDialogComponent {
   constructor() {
     effect(() => {
       if (this.open()) {
-        this.reason.set(this.item()?.closeReason ?? '已解决');
+        this.reason.set('已解决');
       }
     });
   }
