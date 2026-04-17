@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
 import { PRIORITY_LABELS } from '@app/shared/constants/priority-options';
 import { RD_STATUS_LABELS } from '@app/shared/constants/status-options';
+import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import {
   ProjectMemberEntity,
   RdItemEntity,
@@ -13,13 +15,12 @@ import {
 } from '@pages/rd/models/rd.model';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
-import { NzDrawerModule, NzDrawerPlacement } from 'ng-zorro-antd/drawer';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component';
-import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 
 @Component({
   selector: 'app-rd-detail',
@@ -36,13 +37,14 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
     FormsModule,
     RdActionAreaComponent,
     DetailItemCardComponent,
+    MarkdownViewerComponent,
   ],
   template: `
     <nz-drawer
       [nzVisible]="open()"
       [nzClosable]="true"
       [nzMaskClosable]="true"
-      [nzWidth]="776"
+      [nzWidth]="740"
       [nzWrapClassName]="'rd-detail-drawer'"
       [nzMask]="false"
       [nzTitle]="drawerTitleTpl"
@@ -81,7 +83,10 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
                   {{ titleText() }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="研发项描述" [nzSpan]="3">
-                  {{ rdItem()!.description }}
+                  <app-markdown-viewer
+                    [content]="mdContent()"
+                    [showToc]="false"
+                  ></app-markdown-viewer>
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="执行人">
                   {{ rdItem()!.assigneeName }}
@@ -89,9 +94,9 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
                 <nz-descriptions-item nzTitle="验收人">
                   {{ rdItem()!.reviewerName ?? '_' }}
                 </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="进度"
-                  >{{ rdItem()!.progress }}%</nz-descriptions-item
-                >
+                <nz-descriptions-item nzTitle="进度">
+                  {{ rdItem()!.progress }}%
+                </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="状态">
                   {{ getStatusLabel(rdItem()!.status) }}
                 </nz-descriptions-item>
@@ -108,7 +113,7 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
                   {{ (rdItem()!.planEndAt | date: 'yyyy-MM-dd') ?? '_' }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="创建时间">
-                  {{ (rdItem()!.createdAt | date: 'yyyy-MM-dd HH:mm:ss') ?? '_' }}
+                  {{ (rdItem()!.createdAt | date: 'yyyy-MM-dd HH:mm') ?? '_' }}
                 </nz-descriptions-item>
               </nz-descriptions>
             </app-detail-item-card>
@@ -139,6 +144,13 @@ import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.compone
     </nz-drawer>
   `,
   styles: `
+    ::ng-deep
+      .detail-wrap
+      .ant-descriptions-view
+      .ant-descriptions-row:nth-of-type(2)
+      .ant-descriptions-item-label:first-child {
+      min-width: 106px;
+    }
     .title-wrap {
       display: flex;
       justify-content: space-between;
@@ -223,6 +235,7 @@ export class RdDetailComponent {
   readonly logs = input<RdLogEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly projectId = input<string>('');
 
   readonly close = output();
   readonly actionClick = output<'start' | 'block' | 'resume' | 'complete' | 'advance'>();
@@ -231,6 +244,13 @@ export class RdDetailComponent {
 
   readonly subtitleText = computed(() => this.rdItem()?.rdNo || '');
   readonly titleText = computed(() => this.rdItem()?.title || '研发项详情');
+
+  // 研发项描述md文档
+  readonly mdContent = computed(() => {
+    const rdItem = this.rdItem();
+    if (!rdItem) return '_ _';
+    return this.replaceImagePaths(rdItem.description || '', this.projectId(), rdItem.id);
+  });
 
   getPriorityLabel(priority: RdItemPriority) {
     return PRIORITY_LABELS[priority];
@@ -250,5 +270,24 @@ export class RdDetailComponent {
       return stage.id === stageId;
     });
     return stage?.name ?? '';
+  }
+
+  private replaceImagePaths(mdContent: string, projectId: string, rdId: string) {
+    // 正则表达式匹配Markdown中的图片路径
+    const regex = /!\[.*?\]\((\/api\/admin\/uploads\/[a-zA-Z0-9_-]+\/raw)\)/g;
+
+    // 替换匹配到的图片路径
+    return mdContent.replace(regex, (match: string, originalPath: string) => {
+      // 提取原路径中的 uploadId (例如upl_mnk0hxvl4xt7)
+      const matchResult = originalPath.match(/uploads\/([a-zA-Z0-9_-]+)/);
+
+      if (!matchResult) {
+        return match;
+      }
+      const itemId = matchResult[1];
+      const newPath = `/api/client/hub-token/projects/${projectId}/rd/${rdId}/uploads/${itemId}/raw`;
+
+      return match.replace(originalPath, newPath);
+    });
   }
 }

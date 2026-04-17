@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
@@ -35,6 +35,7 @@ import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
 import { debounceTime, filter } from 'rxjs';
 import { UserStore } from '@app/core/stores/user/user.store';
 import { RdFilterBarComponent } from './rd-filter-bar/rd-filter-bar.component';
+import { ProjectContextStore } from '@app/core/stores';
 
 type viewType = 'list' | 'board';
 
@@ -74,6 +75,7 @@ export class RdComponent {
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly userStore = inject(UserStore);
+  private readonly projectContext = inject(ProjectContextStore);
 
   // 视图模式
   protected readonly viewType = signal<viewType>('list');
@@ -98,6 +100,9 @@ export class RdComponent {
 
   // 用户
   readonly currentUserId = this.userStore.currentUserId;
+
+  // 项目相关
+  readonly currentProjectId = computed(() => this.projectContext.currentProjectId() || '');
 
   priorities = ['低', '中', '高'];
 
