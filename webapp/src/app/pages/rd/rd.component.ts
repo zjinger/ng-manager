@@ -1,10 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ProjectContextStore } from '@app/core/stores';
+import { UserStore } from '@app/core/stores/user/user.store';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzDrawerPlacement } from 'ng-zorro-antd/drawer';
 import { NzFlexModule } from 'ng-zorro-antd/flex';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -18,24 +19,16 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { PageLayoutComponent } from '../../shared';
 import { RdAdvanceStageDialogComponent } from './dialog/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdBlockDialogComponent } from './dialog/rd-block-dialog/rd-block-dialog.component';
-import { RdCreateDialogComponent } from './dialog/rd-create-dialog/rd-create-dialog.component';
-import { RdDetailComponent } from './rd-detail/rd-detail.component';
 import {
   CreateRdItemInput,
   RdItemEntity,
-  RdItemPriority,
-  RdItemStatus,
-  RdListQuery,
+  RdListQuery
 } from './models/rd.model';
+import { RdDetailComponent } from './rd-detail/rd-detail.component';
+import { RdFilterBarComponent } from './rd-filter-bar/rd-filter-bar.component';
 import { RdListBoardComponent } from './rd-list-board/rd-list-board.component';
 import { RdListTableComponent } from './rd-list-table/rd-list-table.component';
 import { RdStore } from './store/rd.store';
-import { RD_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
-import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
-import { debounceTime, filter } from 'rxjs';
-import { UserStore } from '@app/core/stores/user/user.store';
-import { RdFilterBarComponent } from './rd-filter-bar/rd-filter-bar.component';
-import { ProjectContextStore } from '@app/core/stores';
 
 type viewType = 'list' | 'board';
 
@@ -60,7 +53,6 @@ type viewType = 'list' | 'board';
     NzPaginationModule,
     RdListBoardComponent,
     RdListTableComponent,
-    RdCreateDialogComponent,
     RdDetailComponent,
     RdBlockDialogComponent,
     RdAdvanceStageDialogComponent,

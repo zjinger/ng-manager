@@ -65,14 +65,14 @@ import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
                     新建测试单
                 </button> -->
         <!-- 列表视图切换 -->
-        <nz-radio-group [(ngModel)]="viewType" class="view-type">
-          <label nz-radio-button nzValue="list">
+        <!-- <nz-radio-group [(ngModel)]="viewType" class="view-type"> -->
+          <!-- <label nz-radio-button nzValue="list">
             <nz-icon nzType="unordered-list" nzTheme="outline"></nz-icon>
-          </label>
+          </label> -->
           <!-- <label nz-radio-button nzValue="board">
                         <nz-icon nzType="book" nzTheme="outline"></nz-icon>
                     </label> -->
-        </nz-radio-group>
+        <!-- </nz-radio-group> -->
       </div>
     </div>
   `,
