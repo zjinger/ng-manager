@@ -1,4 +1,6 @@
 export type ProjectMemberRole = 'member' | 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'qa' | 'ops' | 'project_admin';
+export type ProjectModulePriority = 'critical' | 'high' | 'medium' | 'low';
+export type ProjectModuleStatus = 'todo' | 'in_progress' | 'released' | 'paused';
 
 export type ProjectStatus = "active" | "inactive";
 export type ProjectVisibility = "internal" | "private";
@@ -118,6 +120,12 @@ export interface ProjectMetaItem {
   parentId: string | null;
   parentName?: string | null;
   nodeType: ProjectModuleNodeType;
+  ownerUserId?: string | null;
+  ownerName?: string | null;
+  iconCode?: string | null;
+  priority?: ProjectModulePriority;
+  status?: ProjectModuleStatus;
+  progress?: number;
   enabled: boolean;
   sort: number;
   description: string | null;
@@ -143,6 +151,11 @@ export interface CreateProjectMetaItemInput {
   projectNo?: string;
   parentId?: string | null;
   nodeType?: ProjectModuleNodeType;
+  ownerUserId?: string | null;
+  iconCode?: string;
+  priority?: ProjectModulePriority;
+  status?: ProjectModuleStatus;
+  progress?: number;
   enabled?: boolean;
   sort?: number;
   description?: string;
@@ -154,9 +167,34 @@ export interface UpdateProjectMetaItemInput {
   projectNo?: string | null;
   parentId?: string | null;
   nodeType?: ProjectModuleNodeType;
+  ownerUserId?: string | null;
+  iconCode?: string | null;
+  priority?: ProjectModulePriority;
+  status?: ProjectModuleStatus;
+  progress?: number;
   enabled?: boolean;
   sort?: number;
   description?: string | null;
+}
+
+export interface ProjectModuleMemberEntity {
+  id: string;
+  projectId: string;
+  moduleId: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  roleCode: ProjectMemberRole;
+  source: 'project' | 'module';
+  isInherited: boolean;
+  isOwner: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddProjectModuleMemberInput {
+  userId: string;
+  roleCode?: ProjectMemberRole | 'member';
 }
 
 export interface CreateProjectVersionItemInput {

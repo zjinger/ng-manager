@@ -14,6 +14,7 @@ import { requireAdmin } from "../utils/require-admin";
 import { RdRepo } from "../rd/rd.repo";
 import { ProjectRepo } from "./project.repo";
 import type {
+  AddProjectModuleMemberInput,
   AddProjectMemberInput,
   CreateProjectConfigItemInput,
   CreateProjectInput,
@@ -25,6 +26,7 @@ import type {
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMemberRole,
+  ProjectModuleMemberEntity,
   ProjectType,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
@@ -357,6 +359,35 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return this.repo.listModules(projectId);
   }
 
+  async getModule(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity> {
+    await this.getById(projectId, ctx);
+    return this.findConfigById(this.repo.listModules(projectId), moduleId, ERROR_CODES.PROJECT_MODULE_NOT_FOUND);
+  }
+
+  async listModuleMembers(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleMemberEntity[]> {
+    await this.getModule(projectId, moduleId, ctx);
+    const projectMembers = this.repo.listMembers(projectId);
+    const moduleMembers = this.repo.listModuleMembers(projectId, moduleId);
+    const inheritedUserIds = new Set(projectMembers.map((item) => item.userId));
+    const inheritedMembers: ProjectModuleMemberEntity[] = projectMembers.map((member) => ({
+      id: member.id,
+      projectId: member.projectId,
+      moduleId,
+      userId: member.userId,
+      displayName: member.displayName,
+      avatarUploadId: member.avatarUploadId ?? null,
+      avatarUrl: member.avatarUrl ?? null,
+      roleCode: member.roleCode,
+      source: "project",
+      isInherited: true,
+      isOwner: member.isOwner,
+      createdAt: member.createdAt,
+      updatedAt: member.updatedAt
+    }));
+    const moduleOnly = moduleMembers.filter((member) => !inheritedUserIds.has(member.userId));
+    return [...inheritedMembers, ...moduleOnly];
+  }
+
   async addModule(projectId: string, input: CreateProjectConfigItemInput, ctx: RequestContext): Promise<ProjectConfigItemEntity> {
     await this.requireProjectMaintainer(projectId, ctx, "add project module");
     await this.getById(projectId, ctx);
@@ -374,6 +405,11 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         projectNo: nodeType === "subsystem" ? (this.trimToNull(input.projectNo) ?? undefined) : undefined,
         parentId: input.parentId?.trim() || null,
         nodeType,
+        ownerUserId: this.resolveModuleOwnerUserId(projectId, input.ownerUserId),
+        iconCode: input.iconCode?.trim() || undefined,
+        priority: input.priority,
+        status: input.status,
+        progress: input.progress,
         enabled: input.enabled,
         sort: input.sort ?? this.getNextSort(existingModules.map((item) => item.sort)),
         description: input.description?.trim(),
@@ -414,6 +450,12 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       projectNo: nextProjectNo,
       parentId: input.parentId === undefined ? undefined : input.parentId?.trim() || null,
       nodeType: input.nodeType,
+      ownerUserId:
+        input.ownerUserId === undefined ? undefined : this.resolveModuleOwnerUserId(projectId, input.ownerUserId),
+      iconCode: input.iconCode === undefined ? undefined : this.trimToNull(input.iconCode),
+      priority: input.priority,
+      status: input.status,
+      progress: input.progress,
       enabled: input.enabled,
       sort: input.sort,
       description: input.description === undefined ? undefined : input.description?.trim() || null,
@@ -429,6 +471,51 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     await this.requireProjectMaintainer(projectId, ctx, "remove project module");
     if (!this.repo.removeModule(projectId, moduleId)) {
       throw new AppError(ERROR_CODES.PROJECT_MODULE_NOT_FOUND, `module not found: ${moduleId}`, 404);
+    }
+  }
+
+  async addModuleMember(
+    projectId: string,
+    moduleId: string,
+    input: AddProjectModuleMemberInput,
+    ctx: RequestContext
+  ): Promise<ProjectModuleMemberEntity> {
+    await this.requireProjectMaintainer(projectId, ctx, "add project module member");
+    await this.getModule(projectId, moduleId, ctx);
+    const userId = input.userId.trim();
+    const user = this.userRepo.findById(userId);
+    if (!user) {
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${input.userId}`, 404);
+    }
+    if (this.repo.findMemberByProjectAndUserId(projectId, userId)) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_MEMBER_EXISTS, "该成员已是项目成员，无需重复添加", 409);
+    }
+    if (this.repo.hasModuleMember(projectId, moduleId, userId)) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_MEMBER_EXISTS, "module member already exists", 409);
+    }
+    const now = nowIso();
+    const id = genId("pmm");
+    this.repo.createModuleMember({
+      id,
+      projectId,
+      moduleId,
+      userId,
+      roleCode: input.roleCode ?? "member",
+      createdAt: now,
+      updatedAt: now
+    });
+    const created = this.repo.findModuleMemberById(projectId, moduleId, id);
+    if (!created) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_CREATE_FAILED, "project module member create failed", 500);
+    }
+    return created;
+  }
+
+  async removeModuleMember(projectId: string, moduleId: string, moduleMemberId: string, ctx: RequestContext): Promise<void> {
+    await this.requireProjectMaintainer(projectId, ctx, "remove project module member");
+    await this.getModule(projectId, moduleId, ctx);
+    if (!this.repo.deleteModuleMember(projectId, moduleId, moduleMemberId)) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_MEMBER_NOT_FOUND, "project module member not found", 404);
     }
   }
 
@@ -811,6 +898,18 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return normalized ? normalized : null;
   }
 
+  private resolveModuleOwnerUserId(projectId: string, value: string | null | undefined): string | null {
+    const ownerUserId = this.trimToNull(value);
+    if (!ownerUserId) {
+      return null;
+    }
+    const member = this.repo.findMemberByProjectAndUserId(projectId, ownerUserId);
+    if (!member) {
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, "模块负责人必须是项目成员", 400);
+    }
+    return ownerUserId;
+  }
+
   private findConfigById(items: ProjectConfigItemEntity[], id: string, code: string): ProjectConfigItemEntity {
     const hit = items.find((item) => item.id === id);
     if (!hit) {
@@ -869,6 +968,9 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       const message = error.message || "";
       if (message.includes("idx_projects_project_no") || message.includes("projects.project_no")) {
         throw new AppError(ERROR_CODES.PROJECT_NO_CONFLICT, "project number already exists", 409);
+      }
+      if (message.includes("uq_project_module_members_module_user")) {
+        throw new AppError(ERROR_CODES.PROJECT_MODULE_MEMBER_EXISTS, "project module member already exists", 409);
       }
       throw new AppError(ERROR_CODES.PROJECT_CONFLICT, "resource already exists", 409);
     }

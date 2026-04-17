@@ -20,7 +20,6 @@ import type {
   ProjectApiTokenEntity,
   ProjectApiTokenScope,
   ProjectMetaItem,
-  ProjectModuleNodeType,
   ProjectSummary,
   ProjectVersionItem,
   UpdateProjectMetaItemInput,
@@ -52,13 +51,11 @@ export class ProjectConfigDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly project = input<ProjectSummary | null>(null);
-  readonly modules = input<ProjectMetaItem[]>([]);
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
   readonly apiTokens = input<ProjectApiTokenEntity[]>([]);
   readonly latestCreatedToken = input<string | null>(null);
-  readonly pendingModuleIds = input<string[]>([]);
   readonly pendingEnvironmentIds = input<string[]>([]);
   readonly pendingVersionIds = input<string[]>([]);
   readonly pendingStageIds = input<string[]>([]);
@@ -66,9 +63,6 @@ export class ProjectConfigDialogComponent {
   readonly canManageConfig = input(false);
 
   readonly cancel = output<void>();
-  readonly createModule = output<CreateProjectMetaItemInput>();
-  readonly updateModule = output<{ id: string; patch: UpdateProjectMetaItemInput }>();
-  readonly removeModule = output<string>();
   readonly createEnvironment = output<CreateProjectMetaItemInput>();
   readonly updateEnvironment = output<{ id: string; patch: UpdateProjectMetaItemInput }>();
   readonly removeEnvironment = output<string>();
@@ -83,20 +77,12 @@ export class ProjectConfigDialogComponent {
   readonly copyLatestToken = output<string>();
   readonly clearLatestToken = output<void>();
 
-  readonly moduleDraft = signal('');
-  readonly moduleNoDraft = signal('');
-  readonly moduleNodeTypeDraft = signal<ProjectModuleNodeType>('module');
-  readonly moduleParentDraft = signal<string | null>(null);
   readonly environmentDraft = signal('');
   readonly versionDraft = signal('');
   readonly stageDraft = signal('');
   readonly tokenNameDraft = signal('');
   readonly tokenScopesDraft = signal<ProjectApiTokenScope[]>(['issues:read', 'rd:read']); //'feedbacks:read'
   readonly tokenExpiresAt = signal<Date | null>(null);
-
-  isModulePending(id: string): boolean {
-    return this.pendingModuleIds().includes(id);
-  }
 
   isEnvironmentPending(id: string): boolean {
     return this.pendingEnvironmentIds().includes(id);
@@ -114,31 +100,9 @@ export class ProjectConfigDialogComponent {
     return this.pendingTokenIds().includes(id);
   }
 
-  subsystemItems(excludeId?: string): ProjectMetaItem[] {
-    return this.modules().filter((item) => item.nodeType === 'subsystem' && item.id !== excludeId);
-  }
-
   asNumber(value: unknown): number {
     const n = Number(value);
     return Number.isFinite(n) && n >= 0 ? n : 0;
-  }
-
-  submitModuleCreate(): void {
-    const name = this.moduleDraft().trim();
-    if (!name) {
-      return;
-    }
-    const nodeType = this.moduleNodeTypeDraft();
-    this.createModule.emit({
-      name,
-      projectNo: nodeType === 'subsystem' ? this.moduleNoDraft().trim() || undefined : undefined,
-      nodeType,
-      parentId: nodeType === 'module' ? this.moduleParentDraft() : null
-    });
-    this.moduleDraft.set('');
-    this.moduleNoDraft.set('');
-    this.moduleNodeTypeDraft.set('module');
-    this.moduleParentDraft.set(null);
   }
 
   submitEnvironmentCreate(): void {
@@ -167,31 +131,6 @@ export class ProjectConfigDialogComponent {
     }
     this.createStage.emit({ projectId, name });
     this.stageDraft.set('');
-  }
-
-  saveModule(
-    item: ProjectMetaItem,
-    name: string,
-    description: string,
-    sort: number,
-    nodeType: ProjectModuleNodeType,
-    parentId: string | null,
-    projectNo: string | null
-  ): void {
-    const patch: UpdateProjectMetaItemInput = {};
-    if (name.trim() !== item.name) patch.name = name.trim();
-    if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
-    if (sort !== item.sort) patch.sort = sort;
-    if (nodeType !== item.nodeType) patch.nodeType = nodeType;
-    const normalizedParentId = nodeType === 'module' ? (parentId || null) : null;
-    if (normalizedParentId !== item.parentId) patch.parentId = normalizedParentId;
-    if (nodeType === 'subsystem') {
-      const normalizedProjectNo = projectNo?.trim() || null;
-      if (normalizedProjectNo !== item.projectNo) patch.projectNo = normalizedProjectNo;
-    }
-    if (Object.keys(patch).length > 0) {
-      this.updateModule.emit({ id: item.id, patch });
-    }
   }
 
   saveEnvironment(item: ProjectMetaItem, name: string, description: string, sort: number): void {

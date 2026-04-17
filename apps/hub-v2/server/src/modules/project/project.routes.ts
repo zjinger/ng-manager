@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import {
+  addProjectModuleMemberSchema,
   addProjectMemberSchema,
   createProjectConfigItemSchema,
   createProjectSchema,
@@ -81,6 +82,12 @@ export default async function projectRoutes(app: FastifyInstance) {
     return ok({ items: await app.container.projectQuery.listModules(params.projectId, ctx) });
   });
 
+  app.get("/projects/:projectId/modules/:moduleId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; moduleId: string };
+    return ok(await app.container.projectQuery.getModule(params.projectId, params.moduleId, ctx));
+  });
+
   app.post("/projects/:projectId/modules", async (request, reply) => {
     const ctx = requireAuth(request);
     const params = request.params as { projectId: string };
@@ -102,6 +109,32 @@ export default async function projectRoutes(app: FastifyInstance) {
     const params = request.params as { projectId: string; moduleId: string };
     await app.container.projectCommand.removeModule(params.projectId, params.moduleId, ctx);
     return ok({ id: params.moduleId }, "project module deleted");
+  });
+
+  app.get("/projects/:projectId/modules/:moduleId/members", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; moduleId: string };
+    return ok({ items: await app.container.projectQuery.listModuleMembers(params.projectId, params.moduleId, ctx) });
+  });
+
+  app.post("/projects/:projectId/modules/:moduleId/members", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; moduleId: string };
+    const body = addProjectModuleMemberSchema.parse(request.body);
+    const item = await app.container.projectCommand.addModuleMember(params.projectId, params.moduleId, body, ctx);
+    return reply.status(201).send(ok(item, "project module member created"));
+  });
+
+  app.delete("/projects/:projectId/modules/:moduleId/members/:moduleMemberId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; moduleId: string; moduleMemberId: string };
+    await app.container.projectCommand.removeModuleMember(
+      params.projectId,
+      params.moduleId,
+      params.moduleMemberId,
+      ctx
+    );
+    return ok({ id: params.moduleMemberId }, "project module member deleted");
   });
 
   app.get("/projects/:projectId/environments", async (request) => {

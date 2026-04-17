@@ -10,6 +10,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { DataTableComponent } from '@shared/ui';
 import { PROJECT_TYPE_LABELS, type ProjectMemberEntity, type ProjectMetaItem, type ProjectSummary, type ProjectType } from '../../models/project.model';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
+import { ProjectListExpandPanelComponent } from '../project-list-expand-panel/project-list-expand-panel.component';
 
 @Component({
   selector: 'app-project-list-table',
@@ -24,6 +25,7 @@ import { NzAvatarModule } from 'ng-zorro-antd/avatar';
     NzTooltipModule,
     NzPopconfirmModule,
     NzAvatarModule,
+    ProjectListExpandPanelComponent,
   ],
   templateUrl: './project-list-table.component.html',
   styleUrls: ['./project-list-table.component.less'],
@@ -39,6 +41,9 @@ export class ProjectListTableComponent {
   readonly memberPreviewMap = input<Record<string, ProjectMemberEntity[]>>({});
   readonly memberLoadingIds = input<string[]>([]);
   readonly manageMembers = output<ProjectSummary>();
+  readonly manageModules = output<ProjectSummary>();
+  readonly editModuleConfig = output<{ project: ProjectSummary; moduleId: string }>();
+  readonly manageModuleMembers = output<{ project: ProjectSummary; moduleId: string }>();
   readonly edit = output<ProjectSummary>();
   readonly manageConfig = output<ProjectSummary>();
   readonly archive = output<ProjectSummary>();
@@ -117,31 +122,5 @@ export class ProjectListTableComponent {
       return 'manager';
     }
     return 'member';
-  }
-
-  subsystemInitial(name: string): string {
-    return (name || 'S').slice(0, 1).toUpperCase();
-  }
-
-  placeholderProgress(_subsystem: { id: string }): number {
-    return 60;
-  }
-
-  subsystemRows(projectId: string): Array<{ id: string; name: string; description: string | null; moduleCount: number }> {
-    const items = this.modulePreviewMap()[projectId] ?? [];
-    const moduleCountMap = new Map<string, number>();
-    for (const item of items) {
-      if (item.nodeType === 'module' && item.parentId) {
-        moduleCountMap.set(item.parentId, (moduleCountMap.get(item.parentId) ?? 0) + 1);
-      }
-    }
-    return items
-      .filter((item) => item.nodeType === 'subsystem')
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description ?? null,
-        moduleCount: moduleCountMap.get(item.id) ?? 0
-      }));
   }
 }

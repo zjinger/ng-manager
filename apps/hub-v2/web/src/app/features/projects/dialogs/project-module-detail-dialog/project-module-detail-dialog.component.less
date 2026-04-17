@@ -1,0 +1,82 @@
+.module-detail-dialog {
+  min-height: 420px;
+}
+
+.section {
+  display: grid;
+  gap: 14px;
+}
+
+.row {
+  display: grid;
+  gap: 10px;
+}
+
+.row--pair {
+  grid-template-columns: 1fr 1fr;
+}
+
+.row--triple {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field__label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.creator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.member-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.empty {
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+
+@media (max-width: 900px) {
+  .row--pair,
+  .row--triple {
+    grid-template-columns: 1fr;
+  }
+}
+

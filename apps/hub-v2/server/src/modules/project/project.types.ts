@@ -113,6 +113,12 @@ export interface ProjectConfigItemEntity {
   parentId: string | null;
   parentName?: string | null;
   nodeType: "subsystem" | "module";
+  ownerUserId?: string | null;
+  ownerName?: string | null;
+  iconCode?: string | null;
+  priority?: "critical" | "high" | "medium" | "low";
+  status?: "todo" | "in_progress" | "released" | "paused";
+  progress?: number;
   enabled: boolean;
   sort: number;
   description: string | null;
@@ -138,6 +144,11 @@ export interface CreateProjectConfigItemInput {
   projectNo?: string;
   parentId?: string | null;
   nodeType?: "subsystem" | "module";
+  ownerUserId?: string | null;
+  iconCode?: string;
+  priority?: "critical" | "high" | "medium" | "low";
+  status?: "todo" | "in_progress" | "released" | "paused";
+  progress?: number;
   enabled?: boolean;
   sort?: number;
   description?: string;
@@ -149,9 +160,35 @@ export interface UpdateProjectConfigItemInput {
   projectNo?: string | null;
   parentId?: string | null;
   nodeType?: "subsystem" | "module";
+  ownerUserId?: string | null;
+  iconCode?: string | null;
+  priority?: "critical" | "high" | "medium" | "low";
+  status?: "todo" | "in_progress" | "released" | "paused";
+  progress?: number;
   enabled?: boolean;
   sort?: number;
   description?: string | null;
+}
+
+export interface AddProjectModuleMemberInput {
+  userId: string;
+  roleCode?: ProjectMemberRole;
+}
+
+export interface ProjectModuleMemberEntity {
+  id: string;
+  projectId: string;
+  moduleId: string;
+  userId: string;
+  displayName: string;
+  avatarUploadId?: string | null;
+  avatarUrl?: string | null;
+  roleCode: ProjectMemberRole;
+  source: "project" | "module";
+  isInherited: boolean;
+  isOwner: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateProjectVersionItemInput {

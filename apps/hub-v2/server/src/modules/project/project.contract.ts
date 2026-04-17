@@ -1,5 +1,6 @@
 import type { RequestContext } from "../../shared/context/request-context";
 import type {
+  AddProjectModuleMemberInput,
   AddProjectMemberInput,
   CreateProjectConfigItemInput,
   CreateProjectInput,
@@ -10,6 +11,7 @@ import type {
   ProjectListResult,
   ProjectMemberCandidate,
   ProjectMemberEntity,
+  ProjectModuleMemberEntity,
   UpdateProjectMemberInput,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
@@ -31,6 +33,13 @@ export interface ProjectCommandContract {
     ctx: RequestContext
   ): Promise<ProjectConfigItemEntity>;
   removeModule(projectId: string, moduleId: string, ctx: RequestContext): Promise<void>;
+  addModuleMember(
+    projectId: string,
+    moduleId: string,
+    input: AddProjectModuleMemberInput,
+    ctx: RequestContext
+  ): Promise<ProjectModuleMemberEntity>;
+  removeModuleMember(projectId: string, moduleId: string, moduleMemberId: string, ctx: RequestContext): Promise<void>;
   addEnvironment(
     projectId: string,
     input: CreateProjectConfigItemInput,
@@ -60,6 +69,8 @@ export interface ProjectQueryContract {
   listMembers(projectId: string, ctx: RequestContext): Promise<ProjectMemberEntity[]>;
   listMemberCandidates(projectId: string, ctx: RequestContext): Promise<ProjectMemberCandidate[]>;
   listModules(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]>;
+  getModule(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity>;
+  listModuleMembers(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleMemberEntity[]>;
   listEnvironments(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]>;
   listVersions(projectId: string, ctx: RequestContext): Promise<ProjectVersionItemEntity[]>;
 }

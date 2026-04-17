@@ -5,6 +5,7 @@ import { ApiClientService } from '@core/http';
 import type { PageResult } from '@core/types';
 import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
+  AddProjectModuleMemberInput,
   AddProjectMemberInput,
   CreateProjectApiTokenInput,
   CreateProjectApiTokenResult,
@@ -15,6 +16,7 @@ import type {
   ProjectListQuery,
   ProjectMemberCandidate,
   ProjectMemberEntity,
+  ProjectModuleMemberEntity,
   ProjectMetaItem,
   ProjectSummary,
   ProjectVersionItem,
@@ -87,6 +89,10 @@ export class ProjectApiService {
     return this.api.get<{ items: ProjectMetaItem[] }>(`/projects/${projectId}/modules`).pipe(map((response) => response.items));
   }
 
+  getModule(projectId: string, moduleId: string) {
+    return this.api.get<ProjectMetaItem>(`/projects/${projectId}/modules/${moduleId}`);
+  }
+
   addModule(projectId: string, input: CreateProjectMetaItemInput) {
     return this.api.post<ProjectMetaItem, CreateProjectMetaItemInput>(`/projects/${projectId}/modules`, input);
   }
@@ -97,6 +103,23 @@ export class ProjectApiService {
 
   removeModule(projectId: string, moduleId: string) {
     return this.api.delete<{ id: string }>(`/projects/${projectId}/modules/${moduleId}`);
+  }
+
+  listModuleMembers(projectId: string, moduleId: string) {
+    return this.api
+      .get<{ items: ProjectModuleMemberEntity[] }>(`/projects/${projectId}/modules/${moduleId}/members`)
+      .pipe(map((response) => response.items));
+  }
+
+  addModuleMember(projectId: string, moduleId: string, input: AddProjectModuleMemberInput) {
+    return this.api.post<ProjectModuleMemberEntity, AddProjectModuleMemberInput>(
+      `/projects/${projectId}/modules/${moduleId}/members`,
+      input
+    );
+  }
+
+  removeModuleMember(projectId: string, moduleId: string, moduleMemberId: string) {
+    return this.api.delete<{ id: string }>(`/projects/${projectId}/modules/${moduleId}/members/${moduleMemberId}`);
   }
 
   listEnvironments(projectId: string) {

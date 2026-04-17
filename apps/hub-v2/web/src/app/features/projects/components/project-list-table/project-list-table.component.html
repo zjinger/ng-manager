@@ -94,6 +94,16 @@
           </a>
           <a
             nz-button
+            nz-tooltip="子项目/模块"
+            nzType="text"
+            class="project-action"
+            type="button"
+            (click)="manageModules.emit(item)"
+          >
+            <nz-icon nzType="cluster" nzTheme="outline" />
+          </a>
+          <a
+            nz-button
             nz-tooltip="项目配置"
             nzType="text"
             class="project-action"
@@ -134,89 +144,17 @@
         [class.project-row--expanded-open]="isExpanded(item.id)"
       >
         <div class="project-expand-wrap">
-          <div class="project-expand">
-            <div class="project-detail-grid">
-              <div class="project-detail-section">
-                <div class="project-detail-label">项目信息</div>
-                <div class="project-detail-content">
-                  <span class="project-type-badge" [attr.data-type]="item.projectType">{{
-                    projectTypeLabel(item.projectType)
-                  }}</span>
-                  @if (projectTypeDetail(item); as detail) {
-                    <span class="project-type-badge">{{ detail }}</span>
-                  }
-                  <span class="project-type-badge">项目编号 {{ item.projectNo }}</span>
-                </div>
-              </div>
-              <div class="project-detail-section">
-                <div class="project-detail-label">
-                  项目成员 ({{ memberItems(item.id).length }}人)
-                </div>
-                @if (isMemberLoading(item.id)) {
-                  <div class="project-cell--muted">正在加载成员…</div>
-                } @else if (memberItems(item.id).length === 0) {
-                  <div class="project-cell--muted">暂无成员</div>
-                } @else {
-                  <div class="project-detail-content project-members-list">
-                    @for (member of memberItems(item.id); track member.id) {
-                      <div class="project-member-chip">
-                        @if (member.avatarUrl) {
-                          <nz-avatar [nzSize]="20" [nzSrc]="member.avatarUrl"></nz-avatar>
-                        } @else {
-                          <span class="project-member-avatar">
-                            {{ memberInitial(member.displayName) }}
-                          </span>
-                        }
-                        <span>{{ member.displayName }}</span>
-                        <span class="member-role" [attr.data-role]="memberRoleTone(member)">{{
-                          memberRoleLabel(member)
-                        }}</span>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-            @if (isModuleLoading(item.id) || subsystemRows(item.id).length > 0) {
-              <div class="project-sub-list">
-                <div class="project-sub-header">
-                  <span><nz-icon nzType="cluster" nzTheme="outline" /> 子项目</span>
-                  @if (isModuleLoading(item.id)) {
-                    <span class="project-cell--muted">正在加载…</span>
-                  }
-                </div>
-                @for (subsystem of subsystemRows(item.id); track subsystem.id; let index = $index) {
-                  <div class="project-sub-item">
-                    <div class="project-sub-left">
-                      <div class="project-sub-icon" [attr.data-index]="index">
-                        {{ subsystemInitial(subsystem.name) }}
-                      </div>
-                      <div class="project-sub-info">
-                        <div class="project-sub-name">{{ subsystem.name }}</div>
-                        <div class="project-sub-meta">
-                          {{ subsystem.description || '包含 ' + subsystem.moduleCount + ' 个模块' }}
-                        </div>
-                      </div>
-                    </div>
-                    <div class="project-sub-right">
-                      <span class="project-sub-status">进行中</span>
-                      <div class="project-sub-progress">
-                        <div class="project-sub-progress-bar">
-                          <div
-                            class="project-sub-progress-bar-fill"
-                            [style.width.%]="placeholderProgress(subsystem)"
-                          ></div>
-                        </div>
-                        <span class="project-sub-progress-text"
-                          >{{ placeholderProgress(subsystem) }}%</span
-                        >
-                      </div>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </div>
+          <app-project-list-expand-panel
+            [project]="item"
+            [members]="memberItems(item.id)"
+            [membersLoading]="isMemberLoading(item.id)"
+            [modules]="modulePreviewMap()[item.id] || []"
+            [modulesLoading]="isModuleLoading(item.id)"
+            (manageMembers)="manageMembers.emit($event)"
+            (manageModules)="manageModules.emit($event)"
+            (editModuleConfig)="editModuleConfig.emit({ project: item, moduleId: $event })"
+            (manageModuleMembers)="manageModuleMembers.emit({ project: item, moduleId: $event })"
+          />
         </div>
       </div>
     }

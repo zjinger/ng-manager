@@ -317,7 +317,7 @@
 
 .project-sub-list {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 
 .project-sub-header {
@@ -327,7 +327,7 @@
     font-size: 12px;
     color: var(--text-muted);
     font-weight: 600;
-    padding-bottom: 6px;
+    padding-bottom: 4px;
 }
 
 .project-sub-header>span {
@@ -342,21 +342,36 @@
     justify-content: space-between;
     gap: 8px;
     border: 1px solid var(--border-color-soft);
-    border-radius: 12px;
-    padding: 12px 14px;
+    border-radius: 10px;
+    padding: 10px 14px;
     background: var(--bg-panel);
+    transition: opacity 0.2s ease;
+
+    &.is-hidden {
+        display: none;
+    }
+
+    &--module {
+        background: transparent;
+        border: none;
+        border-top: 1px dashed var(--border-color-soft);
+        border-radius: 0;
+        padding: 8px 14px 8px 48px;
+        margin-left: 24px;
+    }
 }
 
 .project-sub-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
+    flex: 1;
 }
 
 .project-sub-icon {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
     display: inline-flex;
     align-items: center;
@@ -366,14 +381,14 @@
     color: #fff;
     background: linear-gradient(135deg, #0ea5e9, #0284c7);
     flex-shrink: 0;
-}
 
-.project-sub-icon[data-index='1'] {
-    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-}
-
-.project-sub-icon[data-index='2'] {
-    background: linear-gradient(135deg, #10b981, #059669);
+    &--module {
+        width: 26px;
+        height: 26px;
+        font-size: 11px;
+        background: linear-gradient(135deg, #94a3b8, #64748b);
+        border-radius: 6px;
+    }
 }
 
 .project-sub-info {
@@ -384,18 +399,27 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--text-heading);
+
+    &--module {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
 }
 
 .project-sub-meta {
     margin-top: 2px;
     font-size: 11px;
     color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .project-sub-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-shrink: 0;
 }
 
@@ -431,6 +455,61 @@
 .project-sub-progress-text {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+// Tree toggle button
+.subsystem-toggle-btn {
+    color: var(--text-muted);
+    padding: 0;
+    width: 20px;
+    min-width: 20px;
+    border: none;
+    transition: transform 0.2s ease;
+
+    nz-icon {
+        font-size: 12px;
+    }
+
+    &.is-expanded {
+        transform: rotate(0deg);
+    }
+}
+
+// Module preview chips
+.module-preview-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 300px;
+}
+
+.module-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color-soft);
+
+    &--more {
+        color: var(--text-muted);
+        background: transparent;
+        border-style: dashed;
+    }
+}
+
+.module-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--primary-600);
+    background: rgba(99, 102, 241, 0.1);
 }
 
 :host-context(html[data-theme='dark']) .project-tag {
@@ -492,6 +571,33 @@
 :host-context(html[data-theme='dark']) .project-sub-status {
     color: #7dd3fc;
     background: rgba(14, 165, 233, 0.22);
+}
+
+:host-context(html[data-theme='dark']) {
+    .project-sub-item--module {
+        border-color: rgba(148, 163, 184, 0.12);
+    }
+
+    .module-chip {
+        background: rgba(148, 163, 184, 0.12);
+        border-color: rgba(148, 163, 184, 0.2);
+        color: #94a3b8;
+    }
+
+    .module-chip--more {
+        background: transparent;
+        border-color: rgba(148, 163, 184, 0.2);
+        color: #64748b;
+    }
+
+    .module-count-badge {
+        background: rgba(99, 102, 241, 0.18);
+        color: #a5b4fc;
+    }
+
+    .project-sub-icon--module {
+        background: linear-gradient(135deg, #475569, #334155) !important;
+    }
 }
 
 @media (max-width: 980px) {

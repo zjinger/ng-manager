@@ -1,0 +1,160 @@
+<app-dialog-shell
+  [open]="open()"
+  [width]="980"
+  [title]="module() ? module()!.name + ' · 模块详情' : '模块详情'"
+  [subtitle]="'管理模块基础信息与模块专属成员。'"
+  [icon]="'appstore'"
+  (cancel)="cancel.emit()"
+>
+  <div dialog-body class="module-detail-dialog">
+    @if (module(); as current) {
+      <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="true" [nzSelectedIndex]="tabIndex()">
+        <nz-tab nzTitle="基本信息">
+          <section class="section">
+            <div class="row row--pair">
+              <div class="field">
+                <label class="field__label">模块 Key</label>
+                <input nz-input [ngModel]="current.code || ''" disabled />
+              </div>
+              <div class="field">
+                <label class="field__label">节点类型</label>
+                <input nz-input [ngModel]="current.nodeType === 'subsystem' ? '子项目' : '模块'" disabled />
+              </div>
+            </div>
+            <div class="row row--pair">
+              <div class="field">
+                <label class="field__label">名称</label>
+                <input #nameRef nz-input [ngModel]="current.name" />
+              </div>
+              <div class="field">
+                <label class="field__label">负责人</label>
+                <nz-select #ownerRef="ngModel" [ngModel]="current.ownerUserId || null" nzAllowClear nzPlaceHolder="未设置">
+                  @for (member of projectMembers(); track member.id) {
+                    <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
+                  }
+                </nz-select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label class="field__label">描述</label>
+                <textarea #descRef nz-input rows="3" [ngModel]="current.description || ''"></textarea>
+              </div>
+            </div>
+            <div class="row row--triple">
+              <div class="field">
+                <label class="field__label">图标编码</label>
+                <input #iconRef nz-input [ngModel]="current.iconCode || ''" placeholder="如 shield / cube / table" />
+              </div>
+              <div class="field">
+                <label class="field__label">优先级</label>
+                <nz-select #priorityRef="ngModel" [ngModel]="current.priority || 'medium'">
+                  @for (item of priorityOptions; track item.value) {
+                    <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                  }
+                </nz-select>
+              </div>
+              <div class="field">
+                <label class="field__label">状态</label>
+                <nz-select #statusRef="ngModel" [ngModel]="current.status || 'todo'">
+                  @for (item of statusOptions; track item.value) {
+                    <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                  }
+                </nz-select>
+              </div>
+            </div>
+            <div class="actions">
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="busy() || !canManageModules()"
+                [nzLoading]="busy()"
+                (click)="
+                  submitSave(
+                    nameRef.value,
+                    descRef.value,
+                    ownerRef.value,
+                    iconRef.value,
+                    priorityRef.value,
+                    statusRef.value
+                  )
+                "
+              >
+                保存
+              </button>
+            </div>
+          </section>
+        </nz-tab>
+        <nz-tab nzTitle="成员">
+          <section class="section">
+            <div class="creator">
+              <nz-select
+                style="min-width: 240px"
+                [ngModel]="candidateUserId()"
+                (ngModelChange)="candidateUserId.set($event || null)"
+                nzPlaceHolder="选择成员"
+              >
+                @for (item of addableMembers(); track item.id) {
+                  <nz-option [nzLabel]="item.displayName || item.username" [nzValue]="item.id"></nz-option>
+                }
+              </nz-select>
+              <nz-select
+                style="min-width: 160px"
+                [ngModel]="candidateRoleCode()"
+                (ngModelChange)="candidateRoleCode.set($event || 'member')"
+              >
+                @for (item of roleOptions; track item.value) {
+                  <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                }
+              </nz-select>
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="!candidateUserId() || membersBusy() || !canManageModules()"
+                [nzLoading]="membersBusy()"
+                (click)="submitAddMember()"
+              >
+                添加成员
+              </button>
+            </div>
+            <div class="list">
+              @for (member of moduleMembers(); track member.id) {
+                <div class="member-row">
+                  <div class="member-meta">
+                    <strong>{{ member.displayName }}</strong>
+                    <span class="muted">{{ roleLabel(member.roleCode) }}</span>
+                    @if (member.isOwner) {
+                      <nz-tag nzColor="gold">项目负责人</nz-tag>
+                    }
+                    @if (member.source === 'project') {
+                      <nz-tag nzColor="blue">继承自项目</nz-tag>
+                    } @else {
+                      <nz-tag nzColor="green">模块专属</nz-tag>
+                    }
+                  </div>
+                  <div>
+                    @if (member.source === 'module' && canManageModules()) {
+                      <button
+                        nz-button
+                        nzType="default"
+                        nzDanger
+                        [disabled]="membersBusy()"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认移除该模块成员？"
+                        (nzOnConfirm)="removeMember.emit(member.id)"
+                      >
+                        移除
+                      </button>
+                    }
+                  </div>
+                </div>
+              } @empty {
+                <div class="empty">暂无模块成员</div>
+              }
+            </div>
+          </section>
+        </nz-tab>
+      </nz-tabs>
+    }
+  </div>
+</app-dialog-shell>

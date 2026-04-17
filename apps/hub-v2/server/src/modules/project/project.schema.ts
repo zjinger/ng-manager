@@ -68,6 +68,11 @@ export const createProjectConfigItemSchema = z.object({
   projectNo: z.string().trim().max(64).optional(),
   parentId: z.string().trim().nullable().optional(),
   nodeType: z.enum(["subsystem", "module"]).optional(),
+  ownerUserId: z.string().trim().nullable().optional(),
+  iconCode: z.string().trim().max(64).optional(),
+  priority: z.enum(["critical", "high", "medium", "low"]).optional(),
+  status: z.enum(["todo", "in_progress", "released", "paused"]).optional(),
+  progress: z.number().int().min(0).max(100).optional(),
   enabled: z.boolean().optional(),
   sort: z.number().int().min(0).optional(),
   description: z.string().trim().optional()
@@ -79,9 +84,19 @@ export const updateProjectConfigItemSchema = z.object({
   projectNo: z.string().trim().max(64).nullable().optional(),
   parentId: z.string().trim().nullable().optional(),
   nodeType: z.enum(["subsystem", "module"]).optional(),
+  ownerUserId: z.string().trim().nullable().optional(),
+  iconCode: z.string().trim().max(64).nullable().optional(),
+  priority: z.enum(["critical", "high", "medium", "low"]).optional(),
+  status: z.enum(["todo", "in_progress", "released", "paused"]).optional(),
+  progress: z.number().int().min(0).max(100).optional(),
   enabled: z.boolean().optional(),
   sort: z.number().int().min(0).optional(),
   description: z.string().trim().nullable().optional()
+});
+
+export const addProjectModuleMemberSchema = z.object({
+  userId: z.string().trim().min(1),
+  roleCode: z.enum(["member", "product", "ui", "frontend_dev", "backend_dev", "qa", "ops", "project_admin"]).optional()
 });
 
 export const createProjectVersionItemSchema = z.object({

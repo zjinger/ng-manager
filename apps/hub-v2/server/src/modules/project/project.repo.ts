@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
 import type {
+  AddProjectModuleMemberInput,
   CreateProjectConfigItemInput,
   CreateProjectVersionItemInput,
   ListProjectsQuery,
@@ -9,6 +10,7 @@ import type {
   ProjectListResult,
   ProjectMemberCandidate,
   ProjectMemberEntity,
+  ProjectModuleMemberEntity,
   ProjectMemberRole,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
@@ -67,9 +69,27 @@ type ProjectConfigRow = {
   parent_id: string | null;
   parent_name: string | null;
   node_type: "subsystem" | "module";
+  owner_user_id?: string | null;
+  owner_name?: string | null;
+  icon_code?: string | null;
+  priority?: "critical" | "high" | "medium" | "low" | null;
+  status?: "todo" | "in_progress" | "released" | "paused" | null;
+  progress?: number | null;
   enabled: number;
   sort: number;
   desc: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectModuleMemberRow = {
+  id: string;
+  project_id: string;
+  module_id: string;
+  user_id: string;
+  display_name: string;
+  avatar_upload_id?: string | null;
+  role_code: string;
   created_at: string;
   updated_at: string;
 };
@@ -472,9 +492,11 @@ export class ProjectRepo {
         `
       SELECT
         pm.*,
-        parent.name AS parent_name
+        parent.name AS parent_name,
+        COALESCE(owner.display_name, owner.username) AS owner_name
       FROM project_modules pm
       LEFT JOIN project_modules parent ON parent.id = pm.parent_id
+      LEFT JOIN users owner ON owner.id = pm.owner_user_id
       WHERE pm.project_id = ?
       ORDER BY
         COALESCE(parent.sort, pm.sort) ASC,
@@ -493,8 +515,12 @@ export class ProjectRepo {
     this.db
       .prepare(
         `
-      INSERT INTO project_modules (id, project_id, name, code, project_no, parent_id, node_type, enabled, sort, "desc", created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO project_modules (
+        id, project_id, name, code, project_no, parent_id, node_type,
+        owner_user_id, icon_code, priority, status, progress,
+        enabled, sort, "desc", created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -505,6 +531,11 @@ export class ProjectRepo {
         input.projectNo ?? null,
         input.parentId ?? null,
         input.nodeType ?? "module",
+        input.ownerUserId ?? null,
+        input.iconCode ?? null,
+        input.priority ?? "medium",
+        input.status ?? "todo",
+        input.progress ?? 0,
         input.enabled === false ? 0 : 1,
         input.sort ?? 0,
         input.description?.trim() || null,
@@ -519,6 +550,99 @@ export class ProjectRepo {
 
   removeModule(projectId: string, moduleId: string): boolean {
     const result = this.db.prepare("DELETE FROM project_modules WHERE id = ? AND project_id = ?").run(moduleId, projectId);
+    return result.changes > 0;
+  }
+
+  listModuleMembers(projectId: string, moduleId: string): ProjectModuleMemberEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+        SELECT
+          pmm.id,
+          pmm.project_id,
+          pmm.module_id,
+          pmm.user_id,
+          COALESCE(u.display_name, u.username) AS display_name,
+          a.avatar_upload_id,
+          pmm.role_code,
+          pmm.created_at,
+          pmm.updated_at
+        FROM project_module_members pmm
+        LEFT JOIN users u ON u.id = pmm.user_id
+        LEFT JOIN admin_accounts a ON a.user_id = pmm.user_id
+        WHERE pmm.project_id = ? AND pmm.module_id = ?
+        ORDER BY pmm.updated_at DESC, pmm.created_at DESC
+      `
+      )
+      .all(projectId, moduleId) as ProjectModuleMemberRow[];
+
+    return rows.map((row) => this.mapModuleMember(row));
+  }
+
+  hasModuleMember(projectId: string, moduleId: string, userId: string): boolean {
+    const row = this.db
+      .prepare("SELECT 1 as ok FROM project_module_members WHERE project_id = ? AND module_id = ? AND user_id = ?")
+      .get(projectId, moduleId, userId) as { ok: number } | undefined;
+    return !!row;
+  }
+
+  createModuleMember(
+    input: AddProjectModuleMemberInput & {
+      id: string;
+      projectId: string;
+      moduleId: string;
+      createdAt: string;
+      updatedAt: string;
+    }
+  ): void {
+    this.db
+      .prepare(
+        `
+        INSERT INTO project_module_members (
+          id, project_id, module_id, user_id, role_code, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `
+      )
+      .run(
+        input.id,
+        input.projectId,
+        input.moduleId,
+        input.userId,
+        input.roleCode ?? "member",
+        input.createdAt,
+        input.updatedAt
+      );
+  }
+
+  findModuleMemberById(projectId: string, moduleId: string, moduleMemberId: string): ProjectModuleMemberEntity | null {
+    const row = this.db
+      .prepare(
+        `
+        SELECT
+          pmm.id,
+          pmm.project_id,
+          pmm.module_id,
+          pmm.user_id,
+          COALESCE(u.display_name, u.username) AS display_name,
+          a.avatar_upload_id,
+          pmm.role_code,
+          pmm.created_at,
+          pmm.updated_at
+        FROM project_module_members pmm
+        LEFT JOIN users u ON u.id = pmm.user_id
+        LEFT JOIN admin_accounts a ON a.user_id = pmm.user_id
+        WHERE pmm.project_id = ? AND pmm.module_id = ? AND pmm.id = ?
+      `
+      )
+      .get(projectId, moduleId, moduleMemberId) as ProjectModuleMemberRow | undefined;
+
+    return row ? this.mapModuleMember(row) : null;
+  }
+
+  deleteModuleMember(projectId: string, moduleId: string, moduleMemberId: string): boolean {
+    const result = this.db
+      .prepare("DELETE FROM project_module_members WHERE project_id = ? AND module_id = ? AND id = ?")
+      .run(projectId, moduleId, moduleMemberId);
     return result.changes > 0;
   }
 
@@ -688,6 +812,26 @@ export class ProjectRepo {
       fields.push("node_type = ?");
       params.push(patch.nodeType);
     }
+    if (table === "project_modules" && patch.ownerUserId !== undefined) {
+      fields.push("owner_user_id = ?");
+      params.push(patch.ownerUserId ?? null);
+    }
+    if (table === "project_modules" && patch.iconCode !== undefined) {
+      fields.push("icon_code = ?");
+      params.push(patch.iconCode ?? null);
+    }
+    if (table === "project_modules" && patch.priority !== undefined) {
+      fields.push("priority = ?");
+      params.push(patch.priority);
+    }
+    if (table === "project_modules" && patch.status !== undefined) {
+      fields.push("status = ?");
+      params.push(patch.status);
+    }
+    if (table === "project_modules" && patch.progress !== undefined) {
+      fields.push("progress = ?");
+      params.push(patch.progress);
+    }
     if (patch.enabled !== undefined) {
       fields.push("enabled = ?");
       params.push(patch.enabled ? 1 : 0);
@@ -790,6 +934,12 @@ export class ProjectRepo {
       parentId: row.parent_id ?? null,
       parentName: row.parent_name ?? null,
       nodeType: row.node_type ?? "module",
+      ownerUserId: row.owner_user_id ?? null,
+      ownerName: row.owner_name ?? null,
+      iconCode: row.icon_code ?? null,
+      priority: row.priority ?? "medium",
+      status: row.status ?? "todo",
+      progress: row.progress ?? 0,
       enabled: row.enabled === 1,
       sort: row.sort,
       description: row.desc,
@@ -827,5 +977,23 @@ export class ProjectRepo {
       return role;
     }
     return "member";
+  }
+
+  private mapModuleMember(row: ProjectModuleMemberRow): ProjectModuleMemberEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      moduleId: row.module_id,
+      userId: row.user_id,
+      displayName: row.display_name,
+      avatarUploadId: row.avatar_upload_id ?? null,
+      avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
+      roleCode: this.mapMemberRole(row.role_code),
+      source: "module",
+      isInherited: false,
+      isOwner: false,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
   }
 }

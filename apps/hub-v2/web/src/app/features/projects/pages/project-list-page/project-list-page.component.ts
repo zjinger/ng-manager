@@ -16,7 +16,10 @@ import { ProjectConfigDialogComponent } from '../../dialogs/project-config-dialo
 import { ProjectCreateDialogComponent } from '../../dialogs/project-create-dialog/project-create-dialog.component';
 import { ProjectEditDialogComponent } from '../../dialogs/project-edit-dialog/project-edit-dialog.component';
 import { ProjectMembersDialogComponent } from '../../dialogs/project-members-dialog/project-members-dialog.component';
+import { ProjectModuleDetailDialogComponent } from '../../dialogs/project-module-detail-dialog/project-module-detail-dialog.component';
+import { ProjectModuleManageDialogComponent } from '../../dialogs/project-module-manage-dialog/project-module-manage-dialog.component';
 import type {
+  AddProjectModuleMemberInput,
   CreateProjectApiTokenInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
@@ -24,6 +27,7 @@ import type {
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMemberRole,
+  ProjectModuleMemberEntity,
   ProjectMetaItem,
   ProjectStatus,
   ProjectSummary,
@@ -52,6 +56,8 @@ import { ProjectListStore } from '../../store/project-list.store';
     ProjectListTableComponent,
     ProjectCreateDialogComponent,
     ProjectEditDialogComponent,
+    ProjectModuleManageDialogComponent,
+    ProjectModuleDetailDialogComponent,
     ProjectConfigDialogComponent,
     ProjectMembersDialogComponent
   ],
@@ -73,13 +79,19 @@ export class ProjectListPageComponent {
   readonly status = signal<ProjectStatus | ''>('');
   readonly dialogOpen = signal(false);
   readonly editDialogOpen = signal(false);
+  readonly moduleDialogOpen = signal(false);
+  readonly moduleDetailDialogOpen = signal(false);
+  readonly moduleDetailInitialTab = signal<'basic' | 'members'>('basic');
   readonly configDialogOpen = signal(false);
   readonly membersDialogOpen = signal(false);
   readonly selectedProject = signal<ProjectSummary | null>(null);
+  readonly moduleProject = signal<ProjectSummary | null>(null);
+  readonly selectedModule = signal<ProjectMetaItem | null>(null);
   readonly configProject = signal<ProjectSummary | null>(null);
   readonly members = signal<ProjectMemberEntity[]>([]);
   readonly users = signal<ProjectMemberCandidate[]>([]);
   readonly modules = signal<ProjectMetaItem[]>([]);
+  readonly moduleMembers = signal<ProjectModuleMemberEntity[]>([]);
   readonly environments = signal<ProjectMetaItem[]>([]);
   readonly versions = signal<ProjectVersionItem[]>([]);
   readonly stages = signal<RdStageEntity[]>([]);
@@ -89,9 +101,13 @@ export class ProjectListPageComponent {
   readonly modulePreviewMap = signal<Record<string, ProjectMetaItem[]>>({});
   readonly memberPreviewMap = signal<Record<string, ProjectMemberEntity[]>>({});
   readonly membersLoading = signal(false);
+  readonly moduleLoading = signal(false);
+  readonly moduleMembersLoading = signal(false);
   readonly configLoading = signal(false);
   readonly membersBusy = signal(false);
   readonly editBusy = signal(false);
+  readonly moduleBusy = signal(false);
+  readonly moduleMembersBusy = signal(false);
   readonly configBusy = signal(false);
   readonly previewLoadingMap = signal<Record<string, true>>({});
   readonly memberPreviewLoadingMap = signal<Record<string, true>>({});
@@ -194,24 +210,89 @@ export class ProjectListPageComponent {
     this.updateProjectStatus(project.id, 'active');
   }
 
+  openModuleDialog(project: ProjectSummary): void {
+    this.moduleProject.set(project);
+    this.moduleDialogOpen.set(true);
+    this.loadProjectModules(project.id);
+    this.loadMembers(project.id);
+    this.loadMemberCandidates(project.id);
+  }
+
+  closeModuleDialog(): void {
+    this.moduleDialogOpen.set(false);
+    this.closeModuleDetailDialog();
+    this.moduleProject.set(null);
+    this.modules.set([]);
+    this.moduleMembers.set([]);
+    this.moduleBusy.set(false);
+    this.moduleLoading.set(false);
+    this.moduleMembersBusy.set(false);
+    this.moduleMembersLoading.set(false);
+    this.pendingModuleMap.set({});
+  }
+
+  openModuleDetailDialog(moduleId: string, tab: 'basic' | 'members' = 'basic'): void {
+    const project = this.moduleProject();
+    if (!project) {
+      return;
+    }
+    this.moduleDetailInitialTab.set(tab);
+    this.moduleDetailDialogOpen.set(true);
+    this.moduleMembers.set([]);
+    this.moduleMembersLoading.set(true);
+    this.projectApi.getModule(project.id, moduleId).subscribe({
+      next: (module) => {
+        this.selectedModule.set(module);
+      },
+      error: () => {
+        this.selectedModule.set(this.modules().find((item) => item.id === moduleId) ?? null);
+      }
+    });
+    this.projectApi.listModuleMembers(project.id, moduleId).subscribe({
+      next: (items) => {
+        this.moduleMembers.set(items);
+        this.moduleMembersLoading.set(false);
+      },
+      error: () => {
+        this.moduleMembers.set([]);
+        this.moduleMembersLoading.set(false);
+      }
+    });
+  }
+
+  closeModuleDetailDialog(): void {
+    this.moduleDetailDialogOpen.set(false);
+    this.moduleDetailInitialTab.set('basic');
+    this.selectedModule.set(null);
+    this.moduleMembers.set([]);
+    this.moduleMembersBusy.set(false);
+    this.moduleMembersLoading.set(false);
+  }
+
+  openModuleDetailFromList(
+    project: ProjectSummary,
+    moduleId: string,
+    tab: 'basic' | 'members'
+  ): void {
+    this.openModuleDialog(project);
+    this.openModuleDetailDialog(moduleId, tab);
+  }
+
   openConfigDialog(project: ProjectSummary): void {
     this.configProject.set(project);
     this.configDialogOpen.set(true);
     this.loadProjectMeta(project.id);
     this.loadMembers(project.id);
-    this.loadMemberCandidates(project.id);
   }
 
   closeConfigDialog(): void {
     this.configDialogOpen.set(false);
     this.configProject.set(null);
-    this.modules.set([]);
     this.environments.set([]);
     this.versions.set([]);
     this.stages.set([]);
     this.apiTokens.set([]);
     this.latestCreatedToken.set(null);
-    this.pendingModuleMap.set({});
     this.pendingEnvironmentMap.set({});
     this.pendingVersionMap.set({});
     this.pendingStageMap.set({});
@@ -343,48 +424,115 @@ export class ProjectListPageComponent {
   }
 
   createModule(input: CreateProjectMetaItemInput): void {
-    this.withConfigProject((projectId) => {
-      this.configBusy.set(true);
+    this.withModuleProject((projectId) => {
+      this.moduleBusy.set(true);
       this.projectApi.addModule(projectId, input).subscribe({
         next: () => {
           this.message.success('子项目/模块已新增');
-          this.reloadMeta(projectId);
+          this.reloadModules(projectId);
         },
         error: () => {
-          this.configBusy.set(false);
+          this.moduleBusy.set(false);
           this.message.error('新增子项目/模块失败');
         }
       });
     });
   }
 
+  saveModuleDetail(patch: UpdateProjectMetaItemInput): void {
+    const project = this.moduleProject();
+    const module = this.selectedModule();
+    if (!project || !module) {
+      return;
+    }
+    this.moduleBusy.set(true);
+    this.projectApi.updateModule(project.id, module.id, patch).subscribe({
+      next: (updated) => {
+        this.moduleBusy.set(false);
+        this.selectedModule.set(updated);
+        this.message.success('模块信息已更新');
+        this.reloadModules(project.id);
+      },
+      error: () => {
+        this.moduleBusy.set(false);
+        this.message.error('更新模块信息失败');
+      }
+    });
+  }
+
+  addModuleMember(input: AddProjectModuleMemberInput): void {
+    const project = this.moduleProject();
+    const module = this.selectedModule();
+    if (!project || !module) {
+      return;
+    }
+    this.moduleMembersBusy.set(true);
+    this.projectApi.addModuleMember(project.id, module.id, input).subscribe({
+      next: () => {
+        this.moduleMembersBusy.set(false);
+        this.message.success('模块成员已添加');
+        this.projectApi.listModuleMembers(project.id, module.id).subscribe({
+          next: (items) => this.moduleMembers.set(items),
+          error: () => this.moduleMembers.set([])
+        });
+      },
+      error: () => {
+        this.moduleMembersBusy.set(false);
+        this.message.error('添加模块成员失败');
+      }
+    });
+  }
+
+  removeModuleMember(moduleMemberId: string): void {
+    const project = this.moduleProject();
+    const module = this.selectedModule();
+    if (!project || !module) {
+      return;
+    }
+    this.moduleMembersBusy.set(true);
+    this.projectApi.removeModuleMember(project.id, module.id, moduleMemberId).subscribe({
+      next: () => {
+        this.moduleMembersBusy.set(false);
+        this.message.success('模块成员已移除');
+        this.projectApi.listModuleMembers(project.id, module.id).subscribe({
+          next: (items) => this.moduleMembers.set(items),
+          error: () => this.moduleMembers.set([])
+        });
+      },
+      error: () => {
+        this.moduleMembersBusy.set(false);
+        this.message.error('移除模块成员失败');
+      }
+    });
+  }
+
   updateModule(event: { id: string; patch: UpdateProjectMetaItemInput }): void {
-    this.withConfigProject((projectId) => {
+    this.withModuleProject((projectId) => {
       this.setPending(this.pendingModuleMap, event.id, true);
       this.applyMetaPatchLocal(this.modules, event.id, event.patch);
       this.projectApi.updateModule(projectId, event.id, event.patch).subscribe({
         next: () => {
           this.setPending(this.pendingModuleMap, event.id, false);
           this.message.success('子项目/模块已更新');
-          this.reloadMeta(projectId);
+          this.reloadModules(projectId);
         },
         error: () => {
           this.setPending(this.pendingModuleMap, event.id, false);
           this.message.error('更新子项目/模块失败');
-          this.reloadMeta(projectId);
+          this.reloadModules(projectId);
         }
       });
     });
   }
 
   removeModule(moduleId: string): void {
-    this.withConfigProject((projectId) => {
+    this.withModuleProject((projectId) => {
       this.setPending(this.pendingModuleMap, moduleId, true);
       this.projectApi.removeModule(projectId, moduleId).subscribe({
         next: () => {
           this.setPending(this.pendingModuleMap, moduleId, false);
           this.message.success('子项目/模块已删除');
-          this.reloadMeta(projectId);
+          this.reloadModules(projectId);
         },
         error: () => {
           this.setPending(this.pendingModuleMap, moduleId, false);
@@ -667,47 +815,62 @@ export class ProjectListPageComponent {
     handler(project.id);
   }
 
+  private withModuleProject(handler: (projectId: string) => void): void {
+    const project = this.moduleProject();
+    if (!project) {
+      return;
+    }
+    handler(project.id);
+  }
+
+  private reloadModules(projectId: string): void {
+    this.loadProjectModules(projectId);
+    this.moduleBusy.set(false);
+  }
+
   private reloadMeta(projectId: string): void {
     this.loadProjectMeta(projectId);
     this.configBusy.set(false);
   }
 
-  private loadProjectMeta(projectId: string): void {
-    this.configLoading.set(true);
+  private loadProjectModules(projectId: string): void {
+    this.moduleLoading.set(true);
     this.projectApi.listModules(projectId).subscribe({
       next: (modules) => {
         const sortedModules = this.sortMetaItems(modules);
         this.modules.set(sortedModules);
         this.setModulePreview(projectId, sortedModules);
-        this.projectApi.listEnvironments(projectId).subscribe({
-          next: (environments) => {
-            this.environments.set(environments);
-            this.projectApi.listVersions(projectId).subscribe({
-              next: (versions) => {
-                this.versions.set(versions);
-                this.rdApi.listStages(projectId).subscribe({
-                  next: (stages) => {
-                    this.stages.set(stages);
-                    const currentProject = this.configProject();
-                    this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
-                  },
-                  error: () => {
-                    this.stages.set([]);
-                    const currentProject = this.configProject();
-                    this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
-                  }
-                });
+        this.moduleLoading.set(false);
+      },
+      error: () => {
+        this.modules.set([]);
+        this.moduleLoading.set(false);
+      }
+    });
+  }
+
+  private loadProjectMeta(projectId: string): void {
+    this.configLoading.set(true);
+    this.projectApi.listEnvironments(projectId).subscribe({
+      next: (environments) => {
+        this.environments.set(environments);
+        this.projectApi.listVersions(projectId).subscribe({
+          next: (versions) => {
+            this.versions.set(versions);
+            this.rdApi.listStages(projectId).subscribe({
+              next: (stages) => {
+                this.stages.set(stages);
+                const currentProject = this.configProject();
+                this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
               },
               error: () => {
-                this.versions.set([]);
                 this.stages.set([]);
-                this.apiTokens.set([]);
-                this.configLoading.set(false);
+                const currentProject = this.configProject();
+                this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
               }
             });
           },
           error: () => {
-            this.environments.set([]);
             this.versions.set([]);
             this.stages.set([]);
             this.apiTokens.set([]);
@@ -716,7 +879,6 @@ export class ProjectListPageComponent {
         });
       },
       error: () => {
-        this.modules.set([]);
         this.environments.set([]);
         this.versions.set([]);
         this.stages.set([]);
