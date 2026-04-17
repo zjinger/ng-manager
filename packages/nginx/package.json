@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/nginx",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Nginx management module for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
@@ -14,7 +14,5 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
-  },
-  "dependencies": {},
-  "devDependencies": {}
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/api",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "an API client supporting Postman and Apifox formats",
   "keywords": [
     "api",
