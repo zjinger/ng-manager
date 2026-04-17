@@ -17,7 +17,9 @@ import { RdFilterBarComponent, type RdViewMode } from '../../components/rd-filte
 import { RdListTableComponent } from '../../components/rd-list-table/rd-list-table.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
+import { RdCloseDialogComponent } from '../../dialogs/rd-close-dialog/rd-close-dialog.component';
 import { RdCreateDialogComponent } from '../../dialogs/rd-create-dialog/rd-create-dialog.component';
+import { RdEditDialogComponent } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
 import { getRdMemberIds, type CreateRdItemInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdStageHistoryEntry } from '../../models/rd.model';
 import { MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
@@ -39,6 +41,8 @@ import { map } from 'rxjs';
     RdAdvanceStageDialogComponent,
     RdCreateDialogComponent,
     RdBlockDialogComponent,
+    RdCloseDialogComponent,
+    RdEditDialogComponent,
     RdProgressUpdateDialogComponent,
     NzPaginationModule,
     NzTagModule,
@@ -126,7 +130,7 @@ import { map } from 'rxjs';
       [memberProgressList]="selectedMemberProgressList()"
       [currentUserId]="currentUserId() || ''"
       (actionClick)="handleSelectedAction($event)"
-      (basicSave)="saveSelectedBasic($event)"
+      (editRequest)="openEditDialog()"
       (close)="closeDetail()"
       (updateProgressClick)="openProgressUpdate($event)"
     />
@@ -156,6 +160,22 @@ import { map } from 'rxjs';
       [item]="blockingItem()"
       (cancel)="closeBlockDialog()"
       (confirm)="confirmBlock($event.blockerReason)"
+    />
+
+    <app-rd-close-dialog
+      [open]="closeOpen()"
+      [busy]="store.busy()"
+      [item]="selectedItem()"
+      (cancel)="closeOpen.set(false)"
+      (confirm)="confirmClose($event.reason)"
+    />
+
+    <app-rd-edit-dialog
+      [open]="editOpen()"
+      [busy]="store.busy()"
+      [item]="selectedItem()"
+      (cancel)="editOpen.set(false)"
+      (save)="saveSelectedBasic($event)"
     />
 
     <app-rd-advance-stage-dialog
@@ -258,6 +278,8 @@ export class RdBoardPageComponent {
   readonly viewMode = signal<RdViewMode>('list');
   readonly createOpen = signal(false);
   readonly blockOpen = signal(false);
+  readonly closeOpen = signal(false);
+  readonly editOpen = signal(false);
   readonly advanceStageOpen = signal(false);
   readonly progressUpdateOpen = signal(false);
   readonly progressUpdateData = signal<{ userId: string; memberName: string; currentProgress: number } | null>(null);
@@ -567,6 +589,8 @@ export class RdBoardPageComponent {
     this.selectedLogs.set([]);
     this.selectedStageHistory.set([]);
     this.advanceStageOpen.set(false);
+    this.closeOpen.set(false);
+    this.editOpen.set(false);
   }
 
   handleAction(item: RdItemEntity, action: 'advance' | 'close' | 'reopen'): void {
@@ -583,7 +607,7 @@ export class RdBoardPageComponent {
         if (!this.canCloseSelectedItem()) {
           return;
         }
-        this.store.close(item.id);
+        this.closeOpen.set(true);
         break;
       case 'reopen':
         if (!this.canCloseSelectedItem()) {
@@ -617,6 +641,7 @@ export class RdBoardPageComponent {
       title: input.title,
       description: input.description,
     });
+    this.editOpen.set(false);
   }
 
   confirmBlock(blockerReason: string): void {
@@ -637,7 +662,26 @@ export class RdBoardPageComponent {
     this.advanceStageOpen.set(false);
   }
 
+  confirmClose(reason: string): void {
+    const current = this.selectedItem();
+    if (!current) {
+      return;
+    }
+    this.store.close(current.id, { reason });
+    this.closeOpen.set(false);
+  }
+
+  openEditDialog(): void {
+    if (!this.canEditSelectedBasic() || this.selectedItem()?.status === 'closed') {
+      return;
+    }
+    this.editOpen.set(true);
+  }
+
   openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number }): void {
+    if (this.selectedItem()?.status === 'closed') {
+      return;
+    }
     this.progressUpdateData.set(data);
     this.progressUpdateOpen.set(true);
   }

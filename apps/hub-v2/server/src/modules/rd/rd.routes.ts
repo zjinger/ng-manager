@@ -4,6 +4,7 @@ import { ok } from "../../shared/http/response";
 import {
   advanceRdStageSchema,
   blockRdItemSchema,
+  closeRdItemSchema,
   createRdItemSchema,
   createRdStageSchema,
   listRdItemsQuerySchema,
@@ -113,7 +114,8 @@ export default async function rdRoutes(app: FastifyInstance) {
   app.post("/rd/items/:itemId/close", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
-    return ok(await app.container.rdCommand.close(params.itemId, ctx), "rd item closed");
+    const body = closeRdItemSchema.parse(request.body);
+    return ok(await app.container.rdCommand.close(params.itemId, body, ctx), "rd item closed");
   });
 
   app.post("/rd/items/:itemId/advance-stage", async (request) => {

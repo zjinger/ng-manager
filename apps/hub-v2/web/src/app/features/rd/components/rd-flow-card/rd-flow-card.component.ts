@@ -38,7 +38,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
               @if (canAdvance()) {
                 <button nz-button nzType="primary" [disabled]="busy()" (click)="actionClick.emit('advance')">进入下一阶段</button>
               }
-              @if (canEditBasic()) {
+              @if (canEditBasic() && current.status !== 'closed') {
                 <button nz-button  nzType="default" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
               }
               @if (canClose()) {
@@ -55,15 +55,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
                     恢复
                   </button>
                 } @else {
-                  <button
-                    nz-button
-                    nzType="default"
-                    [disabled]="busy()"
-                    nz-popconfirm
-                    nzPopconfirmTitle="确认关闭该研发项吗？关闭后可恢复。"
-                    nzPopconfirmPlacement="topRight"
-                    (nzOnConfirm)="actionClick.emit('close')"
-                  >
+                  <button nz-button nzType="default" [disabled]="busy()" (click)="actionClick.emit('close')">
                     关闭
                   </button>
                 }

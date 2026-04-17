@@ -97,6 +97,10 @@ export const blockRdItemSchema = z.object({
   blockerReason: z.string().optional()
 });
 
+export const closeRdItemSchema = z.object({
+  reason: z.string().trim().optional()
+});
+
 export const advanceRdStageSchema = z.object({
   stageId: z.string().trim().min(1),
   memberIds: z.array(z.string().trim().min(1)).min(1).optional()

@@ -4,6 +4,7 @@ import { map } from 'rxjs';
 import { ApiClientService } from '@core/http';
 import type {
   BlockRdItemInput,
+  CloseRdItemInput,
   AdvanceRdStageInput,
   CreateRdItemInput,
   CreateRdStageInput,
@@ -96,8 +97,8 @@ export class RdApiService {
     return this.api.post<RdItemEntity>(`/rd/items/${itemId}/accept`);
   }
 
-  close(itemId: string) {
-    return this.api.post<RdItemEntity>(`/rd/items/${itemId}/close`);
+  close(itemId: string, input?: CloseRdItemInput) {
+    return this.api.post<RdItemEntity, CloseRdItemInput>(`/rd/items/${itemId}/close`, input ?? {});
   }
 
   listProgress(itemId: string) {

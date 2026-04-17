@@ -58,7 +58,7 @@ export interface MemberProgressItem extends RdItemProgress {
               </div>
               <div class="member-item__actions">
                 <strong>{{ item.progress }}%</strong>
-                @if (item.isCurrentUser) {
+                @if (item.isCurrentUser && !isClosed()) {
                   <button nz-button nzType="default" nzSize="small" (click)="onUpdateProgress(item)">更新</button>
                 }
               </div>
@@ -209,6 +209,10 @@ export class RdProgressPanelComponent {
 
   mainProgress(): number {
     return this.item()?.progress ?? 0;
+  }
+
+  isClosed(): boolean {
+    return this.item()?.status === 'closed';
   }
 
   getAvatarLetter(name: string): string {

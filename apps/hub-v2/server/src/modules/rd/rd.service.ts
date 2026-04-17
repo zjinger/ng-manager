@@ -15,6 +15,7 @@ import { transitionRdItem } from "./rd-state-machine";
 import type {
   AdvanceRdStageInput,
   BlockRdItemInput,
+  CloseRdItemInput,
   CreateRdItemInput,
   CreateRdStageInput,
   ListRdItemsQuery,
@@ -296,10 +297,18 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
     return this.applyAction(id, "accept", ctx, current, {}, "标记研发项已接受");
   }
 
-  async close(id: string, ctx: RequestContext): Promise<RdItemEntity> {
+  async close(id: string, input: CloseRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "close rd item");
     await this.requireCloseAccess(current, ctx, "close rd item");
-    return this.applyAction(id, "close", ctx, current, {}, "标记研发项已关闭");
+    const reason = input.reason?.trim();
+    return this.applyAction(
+      id,
+      "close",
+      ctx,
+      current,
+      {},
+      reason ? `关闭研发项：${reason}` : "标记研发项已关闭"
+    );
   }
 
   async advanceStage(id: string, input: AdvanceRdStageInput, ctx: RequestContext): Promise<RdItemEntity> {
@@ -711,6 +720,9 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
 
   async updateProgress(id: string, input: UpdateRdItemProgressInput, ctx: RequestContext): Promise<RdItemEntity> {
     const item = await this.requireItemWithAccess(id, ctx, "update rd progress");
+    if (item.status === "closed") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "cannot update progress for closed rd item", 400);
+    }
     const userId = ctx.userId?.trim();
     if (!userId) {
       throw new AppError(ERROR_CODES.RD_PROGRESS_FORBIDDEN, "update rd progress forbidden", 403);
@@ -755,20 +767,18 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
       progress: mainProgress,
       updated_at: now
     };
-    if (item.status !== "closed") {
-      if (mainProgress >= 100 && (item.status === "todo" || item.status === "doing" || item.status === "blocked")) {
-        updatePayload.status = "done";
-        updatePayload.actual_start_at = item.actualStartAt ?? now;
-        updatePayload.actual_end_at = now;
-        updatePayload.blocker_reason = null;
-      } else if (mainProgress > 0 && item.status === "todo") {
-        updatePayload.status = "doing";
-        updatePayload.actual_start_at = item.actualStartAt ?? now;
-        updatePayload.actual_end_at = null;
-      } else if (mainProgress < 100 && item.status === "done") {
-        updatePayload.status = "doing";
-        updatePayload.actual_end_at = null;
-      }
+    if (mainProgress >= 100 && (item.status === "todo" || item.status === "doing" || item.status === "blocked")) {
+      updatePayload.status = "done";
+      updatePayload.actual_start_at = item.actualStartAt ?? now;
+      updatePayload.actual_end_at = now;
+      updatePayload.blocker_reason = null;
+    } else if (mainProgress > 0 && item.status === "todo") {
+      updatePayload.status = "doing";
+      updatePayload.actual_start_at = item.actualStartAt ?? now;
+      updatePayload.actual_end_at = null;
+    } else if (mainProgress < 100 && item.status === "done") {
+      updatePayload.status = "doing";
+      updatePayload.actual_end_at = null;
     }
 
     const updated = this.repo.updateItem(id, {
@@ -780,7 +790,11 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
     }
 
     const updatedItem = this.requireItem(id);
-    this.repo.createLog(this.createLog(updatedItem, "update", ctx, `更新个人进度: ${oldProgress}% -> ${input.progress}%`));
+    const progressNote = input.note?.trim();
+    const progressLogContent = progressNote
+      ? `更新个人进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
+      : `更新个人进度: ${oldProgress}% -> ${input.progress}%`;
+    this.repo.createLog(this.createLog(updatedItem, "update", ctx, progressLogContent));
     await this.emitRdEvent("rd.updated", "update_progress", updatedItem, ctx);
     return updatedItem;
   }

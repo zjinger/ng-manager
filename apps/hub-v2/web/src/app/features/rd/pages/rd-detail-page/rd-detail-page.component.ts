@@ -14,6 +14,8 @@ import { RdDetailContentComponent } from '../../components/rd-detail-content/rd-
 import { RdProgressPanelComponent, type MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
+import { RdCloseDialogComponent } from '../../dialogs/rd-close-dialog/rd-close-dialog.component';
+import { RdEditDialogComponent } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
 import { getRdMemberIds, type RdItemEntity, type RdItemProgress, type RdLogEntity, type RdStageEntity, type RdStageHistoryEntry } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
@@ -30,6 +32,8 @@ import { map } from 'rxjs';
     ListStateComponent,
     RdDetailContentComponent,
     RdBlockDialogComponent,
+    RdCloseDialogComponent,
+    RdEditDialogComponent,
     RdAdvanceStageDialogComponent,
     RdProgressPanelComponent,
     RdProgressUpdateDialogComponent,
@@ -63,7 +67,7 @@ import { map } from 'rxjs';
           [canAdvance]="canAdvance()"
           [canClose]="canClose()"
           (actionClick)="handleAction($event)"
-          (basicSave)="saveBasic($event)"
+          (editRequest)="openEditDialog()"
         />
 
         <app-rd-progress-panel
@@ -90,6 +94,22 @@ import { map } from 'rxjs';
       [item]="item()"
       (cancel)="closeBlockDialog()"
       (confirm)="confirmBlock($event.blockerReason)"
+    />
+
+    <app-rd-close-dialog
+      [open]="closeOpen()"
+      [busy]="busy()"
+      [item]="item()"
+      (cancel)="closeOpen.set(false)"
+      (confirm)="confirmClose($event.reason)"
+    />
+
+    <app-rd-edit-dialog
+      [open]="editOpen()"
+      [busy]="busy()"
+      [item]="item()"
+      (cancel)="editOpen.set(false)"
+      (save)="saveBasic($event)"
     />
 
     <app-rd-advance-stage-dialog
@@ -152,6 +172,8 @@ export class RdDetailPageComponent {
   readonly loading = signal(false);
   readonly busy = signal(false);
   readonly blockOpen = signal(false);
+  readonly closeOpen = signal(false);
+  readonly editOpen = signal(false);
   readonly advanceStageOpen = signal(false);
   readonly progressUpdateOpen = signal(false);
   readonly progressUpdateMemberName = signal('');
@@ -241,7 +263,7 @@ export class RdDetailPageComponent {
       return;
     }
     if (action === 'close' && this.canClose()) {
-      this.runAction(() => this.rdApi.close(current.id));
+      this.closeOpen.set(true);
       return;
     }
     if (action === 'reopen' && this.canClose()) {
@@ -255,6 +277,7 @@ export class RdDetailPageComponent {
       return;
     }
     this.runAction(() => this.rdApi.update(current.id, { version: current.version, ...input }));
+    this.editOpen.set(false);
   }
 
   confirmBlock(blockerReason: string): void {
@@ -264,6 +287,15 @@ export class RdDetailPageComponent {
     }
     this.runAction(() => this.rdApi.block(current.id, { blockerReason }));
     this.closeBlockDialog();
+  }
+
+  confirmClose(reason: string): void {
+    const current = this.item();
+    if (!current) {
+      return;
+    }
+    this.runAction(() => this.rdApi.close(current.id, { reason }));
+    this.closeOpen.set(false);
   }
 
   confirmAdvanceStage(input: { stageId: string; memberIds: string[] }): void {
@@ -280,10 +312,20 @@ export class RdDetailPageComponent {
   }
 
   openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number }): void {
+    if (this.item()?.status === 'closed') {
+      return;
+    }
     this.progressUpdateUserId.set(data.userId);
     this.progressUpdateMemberName.set(data.memberName);
     this.progressUpdateCurrentProgress.set(data.currentProgress);
     this.progressUpdateOpen.set(true);
+  }
+
+  openEditDialog(): void {
+    if (!this.canEditBasic() || this.item()?.status === 'closed') {
+      return;
+    }
+    this.editOpen.set(true);
   }
 
   closeProgressUpdate(): void {

@@ -9,7 +9,7 @@ import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model'
   imports: [ActivityTimelineComponent],
   template: `
     <app-activity-timeline
-      [title]="'研发动态 · v' + item().version"
+      [title]="'研发动态'"
       [emptyText]="'暂无动态'"
       [items]="timelineItems()"
       [bodyMaxHeight]="420"

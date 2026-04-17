@@ -6,6 +6,7 @@ import type { PageResult } from '@core/types';
 import type {
   AdvanceRdStageInput,
   BlockRdItemInput,
+  CloseRdItemInput,
   CreateRdItemInput,
   RdItemEntity,
   RdListQuery,
@@ -182,8 +183,8 @@ export class RdStore {
     this.runAction(() => this.rdApi.accept(itemId));
   }
 
-  close(itemId: string): void {
-    this.runAction(() => this.rdApi.close(itemId));
+  close(itemId: string, input?: CloseRdItemInput): void {
+    this.runAction(() => this.rdApi.close(itemId, input));
   }
 
   private runAction(request: () => Observable<RdItemEntity>): void {

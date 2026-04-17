@@ -164,6 +164,10 @@ export interface BlockRdItemInput {
   blockerReason?: string;
 }
 
+export interface CloseRdItemInput {
+  reason?: string;
+}
+
 export interface AdvanceRdStageInput {
   stageId: string;
   memberIds?: string[];

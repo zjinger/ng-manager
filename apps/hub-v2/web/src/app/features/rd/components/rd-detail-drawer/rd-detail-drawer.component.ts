@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
@@ -59,8 +59,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [showStageHistory]="false"
               [showActivity]="false"
               (actionClick)="actionClick.emit($event)"
-              (editRequest)="openSummaryEdit()"
-              (basicSave)="basicSave.emit($event)"
+              (editRequest)="editRequest.emit()"
             />
             @if (item(); as current) {
               <app-rd-progress-panel
@@ -80,12 +79,10 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [canEditBasic]="canEditBasic()"
               [canAdvance]="canAdvance()"
               [canClose]="canClose()"
-              [externalEditToken]="summaryEditToken()"
               [showAction]="false"
               [showProps]="false"
               (actionClick)="actionClick.emit($event)"
-              (editRequest)="openSummaryEdit()"
-              (basicSave)="basicSave.emit($event)"
+              (editRequest)="editRequest.emit()"
             />
           </div>
           <div class="drawer-content__side">
@@ -104,8 +101,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [showAction]="false"
               [showStageHistory]="false"
               (actionClick)="actionClick.emit($event)"
-              (editRequest)="openSummaryEdit()"
-              (basicSave)="basicSave.emit($event)"
+              (editRequest)="editRequest.emit()"
             />
           </div>
         </div>
@@ -195,16 +191,11 @@ export class RdDetailDrawerComponent {
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly currentUserId = input<string>('');
   readonly actionClick = output<'advance' | 'close' | 'reopen'>();
-  readonly basicSave = output<{ title: string; description: string | null }>();
+  readonly editRequest = output<void>();
   readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number }>();
   readonly close = output<void>();
-  readonly summaryEditToken = signal(0);
 
   readonly drawerBodyStyle = { padding: '0', overflow: 'auto' };
   readonly titleText = computed(() => this.item()?.title || '研发项详情');
   readonly subtitleText = computed(() => this.item()?.rdNo || '');
-
-  openSummaryEdit(): void {
-    this.summaryEditToken.update((value) => value + 1);
-  }
 }
