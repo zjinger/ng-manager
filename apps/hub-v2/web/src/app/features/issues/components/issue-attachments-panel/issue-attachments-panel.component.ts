@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, inject, input, output } from '@angular/core';
 import { API_BASE_URL } from '@core/http';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -35,11 +35,12 @@ import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
         [nzBeforeUpload]="beforeUpload"
         [nzCustomRequest]="customRequest"
       >
-        <button nz-button [disabled]="busy()" [nz-tooltip]="'支持上传图片/视频格式，单文件不超过 ' + attachmentUploadSizeText">
+        <button nz-button [disabled]="busy()" [nz-tooltip]="'点击上传图片/视频格式，或 Ctrl+V 粘贴截图， 单文件不超过 ' + attachmentUploadSizeText ">
           <span nz-icon nzType="upload"></span>
           上传
         </button>
       </nz-upload>
+      <!-- <span panel-actions class="upload-paste-tip">截图后按 Ctrl+V 可直接上传</span> -->
 
       @if (attachments().length > 0) {
         <div class="attachment-wall-wrap">
@@ -59,6 +60,11 @@ import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
         display: inline-flex;
         align-items: center;
         justify-content: center;
+      }
+      .upload-paste-tip {
+        margin-left: 8px;
+        color: var(--text-color-secondary);
+        font-size: 12px;
       }
       .attachment-wall-wrap {
         padding: 14px 20px 18px;
@@ -103,6 +109,24 @@ export class IssueAttachmentsPanelComponent {
     return new Subscription();
   };
 
+  @HostListener('document:paste', ['$event'])
+  onDocumentPaste(event: ClipboardEvent): void {
+    if (this.busy() || this.shouldIgnorePasteTarget()) {
+      return;
+    }
+    const pastedFile = this.extractClipboardFile(event);
+    if (!pastedFile) {
+      return;
+    }
+    const validationMessage = validateUploadFile(pastedFile, this.uploadPolicy);
+    if (validationMessage) {
+      this.message.warning(validationMessage);
+      return;
+    }
+    event.preventDefault();
+    this.upload.emit(pastedFile);
+  }
+
   fileUrl(item: IssueAttachmentEntity): string {
     return `${this.apiBaseUrl}/uploads/${item.upload.id}/raw`;
   }
@@ -138,6 +162,59 @@ export class IssueAttachmentsPanelComponent {
     }
     return null;
   }
+
+  private extractClipboardFile(event: ClipboardEvent): File | null {
+    const clipboardData = event.clipboardData;
+    if (!clipboardData) {
+      return null;
+    }
+    const itemWithFile = Array.from(clipboardData.items || []).find((item) => item.kind === 'file');
+    const file = itemWithFile?.getAsFile() || clipboardData.files?.item(0);
+    if (!(file instanceof File)) {
+      return null;
+    }
+    return this.normalizeClipboardFileName(file);
+  }
+
+  private normalizeClipboardFileName(file: File): File {
+    if (file.name?.trim()) {
+      return file;
+    }
+    const extension = this.inferExtension(file.type);
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '');
+    const fallbackName = `screenshot-${timestamp}${extension}`;
+    return new File([file], fallbackName, { type: file.type, lastModified: Date.now() });
+  }
+
+  private inferExtension(mimeType: string): string {
+    const normalizedType = mimeType.toLowerCase();
+    if (normalizedType.includes('png')) {
+      return '.png';
+    }
+    if (normalizedType.includes('jpeg') || normalizedType.includes('jpg')) {
+      return '.jpg';
+    }
+    if (normalizedType.includes('gif')) {
+      return '.gif';
+    }
+    if (normalizedType.includes('webp')) {
+      return '.webp';
+    }
+    if (normalizedType.includes('mp4')) {
+      return '.mp4';
+    }
+    return '';
+  }
+
+  private shouldIgnorePasteTarget(): boolean {
+    const activeElement = document.activeElement;
+    if (!(activeElement instanceof HTMLElement)) {
+      return false;
+    }
+    const tagName = activeElement.tagName;
+    return tagName === 'INPUT' || tagName === 'TEXTAREA' || activeElement.isContentEditable;
+  }
+
   formatSize(size: number): string {
     if (!Number.isFinite(size) || size < 0) {
       return '-';
