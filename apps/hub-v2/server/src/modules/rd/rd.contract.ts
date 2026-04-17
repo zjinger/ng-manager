@@ -10,9 +10,13 @@ import type {
   RdDashboardTodo,
   RdDashboardActivity,
   RdItemListResult,
+  RdItemProgress,
+  RdProgressHistory,
+  RdStageHistoryEntry,
   RdLogEntity,
   RdStageEntity,
   UpdateRdItemInput,
+  UpdateRdItemProgressInput,
   UpdateRdStageInput
 } from "./rd.types";
 
@@ -24,11 +28,12 @@ export interface RdCommandContract {
   start(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   block(id: string, input: BlockRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
   resume(id: string, ctx: RequestContext): Promise<RdItemEntity>;
+  reopen(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   complete(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   advanceStage(id: string, input: AdvanceRdStageInput, ctx: RequestContext): Promise<RdItemEntity>;
   accept(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   close(id: string, ctx: RequestContext): Promise<RdItemEntity>;
-  delete(id: string, ctx: RequestContext): Promise<{ id: string }>;
+  updateProgress(id: string, input: UpdateRdItemProgressInput, ctx: RequestContext): Promise<RdItemEntity>;
 }
 
 export interface RdQueryContract {
@@ -46,4 +51,7 @@ export interface RdQueryContract {
     limit: number,
     ctx: RequestContext
   ): Promise<RdDashboardActivity[]>;
+  listProgress(id: string, ctx: RequestContext): Promise<RdItemProgress[]>;
+  listProgressHistory(id: string, ctx: RequestContext): Promise<RdProgressHistory[]>;
+  listStageHistory(id: string, ctx: RequestContext): Promise<RdStageHistoryEntry[]>;
 }

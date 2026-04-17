@@ -1,6 +1,16 @@
 import { z } from "zod";
 const rdStatusSchema = z.enum(["todo", "doing", "blocked", "done", "accepted", "closed"]);
-const rdTypeSchema = z.enum(["feature_dev", "tech_refactor", "integration", "env_setup"]);
+const rdTypeSchema = z.enum([
+  "feature_dev",
+  "tech_refactor",
+  "integration",
+  "env_setup",
+  "requirement_confirmation",
+  "solution_design",
+  "testing_validation",
+  "delivery_launch",
+  "project_closure",
+]);
 const rdPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 
 function csvEnumArray<T extends [string, ...string[]]>(values: T) {
@@ -63,8 +73,8 @@ export const createRdItemSchema = z.object({
   stageId: z.string().trim().nullable().optional(),
   type: rdTypeSchema.optional(),
   priority: rdPrioritySchema.optional(),
-  assigneeId: z.string().trim().nullable().optional(),
-  reviewerId: z.string().trim().nullable().optional(),
+  memberIds: z.array(z.string().trim().min(1)).min(1),
+  verifierId: z.string().trim().nullable().optional(),
   planStartAt: z.string().trim().optional(),
   planEndAt: z.string().trim().optional()
 });
@@ -76,8 +86,8 @@ export const updateRdItemSchema = z.object({
   stageId: z.string().trim().nullable().optional(),
   type: rdTypeSchema.optional(),
   priority: rdPrioritySchema.optional(),
-  assigneeId: z.string().trim().nullable().optional(),
-  reviewerId: z.string().trim().nullable().optional(),
+  memberIds: z.array(z.string().trim().min(1)).min(1).optional(),
+  verifierId: z.string().trim().nullable().optional(),
   progress: z.coerce.number().int().min(0).max(100).optional(),
   planStartAt: z.string().trim().nullable().optional(),
   planEndAt: z.string().trim().nullable().optional()
@@ -88,7 +98,8 @@ export const blockRdItemSchema = z.object({
 });
 
 export const advanceRdStageSchema = z.object({
-  stageId: z.string().trim().min(1)
+  stageId: z.string().trim().min(1),
+  memberIds: z.array(z.string().trim().min(1)).min(1).optional()
 });
 
 export const listRdItemsQuerySchema = z.object({
@@ -98,9 +109,24 @@ export const listRdItemsQuerySchema = z.object({
   stageId: z.string().trim().optional(),
   stageIds: csvStringArray(),
   status: csvEnumArray(["todo", "doing", "blocked", "done", "accepted", "closed"]),
-  type: csvEnumArray(["feature_dev", "tech_refactor", "integration", "env_setup"]),
+  type: csvEnumArray([
+    "feature_dev",
+    "tech_refactor",
+    "integration",
+    "env_setup",
+    "requirement_confirmation",
+    "solution_design",
+    "testing_validation",
+    "delivery_launch",
+    "project_closure",
+  ]),
   priority: csvEnumArray(["low", "medium", "high", "critical"]),
   assigneeIds: csvStringArray(),
   assigneeId: z.string().trim().optional(),
-  keyword: z.string().trim().optional()
+keyword: z.string().trim().optional()
+});
+
+export const updateRdItemProgressSchema = z.object({
+  progress: z.coerce.number().int().min(0).max(100),
+  note: z.string().trim().optional(),
 });

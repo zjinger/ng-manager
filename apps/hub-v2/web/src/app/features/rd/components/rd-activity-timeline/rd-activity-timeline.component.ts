@@ -8,7 +8,12 @@ import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model'
   standalone: true,
   imports: [ActivityTimelineComponent],
   template: `
-    <app-activity-timeline [title]="'研发动态'" [emptyText]="'暂无动态'" [items]="timelineItems()" />
+    <app-activity-timeline
+      [title]="'研发动态 · v' + item().version"
+      [emptyText]="'暂无动态'"
+      [items]="timelineItems()"
+      [bodyMaxHeight]="420"
+    />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -38,6 +43,7 @@ export class RdActivityTimelineComponent {
         start: '开始执行',
         block: '标记阻塞',
         resume: '恢复执行',
+        reopen: '恢复研发项',
         complete: '标记完成',
         accept: '验收完成',
         close: '关闭研发项',
@@ -55,6 +61,7 @@ export class RdActivityTimelineComponent {
         start: 'play-circle',
         block: 'pause-circle',
         resume: 'redo',
+        reopen: 'rollback',
         complete: 'check-circle',
         accept: 'safety-certificate',
         close: 'close-circle',

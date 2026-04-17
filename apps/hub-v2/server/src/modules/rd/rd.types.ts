@@ -1,6 +1,15 @@
 import type { PageResult } from "../../shared/http/pagination";
 
-export type RdItemType = "feature_dev" | "tech_refactor" | "integration" | "env_setup";
+export type RdItemType =
+  | "feature_dev"
+  | "tech_refactor"
+  | "integration"
+  | "env_setup"
+  | "requirement_confirmation"
+  | "solution_design"
+  | "testing_validation"
+  | "delivery_launch"
+  | "project_closure";
 export type RdItemPriority = "low" | "medium" | "high" | "critical";
 export type RdItemStatus = "todo" | "doing" | "blocked" | "done" | "accepted" | "closed";
 export type RdAction =
@@ -9,6 +18,7 @@ export type RdAction =
   | "start"
   | "block"
   | "resume"
+  | "reopen"
   | "complete"
   | "accept"
   | "close"
@@ -40,8 +50,9 @@ export interface RdItemEntity {
   assigneeName: string | null;
   creatorId: string;
   creatorName: string;
-  reviewerId: string | null;
-  reviewerName: string | null;
+  verifierId: string | null;
+  verifierName: string | null;
+  memberIds: string[];
   progress: number;
   planStartAt: string | null;
   planEndAt: string | null;
@@ -50,6 +61,27 @@ export interface RdItemEntity {
   blockerReason: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RdItemProgress {
+  id: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  progress: number;
+  note: string | null;
+  updatedAt: string;
+}
+
+export interface RdProgressHistory {
+  id: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  oldProgress: number | null;
+  newProgress: number;
+  note: string | null;
+  createdAt: string;
 }
 
 export interface RdLogEntity {
@@ -108,8 +140,8 @@ export interface CreateRdItemInput {
   stageId?: string | null;
   type?: RdItemType;
   priority?: RdItemPriority;
-  assigneeId?: string | null;
-  reviewerId?: string | null;
+  memberIds?: string[];
+  verifierId?: string | null;
   planStartAt?: string;
   planEndAt?: string;
 }
@@ -121,8 +153,8 @@ export interface UpdateRdItemInput {
   stageId?: string | null;
   type?: RdItemType;
   priority?: RdItemPriority;
-  assigneeId?: string | null;
-  reviewerId?: string | null;
+  memberIds?: string[];
+  verifierId?: string | null;
   progress?: number;
   planStartAt?: string | null;
   planEndAt?: string | null;
@@ -134,6 +166,7 @@ export interface BlockRdItemInput {
 
 export interface AdvanceRdStageInput {
   stageId: string;
+  memberIds?: string[];
 }
 
 export interface ListRdItemsQuery {
@@ -151,3 +184,26 @@ export interface ListRdItemsQuery {
 }
 
 export type RdItemListResult = PageResult<RdItemEntity>;
+
+export interface UpdateRdItemProgressInput {
+  progress: number;
+  note?: string;
+}
+
+export interface ListRdProgressQuery {
+  itemId: string;
+}
+
+export interface RdStageHistoryEntry {
+  id: string;
+  projectId: string;
+  itemId: string;
+  fromStageId: string | null;
+  fromStageName: string;
+  toStageId: string;
+  toStageName: string;
+  snapshotJson: string;
+  operatorId: string | null;
+  operatorName: string | null;
+  createdAt: string;
+}

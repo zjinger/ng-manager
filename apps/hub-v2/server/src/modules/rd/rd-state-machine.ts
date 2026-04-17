@@ -21,14 +21,17 @@ const transitions: Record<RdItemStatus, Partial<Record<RdAction, RdItemStatus>>>
   },
   done: {
     update: "done",
-    resume: "doing"
+    resume: "doing",
+    close: "closed"
   },
   accepted: {
     update: "accepted",
     resume: "doing",
     close: "closed"
   },
-  closed: {}
+  closed: {
+    reopen: "todo"
+  }
 };
 
 export function transitionRdItem(from: RdItemStatus, action: RdAction): RdItemStatus {

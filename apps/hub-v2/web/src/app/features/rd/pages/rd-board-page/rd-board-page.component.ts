@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
@@ -17,7 +18,9 @@ import { RdListTableComponent } from '../../components/rd-list-table/rd-list-tab
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
 import { RdCreateDialogComponent } from '../../dialogs/rd-create-dialog/rd-create-dialog.component';
-import type { CreateRdItemInput, RdItemEntity, RdListQuery, RdLogEntity } from '../../models/rd.model';
+import { RdProgressUpdateDialogComponent } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
+import { getRdMemberIds, type CreateRdItemInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdStageHistoryEntry } from '../../models/rd.model';
+import { MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
 import { RdStore } from '../../store/rd.store';
@@ -36,6 +39,7 @@ import { map } from 'rxjs';
     RdAdvanceStageDialogComponent,
     RdCreateDialogComponent,
     RdBlockDialogComponent,
+    RdProgressUpdateDialogComponent,
     NzPaginationModule,
     NzTagModule,
   ],
@@ -84,6 +88,7 @@ import { map } from 'rxjs';
           <app-rd-list-table
             [stages]="store.stages()"
             [items]="store.items()"
+            [members]="members()"
             [selectedItemId]="selectedItemId()"
             (selectItem)="openDetail($event)"
           />
@@ -114,19 +119,25 @@ import { map } from 'rxjs';
       [item]="selectedItem()"
       [logs]="selectedLogs()"
       [stages]="store.stages()"
-      [canBlock]="canBlockSelectedItem()"
-      [canEditProgress]="canEditSelectedProgress()"
+      [stageHistory]="selectedStageHistory()"
       [canEditBasic]="canEditSelectedBasic()"
-      [canStart]="canStartSelectedItem()"
-      [canResume]="canResumeSelectedItem()"
-      [canComplete]="canCompleteSelectedItem()"
       [canAdvance]="canAdvanceSelectedItem()"
-      [canDelete]="canDeleteSelectedItem()"
+      [canClose]="canCloseSelectedItem()"
+      [memberProgressList]="selectedMemberProgressList()"
+      [currentUserId]="currentUserId() || ''"
       (actionClick)="handleSelectedAction($event)"
-      (progressChange)="updateSelectedProgress($event)"
       (basicSave)="saveSelectedBasic($event)"
-      (deleteClick)="deleteSelectedItem()"
       (close)="closeDetail()"
+      (updateProgressClick)="openProgressUpdate($event)"
+    />
+
+    <app-rd-progress-update-dialog
+      [open]="progressUpdateOpen()"
+      [busy]="store.busy()"
+      [memberName]="progressUpdateData()?.memberName || ''"
+      [currentProgress]="progressUpdateData()?.currentProgress || 0"
+      (save)="confirmUpdateProgress($event)"
+      (cancel)="closeProgressUpdate()"
     />
 
     <app-rd-create-dialog
@@ -152,8 +163,10 @@ import { map } from 'rxjs';
       [busy]="store.busy()"
       [item]="selectedItem()"
       [stages]="store.stages()"
+      [members]="members()"
+      [currentMemberIds]="selectedMemberIdsForAdvance()"
       (cancel)="advanceStageOpen.set(false)"
-      (confirm)="confirmAdvanceStage($event.stageId)"
+      (confirm)="confirmAdvanceStage($event)"
     />
   `,
   styles: [
@@ -238,6 +251,7 @@ export class RdBoardPageComponent {
   private readonly projectApi = inject(ProjectApiService);
   private readonly rdApi = inject(RdApiService);
   private readonly rdPermission = inject(RdPermissionService);
+  private readonly message = inject(NzMessageService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -245,6 +259,8 @@ export class RdBoardPageComponent {
   readonly createOpen = signal(false);
   readonly blockOpen = signal(false);
   readonly advanceStageOpen = signal(false);
+  readonly progressUpdateOpen = signal(false);
+  readonly progressUpdateData = signal<{ userId: string; memberName: string; currentProgress: number } | null>(null);
   readonly blockingItem = signal<RdItemEntity | null>(null);
   readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
@@ -258,22 +274,57 @@ export class RdBoardPageComponent {
   );
   readonly members = signal<ProjectMemberEntity[]>([]);
   readonly selectedLogs = signal<RdLogEntity[]>([]);
+  readonly selectedStageHistory = signal<RdStageHistoryEntry[]>([]);
+  readonly selectedProgressList = signal<RdItemProgress[]>([]);
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
-  readonly canEditSelectedProgress = computed(() => this.rdPermission.canEditProgress(this.selectedItem(), this.currentUserId()));
-  readonly canStartSelectedItem = computed(() => this.rdPermission.canStart(this.selectedItem(), this.currentUserId()));
-  readonly canCompleteSelectedItem = computed(() => this.rdPermission.canComplete(this.selectedItem(), this.currentUserId()));
+  readonly selectedMemberProgressList = computed<MemberProgressItem[]>(() => {
+    const item = this.selectedItem();
+    const list = this.selectedProgressList();
+    const currentId = this.currentUserId();
+    const memberMap = new Map(this.members().map((m) => [m.userId, m.displayName]));
+    const avatarMap = new Map(this.members().map((m) => [m.userId, m.avatarUrl]));
+    const progressByUserId = new Map(list.map((p) => [p.userId, p]));
+    const legacyMemberIds = getRdMemberIds(item);
+    const useLegacyAssigneeProgressFallback =
+      list.length === 0 &&
+      legacyMemberIds.length === 1 &&
+      !!item?.assigneeId &&
+      legacyMemberIds[0] === item.assigneeId;
+    const normalizedList = [...list];
+    for (const userId of legacyMemberIds) {
+      if (!progressByUserId.has(userId)) {
+        const fallbackProgress =
+          useLegacyAssigneeProgressFallback && userId === item?.assigneeId ? Number(item?.progress ?? 0) : 0;
+        normalizedList.push({
+          id: `legacy-${userId}`,
+          itemId: item?.id || '',
+          userId,
+          userName: userId === item?.assigneeId ? (item.assigneeName ?? userId) : userId,
+          progress: Math.max(0, Math.min(100, fallbackProgress)),
+          note: null,
+          updatedAt: item?.updatedAt ?? '',
+        });
+      }
+    }
+
+    return normalizedList.map((p) => ({
+      ...p,
+      itemId: item?.id || '',
+      memberName:
+        memberMap.get(p.userId) ||
+        (p.userId === item?.assigneeId ? (item.assigneeName ?? null) : null) ||
+        p.userName ||
+        p.userId,
+      isCurrentUser: p.userId === currentId,
+      avatarUrl: avatarMap.get(p.userId) ?? null,
+      updatedAt: p.updatedAt,
+    }));
+  });
+  readonly selectedMemberIdsForAdvance = computed(() => getRdMemberIds(this.selectedItem()));
   readonly canEditSelectedBasic = computed(() =>
     this.rdPermission.canEditBasic(this.selectedItem(), this.currentUserId(), this.members())
   );
-  readonly canDeleteSelectedItem = computed(() =>
-    this.rdPermission.canDelete(this.selectedItem(), this.currentUserId(), this.members())
-  );
-  readonly canBlockSelectedItem = computed(() =>
-    this.rdPermission.canBlock(this.selectedItem(), this.currentUserId(), this.members())
-  );
-  readonly canResumeSelectedItem = computed(() =>
-    this.rdPermission.canResume(this.selectedItem(), this.currentUserId(), this.members())
-  );
+  readonly canCloseSelectedItem = computed(() => this.rdPermission.canClose(this.selectedItem(), this.currentUserId()));
   readonly canAdvanceSelectedItem = computed(() =>
     this.rdPermission.canAdvance(this.selectedItem(), this.currentUserId(), this.members())
   );
@@ -404,14 +455,28 @@ export class RdBoardPageComponent {
       const selectedUpdatedAt = this.selectedItem()?.updatedAt;
       if (!selectedId) {
         this.selectedLogs.set([]);
+        this.selectedStageHistory.set([]);
+        this.selectedProgressList.set([]);
         return;
       }
       void selectedUpdatedAt;
-      const subscription = this.rdApi.listLogs(selectedId).subscribe({
+      const logsSub = this.rdApi.listLogs(selectedId).subscribe({
         next: (logs) => this.selectedLogs.set(logs),
         error: () => this.selectedLogs.set([]),
       });
-      onCleanup(() => subscription.unsubscribe());
+      const progressSub = this.rdApi.listProgress(selectedId).subscribe({
+        next: (progress) => this.selectedProgressList.set(progress),
+        error: () => this.selectedProgressList.set([]),
+      });
+      const stageHistorySub = this.rdApi.listStageHistory(selectedId).subscribe({
+        next: (items) => this.selectedStageHistory.set(items),
+        error: () => this.selectedStageHistory.set([]),
+      });
+      onCleanup(() => {
+        logsSub.unsubscribe();
+        progressSub.unsubscribe();
+        stageHistorySub.unsubscribe();
+      });
     });
   }
 
@@ -500,63 +565,43 @@ export class RdBoardPageComponent {
       queryParamsHandling: 'merge',
     });
     this.selectedLogs.set([]);
+    this.selectedStageHistory.set([]);
     this.advanceStageOpen.set(false);
   }
 
-  handleAction(item: RdItemEntity, action: 'start' | 'block' | 'resume' | 'complete' | 'advance'): void {
+  handleAction(item: RdItemEntity, action: 'advance' | 'close' | 'reopen'): void {
     this.openDetail(item);
     switch (action) {
-      case 'start':
-        if (!this.canStartSelectedItem()) {
-          return;
-        }
-        this.store.start(item.id);
-        break;
-      case 'block':
-        if (!this.canBlockSelectedItem()) {
-          return;
-        }
-        this.blockingItem.set(item);
-        this.blockOpen.set(true);
-        break;
-      case 'resume':
-        if (!this.canResumeSelectedItem()) {
-          return;
-        }
-        this.store.resume(item.id);
-        break;
-      case 'complete':
-        if (!this.canCompleteSelectedItem()) {
-          return;
-        }
-        this.store.complete(item.id);
-        break;
       case 'advance':
         if (!this.canAdvanceSelectedItem()) {
           return;
         }
+        this.warnIfAdvanceWithIncompleteProgress(this.selectedMemberProgressList());
         this.advanceStageOpen.set(true);
+        break;
+      case 'close':
+        if (!this.canCloseSelectedItem()) {
+          return;
+        }
+        this.store.close(item.id);
+        break;
+      case 'reopen':
+        if (!this.canCloseSelectedItem()) {
+          return;
+        }
+        this.rdApi.reopen(item.id).subscribe({
+          next: (updated) => this.store.updateItemInList(updated),
+        });
         break;
     }
   }
 
-  handleSelectedAction(action: 'start' | 'block' | 'resume' | 'complete' | 'advance'): void {
+  handleSelectedAction(action: 'advance' | 'close' | 'reopen'): void {
     const current = this.selectedItem();
     if (!current) {
       return;
     }
     this.handleAction(current, action);
-  }
-
-  updateSelectedProgress(progress: number): void {
-    if (!this.canEditSelectedProgress()) {
-      return;
-    }
-    const current = this.selectedItem();
-    if (!current) {
-      return;
-    }
-    this.store.update(current.id, { version: current.version, progress });
   }
 
   saveSelectedBasic(input: { title: string; description: string | null }): void {
@@ -574,18 +619,6 @@ export class RdBoardPageComponent {
     });
   }
 
-  deleteSelectedItem(): void {
-    if (!this.canDeleteSelectedItem()) {
-      return;
-    }
-    const current = this.selectedItem();
-    if (!current) {
-      return;
-    }
-    this.store.delete(current.id);
-    this.closeDetail();
-  }
-
   confirmBlock(blockerReason: string): void {
     const item = this.blockingItem();
     if (!item) {
@@ -595,18 +628,59 @@ export class RdBoardPageComponent {
     this.closeBlockDialog();
   }
 
-  confirmAdvanceStage(stageId: string): void {
+  confirmAdvanceStage(input: { stageId: string; memberIds: string[] }): void {
     const current = this.selectedItem();
-    if (!current || !stageId.trim()) {
+    if (!current || !input.stageId.trim()) {
       return;
     }
-    this.store.advanceStage(current.id, { stageId: stageId.trim() });
+    this.store.advanceStage(current.id, { stageId: input.stageId.trim(), memberIds: input.memberIds });
     this.advanceStageOpen.set(false);
+  }
+
+  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number }): void {
+    this.progressUpdateData.set(data);
+    this.progressUpdateOpen.set(true);
+  }
+
+  closeProgressUpdate(): void {
+    this.progressUpdateOpen.set(false);
+    this.progressUpdateData.set(null);
+  }
+
+  confirmUpdateProgress(input: { progress: number; note: string }): void {
+    const current = this.selectedItem();
+    if (!current) {
+      return;
+    }
+    this.rdApi.updateProgress(current.id, input).subscribe({
+      next: (item) => {
+        this.store.updateItemInList(item);
+        this.loadSelectedProgress(item.id);
+        this.loadSelectedLogs(item.id);
+        this.progressUpdateOpen.set(false);
+      },
+      error: () => {
+      },
+    });
   }
 
   closeBlockDialog(): void {
     this.blockOpen.set(false);
     this.blockingItem.set(null);
+  }
+
+  private loadSelectedProgress(itemId: string): void {
+    this.rdApi.listProgress(itemId).subscribe({
+      next: (progress) => this.selectedProgressList.set(progress),
+      error: () => this.selectedProgressList.set([]),
+    });
+  }
+
+  private loadSelectedLogs(itemId: string): void {
+    this.rdApi.listLogs(itemId).subscribe({
+      next: (logs) => this.selectedLogs.set(logs),
+      error: () => this.selectedLogs.set([]),
+    });
   }
 
   filterTagClass(kind: 'stageIds' | 'status' | 'priority' | 'assigneeIds' | 'keyword'): string {
@@ -615,5 +689,18 @@ export class RdBoardPageComponent {
     if (kind === 'assigneeIds') return 'filter-tag filter-tag--people';
     if (kind === 'stageIds') return 'filter-tag filter-tag--scope';
     return 'filter-tag filter-tag--keyword';
+  }
+
+  private warnIfAdvanceWithIncompleteProgress(list: MemberProgressItem[]): void {
+    const incomplete = list.filter((item) => Number(item.progress) < 100);
+    if (incomplete.length === 0) {
+      return;
+    }
+    const names = incomplete
+      .map((item) => item.memberName?.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join('、');
+    this.message.warning(`执行人进度未全部达到 100%${names ? `（${names}${incomplete.length > 3 ? ' 等' : ''}）` : ''}，请确认后继续进入下一阶段。`);
   }
 }

@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import type { RdItemEntity, RdLogEntity, RdStageEntity } from '../../models/rd.model';
+import type { RdItemEntity, RdLogEntity, RdStageEntity, RdStageHistoryEntry } from '../../models/rd.model';
 import { RdDetailContentComponent } from '../rd-detail-content/rd-detail-content.component';
+import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progress-panel/rd-progress-panel.component';
 
 @Component({
   selector: 'app-rd-detail-drawer',
@@ -12,13 +13,14 @@ import { RdDetailContentComponent } from '../rd-detail-content/rd-detail-content
     NzDrawerModule,
     NzIconModule,
     RdDetailContentComponent,
+    RdProgressPanelComponent,
   ],
   template: `
     <nz-drawer
       [nzVisible]="open()"
       [nzClosable]="false"
       [nzMaskClosable]="true"
-      [nzWidth]="640"
+      [nzWidth]="900"
       [nzWrapClassName]="'rd-detail-drawer'"
       [nzBodyStyle]="drawerBodyStyle"
       [nzMask]="false"
@@ -40,24 +42,73 @@ import { RdDetailContentComponent } from '../rd-detail-content/rd-detail-content
       </ng-template>
 
       <ng-template nzDrawerContent>
-        <app-rd-detail-content
-          [busy]="busy()"
-          [item]="item()"
-          [logs]="logs()"
-          [stages]="stages()"
-          [canBlock]="canBlock()"
-          [canEditProgress]="canEditProgress()"
-          [canEditBasic]="canEditBasic()"
-          [canStart]="canStart()"
-          [canResume]="canResume()"
-          [canComplete]="canComplete()"
-          [canAdvance]="canAdvance()"
-          [canDelete]="canDelete()"
-          (actionClick)="actionClick.emit($event)"
-          (progressChange)="progressChange.emit($event)"
-          (basicSave)="basicSave.emit($event)"
-          (deleteClick)="deleteClick.emit()"
-        />
+        <div class="drawer-content">
+          <div class="drawer-content__main">
+            <app-rd-detail-content
+              [busy]="busy()"
+              [item]="item()"
+              [logs]="logs()"
+              [stages]="stages()"
+              [stageHistory]="stageHistory()"
+              [memberProgressList]="memberProgressList()"
+              [canEditBasic]="canEditBasic()"
+              [canAdvance]="canAdvance()"
+              [canClose]="canClose()"
+              [showSummary]="false"
+              [showProps]="false"
+              [showStageHistory]="false"
+              [showActivity]="false"
+              (actionClick)="actionClick.emit($event)"
+              (editRequest)="openSummaryEdit()"
+              (basicSave)="basicSave.emit($event)"
+            />
+            @if (item(); as current) {
+              <app-rd-progress-panel
+                [item]="current"
+                [memberProgressList]="memberProgressList()"
+                [currentUserId]="currentUserId() || ''"
+                (updateProgressClick)="updateProgressClick.emit($event)"
+              />
+            }
+            <app-rd-detail-content
+              [busy]="busy()"
+              [item]="item()"
+              [logs]="logs()"
+              [stages]="stages()"
+              [stageHistory]="stageHistory()"
+              [memberProgressList]="memberProgressList()"
+              [canEditBasic]="canEditBasic()"
+              [canAdvance]="canAdvance()"
+              [canClose]="canClose()"
+              [externalEditToken]="summaryEditToken()"
+              [showAction]="false"
+              [showProps]="false"
+              (actionClick)="actionClick.emit($event)"
+              (editRequest)="openSummaryEdit()"
+              (basicSave)="basicSave.emit($event)"
+            />
+          </div>
+          <div class="drawer-content__side">
+            <app-rd-detail-content
+              [busy]="busy()"
+              [item]="item()"
+              [logs]="logs()"
+              [stages]="stages()"
+              [stageHistory]="stageHistory()"
+              [memberProgressList]="memberProgressList()"
+              [canEditBasic]="canEditBasic()"
+              [canAdvance]="canAdvance()"
+              [canClose]="canClose()"
+              [showSummary]="false"
+              [showActivity]="false"
+              [showAction]="false"
+              [showStageHistory]="false"
+              (actionClick)="actionClick.emit($event)"
+              (editRequest)="openSummaryEdit()"
+              (basicSave)="basicSave.emit($event)"
+            />
+          </div>
+        </div>
       </ng-template>
     </nz-drawer>
   `,
@@ -107,6 +158,26 @@ import { RdDetailContentComponent } from '../rd-detail-content/rd-detail-content
         background: var(--bg-subtle);
         color: var(--text-primary);
       }
+      .drawer-content {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 20px;
+        padding: 20px;
+      }
+      .drawer-content__main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .drawer-content__side {
+        min-width: 0;
+      }
+      @media (max-width: 900px) {
+        .drawer-content {
+          grid-template-columns: 1fr;
+        }
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,21 +188,23 @@ export class RdDetailDrawerComponent {
   readonly item = input<RdItemEntity | null>(null);
   readonly logs = input<RdLogEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
-  readonly canBlock = input(false);
-  readonly canEditProgress = input(false);
+  readonly stageHistory = input<RdStageHistoryEntry[]>([]);
   readonly canEditBasic = input(false);
-  readonly canStart = input(false);
-  readonly canResume = input(false);
-  readonly canComplete = input(false);
   readonly canAdvance = input(false);
-  readonly canDelete = input(false);
-  readonly actionClick = output<'start' | 'block' | 'resume' | 'complete' | 'advance'>();
-  readonly deleteClick = output<void>();
-  readonly progressChange = output<number>();
+  readonly canClose = input(false);
+  readonly memberProgressList = input<MemberProgressItem[]>([]);
+  readonly currentUserId = input<string>('');
+  readonly actionClick = output<'advance' | 'close' | 'reopen'>();
   readonly basicSave = output<{ title: string; description: string | null }>();
+  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number }>();
   readonly close = output<void>();
+  readonly summaryEditToken = signal(0);
 
-  readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
+  readonly drawerBodyStyle = { padding: '0', overflow: 'auto' };
   readonly titleText = computed(() => this.item()?.title || '研发项详情');
   readonly subtitleText = computed(() => this.item()?.rdNo || '');
+
+  openSummaryEdit(): void {
+    this.summaryEditToken.update((value) => value + 1);
+  }
 }

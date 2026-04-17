@@ -18,23 +18,23 @@ export class RdPermissionService {
   }
 
   canEditBasic(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
+    void members;
     if (!item || !userId) {
       return false;
     }
-    if (item.creatorId === userId || item.assigneeId === userId) {
-      return true;
+    return item.creatorId === userId;
+  }
+
+  canClose(item: RdItemEntity | null, userId: string | null): boolean {
+    if (!item || !userId) {
+      return false;
     }
-    return this.isProjectAdmin(userId, members);
+    return item.creatorId === userId;
   }
 
   canDelete(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
-    if (!item || !userId) {
-      return false;
-    }
-    if (item.creatorId === userId) {
-      return true;
-    }
-    return this.isProjectAdmin(userId, members);
+    void members;
+    return this.canClose(item, userId);
   }
 
   canBlock(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
@@ -52,13 +52,14 @@ export class RdPermissionService {
   }
 
   canAdvance(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
+    void members;
     if (!item) {
       return false;
     }
     if (item.status !== 'done' && item.status !== 'accepted') {
       return false;
     }
-    return this.canEditBasic(item, userId, members);
+    return !!userId && !!item.verifierId && item.verifierId === userId;
   }
 
   private isProjectAdmin(userId: string, members: ProjectMemberEntity[]): boolean {

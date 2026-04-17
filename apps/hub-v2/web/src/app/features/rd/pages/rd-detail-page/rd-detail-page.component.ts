@@ -4,15 +4,18 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthStore } from '@core/auth';
 import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { RdDetailContentComponent } from '../../components/rd-detail-content/rd-detail-content.component';
+import { RdProgressPanelComponent, type MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
-import type { RdItemEntity, RdLogEntity, RdStageEntity } from '../../models/rd.model';
+import { RdProgressUpdateDialogComponent } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
+import { getRdMemberIds, type RdItemEntity, type RdItemProgress, type RdLogEntity, type RdStageEntity, type RdStageHistoryEntry } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
 import { map } from 'rxjs';
@@ -28,6 +31,8 @@ import { map } from 'rxjs';
     RdDetailContentComponent,
     RdBlockDialogComponent,
     RdAdvanceStageDialogComponent,
+    RdProgressPanelComponent,
+    RdProgressUpdateDialogComponent,
   ],
   template: `
     <div class="detail-page">
@@ -52,21 +57,32 @@ import { map } from 'rxjs';
           [item]="item()"
           [logs]="logs()"
           [stages]="stages()"
-          [canBlock]="canBlock()"
-          [canEditProgress]="canEditProgress()"
+          [stageHistory]="stageHistory()"
+          [memberProgressList]="memberProgressList()"
           [canEditBasic]="canEditBasic()"
-          [canStart]="canStart()"
-          [canResume]="canResume()"
-          [canComplete]="canComplete()"
           [canAdvance]="canAdvance()"
-          [canDelete]="canDelete()"
+          [canClose]="canClose()"
           (actionClick)="handleAction($event)"
-          (progressChange)="updateProgress($event)"
           (basicSave)="saveBasic($event)"
-          (deleteClick)="deleteItem()"
+        />
+
+        <app-rd-progress-panel
+          [item]="item()!"
+          [memberProgressList]="memberProgressList()"
+          [currentUserId]="currentUserId() || ''"
+          (updateProgressClick)="openProgressUpdate($event)"
         />
       }
     </div>
+
+    <app-rd-progress-update-dialog
+      [open]="progressUpdateOpen()"
+      [busy]="busy()"
+      [memberName]="progressUpdateMemberName()"
+      [currentProgress]="progressUpdateCurrentProgress()"
+      (save)="confirmUpdateProgress($event)"
+      (cancel)="closeProgressUpdate()"
+    />
 
     <app-rd-block-dialog
       [open]="blockOpen()"
@@ -81,8 +97,10 @@ import { map } from 'rxjs';
       [busy]="busy()"
       [item]="item()"
       [stages]="stages()"
+      [members]="members()"
+      [currentMemberIds]="getCurrentMemberIds()"
       (cancel)="advanceStageOpen.set(false)"
-      (confirm)="confirmAdvanceStage($event.stageId)"
+      (confirm)="confirmAdvanceStage($event)"
     />
   `,
   styles: [
@@ -120,31 +138,78 @@ export class RdDetailPageComponent {
   private readonly projectApi = inject(ProjectApiService);
   private readonly authStore = inject(AuthStore);
   private readonly rdPermission = inject(RdPermissionService);
+  private readonly message = inject(NzMessageService);
   private readonly routeItemId = toSignal(this.route.paramMap.pipe(map((params) => params.get('itemId'))), {
     initialValue: this.route.snapshot.paramMap.get('itemId'),
   });
 
   readonly item = signal<RdItemEntity | null>(null);
   readonly logs = signal<RdLogEntity[]>([]);
+  readonly stageHistory = signal<RdStageHistoryEntry[]>([]);
   readonly stages = signal<RdStageEntity[]>([]);
   readonly members = signal<ProjectMemberEntity[]>([]);
+  readonly progressList = signal<RdItemProgress[]>([]);
   readonly loading = signal(false);
   readonly busy = signal(false);
   readonly blockOpen = signal(false);
   readonly advanceStageOpen = signal(false);
+  readonly progressUpdateOpen = signal(false);
+  readonly progressUpdateMemberName = signal('');
+  readonly progressUpdateCurrentProgress = signal(0);
+  readonly progressUpdateUserId = signal('');
 
   readonly itemId = computed(() => this.routeItemId() ?? '');
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly subtitle = computed(() => this.item()?.rdNo || '通过 工作台 待办进入');
 
-  readonly canEditProgress = computed(() => this.rdPermission.canEditProgress(this.item(), this.currentUserId()));
-  readonly canStart = computed(() => this.rdPermission.canStart(this.item(), this.currentUserId()));
-  readonly canComplete = computed(() => this.rdPermission.canComplete(this.item(), this.currentUserId()));
   readonly canEditBasic = computed(() => this.rdPermission.canEditBasic(this.item(), this.currentUserId(), this.members()));
-  readonly canDelete = computed(() => this.rdPermission.canDelete(this.item(), this.currentUserId(), this.members()));
-  readonly canBlock = computed(() => this.rdPermission.canBlock(this.item(), this.currentUserId(), this.members()));
-  readonly canResume = computed(() => this.rdPermission.canResume(this.item(), this.currentUserId(), this.members()));
+  readonly canClose = computed(() => this.rdPermission.canClose(this.item(), this.currentUserId()));
   readonly canAdvance = computed(() => this.rdPermission.canAdvance(this.item(), this.currentUserId(), this.members()));
+
+  readonly memberProgressList = computed<MemberProgressItem[]>(() => {
+    const item = this.item();
+    const list = this.progressList();
+    const currentId = this.currentUserId();
+    const memberMap = new Map(this.members().map((m) => [m.userId, m.displayName]));
+    const avatarMap = new Map(this.members().map((m) => [m.userId, m.avatarUrl]));
+    const progressByUserId = new Map(list.map((p) => [p.userId, p]));
+    const legacyMemberIds = getRdMemberIds(item);
+    const useLegacyAssigneeProgressFallback =
+      list.length === 0 &&
+      legacyMemberIds.length === 1 &&
+      !!item?.assigneeId &&
+      legacyMemberIds[0] === item.assigneeId;
+    const normalizedList = [...list];
+    for (const userId of legacyMemberIds) {
+      if (!progressByUserId.has(userId)) {
+        const fallbackProgress =
+          useLegacyAssigneeProgressFallback && userId === item?.assigneeId ? Number(item?.progress ?? 0) : 0;
+        normalizedList.push({
+          id: `legacy-${userId}`,
+          itemId: item?.id || '',
+          userId,
+          userName: userId === item?.assigneeId ? (item.assigneeName ?? userId) : userId,
+          progress: Math.max(0, Math.min(100, fallbackProgress)),
+          note: null,
+          updatedAt: item?.updatedAt ?? '',
+        });
+      }
+    }
+
+    return normalizedList.map((p) => ({
+      ...p,
+      itemId: item?.id || '',
+      memberName:
+        memberMap.get(p.userId) ||
+        (p.userId === item?.assigneeId ? (item.assigneeName ?? null) : null) ||
+        p.userName ||
+        p.userId,
+      isCurrentUser: p.userId === currentId,
+      avatarUrl: avatarMap.get(p.userId) ?? null,
+      updatedAt: p.updatedAt,
+    }));
+  });
+  readonly getCurrentMemberIds = computed(() => getRdMemberIds(this.item()));
 
   constructor() {
     effect(() => {
@@ -154,6 +219,7 @@ export class RdDetailPageComponent {
         this.logs.set([]);
         this.stages.set([]);
         this.members.set([]);
+        this.progressList.set([]);
         return;
       }
       this.load(id);
@@ -164,38 +230,23 @@ export class RdDetailPageComponent {
     this.router.navigate(['/rd']);
   }
 
-  handleAction(action: 'start' | 'block' | 'resume' | 'complete' | 'advance'): void {
+  handleAction(action: 'advance' | 'close' | 'reopen'): void {
     const current = this.item();
     if (!current) {
       return;
     }
-    if (action === 'start' && this.canStart()) {
-      this.runAction(() => this.rdApi.start(current.id));
-      return;
-    }
-    if (action === 'block' && this.canBlock()) {
-      this.blockOpen.set(true);
-      return;
-    }
-    if (action === 'resume' && this.canResume()) {
-      this.runAction(() => this.rdApi.resume(current.id));
-      return;
-    }
-    if (action === 'complete' && this.canComplete()) {
-      this.runAction(() => this.rdApi.complete(current.id));
-      return;
-    }
     if (action === 'advance' && this.canAdvance()) {
+      this.warnIfAdvanceWithIncompleteProgress(this.memberProgressList());
       this.advanceStageOpen.set(true);
-    }
-  }
-
-  updateProgress(progress: number): void {
-    const current = this.item();
-    if (!current || !this.canEditProgress()) {
       return;
     }
-    this.runAction(() => this.rdApi.update(current.id, { version: current.version, progress }));
+    if (action === 'close' && this.canClose()) {
+      this.runAction(() => this.rdApi.close(current.id));
+      return;
+    }
+    if (action === 'reopen' && this.canClose()) {
+      this.runAction(() => this.rdApi.reopen(current.id));
+    }
   }
 
   saveBasic(input: { title: string; description: string | null }): void {
@@ -204,23 +255,6 @@ export class RdDetailPageComponent {
       return;
     }
     this.runAction(() => this.rdApi.update(current.id, { version: current.version, ...input }));
-  }
-
-  deleteItem(): void {
-    const current = this.item();
-    if (!current || !this.canDelete()) {
-      return;
-    }
-    this.busy.set(true);
-    this.rdApi.delete(current.id).subscribe({
-      next: () => {
-        this.busy.set(false);
-        this.goBack();
-      },
-      error: () => {
-        this.busy.set(false);
-      },
-    });
   }
 
   confirmBlock(blockerReason: string): void {
@@ -232,17 +266,57 @@ export class RdDetailPageComponent {
     this.closeBlockDialog();
   }
 
-  confirmAdvanceStage(stageId: string): void {
+  confirmAdvanceStage(input: { stageId: string; memberIds: string[] }): void {
     const current = this.item();
-    if (!current || !stageId.trim()) {
+    if (!current || !input.stageId.trim()) {
       return;
     }
-    this.runAction(() => this.rdApi.advanceStage(current.id, { stageId: stageId.trim() }));
+    this.runAction(() => this.rdApi.advanceStage(current.id, { stageId: input.stageId.trim(), memberIds: input.memberIds }));
     this.advanceStageOpen.set(false);
   }
 
   closeBlockDialog(): void {
     this.blockOpen.set(false);
+  }
+
+  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number }): void {
+    this.progressUpdateUserId.set(data.userId);
+    this.progressUpdateMemberName.set(data.memberName);
+    this.progressUpdateCurrentProgress.set(data.currentProgress);
+    this.progressUpdateOpen.set(true);
+  }
+
+  closeProgressUpdate(): void {
+    this.progressUpdateOpen.set(false);
+  }
+
+  confirmUpdateProgress(input: { progress: number; note: string }): void {
+    const current = this.item();
+    if (!current) {
+      return;
+    }
+    this.busy.set(true);
+    this.rdApi.updateProgress(current.id, input).subscribe({
+      next: (item) => {
+        this.item.set(item);
+        this.loadProgress(item.id);
+        this.rdApi.listLogs(item.id).subscribe({
+          next: (logs) => this.logs.set(logs),
+        });
+        this.busy.set(false);
+        this.progressUpdateOpen.set(false);
+      },
+      error: () => {
+        this.busy.set(false);
+      },
+    });
+  }
+
+  private loadProgress(itemId: string): void {
+    this.rdApi.listProgress(itemId).subscribe({
+      next: (list) => this.progressList.set(list),
+      error: () => this.progressList.set([]),
+    });
   }
 
   private load(id: string): void {
@@ -252,19 +326,25 @@ export class RdDetailPageComponent {
         this.item.set(item);
         forkJoin({
           logs: this.rdApi.listLogs(item.id),
+          stageHistory: this.rdApi.listStageHistory(item.id),
           stages: this.rdApi.listStages(item.projectId),
           members: this.projectApi.listMembers(item.projectId),
+          progress: this.rdApi.listProgress(item.id),
         }).subscribe({
-          next: ({ logs, stages, members }) => {
+          next: ({ logs, stageHistory, stages, members, progress }) => {
             this.logs.set(logs);
+            this.stageHistory.set(stageHistory);
             this.stages.set(stages);
             this.members.set(members);
+            this.progressList.set(progress);
             this.loading.set(false);
           },
           error: () => {
             this.logs.set([]);
+            this.stageHistory.set([]);
             this.stages.set([]);
             this.members.set([]);
+            this.progressList.set([]);
             this.loading.set(false);
           },
         });
@@ -272,8 +352,10 @@ export class RdDetailPageComponent {
       error: () => {
         this.item.set(null);
         this.logs.set([]);
+        this.stageHistory.set([]);
         this.stages.set([]);
         this.members.set([]);
+        this.progressList.set([]);
         this.loading.set(false);
       },
     });
@@ -287,11 +369,28 @@ export class RdDetailPageComponent {
         this.rdApi.listLogs(item.id).subscribe({
           next: (logs) => this.logs.set(logs),
         });
+        this.rdApi.listStageHistory(item.id).subscribe({
+          next: (items) => this.stageHistory.set(items),
+          error: () => this.stageHistory.set([]),
+        });
         this.busy.set(false);
       },
       error: () => {
         this.busy.set(false);
       },
     });
+  }
+
+  private warnIfAdvanceWithIncompleteProgress(list: MemberProgressItem[]): void {
+    const incomplete = list.filter((item) => Number(item.progress) < 100);
+    if (incomplete.length === 0) {
+      return;
+    }
+    const names = incomplete
+      .map((item) => item.memberName?.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join('、');
+    this.message.warning(`执行人进度未全部达到 100%${names ? `（${names}${incomplete.length > 3 ? ' 等' : ''}）` : ''}，请确认后继续进入下一阶段。`);
   }
 }

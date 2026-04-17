@@ -8,11 +8,15 @@ import type {
   CreateRdItemInput,
   CreateRdStageInput,
   RdItemEntity,
+  RdItemProgress,
   RdLogEntity,
   RdListQuery,
   RdListResult,
+  RdProgressHistory,
+  RdStageHistoryEntry,
   RdStageEntity,
   UpdateRdItemInput,
+  UpdateRdItemProgressInput,
   UpdateRdStageInput,
 } from '../models/rd.model';
 
@@ -52,6 +56,10 @@ export class RdApiService {
     return this.api.get<{ items: RdLogEntity[] }>(`/rd/items/${itemId}/logs`).pipe(map((response) => response.items));
   }
 
+  listStageHistory(itemId: string) {
+    return this.api.get<{ items: RdStageHistoryEntry[] }>(`/rd/items/${itemId}/stage-history`).pipe(map((response) => response.items));
+  }
+
   create(input: CreateRdItemInput) {
     return this.api.post<RdItemEntity, CreateRdItemInput>('/rd/items', input);
   }
@@ -72,6 +80,10 @@ export class RdApiService {
     return this.api.post<RdItemEntity>(`/rd/items/${itemId}/resume`);
   }
 
+  reopen(itemId: string) {
+    return this.api.post<RdItemEntity>(`/rd/items/${itemId}/reopen`);
+  }
+
   complete(itemId: string) {
     return this.api.post<RdItemEntity>(`/rd/items/${itemId}/complete`);
   }
@@ -88,7 +100,15 @@ export class RdApiService {
     return this.api.post<RdItemEntity>(`/rd/items/${itemId}/close`);
   }
 
-  delete(itemId: string) {
-    return this.api.delete<{ id: string }>(`/rd/items/${itemId}`);
+  listProgress(itemId: string) {
+    return this.api.get<RdItemProgress[]>(`/rd/items/${itemId}/progress`);
+  }
+
+  updateProgress(itemId: string, input: UpdateRdItemProgressInput) {
+    return this.api.post<RdItemEntity, UpdateRdItemProgressInput>(`/rd/items/${itemId}/progress`, input);
+  }
+
+  listProgressHistory(itemId: string) {
+    return this.api.get<RdProgressHistory[]>(`/rd/items/${itemId}/progress/history`);
   }
 }

@@ -1,15 +1,17 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 import { RD_STATUS_LABELS } from '@shared/constants';
 import { DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
-import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
+import type { ProjectMemberEntity } from '../../../projects/models/project.model';
+import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../models/rd.model';
 
 @Component({
   selector: 'app-rd-list-table',
   standalone: true,
-  imports: [DatePipe, NzProgressModule, DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent],
+  imports: [DatePipe, NzProgressModule, NzTooltipModule, DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent],
   template: `
     <app-data-table>
       <div table-head class="rd-table__head">
@@ -17,7 +19,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
         <div>阶段</div>
         <div>状态</div>
         <div>优先级</div>
-        <div>负责人</div>
+        <div>成员</div>
         <div>进度</div>
         <div>更新时间</div>
       </div>
@@ -31,7 +33,13 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
             <div class="rd-cell">{{ stageName(item.stageId) }}</div>
             <div class="rd-cell"><app-status-badge [status]="item.status" [label]="statusLabel(item.status)" /></div>
             <div class="rd-cell"><app-priority-badge [priority]="item.priority" /></div>
-            <div class="rd-cell">{{ item.assigneeName || '未指派' }}</div>
+            <div class="rd-cell">
+              @if (memberNamesText(item); as memberNames) {
+                <span class="rd-member-text" [nz-tooltip]="memberNames">{{ memberNames }}</span>
+              } @else {
+                <span class="no-member">未指派</span>
+              }
+            </div>
             <div class="rd-cell rd-cell--progress">
               <nz-progress
                 [nzPercent]="item.progress"
@@ -87,6 +95,13 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
       .rd-cell--progress {
         min-width: 140px;
       }
+      .rd-member-text {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .rd-cell--progress :where(.ant-progress-text) {
         color: var(--text-muted);
       }
@@ -98,7 +113,13 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
       .rd-cell--muted {
         font-size: 12px;
         color: var(--text-muted);
+      }
+      .rd-meta {
         padding-left: 12px;
+      }
+      .no-member {
+        color: var(--text-muted);
+        font-size: 13px;
       }
       @media (max-width: 1100px) {
         .rd-table__head {
@@ -121,6 +142,7 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 export class RdListTableComponent {
   readonly items = input<RdItemEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly members = input<ProjectMemberEntity[]>([]);
   readonly selectedItemId = input<string | null>(null);
   readonly selectItem = output<RdItemEntity>();
 
@@ -130,5 +152,18 @@ export class RdListTableComponent {
 
   statusLabel(status: string): string {
     return RD_STATUS_LABELS[status] ?? status;
+  }
+
+  memberIds(item: RdItemEntity): string[] {
+    return getRdMemberIds(item);
+  }
+
+  memberNamesText(item: RdItemEntity): string {
+    const ids = this.memberIds(item);
+    if (ids.length === 0) {
+      return '';
+    }
+    const memberMap = new Map(this.members().map((member) => [member.userId, member.displayName]));
+    return ids.map((id) => memberMap.get(id) || id).join('、');
   }
 }

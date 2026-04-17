@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { RD_STATUS_LABELS } from '@shared/constants';
@@ -8,51 +7,86 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 @Component({
   selector: 'app-rd-props-panel',
   standalone: true,
-  imports: [DatePipe, PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent],
+  imports: [PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent],
   template: `
-    <app-panel-card title="基础信息">
-      <dl class="props">
-        <div>
-          <dt>状态</dt>
-          <dd><app-status-badge [status]="item().status" [label]="statusLabel(item().status)" /></dd>
+    <div class="props-stack">
+      <app-panel-card title="基础信息">
+        <dl class="props">
+          <div>
+            <dt>状态</dt>
+            <dd><app-status-badge [status]="item().status" [label]="statusLabel(item().status)" /></dd>
+          </div>
+          <div>
+            <dt>优先级</dt>
+            <dd><app-priority-badge [priority]="item().priority" /></dd>
+          </div>
+          <div>
+            <dt>阶段</dt>
+            <dd>{{ stageName(item().stageId) }}</dd>
+          </div>
+          <div>
+            <dt>创建人</dt>
+            <dd>{{ item().creatorName || '-' }}</dd>
+          </div>
+          <div>
+            <dt>执行人</dt>
+            <dd class="member-names">{{ memberNamesText() }}</dd>
+          </div>
+          <div>
+            <dt>验证人</dt>
+            <dd>{{ verifierDisplayName() }}</dd>
+          </div>
+          <div>
+            <dt>进度</dt>
+            <dd>{{ item().progress }}%</dd>
+          </div>
+        </dl>
+      </app-panel-card>
+
+      <app-panel-card title="时间信息">
+        <div class="time-grid">
+          <div class="time-item">
+            <span>计划开始</span>
+            <strong>{{ formatDate(item().planStartAt) }}</strong>
+          </div>
+          <div class="time-item">
+            <span>计划结束</span>
+            <strong>{{ formatDate(item().planEndAt) }}</strong>
+          </div>
+          <div class="time-item">
+            <span>实际开始</span>
+            <strong>{{ formatDate(item().actualStartAt, '-') }}</strong>
+          </div>
+          <div class="time-item">
+            <span>实际结束</span>
+            <strong>{{ formatDate(item().actualEndAt, '-') }}</strong>
+          </div>
+          <div class="time-item">
+            <span>计划工期</span>
+            <strong>{{ getPlannedDuration() }}</strong>
+          </div>
+          <div class="time-item">
+            <span>实际工期</span>
+            <strong>{{ getActualDuration() }}</strong>
+          </div>
+          <div class="time-item time-item--full">
+            <span>创建时间</span>
+            <strong>{{ formatDate(item().createdAt, '-') }}</strong>
+          </div>
         </div>
-        <div>
-          <dt>优先级</dt>
-          <dd><app-priority-badge [priority]="item().priority" /></dd>
+        <div class="time-status-note">
+          时间状态：{{ getTimeStatus() }}。{{ getTimeStatusHint() }}
         </div>
-        <div>
-          <dt>阶段</dt>
-          <dd>{{ stageName(item().stageId) }}</dd>
-        </div>
-        <div>
-          <dt>执行人</dt>
-          <dd>{{ item().assigneeName || '未指派' }}</dd>
-        </div>
-        <div>
-          <dt>验收人</dt>
-          <dd>{{ item().reviewerName || '未指定' }}</dd>
-        </div>
-        <div>
-          <dt>进度</dt>
-          <dd>{{ item().progress }}%</dd>
-        </div>
-        <div>
-          <dt>计划开始</dt>
-          <dd class="meta-cell">{{ item().planStartAt ? (item().planStartAt | date: 'yyyy-MM-dd') : '未设置' }}</dd>
-        </div>
-        <div>
-          <dt>计划结束</dt>
-          <dd class="meta-cell">{{ item().planEndAt ? (item().planEndAt | date: 'yyyy-MM-dd') : '未设置' }}</dd>
-        </div>
-        <div>
-          <dt>创建时间</dt>
-          <dd class="meta-cell">{{ item().createdAt | date: 'yyyy-MM-dd HH:mm' }}</dd>
-        </div>
-      </dl>
-    </app-panel-card>
+      </app-panel-card>
+    </div>
   `,
   styles: [
     `
+      .props-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
       .props {
         margin: 0;
         display: grid;
@@ -74,9 +108,60 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
         font-weight: 600;
         text-align: right;
       }
-      .meta-cell {
-        font-size: 12px;
+      .member-names {
+        max-width: 170px;
+        line-height: 1.5;
+        white-space: normal;
+      }
+      .time-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 14px 16px 12px;
+      }
+      .time-item {
+        border: 1px solid var(--border-color-soft);
+        border-radius: 12px;
+        background: var(--bg-subtle);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 80px;
+      }
+      .time-item span {
         color: var(--text-muted);
+        font-size: 12px;
+      }
+      .time-item strong {
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.2;
+        text-align: left;
+      }
+      .time-item--full {
+        grid-column: 1 / -1;
+      }
+      .time-status-note {
+        margin: 0 16px 16px;
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        background: rgba(245, 158, 11, 0.08);
+        color: rgb(180, 83, 9);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      @media (max-width: 900px) {
+        .time-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      :host-context(html[data-theme='dark']) .time-status-note {
+        border-color: rgba(251, 191, 36, 0.35);
+        background: rgba(251, 191, 36, 0.12);
+        color: rgb(253, 230, 138);
       }
     `,
   ],
@@ -85,6 +170,14 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 export class RdPropsPanelComponent {
   readonly item = input.required<RdItemEntity>();
   readonly stages = input<RdStageEntity[]>([]);
+  readonly memberNames = input<string[]>([]);
+
+  memberNamesText(): string {
+    const names = this.memberNames()
+      .map((name) => name.trim())
+      .filter(Boolean);
+    return names.length > 0 ? names.join('、') : '-';
+  }
 
   stageName(stageId: string | null): string {
     return this.stages().find((stage) => stage.id === stageId)?.name ?? '未归类';
@@ -92,5 +185,84 @@ export class RdPropsPanelComponent {
 
   statusLabel(status: string): string {
     return RD_STATUS_LABELS[status] ?? status;
+  }
+
+  verifierDisplayName(): string {
+    const verifierName = this.item().verifierName?.trim();
+    if (verifierName) {
+      return verifierName;
+    }
+    const creatorName = this.item().creatorName?.trim();
+    return creatorName || '-';
+  }
+
+  formatDate(value: string | null | undefined, fallback = '未设置'): string {
+    if (!value) {
+      return fallback;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return fallback;
+    }
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  getPlannedDuration(): string {
+    const startAt = this.item().planStartAt;
+    const endAt = this.item().planEndAt;
+    if (!startAt || !endAt) {
+      return '-';
+    }
+    const days = this.diffDays(startAt, endAt);
+    return `${days} 天`;
+  }
+
+  getActualDuration(): string {
+    const startAt = this.item().actualStartAt;
+    if (!startAt) {
+      return '-';
+    }
+    const endAt = this.item().actualEndAt ?? new Date().toISOString();
+    const days = this.diffDays(startAt, endAt);
+    return `${days} 天`;
+  }
+
+  getTimeStatus(): string {
+    const item = this.item();
+    if (!item.actualStartAt) return '未开始';
+    if (item.status !== 'done' && item.status !== 'accepted' && item.status !== 'closed') return '进行中';
+    if (!item.actualEndAt || !item.planEndAt) return '已完成';
+    
+    const actualEnd = new Date(item.actualEndAt);
+    const planEnd = new Date(item.planEndAt);
+    const diffDays = Math.round((planEnd.getTime() - actualEnd.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) return `提前 ${diffDays} 天`;
+    if (diffDays === 0) return '按时完成';
+    return `延期 ${Math.abs(diffDays)} 天`;
+  }
+
+  getTimeStatusHint(): string {
+    const status = this.getTimeStatus();
+    if (status === '未开始') {
+      return '开始后将自动统计实际工期。';
+    }
+    if (status === '进行中') {
+      return '完成后自动计算“提前 / 按时 / 延期”。';
+    }
+    return '时间统计已按计划与实际结束时间自动计算。';
+  }
+
+  private diffDays(startAt: string, endAt: string): number {
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 0;
+    }
+    const ms = end.getTime() - start.getTime();
+    return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
   }
 }

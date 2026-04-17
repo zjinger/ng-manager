@@ -7,6 +7,7 @@ import type {
   RdItemEntity,
   RdItemListResult,
   RdLogEntity,
+  RdStageHistoryEntry,
   RdStageEntity
 } from "./rd.types";
 
@@ -28,15 +29,25 @@ type RdItemRow = {
   title: string;
   description: string | null;
   stage_id: string | null;
-  type: "feature_dev" | "tech_refactor" | "integration" | "env_setup";
+  type:
+    | "feature_dev"
+    | "tech_refactor"
+    | "integration"
+    | "env_setup"
+    | "requirement_confirmation"
+    | "solution_design"
+    | "testing_validation"
+    | "delivery_launch"
+    | "project_closure";
   status: "todo" | "doing" | "blocked" | "done" | "accepted" | "closed";
   priority: "low" | "medium" | "high" | "critical";
   assignee_id: string | null;
   assignee_name: string | null;
   creator_id: string;
   creator_name: string;
-  reviewer_id: string | null;
-  reviewer_name: string | null;
+  verifier_id: string | null;
+  verifier_name: string | null;
+  member_ids: string | null;
   progress: number;
   plan_start_at: string | null;
   plan_end_at: string | null;
@@ -45,6 +56,25 @@ type RdItemRow = {
   blocker_reason: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type RdProgressRow = {
+  id: string;
+  item_id: string;
+  user_id: string;
+  progress: number;
+  note: string | null;
+  updated_at: string;
+};
+
+type RdProgressHistoryRow = {
+  id: string;
+  item_id: string;
+  user_id: string;
+  old_progress: number | null;
+  new_progress: number;
+  note: string | null;
+  created_at: string;
 };
 
 type RdLogRow = {
@@ -57,6 +87,7 @@ type RdLogRow = {
     | "start"
     | "block"
     | "resume"
+    | "reopen"
     | "complete"
     | "accept"
     | "close"
@@ -80,13 +111,23 @@ type UpdateRdItemRowInput = Partial<{
   title: string;
   description: string | null;
   stage_id: string | null;
-  type: "feature_dev" | "tech_refactor" | "integration" | "env_setup";
+  type:
+    | "feature_dev"
+    | "tech_refactor"
+    | "integration"
+    | "env_setup"
+    | "requirement_confirmation"
+    | "solution_design"
+    | "testing_validation"
+    | "delivery_launch"
+    | "project_closure";
   status: "todo" | "doing" | "blocked" | "done" | "accepted" | "closed";
   priority: "low" | "medium" | "high" | "critical";
   assignee_id: string | null;
   assignee_name: string | null;
-  reviewer_id: string | null;
-  reviewer_name: string | null;
+verifier_id: string | null;
+  verifier_name: string | null;
+  member_ids: string | null;
   progress: number;
   plan_start_at: string | null;
   plan_end_at: string | null;
@@ -100,7 +141,26 @@ const RD_NO_PREFIX_BY_TYPE: Record<RdItemEntity["type"], string> = {
   feature_dev: "FEAT",
   tech_refactor: "REF",
   integration: "INT",
-  env_setup: "ENV"
+  env_setup: "ENV",
+  requirement_confirmation: "REQ",
+  solution_design: "DES",
+  testing_validation: "TST",
+  delivery_launch: "DLV",
+  project_closure: "CLS"
+};
+
+type RdStageHistoryRow = {
+  id: string;
+  project_id: string;
+  item_id: string;
+  from_stage_id: string | null;
+  from_stage_name: string;
+  to_stage_id: string;
+  to_stage_name: string;
+  snapshot_json: string;
+  operator_id: string | null;
+  operator_name: string | null;
+  created_at: string;
 };
 
 export class RdRepo {
@@ -157,12 +217,12 @@ export class RdRepo {
     this.db
       .prepare(
         `
-          INSERT INTO rd_items (
+INSERT INTO rd_items (
             id, project_id, rd_no, version, title, description, stage_id, type, status, priority,
-            assignee_id, assignee_name, creator_id, creator_name, reviewer_id, reviewer_name,
+            assignee_id, assignee_name, creator_id, creator_name, verifier_id, verifier_name, member_ids,
             progress, plan_start_at, plan_end_at, actual_start_at, actual_end_at, blocker_reason,
             created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
@@ -180,8 +240,9 @@ export class RdRepo {
         entity.assigneeName,
         entity.creatorId,
         entity.creatorName,
-        entity.reviewerId,
-        entity.reviewerName,
+        entity.verifierId,
+        entity.verifierName,
+        JSON.stringify(entity.memberIds ?? []),
         entity.progress,
         entity.planStartAt,
         entity.planEndAt,
@@ -366,13 +427,51 @@ export class RdRepo {
         `
           SELECT COUNT(*) as total
           FROM rd_items
-          WHERE assignee_id = ?
+          WHERE (assignee_id = ? OR instr(COALESCE(member_ids, ''), '"' || ? || '"') > 0)
             AND status IN ('todo', 'doing', 'blocked')
             ${scope.clause}
         `
       )
-      .get(userId, ...scope.params) as { total: number };
+      .get(userId, userId, ...scope.params) as { total: number };
     return row.total;
+  }
+
+  createStageHistory(entity: RdStageHistoryEntry): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO rd_stage_history (
+            id, project_id, item_id, from_stage_id, from_stage_name, to_stage_id, to_stage_name,
+            snapshot_json, operator_id, operator_name, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        entity.id,
+        entity.projectId,
+        entity.itemId,
+        entity.fromStageId,
+        entity.fromStageName,
+        entity.toStageId,
+        entity.toStageName,
+        entity.snapshotJson,
+        entity.operatorId,
+        entity.operatorName,
+        entity.createdAt
+      );
+  }
+
+  listStageHistoryByItemId(itemId: string): RdStageHistoryEntry[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM rd_stage_history
+          WHERE item_id = ?
+          ORDER BY created_at DESC
+        `
+      )
+      .all(itemId) as RdStageHistoryRow[];
+    return rows.map((row) => this.mapStageHistory(row));
   }
 
   countInProgressForDashboard(projectIds: string[], userId: string): number {
@@ -382,12 +481,12 @@ export class RdRepo {
         `
           SELECT COUNT(*) as total
           FROM rd_items
-          WHERE assignee_id = ?
+          WHERE (assignee_id = ? OR instr(COALESCE(member_ids, ''), '"' || ? || '"') > 0)
             AND status = 'doing'
             ${scope.clause}
         `
       )
-      .get(userId, ...scope.params) as { total: number };
+      .get(userId, userId, ...scope.params) as { total: number };
     return row.total;
   }
 
@@ -398,7 +497,7 @@ export class RdRepo {
         `
           SELECT COUNT(*) as total
           FROM rd_items
-          WHERE reviewer_id = ?
+          WHERE verifier_id = ?
             AND status = 'done'
             ${scope.clause}
         `
@@ -414,14 +513,14 @@ export class RdRepo {
         `
           SELECT id, rd_no as code, title, status, updated_at, project_id
           FROM rd_items
-          WHERE assignee_id = ?
+          WHERE (assignee_id = ? OR instr(COALESCE(member_ids, ''), '"' || ? || '"') > 0)
             AND status IN ('todo', 'doing', 'blocked')
             ${scope.clause}
           ORDER BY updated_at DESC
           LIMIT ?
         `
       )
-      .all(userId, ...scope.params, limit) as Array<{
+      .all(userId, userId, ...scope.params, limit) as Array<{
       id: string;
       code: string;
       title: string;
@@ -507,8 +606,9 @@ export class RdRepo {
       assigneeName: row.assignee_name,
       creatorId: row.creator_id,
       creatorName: row.creator_name,
-      reviewerId: row.reviewer_id,
-      reviewerName: row.reviewer_name,
+      verifierId: row.verifier_id,
+      verifierName: row.verifier_name,
+      memberIds: row.member_ids ? JSON.parse(row.member_ids) : [],
       progress: row.progress,
       planStartAt: row.plan_start_at,
       planEndAt: row.plan_end_at,
@@ -532,6 +632,77 @@ export class RdRepo {
       metaJson: row.meta_json,
       createdAt: row.created_at
     };
+  }
+
+  private mapStageHistory(row: RdStageHistoryRow): RdStageHistoryEntry {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      itemId: row.item_id,
+      fromStageId: row.from_stage_id,
+      fromStageName: row.from_stage_name,
+      toStageId: row.to_stage_id,
+      toStageName: row.to_stage_name,
+      snapshotJson: row.snapshot_json,
+      operatorId: row.operator_id,
+      operatorName: row.operator_name,
+      createdAt: row.created_at,
+    };
+  }
+
+  upsertProgress(progress: RdProgressRow): void {
+    const existing = this.db
+      .prepare("SELECT id FROM rd_item_progress WHERE item_id = ? AND user_id = ?")
+      .get(progress.item_id, progress.user_id);
+
+    if (existing) {
+      this.db
+        .prepare("UPDATE rd_item_progress SET progress = ?, note = ?, updated_at = ? WHERE item_id = ? AND user_id = ?")
+        .run(progress.progress, progress.note, progress.updated_at, progress.item_id, progress.user_id);
+    } else {
+      this.db
+        .prepare("INSERT INTO rd_item_progress (id, item_id, user_id, progress, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(progress.id, progress.item_id, progress.user_id, progress.progress, progress.note, progress.updated_at);
+    }
+  }
+
+  createProgressHistory(history: RdProgressHistoryRow): void {
+    this.db
+      .prepare(
+        "INSERT INTO rd_progress_history (id, item_id, user_id, old_progress, new_progress, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      )
+      .run(history.id, history.item_id, history.user_id, history.old_progress, history.new_progress, history.note, history.created_at);
+  }
+
+  deleteProgressByItemId(itemId: string): void {
+    this.db.prepare("DELETE FROM rd_item_progress WHERE item_id = ?").run(itemId);
+  }
+
+  listProgressByItemId(itemId: string): RdProgressRow[] {
+    return this.db
+      .prepare("SELECT * FROM rd_item_progress WHERE item_id = ? ORDER BY updated_at DESC")
+      .all(itemId) as RdProgressRow[];
+  }
+
+  listProgressHistoryByItemId(itemId: string, limit: number = 20): RdProgressHistoryRow[] {
+    return this.db
+      .prepare("SELECT * FROM rd_progress_history WHERE item_id = ? ORDER BY created_at DESC LIMIT ?")
+      .all(itemId, limit) as RdProgressHistoryRow[];
+  }
+
+  getProgressByItemAndUser(itemId: string, userId: string): RdProgressRow | null {
+    return (
+      (this.db
+        .prepare("SELECT * FROM rd_item_progress WHERE item_id = ? AND user_id = ?")
+        .get(itemId, userId) as RdProgressRow | undefined) ?? null
+    );
+  }
+
+  calculateMainProgress(itemId: string): number {
+    const progresses = this.listProgressByItemId(itemId);
+    if (progresses.length === 0) return 0;
+    const sum = progresses.reduce((acc, p) => acc + p.progress, 0);
+    return Math.round(sum / progresses.length);
   }
 
   private createProjectScope(projectIds: string[]) {

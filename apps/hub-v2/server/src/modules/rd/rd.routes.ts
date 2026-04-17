@@ -8,6 +8,7 @@ import {
   createRdStageSchema,
   listRdItemsQuerySchema,
   listRdStagesQuerySchema,
+  updateRdItemProgressSchema,
   updateRdItemSchema,
   updateRdStageSchema
 } from "./rd.schema";
@@ -59,6 +60,12 @@ export default async function rdRoutes(app: FastifyInstance) {
     return ok({ items: await app.container.rdQuery.listLogs(params.itemId, ctx) });
   });
 
+  app.get("/rd/items/:itemId/stage-history", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    return ok({ items: await app.container.rdQuery.listStageHistory(params.itemId, ctx) });
+  });
+
   app.patch("/rd/items/:itemId", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
@@ -83,6 +90,12 @@ export default async function rdRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
     return ok(await app.container.rdCommand.resume(params.itemId, ctx), "rd item resumed");
+  });
+
+  app.post("/rd/items/:itemId/reopen", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    return ok(await app.container.rdCommand.reopen(params.itemId, ctx), "rd item reopened");
   });
 
   app.post("/rd/items/:itemId/complete", async (request) => {
@@ -110,9 +123,22 @@ export default async function rdRoutes(app: FastifyInstance) {
     return ok(await app.container.rdCommand.advanceStage(params.itemId, body, ctx), "rd item advanced stage");
   });
 
-  app.delete("/rd/items/:itemId", async (request) => {
+  app.get("/rd/items/:itemId/progress", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
-    return ok(await app.container.rdCommand.delete(params.itemId, ctx), "rd item deleted");
+    return ok(await app.container.rdQuery.listProgress(params.itemId, ctx));
+  });
+
+  app.post("/rd/items/:itemId/progress", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    const body = updateRdItemProgressSchema.parse(request.body);
+    return ok(await app.container.rdCommand.updateProgress(params.itemId, body, ctx), "progress updated");
+  });
+
+  app.get("/rd/items/:itemId/progress/history", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    return ok(await app.container.rdQuery.listProgressHistory(params.itemId, ctx));
   });
 }

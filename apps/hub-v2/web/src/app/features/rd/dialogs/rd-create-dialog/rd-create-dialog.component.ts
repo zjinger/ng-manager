@@ -23,8 +23,8 @@ const DEFAULT_DRAFT: Draft = {
   stageId: null,
   type: 'feature_dev',
   priority: 'medium',
-  assigneeId: null,
-  reviewerId: null,
+  memberIds: [],
+  verifierId: null,
   planStartAt: '',
   planEndAt: '',
 };
@@ -149,14 +149,15 @@ const DEFAULT_DRAFT: Draft = {
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="12">
               <nz-form-item>
-                <nz-form-label nzRequired nzFor="assigneeId">执行人</nz-form-label>
+                <nz-form-label nzRequired nzFor="memberIds">分配执行人</nz-form-label>
                 <nz-form-control>
                   <nz-select
+                    nzMode="multiple"
                     nzAllowClear
-                    nzPlaceHolder="未指派"
-                    [ngModel]="draft().assigneeId"
-                    name="assigneeId"
-                    (ngModelChange)="updateField('assigneeId', $event)"
+                    nzPlaceHolder="至少选择1人，可选择多人"
+                    [ngModel]="draft().memberIds"
+                    name="memberIds"
+                    (ngModelChange)="updateField('memberIds', $event)"
                   >
                     @for (member of members(); track member.id) {
                       <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
@@ -167,14 +168,14 @@ const DEFAULT_DRAFT: Draft = {
             </div>
             <div nz-col nzSpan="12">
               <nz-form-item>
-                <nz-form-label nzFor="reviewerId" nzTooltipTitle="确认人默认为执行人" [nzTooltipIcon]="'question-circle'">确认人</nz-form-label>
+                <nz-form-label nzFor="verifierId" nzTooltipTitle="验证人负责验收确认" [nzTooltipIcon]="'question-circle'">验证人</nz-form-label>
                 <nz-form-control>
                   <nz-select
                     nzAllowClear
                     nzPlaceHolder="未指定"
-                    [ngModel]="draft().reviewerId"
-                    name="reviewerId"
-                    (ngModelChange)="updateField('reviewerId', $event)"
+                    [ngModel]="draft().verifierId"
+                    name="verifierId"
+                    (ngModelChange)="updateField('verifierId', $event)"
                   >
                     @for (member of members(); track member.id) {
                       <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
@@ -277,7 +278,7 @@ export class RdCreateDialogComponent {
   }
 
   isFormValid(): boolean {
-    return this.draft().title.trim().length > 0 && this.draft().stageId !== null && this.draft().priority !== null && this.draft().type !== null && this.draft().assigneeId !== null;
+    return this.draft().title.trim().length > 0 && this.draft().stageId !== null && this.draft().priority !== null && this.draft().type !== null && (this.draft().memberIds?.length ?? 0) > 0;
   }
 
   updateField<K extends keyof Draft>(key: K, value: Draft[K]): void {

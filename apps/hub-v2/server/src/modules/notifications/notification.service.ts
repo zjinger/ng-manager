@@ -542,27 +542,29 @@ export class NotificationService
   }
 
   // RD recipients:
-  // - created -> assignee
-  // - complete -> reviewer
-  // - key transitions -> creator + assignee + reviewer
+  // - created -> members (executors)
+  // - complete -> verifier
+  // - key transitions -> creator + members + verifier
   // and always exclude actor/self when resolvable.
   private resolveRdRecipientUserIds(event: DomainEvent, action: string): string[] {
     const payload = event.payload ?? {};
     const actorIds = this.collectActorCandidateIds(event, payload);
+    const rdMembers = this.collectUserIds(payload["memberIds"], payload["assigneeId"]);
+    const rdVerifier = this.collectUserIds(payload["verifierId"], payload["reviewerId"]);
     if (action === "created") {
-      return this.excludeActorIds(this.collectUserIds(payload["assigneeId"]), actorIds);
+      return this.excludeActorIds(rdMembers, actorIds);
     }
     if (action === "complete") {
-      return this.excludeActorIds(this.collectUserIds(payload["reviewerId"]), actorIds);
+      return this.excludeActorIds(rdVerifier, actorIds);
     }
     if (["start", "block", "resume", "accept", "close", "advance_stage"].includes(action)) {
       return this.excludeActorIds(
-        this.collectUserIds(payload["creatorId"], payload["assigneeId"], payload["reviewerId"]),
+        this.collectUserIds(payload["creatorId"], rdMembers, rdVerifier),
         actorIds
       );
     }
     return this.excludeActorIds(
-      this.collectUserIds(payload["creatorId"], payload["assigneeId"], payload["reviewerId"]),
+      this.collectUserIds(payload["creatorId"], rdMembers, rdVerifier),
       actorIds
     );
   }

@@ -24,17 +24,21 @@ import type {
   RdDashboardTodo,
   RdItemEntity,
   RdItemListResult,
+  RdItemProgress,
   RdLogEntity,
+  RdProgressHistory,
+  RdStageHistoryEntry,
   RdStageEntity,
   UpdateRdItemInput,
+  UpdateRdItemProgressInput,
   UpdateRdStageInput
 } from "./rd.types";
 
 type RdMemberRef = {
-  assigneeId: string | null;
-  assigneeName: string | null;
-  reviewerId: string | null;
-  reviewerName: string | null;
+  memberIds: string[];
+  memberNames: string[];
+  verifierId: string | null;
+  verifierName: string | null;
 };
 
 export class RdService implements RdCommandContract, RdQueryContract {
@@ -99,13 +103,20 @@ export class RdService implements RdCommandContract, RdQueryContract {
     return this.repo.listStages(query.projectId.trim());
   }
 
-  async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
+async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     const projectId = input.projectId.trim();
     const itemType = input.type ?? "feature_dev";
+    const creatorId = ctx.userId?.trim() || ctx.accountId;
+    const creatorName = ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId;
+    const requestedVerifierId = input.verifierId?.trim() || null;
+    const defaultVerifierId = requestedVerifierId || creatorId;
     await this.projectAccess.requireProjectAccess(projectId, ctx, "create rd item");
-    const members = await this.resolveMembers(projectId, input.assigneeId ?? null, input.reviewerId ?? null);
+    const members = await this.resolveMembers(projectId, input.memberIds ?? [], defaultVerifierId);
     const stageId = await this.resolveStageId(projectId, input.stageId);
     const now = nowIso();
+    const memberIds = members.memberIds;
+    const assigneeId = memberIds.length > 0 ? memberIds[0] : null;
+    const assigneeName = memberIds.length > 0 ? members.memberNames[0] : null;
     const entity: RdItemEntity = {
       id: genId("rdi"),
       projectId,
@@ -117,12 +128,13 @@ export class RdService implements RdCommandContract, RdQueryContract {
       type: itemType,
       status: "todo",
       priority: input.priority ?? "medium",
-      assigneeId: members.assigneeId,
-      assigneeName: members.assigneeName,
-      creatorId: ctx.userId?.trim() || ctx.accountId,
-      creatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
-      reviewerId: members.reviewerId,
-      reviewerName: members.reviewerName,
+      assigneeId,
+      assigneeName,
+      creatorId,
+      creatorName,
+      verifierId: members.verifierId,
+      verifierName: members.verifierName,
+      memberIds,
       progress: 0,
       planStartAt: input.planStartAt?.trim() || null,
       planEndAt: input.planEndAt?.trim() || null,
@@ -168,9 +180,12 @@ export class RdService implements RdCommandContract, RdQueryContract {
     }
     const members = await this.resolveMembers(
       current.projectId,
-      input.assigneeId === undefined ? current.assigneeId : input.assigneeId,
-      input.reviewerId === undefined ? current.reviewerId : input.reviewerId
+      input.memberIds === undefined ? this.collectEffectiveMemberIds(current.memberIds, current.assigneeId) : input.memberIds,
+      input.verifierId === undefined ? current.verifierId : input.verifierId
     );
+    const memberIds = members.memberIds;
+    const assigneeId = memberIds.length > 0 ? memberIds[0] : current.assigneeId;
+    const assigneeName = memberIds.length > 0 ? members.memberNames[0] : current.assigneeName;
     const stageId =
       input.stageId === undefined ? current.stageId : await this.resolveStageId(current.projectId, input.stageId);
     const updated = this.repo.updateItem(id, {
@@ -179,10 +194,11 @@ export class RdService implements RdCommandContract, RdQueryContract {
       stage_id: stageId,
       type: input.type ?? current.type,
       priority: input.priority ?? current.priority,
-      assignee_id: members.assigneeId,
-      assignee_name: members.assigneeName,
-      reviewer_id: members.reviewerId,
-      reviewer_name: members.reviewerName,
+      assignee_id: assigneeId,
+      assignee_name: assigneeName,
+      verifier_id: members.verifierId,
+      verifier_name: members.verifierName,
+      member_ids: JSON.stringify(memberIds),
       progress: input.progress ?? current.progress,
       plan_start_at: input.planStartAt === undefined ? current.planStartAt : input.planStartAt?.trim() || null,
       plan_end_at: input.planEndAt === undefined ? current.planEndAt : input.planEndAt?.trim() || null,
@@ -238,6 +254,22 @@ export class RdService implements RdCommandContract, RdQueryContract {
     return this.applyAction(id, "resume", ctx, current, { blocker_reason: null }, "标记研发项已恢复");
   }
 
+  async reopen(id: string, ctx: RequestContext): Promise<RdItemEntity> {
+    const current = await this.requireItemWithAccess(id, ctx, "reopen rd item");
+    await this.requireCloseAccess(current, ctx, "reopen rd item");
+    return this.applyAction(
+      id,
+      "reopen",
+      ctx,
+      current,
+      {
+        blocker_reason: null,
+        actual_end_at: null
+      },
+      "恢复研发项"
+    );
+  }
+
   async complete(id: string, ctx: RequestContext, expectedVersion?: number): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "complete rd item");
     this.requireAssignee(current, ctx, "complete rd item");
@@ -272,7 +304,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   async advanceStage(id: string, input: AdvanceRdStageInput, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "advance rd stage");
-    await this.requireBasicEditAccess(current, ctx, "advance rd stage");
+    await this.requireAdvanceAccess(current, ctx, "advance rd stage");
     if (current.status !== "done" && current.status !== "accepted") {
       throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_STATUS, "rd item is not completed", 400);
     }
@@ -290,10 +322,27 @@ export class RdService implements RdCommandContract, RdQueryContract {
     if (currentStage && targetStage.sort <= currentStage.sort) {
       throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd target stage must be after current stage", 400);
     }
+    const nextMembersRef =
+      input.memberIds === undefined
+        ? {
+            memberIds: this.collectEffectiveMemberIds(current.memberIds, current.assigneeId),
+            memberNames: await this.resolveMemberNamesFallback(
+              current.projectId,
+              this.collectEffectiveMemberIds(current.memberIds, current.assigneeId)
+            ),
+            verifierId: current.verifierId,
+            verifierName: current.verifierName
+          }
+        : await this.resolveMembers(current.projectId, input.memberIds, current.verifierId);
+    const nextAssigneeId = nextMembersRef.memberIds.length > 0 ? nextMembersRef.memberIds[0] : null;
+    const nextAssigneeName = nextMembersRef.memberNames.length > 0 ? nextMembersRef.memberNames[0] : null;
 
     const updated = this.repo.updateItem(id, {
       stage_id: targetStage.id,
       status: "todo",
+      member_ids: JSON.stringify(nextMembersRef.memberIds),
+      assignee_id: nextAssigneeId,
+      assignee_name: nextAssigneeName,
       progress: 0,
       actual_start_at: null,
       actual_end_at: null,
@@ -303,24 +352,51 @@ export class RdService implements RdCommandContract, RdQueryContract {
     if (!updated) {
       throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_FAILED, "failed to advance rd stage", 500);
     }
+    // 进入新阶段后，成员个人进度从 0 重新开始，避免沿用上一阶段进度快照。
+    this.repo.deleteProgressByItemId(id);
 
     const entity = this.requireItem(id);
     const fromStageName = currentStage?.name || "未归类";
+    this.repo.createStageHistory({
+      id: genId("rdsh"),
+      projectId: entity.projectId,
+      itemId: entity.id,
+      fromStageId: current.stageId,
+      fromStageName,
+      toStageId: targetStage.id,
+      toStageName: targetStage.name,
+      snapshotJson: JSON.stringify({
+        stageId: current.stageId,
+        stageName: fromStageName,
+        status: current.status,
+        progress: current.progress,
+        assigneeId: current.assigneeId,
+        assigneeName: current.assigneeName,
+        verifierId: current.verifierId,
+        verifierName: current.verifierName,
+        memberIds: current.memberIds,
+        memberNames: await this.resolveMemberNamesFallback(current.projectId, current.memberIds),
+        planStartAt: current.planStartAt,
+        planEndAt: current.planEndAt,
+        actualStartAt: current.actualStartAt,
+        actualEndAt: current.actualEndAt,
+        blockerReason: current.blockerReason
+      }),
+      operatorId: ctx.userId?.trim() || ctx.accountId,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      createdAt: nowIso()
+    });
     this.repo.createLog(
-      this.createLog(entity, "advance_stage", ctx, `推进阶段: ${fromStageName} -> ${targetStage.name}`)
+      this.createLog(
+        entity,
+        "advance_stage",
+        ctx,
+        `推进阶段: ${fromStageName} -> ${targetStage.name}` +
+          (nextMembersRef.memberNames.length > 0 ? `；成员: ${nextMembersRef.memberNames.join("、")}` : "；成员: 未指定")
+      )
     );
     await this.emitRdEvent("rd.updated", "advance_stage", entity, ctx);
     return entity;
-  }
-
-  async delete(id: string, ctx: RequestContext): Promise<{ id: string }> {
-    const current = await this.requireItemWithAccess(id, ctx, "delete rd item");
-    await this.requireDeleteAccess(current, ctx, "delete rd item");
-    const deleted = this.repo.deleteItem(id);
-    if (!deleted) {
-      throw new AppError(ERROR_CODES.RD_ITEM_DELETE_FAILED, "failed to delete rd item", 500);
-    }
-    return { id };
   }
 
   async listItems(query: ListRdItemsQuery, ctx: RequestContext): Promise<RdItemListResult> {
@@ -420,34 +496,11 @@ export class RdService implements RdCommandContract, RdQueryContract {
       throw new AppError(ERROR_CODES.RD_EDIT_FORBIDDEN, `${action} forbidden`, 403);
     }
 
-    if (item.creatorId === userId || item.assigneeId === userId) {
-      return;
-    }
-
-    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, action);
-    if (member.roleCode === "project_admin" || member.isOwner) {
-      return;
-    }
-
-    throw new AppError(ERROR_CODES.RD_EDIT_FORBIDDEN, `${action} forbidden`, 403);
-  }
-
-  private async requireDeleteAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
-    const userId = ctx.userId?.trim();
-    if (!userId) {
-      throw new AppError(ERROR_CODES.RD_DELETE_FORBIDDEN, `${action} forbidden`, 403);
-    }
-
     if (item.creatorId === userId) {
       return;
     }
 
-    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, action);
-    if (member.roleCode === "project_admin" || member.isOwner) {
-      return;
-    }
-
-    throw new AppError(ERROR_CODES.RD_DELETE_FORBIDDEN, `${action} forbidden`, 403);
+    throw new AppError(ERROR_CODES.RD_EDIT_FORBIDDEN, `${action} forbidden`, 403);
   }
 
   private async requireCloseAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
@@ -460,12 +513,14 @@ export class RdService implements RdCommandContract, RdQueryContract {
       return;
     }
 
-    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, action);
-    if (member.roleCode === "project_admin" || member.isOwner) {
-      return;
-    }
-
     throw new AppError(ERROR_CODES.RD_CLOSE_FORBIDDEN, `${action} forbidden`, 403);
+  }
+
+  private async requireAdvanceAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
+    const userId = ctx.userId?.trim();
+    if (!userId || !item.verifierId || item.verifierId !== userId) {
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_FORBIDDEN, `${action} forbidden`, 403);
+    }
   }
 
   private requireAssignee(item: RdItemEntity, ctx: RequestContext, action: string): void {
@@ -493,6 +548,13 @@ export class RdService implements RdCommandContract, RdQueryContract {
     throw new AppError(ERROR_CODES.RD_BLOCK_FORBIDDEN, `${action} forbidden`, 403);
   }
 
+  private requireProgressMember(item: RdItemEntity, targetUserId: string, action: string): void {
+    const memberIds = new Set([...(item.memberIds ?? []), ...(item.assigneeId ? [item.assigneeId] : [])]);
+    if (!memberIds.has(targetUserId)) {
+      throw new AppError(ERROR_CODES.RD_PROGRESS_FORBIDDEN, `${action} forbidden`, 403);
+    }
+  }
+
   private async resolveStageId(projectId: string, stageId: string | null | undefined): Promise<string | null> {
     const normalized = stageId?.trim() || null;
     if (!normalized) {
@@ -507,32 +569,56 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   private async resolveMembers(
     projectId: string,
-    assigneeId: string | null | undefined,
-    reviewerId: string | null | undefined
+    memberIds: string[],
+    verifierId: string | null | undefined
   ): Promise<RdMemberRef> {
-    let assigneeName: string | null = null;
-    let reviewerName: string | null = null;
-    let normalizedAssigneeId = assigneeId?.trim() || null;
-    let normalizedReviewerId = reviewerId?.trim() || null;
+    const normalizedMemberIds = this.collectEffectiveMemberIds(memberIds);
+    if (normalizedMemberIds.length === 0) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd memberIds requires at least one member", 400);
+    }
+    const memberNames: string[] = [];
+    let normalizedVerifierId = verifierId?.trim() || null;
+    let verifierName: string | null = null;
 
-    if (normalizedAssigneeId) {
-      const assignee = await this.projectAccess.requireProjectMember(projectId, normalizedAssigneeId, "resolve rd assignee");
-      normalizedAssigneeId = assignee.userId;
-      assigneeName = assignee.displayName;
+    for (const memberId of normalizedMemberIds) {
+      const member = await this.projectAccess.requireProjectMember(projectId, memberId, "resolve rd member");
+      memberNames.push(member.displayName);
     }
 
-    if (normalizedReviewerId) {
-      const reviewer = await this.projectAccess.requireProjectMember(projectId, normalizedReviewerId, "resolve rd reviewer");
-      normalizedReviewerId = reviewer.userId;
-      reviewerName = reviewer.displayName;
+    if (normalizedVerifierId) {
+      const verifier = await this.projectAccess.requireProjectMember(projectId, normalizedVerifierId, "resolve rd verifier");
+      normalizedVerifierId = verifier.userId;
+      verifierName = verifier.displayName;
     }
 
     return {
-      assigneeId: normalizedAssigneeId,
-      assigneeName,
-      reviewerId: normalizedReviewerId,
-      reviewerName
+      memberIds: normalizedMemberIds,
+      memberNames,
+      verifierId: normalizedVerifierId,
+      verifierName
     };
+  }
+
+  private collectEffectiveMemberIds(memberIds: string[] | null | undefined, fallbackAssigneeId?: string | null): string[] {
+    const sourceIds = Array.isArray(memberIds) ? memberIds : [];
+    const all = [...sourceIds, fallbackAssigneeId ?? ""];
+    return Array.from(new Set(all.map((id) => id.trim()).filter(Boolean)));
+  }
+
+  private async resolveMemberNamesFallback(projectId: string, memberIds: string[]): Promise<string[]> {
+    const names: string[] = [];
+    for (const memberId of memberIds) {
+      if (!memberId?.trim()) {
+        continue;
+      }
+      try {
+        const member = await this.projectAccess.requireProjectMember(projectId, memberId.trim(), "resolve rd member fallback");
+        names.push(member.displayName);
+      } catch {
+        names.push(memberId.trim());
+      }
+    }
+    return names;
   }
 
   private async applyAction(
@@ -607,16 +693,130 @@ export class RdService implements RdCommandContract, RdQueryContract {
     if (input.priority !== undefined && input.priority !== current.priority) {
       changes.push(`优先级: ${current.priority} -> ${input.priority}`);
     }
-    if (input.assigneeId !== undefined && (input.assigneeId?.trim() || null) !== current.assigneeId) {
-      changes.push("更新执行人");
+    if (input.memberIds !== undefined) {
+      const currentIds = current.memberIds ?? [];
+      const nextIds = input.memberIds ?? [];
+      if (currentIds.length !== nextIds.length || currentIds.some((id, index) => id !== nextIds[index])) {
+        changes.push("更新成员");
+      }
     }
-    if (input.reviewerId !== undefined && (input.reviewerId?.trim() || null) !== current.reviewerId) {
+    if (input.verifierId !== undefined && (input.verifierId?.trim() || null) !== current.verifierId) {
       changes.push("更新验证人");
     }
     if (input.planStartAt !== undefined || input.planEndAt !== undefined) {
       changes.push("更新计划时间");
     }
     return changes.length > 0 ? changes.join("；") : "更新研发项信息";
+  }
+
+  async updateProgress(id: string, input: UpdateRdItemProgressInput, ctx: RequestContext): Promise<RdItemEntity> {
+    const item = await this.requireItemWithAccess(id, ctx, "update rd progress");
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.RD_PROGRESS_FORBIDDEN, "update rd progress forbidden", 403);
+    }
+    this.requireProgressMember(item, userId, "update rd progress");
+    const now = nowIso();
+
+    const existing = this.repo.getProgressByItemAndUser(id, userId);
+    const oldProgress = existing?.progress ?? 0;
+
+    this.repo.upsertProgress({
+      id: existing ? existing.id : genId("rdp"),
+      item_id: id,
+      user_id: userId,
+      progress: input.progress,
+      note: input.note || null,
+      updated_at: now
+    });
+
+    this.repo.createProgressHistory({
+      id: genId("rdph"),
+      item_id: id,
+      user_id: userId,
+      old_progress: oldProgress,
+      new_progress: input.progress,
+      note: input.note || null,
+      created_at: now
+    });
+
+    const allProgressRows = this.repo.listProgressByItemId(id);
+    const progressByUser = new Map(allProgressRows.map((row) => [row.user_id, row.progress]));
+    const effectiveMemberIds = this.collectEffectiveMemberIds(item.memberIds, item.assigneeId);
+    const memberCount = effectiveMemberIds.length;
+    const mainProgress =
+      memberCount === 0
+        ? 0
+        : Math.round(
+            effectiveMemberIds.reduce((sum, memberId) => sum + (progressByUser.get(memberId) ?? 0), 0) / memberCount
+          );
+
+    const updatePayload: Record<string, unknown> = {
+      progress: mainProgress,
+      updated_at: now
+    };
+    if (item.status !== "closed") {
+      if (mainProgress >= 100 && (item.status === "todo" || item.status === "doing" || item.status === "blocked")) {
+        updatePayload.status = "done";
+        updatePayload.actual_start_at = item.actualStartAt ?? now;
+        updatePayload.actual_end_at = now;
+        updatePayload.blocker_reason = null;
+      } else if (mainProgress > 0 && item.status === "todo") {
+        updatePayload.status = "doing";
+        updatePayload.actual_start_at = item.actualStartAt ?? now;
+        updatePayload.actual_end_at = null;
+      } else if (mainProgress < 100 && item.status === "done") {
+        updatePayload.status = "doing";
+        updatePayload.actual_end_at = null;
+      }
+    }
+
+    const updated = this.repo.updateItem(id, {
+      ...updatePayload
+    }, item.version);
+
+    if (!updated) {
+      throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
+    }
+
+    const updatedItem = this.requireItem(id);
+    this.repo.createLog(this.createLog(updatedItem, "update", ctx, `更新个人进度: ${oldProgress}% -> ${input.progress}%`));
+    await this.emitRdEvent("rd.updated", "update_progress", updatedItem, ctx);
+    return updatedItem;
+  }
+
+  async listProgress(id: string, ctx: RequestContext): Promise<RdItemProgress[]> {
+    await this.requireItemWithAccess(id, ctx, "list rd progress");
+    const rows = this.repo.listProgressByItemId(id);
+    return rows.map(row => ({
+      id: row.id,
+      itemId: row.item_id,
+      userId: row.user_id,
+      userName: null,
+      progress: row.progress,
+      note: row.note,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  async listProgressHistory(id: string, ctx: RequestContext): Promise<RdProgressHistory[]> {
+    await this.requireItemWithAccess(id, ctx, "list rd progress history");
+    const rows = this.repo.listProgressHistoryByItemId(id);
+    return rows.map(row => ({
+      id: row.id,
+      itemId: row.item_id,
+      userId: row.user_id,
+      userName: null,
+      oldProgress: row.old_progress,
+      newProgress: row.new_progress,
+      note: row.note,
+      createdAt: row.created_at
+    }));
+  }
+
+  async listStageHistory(id: string, ctx: RequestContext): Promise<RdStageHistoryEntry[]> {
+    await this.requireItemWithAccess(id, ctx, "list rd stage history");
+    return this.repo.listStageHistoryByItemId(id);
   }
 
   private async emitRdEvent(type: string, action: string, item: RdItemEntity, ctx: RequestContext): Promise<void> {
@@ -635,8 +835,10 @@ export class RdService implements RdCommandContract, RdQueryContract {
         status: item.status,
         priority: item.priority,
         assigneeId: item.assigneeId,
+        memberIds: item.memberIds,
         creatorId: item.creatorId,
-        reviewerId: item.reviewerId
+        verifierId: item.verifierId,
+        reviewerId: item.verifierId
       }
     });
   }

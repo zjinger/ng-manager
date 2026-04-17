@@ -52,12 +52,6 @@ export default async function personalTokenRdRoutes(app: FastifyInstance) {
     return ok(await app.container.rdCommand.updateItem(params.itemId, body, ctx));
   });
 
-  app.delete("/projects/:projectKey/rd-items/:itemId", async (request) => {
-    const ctx = requirePersonalTokenAuth(request, "rd:delete:write");
-    const params = personalRdItemIdParamSchema.parse(request.params);
-    await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
-    return ok(await app.container.rdCommand.delete(params.itemId, ctx), "rd item deleted");
-  });
 }
 
 async function assertRdProjectAccess(app: FastifyInstance, projectKey: string, itemId: string, ctx: ReturnType<typeof requirePersonalTokenAuth>) {

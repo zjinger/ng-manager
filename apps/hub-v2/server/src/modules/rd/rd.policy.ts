@@ -12,8 +12,8 @@ export function requireRdStageManageAccess(_ctx: RequestContext): void {
 }
 
 export function requireRdAcceptAccess(item: RdItemEntity, ctx: RequestContext): void {
-  const effectiveReviewerId = item.reviewerId || item.assigneeId;
-  if (matchActor(ctx, effectiveReviewerId)) {
+  const effectiveVerifierId = item.verifierId || item.assigneeId;
+  if (matchActor(ctx, effectiveVerifierId)) {
     return;
   }
   throw new AppError(ERROR_CODES.RD_ACCEPT_FORBIDDEN, "rd item accept forbidden", 403);

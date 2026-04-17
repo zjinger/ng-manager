@@ -20,7 +20,11 @@ export interface ActivityTimelineItem {
       @if (items().length === 0) {
         <div class="panel__empty">{{ emptyText() }}</div>
       } @else {
-        <div class="timeline">
+        <div
+          class="timeline"
+          [class.timeline--scrollable]="bodyMaxHeight() !== null"
+          [style.max-height.px]="bodyMaxHeight() ?? null"
+        >
           @for (item of items(); track item.id) {
             <div class="timeline-log">
               @if (item.icon) {
@@ -55,6 +59,9 @@ export interface ActivityTimelineItem {
     `
       .timeline {
         display: grid;
+      }
+      .timeline--scrollable {
+        overflow: auto;
       }
 
       .timeline-log {
@@ -112,4 +119,5 @@ export class ActivityTimelineComponent {
   readonly title = input('活动记录');
   readonly emptyText = input('暂无操作记录');
   readonly items = input<ActivityTimelineItem[]>([]);
+  readonly bodyMaxHeight = input<number | null>(null);
 }

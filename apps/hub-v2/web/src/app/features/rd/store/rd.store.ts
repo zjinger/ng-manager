@@ -170,6 +170,10 @@ export class RdStore {
     this.runAction(() => this.rdApi.complete(itemId));
   }
 
+  updateItemInList(item: RdItemEntity): void {
+    this.patchOrRefresh(item);
+  }
+
   advanceStage(itemId: string, input: AdvanceRdStageInput): void {
     this.runAction(() => this.rdApi.advanceStage(itemId, input));
   }
@@ -180,33 +184,6 @@ export class RdStore {
 
   close(itemId: string): void {
     this.runAction(() => this.rdApi.close(itemId));
-  }
-
-  delete(itemId: string): void {
-    this.busyState.set(true);
-    this.rdApi.delete(itemId).subscribe({
-      next: () => {
-        this.busyState.set(false);
-        const result = this.resultState();
-        if (!result) {
-          this.load();
-          return;
-        }
-        const items = result.items.filter((item) => item.id !== itemId);
-        if (items.length === result.items.length) {
-          this.load();
-          return;
-        }
-        this.resultState.set({
-          ...result,
-          items,
-          total: Math.max(0, result.total - 1),
-        });
-      },
-      error: () => {
-        this.busyState.set(false);
-      },
-    });
   }
 
   private runAction(request: () => Observable<RdItemEntity>): void {
