@@ -3,7 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  inject,
+  effect,
   input,
   output,
   signal,
@@ -14,23 +14,21 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
 import { ROLE_LABELS } from '@app/shared/constants/role-options';
-import { UserStore } from '@app/core/stores/user/user.store';
 
+import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
+import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import {
+  IssueEntity,
   IssueLogEntity,
   type createCommentInput,
   type ProjectMemberEntity,
 } from '@pages/issues/models/issue.model';
-import type { IssueCommentEntity } from '../../models/issue.model';
-import { NzListModule } from 'ng-zorro-antd/list';
-import { NzCommentModule } from 'ng-zorro-antd/comment';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
+import { NzCommentModule } from 'ng-zorro-antd/comment';
 import { NzFormModule } from 'ng-zorro-antd/form';
-import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
-import { NzTimelineModule } from 'ng-zorro-antd/timeline';
+import { NzListModule } from 'ng-zorro-antd/list';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
-import { RdAction } from '@pages/rd/models/rd.model';
-import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
+import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 
 type LogViewType = 'comment' | 'all';
 
@@ -253,6 +251,7 @@ type LogViewType = 'comment' | 'all';
 export class IssueCommentAreaComponent {
   private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
 
+  readonly issueId = input<string>('');
   readonly canComment = input(false);
   readonly logs = input.required<IssueLogEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
@@ -262,6 +261,14 @@ export class IssueCommentAreaComponent {
 
   // 查看模式
   readonly viewMode = signal<LogViewType>('all');
+  constructor() {
+    effect(() => {
+      const issueId = this.issueId();
+      if (issueId) {
+        this.viewMode.set('all');
+      }
+    });
+  }
 
   readonly commentDraft = signal('');
   readonly mentionKeyword = signal('');

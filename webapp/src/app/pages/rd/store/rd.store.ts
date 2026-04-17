@@ -31,7 +31,7 @@ export class RdStore {
   private readonly projectMembersState = this.projectContextStore.currentProjectMembers;
   private readonly queryState = signal<RdListQuery>({
     page: 1,
-    pageSize: 20,
+    pageSize: 10,
     stageId: '',
     status: [],
     type: [],
@@ -41,6 +41,7 @@ export class RdStore {
   });
   private readonly busyState = signal(false);
   private readonly loadingState = signal(false);
+  private readonly currentRdLoadingState = signal(false);
 
   readonly query = computed(() => this.queryState());
   readonly currentRdItem = computed(() => this.currentRdItemState());
@@ -51,6 +52,7 @@ export class RdStore {
   readonly projectMembers = computed(() => this.projectMembersState());
   readonly busy = computed(() => this.busyState());
   readonly rdItemsLoading = computed(() => this.loadingState());
+  readonly currentRdLoading = computed(() => this.currentRdLoadingState());
 
   initialize(): void {
     try {
@@ -92,12 +94,16 @@ export class RdStore {
   async loadCurrentRdItem(itemId: string) {
     const projectId = this.projectId();
     if (!projectId) return;
-    this.busyState.set(true);
-    const itemRes = (await this.rdApi.getRdItem(projectId, itemId)) as RdItemEntity;
-    const logsRes = (await this.rdApi.getRdItemLogs(projectId, itemId)).items as RdLogEntity[];
-    this.currentRdItemState.set(itemRes);
-    this.currentRdLogsState.set(logsRes);
-    this.busyState.set(false);
+    this.currentRdLoadingState.set(true);
+    try {
+      const itemRes = (await this.rdApi.getRdItem(projectId, itemId)) as RdItemEntity;
+      const logsRes = (await this.rdApi.getRdItemLogs(projectId, itemId)).items as RdLogEntity[];
+      this.currentRdItemState.set(itemRes);
+      this.currentRdLogsState.set(logsRes);
+      this.currentRdLoadingState.set(false);
+    } catch (e) {
+      this.currentRdLoadingState.set(false);
+    }
   }
 
   setCurrentRdItem(item: RdItemEntity | null) {

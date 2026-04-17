@@ -107,6 +107,7 @@ export class RdComponent {
   priorities = ['低', '中', '高'];
 
   protected readonly loading = this.rdStore.rdItemsLoading;
+  protected readonly currentRdLoading = this.rdStore.currentRdLoading;
   protected readonly pageRdItems = this.rdStore.rdItemsPageList;
   protected readonly currentRdItem = this.rdStore.currentRdItem;
   protected readonly currentRdLogs = this.rdStore.currentRdLogs;

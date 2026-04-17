@@ -13,13 +13,6 @@ import type {
 } from '../models/issue.model';
 import { IssueApiService } from '../services/issue-api.service';
 
-// const DEFAULT_QUERY: IssueListQuery = {
-//   page: 1,
-//   pageSize: 10,
-//   keyword: '',
-//   status: '',
-//   priority: '',
-// };
 const DEFAULT_QUERY: IssueListQuery = {
   page: 1,
   pageSize: 10,

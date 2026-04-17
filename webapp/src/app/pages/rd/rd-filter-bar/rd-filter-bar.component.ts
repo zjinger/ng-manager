@@ -22,25 +22,27 @@ type viewType = 'list' | 'board';
     FormsModule,
     ReactiveFormsModule,
     NzRadioModule,
-    NzIconModule
+    NzIconModule,
   ],
   template: `
     <div class="toolbar">
       <form [formGroup]="form" nz-form class="search-form">
         <!-- 搜索框 -->
-        <nz-form-item class="search-box">
-          <nz-form-control>
-            <nz-input-wrapper>
-              <nz-icon nzInputPrefix nzType="search" nzTheme="outline"></nz-icon>
-              <input
-                nz-input
-                type="text"
-                formControlName="keyword"
-                placeholder="搜索 RD 编号、标题或描述"
-              />
-            </nz-input-wrapper>
-          </nz-form-control>
-        </nz-form-item>
+        <div class="search-row">
+          <nz-form-item class="search-box">
+            <nz-form-control>
+              <nz-input-wrapper>
+                <nz-icon nzInputPrefix nzType="search" nzTheme="outline"></nz-icon>
+                <input
+                  nz-input
+                  type="text"
+                  formControlName="keyword"
+                  placeholder="搜索 RD 编号、标题或描述"
+                />
+              </nz-input-wrapper>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
 
         <!-- 阶段选择 -->
         <nz-form-item class="form-item">

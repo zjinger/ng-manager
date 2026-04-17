@@ -29,7 +29,7 @@ import { CommonModule, DatePipe } from '@angular/common';
           <th nzWidth="10%">阶段</th>
           <th nzWidth="7%">状态</th>
           <th nzWidth="7%">优先级</th>
-          <th nzWidth="7%">负责人</th>
+          <th nzWidth="10%">负责人</th>
           <th nzWidth="11%">进度</th>
           <th nzWidth="10%">更新时间</th>
         </tr>

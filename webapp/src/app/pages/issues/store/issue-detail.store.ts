@@ -312,6 +312,7 @@ export class IssueDetailStore {
         // this.commentsState.set(comments.items);
         this.participantsState.set(participants.items);
         this.attachmentsState.set(attachments.items);
+        this.loadingState.set(false);
       },
       error: () => {
         this.loadingState.set(false);

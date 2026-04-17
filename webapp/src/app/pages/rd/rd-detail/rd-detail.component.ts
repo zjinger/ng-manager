@@ -21,6 +21,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 
 @Component({
   selector: 'app-rd-detail',
@@ -38,6 +39,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
     RdActionAreaComponent,
     DetailItemCardComponent,
     MarkdownViewerComponent,
+    NzSpinModule,
   ],
   template: `
     <nz-drawer
@@ -62,8 +64,8 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
       </ng-template>
 
       <ng-template nzDrawerContent>
-        @if (!rdItem()) {
-          <nz-empty></nz-empty>
+        @if (loading()) {
+          <nz-spin nzSize="large" nzTip="正在加载研发项...." class="loading"></nz-spin>
         } @else {
           <div class="detail-wrap">
             <app-detail-item-card title="操作">
@@ -118,7 +120,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
               </nz-descriptions>
             </app-detail-item-card>
 
-            <app-detail-item-card title="研发动态">
+            <app-detail-item-card title="研发动态" maxHeight="600px">
               <nz-timeline>
                 @for (log of logs(); track log.id) {
                   <nz-timeline-item>
@@ -150,6 +152,9 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
       .ant-descriptions-row:nth-of-type(2)
       .ant-descriptions-item-label:first-child {
       min-width: 106px;
+    }
+    .loading{
+      margin-top: 40%;
     }
     .title-wrap {
       display: flex;
@@ -207,10 +212,11 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
           }
           .content {
             color: rgba(0, 0, 0, 0.85);
-            font-size: 14px;
+            font-size: 0.875rem;
           }
           .time {
-            fornsize: 10px;
+            margin-right: 15px;
+            font-size: 0.875rem;
             font-weight: 300;
             color: #bbbbbb;
             margin-left: auto;
@@ -230,6 +236,7 @@ import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component
 })
 export class RdDetailComponent {
   readonly rdItem = input.required<RdItemEntity | null>();
+  readonly loading = input(false);
   readonly open = input(false);
   readonly busy = input(false);
   readonly logs = input<RdLogEntity[]>([]);

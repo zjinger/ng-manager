@@ -18,12 +18,14 @@ import { IssueBranchesComponent } from './issue-branches/issue-branches.componen
 import { IssueCollaboratorsAreaComponent } from './issue-collaborators-area/issue-collaborators-panel.component';
 import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
 import { IssueDescriptionAreaComponent } from './issue-description-area/issue-description-area.component';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 
 @Component({
   selector: 'app-issue-detail',
   imports: [
     NzDrawerModule,
     NzEmptyModule,
+    NzSpinModule,
     IssueActionAreaComponent,
     IssueCollaboratorsAreaComponent,
     IssueCommentAreaComponent,
@@ -64,8 +66,8 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
       <ng-template nzDrawerContent>
         @if (!store.canRead()) {
           <nz-empty [nzNotFoundContent]="'您没有权限查看该问题详情'"></nz-empty>
-        } @else if (!store.issue()) {
-          <nz-empty [nzNotFoundContent]="'正在加载测试单详情…'"></nz-empty>
+        } @else if (store.loading()) {
+          <nz-spin nzSize="large" nzTip="正在加载测试单详情" class="loading"></nz-spin>
         } @else if (store.issue(); as issue) {
           <div class="detail-wrap">
             <div class="detail-header">
@@ -98,6 +100,7 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
                 <!-- 评论 -->
                 <app-issue-comment-area
                   (submit)="store.postComment($event)"
+                  [issueId]="issue.id"
                   [busy]="store.busy()"
                   [logs]="store.logs()"
                   [members]="store.members()"
@@ -200,6 +203,9 @@ import { IssueDescriptionAreaComponent } from './issue-description-area/issue-de
     </nz-drawer>
   `,
   styles: `
+    .loading {
+      margin-top: 40%;
+    }
     .title-wrap {
       display: flex;
       justify-content: space-between;
