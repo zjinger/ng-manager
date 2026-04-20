@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { PanelCardComponent } from '@shared/ui';
 import { IssueDetailNoteComponent } from '../../../issues/components/issue-detail-note/issue-detail-note.component';
@@ -8,11 +10,27 @@ import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model'
 @Component({
   selector: 'app-rd-activity-timeline',
   standalone: true,
-  imports: [NzIconModule, PanelCardComponent, IssueDetailNoteComponent],
+  imports: [FormsModule, NzIconModule, NzSelectModule, PanelCardComponent, IssueDetailNoteComponent],
   template: `
-    <app-panel-card [title]="'研发动态'" [empty]="timelineItems().length === 0" [emptyText]="'暂无动态'">
+    <app-panel-card [title]="'研发动态'" [empty]="filteredTimelineItems().length === 0" [emptyText]="'暂无动态'">
+      @if (showFilter()) {
+        <div panel-actions class="timeline-filter">
+          <label class="timeline-filter__label">筛选</label>
+          <nz-select
+            class="timeline-filter__select"
+            nzSize="small"
+            [ngModel]="selectedFilter()"
+            (ngModelChange)="onFilterModelChange($event)"
+            [nzDropdownMatchSelectWidth]="false"
+          >
+            @for (opt of filterOptions(); track opt.value) {
+              <nz-option [nzLabel]="opt.label" [nzValue]="opt.value"></nz-option>
+            }
+          </nz-select>
+        </div>
+      }
       <div class="timeline">
-        @for (item of timelineItems(); track item.id) {
+        @for (item of filteredTimelineItems(); track item.id) {
           <div class="timeline-log">
             <span nz-icon [nzType]="item.icon" class="timeline-log__icon"></span>
             <div class="timeline-log__body">
@@ -33,6 +51,18 @@ import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model'
         display: grid;
         max-height: 420px;
         overflow: auto;
+      }
+      .timeline-filter__label {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .timeline-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .timeline-filter__select {
+        min-width: 132px;
       }
 
       .timeline-log {
@@ -97,8 +127,10 @@ import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model'
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RdActivityTimelineComponent {
+  readonly selectedFilter = signal<string>('all');
   readonly item = input.required<RdItemEntity>();
   readonly logs = input<RdLogEntity[]>([]);
+  readonly showFilter = computed(() => this.logs().length > 10);
 
   readonly timelineItems = computed(() => {
     const logs = this.logs();
@@ -108,11 +140,36 @@ export class RdActivityTimelineComponent {
     return logs.map((log) => ({
       id: log.id,
       icon: this.iconByAction(log.actionType),
+      actionType: log.actionType,
       actor: log.operatorName || log.operatorId || '系统',
       action: log.content?.trim() || this.labelByAction(log.actionType),
       time: this.formatTime(log.createdAt),
     }));
   });
+  readonly filterOptions = computed(() => {
+    const uniqueActionTypes = Array.from(
+      new Set(this.timelineItems().map((item) => item.actionType).filter((type) => !!type?.trim()))
+    );
+    return [
+      { value: 'all', label: '全部' },
+      ...uniqueActionTypes.map((type) => ({ value: type, label: this.actionTypeLabel(type) })),
+    ];
+  });
+  readonly filteredTimelineItems = computed(() => {
+    const selected = this.selectedFilter();
+    const all = this.timelineItems();
+    const hasSelected = this.filterOptions().some((item) => item.value === selected);
+    if (selected === 'all' || !hasSelected) {
+      return all;
+    }
+    return all.filter((item) => item.actionType === selected);
+  });
+
+  onFilterModelChange(value: string): void {
+    const next = value?.trim() || 'all';
+    const hasOption = this.filterOptions().some((item) => item.value === next);
+    this.selectedFilter.set(hasOption ? next : 'all');
+  }
 
   private labelByAction(action: RdAction): string {
     return (
@@ -128,6 +185,24 @@ export class RdActivityTimelineComponent {
         close: '关闭研发项',
         advance_stage: '进入下一阶段',
         delete: '删除研发项',
+      }[action] ?? action
+    );
+  }
+
+  private actionTypeLabel(action: string): string {
+    return (
+      {
+        create: '创建',
+        update: '更新',
+        start: '开始执行',
+        block: '标记阻塞',
+        resume: '恢复执行',
+        reopen: '恢复研发项',
+        complete: '标记完成',
+        accept: '阶段完成',
+        close: '关闭',
+        advance_stage: '进入下一阶段',
+        delete: '删除',
       }[action] ?? action
     );
   }
