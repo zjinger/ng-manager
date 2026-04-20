@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { PanelCardComponent } from '@shared/ui';
 import { IssueDetailNoteComponent } from '../issue-detail-note/issue-detail-note.component';
@@ -8,6 +10,7 @@ import type { IssueLogEntity } from '../../models/issue.model';
 interface IssueTimelineItem {
   id: string;
   icon: string;
+  actionType: string;
   actor: string;
   action: string;
   actionSegments?: Array<{ text: string; mention?: boolean }>;
@@ -17,11 +20,27 @@ interface IssueTimelineItem {
 @Component({
   selector: 'app-issue-activity-timeline',
   standalone: true,
-  imports: [NzIconModule, PanelCardComponent, IssueDetailNoteComponent],
+  imports: [FormsModule, NzIconModule, NzSelectModule, PanelCardComponent, IssueDetailNoteComponent],
   template: `
-    <app-panel-card [title]="'活动记录'" [empty]="timelineItems().length === 0" [emptyText]="'暂无操作记录'">
+    <app-panel-card [title]="'活动记录'" [empty]="filteredTimelineItems().length === 0" [emptyText]="'暂无操作记录'">
+      @if (showFilter()) {
+        <div panel-actions class="timeline-filter">
+          <label class="timeline-filter__label">筛选</label>
+          <nz-select
+            class="timeline-filter__select"
+            nzSize="small"
+            [ngModel]="selectedFilter()"
+            (ngModelChange)="onFilterModelChange($event)"
+            [nzDropdownMatchSelectWidth]="false"
+          >
+            @for (opt of filterOptions(); track opt.value) {
+              <nz-option [nzLabel]="opt.label" [nzValue]="opt.value"></nz-option>
+            }
+          </nz-select>
+        </div>
+      }
       <div class="timeline">
-        @for (item of timelineItems(); track item.id) {
+        @for (item of filteredTimelineItems(); track item.id) {
           <div class="timeline-log">
             <span nz-icon [nzType]="item.icon" class="timeline-log__icon"></span>
             <div class="timeline-log__body">
@@ -52,6 +71,23 @@ interface IssueTimelineItem {
     `
       .timeline {
         display: grid;
+        max-height: 560px;
+        overflow: auto;
+      }
+
+      .timeline-filter__label {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .timeline-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .timeline-filter__select {
+        min-width: 132px;
       }
 
       .timeline-log {
@@ -103,6 +139,10 @@ interface IssueTimelineItem {
       }
 
       @media (max-width: 768px) {
+        .timeline {
+          max-height: 52vh;
+        }
+
         .timeline-log {
           flex-wrap: wrap;
         }
@@ -122,8 +162,10 @@ interface IssueTimelineItem {
 })
 export class IssueActivityTimelineComponent {
   private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
+  readonly selectedFilter = signal<string>('all');
 
   readonly logs = input.required<IssueLogEntity[]>();
+  readonly showFilter = computed(() => this.logs().length > 10);
   readonly timelineItems = computed<IssueTimelineItem[]>(() =>
     this.logs().map((item) => {
       const action = this.logText(item);
@@ -131,6 +173,7 @@ export class IssueActivityTimelineComponent {
       return {
         id: item.id,
         icon: this.iconType(item),
+        actionType: item.actionType,
         actor: item.operatorName || '系统',
         action,
         actionSegments: this.highlightMentionSegments(action),
@@ -144,6 +187,30 @@ export class IssueActivityTimelineComponent {
       };
     }),
   );
+  readonly filterOptions = computed(() => {
+    const uniqueActionTypes = Array.from(
+      new Set(this.timelineItems().map((item) => item.actionType).filter((type) => !!type?.trim())),
+    );
+    return [
+      { value: 'all', label: '全部' },
+      ...uniqueActionTypes.map((type) => ({ value: type, label: this.actionTypeLabel(type) })),
+    ];
+  });
+  readonly filteredTimelineItems = computed(() => {
+    const selected = this.selectedFilter();
+    const all = this.timelineItems();
+    const hasSelected = this.filterOptions().some((item) => item.value === selected);
+    if (selected === 'all' || !hasSelected) {
+      return all;
+    }
+    return all.filter((item) => item.actionType === selected);
+  });
+
+  onFilterModelChange(value: string): void {
+    const next = value?.trim() || 'all';
+    const hasOption = this.filterOptions().some((item) => item.value === next);
+    this.selectedFilter.set(hasOption ? next : 'all');
+  }
 
   private iconType(item: IssueLogEntity): string {
     const metaKind = this.readMetaKind(item.metaJson);
@@ -192,6 +259,24 @@ export class IssueActivityTimelineComponent {
       return `关闭问题：${reason}`;
     }
     return item.summary || item.actionType;
+  }
+
+  private actionTypeLabel(actionType: string): string {
+    return (
+      {
+        create: '创建',
+        assign: '指派',
+        claim: '认领',
+        start: '开始处理',
+        wait_update: '待提测',
+        resolve: '标记解决',
+        verify: '验证通过',
+        reopen: '重新打开',
+        close: '关闭',
+        comment: '评论',
+        update: '更新',
+      }[actionType] || actionType
+    );
   }
 
   private highlightMentionSegments(text: string): Array<{ text: string; mention?: boolean }> | undefined {
