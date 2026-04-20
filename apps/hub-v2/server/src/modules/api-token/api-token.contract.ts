@@ -19,6 +19,9 @@ import type {
   TokenRdListQuery,
   TokenRdListResult,
   TokenRdLogsResult,
+  TokenRdProgressHistoryResult,
+  TokenRdProgressResult,
+  TokenRdStageHistoryResult,
   TokenRdStagesResult,
   VerifyApiTokenResult
 } from "./api-token.types";
@@ -43,6 +46,9 @@ export interface ApiTokenQueryContract {
   listRdItems(projectKey: string, query: TokenRdListQuery, ctx: RequestContext): Promise<TokenRdListResult>;
   getRdItemById(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdDetail>;
   listRdLogs(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdLogsResult>;
+  listRdStageHistory(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdStageHistoryResult>;
+  listRdProgress(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdProgressResult>;
+  listRdProgressHistory(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdProgressHistoryResult>;
   listFeedbacks(projectKey: string, query: TokenFeedbackListQuery, ctx: RequestContext): Promise<TokenFeedbackListResult>;
   getFeedbackById(projectKey: string, feedbackId: string, ctx: RequestContext): Promise<TokenFeedbackDetail>;
 }

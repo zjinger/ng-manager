@@ -1,5 +1,13 @@
 import type { IssueEntity, IssueListResult, IssueLogEntity, ListIssuesQuery } from "../issue/issue.types";
-import type { ListRdItemsQuery, RdItemEntity, RdItemListResult, RdLogEntity } from "../rd/rd.types";
+import type {
+  ListRdItemsQuery,
+  RdItemEntity,
+  RdItemListResult,
+  RdItemProgress,
+  RdLogEntity,
+  RdProgressHistory,
+  RdStageHistoryEntry
+} from "../rd/rd.types";
 import type { FeedbackEntity, FeedbackListResult, ListFeedbacksQuery } from "../feedback/feedback.types";
 import type { IssueCommentEntity } from "../issue/comment/issue-comment.types";
 import type { IssueParticipantEntity } from "../issue/participant/issue-participant.types";
@@ -64,5 +72,8 @@ export type TokenRdListResult = RdItemListResult;
 export type TokenRdDetail = RdItemEntity;
 export type TokenRdStagesResult = { items: RdStageEntity[] };
 export type TokenRdLogsResult = { items: RdLogEntity[] };
+export type TokenRdStageHistoryResult = { items: RdStageHistoryEntry[] };
+export type TokenRdProgressResult = { items: RdItemProgress[] };
+export type TokenRdProgressHistoryResult = { items: RdProgressHistory[] };
 export type TokenFeedbackListResult = FeedbackListResult;
 export type TokenFeedbackDetail = FeedbackEntity;

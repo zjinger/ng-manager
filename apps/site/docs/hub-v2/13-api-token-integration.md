@@ -1,6 +1,6 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-04-14
+最后更新：2026-04-20
 
 ## 1. 背景与目标
 
@@ -132,6 +132,15 @@ RD：
 - `GET /api/token/projects/:projectKey/rd-items`
 - `GET /api/token/projects/:projectKey/rd-items/:itemId`
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/logs`
+- `GET /api/token/projects/:projectKey/rd-items/:itemId/stage-history`（研发阶段历史）
+- `GET /api/token/projects/:projectKey/rd-items/:itemId/progress`（成员进度）
+- `GET /api/token/projects/:projectKey/rd-items/:itemId/progress/history`（成员进度历史）
+- `GET /api/token/projects/:projectKey/rd-items/:itemId/uploads/:uploadId/raw`（RD 描述中的 Markdown 图片展示）
+
+说明：
+
+- RD Markdown 图片能力与 Issue 一致，`uploadId` 对应 `uploads.id`
+- 不要求存在 `issue_attachment` 记录，但要求该 `uploadId` 已被当前 RD 描述引用，且上传分类为 `markdown`
 
 Feedback：
 - `GET /api/token/projects/:projectKey/feedbacks`
@@ -165,9 +174,12 @@ RD：
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/block`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/resume`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/complete`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/accept`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/reopen`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/close`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/advance-stage`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/progress`
 - `PATCH /api/personal/projects/:projectKey/rd-items/:itemId`
-- `DELETE /api/personal/projects/:projectKey/rd-items/:itemId`
 
 ---
 
@@ -199,7 +211,6 @@ RD：
 | Feedback | 列表与详情 | `feedbacks:read` |
 | RD | 状态流转与进度 | `rd:transition:write` |
 | RD | 编辑基础信息 | `rd:edit:write` |
-| RD | 删除 | `rd:delete:write` |
 
 ### 6.2 判定规则
 
@@ -231,11 +242,16 @@ RD 状态流转如下：
 - `doing -> blocked`
 - `blocked -> doing`
 - `doing -> done`
+- `done -> accepted`
+- `todo|doing|blocked|done|accepted -> closed`
+- `closed -> todo`
+- `accepted -> todo`（推进到下一阶段后重置为待开始）
 
 补充规则：
 
-- RD 进度更新为 `100%`，状态变更为 `done`
-- 已完成项进度调整到 `0~99`，状态回到 `doing`
+- 成员进度平均值用于计算 RD 主进度；当主进度到 `100%` 时，状态进入 `done`
+- `done` 后由验证人决定：`accept`（当前阶段完成）或 `close`（中途关闭/结项关闭）
+- 仅 `accepted` 状态允许 `advance-stage`，推进后进入下一阶段并重置阶段成员进度
 
 ---
 
@@ -305,4 +321,38 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues/<ISSUE
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches/start-mine" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"协作分支标题\"}"
+```
+
+### 9.7 Project Token 读取 RD 阶段历史与进度
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/stage-history" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress/history" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+### 9.8 Project Token 读取 RD Markdown 图片
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/uploads/<UPLOAD_ID>/raw" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+### 9.9 Personal Token 推进 RD 流程
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/accept" -H "Authorization: Bearer <PERSONAL_TOKEN>"
+```
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/advance-stage" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"stageId\":\"<NEXT_STAGE_ID>\",\"memberIds\":[\"u_001\",\"u_002\"],\"description\":\"阶段目标说明\",\"planStartAt\":\"2026-04-20\",\"planEndAt\":\"2026-04-25\"}"
+```
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"progress\":40,\"note\":\"完成核心模块联调\"}"
 ```

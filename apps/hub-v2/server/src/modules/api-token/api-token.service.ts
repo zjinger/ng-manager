@@ -38,6 +38,9 @@ import type {
   TokenRdListQuery,
   TokenRdListResult,
   TokenRdLogsResult,
+  TokenRdProgressHistoryResult,
+  TokenRdProgressResult,
+  TokenRdStageHistoryResult,
   TokenRdStagesResult,
   VerifyApiTokenResult
 } from "./api-token.types";
@@ -267,12 +270,36 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
   }
 
   async listRdLogs(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdLogsResult> {
+    const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
+    return { items: await this.rdQuery.listLogs(item.id, ctx) };
+  }
+
+  async listRdStageHistory(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdStageHistoryResult> {
+    const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
+    return { items: await this.rdQuery.listStageHistory(item.id, ctx) };
+  }
+
+  async listRdProgress(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdProgressResult> {
+    const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
+    return { items: await this.rdQuery.listProgress(item.id, ctx) };
+  }
+
+  async listRdProgressHistory(
+    projectKey: string,
+    itemId: string,
+    ctx: RequestContext
+  ): Promise<TokenRdProgressHistoryResult> {
+    const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
+    return { items: await this.rdQuery.listProgressHistory(item.id, ctx) };
+  }
+
+  private async requireTokenRdItem(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdDetail> {
     const project = this.assertTokenProject(projectKey, ctx);
     const item = await this.rdQuery.getItemById(itemId, ctx);
     if (item.projectId !== project.id) {
       throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd item not found", 404);
     }
-    return { items: await this.rdQuery.listLogs(itemId, ctx) };
+    return item;
   }
 
   async listFeedbacks(

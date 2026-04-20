@@ -12,6 +12,7 @@ import {
   issueUploadRawParamSchema,
   projectParamSchema,
   rdItemIdParamSchema,
+  rdUploadRawParamSchema,
   tokenFeedbackListQuerySchema,
   tokenIssueListQuerySchema,
   tokenRdListQuerySchema
@@ -87,7 +88,7 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     const params = issueUploadRawParamSchema.parse(request.params);
     const issue = await app.container.apiTokenQuery.getIssueById(params.projectKey, params.issueId, ctx);
     const upload = await app.container.uploadQuery.getById(params.uploadId, ctx);
-    if (!isIssueMarkdownUploadReferenced(issue.description, upload.id) || !upload.category.startsWith("markdown")) {
+    if (!isMarkdownUploadReferenced(issue.description, upload.id) || !upload.category.startsWith("markdown")) {
       throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
     }
 
@@ -132,6 +133,43 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     return ok(await app.container.apiTokenQuery.listRdLogs(params.projectKey, params.itemId, ctx));
   });
 
+  app.get("/projects/:projectKey/rd-items/:itemId/stage-history", async (request) => {
+    const ctx = requireTokenAuth(request, "rd:read");
+    const params = rdItemIdParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listRdStageHistory(params.projectKey, params.itemId, ctx));
+  });
+
+  app.get("/projects/:projectKey/rd-items/:itemId/progress", async (request) => {
+    const ctx = requireTokenAuth(request, "rd:read");
+    const params = rdItemIdParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listRdProgress(params.projectKey, params.itemId, ctx));
+  });
+
+  app.get("/projects/:projectKey/rd-items/:itemId/progress/history", async (request) => {
+    const ctx = requireTokenAuth(request, "rd:read");
+    const params = rdItemIdParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listRdProgressHistory(params.projectKey, params.itemId, ctx));
+  });
+
+  app.get("/projects/:projectKey/rd-items/:itemId/uploads/:uploadId/raw", async (request, reply) => {
+    const ctx = requireTokenAuth(request, "rd:read");
+    const params = rdUploadRawParamSchema.parse(request.params);
+    const item = await app.container.apiTokenQuery.getRdItemById(params.projectKey, params.itemId, ctx);
+    const upload = await app.container.uploadQuery.getById(params.uploadId, ctx);
+    if (!isMarkdownUploadReferenced(item.description, upload.id) || !upload.category.startsWith("markdown")) {
+      throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
+    }
+
+    const filePath = resolveUploadFilePath(upload.storagePath, upload.fileName, app.config.uploadDir);
+    if (upload.status !== "active" || !filePath) {
+      throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
+    }
+
+    reply.header("Content-Type", upload.mimeType || "application/octet-stream");
+    reply.header("Content-Disposition", buildInlineDisposition(upload.originalName || upload.fileName));
+    return reply.send(createReadStream(filePath));
+  });
+
   app.get("/projects/:projectKey/feedbacks", async (request) => {
     const ctx = requireTokenAuth(request, "feedbacks:read");
     const params = projectParamSchema.parse(request.params);
@@ -164,7 +202,7 @@ function resolveUploadFilePath(storagePath: string, fileName: string, uploadDir:
   return null;
 }
 
-function isIssueMarkdownUploadReferenced(description: string | null, uploadId: string): boolean {
+function isMarkdownUploadReferenced(description: string | null, uploadId: string): boolean {
   if (!description) {
     return false;
   }

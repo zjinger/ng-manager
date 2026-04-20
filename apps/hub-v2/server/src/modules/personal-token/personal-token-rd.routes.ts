@@ -3,7 +3,13 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { requirePersonalTokenAuth } from "../../shared/auth/require-personal-token-auth";
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
-import { blockRdItemSchema, updateRdItemSchema } from "../rd/rd.schema";
+import {
+  advanceRdStageSchema,
+  blockRdItemSchema,
+  closeRdItemSchema,
+  updateRdItemProgressSchema,
+  updateRdItemSchema
+} from "../rd/rd.schema";
 import { personalRdItemIdParamSchema } from "./personal-token.schema";
 
 export default async function personalTokenRdRoutes(app: FastifyInstance) {
@@ -36,12 +42,42 @@ export default async function personalTokenRdRoutes(app: FastifyInstance) {
     return ok(await app.container.rdCommand.complete(params.itemId, ctx), "rd item completed");
   });
 
+  app.post("/projects/:projectKey/rd-items/:itemId/accept", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "rd:transition:write");
+    const params = personalRdItemIdParamSchema.parse(request.params);
+    await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
+    return ok(await app.container.rdCommand.accept(params.itemId, ctx), "rd item accepted");
+  });
+
+  app.post("/projects/:projectKey/rd-items/:itemId/reopen", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "rd:transition:write");
+    const params = personalRdItemIdParamSchema.parse(request.params);
+    await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
+    return ok(await app.container.rdCommand.reopen(params.itemId, ctx), "rd item reopened");
+  });
+
+  app.post("/projects/:projectKey/rd-items/:itemId/close", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "rd:transition:write");
+    const params = personalRdItemIdParamSchema.parse(request.params);
+    await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
+    const body = closeRdItemSchema.parse(request.body);
+    return ok(await app.container.rdCommand.close(params.itemId, body, ctx), "rd item closed");
+  });
+
+  app.post("/projects/:projectKey/rd-items/:itemId/advance-stage", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "rd:transition:write");
+    const params = personalRdItemIdParamSchema.parse(request.params);
+    await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
+    const body = advanceRdStageSchema.parse(request.body);
+    return ok(await app.container.rdCommand.advanceStage(params.itemId, body, ctx), "rd item advanced stage");
+  });
+
   app.post("/projects/:projectKey/rd-items/:itemId/progress", async (request) => {
     const ctx = requirePersonalTokenAuth(request, "rd:transition:write");
     const params = personalRdItemIdParamSchema.parse(request.params);
     await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
-    const body = updateRdItemSchema.pick({ version: true, progress: true }).parse(request.body);
-    return ok(await app.container.rdCommand.updateItem(params.itemId, body, ctx), "rd item progress updated");
+    const body = updateRdItemProgressSchema.parse(request.body);
+    return ok(await app.container.rdCommand.updateProgress(params.itemId, body, ctx), "rd item progress updated");
   });
 
   app.patch("/projects/:projectKey/rd-items/:itemId", async (request) => {

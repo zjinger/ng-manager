@@ -50,6 +50,12 @@ export const rdItemIdParamSchema = z.object({
   itemId: z.string().trim().min(1)
 });
 
+export const rdUploadRawParamSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80),
+  itemId: z.string().trim().min(1),
+  uploadId: z.string().trim().min(1)
+});
+
 export const feedbackIdParamSchema = z.object({
   projectKey: z.string().trim().min(1).max(80),
   feedbackId: z.string().trim().min(1)
