@@ -5,7 +5,7 @@
     <div>成员数</div>
     <div>可见性</div>
     <div>状态</div>
-    <div>更新时间</div>
+    <div>时间</div>
     <div>操作</div>
   </div>
   <div table-body class="project-table__body">
@@ -68,8 +68,15 @@
             {{ item.status === 'active' ? '活跃' : '归档' }}
           </span>
         </div>
-        <div class="project-cell project-cell--muted">
-          {{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}
+        <div class="project-cell project-cell--time">
+          <div class="project-time-item">
+            <span class="project-time-label">创建</span>
+            <span>{{ item.createdAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+          </div>
+          <div class="project-time-item">
+            <span class="project-time-label">更新</span>
+            <span>{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+          </div>
         </div>
         <div class="project-cell">
           <a

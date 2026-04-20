@@ -74,7 +74,10 @@
         }
         <div class="card-stat card-stat--time">
           <nz-icon nzType="clock-circle" nzTheme="outline" />
-          <span>{{ item.updatedAt | date: 'MM/dd' }}</span>
+          <div class="card-time-meta">
+            <span>创建 {{ item.createdAt | date: 'MM/dd HH:mm' }}</span>
+            <span>更新 {{ item.updatedAt | date: 'MM/dd HH:mm' }}</span>
+          </div>
         </div>
       </div>
 

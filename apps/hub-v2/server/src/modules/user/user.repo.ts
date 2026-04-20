@@ -172,7 +172,7 @@ export class UserRepo {
           FROM users u
           LEFT JOIN admin_accounts aa ON aa.user_id = u.id
           ${whereClause}
-          ORDER BY u.updated_at DESC
+          ORDER BY u.created_at DESC, u.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )

@@ -20,7 +20,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         <div>职能</div>
         <div>后台登录</div>
         <div>状态</div>
-        <div>更新时间</div>
+        <div>时间</div>
         @if (canEdit()) {
           <div>操作</div>
         }
@@ -50,7 +50,16 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
               </span>
             </div>
             <div class="user-cell"><app-user-status-tag [status]="item.status" /></div>
-            <div class="user-cell user-cell--muted">{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
+            <div class="user-cell user-cell--time">
+              <div class="user-time-item">
+                <span class="user-time-label">创建</span>
+                <span>{{ item.createdAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+              </div>
+              <div class="user-time-item">
+                <span class="user-time-label">更新</span>
+                <span>{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+              </div>
+            </div>
             @if (canEdit()) {
               <div class="user-cell user-cell--actions">
                 <button class="edit-btn" type="button" (click)="edit.emit(item)">
@@ -78,13 +87,13 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .user-table__head,
       .user-row {
         display: grid;
-        grid-template-columns: 1.6fr 1.3fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr;
+        grid-template-columns: 1.6fr 1.3fr 1fr 0.8fr 0.8fr 0.8fr 1.3fr;
         gap: 16px;
         align-items: center;
       }
       .user-table__head--editable,
       .user-row--editable {
-        grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr 0.6fr;
+        grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.8fr 1.3fr 0.6fr;
       }
       .user-table__head {
         padding: 10px 16px;
@@ -141,6 +150,20 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .user-cell--muted {
         font-size: 12px;
         color: var(--text-muted);
+      }
+      .user-cell--time {
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .user-time-item {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .user-time-label {
+        flex: 0 0 auto;
       }
       .login-tag {
         display: inline-flex;

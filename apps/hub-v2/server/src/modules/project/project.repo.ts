@@ -254,7 +254,7 @@ export class ProjectRepo {
             GROUP BY project_id
           ) mc ON mc.project_id = p.id
           ${whereClause}
-          ORDER BY p.updated_at DESC
+          ORDER BY p.created_at DESC, p.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )
@@ -328,7 +328,7 @@ export class ProjectRepo {
             GROUP BY project_id
           ) mc ON mc.project_id = p.id
           ${whereClause}
-          ORDER BY p.updated_at DESC
+          ORDER BY p.created_at DESC, p.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )
