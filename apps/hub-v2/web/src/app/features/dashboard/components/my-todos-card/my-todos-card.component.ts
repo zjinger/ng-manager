@@ -71,6 +71,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
       .todo__priority[data-kind='issue_verify'] {
         background: var(--color-warning);
       }
+      .todo__priority[data-kind='rd_verify'] {
+        background: #f59e0b;
+      }
       .todo__priority[data-kind='issue_collaborating'] {
         background: var(--primary-500);
       }
@@ -128,6 +131,10 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         background: rgba(245, 158, 11, 0.16);
         color: #b45309;
       }
+      .todo__role[data-kind='rd_verify'] {
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+      }
       .todo__meta {
         display: flex;
         align-items: center;
@@ -167,6 +174,9 @@ export class MyTodosCardComponent {
       return '协作中';
     }
     if (item.kind === 'issue_verify') {
+      return '待验证';
+    }
+    if (item.kind === 'rd_verify') {
       return '待验证';
     }
     if (item.kind === 'issue_assigned' || item.kind === 'rd_assigned') {

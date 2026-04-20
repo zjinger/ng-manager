@@ -31,7 +31,7 @@ import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
             <nz-slider
               [nzMin]="0"
               [nzMax]="100"
-              [nzStep]="5"
+              [nzStep]="1"
               [ngModel]="progressValue()"
               (ngModelChange)="onSliderChange($event)"
             ></nz-slider>

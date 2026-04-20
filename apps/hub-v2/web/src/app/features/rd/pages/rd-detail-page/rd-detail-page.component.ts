@@ -65,6 +65,7 @@ import { map } from 'rxjs';
           [memberProgressList]="memberProgressList()"
           [canEditBasic]="canEditBasic()"
           [canAdvance]="canAdvance()"
+          [canAccept]="canAccept()"
           [canClose]="canClose()"
           (actionClick)="handleAction($event)"
           (editRequest)="openEditDialog()"
@@ -186,11 +187,14 @@ export class RdDetailPageComponent {
 
   readonly canEditBasic = computed(() => this.rdPermission.canEditBasic(this.item(), this.currentUserId(), this.members()));
   readonly canClose = computed(() => this.rdPermission.canClose(this.item(), this.currentUserId()));
-  readonly canAdvance = computed(() => this.rdPermission.canAdvance(this.item(), this.currentUserId(), this.members()));
+  readonly canAdvance = computed(
+    () => this.hasNextStage(this.item()) && this.rdPermission.canAdvance(this.item(), this.currentUserId(), this.members())
+  );
+  readonly canAccept = computed(() => this.rdPermission.canAccept(this.item(), this.currentUserId(), this.members()));
 
   readonly memberProgressList = computed<MemberProgressItem[]>(() => {
     const item = this.item();
-    const list = this.progressList();
+    const list = this.normalizeProgressByUser(this.progressList());
     const currentId = this.currentUserId();
     const memberMap = new Map(this.members().map((m) => [m.userId, m.displayName]));
     const avatarMap = new Map(this.members().map((m) => [m.userId, m.avatarUrl]));
@@ -252,7 +256,7 @@ export class RdDetailPageComponent {
     this.router.navigate(['/rd']);
   }
 
-  handleAction(action: 'advance' | 'close' | 'reopen'): void {
+  handleAction(action: 'advance' | 'accept' | 'close' | 'reopen'): void {
     const current = this.item();
     if (!current) {
       return;
@@ -264,6 +268,10 @@ export class RdDetailPageComponent {
     }
     if (action === 'close' && this.canClose()) {
       this.closeOpen.set(true);
+      return;
+    }
+    if (action === 'accept' && this.canAccept()) {
+      this.runAction(() => this.rdApi.accept(current.id));
       return;
     }
     if (action === 'reopen' && this.canClose()) {
@@ -298,12 +306,20 @@ export class RdDetailPageComponent {
     this.closeOpen.set(false);
   }
 
-  confirmAdvanceStage(input: { stageId: string; memberIds: string[] }): void {
+  confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string }): void {
     const current = this.item();
     if (!current || !input.stageId.trim()) {
       return;
     }
-    this.runAction(() => this.rdApi.advanceStage(current.id, { stageId: input.stageId.trim(), memberIds: input.memberIds }));
+    this.runAction(() =>
+      this.rdApi.advanceStage(current.id, {
+        stageId: input.stageId.trim(),
+        memberIds: input.memberIds,
+        description: input.description?.trim() || undefined,
+        planStartAt: input.planStartAt?.trim() || undefined,
+        planEndAt: input.planEndAt?.trim() || undefined,
+      })
+    );
     this.advanceStageOpen.set(false);
   }
 
@@ -311,8 +327,12 @@ export class RdDetailPageComponent {
     this.blockOpen.set(false);
   }
 
-  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number }): void {
+  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number; quickStart?: boolean }): void {
     if (this.item()?.status === 'closed') {
+      return;
+    }
+    if (data.quickStart) {
+      this.quickStartProgress();
       return;
     }
     this.progressUpdateUserId.set(data.userId);
@@ -358,6 +378,28 @@ export class RdDetailPageComponent {
     this.rdApi.listProgress(itemId).subscribe({
       next: (list) => this.progressList.set(list),
       error: () => this.progressList.set([]),
+    });
+  }
+
+  private quickStartProgress(): void {
+    const current = this.item();
+    if (!current) {
+      return;
+    }
+    this.busy.set(true);
+    this.rdApi.updateProgress(current.id, { progress: 1, note: '' }).subscribe({
+      next: (item) => {
+        this.item.set(item);
+        this.loadProgress(item.id);
+        this.rdApi.listLogs(item.id).subscribe({
+          next: (logs) => this.logs.set(logs),
+          error: () => this.logs.set([]),
+        });
+        this.busy.set(false);
+      },
+      error: () => {
+        this.busy.set(false);
+      },
     });
   }
 
@@ -434,5 +476,40 @@ export class RdDetailPageComponent {
       .slice(0, 3)
       .join('、');
     this.message.warning(`执行人进度未全部达到 100%${names ? `（${names}${incomplete.length > 3 ? ' 等' : ''}）` : ''}，请确认后继续进入下一阶段。`);
+  }
+
+  private hasNextStage(item: RdItemEntity | null): boolean {
+    if (!item) {
+      return false;
+    }
+    const all = [...this.stages()].filter((stage) => stage.enabled).sort((a, b) => a.sort - b.sort);
+    if (all.length === 0) {
+      return false;
+    }
+    if (!item.stageId) {
+      return all.length > 0;
+    }
+    const currentStage = all.find((stage) => stage.id === item.stageId);
+    if (!currentStage) {
+      return all.length > 0;
+    }
+    return all.some((stage) => stage.sort > currentStage.sort);
+  }
+
+  private normalizeProgressByUser(list: RdItemProgress[]): RdItemProgress[] {
+    const dedup = new Map<string, RdItemProgress>();
+    for (const row of list) {
+      const existing = dedup.get(row.userId);
+      if (!existing) {
+        dedup.set(row.userId, row);
+        continue;
+      }
+      const existingAt = Date.parse(existing.updatedAt || "");
+      const rowAt = Date.parse(row.updatedAt || "");
+      if (Number.isFinite(rowAt) && (!Number.isFinite(existingAt) || rowAt >= existingAt)) {
+        dedup.set(row.userId, row);
+      }
+    }
+    return Array.from(dedup.values());
   }
 }

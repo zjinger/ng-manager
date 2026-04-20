@@ -1,20 +1,99 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import { ActivityTimelineComponent } from '@shared/ui';
+import { PanelCardComponent } from '@shared/ui';
+import { IssueDetailNoteComponent } from '../../../issues/components/issue-detail-note/issue-detail-note.component';
 import type { RdAction, RdItemEntity, RdLogEntity } from '../../models/rd.model';
 
 @Component({
   selector: 'app-rd-activity-timeline',
   standalone: true,
-  imports: [ActivityTimelineComponent],
+  imports: [NzIconModule, PanelCardComponent, IssueDetailNoteComponent],
   template: `
-    <app-activity-timeline
-      [title]="'研发动态'"
-      [emptyText]="'暂无动态'"
-      [items]="timelineItems()"
-      [bodyMaxHeight]="420"
-    />
+    <app-panel-card [title]="'研发动态'" [empty]="timelineItems().length === 0" [emptyText]="'暂无动态'">
+      <div class="timeline">
+        @for (item of timelineItems(); track item.id) {
+          <div class="timeline-log">
+            <span nz-icon [nzType]="item.icon" class="timeline-log__icon"></span>
+            <div class="timeline-log__body">
+              <app-issue-detail-note [variant]="'timeline'">
+                <span class="timeline-log__user">{{ item.actor }}</span>
+                <span class="timeline-log__action">{{ item.action }}</span>
+              </app-issue-detail-note>
+            </div>
+            <span class="timeline-log__time">{{ item.time }}</span>
+          </div>
+        }
+      </div>
+    </app-panel-card>
   `,
+  styles: [
+    `
+      .timeline {
+        display: grid;
+        max-height: 420px;
+        overflow: auto;
+      }
+
+      .timeline-log {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border-color-soft);
+        font-size: 13px;
+      }
+
+      .timeline-log__icon,
+      .timeline-log__time {
+        flex: 0 0 auto;
+      }
+
+      .timeline-log__icon {
+        margin-top: 2px;
+        color: var(--primary-500);
+        font-size: 13px;
+      }
+
+      .timeline-log__body {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .timeline-log__user {
+        margin-right: 6px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .timeline-log__action {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .timeline-log__time {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+
+      @media (max-width: 768px) {
+        .timeline-log {
+          flex-wrap: wrap;
+        }
+
+        .timeline-log__body {
+          flex-basis: calc(100% - 21px);
+        }
+
+        .timeline-log__time {
+          width: 100%;
+          margin-left: 21px;
+        }
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RdActivityTimelineComponent {

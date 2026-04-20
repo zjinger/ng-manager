@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { PanelCardComponent } from '@shared/ui';
 import type { RdItemEntity, RdItemProgress } from '../../models/rd.model';
@@ -14,7 +15,7 @@ export interface MemberProgressItem extends RdItemProgress {
 @Component({
   selector: 'app-rd-progress-panel',
   standalone: true,
-  imports: [PanelCardComponent, NzButtonModule, NzAvatarModule],
+  imports: [PanelCardComponent, NzButtonModule, NzAvatarModule, NzPopconfirmModule],
   template: `
     <app-panel-card title="成员进度">
       <div class="progress-hero">
@@ -31,38 +32,57 @@ export interface MemberProgressItem extends RdItemProgress {
       <div class="member-list">
         @for (item of memberProgressList(); track item.userId) {
           <div class="member-item">
-            <div class="member-item__left">
-              <nz-avatar
-                [class.member-item__avatar--default]="!item.avatarUrl"
-                [nzSize]="32"
-                nzShape="circle"
-                [nzSrc]="item.avatarUrl || undefined"
-                [nzText]="getAvatarLetter(item.memberName)"
-              ></nz-avatar>
-              <div class="member-item__info">
-                <span class="member-item__name">
-                  {{ item.memberName }}
-                  @if (item.isCurrentUser) {
-                    <span class="member-item__me-tag">我</span>
+            <div class="member-item__main">
+              <div class="member-item__left">
+                <nz-avatar
+                  [class.member-item__avatar--default]="!item.avatarUrl"
+                  [nzSize]="32"
+                  nzShape="circle"
+                  [nzSrc]="item.avatarUrl || undefined"
+                  [nzText]="getAvatarLetter(item.memberName)"
+                ></nz-avatar>
+                <div class="member-item__info">
+                  <span class="member-item__name">
+                    {{ item.memberName }}
+                    @if (item.isCurrentUser) {
+                      <span class="member-item__me-tag">我</span>
+                    }
+                  </span>
+                  <span class="member-item__time">最后更新：{{ formatTime(item.updatedAt) }}</span>
+                </div>
+              </div>
+              <div class="member-item__right">
+                <div class="progress-bar progress-bar--small">
+                  <div class="progress-bar__fill" [style.width.%]="item.progress"></div>
+                </div>
+                <div class="member-item__actions">
+                  <strong>{{ item.progress }}%</strong>
+                  @if (item.isCurrentUser && !isProgressLocked()) {
+                    @if (item.progress <= 0) {
+                      <button
+                        nz-button
+                        nzType="default"
+                        nzSize="small"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认开始处理吗？"
+                        nzPopconfirmPlacement="topRight"
+                        (nzOnConfirm)="onStartProgress(item)"
+                      >
+                        开始
+                      </button>
+                    } @else {
+                      <button nz-button nzType="default" nzSize="small" (click)="onUpdateProgress(item)">更新</button>
+                    }
                   }
-                </span>
-                <span class="member-item__time">最后更新：{{ formatTime(item.updatedAt) }}</span>
-                @if (item.note) {
-                  <span class="member-item__note">{{ item.note }}</span>
-                }
+                </div>
               </div>
             </div>
-            <div class="member-item__right">
-              <div class="progress-bar progress-bar--small">
-                <div class="progress-bar__fill" [style.width.%]="item.progress"></div>
+            @if (item.note) {
+              <div class="member-item__note-row">
+                <span class="member-item__note-label">进度说明：</span>
+                <span class="member-item__note">{{ item.note }}</span>
               </div>
-              <div class="member-item__actions">
-                <strong>{{ item.progress }}%</strong>
-                @if (item.isCurrentUser && !isClosed()) {
-                  <button nz-button nzType="default" nzSize="small" (click)="onUpdateProgress(item)">更新</button>
-                }
-              </div>
-            </div>
+            }
           </div>
         } @empty {
           <div class="member-list__empty">暂无成员进度数据</div>
@@ -129,17 +149,25 @@ export interface MemberProgressItem extends RdItemProgress {
       }
       .member-item {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 8px;
         padding: 12px;
         border: 1px solid var(--border-color-soft);
         border-radius: 10px;
         background: var(--bg-subtle);
       }
+      .member-item__main {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
       .member-item__left {
         display: flex;
         align-items: flex-start;
         gap: 10px;
+        min-width: 0;
       }
       .member-item__info {
         display: flex;
@@ -173,11 +201,9 @@ export interface MemberProgressItem extends RdItemProgress {
       .member-item__note {
         font-size: 12px;
         color: var(--text-secondary);
-        margin-top: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 200px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
       .member-item__right {
         display: flex;
@@ -196,6 +222,18 @@ export interface MemberProgressItem extends RdItemProgress {
         min-width: 36px;
         text-align: right;
       }
+      .member-item__note-row {
+        width: 100%;
+        border-top: 1px dashed var(--border-color-soft);
+        padding-top: 8px;
+        display: flex;
+        gap: 4px;
+      }
+      .member-item__note-label {
+        flex: 0 0 auto;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -205,14 +243,15 @@ export class RdProgressPanelComponent {
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly currentUserId = input<string>('');
 
-  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number }>();
+  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean }>();
 
   mainProgress(): number {
     return this.item()?.progress ?? 0;
   }
 
-  isClosed(): boolean {
-    return this.item()?.status === 'closed';
+  isProgressLocked(): boolean {
+    const status = this.item()?.status;
+    return status === 'accepted' || status === 'closed';
   }
 
   getAvatarLetter(name: string): string {
@@ -231,10 +270,25 @@ export class RdProgressPanelComponent {
   }
 
   onUpdateProgress(item: MemberProgressItem): void {
+    if (this.isProgressLocked()) {
+      return;
+    }
     this.updateProgressClick.emit({
       userId: item.userId,
       memberName: item.memberName,
       currentProgress: item.progress,
+    });
+  }
+
+  onStartProgress(item: MemberProgressItem): void {
+    if (this.isProgressLocked()) {
+      return;
+    }
+    this.updateProgressClick.emit({
+      userId: item.userId,
+      memberName: item.memberName,
+      currentProgress: 1,
+      quickStart: true,
     });
   }
 }

@@ -325,9 +325,10 @@ INSERT INTO rd_items (
         `
       )
       .all(...params, pageSize, offset) as RdItemRow[];
+    const stageTrailByItemId = this.listStageTrailByItemIds(rows.map((row) => row.id));
 
     return {
-      items: rows.map((row) => this.mapItem(row)),
+      items: rows.map((row) => this.mapItem(row, stageTrailByItemId.get(row.id) ?? [])),
       page,
       pageSize,
       total: totalRow.total
@@ -528,9 +529,46 @@ INSERT INTO rd_items (
       updated_at: string;
       project_id: string;
     }>;
+    const reviewing = this.db
+      .prepare(
+        `
+          SELECT id, rd_no as code, title, status, updated_at, project_id
+          FROM rd_items
+          WHERE verifier_id = ?
+            AND status = 'done'
+            ${scope.clause}
+          ORDER BY updated_at DESC
+          LIMIT ?
+        `
+      )
+      .all(userId, ...scope.params, limit) as Array<{
+      id: string;
+      code: string;
+      title: string;
+      status: string;
+      updated_at: string;
+      project_id: string;
+    }>;
 
-    return assigned
-      .map((row) => this.mapDashboardTodo("rd_assigned", row))
+    const merged = [
+      ...assigned.map((row) => this.mapDashboardTodo("rd_assigned", row)),
+      ...reviewing.map((row) => this.mapDashboardTodo("rd_verify", row)),
+    ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    const dedup = new Map<string, RdDashboardTodo>();
+    for (const item of merged) {
+      const existing = dedup.get(item.entityId);
+      if (!existing) {
+        dedup.set(item.entityId, item);
+        continue;
+      }
+      // 同一研发项同时命中“执行待办”和“验证待办”时，优先保留验证待办。
+      if (existing.kind === "rd_assigned" && item.kind === "rd_verify") {
+        dedup.set(item.entityId, item);
+      }
+    }
+
+    return Array.from(dedup.values())
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, limit);
   }
@@ -590,7 +628,7 @@ INSERT INTO rd_items (
     };
   }
 
-  private mapItem(row: RdItemRow): RdItemEntity {
+  private mapItem(row: RdItemRow, stageTrail: string[] = []): RdItemEntity {
     return {
       id: row.id,
       projectId: row.project_id,
@@ -615,9 +653,49 @@ INSERT INTO rd_items (
       actualStartAt: row.actual_start_at,
       actualEndAt: row.actual_end_at,
       blockerReason: row.blocker_reason,
+      stageTrail,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  private listStageTrailByItemIds(itemIds: string[]): Map<string, string[]> {
+    const dedupIds = Array.from(new Set(itemIds.map((id) => id.trim()).filter(Boolean)));
+    const map = new Map<string, string[]>();
+    if (dedupIds.length === 0) {
+      return map;
+    }
+
+    const rows = this.db
+      .prepare(
+        `
+          SELECT item_id, from_stage_name, to_stage_name
+          FROM rd_stage_history
+          WHERE item_id IN (${dedupIds.map(() => "?").join(", ")})
+          ORDER BY created_at ASC
+        `
+      )
+      .all(...dedupIds) as Array<{
+      item_id: string;
+      from_stage_name: string;
+      to_stage_name: string;
+    }>;
+
+    for (const row of rows) {
+      const trail = map.get(row.item_id) ?? [];
+      if (row.from_stage_name?.trim() && trail.length === 0) {
+        trail.push(row.from_stage_name.trim());
+      }
+      if (row.to_stage_name?.trim()) {
+        const toName = row.to_stage_name.trim();
+        if (trail.length === 0 || trail[trail.length - 1] !== toName) {
+          trail.push(toName);
+        }
+      }
+      map.set(row.item_id, trail);
+    }
+
+    return map;
   }
 
   private mapLog(row: RdLogRow): RdLogEntity {
@@ -651,19 +729,18 @@ INSERT INTO rd_items (
   }
 
   upsertProgress(progress: RdProgressRow): void {
-    const existing = this.db
-      .prepare("SELECT id FROM rd_item_progress WHERE item_id = ? AND user_id = ?")
-      .get(progress.item_id, progress.user_id);
-
-    if (existing) {
-      this.db
-        .prepare("UPDATE rd_item_progress SET progress = ?, note = ?, updated_at = ? WHERE item_id = ? AND user_id = ?")
-        .run(progress.progress, progress.note, progress.updated_at, progress.item_id, progress.user_id);
-    } else {
-      this.db
-        .prepare("INSERT INTO rd_item_progress (id, item_id, user_id, progress, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .run(progress.id, progress.item_id, progress.user_id, progress.progress, progress.note, progress.updated_at);
-    }
+    this.db
+      .prepare(
+        `
+          INSERT INTO rd_item_progress (id, item_id, user_id, progress, note, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(item_id, user_id) DO UPDATE SET
+            progress = excluded.progress,
+            note = excluded.note,
+            updated_at = excluded.updated_at
+        `
+      )
+      .run(progress.id, progress.item_id, progress.user_id, progress.progress, progress.note, progress.updated_at);
   }
 
   createProgressHistory(history: RdProgressHistoryRow): void {

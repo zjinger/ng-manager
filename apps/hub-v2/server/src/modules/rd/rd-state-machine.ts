@@ -21,6 +21,7 @@ const transitions: Record<RdItemStatus, Partial<Record<RdAction, RdItemStatus>>>
   },
   done: {
     update: "done",
+    accept: "accepted",
     resume: "doing",
     close: "closed"
   },

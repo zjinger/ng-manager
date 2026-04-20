@@ -20,6 +20,7 @@ import { RD_STATUS_LABELS } from '../../constants';
       }
       .status-badge[data-status='verified'],
       .status-badge[data-status='done'],
+      .status-badge[data-status='accepted'],
       .status-badge[data-status='published'] {
         background: rgba(34, 197, 94, 0.14);
         color: #16a34a;
@@ -61,6 +62,7 @@ import { RD_STATUS_LABELS } from '../../constants';
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='resolved'],
       :host-context(html[data-theme='dark']) .status-badge[data-status='done'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='accepted'],
       :host-context(html[data-theme='dark']) .status-badge[data-status='published'] {
         background: rgba(34, 197, 94, 0.22);
         color: #86efac;

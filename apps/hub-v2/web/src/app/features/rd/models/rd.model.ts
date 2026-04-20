@@ -59,6 +59,7 @@ export interface RdItemEntity {
   actualStartAt: string | null;
   actualEndAt: string | null;
   blockerReason: string | null;
+  stageTrail?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -193,6 +194,8 @@ export interface AdvanceRdStageInput {
   stageId: string;
   memberIds?: string[];
   description?: string;
+  planStartAt?: string;
+  planEndAt?: string;
 }
 
 export interface UpdateRdItemInput {

@@ -103,7 +103,10 @@ export const closeRdItemSchema = z.object({
 
 export const advanceRdStageSchema = z.object({
   stageId: z.string().trim().min(1),
-  memberIds: z.array(z.string().trim().min(1)).min(1).optional()
+  memberIds: z.array(z.string().trim().min(1)).min(1).optional(),
+  description: z.string().trim().max(100).optional(),
+  planStartAt: z.string().trim().optional(),
+  planEndAt: z.string().trim().optional()
 });
 
 export const listRdItemsQuerySchema = z.object({

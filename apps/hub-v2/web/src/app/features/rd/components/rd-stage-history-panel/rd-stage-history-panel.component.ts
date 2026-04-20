@@ -14,7 +14,7 @@ import type { RdItemStatus, RdStageHistoryEntry, RdStageHistorySnapshot } from '
           <div class="history-item">
             <div class="history-item__head">
               <div class="history-item__title">
-                <strong>{{ entry.fromStageName }} -> {{ entry.toStageName }}</strong>
+                <strong>{{ entry.fromStageName }} <!-- {{ entry.toStageName }}--></strong>
                 <span>{{ formatTime(entry.createdAt) }}</span>
               </div>
               <div class="history-item__badges">
@@ -234,8 +234,8 @@ export class RdStageHistoryPanelComponent {
         todo: '待开始',
         doing: '进行中',
         blocked: '已阻塞',
-        done: '已完成',
-        accepted: '已验收',
+        done: '待确认',
+        accepted: '已完成',
         closed: '已关闭',
       }[status] || status
     );

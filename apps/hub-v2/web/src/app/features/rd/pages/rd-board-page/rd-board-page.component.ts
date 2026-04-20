@@ -93,6 +93,8 @@ import { map } from 'rxjs';
             [stages]="store.stages()"
             [items]="store.items()"
             [members]="members()"
+            [page]="store.page()"
+            [pageSize]="store.pageSize()"
             [selectedItemId]="selectedItemId()"
             (selectItem)="openDetail($event)"
           />
@@ -126,6 +128,7 @@ import { map } from 'rxjs';
       [stageHistory]="selectedStageHistory()"
       [canEditBasic]="canEditSelectedBasic()"
       [canAdvance]="canAdvanceSelectedItem()"
+      [canAccept]="canAcceptSelectedItem()"
       [canClose]="canCloseSelectedItem()"
       [memberProgressList]="selectedMemberProgressList()"
       [currentUserId]="currentUserId() || ''"
@@ -301,7 +304,7 @@ export class RdBoardPageComponent {
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly selectedMemberProgressList = computed<MemberProgressItem[]>(() => {
     const item = this.selectedItem();
-    const list = this.selectedProgressList();
+    const list = this.normalizeProgressByUser(this.selectedProgressList());
     const currentId = this.currentUserId();
     const memberMap = new Map(this.members().map((m) => [m.userId, m.displayName]));
     const avatarMap = new Map(this.members().map((m) => [m.userId, m.avatarUrl]));
@@ -347,8 +350,13 @@ export class RdBoardPageComponent {
     this.rdPermission.canEditBasic(this.selectedItem(), this.currentUserId(), this.members())
   );
   readonly canCloseSelectedItem = computed(() => this.rdPermission.canClose(this.selectedItem(), this.currentUserId()));
-  readonly canAdvanceSelectedItem = computed(() =>
-    this.rdPermission.canAdvance(this.selectedItem(), this.currentUserId(), this.members())
+  readonly canAdvanceSelectedItem = computed(
+    () =>
+      this.hasNextStage(this.selectedItem()) &&
+      this.rdPermission.canAdvance(this.selectedItem(), this.currentUserId(), this.members())
+  );
+  readonly canAcceptSelectedItem = computed(() =>
+    this.rdPermission.canAccept(this.selectedItem(), this.currentUserId(), this.members())
   );
   readonly subtitle = computed(() => {
     const project = this.projectContext.currentProject();
@@ -593,7 +601,7 @@ export class RdBoardPageComponent {
     this.editOpen.set(false);
   }
 
-  handleAction(item: RdItemEntity, action: 'advance' | 'close' | 'reopen'): void {
+  handleAction(item: RdItemEntity, action: 'advance' | 'accept' | 'close' | 'reopen'): void {
     this.openDetail(item);
     switch (action) {
       case 'advance':
@@ -609,6 +617,12 @@ export class RdBoardPageComponent {
         }
         this.closeOpen.set(true);
         break;
+      case 'accept':
+        if (!this.canAcceptSelectedItem()) {
+          return;
+        }
+        this.store.accept(item.id);
+        break;
       case 'reopen':
         if (!this.canCloseSelectedItem()) {
           return;
@@ -620,7 +634,7 @@ export class RdBoardPageComponent {
     }
   }
 
-  handleSelectedAction(action: 'advance' | 'close' | 'reopen'): void {
+  handleSelectedAction(action: 'advance' | 'accept' | 'close' | 'reopen'): void {
     const current = this.selectedItem();
     if (!current) {
       return;
@@ -653,12 +667,18 @@ export class RdBoardPageComponent {
     this.closeBlockDialog();
   }
 
-  confirmAdvanceStage(input: { stageId: string; memberIds: string[] }): void {
+  confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string }): void {
     const current = this.selectedItem();
     if (!current || !input.stageId.trim()) {
       return;
     }
-    this.store.advanceStage(current.id, { stageId: input.stageId.trim(), memberIds: input.memberIds });
+    this.store.advanceStage(current.id, {
+      stageId: input.stageId.trim(),
+      memberIds: input.memberIds,
+      description: input.description?.trim() || undefined,
+      planStartAt: input.planStartAt?.trim() || undefined,
+      planEndAt: input.planEndAt?.trim() || undefined,
+    });
     this.advanceStageOpen.set(false);
   }
 
@@ -678,8 +698,12 @@ export class RdBoardPageComponent {
     this.editOpen.set(true);
   }
 
-  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number }): void {
+  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number; quickStart?: boolean }): void {
     if (this.selectedItem()?.status === 'closed') {
+      return;
+    }
+    if (data.quickStart) {
+      this.quickStartProgress();
       return;
     }
     this.progressUpdateData.set(data);
@@ -727,6 +751,22 @@ export class RdBoardPageComponent {
     });
   }
 
+  private quickStartProgress(): void {
+    const current = this.selectedItem();
+    if (!current) {
+      return;
+    }
+    this.rdApi.updateProgress(current.id, { progress: 1, note: '' }).subscribe({
+      next: (item) => {
+        this.store.updateItemInList(item);
+        this.loadSelectedProgress(item.id);
+        this.loadSelectedLogs(item.id);
+      },
+      error: () => {
+      },
+    });
+  }
+
   filterTagClass(kind: 'stageIds' | 'status' | 'priority' | 'assigneeIds' | 'keyword'): string {
     if (kind === 'status') return 'filter-tag filter-tag--status';
     if (kind === 'priority') return 'filter-tag filter-tag--priority';
@@ -746,5 +786,40 @@ export class RdBoardPageComponent {
       .slice(0, 3)
       .join('、');
     this.message.warning(`执行人进度未全部达到 100%${names ? `（${names}${incomplete.length > 3 ? ' 等' : ''}）` : ''}，请确认后继续进入下一阶段。`);
+  }
+
+  private hasNextStage(item: RdItemEntity | null): boolean {
+    if (!item) {
+      return false;
+    }
+    const all = [...this.store.stages()].sort((a, b) => a.sort - b.sort);
+    if (all.length === 0) {
+      return false;
+    }
+    if (!item.stageId) {
+      return all.length > 0;
+    }
+    const currentStage = all.find((stage) => stage.id === item.stageId);
+    if (!currentStage) {
+      return all.length > 0;
+    }
+    return all.some((stage) => stage.sort > currentStage.sort);
+  }
+
+  private normalizeProgressByUser(list: RdItemProgress[]): RdItemProgress[] {
+    const dedup = new Map<string, RdItemProgress>();
+    for (const row of list) {
+      const existing = dedup.get(row.userId);
+      if (!existing) {
+        dedup.set(row.userId, row);
+        continue;
+      }
+      const existingAt = Date.parse(existing.updatedAt || "");
+      const rowAt = Date.parse(row.updatedAt || "");
+      if (Number.isFinite(rowAt) && (!Number.isFinite(existingAt) || rowAt >= existingAt)) {
+        dedup.set(row.userId, row);
+      }
+    }
+    return Array.from(dedup.values());
   }
 }

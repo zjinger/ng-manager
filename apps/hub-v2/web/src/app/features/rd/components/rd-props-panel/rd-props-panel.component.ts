@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { RD_STATUS_LABELS } from '@shared/constants';
 import { PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
-import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
+import type { RdItemEntity, RdStageEntity, RdStageHistoryEntry, RdStageHistorySnapshot } from '../../models/rd.model';
 
 @Component({
   selector: 'app-rd-props-panel',
@@ -68,6 +68,10 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
           <div class="time-item">
             <span>实际工期</span>
             <strong>{{ getActualDuration() }}</strong>
+          </div>
+          <div class="time-item">
+            <span>当前阶段工期</span>
+            <strong>{{ getCurrentStageDuration() }}</strong>
           </div>
           <div class="time-item time-item--full">
             <span>创建时间</span>
@@ -171,6 +175,7 @@ export class RdPropsPanelComponent {
   readonly item = input.required<RdItemEntity>();
   readonly stages = input<RdStageEntity[]>([]);
   readonly memberNames = input<string[]>([]);
+  readonly stageHistory = input<RdStageHistoryEntry[]>([]);
 
   memberNamesText(): string {
     const names = this.memberNames()
@@ -216,18 +221,34 @@ export class RdPropsPanelComponent {
     if (!startAt || !endAt) {
       return '-';
     }
-    const days = this.diffDays(startAt, endAt);
-    return `${days} 天`;
+    return this.formatDuration(this.diffDurationDays(startAt, endAt));
   }
 
   getActualDuration(): string {
-    const startAt = this.item().actualStartAt;
-    if (!startAt) {
+    const current = this.item();
+    const historyDays = this.stageHistory()
+      .map((entry) => this.parseSnapshot(entry.snapshotJson))
+      .reduce((total, snapshot) => {
+        if (!snapshot?.actualStartAt || !snapshot.actualEndAt) {
+          return total;
+        }
+        return total + this.diffDurationDays(snapshot.actualStartAt, snapshot.actualEndAt);
+      }, 0);
+
+    const currentStageDays = this.getCurrentStageDurationDays(current);
+    const totalDays = historyDays + currentStageDays;
+    if (totalDays <= 0) {
       return '-';
     }
-    const endAt = this.item().actualEndAt ?? new Date().toISOString();
-    const days = this.diffDays(startAt, endAt);
-    return `${days} 天`;
+    return this.formatDuration(totalDays);
+  }
+
+  getCurrentStageDuration(): string {
+    const days = this.getCurrentStageDurationDays(this.item());
+    if (days <= 0) {
+      return '-';
+    }
+    return this.formatDuration(days);
   }
 
   getTimeStatus(): string {
@@ -235,14 +256,14 @@ export class RdPropsPanelComponent {
     if (!item.actualStartAt) return '未开始';
     if (item.status !== 'done' && item.status !== 'accepted' && item.status !== 'closed') return '进行中';
     if (!item.actualEndAt || !item.planEndAt) return '已完成';
-    
+
     const actualEnd = new Date(item.actualEndAt);
     const planEnd = new Date(item.planEndAt);
-    const diffDays = Math.round((planEnd.getTime() - actualEnd.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays > 0) return `提前 ${diffDays} 天`;
+    const diffDays = Math.round(((planEnd.getTime() - actualEnd.getTime()) / (1000 * 60 * 60 * 24)) * 2) / 2;
+
+    if (diffDays > 0) return `提前 ${this.formatDuration(diffDays)}`;
     if (diffDays === 0) return '按时完成';
-    return `延期 ${Math.abs(diffDays)} 天`;
+    return `延期 ${this.formatDuration(Math.abs(diffDays))}`;
   }
 
   getTimeStatusHint(): string {
@@ -256,13 +277,58 @@ export class RdPropsPanelComponent {
     return '时间统计已按计划与实际结束时间自动计算。';
   }
 
-  private diffDays(startAt: string, endAt: string): number {
-    const start = new Date(startAt);
-    const end = new Date(endAt);
+  private parseSnapshot(snapshotJson: string): RdStageHistorySnapshot | null {
+    if (!snapshotJson) {
+      return null;
+    }
+    try {
+      return JSON.parse(snapshotJson) as RdStageHistorySnapshot;
+    } catch {
+      return null;
+    }
+  }
+
+  private getCurrentStageDurationDays(item: RdItemEntity): number {
+    if (!item.actualStartAt) {
+      return 0;
+    }
+    const endAt =
+      item.actualEndAt ??
+      (item.status === 'done' || item.status === 'accepted' || item.status === 'closed' ? item.updatedAt : new Date().toISOString());
+    return this.diffDurationDays(item.actualStartAt, endAt);
+  }
+
+  private formatDuration(days: number): string {
+    const rounded = Math.round(Math.max(0, days) * 2) / 2;
+    if (rounded <= 0) {
+      return '-';
+    }
+    return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)} 天`;
+  }
+
+  private parseDateTime(value: string, boundary: 'start' | 'end'): Date {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const suffix = boundary === 'start' ? 'T00:00:00.000' : 'T23:59:59.999';
+      return new Date(`${value}${suffix}`);
+    }
+    return new Date(value);
+  }
+
+  private diffDurationDays(startAt: string, endAt: string): number {
+    const start = this.parseDateTime(startAt, 'start');
+    const end = this.parseDateTime(endAt, 'end');
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return 0;
     }
-    const ms = end.getTime() - start.getTime();
-    return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
+    const ms = Math.max(0, end.getTime() - start.getTime());
+    const days = ms / (1000 * 60 * 60 * 24);
+    const rounded = Math.round(days * 2) / 2;
+    if (ms > 0 && rounded === 0) {
+      return 0.5;
+    }
+    if (ms === 0) {
+      return 0.5;
+    }
+    return rounded;
   }
 }

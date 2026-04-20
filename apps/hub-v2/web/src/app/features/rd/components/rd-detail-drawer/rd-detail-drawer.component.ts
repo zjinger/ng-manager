@@ -53,6 +53,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
               [canAdvance]="canAdvance()"
+              [canAccept]="canAccept()"
               [canClose]="canClose()"
               [showSummary]="false"
               [showProps]="false"
@@ -78,6 +79,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
               [canAdvance]="canAdvance()"
+              [canAccept]="canAccept()"
               [canClose]="canClose()"
               [showAction]="false"
               [showProps]="false"
@@ -95,6 +97,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
               [canAdvance]="canAdvance()"
+              [canAccept]="canAccept()"
               [canClose]="canClose()"
               [showSummary]="false"
               [showActivity]="false"
@@ -187,12 +190,13 @@ export class RdDetailDrawerComponent {
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
+  readonly canAccept = input(false);
   readonly canClose = input(false);
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly currentUserId = input<string>('');
-  readonly actionClick = output<'advance' | 'close' | 'reopen'>();
+  readonly actionClick = output<'advance' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
-  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number }>();
+  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean }>();
   readonly close = output<void>();
 
   readonly drawerBodyStyle = { padding: '0', overflow: 'auto' };

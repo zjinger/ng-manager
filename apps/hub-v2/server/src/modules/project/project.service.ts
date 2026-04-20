@@ -366,26 +366,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
   async listModuleMembers(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleMemberEntity[]> {
     await this.getModule(projectId, moduleId, ctx);
-    const projectMembers = this.repo.listMembers(projectId);
-    const moduleMembers = this.repo.listModuleMembers(projectId, moduleId);
-    const inheritedUserIds = new Set(projectMembers.map((item) => item.userId));
-    const inheritedMembers: ProjectModuleMemberEntity[] = projectMembers.map((member) => ({
-      id: member.id,
-      projectId: member.projectId,
-      moduleId,
-      userId: member.userId,
-      displayName: member.displayName,
-      avatarUploadId: member.avatarUploadId ?? null,
-      avatarUrl: member.avatarUrl ?? null,
-      roleCode: member.roleCode,
-      source: "project",
-      isInherited: true,
-      isOwner: member.isOwner,
-      createdAt: member.createdAt,
-      updatedAt: member.updatedAt
-    }));
-    const moduleOnly = moduleMembers.filter((member) => !inheritedUserIds.has(member.userId));
-    return [...inheritedMembers, ...moduleOnly];
+    return this.repo.listModuleMembers(projectId, moduleId);
   }
 
   async addModule(projectId: string, input: CreateProjectConfigItemInput, ctx: RequestContext): Promise<ProjectConfigItemEntity> {
@@ -486,9 +467,6 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const user = this.userRepo.findById(userId);
     if (!user) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${input.userId}`, 404);
-    }
-    if (this.repo.findMemberByProjectAndUserId(projectId, userId)) {
-      throw new AppError(ERROR_CODES.PROJECT_MODULE_MEMBER_EXISTS, "该成员已是项目成员，无需重复添加", 409);
     }
     if (this.repo.hasModuleMember(projectId, moduleId, userId)) {
       throw new AppError(ERROR_CODES.PROJECT_MODULE_MEMBER_EXISTS, "module member already exists", 409);

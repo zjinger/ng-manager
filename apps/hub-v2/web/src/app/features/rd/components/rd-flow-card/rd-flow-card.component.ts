@@ -1,14 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 import { RD_STATUS_LABELS } from '@shared/constants';
 import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 
+type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
+
 @Component({
   selector: 'app-rd-flow-card',
   standalone: true,
-  imports: [NzButtonModule, NzPopconfirmModule],
+  imports: [NzButtonModule, NzPopconfirmModule, NzTooltipModule],
   template: `
     @if (item(); as current) {
       <section class="flow-card">
@@ -36,7 +39,31 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
           <div class="action-card">
             <div class="action-card__buttons">
               @if (canAdvance()) {
-                <button nz-button nzType="primary" [disabled]="busy()" (click)="actionClick.emit('advance')">进入下一阶段</button>
+                <button
+                  nz-button
+                  nzType="primary"
+                  [disabled]="busy()"
+                  nz-tooltip
+                  nzTooltipTitle="推进到后续阶段，并可重新指定下一阶段执行人"
+                  (click)="actionClick.emit('advance')"
+                >
+                  进入下一阶段
+                </button>
+              }
+              @if (canAccept()) {
+                <button
+                  nz-button
+                  nzType="default"
+                  [disabled]="busy()"
+                  nz-popconfirm
+                  [nzPopconfirmTitle]="'确认该研发项' + currentStageName() + '阶段已完成吗？'"
+                  nzPopconfirmPlacement="topRight"
+                  nz-tooltip
+                  nzTooltipTitle="当前阶段已完成，可进入下一阶段或结项"
+                  (nzOnConfirm)="actionClick.emit('accept')"
+                >
+                  标记已完成
+                </button>
               }
               @if (canEditBasic() && current.status !== 'closed') {
                 <button nz-button  nzType="default" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
@@ -48,19 +75,26 @@ import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
                     nzType="default"
                     [disabled]="busy()"
                     nz-popconfirm
-                    nzPopconfirmTitle="确认恢复该研发项吗？"
+                    [nzPopconfirmTitle]="'确认恢复该研发项吗？'"
                     nzPopconfirmPlacement="topRight"
                     (nzOnConfirm)="actionClick.emit('reopen')"
                   >
                     恢复
                   </button>
                 } @else {
-                  <button nz-button nzType="default" [disabled]="busy()" (click)="actionClick.emit('close')">
+                  <button
+                    nz-button
+                    nzType="default"
+                    [disabled]="busy()"
+                    nz-tooltip
+                    nzTooltipTitle="终止研发项，无法继续推进，关闭后可恢复"
+                    (click)="actionClick.emit('close')"
+                  >
                     关闭
                   </button>
                 }
               }
-              @if (!canAdvance() && !canEditBasic() && !canClose()) {
+              @if (!canAdvance() && !canAccept() && !canEditBasic() && !canClose()) {
                 <span class="action-card__empty">当前状态无可执行操作</span>
               }
             </div>
@@ -206,28 +240,41 @@ export class RdFlowCardComponent {
   readonly busy = input(false);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
+  readonly canAccept = input(false);
   readonly canClose = input(false);
 
-  readonly actionClick = output<'advance' | 'close' | 'reopen'>();
+  readonly actionClick = output<'advance' | 'accept' | 'close' | 'reopen'>();
   readonly editClick = output<void>();
 
   readonly statusFlow = computed<Array<{ id: string; label: string; state: 'done' | 'active' | 'pending' }>>(() => {
-    const steps = [
-      { id: 'todo', label: '待开始' },
-      { id: 'doing', label: '进行中' },
-      { id: 'done', label: '已完成' },
-      { id: 'closed', label: '已关闭' },
-    ] as const;
-    const currentIndex = this.getStatusFlowIndex(this.item());
-    return steps.map((step, index) => {
-      if (currentIndex < 0) {
-        return { ...step, state: 'pending' as const };
-      }
-      if (index < currentIndex) {
-        return { ...step, state: 'done' as const };
-      }
-      if (index === currentIndex) {
+    const item = this.item();
+    const isClosedFlow = item?.status === 'closed';
+    const steps: Array<{ id: FlowStepId; label: string }> = isClosedFlow
+      ? [
+          { id: 'todo', label: '待开始' },
+          { id: 'doing', label: '进行中' },
+          { id: 'verify', label: '待确认' },
+          { id: 'closed', label: '已关闭' },
+        ]
+      : [
+          { id: 'todo', label: '待开始' },
+          { id: 'doing', label: '进行中' },
+          { id: 'verify', label: '待确认' },
+          { id: 'done', label: '已完成' },
+        ];
+    if (!item) {
+      return steps.map((step) => ({ ...step, state: 'pending' as const }));
+    }
+
+    const progress = Math.max(0, Math.min(100, Number(item.progress) || 0));
+    const activeId = this.getActiveStatusId(item.status, progress);
+
+    return steps.map((step) => {
+      if (step.id === activeId) {
         return { ...step, state: 'active' as const };
+      }
+      if (this.isReachedStatus(step.id, item.status, progress)) {
+        return { ...step, state: 'done' as const };
       }
       return { ...step, state: 'pending' as const };
     });
@@ -255,30 +302,45 @@ export class RdFlowCardComponent {
     return RD_STATUS_LABELS[status] ?? status;
   });
 
-  private getStatusFlowIndex(item: RdItemEntity | null): number {
-    if (!item) {
-      return -1;
+  private getActiveStatusId(
+    status: RdItemEntity['status'],
+    progress: number
+  ): FlowStepId {
+    if (status === 'closed') {
+      return 'closed';
     }
-    const progress = Number(item.progress) || 0;
-    switch (item.status) {
-      case 'todo':
-        return progress > 0 ? 1 : 0;
-      case 'doing':
-      case 'blocked':
-        return 1;
-      case 'done':
-      case 'accepted':
-        return 2;
-      case 'closed':
-        return 3;
-      default:
-        if (progress >= 100) {
-          return 2;
-        }
-        if (progress > 0) {
-          return 1;
-        }
-        return 0;
+    if (status === 'accepted') {
+      return 'done';
     }
+    if (status === 'done' || progress >= 100) {
+      return 'verify';
+    }
+    if (status === 'doing' || status === 'blocked' || progress > 0) {
+      return 'doing';
+    }
+    return 'todo';
+  }
+
+  private isReachedStatus(
+    target: FlowStepId,
+    status: RdItemEntity['status'],
+    progress: number
+  ): boolean {
+    if (target === 'todo') {
+      return true;
+    }
+    if (target === 'doing') {
+      return status === 'doing' || status === 'blocked' || status === 'done' || status === 'accepted' || progress > 0;
+    }
+    if (target === 'verify') {
+      return status === 'done' || status === 'accepted' || progress >= 100;
+    }
+    if (target === 'done') {
+      return status === 'accepted';
+    }
+    if (target === 'closed') {
+      return false;
+    }
+    return false;
   }
 }

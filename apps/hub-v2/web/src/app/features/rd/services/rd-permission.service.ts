@@ -56,7 +56,15 @@ export class RdPermissionService {
     if (!item) {
       return false;
     }
-    if (item.status !== 'done' && item.status !== 'accepted') {
+    if (item.status !== 'accepted') {
+      return false;
+    }
+    return !!userId && !!item.verifierId && item.verifierId === userId;
+  }
+
+  canAccept(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
+    void members;
+    if (!item || item.status !== 'done') {
       return false;
     }
     return !!userId && !!item.verifierId && item.verifierId === userId;

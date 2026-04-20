@@ -294,7 +294,8 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
   async accept(id: string, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "accept rd item");
     requireRdAcceptAccess(current, ctx);
-    return this.applyAction(id, "accept", ctx, current, {}, "标记研发项已接受");
+    const stageName = current.stageId ? this.repo.findStageById(current.stageId)?.name || "当前" : "当前";
+    return this.applyAction(id, "accept", ctx, current, {}, `标记${stageName}阶段已经完成`);
   }
 
   async close(id: string, input: CloseRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
@@ -314,13 +315,16 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
   async advanceStage(id: string, input: AdvanceRdStageInput, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "advance rd stage");
     await this.requireAdvanceAccess(current, ctx, "advance rd stage");
-    if (current.status !== "done" && current.status !== "accepted") {
-      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_STATUS, "rd item is not completed", 400);
+    if (current.status !== "accepted") {
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_STATUS, "rd item is not accepted", 400);
     }
 
     const targetStage = this.requireStage(input.stageId.trim());
     if (targetStage.projectId !== current.projectId) {
       throw new AppError(ERROR_CODES.RD_STAGE_PROJECT_MISMATCH, "rd stage project mismatch", 400);
+    }
+    if (!targetStage.enabled) {
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd target stage is disabled", 400);
     }
 
     if (current.stageId === targetStage.id) {
@@ -328,6 +332,9 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
     }
 
     const currentStage = current.stageId ? this.requireStage(current.stageId) : null;
+    if (!this.hasNextAvailableStage(current.projectId, currentStage)) {
+      throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd item already in last stage", 400);
+    }
     if (currentStage && targetStage.sort <= currentStage.sort) {
       throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd target stage must be after current stage", 400);
     }
@@ -345,6 +352,16 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
         : await this.resolveMembers(current.projectId, input.memberIds, current.verifierId);
     const nextAssigneeId = nextMembersRef.memberIds.length > 0 ? nextMembersRef.memberIds[0] : null;
     const nextAssigneeName = nextMembersRef.memberNames.length > 0 ? nextMembersRef.memberNames[0] : null;
+    const description = input.description?.trim();
+    const nextPlanStartAt = input.planStartAt?.trim() || current.planStartAt || null;
+    const nextPlanEndAt = input.planEndAt?.trim() || current.planEndAt || null;
+    if (nextPlanStartAt && nextPlanEndAt) {
+      const startAt = Date.parse(nextPlanStartAt);
+      const endAt = Date.parse(nextPlanEndAt);
+      if (Number.isFinite(startAt) && Number.isFinite(endAt) && startAt > endAt) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "rd planStartAt must be earlier than or equal to planEndAt", 400);
+      }
+    }
 
     const updated = this.repo.updateItem(id, {
       stage_id: targetStage.id,
@@ -352,6 +369,8 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
       member_ids: JSON.stringify(nextMembersRef.memberIds),
       assignee_id: nextAssigneeId,
       assignee_name: nextAssigneeName,
+      plan_start_at: nextPlanStartAt,
+      plan_end_at: nextPlanEndAt,
       progress: 0,
       actual_start_at: null,
       actual_end_at: null,
@@ -401,7 +420,9 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
         "advance_stage",
         ctx,
         `推进阶段: ${fromStageName} -> ${targetStage.name}` +
-          (nextMembersRef.memberNames.length > 0 ? `；成员: ${nextMembersRef.memberNames.join("、")}` : "；成员: 未指定")
+          (nextMembersRef.memberNames.length > 0 ? `；成员: ${nextMembersRef.memberNames.join("、")}` : "；成员: 未指定") +
+          ((nextPlanStartAt || nextPlanEndAt) ? `；计划: ${nextPlanStartAt || "-"} ~ ${nextPlanEndAt || "-"}` : "") +
+          (description ? `；说明: ${description}` : "")
       )
     );
     await this.emitRdEvent("rd.updated", "advance_stage", entity, ctx);
@@ -720,8 +741,9 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
 
   async updateProgress(id: string, input: UpdateRdItemProgressInput, ctx: RequestContext): Promise<RdItemEntity> {
     const item = await this.requireItemWithAccess(id, ctx, "update rd progress");
-    if (item.status === "closed") {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "cannot update progress for closed rd item", 400);
+    const previousStatus = item.status;
+    if (item.status === "accepted" || item.status === "closed") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "cannot update progress for accepted or closed rd item", 400);
     }
     const userId = ctx.userId?.trim();
     if (!userId) {
@@ -791,11 +813,17 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
 
     const updatedItem = this.requireItem(id);
     const progressNote = input.note?.trim();
-    const progressLogContent = progressNote
-      ? `更新个人进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
-      : `更新个人进度: ${oldProgress}% -> ${input.progress}%`;
+    const isStartProcessing = oldProgress <= 0 && input.progress > 0;
+    const progressLogContent = isStartProcessing
+      ? (progressNote
+          ? `开始处理；进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
+          : `开始处理；进度: ${oldProgress}% -> ${input.progress}%`)
+      : (progressNote
+          ? `更新个人进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
+          : `更新个人进度: ${oldProgress}% -> ${input.progress}%`);
     this.repo.createLog(this.createLog(updatedItem, "update", ctx, progressLogContent));
-    await this.emitRdEvent("rd.updated", "update_progress", updatedItem, ctx);
+    const eventAction = previousStatus !== "done" && updatedItem.status === "done" ? "complete" : "update_progress";
+    await this.emitRdEvent("rd.updated", eventAction, updatedItem, ctx);
     return updatedItem;
   }
 
@@ -866,5 +894,19 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
       },
       ctx
     );
+  }
+
+  private hasNextAvailableStage(projectId: string, currentStage: RdStageEntity | null): boolean {
+    const enabledStages = this.repo
+      .listStages(projectId)
+      .filter((stage) => stage.enabled)
+      .sort((a, b) => a.sort - b.sort);
+    if (enabledStages.length === 0) {
+      return false;
+    }
+    if (!currentStage) {
+      return enabledStages.length > 0;
+    }
+    return enabledStages.some((stage) => stage.sort > currentStage.sort);
   }
 }
