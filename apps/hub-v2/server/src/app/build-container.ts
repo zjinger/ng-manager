@@ -190,7 +190,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const rdService = new RdService(rdRepo, projectAccess, eventBus, uploadService);
   const releaseRepo = new ReleaseRepo(db);
-  const releaseService = new ReleaseService(releaseRepo, projectAccess, eventBus, contentLogService);
+  const releaseService = new ReleaseService(releaseRepo, projectRepo, projectAccess, eventBus, contentLogService);
   const dashboardService = new DashboardService(
     projectAccess,
     announcementService,

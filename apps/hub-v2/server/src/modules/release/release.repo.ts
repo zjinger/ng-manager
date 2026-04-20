@@ -10,6 +10,7 @@ type ReleaseRow = {
   title: string;
   notes: string | null;
   download_url: string | null;
+  sync_project_version: number;
   status: "draft" | "published" | "archived";
   published_at: string | null;
   created_by: string | null;
@@ -26,8 +27,8 @@ export class ReleaseRepo {
         `
         INSERT INTO releases (
           id, project_id, channel, version, title, notes, download_url,
-          status, published_at, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          sync_project_version, status, published_at, created_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -38,6 +39,7 @@ export class ReleaseRepo {
         entity.title,
         entity.notes,
         entity.downloadUrl,
+        entity.syncToProjectVersion ? 1 : 0,
         entity.status,
         entity.publishedAt,
         entity.createdBy,
@@ -58,7 +60,7 @@ export class ReleaseRepo {
         `
         UPDATE releases
         SET project_id = ?, channel = ?, version = ?, title = ?, notes = ?, download_url = ?,
-            status = ?, published_at = ?, created_by = ?, created_at = ?, updated_at = ?
+            sync_project_version = ?, status = ?, published_at = ?, created_by = ?, created_at = ?, updated_at = ?
         WHERE id = ?
       `
       )
@@ -69,6 +71,7 @@ export class ReleaseRepo {
         next.title,
         next.notes,
         next.downloadUrl,
+        next.syncToProjectVersion ? 1 : 0,
         next.status,
         next.publishedAt,
         next.createdBy,
@@ -83,6 +86,29 @@ export class ReleaseRepo {
   findById(id: string): ReleaseEntity | null {
     const row = this.db.prepare("SELECT * FROM releases WHERE id = ?").get(id) as ReleaseRow | undefined;
     return row ? this.mapRow(row) : null;
+  }
+
+  existsByProjectAndVersion(projectId: string | null, version: string, excludeId?: string): boolean {
+    const normalizedVersion = version.trim();
+    if (!normalizedVersion) {
+      return false;
+    }
+
+    if (projectId) {
+      const row = excludeId
+        ? this.db
+            .prepare("SELECT 1 as ok FROM releases WHERE project_id = ? AND version = ? AND id != ? LIMIT 1")
+            .get(projectId, normalizedVersion, excludeId)
+        : this.db.prepare("SELECT 1 as ok FROM releases WHERE project_id = ? AND version = ? LIMIT 1").get(projectId, normalizedVersion);
+      return !!row;
+    }
+
+    const row = excludeId
+      ? this.db
+          .prepare("SELECT 1 as ok FROM releases WHERE project_id IS NULL AND version = ? AND id != ? LIMIT 1")
+          .get(normalizedVersion, excludeId)
+      : this.db.prepare("SELECT 1 as ok FROM releases WHERE project_id IS NULL AND version = ? LIMIT 1").get(normalizedVersion);
+    return !!row;
   }
 
   list(query: ListReleasesQuery): ReleaseListResult {
@@ -241,6 +267,7 @@ export class ReleaseRepo {
       title: row.title,
       notes: row.notes,
       downloadUrl: row.download_url,
+      syncToProjectVersion: row.sync_project_version === 1,
       status: row.status,
       publishedAt: row.published_at,
       createdBy: row.created_by,

@@ -6,7 +6,8 @@ export const createReleaseSchema = z.object({
   version: z.string().trim().min(1),
   title: z.string().trim().min(1),
   notes: z.string().optional(),
-  downloadUrl: z.string().trim().url().optional()
+  downloadUrl: z.string().trim().url().optional(),
+  syncToProjectVersion: z.boolean().optional()
 });
 
 export const updateReleaseSchema = z.object({
@@ -15,7 +16,8 @@ export const updateReleaseSchema = z.object({
   version: z.string().trim().optional(),
   title: z.string().trim().optional(),
   notes: z.string().nullable().optional(),
-  downloadUrl: z.string().trim().url().nullable().optional()
+  downloadUrl: z.string().trim().url().nullable().optional(),
+  syncToProjectVersion: z.boolean().optional()
 });
 
 export const listReleasesQuerySchema = z.object({

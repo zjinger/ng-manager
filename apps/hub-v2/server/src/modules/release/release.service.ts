@@ -7,6 +7,7 @@ import { nowIso } from "../../shared/utils/time";
 import type { ContentLogCommandContract } from "../content-log/content-log.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import { requireAdmin } from "../utils/require-admin";
+import { ProjectRepo } from "../project/project.repo";
 import type { ReleaseCommandContract, ReleaseQueryContract } from "./release.contract";
 import { ReleaseRepo } from "./release.repo";
 import type {
@@ -20,6 +21,7 @@ import type {
 export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContract {
   constructor(
     private readonly repo: ReleaseRepo,
+    private readonly projectRepo: ProjectRepo,
     private readonly projectAccess: ProjectAccessContract,
     private readonly eventBus: EventBus,
     private readonly contentLogCommand: ContentLogCommandContract
@@ -28,6 +30,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
   async create(input: CreateReleaseInput, ctx: RequestContext): Promise<ReleaseEntity> {
     const projectId = input.projectId?.trim() || null;
     await this.requireProjectOrAdmin(projectId, ctx, "create release");
+    this.assertVersionNotDuplicated(projectId, input.version, null);
 
     const now = nowIso();
     const entity: ReleaseEntity = {
@@ -38,6 +41,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
       title: input.title.trim(),
       notes: input.notes?.trim() || null,
       downloadUrl: input.downloadUrl?.trim() || null,
+      syncToProjectVersion: input.syncToProjectVersion !== false,
       status: "draft",
       publishedAt: null,
       createdBy: ctx.accountId,
@@ -54,17 +58,20 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
     const current = this.requireById(id);
     const nextProjectId =
       input.projectId === undefined ? current.projectId : input.projectId?.trim() || null;
+    const nextVersion = input.version?.trim() || current.version;
 
     await this.requireProjectOrAdmin(nextProjectId, ctx, "update release");
+    this.assertVersionNotDuplicated(nextProjectId, nextVersion, id);
 
     const updated = this.repo.update(id, {
       projectId: nextProjectId,
       channel: input.channel?.trim() || current.channel,
-      version: input.version?.trim() || current.version,
+      version: nextVersion,
       title: input.title?.trim() || current.title,
       notes: input.notes === undefined ? current.notes : input.notes?.trim() || null,
       downloadUrl:
         input.downloadUrl === undefined ? current.downloadUrl : input.downloadUrl?.trim() || null,
+      syncToProjectVersion: input.syncToProjectVersion ?? current.syncToProjectVersion,
       updatedAt: nowIso()
     });
 
@@ -110,6 +117,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
     }
 
     const entity = this.requireById(id);
+    this.syncProjectVersionOnPublish(entity);
     await this.eventBus.emit({
       type: "release.published",
       scope: entity.projectId ? "project" : "global",
@@ -241,5 +249,50 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
       createdAt: nowIso()
     });
   }
-}
 
+  private syncProjectVersionOnPublish(entity: ReleaseEntity): void {
+    if (!entity.syncToProjectVersion) {
+      return;
+    }
+
+    const projectId = entity.projectId?.trim();
+    const version = entity.version.trim();
+    if (!projectId || !version) {
+      return;
+    }
+
+    const versions = this.projectRepo.listVersions(projectId);
+    const existing = versions.find((item) => item.version === version);
+    const now = nowIso();
+
+    if (existing) {
+      if (!existing.enabled) {
+        this.projectRepo.updateVersion(projectId, existing.id, { enabled: true, updatedAt: now });
+      }
+      return;
+    }
+
+    const maxSort = versions.length ? Math.max(...versions.map((item) => item.sort)) : 0;
+    this.projectRepo.addVersion(projectId, {
+      id: genId("pver"),
+      version,
+      code: undefined,
+      enabled: true,
+      sort: maxSort + 10,
+      description: undefined,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  private assertVersionNotDuplicated(projectId: string | null, version: string, excludeId: string | null): void {
+    const normalizedVersion = version.trim();
+    if (!normalizedVersion) {
+      return;
+    }
+    const duplicated = this.repo.existsByProjectAndVersion(projectId, normalizedVersion, excludeId ?? undefined);
+    if (duplicated) {
+      throw new AppError(ERROR_CODES.RELEASE_VERSION_CONFLICT, `版本号已存在：${normalizedVersion}`, 409);
+    }
+  }
+}

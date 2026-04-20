@@ -4,6 +4,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
 
@@ -18,12 +19,13 @@ const DEFAULT_DRAFT: Draft = {
   title: '',
   notes: '',
   downloadUrl: '',
+  syncToProjectVersion: true,
 };
 
 @Component({
   selector: 'app-release-create-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzInputModule, NzIconModule, DialogShellComponent, FormActionsComponent],
+  imports: [FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzInputModule, NzSwitchModule, NzIconModule, DialogShellComponent, FormActionsComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -106,6 +108,24 @@ const DEFAULT_DRAFT: Draft = {
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="24">
               <nz-form-item>
+                <nz-form-label>同步项目版本</nz-form-label>
+                <nz-form-control>
+                  <label style="display: inline-flex; align-items: center; gap: 8px;">
+                    <nz-switch
+                      [ngModel]="draft().syncToProjectVersion"
+                      name="syncToProjectVersion"
+                      (ngModelChange)="updateField('syncToProjectVersion', !!$event)"
+                    ></nz-switch>
+                    <span>发布后同步到项目配置-版本</span>
+                  </label>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="24">
+              <nz-form-item>
                 <nz-form-label>更新说明</nz-form-label>
                 <nz-form-control>
                   <textarea
@@ -166,6 +186,7 @@ export class ReleaseCreateDialogComponent {
             title: value.title,
             notes: value.notes ?? '',
             downloadUrl: value.downloadUrl ?? '',
+            syncToProjectVersion: value.syncToProjectVersion ?? true,
           });
         } else {
           this.draft.set({ ...DEFAULT_DRAFT });
@@ -197,6 +218,7 @@ export class ReleaseCreateDialogComponent {
       channel: draft.channel.trim() || 'stable',
       notes: notes || undefined,
       downloadUrl: downloadUrl || undefined,
+      syncToProjectVersion: draft.syncToProjectVersion !== false,
     });
   }
 }

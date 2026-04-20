@@ -10,6 +10,7 @@ export interface ReleaseEntity {
   title: string;
   notes: string | null;
   downloadUrl: string | null;
+  syncToProjectVersion: boolean;
   status: ReleaseStatus;
   publishedAt: string | null;
   createdBy: string | null;
@@ -24,6 +25,7 @@ export interface CreateReleaseInput {
   title: string;
   notes?: string;
   downloadUrl?: string;
+  syncToProjectVersion?: boolean;
 }
 
 export interface UpdateReleaseInput {
@@ -33,6 +35,7 @@ export interface UpdateReleaseInput {
   title?: string;
   notes?: string | null;
   downloadUrl?: string | null;
+  syncToProjectVersion?: boolean;
 }
 
 export interface ListReleasesQuery {
