@@ -45,14 +45,19 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
         justify-content: flex-end;
       }
 
-      @media (max-width: 920px) {
+      @media (max-width: 2000px) {
         .page-toolbar {
           gap: 14px;
+          flex-direction: column;
+        }
+        .page-toolbar__start, .page-toolbar__end {
+          width: 100%;
         }
         .page-toolbar__end {
-          justify-content: flex-start;
+          justify-content: flex-end;
         }
       }
+
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
