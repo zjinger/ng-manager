@@ -105,6 +105,8 @@ export interface CreateIssueInput {
 export interface UpdateIssueInput {
   title?: string;
   description?: string | null;
+  type?: IssueType;
+  priority?: IssuePriority;
   moduleCode?: string | null;
   versionCode?: string | null;
   environmentCode?: string | null;

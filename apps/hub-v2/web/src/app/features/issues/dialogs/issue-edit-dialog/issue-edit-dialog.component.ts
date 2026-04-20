@@ -10,13 +10,16 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import type { ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
+import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
 import { MarkdownImageUploadService } from '@shared/services/markdown-image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
-import type { IssueEntity, UpdateIssueInput } from '../../models/issue.model';
+import type { IssueEntity, IssuePriority, IssueType, UpdateIssueInput } from '../../models/issue.model';
 
 type EditDraft = {
   title: string;
   description: string;
+  type: IssueType;
+  priority: IssuePriority;
   moduleCode: string;
   versionCode: string;
   environmentCode: string;
@@ -25,6 +28,8 @@ type EditDraft = {
 const EMPTY_DRAFT: EditDraft = {
   title: '',
   description: '',
+  type: 'bug',
+  priority: 'medium',
   moduleCode: '',
   versionCode: '',
   environmentCode: '',
@@ -79,6 +84,34 @@ const EMPTY_DRAFT: EditDraft = {
                     (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
                     [placeholder]="'补充问题背景、复现步骤和期望结果'"
                   />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div nz-row nzGutter="16">
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label nzFor="type" nzRequired>类型</nz-form-label>
+                <nz-form-control>
+                  <nz-select [ngModel]="draft().type" name="type" (ngModelChange)="updateType($event)">
+                    @for (item of issueTypeOptions; track item.value) {
+                      <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+
+            <div nz-col nzSpan="12">
+              <nz-form-item>
+                <nz-form-label nzFor="priority" nzRequired>优先级</nz-form-label>
+                <nz-form-control>
+                  <nz-select [ngModel]="draft().priority" name="priority" (ngModelChange)="updateField('priority', $event)">
+                    @for (item of priorityOptions; track item.value) {
+                      <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                    }
+                  </nz-select>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -175,6 +208,8 @@ const EMPTY_DRAFT: EditDraft = {
 export class IssueEditDialogComponent {
   private readonly message = inject(NzMessageService);
   private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+  readonly priorityOptions = ISSUE_PRIORITY_OPTIONS.filter((option) => option.value !== '');
+  readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
 
   readonly open = input(false);
   readonly busy = input(false);
@@ -207,6 +242,8 @@ export class IssueEditDialogComponent {
       this.draft.set({
         title: issue?.title || '',
         description: issue?.description || '',
+        type: issue?.type || 'bug',
+        priority: issue?.priority || 'medium',
         moduleCode: issue?.moduleCode || '',
         versionCode: issue?.versionCode || '',
         environmentCode: issue?.environmentCode || '',
@@ -232,6 +269,10 @@ export class IssueEditDialogComponent {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
   }
 
+  updateType(value: IssueType): void {
+    this.updateField('type', value);
+  }
+
   onModulePathChange(value: unknown): void {
     const path =
       Array.isArray(value) && value.length > 0 ? value.map((item) => `${item}`.trim()).filter(Boolean) : null;
@@ -254,6 +295,8 @@ export class IssueEditDialogComponent {
     const payload: UpdateIssueInput = {
       title: draft.title.trim(),
       description: draft.description.trim() ? draft.description : null,
+      type: draft.type,
+      priority: draft.priority,
       moduleCode: draft.moduleCode.trim() ? draft.moduleCode.trim() : null,
       versionCode: draft.versionCode.trim() ? draft.versionCode.trim() : null,
       environmentCode: draft.environmentCode.trim() ? draft.environmentCode.trim() : null,

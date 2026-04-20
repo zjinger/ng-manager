@@ -120,6 +120,8 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const updated = this.repo.update(id, {
       title: input.title?.trim() || current.title,
       description: input.description === undefined ? current.description : input.description?.trim() || null,
+      type: input.type ?? current.type,
+      priority: input.priority ?? current.priority,
       module_code: input.moduleCode === undefined ? current.moduleCode : input.moduleCode?.trim() || null,
       version_code: input.versionCode === undefined ? current.versionCode : input.versionCode?.trim() || null,
       environment_code:
@@ -473,6 +475,12 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     }
     if (input.description !== undefined && (input.description?.trim() || null) !== current.description) {
       changes.push("更新描述");
+    }
+    if (input.type !== undefined && input.type !== current.type) {
+      changes.push("更新类型");
+    }
+    if (input.priority !== undefined && input.priority !== current.priority) {
+      changes.push("更新优先级");
     }
     if (input.moduleCode !== undefined && (input.moduleCode?.trim() || null) !== current.moduleCode) {
       changes.push("更新模块");
