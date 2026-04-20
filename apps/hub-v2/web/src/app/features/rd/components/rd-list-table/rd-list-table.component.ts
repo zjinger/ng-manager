@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
@@ -19,8 +19,7 @@ import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../mod
         <div>编号</div>
         <div>研发项</div>
         <div>阶段</div>
-        <div>状态</div>
-        <div>优先级</div>
+        <div>创建人</div>
         <div>执行人</div>
         <div>进度</div>
         <div>更新时间</div>
@@ -33,12 +32,28 @@ import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../mod
             <div class="rd-cell">
               <div class="rd-title-wrap">
                 <div class="rd-title-main">
-                  <div class="rd-name">{{ item.title }}</div>
+                  <div class="rd-title-main-header">
+                    <div class="rd-name">{{ item.title }}</div>
+                    <div class="rd-title-badges">
+                      <app-status-badge [status]="item.status" [label]="statusLabel(item.status)" />
+                      <app-priority-badge [priority]="item.priority" />
+                    </div>
+                  </div>
                   <div class="rd-meta">{{ previewSummary(item) || '暂无详细描述' }}</div>
                 </div>
                 @if (previewImageUrl(item); as imageUrl) {
-                  <div class="rd-thumb-wrap">
-                    <img class="rd-thumb" [src]="imageUrl" [alt]="previewImageAlt(item)" />
+                  <div
+                    class="rd-thumb-wrap"
+                    (mouseenter)="showHoverPreview($event, item)"
+                    (mousemove)="moveHoverPreview($event, item)"
+                    (mouseleave)="hideHoverPreview()"
+                  >
+                    <img
+                      class="rd-thumb"
+                      [src]="imageUrl"
+                      [alt]="previewImageAlt(item)"
+                      (error)="markPreviewImageError(item.id)"
+                    />
                   </div>
                 }
               </div>
@@ -55,8 +70,9 @@ import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../mod
                 }
               </span>
             </div>
-            <div class="rd-cell"><app-status-badge [status]="item.status" [label]="statusLabel(item.status)" /></div>
-            <div class="rd-cell"><app-priority-badge [priority]="item.priority" /></div>
+            <div class="rd-cell">
+              <span class="rd-member-text" [nz-tooltip]="item.creatorName || '-'">{{ item.creatorName || '-' }}</span>
+            </div>
             <div class="rd-cell">
               @if (memberNamesText(item); as memberNames) {
                 <span class="rd-member-text" [nz-tooltip]="memberNames">{{ memberNames }}</span>
@@ -77,13 +93,18 @@ import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../mod
         }
       </div>
     </app-data-table>
+    @if (hoveredPreview(); as preview) {
+      <div class="rd-image-hover-preview" [style.left.px]="preview.left" [style.top.px]="preview.top">
+        <img class="rd-image-hover-preview__image" [src]="preview.src" [alt]="preview.alt" />
+      </div>
+    }
   `,
   styles: [
     `
       .rd-table__head,
       .rd-row {
         display: grid;
-        grid-template-columns: 56px 120px minmax(0, 2fr) minmax(0, 1.2fr) 110px 90px minmax(0, 1fr) 140px 110px;
+        grid-template-columns: 56px 120px minmax(0, 2.4fr) minmax(0, 1fr) 120px minmax(0, 1fr) 140px 110px;
         gap: 16px;
         align-items: center;
       }
@@ -168,6 +189,18 @@ import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../mod
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .rd-title-main-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .rd-title-badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
+      }
       .rd-meta,
       .rd-cell--muted {
         font-size: 12px;
@@ -201,12 +234,34 @@ import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../mod
         border: 1px solid var(--border-color-soft);
         background: var(--bg-subtle);
         flex: 0 0 auto;
+        cursor: zoom-in;
       }
       .rd-thumb {
         width: 100%;
         height: 100%;
         display: block;
         object-fit: cover;
+      }
+      .rd-image-hover-preview {
+        position: fixed;
+        z-index: 1200;
+        width: 360px;
+        height: 240px;
+        padding: 8px;
+        border-radius: 14px;
+        border: 1px solid color-mix(in srgb, var(--primary-300) 30%, var(--border-color));
+        background: color-mix(in srgb, var(--bg-container) 92%, white 8%);
+        box-shadow: 0 22px 48px rgba(15, 23, 42, 0.24);
+        pointer-events: none;
+        backdrop-filter: blur(10px);
+      }
+      .rd-image-hover-preview__image {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+        border-radius: 10px;
+        background: var(--bg-subtle);
       }
       .no-member {
         color: var(--text-muted);
@@ -226,6 +281,11 @@ import { getRdMemberIds, type RdItemEntity, type RdStageEntity } from '../../mod
           linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.06)),
           var(--bg-subtle);
       }
+      :host-context(html[data-theme='dark']) .rd-image-hover-preview {
+        background: color-mix(in srgb, var(--bg-container) 88%, black 12%);
+        border-color: rgba(129, 140, 248, 0.28);
+        box-shadow: 0 28px 56px rgba(2, 6, 23, 0.46);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -238,6 +298,8 @@ export class RdListTableComponent {
   readonly page = input(1);
   readonly pageSize = input(20);
   readonly selectItem = output<RdItemEntity>();
+  private readonly previewImageErrorIds = signal<ReadonlySet<string>>(new Set());
+  readonly hoveredPreview = signal<{ src: string; alt: string; left: number; top: number } | null>(null);
   private readonly previewMap = computed(() => {
     const map = new Map<string, { summary: string; imageUrl: string | null; imageAlt: string }>();
     for (const item of this.items()) {
@@ -279,11 +341,58 @@ export class RdListTableComponent {
   }
 
   previewImageUrl(item: RdItemEntity): string | null {
+    if (this.previewImageErrorIds().has(item.id)) {
+      return null;
+    }
     return this.previewMap().get(item.id)?.imageUrl ?? null;
   }
 
   previewImageAlt(item: RdItemEntity): string {
     return this.previewMap().get(item.id)?.imageAlt || item.title;
+  }
+
+  markPreviewImageError(itemId: string): void {
+    if (this.previewImageErrorIds().has(itemId)) {
+      return;
+    }
+    const next = new Set(this.previewImageErrorIds());
+    next.add(itemId);
+    this.previewImageErrorIds.set(next);
+    this.hoveredPreview.set(null);
+  }
+
+  showHoverPreview(event: MouseEvent, item: RdItemEntity): void {
+    const src = this.previewImageUrl(item);
+    if (!src) {
+      this.hoveredPreview.set(null);
+      return;
+    }
+    this.hoveredPreview.set({
+      src,
+      alt: this.previewImageAlt(item),
+      ...this.resolveHoverPreviewPosition(event),
+    });
+  }
+
+  moveHoverPreview(event: MouseEvent, item: RdItemEntity): void {
+    if (!this.hoveredPreview()) {
+      this.showHoverPreview(event, item);
+      return;
+    }
+    const src = this.previewImageUrl(item);
+    if (!src) {
+      this.hoveredPreview.set(null);
+      return;
+    }
+    this.hoveredPreview.set({
+      src,
+      alt: this.previewImageAlt(item),
+      ...this.resolveHoverPreviewPosition(event),
+    });
+  }
+
+  hideHoverPreview(): void {
+    this.hoveredPreview.set(null);
   }
 
   statusLabel(status: string): string {
@@ -355,5 +464,32 @@ export class RdListTableComponent {
     }
     const targetMatch = /^(\S+)(?:\s+['"][\s\S]*['"])?$/.exec(value);
     return targetMatch?.[1] ?? value;
+  }
+
+  private resolveHoverPreviewPosition(event: MouseEvent): { left: number; top: number } {
+    const previewWidth = 360;
+    const previewHeight = 240;
+    const gap = 20;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let left = event.clientX + gap;
+    let top = event.clientY + gap;
+
+    if (left + previewWidth > viewportWidth - 12) {
+      left = event.clientX - previewWidth - gap;
+    }
+    if (left < 12) {
+      left = 12;
+    }
+
+    if (top + previewHeight > viewportHeight - 12) {
+      top = viewportHeight - previewHeight - 12;
+    }
+    if (top < 12) {
+      top = 12;
+    }
+
+    return { left, top };
   }
 }
