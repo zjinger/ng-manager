@@ -166,7 +166,14 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus, contentLogService);
   const documentRepo = new DocumentRepo(db);
-  const documentService = new DocumentService(documentRepo, projectAccess, eventBus, contentLogService, uploadService);
+  const documentService = new DocumentService(
+    documentRepo,
+    projectRepo,
+    projectAccess,
+    eventBus,
+    contentLogService,
+    uploadService
+  );
   const issueRepo = new IssueRepo(db);
   const issueService = new IssueService(issueRepo, projectAccess, eventBus, uploadService);
   const issueAttachmentRepo = new IssueAttachmentRepo(db);

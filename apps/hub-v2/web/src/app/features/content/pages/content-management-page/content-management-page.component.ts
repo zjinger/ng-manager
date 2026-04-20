@@ -3,10 +3,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { map } from 'rxjs';
 
+import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 
@@ -29,6 +31,8 @@ import type {
   DocumentEntity,
   ReleaseEntity,
 } from '../../models/content.model';
+import type { ProjectMemberEntity } from '../../../projects/models/project.model';
+import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { ContentStore } from '../../store/content.store';
 
 @Component({
@@ -76,7 +80,13 @@ import { ContentStore } from '../../store/content.store';
 
         <button nz-button class="toolbar-filter-btn" (click)="applyFilters()">筛选</button>
 
-        <button nz-button nzType="primary" class="toolbar-create-btn" (click)="openCreateDialog()">
+        <button
+          nz-button
+          nzType="primary"
+          class="toolbar-create-btn"
+          [disabled]="!canCreateCurrentTab()"
+          (click)="openCreateDialog()"
+        >
           <nz-icon nzType="plus" nzTheme="outline" />
           {{ createLabel() }}
         </button>
@@ -111,7 +121,9 @@ import { ContentStore } from '../../store/content.store';
           <app-document-list
             [items]="documentItems()"
             [selectedId]="selectedDocumentId()"
+            [projectKey]="projectContext.currentProjectKey() || ''"
             (select)="openDocumentDetail($event)"
+
           />
         }
         @case ('releases') {
@@ -158,6 +170,10 @@ import { ContentStore } from '../../store/content.store';
       [document]="detailDocument()"
       [release]="detailRelease()"
       [projectName]="projectContext.currentProject()?.name || ''"
+      [projectKey]="projectContext.currentProjectKey() || ''"
+      [canEdit]="canEditCurrentDetail()"
+      [canPublish]="canPublishCurrentDetail()"
+      [canArchive]="canArchiveCurrentDetail()"
       (edit)="editCurrentDetail()"
       (publish)="publishCurrentDetail()"
       (archive)="archiveCurrentDetail()"
@@ -180,7 +196,10 @@ import { ContentStore } from '../../store/content.store';
 export class ContentManagementPageComponent {
   readonly store = inject(ContentStore);
   readonly projectContext = inject(ProjectContextStore);
+  private readonly projectApi = inject(ProjectApiService);
+  private readonly authStore = inject(AuthStore);
   private readonly modal = inject(NzModalService);
+  private readonly message = inject(NzMessageService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -197,6 +216,7 @@ export class ContentManagementPageComponent {
   readonly detailAnnouncement = signal<AnnouncementEntity | null>(null);
   readonly detailDocument = signal<DocumentEntity | null>(null);
   readonly detailRelease = signal<ReleaseEntity | null>(null);
+  readonly projectMembers = signal<ProjectMemberEntity[]>([]);
   private readonly handledRouteDetailKey = signal<string | null>(null);
   private readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
@@ -249,12 +269,50 @@ export class ContentManagementPageComponent {
   readonly selectedAnnouncementId = computed(() => (this.detailTab() === 'announcements' ? this.detailAnnouncement()?.id ?? null : null));
   readonly selectedDocumentId = computed(() => (this.detailTab() === 'documents' ? this.detailDocument()?.id ?? null : null));
   readonly selectedReleaseId = computed(() => (this.detailTab() === 'releases' ? this.detailRelease()?.id ?? null : null));
+  readonly currentActorIds = computed(() => {
+    const user = this.authStore.currentUser();
+    const ids = new Set<string>();
+    const id = user?.id?.trim();
+    const userId = user?.userId?.trim();
+    if (id) {
+      ids.add(id);
+    }
+    if (userId) {
+      ids.add(userId);
+    }
+    return ids;
+  });
+  readonly isCurrentProjectAdmin = computed(() => {
+    const actorIds = this.currentActorIds();
+    if (actorIds.size === 0) {
+      return false;
+    }
+    return this.projectMembers().some((member) => actorIds.has(member.userId) && (member.isOwner || member.roleCode === 'project_admin'));
+  });
+  readonly isCurrentProjectMember = computed(() => {
+    const actorIds = this.currentActorIds();
+    if (actorIds.size === 0) {
+      return false;
+    }
+    return this.projectMembers().some((member) => actorIds.has(member.userId));
+  });
+  readonly canCreateCurrentTab = computed(() => {
+    if (this.store.activeTab() === 'documents') {
+      return this.isCurrentProjectMember();
+    }
+    return this.isCurrentProjectAdmin();
+  });
+  readonly canEditCurrentDetail = computed(() => this.canEditByTab(this.detailTab()));
+  readonly canPublishCurrentDetail = computed(() => this.canPublishByTab(this.detailTab()));
+  readonly canArchiveCurrentDetail = computed(() => this.canArchiveByTab(this.detailTab()));
 
   constructor() {
     this.store.initialize();
 
     effect(() => {
-      this.store.refreshForProject(this.projectContext.currentProjectId());
+      const projectId = this.projectContext.currentProjectId();
+      this.store.refreshForProject(projectId);
+      this.loadProjectMembers(projectId);
       this.closeDetailDrawer(false);
     });
 
@@ -299,6 +357,10 @@ export class ContentManagementPageComponent {
   }
 
   openCreateDialog(): void {
+    if (!this.canCreateCurrentTab()) {
+      this.message.warning('当前权限不支持该操作');
+      return;
+    }
     switch (this.store.activeTab()) {
       case 'announcements':
         this.editingAnnouncement.set(null);
@@ -486,6 +548,10 @@ export class ContentManagementPageComponent {
 
   editCurrentDetail(): void {
     const tab = this.detailTab();
+    if (!this.canEditByTab(tab)) {
+      this.message.warning('当前权限不支持该操作');
+      return;
+    }
     if (tab === 'announcements') {
       const item = this.detailAnnouncement();
       if (item) {
@@ -513,6 +579,10 @@ export class ContentManagementPageComponent {
 
   publishCurrentDetail(): void {
     const tab = this.detailTab();
+    if (!this.canPublishByTab(tab)) {
+      this.message.warning('当前权限不支持该操作');
+      return;
+    }
     if (tab === 'announcements') {
       const item = this.detailAnnouncement();
       if (item) {
@@ -537,6 +607,10 @@ export class ContentManagementPageComponent {
 
   archiveCurrentDetail(): void {
     const tab = this.detailTab();
+    if (!this.canArchiveByTab(tab)) {
+      this.message.warning('当前权限不支持该操作');
+      return;
+    }
     if (tab === 'announcements') {
       const item = this.detailAnnouncement();
       if (item) {
@@ -611,6 +685,63 @@ export class ContentManagementPageComponent {
     if (this.detailTab() === 'releases' && this.detailRelease()?.id === entity.id) {
       this.detailRelease.set(entity);
     }
+  }
+
+  private canEditByTab(tab: ContentTab | null): boolean {
+    if (tab === 'announcements' || tab === 'releases') {
+      return this.isCurrentProjectAdmin();
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      return !!item && this.isCurrentProjectMember() && this.isCreatedByCurrentUser(item.createdBy);
+    }
+    return false;
+  }
+
+  private canPublishByTab(tab: ContentTab | null): boolean {
+    if (tab === 'announcements') {
+      return this.isCurrentProjectAdmin() && this.detailAnnouncement()?.status !== 'published';
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      return !!item && this.isCurrentProjectMember() && this.isCreatedByCurrentUser(item.createdBy) && item.status !== 'published';
+    }
+    if (tab === 'releases') {
+      return this.isCurrentProjectAdmin() && this.detailRelease()?.status !== 'published';
+    }
+    return false;
+  }
+
+  private canArchiveByTab(tab: ContentTab | null): boolean {
+    if (tab === 'announcements') {
+      return this.isCurrentProjectAdmin() && this.detailAnnouncement()?.status !== 'archived';
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      return !!item && this.isCurrentProjectMember() && this.isCreatedByCurrentUser(item.createdBy) && item.status !== 'archived';
+    }
+    if (tab === 'releases') {
+      return this.isCurrentProjectAdmin() && this.detailRelease()?.status !== 'archived';
+    }
+    return false;
+  }
+
+  private isCreatedByCurrentUser(createdBy: string | null): boolean {
+    if (!createdBy) {
+      return false;
+    }
+    return this.currentActorIds().has(createdBy.trim());
+  }
+
+  private loadProjectMembers(projectId: string | null): void {
+    if (!projectId) {
+      this.projectMembers.set([]);
+      return;
+    }
+    this.projectApi.listMembers(projectId).subscribe({
+      next: (items) => this.projectMembers.set(items),
+      error: () => this.projectMembers.set([]),
+    });
   }
 
   private normalizeTabQuery(tab: string | null): ContentTab | null {

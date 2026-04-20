@@ -6,6 +6,7 @@ import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ContentLogCommandContract } from "../content-log/content-log.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
+import { ProjectRepo } from "../project/project.repo";
 import type { UploadCommandContract } from "../upload/upload.contract";
 import { requireAdmin } from "../utils/require-admin";
 import type { DocumentCommandContract, DocumentQueryContract } from "./document.contract";
@@ -21,6 +22,7 @@ import type {
 export class DocumentService implements DocumentCommandContract, DocumentQueryContract {
   constructor(
     private readonly repo: DocumentRepo,
+    private readonly projectRepo: ProjectRepo,
     private readonly projectAccess: ProjectAccessContract,
     private readonly eventBus: EventBus,
     private readonly contentLogCommand: ContentLogCommandContract,
@@ -29,7 +31,8 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
 
   async create(input: CreateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
     const projectId = input.projectId?.trim() || null;
-    if (this.repo.findBySlug(input.slug.trim())) {
+    const slug = input.slug.trim();
+    if (this.repo.existsByProjectAndSlug(projectId, slug)) {
       throw new AppError(ERROR_CODES.DOCUMENT_SLUG_EXISTS, `document slug already exists: ${input.slug}`, 409);
     }
     await this.requireProjectOrAdmin(projectId, ctx, "create document");
@@ -38,7 +41,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     const entity: DocumentEntity = {
       id: genId("doc"),
       projectId,
-      slug: input.slug.trim(),
+      slug,
       title: input.title.trim(),
       category: input.category?.trim() || "general",
       summary: input.summary?.trim() || null,
@@ -60,20 +63,18 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   async update(id: string, input: UpdateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
     const current = this.requireById(id);
 
-    if (input.slug?.trim() && input.slug.trim() !== current.slug) {
-      const bySlug = this.repo.findBySlug(input.slug.trim());
-      if (bySlug && bySlug.id !== current.id) {
-        throw new AppError(ERROR_CODES.DOCUMENT_SLUG_EXISTS, `document slug already exists: ${input.slug}`, 409);
-      }
-    }
-
     const nextProjectId =
       input.projectId === undefined ? current.projectId : input.projectId?.trim() || null;
+    const nextSlug = input.slug?.trim() || current.slug;
+    if (this.repo.existsByProjectAndSlug(nextProjectId, nextSlug, current.id)) {
+      throw new AppError(ERROR_CODES.DOCUMENT_SLUG_EXISTS, `document slug already exists: ${nextSlug}`, 409);
+    }
     await this.requireProjectOrAdmin(nextProjectId, ctx, "update document");
+    this.requireDocumentOwner(current, ctx, "update document");
 
     const updated = this.repo.update(id, {
       projectId: nextProjectId,
-      slug: input.slug?.trim() || current.slug,
+      slug: nextSlug,
       title: input.title?.trim() || current.title,
       category: input.category?.trim() || current.category,
       summary: input.summary === undefined ? current.summary : input.summary?.trim() || null,
@@ -111,6 +112,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   async publish(id: string, ctx: RequestContext): Promise<DocumentEntity> {
     const current = this.requireById(id);
     await this.requireProjectOrAdmin(current.projectId, ctx, "publish document");
+    this.requireDocumentOwner(current, ctx, "publish document");
 
     const publishAt = nowIso();
     const updated = this.repo.update(id, {
@@ -146,6 +148,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   async archive(id: string, ctx: RequestContext): Promise<DocumentEntity> {
     const current = this.requireById(id);
     await this.requireProjectOrAdmin(current.projectId, ctx, "archive document");
+    this.requireDocumentOwner(current, ctx, "archive document");
     if (current.status === "archived") {
       return current;
     }
@@ -217,14 +220,21 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     return this.repo.listRecentArchivedForNotifications(projectIds, limit);
   }
 
-  async getPublicBySlug(slug: string): Promise<DocumentEntity> {
+  async getPublicByProjectAndSlug(projectKey: string, slug: string): Promise<DocumentEntity> {
+    const normalizedProjectKey = projectKey.trim();
     const normalizedSlug = slug.trim();
-    if (!normalizedSlug) {
+    if (!normalizedProjectKey || !normalizedSlug) {
       throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, "document not found", 404);
     }
-    const entity = this.repo.findPublishedBySlug(normalizedSlug);
+
+    const project = this.projectRepo.findByKey(normalizedProjectKey);
+    if (!project) {
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, `document not found: ${projectKey}/${slug}`, 404);
+    }
+
+    const entity = this.repo.findPublishedByProjectAndSlug(project.id, normalizedSlug);
     if (!entity) {
-      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, `document not found: ${slug}`, 404);
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, `document not found: ${projectKey}/${slug}`, 404);
     }
     return entity;
   }
@@ -243,6 +253,23 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
       return;
     }
     requireAdmin(ctx);
+  }
+
+  private requireDocumentOwner(entity: DocumentEntity, ctx: RequestContext, action: string): void {
+    if (this.isActorMatch(ctx, entity.createdBy)) {
+      return;
+    }
+    throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden: owner only`, 403);
+  }
+
+  private isActorMatch(ctx: RequestContext, actorId: string | null): boolean {
+    const normalizedActorId = actorId?.trim();
+    if (!normalizedActorId) {
+      return false;
+    }
+    const userId = ctx.userId?.trim();
+    const accountId = ctx.accountId?.trim();
+    return normalizedActorId === userId || normalizedActorId === accountId;
   }
 
   private recordContentLog(

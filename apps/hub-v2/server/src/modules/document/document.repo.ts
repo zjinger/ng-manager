@@ -88,15 +88,50 @@ export class DocumentRepo {
     return row ? this.mapRow(row) : null;
   }
 
-  findBySlug(slug: string): DocumentEntity | null {
-    const row = this.db.prepare("SELECT * FROM documents WHERE slug = ?").get(slug) as DocumentRow | undefined;
-    return row ? this.mapRow(row) : null;
+  existsByProjectAndSlug(projectId: string | null, slug: string, excludeId?: string): boolean {
+    const normalizedSlug = slug.trim();
+    if (!normalizedSlug) {
+      return false;
+    }
+
+    let row: { ok: number } | undefined;
+    if (projectId?.trim()) {
+      const normalizedProjectId = projectId.trim();
+      row = excludeId
+        ? (this.db
+            .prepare(
+              "SELECT 1 as ok FROM documents WHERE project_id = ? AND slug = ? AND id != ? LIMIT 1"
+            )
+            .get(normalizedProjectId, normalizedSlug, excludeId) as { ok: number } | undefined)
+        : (this.db
+            .prepare("SELECT 1 as ok FROM documents WHERE project_id = ? AND slug = ? LIMIT 1")
+            .get(normalizedProjectId, normalizedSlug) as { ok: number } | undefined);
+    } else {
+      row = excludeId
+        ? (this.db
+            .prepare(
+              "SELECT 1 as ok FROM documents WHERE project_id IS NULL AND slug = ? AND id != ? LIMIT 1"
+            )
+            .get(normalizedSlug, excludeId) as { ok: number } | undefined)
+        : (this.db
+            .prepare("SELECT 1 as ok FROM documents WHERE project_id IS NULL AND slug = ? LIMIT 1")
+            .get(normalizedSlug) as { ok: number } | undefined);
+    }
+    return !!row?.ok;
   }
 
-  findPublishedBySlug(slug: string): DocumentEntity | null {
+  findPublishedByProjectAndSlug(projectId: string, slug: string): DocumentEntity | null {
+    const normalizedProjectId = projectId.trim();
+    const normalizedSlug = slug.trim();
+    if (!normalizedProjectId || !normalizedSlug) {
+      return null;
+    }
+
     const row = this.db
-      .prepare("SELECT * FROM documents WHERE slug = ? AND status = 'published' LIMIT 1")
-      .get(slug) as DocumentRow | undefined;
+      .prepare(
+        "SELECT * FROM documents WHERE project_id = ? AND slug = ? AND status = 'published' ORDER BY publish_at DESC, updated_at DESC LIMIT 1"
+      )
+      .get(normalizedProjectId, normalizedSlug) as DocumentRow | undefined;
     return row ? this.mapRow(row) : null;
   }
 

@@ -8,6 +8,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import type { ApiSuccessResponse } from '@core/http';
 import { MarkdownViewerComponent } from '@shared/ui';
 import type { DocumentEntity } from '../../models/content.model';
+import { Title } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-public-document-page',
@@ -47,7 +48,12 @@ import type { DocumentEntity } from '../../models/content.model';
           }
 
           <section class="public-doc__content">
-            <app-markdown-viewer [content]="doc.contentMd || '暂无内容'" [showToc]="true" tocVariant="inline" />
+            <app-markdown-viewer
+              [content]="doc.contentMd || '暂无内容'"
+              [showToc]="true"
+              tocVariant="floating"
+              [tocCollapsedByDefault]="false"
+            />
           </section>
         }
       </section>
@@ -55,10 +61,18 @@ import type { DocumentEntity } from '../../models/content.model';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        height: 100dvh;
+        overflow: hidden;
+      }
       .public-doc {
-        min-height: 100vh;
+        height: 100%;
         background: var(--bg-page);
         padding: 24px 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
       }
       .public-doc__card {
         max-width: 1080px;
@@ -116,6 +130,21 @@ import type { DocumentEntity } from '../../models/content.model';
         border-top: 1px solid var(--border-color-soft);
         padding-top: 14px;
       }
+      @media (min-width: 1025px) {
+        :host ::ng-deep .public-doc .markdown-viewer .markdown-toc-floating {
+          position: fixed;
+          top: 156px;
+          right: 24px;
+          margin: 0;
+          float: none;
+          align-items: flex-end;
+          z-index: 36;
+        }
+        :host ::ng-deep .public-doc .markdown-viewer .markdown-toc--floating {
+          width: min(320px, calc(100vw - 48px));
+          max-height: min(68dvh, calc(100dvh - 200px));
+        }
+      }
       @media (max-width: 900px) {
         .public-doc {
           padding: 12px;
@@ -135,6 +164,7 @@ import type { DocumentEntity } from '../../models/content.model';
 export class PublicDocumentPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly http = inject(HttpClient);
+  private readonly title = inject(Title);
 
   readonly loading = signal(true);
   readonly error = signal('');
@@ -142,25 +172,29 @@ export class PublicDocumentPageComponent {
 
   constructor() {
     this.route.paramMap.subscribe((params) => {
+      const projectKey = (params.get('projectKey') || '').trim();
       const slug = (params.get('slug') || '').trim();
-      if (!slug) {
+      if (!projectKey || !slug) {
         this.loading.set(false);
-        this.error.set('缺少文档标识。');
+        this.error.set('缺少项目标识或文档标识。');
         this.document.set(null);
         return;
       }
-      this.fetchBySlug(slug);
+      this.fetchByProjectAndSlug(projectKey, slug);
     });
   }
 
-  private fetchBySlug(slug: string): void {
+  private fetchByProjectAndSlug(projectKey: string, slug: string): void {
     this.loading.set(true);
     this.error.set('');
+    const encodedProjectKey = encodeURIComponent(projectKey.trim());
+    const encodedSlug = encodeURIComponent(slug.trim());
     this.http
-      .get<ApiSuccessResponse<DocumentEntity>>(`/api/public/documents/${encodeURIComponent(slug)}`)
+      .get<ApiSuccessResponse<DocumentEntity>>(`/api/public/documents/${encodedProjectKey}/${encodedSlug}`)
       .subscribe({
         next: (res) => {
           this.document.set(res.data);
+          this.title.setTitle(res.data.title || '文档详情');
           this.loading.set(false);
         },
         error: (err: { status?: number; error?: { message?: string } }) => {
@@ -175,4 +209,3 @@ export class PublicDocumentPageComponent {
       });
   }
 }
-

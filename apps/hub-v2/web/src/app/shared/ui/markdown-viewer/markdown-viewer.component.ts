@@ -121,7 +121,7 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
         if (!host) {
             this.tocItems = [];
             this.activeTocId = null;
-            this.tocCollapsed = this.tocCollapsedByDefault;
+            this.tocCollapsed = this.resolveInitialTocCollapsed();
             this.teardownScrollTracking();
             this.cdr.markForCheck();
             return;
@@ -151,7 +151,7 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
 
         this.tocItems = items;
         this.activeTocId = items[0]?.id ?? null;
-        this.tocCollapsed = this.tocCollapsedByDefault;
+        this.tocCollapsed = this.resolveInitialTocCollapsed();
         this.setupScrollTracking(host, headings);
         this.cdr.markForCheck();
     }
@@ -247,8 +247,6 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
             return;
         }
 
-        item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-
         const itemTop = item.offsetTop;
         const itemBottom = itemTop + item.offsetHeight;
         const viewTop = container.scrollTop;
@@ -282,5 +280,19 @@ export class MarkdownViewerComponent implements OnChanges, OnDestroy {
             .replace(/[^\w\u4e00-\u9fa5-]/g, '')
             .replace(/-+/g, '-')
             .replace(/^-|-$/g, '');
+    }
+
+    private resolveInitialTocCollapsed(): boolean {
+        if (this.tocCollapsedByDefault) {
+            return true;
+        }
+        return this.tocVariant === 'floating' && this.isCompactViewport();
+    }
+
+    private isCompactViewport(): boolean {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        return window.matchMedia('(max-width: 1024px)').matches;
     }
 }

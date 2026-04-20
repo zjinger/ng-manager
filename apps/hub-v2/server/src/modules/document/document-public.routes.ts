@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createRequestContext } from "../../shared/context/request-context";
 import { ok } from "../../shared/http/response";
-import { documentSlugParamSchema, listDocumentsQuerySchema } from "./document.schema";
+import { documentProjectSlugParamSchema, listDocumentsQuerySchema } from "./document.schema";
 
 export default async function documentPublicRoutes(app: FastifyInstance) {
   app.get("/documents", async (request) => {
@@ -16,8 +16,8 @@ export default async function documentPublicRoutes(app: FastifyInstance) {
     return ok(await app.container.documentQuery.listPublic(query, ctx));
   });
 
-  app.get("/documents/:slug", async (request) => {
-    const params = documentSlugParamSchema.parse(request.params);
-    return ok(await app.container.documentQuery.getPublicBySlug(params.slug));
+  app.get("/documents/:projectKey/:slug", async (request) => {
+    const params = documentProjectSlugParamSchema.parse(request.params);
+    return ok(await app.container.documentQuery.getPublicByProjectAndSlug(params.projectKey, params.slug));
   });
 }

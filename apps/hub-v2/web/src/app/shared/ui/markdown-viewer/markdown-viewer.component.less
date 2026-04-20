@@ -338,18 +338,23 @@
 
              .markdown-toc {
                  position: static;
+                 order: 0;
                  margin-bottom: 12px;
              }
 
              .markdown-toc-floating {
-                 position: static;
-                 margin-bottom: 8px;
-                 align-items: flex-start;
+                 position: fixed;
+                 right: 12px;
+                 bottom: 14px;
+                 margin: 0;
+                 align-items: flex-end;
+                 z-index: 40;
+                 max-width: calc(100vw - 24px);
              }
 
              .markdown-toc--floating {
-                 width: 100%;
-                 max-height: none;
+                 width: min(82vw, 320px);
+                 max-height: min(60dvh, 460px);
              }
          }
 

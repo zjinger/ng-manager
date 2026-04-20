@@ -11,10 +11,17 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'public/docs/:slug',
+    path: 'public/docs/:projectKey/:slug',
     loadComponent: () =>
       import('./features/content/pages/public-document-page/public-document-page.component').then(
         (m) => m.PublicDocumentPageComponent
+      ),
+  },
+  {
+    path: 'public/docs/:slug',
+    loadComponent: () =>
+      import('./features/content/pages/public-document-legacy-page/public-document-legacy-page.component').then(
+        (m) => m.PublicDocumentLegacyPageComponent
       ),
   },
   // {

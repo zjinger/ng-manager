@@ -224,9 +224,29 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
   private async requireProjectOrAdmin(projectId: string | null, ctx: RequestContext, action: string): Promise<void> {
     if (projectId) {
       await this.projectAccess.requireProjectAccess(projectId, ctx, action);
-      return;
+      const actorId = this.resolveActorId(ctx);
+      if (!actorId) {
+        throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
+      }
+      const member = await this.projectAccess.requireProjectMember(projectId, actorId, `${action} role check`);
+      if (member.isOwner || member.roleCode === "project_admin") {
+        return;
+      }
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden: project admin only`, 403);
     }
     requireAdmin(ctx);
+  }
+
+  private resolveActorId(ctx: RequestContext): string | null {
+    const userId = ctx.userId?.trim();
+    if (userId) {
+      return userId;
+    }
+    const accountId = ctx.accountId?.trim();
+    if (accountId) {
+      return accountId;
+    }
+    return null;
   }
 
   private recordContentLog(

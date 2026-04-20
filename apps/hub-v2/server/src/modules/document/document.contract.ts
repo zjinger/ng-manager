@@ -18,7 +18,7 @@ export interface DocumentQueryContract {
   list(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult>;
   getById(id: string, ctx: RequestContext): Promise<DocumentEntity>;
   listPublic(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult>;
-  getPublicBySlug(slug: string): Promise<DocumentEntity>;
+  getPublicByProjectAndSlug(projectKey: string, slug: string): Promise<DocumentEntity>;
   listRecentPublishedForNotifications(projectIds: string[], limit: number, ctx: RequestContext): Promise<DocumentEntity[]>;
   listRecentArchivedForNotifications(projectIds: string[], limit: number, ctx: RequestContext): Promise<DocumentEntity[]>;
 }

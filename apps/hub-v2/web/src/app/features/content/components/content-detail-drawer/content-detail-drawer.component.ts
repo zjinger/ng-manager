@@ -39,8 +39,10 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
       <ng-template nzDrawerContent>
         <div class="detail-panel">
           <div class="detail-actions">
-            <button nz-button nzSize="small" (click)="edit.emit()">编辑</button>
-            @if (canPublish()) {
+            @if (canEdit()) {
+              <button nz-button nzSize="small" (click)="edit.emit()">编辑</button>
+            }
+            @if (canPublish() && canPublishByStatus()) {
               <button
                 nz-button
                 nzType="primary"
@@ -53,7 +55,7 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
                 {{ publishActionLabel() }}
               </button>
             }
-            @if (canArchive()) {
+            @if (canArchive() && canArchiveByStatus()) {
               <button
                 nz-button
                 nzDanger
@@ -121,17 +123,17 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
               </div>
               <div class="detail-field detail-field--full">
                 <span>对外访问链接</span>
-                @if (item.status === 'published') {
+                @if (item.status === 'published' && publicDocumentLink(item.slug); as link) {
                   <a
                     class="detail-link"
-                    [href]="publicDocumentLink(item.slug)"
+                    [href]="link"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {{ publicDocumentLink(item.slug) }}
+                    {{ link }}
                   </a>
                 } @else {
-                  <strong>文档发布后可访问</strong>
+                  <strong>{{ item.status === 'published' ? '项目标识缺失，暂不可访问' : '文档发布后可访问' }}</strong>
                 }
               </div>
             </div>
@@ -313,6 +315,10 @@ export class ContentDetailDrawerComponent {
   readonly document = input<DocumentEntity | null>(null);
   readonly release = input<ReleaseEntity | null>(null);
   readonly projectName = input('');
+  readonly projectKey = input('');
+  readonly canEdit = input(true);
+  readonly canPublish = input(true);
+  readonly canArchive = input(true);
   readonly close = output<void>();
   readonly edit = output<void>();
   readonly publish = output<void>();
@@ -343,7 +349,7 @@ export class ContentDetailDrawerComponent {
     }
     return false;
   });
-  readonly canPublish = computed(() => {
+  readonly canPublishByStatus = computed(() => {
     if (this.tab() === 'announcements') {
       return this.announcement()?.status !== 'published';
     }
@@ -367,7 +373,7 @@ export class ContentDetailDrawerComponent {
     }
     return '详情';
   });
-  readonly canArchive = computed(() => {
+  readonly canArchiveByStatus = computed(() => {
     if (this.tab() === 'announcements') {
       return this.announcement()?.status !== 'archived';
     }
@@ -414,12 +420,16 @@ export class ContentDetailDrawerComponent {
     return republish ? '确认重新发布这条版本记录吗？' : '确认发布这条版本记录吗？发布后将对项目成员可见。';
   }
 
-  publicDocumentLink(slug: string): string {
+  publicDocumentLink(slug: string): string | null {
+    const normalizedProjectKey = encodeURIComponent((this.projectKey() || '').trim());
     const normalizedSlug = encodeURIComponent((slug || '').trim());
-    if (typeof window === 'undefined') {
-      return `/public/docs/${normalizedSlug}`;
+    if (!normalizedProjectKey || !normalizedSlug) {
+      return null;
     }
-    return `${window.location.origin}/public/docs/${normalizedSlug}`;
+    if (typeof window === 'undefined') {
+      return `/public/docs/${normalizedProjectKey}/${normalizedSlug}`;
+    }
+    return `${window.location.origin}/public/docs/${normalizedProjectKey}/${normalizedSlug}`;
   }
 
   archiveActionLabel(): string {

@@ -32,3 +32,8 @@ export const listDocumentsQuerySchema = z.object({
 export const documentSlugParamSchema = z.object({
   slug: z.string().trim().min(1)
 });
+
+export const documentProjectSlugParamSchema = z.object({
+  projectKey: z.string().trim().min(1),
+  slug: z.string().trim().min(1)
+});

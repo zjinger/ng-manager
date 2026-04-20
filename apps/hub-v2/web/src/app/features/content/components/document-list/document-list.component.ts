@@ -3,11 +3,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 
 import { DataTableComponent } from '@shared/ui';
 import type { DocumentEntity } from '../../models/content.model';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-document-list',
   standalone: true,
-  imports: [DatePipe, DataTableComponent],
+  imports: [DatePipe, DataTableComponent, NzIconModule, NzTooltipModule],
   template: `
     <app-data-table>
       <div table-head class="content-table__head">
@@ -15,6 +17,7 @@ import type { DocumentEntity } from '../../models/content.model';
         <div>分类</div>
         <div>版本</div>
         <div>状态</div>
+        <div>访问</div>
         <div>更新时间</div>
       </div>
       <div table-body class="content-table__body">
@@ -41,6 +44,14 @@ import type { DocumentEntity } from '../../models/content.model';
                 {{ statusLabel(item.status) }}
               </span>
             </div>
+            <!--访问链接-->
+            <div class="content-cell">
+              @if (publicDocumentLink(item.slug); as link) {
+                <a nz-icon nzType="link" nzTheme="outline" [nz-tooltip]="'访问链接：' + link" [href]="link" target="_blank" (click)="$event.stopPropagation()"></a>
+              } @else {
+                <span class="content-cell--muted">-</span>
+              }
+            </div>
             <div class="content-cell content-cell--muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
           </button>
         }
@@ -52,7 +63,7 @@ import type { DocumentEntity } from '../../models/content.model';
       .content-table__head,
       .content-row {
         display: grid;
-        grid-template-columns: 2fr 1fr 0.8fr 0.8fr 0.9fr;
+        grid-template-columns: 2fr 1fr 0.8fr 0.8fr 0.5fr 0.9fr;
         gap: 16px;
         align-items: center;
       }
@@ -150,6 +161,7 @@ export class DocumentListComponent {
   readonly items = input<DocumentEntity[]>([]);
   readonly selectedId = input<string | null>(null);
   readonly select = output<DocumentEntity>();
+  readonly projectKey = input<string>('');
 
   statusLabel(status: string): string {
     return (
@@ -159,5 +171,17 @@ export class DocumentListComponent {
         archived: '已归档',
       }[status] ?? status
     );
+  }
+
+  publicDocumentLink(slug: string): string | null {
+    const normalizedProjectKey = encodeURIComponent((this.projectKey() || '').trim());
+    const normalizedSlug = encodeURIComponent((slug || '').trim());
+    if (!normalizedProjectKey || !normalizedSlug) {
+      return null;
+    }
+    if (typeof window === 'undefined') {
+      return `/public/docs/${normalizedProjectKey}/${normalizedSlug}`;
+    }
+    return `${window.location.origin}/public/docs/${normalizedProjectKey}/${normalizedSlug}`;
   }
 }
