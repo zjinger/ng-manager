@@ -4,13 +4,16 @@ import {
   AdvanceRdStageInput,
   BlockRdItemInput,
   RdItemEntity,
+  RdItemProgress,
   RdListQuery,
   RdListResult,
+  RdLogEntity,
   RdStageEntity,
+  RdStageHistoryEntry,
   UpdateRdItemInput,
-  UpdateRdProgressInput,
 } from '../models/rd.model';
 import { RdTokenApiService } from './rd-token-api.service';
+import { ProjectMemberEntity } from '@models/project.model';
 
 @Injectable({
   providedIn: 'root',
@@ -75,16 +78,24 @@ export class RdApiService {
     });
   }
 
-  async progress(
-    projectId: string,
-    itemId: string,
-    input: UpdateRdProgressInput,
-  ): Promise<RdItemEntity> {
+  // async progress(
+  //   projectId: string,
+  //   itemId: string,
+  //   input: UpdateRdProgressInput,
+  // ): Promise<RdItemEntity> {
+  //   return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
+  //     rdId: itemId,
+  //     action: 'progress',
+  //     payload: input,
+  //   });
+  // }
+
+  async updateProgress( itemId: string, input: UpdateRdItemInput) {
     return await this.rdTokenApi.rdPostReqWithPK<RdItemEntity>({
       rdId: itemId,
       action: 'progress',
       payload: input,
-    });
+    })
   }
 
   async advanceStage(rdId: string, input: AdvanceRdStageInput) {
@@ -124,17 +135,24 @@ export class RdApiService {
     });
   }
 
-  async getRdItemLogs(projectId: string, rdItemId: string): Promise<any> {
-    return await this.apiClient.hubRequestWithPrjId({
+  async getRdItemLogs(projectId: string, rdItemId: string) {
+    return await this.apiClient.hubRequestWithPrjId<{ items: RdLogEntity[] }>({
       projectId: projectId,
       path: `/rd-items/${rdItemId}/logs`,
     });
   }
 
-  async getProjectMenbers(projectId: string): Promise<any> {
-    return await this.apiClient.hubRequestWithPrjId({
+  async getRdProgress(projectId: string, rdItemId: string) {
+    return await this.apiClient.hubRequestWithPrjId<{ items: RdItemProgress[] }>({
       projectId: projectId,
-      path: '/projects/${projectId}/members',
+      path: `/rd-items/${rdItemId}/progress`,
+    });
+  }
+
+  async getRdStageHistory(projectId: string, rdItemId: string) {
+    return await this.apiClient.hubRequestWithPrjId<{ items: RdStageHistoryEntry[] }>({
+      projectId: projectId,
+      path: `/rd-items/${rdItemId}/stage-history`,
     });
   }
 }

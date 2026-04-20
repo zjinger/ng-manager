@@ -20,7 +20,7 @@ export class UserStore {
 
   readonly currentUser = computed(() => this.currentUserState());
   readonly currentUserId = computed(() =>
-    !!this.currentUserState() ? this.currentUserState()!.userId : null,
+    !!this.currentUserState() ? this.currentUserState()!.userId : '',
   );
   readonly hubUserToken = computed(() => this.hubUserTokenState());
   readonly initialized = computed(() => this.initializedState());

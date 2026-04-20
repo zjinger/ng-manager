@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { RdActionAreaComponent } from './rd-action-area.component';
+import { RdBaseInfoComponent } from './rd-base-info.component';
 
-describe('RdActionAreaComponent', () => {
-  let component: RdActionAreaComponent;
-  let fixture: ComponentFixture<RdActionAreaComponent>;
+describe('RdBaseInfoComponent', () => {
+  let component: RdBaseInfoComponent;
+  let fixture: ComponentFixture<RdBaseInfoComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RdActionAreaComponent]
+      imports: [RdBaseInfoComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(RdActionAreaComponent);
+    fixture = TestBed.createComponent(RdBaseInfoComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

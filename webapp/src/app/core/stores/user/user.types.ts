@@ -1,9 +1,8 @@
 export interface HubAuthUser {
-  id?: string;
-  userId: string | null;
-  tokenId?:string;
+  userId: string;
+  tokenId: string;
   username?: string;
   nickname?: string;
-  scopes?: string[];
+  scopes: string[];
   role?: string;
 }

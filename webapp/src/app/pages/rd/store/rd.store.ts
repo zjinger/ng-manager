@@ -6,11 +6,14 @@ import {
   AdvanceRdStageInput,
   BlockRdItemInput,
   RdItemEntity,
+  RdItemProgress,
   RdListQuery,
   RdLogEntity,
   RdStageEntity,
+  RdStageHistoryEntry,
   UpdateRdItemInput,
-  UpdateRdProgressInput,
+  UpdateRdItemProgressInput,
+  UpdateRdStageInput,
 } from '../models/rd.model';
 import { RdApiService } from '../services/rd-api.service';
 
@@ -25,8 +28,13 @@ export class RdStore {
 
   private readonly rdItemsPageListState = signal<RdItemEntity[]>([]);
   private readonly rdItemsCountState = signal(0);
+
+  // 选中rd
   private readonly currentRdItemState = signal<RdItemEntity | null>(null);
   private readonly currentRdLogsState = signal<RdLogEntity[]>([]);
+  private readonly currentRdProgressState = signal<RdItemProgress[]>([]);
+  private readonly currentRdStageHistoryState = signal<RdStageHistoryEntry[]>([]);
+
   private readonly stagesState = signal<RdStageEntity[]>([]);
   private readonly projectMembersState = this.projectContextStore.currentProjectMembers;
   private readonly queryState = signal<RdListQuery>({
@@ -46,6 +54,8 @@ export class RdStore {
   readonly query = computed(() => this.queryState());
   readonly currentRdItem = computed(() => this.currentRdItemState());
   readonly currentRdLogs = computed(() => this.currentRdLogsState());
+  readonly currentRdProgress = computed(() => this.currentRdProgressState());
+  readonly currentRdStageHistory = computed(() => this.currentRdStageHistoryState());
   readonly stages = computed(() => this.stagesState());
   readonly rdItemsCount = computed(() => this.rdItemsCountState());
   readonly rdItemsPageList = computed(() => this.rdItemsPageListState());
@@ -96,10 +106,15 @@ export class RdStore {
     if (!projectId) return;
     this.currentRdLoadingState.set(true);
     try {
-      const itemRes = (await this.rdApi.getRdItem(projectId, itemId)) as RdItemEntity;
-      const logsRes = (await this.rdApi.getRdItemLogs(projectId, itemId)).items as RdLogEntity[];
+      const itemRes = await this.rdApi.getRdItem(projectId, itemId);
+      const logsRes = await this.rdApi.getRdItemLogs(projectId, itemId);
+      // TODO: 接口开放时候解开
+      const progressRes = await this.rdApi.getRdProgress(projectId, itemId);
+      const stageHistoryRes = await this.rdApi.getRdStageHistory(projectId, itemId);
+      this.currentRdProgressState.set(progressRes.items);
+      this.currentRdStageHistoryState.set(stageHistoryRes.items);
       this.currentRdItemState.set(itemRes);
-      this.currentRdLogsState.set(logsRes);
+      this.currentRdLogsState.set(logsRes.items);
       this.currentRdLoadingState.set(false);
     } catch (e) {
       this.currentRdLoadingState.set(false);
@@ -129,9 +144,9 @@ export class RdStore {
     this.runAction(() => this.rdApi.start(projectId, itemId));
   }
 
-  progress(itemId: string, input: UpdateRdProgressInput): void {
-    this.runAction(() => this.rdApi.progress(this.projectId()!, itemId, input));
-  }
+  // progress(itemId: string, input: UpdateRdProgressInput): void {
+  //   this.runAction(() => this.rdApi.progress(this.projectId()!, itemId, input));
+  // }
 
   block(itemId: string, input: BlockRdItemInput): void {
     this.runAction(() => this.rdApi.block(this.projectId()!, itemId, input));
@@ -150,6 +165,14 @@ export class RdStore {
 
   advanceStage(itemId: string, input: AdvanceRdStageInput): void {
     // this.runAction(() => this.rdApi.advanceStage(itemId, input));
+  }
+
+  updateProgress(input: UpdateRdItemProgressInput) {
+    const current = this.currentRdItem();
+    if (!current) {
+      return;
+    }
+    this.runAction(() => this.rdApi.updateProgress(current.id, input));
   }
 
   accept(itemId: string): void {

@@ -29,10 +29,11 @@
         (cancel)="createDialogOpen.set(false)" (create)="createRd($event)"></app-rd-create-dialog> -->
 
     <!-- 详情 -->
-    <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" [projectId]="currentProjectId()"
-        [busy]="busy()" [logs]="currentRdLogs()" [stages]="stages()" [loading]="currentRdLoading()"
-        (close)="closeDetail()" (actionClick)="handleSelectedAction($event)"
-        (progressChange)="updateSelectedProgress($event)" (deleteClick)="deleteSelectedItem()">
+    <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" [progressList]="currentRdProgress()"
+        [currentUserId]="currentUserId()" [stageHistory]="currentRdStageHistory()" [members]="members()"
+        [projectId]="currentProjectId()" [busy]="busy()" [logs]="currentRdLogs()" [stages]="stages()"
+        [loading]="currentRdLoading()" (actionClick)="handleSelectedAction($event)" (close)="closeDetail()"
+        (updateProgressClick)="openProgressUpdate($event)" (deleteClick)="deleteSelectedItem()">
     </app-rd-detail>
 
     <!-- 阻塞弹窗 -->
@@ -42,4 +43,8 @@
     <!-- 推进弹窗 -->
     <app-rd-advance-stage-dialog [open]="advanceStageOpen()" [busy]="busy()" [item]="currentRdItem()"
         [stages]="stages()" (cancel)="advanceStageOpen.set(false)" (confirm)="confirmAdvanceStage($event.stageId)" />
+
+    <!-- 进度调节弹窗 -->
+    <app-rd-progress-dialog [open]="progressUpdateOpen()" [busy]="busy()" [rdItem]="currentRdItem()"
+        [progress]="progressUpdateItem()" (cancel)="progressUpdateOpen.set(false)" (confirm)="confirmProgressUpdate($event)"></app-rd-progress-dialog>
 </app-page-layout>

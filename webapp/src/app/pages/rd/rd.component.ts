@@ -22,13 +22,16 @@ import { RdBlockDialogComponent } from './dialog/rd-block-dialog/rd-block-dialog
 import {
   CreateRdItemInput,
   RdItemEntity,
-  RdListQuery
+  RdItemProgress,
+  RdListQuery,
+  UpdateRdItemProgressInput,
 } from './models/rd.model';
 import { RdDetailComponent } from './rd-detail/rd-detail.component';
 import { RdFilterBarComponent } from './rd-filter-bar/rd-filter-bar.component';
 import { RdListBoardComponent } from './rd-list-board/rd-list-board.component';
 import { RdListTableComponent } from './rd-list-table/rd-list-table.component';
 import { RdStore } from './store/rd.store';
+import { RdProgressDialogComponent } from './dialog/rd-progress-dialog/rd-progress-dialog.component';
 
 type viewType = 'list' | 'board';
 
@@ -55,6 +58,7 @@ type viewType = 'list' | 'board';
     RdListTableComponent,
     RdDetailComponent,
     RdBlockDialogComponent,
+    RdProgressDialogComponent,
     RdAdvanceStageDialogComponent,
     RdFilterBarComponent,
   ],
@@ -86,6 +90,10 @@ export class RdComponent {
   // 推进研发项
   readonly advanceStageOpen = signal(false);
 
+  // 研发进度窗口
+  readonly progressUpdateItem = signal<RdItemProgress | null>(null);
+  readonly progressUpdateOpen = signal(false);
+
   // 用户
   readonly currentUserId = this.userStore.currentUserId;
 
@@ -100,6 +108,8 @@ export class RdComponent {
   protected readonly pageRdItems = this.rdStore.rdItemsPageList;
   protected readonly currentRdItem = this.rdStore.currentRdItem;
   protected readonly currentRdLogs = this.rdStore.currentRdLogs;
+  protected readonly currentRdProgress = this.rdStore.currentRdProgress;
+  protected readonly currentRdStageHistory = this.rdStore.currentRdStageHistory;
   protected readonly stages = this.rdStore.stages;
   protected readonly total = this.rdStore.rdItemsCount;
   protected readonly busy = this.rdStore.busy;
@@ -170,13 +180,13 @@ export class RdComponent {
     this.handleAction(current, action);
   }
 
-  updateSelectedProgress(progress: number): void {
-    const current = this.currentRdItem();
-    if (!current) {
-      return;
-    }
-    this.rdStore.progress(current.id, { version: current.version, progress });
-  }
+  // updateSelectedProgress(progress: number): void {
+  //   const current = this.currentRdItem();
+  //   if (!current) {
+  //     return;
+  //   }
+  //   this.rdStore.progress(current.id, { version: current.version, progress });
+  // }
 
   deleteSelectedItem(): void {
     const current = this.currentRdItem();
@@ -218,6 +228,25 @@ export class RdComponent {
       queryParams: { detail: item.id },
       queryParamsHandling: 'merge',
     });
+  }
+
+  openProgressUpdate(rdProgress: RdItemProgress) {
+    if (this.currentRdItem()?.status === 'closed') {
+      return;
+    }
+    if (rdProgress.progress === 0) {
+      // 如果刚开始则直接提交
+      this.confirmProgressUpdate({ progress: 1, note: '' });
+      return;
+    }
+    this.progressUpdateItem.set(rdProgress);
+    this.progressUpdateOpen.set(true);
+  }
+
+  confirmProgressUpdate(draft: UpdateRdItemProgressInput): void {
+    this.rdStore.updateProgress(draft);
+    this.progressUpdateOpen.set(false);
+    this.progressUpdateItem.set(null);
   }
 
   // 阻塞处理

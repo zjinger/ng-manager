@@ -9,9 +9,11 @@ import {
   ProjectMemberEntity,
   RdItemEntity,
   RdItemPriority,
+  RdItemProgress,
   RdItemStatus,
   RdLogEntity,
   RdStageEntity,
+  RdStageHistoryEntry,
 } from '@pages/rd/models/rd.model';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
@@ -20,8 +22,10 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
-import { RdActionAreaComponent } from './rd-action-area/rd-action-area.component';
+import { RdFlowAreaComponent } from './rd-action-area/rd-action-area.component';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { RdProgressAreaComponent } from './rd-progress-area/rd-progress-area.component';
+import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.component';
 
 @Component({
   selector: 'app-rd-detail',
@@ -36,10 +40,12 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
     NzInputModule,
     NzEmptyModule,
     FormsModule,
-    RdActionAreaComponent,
+    RdFlowAreaComponent,
     DetailItemCardComponent,
     MarkdownViewerComponent,
+    RdProgressAreaComponent,
     NzSpinModule,
+    RdStageHistoryComponent,
   ],
   template: `
     <nz-drawer
@@ -66,18 +72,24 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
       <ng-template nzDrawerContent>
         @if (loading() && !rdItem()) {
           <nz-spin nzSize="large" nzTip="正在加载研发项...." class="loading"></nz-spin>
-        } @else if(rdItem(); as rdItem) {
+        } @else if (rdItem(); as rdItem) {
           <div class="detail-wrap">
-            <app-detail-item-card title="操作">
-              <app-rd-action-area
-                [item]="rdItem"
-                (actionClick)="this.actionClick.emit($event)"
-                (progressChange)="this.progressChange.emit($event)"
-                (deleteClick)="this.deleteClick.emit()"
-                [members]="members()"
-                [busy]="busy()"
-              ></app-rd-action-area>
-            </app-detail-item-card>
+            <app-rd-flow-area
+              [item]="rdItem"
+              (actionClick)="this.actionClick.emit($event)"
+              (deleteClick)="this.deleteClick.emit()"
+              [members]="members()"
+              [stages]="stages()"
+              [busy]="busy()"
+            ></app-rd-flow-area>
+
+            <app-rd-progress-area
+              [item]="rdItem"
+              [progressList]="progressList()"
+              [members]="members()"
+              [currentUserId]="currentUserId()"
+              (updateProgressClick)="updateProgressClick.emit($event)"
+            ></app-rd-progress-area>
 
             <app-detail-item-card title="研发项描述">
               <nz-descriptions nzBordered nzSize="small">
@@ -94,11 +106,9 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
                   {{ rdItem.assigneeName }}
                 </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="验收人">
-                  {{ rdItem.reviewerName ?? '_' }}
+                  {{ rdItem.creatorName }}
                 </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="进度">
-                  {{ rdItem.progress }}%
-                </nz-descriptions-item>
+                <nz-descriptions-item nzTitle="进度"> {{ rdItem.progress }}% </nz-descriptions-item>
                 <nz-descriptions-item nzTitle="状态">
                   {{ getStatusLabel(rdItem.status) }}
                 </nz-descriptions-item>
@@ -140,6 +150,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
                 }
               </nz-timeline>
             </app-detail-item-card>
+            <app-rd-stage-history [entries]="stageHistory()"></app-rd-stage-history>
           </div>
         }
       </ng-template>
@@ -153,7 +164,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
       .ant-descriptions-item-label:first-child {
       min-width: 106px;
     }
-    .loading{
+    .loading {
       margin-top: 40%;
     }
     .title-wrap {
@@ -242,11 +253,14 @@ export class RdDetailComponent {
   readonly logs = input<RdLogEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly progressList = input<RdItemProgress[]>([]);
+  readonly stageHistory = input<RdStageHistoryEntry[]>([]);
   readonly projectId = input<string>('');
+  readonly currentUserId = input<string>('');
 
   readonly close = output();
   readonly actionClick = output<'start' | 'block' | 'resume' | 'complete' | 'advance'>();
-  readonly progressChange = output<number>();
+  readonly updateProgressClick = output<RdItemProgress>();
   readonly deleteClick = output<void>();
 
   readonly subtitleText = computed(() => this.rdItem()?.rdNo || '');

@@ -51,6 +51,8 @@ export const ISSUE_STATUS_FILTER_OPTIONS: { label: string; value: IssueStatus | 
   { label: '已关闭', value: 'closed' },
 ];
 
+export const RD_STATUS = ['todo', 'doing', 'blocked', 'done', 'canceled'];
+
 export const RD_STATUS_LABELS: Record<string, string> = {
   todo: '待开始',
   doing: '开发中',

@@ -1,14 +1,31 @@
 import { PageResult } from '@app/core/types/page.types';
 
-export type RdItemType = 'feature_dev' | 'tech_refactor' | 'integration' | 'env_setup';
+export type RdItemType =
+  | 'feature_dev'
+  | 'tech_refactor'
+  | 'integration'
+  | 'env_setup'
+  | 'requirement_confirmation'
+  | 'solution_design'
+  | 'testing_validation'
+  | 'delivery_launch'
+  | 'project_closure';
 export type RdItemPriority = 'low' | 'medium' | 'high' | 'critical';
-export type RdItemStatus = 'todo' | 'doing' | 'blocked' | 'done' | 'accepted' | 'closed';
+export type RdItemStatus =
+  | 'todo'
+  | 'doing'
+  | 'blocked'
+  | 'done'
+  | 'accepted'
+  | 'closed'
+  | 'reopened';
 export type RdAction =
   | 'create'
   | 'update'
   | 'start'
   | 'block'
   | 'resume'
+  | 'reopen'
   | 'resolve'
   | 'accept'
   | 'close'
@@ -41,8 +58,9 @@ export interface RdItemEntity {
   assigneeName: string | null;
   creatorId: string;
   creatorName: string;
-  reviewerId: string | null;
-  reviewerName: string | null;
+  verifierId: string | null;
+  verifierName: string | null;
+  memberIds: string[];
   progress: number;
   planStartAt: string | null;
   planEndAt: string | null;
@@ -51,6 +69,27 @@ export interface RdItemEntity {
   blockerReason: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RdItemProgress {
+  id: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  progress: number;
+  note: string | null;
+  updatedAt: string;
+}
+
+export interface RdProgressHistory {
+  id: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  oldProgress: number | null;
+  newProgress: number;
+  note: string | null;
+  createdAt: string;
 }
 
 export interface RdLogEntity {
@@ -81,6 +120,15 @@ export interface RdListQuery {
 
 export type RdListResult = PageResult<RdItemEntity>;
 
+export interface BlockRdItemInput {
+  blockerReason?: string;
+}
+
+export interface AdvanceRdStageInput {
+  stageId: string;
+  memberIds?: string[];
+}
+
 export interface CreateRdItemInput {
   projectId: string;
   title: string;
@@ -88,18 +136,10 @@ export interface CreateRdItemInput {
   stageId?: string | null;
   type?: RdItemType;
   priority?: RdItemPriority;
-  assigneeId?: string | null;
-  reviewerId?: string | null;
+  memberIds?: string[];
+  verifierId?: string | null;
   planStartAt?: string;
   planEndAt?: string;
-}
-
-export interface BlockRdItemInput {
-  blockerReason?: string;
-}
-
-export interface AdvanceRdStageInput {
-  stageId: string;
 }
 
 export interface UpdateRdItemInput {
@@ -127,10 +167,10 @@ export interface UpdateRdStageInput {
   enabled?: boolean;
 }
 
-export interface UpdateRdProgressInput {
-  progress: number;
-  version: number;
-}
+// export interface UpdateRdProgressInput {
+//   progress: number;
+//   version: number;
+// }
 
 export interface ProjectMemberEntity {
   id: string;
@@ -142,4 +182,45 @@ export interface ProjectMemberEntity {
   joinedAt: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdateRdItemProgressInput {
+  progress: number;
+  note?: string;
+}
+
+export interface ListRdProgressQuery {
+  itemId: string;
+}
+
+export interface RdStageHistoryEntry {
+  id: string;
+  projectId: string;
+  itemId: string;
+  fromStageId: string | null;
+  fromStageName: string;
+  toStageId: string;
+  toStageName: string;
+  snapshotJson: string;
+  operatorId: string | null;
+  operatorName: string | null;
+  createdAt: string;
+}
+
+export interface RdStageHistorySnapshot {
+  stageId: string | null;
+  stageName: string;
+  status: RdItemStatus;
+  progress: number;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  verifierId: string | null;
+  verifierName: string | null;
+  memberIds: string[];
+  memberNames: string[];
+  planStartAt: string | null;
+  planEndAt: string | null;
+  actualStartAt: string | null;
+  actualEndAt: string | null;
+  blockerReason: string | null;
 }

@@ -171,7 +171,7 @@ export class IssuePermissionService {
     }
 
     const userId = user.userId?.trim();
-    const accountId = user.id?.trim();
-    return actorId === userId || actorId === accountId;
+    // const accountId = user.id?.trim();
+    return actorId === userId; //|| actorId === accountId;
   }
 }
