@@ -115,6 +115,12 @@ export type ErrorCode =
     | "BAD_REQUEST" // 通用的请求错误
     | "NOT_IMPLEMENTED" // 通用的未实现错误
     | "NOT_FOUND" // 通用的未找到错误
+    // Node Version -- Node 版本管理器相关错误
+    | "NO_VERSION_MANAGER" // 未找到 Node 版本管理器
+    | "SWITCH_VERSION_FAILED" // 切换 Node 版本失败
+    | "NO_AVAILABLE_VERSIONS" // 未找到可用的 Node 版本
+    | "VERSION_REQUIRED" // Node 版本必填
+    | "PROJECT_PATH_REQUIRED" // 项目路径必填
 
 export class AppError extends Error {
     constructor(

@@ -23,6 +23,7 @@ import { JsonSpriteRepo } from "../infra/sprite";
 import { SpriteServiceImpl } from "../domain/sprite";
 import { SvnSyncServiceImpl, SvnTaskManager } from "../domain/svn";
 import { JsonSvnRuntimeRepo } from "../infra/svn";
+import { NodeVersionServiceImpl } from "../domain/node-version/node-version.service.impl";
 
 /**
  * 创建 CoreApp
@@ -61,6 +62,10 @@ export async function createCoreApp(
     //  ProjectRepo 实现
     const projectRepo = new ProjectRepoJsonKv(projectKv);
     const project = new ProjectServiceImpl(projectRepo)
+
+    /* ------------------ node-version ------------------ */
+    const nodeVersion = new NodeVersionServiceImpl();
+
     /* ------------------ task ------------------ */
     // 任务服务（start / stop / status）
     const task = new TaskServiceImpl(
@@ -68,7 +73,8 @@ export async function createCoreApp(
         processService,
         sysLog,
         taskStreamLogStore,
-        events
+        events,
+        nodeVersion
     );
 
     /* ------------------ bootstrap ------------------ */
@@ -147,6 +153,7 @@ export async function createCoreApp(
         config,
         sprite,
         svnSync,
+        nodeVersion,
         async dispose() {
             // 停止定时器
             latestCache.stopPruneTimer();

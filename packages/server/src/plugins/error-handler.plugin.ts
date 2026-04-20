@@ -131,7 +131,12 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
     SPRITE_CONFIG_NOT_FOUND: 404,
     SPRITE_ICONS_ROOT_NOT_FOUND: 404,
     SPRITE_GROUP_NOT_FOUND: 404,
-
+    /* ---------------- Node Version ---------------- */
+    NO_VERSION_MANAGER: 503, // 服务不可用：未安装 Node 版本管理器
+    NO_AVAILABLE_VERSIONS: 409, // 资源冲突：没有可用的 Node 版本
+    VERSION_REQUIRED: 400, // 缺少必需参数
+    PROJECT_PATH_REQUIRED: 400, // 缺少必需参数
+    SWITCH_VERSION_FAILED: 500, // 服务器内部错误：切换版本失败
 };
 
 export function mapStatus(code: ErrorCode): number {

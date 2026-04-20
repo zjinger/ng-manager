@@ -4,12 +4,15 @@ import { TasksApiService } from "./tasks-api.service";
 import { TaskStreamService } from "./task-stream.service";
 import { TaskRuntimeStore } from "./task-runtime-store";
 import { TaskCatalogService } from "./task-catalog.service";
+import { NodeVersionService } from '../node-version/node-version.service';
+
 @Injectable({ providedIn: "root" })
 export class TaskStateService {
   private api = inject(TasksApiService);
   private stream = inject(TaskStreamService);
   private runtimeStore = inject(TaskRuntimeStore);
   private catalog = inject(TaskCatalogService);
+  private nodeVersion = inject(NodeVersionService);
 
   /* ---------------- 基础状态 ---------------- */
 
@@ -153,7 +156,12 @@ export class TaskStateService {
     if (!taskId) return;
     // const spec = this.selectedRow()?.spec;
     // if (!spec) return;
-    this.api.start(taskId).subscribe();
+    this.api.start(taskId).subscribe({
+      next: () => {
+        // 任务启动后刷新 Node 版本信息（可能已自动切换）
+          this.nodeVersion.refresh();
+      }
+    });
   }
 
   /**

@@ -3,6 +3,10 @@
 export { createCoreApp, } from "./app/core-app";
 export { type CoreApp } from "./app/types";
 export { type ErrorCode, AppError } from "./common/errors";
+export type {
+    NodeVersionInfo,
+    ProjectNodeRequirement,
+} from "./domain/node-version/node-version.service";
 
 export type { LogLine } from "./infra/log";
 

@@ -8,6 +8,7 @@ import { ProjectBootstrapService, ProjectService } from "../domain/project";
 import { SpriteService } from "../domain/sprite";
 import { SvnSyncService } from "../domain/svn";
 import { TaskService } from "../domain/task";
+import { NodeVersionService } from "../domain/node-version/node-version.service";
 import type { IEventBus } from "../infra/event/event-bus";
 import type { CoreEventMap } from "../infra/event/events";
 
@@ -52,6 +53,9 @@ export interface CoreApp {
 
     /* SVN 运行时数据管理 */
     svnSync: SvnSyncService
+
+    /* Node 版本管理 */
+    nodeVersion: NodeVersionService;
 
     /** 关闭应用/服务前调用，做一些清理工作 */
     dispose(): Promise<void>;

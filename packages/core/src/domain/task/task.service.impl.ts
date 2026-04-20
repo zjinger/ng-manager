@@ -7,6 +7,7 @@ import { LogStreamType, SystemLogLevel, TaskOutputPayload } from "../../protocol
 import { SystemLogService } from "../logger";
 import { ProcessService, } from "../process";
 import { ProjectService } from "../project";
+import { NodeVersionService } from "../node-version/node-version.service";
 import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
 import type { TaskService } from "./task.service";
 import type { TaskDefinition, TaskRow, TaskRuntime } from "./task.types";
@@ -33,7 +34,8 @@ export class TaskServiceImpl implements TaskService {
         private proc: ProcessService,
         private sysLog: SystemLogService,
         private taskStreamLog: ILogStore,
-        private events: IEventBus<CoreEventMap>
+        private events: IEventBus<CoreEventMap>,
+        private nodeVersionService: NodeVersionService
     ) { }
 
     async start(taskId: string): Promise<TaskRuntime> {
@@ -73,11 +75,60 @@ export class TaskServiceImpl implements TaskService {
         const text = `[Task] ${spec.projectRoot}: ${cmdStr} started`;
         // 发送 syslog
         this.appendSysLog(runId, text, 'info');
+        // 全局切换 Node 版本
+        let targetVersion: string | null = null;
+        if (spec.projectRoot) {
+            try {
+                const requirement = await this.nodeVersionService.detectProjectRequirement(spec.projectRoot);
+                if (requirement.requiredVersion) {
+                    if (!requirement.isMatch && requirement.satisfiedBy) {
+                        targetVersion = requirement.satisfiedBy;
+                        this.appendSysLog(
+                            runId,
+                            `[Node] 全局切换到 Node ${targetVersion}（项目要求 ${requirement.requiredVersion}）`,
+                            'info'
+                        );
+                    } else if (requirement.isMatch) {
+                        this.appendSysLog(
+                            runId,
+                            `[Node] 当前版本 ${requirement.satisfiedBy} 已满足要求 ${requirement.requiredVersion}`,
+                            'info'
+                        );
+                    } else {
+                        this.appendSysLog(
+                            runId,
+                            `[Node] 警告: 项目要求 ${requirement.requiredVersion}，未找到匹配的已安装版本`,
+                            'warn'
+                        );
+                    }
+                }
+            } catch (e: any) {
+                this.appendSysLog(runId, `[Node] 检测版本要求失败: ${e?.message ?? String(e)}`, 'warn');
+            }
+        }
 
         let p: SpawnedProcess;
         try {
             // node-pty driver：这里的 command 仍然是整段字符串
             // 先给默认 cols/rows，后续前端会 task.resize(taskId, cols, rows)
+            // 全局切换 Node 版本
+            if (targetVersion) {
+                try {
+                    await this.nodeVersionService.switchVersion(targetVersion);
+                    this.appendSysLog(
+                        runId,
+                        `[Node] 已切换到 Node ${targetVersion}`,
+                        'info'
+                    );
+                } catch (e: any) {
+                    this.appendSysLog(
+                        runId,
+                        `[Node] 切换版本失败: ${e?.message ?? String(e)}，使用当前版本继续`,
+                        'warn'
+                    );
+                }
+            }
+
             p = await this.proc.spawn(spec.command, spec.args ?? [], {
                 cwd: spec.cwd!,
                 env: spec.env,
