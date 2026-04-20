@@ -137,7 +137,7 @@
                       设为管理员
                     </button>
                   }
-                  @if (!member.isOwner && member.roleCode === 'project_admin') {
+                  @if (canPromoteAdmin() && !member.isOwner && member.roleCode === 'project_admin') {
                     <button
                       nz-button
                       nzType="default"
