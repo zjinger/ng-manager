@@ -7,10 +7,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthStore } from '@core/auth';
-import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
+import { ListStateComponent, PageHeaderComponent, SideDetailLayoutComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { RdDetailContentComponent } from '../../components/rd-detail-content/rd-detail-content.component';
+import { RdDetailHeaderComponent } from '../../components/rd-detail-header/rd-detail-header.component';
 import { RdProgressPanelComponent, type MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
@@ -30,6 +31,8 @@ import { map } from 'rxjs';
     NzIconModule,
     PageHeaderComponent,
     ListStateComponent,
+    SideDetailLayoutComponent,
+    RdDetailHeaderComponent,
     RdDetailContentComponent,
     RdBlockDialogComponent,
     RdCloseDialogComponent,
@@ -56,27 +59,85 @@ import { map } from 'rxjs';
       />
 
       @if (!loading() && item()) {
-        <app-rd-detail-content
-          [busy]="busy()"
-          [item]="item()"
-          [logs]="logs()"
-          [stages]="stages()"
-          [stageHistory]="stageHistory()"
-          [memberProgressList]="memberProgressList()"
-          [canEditBasic]="canEditBasic()"
-          [canAdvance]="canAdvance()"
-          [canAccept]="canAccept()"
-          [canClose]="canClose()"
-          (actionClick)="handleAction($event)"
-          (editRequest)="openEditDialog()"
-        />
+        <section class="detail-stack">
+          <app-side-detail-layout>
+            <div detail-main class="detail-main">
+              <app-rd-detail-header
+                [busy]="busy()"
+                [item]="item()"
+                [stages]="stages()"
+                [canEditBasic]="canEditBasic()"
+                [canAdvance]="canAdvance()"
+                [canAccept]="canAccept()"
+                [canClose]="canClose()"
+                (actionClick)="handleAction($event)"
+                (editClick)="openEditDialog()"
+              />
+              <app-rd-progress-panel
+                [item]="item()!"
+                [memberProgressList]="memberProgressList()"
+                [currentUserId]="currentUserId() || ''"
+                (updateProgressClick)="openProgressUpdate($event)"
+              />
+              <app-rd-detail-content
+                [busy]="busy()"
+                [item]="item()"
+                [logs]="logs()"
+                [stages]="stages()"
+                [stageHistory]="stageHistory()"
+                [memberProgressList]="memberProgressList()"
+                [canEditBasic]="canEditBasic()"
+                [canAdvance]="canAdvance()"
+                [canAccept]="canAccept()"
+                [canClose]="canClose()"
+                [showAction]="false"
+                [showProps]="false"
+                [showStageHistory]="false"
+                [showActivity]="false"
+                (actionClick)="handleAction($event)"
+                (editRequest)="openEditDialog()"
+              />
+              <app-rd-detail-content
+                [busy]="busy()"
+                [item]="item()"
+                [logs]="logs()"
+                [stages]="stages()"
+                [stageHistory]="stageHistory()"
+                [memberProgressList]="memberProgressList()"
+                [canEditBasic]="canEditBasic()"
+                [canAdvance]="canAdvance()"
+                [canAccept]="canAccept()"
+                [canClose]="canClose()"
+                [showSummary]="false"
+                [showAction]="false"
+                [showProps]="false"
+                (actionClick)="handleAction($event)"
+                (editRequest)="openEditDialog()"
+              />
+            </div>
 
-        <app-rd-progress-panel
-          [item]="item()!"
-          [memberProgressList]="memberProgressList()"
-          [currentUserId]="currentUserId() || ''"
-          (updateProgressClick)="openProgressUpdate($event)"
-        />
+            <div detail-side class="detail-side">
+              <app-rd-detail-content
+                [busy]="busy()"
+                [item]="item()"
+                [logs]="logs()"
+                [stages]="stages()"
+                [stageHistory]="stageHistory()"
+                [memberProgressList]="memberProgressList()"
+                [canEditBasic]="canEditBasic()"
+                [canAdvance]="canAdvance()"
+                [canAccept]="canAccept()"
+                [canClose]="canClose()"
+                [showSummary]="false"
+                [showActivity]="false"
+                [showAction]="false"
+                [showStageHistory]="false"
+                (actionClick)="handleAction($event)"
+                (editRequest)="openEditDialog()"
+              />
+            </div>
+          </app-side-detail-layout>
+        </section>
       }
     </div>
 
@@ -131,6 +192,18 @@ import { map } from 'rxjs';
         flex-direction: column;
         gap: 16px;
       }
+      .detail-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .detail-main,
+      .detail-side {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
       .back-link {
         width: fit-content;
         display: inline-flex;
@@ -147,6 +220,9 @@ import { map } from 'rxjs';
       }
       .back-link__icon {
         font-size: 12px;
+      }
+      :host-context(html[data-theme='dark']) .back-link {
+        border-color: rgba(148, 163, 184, 0.14);
       }
     `,
   ],

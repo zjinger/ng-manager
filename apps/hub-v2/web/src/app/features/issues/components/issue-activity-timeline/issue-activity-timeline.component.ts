@@ -88,6 +88,7 @@ interface IssueTimelineItem {
 
       .timeline-filter__select {
         min-width: 132px;
+        height: auto;
       }
 
       .timeline-log {

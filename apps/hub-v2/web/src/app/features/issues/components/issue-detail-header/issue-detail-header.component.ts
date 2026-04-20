@@ -15,7 +15,13 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
     <section class="detail-header">
       <div class="detail-header__top">
         <div class="detail-header__identity">
-          <div class="detail-header__meta">{{ issue().issueNo }}</div>
+          <div class="detail-header__meta">
+            <span>{{ issue().issueNo }}</span>
+            <div class="detail-header__badges">
+              <app-status-badge [status]="issue().status" />
+              <app-priority-badge [priority]="issue().priority" />
+            </div>
+          </div>
           <h1>{{ issue().title }}</h1>
           @if (branchSummaryText()) {
             <div class="detail-header__summary">{{ branchSummaryText() }}</div>
@@ -57,10 +63,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       </div>
 
       <div class="detail-header__bottom">
-        <div class="detail-header__badges">
-          <app-status-badge [status]="issue().status" />
-          <app-priority-badge [priority]="issue().priority" />
-        </div>
+        
 
         <div class="state-flow">
           @for (step of flowSteps; track step.value; let last = $last) {
@@ -89,7 +92,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .detail-header {
         display: grid;
         gap: 18px;
-        padding: 26px 28px;
+        padding: 18px 24px 22px;
         border: 1px solid var(--border-color);
         border-radius: 24px;
         background:
@@ -114,6 +117,11 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         min-width: 0;
       }
       .detail-header__meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .detail-header__meta>span {
         color: var(--primary-700);
         font-size: 12px;
         font-weight: 700;
@@ -126,7 +134,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         font-size: 13px;
       }
       h1 {
-        margin: 10px 0 0;
+        margin: 8px 0 0;
         font-size: 30px;
         line-height: 1.2;
         color: var(--text-primary);

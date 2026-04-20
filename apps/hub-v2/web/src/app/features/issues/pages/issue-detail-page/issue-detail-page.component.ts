@@ -63,54 +63,54 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         <div class="state-card">正在加载测试单详情…</div>
       } @else if (store.issue(); as issue) {
         <section class="detail-stack">
-          <app-issue-detail-header
-            [issue]="issue"
-            [logs]="store.logs()"
-            [canStart]="store.canStart()"
-            [startActionLabel]="store.startActionLabel()"
-            [canClaim]="store.canClaim()"
-            [canAssign]="store.canAssign()"
-            [assignActionLabel]="store.assignActionLabel()"
-            [canEdit]="store.canEdit()"
-            [canManageParticipants]="store.canManageParticipants()"
-            [canWaitForUpdate]="store.canWaitForUpdate()"
-            [canResolve]="store.canResolve()"
-            [canVerify]="store.canVerify()"
-            [canReopen]="store.canReopen()"
-            [canClose]="store.canClose()"
-            [branchSummaryText]="store.branchSummaryText()"
-            (start)="confirmStart()"
-            (waitForUpdate)="confirmWaitForUpdate()"
-            (claim)="confirmClaim()"
-            (assign)="assignIssue()"
-            (edit)="openEdit()"
-            (addParticipants)="openAddParticipants()"
-            (resolve)="resolveIssue()"
-            (verify)="store.verify()"
-            (reopen)="reopenIssue()"
-            (close)="confirmClose()"
-          />
-
-          <section class="description-card">
-            <h3>{{getIssueTitleByType(issue)}}</h3>
-              @if (issue.description) {
-                <app-markdown-viewer [content]="issue.description" [showToc]="true"></app-markdown-viewer>
-              } @else {
-                暂无描述
-              }
-            @if (issue.resolutionSummary) {
-              <app-issue-detail-note [label]="'已解决说明'" [content]="issue.resolutionSummary" />
-            }
-            @if (store.reopenReason()) {
-              <app-issue-detail-note [label]="'重开原因'" [content]="store.reopenReason()!" />
-            }
-            @if (issue.closeReason) {
-              <app-issue-detail-note [label]="'关闭原因'" [content]="issue.closeReason" />
-            }
-          </section>
-
           <app-side-detail-layout [staticSide]="embedded()">
             <div detail-main class="detail-main">
+              <app-issue-detail-header
+                [issue]="issue"
+                [logs]="store.logs()"
+                [canStart]="store.canStart()"
+                [startActionLabel]="store.startActionLabel()"
+                [canClaim]="store.canClaim()"
+                [canAssign]="store.canAssign()"
+                [assignActionLabel]="store.assignActionLabel()"
+                [canEdit]="store.canEdit()"
+                [canManageParticipants]="store.canManageParticipants()"
+                [canWaitForUpdate]="store.canWaitForUpdate()"
+                [canResolve]="store.canResolve()"
+                [canVerify]="store.canVerify()"
+                [canReopen]="store.canReopen()"
+                [canClose]="store.canClose()"
+                [branchSummaryText]="store.branchSummaryText()"
+                (start)="confirmStart()"
+                (waitForUpdate)="confirmWaitForUpdate()"
+                (claim)="confirmClaim()"
+                (assign)="assignIssue()"
+                (edit)="openEdit()"
+                (addParticipants)="openAddParticipants()"
+                (resolve)="resolveIssue()"
+                (verify)="store.verify()"
+                (reopen)="reopenIssue()"
+                (close)="confirmClose()"
+              />
+
+              <section class="description-card">
+                <h3>{{ getIssueTitleByType(issue) }}</h3>
+                @if (issue.description) {
+                  <app-markdown-viewer [content]="issue.description" [showToc]="true"></app-markdown-viewer>
+                } @else {
+                  暂无描述
+                }
+                @if (issue.resolutionSummary) {
+                  <app-issue-detail-note [label]="'已解决说明'" [content]="issue.resolutionSummary" />
+                }
+                @if (store.reopenReason()) {
+                  <app-issue-detail-note [label]="'重开原因'" [content]="store.reopenReason()!" />
+                }
+                @if (issue.closeReason) {
+                  <app-issue-detail-note [label]="'关闭原因'" [content]="issue.closeReason" />
+                }
+              </section>
+
               <app-issue-comment-editor
                 [comments]="store.comments()"
                 [members]="store.members()"

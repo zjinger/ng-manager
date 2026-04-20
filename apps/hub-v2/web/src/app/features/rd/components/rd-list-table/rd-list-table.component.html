@@ -1,0 +1,91 @@
+<app-data-table>
+  <div table-head class="rd-table__head">
+    <div>序号</div>
+    <div>编号</div>
+    <div>研发项</div>
+    <div>阶段</div>
+    <div>创建人</div>
+    <div>执行人</div>
+    <div>进度</div>
+    <div>更新时间</div>
+  </div>
+  <div table-body class="rd-table__body">
+    @for (item of items(); track item.id; let i = $index) {
+      <div
+        class="rd-row"
+        [class.is-active]="selectedItemId() === item.id"
+        (click)="selectItem.emit(item)"
+      >
+        <div class="rd-cell rd-cell__seq">{{ sequence(i) }}</div>
+        <div class="rd-cell rd-row__id">{{ item.rdNo }}</div>
+        <div class="rd-cell">
+          <div class="rd-title-wrap">
+            <div class="rd-title-main">
+              <div class="rd-title-main-header">
+                <div class="rd-name">{{ item.title }}</div>
+                <div class="rd-title-badges">
+                  <app-status-badge [status]="item.status" [label]="statusLabel(item.status)" />
+                  <app-priority-badge [priority]="item.priority" />
+                </div>
+              </div>
+              <div class="rd-meta">{{ previewSummary(item) || '暂无详细描述' }}</div>
+            </div>
+            @if (previewImageUrl(item); as imageUrl) {
+              <div
+                class="rd-thumb-wrap"
+                (mouseenter)="showHoverPreview($event, item)"
+                (mousemove)="moveHoverPreview($event, item)"
+                (mouseleave)="hideHoverPreview()"
+              >
+                <img
+                  class="rd-thumb"
+                  [src]="imageUrl"
+                  [alt]="previewImageAlt(item)"
+                  (error)="markPreviewImageError(item.id)"
+                />
+              </div>
+            }
+          </div>
+        </div>
+        <div class="rd-cell">
+          <span class="rd-stage-text" [nz-tooltip]="stagePathTooltip(item)">
+            @for (segment of stageSegments(item); track $index; let last = $last) {
+              <span class="rd-stage-node" [class.is-current]="segment.isCurrent">
+                {{ segment.name }}
+              </span>
+              @if (!last) {
+                <span class="rd-stage-sep"> / </span>
+              }
+            }
+          </span>
+        </div>
+        <div class="rd-cell">
+          <span class="rd-member-text" [nz-tooltip]="item.creatorName || '-'">{{
+            item.creatorName || '-'
+          }}</span>
+        </div>
+        <div class="rd-cell">
+          @if (memberNamesText(item); as memberNames) {
+            <span class="rd-member-text" [nz-tooltip]="memberNames">{{ memberNames }}</span>
+          } @else {
+            <span class="no-member">未指派</span>
+          }
+        </div>
+        <div class="rd-cell rd-cell__progress">
+          <nz-progress
+            [nzPercent]="item.progress"
+            [nzShowInfo]="true"
+            [nzStrokeWidth]="6"
+            [nzSize]="'small'"
+          ></nz-progress>
+        </div>
+        <div class="rd-cell rd-cell__muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+      </div>
+    }
+  </div>
+</app-data-table>
+@if (hoveredPreview(); as preview) {
+  <div class="rd-image-hover-preview" [style.left.px]="preview.left" [style.top.px]="preview.top">
+    <img class="rd-image-hover-preview__image" [src]="preview.src" [alt]="preview.alt" />
+  </div>
+}

@@ -46,7 +46,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         display: flex;
         flex-wrap: wrap;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         gap: 16px;
         padding: 12px 16px;
         border-bottom: 1px solid var(--border-color);

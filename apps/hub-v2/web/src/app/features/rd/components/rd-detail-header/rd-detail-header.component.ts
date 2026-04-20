@@ -4,93 +4,101 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 import { RD_STATUS_LABELS } from '@shared/constants';
+import { PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
 import type { RdItemEntity, RdStageEntity } from '../../models/rd.model';
 
 type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
 
 @Component({
-  selector: 'app-rd-flow-card',
+  selector: 'app-rd-detail-header',
   standalone: true,
-  imports: [NzButtonModule, NzPopconfirmModule, NzTooltipModule],
+  imports: [NzButtonModule, NzPopconfirmModule, NzTooltipModule, PriorityBadgeComponent, StatusBadgeComponent],
   template: `
     @if (item(); as current) {
-      <section class="flow-card">
-        <div class="flow-card__top">
-          <div class="flow-card__header">
-            <div class="flow-card__meta">
-              <span>当前阶段：{{ currentStageName() }}</span>
-              <span class="flow-card__status">状态：{{ currentStatusName() }}</span>
+      <section class="detail-header">
+        <div class="detail-header__top">
+          <div class="detail-header__identity">
+            <div class="detail-header__meta">
+              <span>{{ current.rdNo }}</span>
+              <div class="detail-header__badges">
+                <app-status-badge [status]="current.status" [label]="currentStatusName()" />
+                <app-priority-badge [priority]="current.priority" />
+              </div>
             </div>
-            <div class="flow-card__actions">
-              @if (canAdvance()) {
-                <button
-                  nz-button
-                  nzType="primary"
-                  class="flow-card__action-btn"
-                  [disabled]="busy()"
-                  nz-tooltip
-                  nzTooltipTitle="推进到后续阶段，并可重新指定下一阶段执行人"
-                  (click)="actionClick.emit('advance')"
-                >
-                  进入下一阶段
-                </button>
-              }
-              @if (canAccept()) {
+            <h1>{{ current.title }}</h1>
+            <div class="detail-header__summary">
+              当前阶段：{{ currentStageName() }} · 创建人：{{ current.creatorName || '-' }} · 验证人：{{ current.verifierName || current.creatorName || '-' }}
+            </div>
+          </div>
+
+          <div class="detail-header__actions">
+            @if (canAdvance()) {
+              <button
+                nz-button
+                nzType="primary"
+                class="detail-header__action-btn"
+                [disabled]="busy()"
+                nz-tooltip
+                nzTooltipTitle="推进到后续阶段，并可重新指定下一阶段执行人"
+                (click)="actionClick.emit('advance')"
+              >
+                进入下一阶段
+              </button>
+            }
+            @if (canAccept()) {
+              <button
+                nz-button
+                nzType="default"
+                class="detail-header__action-btn"
+                [disabled]="busy()"
+                nz-popconfirm
+                [nzPopconfirmTitle]="'确认该研发项' + currentStageName() + '阶段已完成吗？'"
+                nzPopconfirmPlacement="topRight"
+                nz-tooltip
+                nzTooltipTitle="当前阶段已完成，可进入下一阶段或结项"
+                (nzOnConfirm)="actionClick.emit('accept')"
+              >
+                标记已完成
+              </button>
+            }
+            @if (canEditBasic() && current.status !== 'closed') {
+              <button nz-button nzType="default" class="detail-header__action-btn" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
+            }
+            @if (canClose()) {
+              @if (current.status === 'closed') {
                 <button
                   nz-button
                   nzType="default"
-                  class="flow-card__action-btn"
+                  class="detail-header__action-btn"
                   [disabled]="busy()"
                   nz-popconfirm
-                  [nzPopconfirmTitle]="'确认该研发项' + currentStageName() + '阶段已完成吗？'"
+                  [nzPopconfirmTitle]="'确认恢复该研发项吗？'"
                   nzPopconfirmPlacement="topRight"
-                  nz-tooltip
-                  nzTooltipTitle="当前阶段已完成，可进入下一阶段或结项"
-                  (nzOnConfirm)="actionClick.emit('accept')"
+                  (nzOnConfirm)="actionClick.emit('reopen')"
                 >
-                  标记已完成
+                  恢复
+                </button>
+              } @else {
+                <button
+                  nz-button
+                  nzType="default"
+                  class="detail-header__action-btn"
+                  [disabled]="busy()"
+                  nz-tooltip
+                  nzTooltipTitle="终止研发项，无法继续推进，关闭后可恢复"
+                  (click)="actionClick.emit('close')"
+                >
+                  关闭
                 </button>
               }
-              @if (canEditBasic() && current.status !== 'closed') {
-                <button nz-button nzType="default" class="flow-card__action-btn" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
-              }
-              @if (canClose()) {
-                @if (current.status === 'closed') {
-                  <button
-                    nz-button
-                    nzType="default"
-                    class="flow-card__action-btn"
-                    [disabled]="busy()"
-                    nz-popconfirm
-                    [nzPopconfirmTitle]="'确认恢复该研发项吗？'"
-                    nzPopconfirmPlacement="topRight"
-                    (nzOnConfirm)="actionClick.emit('reopen')"
-                  >
-                    恢复
-                  </button>
-                } @else {
-                  <button
-                    nz-button
-                    nzType="default"
-                    class="flow-card__action-btn"
-                    [disabled]="busy()"
-                    nz-tooltip
-                    nzTooltipTitle="终止研发项，无法继续推进，关闭后可恢复"
-                    (click)="actionClick.emit('close')"
-                  >
-                    关闭
-                  </button>
-                }
-              }
-            </div>
+            }
           </div>
+        </div>
+
+        <div class="detail-header__bottom">
           <div class="state-flow">
             @for (step of statusFlow(); track step.id; let last = $last) {
-              <span
-                class="state-flow__step"
-                [class.is-done]="step.state === 'done'"
-                [class.is-active]="step.state === 'active'"
-              >
+              <span class="state-flow__step" [class.is-done]="step.state === 'done'" [class.is-active]="step.state === 'active'">
                 {{ step.label }}
               </span>
               @if (!last) {
@@ -104,54 +112,78 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
   `,
   styles: [
     `
-      .flow-card {
+      .detail-header {
         display: grid;
-        gap: 0;
+        gap: 18px;
+        padding: 26px 28px;
         border: 1px solid var(--border-color);
-        border-radius: 12px;
-        overflow: hidden;
+        border-radius: 24px;
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 32%),
           var(--bg-container);
-        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
       }
-      .flow-card__top {
-        padding: 14px 16px;
+      .detail-header__top {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
       }
-      .flow-card__header {
+      .detail-header__bottom {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        padding-top: 18px;
+        border-top: 1px solid var(--border-color-soft);
+      }
+      .detail-header__identity {
+        min-width: 0;
+      }
+      .detail-header__meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .detail-header__meta >span{
+        color: var(--primary-700);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .detail-header__summary {
+        margin-top: 10px;
+        color: var(--text-secondary);
+        font-size: 13px;
+      }
+      h1 {
+        margin: 10px 0 0;
+        font-size: 30px;
+        line-height: 1.2;
+        color: var(--text-primary);
+      }
+      .detail-header__badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .detail-header__actions {
         display: flex;
         align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 10px;
-      }
-      .flow-card__meta {
-        display: flex;
-        align-items: center;
+        gap: 10px;
         flex-wrap: wrap;
-        gap: 8px;
-        font-size: 12px;
-        color: var(--text-muted);
+        justify-content: flex-start;
       }
-      .flow-card__status {
-        color: var(--text-secondary);
-        font-weight: 600;
-      }
-      .flow-card__actions {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .flow-card__action-btn {
-        min-width: 78px;
+      .detail-header__action-btn {
+        min-width: 84px;
+        border-radius: 999px;
+        height: 40px;
       }
       .state-flow {
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        gap: 6px;
+        gap: 8px;
         flex-wrap: nowrap;
         width: 100%;
         min-width: 0;
@@ -165,9 +197,9 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
-        min-width: 64px;
-        height: 30px;
-        padding: 0 10px;
+        min-width: 72px;
+        height: 32px;
+        padding: 0 12px;
         border-radius: 999px;
         background: var(--bg-subtle);
         border: 1px solid transparent;
@@ -197,7 +229,8 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
       .state-flow__arrow {
         flex: 0 0 auto;
         color: var(--gray-300);
-        font-size: 13px;
+        font-size: 12px;
+        transition: color 160ms ease;
       }
       .state-flow__arrow.is-done {
         color: rgba(99, 102, 241, 0.5);
@@ -209,7 +242,7 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
         background: rgba(148, 163, 184, 0.35);
         border-radius: 999px;
       }
-      :host-context(html[data-theme='dark']) .flow-card {
+      :host-context(html[data-theme='dark']) .detail-header {
         border-color: rgba(148, 163, 184, 0.14);
       }
       :host-context(html[data-theme='dark']) .state-flow__step.is-done {
@@ -223,12 +256,14 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
       :host-context(html[data-theme='dark']) .state-flow__arrow.is-done {
         color: rgba(165, 180, 252, 0.55);
       }
-      @media (max-width: 720px) {
-        .flow-card__header {
+      @media (max-width: 960px) {
+        .detail-header__top,
+        .detail-header__bottom {
           flex-direction: column;
           align-items: flex-start;
         }
-        .flow-card__actions {
+        .detail-header__actions,
+        .state-flow {
           justify-content: flex-start;
         }
       }
@@ -236,7 +271,7 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RdFlowCardComponent {
+export class RdDetailHeaderComponent {
   readonly item = input<RdItemEntity | null>(null);
   readonly stages = input<RdStageEntity[]>([]);
   readonly busy = input(false);
@@ -253,17 +288,17 @@ export class RdFlowCardComponent {
     const isClosedFlow = item?.status === 'closed';
     const steps: Array<{ id: FlowStepId; label: string }> = isClosedFlow
       ? [
-          { id: 'todo', label: '待开始' },
-          { id: 'doing', label: '进行中' },
-          { id: 'verify', label: '待确认' },
-          { id: 'closed', label: '已关闭' },
-        ]
+        { id: 'todo', label: '待开始' },
+        { id: 'doing', label: '进行中' },
+        { id: 'verify', label: '待确认' },
+        { id: 'closed', label: '已关闭' },
+      ]
       : [
-          { id: 'todo', label: '待开始' },
-          { id: 'doing', label: '进行中' },
-          { id: 'verify', label: '待确认' },
-          { id: 'done', label: '已完成' },
-        ];
+        { id: 'todo', label: '待开始' },
+        { id: 'doing', label: '进行中' },
+        { id: 'verify', label: '待确认' },
+        { id: 'done', label: '已完成' },
+      ];
     if (!item) {
       return steps.map((step) => ({ ...step, state: 'pending' as const }));
     }
@@ -304,10 +339,7 @@ export class RdFlowCardComponent {
     return RD_STATUS_LABELS[status] ?? status;
   });
 
-  private getActiveStatusId(
-    status: RdItemEntity['status'],
-    progress: number
-  ): FlowStepId {
+  private getActiveStatusId(status: RdItemEntity['status'], progress: number): FlowStepId {
     if (status === 'closed') {
       return 'closed';
     }
@@ -323,11 +355,7 @@ export class RdFlowCardComponent {
     return 'todo';
   }
 
-  private isReachedStatus(
-    target: FlowStepId,
-    status: RdItemEntity['status'],
-    progress: number
-  ): boolean {
+  private isReachedStatus(target: FlowStepId, status: RdItemEntity['status'], progress: number): boolean {
     if (target === 'todo') {
       return true;
     }
@@ -346,3 +374,4 @@ export class RdFlowCardComponent {
     return false;
   }
 }
+

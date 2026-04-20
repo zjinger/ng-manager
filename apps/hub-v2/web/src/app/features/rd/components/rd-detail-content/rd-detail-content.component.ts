@@ -26,6 +26,19 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
   template: `
     @if (item(); as current) {
       <div class="detail-stack">
+        @if (showAction()) {
+          <app-rd-flow-card
+            [item]="current"
+            [stages]="stages()"
+            [busy]="busy()"
+            [canEditBasic]="canEditBasic()"
+            [canAdvance]="canAdvance()"
+            [canAccept]="canAccept()"
+            [canClose]="canClose()"
+            (actionClick)="actionClick.emit($event)"
+            (editClick)="editRequest.emit()"
+          />
+        }
         @if (showSummary()) {
           <app-panel-card title="研发项描述">
           <div class="summary-card">
@@ -47,21 +60,6 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
           </div>
           </app-panel-card>
         }
-
-        @if (showAction()) {
-          <app-rd-flow-card
-            [item]="current"
-            [stages]="stages()"
-            [busy]="busy()"
-            [canEditBasic]="canEditBasic()"
-            [canAdvance]="canAdvance()"
-            [canAccept]="canAccept()"
-            [canClose]="canClose()"
-            (actionClick)="actionClick.emit($event)"
-            (editClick)="editRequest.emit()"
-          />
-        }
-
         @if (showProps()) {
           <app-rd-props-panel
             [item]="current"
@@ -70,6 +68,7 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
             [stageHistory]="stageHistory()"
           />
         }
+        
         @if (showActivity()) {
           <app-rd-activity-timeline [item]="current" [logs]="logs()" />
         }

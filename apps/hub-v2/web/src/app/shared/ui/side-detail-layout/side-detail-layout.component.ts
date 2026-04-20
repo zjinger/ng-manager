@@ -20,7 +20,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         display: grid;
         grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.85fr);
         gap: 20px;
-        align-items: start;
+        // align-items: start;
       }
 
       .detail-layout__main,
