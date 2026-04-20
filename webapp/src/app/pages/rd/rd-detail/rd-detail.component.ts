@@ -22,10 +22,11 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
-import { RdFlowAreaComponent } from './rd-action-area/rd-action-area.component';
+import { RdFlowAreaComponent } from './rd-action-area/rd-flow-area.component';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { RdProgressAreaComponent } from './rd-progress-area/rd-progress-area.component';
 import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.component';
+import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.component';
 
 @Component({
   selector: 'app-rd-detail',
@@ -43,6 +44,7 @@ import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.com
     RdFlowAreaComponent,
     DetailItemCardComponent,
     MarkdownViewerComponent,
+    RdBaseInfoComponent,
     RdProgressAreaComponent,
     NzSpinModule,
     RdStageHistoryComponent,
@@ -52,7 +54,7 @@ import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.com
       [nzVisible]="open()"
       [nzClosable]="true"
       [nzMaskClosable]="true"
-      [nzWidth]="740"
+      [nzWidth]="900"
       [nzWrapClassName]="'rd-detail-drawer'"
       [nzMask]="false"
       [nzTitle]="drawerTitleTpl"
@@ -74,83 +76,54 @@ import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.com
           <nz-spin nzSize="large" nzTip="正在加载研发项...." class="loading"></nz-spin>
         } @else if (rdItem(); as rdItem) {
           <div class="detail-wrap">
-            <app-rd-flow-area
-              [item]="rdItem"
-              (actionClick)="this.actionClick.emit($event)"
-              (deleteClick)="this.deleteClick.emit()"
-              [members]="members()"
-              [stages]="stages()"
-              [busy]="busy()"
-            ></app-rd-flow-area>
+            <div class="left-column">
+              <app-rd-flow-area
+                [item]="rdItem"
+                (actionClick)="this.actionClick.emit($event)"
+                (deleteClick)="this.deleteClick.emit()"
+                [members]="members()"
+                [stages]="stages()"
+                [busy]="busy()"
+              ></app-rd-flow-area>
 
-            <app-rd-progress-area
-              [item]="rdItem"
-              [progressList]="progressList()"
-              [members]="members()"
-              [currentUserId]="currentUserId()"
-              (updateProgressClick)="updateProgressClick.emit($event)"
-            ></app-rd-progress-area>
+              <app-rd-progress-area
+                [item]="rdItem"
+                [progressList]="progressList()"
+                [members]="members()"
+                [currentUserId]="currentUserId()"
+                (updateProgressClick)="updateProgressClick.emit($event)"
+              ></app-rd-progress-area>
 
-            <app-detail-item-card title="研发项描述">
-              <nz-descriptions nzBordered nzSize="small">
-                <nz-descriptions-item nzTitle="研发项" [nzSpan]="3">
-                  {{ titleText() }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="研发项描述" [nzSpan]="3">
-                  <app-markdown-viewer
-                    [content]="mdContent()"
-                    [showToc]="false"
-                  ></app-markdown-viewer>
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="执行人">
-                  {{ rdItem.assigneeName }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="验收人">
-                  {{ rdItem.creatorName }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="进度"> {{ rdItem.progress }}% </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="状态">
-                  {{ getStatusLabel(rdItem.status) }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="优先级">
-                  {{ getPriorityLabel(rdItem.priority) }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="阶段">
-                  {{ getStagesName(rdItem.stageId) }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="计划开始">
-                  {{ (rdItem.planStartAt | date: 'yyyy-MM-dd') ?? '_' }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="计划结束">
-                  {{ (rdItem.planEndAt | date: 'yyyy-MM-dd') ?? '_' }}
-                </nz-descriptions-item>
-                <nz-descriptions-item nzTitle="创建时间">
-                  {{ (rdItem.createdAt | date: 'yyyy-MM-dd HH:mm') ?? '_' }}
-                </nz-descriptions-item>
-              </nz-descriptions>
-            </app-detail-item-card>
-
-            <app-detail-item-card title="研发动态" maxHeight="600px">
-              <nz-timeline>
-                @for (log of logs(); track log.id) {
-                  <nz-timeline-item>
-                    <div class="rd-log-item">
-                      <div class="meta">
-                        <span class="operator">{{ log.operatorName || '系统' }}</span>
-                        <span class="content">{{ log.content || log.actionType }}</span>
-                        <span class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</span>
+              <app-detail-item-card title="研发动态" maxHeight="600px">
+                <nz-timeline>
+                  @for (log of logs(); track log.id) {
+                    <nz-timeline-item>
+                      <div class="rd-log-item">
+                        <div class="meta">
+                          <span class="operator">{{ log.operatorName || '系统' }}</span>
+                          <span class="content">{{ log.content || log.actionType }}</span>
+                          <span class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</span>
+                        </div>
                       </div>
-                    </div>
-                  </nz-timeline-item>
-                }
-                @if (logs().length === 0) {
-                  <nz-timeline-item>
-                    <span class="empty">暂无动态</span>
-                  </nz-timeline-item>
-                }
-              </nz-timeline>
-            </app-detail-item-card>
-            <app-rd-stage-history [entries]="stageHistory()"></app-rd-stage-history>
+                    </nz-timeline-item>
+                  }
+                  @if (logs().length === 0) {
+                    <nz-timeline-item>
+                      <span class="empty">暂无动态</span>
+                    </nz-timeline-item>
+                  }
+                </nz-timeline>
+              </app-detail-item-card>
+              <app-rd-stage-history [entries]="stageHistory()"></app-rd-stage-history>
+            </div>
+
+            <!-- 
+            <nz-descriptions-item nzTitle="研发项描述" [nzSpan]="3">
+              <app-markdown-viewer [content]="mdContent()" [showToc]="false"></app-markdown-viewer>
+            </nz-descriptions-item> -->
+            <div class="right-column">
+              <app-rd-base-info [rdItem]="rdItem" [stages]="stages()"></app-rd-base-info>
+            </div>
           </div>
         }
       </ng-template>
@@ -191,10 +164,19 @@ import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.com
     }
     .detail-wrap {
       display: flex;
-      flex-direction: column;
+      align-items: start;
       gap: 1rem;
-      .detail-item {
-        margin-bottom: 20px;
+      .left-column {
+        width: 65%;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .right-column {
+        width: 35%;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
       }
       .edit-bar {
         width: 100%;
@@ -273,24 +255,8 @@ export class RdDetailComponent {
     return this.replaceImagePaths(rdItem.description || '', this.projectId(), rdItem.id);
   });
 
-  getPriorityLabel(priority: RdItemPriority) {
-    return PRIORITY_LABELS[priority];
-  }
-
-  getStatusLabel(status: RdItemStatus) {
-    return RD_STATUS_LABELS[status];
-  }
-
   closeDetaile() {
     this.close.emit();
-  }
-
-  getStagesName(stageId: string | null) {
-    if (!stageId) return '';
-    const stage = this.stages().find((stage) => {
-      return stage.id === stageId;
-    });
-    return stage?.name ?? '';
   }
 
   private replaceImagePaths(mdContent: string, projectId: string, rdId: string) {
