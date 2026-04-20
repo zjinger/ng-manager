@@ -1,36 +1,12 @@
 <app-page-header title="项目管理" [subtitle]="subtitle()" />
 
-<app-page-toolbar>
-  <button
-    toolbar-primary
-    nz-button
-    nzType="primary"
-    class="toolbar__create"
-    (click)="dialogOpen.set(true)"
-  >
-    <nz-icon nzType="folder-add" nzTheme="outline" />
-    新建项目
-  </button>
-
-  <app-filter-bar toolbar-filters class="toolbar__filters">
-    <nz-select class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)">
-      <nz-option nzLabel="全部状态" nzValue=""></nz-option>
-      <nz-option nzLabel="活跃" nzValue="active"></nz-option>
-      <nz-option nzLabel="归档" nzValue="inactive"></nz-option>
-    </nz-select>
-
-    <button nz-button class="toolbar__filter-btn" (click)="applyFilters()">筛选</button>
-  </app-filter-bar>
-
-  <app-search-box
-    toolbar-search
-    class="toolbar__search"
-    placeholder="搜索项目名称、编号或 Key"
-    [value]="keyword()"
-    (valueChange)="keyword.set($event)"
-    (submitted)="applyFilters()"
-  />
-</app-page-toolbar>
+<app-project-filter-bar
+  [viewMode]="viewMode()"
+  (submit)="applyFilters($event)"
+  (create)="dialogOpen.set(true)"
+  (viewModeChange)="viewMode.set($event)"
+  (searchSubmitted)="onSearch($event)"
+/>
 
 <app-list-state
   [loading]="store.loading()"
@@ -39,23 +15,43 @@
   emptyTitle="当前还没有项目"
   emptyDescription="先创建一批测试项目。"
 >
-  <app-project-list-table
-    [items]="store.items()"
-    [expandedProjectIds]="expandedProjectIds()"
-    [modulePreviewMap]="modulePreviewMap()"
-    [moduleLoadingIds]="previewLoadingIds()"
-    [memberPreviewMap]="memberPreviewMap()"
-    [memberLoadingIds]="memberPreviewLoadingIds()"
-    (manageMembers)="openMembersDialog($event)"
-    (manageModules)="openModuleDialog($event)"
-    (editModuleConfig)="openModuleDetailFromList($event.project, $event.moduleId, 'basic')"
-    (manageModuleMembers)="openModuleDetailFromList($event.project, $event.moduleId, 'members')"
-    (edit)="openEditDialog($event)"
-    (manageConfig)="openConfigDialog($event)"
-    (archive)="archiveProject($event)"
-    (restore)="restoreProject($event)"
-    (toggleExpand)="toggleProjectExpand($event)"
-  />
+  @if (viewMode() === 'card') {
+    <app-project-card-grid
+      [items]="store.items()"
+      [expandedProjectIds]="expandedProjectIds()"
+      [modulePreviewMap]="modulePreviewMap()"
+      [moduleLoadingIds]="previewLoadingIds()"
+      [memberPreviewMap]="memberPreviewMap()"
+      [memberLoadingIds]="memberPreviewLoadingIds()"
+      (manageMembers)="openMembersDialog($event)"
+      (manageModules)="openModuleDialog($event)"
+      (editModuleConfig)="openModuleDetailFromList($event.project, $event.moduleId, 'basic')"
+      (manageModuleMembers)="openModuleDetailFromList($event.project, $event.moduleId, 'members')"
+      (edit)="openEditDialog($event)"
+      (manageConfig)="openConfigDialog($event)"
+      (archive)="archiveProject($event)"
+      (restore)="restoreProject($event)"
+      (toggleExpand)="toggleProjectExpand($event)"
+    />
+  } @else {
+    <app-project-list-table
+      [items]="store.items()"
+      [expandedProjectIds]="expandedProjectIds()"
+      [modulePreviewMap]="modulePreviewMap()"
+      [moduleLoadingIds]="previewLoadingIds()"
+      [memberPreviewMap]="memberPreviewMap()"
+      [memberLoadingIds]="memberPreviewLoadingIds()"
+      (manageMembers)="openMembersDialog($event)"
+      (manageModules)="openModuleDialog($event)"
+      (editModuleConfig)="openModuleDetailFromList($event.project, $event.moduleId, 'basic')"
+      (manageModuleMembers)="openModuleDetailFromList($event.project, $event.moduleId, 'members')"
+      (edit)="openEditDialog($event)"
+      (manageConfig)="openConfigDialog($event)"
+      (archive)="archiveProject($event)"
+      (restore)="restoreProject($event)"
+      (toggleExpand)="toggleProjectExpand($event)"
+    />
+  }
 </app-list-state>
 
 <app-project-create-dialog
@@ -109,10 +105,10 @@
   [busy]="moduleBusy() || moduleLoading()"
   [project]="moduleProject()"
   [modules]="modules()"
-  [projectMembers]="members()"
   [canManageModules]="isProjectAdmin()"
   (cancel)="closeModuleDialog()"
   (createModule)="createModule($event)"
+  (updateModule)="updateModule($event)"
   (removeModule)="removeModule($event)"
   (openDetail)="openModuleDetailDialog($event.moduleId, $event.tab)"
 />
@@ -124,7 +120,6 @@
   [membersBusy]="moduleMembersBusy()"
   [module]="selectedModule()"
   [projectMembers]="members()"
-  [userCandidates]="users()"
   [moduleMembers]="moduleMembers()"
   [canManageModules]="isProjectAdmin()"
   (cancel)="closeModuleDetailDialog()"

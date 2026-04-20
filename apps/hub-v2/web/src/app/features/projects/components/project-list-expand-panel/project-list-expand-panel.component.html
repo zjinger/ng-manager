@@ -10,6 +10,11 @@
           <span class="project-type-badge">{{ detail }}</span>
         }
         <span class="project-type-badge">项目编号 {{ project().projectNo }}</span>
+        @if (modulesLoading()) {
+          <span class="project-type-badge">主项目模块 统计中</span>
+        } @else {
+          <span class="project-type-badge"> {{ mainModuleCount() }} 个模块</span>
+        }
       </div>
     </div>
     <div class="project-detail-section">
@@ -39,81 +44,16 @@
       }
     </div>
   </div>
-  @if (modulesLoading() || subsystemTree().length > 0) {
+  @if (modulesLoading() || modules().length > 0) {
     <div class="project-sub-list">
-      <div class="project-sub-header">
-        <span><nz-icon nzType="cluster" nzTheme="outline" /> 子项目</span>
-        @if (modulesLoading()) {
-          <span class="project-cell--muted">正在加载…</span>
-        }
-      </div>
-      @for (entry of subsystemTree(); track entry.kind + '-' + entry.id) {
-        @if (entry.kind === 'subsystem') {
-          <div class="project-sub-item project-sub-item--subsystem">
-            <div class="project-sub-left">
-              <button
-                nz-button
-                nzType="link"
-                class="subsystem-toggle-btn"
-                type="button"
-                [class.is-expanded]="isSubsystemExpanded(entry.id)"
-                (click)="toggleSubsystem(entry.id, $event)"
-              >
-                <nz-icon [nzType]="isSubsystemExpanded(entry.id) ? 'down' : 'right'" nzTheme="outline" />
-              </button>
-              <div class="project-sub-icon" [style.background]="'linear-gradient(135deg, #0ea5e9, #0284c7)'">
-                {{ subsystemInitial(entry.name) }}
-              </div>
-              <div class="project-sub-info">
-                <div class="project-sub-name">{{ entry.name }}</div>
-                <div class="project-sub-meta">
-                  {{ entry.description || '包含 ' + entry.moduleCount + ' 个模块' }}
-                  @if (entry.moduleCount > 0) {
-                    <span class="module-count-badge">{{ entry.moduleCount }} 个模块</span>
-                  }
-                </div>
-              </div>
-            </div>
-            <div class="project-sub-right">
-              @if (entry.moduleCount > 0) {
-                <div class="module-preview-chips">
-                  @for (modName of entry.moduleNames.slice(0, 3); track modName) {
-                    <span class="module-chip">{{ modName }}</span>
-                  }
-                  @if (entry.moduleNames.length > 3) {
-                    <span class="module-chip module-chip--more">+{{ entry.moduleNames.length - 3 }}</span>
-                  }
-                </div>
-              }
-              <div class="sub-actions">
-                <button nz-button nzType="link" (click)="editModuleConfig.emit(entry.id)">编辑配置</button>
-                <button nz-button nzType="link" (click)="manageModuleMembers.emit(entry.id)">成员管理</button>
-              </div>
-            </div>
-          </div>
-        } @else {
-          <div class="project-sub-item project-sub-item--module" [class.is-hidden]="!isSubsystemExpanded(entry.parentId)">
-            <div class="project-sub-left">
-              <div class="project-sub-icon project-sub-icon--module">
-                {{ subsystemInitial(entry.name) }}
-              </div>
-              <div class="project-sub-info">
-                <div class="project-sub-name project-sub-name--module">{{ entry.name }}</div>
-                @if (entry.description) {
-                  <div class="project-sub-meta">{{ entry.description }}</div>
-                }
-              </div>
-            </div>
-            <div class="project-sub-right">
-              <div class="sub-actions">
-                <button nz-button nzType="link" (click)="editModuleConfig.emit(entry.id)">编辑配置</button>
-                <button nz-button nzType="link" (click)="manageModuleMembers.emit(entry.id)">成员管理</button>
-              </div>
-            </div>
-          </div>
-        }
-      }
-      <div class="project-footer-actions">
+      <app-project-submodule-structure
+        [modules]="modules()"
+        [modulesLoading]="modulesLoading()"
+        mode="summary"
+        (editModuleConfig)="editModuleConfig.emit($event)"
+        (manageModuleMembers)="manageModuleMembers.emit($event)"
+      />
+      <!-- <div class="project-footer-actions">
         <button nz-button nzType="default" (click)="manageModules.emit(project())">
           <nz-icon nzType="cluster" nzTheme="outline" />
           子项目/模块
@@ -122,8 +62,7 @@
           <nz-icon nzType="team" nzTheme="outline" />
           成员管理
         </button>
-      </div>
+      </div> -->
     </div>
   }
 </div>
-

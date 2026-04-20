@@ -4,11 +4,12 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { PROJECT_TYPE_LABELS, type ProjectMemberEntity, type ProjectMetaItem, type ProjectSummary, type ProjectType } from '../../models/project.model';
+import { ProjectSubmoduleStructureComponent } from '../project-submodule-structure/project-submodule-structure.component';
 
 @Component({
   selector: 'app-project-list-expand-panel',
   standalone: true,
-  imports: [NzAvatarModule, NzButtonModule, NzIconModule],
+  imports: [NzAvatarModule, NzButtonModule, NzIconModule, ProjectSubmoduleStructureComponent],
   templateUrl: './project-list-expand-panel.component.html',
   styleUrls: ['./project-list-expand-panel.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -24,8 +25,6 @@ export class ProjectListExpandPanelComponent {
   readonly manageModules = output<ProjectSummary>();
   readonly editModuleConfig = output<string>();
   readonly manageModuleMembers = output<string>();
-
-  readonly expandedSubsystemIds = new Set<string>();
 
   projectTypeLabel(type: ProjectType): string {
     return PROJECT_TYPE_LABELS[type] ?? type;
@@ -63,71 +62,7 @@ export class ProjectListExpandPanelComponent {
     return 'member';
   }
 
-  subsystemInitial(name: string): string {
-    return (name || 'S').slice(0, 1).toUpperCase();
-  }
-
-  toggleSubsystem(subsystemId: string, event: Event): void {
-    event.stopPropagation();
-    if (this.expandedSubsystemIds.has(subsystemId)) {
-      this.expandedSubsystemIds.delete(subsystemId);
-    } else {
-      this.expandedSubsystemIds.add(subsystemId);
-    }
-  }
-
-  subsystemTree(): Array<
-    | {
-        kind: 'subsystem';
-        id: string;
-        name: string;
-        description: string | null;
-        moduleCount: number;
-        moduleNames: string[];
-      }
-    | {
-        kind: 'module';
-        id: string;
-        parentId: string;
-        name: string;
-        description: string | null;
-      }
-  > {
-    const items = this.modules();
-    const modulesByParent = new Map<string, ProjectMetaItem[]>();
-    for (const item of items) {
-      if (item.nodeType === 'module' && item.parentId) {
-        const list = modulesByParent.get(item.parentId) ?? [];
-        list.push(item);
-        modulesByParent.set(item.parentId, list);
-      }
-    }
-    const result: ReturnType<typeof this.subsystemTree> = [];
-    for (const sub of items.filter((item) => item.nodeType === 'subsystem')) {
-      const modules = modulesByParent.get(sub.id) ?? [];
-      result.push({
-        kind: 'subsystem',
-        id: sub.id,
-        name: sub.name,
-        description: sub.description ?? null,
-        moduleCount: modules.length,
-        moduleNames: modules.map((m) => m.name)
-      });
-      for (const mod of modules) {
-        result.push({
-          kind: 'module',
-          id: mod.id,
-          parentId: sub.id,
-          name: mod.name,
-          description: mod.description ?? null
-        });
-      }
-    }
-    return result;
-  }
-
-  isSubsystemExpanded(subsystemId: string): boolean {
-    return this.expandedSubsystemIds.has(subsystemId);
+  mainModuleCount(): number {
+    return this.modules().filter((item) => item.nodeType === 'module').length;
   }
 }
-

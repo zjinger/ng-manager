@@ -1,22 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { DialogShellComponent } from '@shared/ui';
 import type {
   AddProjectModuleMemberInput,
-  ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMetaItem,
   ProjectModuleMemberEntity,
   ProjectModulePriority,
-  ProjectModuleStatus,
   UpdateProjectMetaItemInput
 } from '../../models/project.model';
 
@@ -26,11 +25,12 @@ import type {
   imports: [
     FormsModule,
     NzButtonModule,
+    NzFormModule,
+    NzGridModule,
     NzIconModule,
     NzInputModule,
     NzSelectModule,
     NzTabsModule,
-    NzTagModule,
     NzPopconfirmModule,
     DialogShellComponent
   ],
@@ -45,7 +45,6 @@ export class ProjectModuleDetailDialogComponent {
   readonly membersBusy = input(false);
   readonly module = input<ProjectMetaItem | null>(null);
   readonly projectMembers = input<ProjectMemberEntity[]>([]);
-  readonly userCandidates = input<ProjectMemberCandidate[]>([]);
   readonly moduleMembers = input<ProjectModuleMemberEntity[]>([]);
   readonly canManageModules = input(false);
 
@@ -57,19 +56,18 @@ export class ProjectModuleDetailDialogComponent {
   readonly candidateUserId = signal<string | null>(null);
   readonly candidateRoleCode = signal<ProjectMemberEntity['roleCode']>('member');
   readonly tabIndex = signal(0);
+  readonly formName = signal('');
+  readonly formProjectNo = signal('');
+  readonly formDescription = signal('');
+  readonly formPriority = signal<ProjectModulePriority>('medium');
+  readonly formSort = signal(0);
+  readonly formEnabled = signal(true);
 
   readonly priorityOptions: Array<{ label: string; value: ProjectModulePriority }> = [
     { label: '紧急', value: 'critical' },
     { label: '高', value: 'high' },
     { label: '中', value: 'medium' },
     { label: '低', value: 'low' }
-  ];
-
-  readonly statusOptions: Array<{ label: string; value: ProjectModuleStatus }> = [
-    { label: '待开始', value: 'todo' },
-    { label: '进行中', value: 'in_progress' },
-    { label: '已发布', value: 'released' },
-    { label: '暂停', value: 'paused' }
   ];
 
   readonly roleOptions: Array<{ label: string; value: ProjectMemberEntity['roleCode'] }> = [
@@ -83,20 +81,29 @@ export class ProjectModuleDetailDialogComponent {
     { label: '运维', value: 'ops' }
   ];
 
+  readonly scopedModuleMembers = computed(() => this.moduleMembers().filter((item) => item.source === 'module'));
+
   readonly addableMembers = computed(() => {
-    const inheritedUserIds = new Set(this.projectMembers().map((item) => item.userId));
-    const existingUserIds = new Set(this.moduleMembers().map((item) => item.userId));
-    return this.userCandidates().filter(
-      (member) => !existingUserIds.has(member.id) && !inheritedUserIds.has(member.id)
-    );
+    const existingUserIds = new Set(this.scopedModuleMembers().map((item) => item.userId));
+    return this.projectMembers().filter((member) => !existingUserIds.has(member.userId));
   });
 
   constructor() {
     effect(() => {
-      if (!this.open()) {
+      const current = this.module();
+      if (!this.open() || !current) {
         return;
       }
-      this.tabIndex.set(this.initialTab() === 'members' ? 1 : 0);
+      const allowMembersTab = current.nodeType === 'subsystem';
+      this.tabIndex.set(this.initialTab() === 'members' && allowMembersTab ? 1 : 0);
+      this.formName.set(current.name);
+      this.formProjectNo.set(current.projectNo ?? '');
+      this.formDescription.set(current.description ?? '');
+      this.formPriority.set(current.priority ?? 'medium');
+      this.formSort.set(current.sort ?? 0);
+      this.formEnabled.set(current.enabled !== false);
+      this.candidateUserId.set(null);
+      this.candidateRoleCode.set('member');
     });
   }
 
@@ -105,25 +112,32 @@ export class ProjectModuleDetailDialogComponent {
     return hit?.label ?? '成员';
   }
 
-  submitSave(
-    name: string,
-    description: string,
-    ownerUserId: string | null,
-    iconCode: string,
-    priority: ProjectModulePriority,
-    status: ProjectModuleStatus
-  ): void {
+  canSubmitBasic(): boolean {
+    return !!this.formName().trim();
+  }
+
+  submitSave(): void {
     const current = this.module();
     if (!current) {
       return;
     }
     const patch: UpdateProjectMetaItemInput = {};
-    if (name.trim() !== current.name) patch.name = name.trim();
-    if ((description.trim() || null) !== current.description) patch.description = description.trim() || null;
-    if ((ownerUserId || null) !== (current.ownerUserId || null)) patch.ownerUserId = ownerUserId || null;
-    if ((iconCode.trim() || null) !== (current.iconCode || null)) patch.iconCode = iconCode.trim() || null;
-    if ((priority || 'medium') !== (current.priority || 'medium')) patch.priority = priority;
-    if ((status || 'todo') !== (current.status || 'todo')) patch.status = status;
+    const nextName = this.formName().trim();
+    const nextDescription = this.formDescription().trim() || null;
+    if (nextName !== current.name) patch.name = nextName;
+    if (nextDescription !== current.description) patch.description = nextDescription;
+
+    const nextPriority = this.formPriority() || 'medium';
+    const nextSort = Number.isFinite(this.formSort()) ? Math.max(0, Math.trunc(this.formSort())) : 0;
+    if (nextPriority !== (current.priority || 'medium')) patch.priority = nextPriority;
+    if (nextSort !== current.sort) patch.sort = nextSort;
+    if (this.formEnabled() !== current.enabled) patch.enabled = this.formEnabled();
+
+    if (current.nodeType === 'subsystem') {
+      const nextProjectNo = this.formProjectNo().trim() || null;
+      if (nextProjectNo !== (current.projectNo ?? null)) patch.projectNo = nextProjectNo;
+    }
+
     if (Object.keys(patch).length > 0) {
       this.save.emit(patch);
     }

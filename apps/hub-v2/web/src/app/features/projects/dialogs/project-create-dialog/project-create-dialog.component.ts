@@ -78,7 +78,7 @@ const DEFAULT_DRAFT: CreateProjectDraft = {
                   <input
                     nz-input
                     required="true"
-                    placeholder="例如 PROJ-2026-001"
+                    placeholder="例如 SL20260001，建议以 SL 开头加上日期流水"
                     [ngModel]="draft().projectNo"
                     maxlength="64"
                     name="projectNo"

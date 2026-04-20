@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCascaderModule } from 'ng-zorro-antd/cascader';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -45,6 +46,7 @@ const DEFAULT_DRAFT: Draft = {
     NzGridModule,
     NzUploadModule,
     NzButtonModule,
+    NzCascaderModule,
     NzIconModule,
     NzInputModule,
     NzSelectModule,
@@ -207,17 +209,20 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
               <nz-form-label nzFor="moduleCode">模块</nz-form-label>
               <nz-form-control>
-                <nz-select
-                nzAllowClear
-                nzPlaceHolder="未选择"
-                [ngModel]="draft().moduleCode"
-                name="moduleCode"
-                (ngModelChange)="updateField('moduleCode', $event)"
-              >
-                @for (item of modules(); track item.id) {
-                  <nz-option [nzLabel]="moduleLabel(item)" [nzValue]="item.code || item.name"></nz-option>
-                }
-              </nz-select>
+                <nz-cascader
+                  #moduleCascaderRef
+                  nzAllowClear
+                  nzPlaceHolder="未选择"
+                  [nzChangeOnSelect]="true"
+                  nzColumnClassName="issue-module-cascader-column"
+                  nzMenuClassName="issue-module-cascader-menu"
+                  [nzOptions]="moduleCascaderOptions()"
+                  [nzMenuStyle]="moduleMenuStyle()"
+                  [ngModel]="modulePath()"
+                  name="moduleCode"
+                  (nzVisibleChange)="onModuleCascaderVisibleChange($event)"
+                  (ngModelChange)="onModulePathChange($event)"
+                ></nz-cascader>
               </nz-form-control>
               </nz-form-item>
             </div>
@@ -400,6 +405,13 @@ const DEFAULT_DRAFT: Draft = {
       :host-context(html[data-theme='dark']) .upload-zone__icon {
         background: color-mix(in srgb, var(--primary-500) 18%, transparent);
       }
+      ::ng-deep .issue-module-cascader-menu .issue-module-cascader-column {
+        width: var(--issue-module-cascader-col-width, 260px);
+        min-width: var(--issue-module-cascader-col-width, 260px);
+      }
+      ::ng-deep .issue-module-cascader-menu.ant-cascader-menus {
+        width: auto;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -440,12 +452,23 @@ export class IssueCreateDialogComponent implements OnDestroy {
   readonly uploadMarkdownImage = async (file: File): Promise<string> => {
     return this.markdownImageUpload.uploadImage(file);
   };
+  readonly modulePath = signal<string[] | null>(null);
+  readonly moduleTriggerWidth = signal(0);
+  readonly moduleMenuStyle = computed(() =>
+    this.moduleTriggerWidth() > 0
+      ? { '--issue-module-cascader-col-width': `${this.moduleTriggerWidth()}px` }
+      : null
+  );
+  readonly moduleCascaderOptions = computed(() => this.buildModuleCascaderOptions());
+  @ViewChild('moduleCascaderRef', { read: ElementRef }) moduleCascaderRef?: ElementRef<HTMLElement>;
 
   constructor() {
     effect(() => {
       if (this.open()) {
         this.clearPreviewUrls();
         this.draft.set({ ...DEFAULT_DRAFT });
+        this.modulePath.set(null);
+        this.scheduleSyncModuleMenuWidth();
         this.aiStore.clear();
         const projectId = this.projectId();
         if (projectId) {
@@ -482,6 +505,14 @@ export class IssueCreateDialogComponent implements OnDestroy {
         'participantIds',
         participantIds.filter((id) => id !== assigneeId)
       );
+    });
+
+    effect(() => {
+      if (!this.open()) {
+        return;
+      }
+      this.setModulePath(this.findModulePathByCode(this.draft().moduleCode));
+      this.scheduleSyncModuleMenuWidth();
     });
   }
 
@@ -667,7 +698,141 @@ export class IssueCreateDialogComponent implements OnDestroy {
     return `${file.name}|${file.size}|${file.lastModified}`;
   }
 
-  moduleLabel(item: ProjectMetaItem): string {
-    return item.parentName ? `${item.parentName} / ${item.name}` : item.name;
+  private scheduleSyncModuleMenuWidth(): void {
+    this.syncModuleMenuWidthWithRetry(0);
+  }
+
+  private syncModuleMenuWidthWithRetry(attempt: number): void {
+    requestAnimationFrame(() => {
+      const width = this.measureModuleTriggerWidth();
+      if (width > 0) {
+        if (width !== this.moduleTriggerWidth()) {
+          this.moduleTriggerWidth.set(width);
+        }
+        return;
+      }
+      if (attempt < 5) {
+        this.syncModuleMenuWidthWithRetry(attempt + 1);
+      }
+    });
+  }
+
+  private measureModuleTriggerWidth(): number {
+    const host = this.moduleCascaderRef?.nativeElement;
+    if (!host) {
+      return 0;
+    }
+    const selector = host.querySelector('.ant-select-selector') as HTMLElement | null;
+    const measured = Math.round((selector ?? host).getBoundingClientRect().width) - 1;
+    return Math.max(0, measured);
+  }
+
+  onModulePathChange(value: unknown): void {
+    const path =
+      Array.isArray(value) && value.length > 0 ? value.map((item) => `${item}`.trim()).filter(Boolean) : null;
+    this.setModulePath(path);
+    const moduleCode = this.resolveModuleCodeByPath(path);
+    this.updateField('moduleCode', moduleCode);
+  }
+
+  onModuleCascaderVisibleChange(visible: boolean): void {
+    if (visible) {
+      this.scheduleSyncModuleMenuWidth();
+    }
+  }
+
+  private setModulePath(path: string[] | null): void {
+    const current = this.modulePath();
+    if (this.samePath(current, path)) {
+      return;
+    }
+    this.modulePath.set(path);
+  }
+
+  private samePath(a: string[] | null, b: string[] | null): boolean {
+    if (a === b) {
+      return true;
+    }
+    if (!a || !b || a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private buildModuleCascaderOptions(): Array<{ label: string; value: string; children?: Array<{ label: string; value: string; isLeaf: true }>; isLeaf?: true }> {
+    const items = this.modules();
+    const subsystemItems = items.filter((item) => item.nodeType === 'subsystem');
+    const subsystemIdSet = new Set(subsystemItems.map((item) => item.id));
+    const modulesByParent = new Map<string, ProjectMetaItem[]>();
+    const standaloneModules: ProjectMetaItem[] = [];
+
+    for (const item of items) {
+      if (item.nodeType !== 'module') {
+        continue;
+      }
+      if (item.parentId && subsystemIdSet.has(item.parentId)) {
+        const list = modulesByParent.get(item.parentId) ?? [];
+        list.push(item);
+        modulesByParent.set(item.parentId, list);
+        continue;
+      }
+      standaloneModules.push(item);
+    }
+
+    const options: Array<{ label: string; value: string; children?: Array<{ label: string; value: string; isLeaf: true }>; isLeaf?: true }> = [];
+    for (const sub of subsystemItems) {
+      const children = (modulesByParent.get(sub.id) ?? []).map((item) => ({
+        label: item.name,
+        value: item.id,
+        isLeaf: true as const
+      }));
+      options.push({
+        label: sub.name,
+        value: sub.id,
+        children: children.length > 0 ? children : undefined,
+        isLeaf: children.length > 0 ? undefined : true
+      });
+    }
+    for (const item of standaloneModules) {
+      options.push({
+        label: item.name,
+        value: item.id,
+        isLeaf: true
+      });
+    }
+    return options;
+  }
+
+  private findModulePathByCode(moduleCode: string | null | undefined): string[] | null {
+    const normalized = moduleCode?.trim();
+    if (!normalized) {
+      return null;
+    }
+    const target = this.modules().find((item) => this.moduleValue(item) === normalized);
+    if (!target) {
+      return null;
+    }
+    if (target.nodeType === 'module' && target.parentId && this.modules().some((item) => item.id === target.parentId && item.nodeType === 'subsystem')) {
+      return [target.parentId, target.id];
+    }
+    return [target.id];
+  }
+
+  private resolveModuleCodeByPath(path: string[] | null): string {
+    if (!path || path.length === 0) {
+      return '';
+    }
+    const targetId = path[path.length - 1];
+    const target = this.modules().find((item) => item.id === targetId);
+    return target ? this.moduleValue(target) : '';
+  }
+
+  private moduleValue(item: ProjectMetaItem): string {
+    return (item.code || item.name || '').trim();
   }
 }

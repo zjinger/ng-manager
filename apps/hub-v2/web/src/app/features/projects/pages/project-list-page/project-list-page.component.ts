@@ -8,9 +8,12 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
+import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
 import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
 import { RdApiService } from '../../../rd/services/rd-api.service';
+import { ProjectCardGridComponent } from '../../components/project-card-grid/project-card-grid.component';
+import { ProjectFilterBarComponent } from '../../components/project-filter-bar/project-filter-bar.component';
+import type { ProjectViewMode } from '../../components/project-filter-bar/project-filter-bar.component';
 import { ProjectListTableComponent } from '../../components/project-list-table/project-list-table.component';
 import { ProjectConfigDialogComponent } from '../../dialogs/project-config-dialog/project-config-dialog.component';
 import { ProjectCreateDialogComponent } from '../../dialogs/project-create-dialog/project-create-dialog.component';
@@ -49,17 +52,16 @@ import { ProjectListStore } from '../../store/project-list.store';
     NzIconModule,
     NzSelectModule,
     PageHeaderComponent,
-    PageToolbarComponent,
-    SearchBoxComponent,
-    FilterBarComponent,
     ListStateComponent,
+    ProjectCardGridComponent,
+    ProjectFilterBarComponent,
     ProjectListTableComponent,
     ProjectCreateDialogComponent,
     ProjectEditDialogComponent,
     ProjectModuleManageDialogComponent,
     ProjectModuleDetailDialogComponent,
     ProjectConfigDialogComponent,
-    ProjectMembersDialogComponent
+    ProjectMembersDialogComponent,
   ],
   providers: [ProjectListStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -156,14 +158,31 @@ export class ProjectListPageComponent {
   });
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个项目`);
 
+  // View mode: 'list' | 'card'
+  readonly viewMode = signal<ProjectViewMode>('list');
+
+  readonly viewToggleOptions = [
+    { value: 'list' as const, icon: 'unordered-list', ariaLabel: '列表视图' },
+    { value: 'card' as const, icon: 'appstore', ariaLabel: '卡片视图' },
+  ];
+
   constructor() {
     this.store.initialize();
   }
 
-  applyFilters(): void {
+  applyFilters(status: string): void {
+    this.status.set(status as ProjectStatus | '');
     this.store.updateQuery({
       keyword: this.keyword().trim(),
-      status: this.status()
+      status: status as ProjectStatus | '',
+    });
+  }
+
+  onSearch(keyword: string): void {
+    this.keyword.set(keyword);
+    this.store.updateQuery({
+      keyword: keyword.trim(),
+      status: this.status(),
     });
   }
 

@@ -1,0 +1,201 @@
+<div class="project-sub-list">
+  <div class="project-sub-header">
+    <span
+      ><nz-icon nzType="cluster" nzTheme="outline" />子项目<span class="item-count">{{
+        subsystems().length
+      }}</span></span
+    >
+    @if (shouldShowCreate()) {
+      <button
+        nz-button
+        nzType="primary"
+        [disabled]="busy() || !canManageModules()"
+        (click)="createModule.emit()"
+      >
+        <nz-icon nzType="plus" nzTheme="outline" />
+        添加子项目/模块
+      </button>
+    }
+  </div>
+
+  @if (modulesLoading()) {
+    <div class="project-cell--muted">正在加载…</div>
+  }
+
+  @if (!modulesLoading()) {
+    @for (sub of subsystems(); track sub.id) {
+      <div class="project-sub-item project-sub-item--subsystem">
+        <div class="project-sub-left">
+          @if (isDetailMode()) {
+            <button
+              nz-button
+              nzType="link"
+              class="subsystem-toggle-btn"
+              type="button"
+              [class.is-collapsed]="!isSubsystemExpanded(sub.id)"
+              (click)="toggleSubsystem(sub.id, $event)"
+            >
+              <nz-icon
+                [nzType]="isSubsystemExpanded(sub.id) ? 'down' : 'right'"
+                nzTheme="outline"
+              />
+            </button>
+          }
+          <div class="project-sub-icon">{{ subsystemInitial(sub.name) }}</div>
+          <div class="project-sub-info">
+            <div class="project-sub-name">
+              {{ sub.name }}
+              @if (sub.code) {
+                <span class="project-sub-key">{{ sub.code }}</span>
+              }
+            </div>
+            <div class="project-sub-meta">{{ sub.description || '子项目' }}</div>
+          </div>
+        </div>
+        <div class="project-sub-right">
+          <span class="module-count-badge">{{ sub.modules.length }} 个模块</span>
+          @if (sub.enabled) {
+            <span class="status-badge enabled">已启用</span>
+          } @else {
+            <span class="status-badge disabled">已停用</span>
+          }
+          @if (sub.projectNo) {
+            <span class="project-sub-key">{{ sub.projectNo }}</span>
+          }
+          @if (shouldShowActions()) {
+            <div class="sub-actions">
+              <button
+                nz-button
+                nzType="link"
+                title="编辑配置"
+                (click)="editModuleConfig.emit(sub.id)"
+              >
+                <nz-icon nzType="edit" nzTheme="outline" />
+              </button>
+              <button
+                nz-button
+                nzType="link"
+                title="成员管理"
+                (click)="manageModuleMembers.emit(sub.id)"
+              >
+                <nz-icon nzType="team" nzTheme="outline" />
+              </button>
+              @if (canManageModules()) {
+                <button
+                  nz-button
+                  nzType="link"
+                  [title]="sub.enabled ? '停用' : '启用'"
+                  nz-popconfirm
+                  [nzPopconfirmTitle]="sub.enabled ? '确认停用该子项目？' : '确认启用该子项目？'"
+                  (nzOnConfirm)="toggleModuleEnabled.emit({ id: sub.id, enabled: !sub.enabled })"
+                >
+                  <nz-icon [nzType]="sub.enabled ? 'pause-circle' : 'play-circle'" nzTheme="outline" />
+                </button>
+                <button
+                  nz-button
+                  nzType="link"
+                  title="删除"
+                  nzDanger
+                  nz-popconfirm
+                  nzPopconfirmTitle="确认删除该子项目？"
+                  (nzOnConfirm)="removeModule.emit(sub.id)"
+                >
+                  <nz-icon nzType="delete" nzTheme="outline" />
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      @if (isDetailMode() && isSubsystemExpanded(sub.id)) {
+        @for (mod of sub.modules; track mod.id) {
+          <div class="project-sub-item project-sub-item--module">
+            <div class="project-sub-left">
+              <div class="project-sub-icon project-sub-icon--module">
+                {{ subsystemInitial(mod.name) }}
+              </div>
+              <div class="project-sub-info">
+                <div class="project-sub-name project-sub-name--module">
+                  {{ mod.name }}
+                  @if (mod.code) {
+                    <span class="project-sub-key">{{ mod.code }}</span>
+                  }
+                </div>
+                <div class="project-sub-meta">{{ mod.description || '模块' }}</div>
+              </div>
+            </div>
+            <div class="project-sub-right">
+              @if (mod.enabled) {
+                <span class="status-badge enabled">已启用</span>
+              } @else {
+                <span class="status-badge disabled">已停用</span>
+              }
+              @if (mod.projectNo) {
+                <span class="project-sub-key">{{ mod.projectNo }}</span>
+              }
+              <div class="sub-actions">
+                <button
+                  nz-button
+                  nzType="link"
+                  title="编辑配置"
+                  (click)="editModuleConfig.emit(mod.id)"
+                >
+                  <nz-icon nzType="edit" nzTheme="outline" />
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    } @empty {
+      <div class="empty">暂无子项目</div>
+    }
+
+    @if (isDetailMode()) {
+      <div class="group-title">
+        <nz-icon nzType="appstore" nzTheme="outline" />
+        <span
+          >模块
+          <span class="item-count">{{ standaloneModules().length }}</span>
+        </span>
+      </div>
+      @for (mod of standaloneModules(); track mod.id) {
+        <div class="project-sub-item project-sub-item--standalone">
+          <div class="project-sub-left">
+            <div class="project-sub-icon project-sub-icon--module">
+              {{ subsystemInitial(mod.name) }}
+            </div>
+            <div class="project-sub-info">
+              <div class="project-sub-name project-sub-name--module">
+                {{ mod.name }}
+                @if (mod.code) {
+                  <span class="project-sub-key">{{ mod.code }}</span>
+                }
+              </div>
+              <div class="project-sub-meta">{{ mod.description || '模块' }}</div>
+            </div>
+          </div>
+          <div class="project-sub-right">
+            @if (mod.enabled) {
+              <span class="status-badge enabled">已启用</span>
+            } @else {
+              <span class="status-badge disabled">已停用</span>
+            }
+            <div class="sub-actions">
+              <button
+                nz-button
+                nzType="link"
+                title="编辑配置"
+                (click)="editModuleConfig.emit(mod.id)"
+              >
+                <nz-icon nzType="edit" nzTheme="outline" />
+              </button>
+            </div>
+          </div>
+        </div>
+      } @empty {
+        <div class="empty">暂无独立模块</div>
+      }
+    }
+  }
+</div>

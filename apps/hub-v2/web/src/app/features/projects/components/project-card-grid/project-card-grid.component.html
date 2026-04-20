@@ -1,0 +1,141 @@
+<div class="project-card-grid">
+  @for (item of items(); track item.id) {
+    <div class="project-card" [class.project-card--archived]="item.status === 'inactive'">
+      <!-- Card Header -->
+      <div class="card-header">
+        <div class="card-avatar-wrap" (click)="toggleExpand.emit(item)">
+          <div
+            class="card-avatar"
+            [class.card-avatar--no-img]="!showAvatar(item)"
+          >
+            @if (showAvatar(item)) {
+              <img [src]="item.avatarUrl!" [alt]="item.name" (error)="markAvatarError(item.id)" />
+            } @else {
+              <span class="card-avatar__initials">{{ avatarText(item.displayCode || item.name) }}</span>
+            }
+          </div>
+          <div class="card-expand-hint" [class.card-expand-hint--open]="isExpanded(item.id)">
+            <nz-icon nzType="down" nzTheme="outline" />
+          </div>
+        </div>
+
+        <div class="card-title-group">
+          <div class="card-name-row">
+            <span class="card-name" [title]="item.name">{{ item.name }}</span>
+            @if (item.status === 'inactive') {
+              <span class="card-archived-badge">已归档</span>
+            }
+          </div>
+          <div class="card-key-row">
+            <!-- <code class="card-key">{{ item.projectKey }}</code> -->
+            <button
+              nz-button
+              nzType="text"
+              nzSize="small"
+              class="card-copy-btn"
+              nz-tooltip="复制 Key"
+              (click)="copyProjectKey(item.projectKey, $event)"
+            >
+              <nz-icon nzType="copy" nzTheme="outline" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Meta -->
+      <div class="card-meta">
+        <div class="card-badges">
+          <span class="card-badge card-badge--type" [attr.data-type]="item.projectType">
+            <nz-icon [nzType]="projectTypeIcon(item.projectType)" nzTheme="outline" />
+            {{ projectTypeLabel(item.projectType) }}
+          </span>
+          <span class="card-badge card-badge--vis" [attr.data-vis]="item.visibility">
+            <nz-icon [nzType]="item.visibility === 'private' ? 'lock' : 'apartment'" nzTheme="outline" />
+            {{ item.visibility === 'private' ? '私有' : '内部' }}
+          </span>
+        </div>
+
+        @if (item.description) {
+          <p class="card-desc">{{ item.description }}</p>
+        }
+      </div>
+
+      <!-- Card Stats -->
+      <div class="card-stats">
+        <div class="card-stat">
+          <nz-icon nzType="team" nzTheme="outline" />
+          <span>{{ item.memberCount ?? 0 }} 人</span>
+        </div>
+        @if (hasModulePreview(item.id)) {
+          <div class="card-stat">
+            <nz-icon nzType="cluster" nzTheme="outline" />
+            <span>{{ modulePreviewCount(item.id) }} 个模块</span>
+          </div>
+        }
+        <div class="card-stat card-stat--time">
+          <nz-icon nzType="clock-circle" nzTheme="outline" />
+          <span>{{ item.updatedAt | date: 'MM/dd' }}</span>
+        </div>
+      </div>
+
+      <!-- Card Actions -->
+      <div class="card-actions">
+        <button nz-button nzType="text" class="card-action-btn card-action-btn--primary" (click)="edit.emit(item)">
+          <nz-icon nzType="edit" nzTheme="outline" />
+          编辑
+        </button>
+        <button nz-button nzType="text" class="card-action-btn" nz-tooltip="成员" (click)="manageMembers.emit(item); $event.stopPropagation()">
+          <nz-icon nzType="team" nzTheme="outline" />
+        </button>
+        <button nz-button nzType="text" class="card-action-btn" nz-tooltip="模块" (click)="manageModules.emit(item); $event.stopPropagation()">
+          <nz-icon nzType="cluster" nzTheme="outline" />
+        </button>
+        <button nz-button nzType="text" class="card-action-btn" nz-tooltip="配置" (click)="manageConfig.emit(item); $event.stopPropagation()">
+          <nz-icon nzType="setting" nzTheme="outline" />
+        </button>
+        @if (item.status === 'active') {
+          <button
+            nz-button
+            nzType="text"
+            class="card-action-btn card-action-btn--danger"
+            nz-popconfirm="归档该项目？"
+            nz-tooltip="归档"
+            (click)="$event.stopPropagation()"
+            (nzOnConfirm)="archive.emit(item)"
+          >
+            <nz-icon nzType="delete" nzTheme="outline" />
+          </button>
+        } @else {
+          <button
+            nz-button
+            nzType="text"
+            class="card-action-btn card-action-btn--restore"
+            nz-popconfirm="恢复该项目？"
+            nz-tooltip="恢复"
+            (click)="$event.stopPropagation()"
+            (nzOnConfirm)="restore.emit(item)"
+          >
+            <nz-icon nzType="reload" nzTheme="outline" />
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Expand Panel -->
+    @if (isExpanded(item.id)) {
+      <div class="card-expand-panel">
+        <app-project-list-expand-panel
+          [project]="item"
+          [members]="memberItems(item.id)"
+          [membersLoading]="isMemberLoading(item.id)"
+          [modules]="modulePreviewMap()[item.id] || []"
+          [modulesLoading]="isModuleLoading(item.id)"
+          (manageMembers)="manageMembers.emit($event)"
+          (manageModules)="manageModules.emit($event)"
+          (editModuleConfig)="editModuleConfig.emit({ project: item, moduleId: $event })"
+          (manageModuleMembers)="manageModuleMembers.emit({ project: item, moduleId: $event })"
+        />
+      </div>
+    }
+  }
+</div>
