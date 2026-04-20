@@ -7,6 +7,7 @@ import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { catchError, finalize, forkJoin, from, map, mergeMap, of, toArray } from 'rxjs';
 
+import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
 import { ProjectApiService } from '@features/projects/services/project-api.service';
@@ -40,6 +41,7 @@ import { IssueListStore } from '../../store/issue-list.store';
     <app-issue-filter-bar
       [query]="store.query()"
       [members]="members()"
+      [currentUserId]="currentUserId() || ''"
       [modules]="modules()"
       [versions]="versions()"
       [environments]="environments()"
@@ -228,6 +230,7 @@ import { IssueListStore } from '../../store/issue-list.store';
 })
 export class IssueListPageComponent {
   readonly store = inject(IssueListStore);
+  readonly authStore = inject(AuthStore);
   private readonly projectApi = inject(ProjectApiService);
   private readonly issueApi = inject(IssueApiService);
   private readonly message = inject(NzMessageService);
@@ -264,6 +267,7 @@ export class IssueListPageComponent {
 
     return `${projectName} ${projectStausText} · 共 ${total} 个问题`;
   });
+  readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly activeFilterTags = computed(() => {
     const query = this.store.query();
     const firstSeen = new Set<string>();

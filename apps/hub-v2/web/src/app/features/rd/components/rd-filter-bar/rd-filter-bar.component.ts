@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -75,7 +75,7 @@ export type RdViewMode = 'board' | 'list';
           }
         </nz-select>
         <nz-select
-          nzPlaceHolder="负责人，支持多选"
+          nzPlaceHolder="执行人，支持多选"
           style="width:230px"
           class="toolbar-select"
           [ngModel]="draft().assigneeIds"
@@ -84,7 +84,7 @@ export type RdViewMode = 'board' | 'list';
           [nzMaxTagCount]="2"
           [nzAllowClear]="true"
         >
-          @for (member of members(); track member.userId) {
+          @for (member of sortedMembers(); track member.userId) {
             <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
           }
         </nz-select>
@@ -130,6 +130,7 @@ export class RdFilterBarComponent {
   readonly query = input.required<RdListQuery>();
   readonly stages = input<RdStageEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly currentUserId = input<string>('');
   readonly viewMode = input<RdViewMode>('list');
   readonly canCreate = input(true);
   readonly submit = output<RdListQuery>();
@@ -143,6 +144,22 @@ export class RdFilterBarComponent {
     { value: 'list' as const, icon: 'unordered-list', ariaLabel: '列表视图' },
     { value: 'board' as const, icon: 'appstore', ariaLabel: '看板视图' },
   ];
+  readonly sortedMembers = computed(() => {
+    const members = this.members();
+    const currentUserId = this.currentUserId();
+    if (!currentUserId) {
+      return members;
+    }
+    return [...members].sort((a, b) => {
+      if (a.userId === currentUserId && b.userId !== currentUserId) {
+        return -1;
+      }
+      if (b.userId === currentUserId && a.userId !== currentUserId) {
+        return 1;
+      }
+      return 0;
+    });
+  });
   readonly draft = signal<RdListQuery>({
     page: 1,
     pageSize: 20,

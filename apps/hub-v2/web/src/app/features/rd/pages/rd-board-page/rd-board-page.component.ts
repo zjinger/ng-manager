@@ -55,6 +55,7 @@ import { map } from 'rxjs';
       [query]="store.query()"
       [stages]="store.stages()"
       [members]="members()"
+      [currentUserId]="currentUserId() || ''"
       [viewMode]="viewMode()"
       [canCreate]="projectContext.currentProjectIsActive()"
       (submit)="applyFilters($event)"

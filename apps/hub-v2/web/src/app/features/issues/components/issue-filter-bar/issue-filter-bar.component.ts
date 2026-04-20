@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -92,7 +92,7 @@ export type IssueListViewMode = 'list' | 'card';
           [nzAllowClear]="true"
            [nzMaxTagPlaceholder]="null"
         >
-          @for (member of members(); track member.userId) {
+          @for (member of sortedMembers(); track member.userId) {
             <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
           }
         </nz-select>
@@ -107,7 +107,7 @@ export type IssueListViewMode = 'list' | 'card';
           [nzAllowClear]="true"
         >
           <nz-option nzLabel="未指派" nzValue="__unassigned__"></nz-option>
-          @for (member of members(); track member.userId) {
+          @for (member of sortedMembers(); track member.userId) {
             <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
           }
         </nz-select>
@@ -258,6 +258,7 @@ export type IssueListViewMode = 'list' | 'card';
 export class IssueFilterBarComponent {
   readonly query = input.required<IssueListQuery>();
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly currentUserId = input<string>('');
   readonly modules = input<ProjectMetaItem[]>([]);
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
@@ -268,6 +269,22 @@ export class IssueFilterBarComponent {
   readonly create = output<void>();
   readonly viewModeChange = output<IssueListViewMode>();
   readonly advancedOpen = signal(false);
+  readonly sortedMembers = computed(() => {
+    const members = this.members();
+    const currentUserId = this.currentUserId();
+    if (!currentUserId) {
+      return members;
+    }
+    return [...members].sort((a, b) => {
+      if (a.userId === currentUserId && b.userId !== currentUserId) {
+        return -1;
+      }
+      if (b.userId === currentUserId && a.userId !== currentUserId) {
+        return 1;
+      }
+      return 0;
+    });
+  });
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
   readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
