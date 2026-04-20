@@ -90,7 +90,7 @@ export class IssuePermissionService {
     if (!this.matchActor(user, issue.reporterId)) {
       return false;
     }
-    return ['open', 'reopened', 'verified'].includes(issue.status);
+    return ['open', 'reopened', 'in_progress', 'verified'].includes(issue.status);
   }
 
   canDeleteAttachment(

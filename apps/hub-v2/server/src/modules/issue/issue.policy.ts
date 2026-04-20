@@ -99,10 +99,13 @@ export function requireIssueReopenAccess(issue: IssueEntity, ctx: RequestContext
 }
 
 export function requireIssueCloseAccess(issue: IssueEntity, ctx: RequestContext): void {
-  // 提报人可在未进入处理流程前关闭（open/reopened），或验证通过后关闭（verified）。
+  // 提报人可在 open/reopened/in_progress/verified 状态关闭。
   if (
     matchActor(ctx, issue.reporterId) &&
-    (issue.status === "open" || issue.status === "reopened" || issue.status === "verified")
+    (issue.status === "open" ||
+      issue.status === "reopened" ||
+      issue.status === "in_progress" ||
+      issue.status === "verified")
   ) {
     return;
   }
