@@ -263,9 +263,14 @@ export class IssueRepo {
                , COALESCE(pc.participant_names, '') AS participant_names
           FROM issues i
           LEFT JOIN (
-            SELECT issue_id, COUNT(*) AS participant_count, GROUP_CONCAT(user_name, '||') AS participant_names
-            FROM issue_participants
-            GROUP BY issue_id
+            SELECT
+              ip.issue_id,
+              COUNT(*) AS participant_count,
+              GROUP_CONCAT(ip.user_name, '||') AS participant_names
+            FROM issue_participants ip
+            INNER JOIN issues i2 ON i2.id = ip.issue_id
+            WHERE COALESCE(ip.user_id, '') <> COALESCE(i2.assignee_id, '')
+            GROUP BY ip.issue_id
           ) pc ON pc.issue_id = i.id
           ${whereClause}
           ORDER BY ${sortColumn} ${sortDirection}
@@ -292,6 +297,13 @@ export class IssueRepo {
     const params = entries.map(([, value]) => value);
     const result = this.db.prepare(`UPDATE issues SET ${assignments} WHERE id = ?`).run(...params, id);
     return result.changes > 0;
+  }
+
+  deleteParticipantsByUserId(issueId: string, userId: string): number {
+    const result = this.db
+      .prepare("DELETE FROM issue_participants WHERE issue_id = ? AND user_id = ?")
+      .run(issueId, userId);
+    return result.changes;
   }
 
   getNextIssueNo(projectId: string, type: IssueEntity["type"]): string {

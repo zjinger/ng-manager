@@ -148,7 +148,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       throw new AppError(ERROR_CODES.ISSUE_ACTION_FAILED, "issue assignee unchanged", 409);
     }
     const member = await this.projectAccess.requireProjectMember(current.projectId, nextAssigneeId, "assign issue");
-    return this.applyAction(
+    const entity = await this.applyAction(
       id,
       "assign",
       ctx,
@@ -159,6 +159,9 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       },
       `指派给 ${member.displayName}`
     );
+    // 转派后负责人不能继续保留为协作人，避免“负责人 + 协作人”重复显示。
+    this.repo.deleteParticipantsByUserId(id, member.userId);
+    return entity;
   }
 
   async claim(id: string, ctx: RequestContext): Promise<IssueEntity> {

@@ -33,6 +33,10 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
     requireIssueParticipantManageAccess(issue, ctx, await this.isProjectAdmin(issue.projectId, ctx));
     const member = await this.projectAccess.requireProjectMember(issue.projectId, input.userId.trim(), "add issue participant");
 
+    if (issue.assigneeId && issue.assigneeId === member.userId) {
+      throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_EXISTS, "assignee cannot be participant", 409);
+    }
+
     if (this.participantRepo.exists(issue.id, member.userId)) {
       throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_EXISTS, "participant already exists", 409);
     }
@@ -83,6 +87,9 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
 
     for (const userId of userIds) {
       const member = await this.projectAccess.requireProjectMember(issue.projectId, userId, "add issue participant");
+      if (issue.assigneeId && issue.assigneeId === member.userId) {
+        throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_EXISTS, "assignee cannot be participant", 409);
+      }
       if (this.participantRepo.exists(issue.id, member.userId)) {
         throw new AppError(ERROR_CODES.ISSUE_PARTICIPANT_EXISTS, "participant already exists", 409);
       }
