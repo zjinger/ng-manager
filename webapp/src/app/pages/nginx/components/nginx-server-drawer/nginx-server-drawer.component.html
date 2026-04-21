@@ -35,7 +35,7 @@
                 nzPlaceHolder="HTTP"
               >
                 <nz-option nzValue="http" nzLabel="HTTP"></nz-option>
-                <nz-option nzValue="https" nzLabel="HTTPS (SSL)"></nz-option>
+                <nz-option nzValue="https" nzLabel="HTTPS"></nz-option>
               </nz-select>
 
               <nz-select
@@ -124,9 +124,14 @@
                     nzType="link"
                     nzDanger
                     type="button"
-                    (click)="removeLocation($index)"
+                    nz-tooltip="删除"
+                    nz-popconfirm
+                    nzPopconfirmTitle="确定要删除这个 Location 规则吗？"
+                    nzPopconfirmOkText="删除"
+                    nzPopconfirmCancelText="取消"
+                    (nzOnConfirm)="removeLocation($index)"
                   >
-                    删除
+                    <nz-icon nzType="delete"></nz-icon>
                   </button>
                 </div>
 

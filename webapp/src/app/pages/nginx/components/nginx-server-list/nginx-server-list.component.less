@@ -22,7 +22,7 @@
 .server-grid-head,
 .server-grid-row {
     display: grid;
-    grid-template-columns: 72px minmax(160px, 1.1fr) minmax(130px, 0.8fr) minmax(150px, 1fr) minmax(220px, 1.2fr) minmax(180px, 1fr) 120px;
+    grid-template-columns: 72px minmax(160px, 1.1fr) minmax(130px, 0.8fr) minmax(150px, 1fr) minmax(220px, 1.2fr) minmax(220px, 1.2fr) minmax(180px, 1fr) 120px;
     align-items: center;
     column-gap: 8px;
     padding: 0 12px;
@@ -113,7 +113,7 @@
     display: block;
 }
 
-.access-link {
+.access-link,.proxy-link {
     font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
     font-size: var(--nginx-font-size-sm, 12px);
     color: var(--blue);
@@ -129,7 +129,7 @@
     }
 }
 
-.access-links {
+.access-links,.proxy-links {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -174,6 +174,7 @@
     .listen-col,
     .domain-col,
     .access-col,
+    .proxy-col,
     .root-col,
     .action-col {
         justify-self: start;

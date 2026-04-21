@@ -22,6 +22,8 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { NginxService } from '../../services/nginx.service';
 import type { NginxLocation, NginxServer, CreateNginxServerRequest } from '../../models/nginx.types';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 /**
  * Nginx Server 新增/编辑 Drawer
@@ -39,8 +41,10 @@ import type { NginxLocation, NginxServer, CreateNginxServerRequest } from '../..
     NzIconModule,
     NzInputModule,
     NzSelectModule,
+    NzTooltipModule,
+    NzPopconfirmModule,
   ],
-  templateUrl:'./nginx-server-drawer.component.html',
+  templateUrl: './nginx-server-drawer.component.html',
   styleUrls: ['./nginx-server-drawer.component.less'],
 })
 export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
@@ -58,7 +62,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   saving = signal(false);
 
   readonly commonListenOptions = ['80', '443', '8080', '8443'];
-  readonly commonDomainOptions = [ '127.0.0.1','localhost','example.com'];
+  readonly commonDomainOptions = ['127.0.0.1', 'localhost', 'example.com'];
   readonly commonIndexOptions = ['index.html'];
 
   listenValues: string[] = [];

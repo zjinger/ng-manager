@@ -22,6 +22,8 @@
       <div class="cell listen-col">监听端口</div>
       <div class="cell domain-col">域名</div>
       <div class="cell access-col">访问地址</div>
+      <!--转发地址-->
+      <div class="cell proxy-col">转发地址</div>
       <div class="cell root-col">根目录</div>
       <div class="cell action-col">操作</div>
     </div>
@@ -69,13 +71,22 @@
                 @if (getAccessUrls(server).length) {
                   <div class="access-links">
                     @for (url of getAccessUrls(server); track url) {
-                      <a
-                        class="access-link"
-                        [href]="url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <a class="access-link" [href]="url" target="_blank" rel="noopener noreferrer">
                         {{ url }}
+                      </a>
+                    }
+                  </div>
+                } @else {
+                  <span class="server-domain">—</span>
+                }
+              </div>
+              <!--转发地址-->
+              <div class="cell proxy-col">
+                @if (server.locations) {
+                  <div class="proxy-links">
+                    @for (proxy of server.locations; track proxy) {
+                      <a class="proxy-link" [href]="proxy.proxyPass" target="_blank" rel="noopener noreferrer">
+                        {{ proxy.proxyPass }}
                       </a>
                     }
                   </div>
