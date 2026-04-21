@@ -5,11 +5,12 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ISSUE_STATUS_LABELS } from '@shared/constants';
 import type { IssueEntity, IssueLogEntity } from '../../models/issue.model';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-issue-detail-drawer-header',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, NzPopconfirmModule],
+  imports: [NzButtonModule, NzIconModule, NzPopconfirmModule, NzTooltipModule],
   template: `
     <section class="detail-header">
       <div class="detail-header__top">
@@ -55,10 +56,10 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="addParticipants.emit()">添加协作人</button>
           }
           @if (canWaitForUpdate()) {
-            <button nz-button nzType="default" class="detail-header__action-btn" (click)="waitForUpdate.emit()">标记待提测</button>
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="waitForUpdate.emit()" nz-tooltip="代码已提交等待测试环境更新">标记待提测</button>
           }
           @if (canResolve()) {
-            <button nz-button nzType="primary" class="detail-header__action-btn" (click)="resolve.emit()">标记解决</button>
+            <button nz-button nzType="primary" class="detail-header__action-btn" (click)="resolve.emit()" nz-tooltip="问题已经解决，可以测试">标记解决</button>
           }
           @if (canVerify()) {
             <button nz-button nzType="primary" class="detail-header__action-btn"  nz-popconfirm nzPopconfirmTitle="确定验证通过吗？" nzPopconfirmOkText="确定" nzPopconfirmCancelText="取消" (nzOnConfirm)="verify.emit()">验证通过</button>
