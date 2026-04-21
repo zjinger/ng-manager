@@ -20,6 +20,9 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
           <div class="detail-header__identity">
             <div class="detail-header__meta">
               <span>{{ current.rdNo }}</span>
+              @if (projectName()) {
+                <span class="detail-header__project">{{ projectName() }}</span>
+              }
               <div class="detail-header__badges">
                 <app-status-badge [status]="current.status" [label]="currentStatusName()" />
                 <app-priority-badge [priority]="current.priority" />
@@ -151,6 +154,17 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
+      .detail-header__project {
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: normal;
+        text-transform: none;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color-soft);
+        background: var(--bg-subtle);
+      }
       .detail-header__summary {
         margin-top: 10px;
         color: var(--text-secondary);
@@ -273,6 +287,7 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
 })
 export class RdDetailHeaderComponent {
   readonly item = input<RdItemEntity | null>(null);
+  readonly projectName = input('');
   readonly stages = input<RdStageEntity[]>([]);
   readonly busy = input(false);
   readonly canEditBasic = input(false);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -7,7 +7,8 @@ import { NzModalService } from 'ng-zorro-antd/modal';
 import { map } from 'rxjs';
 
 import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
-import { MarkdownViewerComponent, SideDetailLayoutComponent } from '@shared/ui';
+import { ProjectContextStore } from '@core/state';
+import { ListStateComponent, MarkdownViewerComponent, SideDetailLayoutComponent } from '@shared/ui';
 import { IssueActivityTimelineComponent } from '../../components/issue-activity-timeline/issue-activity-timeline.component';
 import { IssueAttachmentsPanelComponent } from '../../components/issue-attachments-panel/issue-attachments-panel.component';
 import { IssueBranchesPanelComponent } from '../../components/issue-branches-panel/issue-branches-panel.component';
@@ -47,7 +48,8 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
     IssueEditDialogComponent,
     IssueStartOwnBranchDialogComponent,
     IssueTransitionDialogComponent,
-    MarkdownViewerComponent
+    MarkdownViewerComponent,
+    ListStateComponent
   ],
   providers: [IssueDetailStore],
   template: `
@@ -59,107 +61,113 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         </a>
       }
 
-      @if (store.loading()) {
-        <div class="state-card">正在加载测试单详情…</div>
-      } @else if (store.issue(); as issue) {
-        <section class="detail-stack">
-          <app-side-detail-layout [staticSide]="embedded()">
-            <div detail-main class="detail-main">
-              <app-issue-detail-header
-                [issue]="issue"
-                [logs]="store.logs()"
-                [canStart]="store.canStart()"
-                [startActionLabel]="store.startActionLabel()"
-                [canClaim]="store.canClaim()"
-                [canAssign]="store.canAssign()"
-                [assignActionLabel]="store.assignActionLabel()"
-                [canEdit]="store.canEdit()"
-                [canManageParticipants]="store.canManageParticipants()"
-                [canWaitForUpdate]="store.canWaitForUpdate()"
-                [canResolve]="store.canResolve()"
-                [canVerify]="store.canVerify()"
-                [canReopen]="store.canReopen()"
-                [canClose]="store.canClose()"
-                [branchSummaryText]="store.branchSummaryText()"
-                (start)="confirmStart()"
-                (waitForUpdate)="confirmWaitForUpdate()"
-                (claim)="confirmClaim()"
-                (assign)="assignIssue()"
-                (edit)="openEdit()"
-                (addParticipants)="openAddParticipants()"
-                (resolve)="resolveIssue()"
-                (verify)="store.verify()"
-                (reopen)="reopenIssue()"
-                (close)="confirmClose()"
-              />
+      <app-list-state
+        [loading]="store.loading()"
+        [empty]="!store.loading() && !store.issue()"
+        loadingText="正在加载测试单详情…"
+        emptyTitle="未找到对应测试单"
+        emptyDescription="该测试单可能已删除或你无访问权限。"
+      >
+        @if (store.issue();as issue) {
+          <section class="detail-stack">
+            <app-side-detail-layout [staticSide]="embedded()">
+              <div detail-main class="detail-main">
+                  
+                <app-issue-detail-header
+                  [issue]="issue"
+                  [projectName]="projectName(issue.projectId)"
+                  [logs]="store.logs()"
+                  [canStart]="store.canStart()"
+                  [startActionLabel]="store.startActionLabel()"
+                  [canClaim]="store.canClaim()"
+                  [canAssign]="store.canAssign()"
+                  [assignActionLabel]="store.assignActionLabel()"
+                  [canEdit]="store.canEdit()"
+                  [canManageParticipants]="store.canManageParticipants()"
+                  [canWaitForUpdate]="store.canWaitForUpdate()"
+                  [canResolve]="store.canResolve()"
+                  [canVerify]="store.canVerify()"
+                  [canReopen]="store.canReopen()"
+                  [canClose]="store.canClose()"
+                  [branchSummaryText]="store.branchSummaryText()"
+                  (start)="confirmStart()"
+                  (waitForUpdate)="confirmWaitForUpdate()"
+                  (claim)="confirmClaim()"
+                  (assign)="assignIssue()"
+                  (edit)="openEdit()"
+                  (addParticipants)="openAddParticipants()"
+                  (resolve)="resolveIssue()"
+                  (verify)="store.verify()"
+                  (reopen)="reopenIssue()"
+                  (close)="confirmClose()"
+                />
 
-              <section class="description-card">
-                <h3>{{ getIssueTitleByType(issue) }}</h3>
-                @if (issue.description) {
-                  <app-markdown-viewer [content]="issue.description" [showToc]="true"></app-markdown-viewer>
-                } @else {
-                  暂无描述
-                }
-                @if (issue.resolutionSummary) {
-                  <app-issue-detail-note [label]="'已解决说明'" [content]="issue.resolutionSummary" />
-                }
-                @if (store.reopenReason()) {
-                  <app-issue-detail-note [label]="'重开原因'" [content]="store.reopenReason()!" />
-                }
-                @if (issue.closeReason) {
-                  <app-issue-detail-note [label]="'关闭原因'" [content]="issue.closeReason" />
-                }
-              </section>
+                <section class="description-card">
+                  <h3>{{ getIssueTitleByType(issue) }}</h3>
+                  @if (issue.description) {
+                    <app-markdown-viewer [content]="issue.description" [showToc]="true"></app-markdown-viewer>
+                  } @else {
+                    暂无描述
+                  }
+                  @if (issue.resolutionSummary) {
+                    <app-issue-detail-note [label]="'已解决说明'" [content]="issue.resolutionSummary" />
+                  }
+                  @if (store.reopenReason()) {
+                    <app-issue-detail-note [label]="'重开原因'" [content]="store.reopenReason()!" />
+                  }
+                  @if (issue.closeReason) {
+                    <app-issue-detail-note [label]="'关闭原因'" [content]="issue.closeReason" />
+                  }
+                </section>
 
-              <app-issue-comment-editor
-                [comments]="store.comments()"
-                [members]="store.members()"
-                [busy]="store.busy()"
-                (submit)="store.postComment($event.content, $event.mentions)"
-              />
-              <app-issue-activity-timeline [logs]="store.logs()" />
-            </div>
+                <app-issue-comment-editor
+                  [comments]="store.comments()"
+                  [members]="store.members()"
+                  [busy]="store.busy()"
+                  (submit)="store.postComment($event.content, $event.mentions)"
+                />
+                <app-issue-activity-timeline [logs]="store.logs()" />
+              </div>
 
-            <div detail-side class="detail-side">
-              <app-issue-props-panel [issue]="issue" />
-              <app-issue-branches-panel
-                [branches]="store.branches()"
-                [currentActorIds]="store.currentActorIds()"
-                [summaryText]="store.branchSummaryText()"
-                [canCreate]="store.canCreateBranches()"
-                [canStartActions]="store.canStartBranchActions()"
-                [canStartOwn]="store.canStartOwnBranch()"
-                [busy]="store.busy()"
-                (create)="openCreateBranch()"
-                (startOwn)="openStartOwnBranch()"
-                (startBranch)="store.startBranch($event)"
-                (completeBranch)="store.completeBranch($event)"
-              />
-              <app-issue-collaborators-panel
-                [issue]="issue"
-                [participants]="store.participants()"
-                [members]="store.members()"
-                [availableMembers]="store.availableMembers()"
-                [canAssign]="store.canAssign()"
-                [canManageParticipants]="store.canManageParticipants()"
-                [busy]="store.busy()"
-                (assign)="store.assign($event)"
-                (removeParticipant)="store.removeParticipant($event)"
-              />
-              <app-issue-attachments-panel
-                [attachments]="store.attachments()"
-                [members]="store.members()"
-                [removableAttachmentIds]="store.removableAttachmentIds()"
-                [busy]="store.busy()"
-                (upload)="store.uploadAttachment($event)"
-                (remove)="store.removeAttachment($event)"
-              />
-            </div>
-          </app-side-detail-layout>
-        </section>
-      } @else {
-        <div class="state-card">未找到该测试单</div>
-      }
+              <div detail-side class="detail-side">
+                <app-issue-props-panel [issue]="issue" />
+                <app-issue-branches-panel
+                  [branches]="store.branches()"
+                  [currentActorIds]="store.currentActorIds()"
+                  [summaryText]="store.branchSummaryText()"
+                  [canCreate]="store.canCreateBranches()"
+                  [canStartActions]="store.canStartBranchActions()"
+                  [canStartOwn]="store.canStartOwnBranch()"
+                  [busy]="store.busy()"
+                  (create)="openCreateBranch()"
+                  (startOwn)="openStartOwnBranch()"
+                  (startBranch)="store.startBranch($event)"
+                  (completeBranch)="store.completeBranch($event)"
+                />
+                <app-issue-collaborators-panel
+                  [issue]="issue"
+                  [participants]="store.participants()"
+                  [members]="store.members()"
+                  [availableMembers]="store.availableMembers()"
+                  [canAssign]="store.canAssign()"
+                  [canManageParticipants]="store.canManageParticipants()"
+                  [busy]="store.busy()"
+                  (assign)="store.assign($event)"
+                  (removeParticipant)="store.removeParticipant($event)"
+                />
+                <app-issue-attachments-panel
+                  [attachments]="store.attachments()"
+                  [members]="store.members()"
+                  [removableAttachmentIds]="store.removableAttachmentIds()"
+                  [busy]="store.busy()"
+                  (upload)="store.uploadAttachment($event)"
+                  (remove)="store.removeAttachment($event)"
+                />
+              </div>
+            </app-side-detail-layout>
+          </section>
+        }
+      </app-list-state>
 
       <app-issue-assign-dialog
         [open]="assignOpen()"
@@ -323,8 +331,16 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
 })
 export class IssueDetailPageComponent {
   readonly store = inject(IssueDetailStore);
+  readonly projectContext = inject(ProjectContextStore);
   private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
+  readonly projectNameById = computed<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const project of this.projectContext.projects()) {
+      map[project.id] = project.name;
+    }
+    return map;
+  });
   private readonly routeIssueId = toSignal(this.route.paramMap.pipe(map((params) => params.get('issueId'))), {
     initialValue: this.route.snapshot.paramMap.get('issueId'),
   });
@@ -492,5 +508,9 @@ export class IssueDetailPageComponent {
   getIssueTitleByType(issue: IssueEntity): string {
     const item = ISSUE_TITLE_BY_TYPE.find((i) => i.type === issue.type);
     return item ? item.title : '问题描述';
+  }
+
+  projectName(projectId: string): string {
+    return this.projectNameById()[projectId] || '未知项目';
   }
 }

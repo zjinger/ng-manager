@@ -7,7 +7,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthStore } from '@core/auth';
-import { ListStateComponent, PageHeaderComponent, SideDetailLayoutComponent } from '@shared/ui';
+import { ProjectContextStore } from '@core/state';
+import { ListStateComponent, SideDetailLayoutComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { RdDetailContentComponent } from '../../components/rd-detail-content/rd-detail-content.component';
@@ -29,7 +30,7 @@ import { map } from 'rxjs';
   imports: [
     NzButtonModule,
     NzIconModule,
-    PageHeaderComponent,
+    // PageHeaderComponent,
     ListStateComponent,
     SideDetailLayoutComponent,
     RdDetailHeaderComponent,
@@ -43,28 +44,25 @@ import { map } from 'rxjs';
   ],
   template: `
     <div class="detail-page">
-      <app-page-header title="研发项详情" [subtitle]="subtitle()" />
-
+      <!-- <app-page-header title="研发项详情" [subtitle]="subtitle()" /> -->
       <a class="back-link" (click)="goBack()">
         <span nz-icon nzType="arrow-left" class="back-link__icon"></span>
         返回列表
       </a>
-
       <app-list-state
         [loading]="loading()"
         [empty]="!loading() && !item()"
         loadingText="正在加载研发项详情…"
         emptyTitle="未找到对应研发项"
         emptyDescription="该研发项可能已删除或你无访问权限。"
-      />
-
-      @if (!loading() && item()) {
+      >
         <section class="detail-stack">
           <app-side-detail-layout>
             <div detail-main class="detail-main">
               <app-rd-detail-header
                 [busy]="busy()"
                 [item]="item()"
+                [projectName]="projectName(item()!.projectId)"
                 [stages]="stages()"
                 [canEditBasic]="canEditBasic()"
                 [canAdvance]="canAdvance()"
@@ -138,7 +136,8 @@ import { map } from 'rxjs';
             </div>
           </app-side-detail-layout>
         </section>
-      }
+      </app-list-state>
+      
     </div>
 
     <app-rd-progress-update-dialog
@@ -232,6 +231,7 @@ export class RdDetailPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly rdApi = inject(RdApiService);
+  private readonly projectContext = inject(ProjectContextStore);
   private readonly projectApi = inject(ProjectApiService);
   private readonly authStore = inject(AuthStore);
   private readonly rdPermission = inject(RdPermissionService);
@@ -260,6 +260,13 @@ export class RdDetailPageComponent {
   readonly itemId = computed(() => this.routeItemId() ?? '');
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly subtitle = computed(() => this.item()?.rdNo || '通过 工作台 待办进入');
+  readonly projectNameById = computed<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const project of this.projectContext.projects()) {
+      map[project.id] = project.name;
+    }
+    return map;
+  });
 
   readonly canEditBasic = computed(() => this.rdPermission.canEditBasic(this.item(), this.currentUserId(), this.members()));
   readonly canClose = computed(() => {
@@ -392,6 +399,10 @@ export class RdDetailPageComponent {
     }
     this.runAction(() => this.rdApi.close(current.id, { reason }));
     this.closeOpen.set(false);
+  }
+
+  projectName(projectId: string): string {
+    return this.projectNameById()[projectId] || '未知项目';
   }
 
   confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string }): void {

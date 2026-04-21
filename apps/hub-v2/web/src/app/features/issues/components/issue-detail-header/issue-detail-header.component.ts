@@ -18,6 +18,9 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
         <div class="detail-header__identity">
           <div class="detail-header__meta">
             <span>{{ issue().issueNo }}</span>
+            @if (projectName()) {
+              <span class="detail-header__project">{{ projectName() }}</span>
+            }
             <div class="detail-header__badges">
               <app-status-badge [status]="issue().status" />
               <app-priority-badge [priority]="issue().priority" />
@@ -128,6 +131,17 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+      }
+      .detail-header__project {
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: normal;
+        text-transform: none;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color-soft);
+        background: var(--bg-subtle);
       }
       .detail-header__summary {
         margin-top: 10px;
@@ -260,6 +274,7 @@ export class IssueDetailHeaderComponent {
   ] as const;
 
   readonly issue = input.required<IssueEntity>();
+  readonly projectName = input('');
   readonly logs = input<IssueLogEntity[]>([]);
   readonly canStart = input(false);
   readonly startActionLabel = input('开始处理');
