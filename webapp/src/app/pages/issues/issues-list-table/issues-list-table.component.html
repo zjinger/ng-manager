@@ -14,7 +14,7 @@
         @for (item of issues(); track item.id) {
         <tr (click)="selectItem.emit(item)" [class.selected-row]="item.id === selectedItem()?.id"
             class="issue-item-row">
-            <td>{{ $index + 1 }}</td>
+            <td>{{ $index + 1 + query().pageSize * (query().page - 1) }}</td>
             <td class="title-td-container">
                 <div class="issue-item-text">
                     <div class="title-wrap">
@@ -57,7 +57,7 @@
                 {{ item.reporterName || '-' }}
             </td>
             <td>
-                {{ item.assigneeName }}<br />
+                {{ item.assigneeName || '未指派' }}<br />
                 @if ((item.participantNames?.length ?? 0) > 0) {
                 <span class="participant-inline" [nz-tooltip]="'协作人：' + participantNamesText(item)">
                     · {{ participantNamesText(item) }}

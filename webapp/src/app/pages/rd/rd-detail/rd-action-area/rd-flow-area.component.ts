@@ -175,7 +175,7 @@ export class RdFlowAreaComponent {
 
   readonly progressDraft = signal(0);
 
-  constructor() {
+  constructor() { 
     effect(() => {
       this.item()?.progress && this.progressDraft.set(this.item()?.progress);
     });
@@ -195,7 +195,7 @@ export class RdFlowAreaComponent {
     if (status === 'done') {
       return 2;
     }
-    if (status === 'closed') {
+    if (status === 'closed'  || status === 'accepted') {
       return 3; // 关闭状态显示在最后
     }
     if (status === 'reopened') {

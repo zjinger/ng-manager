@@ -1,5 +1,11 @@
 import { Component, effect, input, output } from '@angular/core';
-import { IssueEntity, IssuePriority, IssueStatus, IssueType } from '../models/issue.model';
+import {
+  IssueEntity,
+  IssueListQuery,
+  IssuePriority,
+  IssueStatus,
+  IssueType,
+} from '../models/issue.model';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { ISSUE_STATUS_COLORS, ISSUE_STATUS_LABELS } from '@app/shared/constants/status-options';
 import { RdItemStatus } from '@pages/rd/models/rd.model';
@@ -13,6 +19,7 @@ import { computed, signal } from '@angular/core';
 import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { set } from 'lodash';
+import { parseDescriptionImage } from '@app/utils/md-text';
 
 @Component({
   selector: 'app-issues-list-table',
@@ -32,8 +39,9 @@ export class IssuesListTableComponent {
   readonly issues = input.required<IssueEntity[]>();
   readonly selectedItem = input<IssueEntity | null>();
   readonly projectId = input<string | null>(null);
-  readonly loading = input(false);
   readonly selectItem = output<IssueEntity>();
+  readonly loading = input(false);
+  readonly query = input.required<IssueListQuery>();
 
   // hover 预览状态
   readonly hoveredPreview = signal<{
@@ -50,7 +58,10 @@ export class IssuesListTableComponent {
     const map = new Map<string, { summary: string; imageUrl: string | null; imageAlt: string }>();
 
     for (const item of this.issues()) {
-      map.set(item.id, this.parseDescriptionImage(item.description, this.projectId()!, item.id));
+      map.set(
+        item.id,
+        parseDescriptionImage(item.description, this.projectId()!, item.id, 'issues'),
+      );
     }
     console.log(map);
 
@@ -89,75 +100,7 @@ export class IssuesListTableComponent {
     if (names.length === 0) {
       return '';
     }
-    // if (names.length <= 2) {
-    //   return names.join('、');
-    // }
-    // return `${names.slice(0, 2).join('、')} +${names.length - 2}`;
     return names.join('、');
-  }
-
-  private parseDescriptionImage(description: string | null, projectId: string, issueId: string) {
-    const source = (description ?? '').trim();
-    if (!source) {
-      return { summary: '', imageUrl: null, imageAlt: '' };
-    }
-
-    let firstImageUrl: string | null = null;
-    let firstImageAlt = '';
-
-    const markdownImageMatch = /!\[([^\]]*)\]\(([^)]+)\)/.exec(source);
-    if (markdownImageMatch) {
-      firstImageAlt = markdownImageMatch[1]?.trim() ?? '';
-      firstImageUrl = this.normalizeImageUrl(markdownImageMatch[2] ?? '', projectId, issueId);
-    }
-
-    if (!firstImageUrl) {
-      const htmlImageMatch = /<img\b[^>]*\bsrc\s*=\s*['"]([^'"]+)['"][^>]*>/i.exec(source);
-      if (htmlImageMatch) {
-        firstImageUrl = htmlImageMatch[1]?.trim() ?? null;
-        const altMatch = /<img\b[^>]*\balt\s*=\s*['"]([^'"]*)['"][^>]*>/i.exec(
-          htmlImageMatch[0] ?? '',
-        );
-        firstImageAlt = altMatch?.[1]?.trim() ?? '';
-      }
-    }
-
-    const summary = source
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '【图片】')
-      .replace(/<img\b[^>]*>/gi, ' ')
-      .replace(/```[\s\S]*?```/g, ' ')
-      .replace(/`([^`]*)`/g, '$1')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-      .replace(/^#{1,6}\s+/gm, '')
-      .replace(/^\s*>\s?/gm, '')
-      .replace(/^\s*[-*+]\s+/gm, '')
-      .replace(/<\/?[^>]+>/g, ' ')
-      .replace(/[*_~]/g, '')
-      .replace(/\r?\n+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    return {
-      summary,
-      imageUrl: firstImageUrl || null,
-      imageAlt: firstImageAlt,
-    };
-  }
-
-  private normalizeImageUrl(raw: string, projectId: string, issueId: string): string | null {
-    const value = raw.trim();
-    if (!value) return null;
-
-    // 匹配 /api/admin/uploads/xxx/raw
-    const match = value.match(/\/api\/admin\/uploads\/([a-zA-Z0-9_-]+)\/raw/);
-
-    if (!match) {
-      return value; // 非内部资源，直接返回
-    }
-
-    const uploadId = match[1];
-
-    return `/api/client/hub-token/projects/${projectId}/issues/${issueId}/uploads/${uploadId}/raw`;
   }
 
   previewSummary(item: IssueEntity): string {

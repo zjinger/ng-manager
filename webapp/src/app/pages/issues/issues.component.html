@@ -9,7 +9,7 @@
         <!-- 列表 -->
         <div class="list-content">
             @if(viewType() === 'list') {
-            <app-issues-list-table [issues]="issues()" [selectedItem]="selectedIssue()" [projectId]="currentProjectId()"
+            <app-issues-list-table [issues]="issues()" [query]="query()" [selectedItem]="selectedIssue()" [projectId]="currentProjectId()"
                 [loading]="loading()" (selectItem)="selectIssue($event)"></app-issues-list-table>
             } @else {
 

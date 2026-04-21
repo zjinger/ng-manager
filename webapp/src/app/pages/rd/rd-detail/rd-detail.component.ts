@@ -44,7 +44,6 @@ import { RdDescriptionAreaComponent } from './rd-description-area/rd-description
     NzEmptyModule,
     FormsModule,
     RdFlowAreaComponent,
-    DetailItemCardComponent,
     RdDescriptionAreaComponent,
     RdLogsAreaComponent,
     RdBaseInfoComponent,
