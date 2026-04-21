@@ -36,6 +36,7 @@ describe("IssueRepo list keyword filter", () => {
           resolved_at TEXT,
           verified_at TEXT,
           closed_at TEXT,
+          last_urged_at TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
@@ -130,6 +131,7 @@ describe("IssueRepo list keyword filter", () => {
           resolved_at TEXT,
           verified_at TEXT,
           closed_at TEXT,
+          last_urged_at TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );

@@ -450,11 +450,11 @@ export class DashboardService implements DashboardQueryContract {
 
   private mergeTodos(issueTodos: DashboardTodoItem[], rdTodos: DashboardTodoItem[], limit?: number): DashboardTodoItem[] {
     if (limit === undefined) {
-      return [...issueTodos, ...rdTodos].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      return [...issueTodos, ...rdTodos].sort((a, b) => this.todoSortAt(b).localeCompare(this.todoSortAt(a)));
     }
 
     const merged = [...issueTodos, ...rdTodos]
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .sort((a, b) => this.todoSortAt(b).localeCompare(this.todoSortAt(a)))
       .slice(0, limit);
 
     const activeRdTodo = rdTodos.find((item) => item.status === "doing" || item.status === "blocked");
@@ -482,7 +482,11 @@ export class DashboardService implements DashboardQueryContract {
     }
 
     return next
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .sort((a, b) => this.todoSortAt(b).localeCompare(this.todoSortAt(a)))
       .slice(0, limit);
+  }
+
+  private todoSortAt(item: DashboardTodoItem): string {
+    return item.sortAt ?? item.updatedAt;
   }
 }

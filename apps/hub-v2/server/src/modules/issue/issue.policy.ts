@@ -82,6 +82,21 @@ export function requireIssueResolveAccess(issue: IssueEntity, ctx: RequestContex
   throw new AppError(ERROR_CODES.ISSUE_RESOLVE_FORBIDDEN, "issue resolve forbidden", 403);
 }
 
+export function requireIssueUrgeAccess(issue: IssueEntity, ctx: RequestContext): void {
+  if (
+    matchActor(ctx, issue.reporterId) &&
+    !!issue.assigneeId &&
+    (issue.status === "open" ||
+      issue.status === "reopened" ||
+      issue.status === "in_progress" ||
+      issue.status === "pending_update")
+  ) {
+    return;
+  }
+
+  throw new AppError(ERROR_CODES.ISSUE_URGE_FORBIDDEN, "issue urge forbidden", 403);
+}
+
 export function requireIssueVerifyAccess(issue: IssueEntity, ctx: RequestContext): void {
   if (matchActor(ctx, issue.verifierId) || matchActor(ctx, issue.reporterId)) {
     return;

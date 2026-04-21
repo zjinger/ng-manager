@@ -111,4 +111,8 @@ export class DashboardPageComponent {
       });
     });
   }
+
+  onIssueUrged(): void {
+    this.store.refreshByEntityTypes(['issue']);
+  }
 }

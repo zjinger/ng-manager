@@ -13,6 +13,7 @@ import {
   requireIssueEditAccess,
   requireIssueReopenAccess,
   requireIssueResolveAccess,
+  requireIssueUrgeAccess,
   requireIssueStartAccess,
   requireIssueVerifyAccess
 } from "./issue.policy";
@@ -43,6 +44,8 @@ type IssueMemberRef = {
 };
 
 export class IssueService implements IssueCommandContract, IssueQueryContract {
+  private static readonly URGE_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+
   constructor(
     private readonly repo: IssueRepo,
     private readonly projectAccess: ProjectAccessContract,
@@ -86,6 +89,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       resolvedAt: null,
       verifiedAt: null,
       closedAt: null,
+      lastUrgedAt: null,
       createdAt: now,
       updatedAt: now
     };
@@ -217,6 +221,37 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       {},
       "代码已提交，标记为待提测"
     );
+  }
+
+  async urge(id: string, ctx: RequestContext): Promise<IssueEntity> {
+    const current = await this.requireByIdWithAccess(id, ctx, "urge issue");
+    requireIssueUrgeAccess(current, ctx);
+    const lastUrgedAt = current.lastUrgedAt ? Date.parse(current.lastUrgedAt) : Number.NaN;
+    if (Number.isFinite(lastUrgedAt)) {
+      const elapsed = Date.now() - lastUrgedAt;
+      if (elapsed < IssueService.URGE_COOLDOWN_MS) {
+        const remainMs = IssueService.URGE_COOLDOWN_MS - elapsed;
+        const remainMinutes = Math.max(1, Math.ceil(remainMs / 60000));
+        throw new AppError(
+          ERROR_CODES.ISSUE_URGE_TOO_FREQUENT,
+          `置顶提醒过于频繁，请在 ${remainMinutes} 分钟后再试`,
+          429
+        );
+      }
+    }
+    const now = nowIso();
+    const updated = this.repo.update(id, {
+      last_urged_at: now
+    });
+
+    if (!updated) {
+      throw new AppError(ERROR_CODES.ISSUE_ACTION_FAILED, "failed to urge issue", 500);
+    }
+
+    const entity = this.requireById(id);
+    this.repo.createLog(this.createLog(id, "urge", current.status, entity.status, ctx, "发送置顶提醒"));
+    await this.emitIssueEvent("issue.updated", "urge", entity, ctx);
+    return entity;
   }
 
   async resolve(id: string, input: ResolveIssueInput, ctx: RequestContext): Promise<IssueEntity> {

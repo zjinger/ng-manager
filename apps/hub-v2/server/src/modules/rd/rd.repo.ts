@@ -806,6 +806,7 @@ INSERT INTO rd_items (
       title: row.title,
       status: row.status,
       updatedAt: row.updated_at,
+      sortAt: row.updated_at,
       projectId: row.project_id
     };
   }

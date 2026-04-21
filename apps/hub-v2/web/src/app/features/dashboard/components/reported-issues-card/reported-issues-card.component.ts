@@ -1,14 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { DashboardPanelComponent, StatusBadgeComponent } from '@shared/ui';
 import type { DashboardReportedIssueItem } from '../../models/dashboard.model';
+import { IssueApiService } from '@features/issues/services/issue-api.service';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-reported-issues-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatusBadgeComponent, DashboardPanelComponent],
+  imports: [CommonModule, RouterLink, StatusBadgeComponent, DashboardPanelComponent, NzPopconfirmModule,NzTooltipModule],
   template: `
     <app-dashboard-panel
       title="我提报未解决"
@@ -30,6 +35,23 @@ import type { DashboardReportedIssueItem } from '../../models/dashboard.model';
               <span>{{ projectLabel(item.projectId) }}</span>
               <span>{{ assigneeLabel(item.assigneeName) }}</span>
               <span>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
+              @if (canUrge(item)) {
+                <button
+                  type="button"
+                  class="issue__urge-btn"
+                  [disabled]="urgingState()[item.entityId] === true"
+                  nz-popconfirm
+                  nzPopconfirmTitle="确认置顶提醒该测试单吗？"
+                  nzPopconfirmOkText="确认"
+                  nzPopconfirmCancelText="取消"
+                  (nzOnConfirm)="urge(item.entityId)"
+                  nz-tooltip
+                  nzTooltipTitle="置顶提醒会将该测试单推送到相关人员的待办列表顶部，提醒尽快处理。"
+                  (click)="$event.preventDefault(); $event.stopPropagation()"
+                >
+                  置顶提醒
+                </button>
+              }
             </div>
           </div>
         </a>
@@ -84,13 +106,60 @@ import type { DashboardReportedIssueItem } from '../../models/dashboard.model';
         color: var(--text-disabled);
         font-size: 12px;
       }
+      .issue__urge-btn {
+        border: 1px solid var(--primary-500);
+        color: var(--primary-600);
+        background: transparent;
+        border-radius: 999px;
+        padding: 0 10px;
+        height: 24px;
+        line-height: 22px;
+        cursor: pointer;
+      }
+      .issue__urge-btn:hover:not(:disabled) {
+        background: rgba(59, 130, 246, 0.08);
+      }
+      .issue__urge-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReportedIssuesCardComponent {
+  private readonly issueApi = inject(IssueApiService);
+  private readonly message = inject(NzMessageService);
+
   readonly items = input.required<DashboardReportedIssueItem[]>();
   readonly projectNames = input<Record<string, string>>({});
+  readonly urged = output<void>();
+  readonly urgingState = signal<Record<string, boolean>>({});
+
+  canUrge(item: DashboardReportedIssueItem): boolean {
+    return !!item.assigneeName && ['open', 'in_progress', 'pending_update', 'reopened'].includes(item.status);
+  }
+
+  urge(issueId: string): void {
+    if (this.urgingState()[issueId]) {
+      return;
+    }
+    this.urgingState.update((current) => ({ ...current, [issueId]: true }));
+    this.issueApi
+      .urge(issueId)
+      .pipe(
+        finalize(() => {
+          this.urgingState.update((current) => ({ ...current, [issueId]: false }));
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.message.success('已发送置顶提醒');
+          this.urged.emit();
+        },
+        error: () => {},
+      });
+  }
 
   projectLabel(projectId: string): string {
     return this.projectNames()[projectId] || '未知项目';

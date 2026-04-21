@@ -37,6 +37,7 @@ type IssueRow = {
   resolved_at: string | null;
   verified_at: string | null;
   closed_at: string | null;
+  last_urged_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -44,7 +45,7 @@ type IssueRow = {
 type IssueLogRow = {
   id: string;
   issue_id: string;
-  action_type: "create" | "update" | "comment" | "assign" | "claim" | "start" | "wait_update" | "resolve" | "verify" | "reopen" | "close";
+  action_type: "create" | "update" | "comment" | "urge" | "assign" | "claim" | "start" | "wait_update" | "resolve" | "verify" | "reopen" | "close";
   from_status: "open" | "in_progress" | "pending_update" | "resolved" | "verified" | "closed" | "reopened" | null;
   to_status: "open" | "in_progress" | "pending_update" | "resolved" | "verified" | "closed" | "reopened" | null;
   operator_id: string | null;
@@ -75,6 +76,7 @@ type UpdateIssueRowInput = Partial<{
   resolved_at: string | null;
   verified_at: string | null;
   closed_at: string | null;
+  last_urged_at: string | null;
   updated_at: string;
 }>;
 
@@ -100,8 +102,8 @@ export class IssueRepo {
             id, project_id, issue_no, title, description, type, status, priority,
             reporter_id, reporter_name, assignee_id, assignee_name, verifier_id, verifier_name,
             module_code, version_code, environment_code, resolution_summary, close_reason, close_remark,
-            reopen_count, started_at, resolved_at, verified_at, closed_at, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            reopen_count, started_at, resolved_at, verified_at, closed_at, last_urged_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
@@ -130,6 +132,7 @@ export class IssueRepo {
         entity.resolvedAt,
         entity.verifiedAt,
         entity.closedAt,
+        entity.lastUrgedAt ?? null,
         entity.createdAt,
         entity.updatedAt
       );
@@ -435,12 +438,12 @@ export class IssueRepo {
     const assigned = this.db
       .prepare(
         `
-          SELECT id, issue_no as code, title, status, updated_at, project_id
+          SELECT id, issue_no as code, title, status, updated_at, last_urged_at, COALESCE(last_urged_at, updated_at) AS sort_at, project_id
           FROM issues
           WHERE assignee_id = ?
             AND status IN ('open', 'in_progress', 'pending_update', 'reopened')
             ${scope.clause}
-          ORDER BY updated_at DESC
+          ORDER BY sort_at DESC
           ${limitClause}
         `
       )
@@ -450,20 +453,22 @@ export class IssueRepo {
       title: string;
       status: string;
       updated_at: string;
+      last_urged_at: string | null;
+      sort_at: string;
       project_id: string;
     }>;
 
     const collaborating = this.db
       .prepare(
         `
-          SELECT DISTINCT i.id, i.issue_no as code, i.title, i.status, i.updated_at, i.project_id
+          SELECT DISTINCT i.id, i.issue_no as code, i.title, i.status, i.updated_at, i.last_urged_at, COALESCE(i.last_urged_at, i.updated_at) AS sort_at, i.project_id
           FROM issues i
           INNER JOIN issue_participants ip ON ip.issue_id = i.id
           WHERE ip.user_id = ?
             AND i.status IN ('open', 'in_progress', 'pending_update', 'reopened')
             AND COALESCE(i.assignee_id, '') <> ?
             ${scope.clause}
-          ORDER BY i.updated_at DESC
+          ORDER BY sort_at DESC
           ${limitClause}
         `
       )
@@ -473,18 +478,20 @@ export class IssueRepo {
       title: string;
       status: string;
       updated_at: string;
+      last_urged_at: string | null;
+      sort_at: string;
       project_id: string;
     }>;
 
     const verifying = this.db
       .prepare(
         `
-          SELECT id, issue_no as code, title, status, updated_at, project_id
+          SELECT id, issue_no as code, title, status, updated_at, last_urged_at, COALESCE(last_urged_at, updated_at) AS sort_at, project_id
           FROM issues
           WHERE COALESCE(verifier_id, reporter_id) = ?
             AND status = 'resolved'
             ${scope.clause}
-          ORDER BY updated_at DESC
+          ORDER BY sort_at DESC
           ${limitClause}
         `
       )
@@ -494,6 +501,8 @@ export class IssueRepo {
       title: string;
       status: string;
       updated_at: string;
+      last_urged_at: string | null;
+      sort_at: string;
       project_id: string;
     }>;
 
@@ -502,7 +511,7 @@ export class IssueRepo {
       ...collaborating.map((row) => this.mapDashboardTodo("issue_collaborating", row)),
       ...verifying.map((row) => this.mapDashboardTodo("issue_verify", row))
     ]
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .sort((a, b) => (b.sortAt ?? b.updatedAt).localeCompare(a.sortAt ?? a.updatedAt))
       .slice(0, withLimit ? limit : undefined);
   }
 
@@ -578,6 +587,7 @@ export class IssueRepo {
       resolvedAt: row.resolved_at,
       verifiedAt: row.verified_at,
       closedAt: row.closed_at,
+      lastUrgedAt: row.last_urged_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
@@ -611,7 +621,16 @@ export class IssueRepo {
 
   private mapDashboardTodo(
     kind: IssueDashboardTodo["kind"],
-    row: { id: string; code: string; title: string; status: string; updated_at: string; project_id: string }
+    row: {
+      id: string;
+      code: string;
+      title: string;
+      status: string;
+      updated_at: string;
+      last_urged_at: string | null;
+      sort_at: string;
+      project_id: string;
+    }
   ): IssueDashboardTodo {
     return {
       kind,
@@ -620,6 +639,7 @@ export class IssueRepo {
       title: row.title,
       status: row.status,
       updatedAt: row.updated_at,
+      sortAt: row.sort_at || row.last_urged_at || row.updated_at,
       projectId: row.project_id
     };
   }

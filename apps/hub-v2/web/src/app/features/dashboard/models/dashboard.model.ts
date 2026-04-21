@@ -15,6 +15,7 @@ export interface DashboardTodoItem {
   title: string;
   status: string;
   updatedAt: string;
+  sortAt?: string;
   projectId: string;
 }
 

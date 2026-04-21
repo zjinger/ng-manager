@@ -33,6 +33,7 @@ export interface IssueEntity {
   resolvedAt: string | null;
   verifiedAt: string | null;
   closedAt: string | null;
+  lastUrgedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +58,7 @@ export interface IssueCommentEntity {
   authorName: string;
   content: string;
   mentionsJson: string | null;
+  attachmentsJson: string | null;
   createdAt: string;
   updatedAt: string;
 }

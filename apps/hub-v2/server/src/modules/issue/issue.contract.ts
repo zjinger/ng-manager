@@ -21,6 +21,7 @@ export interface IssueCommandContract {
   claim(id: string, ctx: RequestContext): Promise<IssueEntity>;
   start(id: string, ctx: RequestContext): Promise<IssueEntity>;
   waitUpdate(id: string, ctx: RequestContext): Promise<IssueEntity>;
+  urge(id: string, ctx: RequestContext): Promise<IssueEntity>;
   resolve(id: string, input: ResolveIssueInput, ctx: RequestContext): Promise<IssueEntity>;
   verify(id: string, ctx: RequestContext): Promise<IssueEntity>;
   reopen(id: string, input: ReopenIssueInput, ctx: RequestContext): Promise<IssueEntity>;

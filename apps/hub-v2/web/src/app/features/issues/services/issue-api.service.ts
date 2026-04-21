@@ -63,11 +63,15 @@ export class IssueApiService {
     return this.api.get<{ items: IssueCommentEntity[] }>(`/issues/${issueId}/comments`);
   }
 
-  createComment(issueId: string, content: string, mentions: string[] = []) {
-    return this.api.post<IssueCommentEntity, { content: string; mentions?: string[] }>(`/issues/${issueId}/comments`, {
-      content,
-      mentions: mentions.length > 0 ? mentions : undefined,
-    });
+  createComment(issueId: string, content: string, mentions: string[] = [], attachmentIds: string[] = []) {
+    return this.api.post<IssueCommentEntity, { content: string; mentions?: string[]; attachmentIds?: string[] }>(
+      `/issues/${issueId}/comments`,
+      {
+        content,
+        mentions: mentions.length > 0 ? mentions : undefined,
+        attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
+      },
+    );
   }
 
   listParticipants(issueId: string) {
@@ -144,6 +148,10 @@ export class IssueApiService {
 
   waitUpdate(issueId: string) {
     return this.api.post<IssueEntity>(`/issues/${issueId}/wait-update`);
+  }
+
+  urge(issueId: string) {
+    return this.api.post<IssueEntity>(`/issues/${issueId}/urge`);
   }
 
   verify(issueId: string) {

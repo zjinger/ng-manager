@@ -104,6 +104,7 @@ export interface RdDashboardTodo {
   title: string;
   status: string;
   updatedAt: string;
+  sortAt?: string;
   projectId: string;
 }
 

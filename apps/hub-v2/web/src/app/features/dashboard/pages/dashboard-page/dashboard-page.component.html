@@ -10,7 +10,11 @@
 
   <div class="dashboard-grid">
     <app-my-todos-card [items]="data.todos" [total]="store.todosTotal()" [projectNames]="projectNames()" />
-    <app-reported-issues-card [items]="data.reportedIssues" [projectNames]="projectNames()" />
+    <app-reported-issues-card
+      [items]="data.reportedIssues"
+      [projectNames]="projectNames()"
+      (urged)="onIssueUrged()"
+    />
     <app-my-activities-card [items]="data.activities" [projectNames]="projectNames()" />
     <div class="dashboard-side">
       <app-latest-announcements-card

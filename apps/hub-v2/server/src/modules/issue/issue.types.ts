@@ -14,6 +14,7 @@ export type IssueAction =
   | "create"
   | "update"
   | "comment"
+  | "urge"
   | "assign"
   | "claim"
   | "start"
@@ -51,6 +52,7 @@ export interface IssueEntity {
   resolvedAt: string | null;
   verifiedAt: string | null;
   closedAt: string | null;
+  lastUrgedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -75,6 +77,7 @@ export interface IssueDashboardTodo {
   title: string;
   status: string;
   updatedAt: string;
+  sortAt?: string;
   projectId: string;
 }
 

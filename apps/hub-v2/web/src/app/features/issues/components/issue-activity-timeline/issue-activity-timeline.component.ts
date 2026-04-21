@@ -234,6 +234,7 @@ export class IssueActivityTimelineComponent {
     return (
       {
         create: 'plus-circle',
+        urge: 'bell',
         assign: 'user-add',
         claim: 'user-add',
         start: 'play-circle',
@@ -266,6 +267,7 @@ export class IssueActivityTimelineComponent {
     return (
       {
         create: '创建',
+        urge: '置顶提醒',
         assign: '指派',
         claim: '认领',
         start: '开始处理',
