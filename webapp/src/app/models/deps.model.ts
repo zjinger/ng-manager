@@ -16,5 +16,12 @@ export interface DepItem {
 export interface DepsResp {
     dependencies: Omit<DepItem, 'group'>[];
     devDependencies: Omit<DepItem, 'group'>[];
-    meta: { packageManager: string; registryOnline: boolean };
+    meta: { 
+        packageManager: string; 
+        registryOnline: boolean;
+        /** volta 配置的 Node 版本要求 */
+        voltaConfig?: string;
+        /** engines 配置的 Node 版本要求 */
+        enginesNode?: string;
+    };
 }
