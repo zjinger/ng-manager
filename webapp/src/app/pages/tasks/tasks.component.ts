@@ -42,10 +42,12 @@ import { NodeVersionComponent } from './node-version/node-version.component';
   ],
   template: `
   <app-page-layout [title]="'任务'" [isFullscreen]="true">
+  <ng-container ngProjectAs="actions">
+        <app-node-version />
+</ng-container>
     <nz-layout class="page">
       <app-task-list></app-task-list>
       <nz-content class="content">
-        <app-node-version />
         <app-task-header
           [name]="selectedTask()?.spec?.name"
           [description]="selectedTask()?.spec?.description"
