@@ -5,8 +5,9 @@ import { promisify } from 'node:util';
 import { AppError } from '../../common/errors';
 import type { SystemLogService } from '../logger';
 import { getEnginesByAngular } from './angular-node.version';
-import { NodeVersionInfo, NodeVersionService, ProjectNodeRequirement, VersionManager } from './node-version.service';
+import { NodeVersionInfo, NodeVersionService, ProjectNodeRequirement, ProjectType, VersionManager } from './node-version.service';
 import { findBestMatchingVersion, satisfiesVersion } from './node-version.utils';
+import { getEnginesByVue } from './vue-node.version';
 
 const execFileAsync = promisify(execFile);
 
@@ -272,19 +273,28 @@ export class NodeVersionServiceImpl implements NodeVersionService {
       const content = await fs.promises.readFile(packageJsonPath, 'utf-8');
       const pkg = JSON.parse(content);
 
-      /** 优先从 engines.node 获取 */
+      /** 1.优先从 engines.node 获取 */
       if (pkg.engines && pkg.engines.node) {
         return pkg.engines.node;
       }
 
-      // TODO：区分vue项目
-      /** 未配置 engines.node 时，尝试从 Angular 版本推荐 */
-      const angularVersion = this.detectAngularVersion(pkg);
-      if (angularVersion) {
-        const engines = getEnginesByAngular(angularVersion);
-        return engines.node;
+      /** 2.检测项目类型，根据类型推荐 Node 版本 */
+      const projectType = this.detectProjectType(pkg);
+      /** Angular 项目 */
+      if (projectType === ProjectType.Angular) {
+        const angularVersion = this.detectAngularVersion(pkg);
+        if (angularVersion) {
+          const engines = getEnginesByAngular(angularVersion);
+          return engines.node;
+        }
+      } else if (projectType === ProjectType.Vue) {
+        /** Vue 项目 */
+        const vueVersion = this.detectVueVersion(pkg);
+        if (vueVersion) {
+          const engines = getEnginesByVue(vueVersion);
+          return engines.node;
+        }
       }
-
       return null;
     } catch {
       return null;
@@ -309,6 +319,43 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     }
 
     return null;
+  }
+
+  /**
+   * 从 package.json 检测 Vue 版本
+   * @param pkg package.json 解析后的对象
+   * @returns Vue 主版本号（如 2、3 等）或 null
+   */
+  private detectVueVersion(pkg: any): number | null {
+    const deps = { ...(pkg.dependencies || {}) };
+
+    for (const [dep, version] of Object.entries(deps)) {
+      if ((dep === 'vue' || dep === '@vue/runtime-core') && typeof version === 'string') {
+        const match = version.match(/^[\^~]?(\d+)/);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 检测项目类型（Angular / Vue / Unknown）
+   * @param pkg package.json 解析后的对象
+   * @returns ProjectType
+   */
+  private detectProjectType(pkg: any): ProjectType {
+    if (this.detectAngularVersion(pkg)) {
+      return ProjectType.Angular;
+    }
+
+    if (this.detectVueVersion(pkg)) {
+      return ProjectType.Vue;
+    }
+
+    return ProjectType.Unknown;
   }
 
   /**

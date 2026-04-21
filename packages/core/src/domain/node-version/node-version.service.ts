@@ -5,6 +5,12 @@ export const enum VersionManager {
   None = 'none',
 }
 
+export const enum ProjectType {
+  Angular = 'angular',
+  Vue = 'vue',
+  Unknown = 'unknown',
+}
+
 export interface NodeVersionInfo {
   current: string | null;
   manager: VersionManager;
