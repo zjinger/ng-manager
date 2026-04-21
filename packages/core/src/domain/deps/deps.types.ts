@@ -16,5 +16,9 @@ export interface ProjectDepsResult {
     meta: {
         packageManager: "npm";
         registryOnline: boolean;
+        /** volta 配置的 Node 版本要求 */
+        voltaConfig?: string;
+        /** engines 配置的 Node 版本要求 */
+        enginesNode?: string;
     };
 }

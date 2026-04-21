@@ -6,7 +6,7 @@ import { finalize } from "rxjs/operators";
 import { ProjectContextStore } from "@app/core/stores";
 import { PageLayoutComponent } from "@app/shared";
 import { NgDevtoolComponent } from "@app/shared/devtools/ng-devtool.component";
-import { DepItem } from "@models/deps.model";
+import { DepItem, DepsResp } from "@models/deps.model";
 import { NzButtonModule } from "ng-zorro-antd/button";
 import { NzDividerModule } from "ng-zorro-antd/divider";
 import { NzGridModule } from "ng-zorro-antd/grid";
@@ -19,6 +19,7 @@ import { NzSpinModule } from "ng-zorro-antd/spin";
 import { NzTagModule } from "ng-zorro-antd/tag";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import { DepsApiService } from "./deps-api.service";
+import { ProjectNodeRequirement } from "@pages/tasks/node-version/node-version.service";
 @Component({
   selector: 'app-project-deps.component',
   imports: [
@@ -58,6 +59,44 @@ import { DepsApiService } from "./deps-api.service";
         </button> -->
       </ng-container>
       <div class="panel">
+        <!-- 版本说明信息 -->
+         @if(meta()){
+        <div class="version-info">
+          <div class="version-info-item">
+            <span nz-icon nzType="inbox"></span>
+            <span class="version-label">包管理器：</span>
+            <span class="version-value">{{ meta()?.packageManager || '-' }}</span>
+          </div>
+          <div class="version-info-item">
+            <span nz-icon [nzType]="meta()?.registryOnline ? 'cloud-server' : 'cloud'"></span>
+            <span class="version-label">仓库状态：</span>
+            <nz-tag [nzColor]="meta()?.registryOnline ? 'success' : 'error'">
+              {{ meta()?.registryOnline ? '在线' : '离线' }}
+            </nz-tag>
+          </div>
+          <!-- 优先显示meta里的明确版本配置 -->
+          @if(meta()?.voltaConfig || meta()?.enginesNode){
+          <div class="version-info-item">
+            <span nz-icon nzType="proj:node"></span>
+            <span class="version-label">Node 版本：</span>
+            <span class="version-value">
+              {{ meta()?.voltaConfig || meta()?.enginesNode }}
+            </span>
+          </div>
+          }
+          <!-- 没有明确配置时显示推荐版本 -->
+          @else if(nodeVersionInfo()?.requiredVersion){
+          <div class="version-info-item recommended-version">
+            <span nz-icon nzType="proj:node"></span>
+            <span class="version-label">推荐 Node 版本：</span>
+            <span class="version-value">
+              {{ nodeVersionInfo()?.requiredVersion }}
+            </span>
+            <span [nz-tooltip]="'根据项目框架版本自动推荐'" nz-icon nzType="question-circle" class="recommended-badge"></span>
+          </div>
+          }
+        </div>
+         }
         <!-- Runtime deps -->
         <ng-container
           *ngTemplateOutlet="contentTemplate; context: { $implicit: runtimeItems(), title: '运行依赖' }"
@@ -163,7 +202,8 @@ export class ProjectDepsComponent {
   keyword = signal("");
 
   items = signal<DepItem[]>([]);
-  meta = signal<{ packageManager: string; registryOnline: boolean } | null>(null);
+  meta = signal<DepsResp['meta'] | null>(null);
+  nodeVersionInfo = signal<ProjectNodeRequirement | null>(null);
 
   installing = signal<Record<string, boolean>>({});
   uninstalling = signal<Record<string, boolean>>({});
@@ -193,6 +233,7 @@ export class ProjectDepsComponent {
 
   refresh() {
     this.loading.set(true);
+    this.nodeVersionInfo.set(null);
     this.api
       .getDeps(this.projectId())
       .pipe(finalize(() => this.loading.set(false)))
@@ -200,9 +241,28 @@ export class ProjectDepsComponent {
         next: ({ items, meta }) => {
           this.items.set(items);
           this.meta.set(meta);
+          if (!meta?.voltaConfig && !meta?.enginesNode) {
+             // 没有明确配置时，调用接口获取推荐版本
+            this.loadNodeVersionInfo();
+          } 
         },
-        error: (e) => this.msg.error(e?.message || "加载依赖失败"),
+        error: (e) => this.msg.error(e?.message || '加载依赖失败'),
       });
+  }
+
+  /** 加载项目 Node 版本信息 */
+  private loadNodeVersionInfo() {
+    const project = this.projectContext.currentProject();
+    if (!project?.root) return;
+    
+    this.api.getProjectNodeInfo(project.root).subscribe({
+      next: (info) => {
+        this.nodeVersionInfo.set(info);
+      },
+      error: () => {
+        this.nodeVersionInfo.set(null);
+      }
+    });
   }
 
   openDetail(item: DepItem) {

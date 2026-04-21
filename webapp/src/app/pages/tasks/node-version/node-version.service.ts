@@ -10,10 +10,15 @@ export interface NodeVersionInfo {
 }
 
 export interface ProjectNodeRequirement {
+  /** 项目路径 */
   projectPath: string;
+  /** 项目要求的 Node 版本 */
   requiredVersion: string | null;
+  /** 项目 Volta 配置 */
   voltaConfig: string | null;
+  /** 当前满足要求的 Node 版本 */
   satisfiedBy: string | null;
+  /** 是否满足要求 */
   isMatch: boolean;
 }
 

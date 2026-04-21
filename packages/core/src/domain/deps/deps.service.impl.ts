@@ -19,7 +19,12 @@ function hasUpdate(current?: string, latest?: string) {
     return current !== latest;
 }
 
-function readPackageJson(root: string): { dependencies?: Record<string, string>; devDependencies?: Record<string, string> } {
+function readPackageJson(root: string): { 
+  dependencies?: Record<string, string>; 
+  devDependencies?: Record<string, string>;
+  volta?: { node?: string };
+  engines?: { node?: string };
+} {
     const p = path.join(root, "package.json");
     const raw = fs.readFileSync(p, "utf-8");
     return JSON.parse(raw);
@@ -180,12 +185,17 @@ export class DepsServiceImpl implements DepsService {
         // console.debug(
         //     `[deps:list] total=${statTotal}, cacheHit=${statCacheHit}, cacheMiss=${statCacheMiss}, npmView=${statNpmView}, concurrency=5, elapsed=${elapsedMs}ms`
         // );
+        /**获取项目Node版本要求 */
+        const voltaConfig = pkg.volta?.node;
+        const enginesNode = pkg.engines?.node;
         return {
             dependencies,
             devDependencies,
             meta: {
                 packageManager: "npm",
                 registryOnline,
+                voltaConfig,
+                enginesNode,
             },
         };
     }

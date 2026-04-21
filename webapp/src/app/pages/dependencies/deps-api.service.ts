@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
 import { DepGroup, DepItem, DepsResp } from '@models/deps.model';
+import { ProjectNodeRequirement } from '@pages/tasks/node-version/node-version.service';
 import { map, Observable } from 'rxjs';
 
 @Injectable({
@@ -31,5 +32,11 @@ export class DepsApiService {
 
   installDevtools(projectId: string) {
     return this.api.post(`/api/deps/devtools/install/${projectId}`, { tool: "devtools" });
+  }
+
+  
+  /** 获取项目 Node 版本信息 */
+  getProjectNodeInfo(projectPath: string): Observable<ProjectNodeRequirement> {
+    return this.api.post(`/api/node-version/project-requirement`, { projectPath });
   }
 }
