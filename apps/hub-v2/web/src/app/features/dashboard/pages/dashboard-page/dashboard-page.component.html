@@ -12,6 +12,7 @@
     <app-my-todos-card [items]="data.todos" [total]="store.todosTotal()" [projectNames]="projectNames()" />
     <app-reported-issues-card
       [items]="data.reportedIssues"
+      [total]="data.stats.reportedUnresolvedIssues"
       [projectNames]="projectNames()"
       (urged)="onIssueUrged()"
     />

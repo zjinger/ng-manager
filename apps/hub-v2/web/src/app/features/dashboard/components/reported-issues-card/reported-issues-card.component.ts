@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -18,7 +18,10 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     <app-dashboard-panel
       title="我提报未解决"
       icon="alert"
-      [count]="items().length"
+      [count]="total()"
+      [actionIcon]="showMoreIcon() ? 'more' : null"
+      [actionText]="showMoreIcon() ? '查看更多我提报未解决项' : null"
+      [actionLink]="showMoreIcon() ? ['/dashboard/reported-issues'] : []"
       [empty]="items().length === 0"
       emptyText="当前没有我提报且未解决的测试单"
     >
@@ -132,9 +135,11 @@ export class ReportedIssuesCardComponent {
   private readonly message = inject(NzMessageService);
 
   readonly items = input.required<DashboardReportedIssueItem[]>();
+  readonly total = input(0);
   readonly projectNames = input<Record<string, string>>({});
   readonly urged = output<void>();
   readonly urgingState = signal<Record<string, boolean>>({});
+  readonly showMoreIcon = computed(() => this.total() > 10);
 
   canUrge(item: DashboardReportedIssueItem): boolean {
     return !!item.assigneeName && ['open', 'in_progress', 'pending_update', 'reopened'].includes(item.status);

@@ -84,6 +84,19 @@ export interface DashboardTodoListResult {
   total: number;
 }
 
+export interface DashboardReportedIssueListQuery {
+  page?: number;
+  pageSize?: number;
+  projectId?: string;
+}
+
+export interface DashboardReportedIssueListResult {
+  items: DashboardReportedIssueItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export type DashboardBoardRange = "7d" | "30d";
 
 export interface DashboardBoardMetric {

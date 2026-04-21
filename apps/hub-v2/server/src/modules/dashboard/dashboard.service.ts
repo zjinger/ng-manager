@@ -19,6 +19,8 @@ import type {
   DashboardDocumentSummary,
   DashboardHomeData,
   DashboardReportedIssueItem,
+  DashboardReportedIssueListQuery,
+  DashboardReportedIssueListResult,
   DashboardStats,
   DashboardTodoItem,
   DashboardTodoListQuery,
@@ -33,6 +35,7 @@ type DashboardScope = {
 
 export class DashboardService implements DashboardQueryContract {
   private static readonly ISSUE_CREATE_ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
+  private static readonly ACTIVITY_PREVIEW_LIMIT = 10;
 
   constructor(
     private readonly projectAccess: ProjectAccessContract,
@@ -80,6 +83,11 @@ export class DashboardService implements DashboardQueryContract {
   async getReportedIssues(ctx: RequestContext): Promise<DashboardReportedIssueItem[]> {
     const scope = await this.resolveScope(ctx);
     return this.getReportedIssuesByScope(scope, ctx);
+  }
+
+  async getReportedIssuesPage(query: DashboardReportedIssueListQuery, ctx: RequestContext): Promise<DashboardReportedIssueListResult> {
+    const scope = await this.resolveScope(ctx);
+    return this.getReportedIssuesPageByScope(scope, query, ctx);
   }
 
   async getActivities(ctx: RequestContext): Promise<DashboardActivityItem[]> {
@@ -213,7 +221,7 @@ export class DashboardService implements DashboardQueryContract {
     if (!scope.userId) {
       return recentContentLogs
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, 8)
+        .slice(0, DashboardService.ACTIVITY_PREVIEW_LIMIT)
         .map((item) => ({
           kind: "content_activity" as const,
           entityId: item.contentId,
@@ -248,7 +256,7 @@ export class DashboardService implements DashboardQueryContract {
       }))
     ]
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 8);
+      .slice(0, DashboardService.ACTIVITY_PREVIEW_LIMIT);
   }
 
   private async getReportedIssuesByScope(scope: DashboardScope, ctx: RequestContext): Promise<DashboardReportedIssueItem[]> {
@@ -258,7 +266,7 @@ export class DashboardService implements DashboardQueryContract {
     const result = await this.issueQuery.list(
       {
         page: 1,
-        pageSize: 8,
+        pageSize: 10,
         reporterIds: [scope.userId],
         assigneeIds: [],
         status: ["open", "in_progress", "pending_update", "reopened"],
@@ -282,6 +290,49 @@ export class DashboardService implements DashboardQueryContract {
       projectId: item.projectId,
       assigneeName: item.assigneeName
     }));
+  }
+
+  private async getReportedIssuesPageByScope(
+    scope: DashboardScope,
+    query: DashboardReportedIssueListQuery,
+    ctx: RequestContext
+  ): Promise<DashboardReportedIssueListResult> {
+    if (!scope.userId) {
+      return { items: [], page: 1, pageSize: 20, total: 0 };
+    }
+    const result = await this.issueQuery.list(
+      {
+        page: query.page ?? 1,
+        pageSize: query.pageSize ?? 20,
+        projectId: query.projectId?.trim() || undefined,
+        reporterIds: [scope.userId],
+        assigneeIds: [],
+        status: ["open", "in_progress", "pending_update", "reopened"],
+        types: [],
+        priority: [],
+        moduleCodes: [],
+        versionCodes: [],
+        environmentCodes: [],
+        includeAssigneeParticipants: true,
+        sortBy: "updatedAt",
+        sortOrder: "desc"
+      },
+      ctx
+    );
+    return {
+      items: result.items.map((item) => ({
+        entityId: item.id,
+        code: item.issueNo,
+        title: item.title,
+        status: item.status,
+        updatedAt: item.updatedAt,
+        projectId: item.projectId,
+        assigneeName: item.assigneeName
+      })),
+      page: result.page,
+      pageSize: result.pageSize,
+      total: result.total
+    };
   }
 
   private collapseIssueCreateActivities(items: DashboardActivityItem[]): DashboardActivityItem[] {

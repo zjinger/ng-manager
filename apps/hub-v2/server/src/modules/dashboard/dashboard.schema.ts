@@ -19,3 +19,11 @@ export const dashboardTodosPageQuerySchema = z.object({
 });
 
 export type DashboardTodosPageQuery = z.infer<typeof dashboardTodosPageQuerySchema>;
+
+export const dashboardReportedIssuesPageQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().max(100).optional(),
+  projectId: z.string().trim().optional()
+});
+
+export type DashboardReportedIssuesPageQuery = z.infer<typeof dashboardReportedIssuesPageQuerySchema>;

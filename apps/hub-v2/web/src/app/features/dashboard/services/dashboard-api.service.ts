@@ -10,6 +10,8 @@ import type {
   DashboardDocument,
   DashboardHomeData,
   DashboardReportedIssueItem,
+  DashboardReportedIssuePageQuery,
+  DashboardReportedIssuePageResult,
   DashboardStats,
   DashboardTodoItem,
   DashboardTodoPageQuery,
@@ -51,6 +53,20 @@ export class DashboardApiService {
 
   getReportedIssues(): Observable<DashboardReportedIssueItem[]> {
     return this.api.get<DashboardReportedIssueItem[]>('/dashboard/reported-issues');
+  }
+
+  getReportedIssuesPage(query: DashboardReportedIssuePageQuery): Observable<DashboardReportedIssuePageResult> {
+    const params: Record<string, string | number> = {};
+    if (typeof query.page === 'number') {
+      params['page'] = query.page;
+    }
+    if (typeof query.pageSize === 'number') {
+      params['pageSize'] = query.pageSize;
+    }
+    if (query.projectId) {
+      params['projectId'] = query.projectId;
+    }
+    return this.api.get<DashboardReportedIssuePageResult>('/dashboard/reported-issues/page', params);
   }
 
   getActivities(): Observable<DashboardActivityItem[]> {

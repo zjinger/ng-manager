@@ -22,4 +22,11 @@ export const DASHBOARD_ROUTES: Routes = [
         (m) => m.DashboardTodosPageComponent
       ),
   },
+  {
+    path: 'reported-issues',
+    loadComponent: () =>
+      import('./pages/dashboard-reported-issues-page/dashboard-reported-issues-page.component').then(
+        (m) => m.DashboardReportedIssuesPageComponent
+      ),
+  },
 ];

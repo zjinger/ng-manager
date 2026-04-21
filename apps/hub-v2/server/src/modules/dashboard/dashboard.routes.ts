@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
-import { dashboardBoardQuerySchema, dashboardTodosPageQuerySchema } from "./dashboard.schema";
+import { dashboardBoardQuerySchema, dashboardReportedIssuesPageQuerySchema, dashboardTodosPageQuerySchema } from "./dashboard.schema";
 
 export default async function dashboardRoutes(app: FastifyInstance) {
   app.get("/dashboard/board", async (request) => {
@@ -39,6 +39,12 @@ export default async function dashboardRoutes(app: FastifyInstance) {
   app.get("/dashboard/reported-issues", async (request) => {
     const ctx = requireAuth(request);
     return ok(await app.container.dashboardQuery.getReportedIssues(ctx));
+  });
+
+  app.get("/dashboard/reported-issues/page", async (request) => {
+    const ctx = requireAuth(request);
+    const query = dashboardReportedIssuesPageQuerySchema.parse(request.query);
+    return ok(await app.container.dashboardQuery.getReportedIssuesPage(query, ctx));
   });
 
   app.get("/dashboard/activities", async (request) => {

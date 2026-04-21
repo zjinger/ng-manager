@@ -43,6 +43,19 @@ export interface DashboardReportedIssueItem {
   assigneeName: string | null;
 }
 
+export interface DashboardReportedIssuePageQuery {
+  page?: number;
+  pageSize?: number;
+  projectId?: string;
+}
+
+export interface DashboardReportedIssuePageResult {
+  items: DashboardReportedIssueItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export interface DashboardActivityItem {
   kind: DashboardActivityItemKind;
   entityId: string;
