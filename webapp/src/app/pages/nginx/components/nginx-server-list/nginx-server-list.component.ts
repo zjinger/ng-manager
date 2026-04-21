@@ -61,6 +61,8 @@ export class NginxServerListComponent implements OnInit, OnChanges {
 
   drawerVisible = false;
   editingServer = signal<NginxServer | null>(null);
+  duplicateSourceServer = signal<NginxServer | null>(null);
+  drawerMode = signal<'create' | 'edit' | 'copy'>('create');
 
   configModalVisible = false;
   viewingConfig = signal('');
@@ -95,7 +97,16 @@ export class NginxServerListComponent implements OnInit, OnChanges {
   }
 
   openDrawer(server: NginxServer | null): void {
+    this.duplicateSourceServer.set(null);
     this.editingServer.set(server);
+    this.drawerMode.set(server ? 'edit' : 'create');
+    this.drawerVisible = true;
+  }
+
+  openCopyDrawer(server: NginxServer): void {
+    this.editingServer.set(null);
+    this.duplicateSourceServer.set(server);
+    this.drawerMode.set('copy');
     this.drawerVisible = true;
   }
 
@@ -103,6 +114,8 @@ export class NginxServerListComponent implements OnInit, OnChanges {
     this.drawerVisible = visible;
     if (!visible) {
       this.editingServer.set(null);
+      this.duplicateSourceServer.set(null);
+      this.drawerMode.set('create');
     }
   }
 
@@ -134,9 +147,8 @@ export class NginxServerListComponent implements OnInit, OnChanges {
   }
 
   copyServer(server: NginxServer): void {
-    this.editingServer.set(server);
-    this.drawerVisible = true;
-    this.message.info('复制 Server - 请修改名称后保存');
+    this.openCopyDrawer(server);
+    this.message.info('复制 Server - 请修改后保存');
   }
 
   async deleteServer(server: NginxServer): Promise<void> {

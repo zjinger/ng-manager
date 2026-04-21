@@ -137,7 +137,9 @@
 <app-nginx-server-drawer
   [visible]="drawerVisible"
   (visibleChange)="onDrawerVisibleChange($event)"
+  [mode]="drawerMode()"
   [editingServer]="editingServer()"
+  [duplicateSourceServer]="duplicateSourceServer()"
   (saved)="onSaved()"
 ></app-nginx-server-drawer>
 

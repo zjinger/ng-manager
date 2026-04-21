@@ -49,7 +49,9 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 })
 export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   @Input() visible = false;
+  @Input() mode: 'create' | 'edit' | 'copy' = 'create';
   @Input() editingServer: NginxServer | null = null;
+  @Input() duplicateSourceServer: NginxServer | null = null;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<void>();
 
@@ -85,15 +87,25 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   };
 
   get drawerTitle() {
-    return this.editingServer ? '编辑 Server ' : '新增 Server ';
+    if (this.mode === 'copy') {
+      return '复制 Server ';
+    }
+    if (this.mode === 'edit') {
+      return '编辑 Server ';
+    }
+    return '新增 Server ';
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     const visibleChanged = 'visible' in changes;
+    const modeChanged = 'mode' in changes;
     const serverChanged = 'editingServer' in changes;
+    const duplicateChanged = 'duplicateSourceServer' in changes;
     const shouldReset =
       (visibleChanged && this.visible) ||
-      (serverChanged && this.visible && !changes['editingServer']?.firstChange);
+      (modeChanged && this.visible && !changes['mode']?.firstChange) ||
+      (serverChanged && this.visible && !changes['editingServer']?.firstChange) ||
+      (duplicateChanged && this.visible && !changes['duplicateSourceServer']?.firstChange);
 
     if (shouldReset) {
       this.scheduleResetForm();
@@ -152,6 +164,25 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       this.listenValues = [...this.formData.listen];
       this.domainValues = [...(this.formData.domains || [])];
       this.indexValues = [...(this.formData.index || ['index.html'])];
+    } else if (this.duplicateSourceServer) {
+      const parsedListen = this.parseListenValues(this.duplicateSourceServer.listen);
+      this.formData = {
+        name: this.makeCopyName(this.duplicateSourceServer.name),
+        listen: parsedListen.length ? parsedListen : [],
+        domains: [...(this.duplicateSourceServer.domains || ['127.0.0.1'])],
+        root: this.duplicateSourceServer.root || '',
+        index: [...(this.duplicateSourceServer.index?.length ? this.duplicateSourceServer.index : ['index.html'])],
+        locations: this.duplicateSourceServer.locations.map((l) => ({ ...l })),
+        ssl: this.duplicateSourceServer.ssl,
+        protocol: this.duplicateSourceServer.ssl ? 'https' : 'http',
+        enabled: this.duplicateSourceServer.enabled,
+        sslCert: this.duplicateSourceServer.sslCert || '',
+        sslKey: this.duplicateSourceServer.sslKey || '',
+        extraConfig: this.duplicateSourceServer.extraConfig || '',
+      };
+      this.listenValues = [...this.formData.listen];
+      this.domainValues = [...(this.formData.domains || [])];
+      this.indexValues = [...(this.formData.index || ['index.html'])];
     } else {
       this.formData = {
         name: '',
@@ -171,6 +202,14 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       this.domainValues = ['127.0.0.1'];
       this.indexValues = ['index.html'];
     }
+  }
+
+  private makeCopyName(name: string): string {
+    const base = String(name || '').trim();
+    if (!base) {
+      return 'server-copy';
+    }
+    return `${base}-copy`;
   }
 
   syncDomains(): void {
@@ -260,15 +299,16 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
 
     this.saving.set(true);
     try {
+      const isEditMode = this.mode === 'edit' && Boolean(this.editingServer);
       let res: any;
-      if (this.editingServer) {
+      if (isEditMode && this.editingServer) {
         res = await this.nginxService.updateServer(this.editingServer.id, this.formData);
       } else {
         res = await this.nginxService.createServer(this.formData);
       }
 
       if (res.success) {
-        this.message.success(this.editingServer ? 'Server 已更新' : 'Server 已创建');
+        this.message.success(isEditMode ? 'Server 已更新' : 'Server 已创建');
         this.saved.emit();
         this.emitVisibleChange(false);
       } else {
