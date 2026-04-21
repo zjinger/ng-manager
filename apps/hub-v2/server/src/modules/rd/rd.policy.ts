@@ -12,7 +12,7 @@ export function requireRdStageManageAccess(_ctx: RequestContext): void {
 }
 
 export function requireRdAcceptAccess(item: RdItemEntity, ctx: RequestContext): void {
-  const effectiveVerifierId = item.verifierId || item.assigneeId;
+  const effectiveVerifierId = item.verifierId || item.creatorId;
   if (matchActor(ctx, effectiveVerifierId)) {
     return;
   }

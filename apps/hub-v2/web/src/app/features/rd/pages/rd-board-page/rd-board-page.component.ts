@@ -350,7 +350,19 @@ export class RdBoardPageComponent {
   readonly canEditSelectedBasic = computed(() =>
     this.rdPermission.canEditBasic(this.selectedItem(), this.currentUserId(), this.members())
   );
-  readonly canCloseSelectedItem = computed(() => this.rdPermission.canClose(this.selectedItem(), this.currentUserId()));
+  readonly canCloseSelectedItem = computed(() => {
+    const item = this.selectedItem();
+    if (!this.rdPermission.canClose(item, this.currentUserId())) {
+      return false;
+    }
+    if (!item) {
+      return false;
+    }
+    if (item.status === 'accepted') {
+      return false;
+    }
+    return true;
+  });
   readonly canAdvanceSelectedItem = computed(
     () =>
       this.hasNextStage(this.selectedItem()) &&

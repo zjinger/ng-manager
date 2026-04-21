@@ -31,6 +31,7 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
             [item]="current"
             [stages]="stages()"
             [busy]="busy()"
+            [actionPlacement]="flowActionPlacement()"
             [canEditBasic]="canEditBasic()"
             [canAdvance]="canAdvance()"
             [canAccept]="canAccept()"
@@ -119,6 +120,7 @@ export class RdDetailContentComponent {
   readonly canClose = input(false);
   readonly showSummary = input(true);
   readonly showAction = input(true);
+  readonly flowActionPlacement = input<'top-right' | 'below-flow'>('top-right');
   readonly showProps = input(true);
   readonly showStageHistory = input(true);
   readonly showActivity = input(true);

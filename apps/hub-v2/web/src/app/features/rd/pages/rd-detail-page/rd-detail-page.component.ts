@@ -262,7 +262,19 @@ export class RdDetailPageComponent {
   readonly subtitle = computed(() => this.item()?.rdNo || '通过 工作台 待办进入');
 
   readonly canEditBasic = computed(() => this.rdPermission.canEditBasic(this.item(), this.currentUserId(), this.members()));
-  readonly canClose = computed(() => this.rdPermission.canClose(this.item(), this.currentUserId()));
+  readonly canClose = computed(() => {
+    const item = this.item();
+    if (!this.rdPermission.canClose(item, this.currentUserId())) {
+      return false;
+    }
+    if (!item) {
+      return false;
+    }
+    if (item.status === 'accepted') {
+      return false;
+    }
+    return true;
+  });
   readonly canAdvance = computed(
     () => this.hasNextStage(this.item()) && this.rdPermission.canAdvance(this.item(), this.currentUserId(), this.members())
   );

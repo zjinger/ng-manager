@@ -21,7 +21,87 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
               <span>当前阶段：{{ currentStageName() }}</span>
               <span class="flow-card__status">状态：{{ currentStatusName() }}</span>
             </div>
-            <div class="flow-card__actions">
+            @if (actionPlacement() === 'top-right' && hasActionButtons()) {
+              <div class="flow-card__actions">
+                @if (canAdvance()) {
+                  <button
+                    nz-button
+                    nzType="primary"
+                    class="flow-card__action-btn"
+                    [disabled]="busy()"
+                    nz-tooltip
+                    nzTooltipTitle="推进到后续阶段，并可重新指定下一阶段执行人"
+                    (click)="actionClick.emit('advance')"
+                  >
+                    进入下一阶段
+                  </button>
+                }
+                @if (canAccept()) {
+                  <button
+                    nz-button
+                    nzType="default"
+                    class="flow-card__action-btn"
+                    [disabled]="busy()"
+                    nz-popconfirm
+                    [nzPopconfirmTitle]="'确认该研发项' + currentStageName() + '阶段已完成吗？'"
+                    nzPopconfirmPlacement="topRight"
+                    nz-tooltip
+                    nzTooltipTitle="当前阶段已完成，可进入下一阶段或结项"
+                    (nzOnConfirm)="actionClick.emit('accept')"
+                  >
+                    标记已完成
+                  </button>
+                }
+                @if (canEditBasic() && current.status !== 'closed') {
+                  <button nz-button nzType="default" class="flow-card__action-btn" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
+                }
+                @if (canClose()) {
+                  @if (current.status === 'closed') {
+                    <button
+                      nz-button
+                      nzType="default"
+                      class="flow-card__action-btn"
+                      [disabled]="busy()"
+                      nz-popconfirm
+                      [nzPopconfirmTitle]="'确认恢复该研发项吗？'"
+                      nzPopconfirmPlacement="topRight"
+                      (nzOnConfirm)="actionClick.emit('reopen')"
+                    >
+                      恢复
+                    </button>
+                  } @else {
+                    <button
+                      nz-button
+                      nzType="default"
+                      class="flow-card__action-btn"
+                      [disabled]="busy()"
+                      nz-tooltip
+                      nzTooltipTitle="终止研发项，无法继续推进，关闭后可恢复"
+                      (click)="actionClick.emit('close')"
+                    >
+                      关闭
+                    </button>
+                  }
+                }
+              </div>
+            }
+          </div>
+          <div class="state-flow">
+            @for (step of statusFlow(); track step.id; let last = $last) {
+              <span
+                class="state-flow__step"
+                [class.is-done]="step.state === 'done'"
+                [class.is-active]="step.state === 'active'"
+              >
+                {{ step.label }}
+              </span>
+              @if (!last) {
+                <span class="state-flow__arrow" [class.is-done]="step.state !== 'pending'">›</span>
+              }
+            }
+          </div>
+          @if (actionPlacement() === 'below-flow' && hasActionButtons()) {
+            <div class="flow-card__actions flow-card__actions--below">
               @if (canAdvance()) {
                 <button
                   nz-button
@@ -83,21 +163,7 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
                 }
               }
             </div>
-          </div>
-          <div class="state-flow">
-            @for (step of statusFlow(); track step.id; let last = $last) {
-              <span
-                class="state-flow__step"
-                [class.is-done]="step.state === 'done'"
-                [class.is-active]="step.state === 'active'"
-              >
-                {{ step.label }}
-              </span>
-              @if (!last) {
-                <span class="state-flow__arrow" [class.is-done]="step.state !== 'pending'">›</span>
-              }
-            }
-          </div>
+          }
         </div>
       </section>
     }
@@ -108,7 +174,7 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
         display: grid;
         gap: 0;
         border: 1px solid var(--border-color);
-        border-radius: 12px;
+        border-radius: 24px;
         overflow: hidden;
         background:
           linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
@@ -116,7 +182,7 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
         box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
       }
       .flow-card__top {
-        padding: 14px 16px;
+        padding: 22px 20px;
       }
       .flow-card__header {
         display: flex;
@@ -132,6 +198,8 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
         gap: 8px;
         font-size: 12px;
         color: var(--text-muted);
+        width: 100%;
+        justify-content: space-between;
       }
       .flow-card__status {
         color: var(--text-secondary);
@@ -143,6 +211,10 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
         justify-content: flex-end;
         flex-wrap: wrap;
         gap: 8px;
+      }
+      .flow-card__actions--below {
+        justify-content: flex-start;
+        margin-top: 16px;
       }
       .flow-card__action-btn {
         min-width: 78px;
@@ -237,6 +309,7 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RdFlowCardComponent {
+  readonly actionPlacement = input<'top-right' | 'below-flow'>('top-right');
   readonly item = input<RdItemEntity | null>(null);
   readonly stages = input<RdStageEntity[]>([]);
   readonly busy = input(false);
@@ -247,6 +320,16 @@ export class RdFlowCardComponent {
 
   readonly actionClick = output<'advance' | 'accept' | 'close' | 'reopen'>();
   readonly editClick = output<void>();
+  readonly hasActionButtons = computed(() => {
+    const current = this.item();
+    if (!current) {
+      return false;
+    }
+    if (this.canAdvance() || this.canAccept() || this.canClose()) {
+      return true;
+    }
+    return this.canEditBasic() && current.status !== 'closed';
+  });
 
   readonly statusFlow = computed<Array<{ id: string; label: string; state: 'done' | 'active' | 'pending' }>>(() => {
     const item = this.item();

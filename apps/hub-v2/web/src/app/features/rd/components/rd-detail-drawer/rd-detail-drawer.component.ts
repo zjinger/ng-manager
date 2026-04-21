@@ -49,6 +49,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [item]="item()"
               [logs]="logs()"
               [stages]="stages()"
+              [flowActionPlacement]="'below-flow'"
               [stageHistory]="stageHistory()"
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"

@@ -104,7 +104,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     return this.repo.listStages(query.projectId.trim());
   }
 
-async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
+  async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     const projectId = input.projectId.trim();
     const itemType = input.type ?? "feature_dev";
     const creatorId = ctx.userId?.trim() || ctx.accountId;
@@ -149,7 +149,7 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
     await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
     this.repo.createLog(this.createLog(entity, "create", ctx, `创建研发项 ${entity.rdNo}`));
     await this.emitRdEvent("rd.created", "created", entity, ctx);
-    return entity;
+    return this.withVerifierFallback(entity);
   }
 
   async updateItem(id: string, input: UpdateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
@@ -212,7 +212,7 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
     await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
     this.repo.createLog(this.createLog(entity, "update", ctx, this.createUpdateLogContent(current, input)));
     await this.emitRdEvent("rd.updated", "updated", entity, ctx);
-    return entity;
+    return this.withVerifierFallback(entity);
   }
 
   async start(id: string, ctx: RequestContext): Promise<RdItemEntity> {
@@ -258,17 +258,20 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
   async reopen(id: string, ctx: RequestContext): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "reopen rd item");
     await this.requireCloseAccess(current, ctx, "reopen rd item");
-    return this.applyAction(
-      id,
-      "reopen",
-      ctx,
-      current,
-      {
-        blocker_reason: null,
-        actual_end_at: null
-      },
-      "恢复研发项"
-    );
+    const reopenStatus = this.getReopenStatusByProgress(current.progress);
+    const updated = this.repo.updateItem(id, {
+      status: reopenStatus,
+      blocker_reason: null,
+      actual_end_at: null,
+      updated_at: nowIso()
+    });
+    if (!updated) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to reopen rd item", 500);
+    }
+    const entity = this.requireItem(id);
+    this.repo.createLog(this.createLog(entity, "reopen", ctx, "恢复研发项"));
+    await this.emitRdEvent("rd.updated", "reopen", entity, ctx);
+    return entity;
   }
 
   async complete(id: string, ctx: RequestContext, expectedVersion?: number): Promise<RdItemEntity> {
@@ -426,7 +429,7 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
       )
     );
     await this.emitRdEvent("rd.updated", "advance_stage", entity, ctx);
-    return entity;
+    return this.withVerifierFallback(entity);
   }
 
   async listItems(query: ListRdItemsQuery, ctx: RequestContext): Promise<RdItemListResult> {
@@ -440,15 +443,23 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
 
     if (query.projectId?.trim()) {
       await this.projectAccess.requireProjectAccess(query.projectId.trim(), ctx, "list rd items");
-      return this.repo.listItems(normalizedQuery, [query.projectId.trim()]);
+      const result = this.repo.listItems(normalizedQuery, [query.projectId.trim()]);
+      return {
+        ...result,
+        items: result.items.map((item) => this.withVerifierFallback(item))
+      };
     }
 
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
-    return this.repo.listItems(normalizedQuery, projectIds);
+    const result = this.repo.listItems(normalizedQuery, projectIds);
+    return {
+      ...result,
+      items: result.items.map((item) => this.withVerifierFallback(item))
+    };
   }
 
   async getItemById(id: string, ctx: RequestContext): Promise<RdItemEntity> {
-    return this.requireItemWithAccess(id, ctx, "get rd item");
+    return this.withVerifierFallback(await this.requireItemWithAccess(id, ctx, "get rd item"));
   }
 
   async listLogs(id: string, ctx: RequestContext): Promise<RdLogEntity[]> {
@@ -499,7 +510,7 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
     if (!item) {
       throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, `rd item not found: ${id}`, 404);
     }
-    return item;
+    return this.withVerifierFallback(item);
   }
 
   private async requireItemWithAccess(id: string, ctx: RequestContext, action: string): Promise<RdItemEntity> {
@@ -548,7 +559,8 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
 
   private async requireAdvanceAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
     const userId = ctx.userId?.trim();
-    if (!userId || !item.verifierId || item.verifierId !== userId) {
+    const effectiveVerifierId = this.getEffectiveVerifierId(item);
+    if (!userId || !effectiveVerifierId || effectiveVerifierId !== userId) {
       throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_FORBIDDEN, `${action} forbidden`, 403);
     }
   }
@@ -908,5 +920,33 @@ async createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemE
       return enabledStages.length > 0;
     }
     return enabledStages.some((stage) => stage.sort > currentStage.sort);
+  }
+
+  private getReopenStatusByProgress(progress: number): RdItemEntity["status"] {
+    const normalized = Math.max(0, Math.min(100, Number(progress) || 0));
+    if (normalized >= 100) {
+      return "done";
+    }
+    if (normalized > 0) {
+      return "doing";
+    }
+    return "todo";
+  }
+
+  private getEffectiveVerifierId(item: Pick<RdItemEntity, "verifierId" | "creatorId">): string | null {
+    return item.verifierId?.trim() || item.creatorId?.trim() || null;
+  }
+
+  private withVerifierFallback(item: RdItemEntity): RdItemEntity {
+    const effectiveVerifierId = this.getEffectiveVerifierId(item);
+    const effectiveVerifierName = item.verifierName?.trim() || item.creatorName?.trim() || null;
+    if (item.verifierId === effectiveVerifierId && item.verifierName === effectiveVerifierName) {
+      return item;
+    }
+    return {
+      ...item,
+      verifierId: effectiveVerifierId,
+      verifierName: effectiveVerifierName
+    };
   }
 }

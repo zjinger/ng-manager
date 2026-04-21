@@ -52,22 +52,45 @@ export class RdPermissionService {
   }
 
   canAdvance(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
-    void members;
     if (!item) {
       return false;
     }
     if (item.status !== 'accepted') {
       return false;
     }
-    return !!userId && !!item.verifierId && item.verifierId === userId;
+    return this.isVerifier(item, userId, members);
   }
 
   canAccept(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
-    void members;
     if (!item || item.status !== 'done') {
       return false;
     }
-    return !!userId && !!item.verifierId && item.verifierId === userId;
+    return this.isVerifier(item, userId, members);
+  }
+
+  private isVerifier(item: RdItemEntity, userId: string | null, members: ProjectMemberEntity[]): boolean {
+    if (!userId) {
+      return false;
+    }
+    if (!item.verifierId && item.creatorId === userId) {
+      return true;
+    }
+    const currentMember = members.find((member) => member.userId === userId) ?? null;
+    const verifierId = item.verifierId?.trim() || null;
+    if (verifierId) {
+      if (verifierId === userId) {
+        return true;
+      }
+      // 兼容历史数据：可能误存为 project_member.id
+      if (currentMember && verifierId === currentMember.id) {
+        return true;
+      }
+    }
+    const verifierName = item.verifierName?.trim() || null;
+    if (verifierName && currentMember?.displayName?.trim() === verifierName) {
+      return true;
+    }
+    return false;
   }
 
   private isProjectAdmin(userId: string, members: ProjectMemberEntity[]): boolean {
