@@ -1,4 +1,5 @@
 export * from './activity-timeline';
+export * from './active-filters-bar';
 export * from './empty-state';
 export * from './data-table';
 export * from './dialog';

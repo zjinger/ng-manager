@@ -69,6 +69,20 @@ export interface DashboardHomeData {
   documents: DashboardDocumentSummary[];
 }
 
+export interface DashboardTodoListQuery {
+  page?: number;
+  pageSize?: number;
+  kind?: DashboardTodoItemKind;
+  projectId?: string;
+}
+
+export interface DashboardTodoListResult {
+  items: DashboardTodoItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export type DashboardBoardRange = "7d" | "30d";
 
 export interface DashboardBoardMetric {

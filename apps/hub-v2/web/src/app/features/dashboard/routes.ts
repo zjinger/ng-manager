@@ -15,4 +15,11 @@ export const DASHBOARD_ROUTES: Routes = [
         (m) => m.DashboardBoardPageComponent
       ),
   },
+  {
+    path: 'todos',
+    loadComponent: () =>
+      import('./pages/dashboard-todos-page/dashboard-todos-page.component').then(
+        (m) => m.DashboardTodosPageComponent
+      ),
+  },
 ];

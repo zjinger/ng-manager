@@ -1,6 +1,7 @@
 import type { RequestContext } from "../../shared/context/request-context";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
+import { normalizePage } from "../../shared/http/pagination";
 import type { AnnouncementQueryContract } from "../announcement/announcement.contract";
 import type { ContentLogQueryContract } from "../content-log/content-log.contract";
 import type { DocumentQueryContract } from "../document/document.contract";
@@ -19,7 +20,9 @@ import type {
   DashboardHomeData,
   DashboardReportedIssueItem,
   DashboardStats,
-  DashboardTodoItem
+  DashboardTodoItem,
+  DashboardTodoListQuery,
+  DashboardTodoListResult
 } from "./dashboard.types";
 
 type DashboardScope = {
@@ -67,6 +70,11 @@ export class DashboardService implements DashboardQueryContract {
   async getTodos(ctx: RequestContext): Promise<DashboardTodoItem[]> {
     const scope = await this.resolveScope(ctx);
     return this.getTodosByScope(scope, ctx);
+  }
+
+  async getTodosPage(query: DashboardTodoListQuery, ctx: RequestContext): Promise<DashboardTodoListResult> {
+    const scope = await this.resolveScope(ctx);
+    return this.getTodosPageByScope(scope, query, ctx);
   }
 
   async getReportedIssues(ctx: RequestContext): Promise<DashboardReportedIssueItem[]> {
@@ -137,9 +145,10 @@ export class DashboardService implements DashboardQueryContract {
       };
     }
 
-    const [assignedIssues, verifyingIssues, reportedUnresolvedIssues, assignedRdItems, inProgressRdItems] = await Promise.all([
+    const [assignedIssues, issueVerifyingCount, rdVerifyingCount, reportedUnresolvedIssues, assignedRdItems, inProgressRdItems] = await Promise.all([
       this.issueQuery.countAssignedForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
       this.issueQuery.countVerifyingForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
+      this.rdQuery.countReviewingForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
       this.issueQuery.countReportedUnresolvedForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
       this.rdQuery.countAssignedForDashboard(scope.effectiveProjectIds, scope.userId, ctx),
       this.rdQuery.countInProgressForDashboard(scope.effectiveProjectIds, scope.userId, ctx)
@@ -147,7 +156,7 @@ export class DashboardService implements DashboardQueryContract {
 
     return {
       assignedIssues,
-      verifyingIssues,
+      verifyingIssues: issueVerifyingCount + rdVerifyingCount,
       reportedUnresolvedIssues,
       assignedRdItems,
       inProgressRdItems,
@@ -164,6 +173,39 @@ export class DashboardService implements DashboardQueryContract {
       this.rdQuery.listTodosForDashboard(scope.effectiveProjectIds, scope.userId, 10, ctx)
     ]);
     return this.mergeTodos(issueTodos, rdTodos, 10);
+  }
+
+  private async getTodosPageByScope(
+    scope: DashboardScope,
+    query: DashboardTodoListQuery,
+    ctx: RequestContext
+  ): Promise<DashboardTodoListResult> {
+    if (!scope.userId) {
+      return { items: [], page: 1, pageSize: 20, total: 0 };
+    }
+
+    const [issueTodos, rdTodos] = await Promise.all([
+      this.issueQuery.listTodosForDashboard(scope.effectiveProjectIds, scope.userId, 0, ctx),
+      this.rdQuery.listTodosForDashboard(scope.effectiveProjectIds, scope.userId, 0, ctx)
+    ]);
+    const merged = this.mergeTodos(issueTodos, rdTodos);
+    const filtered = merged.filter((item) => {
+      if (query.kind && item.kind !== query.kind) {
+        return false;
+      }
+      if (query.projectId?.trim() && item.projectId !== query.projectId.trim()) {
+        return false;
+      }
+      return true;
+    });
+    const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
+
+    return {
+      items: filtered.slice(offset, offset + pageSize),
+      page,
+      pageSize,
+      total: filtered.length
+    };
   }
 
   private async getActivitiesByScope(scope: DashboardScope, ctx: RequestContext): Promise<DashboardActivityItem[]> {
@@ -406,7 +448,11 @@ export class DashboardService implements DashboardQueryContract {
     return "CNT";
   }
 
-  private mergeTodos(issueTodos: DashboardTodoItem[], rdTodos: DashboardTodoItem[], limit: number): DashboardTodoItem[] {
+  private mergeTodos(issueTodos: DashboardTodoItem[], rdTodos: DashboardTodoItem[], limit?: number): DashboardTodoItem[] {
+    if (limit === undefined) {
+      return [...issueTodos, ...rdTodos].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    }
+
     const merged = [...issueTodos, ...rdTodos]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, limit);

@@ -12,6 +12,8 @@ import type {
   DashboardReportedIssueItem,
   DashboardStats,
   DashboardTodoItem,
+  DashboardTodoPageQuery,
+  DashboardTodoPageResult,
 } from '../models/dashboard.model';
 
 @Injectable({ providedIn: 'root' })
@@ -28,6 +30,23 @@ export class DashboardApiService {
 
   getTodos(): Observable<DashboardTodoItem[]> {
     return this.api.get<DashboardTodoItem[]>('/dashboard/todos');
+  }
+
+  getTodosPage(query: DashboardTodoPageQuery): Observable<DashboardTodoPageResult> {
+    const params: Record<string, string | number> = {};
+    if (typeof query.page === 'number') {
+      params['page'] = query.page;
+    }
+    if (typeof query.pageSize === 'number') {
+      params['pageSize'] = query.pageSize;
+    }
+    if (query.kind) {
+      params['kind'] = query.kind;
+    }
+    if (query.projectId) {
+      params['projectId'] = query.projectId;
+    }
+    return this.api.get<DashboardTodoPageResult>('/dashboard/todos/page', params);
   }
 
   getReportedIssues(): Observable<DashboardReportedIssueItem[]> {

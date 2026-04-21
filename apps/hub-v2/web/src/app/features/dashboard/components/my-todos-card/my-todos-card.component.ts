@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -13,7 +13,10 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
     <app-dashboard-panel
       title="我的待办"
       icon="bug"
-      [count]="items().length"
+      [count]="total()"
+      [actionIcon]="showMoreIcon() ? 'more' : null"
+      [actionText]="showMoreIcon() ? '查看更多待办' : null"
+      [actionLink]="showMoreIcon() ? ['/dashboard/todos'] : []"
       [empty]="items().length === 0"
       emptyText="当前没有待办"
     >
@@ -156,7 +159,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
 })
 export class MyTodosCardComponent {
   readonly items = input.required<DashboardTodoItem[]>();
+  readonly total = input(0);
   readonly projectNames = input<Record<string, string>>({});
+  readonly showMoreIcon = computed(() => this.total() > 10);
 
   detailLink(item: DashboardTodoItem): string[] {
     if (item.kind.startsWith('rd')) {

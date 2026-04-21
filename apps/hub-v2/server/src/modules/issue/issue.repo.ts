@@ -377,14 +377,22 @@ export class IssueRepo {
     const row = this.db
       .prepare(
         `
-          SELECT COUNT(*) as total
-          FROM issues
-          WHERE assignee_id = ?
-            AND status IN ('open', 'in_progress', 'pending_update', 'reopened')
-            ${scope.clause}
+          SELECT COUNT(DISTINCT i.id) as total
+          FROM issues i
+          WHERE (
+              i.assignee_id = ?
+              OR EXISTS (
+                SELECT 1
+                FROM issue_participants ip
+                WHERE ip.issue_id = i.id
+                  AND ip.user_id = ?
+              )
+            )
+            AND i.status IN ('open', 'in_progress', 'pending_update', 'reopened')
+            ${scope.clause.replace(/project_id/g, "i.project_id")}
         `
       )
-      .get(userId, ...scope.params) as { total: number };
+      .get(userId, userId, ...scope.params) as { total: number };
     return row.total;
   }
 
@@ -422,6 +430,8 @@ export class IssueRepo {
 
   listTodosForDashboard(projectIds: string[], userId: string, limit: number): IssueDashboardTodo[] {
     const scope = this.createProjectScope(projectIds);
+    const withLimit = Number.isFinite(limit) && limit > 0;
+    const limitClause = withLimit ? "LIMIT ?" : "";
     const assigned = this.db
       .prepare(
         `
@@ -431,10 +441,10 @@ export class IssueRepo {
             AND status IN ('open', 'in_progress', 'pending_update', 'reopened')
             ${scope.clause}
           ORDER BY updated_at DESC
-          LIMIT ?
+          ${limitClause}
         `
       )
-      .all(userId, ...scope.params, limit) as Array<{
+      .all(userId, ...scope.params, ...(withLimit ? [limit] : [])) as Array<{
       id: string;
       code: string;
       title: string;
@@ -454,10 +464,10 @@ export class IssueRepo {
             AND COALESCE(i.assignee_id, '') <> ?
             ${scope.clause}
           ORDER BY i.updated_at DESC
-          LIMIT ?
+          ${limitClause}
         `
       )
-      .all(userId, userId, ...scope.params, limit) as Array<{
+      .all(userId, userId, ...scope.params, ...(withLimit ? [limit] : [])) as Array<{
       id: string;
       code: string;
       title: string;
@@ -475,10 +485,10 @@ export class IssueRepo {
             AND status = 'resolved'
             ${scope.clause}
           ORDER BY updated_at DESC
-          LIMIT ?
+          ${limitClause}
         `
       )
-      .all(userId, ...scope.params, limit) as Array<{
+      .all(userId, ...scope.params, ...(withLimit ? [limit] : [])) as Array<{
       id: string;
       code: string;
       title: string;
@@ -493,7 +503,7 @@ export class IssueRepo {
       ...verifying.map((row) => this.mapDashboardTodo("issue_verify", row))
     ]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .slice(0, limit);
+      .slice(0, withLimit ? limit : undefined);
   }
 
   listActivitiesForDashboard(projectIds: string[], userId: string, limit: number): IssueDashboardActivity[] {

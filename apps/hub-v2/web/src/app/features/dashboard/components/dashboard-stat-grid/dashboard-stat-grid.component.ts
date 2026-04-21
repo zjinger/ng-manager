@@ -12,28 +12,28 @@ import type { DashboardStats } from '../../models/dashboard.model';
       <app-stat-card
         label="待处理测试单"
         [value]="stats().assignedIssues"
-        hint="当前分配给你的问题单"
+        hint="包含负责人和协作人的待处理测试单"
         icon="bug"
         tone="blue"
       />
       <app-stat-card
-        label="待验证测试单"
+        label="待验证项"
         [value]="stats().verifyingIssues"
-        hint="需要你完成验证闭环"
+        hint="包含待验证测试单和待验证研发项"
         icon="safety-certificate"
         tone="purple"
       />
       <app-stat-card
         label="我提报未解决"
         [value]="stats().reportedUnresolvedIssues"
-        hint="我提报且尚未标记已解决"
+        hint="我提报且尚未标记已解决的测试单"
         icon="alert"
         tone="cyan"
       />
       <app-stat-card
-        label="进行中研发项"
-        [value]="stats().inProgressRdItems"
-        hint="正在推进中的研发任务"
+        label="未完成研发项"
+        [value]="stats().assignedRdItems"
+        hint="分配给你且尚未完成的研发项"
         icon="rocket"
         tone="green"
       />

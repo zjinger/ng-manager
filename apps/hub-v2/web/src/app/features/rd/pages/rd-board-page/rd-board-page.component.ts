@@ -3,12 +3,11 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { ISSUE_PRIORITY_LABELS, RD_STATUS_LABELS } from '@shared/constants';
-import { PageHeaderComponent, ListStateComponent } from '@shared/ui';
+import { ActiveFilterTag, ActiveFiltersBarComponent, PageHeaderComponent, ListStateComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { RdBoardComponent } from '../../components/rd-board/rd-board.component';
@@ -45,7 +44,7 @@ import { map } from 'rxjs';
     RdEditDialogComponent,
     RdProgressUpdateDialogComponent,
     NzPaginationModule,
-    NzTagModule,
+    ActiveFiltersBarComponent,
   ],
   providers: [RdStore],
   template: `
@@ -63,15 +62,7 @@ import { map } from 'rxjs';
       (create)="createOpen.set(true)"
       (viewModeChange)="viewMode.set($event)"
     />
-    @if (activeFilterTags().length > 0) {
-      <div class="active-filters">
-        <span class="active-filters__label">当前筛选</span>
-        @for (tag of activeFilterTags(); track tag.kind + ':' + tag.value) {
-          <nz-tag nzMode="closeable" [class]="filterTagClass(tag.kind)" (nzOnClose)="removeFilterTag(tag.kind, tag.value)">{{ tag.label }}</nz-tag>
-        }
-        <button type="button" class="active-filters__clear" (click)="resetFilters()">清空全部</button>
-      </div>
-    }
+    <app-active-filters-bar [tags]="activeFilterBarTags()" (remove)="onActiveFilterRemove($event)" (clear)="resetFilters()" />
 
     @if (!projectContext.currentProjectId()) {
       <app-list-state [empty]="true" emptyTitle="请先在左侧选择项目" emptyDescription="选择项目后再查看对应研发项。" />
@@ -199,70 +190,6 @@ import { map } from 'rxjs';
         display: flex;
         justify-content: flex-end;
         padding: 16px 0 4px;
-      }
-      .active-filters {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 10px 0 14px;
-        flex-wrap: wrap;
-      }
-      .active-filters__label {
-        color: var(--text-muted);
-        font-size: 14px;
-      }
-      .active-filters__clear {
-        border: 0;
-        background: transparent;
-        color: var(--primary-500);
-        font-size: 13px;
-        font-weight: 600;
-        padding: 6px 8px;
-        cursor: pointer;
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag {
-        display: inline-flex;
-        align-items: center;
-        height: 30px;
-        line-height: 30px;
-        margin-inline-end: 0;
-        border-radius: 999px;
-        padding-inline: 12px;
-        font-size: 13px;
-        font-weight: 500;
-        border: 1px solid var(--border-color);
-        background: var(--bg-subtle);
-        color: var(--text-primary);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag .ant-tag-close-icon {
-        margin-inline-start: 8px;
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--status {
-        background: rgba(37, 99, 235, 0.1);
-        border-color: rgba(37, 99, 235, 0.35);
-        color: rgb(30, 64, 175);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--priority {
-        background: rgba(245, 158, 11, 0.14);
-        border-color: rgba(245, 158, 11, 0.35);
-        color: rgb(146, 64, 14);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--people {
-        background: rgba(16, 185, 129, 0.12);
-        border-color: rgba(16, 185, 129, 0.35);
-        color: rgb(6, 95, 70);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--scope {
-        background: rgba(99, 102, 241, 0.12);
-        border-color: rgba(99, 102, 241, 0.35);
-        color: rgb(67, 56, 202);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--keyword {
-        background: rgba(236, 72, 153, 0.12);
-        border-color: rgba(236, 72, 153, 0.35);
-        color: rgb(157, 23, 77);
       }
     `,
   ],
@@ -439,6 +366,12 @@ export class RdBoardPageComponent {
     }
     return tags;
   });
+  readonly activeFilterBarTags = computed<ActiveFilterTag[]>(() =>
+    this.activeFilterTags().map((tag) => ({
+      ...tag,
+      className: this.filterTagClass(tag.kind).replace('filter-tag ', ''),
+    }))
+  );
   private lastProjectId: string | null | undefined = undefined;
 
   constructor() {
@@ -575,6 +508,10 @@ export class RdBoardPageComponent {
       return;
     }
     this.store.updateQuery({ page: 1, keyword: '' });
+  }
+
+  onActiveFilterRemove(event: { kind: string; value: string }): void {
+    this.removeFilterTag(event.kind as 'stageIds' | 'status' | 'priority' | 'assigneeIds' | 'keyword', event.value);
   }
 
   onPageIndexChange(page: number): void {

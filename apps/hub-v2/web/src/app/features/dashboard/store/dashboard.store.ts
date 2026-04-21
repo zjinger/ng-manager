@@ -10,18 +10,24 @@ export class DashboardStore {
 
   private readonly dataState = signal<DashboardHomeData | null>(null);
   private readonly loadingState = signal(false);
+  private readonly todosTotalState = signal(0);
 
   readonly data = computed(() => this.dataState());
   readonly loading = computed(() => this.loadingState());
+  readonly todosTotal = computed(() => this.todosTotalState());
 
   load(options?: { force?: boolean; silent?: boolean }): void {
     const silent = !!options?.silent;
     if (!silent) {
       this.loadingState.set(true);
     }
-    this.dashboardApi.getHomeData(options).subscribe({
-      next: (data) => {
-        this.dataState.set(data);
+    forkJoin({
+      home: this.dashboardApi.getHomeData(options),
+      todosPage: this.dashboardApi.getTodosPage({ page: 1, pageSize: 1 }),
+    }).subscribe({
+      next: ({ home, todosPage }) => {
+        this.dataState.set(home);
+        this.todosTotalState.set(todosPage.total);
         if (!silent) {
           this.loadingState.set(false);
         }
@@ -59,6 +65,7 @@ export class DashboardStore {
     const requests: {
       stats?: ReturnType<DashboardApiService['getStats']>;
       todos?: ReturnType<DashboardApiService['getTodos']>;
+      todosTotal?: ReturnType<DashboardApiService['getTodosPage']>;
       reportedIssues?: ReturnType<DashboardApiService['getReportedIssues']>;
       activities?: ReturnType<DashboardApiService['getActivities']>;
       announcements?: ReturnType<DashboardApiService['getAnnouncements']>;
@@ -70,6 +77,7 @@ export class DashboardStore {
     }
     if (shouldRefreshTodos) {
       requests.todos = this.dashboardApi.getTodos();
+      requests.todosTotal = this.dashboardApi.getTodosPage({ page: 1, pageSize: 1 });
     }
     if (shouldRefreshReportedIssues) {
       requests.reportedIssues = this.dashboardApi.getReportedIssues();
@@ -103,6 +111,9 @@ export class DashboardStore {
           announcements: partial.announcements ?? current.announcements,
           documents: partial.documents ?? current.documents,
         });
+        if (partial.todosTotal) {
+          this.todosTotalState.set(partial.todosTotal.total);
+        }
       },
       error: () => {
         this.load({ force: true, silent: true });

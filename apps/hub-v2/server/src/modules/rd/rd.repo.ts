@@ -509,6 +509,8 @@ INSERT INTO rd_items (
 
   listTodosForDashboard(projectIds: string[], userId: string, limit: number): RdDashboardTodo[] {
     const scope = this.createProjectScope(projectIds);
+    const withLimit = Number.isFinite(limit) && limit > 0;
+    const limitClause = withLimit ? "LIMIT ?" : "";
     const assigned = this.db
       .prepare(
         `
@@ -518,10 +520,10 @@ INSERT INTO rd_items (
             AND status IN ('todo', 'doing', 'blocked')
             ${scope.clause}
           ORDER BY updated_at DESC
-          LIMIT ?
+          ${limitClause}
         `
       )
-      .all(userId, userId, ...scope.params, limit) as Array<{
+      .all(userId, userId, ...scope.params, ...(withLimit ? [limit] : [])) as Array<{
       id: string;
       code: string;
       title: string;
@@ -538,10 +540,10 @@ INSERT INTO rd_items (
             AND status = 'done'
             ${scope.clause}
           ORDER BY updated_at DESC
-          LIMIT ?
+          ${limitClause}
         `
       )
-      .all(userId, ...scope.params, limit) as Array<{
+      .all(userId, ...scope.params, ...(withLimit ? [limit] : [])) as Array<{
       id: string;
       code: string;
       title: string;
@@ -570,7 +572,7 @@ INSERT INTO rd_items (
 
     return Array.from(dedup.values())
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .slice(0, limit);
+      .slice(0, withLimit ? limit : undefined);
   }
 
   listActivitiesForDashboard(projectIds: string[], userId: string, limit: number): RdDashboardActivity[] {

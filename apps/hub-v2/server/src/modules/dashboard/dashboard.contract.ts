@@ -8,7 +8,9 @@ import type {
   DashboardHomeData,
   DashboardReportedIssueItem,
   DashboardStats,
-  DashboardTodoItem
+  DashboardTodoItem,
+  DashboardTodoListQuery,
+  DashboardTodoListResult
 } from "./dashboard.types";
 
 export interface DashboardQueryContract {
@@ -16,6 +18,7 @@ export interface DashboardQueryContract {
   getBoardData(input: { projectId?: string; range: DashboardBoardRange }, ctx: RequestContext): Promise<DashboardBoardData>;
   getStats(ctx: RequestContext): Promise<DashboardStats>;
   getTodos(ctx: RequestContext): Promise<DashboardTodoItem[]>;
+  getTodosPage(query: DashboardTodoListQuery, ctx: RequestContext): Promise<DashboardTodoListResult>;
   getReportedIssues(ctx: RequestContext): Promise<DashboardReportedIssueItem[]>;
   getActivities(ctx: RequestContext): Promise<DashboardActivityItem[]>;
   getAnnouncements(ctx: RequestContext): Promise<DashboardAnnouncementSummary[]>;

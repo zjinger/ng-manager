@@ -4,7 +4,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 import { catchError, finalize, forkJoin, from, map, mergeMap, of, toArray } from 'rxjs';
 
 import { AuthStore } from '@core/auth';
@@ -12,7 +11,7 @@ import { ProjectContextStore } from '@core/state';
 import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
 import { ProjectApiService } from '@features/projects/services/project-api.service';
 import { ISSUE_PRIORITY_LABELS, ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '@shared/constants';
-import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
+import { ActiveFilterTag, ActiveFiltersBarComponent, ListStateComponent, PageHeaderComponent } from '@shared/ui';
 import { IssueDetailDrawerComponent } from '../../components/issue-detail-drawer/issue-detail-drawer.component';
 import { IssueFilterBarComponent, type IssueListViewMode } from '../../components/issue-filter-bar/issue-filter-bar.component';
 import { IssueListTableComponent } from '../../components/issue-list-table/issue-list-table.component';
@@ -33,7 +32,7 @@ import { IssueListStore } from '../../store/issue-list.store';
     IssueListTableComponent,
     IssueCreateDialogComponent,
     NzPaginationModule,
-    NzTagModule,
+    ActiveFiltersBarComponent,
   ],
   providers: [IssueListStore],
   template: `
@@ -69,15 +68,7 @@ import { IssueListStore } from '../../store/issue-list.store';
         取消选择
       </button>
     </div> -->
-    @if (activeFilterTags().length > 0) {
-      <div class="active-filters">
-        <span class="active-filters__label">当前筛选</span>
-        @for (tag of activeFilterTags(); track tag.kind + ':' + tag.value) {
-          <nz-tag nzMode="closeable" [class]="filterTagClass(tag.kind)" (nzOnClose)="removeFilterTag(tag.kind, tag.value)">{{ tag.label }}</nz-tag>
-        }
-        <button type="button" class="active-filters__clear" (click)="resetFilters()">清空全部</button>
-      </div>
-    }
+    <app-active-filters-bar [tags]="activeFilterBarTags()" (remove)="onActiveFilterRemove($event)" (clear)="resetFilters()" />
     <app-list-state
       [loading]="store.loading()"
       [empty]="store.items().length === 0"
@@ -140,75 +131,6 @@ import { IssueListStore } from '../../store/issue-list.store';
         display: flex;
         justify-content: flex-end;
         padding: 16px 0 4px;
-      }
-      .active-filters {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 10px 0 14px;
-        flex-wrap: wrap;
-      }
-      .active-filters__label {
-        color: var(--text-muted);
-        font-size: 14px;
-      }
-      .active-filters__clear {
-        border: 0;
-        background: transparent;
-        color: var(--primary-500);
-        font-size: 13px;
-        font-weight: 600;
-        padding: 6px 8px;
-        cursor: pointer;
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag {
-        display: inline-flex;
-        align-items: center;
-        height: 30px;
-        line-height: 30px;
-        margin-inline-end: 0;
-        border-radius: 999px;
-        padding-inline: 12px;
-        font-size: 13px;
-        font-weight: 500;
-        border: 1px solid var(--border-color);
-        background: var(--bg-subtle);
-        color: var(--text-primary);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag .ant-tag-close-icon {
-        margin-inline-start: 8px;
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--status {
-        background: rgba(37, 99, 235, 0.1);
-        border-color: rgba(37, 99, 235, 0.35);
-        color: rgb(30, 64, 175);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--priority {
-        background: rgba(245, 158, 11, 0.14);
-        border-color: rgba(245, 158, 11, 0.35);
-        color: rgb(146, 64, 14);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--people {
-        background: rgba(16, 185, 129, 0.12);
-        border-color: rgba(16, 185, 129, 0.35);
-        color: rgb(6, 95, 70);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--scope {
-        background: rgba(99, 102, 241, 0.12);
-        border-color: rgba(99, 102, 241, 0.35);
-        color: rgb(67, 56, 202);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--keyword {
-        background: rgba(236, 72, 153, 0.12);
-        border-color: rgba(236, 72, 153, 0.35);
-        color: rgb(157, 23, 77);
-      }
-      :host ::ng-deep .active-filters .ant-tag.filter-tag--sort {
-        background: rgba(100, 116, 139, 0.14);
-        border-color: rgba(100, 116, 139, 0.35);
-        color: rgb(51, 65, 85);
       }
       .issue-batch-actions {
         display: flex;
@@ -393,6 +315,12 @@ export class IssueListPageComponent {
     }
     return tags;
   });
+  readonly activeFilterBarTags = computed<ActiveFilterTag[]>(() =>
+    this.activeFilterTags().map((tag) => ({
+      ...tag,
+      className: this.filterTagClass(tag.kind).replace('filter-tag ', ''),
+    }))
+  );
   private lastProjectId: string | null | undefined = undefined;
 
   constructor() {
@@ -593,6 +521,25 @@ export class IssueListPageComponent {
       page: 1,
       keyword: '',
     });
+  }
+
+  onActiveFilterRemove(event: { kind: string; value: string }): void {
+    this.removeFilterTag(
+      event.kind as
+        | 'status'
+        | 'type'
+        | 'priority'
+        | 'reporterIds'
+        | 'assigneeIds'
+        | 'moduleCodes'
+        | 'versionCodes'
+        | 'environmentCodes'
+        | 'includeAssigneeParticipants'
+        | 'sortBy'
+        | 'sortOrder'
+        | 'keyword',
+      event.value
+    );
   }
 
   onPageIndexChange(page: number): void {

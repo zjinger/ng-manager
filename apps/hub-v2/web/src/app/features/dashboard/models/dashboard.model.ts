@@ -18,6 +18,20 @@ export interface DashboardTodoItem {
   projectId: string;
 }
 
+export interface DashboardTodoPageQuery {
+  page?: number;
+  pageSize?: number;
+  kind?: DashboardTodoItemKind;
+  projectId?: string;
+}
+
+export interface DashboardTodoPageResult {
+  items: DashboardTodoItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export interface DashboardReportedIssueItem {
   entityId: string;
   code: string;

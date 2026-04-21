@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-dashboard-panel',
   standalone: true,
-  imports: [NzIconModule],
+  imports: [NzIconModule, RouterLink, NzTooltipModule],
   template: `
     <section class="panel">
       <header class="panel__header">
@@ -14,7 +16,14 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
           }
           <h3 class="panel__title">{{ title() }}</h3>
         </div>
-        <span class="panel__count">{{ count() }}</span>
+        <div class="panel__header-right">
+          <span class="panel__count">{{ count() }}</span>
+          @if (actionIcon()&& actionLink().length > 0) {
+             <a class="panel__action" [routerLink]="actionLink()" nz-tooltip [nzTooltipTitle]="actionText() || ''">
+              <nz-icon class="panel__action-icon" [nzType]="actionIcon()!"></nz-icon>
+             </a>
+          }
+        </div>
       </header>
 
       <div class="panel__body">
@@ -58,6 +67,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         border-bottom: 1px solid var(--border-color-soft);
         flex-shrink: 0;
       }
+      .panel__header-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
       .panel__heading {
         display: inline-flex;
         align-items: center;
@@ -94,6 +108,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         font-size: 12px;
         font-weight: 500;
       }
+      .panel__action {
+        color: var(--primary-600);
+        font-size: 12px;
+        font-weight: 600;
+      }
       .panel__empty {
         height: 100%;
         padding: 32px 18px;
@@ -118,4 +137,7 @@ export class DashboardPanelComponent {
   readonly icon = input<string | null>(null);
   readonly empty = input(false);
   readonly emptyText = input('暂无数据');
+  readonly actionIcon = input<string | null>(null);
+  readonly actionText = input<string | null>(null);
+  readonly actionLink = input<string[]>([]);
 }
