@@ -10,7 +10,7 @@ import { findBestMatchingVersion, satisfiesVersion } from './node-version.utils'
 const execFileAsync = promisify(execFile);
 
 export class NodeVersionServiceImpl implements NodeVersionService {
-  constructor(private sysLog?: SystemLogService) {}
+  constructor(private sysLog: SystemLogService) {}
 
   async getCurrentVersion(): Promise<NodeVersionInfo> {
     const manager = this.detectManager();
