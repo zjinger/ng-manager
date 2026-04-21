@@ -24,7 +24,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     } catch {
       current = null;
     }
-
+    
     try {
       available = await this.getAvailableVersions(manager);
     } catch {
@@ -130,31 +130,26 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     return false;
   }
 
-  private async getNodeVersion(): Promise<string> {
-    const manager = this.detectManager();
+private async getNodeVersion(): Promise<string> {
+  const manager = this.detectManager();
 
-    // 如果使用 Volta，优先通过 volta list node 获取当前版本
-    // 因为当前进程的 node 路径可能是旧版本，需要通过 Volta 查询
-    if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
-      try {
-        const result = await execFileAsync('volta', ['list', 'node'], { windowsHide: true });
-        const lines = result.stdout.split('\n');
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.includes('(default)') || trimmed.includes('Node.js:')) {
-            const match = trimmed.match(/(\d+\.\d+\.\d+)/);
-            if (match) {
-              return 'v' + match[1];
-            }
-          }
-        }
-      } catch {}
-    }
-
-    const { stdout } = await execFileAsync('node', ['-v'], { windowsHide: true });
-    return stdout.trim();
+  if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
+    try {
+      const { stdout } = await execFileAsync('volta', ['current'], { windowsHide: true });
+      const v = stdout.trim();
+      if (v) return v.startsWith('v') ? v : 'v' + v;
+    } catch {}
   }
+
+  else  {
+    try {
+      const { stdout } = await execFileAsync('nvm', ['current'], { windowsHide: true });
+      const v = stdout.trim();
+      if (v) return v.startsWith('v') ? v : 'v' + v;
+    } catch {}
+  }
+  return process.version;
+}
 
   /** 获取可用的 Node 版本 */
   private async getAvailableVersions(manager: VersionManager): Promise<string[]> {
