@@ -64,7 +64,7 @@ export async function createCoreApp(
     const project = new ProjectServiceImpl(projectRepo)
 
     /* ------------------ node-version ------------------ */
-    const nodeVersion = new NodeVersionServiceImpl();
+    const nodeVersion = new NodeVersionServiceImpl(sysLog);
 
     /* ------------------ task ------------------ */
     // 任务服务（start / stop / status）

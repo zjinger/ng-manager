@@ -80,7 +80,23 @@ export class TaskServiceImpl implements TaskService {
         if (spec.projectRoot) {
             try {
                 const requirement = await this.nodeVersionService.detectProjectRequirement(spec.projectRoot);
-                if (requirement.requiredVersion) {
+                if (requirement.voltaConfig) {
+                    this.appendSysLog(
+                        runId,
+                        `[Node] 项目配置了 Volta (node@${requirement.voltaConfig})，由 Volta 自动切换`,
+                        'info'
+                    );
+                    const manager = this.nodeVersionService.getManager();
+                    if (manager === 'volta' || manager === 'nvm+volta') {
+                        try {
+                            await this.nodeVersionService.switchVersion(`node@${requirement.voltaConfig}`, runId);
+                        } catch (e: any) {
+                            this.appendSysLog(runId, `[Node] Volta 配置失败: ${e?.message ?? String(e)}，继续运行`, 'warn');
+                        }
+                    } else {
+                        this.appendSysLog(runId, `[Node] 未安装 Volta，无法使用项目配置的 Volta 版本`, 'warn');
+                    }
+                } else if (requirement.requiredVersion) {
                     if (!requirement.isMatch && requirement.satisfiedBy) {
                         targetVersion = requirement.satisfiedBy;
                         this.appendSysLog(
@@ -114,18 +130,9 @@ export class TaskServiceImpl implements TaskService {
             // 全局切换 Node 版本
             if (targetVersion) {
                 try {
-                    await this.nodeVersionService.switchVersion(targetVersion);
-                    this.appendSysLog(
-                        runId,
-                        `[Node] 已切换到 Node ${targetVersion}`,
-                        'info'
-                    );
+                    await this.nodeVersionService.switchVersion(targetVersion, runId);
                 } catch (e: any) {
-                    this.appendSysLog(
-                        runId,
-                        `[Node] 切换版本失败: ${e?.message ?? String(e)}，使用当前版本继续`,
-                        'warn'
-                    );
+                    this.appendSysLog(runId, `[Node] 切换版本失败: ${e?.message ?? String(e)}，继续运行`, 'warn');
                 }
             }
 

@@ -5,13 +5,14 @@ import { lastValueFrom } from 'rxjs';
 
 export interface NodeVersionInfo {
   current: string | null;
-  manager: 'nvm' | 'none';
+  manager: 'nvm' | 'volta' | 'nvm+volta' | 'none';
   available: string[];
 }
 
 export interface ProjectNodeRequirement {
   projectPath: string;
   requiredVersion: string | null;
+  voltaConfig: string | null;
   satisfiedBy: string | null;
   isMatch: boolean;
 }
@@ -26,7 +27,7 @@ export class NodeVersionService {
   /** 可用版本列表 */
   readonly availableVersions = signal<string[]>([]);
   /** 当前版本管理器 */
-  readonly manager = signal<'nvm' | 'none'>('none');
+  readonly manager = signal<'nvm' | 'volta' | 'nvm+volta' | 'none'>('none');
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly switching = signal(false);
@@ -49,7 +50,7 @@ export class NodeVersionService {
    * 获取未安装版本管理器的提示信息
    */
   getNoManagerMessage(): string {
-    return '请先安装 NVM 才能使用自动切换 Node 版本功能';
+    return '请先安装 NVM 或 Volta 才能使用自动切换 Node 版本功能';
   }
 
   async getCurrentVersion() {

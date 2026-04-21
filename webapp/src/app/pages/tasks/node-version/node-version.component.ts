@@ -56,7 +56,12 @@ import { NodeVersionService } from './node-version.service';
 
     <!-- 项目版本要求提示 -->
     @if (nodeVersion.projectRequirement(); as req) {
-      @if (!req.requiredVersion) {
+      @if (req.voltaConfig) {
+        <div class="info-message">
+          <span nz-icon nzType="check-circle" nzTheme="outline"></span>
+          项目已配置 Volta (node@{{ req.voltaConfig }})，由 Volta 自动切换
+        </div>
+      } @else if (!req.requiredVersion) {
         <div class="info-message">
           <span nz-icon nzType="info-circle" nzTheme="outline"></span>
           该项目未配置 Node 版本要求
@@ -216,22 +221,18 @@ export class NodeVersionComponent implements OnInit {
   }
 
   getManagerLabel = computed(() => {
-    const m = this.nodeVersion.manager();
-    switch (m) {
-      case 'nvm':
-        return 'NVM';
-      default:
-        return '系统';
+    const req = this.nodeVersion.projectRequirement();
+    if (req?.voltaConfig) {
+      return 'Volta';
     }
+    return 'NVM';
   });
   /** 获取当前版本管理器 */
   getManagerColor = computed(() => {
-    const m = this.nodeVersion.manager();
-    switch (m) {
-      case 'nvm':
-        return 'green';
-      default:
-        return 'default';
+    const req = this.nodeVersion.projectRequirement();
+    if (req?.voltaConfig) {
+      return 'orange';
     }
+    return 'green';
   });
 }
