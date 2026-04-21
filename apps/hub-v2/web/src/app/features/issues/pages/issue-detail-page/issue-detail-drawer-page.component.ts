@@ -117,7 +117,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
           </div>
         </section>
         <div class="detail-side detail-side--drawer">
-            <app-issue-props-panel [issue]="issue" />
+            <app-issue-props-panel [issue]="issue" [participants]="store.participants()" />
             <app-issue-branches-panel
               [branches]="store.branches()"
               [currentActorIds]="store.currentActorIds()"

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { ISSUE_STATUS_LABELS } from '@shared/constants';
 import { PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
-import type { IssueEntity } from '../../models/issue.model';
+import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.model';
 
 @Component({
   selector: 'app-issue-props-panel',
@@ -38,7 +38,12 @@ import type { IssueEntity } from '../../models/issue.model';
             <!-- @if (issue().assigneeName) {
               <span class="mini-avatar">{{ avatarText(issue().assigneeName!) }}</span>
             } -->
-            <span>{{ issue().assigneeName || '未指派' }}</span>
+            <span class="assignee-name">{{ issue().assigneeName || '未指派' }}</span>
+            @if(participants().length) {
+                 @for (participant of participants(); track participant) {
+                    <span class="meta-cell">{{ participant.userName }}</span>
+                 }
+            }
           </dd>
         </div>
         <div>
@@ -98,6 +103,12 @@ import type { IssueEntity } from '../../models/issue.model';
         justify-content: flex-end;
         gap: 8px;
       }
+      .assignee-name {
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .meta-cell {
         font-size: 12px;
         color: var(--text-muted);
@@ -121,6 +132,7 @@ import type { IssueEntity } from '../../models/issue.model';
 })
 export class IssuePropsPanelComponent {
   readonly issue = input.required<IssueEntity>();
+  readonly participants = input<IssueParticipantEntity[]>([]);
 
   statusLabel(status: string): string {
     return ISSUE_STATUS_LABELS[status] || status;

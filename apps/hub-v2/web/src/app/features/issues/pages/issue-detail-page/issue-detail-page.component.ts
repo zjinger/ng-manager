@@ -130,7 +130,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
               </div>
 
               <div detail-side class="detail-side">
-                <app-issue-props-panel [issue]="issue" />
+                <app-issue-props-panel [issue]="issue" [participants]="store.participants()" />
                 <app-issue-branches-panel
                   [branches]="store.branches()"
                   [currentActorIds]="store.currentActorIds()"
