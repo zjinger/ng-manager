@@ -119,11 +119,16 @@ export class RdComponent {
     this.rdStore.initialize();
     this.route.queryParamMap.subscribe((params) => {
       const detailId = params.get('detail');
+      if (!detailId) return;
 
-      if (detailId && !this.currentRdItem()) {
-        this.rdStore.loadCurrentRdItem(detailId);
+      // 避免重复加载
+      if (this.currentRdItem()?.id === detailId || this.currentRdLoading()) {
         this.detailDrawerOpen.set(true);
+        return;
       }
+
+      this.rdStore.loadCurrentRdItem(detailId);
+      this.detailDrawerOpen.set(true);
     });
 
     // 确保用户token绑定
@@ -159,8 +164,12 @@ export class RdComponent {
   async selectItem(item: RdItemEntity) {
     this.openDetail(item);
     this.detailDrawerOpen.set(true);
-    await this.rdStore.loadCurrentRdItem(item.id);
-    this.rdStore.setCurrentRdItem(this.rdStore.currentRdItem() ?? item);
+    try {
+      await this.rdStore.loadCurrentRdItem(item.id);
+      this.rdStore.setCurrentRdItem(this.rdStore.currentRdItem() ?? item);
+    } catch (error) {
+      this.rdStore.setCurrentRdItem(item);
+    }
   }
 
   // 关闭详情抽屉

@@ -106,18 +106,20 @@ export class RdStore {
     if (!projectId) return;
     this.currentRdLoadingState.set(true);
     try {
+      // TODO: 改成并行发送
       const itemRes = await this.rdApi.getRdItem(projectId, itemId);
+      this.currentRdItemState.set(itemRes);
       const logsRes = await this.rdApi.getRdItemLogs(projectId, itemId);
+      this.currentRdLogsState.set(logsRes.items);
       // TODO: 接口开放时候解开
       const progressRes = await this.rdApi.getRdProgress(projectId, itemId);
       const stageHistoryRes = await this.rdApi.getRdStageHistory(projectId, itemId);
       this.currentRdProgressState.set(progressRes.items);
       this.currentRdStageHistoryState.set(stageHistoryRes.items);
-      this.currentRdItemState.set(itemRes);
-      this.currentRdLogsState.set(logsRes.items);
       this.currentRdLoadingState.set(false);
     } catch (e) {
       this.currentRdLoadingState.set(false);
+      throw new Error("load current rd item error");
     }
   }
 

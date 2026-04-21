@@ -26,7 +26,9 @@ import { RdFlowAreaComponent } from './rd-action-area/rd-flow-area.component';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { RdProgressAreaComponent } from './rd-progress-area/rd-progress-area.component';
 import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.component';
-import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.component';
+import { RdBaseInfoComponent } from './rd-base-info/rd-base-info.component';
+import { RdLogsAreaComponent } from './rd-logs-area/rd-logs-area.component';
+import { RdDescriptionAreaComponent } from './rd-description-area/rd-description-area.component';
 
 @Component({
   selector: 'app-rd-detail',
@@ -43,7 +45,8 @@ import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.compo
     FormsModule,
     RdFlowAreaComponent,
     DetailItemCardComponent,
-    MarkdownViewerComponent,
+    RdDescriptionAreaComponent,
+    RdLogsAreaComponent,
     RdBaseInfoComponent,
     RdProgressAreaComponent,
     NzSpinModule,
@@ -77,6 +80,7 @@ import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.compo
         } @else if (rdItem(); as rdItem) {
           <div class="detail-wrap">
             <div class="left-column">
+              <!-- 研发流程 -->
               <app-rd-flow-area
                 [item]="rdItem"
                 (actionClick)="this.actionClick.emit($event)"
@@ -86,6 +90,7 @@ import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.compo
                 [busy]="busy()"
               ></app-rd-flow-area>
 
+              <!-- 成员进度 -->
               <app-rd-progress-area
                 [item]="rdItem"
                 [progressList]="progressList()"
@@ -94,35 +99,27 @@ import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.compo
                 (updateProgressClick)="updateProgressClick.emit($event)"
               ></app-rd-progress-area>
 
-              <app-detail-item-card title="研发动态" maxHeight="600px">
-                <nz-timeline>
-                  @for (log of logs(); track log.id) {
-                    <nz-timeline-item>
-                      <div class="rd-log-item">
-                        <div class="meta">
-                          <span class="operator">{{ log.operatorName || '系统' }}</span>
-                          <span class="content">{{ log.content || log.actionType }}</span>
-                          <span class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</span>
-                        </div>
-                      </div>
-                    </nz-timeline-item>
-                  }
-                  @if (logs().length === 0) {
-                    <nz-timeline-item>
-                      <span class="empty">暂无动态</span>
-                    </nz-timeline-item>
-                  }
-                </nz-timeline>
-              </app-detail-item-card>
+              <!-- 研发描述 -->
+              <app-rd-description-area
+                [projectId]="projectId()"
+                [rdItem]="rdItem"
+                [logs]="logs()"
+              ></app-rd-description-area>
+
+              <!-- 研发动态 -->
+              <app-rd-logs-area [logs]="logs()"></app-rd-logs-area>
+
+              <!-- 阶段历史 -->
               <app-rd-stage-history [entries]="stageHistory()"></app-rd-stage-history>
             </div>
-
-            <!-- 
-            <nz-descriptions-item nzTitle="研发项描述" [nzSpan]="3">
-              <app-markdown-viewer [content]="mdContent()" [showToc]="false"></app-markdown-viewer>
-            </nz-descriptions-item> -->
             <div class="right-column">
-              <app-rd-base-info [rdItem]="rdItem" [stages]="stages()"></app-rd-base-info>
+              <!-- 基本信息 -->
+              <app-rd-base-info
+                [rdItem]="rdItem"
+                [stages]="stages()"
+                [stageHistory]="stageHistory()"
+                [members]="members()"
+              ></app-rd-base-info>
             </div>
           </div>
         }
@@ -130,12 +127,8 @@ import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.compo
     </nz-drawer>
   `,
   styles: `
-    ::ng-deep
-      .detail-wrap
-      .ant-descriptions-view
-      .ant-descriptions-row:nth-of-type(2)
-      .ant-descriptions-item-label:first-child {
-      min-width: 106px;
+    ::ng-deep .ant-descriptions-bordered.ant-descriptions-small .ant-descriptions-item-label {
+      min-width: 75px;
     }
     .loading {
       margin-top: 40%;
@@ -151,7 +144,7 @@ import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.compo
         padding: 3px 8px;
         border-radius: 4px;
         white-space: nowrap;
-        background: #f1f5f9;
+        background: #fafafa;
         color: #64748b;
       }
     }
@@ -191,34 +184,6 @@ import { RdBaseInfoComponent } from './rd-base-info.component/rd-base-info.compo
         flex-direction: column;
         gap: 12px;
       }
-      .rd-log-item {
-        padding: 4px 0 0;
-        .meta {
-          display: flex;
-          align-items: center;
-          gap: 0.875rem;
-          color: rgba(0, 0, 0, 0.65);
-          font-size: 1rem;
-          margin-bottom: 4px;
-          .operator {
-            font-weight: bold;
-          }
-          .content {
-            color: rgba(0, 0, 0, 0.85);
-            font-size: 0.875rem;
-          }
-          .time {
-            margin-right: 15px;
-            font-size: 0.875rem;
-            font-weight: 300;
-            color: #bbbbbb;
-            margin-left: auto;
-          }
-        }
-        .empty {
-          color: rgba(0, 0, 0, 0.45);
-        }
-      }
     }
 
     ::ng-deep .ant-descriptions-item-content,
@@ -248,33 +213,7 @@ export class RdDetailComponent {
   readonly subtitleText = computed(() => this.rdItem()?.rdNo || '');
   readonly titleText = computed(() => this.rdItem()?.title || '研发项详情');
 
-  // 研发项描述md文档
-  readonly mdContent = computed(() => {
-    const rdItem = this.rdItem();
-    if (!rdItem) return '_ _';
-    return this.replaceImagePaths(rdItem.description || '', this.projectId(), rdItem.id);
-  });
-
   closeDetaile() {
     this.close.emit();
-  }
-
-  private replaceImagePaths(mdContent: string, projectId: string, rdId: string) {
-    // 正则表达式匹配Markdown中的图片路径
-    const regex = /!\[.*?\]\((\/api\/admin\/uploads\/[a-zA-Z0-9_-]+\/raw)\)/g;
-
-    // 替换匹配到的图片路径
-    return mdContent.replace(regex, (match: string, originalPath: string) => {
-      // 提取原路径中的 uploadId (例如upl_mnk0hxvl4xt7)
-      const matchResult = originalPath.match(/uploads\/([a-zA-Z0-9_-]+)/);
-
-      if (!matchResult) {
-        return match;
-      }
-      const itemId = matchResult[1];
-      const newPath = `/api/client/hub-token/projects/${projectId}/rd/${rdId}/uploads/${itemId}/raw`;
-
-      return match.replace(originalPath, newPath);
-    });
   }
 }

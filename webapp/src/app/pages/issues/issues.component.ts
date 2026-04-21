@@ -51,6 +51,7 @@ export class IssuesComponent {
 
   // 视图模式
   protected readonly viewType = signal<viewType>('list');
+
   protected readonly loading = this.issueListStore.loading;
   protected readonly issues = this.issueListStore.items;
   protected readonly total = this.issueListStore.total;
@@ -61,7 +62,7 @@ export class IssuesComponent {
   protected readonly currentProjectId = this.projectContextStore.currentProjectId;
 
   // 详情操作相关
-  protected readonly IssueAssignActionLabel = this.issueDetailStore.assignActionLabel;
+  protected readonly issueDetailLoading = this.issueDetailStore.loading;
 
   protected readonly open = signal(false);
 
@@ -74,7 +75,8 @@ export class IssuesComponent {
 
     this.route.queryParamMap.subscribe((params) => {
       const detailId = params.get('detail');
-
+      if (!detailId) return;
+      if (this.selectedIssue()?.id === detailId || this.issueDetailLoading()) return;
       if (detailId && !this.selectedIssue()) {
         this.issueDetailStore.load(detailId);
         this.open.set(true);

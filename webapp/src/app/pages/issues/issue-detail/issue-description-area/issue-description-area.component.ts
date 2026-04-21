@@ -62,6 +62,7 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
     .resolution {
       margin-top: 26px;
       .resolution-label {
+        margin-bottom: 4px;
         font-size: 0.8rem;
         font-weight: bold;
         color: grey;
