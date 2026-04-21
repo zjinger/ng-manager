@@ -338,7 +338,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     if (!this.hasNextAvailableStage(current.projectId, currentStage)) {
       throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd item already in last stage", 400);
     }
-    if (currentStage && targetStage.sort <= currentStage.sort) {
+    if (currentStage && !this.isStageAfter(current.projectId, currentStage.id, targetStage.id)) {
       throw new AppError(ERROR_CODES.RD_ADVANCE_STAGE_INVALID_TARGET, "rd target stage must be after current stage", 400);
     }
     const nextMembersRef =
@@ -909,17 +909,45 @@ export class RdService implements RdCommandContract, RdQueryContract {
   }
 
   private hasNextAvailableStage(projectId: string, currentStage: RdStageEntity | null): boolean {
-    const enabledStages = this.repo
-      .listStages(projectId)
-      .filter((stage) => stage.enabled)
-      .sort((a, b) => a.sort - b.sort);
+    const enabledStages = this.listOrderedEnabledStages(projectId);
     if (enabledStages.length === 0) {
       return false;
     }
     if (!currentStage) {
       return enabledStages.length > 0;
     }
-    return enabledStages.some((stage) => stage.sort > currentStage.sort);
+    const currentIndex = enabledStages.findIndex((stage) => stage.id === currentStage.id);
+    if (currentIndex < 0) {
+      return enabledStages.length > 0;
+    }
+    return currentIndex < enabledStages.length - 1;
+  }
+
+  private isStageAfter(projectId: string, fromStageId: string, toStageId: string): boolean {
+    const enabledStages = this.listOrderedEnabledStages(projectId);
+    const fromIndex = enabledStages.findIndex((stage) => stage.id === fromStageId);
+    const toIndex = enabledStages.findIndex((stage) => stage.id === toStageId);
+    if (fromIndex < 0 || toIndex < 0) {
+      return false;
+    }
+    return toIndex > fromIndex;
+  }
+
+  private listOrderedEnabledStages(projectId: string): RdStageEntity[] {
+    return this.repo
+      .listStages(projectId)
+      .filter((stage) => stage.enabled)
+      .sort((a, b) => {
+        if (a.sort !== b.sort) {
+          return a.sort - b.sort;
+        }
+        const aCreated = Date.parse(a.createdAt || "");
+        const bCreated = Date.parse(b.createdAt || "");
+        if (Number.isFinite(aCreated) && Number.isFinite(bCreated) && aCreated !== bCreated) {
+          return aCreated - bCreated;
+        }
+        return a.id.localeCompare(b.id);
+      });
   }
 
   private getReopenStatusByProgress(progress: number): RdItemEntity["status"] {

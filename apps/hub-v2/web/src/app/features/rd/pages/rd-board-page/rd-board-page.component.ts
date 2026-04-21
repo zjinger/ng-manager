@@ -805,18 +805,30 @@ export class RdBoardPageComponent {
     if (!item) {
       return false;
     }
-    const all = [...this.store.stages()].sort((a, b) => a.sort - b.sort);
+    const all = [...this.store.stages()]
+      .filter((stage) => stage.enabled)
+      .sort((a, b) => {
+        if (a.sort !== b.sort) {
+          return a.sort - b.sort;
+        }
+        const aCreated = Date.parse(a.createdAt || '');
+        const bCreated = Date.parse(b.createdAt || '');
+        if (Number.isFinite(aCreated) && Number.isFinite(bCreated) && aCreated !== bCreated) {
+          return aCreated - bCreated;
+        }
+        return a.id.localeCompare(b.id);
+      });
     if (all.length === 0) {
       return false;
     }
     if (!item.stageId) {
       return all.length > 0;
     }
-    const currentStage = all.find((stage) => stage.id === item.stageId);
-    if (!currentStage) {
+    const currentIndex = all.findIndex((stage) => stage.id === item.stageId);
+    if (currentIndex < 0) {
       return all.length > 0;
     }
-    return all.some((stage) => stage.sort > currentStage.sort);
+    return currentIndex < all.length - 1;
   }
 
   private normalizeProgressByUser(list: RdItemProgress[]): RdItemProgress[] {

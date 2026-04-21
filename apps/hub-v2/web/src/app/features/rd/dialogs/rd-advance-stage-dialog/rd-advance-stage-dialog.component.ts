@@ -213,18 +213,30 @@ export class RdAdvanceStageDialogComponent {
   });
   readonly candidateStages = computed(() => {
     const current = this.item();
-    const all = [...this.stages()].filter((stage) => stage.enabled).sort((a, b) => a.sort - b.sort);
+    const all = [...this.stages()]
+      .filter((stage) => stage.enabled)
+      .sort((a, b) => {
+        if (a.sort !== b.sort) {
+          return a.sort - b.sort;
+        }
+        const aCreated = Date.parse(a.createdAt || '');
+        const bCreated = Date.parse(b.createdAt || '');
+        if (Number.isFinite(aCreated) && Number.isFinite(bCreated) && aCreated !== bCreated) {
+          return aCreated - bCreated;
+        }
+        return a.id.localeCompare(b.id);
+      });
     if (!current) {
       return [];
     }
     if (!current.stageId) {
       return all;
     }
-    const currentStage = all.find((stage) => stage.id === current.stageId);
-    if (!currentStage) {
+    const currentIndex = all.findIndex((stage) => stage.id === current.stageId);
+    if (currentIndex < 0) {
       return all;
     }
-    return all.filter((stage) => stage.sort > currentStage.sort);
+    return all.slice(currentIndex + 1);
   });
 
   constructor() {
