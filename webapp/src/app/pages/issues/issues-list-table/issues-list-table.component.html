@@ -15,28 +15,38 @@
         <tr (click)="selectItem.emit(item)" [class.selected-row]="item.id === selectedItem()?.id"
             class="issue-item-row">
             <td>{{ $index + 1 }}</td>
-            <td>
-                <div class="title-wrap" (mouseenter)="showPreview($event, item)" (mousemove)="movePreview($event, item)"
-                    (mouseleave)="hidePreview()">
-                    <p class="issue-title">
-                        <span class="issue-no"> [{{ item.issueNo }}] </span>
-                        <span> {{ item.title }} </span>
-                    </p>
-                    <nz-tag [nzColor]="getTypeColor(item.type)">
-                        {{ getTypeLabel(item.type) }}
-                    </nz-tag>
-                    <nz-tag [nzColor]="getPriorityColor(item.priority)">
-                        {{ getPriorityLabel(item.priority) }}
-                    </nz-tag>
-                    @if (item.moduleCode) {
-                    <nz-tag nzColor="default">{{ item.moduleCode }}</nz-tag>
-                    }
+            <td class="title-td-container">
+                <div class="issue-item-text">
+                    <div class="title-wrap">
+                        <p class="issue-title" #titleEl nz-popover [nzPopoverContent]="item.title"
+                            [nzPopoverVisible]="checkTitleOverflow(item)" [nzPopoverTrigger]="null"  nzPopoverOverlayClassName="issue-tooltip-popover"
+                            (mouseenter)="setTitleOverflow(item.id,titleEl)" (mouseleave)="refreshTitleOverflow()">
+                            <span class="issue-no"> [{{ item.issueNo }}] </span>
+                            <span> {{ item.title }} </span>
+                        </p>
+                        <nz-tag [nzColor]="getTypeColor(item.type)">
+                            {{ getTypeLabel(item.type) }}
+                        </nz-tag>
+                        <nz-tag [nzColor]="getPriorityColor(item.priority)">
+                            {{ getPriorityLabel(item.priority) }}
+                        </nz-tag>
+                        @if (item.moduleCode) {
+                        <nz-tag nzColor="default">{{ item.moduleCode }}</nz-tag>
+                        }
+                    </div>
+                    <div class="des">
+                        <app-ellipsis-text [lines]="2" [enableToggle]="false">
+                            {{ previewSummary(item) }}
+                        </app-ellipsis-text>
+                    </div>
                 </div>
-                <div class="des">
-                    <app-ellipsis-text [lines]="2" [enableToggle]="false">
-                        {{ previewSummary(item) }}
-                    </app-ellipsis-text>
+                @if(previewImageUrl(item)) {
+                <div class="issue-item-img">
+                    <img [src]="previewImageUrl(item)" [alt]="" (error)="markPreviewImageError(item)"
+                        (mouseenter)="showPreview($event, item)" (mousemove)="movePreview($event, item)"
+                        (mouseleave)="hidePreview()" />
                 </div>
+                }
             </td>
             <td>
                 <nz-tag [nzColor]="getStatusColor(item.status)">

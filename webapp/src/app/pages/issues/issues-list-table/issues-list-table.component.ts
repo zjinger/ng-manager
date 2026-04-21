@@ -11,12 +11,16 @@ import { ISSUE_TYPE_COLORS, ISSUE_TYPE_LABELS } from '@app/shared/constants/issu
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { computed, signal } from '@angular/core';
 import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
+import { NzPopoverModule } from 'ng-zorro-antd/popover';
+import { set } from 'lodash';
+
 @Component({
   selector: 'app-issues-list-table',
   imports: [
     NzTableModule,
     NzTagModule,
     NzProgressModule,
+    NzPopoverModule,
     NzTooltipModule,
     EllipsisTextComponent,
     CommonModule,
@@ -40,16 +44,21 @@ export class IssuesListTableComponent {
   } | null>(null);
 
   // 图片解析缓存
-  readonly imageErrorSet = signal(new Set<string>());
-  private readonly previewMap = computed(() => {
+  private readonly imageErrorSet = signal(new Set<string>());
+
+  readonly previewMap = computed(() => {
     const map = new Map<string, { summary: string; imageUrl: string | null; imageAlt: string }>();
 
     for (const item of this.issues()) {
       map.set(item.id, this.parseDescriptionImage(item.description, this.projectId()!, item.id));
     }
+    console.log(map);
 
     return map;
   });
+
+  // readonly currentTitleOverflowing = signal(false);
+  readonly titleOverflowPreview = signal<{ issueId: string; overflowing: boolean } | null>(null);
 
   getStatusLabel(status: IssueStatus) {
     return ISSUE_STATUS_LABELS[status];
@@ -155,6 +164,19 @@ export class IssuesListTableComponent {
     return this.previewMap().get(item.id)?.summary || '暂无详细描述';
   }
 
+  previewImageUrl(item: IssueEntity): string | null {
+    if (this.imageErrorSet().has(item.id)) {
+      return null;
+    }
+    return this.previewMap().get(item.id)?.imageUrl ?? null;
+  }
+
+  markPreviewImageError(item: IssueEntity) {
+    this.imageErrorSet.update((set) => {
+      return new Set([...set, item.id]);
+    });
+  }
+
   showPreview(e: MouseEvent, item: IssueEntity) {
     const data = this.previewMap().get(item.id);
 
@@ -169,24 +191,11 @@ export class IssuesListTableComponent {
       return;
     }
     const position = this.calcPosition(e);
-    const img = new Image();
-    img.src = data.imageUrl!;
-
-    img.onload = () => {
-      this.hoveredPreview.set({
-        src: data.imageUrl!,
-        alt: data.imageAlt || item.title,
-        ...position,
-      });
-    };
-
-    img.onerror = () => {
-      const set = new Set(this.imageErrorSet());
-      set.add(data.imageUrl!);
-      this.imageErrorSet.set(set);
-
-      this.hoveredPreview.set(null);
-    };
+    this.hoveredPreview.set({
+      src: data.imageUrl!,
+      alt: data.imageAlt || item.title,
+      ...position,
+    });
   }
 
   onImageError(src: string) {
@@ -205,6 +214,22 @@ export class IssuesListTableComponent {
 
   hidePreview() {
     this.hoveredPreview.set(null);
+  }
+
+  // 检查标题是否溢出，如果溢出，显示预览
+  checkTitleOverflow(item: IssueEntity) {
+    return (
+      this.titleOverflowPreview()?.issueId === item.id && this.titleOverflowPreview()?.overflowing
+    );
+  }
+
+  setTitleOverflow(issueId: string, titleEl: HTMLElement) {
+    const overflowing = titleEl.scrollWidth > titleEl.clientWidth;
+    this.titleOverflowPreview.set({ issueId, overflowing });
+  }
+
+  refreshTitleOverflow() {
+    this.titleOverflowPreview.set(null);
   }
 
   private calcPosition(e: MouseEvent) {
