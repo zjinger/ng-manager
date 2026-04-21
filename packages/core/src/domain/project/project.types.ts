@@ -100,6 +100,6 @@ export interface ProjectAssetSourceSvn {
  * - MVP 先只做 svn，未来可扩 git/http
  */
 export interface ProjectAssets {
-    iconsSvn: ProjectAssetSourceSvn; // 原始尺寸图标的 SVN 来源
+    iconsSvn?: ProjectAssetSourceSvn; // 原始尺寸图标的 SVN 来源（可选，支持本地图片模式）
     cutImageSvn?: ProjectAssetSourceSvn; // 可选：切图的 SVN 来源
 }

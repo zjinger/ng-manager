@@ -23,6 +23,12 @@ export class SpriteServiceImpl implements SpriteService {
         return dir;
     }
 
+    ensureLocalCacheDir(projectId: string) {
+        const dir = path.join(this.cacheDir, "sprites", projectId, "local");
+        ensureDir(dir);
+        return dir;
+    }
+
     async getConfig(projectId: string): Promise<SpriteConfig | null> {
         const p = await this.project.get(projectId);
         const cfg = await this.spriteRepo.getByProjectId(projectId);
@@ -64,7 +70,14 @@ export class SpriteServiceImpl implements SpriteService {
         const iconsRoot = resolveIconsRoot(project, cfg);
         if (!fs.existsSync(iconsRoot)) throw new AppError("SPRITE_ICONS_ROOT_NOT_FOUND", `iconsRoot not found: ${iconsRoot}`);
 
-        const cacheOutDir = this.ensureCacheDir(projectId);
+        // 本地文件夹模式使用单独的缓存目录
+        const isLocalFolderMode = !!String(cfg.localImageRoot ?? "").trim();
+        const cacheOutDir = isLocalFolderMode
+            ? this.ensureLocalCacheDir(projectId)
+            : this.ensureCacheDir(projectId);
+        if (isLocalFolderMode) {
+            resetLocalCacheIfSourceChanged(cacheOutDir, iconsRoot);
+        }
 
         const concurrency = options?.concurrency ?? 1;
         const continueOnError = options?.continueOnError ?? true;
@@ -74,11 +87,18 @@ export class SpriteServiceImpl implements SpriteService {
         const algorithm = cfg.algorithm || "binary-tree";
         const persistLess = cfg.persistLess ?? true;
         const spriteUrlTpl = String(cfg.spriteUrl ?? "").trim();
+
+        // 本地文件夹模式：两级遍历
+        let groups: string[] | undefined;
+        if (isLocalFolderMode) {
+            groups = scanLocalFolderTwoLevels(iconsRoot);
+        }
+
         const batch = await generateGroupBatch({
             iconsRoot,
             outDir: cacheOutDir,
             spriteUrlTemplate: spriteUrlTpl,
-            groups: options?.groups,
+            groups: groups,
             prefix,
             algorithm,
             cache: {
@@ -91,6 +111,9 @@ export class SpriteServiceImpl implements SpriteService {
             svgUrlResolver: ({ group, file }) =>
                 `/assets/icons/${encodeURIComponent(group)}/${encodeURIComponent(file)}`,
         });
+        if (isLocalFolderMode) {
+            pruneLocalCacheByGroups(cacheOutDir, new Set(batch.items.map((it) => it.group)));
+        }
 
         const outGroups: SpriteGroupItem[] = batch.items.map((it) => {
             if (!it.ok) {
@@ -110,7 +133,7 @@ export class SpriteServiceImpl implements SpriteService {
             }
             if (kind === 'png') {
                 spriteUrl = (r as GenerateSpriteResult)?.spriteUrl;
-                previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
+                previewSpriteUrl = buildPreviewSpriteUrl(projectId, group, isLocalFolderMode);
                 lessText = String(result?.lessText ?? "");
             }
 
@@ -174,11 +197,14 @@ export class SpriteServiceImpl implements SpriteService {
         };
     }
 
-    async getSprites(projectId: string): Promise<SpriteSnapshot> {
+    async getSprites(projectId: string, local = false): Promise<SpriteSnapshot> {
         const cfg = await this.getConfig(projectId);
         if (!cfg) throw new AppError("SPRITE_CONFIG_NOT_FOUND", `Sprite config not found for project ${projectId}`);
 
-        const cacheOutDir = this.ensureCacheDir(projectId);
+        const isLocalFolderMode = !!String(cfg.localImageRoot ?? "").trim();
+        const cacheOutDir = local && isLocalFolderMode
+            ? this.ensureLocalCacheDir(projectId)
+            : this.ensureCacheDir(projectId);
 
         if (!fs.existsSync(cacheOutDir)) {
             return {
@@ -205,7 +231,7 @@ export class SpriteServiceImpl implements SpriteService {
                 let lessText = "", spriteUrl, previewSpriteUrl;
                 if (meta.mode === 'png') {
                     spriteUrl = spriteUrlTpl ? applyGroupTpl(spriteUrlTpl, group) : undefined;
-                    previewSpriteUrl = `/sprites/${encodeURIComponent(projectId)}/${encodeURIComponent(group)}.png`;
+                    previewSpriteUrl = buildPreviewSpriteUrl(projectId, group, local && isLocalFolderMode);
                     const lessPath = path.join(cacheOutDir, `${group}.less`);
                     if (fs.existsSync(lessPath)) {
                         try { lessText = fs.readFileSync(lessPath, "utf-8"); } catch {
@@ -253,13 +279,15 @@ export class SpriteServiceImpl implements SpriteService {
 
 /**
  * 决定 iconsRoot：
- * 1) spriteConfig.localDir（如果配置了）
- * 2) project.assets 中 id==sourceId 的 localDir
- * 3) fallback project.assets.iconsSvn.localDir
+ * 1) spriteConfig.localImageRoot（如果配置了，本地文件夹模式）
+ * 2) spriteConfig.localDir（如果配置了）
+ * 3) project.assets 中 id==sourceId 的 localDir
+ * 4) fallback project.assets.iconsSvn.localDir
  */
 function resolveIconsRoot(project: Project, cfg: SpriteConfig): string {
-    // const cfgLocal = String(cfg.localDir ?? "").trim();
-    // if (cfgLocal) return cfgLocal;
+    // 本地文件夹模式优先
+    const localImageRoot = String(cfg.localImageRoot ?? "").trim();
+    if (localImageRoot) return localImageRoot;
 
     const bySource = resolveAssetLocalDir(project, cfg.sourceId);
     if (bySource) return bySource;
@@ -268,6 +296,45 @@ function resolveIconsRoot(project: Project, cfg: SpriteConfig): string {
     if (iconsSvnLocal) return iconsSvnLocal;
 
     throw new AppError("SPRITE_ICONS_ROOT_NOT_FOUND", "Cannot resolve icons root for sprite generation");
+}
+
+/**
+ * 扫描本地文件夹，返回两级遍历的 groups
+ * - 根目录图片 -> group 为 "."（表示使用 iconsRoot 本身）
+ * - 一级子目录图片 -> group 为子目录名
+ */
+function scanLocalFolderTwoLevels(localImageRoot: string): string[] {
+    if (!fs.existsSync(localImageRoot)) return [];
+
+    const groups: string[] = [];
+    const entries = fs.readdirSync(localImageRoot, { withFileTypes: true });
+
+    // 检查根目录是否有图片
+    const rootHasImages = entries.some((e) => e.isFile() && isImageFile(e.name));
+    if (rootHasImages) {
+        groups.push("."); // "." 表示根目录
+    }
+
+    // 扫描一级子目录
+    for (const entry of entries) {
+        if (entry.isDirectory()) {
+            // 跳过隐藏目录
+            if (entry.name.startsWith('.')) continue;
+            const subDir = path.join(localImageRoot, entry.name);
+            const subEntries = fs.readdirSync(subDir, { withFileTypes: true });
+            const subHasImages = subEntries.some((e) => e.isFile() && isImageFile(e.name));
+            if (subHasImages) {
+                groups.push(entry.name);
+            }
+        }
+    }
+
+    return groups;
+}
+
+function isImageFile(name: string): boolean {
+    const ext = name.toLowerCase().slice(name.lastIndexOf('.'));
+    return ext === '.png' || ext === '.svg';
 }
 
 /**
@@ -327,4 +394,56 @@ function safeReadJson(file: string) {
 function applyGroupTpl(tpl: string, group: string) {
     // return String(tpl || "").replaceAll("{group}", group);
     return String(tpl || "").replace(/{group}/g, group);
+}
+
+function buildPreviewSpriteUrl(projectId: string, group: string, local: boolean): string {
+    const base = `/sprites/${encodeURIComponent(projectId)}`;
+    const file = `${encodeURIComponent(group)}.png`;
+    return local ? `${base}/local/${file}` : `${base}/${file}`;
+}
+
+function resetLocalCacheIfSourceChanged(cacheOutDir: string, iconsRoot: string): void {
+    const markerFile = path.join(cacheOutDir, ".source-root.txt");
+    const nextRoot = path.resolve(iconsRoot);
+    const prevRoot = fs.existsSync(markerFile)
+        ? String(fs.readFileSync(markerFile, "utf-8") || "").trim()
+        : "";
+
+    if (prevRoot && prevRoot === nextRoot) {
+        return;
+    }
+
+    const files = fs.readdirSync(cacheOutDir);
+    for (const file of files) {
+        if (file === ".source-root.txt") continue;
+        const full = path.join(cacheOutDir, file);
+        fs.rmSync(full, { recursive: true, force: true });
+    }
+
+    fs.writeFileSync(markerFile, nextRoot, "utf-8");
+}
+
+function pruneLocalCacheByGroups(cacheOutDir: string, keepGroups: Set<string>): void {
+    const files = fs.readdirSync(cacheOutDir);
+    for (const file of files) {
+        if (file === ".source-root.txt") continue;
+        if (file.endsWith(".meta.json")) {
+            const group = file.slice(0, -".meta.json".length);
+            if (!keepGroups.has(group)) {
+                removeGroupArtifacts(cacheOutDir, group);
+            }
+        }
+    }
+}
+
+function removeGroupArtifacts(cacheOutDir: string, group: string): void {
+    const paths = [
+        path.join(cacheOutDir, `${group}.meta.json`),
+        path.join(cacheOutDir, `${group}.less`),
+        path.join(cacheOutDir, `${group}.png`),
+        path.join(cacheOutDir, group),
+    ];
+    for (const p of paths) {
+        fs.rmSync(p, { recursive: true, force: true });
+    }
 }

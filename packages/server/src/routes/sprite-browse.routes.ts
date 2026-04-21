@@ -50,11 +50,20 @@ export default async function spriteBrowseRoutes(fastify: FastifyInstance) {
     fastify.get("/icons/groups/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
         const project = await fastify.core.project.get(projectId);
-        const root = project?.assets?.iconsSvn?.localDir;
+        const cfg = await fastify.core.sprite.getConfig(projectId);
+        const localRoot = String(cfg?.localImageRoot ?? "").trim();
+        const root = localRoot || project?.assets?.iconsSvn?.localDir;
         if (!root) {
             return { root: "", entries: [] };
         }
-        return { root, entries: listDir(root).filter(e => e.kind === "dir") };
+        const entries = listDir(root).filter(e => e.kind === "dir");
+        if (localRoot) {
+            const rootFiles = listDir(root).filter((e) => e.kind === "file" && (e.ext === ".png" || e.ext === ".svg"));
+            if (rootFiles.length > 0) {
+                entries.unshift({ name: "root", kind: "dir", ext: undefined });
+            }
+        }
+        return { root, entries };
     });
 
     // 浏览 icons group 下文件
@@ -62,16 +71,21 @@ export default async function spriteBrowseRoutes(fastify: FastifyInstance) {
         const { projectId } = req.params as { projectId: string };
         const group = (req.query as { group?: string })?.group;
         const project = await fastify.core.project.get(projectId);
-        const root = project?.assets?.iconsSvn?.localDir;
+        const cfg = await fastify.core.sprite.getConfig(projectId);
+        const localRoot = String(cfg?.localImageRoot ?? "").trim();
+        const root = localRoot || project?.assets?.iconsSvn?.localDir;
         if (!root) {
             return { root: "", entries: [] };
         }
-        const groupDir = safeJoin(root, group || '');
+        const isRootGroup = !!localRoot && (group === "root");
+        const groupDir = isRootGroup ? root : safeJoin(root, group || '');
         const entries = listDir(groupDir)
             .filter(e => e.kind === "file")
             .map(e => ({
                 ...e,
-                url: `/api/static/svn/${projectId}/icons/${group}/${e.name}`,
+                url: localRoot
+                    ? `/api/static/local/${projectId}/${isRootGroup ? e.name : `${group}/${e.name}`}`
+                    : `/api/static/svn/${projectId}/icons/${group}/${e.name}`,
             }));
 
         return { root: groupDir, entries };

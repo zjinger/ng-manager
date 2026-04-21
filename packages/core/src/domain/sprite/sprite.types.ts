@@ -22,6 +22,10 @@ export interface SpriteConfig {
     algorithm: SpritesmithOptionsAlgorithm;
     persistLess: boolean; // 是否在输出目录持久化 less 文件
     updatedAt: number;     // 上次更新时间戳，用于判断配置是否过期（例如文件变动后）
+    /** 本地图片文件夹路径，支持两级遍历（根目录 + 一级子目录） */
+    localImageRoot?: string;
+    /** 本地图片雪碧图缓存目录 */
+    localCacheDir?: string;
 }
 
 export type GenerateSpriteOptions = {

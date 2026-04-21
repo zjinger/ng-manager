@@ -57,4 +57,24 @@ export default async function staticFileRoutes(fastify: FastifyInstance) {
         return reply.send(createReadStream(filePath));
         // return reply;
     });
+
+    // localImageRoot 文件访问
+    fastify.get("/local/:projectId/*", async (req, reply) => {
+        const { projectId } = req.params as any;
+        const file = (req.params as any)["*"];
+
+        const cfg = await fastify.core.sprite.getConfig(projectId);
+        const root = String(cfg?.localImageRoot ?? "").trim();
+        if (!root) {
+            throw new AppError("ASSET_NOT_FOUND", "localImageRoot not configured");
+        }
+
+        const filePath = safeJoin(root, file);
+        if (!fs.existsSync(filePath)) {
+            throw new AppError("NOT_FOUND", "Requested file not found in local folder");
+        }
+        const ct = mime.lookup(filePath) || "application/octet-stream";
+        reply.header("Content-Type", ct);
+        return reply.send(createReadStream(filePath));
+    });
 }

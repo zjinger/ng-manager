@@ -142,6 +142,7 @@ export class SpriteConfModalComponent {
         d.template = cfg?.template || '<i class="{base} {class}"></i>';
         d.spriteExportDir = cfg?.spriteExportDir || '';
         d.lessExportDir = cfg?.lessExportDir || '';
+        d.localImageRoot = cfg?.localImageRoot || '';
         return d;
       });
     }
@@ -150,7 +151,9 @@ export class SpriteConfModalComponent {
     const s = this.step();
     const d = this.draft();
     if (s === 0) {
-      if (!d.iconSvnPath?.trim()) return false;
+      const hasIconSvn = d.iconSvnPath?.trim();
+      const hasLocalImage = d.localImageRoot?.trim();
+      if (!hasIconSvn && !hasLocalImage) return false;
       return true;
     }
     return true;
@@ -172,9 +175,10 @@ export class SpriteConfModalComponent {
     if (this.creating()) return;
     this.creating.set(true);
     const d = this.draft();
-    const assets: ProjectAssets = {
-      iconsSvn: { kind: 'svn', url: d.iconSvnPath, label: 'icons', mode: 'manual', localDir: d.localDir, id: d.sourceId },
-    };
+    const assets: ProjectAssets = {};
+    if (d.iconSvnPath?.trim()) {
+      assets.iconsSvn = { kind: 'svn', url: d.iconSvnPath, label: 'icons', mode: 'manual', localDir: d.localDir, id: d.sourceId };
+    }
     if (d.otherImagesSvnPath) {
       const cutImageId = this.state.project()?.assets?.cutImageSvn?.id || '';
       assets.cutImageSvn = { kind: 'svn', url: d.otherImagesSvnPath, label: 'images', mode: 'manual', localDir: d.localDir, id: cutImageId };
@@ -183,6 +187,7 @@ export class SpriteConfModalComponent {
       enabled: true,
       persistLess: true,
       localDir: d.localDir,
+      localImageRoot: d.localImageRoot || undefined,
       template: d.template || '<i class="{base} {class}"></i>',
       prefix: d.cssPrefix || 'sl',
       sourceId: d.sourceId || '',

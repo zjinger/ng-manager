@@ -9,4 +9,6 @@ export interface SpriteDraft {
     cssPrefix?: string; // 可选，默认为sl
     spriteUrl?: string; // 可选，默认为空
     template?: string; // 可选，默认为空
+    /** 本地图片文件夹路径，支持两级遍历 */
+    localImageRoot?: string;
 }

@@ -52,10 +52,12 @@ import dayjs from 'dayjs';
             <nz-icon nzType="play-circle" nzTheme="outline"></nz-icon>
             <span>生成雪碧图</span>
           </button>
-          <button nz-button  nzType="primary" (click)="streamCheckout()" nz-tooltip nzTooltipTitle="从svn更新资源">
-            <nz-icon nzType="sync" nzTheme="outline"></nz-icon>
-            <span>同步 {{lastSyncAt()}}</span>
-          </button>
+          @if(hasSvnSource()){
+            <button nz-button  nzType="primary" (click)="streamCheckout()" nz-tooltip nzTooltipTitle="从svn更新资源">
+              <nz-icon nzType="sync" nzTheme="outline"></nz-icon>
+              <span>同步 {{lastSyncAt()}}</span>
+            </button>
+          }
         }
         <button nz-button nzType="text" (click)="isDrawerOpen = !isDrawerOpen" nz-tooltip nzTooltipTitle="查看日志">
           <nz-icon nzType="desktop" nzTheme="outline"></nz-icon>
@@ -72,7 +74,7 @@ import dayjs from 'dayjs';
               [nzNotFoundFooter]="footerTpl">
               </nz-empty>
             }@else{
-              <app-sprite-result-tabs [sprite]="sprite()"></app-sprite-result-tabs>
+              <app-sprite-result-tabs [sprite]="sprite()" [localSprite]="localSprite()"></app-sprite-result-tabs>
             }
 
           </div>
@@ -136,6 +138,7 @@ export class SpriteComponent implements OnInit, OnDestroy {
   private svnStream = inject(SpriteStreamService);
   @ViewChild(TerminalViewComponent) term?: TerminalViewComponent;
   sprite = signal<SpriteSnapshot | null>(null);
+  localSprite = signal<SpriteSnapshot | null>(null);
   async ngOnInit() {
     await this.loadConfig();
     if (this.isEmpty()) return;
@@ -160,6 +163,12 @@ export class SpriteComponent implements OnInit, OnDestroy {
     const sprite = await this.state.getSprites();
     this.sprite.set(sprite);
 
+    // 如果配置了本地图片文件夹，加载本地图标
+    if (this.cfg()?.localImageRoot) {
+      const localSprite = await this.state.getLocalSprites();
+      this.localSprite.set(localSprite);
+    }
+
     this.sub.add(this.svnStream.watchProject(projectId, 1000));
     // this.sub.add(
     //   this.svnStream.runtimes$(projectId).subscribe(list => {
@@ -181,7 +190,14 @@ export class SpriteComponent implements OnInit, OnDestroy {
   isEmpty = computed(() => {
     const cfg = this.cfg();
     const p = this.state.project();
-    return (cfg && p?.assets?.iconsSvn || cfg?.sourceId) ? false : true;
+    const hasSvnSource = cfg && (p?.assets?.iconsSvn || cfg?.sourceId);
+    const hasLocalSource = !!cfg?.localImageRoot;
+    return !hasSvnSource && !hasLocalSource;
+  });
+  hasSvnSource = computed(() => {
+    const cfg = this.cfg();
+    const p = this.state.project();
+    return !!(cfg && (p?.assets?.iconsSvn || cfg?.sourceId));
   });
 
   private async loadConfig() {
@@ -197,8 +213,15 @@ export class SpriteComponent implements OnInit, OnDestroy {
 
   async generate() {
     this.loading.set(true);
-    const sprite = await this.state.generate();
+    await this.state.generate();
+    const sprite = await this.state.getSprites();
     this.sprite.set(sprite);
+    if (this.cfg()?.localImageRoot) {
+      const localSprite = await this.state.getLocalSprites();
+      this.localSprite.set(localSprite);
+    } else {
+      this.localSprite.set(null);
+    }
     this.loading.set(false);
   }
 
@@ -210,6 +233,7 @@ export class SpriteComponent implements OnInit, OnDestroy {
   }
 
   async streamCheckout() {
+    if (!this.hasSvnSource()) return;
     this.loading.set(true);
     this.isDrawerOpen = true
     await this.state.streamCheckout();

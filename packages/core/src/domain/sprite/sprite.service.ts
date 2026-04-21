@@ -7,7 +7,7 @@ export interface SpriteService {
     removeConfig(projectId: string): Promise<void>;
     generate(projectId: string, options: GenerateSpriteOptions): Promise<SpriteSnapshot>;
     /** 读取 cacheOutDir 下的各 group meta.json，组装成 UI 需要的结构 */
-    getSprites(projectId: string): Promise<SpriteSnapshot>;
+    getSprites(projectId: string, local?: boolean): Promise<SpriteSnapshot>;
 
     ensureCacheDir(projectId: string): string;
 

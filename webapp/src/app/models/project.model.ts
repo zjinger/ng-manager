@@ -96,10 +96,9 @@ export interface ProjectAssetSourceSvn {
 
 /**
  * 工程相关的资源，如图标、设计稿等，可能来自不同的源（svn/git/http等），先定义一个通用接口，后续根据需要扩展
- * - MVP 先只做 svn
  */
 export interface ProjectAssets {
-    iconsSvn: ProjectAssetSourceSvn; // 原始尺寸图标的 SVN 来源
+    iconsSvn?: ProjectAssetSourceSvn; // 原始尺寸图标的 SVN 来源（可选，支持本地图片模式）
     cutImageSvn?: ProjectAssetSourceSvn; // 可选：切图的 SVN 来源
 }
 

@@ -33,6 +33,7 @@ export class JsonSpriteRepo implements SpriteRepo {
             prefix: (cfg.prefix || "sl").trim() || "sl",
             algorithm: cfg.algorithm || "binary-tree",
             persistLess: cfg.persistLess ?? true,
+            localImageRoot: cfg.localImageRoot?.trim() || undefined,
         };
         const file = this.filePath(projectId);
         fs.mkdirSync(path.dirname(file), { recursive: true });

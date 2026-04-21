@@ -61,6 +61,11 @@ export class SpriteStateService {
     return await firstValueFrom(this.api.getSprites(projectId));
   }
 
+  async getLocalSprites(): Promise<SpriteSnapshot> {
+    const projectId = this.ensureProjectId();
+    return await firstValueFrom(this.api.getSprites(projectId, true));
+  }
+
   private ensureProjectId(): string {
     const project = this.project();
     if (!project) {

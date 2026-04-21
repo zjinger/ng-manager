@@ -36,8 +36,9 @@ export class SpriteApiService {
     return this.api.get<SvnRuntime[]>(`/api/svn/runtime/${projectId}`);
   }
 
-  getSprites(projectId: string) {
-    return this.api.get<SpriteSnapshot>(`/api/sprite/list/${projectId}`);
+  getSprites(projectId: string, local = false) {
+    const params = new HttpParams().set('local', local.toString());
+    return this.api.get<SpriteSnapshot>(`/api/sprite/list/${projectId}`, params);
   }
 
   browseIconGroups(projectId: string) {

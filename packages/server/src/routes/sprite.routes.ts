@@ -22,29 +22,35 @@ export async function spriteRoutes(fastify: FastifyInstance) {
      */
     fastify.post("/config/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
-        const body = req.body as { config: Omit<SpriteConfig, "updatedAt" | "projectId">, assets: ProjectAssets };
-        if (!body || !body.config || !body.assets) {
-            throw new AppError('BAD_REQUEST', 'Missing config or assets in request body');
+        const body = req.body as { config: Omit<SpriteConfig, "updatedAt" | "projectId">, assets?: ProjectAssets };
+        if (!body || !body.config) {
+            throw new AppError('BAD_REQUEST', 'Missing config in request body');
         }
         const nextCfg = body.config;
-        const nextAssets = body.assets;
-        if (!nextAssets.iconsSvn) {
-            throw new AppError('BAD_REQUEST', 'iconsSvn asset is required');
+        const nextAssets = body.assets || {};
+        const hasLocalImageRoot = !!String(nextCfg.localImageRoot ?? "").trim();
+        if (!nextAssets.iconsSvn && !hasLocalImageRoot) {
+            throw new AppError('BAD_REQUEST', 'iconsSvn asset or localImageRoot is required');
         }
-        if (nextCfg.localDir) {
+
+        if (nextCfg.localDir && nextAssets.iconsSvn) {
             nextAssets.iconsSvn.localDir = path.join(nextCfg.localDir, nextAssets.iconsSvn.label || 'icons');
             if (nextAssets.cutImageSvn) {
                 nextAssets.cutImageSvn.localDir = path.join(nextCfg.localDir, nextAssets.cutImageSvn.label || 'images');
             }
         }
-        const p = await fastify.core.project.updateAssets(projectId, nextAssets);
 
-        // 先创建/更新配置，再关联 sourceId（因为 sourceId 可能是新创建的）
-        if (p.assets?.iconsSvn) {
-            nextCfg.sourceId = p.assets.iconsSvn.id;
+        const shouldUpdateAssets = !!(nextAssets.iconsSvn || nextAssets.cutImageSvn);
+        const project = shouldUpdateAssets
+            ? await fastify.core.project.updateAssets(projectId, nextAssets)
+            : await fastify.core.project.get(projectId);
+
+        if (project.assets?.iconsSvn) {
+            nextCfg.sourceId = project.assets.iconsSvn.id;
         }
+
         const cfg = await fastify.core.sprite.createConfig(projectId, nextCfg);
-        return { cfg, project: p };
+        return { cfg, project };
     });
 
     // 根据 projectId  生成雪碧图
@@ -63,9 +69,11 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         return result;
     })
 
-    fastify.get("/list/:projectId", async (req) => { 
+    fastify.get("/list/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
-        return await fastify.core.sprite.getSprites(projectId);
+        const query = req.query as { local?: string | boolean };
+        const local = String(query['local'] ?? '').toLowerCase() === 'true';
+        return await fastify.core.sprite.getSprites(projectId, local);
     })
 
     /**

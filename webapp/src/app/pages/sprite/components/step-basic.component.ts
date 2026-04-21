@@ -29,9 +29,9 @@ import { SpriteDraft } from '../models/sprite-draft.model';
     <nz-card nzTitle="基础设置">
       <form nz-form nzLayout="vertical">
         <nz-form-item>
-          <nz-form-label nzRequired nzTooltipTitle="项目的原尺寸图标SVN地址，用于制作项目所需雪碧图" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">原尺寸图标 SVN 地址</nz-form-label>
-          <nz-form-control nzHasFeedback  nzErrorTip="请输入原尺寸图标SVN地址">
-              <input nz-input [(ngModel)]="draft.iconSvnPath" required  name="iconSvnPath" placeholder="输入原尺寸图标SVN地址" />
+          <nz-form-label nzTooltipTitle="项目的原尺寸图标SVN地址，用于制作项目所需雪碧图（可选）" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">原尺寸图标 SVN 地址</nz-form-label>
+          <nz-form-control>
+              <input nz-input [(ngModel)]="draft.iconSvnPath" name="iconSvnPath" placeholder="输入原尺寸图标SVN地址（可选）" />
           </nz-form-control>
           <div class="hint">示例：svn://192.168.1.10/项目管理/xx项目/02.项目文档/05.系统设计/02-原型设计/02-UI设计效果图&切图/3-原尺寸图标</div>
           </nz-form-item>
@@ -43,11 +43,19 @@ import { SpriteDraft } from '../models/sprite-draft.model';
           </nz-form-control>
         </nz-form-item>
 
-        <nz-form-item>
+        <!-- <nz-form-item>
           <nz-form-label nzRequired nzTooltipTitle="用于存放从SVN拉取的原尺寸图标和其他切图等资源文件，供后续雪碧图制作使用">SVN资源目录</nz-form-label>
           <nz-form-control nzHasFeedback nzErrorTip="请输入存放SVN资源目录">
               <input nz-input  required [(ngModel)]="draft.localDir" name="localDir" placeholder="输入SVN资源本地存放目录" />
           </nz-form-control>
+        </nz-form-item> -->
+
+        <nz-form-item>
+          <nz-form-label nzTooltipTitle="本地图片文件夹路径，支持两级遍历（根目录 + 一级子目录）生成雪碧图" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">本地图片文件夹</nz-form-label>
+          <nz-form-control nzHasFeedback nzErrorTip="请输入本地图片文件夹路径">
+              <input nz-input [(ngModel)]="draft.localImageRoot" name="localImageRoot" placeholder="输入本地图片文件夹路径" />
+          </nz-form-control>
+          <div class="hint">示例：D:\work\icons 或 /home/user/icons。如果设置此路径，将优先使用此目录生成雪碧图。</div>
         </nz-form-item>
         <nz-form-item>
           <nz-form-label nzRequired nzTooltipTitle="用于存放生成的雪碧图文件">雪碧图导出目录</nz-form-label>

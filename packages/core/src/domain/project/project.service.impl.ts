@@ -214,7 +214,7 @@ export class ProjectServiceImpl implements ProjectService {
     async updateAssets(id: string, assets: ProjectAssets): Promise<Project> {
         const { iconsSvn, cutImageSvn } = assets;
         // 仅支持 svn（MVP）
-        const normalizedIconsSources = this.normalizeAssetsSource(iconsSvn);
+        const normalizedIconsSources = iconsSvn ? this.normalizeAssetsSource(iconsSvn) : undefined;
         const normalizedCutImageSources = cutImageSvn ? this.normalizeAssetsSource(cutImageSvn) : undefined;
 
         return await this.update(id, {

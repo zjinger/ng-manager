@@ -23,7 +23,7 @@ import { SpriteIconsPanelComponent, SpriteImagesPanelComponent } from './compone
       <nz-empty nzNotFoundContent="请先生成雪碧图"></nz-empty>
     } @else { -->
       <nz-tabs [(nzSelectedIndex)]="tabIndex">
-        <nz-tab nzTitle="图标">
+        <nz-tab nzTitle="SVN 图标">
           <ng-template nz-tab>
             <app-sprite-icons-panel
               [sprite]="sprite()"
@@ -31,12 +31,22 @@ import { SpriteIconsPanelComponent, SpriteImagesPanelComponent } from './compone
           </ng-template>
         </nz-tab>
 
-        <nz-tab nzTitle="图片">
+        <nz-tab nzTitle="SVN 图片">
           <ng-template nz-tab>
             <app-sprite-images-panel [sprite]="sprite()"
             />
           </ng-template>
-        </nz-tab> 
+        </nz-tab>
+
+        <nz-tab nzTitle="本地图标">
+          <ng-template nz-tab>
+            @if(localSprite()){
+              <app-sprite-icons-panel [sprite]="localSprite()" />
+            } @else {
+              <nz-empty nzNotFoundContent="未配置本地图片文件夹"></nz-empty>
+            }
+          </ng-template>
+        </nz-tab>
       </nz-tabs>
     <!-- } -->
   `,
@@ -63,5 +73,6 @@ import { SpriteIconsPanelComponent, SpriteImagesPanelComponent } from './compone
 })
 export class SpriteResultTabsComponent {
   sprite = input<SpriteSnapshot | null>(null);
+  localSprite = input<SpriteSnapshot | null>(null);
   tabIndex = 0;
 }

@@ -98,28 +98,30 @@ export async function generateGroupBatch(opts: GenerateGroupBatchOptions): Promi
         return { ok: true, total: 0, success: 0, failed: 0, items: [] };
     }
     const items = await runPool(groups, concurrency, async (group) => {
-        const groupDir = path.join(iconsRoot, group);
+        const isRootGroup = group === ".";
+        const outputGroup = isRootGroup ? "root" : group;
+        const groupDir = isRootGroup ? iconsRoot : path.join(iconsRoot, group);
         try {
             const type = detectGroupType(groupDir);
-            if (type === "empty") throw new Error(`group "${group}" is empty`);
-            if (type === "mixed") throw new Error(`group "${group}" has both png and svg (mixed)`);
+            if (type === "empty") throw new Error(`group "${outputGroup}" is empty`);
+            if (type === "mixed") throw new Error(`group "${outputGroup}" has both png and svg (mixed)`);
 
             if (type === "svg") {
                 const result = await generateSvgGroup({
-                    group,
+                    group: outputGroup,
                     groupDir,
                     prefix,
                     urlResolver: opts.svgUrlResolver,
-                    outDir, // svg 的 meta 输出到 outDir/{group}/
+                    outDir, // svg 的 meta 输出到 outDir/{outputGroup}/
                 });
-                return { ok: true, group, type, result } as GenerateGroupBatchItem;
+                return { ok: true, group: outputGroup, type, result } as GenerateGroupBatchItem;
             }
 
             // png
-            const spriteUrl = applyGroupTemplate(spriteUrlTemplate, group);
+            const spriteUrl = applyGroupTemplate(spriteUrlTemplate, outputGroup);
 
             const pngOpts: GeneratePngGroupOptions = {
-                group,
+                group: outputGroup,
                 groupDir,
                 outDir,
                 spriteUrl,
@@ -137,9 +139,9 @@ export async function generateGroupBatch(opts: GenerateGroupBatchOptions): Promi
             };
 
             const result = await generatePngGroup(pngOpts);
-            return { ok: true, group, type: "png", result } as GenerateGroupBatchItem;
+            return { ok: true, group: outputGroup, type: "png", result } as GenerateGroupBatchItem;
         } catch (e: any) {
-            const item = { ok: false, group, error: e?.message || String(e) } as GenerateGroupBatchItem;
+            const item = { ok: false, group: outputGroup, error: e?.message || String(e) } as GenerateGroupBatchItem;
             if (!continueOnError) throw e;
             return item;
         }
