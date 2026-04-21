@@ -3,6 +3,7 @@ import { ApiClient } from "@core/api";
 import { Observable } from "rxjs";
 import { TaskRow, TaskRuntime } from "@models/task.model";
 import { HttpParams } from "@angular/common/http";
+import { Project } from "@models/project.model";
 
 @Injectable({ providedIn: "root" })
 export class TasksApiService {
@@ -14,6 +15,14 @@ export class TasksApiService {
    */
   refresh(projectId: string): Observable<TaskRow[]> {
     return this.api.post(`/api/tasks/refresh/${projectId}`, {});
+  }
+
+  /**
+   * 刷新项目 scripts（重新扫描 package.json）
+   * POST /projects/refreshScripts/:projectId
+   */
+  refreshProjectScripts(projectId: string): Observable<Project> {
+    return this.api.post<Project>(`/api/projects/refreshScripts/${projectId}`, {});
   }
 
   /**

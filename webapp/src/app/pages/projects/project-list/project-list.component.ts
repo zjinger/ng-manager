@@ -47,14 +47,13 @@ import { FormsModule } from '@angular/forms';
         <div class="content">
           @for (project of projects; track project.id) {
             <app-project-item 
-              [project] ="project"
+              [project]="project"
+              [open]="projectState.isOpen(project)"
               (selectProject)="projectState.selectProject(project)"
               (toggleFavorite)="projectState.toggleFavorite(project.id)" 
               (openInEditor)="projectState.openInEditor(project.id)"
               (editProject)="projectState.openEditModal(project)"
-              (deleteProject)="projectState.deleteProject(project.id)"
-              [project]="project"  
-              [open]="projectState.isOpen(project)">
+              (deleteProject)="projectState.deleteProject(project.id)">
             </app-project-item>
           }
         </div>

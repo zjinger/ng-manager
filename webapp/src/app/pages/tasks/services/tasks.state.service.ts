@@ -4,12 +4,14 @@ import { TasksApiService } from "./tasks-api.service";
 import { TaskStreamService } from "./task-stream.service";
 import { TaskRuntimeStore } from "./task-runtime-store";
 import { TaskCatalogService } from "./task-catalog.service";
+import { ProjectContextStore } from "@app/core/stores/project-context/project-context.store";
 @Injectable({ providedIn: "root" })
 export class TaskStateService {
   private api = inject(TasksApiService);
   private stream = inject(TaskStreamService);
   private runtimeStore = inject(TaskRuntimeStore);
   private catalog = inject(TaskCatalogService);
+  private projectContext = inject(ProjectContextStore);
 
   /* ---------------- 基础状态 ---------------- */
 
@@ -128,6 +130,13 @@ export class TaskStateService {
       error: (e) => {
         this.loading.set(false);
       },
+    });
+
+    this.api.refreshProjectScripts(pid).subscribe({
+      next: (updated) => {
+        this.projectContext.patchProject(updated);
+      },
+      error: () => { },
     });
   }
 
