@@ -4,7 +4,8 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { AppError } from '../../common/errors';
 import type { SystemLogService } from '../logger';
-import type { NodeVersionInfo, NodeVersionService, ProjectNodeRequirement } from './node-version.service';
+import { getEnginesByAngular } from './angular-node.version';
+import { NodeVersionInfo, NodeVersionService, ProjectNodeRequirement, VersionManager } from './node-version.service';
 import { findBestMatchingVersion, satisfiesVersion } from './node-version.utils';
 
 const execFileAsync = promisify(execFile);
@@ -38,25 +39,14 @@ export class NodeVersionServiceImpl implements NodeVersionService {
 
   async switchVersion(version: string, runId?: string): Promise<NodeVersionInfo> {
     const manager = this.detectManager();
-
-    const logText = (text: string, level: 'info' | 'warn' | 'error' = 'info') => {
-      if (this.sysLog) {
-        if (runId) {
-          this.sysLog[level]({ refId: runId, scope: 'task', text });
-        } else {
-          this.sysLog[level]({ scope: 'task', text });
-        }
-      }
-      console.log(`[NodeVersion] ${text}`);
-    };
-
-    logText(`检测到版本管理器: ${manager}`);
-    if (manager === 'none') {
+    if (manager === VersionManager.None) {
+      this.logText('没有安装 Node 版本管理器 (nvm/Volta)', 'warn');
       throw new AppError('NO_VERSION_MANAGER', '没有安装 Node 版本管理器 (nvm/Volta)', {});
     }
+    this.logText(`检测到版本管理器: ${manager}`);
 
     try {
-      if (manager === 'volta' || manager === 'nvm+volta') {
+      if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
         let command: string;
         let args: string[];
         if (version.startsWith('node@')) {
@@ -66,15 +56,15 @@ export class NodeVersionServiceImpl implements NodeVersionService {
           command = 'volta';
           args = ['install', `node@${version.replace(/^v/, '')}`];
         }
-        logText(`执行命令: ${command} ${args.join(' ')}`);
+        this.logText(`执行命令: ${command} ${args.join(' ')}`);
         await execFileAsync(command, args, { windowsHide: true });
-      } else if (manager === 'nvm') {
+      } else if (manager === VersionManager.NVM) {
         const nvmVersion = version.replace(/^v/, '');
-        logText(`执行命令: nvm use ${nvmVersion}`);
+        this.logText(`执行命令: nvm use ${nvmVersion}`);
         await execFileAsync('nvm', ['use', nvmVersion], { windowsHide: true });
       }
     } catch (e: any) {
-      logText(`切换 Node 版本失败: ${e?.message}`, 'error');
+      this.logText(`切换 Node 版本失败: ${e?.message}`, 'error');
       throw new AppError('SWITCH_VERSION_FAILED', `切换 Node 版本失败: ${e?.message}`, { version, manager });
     }
 
@@ -82,18 +72,17 @@ export class NodeVersionServiceImpl implements NodeVersionService {
   }
 
   /** 检测当前 Node 版本管理器 */
-  private detectManager(): 'nvm' | 'volta' | 'nvm+volta' | 'none' {
+  private detectManager(): VersionManager {
     const hasNvm = this.detectNvm();
     const hasVolta = this.detectVolta();
-    console.log('[NodeVersion]  detectNvm:', hasNvm, '| detectVolta:', hasVolta);
     if (hasNvm && hasVolta) {
-      return 'nvm+volta';
+      return VersionManager.NVM_Volta;
     } else if (hasNvm) {
-      return 'nvm';
+      return VersionManager.NVM;
     } else if (hasVolta) {
-      return 'volta';
+      return VersionManager.Volta;
     }
-    return 'none';
+    return VersionManager.None;
   }
 
   /** 检测 NVM 是否安装 */
@@ -145,7 +134,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
 
     // 如果使用 Volta，优先通过 volta list node 获取当前版本
     // 因为当前进程的 node 路径可能是旧版本，需要通过 Volta 查询
-    if (manager === 'volta' || manager === 'nvm+volta') {
+    if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
       try {
         const result = await execFileAsync('volta', ['list', 'node'], { windowsHide: true });
         const lines = result.stdout.split('\n');
@@ -167,8 +156,8 @@ export class NodeVersionServiceImpl implements NodeVersionService {
   }
 
   /** 获取可用的 Node 版本 */
-  private async getAvailableVersions(manager: 'nvm' | 'volta' | 'nvm+volta' | 'none'): Promise<string[]> {
-    if (manager === 'none') {
+  private async getAvailableVersions(manager: VersionManager): Promise<string[]> {
+    if (manager === VersionManager.None) {
       return [];
     }
 
@@ -176,7 +165,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
 
     try {
       // Volta 的版本列表
-      if (manager === 'volta' || manager === 'nvm+volta') {
+      if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
         try {
           const result = await execFileAsync('volta', ['list', 'node'], { windowsHide: true });
           const lines = result.stdout.split('\n');
@@ -196,7 +185,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
       }
 
       // Volta 没有版本时，检测 NVM
-      if (manager === 'nvm' || manager === 'nvm+volta') {
+      if (manager === VersionManager.NVM || manager === VersionManager.NVM_Volta) {
         const result = await execFileAsync('nvm', ['list'], { windowsHide: true });
         const lines = result.stdout.split('\n');
 
@@ -283,8 +272,17 @@ export class NodeVersionServiceImpl implements NodeVersionService {
       const content = await fs.promises.readFile(packageJsonPath, 'utf-8');
       const pkg = JSON.parse(content);
 
+      /** 优先从 engines.node 获取 */
       if (pkg.engines && pkg.engines.node) {
         return pkg.engines.node;
+      }
+
+      // TODO：区分vue项目
+      /** 未配置 engines.node 时，尝试从 Angular 版本推荐 */
+      const angularVersion = this.detectAngularVersion(pkg);
+      if (angularVersion) {
+        const engines = getEnginesByAngular(angularVersion);
+        return engines.node;
       }
 
       return null;
@@ -294,9 +292,32 @@ export class NodeVersionServiceImpl implements NodeVersionService {
   }
 
   /**
+   * 从 package.json 检测 Angular 版本
+   * @param pkg package.json 解析后的对象
+   * @returns Angular 主版本号（如 17、18、19 等）或 null
+   */
+  private detectAngularVersion(pkg: any): number | null {
+    const deps = { ...(pkg.dependencies || {}) };
+
+    for (const [dep, version] of Object.entries(deps)) {
+      if (dep === '@angular/core' && typeof version === 'string') {
+        const match = version.match(/^[\^~]?(\d+)/);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * 获取当前版本管理器
    */
-  getManager(): 'nvm' | 'volta' | 'nvm+volta' | 'none' {
+  getManager(): VersionManager {
     return this.detectManager();
+  }
+  private logText(text: string, level: 'info' | 'warn' | 'error' = 'info') {
+    this.sysLog?.[level]({ scope: 'task', text });
   }
 }

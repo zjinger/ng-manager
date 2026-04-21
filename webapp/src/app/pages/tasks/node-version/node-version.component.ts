@@ -82,7 +82,7 @@ import { NodeVersionService } from './node-version.service';
       } @else if (req.satisfiedBy) {
         <div class="warning-message">
           <span nz-icon nzType="warning" nzTheme="outline"></span>
-          项目要求 {{ req.requiredVersion }}，将自动切换到 {{ req.satisfiedBy }}
+          项目要求 {{ req.requiredVersion }}，运行后将自动切换到 {{ req.satisfiedBy }}
         </div>
       } @else {
         <div class="error-message">

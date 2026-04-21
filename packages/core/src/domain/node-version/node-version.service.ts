@@ -1,6 +1,13 @@
+export const enum VersionManager {
+  NVM = 'nvm',
+  Volta = 'volta',
+  NVM_Volta = 'nvm+volta',
+  None = 'none',
+}
+
 export interface NodeVersionInfo {
   current: string | null;
-  manager: 'nvm' | 'volta' | 'nvm+volta' | 'none';
+  manager: VersionManager;
   available: string[];
 }
 
@@ -20,5 +27,5 @@ export interface NodeVersionService {
   getCurrentVersion(): Promise<NodeVersionInfo>;
   switchVersion(version: string, runId?: string): Promise<NodeVersionInfo>;
   detectProjectRequirement(projectPath: string): Promise<ProjectNodeRequirement>;
-  getManager(): 'nvm' | 'volta' | 'nvm+volta' | 'none';
+  getManager(): VersionManager;
 }
