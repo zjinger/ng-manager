@@ -55,10 +55,10 @@ import { NzTooltipModule } from "ng-zorro-antd/tooltip";
             <button nz-button nzType="primary" class="detail-header__action-btn" nz-popconfirm nzPopconfirmTitle="确定验证通过吗？" nzPopconfirmOkText="确定" nzPopconfirmCancelText="取消" (nzOnConfirm)="verify.emit()">验证通过</button>
           }
           @if (canReopen()) {
-            <button nz-button nzType="default" class="detail-header__action-btn" (click)="reopen.emit()">重新打开</button>
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="reopen.emit()" nz-tooltip="发现还存在问题需要重新打开">重新打开</button>
           }
           @if (canClose()) {
-            <button nz-button nzType="default" class="detail-header__action-btn" (click)="close.emit()">关闭问题</button>
+            <button nz-button nzType="default" class="detail-header__action-btn" (click)="close.emit()" nz-tooltip="已经验证通过，正常关闭">关闭问题</button>
           }
         </div>
       </div>
