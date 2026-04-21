@@ -1,12 +1,14 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AuthStore } from '@core/auth';
 import type { NotificationItem } from '../models/notification.model';
 import { NotificationApiService, type NotificationListQuery } from '../services/notification-api.service';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationStore {
   private readonly api = inject(NotificationApiService);
+  private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly itemsState = signal<NotificationItem[]>([]);
   private readonly previewItemsState = signal<NotificationItem[]>([]);
@@ -18,6 +20,8 @@ export class NotificationStore {
   private readonly unreadOnlyState = signal(false);
   private loadingInFlight = false;
   private queuedQuery: NotificationListQuery | null = null;
+  private activeUserKey: string | null = null;
+  private userVersion = 0;
   private readonly previewLimit = 20;
   private readonly realtimeListCap = 200;
 
@@ -32,7 +36,19 @@ export class NotificationStore {
   readonly unreadCount = computed(() => this.unreadCountState());
 
   constructor() {
-    this.loadPreview();
+    effect(() => {
+      const user = this.authStore.currentUser();
+      const userKey = user?.userId || user?.username || null;
+      if (userKey === this.activeUserKey) {
+        return;
+      }
+      this.activeUserKey = userKey;
+      this.userVersion += 1;
+      this.resetState();
+      if (userKey) {
+        this.loadPreview();
+      }
+    });
   }
 
   load(query?: NotificationListQuery): void {
@@ -51,25 +67,41 @@ export class NotificationStore {
   }
 
   private executeLoad(query: NotificationListQuery): void {
+    if (!this.activeUserKey) {
+      this.resetState();
+      return;
+    }
+    const requestVersion = this.userVersion;
     this.loadingInFlight = true;
     this.loadingState.set(true);
     this.api.list(query).subscribe({
       next: (result) => {
+        if (!this.isCurrentUserRequest(requestVersion)) {
+          return;
+        }
         this.itemsState.set(result.items);
         this.totalState.set(Number(result.total) || 0);
         this.unreadCountState.set(Number(result.unreadTotal) || 0);
       },
       complete: () => {
-        this.onLoadSettled();
+        this.onLoadSettled(requestVersion);
       },
       error: () => {
+        if (!this.isCurrentUserRequest(requestVersion)) {
+          return;
+        }
         this.totalState.set(0);
-        this.onLoadSettled();
+        this.onLoadSettled(requestVersion);
       },
     });
   }
 
   loadPreview(limit = this.previewLimit): void {
+    if (!this.activeUserKey) {
+      this.resetState();
+      return;
+    }
+    const requestVersion = this.userVersion;
     this.api
       .list({
         page: 1,
@@ -78,11 +110,17 @@ export class NotificationStore {
       })
       .subscribe({
         next: (result) => {
+          if (!this.isCurrentUserRequest(requestVersion)) {
+            return;
+          }
           this.previewItemsState.set(result.items);
           this.previewTotalState.set(Number(result.total) || 0);
           this.unreadCountState.set(Number(result.unreadTotal) || 0);
         },
         error: () => {
+          if (!this.isCurrentUserRequest(requestVersion)) {
+            return;
+          }
           this.previewItemsState.set([]);
           this.previewTotalState.set(0);
         },
@@ -90,14 +128,11 @@ export class NotificationStore {
   }
 
   markAllAsRead(): void {
-    const ids = this.itemsState()
-      .filter((item) => item.unread)
-      .map((item) => item.id);
-    if (ids.length === 0) {
+    if (this.unreadCountState() <= 0) {
       return;
     }
-    this.markReadLocally(ids);
-    this.syncReadState(ids);
+    this.markAllReadLocally();
+    this.syncAllReadState();
   }
 
   markAsRead(notificationId: string): void {
@@ -215,21 +250,66 @@ export class NotificationStore {
     );
   }
 
+  private markAllReadLocally(): void {
+    this.unreadCountState.set(0);
+    this.itemsState.update((items) => {
+      const next = items.map((item) => (item.unread ? { ...item, unread: false } : item));
+      return this.unreadOnlyState() ? [] : next;
+    });
+    if (this.unreadOnlyState()) {
+      this.totalState.set(0);
+    }
+    this.previewItemsState.update((items) =>
+      items.map((item) => (item.unread ? { ...item, unread: false } : item))
+    );
+  }
+
   private syncReadState(notificationIds: string[]): void {
+    const requestVersion = this.userVersion;
     this.api.markRead({ notificationIds }).subscribe({
       next: (result) => {
+        if (!this.isCurrentUserRequest(requestVersion)) {
+          return;
+        }
         this.unreadCountState.set(Number(result.unreadCount) || 0);
         this.loadPreview();
         this.reloadPageIfActive();
       },
       error: () => {
+        if (!this.isCurrentUserRequest(requestVersion)) {
+          return;
+        }
         this.loadPreview();
         this.reloadPageIfActive();
       },
     });
   }
 
-  private onLoadSettled(): void {
+  private syncAllReadState(): void {
+    const requestVersion = this.userVersion;
+    this.api.markRead({ all: true }).subscribe({
+      next: (result) => {
+        if (!this.isCurrentUserRequest(requestVersion)) {
+          return;
+        }
+        this.unreadCountState.set(Number(result.unreadCount) || 0);
+        this.loadPreview();
+        this.reloadPageIfActive();
+      },
+      error: () => {
+        if (!this.isCurrentUserRequest(requestVersion)) {
+          return;
+        }
+        this.loadPreview();
+        this.reloadPageIfActive();
+      },
+    });
+  }
+
+  private onLoadSettled(requestVersion: number): void {
+    if (!this.isCurrentUserRequest(requestVersion)) {
+      return;
+    }
     // If another load was requested while inflight, run it immediately to keep final state freshest.
     const queued = this.queuedQuery;
     this.queuedQuery = null;
@@ -239,6 +319,23 @@ export class NotificationStore {
     }
     this.loadingInFlight = false;
     this.loadingState.set(false);
+  }
+
+  private resetState(): void {
+    this.itemsState.set([]);
+    this.previewItemsState.set([]);
+    this.loadingState.set(false);
+    this.totalState.set(0);
+    this.previewTotalState.set(0);
+    this.unreadCountState.set(0);
+    this.queryState.set({ page: 1, pageSize: 20 });
+    this.unreadOnlyState.set(false);
+    this.loadingInFlight = false;
+    this.queuedQuery = null;
+  }
+
+  private isCurrentUserRequest(requestVersion: number): boolean {
+    return requestVersion === this.userVersion && !!this.activeUserKey;
   }
 
   private matchesQuery(item: NotificationItem, query: NotificationListQuery): boolean {

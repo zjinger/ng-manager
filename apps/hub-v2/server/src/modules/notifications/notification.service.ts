@@ -88,6 +88,14 @@ export class NotificationService
       return { updated: 0, unreadCount: 0 };
     }
 
+    if (input.all === true) {
+      const updated = this.repo.markAllRead(userId, nowIso());
+      return {
+        updated,
+        unreadCount: this.repo.countUnread(userId)
+      };
+    }
+
     const notificationIds = Array.from(
       new Set((input.notificationIds ?? []).map((item) => item.trim()).filter(Boolean))
     );

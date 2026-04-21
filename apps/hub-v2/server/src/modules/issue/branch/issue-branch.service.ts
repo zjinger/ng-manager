@@ -292,7 +292,7 @@ export class IssueBranchService implements IssueBranchCommandContract, IssueBran
       entityType: "issue",
       entityId: issue.id,
       action,
-      actorId: ctx.accountId,
+      actorId: ctx.userId?.trim() || ctx.accountId,
       occurredAt,
       payload: {
         issueNo: issue.issueNo,

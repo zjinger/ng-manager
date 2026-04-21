@@ -49,7 +49,7 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
       entityType: "issue",
       entityId: issue.id,
       action: "attachment.added",
-      actorId: ctx.accountId,
+      actorId: ctx.userId?.trim() || ctx.accountId,
       occurredAt: record.createdAt,
       payload: {
         issueNo: issue.issueNo,
@@ -110,7 +110,7 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
       entityType: "issue",
       entityId: issue.id,
       action: "attachment.removed",
-      actorId: ctx.accountId,
+      actorId: ctx.userId?.trim() || ctx.accountId,
       occurredAt: now,
       payload: {
         issueNo: issue.issueNo,

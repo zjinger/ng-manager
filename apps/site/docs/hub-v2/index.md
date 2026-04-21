@@ -44,6 +44,7 @@ features:
 - [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)：统一内部/私有可见性、活跃/归档边界、成员规则与项目显示范围偏好。
 - [16 全局错误码规范](/hub-v2/16-error-code-governance)：统一服务端错误码注册、抛错约束、全局错误处理与前端错误拦截映射。
 - [17 发布流程规范](/hub-v2/17-release-process)：统一版本号管理、升级说明生成、changelog 维护、部署与回滚流程。
+- [18 通知机制](/hub-v2/18-notification-mechanism)：统一通知入库、收件人推导、去重、已读同步、Bell 状态和用户切换隔离规则。
 
 ## 推荐阅读顺序
 
@@ -58,7 +59,8 @@ features:
 9. 如需统一项目治理规则，再读 [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)。
 10. 如需统一错误码与前端错误处理链路，再读 [16 全局错误码规范](/hub-v2/16-error-code-governance)。
 11. 准备上线时读 [17 发布流程规范](/hub-v2/17-release-process)，按版本、升级说明、部署和回滚清单执行。
-12. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
+12. 如需维护通知中心或排查 Bell 计数问题，再读 [18 通知机制](/hub-v2/18-notification-mechanism)。
+13. 最后按 [05 实施路线图](/hub-v2/05-implementation-roadmap) 拆任务并启动开发。
 
 ## 当前文档集覆盖范围
 
@@ -78,6 +80,7 @@ features:
 - WS 实时事件模型、hints 刷新约定与 Dashboard 实时同步方案
 - 项目内部/私有可见性、归档只读、成员角色与项目显示范围偏好规则
 - 全局错误码注册、服务端归一化错误响应与前端错误拦截统一映射
+- 通知入库、收件人推导、去重、已读同步、Bell 状态与用户切换隔离机制
 
 <!-- ## 后续扩展建议
 

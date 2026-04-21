@@ -315,6 +315,20 @@ export class NotificationRepo {
     return result.changes;
   }
 
+  markAllRead(userId: string, readAt: string): number {
+    const result = this.db
+      .prepare(
+        `
+          UPDATE user_notifications
+          SET unread = 0, read_at = ?
+          WHERE user_id = ?
+            AND unread = 1
+        `
+      )
+      .run(readAt, userId);
+    return result.changes;
+  }
+
   countUnread(userId: string): number {
     const row = this.db
       .prepare(

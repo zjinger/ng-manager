@@ -113,7 +113,7 @@ export class IssueTransitionDialogComponent {
       return '例如：已修复用户登录异常问题，涉及登录模块相关代码变更。';
     }
     if (this.mode() === 'reopen') {
-      return '例如：验收时发现暗黑态还有一处浅色残留。';
+      return '例如：验收时发现还有xx问题未解决。';
     }
     return this.reasonRequired() ? '例如：需求取消 / 重复问题 / 无法复现。' : '可选填写关闭说明。';
   });

@@ -881,7 +881,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
       entityType: "rd",
       entityId: item.id,
       action,
-      actorId: ctx.accountId,
+      actorId: ctx.userId?.trim() || ctx.accountId,
       occurredAt: item.updatedAt,
       payload: {
         rdNo: item.rdNo,

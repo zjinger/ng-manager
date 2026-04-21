@@ -503,7 +503,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       entityType: "issue",
       entityId: entity.id,
       action,
-      actorId: ctx.accountId,
+      actorId: ctx.userId?.trim() || ctx.accountId,
       occurredAt: entity.updatedAt,
       payload: {
         issueNo: entity.issueNo,

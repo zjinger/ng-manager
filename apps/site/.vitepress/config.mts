@@ -62,7 +62,8 @@ export default defineConfig({
             { text: "数据库设计", link: "/hub-v2/03-database-design" },
             { text: "API 设计", link: "/hub-v2/04-api-design" },
             { text: "实施路线图", link: "/hub-v2/05-implementation-roadmap" },
-            { text: "Web 端架构设计", link: "/hub-v2/06-web-architecture" }
+            { text: "Web 端架构设计", link: "/hub-v2/06-web-architecture" },
+            { text: "通知机制", link: "/hub-v2/18-notification-mechanism" }
           ]
         }
       ],

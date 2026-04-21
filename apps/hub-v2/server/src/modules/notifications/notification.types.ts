@@ -44,6 +44,7 @@ export interface NotificationListResult {
 }
 
 export interface MarkNotificationReadsInput {
+  all?: boolean;
   notificationIds?: string[];
 }
 

@@ -187,6 +187,7 @@ import { buildNotificationRouteTarget, type NotificationRouteTarget } from '../.
       .notification-item__tag {
         display: inline-flex;
         align-items: center;
+        flex: 0 0 auto;
         height: 22px;
         padding: 0 8px;
         border-radius: 999px;
@@ -194,10 +195,15 @@ import { buildNotificationRouteTarget, type NotificationRouteTarget } from '../.
         color: var(--primary-700);
         font-size: 11px;
         font-weight: 700;
+        white-space: nowrap;
       }
       .notification-item__project {
+        min-width: 0;
         color: var(--text-muted);
         font-size: 11px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .notification-item__time-mobile {
         display: none;

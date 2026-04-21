@@ -56,6 +56,9 @@ export class WsClientService {
     };
 
     socket.onmessage = (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
       const message = this.parseMessage(event.data);
       if (!message) {
         return;

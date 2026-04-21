@@ -42,7 +42,7 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
       entityType: "issue",
       entityId: issue.id,
       action: "commented",
-      actorId: ctx.accountId,
+      actorId: ctx.userId?.trim() || ctx.accountId,
       occurredAt: now,
       payload: {
         issueNo: issue.issueNo,
