@@ -96,16 +96,15 @@ export class ProjectStateService {
       repoPageUrl: project.repoPageUrl ?? '',
       description: project.description ?? '',
       hubV2: {
-        baseUrl: env['NGM_HUB_V2_BASE_URL'] ?? '',
-        projectKey: env['NGM_HUB_V2_PROJECT_KEY'] ?? '',
-        token: env['NGM_HUB_V2_TOKEN'] ?? '',
+        baseUrl: env['NGM_HUB_V2_BASE_URL'] || 'http://192.168.1.31:7008',
+        projectKey: env['NGM_HUB_V2_PROJECT_KEY'] || '',
+        token: env['NGM_HUB_V2_TOKEN'] || '',
       },
     });
     this.isEditModalVisible.set(true);
   }
 
   closeEditModal() {
-    if (this.isEditSaving()) return;
     this.isEditModalVisible.set(false);
     this.editingProject.set(null);
   }
@@ -154,8 +153,8 @@ export class ProjectStateService {
           next: (updated) => {
             this.projectContext.patchProject(updated);
             this.notify.success('修改成功');
-            this.closeEditModal();
             this.isEditSaving.set(false);
+            this.closeEditModal();
           },
           error: (err) => {
             this.notify.error(err?.message || '项目配置保存失败');
