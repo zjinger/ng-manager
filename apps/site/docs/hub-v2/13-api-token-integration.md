@@ -117,14 +117,14 @@ Issue：
 - `GET /api/token/projects/:projectKey/issues/:issueId/attachments`
 - `GET /api/token/projects/:projectKey/issues/:issueId/branches`
 - `GET /api/token/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw`（显式附件展示）
-- `GET /api/token/projects/:projectKey/issues/:issueId/uploads/:uploadId/raw`（Issue 描述中的 Markdown 图片展示）
+- `GET /api/token/projects/:projectKey/issues/:issueId/uploads/:uploadId/raw`（Issue 描述/评论中内联图片展示）
 - `GET /api/token/projects/:projectKey/members`（用于评论 @ 成员候选）
 
 说明：
 
 - `attachmentId` 对应 `issue_attachments.id`，仅用于显式附件
 - `uploadId` 对应 Markdown 图片上传后的 `uploads.id`
-- Markdown 图片不要求存在 `issue_attachment` 记录，但要求该 `uploadId` 已被当前 Issue 描述引用，且上传分类为 `markdown`
+- 内联图片不要求存在 `issue_attachment` 记录，但要求该 `uploadId` 已被当前 Issue 描述或评论内容引用，且上传分类为 `markdown*` 或 `comment`
 
 RD：
 

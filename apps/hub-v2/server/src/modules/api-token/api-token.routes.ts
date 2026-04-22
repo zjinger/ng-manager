@@ -87,8 +87,14 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     const ctx = requireTokenAuth(request, "issues:read");
     const params = issueUploadRawParamSchema.parse(request.params);
     const issue = await app.container.apiTokenQuery.getIssueById(params.projectKey, params.issueId, ctx);
+    const comments = await app.container.apiTokenQuery.listIssueComments(params.projectKey, params.issueId, ctx);
     const upload = await app.container.uploadQuery.getById(params.uploadId, ctx);
-    if (!isMarkdownUploadReferenced(issue.description, upload.id) || !upload.category.startsWith("markdown")) {
+    const referenced = isUploadReferenced(
+      [issue.description, ...comments.items.map((item) => item.content)],
+      upload.id
+    );
+    const categoryAllowed = upload.category === "comment" || upload.category.startsWith("markdown");
+    if (!referenced || !categoryAllowed) {
       throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
     }
 
@@ -156,7 +162,7 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     const params = rdUploadRawParamSchema.parse(request.params);
     const item = await app.container.apiTokenQuery.getRdItemById(params.projectKey, params.itemId, ctx);
     const upload = await app.container.uploadQuery.getById(params.uploadId, ctx);
-    if (!isMarkdownUploadReferenced(item.description, upload.id) || !upload.category.startsWith("markdown")) {
+    if (!isUploadReferenced([item.description], upload.id) || !upload.category.startsWith("markdown")) {
       throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, "upload file not found", 404);
     }
 
@@ -202,23 +208,24 @@ function resolveUploadFilePath(storagePath: string, fileName: string, uploadDir:
   return null;
 }
 
-function isMarkdownUploadReferenced(description: string | null, uploadId: string): boolean {
-  if (!description) {
-    return false;
-  }
-
+function isUploadReferenced(contents: Array<string | null | undefined>, uploadId: string): boolean {
   const normalizedUploadId = uploadId.trim();
   if (!normalizedUploadId) {
     return false;
   }
 
-  const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_-]+)\/raw/g;
-  let match = pattern.exec(description);
-  while (match) {
-    if ((match[1] ?? "").trim() === normalizedUploadId) {
-      return true;
+  for (const content of contents) {
+    if (!content) {
+      continue;
     }
-    match = pattern.exec(description);
+    const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_-]+)\/raw/g;
+    let match = pattern.exec(content);
+    while (match) {
+      if ((match[1] ?? "").trim() === normalizedUploadId) {
+        return true;
+      }
+      match = pattern.exec(content);
+    }
   }
 
   return false;
