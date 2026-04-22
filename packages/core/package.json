@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/core",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -18,7 +18,7 @@
     "@types/js-yaml": "^4.0.9"
   },
   "dependencies": {
-    "@yinuo-ngm/sprite": "^0.1.5",
+    "@yinuo-ngm/sprite": "^0.1.6",
     "js-yaml": "^4.1.1",
     "jsonc-parser": "^3.3.1",
     "node-pty": "^1.1.0"

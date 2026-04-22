@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/server",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "a server package for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
@@ -23,7 +23,7 @@
     "@fastify/static": "^9.0.0",
     "@fastify/websocket": "^11.2.0",
     "@yinuo-ngm/api": "^0.1.5",
-    "@yinuo-ngm/core": "^0.1.7",
+    "@yinuo-ngm/core": "^0.1.8",
     "@yinuo-ngm/nginx": "^0.1.1",
     "fastify": "^5.6.2",
     "fastify-plugin": "^5.1.0",
