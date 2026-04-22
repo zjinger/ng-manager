@@ -13,12 +13,12 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import { ROLE_LABELS } from '@app/shared/constants/role-options';
-
 import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
+import { ISSUE_ACTION_TYPES_LABELS } from '@app/shared/constants/issue-type-options';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
+import { extractAndRemoveImagePaths, splitTextWithMentions } from '@app/utils/md-text';
 import {
-  IssueEntity,
+  IssueActionType,
   IssueLogEntity,
   type createCommentInput,
   type ProjectMemberEntity,
@@ -26,16 +26,29 @@ import {
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzCommentModule } from 'ng-zorro-antd/comment';
 import { NzFormModule } from 'ng-zorro-antd/form';
-import { NzListModule } from 'ng-zorro-antd/list';
-import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
-import { NzTimelineModule } from 'ng-zorro-antd/timeline';
-import { extractAndRemoveImagePaths } from '@app/utils/md-text';
 import { NzImageModule } from 'ng-zorro-antd/image';
+import { NzListModule } from 'ng-zorro-antd/list';
+import { NzMentionModule } from 'ng-zorro-antd/mention';
+import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { IssueCommentInputComponent } from './issue-comment-input.component';
+import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
-type LogViewType = 'comment' | 'all';
+type LogFilterType = 'all' | IssueActionType;
 
-type logContent = {
+type ParsedLog = {
+  id: string;
+  issueId: string;
+  actionType: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  operatorId: string | null;
+  operatorName: string | null;
+  metaJson: string | null;
+  createdAt: string;
+} & LogContent;
+
+type LogContent = {
   segments: {
     text: string;
     mention?: boolean;
@@ -58,6 +71,8 @@ type logContent = {
     NzImageModule,
     NzMentionModule,
     NzFormModule,
+    NzSelectModule,
+    NzDropDownModule,
     FormsModule,
     NzAvatarModule,
     IssueCommentInputComponent,
@@ -67,13 +82,22 @@ type logContent = {
   template: `
     <app-detail-item-card title="活动记录">
       <div actions>
-        <button nz-button nzSize="small" (click)="toggleViewMode()">
-          @if (viewMode() === 'all') {
-            仅看评论
-          } @else {
-            查看全部
-          }
-        </button>
+        @if (showFilter()) {
+          <div panel-actions class="timeline-filter">
+            <label class="timeline-filter__label">筛选</label>
+            <nz-select
+              class="timeline-filter__select"
+              nzSize="small"
+              [ngModel]="filterMode()"
+              (ngModelChange)="onFilterModelChange($event)"
+              [nzDropdownMatchSelectWidth]="false"
+            >
+              @for (opt of filterOptions(); track opt.value) {
+                <nz-option [nzLabel]="opt.label" [nzValue]="opt.value"></nz-option>
+              }
+            </nz-select>
+          </div>
+        }
       </div>
       <app-issue-comment-input
         [busy]="busy()"
@@ -86,8 +110,7 @@ type logContent = {
           <div class="comment-empty">暂无评论/备注</div>
         } @else {
           <nz-timeline>
-            @for (log of viewLogs(); track log.id) {
-              @let parsed = parseLogContent(log);
+            @for (log of parsedLogs(); track log.id) {
               <nz-timeline-item [nzDot]="dotTemplate">
                 @if (log.actionType === 'comment') {
                   <!-- 用户评论 -->
@@ -103,7 +126,7 @@ type logContent = {
                       <nz-comment-content>
                         <p class="summary">
                           <ng-container
-                            *ngTemplateOutlet="logContent; context: { logParsed: parsed }"
+                            *ngTemplateOutlet="logContent; context: { $implicit: log }"
                           ></ng-container>
                         </p>
                       </nz-comment-content>
@@ -116,7 +139,7 @@ type logContent = {
                     <div class="meta">
                       <span class="operator">{{ log.operatorName || '系统' }}</span>
                       <ng-container
-                        *ngTemplateOutlet="logContent; context: { logParsed: parsed }"
+                        *ngTemplateOutlet="logContent; context: { $implicit: log }"
                       ></ng-container>
                       <div class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</div>
                     </div>
@@ -128,9 +151,9 @@ type logContent = {
                 <nz-icon [nzType]="iconType(log)" nzTheme="outline" style="font-size: 16px;" />
               </ng-template>
 
-              <ng-template #logContent let-logParsed>
-                <app-ellipsis-text [lines]="2" [maxHeight]="40">
-                  @for (seg of parsed.segments; track $index) {
+              <ng-template #logContent let-parsedLog>
+                <app-ellipsis-text [lines]="2" [maxHeight]="46">
+                  @for (seg of parsedLog.segments ?? []; track $index) {
                     @if (seg.mention) {
                       <span class="mention">{{ seg.text }}</span>
                     } @else {
@@ -138,7 +161,7 @@ type logContent = {
                     }
                   }
                   <br />
-                  @for (imgUrl of parsed.imgUrls; track imgUrl) {
+                  @for (imgUrl of parsedLog.imgUrls ?? []; track imgUrl) {
                     <img nz-image width="100px" height="100px" [nzSrc]="imgUrl" alt="" />
                   }
                 </app-ellipsis-text>
@@ -150,6 +173,21 @@ type logContent = {
     </app-detail-item-card>
   `,
   styles: `
+    .timeline-filter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      .timeline-filter__label {
+        white-space: nowrap;
+        color: gray;
+        font-size: 12px;
+      }
+      .timeline-filter__select {
+        min-width: 128px;
+        height: auto;
+      }
+    }
+
     .mention {
       color: #1677ff;
       font-weight: 500;
@@ -211,40 +249,100 @@ type logContent = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueLogsAreaComponent {
-  private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
-  extractAndRemoveImagePaths = extractAndRemoveImagePaths;
+  readonly logs = input.required<IssueLogEntity[]>();
   readonly issueId = input<string>('');
   readonly canComment = input(false);
-  readonly logs = input.required<IssueLogEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly projectId = input<string>();
   readonly busy = input(false);
   readonly submit = output<createCommentInput>();
 
   // 查看模式
-  readonly viewMode = signal<LogViewType>('all');
+  readonly filterMode = signal<LogFilterType>('all');
+
   constructor() {
     effect(() => {
       const issueId = this.issueId();
       if (issueId) {
-        this.viewMode.set('all');
+        this.filterMode.set('all');
       }
     });
   }
+  // 是否展示筛选
+  readonly showFilter = computed(() => this.logs().length > 10);
 
-  readonly commentDraft = signal('');
-  readonly mentionKeyword = signal('');
-
-  readonly commontLogs = computed(() => this.logs().filter((log) => log.actionType === 'comment'));
-
-  readonly viewLogs = computed(() => {
-    if (this.viewMode() === 'comment') {
-      return this.commontLogs();
-    }
-    return this.logs();
+  // 筛选选项
+  readonly filterOptions = computed(() => {
+    const uniqueActionTypes = Array.from(
+      new Set(
+        this.logs()
+          .map((item) => item.actionType)
+          .filter((type) => !!type?.trim()),
+      ),
+    );
+    return [
+      { value: 'all', label: '全部' },
+      ...uniqueActionTypes.map((type) => ({
+        value: type,
+        label: ISSUE_ACTION_TYPES_LABELS[type] || type,
+      })),
+    ];
   });
 
-  iconType(item: IssueLogEntity): string {
+  readonly parsedLogs = computed<ParsedLog[]>(() => {
+    // 过滤logs
+    let filteredLogs;
+    if (this.filterMode() === 'all') {
+      filteredLogs = this.logs();
+    } else {
+      filteredLogs = this.logs().filter((log) => log.actionType === this.filterMode());
+    }
+
+    return filteredLogs.map((log) => {
+      const logContent = this.parseLogContent(log);
+      return {
+        ...log,
+        ...logContent,
+      };
+    });
+  });
+
+  readonly membersNames = computed(() => {
+    return this.members().map((member) => member.displayName);
+  });
+
+  // 解析日志,生成展示用内容
+  parseLogContent(log: IssueLogEntity): LogContent {
+    const imgUrls: string[] = [];
+    let segments: Array<{ text: string; mention?: boolean }> = [];
+    let text = log.summary;
+
+    if (!text) return { segments };
+
+    // 如果是评论需要提取图片
+    if (log.actionType === 'comment' || log.actionType === 'reopen') {
+      const extracted = extractAndRemoveImagePaths(
+        text,
+        this.projectId()!,
+        this.issueId(),
+        'issues',
+      );
+
+      text = extracted.text;
+      imgUrls.push(...extracted.imgUrls);
+    }
+
+    segments = splitTextWithMentions(text, this.membersNames());
+    return { segments, imgUrls };
+  }
+
+  onFilterModelChange(value: LogFilterType): void {
+    const next = value || 'all';
+    const hasOption = this.filterOptions().some((item) => item.value === next);
+    this.filterMode.set(hasOption ? next : 'all');
+  }
+
+  iconType(item: ParsedLog): string {
     const metaKind = this.readMetaKind(item.metaJson);
     if (metaKind === 'participant.added' || metaKind === 'participant.added.batch') {
       return 'user-add';
@@ -279,65 +377,6 @@ export class IssueLogsAreaComponent {
     );
   }
 
-  parseLogContent(log: IssueLogEntity): logContent {
-    const segments: Array<{ text: string; mention?: boolean }> = [];
-    const imgUrls: string[] = [];
-    let text = log.summary;
-
-    if (!text) return { segments };
-
-    // 如果是评论需要提取图片
-    if (log.actionType === 'comment' || log.actionType === 'reopen') {
-      const extracted = extractAndRemoveImagePaths(
-        text,
-        this.projectId()!,
-        this.issueId(),
-        'issues',
-      );
-
-      text = extracted.text;
-      imgUrls.push(...extracted.imgUrls);
-    }
-
-    const regex = this.mentionPattern;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-
-    while ((match = regex.exec(text))) {
-      const start = match.index;
-      const full = match[0]; // @陈墨
-      const name = full.slice(1); // 陈墨
-
-      // 普通文本
-      if (start > lastIndex) {
-        segments.push({
-          text: text.slice(lastIndex, start),
-        });
-      }
-
-      // mention（只对成员高亮）
-      segments.push({
-        text: full,
-        mention: this.isMember(name),
-      });
-
-      lastIndex = regex.lastIndex;
-    }
-
-    // 剩余文本
-    if (lastIndex < text.length) {
-      segments.push({
-        text: text.slice(lastIndex),
-      });
-    }
-
-    return { segments, imgUrls };
-  }
-
-  isMember(name: string): boolean {
-    return !!this.members().find((member) => member.displayName === name);
-  }
-
   getMemberAvatarUrl(userId: string): string {
     // if (!this.projectId()) return '';
     // const member = this.members().find((member) => member.userId === userId);
@@ -348,12 +387,6 @@ export class IssueLogsAreaComponent {
     // );
     // return avatarUrl;
     return '';
-  }
-
-  toggleViewMode(mode?: LogViewType) {
-    if (mode) this.viewMode.set(mode);
-    const m = this.viewMode() === 'all' ? 'comment' : 'all';
-    this.viewMode.set(m);
   }
 
   private transformAvatarUrl(url: string, projectKey: string, issueId: string): string {

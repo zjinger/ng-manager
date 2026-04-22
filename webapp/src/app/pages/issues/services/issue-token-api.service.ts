@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
-import { IssueActionType } from '../models/issue.model';
 import { ProjectContextStore } from '@app/core/stores';
 
 @Injectable({

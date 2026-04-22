@@ -132,3 +132,54 @@ export function extractAndRemoveImagePaths(
     imgUrls,
   };
 }
+
+type TextSegment = {
+  text: string;
+  mention?: boolean;
+};
+
+export function splitTextWithMentions(
+  text: string,
+  memberNames: string[],
+  pattern: RegExp = /(@[^\s@,，.。;；:：!?！？]+)/g,
+): TextSegment[] {
+  if (!text) return [];
+
+  const memberSet = new Set(memberNames);
+
+  const segments: TextSegment[] = [];
+  let lastIndex = 0;
+
+  // ⚠️ 避免复用带 g 的 regex（状态污染）
+  const regex = new RegExp(pattern.source, pattern.flags);
+
+  for (const match of text.matchAll(regex)) {
+    const start = match.index!;
+    const full = match[0];
+    const name = full.slice(1);
+
+    // 普通文本
+    if (start > lastIndex) {
+      segments.push({
+        text: text.slice(lastIndex, start),
+      });
+    }
+
+    // mention
+    segments.push({
+      text: full,
+      mention: memberSet.has(name),
+    });
+
+    lastIndex = start + full.length;
+  }
+
+  // 剩余文本
+  if (lastIndex < text.length) {
+    segments.push({
+      text: text.slice(lastIndex),
+    });
+  }
+
+  return segments;
+}

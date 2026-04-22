@@ -1,4 +1,4 @@
-import { IssueActionType, IssueBranchStatus, IssueStatus } from '@pages/issues/models/issue.model';
+import { IssueBranchStatus, IssueStatus } from '@pages/issues/models/issue.model';
 
 export const ISSUE_STATUS = [
   'open',

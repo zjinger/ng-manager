@@ -286,7 +286,7 @@ export class IssueDetailComponent {
 
   handleActions(action: IssueActionType) {
     switch (action) {
-      case 'comments':
+      case 'comment':
         break;
       case 'start': {
         this.startConfirm();
@@ -300,7 +300,7 @@ export class IssueDetailComponent {
         this.IssueAssignDialogOpen.set(true);
         break;
       }
-      case 'wait-update': {
+      case 'wait_update': {
         this.waitForUpdateConfirm();
         break;
       }

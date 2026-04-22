@@ -13,17 +13,20 @@ export type IssueStatus =
 
 // 行动类型
 export type IssueActionType =
-  | 'comments'
+  | 'create'
+  | 'urge'
+  | 'comment'
   | 'start'
   | 'claim'
   | 'assign'
   | 'resolve'
-  | 'wait-update'
+  | 'wait_update'
   | 'verify'
   | 'reopen'
   | 'close'
   | 'add_participants'
-  | 'remove_participants';
+  | 'remove_participants'
+  | 'update';
 
 export type IssueBranchStatus = 'todo' | 'in_progress' | 'done';
 

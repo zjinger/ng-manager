@@ -71,7 +71,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               nz-button
               nzType="default"
               class="detail-header__action-btn"
-              (click)="actionClick.emit('wait-update')"
+              (click)="actionClick.emit('wait_update')"
             >
               标记待提测
             </button>

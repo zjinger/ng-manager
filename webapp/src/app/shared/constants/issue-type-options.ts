@@ -1,3 +1,4 @@
+
 export const ISSUE_TYPE_LABELS: Record<string, string> = {
   bug: '缺陷',
   feature: '新功能',
@@ -31,5 +32,19 @@ export const ISSUE_TITLE_BY_TYPE = [
   { type: 'improvement', title: '改进描述' },
   { type: 'task', title: '任务描述' },
   { type: 'test', title: '测试记录' },
-]
+];
 
+export const ISSUE_ACTION_TYPES_LABELS:Record<string, string> = {
+  create: '创建',
+  urge: '置顶提醒',
+  assign: '指派',
+  claim: '认领',
+  start: '开始处理',
+  wait_update: '待提测',
+  resolve: '标记解决',
+  verify: '验证通过',
+  reopen: '重新打开',
+  close: '关闭',
+  comment: '评论',
+  update: '更新',
+};
