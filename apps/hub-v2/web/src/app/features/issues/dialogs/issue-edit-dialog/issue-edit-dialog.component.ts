@@ -11,7 +11,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import type { ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
 import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
-import { MarkdownImageUploadService } from '@shared/services/markdown-image-upload.service';
+import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { IssueEntity, IssuePriority, IssueType, UpdateIssueInput } from '../../models/issue.model';
 
@@ -207,7 +207,7 @@ const EMPTY_DRAFT: EditDraft = {
 })
 export class IssueEditDialogComponent {
   private readonly message = inject(NzMessageService);
-  private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+  private readonly imageUpload = inject(ImageUploadService);
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS.filter((option) => option.value !== '');
   readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
 
@@ -230,7 +230,7 @@ export class IssueEditDialogComponent {
       : null
   );
   readonly moduleCascaderOptions = computed(() => this.buildModuleCascaderOptions());
-  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.markdownImageUpload.uploadImage(file);
+  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.imageUpload.uploadImage(file);
   @ViewChild('moduleCascaderRef', { read: ElementRef }) moduleCascaderRef?: ElementRef<HTMLElement>;
 
   constructor() {

@@ -31,6 +31,17 @@ export const UPLOAD_TARGETS = {
     invalidTypeMessage: '仅支持图片文件',
     sizeLimitMessage: '图片大小不能超过 10MB',
   },
+  commentImage: {
+    bucket: 'temp',
+    category: 'comment',
+    visibility: 'private',
+    accept: 'image/*',
+    maxSizeBytes: 10 * MB,
+    allowedMimePrefixes: ['image/'],
+    allowedExtensions: IMAGE_EXTENSIONS,
+    invalidTypeMessage: '仅支持图片文件',
+    sizeLimitMessage: '图片大小不能超过 10MB',
+  },
   profileAvatar: {
     bucket: 'avatars',
     category: 'avatar',

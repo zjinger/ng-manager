@@ -1,0 +1,57 @@
+<app-panel-card
+  [title]="'活动记录'"
+  [empty]="filteredTimelineItems().length === 0"
+  [emptyText]="'暂无操作记录'"
+>
+  @if (showFilter()) {
+    <div panel-actions class="timeline-filter">
+      <label class="timeline-filter__label">筛选</label>
+      <nz-select
+        class="timeline-filter__select"
+        nzSize="small"
+        [ngModel]="selectedFilter()"
+        (ngModelChange)="onFilterModelChange($event)"
+        [nzDropdownMatchSelectWidth]="false"
+      >
+        @for (opt of filterOptions(); track opt.value) {
+          <nz-option [nzLabel]="opt.label" [nzValue]="opt.value"></nz-option>
+        }
+      </nz-select>
+    </div>
+  }
+  <div class="timeline">
+    @for (item of filteredTimelineItems(); track item.id) {
+      <div class="timeline-log">
+        <span nz-icon [nzType]="item.icon" class="timeline-log__icon"></span>
+        <div class="timeline-log__body">
+          <app-issue-detail-note [variant]="'timeline'">
+            <span class="timeline-log__user">{{ item.actor }}</span>
+            <span class="timeline-log__action">
+              @if (item.actionSegments?.length) {
+                @for (segment of item.actionSegments!; track $index) {
+                  @if (segment.mention) {
+                    <span class="timeline-log__mention">{{ segment.text }}</span>
+                  } @else {
+                    <span>{{ segment.text }}</span>
+                  }
+                }
+              } @else {
+                {{ item.action }}
+              }
+            </span>
+            @if (item.imageItems.length > 0) {
+              <div class="timeline-log__images">
+                <nz-image-group>
+                  @for (image of item.imageItems; track image.url + '-' + $index) {
+                    <img class="timeline-log__image" nz-image [nzSrc]="image.url" alt="" />
+                  }
+                </nz-image-group>
+              </div>
+            }
+          </app-issue-detail-note>
+        </div>
+        <span class="timeline-log__time">{{ item.time }}</span>
+      </div>
+    }
+  </div>
+</app-panel-card>

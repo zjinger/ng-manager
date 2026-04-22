@@ -14,7 +14,7 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
 import { NzUploadModule } from 'ng-zorro-antd/upload';
-import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
+import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import { AiRecommendPanelComponent } from '../../../ai/components/ai-recommend-panel/ai-recommend-panel.component';
 import { AiIssueStore } from '../../../ai/store/ai-issue.store';
 import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../projects/models/project.model';
@@ -418,7 +418,7 @@ const DEFAULT_DRAFT: Draft = {
 })
 export class IssueCreateDialogComponent implements OnDestroy {
   private readonly message = inject(NzMessageService);
-  private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+  private readonly imageUpload = inject(ImageUploadService);
   private readonly aiStore = inject(AiIssueStore);
   private readonly previewUrlMap = new Map<string, string>();
 
@@ -450,7 +450,7 @@ export class IssueCreateDialogComponent implements OnDestroy {
     status: ['lines', 'words']
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> => {
-    return this.markdownImageUpload.uploadImage(file);
+    return this.imageUpload.uploadImage(file);
   };
   readonly modulePath = signal<string[] | null>(null);
   readonly moduleTriggerWidth = signal(0);

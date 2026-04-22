@@ -17,11 +17,13 @@ export interface UploadPolicy {
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'] as const;
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.flv', '.wmv'] as const;
 
+// 通用上传策略
 const GENERIC_UPLOAD_POLICY: UploadPolicy = {
   maxSizeBytes: 10 * MB,
   sizeLimitMessage: "单个文件最大 10MB"
 };
 
+// markdown 图片上传策略，限制为图片文件且大小不超过 10MB
 const MARKDOWN_IMAGE_POLICY: UploadPolicy = {
   maxSizeBytes: 10 * MB,
   allowedMimePrefixes: ["image/"],
@@ -30,6 +32,15 @@ const MARKDOWN_IMAGE_POLICY: UploadPolicy = {
   sizeLimitMessage: "图片大小不能超过 10MB"
 };
 
+const COMMENT_IMAGE_POLICY: UploadPolicy = {
+  maxSizeBytes: 10 * MB,
+  allowedMimePrefixes: ["image/"],
+  allowedExtensions: IMAGE_EXTENSIONS,
+  invalidTypeMessage: "仅支持图片文件",
+  sizeLimitMessage: "评论图片不能超过 10MB"
+};
+
+// 头像上传策略，限制为图片文件且大小不超过 10MB
 const AVATAR_POLICY: UploadPolicy = {
   maxSizeBytes: 10 * MB,
   allowedMimePrefixes: ["image/"],
@@ -38,11 +49,13 @@ const AVATAR_POLICY: UploadPolicy = {
   sizeLimitMessage: "图片大小不能超过 10MB"
 };
 
+// 项目头像上传策略，限制为图片文件且大小不超过 10MB
 const PROFILE_AVATAR_POLICY: UploadPolicy = {
   ...AVATAR_POLICY,
   sizeLimitMessage: "头像图片不能超过 10MB"
 };
 
+// 测试单附件上传策略，限制为图片或视频文件且大小不超过 10MB
 const ISSUE_ATTACHMENT_POLICY: UploadPolicy = {
   maxSizeBytes: 10 * MB,
   allowedMimePrefixes: ["image/", "video/"],
@@ -51,6 +64,9 @@ const ISSUE_ATTACHMENT_POLICY: UploadPolicy = {
   sizeLimitMessage: "单个文件最大 10MB"
 };
 
+/**
+ * 根据上传的 bucket 和 category 决定使用哪个上传策略
+ */
 export function resolveUploadPolicy(bucket: string, category: string): UploadPolicy {
   if (bucket === "avatars") {
     return PROFILE_AVATAR_POLICY;
@@ -58,7 +74,10 @@ export function resolveUploadPolicy(bucket: string, category: string): UploadPol
   if (bucket === "project-avatars") {
     return AVATAR_POLICY;
   }
-  if (category === "markdown") {
+  if (category === "comment") {
+    return COMMENT_IMAGE_POLICY;
+  }
+  if (category.startsWith("markdown")) {
     return MARKDOWN_IMAGE_POLICY;
   }
   if (bucket === "issues" && category === "attachment") {

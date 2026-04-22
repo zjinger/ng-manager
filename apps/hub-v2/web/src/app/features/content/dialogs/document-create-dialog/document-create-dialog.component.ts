@@ -8,7 +8,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
-import { MarkdownImageUploadService } from '@shared/services/markdown-image-upload.service';
+import { ImageUploadService } from '@shared/services/image-upload.service';
 import type { CreateDocumentInput, DocumentEntity } from '../../models/content.model';
 
 type Draft = Omit<CreateDocumentInput, 'projectId'>;
@@ -175,7 +175,7 @@ const DEFAULT_DRAFT: Draft = {
 })
 export class DocumentCreateDialogComponent {
   private readonly message = inject(NzMessageService);
-  private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+  private readonly imageUpload = inject(ImageUploadService);
 
   readonly open = input(false);
   readonly busy = input(false);
@@ -191,7 +191,7 @@ export class DocumentCreateDialogComponent {
     autosaveUniqueId: 'document-editor',
     status: ['lines', 'words'],
   };
-  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.markdownImageUpload.uploadImage(file);
+  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.imageUpload.uploadImage(file);
 
   constructor() {
     effect(() => {

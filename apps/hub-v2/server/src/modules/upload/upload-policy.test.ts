@@ -56,4 +56,22 @@ describe("upload policy", () => {
       (error) => error instanceof AppError && error.message === "仅支持图片文件"
     );
   });
+
+  it("maps comment uploads to the comment image-only policy", () => {
+    const policy = resolveUploadPolicy("temp", "comment");
+
+    assert.throws(
+      () =>
+        assertUploadAllowed(
+          {
+            fileName: "capture.mov",
+            mimeType: "video/quicktime",
+            fileSize: 512 * 1024
+          },
+          policy,
+          10 * 1024 * 1024
+        ),
+      (error) => error instanceof AppError && error.message === "仅支持图片文件"
+    );
+  });
 });

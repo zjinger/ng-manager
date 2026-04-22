@@ -11,7 +11,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { MarkdownImageUploadService } from '../../../../shared/services/markdown-image-upload.service';
+import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { RD_TYPE_OPTIONS, type CreateRdItemInput, type RdItemType, type RdStageEntity } from '../../models/rd.model';
 
@@ -239,7 +239,7 @@ const DEFAULT_DRAFT: Draft = {
 })
 export class RdCreateDialogComponent {
   private readonly message = inject(NzMessageService);
-  private readonly markdownImageUpload = inject(MarkdownImageUploadService);
+  private readonly imageUpload = inject(ImageUploadService);
 
   readonly open = input(false);
   readonly busy = input(false);
@@ -260,7 +260,7 @@ export class RdCreateDialogComponent {
     status: ['lines', 'words']
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> => {
-    return this.markdownImageUpload.uploadImage(file);
+    return this.imageUpload.uploadImage(file);
   };
 
   constructor() {

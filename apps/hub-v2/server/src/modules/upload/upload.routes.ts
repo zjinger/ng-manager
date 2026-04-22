@@ -41,7 +41,13 @@ function normalizeBucket(bucketRaw: string | undefined, categoryRaw: string | un
     if (category === "avatar" || category === "avatars" || category === "profile") {
       return "avatars";
     }
-    if (category === "issue" || category === "issues" || category === "attachment" || category === "markdown") {
+    if (
+      category === "issue" ||
+      category === "issues" ||
+      category === "attachment" ||
+      category === "comment" ||
+      category.startsWith("markdown")
+    ) {
       return "issues";
     }
     if (category === "project_avatar" || category === "project-avatar" || category === "project") {

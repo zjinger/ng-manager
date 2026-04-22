@@ -5,6 +5,7 @@ import type { EventBus } from "../../../shared/event/event-bus";
 import { genId } from "../../../shared/utils/id";
 import { nowIso } from "../../../shared/utils/time";
 import type { ProjectAccessContract } from "../../project/project-access.contract";
+import type { UploadCommandContract } from "../../upload/upload.contract";
 import { IssueRepo } from "../issue.repo";
 import type { IssueLogEntity } from "../issue.types";
 import type { IssueCommentCommandContract, IssueCommentQueryContract } from "./issue-comment.contract";
@@ -16,7 +17,8 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
     private readonly issueRepo: IssueRepo,
     private readonly commentRepo: IssueCommentRepo,
     private readonly projectAccess: ProjectAccessContract,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly uploadCommand: UploadCommandContract
   ) {}
 
   async create(issueId: string, input: CreateIssueCommentInput, ctx: RequestContext): Promise<IssueCommentEntity> {
@@ -34,6 +36,14 @@ export class IssueCommentService implements IssueCommentCommandContract, IssueCo
     };
 
     this.commentRepo.create(entity);
+    await this.uploadCommand.promoteMarkdownUploads(
+      {
+        content: entity.content,
+        bucket: "issues",
+        entityId: issue.id
+      },
+      ctx
+    );
     this.issueRepo.createLog(this.createCommentLog(issue.id, ctx, entity.content));
     await this.eventBus.emit({
       type: "issue.commented",

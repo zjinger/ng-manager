@@ -70,7 +70,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
       if (upload.bucket !== "temp") {
         continue;
       }
-      if (!upload.category.startsWith("markdown")) {
+      if (!(upload.category.startsWith("markdown") || upload.category === "comment")) {
         continue;
       }
 
@@ -89,7 +89,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
         }
       }
 
-      this.repo.updateStorageAndBucket(upload.id, normalizedBucket, "markdown", targetPath, nowIso());
+      this.repo.updateStorageAndBucket(upload.id, normalizedBucket, upload.category, targetPath, nowIso());
     }
   }
 

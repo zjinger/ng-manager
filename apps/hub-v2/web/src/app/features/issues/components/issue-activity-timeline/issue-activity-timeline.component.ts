@@ -4,8 +4,9 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { PanelCardComponent } from '@shared/ui';
-import { IssueDetailNoteComponent } from '../issue-detail-note/issue-detail-note.component';
 import type { IssueLogEntity } from '../../models/issue.model';
+import { IssueDetailNoteComponent } from '../issue-detail-note/issue-detail-note.component';
+import { NzImageModule } from 'ng-zorro-antd/image';
 
 interface IssueTimelineItem {
   id: string;
@@ -14,170 +15,40 @@ interface IssueTimelineItem {
   actor: string;
   action: string;
   actionSegments?: Array<{ text: string; mention?: boolean }>;
+  imageItems: Array<{ alt: string; url: string }>;
   time: string;
 }
 
 @Component({
   selector: 'app-issue-activity-timeline',
   standalone: true,
-  imports: [FormsModule, NzIconModule, NzSelectModule, PanelCardComponent, IssueDetailNoteComponent],
-  template: `
-    <app-panel-card [title]="'活动记录'" [empty]="filteredTimelineItems().length === 0" [emptyText]="'暂无操作记录'">
-      @if (showFilter()) {
-        <div panel-actions class="timeline-filter">
-          <label class="timeline-filter__label">筛选</label>
-          <nz-select
-            class="timeline-filter__select"
-            nzSize="small"
-            [ngModel]="selectedFilter()"
-            (ngModelChange)="onFilterModelChange($event)"
-            [nzDropdownMatchSelectWidth]="false"
-          >
-            @for (opt of filterOptions(); track opt.value) {
-              <nz-option [nzLabel]="opt.label" [nzValue]="opt.value"></nz-option>
-            }
-          </nz-select>
-        </div>
-      }
-      <div class="timeline">
-        @for (item of filteredTimelineItems(); track item.id) {
-          <div class="timeline-log">
-            <span nz-icon [nzType]="item.icon" class="timeline-log__icon"></span>
-            <div class="timeline-log__body">
-              <app-issue-detail-note [variant]="'timeline'">
-                <span class="timeline-log__user">{{ item.actor }}</span>
-                <span class="timeline-log__action">
-                  @if (item.actionSegments?.length) {
-                    @for (segment of item.actionSegments!; track $index) {
-                      @if (segment.mention) {
-                        <span class="timeline-log__mention">{{ segment.text }}</span>
-                      } @else {
-                        <span>{{ segment.text }}</span>
-                      }
-                    }
-                  } @else {
-                    {{ item.action }}
-                  }
-                </span>
-              </app-issue-detail-note>
-            </div>
-            <span class="timeline-log__time">{{ item.time }}</span>
-          </div>
-        }
-      </div>
-    </app-panel-card>
-  `,
-  styles: [
-    `
-      .timeline {
-        display: grid;
-        max-height: 560px;
-        overflow: auto;
-      }
-
-      .timeline-filter__label {
-        color: var(--text-muted);
-        font-size: 12px;
-      }
-
-      .timeline-filter {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .timeline-filter__select {
-        min-width: 132px;
-        height: auto;
-      }
-
-      .timeline-log {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 14px 20px;
-        border-top: 1px solid var(--border-color-soft);
-        font-size: 13px;
-      }
-
-      .timeline-log__icon,
-      .timeline-log__time {
-        flex: 0 0 auto;
-      }
-
-      .timeline-log__icon {
-        margin-top: 2px;
-        color: var(--primary-500);
-        font-size: 13px;
-      }
-
-      .timeline-log__body {
-        min-width: 0;
-        flex: 1 1 auto;
-      }
-
-      .timeline-log__user {
-        margin-right: 6px;
-        font-weight: 600;
-        color: var(--text-primary);
-      }
-
-      .timeline-log__action {
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-
-      .timeline-log__mention {
-        color: var(--primary-700);
-        font-weight: 600;
-      }
-
-      .timeline-log__time {
-        margin-left: auto;
-        font-size: 12px;
-        color: var(--text-muted);
-        line-height: 1.6;
-      }
-
-      @media (max-width: 768px) {
-        .timeline {
-          max-height: 52vh;
-        }
-
-        .timeline-log {
-          flex-wrap: wrap;
-        }
-
-        .timeline-log__body {
-          flex-basis: calc(100% - 21px);
-        }
-
-        .timeline-log__time {
-          width: 100%;
-          margin-left: 21px;
-        }
-      }
-    `,
-  ],
+  imports: [FormsModule, NzIconModule, NzSelectModule, PanelCardComponent, IssueDetailNoteComponent, NzImageModule],
+  templateUrl: './issue-activity-timeline.component.html',
+  styleUrl: './issue-activity-timeline.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueActivityTimelineComponent {
   private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
+  private readonly markdownImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
   readonly selectedFilter = signal<string>('all');
 
   readonly logs = input.required<IssueLogEntity[]>();
   readonly showFilter = computed(() => this.logs().length > 10);
   readonly timelineItems = computed<IssueTimelineItem[]>(() =>
     this.logs().map((item) => {
-      const action = this.logText(item);
+      const rawAction = this.logText(item);
+      const imageItems = item.actionType === 'comment' ? this.extractInlineImages(rawAction) : [];
+      const action = item.actionType === 'comment' ? this.stripInlineImages(rawAction) : rawAction;
+      const normalizedAction = action.trim() || (imageItems.length > 0 ? '上传了图片' : action);
 
       return {
         id: item.id,
         icon: this.iconType(item),
         actionType: item.actionType,
         actor: item.operatorName || '系统',
-        action,
-        actionSegments: this.highlightMentionSegments(action),
+        action: normalizedAction,
+        actionSegments: this.highlightMentionSegments(normalizedAction),
+        imageItems,
         time: new Intl.DateTimeFormat('zh-CN', {
           month: '2-digit',
           day: '2-digit',
@@ -320,5 +191,22 @@ export class IssueActivityTimelineComponent {
     } catch {
       return null;
     }
+  }
+
+  private extractInlineImages(text: string): Array<{ alt: string; url: string }> {
+    const result: Array<{ alt: string; url: string }> = [];
+    for (const match of text.matchAll(this.markdownImagePattern)) {
+      const alt = (match[1] || '').trim();
+      const url = (match[2] || '').trim();
+      if (!url) {
+        continue;
+      }
+      result.push({ alt, url });
+    }
+    return result;
+  }
+
+  private stripInlineImages(text: string): string {
+    return text.replace(this.markdownImagePattern, '').replace(/\n{3,}/g, '\n\n').trim();
   }
 }

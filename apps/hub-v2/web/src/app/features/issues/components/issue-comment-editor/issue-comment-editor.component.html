@@ -41,16 +41,43 @@
         [nzValueWith]="mentionLabel"
         (nzOnSearchChange)="handleMentionSearch($event)"
         (nzOnSelect)="handleMentionSelect($event)"
+        style="border:none"
       >
-        <textarea
-          nz-input
-          nzMentionTrigger
-          class="composer__textarea"
-          rows="4"
-          placeholder="添加评论… 输入 @ 提及成员"
-          [ngModel]="draft()"
-          (ngModelChange)="draft.set($event)"
-        ></textarea>
+        <div class="composer__input-shell" [class.multiple-uploads]="uploads().length > 1" [class.has-upload]="uploads().length > 0">
+          @if (uploads().length > 0) {
+            <div class="upload-list">
+              @for (item of uploads(); track item.id) {
+                <div class="upload-item" [class.multiple-item]="uploads().length>1" [class.is-uploading]="item.status === 'uploading'" [class.is-error]="item.status === 'error'">
+                  <img nz-image class="upload-item__thumb" [nzSrc]="item.previewUrl" [alt]="item.file.name || 'comment-image'" />
+                  @if (item.status === 'uploading') {
+                    <div class="upload-item__mask">
+                      <span class="upload-item__spinner" aria-hidden="true"></span>
+                    </div>
+                  }
+                  @if (item.status === 'error') {
+                    <div class="upload-item__mask upload-item__mask--error">
+                      <span class="upload-item__error-text">{{ item.error || '上传失败' }}</span>
+                  <button nz-button nzType="link" class="upload-item__retry" (click)="retryUpload(item.id)">重试</button>
+                </div>
+              }
+              <button nz-button nzShape="circle" nzType="link" class="upload-item__remove" (click)="removeUpload(item.id)" nz-tooltip="删除">
+                <span nz-icon nzType="close"></span>
+              </button>
+            </div>
+          }
+        </div>
+          }
+          <textarea
+            nz-input
+            nzMentionTrigger
+            class="composer__textarea"
+            rows="3"
+            placeholder="添加评论… 输入 @ 提及成员"
+            [ngModel]="draft()"
+            (ngModelChange)="draft.set($event)"
+            (paste)="onPaste($event)"
+          ></textarea>
+        </div>
         <ng-template nzMentionSuggestion let-member>
           <div class="mention-option">
             <span class="mention-name">{{ member.displayName || member.userId }}</span>
@@ -59,7 +86,7 @@
         </ng-template>
       </nz-mention>
       <div class="composer__actions">
-        <button nz-button nzType="primary" [nzLoading]="busy()" (click)="submitComment()">
+        <button nz-button nzType="primary" [nzLoading]="busy()" [disabled]="!canSubmit()" (click)="submitComment()">
           发送评论
         </button>
       </div>

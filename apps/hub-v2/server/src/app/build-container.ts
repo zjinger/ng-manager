@@ -185,7 +185,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     eventBus
   );
   const issueCommentRepo = new IssueCommentRepo(db);
-  const issueCommentService = new IssueCommentService(issueRepo, issueCommentRepo, projectAccess, eventBus);
+  const issueCommentService = new IssueCommentService(issueRepo, issueCommentRepo, projectAccess, eventBus, uploadService);
   const issueParticipantRepo = new IssueParticipantRepo(db);
   const issueParticipantService = new IssueParticipantService(issueRepo, issueParticipantRepo, projectAccess, eventBus);
   const issueBranchService = new IssueBranchService(

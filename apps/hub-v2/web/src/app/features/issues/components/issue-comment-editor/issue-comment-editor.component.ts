@@ -1,27 +1,42 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
+import { NzImageModule } from 'ng-zorro-antd/image';
 import { ROLE_LABELS } from '@app/shared/constants';
 import { AuthStore } from '@core/auth';
+import { UPLOAD_TARGETS } from '@shared/constants';
+import { ImageUploadService } from '@shared/services/image-upload.service';
 import { PanelCardComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import type { IssueCommentEntity } from '../../models/issue.model';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+
+interface CommentUploadItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  status: 'uploading' | 'done' | 'error';
+  url: string | null;
+  error: string | null;
+}
 
 @Component({
   selector: 'app-issue-comment-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzAvatarModule, NzButtonModule, NzIconModule, NzInputModule, NzMentionModule, PanelCardComponent],
+  imports: [CommonModule, FormsModule, NzAvatarModule, NzButtonModule, NzIconModule, NzInputModule, NzMentionModule, NzImageModule, PanelCardComponent, NzTooltipModule],
   templateUrl: './issue-comment-editor.component.html',
   styleUrls: ['./issue-comment-editor.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IssueCommentEditorComponent {
+export class IssueCommentEditorComponent implements OnDestroy {
   private readonly authStore = inject(AuthStore);
+  private readonly imageUpload = inject(ImageUploadService);
+  private readonly commentUploadPolicy = UPLOAD_TARGETS.commentImage;
 
   readonly comments = input.required<IssueCommentEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
@@ -30,6 +45,13 @@ export class IssueCommentEditorComponent {
 
   readonly draft = signal('');
   readonly mentionKeyword = signal('');
+  readonly uploads = signal<CommentUploadItem[]>([]);
+  readonly uploading = computed(() => this.uploads().some((item) => item.status === 'uploading'));
+  readonly canSubmit = computed(() => {
+    const hasText = !!this.draft().trim();
+    const hasUploadedImages = this.uploads().some((item) => item.status === 'done' && !!item.url);
+    return (hasText || hasUploadedImages) && !this.busy() && !this.uploading();
+  });
   readonly currentUser = this.authStore.currentUser;
   readonly currentUserInitial = computed(() => this.avatarText(this.currentUser()?.nickname || '我'));
   readonly mentionOptions = computed(() => {
@@ -49,14 +71,15 @@ export class IssueCommentEditorComponent {
 
   submitComment(): void {
     const raw = this.draft();
-    const content = raw.trim();
-    if (!content) {
+    const content = this.composeSubmitContent(raw);
+    if (!content || this.uploading() || this.busy()) {
       return;
     }
 
     this.submit.emit({ content, mentions: this.collectMentions(raw) });
     this.draft.set('');
     this.mentionKeyword.set('');
+    this.clearUploadItems();
   }
 
   avatarText(name: string): string {
@@ -73,6 +96,47 @@ export class IssueCommentEditorComponent {
 
   handleMentionSelect(_member: ProjectMemberEntity): void {
     this.mentionKeyword.set('');
+  }
+
+  onPaste(event: ClipboardEvent): void {
+    if (this.busy()) {
+      return;
+    }
+    const files = this.extractClipboardImages(event);
+    if (files.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    for (const file of files) {
+      this.enqueueImageUpload(file);
+    }
+  }
+
+  retryUpload(id: string): void {
+    const target = this.uploads().find((item) => item.id === id);
+    if (!target || target.status !== 'error') {
+      return;
+    }
+    this.uploads.update((items) =>
+      items.map((item) =>
+        item.id === id
+          ? { ...item, status: 'uploading', error: null }
+          : item,
+      ),
+    );
+    void this.runUpload(id, target.file);
+  }
+
+  removeUpload(id: string): void {
+    const target = this.uploads().find((item) => item.id === id);
+    if (target) {
+      URL.revokeObjectURL(target.previewUrl);
+    }
+    this.uploads.update((items) => items.filter((item) => item.id !== id));
+  }
+
+  ngOnDestroy(): void {
+    this.clearUploadItems();
   }
 
   commentSegments(item: IssueCommentEntity): Array<{ text: string; mentioned: boolean }> {
@@ -158,5 +222,115 @@ export class IssueCommentEditorComponent {
 
   private escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private extractClipboardImages(event: ClipboardEvent): File[] {
+    const items = event.clipboardData?.items;
+    if (!items?.length) {
+      return [];
+    }
+    const files: File[] = [];
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index];
+      if (item.kind !== 'file' || !item.type.startsWith('image/')) {
+        continue;
+      }
+      const file = item.getAsFile();
+      if (!file) {
+        continue;
+      }
+      files.push(this.normalizeClipboardFileName(file));
+    }
+    return files;
+  }
+
+  private normalizeClipboardFileName(file: File): File {
+    const normalizedName = file.name?.trim();
+    if (normalizedName) {
+      return file;
+    }
+    const extension = this.inferExtension(file.type);
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '');
+    return new File([file], `comment-image-${timestamp}${extension}`, { type: file.type, lastModified: Date.now() });
+  }
+
+  private inferExtension(mimeType: string): string {
+    const value = mimeType.toLowerCase();
+    if (value.includes('png')) {
+      return '.png';
+    }
+    if (value.includes('jpeg') || value.includes('jpg')) {
+      return '.jpg';
+    }
+    if (value.includes('gif')) {
+      return '.gif';
+    }
+    if (value.includes('webp')) {
+      return '.webp';
+    }
+    if (value.includes('bmp')) {
+      return '.bmp';
+    }
+    return '';
+  }
+
+  private enqueueImageUpload(file: File): void {
+    const id = this.createUploadId(file);
+    const previewUrl = URL.createObjectURL(file);
+    this.uploads.update((items) => [...items, { id, file, previewUrl, status: 'uploading', url: null, error: null }]);
+    void this.runUpload(id, file);
+  }
+
+  private async runUpload(id: string, file: File): Promise<void> {
+    try {
+      const url = await this.imageUpload.uploadImage(file, this.commentUploadPolicy);
+      this.uploads.update((items) =>
+        items.map((item) =>
+          item.id === id
+            ? { ...item, status: 'done', url, error: null }
+            : item,
+        ),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '图片上传失败';
+      this.uploads.update((items) =>
+        items.map((item) =>
+          item.id === id
+            ? { ...item, status: 'error', error: message }
+            : item,
+        ),
+      );
+    }
+  }
+
+  private composeSubmitContent(raw: string): string {
+    const text = raw.trim();
+    const images = this.uploads()
+      .filter((item) => item.status === 'done' && !!item.url)
+      .map((item) => {
+        const alt = (item.file.name || 'image').replace(/]/g, '');
+        return `![${alt}](${item.url})`;
+      });
+    if (!text && images.length === 0) {
+      return '';
+    }
+    if (!text) {
+      return images.join('\n');
+    }
+    if (images.length === 0) {
+      return text;
+    }
+    return `${text}\n${images.join('\n')}`;
+  }
+
+  private clearUploadItems(): void {
+    for (const item of this.uploads()) {
+      URL.revokeObjectURL(item.previewUrl);
+    }
+    this.uploads.set([]);
+  }
+
+  private createUploadId(file: File): string {
+    return `${Date.now()}-${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
   }
 }
