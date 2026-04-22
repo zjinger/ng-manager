@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { ProjectContextStore } from '@app/core/stores';
 import { ApiClient } from '@core/api';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Observable, catchError, map, of } from 'rxjs';
 
 export interface NodeVersionInfo {
   current: string | null;
@@ -45,6 +45,12 @@ export class NodeVersionService {
    * 是否安装了版本管理器
    */
   readonly hasVersionManager = signal(false);
+
+  /** 官方推荐版本列表 */
+  readonly recommendedVersions = signal<string[]>([]);
+
+  /** 版本是否已安装 */
+  readonly alreadyInstalled = signal(false);
 
   /**
    * 是否可以切换版本
@@ -150,8 +156,125 @@ export class NodeVersionService {
   clearError() {
     this.error.set(null);
   }
+
+  /**
+   * 根据项目要求的版本号生成推荐的版本列表
+   * 支持解析 ">=18.0.0"、"^18.19.1 || ^20.11.1" 等格式
+   * @param requiredVersion 项目要求的版本号
+   * @returns 推荐的版本数组
+   */
+  generateRecommendedVersions(requiredVersion: string | null): string[] {
+    if (!requiredVersion) {
+      return this.getCommonLTSVersions();
+    }
+
+    /** 从版本范围中提取主版本号和最小版本号 */
+    const extractVersions = (range: string): string | null => {
+      const cleaned = range.replace(/^[\^~>=<]+/, '');
+      const match = cleaned.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (match) {
+        return `v${match[1]}.${match[2]}.${match[3]}`;
+      }
+      return null;
+    };
+
+    /** 分割版本范围（如 ">=18.0.0 || ^20.0.0"） */
+    const ranges = requiredVersion.split('||').map((r) => r.trim());
+    const recommended: Set<string> = new Set();
+
+    for (const range of ranges) {
+      const version = extractVersions(range);
+      if (version) {
+        recommended.add(version);
+      }
+    }
+
+    if (recommended.size === 0) {
+      return this.getCommonLTSVersions();
+    }
+
+    return Array.from(recommended);
+  }
+
+  /** 获取常用的 LTS 版本列表 */
+  private getCommonLTSVersions(): string[] {
+    return ['v18.20.0', 'v20.11.0', 'v22.11.0'];
+  }
+
+  /**
+   * 下载并安装指定版本的 Node.js
+   * @param version 要安装的版本号
+   * @returns 安装是否成功
+   */
+  async installVersion(version: string): Promise<boolean> {
+    if (this.manager() === 'none') {
+      this.switchError.set(this.getNoManagerMessage());
+      return false;
+    }
+    this.error.set(null);
+    try {
+      const result = await lastValueFrom(
+        this.api.post<{ success: boolean; error?: string; alreadyInstalled?: boolean }>(
+          `/api/node-version/install`,
+          { version },
+        ),
+      );
+      if (result.success) {
+        this.alreadyInstalled.set(!!result.alreadyInstalled);
+        return true;
+      } else {
+        this.error.set(result.error || '安装失败');
+        return false;
+      }
+    } catch (e: any) {
+      const errorMsg = e?.error?.message || e?.message || '安装 Node 版本失败';
+      this.error.set(errorMsg);
+      return false;
+    }
+  }
+
+  /**
+   * 获取官方推荐版本列表
+   */
+  async loadRecommendedVersions(): Promise<void> {
+    try {
+      const versions = await lastValueFrom(this.api.get<string[]>('/api/node-version/recommended'));
+      this.recommendedVersions.set(versions);
+    } catch (e) {
+      console.error('获取推荐版本失败:', e);
+      this.recommendedVersions.set(this.getFallbackVersions());
+    }
+  }
+
+  /** 备用版本列表 */
+  private getFallbackVersions(): string[] {
+    return ['v18.20.0', 'v20.11.0', 'v22.11.0'];
+  }
+
   refresh() {
     this.getCurrentVersion();
     this.loadProjectRequirement();
+  }
+
+  /**
+   * 删除指定版本的 Node.js
+   * @param version 要删除的版本号
+   * @returns 删除是否成功
+   */
+  async deleteVersion(version: string): Promise<boolean> {
+    if (this.manager() === 'none') {
+      this.error.set('没有安装 Node 版本管理器');
+      return false;
+    }
+
+    try {
+      const success = await lastValueFrom(
+        this.api.post<boolean>(`/api/node-version/uninstall`, { version }),
+      );
+      return success;
+    } catch (e: any) {
+      this.error.set(e?.error?.message || e?.message || '删除版本失败');
+      return false;
+    }
   }
 }

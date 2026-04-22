@@ -130,26 +130,24 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     return false;
   }
 
-private async getNodeVersion(): Promise<string> {
-  const manager = this.detectManager();
+  private async getNodeVersion(): Promise<string> {
+    const manager = this.detectManager();
 
-  if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
-    try {
-      const { stdout } = await execFileAsync('volta', ['current'], { windowsHide: true });
-      const v = stdout.trim();
-      if (v) return v.startsWith('v') ? v : 'v' + v;
-    } catch {}
+    if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
+      try {
+        const { stdout } = await execFileAsync('volta', ['current'], { windowsHide: true });
+        const v = stdout.trim();
+        if (v) return v.startsWith('v') ? v : 'v' + v;
+      } catch {}
+    } else {
+      try {
+        const { stdout } = await execFileAsync('nvm', ['current'], { windowsHide: true });
+        const v = stdout.trim();
+        if (v) return v.startsWith('v') ? v : 'v' + v;
+      } catch {}
+    }
+    return process.version;
   }
-
-  else  {
-    try {
-      const { stdout } = await execFileAsync('nvm', ['current'], { windowsHide: true });
-      const v = stdout.trim();
-      if (v) return v.startsWith('v') ? v : 'v' + v;
-    } catch {}
-  }
-  return process.version;
-}
 
   /** 获取可用的 Node 版本 */
   private async getAvailableVersions(manager: VersionManager): Promise<string[]> {
@@ -359,6 +357,102 @@ private async getNodeVersion(): Promise<string> {
   getManager(): VersionManager {
     return this.detectManager();
   }
+
+  /**
+   * 安装指定版本的Node.js
+   * @param version 版本号（支持主版本号或者完整版本号）
+   */
+  async installNodeVersion(version: string): Promise<{ success: boolean; error?: string; alreadyInstalled?: boolean }> {
+    const manager = this.detectManager();
+    if (manager === VersionManager.None) {
+      this.logText('没有安装 Node 版本管理器，无法自动安装', 'warn');
+      return { success: false, error: '没有安装 Node 版本管理器 (nvm/Volta)' };
+    }
+
+    this.logText(`开始安装 Node.js ${version}，使用版本管理器: ${manager}`);
+
+    try {
+      // if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
+      //   const args = ['install', `node@${version}`];
+      //   this.logText(`执行命令: volta ${args.join(' ')}`);
+      //   const result = await execFileAsync('volta', args, { windowsHide: true });
+      //   const output = result.stdout + result.stderr;
+
+      //   const errorPatterns = [
+      //     'not found',
+      //     'not yet released',
+      //     'not yet available',
+      //     'invalid',
+      //     'error',
+      //   ];
+      //   const hasError = errorPatterns.some(pattern => output.toLowerCase().includes(pattern));
+      //   if (hasError) {
+      //     this.logText(`Node.js ${version} 安装失败: ${output}`, 'error');
+      //     return { success: false, error: `Node.js ${version} ${output.includes('not yet') ? '版本未发布或不可用' : '安装失败'}` };
+      //   }
+      //   this.logText(`Node.js ${version} 安装成功`);
+      //   return { success: true };
+      // } else
+      if (manager === VersionManager.NVM) {
+        const args = ['install', version];
+        this.logText(`执行命令: nvm ${args.join(' ')}`);
+        const result = await execFileAsync('nvm', args, { windowsHide: true });
+        const output = result.stdout + result.stderr;
+
+        /** 已安装的情况 */
+        if (output.toLowerCase().includes('already installed')) {
+          this.logText(`Node.js ${version} 已安装，跳过安装`);
+          return { success: true, alreadyInstalled: true };
+        }
+
+        const errorPatterns = ['not found', 'not yet released', 'not available', 'invalid', 'error'];
+        const hasError = errorPatterns.some(pattern => output.toLowerCase().includes(pattern));
+        if (hasError) {
+          this.logText(`Node.js ${version} 安装失败: ${output}`, 'error');
+          return { success: false, error: `Node.js ${version} ${output.includes('not') ? '版本未发布或不可用' : '安装失败'}` };
+        }
+        this.logText(`Node.js ${version} 安装成功`);
+        return { success: true };
+      }
+      return { success: false, error: '未知的版本管理器' };
+    } catch (e: any) {
+      this.logText(`Node.js 安装失败: ${e?.message}`, 'error');
+      return { success: false, error: e?.message || '安装失败' };
+    }
+  }
+
+  /**
+   * 卸载指定版本的 Node.js
+   * @param version 版本号（支持带 v 前缀或不带）
+   */
+  async uninstallNodeVersion(version: string): Promise<boolean> {
+    const manager = this.detectManager();
+    if (manager === VersionManager.None) {
+      this.logText('没有安装 Node 版本管理器，无法卸载', 'warn');
+      return false;
+    }
+
+    const cleanVersion = version.replace(/^v/, '');
+    this.logText(`开始卸载 Node.js ${version}，使用版本管理器: ${manager}`);
+
+    try {
+      if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
+        const args = ['uninstall', `node@${cleanVersion}`];
+        this.logText(`执行命令: volta ${args.join(' ')}`);
+        await execFileAsync('volta', args, { windowsHide: true });
+      } else if (manager === VersionManager.NVM) {
+        const args = ['uninstall', cleanVersion];
+        this.logText(`执行命令: nvm ${args.join(' ')}`);
+        await execFileAsync('nvm', args, { windowsHide: true });
+      }
+      this.logText(`Node.js ${version} 卸载成功`);
+      return true;
+    } catch (e: any) {
+      this.logText(`Node.js 卸载失败: ${e?.message}`, 'error');
+      return false;
+    }
+  }
+
   private logText(text: string, level: 'info' | 'warn' | 'error' = 'info') {
     this.sysLog?.[level]({ scope: 'task', text });
   }

@@ -27,4 +27,32 @@ export default async function nodeVersionRoutes(fastify: FastifyInstance) {
     const service = fastify.core.nodeVersion;
     return await service.detectProjectRequirement(projectPath);
   });
+
+  /**
+   * 下载安装指定版本的Node
+   */
+  fastify.post<{ Body: { version: string } }>('/install', async req => {
+    const { version } = req.body || {};
+    if (!version) {
+      throw new AppError('VERSION_REQUIRED', '请指定要安装的 Node 版本', {});
+    }
+
+    const service = fastify.core.nodeVersion;
+    const result = await service.installNodeVersion(version);
+    return result;
+  });
+
+  /**
+   * 卸载指定版本的 Node
+   */
+  fastify.post<{ Body: { version: string } }>('/uninstall', async req => {
+    const { version } = req.body || {};
+    if (!version) {
+      throw new AppError('VERSION_REQUIRED', '请指定要卸载的 Node 版本', {});
+    }
+
+    const service = fastify.core.nodeVersion;
+    const success = await service.uninstallNodeVersion(version);
+    return { success };
+  });
 }

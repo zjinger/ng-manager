@@ -34,4 +34,17 @@ export interface NodeVersionService {
   switchVersion(version: string, runId?: string): Promise<NodeVersionInfo>;
   detectProjectRequirement(projectPath: string): Promise<ProjectNodeRequirement>;
   getManager(): VersionManager;
+  /**
+   * 安装指定版本的Node.js
+   * @param version 版本号（支持主版本号或者完整版本号）
+   * @returns 返回是否成功及错误信息
+   */
+  installNodeVersion(version: string): Promise<{ success: boolean; error?: string; alreadyInstalled?: boolean }>;
+
+  /**
+   * 卸载指定版本的 Node.js
+   * @param version 版本号
+   * @returns 卸载是否成功
+   */
+  uninstallNodeVersion(version: string): Promise<boolean>;
 }
