@@ -7,6 +7,7 @@ import { PanelCardComponent } from '@shared/ui';
 import type { IssueLogEntity } from '../../models/issue.model';
 import { IssueDetailNoteComponent } from '../issue-detail-note/issue-detail-note.component';
 import { NzImageModule } from 'ng-zorro-antd/image';
+import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 
 interface IssueTimelineItem {
   id: string;
@@ -28,11 +29,20 @@ interface IssueTimelineItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IssueActivityTimelineComponent {
-  private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
   private readonly markdownImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
   readonly selectedFilter = signal<string>('all');
 
   readonly logs = input.required<IssueLogEntity[]>();
+  readonly members = input<ProjectMemberEntity[]>([]);
+  private readonly mentionLabels = computed(() =>
+    Array.from(
+      new Set(
+        this.members()
+          .map((member) => member.displayName?.trim() || member.userId?.trim() || '')
+          .filter((label) => !!label),
+      ),
+    ).sort((left, right) => right.length - left.length),
+  );
   readonly showFilter = computed(() => this.logs().length > 10);
   readonly timelineItems = computed<IssueTimelineItem[]>(() =>
     this.logs().map((item) => {
@@ -157,17 +167,54 @@ export class IssueActivityTimelineComponent {
   }
 
   private highlightMentionSegments(text: string): Array<{ text: string; mention?: boolean }> | undefined {
-    if (!text || !text.includes('@')) {
+    if (!text || !text.includes('@') || this.mentionLabels().length === 0) {
       return undefined;
     }
-    const parts = text.split(this.mentionPattern).filter((part) => part.length > 0);
-    if (parts.length <= 1) {
-      return undefined;
+
+    const segments: Array<{ text: string; mention?: boolean }> = [];
+    let cursor = 0;
+
+    while (cursor < text.length) {
+      const mentionStart = text.indexOf('@', cursor);
+      if (mentionStart < 0) {
+        if (cursor < text.length) {
+          segments.push({ text: text.slice(cursor) });
+        }
+        break;
+      }
+
+      if (mentionStart > cursor) {
+        segments.push({ text: text.slice(cursor, mentionStart) });
+      }
+
+      const prevChar = mentionStart > 0 ? text[mentionStart - 1] : '';
+      if (prevChar && /[A-Za-z0-9_.-]/.test(prevChar)) {
+        segments.push({ text: '@' });
+        cursor = mentionStart + 1;
+        continue;
+      }
+
+      const mentionLabel = this.matchMentionLabel(text, mentionStart + 1);
+      if (!mentionLabel) {
+        segments.push({ text: '@' });
+        cursor = mentionStart + 1;
+        continue;
+      }
+
+      segments.push({ text: `@${mentionLabel}`, mention: true });
+      cursor = mentionStart + 1 + mentionLabel.length;
     }
-    return parts.map((part) => ({
-      text: part,
-      mention: part.startsWith('@'),
-    }));
+
+    return segments.some((segment) => !!segment.mention) ? segments : undefined;
+  }
+
+  private matchMentionLabel(text: string, nameStartIndex: number): string | null {
+    for (const label of this.mentionLabels()) {
+      if (text.startsWith(label, nameStartIndex)) {
+        return label;
+      }
+    }
+    return null;
   }
 
   private readMetaKind(metaJson: string | null): string | null {

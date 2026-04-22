@@ -115,7 +115,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
               [busy]="store.busy()"
               (submit)="store.postComment($event.content, $event.mentions)"
             />
-            <app-issue-activity-timeline [logs]="store.logs()" />
+            <app-issue-activity-timeline [logs]="store.logs()" [members]="store.members()" />
           </div>
         </section>
         <div class="detail-side detail-side--drawer">

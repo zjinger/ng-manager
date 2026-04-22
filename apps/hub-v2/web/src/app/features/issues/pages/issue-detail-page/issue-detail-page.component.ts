@@ -128,7 +128,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
                   [busy]="store.busy()"
                   (submit)="store.postComment($event.content, $event.mentions)"
                 />
-                <app-issue-activity-timeline [logs]="store.logs()" />
+                <app-issue-activity-timeline [logs]="store.logs()" [members]="store.members()" />
               </div>
 
               <div detail-side class="detail-side">
