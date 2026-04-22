@@ -71,7 +71,6 @@ export class RdComponent {
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly userStore = inject(UserStore);
-  private readonly projectContext = inject(ProjectContextStore);
 
   // 视图模式
   protected readonly viewType = signal<viewType>('list');
@@ -93,9 +92,6 @@ export class RdComponent {
   // 研发进度窗口
   readonly progressUpdateItem = signal<RdItemProgress | null>(null);
   readonly progressUpdateOpen = signal(false);
-
-  // 用户
-  readonly currentUserId = this.userStore.currentUserId;
 
   // 项目相关
   readonly currentProjectId = computed(() => this.rdStore.projectId() || '');

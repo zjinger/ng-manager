@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
+import { UserStore } from '@app/core/stores';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { ProjectMemberEntity } from '@models/project.model';
 import { RdItemEntity, RdItemProgress } from '@pages/rd/models/rd.model';
+import { RdPermissionService } from '@pages/rd/services/rd-permission.service';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
@@ -66,7 +68,7 @@ import { NzProgressModule } from 'ng-zorro-antd/progress';
                 </div>
               }
               <div class="progress-item-actions">
-                @if (item.userId === currentUserId() && !isProgressLocked()) {
+                @if (canUpdateProgress(item) && !isProgressLocked()) {
                   @if (item.progress <= 0) {
                     <button
                       nz-button
@@ -102,13 +104,15 @@ import { NzProgressModule } from 'ng-zorro-antd/progress';
   styleUrl: './rd-progress-area.component.less',
 })
 export class RdProgressAreaComponent {
+  private rdPermission = inject(RdPermissionService);
+  private userStore = inject(UserStore);
   readonly item = input<RdItemEntity | null>(null);
-  // readonly memberProgressList = input<MemberProgressItem[]>([]);
   // 只有用户更新了进度才会出现在列表
   readonly progressList = input<RdItemProgress[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
-  readonly currentUserId = input<string>('');
   readonly updateProgressClick = output<RdItemProgress>();
+
+  readonly currentUserId = computed(() => this.userStore.currentUserId());
 
   readonly normalizedProgressList = computed<RdItemProgress[]>(() => {
     const currentRdItem = this.item();
@@ -180,5 +184,12 @@ export class RdProgressAreaComponent {
 
   onStartProgress(item: RdItemProgress): void {
     this.updateProgressClick.emit(item);
+  }
+
+  canUpdateProgress(item: RdItemProgress): boolean {
+    return (
+      item.userId === this.currentUserId() &&
+      this.rdPermission.hasPermissionToTransition(this.userStore.currentUser())
+    );
   }
 }

@@ -22,7 +22,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
-import { RdFlowAreaComponent } from './rd-action-area/rd-flow-area.component';
+import { RdFlowAreaComponent } from './rd-flow-area/rd-flow-area.component';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { RdProgressAreaComponent } from './rd-progress-area/rd-progress-area.component';
 import { RdStageHistoryComponent } from './rd-stage-history/rd-stage-history.component';
@@ -94,7 +94,6 @@ import { RdDescriptionAreaComponent } from './rd-description-area/rd-description
                 [item]="rdItem"
                 [progressList]="progressList()"
                 [members]="members()"
-                [currentUserId]="currentUserId()"
                 (updateProgressClick)="updateProgressClick.emit($event)"
               ></app-rd-progress-area>
 
@@ -202,7 +201,6 @@ export class RdDetailComponent {
   readonly progressList = input<RdItemProgress[]>([]);
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
   readonly projectId = input<string>('');
-  readonly currentUserId = input<string>('');
 
   readonly close = output();
   readonly actionClick = output<'start' | 'block' | 'resume' | 'complete' | 'advance'>();

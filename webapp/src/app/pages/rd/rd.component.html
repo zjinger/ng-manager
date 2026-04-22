@@ -32,9 +32,9 @@
 
     <!-- 详情 -->
     <app-rd-detail [open]="detailDrawerOpen()" [rdItem]="currentRdItem()" [progressList]="currentRdProgress()"
-        [currentUserId]="currentUserId()" [stageHistory]="currentRdStageHistory()" [members]="members()"
-        [projectId]="currentProjectId()" [busy]="busy()" [logs]="currentRdLogs()" [stages]="stages()"
-        [loading]="currentRdLoading()" (actionClick)="handleSelectedAction($event)" (close)="closeDetail()"
+        [stageHistory]="currentRdStageHistory()" [members]="members()" [projectId]="currentProjectId()" [busy]="busy()"
+        [logs]="currentRdLogs()" [stages]="stages()" [loading]="currentRdLoading()"
+        (actionClick)="handleSelectedAction($event)" (close)="closeDetail()"
         (updateProgressClick)="openProgressUpdate($event)" (deleteClick)="deleteSelectedItem()">
     </app-rd-detail>
 
