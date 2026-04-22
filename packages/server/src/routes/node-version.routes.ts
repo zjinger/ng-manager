@@ -55,4 +55,24 @@ export default async function nodeVersionRoutes(fastify: FastifyInstance) {
     const success = await service.uninstallNodeVersion(version);
     return { success };
   });
+
+  /**
+   * 写入 engines.node 到 package.json
+   */
+  fastify.post<{ Body: { projectPath: string; version: string } }>(
+    '/write-engine-config',
+    async req => {
+      const { projectPath, version } = req.body || {};
+      if (!projectPath) {
+        throw new AppError('PROJECT_PATH_REQUIRED', '请指定项目路径', {});
+      }
+      if (!version) {
+        throw new AppError('VERSION_REQUIRED', '请指定版本要求', {});
+      }
+
+      const service = fastify.core.nodeVersion;
+      const success = await service.writeEngineConfig(projectPath, version);
+      return { success };
+    },
+  );
 }

@@ -20,6 +20,8 @@ export interface ProjectNodeRequirement {
   satisfiedBy: string | null;
   /** 是否满足要求 */
   isMatch: boolean;
+  /** 是否在 package.json 中配置了 engines.node 字段 */
+  hasEnginesConfig: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -274,6 +276,32 @@ export class NodeVersionService {
       return success;
     } catch (e: any) {
       this.error.set(e?.error?.message || e?.message || '删除版本失败');
+      return false;
+    }
+  }
+
+  /**
+   * 写入 engines.node 到 package.json
+   * @param version 要写入的版本要求（如 ">=18.0.0"）
+   * @returns 写入是否成功
+   */
+  async writeEngineConfig(version: string): Promise<boolean> {
+    const projectPath = this.projectContext.currentProject()?.root;
+    if (!projectPath) {
+      this.error.set('未找到当前项目');
+      return false;
+    }
+
+    try {
+      const success = await lastValueFrom(
+        this.api.post<boolean>(`/api/node-version/write-engine-config`, {
+          projectPath,
+          version,
+        }),
+      );
+      return success;
+    } catch (e: any) {
+      this.error.set(e?.error?.message || e?.message || '写入配置失败');
       return false;
     }
   }

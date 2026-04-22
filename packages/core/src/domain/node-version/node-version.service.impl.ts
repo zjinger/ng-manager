@@ -202,7 +202,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
 
   /** 检测项目的 Node 版本要求 */
   async detectProjectRequirement(projectPath: string): Promise<ProjectNodeRequirement> {
-    const requiredVersion = await this.readProjectNodeVersion(projectPath);
+    const { requiredVersion, hasEnginesConfig } = await this.readProjectNodeVersion(projectPath);
     const voltaVersion = await this.readProjectVoltaConfig(projectPath);
     const versionInfo = await this.getCurrentVersion();
     const currentVersion = versionInfo.current;
@@ -231,6 +231,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
       voltaConfig: voltaVersion,
       satisfiedBy,
       isMatch,
+      hasEnginesConfig,
     };
   }
 
@@ -258,9 +259,9 @@ export class NodeVersionServiceImpl implements NodeVersionService {
   /**
    * 读取项目 package.json 中的 Node 版本要求
    * @param projectPath 项目路径
-   * @returns Node 版本要求字符串（如 ">=14.0.0"）或 null（如果未指定）
+   * @returns 包含 Node 版本要求字符串（如 ">=14.0.0"）或 null（如果未指定）和是否有 engines 配置的元组
    */
-  private async readProjectNodeVersion(projectPath: string): Promise<string | null> {
+  private async readProjectNodeVersion(projectPath: string): Promise<{ requiredVersion: string | null; hasEnginesConfig: boolean }> {
     try {
       const packageJsonPath = path.join(projectPath, 'package.json');
       const content = await fs.promises.readFile(packageJsonPath, 'utf-8');
@@ -268,7 +269,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
 
       /** 1.优先从 engines.node 获取 */
       if (pkg.engines && pkg.engines.node) {
-        return pkg.engines.node;
+        return { requiredVersion: pkg.engines.node, hasEnginesConfig: true };
       }
 
       /** 2.检测项目类型，根据类型推荐 Node 版本 */
@@ -278,19 +279,19 @@ export class NodeVersionServiceImpl implements NodeVersionService {
         const angularVersion = this.detectAngularVersion(pkg);
         if (angularVersion) {
           const engines = getEnginesByAngular(angularVersion);
-          return engines.node;
+          return { requiredVersion: engines.node, hasEnginesConfig: false };
         }
       } else if (projectType === ProjectType.Vue) {
         /** Vue 项目 */
         const vueVersion = this.detectVueVersion(pkg);
         if (vueVersion) {
           const engines = getEnginesByVue(vueVersion);
-          return engines.node;
+          return { requiredVersion: engines.node, hasEnginesConfig: false };
         }
       }
-      return null;
+      return { requiredVersion: null, hasEnginesConfig: false };
     } catch {
-      return null;
+      return { requiredVersion: null, hasEnginesConfig: false };
     }
   }
 
@@ -449,6 +450,33 @@ export class NodeVersionServiceImpl implements NodeVersionService {
       return true;
     } catch (e: any) {
       this.logText(`Node.js 卸载失败: ${e?.message}`, 'error');
+      return false;
+    }
+  }
+
+  /**
+   * 写入 engines.node 到 package.json
+   * @param projectPath 项目路径
+   * @param version 版本要求（如 ">=18.0.0"）
+   */
+  async writeEngineConfig(projectPath: string, version: string): Promise<boolean> {
+    this.logText(`开始写入 engines.node 配置到 ${projectPath}`);
+
+    try {
+      const packageJsonPath = path.join(projectPath, 'package.json');
+      const content = await fs.promises.readFile(packageJsonPath, 'utf-8');
+      const pkg = JSON.parse(content);
+
+      if (!pkg.engines) {
+        pkg.engines = {};
+      }
+      pkg.engines.node = version;
+
+      await fs.promises.writeFile(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+      this.logText(`engines.node 已写入: ${version}`);
+      return true;
+    } catch (e: any) {
+      this.logText(`写入 engines.node 失败: ${e?.message}`, 'error');
       return false;
     }
   }

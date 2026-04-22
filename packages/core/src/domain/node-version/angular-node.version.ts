@@ -48,7 +48,8 @@ const ANGULAR_NODE_VERSIONS: AngularNodeVersion[] = [
   },
   {
     angularVersion: 12,
-    supportedNodeRange: '^12.14.0 || ^14.15.0',
+    // ^16.10.0 官方未说明但实际测试 16.10.0可以
+    supportedNodeRange: '^12.14.0 || ^14.15.0 || ^16.10.0',
   },
   {
     angularVersion: 11,

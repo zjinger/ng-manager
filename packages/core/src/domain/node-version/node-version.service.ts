@@ -27,6 +27,8 @@ export interface ProjectNodeRequirement {
   satisfiedBy: string | null;
   /** 是否当前系统 Node 版本满足要求 */
   isMatch: boolean;
+  /** 是否在 package.json 中配置了 engines.node 字段 */
+  hasEnginesConfig: boolean;
 }
 
 export interface NodeVersionService {
@@ -47,4 +49,12 @@ export interface NodeVersionService {
    * @returns 卸载是否成功
    */
   uninstallNodeVersion(version: string): Promise<boolean>;
+
+  /**
+   * 写入 engines.node 到 package.json
+   * @param projectPath 项目路径
+   * @param version 版本要求（如 ">=18.0.0"）
+   * @returns 写入是否成功
+   */
+  writeEngineConfig(projectPath: string, version: string): Promise<boolean>;
 }

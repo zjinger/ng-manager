@@ -19,6 +19,7 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NodeVersionService } from './node-version.service';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 
 @Component({
   selector: 'app-node-version',
@@ -32,6 +33,7 @@ import { NodeVersionService } from './node-version.service';
     NzInputModule,
     NzAutocompleteModule,
     FormsModule,
+    NzSelectModule,
   ],
   template: `
     @let req = nodeVersion.projectRequirement();
@@ -154,11 +156,96 @@ import { NodeVersionService } from './node-version.service';
                 <span class="status-desc">要求 {{ req.requiredVersion }}，未找到已安装版本</span>
               </div>
             </div>
-          } @else {
+          }
+
+          @if (!req.hasEnginesConfig) {
             <div class="status-section info">
               <div class="status-info">
                 <span class="status-title">未配置要求</span>
                 <span class="status-desc">在 package.json 的 engines.node 字段配置</span>
+              </div>
+              <button
+                nz-button
+                nzType="primary"
+                nzSize="small"
+                nz-tooltip
+                nzTooltipTitle="写入 engines.node 到 package.json"
+                (click)="openWriteConfig()"
+              >
+                <span nz-icon nzType="edit" nzTheme="outline"></span>
+                写入配置
+              </button>
+            </div>
+          } @else {
+            <div class="status-section info">
+              <div class="status-info">
+                <span class="status-title">已配置要求</span>
+                <span class="status-desc">当前 engines.node: {{ req.requiredVersion }}</span>
+              </div>
+              <button
+                nz-button
+                nzType="default"
+                nzSize="small"
+                nz-tooltip
+                nzTooltipTitle="修改 engines.node 配置"
+                (click)="openWriteConfig()"
+              >
+                <span nz-icon nzType="edit" nzTheme="outline"></span>
+                修改配置
+              </button>
+            </div>
+          }
+
+          @if (showWriteConfig) {
+            <div class="write-config-section">
+              <div class="section-header">
+                <span class="section-title"
+                  >{{ req.hasEnginesConfig ? '修改' : '写入' }} engines.node 配置</span
+                >
+                <button nz-button nzType="text" nzSize="small" (click)="closeWriteConfig()">
+                  <span nz-icon nzType="close" nzTheme="outline"></span>
+                </button>
+              </div>
+
+              <div class="config-options">
+                <div class="option-group">
+                  <span class="option-label">推荐版本:</span>
+                  <nz-select
+                    class="config-select"
+                    [(ngModel)]="selectedEngineVersion"
+                    [nzOptions]="recommendedEngineVersions"
+                    nzPlaceHolder="选择推荐版本"
+                  ></nz-select>
+                </div>
+
+                <div class="option-group">
+                  <span class="option-label">或手动输入:</span>
+                  <input
+                    nz-input
+                    class="config-input"
+                    [(ngModel)]="customEngineVersion"
+                    placeholder="如 >=18.0.0"
+                  />
+                </div>
+              </div>
+
+              <div class="config-preview">
+                <span class="preview-label">预览:</span>
+                <code class="preview-code">
+                  {{ getEngineConfigPreview() }}
+                </code>
+              </div>
+
+              <div class="config-actions">
+                <button
+                  nz-button
+                  nzType="primary"
+                  [nzLoading]="writingConfig"
+                  (click)="writeEngineConfig()"
+                >
+                  <span nz-icon nzType="save" nzTheme="outline"></span>
+                  写入 package.json
+                </button>
               </div>
             </div>
           }
@@ -709,6 +796,83 @@ import { NodeVersionService } from './node-version.service';
       .full-width {
         width: 100%;
       }
+
+      .write-config-section {
+        background: #f0f5ff;
+        border: 1px solid #adc6ff;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 12px;
+
+        .section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+
+          .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1890ff;
+          }
+        }
+
+        .config-options {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 12px;
+
+          .option-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+
+            .option-label {
+              font-size: 13px;
+              color: #595959;
+              min-width: 90px;
+            }
+
+            .config-select {
+              flex: 1;
+              max-width: 200px;
+            }
+
+            .config-input {
+              flex: 1;
+              max-width: 200px;
+            }
+          }
+        }
+
+        .config-preview {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 12px;
+          padding: 8px 12px;
+          background: white;
+          border-radius: 6px;
+          border: 1px solid #e8e8e8;
+
+          .preview-label {
+            font-size: 12px;
+            color: #8c8c8c;
+          }
+
+          .preview-code {
+            font-size: 13px;
+            color: #1890ff;
+            font-family: 'Monaco', 'Menlo', monospace;
+          }
+        }
+
+        .config-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+      }
     `,
   ],
 })
@@ -726,6 +890,13 @@ export class NodeVersionComponent implements OnInit, OnDestroy {
   /** 正在安装 */
   installing = signal(false);
   private installMessageId = signal<string | null>(null);
+
+  /** 写入配置相关 */
+  showWriteConfig = false;
+  writingConfig = false;
+  selectedEngineVersion: string | null = null;
+  customEngineVersion = '';
+  recommendedEngineVersions: { label: string; value: string }[] = [];
 
   ngOnInit() {
     this.refresh();
@@ -757,6 +928,56 @@ export class NodeVersionComponent implements OnInit, OnDestroy {
   onVersionSelect(version: string): void {
     this.selectedInstallVersion = version;
   }
+
+  /** 获取 engines.node 配置预览 */
+  getEngineConfigPreview(): string {
+    const version = this.customEngineVersion || this.selectedEngineVersion || '';
+    if (!version) {
+      return '{ "engines": { "node": "请选择或输入版本" } }';
+    }
+    return `{ "engines": { "node": "${version}" } }`;
+  }
+
+  /** 打开写入配置表单 */
+  openWriteConfig(): void {
+    const req = this.nodeVersion.projectRequirement();
+    if (req?.requiredVersion && req.hasEnginesConfig) {
+      this.selectedEngineVersion = req.requiredVersion;
+    }
+    this.showWriteConfig = true;
+  }
+
+  /** 关闭写入配置表单并重置 */
+  closeWriteConfig(): void {
+    this.showWriteConfig = false;
+    this.selectedEngineVersion = null;
+    this.customEngineVersion = '';
+  }
+
+  /** 写入 engines.node 到 package.json */
+  async writeEngineConfig() {
+    const version = this.customEngineVersion || this.selectedEngineVersion;
+    if (!version) {
+      this.message.warning('请选择或输入版本号');
+      return;
+    }
+
+    this.writingConfig = true;
+    try {
+      const success = await this.nodeVersion.writeEngineConfig(version);
+      if (success) {
+        this.message.success('已写入 engines.node 配置');
+        this.showWriteConfig = false;
+        this.nodeVersion.refresh();
+        this.updateRecommendedEngineVersions();
+      } else {
+        this.message.error('写入配置失败');
+      }
+    } finally {
+      this.writingConfig = false;
+    }
+  }
+
   openSettingsModal() {
     this.updateRecommendedVersions();
     this.modal.create({
@@ -838,9 +1059,26 @@ export class NodeVersionComponent implements OnInit, OnDestroy {
     }
   }
 
-  refresh() {
+  refresh(): Promise<void> {
     this.nodeVersion.getCurrentVersion();
-    this.nodeVersion.loadProjectRequirement();
+    return this.nodeVersion.loadProjectRequirement().then(() => {
+      this.updateRecommendedEngineVersions();
+    });
+  }
+
+  /** 更新推荐版本列表，将后端返回的推荐版本添加到列表中 */
+  private updateRecommendedEngineVersions(): void {
+    const req = this.nodeVersion.projectRequirement();
+    if (req?.requiredVersion) {
+      const recommendedVersion = req.requiredVersion;
+      const exists = this.recommendedEngineVersions.some((v) => v.value === recommendedVersion);
+      if (!exists) {
+        this.recommendedEngineVersions = [
+          { label: recommendedVersion + ' (推荐)', value: recommendedVersion },
+          ...this.recommendedEngineVersions,
+        ];
+      }
+    }
   }
 
   /** 确认删除版本（带确认弹窗） */
