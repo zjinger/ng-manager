@@ -112,58 +112,60 @@ type LogViewType = 'comment' | 'all';
           </nz-form-item>
         </nz-comment-content>
       </nz-comment>
-      @if (logs().length === 0) {
-        <div class="comment-empty">暂无评论/备注</div>
-      } @else {
-        <nz-timeline>
-          @for (log of viewLogs(); track log.id) {
-            <nz-timeline-item [nzDot]="dotTemplate">
-              @if (log.actionType === 'comment') {
-                <!-- 用户评论 -->
-                <div class="comment-item">
-                  <nz-comment [nzAuthor]="log.operatorName!">
-                    <nz-avatar
-                      nz-comment-avatar
-                      [nzSrc]="getMemberAvatarUrl(log?.operatorId ?? '')"
-                      [nzText]="log.operatorName!.charAt(0)"
-                      nzSize="small"
-                      style="background-color: #1890ff"
-                    />
-                    <nz-comment-content>
-                      <p class="summary">
-                        <app-ellipsis-text [lines]="2">
-                          @for (seg of commentSegments(log.summary!); track $index) {
-                            @if (seg.mention) {
-                              <span class="mention">{{ seg.text }}</span>
-                            } @else {
-                              <span>{{ seg.text }}</span>
+      <div class="logs-content">
+        @if (logs().length === 0) {
+          <div class="comment-empty">暂无评论/备注</div>
+        } @else {
+          <nz-timeline>
+            @for (log of viewLogs(); track log.id) {
+              <nz-timeline-item [nzDot]="dotTemplate">
+                @if (log.actionType === 'comment') {
+                  <!-- 用户评论 -->
+                  <div class="comment-item">
+                    <nz-comment [nzAuthor]="log.operatorName!">
+                      <nz-avatar
+                        nz-comment-avatar
+                        [nzSrc]="getMemberAvatarUrl(log?.operatorId ?? '')"
+                        [nzText]="log.operatorName!.charAt(0)"
+                        nzSize="small"
+                        style="background-color: #1890ff"
+                      />
+                      <nz-comment-content>
+                        <p class="summary">
+                          <app-ellipsis-text [lines]="2">
+                            @for (seg of commentSegments(log.summary!); track $index) {
+                              @if (seg.mention) {
+                                <span class="mention">{{ seg.text }}</span>
+                              } @else {
+                                <span>{{ seg.text }}</span>
+                              }
                             }
-                          }
-                        </app-ellipsis-text>
-                      </p>
-                    </nz-comment-content>
-                  </nz-comment>
-                  <span class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</span>
-                </div>
-              } @else {
-                <!-- 评论以外的操作 -->
-                <div class="log-item">
-                  <div class="meta">
-                    <span class="operator">{{ log.operatorName || '系统' }}</span>
-                    <app-ellipsis-text [text]="log.summary || log.actionType" [lines]="2">
-                      <span class="content">{{ log.summary || log.actionType }}</span>
-                    </app-ellipsis-text>
-                    <div class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</div>
+                          </app-ellipsis-text>
+                        </p>
+                      </nz-comment-content>
+                    </nz-comment>
+                    <span class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</span>
                   </div>
-                </div>
-              }
-            </nz-timeline-item>
-            <ng-template #dotTemplate>
-              <nz-icon [nzType]="iconType(log)" nzTheme="outline" style="font-size: 16px;" />
-            </ng-template>
-          }
-        </nz-timeline>
-      }
+                } @else {
+                  <!-- 评论以外的操作 -->
+                  <div class="log-item">
+                    <div class="meta">
+                      <span class="operator">{{ log.operatorName || '系统' }}</span>
+                      <app-ellipsis-text [text]="log.summary || log.actionType" [lines]="2">
+                        <span class="content">{{ log.summary || log.actionType }}</span>
+                      </app-ellipsis-text>
+                      <div class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</div>
+                    </div>
+                  </div>
+                }
+              </nz-timeline-item>
+              <ng-template #dotTemplate>
+                <nz-icon [nzType]="iconType(log)" nzTheme="outline" style="font-size: 16px;" />
+              </ng-template>
+            }
+          </nz-timeline>
+        }
+      </div>
     </app-detail-item-card>
   `,
   styles: `
@@ -199,6 +201,12 @@ type LogViewType = 'comment' | 'all';
     }
     .mention-id {
       font-size: 12px;
+    }
+
+    .logs-content {
+      padding: 12px 0;
+      max-height: 600px;
+      overflow: auto;
     }
     .log-item {
       padding: 4px 0 0;

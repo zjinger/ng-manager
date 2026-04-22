@@ -63,8 +63,6 @@ export class IssuesListTableComponent {
         parseDescriptionImage(item.description, this.projectId()!, item.id, 'issues'),
       );
     }
-    console.log(map);
-
     return map;
   });
 

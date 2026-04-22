@@ -88,14 +88,15 @@ export class IssuesComponent {
     let prevQuery: IssueListQuery | null = this.issueListStore.query();
     effect(() => {
       const query = this.issueListStore.query();
+
       const isPaginationChange =
         prevQuery && (prevQuery.page !== query.page || prevQuery.pageSize !== query.pageSize);
-      const isFilterChange =
-        !prevQuery ||
-        prevQuery.keyword !== query.keyword ||
-        prevQuery.status !== query.status ||
-        prevQuery.priority !== query.priority ||
-        prevQuery.projectId !== query.projectId;
+      // const isFilterChange =
+      //   !prevQuery ||
+      //   prevQuery.keyword !== query.keyword ||
+      //   prevQuery.status !== query.status ||
+      //   prevQuery.priority !== query.priority ||
+      //   prevQuery.projectId !== query.projectId;
 
       prevQuery = { ...query };
       // 如果是变更页码或页大小，则立即加载
@@ -105,12 +106,12 @@ export class IssuesComponent {
         return;
       }
 
-      if (isFilterChange) {
-        clearTimeout(queryTimer);
-        queryTimer = setTimeout(() => {
-          this.issueListStore.load();
-        }, 500);
-      }
+      // if (isFilterChange) {
+      clearTimeout(queryTimer);
+      queryTimer = setTimeout(() => {
+        this.issueListStore.load();
+      }, 500);
+      // }
     });
   }
 

@@ -1,4 +1,4 @@
-import { Component, effect, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -7,10 +7,19 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { IssueListQuery, IssuePriority, IssueStatus } from '../models/issue.model';
 import { ISSUE_STATUS_FILTER_OPTIONS } from '@app/shared/constants/status-options';
 import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { UserStore } from '@app/core/stores';
 
 @Component({
   selector: 'app-issue-filter-bar',
-  imports: [NzInputModule, NzButtonModule, NzIconModule, NzRadioModule, FormsModule],
+  imports: [
+    NzInputModule,
+    NzButtonModule,
+    NzIconModule,
+    NzRadioModule,
+    NzCheckboxModule,
+    FormsModule,
+  ],
   template: `
     <div class="toolbar">
       <div class="filter-group">
@@ -66,25 +75,51 @@ import { PRIORITY_OPTIONS } from '@app/shared/constants/priority-options';
                 </button> -->
         <!-- 列表视图切换 -->
         <!-- <nz-radio-group [(ngModel)]="viewType" class="view-type"> -->
-          <!-- <label nz-radio-button nzValue="list">
+        <!-- <label nz-radio-button nzValue="list">
             <nz-icon nzType="unordered-list" nzTheme="outline"></nz-icon>
           </label> -->
-          <!-- <label nz-radio-button nzValue="board">
+        <!-- <label nz-radio-button nzValue="board">
                         <nz-icon nzType="book" nzTheme="outline"></nz-icon>
                     </label> -->
         <!-- </nz-radio-group> -->
+        <label nz-checkbox [ngModel]="todoChecked()" (ngModelChange)="todoCheckedChanged($event)"
+          >仅看待解决</label
+        >
+        <label
+          nz-checkbox
+          [ngModel]="mineChecked()"
+          [disabled]="!userStore.currentUserId()"
+          (ngModelChange)="mineCheckedChanged($event)"
+          >仅看我负责</label
+        >
       </div>
     </div>
   `,
   styleUrl: './issue-filter-bar.component.less',
 })
 export class IssueFilterBarComponent {
+  userStore = inject(UserStore);
   readonly query = input.required<IssueListQuery>();
   readonly queryChange = output<Partial<IssueListQuery>>();
   statusOptions = ISSUE_STATUS_FILTER_OPTIONS;
   priorityOptions = PRIORITY_OPTIONS;
 
   readonly viewType = signal('list');
+
+  readonly todoChecked = computed(() => {
+    const todoStatuses = ['open', 'in_progress', 'reopened'] as IssueStatus[];
+    return (
+      todoStatuses.every((s) => this.query().status.includes(s)) &&
+      this.query().status.length === todoStatuses.length
+    );
+  });
+
+  readonly mineChecked = computed(() => {
+    return (
+      this.query().assigneeIds.includes(this.userStore.currentUserId()) &&
+      this.query().assigneeIds.length === 1
+    );
+  });
 
   updateKeyword(keyword: string) {
     this.queryChange.emit({ keyword });
@@ -145,5 +180,17 @@ export class IssueFilterBarComponent {
       return 'primary';
     }
     return 'default';
+  }
+
+  todoCheckedChanged(value: boolean) {
+    value
+      ? this.queryChange.emit({ status: ['open', 'in_progress', 'reopened'] })
+      : this.queryChange.emit({ status: [] });
+  }
+
+  mineCheckedChanged(value: boolean) {
+    value
+      ? this.queryChange.emit({ assigneeIds: [this.userStore.currentUserId(), '__unassigned__'] })
+      : this.queryChange.emit({ assigneeIds: [] });
   }
 }
