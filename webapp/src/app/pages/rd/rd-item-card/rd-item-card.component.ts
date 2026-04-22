@@ -7,6 +7,9 @@ import { RdItemEntity, RdItemPriority, RdItemStatus, RdStageEntity } from '../mo
 import { CommonModule } from '@angular/common';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '@app/shared/constants/priority-options';
 import { RD_STATUS_LABELS } from '@app/shared/constants/status-options';
+import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/ellipsis-text.component';
+import { parseDescriptionImage } from '@app/utils/md-text';
+import { ProjectMemberEntity } from '@models/index';
 const PRIORITY_COLOR_MAP = {
   low: 'default', // 灰
   medium: 'processing', // 蓝
@@ -16,7 +19,14 @@ const PRIORITY_COLOR_MAP = {
 
 @Component({
   selector: 'app-rd-item-card',
-  imports: [NzProgressModule, NzTagModule, NzAvatarModule, NzIconModule, CommonModule],
+  imports: [
+    NzProgressModule,
+    NzTagModule,
+    NzAvatarModule,
+    NzIconModule,
+    EllipsisTextComponent,
+    CommonModule,
+  ],
   template: `
     <div
       class="task-card"
@@ -40,14 +50,27 @@ const PRIORITY_COLOR_MAP = {
           </div>
         </div>
         <div class="task-title">{{ rdItem().title }}</div>
+        <div class="des-text">
+          <app-ellipsis-text [lines]="2" [enableToggle]="false">
+            {{ rdItemPreview().summary }}
+          </app-ellipsis-text>
+        </div>
         <div class="progress-section">
           <nz-progress [nzPercent]="rdItem().progress" nzSize="small" />
         </div>
 
         <div class="meta-row">
           <div class="assignee">
-            <nz-avatar [nzText]="rdItem().assigneeName?.charAt(0) ?? '?'" nzSize="small" />
-            <span class="assignee-name">{{ rdItem().assigneeName }}</span>
+            <nz-avatar-group>
+              @for (item of memberAvatarList(); track item.name) {
+                <nz-avatar [nzText]="item.text" [ngStyle]="{ 'background-color': item.color }" />
+              }
+            </nz-avatar-group>
+            <span class="assignee-name">
+              <app-ellipsis-text [lines]="1" [enableToggle]="false">
+                {{ memberNamesText(rdItem()) }}
+              </app-ellipsis-text>
+            </span>
           </div>
           <div class="due-date">
             <!-- 这里紧急时可以标红色标记 -->
@@ -55,9 +78,6 @@ const PRIORITY_COLOR_MAP = {
             {{ rdItem().planEndAt | date: 'yyyy-MM-dd' }}
           </div>
         </div>
-        <!-- <div class="footer-note">
-            剩余 5 天
-        </div> -->
       </div>
     </div>
   `,
@@ -66,9 +86,61 @@ const PRIORITY_COLOR_MAP = {
 export class RdItemCardComponent {
   rdItem = input.required<RdItemEntity>();
   stages = input<RdStageEntity[]>([]);
+  projectMembers = input<ProjectMemberEntity[]>([]);
   selected = input<boolean>(false);
+  projectId = input<string | null>(null);
+
   selectItem = output<RdItemEntity>();
 
+  rdItemPreview = computed(() => {
+    return (
+      parseDescriptionImage(
+        this.rdItem().description,
+        this.projectId()!,
+        this.rdItem().id,
+        'rd-items',
+      ) || '暂无详细描述'
+    );
+  });
+
+  itemMembersMap = computed(() => {
+    const ids = this.rdItem().memberIds || [];
+    if (ids.length === 0 && this.rdItem().assigneeName) {
+      return new Map([[this.rdItem().assigneeName, this.rdItem().assigneeName]]);
+    } else if (ids.length === 0 && !this.rdItem().assigneeName) {
+      return new Map();
+    }
+
+    return new Map(
+      this.projectMembers()
+        .filter((member) => ids.includes(member.userId))
+        .map((member) => [member.userId, member.displayName]),
+    );
+  });
+
+  readonly memberAvatarList = computed(() => {
+    const map = this.itemMembersMap();
+
+    const entries = Array.from(map.values()); // 只要 displayName
+
+    return entries.map((name, index) => {
+      return {
+        name,
+        text: name?.charAt(0)?.toUpperCase() || '?',
+        color: this.generateBlue(index, entries.length),
+      };
+    });
+  });
+  private generateBlue(index: number, total: number): string {
+    if (total <= 1) return 'hsl(210, 70%, 55%)';
+
+    const start = 65; // 浅
+    const end = 35; // 深
+
+    const lightness = start - (index / (total - 1)) * (start - end);
+
+    return `hsl(210, 70%, ${lightness}%)`;
+  }
   getPriorityColor(priority: RdItemPriority) {
     return PRIORITY_COLORS[priority];
   }
@@ -92,5 +164,12 @@ export class RdItemCardComponent {
       return stage.id === stageId;
     });
     return stage?.name ?? '';
+  }
+
+  memberNamesText(item: RdItemEntity): string {
+    const memberMap = this.itemMembersMap();
+    if (memberMap.size === 0) return '';
+
+    return Array.from(memberMap.values()).join('、');
   }
 }

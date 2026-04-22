@@ -3,7 +3,9 @@ import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { RdItemCardComponent } from '../rd-item-card/rd-item-card.component';
-import { RdItemEntity, RdStageEntity } from '../models/rd.model';
+import { ProjectMemberEntity, RdItemEntity, RdStageEntity } from '../models/rd.model';
+import { parseDescriptionImage } from '@app/utils/md-text';
+import { NzEmptyModule } from 'ng-zorro-antd/empty';
 
 const PRIORITY_ORDER = {
   critical: 4,
@@ -14,30 +16,33 @@ const PRIORITY_ORDER = {
 
 @Component({
   selector: 'app-rd-list-board',
-  imports: [NzCardModule, NzBadgeModule, NzTagModule, RdItemCardComponent],
+  imports: [NzCardModule, NzBadgeModule, NzTagModule, RdItemCardComponent, NzEmptyModule],
   template: `
     <div class="cards-list">
       @if (rdItems().length > 0) {
-        @for (col of listCards; track col.key) {
+        @for (stage of stages(); track stage.id) {
           <nz-card [nzTitle]="cardTitleTpl" class="items-card">
-            @for (item of ItemsGroupedByStatus().get(col.key); track item.id) {
+            @for (item of itemGroupByStages().get(stage.id); track item.id) {
               <app-rd-item-card
                 [rdItem]="item"
                 [stages]="stages()"
                 (selectItem)="select($event)"
                 [selected]="selectedItem()?.id === item.id"
+                [projectId]="projectId()"
+                [projectMembers]="members()"
               />
+            } @empty {
+              <nz-empty />
             }
           </nz-card>
           <ng-template #cardTitleTpl>
             <div class="card-title">
-              <nz-badge [nzColor]="col.color" />
-              <span>{{ col.title }}</span>
+              <span>{{ getStagesName(stage.id) }}</span>
               <nz-badge
                 nzStandalone
                 nzShowZero
-                [nzCount]="ItemsGroupedByStatus().get(col.key)?.length ?? 0"
-                [nzStyle]="{ backgroundColor: col.color }"
+                [nzColor]="'#eee'"
+                [nzCount]="itemGroupByStages().get(stage.id)?.length ?? 0"
               />
             </div>
           </ng-template>
@@ -45,42 +50,70 @@ const PRIORITY_ORDER = {
       }
     </div>
   `,
-  styleUrl: './rd-list-board.component.less',
+  styles: `
+    .cards-list {
+      .items-card {
+        flex-grow: 1;
+        overflow: hidden;
+      }
+
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      .card-title {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        span {
+          margin-right: auto;
+        }
+      }
+    }
+    .rd-title {
+      color: #1677ff;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    :host ::ng-deep .ant-card-head {
+      height: 48px;
+      padding: 0 12px;
+    }
+
+    :host ::ng-deep .ant-card-head-title {
+      padding: 10px 0;
+    }
+
+    :host ::ng-deep .ant-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+
+      overflow: auto;
+      padding: 0 12px;
+    }
+
+    :host ::ng-deep .ant-card-bordered {
+      border: 1px solid #e7e7e7;
+      border-radius: 8px;
+    }
+  `,
 })
 export class RdListBoardComponent {
   readonly rdItems = input<RdItemEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
   readonly selectedItem = input<RdItemEntity | null>(null);
+  readonly projectId = input<string | null>(null);
+  readonly members = input<ProjectMemberEntity[]>([]);
   selectItem = output<RdItemEntity>();
 
-  listCards = [
-    {
-      key: 'todo',
-      title: '待开始',
-      color: '#d9d9d9',
-    },
-    {
-      key: 'doing',
-      title: '进行中',
-      color: '#1890ff',
-    },
-    {
-      key: 'blocked',
-      title: '阻塞',
-      color: '#ef7735',
-    },
-    {
-      key: 'done',
-      title: '待验收',
-      color: '#52c41a',
-    },
-  ];
-
-  // TODO：后面可以改成按照stage分组
-  ItemsGroupedByStatus = computed(() => {
+  itemGroupByStages = computed(() => {
     const map = new Map<string, any[]>();
     for (const item of this.rdItems()) {
-      const key = item.status;
+      const key = item.stageId;
+      if (!key) {
+        continue;
+      }
       if (!map.has(key)) {
         map.set(key, []);
       }
@@ -99,5 +132,13 @@ export class RdListBoardComponent {
 
   select(item: RdItemEntity) {
     this.selectItem.emit(item);
+  }
+
+  getStagesName(stageId: string | null) {
+    if (!stageId) return '';
+    const stage = this.stages().find((stage) => {
+      return stage.id === stageId;
+    });
+    return stage?.name ?? '';
   }
 }

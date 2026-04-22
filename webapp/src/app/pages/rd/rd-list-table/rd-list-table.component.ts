@@ -210,8 +210,10 @@ export class RdListTableComponent {
 
   memberNamesText(item: RdItemEntity): string {
     const ids = item.memberIds || [];
-    if (ids.length === 0) {
+    if (ids.length === 0 && !item.assigneeName) {
       return '';
+    } else if (ids.length === 0 && item.assigneeName) {
+      return item.assigneeName;
     }
     const memberMap = new Map(this.members().map((member) => [member.userId, member.displayName]));
     return ids.map((id) => memberMap.get(id) || id).join('、');

@@ -12,7 +12,8 @@
                 [members]="members()" [stages]="stages()" [projectId]="currentProjectId()"
                 (selectItem)="selectItem($event)"></app-rd-list-table>
             } @else {
-            <app-rd-list-board [rdItems]="pageRdItems()" [selectedItem]="currentRdItem()" [stages]="stages()"
+            <app-rd-list-board [rdItems]="pageRdItems()" [projectId]="currentProjectId()"
+                [selectedItem]="currentRdItem()" [stages]="stages()" [members]="members()"
                 (selectItem)="selectItem($event)"></app-rd-list-board>
             }
 
