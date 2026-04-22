@@ -1,4 +1,4 @@
-const fs = require("node:fs");
+﻿const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
@@ -6,6 +6,7 @@ const HUB_ROOT = path.resolve(__dirname, "..");
 const REPO_ROOT = path.resolve(HUB_ROOT, "..", "..");
 const VERSION_FILE = path.join(HUB_ROOT, "VERSION");
 const OUTPUT_DIR = path.join(HUB_ROOT, "release-notes");
+const STATE_FILE = path.join(OUTPUT_DIR, ".release-notes-state.json");
 
 function parseArgs(argv) {
   const args = {};
@@ -41,17 +42,46 @@ function classify(subject) {
   return "其他改动";
 }
 
-function collectCommits(maxCount) {
-  const output = runGit([
-    "log",
-    "--pretty=format:%h|%ad|%s",
-    "--date=short",
-    "-n",
-    String(maxCount),
-    "--",
-    "apps/hub-v2",
-  ]);
+function readState() {
+  if (!fs.existsSync(STATE_FILE)) return null;
+  try {
+    const data = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
+    if (!data || typeof data !== "object") return null;
+    if (typeof data.lastCommit !== "string" || !data.lastCommit.trim()) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function writeState(state) {
+  fs.writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+}
+
+function commitExists(hash) {
+  if (!hash?.trim()) return false;
+  try {
+    runGit(["cat-file", "-e", `${hash}^{commit}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function collectCommits({ maxCount, sinceCommit }) {
+  const args = ["log", "--pretty=format:%h|%ad|%s", "--date=short"];
+
+  if (sinceCommit?.trim()) {
+    args.push(`${sinceCommit}..HEAD`);
+  } else {
+    args.push("-n", String(maxCount));
+  }
+
+  args.push("--", "apps/hub-v2");
+
+  const output = runGit(args);
   if (!output) return [];
+
   return output
     .split(/\r?\n/)
     .filter(Boolean)
@@ -61,7 +91,7 @@ function collectCommits(maxCount) {
     });
 }
 
-function buildMarkdown(version, commits) {
+function buildMarkdown(version, commits, meta) {
   const groups = new Map();
   for (const commit of commits) {
     const key = classify(commit.subject);
@@ -77,6 +107,8 @@ function buildMarkdown(version, commits) {
   lines.push(`- 发布日期：${today}`);
   lines.push(`- 适用范围：hub-v2（web + server）`);
   lines.push(`- 自动汇总提交数：${commits.length}`);
+  lines.push(`- 对比范围：${meta.rangeLabel}`);
+  lines.push(`- 当前基线：${meta.headCommit}`);
   lines.push("");
   lines.push("## 版本说明");
   lines.push("- 本版本采用语义化版本（SemVer）：`主版本.次版本.修订号`。");
@@ -107,16 +139,41 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   const version = readVersion(args.version);
   const maxCount = Number(args.max || 40);
-  const commits = collectCommits(maxCount);
-  const markdown = buildMarkdown(version, commits);
 
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
+  const headCommit = runGit(["rev-parse", "HEAD"]);
+  const state = readState();
+  const sinceCommit = args.since || state?.lastCommit;
+  const canUseSince = commitExists(sinceCommit);
+
+  const commits = collectCommits({
+    maxCount,
+    sinceCommit: canUseSince ? sinceCommit : undefined,
+  });
+
+  const rangeLabel = canUseSince
+    ? `${sinceCommit.slice(0, 7)}..${headCommit.slice(0, 7)}`
+    : `最近 ${maxCount} 条（初始化模式）`;
+
+  const markdown = buildMarkdown(version, commits, {
+    rangeLabel,
+    headCommit: headCommit.slice(0, 7),
+  });
+
   const outputPath = path.join(OUTPUT_DIR, `v${version}.md`);
   fs.writeFileSync(outputPath, `${markdown}\n`, "utf8");
+
+  writeState({
+    lastCommit: headCommit,
+    lastVersion: version,
+    generatedAt: new Date().toISOString(),
+  });
+
   console.log(`[release-notes] generated: ${outputPath}`);
+  console.log(`[release-notes] baseline: ${headCommit}`);
 }
 
 main();
