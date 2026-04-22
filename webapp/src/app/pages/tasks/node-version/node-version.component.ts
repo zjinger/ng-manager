@@ -20,6 +20,8 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NodeVersionService } from './node-version.service';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzPopoverModule } from 'ng-zorro-antd/popover';
 
 @Component({
   selector: 'app-node-version',
@@ -34,6 +36,8 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
     NzAutocompleteModule,
     FormsModule,
     NzSelectModule,
+    NzPopconfirmModule,
+    NzPopoverModule,
   ],
   template: `
     @let req = nodeVersion.projectRequirement();
@@ -95,6 +99,30 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
     </span>
 
     <span class="manager-badge">{{ getManagerLabel() }}</span>
+
+    @if (nodeVersion.manager() === 'none' && !nodeVersion.loading()) {
+      <button
+        nz-button
+        nzType="default"
+        nz-popover
+        [nzPopoverTrigger]="'hover'"
+        [nzPopoverContent]="installNvmTemplate"
+        nzPopoverPlacement="bottomRight"
+      >
+        <span nz-icon nzType="download" nzTheme="outline"></span>
+        安装 NVM
+      </button>
+      <ng-template #installNvmTemplate>
+        <div class="install-popover-content">
+          <p>NVM (Node Version Manager) 是一个用于管理多个 Node.js 版本的工具。</p>
+          <p>使用 NVM 可以轻松地在不同项目间切换 Node 版本，避免版本冲突。</p>
+          <div class="actions">
+            <button nz-button nzType="default" (click)="openNvmLearnMorePage()">了解更多</button>
+            <button nz-button nzType="primary" (click)="openNvmInstallPage()">下载 NVM</button>
+          </div>
+        </div>
+      </ng-template>
+    }
 
     <button nz-button nzType="default" (click)="refresh()" [nzLoading]="nodeVersion.loading()">
       <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
@@ -873,6 +901,25 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
           justify-content: flex-end;
         }
       }
+
+      .install-popover-content {
+        p {
+          font-size: 13px;
+          color: #595959;
+          line-height: 1.6;
+          margin: 0 0 8px 0;
+
+          &:last-of-type {
+            margin-bottom: 12px;
+          }
+        }
+
+        .actions {
+          display: flex;
+          gap: 8px;
+          justify-content: flex-end;
+        }
+      }
     `,
   ],
 })
@@ -1119,6 +1166,16 @@ export class NodeVersionComponent implements OnInit, OnDestroy {
       // 切换成功后重新加载项目版本要求，更新状态显示
       this.nodeVersion.loadProjectRequirement();
     }
+  }
+
+  /** 打开 NVM 官网了解更多 */
+  openNvmLearnMorePage(): void {
+    window.open('https://www.nvmnode.com/', '_blank');
+  }
+
+  /** 打开 NVM 下载页面 */
+  openNvmInstallPage(): void {
+    window.open('https://www.nvmnode.com/guide/download.html', '_blank');
   }
 
   getManagerLabel = computed(() => {
