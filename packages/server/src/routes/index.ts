@@ -14,6 +14,7 @@ import svnRoutes from './svn.routes';
 import spriteBrowseRoutes from './sprite-browse.routes';
 import staticFileRoutes from './static-files.routes';
 import hubRoutes from './hub.routes';
+import nodeVersionRoutes from './node-version.routes';
 
 export default async function routes(fastify: FastifyInstance) {
     // system
@@ -56,4 +57,7 @@ export default async function routes(fastify: FastifyInstance) {
 
     // nginx
     await fastify.register(nginxRoutes, { prefix: '/api/nginx' });
+
+    // node-version
+    await fastify.register(nodeVersionRoutes, { prefix: '/api/node-version' });
 }

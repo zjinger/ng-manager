@@ -58,6 +58,18 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     });
 
     /**
+     * 重启任务（先停止当前运行的任务，再重新启动）
+     * POST /restart
+     * body: { taskId: string } 
+     */
+    fastify.post("/restart", async (req) => {
+        const body = req.body as { taskId?: string };
+        const taskId = body?.taskId?.trim();
+        if (!taskId) throw new AppError("TASK_ID_REQUIRED", "taskId is required", { body });
+        return await fastify.core.task.restart(taskId);
+    });
+
+    /**
      * 查询任务状态
      * GET /status/:taskId  
      */

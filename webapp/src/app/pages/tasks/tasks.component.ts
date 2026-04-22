@@ -17,6 +17,7 @@ import { TaskActionsComponent } from './task-actions/task-actions.component';
 import { TaskConsoleComponent } from './task-console/task-console.component';
 import { TaskHeaderComponent } from './task-header/task-header.component';
 import { TaskListComponent } from './task-list/task-list.component';
+import { NodeVersionComponent } from './node-version/node-version.component';
 @Component({
   selector: 'app-tasks',
   imports: [
@@ -36,10 +37,14 @@ import { TaskListComponent } from './task-list/task-list.component';
     TaskActionsComponent,
     TaskHeaderComponent,
     NzLayoutComponent,
-    PageLayoutComponent
+    PageLayoutComponent,
+    NodeVersionComponent
   ],
   template: `
   <app-page-layout [title]="'任务'" [isFullscreen]="true">
+  <ng-container ngProjectAs="actions">
+        <app-node-version />
+</ng-container>
     <nz-layout class="page">
       <app-task-list></app-task-list>
       <nz-content class="content">
@@ -50,9 +55,10 @@ import { TaskListComponent } from './task-list/task-list.component';
         ></app-task-header>
         <app-task-actions 
           [isStopping]="taskState.isStopping()"
-          [isRunning]="taskState.isRunning()" 
+          [isRunning]="taskState.isRunning()"
           [isStopped]="taskState.isStopped()"
           (toggle)="taskState.toggleTask()"
+          (restart)="taskState.restartSelected()"
           >
         </app-task-actions>
         <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
@@ -80,7 +86,8 @@ import { TaskListComponent } from './task-list/task-list.component';
       overflow: hidden;
     }
     app-task-header,
-    app-task-actions{
+    app-task-actions,
+    app-node-version{
       flex:0 0 auto;
     }
     app-task-console {

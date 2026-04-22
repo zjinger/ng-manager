@@ -4,6 +4,7 @@ import type { TaskRuntime, TaskDefinition, TaskRow } from "./task.types";
 export interface TaskService {
     start(taskId: string): Promise<TaskRuntime>;
     stop(taskId: string): Promise<TaskRuntime>;
+    restart(taskId: string): Promise<TaskRuntime>;
     status(taskId: string): Promise<TaskRuntime>;
 
     // 列出所有活跃的任务（running / stopping）

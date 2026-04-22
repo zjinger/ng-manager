@@ -45,6 +45,7 @@
             [isStopping]="isStopping()"
             [isStopped]="isStopped()"
             (toggle)="toggleTask()"
+            (restart)="restartTask()"
           ></app-task-actions>
           <button nz-button (click)="goToTask()" nzType="default">
             <nz-icon nzType="schedule" nzTheme="outline" />

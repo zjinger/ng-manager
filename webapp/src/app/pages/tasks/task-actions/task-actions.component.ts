@@ -37,6 +37,15 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
       >
         <span nz-icon nzType="pause"></span> 停止
       </button>
+      <button
+        nz-button
+        nzType="default"
+        nz-popconfirm
+        nzPopconfirmTitle="确定要重启该任务吗？"
+        (nzOnConfirm)="restart.emit()"
+      >
+        <span nz-icon nzType="sync"></span> 重启
+      </button>
     }
     
     </nz-space>
@@ -58,6 +67,7 @@ export class TaskActionsComponent {
   @Input() isStopping = false;
   @Input() isStopped = false;
   @Output() toggle = new EventEmitter<void>();
+  @Output() restart = new EventEmitter<void>();
 
   stopTask() {
     this.toggle.emit();

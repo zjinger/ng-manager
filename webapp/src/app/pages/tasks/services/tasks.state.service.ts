@@ -5,12 +5,15 @@ import { TaskStreamService } from "./task-stream.service";
 import { TaskRuntimeStore } from "./task-runtime-store";
 import { TaskCatalogService } from "./task-catalog.service";
 import { ProjectContextStore } from "@app/core/stores/project-context/project-context.store";
+import { NodeVersionService } from '../node-version/node-version.service';
+
 @Injectable({ providedIn: "root" })
 export class TaskStateService {
   private api = inject(TasksApiService);
   private stream = inject(TaskStreamService);
   private runtimeStore = inject(TaskRuntimeStore);
   private catalog = inject(TaskCatalogService);
+  private nodeVersion = inject(NodeVersionService);
   private projectContext = inject(ProjectContextStore);
 
   /* ---------------- 基础状态 ---------------- */
@@ -162,7 +165,12 @@ export class TaskStateService {
     if (!taskId) return;
     // const spec = this.selectedRow()?.spec;
     // if (!spec) return;
-    this.api.start(taskId).subscribe();
+    this.api.start(taskId).subscribe({
+      next: () => {
+        // 任务启动后刷新 Node 版本信息（可能已自动切换）
+          this.nodeVersion.refresh();
+      }
+    });
   }
 
   /**
@@ -188,6 +196,16 @@ export class TaskStateService {
         }
       }
     });
+  }
+
+  /**
+   * 重启选中任务
+   * @param taskId 如果不传则重启 selectedTaskId 指定的任务
+   */
+  restartSelected(taskId?: string) {
+    taskId = taskId?.trim() || this.selectedTaskId();
+    if (!taskId) return;
+    this.api.restart(taskId).subscribe();
   }
 
   /* ---------------- 给 popover 用 ---------------- */

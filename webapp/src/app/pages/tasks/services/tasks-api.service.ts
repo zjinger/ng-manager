@@ -49,6 +49,10 @@ export class TasksApiService {
     return this.api.post(`/api/tasks/stop`, { taskId });
   }
 
+  restart(taskId: string): Observable<TaskRuntime> {
+    return this.api.post(`/api/tasks/restart`, { taskId });
+  }
+
   active(): Observable<TaskRuntime[]> {
     return this.api.get(`/api/tasks/active`);
   }
