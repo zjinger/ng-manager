@@ -41,18 +41,16 @@ export class IssueDetailStore {
 
   readonly issue = computed(() => this.issueState());
   readonly logs = computed(() => this.logsState());
+  private readonly latestResolveLog = computed(() => this.findLatestLogByAction('resolve'));
+  private readonly latestReopenLog = computed(() => this.findLatestLogByAction('reopen'));
+  private readonly latestCloseLog = computed(() => this.findLatestLogByAction('close'));
+  readonly resolveAt = computed(() => this.latestResolveLog()?.createdAt ?? null);
   readonly reopenReason = computed(() => {
-    for (const log of this.logsState()) {
-      if (log.actionType !== 'reopen') {
-        continue;
-      }
-      const reason = this.extractReopenReason(log);
-      if (reason) {
-        return reason;
-      }
-    }
-    return null;
+    const log = this.latestReopenLog();
+    return log ? this.extractReopenReason(log) : null;
   });
+  readonly reopenAt = computed(() => this.latestReopenLog()?.createdAt ?? null);
+  readonly closeAt = computed(() => this.latestCloseLog()?.createdAt ?? null);
   readonly comments = computed(() => this.commentsState());
   readonly participants = computed(() => this.participantsState());
   readonly branches = computed(() => this.branchesState());
@@ -560,5 +558,22 @@ export class IssueDetailStore {
       return text || null;
     }
     return null;
+  }
+
+  private findLatestLogByAction(actionType: string): IssueLogEntity | null {
+    let latest: IssueLogEntity | null = null;
+    let latestTs = Number.NEGATIVE_INFINITY;
+    for (const log of this.logsState()) {
+      if (log.actionType !== actionType) {
+        continue;
+      }
+      const ts = Date.parse(log.createdAt);
+      const nextTs = Number.isFinite(ts) ? ts : Number.NEGATIVE_INFINITY;
+      if (!latest || nextTs > latestTs) {
+        latest = log;
+        latestTs = nextTs;
+      }
+    }
+    return latest;
   }
 }

@@ -1,8 +1,15 @@
 import { AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, ViewChild, computed, effect, input, signal } from '@angular/core';
+import { NzImageModule } from 'ng-zorro-antd/image';
+
+interface ParsedNoteContent {
+  text: string;
+  images: string[];
+}
 
 @Component({
   selector: 'app-issue-detail-note',
   standalone: true,
+  imports: [NzImageModule],
   template: `
     <div class="resolution" [class.resolution--timeline]="variant() === 'timeline'">
       @if (label()) {
@@ -11,11 +18,22 @@ import { AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, Component, El
       <div
         #contentText
         class="resolution__content"
-        [class.is-collapsed]="isOverflowing() && !expanded()"
+        [class.is-collapsed]="isOverflowing() && !expanded() && !hasImageContent()"
         [class.resolution__content--timeline]="variant() === 'timeline'"
       >
         @if (content(); as text) {
-          {{ text }}
+          @if (parsedContent().text) {
+            <div>{{ parsedContent().text }}</div>
+          }
+          @if (parsedContent().images.length > 0) {
+            <div class="resolution__images">
+              <nz-image-group>
+                @for (image of parsedContent().images; track image + '-' + $index) {
+                  <img class="resolution__image" nz-image [nzSrc]="image" alt="" />
+                }
+              </nz-image-group>
+            </div>
+          }
         } @else {
           <ng-content></ng-content>
         }
@@ -64,6 +82,22 @@ import { AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, Component, El
       .resolution__content--timeline {
         color: inherit;
       }
+      .resolution__images {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .resolution__image {
+        width: 120px;
+        max-width: min(120px, 100%);
+        height: 96px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color-soft);
+        object-fit: cover;
+        background: var(--bg-subtle);
+        cursor: zoom-in;
+      }
 
       .resolution__content.is-collapsed {
         max-height: calc(1.7em * 2);
@@ -105,6 +139,8 @@ export class IssueDetailNoteComponent implements AfterViewInit, AfterViewChecked
   readonly content = input<string | null>(null);
   readonly variant = input<'detail' | 'timeline'>('detail');
   readonly expanded = signal(false);
+  readonly parsedContent = computed<ParsedNoteContent>(() => this.parseContent(this.content()));
+  readonly hasImageContent = computed(() => this.parsedContent().images.length > 0);
   private readonly overflowing = signal(false);
   readonly isOverflowing = computed(() => this.overflowing());
   private measureScheduled = false;
@@ -139,6 +175,13 @@ export class IssueDetailNoteComponent implements AfterViewInit, AfterViewChecked
 
   private measureOverflow(): void {
     this.measureScheduled = false;
+    if (this.hasImageContent()) {
+      if (this.overflowing()) {
+        this.overflowing.set(false);
+      }
+      return;
+    }
+
     const element = this.contentElement?.nativeElement;
     if (!element) {
       return;
@@ -151,5 +194,54 @@ export class IssueDetailNoteComponent implements AfterViewInit, AfterViewChecked
     if (this.overflowing() !== nextOverflowing) {
       this.overflowing.set(nextOverflowing);
     }
+  }
+
+  private parseContent(content: string | null): ParsedNoteContent {
+    const value = content?.trim();
+    if (!value) {
+      return { text: '', images: [] };
+    }
+
+    const lines = value.split(/\r?\n/);
+    const textLines: string[] = [];
+    const images: string[] = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        textLines.push('');
+        continue;
+      }
+      const markdownImageMatch = trimmed.match(/^!\[[^\]]*]\(([^)]+)\)$/);
+      if (markdownImageMatch && this.isLikelyImageUrl(markdownImageMatch[1] || '')) {
+        images.push(markdownImageMatch[1]);
+        continue;
+      }
+      if (this.isLikelyImageUrl(trimmed)) {
+        images.push(trimmed);
+        continue;
+      }
+      textLines.push(line);
+    }
+
+    return {
+      text: textLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+      images: Array.from(new Set(images)),
+    };
+  }
+
+  private isLikelyImageUrl(value: string): boolean {
+    const url = value.trim();
+    if (!url) {
+      return false;
+    }
+    if (/^https?:\/\/[^\s]+$/i.test(url) || /^\/[^\s]+$/.test(url)) {
+      if (/\/api\/admin\/uploads\/[^/]+\/raw(?:$|\?)/i.test(url)) {
+        return true;
+      }
+      if (/\.(png|jpe?g|gif|webp|bmp|svg)(?:$|\?)/i.test(url)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -1,20 +1,21 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
-import { NzAvatarModule } from 'ng-zorro-antd/avatar';
-import { NzImageModule } from 'ng-zorro-antd/image';
 import { ROLE_LABELS } from '@app/shared/constants';
 import { AuthStore } from '@core/auth';
 import { UPLOAD_TARGETS } from '@shared/constants';
 import { ImageUploadService } from '@shared/services/image-upload.service';
 import { PanelCardComponent } from '@shared/ui';
+import { NzAvatarModule } from 'ng-zorro-antd/avatar';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzImageModule } from 'ng-zorro-antd/image';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import type { IssueCommentEntity } from '../../models/issue.model';
-import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { composeContentWithMarkdownImages, createUploadId, extractClipboardImages, revokePreviewUrls } from '../../utils';
 
 interface CommentUploadItem {
   id: string;
@@ -102,7 +103,7 @@ export class IssueCommentEditorComponent implements OnDestroy {
     if (this.busy()) {
       return;
     }
-    const files = this.extractClipboardImages(event);
+    const files = extractClipboardImages(event, 'comment-image');
     if (files.length === 0) {
       return;
     }
@@ -224,58 +225,8 @@ export class IssueCommentEditorComponent implements OnDestroy {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  private extractClipboardImages(event: ClipboardEvent): File[] {
-    const items = event.clipboardData?.items;
-    if (!items?.length) {
-      return [];
-    }
-    const files: File[] = [];
-    for (let index = 0; index < items.length; index += 1) {
-      const item = items[index];
-      if (item.kind !== 'file' || !item.type.startsWith('image/')) {
-        continue;
-      }
-      const file = item.getAsFile();
-      if (!file) {
-        continue;
-      }
-      files.push(this.normalizeClipboardFileName(file));
-    }
-    return files;
-  }
-
-  private normalizeClipboardFileName(file: File): File {
-    const normalizedName = file.name?.trim();
-    if (normalizedName) {
-      return file;
-    }
-    const extension = this.inferExtension(file.type);
-    const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '');
-    return new File([file], `comment-image-${timestamp}${extension}`, { type: file.type, lastModified: Date.now() });
-  }
-
-  private inferExtension(mimeType: string): string {
-    const value = mimeType.toLowerCase();
-    if (value.includes('png')) {
-      return '.png';
-    }
-    if (value.includes('jpeg') || value.includes('jpg')) {
-      return '.jpg';
-    }
-    if (value.includes('gif')) {
-      return '.gif';
-    }
-    if (value.includes('webp')) {
-      return '.webp';
-    }
-    if (value.includes('bmp')) {
-      return '.bmp';
-    }
-    return '';
-  }
-
   private enqueueImageUpload(file: File): void {
-    const id = this.createUploadId(file);
+    const id = createUploadId(file);
     const previewUrl = URL.createObjectURL(file);
     this.uploads.update((items) => [...items, { id, file, previewUrl, status: 'uploading', url: null, error: null }]);
     void this.runUpload(id, file);
@@ -304,33 +255,11 @@ export class IssueCommentEditorComponent implements OnDestroy {
   }
 
   private composeSubmitContent(raw: string): string {
-    const text = raw.trim();
-    const images = this.uploads()
-      .filter((item) => item.status === 'done' && !!item.url)
-      .map((item) => {
-        const alt = (item.file.name || 'image').replace(/]/g, '');
-        return `![${alt}](${item.url})`;
-      });
-    if (!text && images.length === 0) {
-      return '';
-    }
-    if (!text) {
-      return images.join('\n');
-    }
-    if (images.length === 0) {
-      return text;
-    }
-    return `${text}\n${images.join('\n')}`;
+    return composeContentWithMarkdownImages(raw, this.uploads());
   }
 
   private clearUploadItems(): void {
-    for (const item of this.uploads()) {
-      URL.revokeObjectURL(item.previewUrl);
-    }
+    revokePreviewUrls(this.uploads());
     this.uploads.set([]);
-  }
-
-  private createUploadId(file: File): string {
-    return `${Date.now()}-${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
   }
 }

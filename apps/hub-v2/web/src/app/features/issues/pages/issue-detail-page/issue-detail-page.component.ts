@@ -1,3 +1,4 @@
+import { CommonModule, } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -30,6 +31,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
   selector: 'app-issue-detail-page',
   standalone: true,
   imports: [
+    CommonModule,
     RouterLink,
     NzButtonModule,
     NzIconModule,
@@ -49,7 +51,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
     IssueStartOwnBranchDialogComponent,
     IssueTransitionDialogComponent,
     MarkdownViewerComponent,
-    ListStateComponent
+    ListStateComponent,
   ],
   providers: [IssueDetailStore],
   template: `
@@ -110,13 +112,13 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
                     暂无描述
                   }
                   @if (issue.resolutionSummary) {
-                    <app-issue-detail-note [label]="'已解决说明'" [content]="issue.resolutionSummary" />
+                    <app-issue-detail-note [label]="store.resolveAt() ? ('已解决说明 · ' + (store.resolveAt() | date: 'MM-dd HH:mm')) : '已解决说明'" [content]="issue.resolutionSummary" />
                   }
                   @if (store.reopenReason()) {
-                    <app-issue-detail-note [label]="'重开原因'" [content]="store.reopenReason()!" />
+                    <app-issue-detail-note [label]="store.reopenAt() ? ('重开原因 · ' + (store.reopenAt() | date: 'MM-dd HH:mm')) : '重开原因'" [content]="store.reopenReason()!" />
                   }
                   @if (issue.closeReason) {
-                    <app-issue-detail-note [label]="'关闭原因'" [content]="issue.closeReason" />
+                    <app-issue-detail-note [label]="store.closeAt() ? ('关闭原因 · ' + (store.closeAt() | date: 'MM-dd HH:mm')) : '关闭原因'" [content]="issue.closeReason" />
                   }
                 </section>
 

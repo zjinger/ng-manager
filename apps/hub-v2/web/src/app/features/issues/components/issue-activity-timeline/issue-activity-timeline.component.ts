@@ -37,8 +37,11 @@ export class IssueActivityTimelineComponent {
   readonly timelineItems = computed<IssueTimelineItem[]>(() =>
     this.logs().map((item) => {
       const rawAction = this.logText(item);
-      const imageItems = item.actionType === 'comment' ? this.extractInlineImages(rawAction) : [];
-      const action = item.actionType === 'comment' ? this.stripInlineImages(rawAction) : rawAction;
+      const markdownImages = this.extractInlineImages(rawAction);
+      const actionWithoutMarkdownImages = this.stripInlineImages(rawAction);
+      const plainUrlImages = this.extractPlainImageUrls(actionWithoutMarkdownImages);
+      const imageItems = this.mergeImageItems(markdownImages, plainUrlImages);
+      const action = this.stripPlainImageUrls(actionWithoutMarkdownImages);
       const normalizedAction = action.trim() || (imageItems.length > 0 ? '上传了图片' : action);
 
       return {
@@ -208,5 +211,57 @@ export class IssueActivityTimelineComponent {
 
   private stripInlineImages(text: string): string {
     return text.replace(this.markdownImagePattern, '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  private extractPlainImageUrls(text: string): Array<{ alt: string; url: string }> {
+    const lines = text.split(/\r?\n/);
+    const result: Array<{ alt: string; url: string }> = [];
+    for (const line of lines) {
+      const url = line.trim();
+      if (!this.isLikelyImageUrl(url)) {
+        continue;
+      }
+      result.push({ alt: 'image', url });
+    }
+    return result;
+  }
+
+  private stripPlainImageUrls(text: string): string {
+    return text
+      .split(/\r?\n/)
+      .filter((line) => !this.isLikelyImageUrl(line.trim()))
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  private mergeImageItems(
+    first: Array<{ alt: string; url: string }>,
+    second: Array<{ alt: string; url: string }>
+  ): Array<{ alt: string; url: string }> {
+    const seen = new Set<string>();
+    const merged: Array<{ alt: string; url: string }> = [];
+    for (const item of [...first, ...second]) {
+      const key = item.url.trim();
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      merged.push(item);
+    }
+    return merged;
+  }
+
+  private isLikelyImageUrl(url: string): boolean {
+    if (!url) {
+      return false;
+    }
+    if (!/^https?:\/\/[^\s]+$/i.test(url) && !/^\/[^\s]+$/.test(url)) {
+      return false;
+    }
+    if (/\/api\/admin\/uploads\/[^/]+\/raw(?:$|\?)/i.test(url)) {
+      return true;
+    }
+    return /\.(png|jpe?g|gif|webp|bmp|svg)(?:$|\?)/i.test(url);
   }
 }
