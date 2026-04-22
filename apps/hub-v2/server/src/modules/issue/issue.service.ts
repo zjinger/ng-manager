@@ -298,7 +298,7 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const current = await this.requireByIdWithAccess(id, ctx, "reopen issue");
     requireIssueReopenAccess(current, ctx);
     const reopenReason = input.remark?.trim() || null;
-    return this.applyAction(
+    const entity = await this.applyAction(
       id,
       "reopen",
       ctx,
@@ -314,6 +314,15 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       undefined,
       reopenReason ? { reason: reopenReason } : undefined
     );
+    await this.uploadCommand.promoteMarkdownUploads(
+      {
+        content: reopenReason,
+        bucket: "issues",
+        entityId: entity.id
+      },
+      ctx
+    );
+    return entity;
   }
 
   async close(id: string, input: CloseIssueInput, ctx: RequestContext): Promise<IssueEntity> {

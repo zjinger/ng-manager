@@ -347,7 +347,12 @@ export class IssueTransitionDialogComponent implements OnDestroy {
 
   private async runUpload(id: string, file: File): Promise<void> {
     try {
-      const url = await this.imageUpload.uploadImage(file, this.markdownUploadPolicy);
+      const issueId = this.issue()?.id?.trim();
+      const url = await this.imageUpload.uploadImage(
+        file,
+        this.markdownUploadPolicy,
+        issueId ? { entityType: 'issue', entityId: issueId } : undefined
+      );
       this.uploads.update((items) =>
         items.map((item) =>
           item.id === id ? { ...item, status: 'done', url, error: null } : item

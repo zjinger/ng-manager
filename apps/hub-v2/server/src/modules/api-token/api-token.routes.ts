@@ -87,10 +87,11 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     const ctx = requireTokenAuth(request, "issues:read");
     const params = issueUploadRawParamSchema.parse(request.params);
     const issue = await app.container.apiTokenQuery.getIssueById(params.projectKey, params.issueId, ctx);
+    const logs = await app.container.apiTokenQuery.listIssueLogs(params.projectKey, params.issueId, ctx);
     const comments = await app.container.apiTokenQuery.listIssueComments(params.projectKey, params.issueId, ctx);
     const upload = await app.container.uploadQuery.getById(params.uploadId, ctx);
     const referenced = isUploadReferenced(
-      [issue.description, ...comments.items.map((item) => item.content)],
+      [issue.description, ...comments.items.map((item) => item.content), ...logs.items.map((item) => item.summary)],
       upload.id
     );
     const categoryAllowed = upload.category === "comment" || upload.category.startsWith("markdown");

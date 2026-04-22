@@ -8,15 +8,24 @@ interface UploadResult {
   id: string;
 }
 
+interface ImageUploadOptions {
+  entityType?: string | null;
+  entityId?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ImageUploadService {
   private readonly api = inject(ApiClientService);
   private readonly apiBaseUrl = inject(API_BASE_URL);
   private readonly defaultPolicy = UPLOAD_TARGETS.markdownImage;
 
-  async uploadImage(file: File, policy: UploadTargetPolicy = this.defaultPolicy): Promise<string> {
+  async uploadImage(
+    file: File,
+    policy: UploadTargetPolicy = this.defaultPolicy,
+    options?: ImageUploadOptions
+  ): Promise<string> {
     this.ensureImageFile(file, policy);
-    const formData = buildUploadFormData(file, policy);
+    const formData = buildUploadFormData(file, policy, options);
 
     try {
       const upload = await firstValueFrom(
