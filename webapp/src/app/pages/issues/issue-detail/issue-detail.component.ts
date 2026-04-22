@@ -16,7 +16,7 @@ import { IssueAttachmentAreaComponent } from './issue-attachment-area/issue-atta
 import { IssueBaseInfoAreaComponent } from './issue-base-info-area/issue-base-info-area.component';
 import { IssueBranchesComponent } from './issue-branches/issue-branches.component';
 import { IssueCollaboratorsAreaComponent } from './issue-collaborators-area/issue-collaborators-panel.component';
-import { IssueCommentAreaComponent } from './issue-comment-area/issue-comment-editor.component';
+import { IssueLogsAreaComponent } from './issue-logs-area/issue-logs-area.component';
 import { IssueDescriptionAreaComponent } from './issue-description-area/issue-description-area.component';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 
@@ -28,7 +28,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
     NzSpinModule,
     IssueActionAreaComponent,
     IssueCollaboratorsAreaComponent,
-    IssueCommentAreaComponent,
+    IssueLogsAreaComponent,
     IssueAttachmentAreaComponent,
     IssueBaseInfoAreaComponent,
     IssueDescriptionAreaComponent,
@@ -98,7 +98,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
                 ></app-issue-description-area>
 
                 <!-- 评论 -->
-                <app-issue-comment-area
+                <app-issue-logs-area
                   (submit)="store.postComment($event)"
                   [issueId]="issue.id"
                   [busy]="store.busy()"
@@ -106,7 +106,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
                   [members]="store.members()"
                   [projectId]="store.currentProjectId()!"
                   [canComment]="store.canComment()"
-                ></app-issue-comment-area>
+                ></app-issue-logs-area>
               </div>
               <div class="right-column">
                 <!-- 基础信息 -->

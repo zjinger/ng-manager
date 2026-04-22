@@ -4,10 +4,17 @@ import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer'
 import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants/issue-type-options';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
 import { IssueEntity } from '@pages/issues/models/issue.model';
-
+import { extractAndRemoveImagePaths, replaceImagePaths } from '@app/utils/md-text';
+import { NzImageDirective, NzImageModule } from 'ng-zorro-antd/image';
 @Component({
   selector: 'app-issue-description-area',
-  imports: [DetailItemCardComponent, MarkdownViewerComponent, EllipsisTextComponent],
+  imports: [
+    DetailItemCardComponent,
+    MarkdownViewerComponent,
+    NzImageModule,
+    EllipsisTextComponent,
+    NzImageDirective,
+  ],
   template: `
     <app-detail-item-card [title]="getIssueTitleByType(issue())" maxHeight="550px">
       @if (mdContent(); as des) {
@@ -45,7 +52,11 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
           <div class="resolution-label">重开原因</div>
           <div class="resolution-content">
             <app-ellipsis-text [lines]="2">
-              {{ issue().closeRemark }}
+              {{ closeRemarkContent().text }}
+              <br />
+              @for (imgUrl of closeRemarkContent().imgUrls; track imgUrl) {
+                <img nz-image width="150px" height="100px" [nzSrc]="imgUrl" alt="" />
+              }
             </app-ellipsis-text>
           </div>
         </div>
@@ -57,7 +68,7 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
       margin: 1rem;
       text-align: center;
       color: gray;
-      font-size: .875rem;
+      font-size: 0.875rem;
     }
     .resolution {
       margin-top: 26px;
@@ -69,7 +80,8 @@ import { IssueEntity } from '@pages/issues/models/issue.model';
       }
       .resolution-content {
         font-size: 0.8rem;
-        text-indent: 0.8rem;
+        margin-bottom: 4px;
+        // text-indent: 0.8rem;
       }
     }
   `,
@@ -79,31 +91,28 @@ export class IssueDescriptionAreaComponent {
   readonly projectId = input<string>('');
 
   readonly mdContent = computed(() => {
-    return this.replaceImagePaths(
+    return replaceImagePaths(
       this.issue().description || '',
       this.projectId(),
       this.issue().id,
+      'issues',
     );
   });
 
-  private replaceImagePaths(mdContent: string, projectId: string, issueId: string) {
-    // 正则表达式匹配Markdown中的图片路径
-    const regex = /!\[.*?\]\((\/api\/admin\/uploads\/[a-zA-Z0-9_-]+\/raw)\)/g;
-
-    // 替换匹配到的图片路径
-    return mdContent.replace(regex, (match: string, originalPath: string) => {
-      // 提取原路径中的 uploadId (例如upl_mnk0hxvl4xt7)
-      const matchResult = originalPath.match(/uploads\/([a-zA-Z0-9_-]+)/);
-
-      if (!matchResult) {
-        return match;
-      }
-      const itemId = matchResult[1];
-      const newPath = `/api/client/hub-token/projects/${projectId}/issues/${issueId}/uploads/${itemId}/raw`;
-
-      return match.replace(originalPath, newPath);
-    });
-  }
+  closeRemarkContent = computed(() => {
+    const issue = this.issue();
+    if (!issue)
+      return {
+        text: '',
+        imgUrls: [],
+      };
+    return extractAndRemoveImagePaths(
+      issue.closeRemark || '',
+      this.projectId(),
+      this.issue().id,
+      'issues',
+    );
+  });
 
   // 获取描述标题
   getIssueTitleByType(issue: IssueEntity): string {

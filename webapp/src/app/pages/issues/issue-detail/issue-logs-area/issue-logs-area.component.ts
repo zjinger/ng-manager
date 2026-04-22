@@ -29,11 +29,22 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzListModule } from 'ng-zorro-antd/list';
 import { MentionOnSearchTypes, NzMentionModule } from 'ng-zorro-antd/mention';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
+import { extractAndRemoveImagePaths } from '@app/utils/md-text';
+import { NzImageModule } from 'ng-zorro-antd/image';
+import { IssueCommentInputComponent } from './issue-comment-input.component';
 
 type LogViewType = 'comment' | 'all';
 
+type logContent = {
+  segments: {
+    text: string;
+    mention?: boolean;
+  }[];
+  imgUrls?: string[];
+};
+
 @Component({
-  selector: 'app-issue-comment-area',
+  selector: 'app-issue-logs-area',
   standalone: true,
   imports: [
     CommonModule,
@@ -44,10 +55,12 @@ type LogViewType = 'comment' | 'all';
     NzListModule,
     NzCommentModule,
     NzTimelineModule,
+    NzImageModule,
     NzMentionModule,
     NzFormModule,
     FormsModule,
     NzAvatarModule,
+    IssueCommentInputComponent,
     DetailItemCardComponent,
     EllipsisTextComponent,
   ],
@@ -62,62 +75,19 @@ type LogViewType = 'comment' | 'all';
           }
         </button>
       </div>
-      <nz-comment>
-        <nz-avatar
-          nz-comment-avatar
-          [nzSrc]=""
-          [nzText]="'我'"
-          nzSize="small"
-          style="background-color:#87d068"
-        />
-        <nz-comment-content>
-          <nz-form-item>
-            <nz-mention
-              [nzSuggestions]="mentionOptions()"
-              [nzValueWith]="mentionLabel"
-              (nzOnSearchChange)="handleMentionSearch($event)"
-              (nzOnSelect)="handleMentionSelect($event)"
-            >
-              <textarea
-                [(ngModel)]="commentDraft"
-                nz-input
-                nzMentionTrigger
-                rows="4"
-                class="comment-input"
-                placeholder="添加评论...输入 @ 提及成员"
-              ></textarea>
-              <ng-template nzMentionSuggestion let-member>
-                <div class="mention-option">
-                  <span class="mention-name">{{ member.displayName || member.userId }}</span>
-                  <span class="mention-id">{{ roleLabel(member.roleCode) }}</span>
-                </div>
-              </ng-template>
-            </nz-mention>
-          </nz-form-item>
-          <nz-form-item class="toolbar">
-            <button
-              nz-button
-              nzType="primary"
-              [nzLoading]="busy()"
-              (click)="handleSubmit()"
-              class="send"
-              [disabled]="!canComment()"
-            >
-              @if (canComment()) {
-                发送评论
-              } @else {
-                没有评论权限
-              }
-            </button>
-          </nz-form-item>
-        </nz-comment-content>
-      </nz-comment>
+      <app-issue-comment-input
+        [busy]="busy()"
+        [members]="members()"
+        [canComment]="canComment()"
+        (submit)="submit.emit($event)"
+      ></app-issue-comment-input>
       <div class="logs-content">
         @if (logs().length === 0) {
           <div class="comment-empty">暂无评论/备注</div>
         } @else {
           <nz-timeline>
             @for (log of viewLogs(); track log.id) {
+              @let parsed = parseLogContent(log);
               <nz-timeline-item [nzDot]="dotTemplate">
                 @if (log.actionType === 'comment') {
                   <!-- 用户评论 -->
@@ -132,15 +102,9 @@ type LogViewType = 'comment' | 'all';
                       />
                       <nz-comment-content>
                         <p class="summary">
-                          <app-ellipsis-text [lines]="2">
-                            @for (seg of commentSegments(log.summary!); track $index) {
-                              @if (seg.mention) {
-                                <span class="mention">{{ seg.text }}</span>
-                              } @else {
-                                <span>{{ seg.text }}</span>
-                              }
-                            }
-                          </app-ellipsis-text>
+                          <ng-container
+                            *ngTemplateOutlet="logContent; context: { logParsed: parsed }"
+                          ></ng-container>
                         </p>
                       </nz-comment-content>
                     </nz-comment>
@@ -151,16 +115,33 @@ type LogViewType = 'comment' | 'all';
                   <div class="log-item">
                     <div class="meta">
                       <span class="operator">{{ log.operatorName || '系统' }}</span>
-                      <app-ellipsis-text [text]="log.summary || log.actionType" [lines]="2">
-                        <span class="content">{{ log.summary || log.actionType }}</span>
-                      </app-ellipsis-text>
+                      <ng-container
+                        *ngTemplateOutlet="logContent; context: { logParsed: parsed }"
+                      ></ng-container>
                       <div class="time">{{ log.createdAt | date: 'MM/dd HH:mm' }}</div>
                     </div>
                   </div>
                 }
               </nz-timeline-item>
+
               <ng-template #dotTemplate>
                 <nz-icon [nzType]="iconType(log)" nzTheme="outline" style="font-size: 16px;" />
+              </ng-template>
+
+              <ng-template #logContent let-logParsed>
+                <app-ellipsis-text [lines]="2" [maxHeight]="40">
+                  @for (seg of parsed.segments; track $index) {
+                    @if (seg.mention) {
+                      <span class="mention">{{ seg.text }}</span>
+                    } @else {
+                      <span>{{ seg.text }}</span>
+                    }
+                  }
+                  <br />
+                  @for (imgUrl of parsed.imgUrls; track imgUrl) {
+                    <img nz-image width="100px" height="100px" [nzSrc]="imgUrl" alt="" />
+                  }
+                </app-ellipsis-text>
               </ng-template>
             }
           </nz-timeline>
@@ -178,29 +159,6 @@ type LogViewType = 'comment' | 'all';
       margin: 1rem;
       text-align: center;
       color: gray;
-    }
-    .comment-input {
-      width: 100%;
-      border-radius: 10px;
-    }
-    .toolbar {
-      display: flex;
-      justify-content: end;
-    }
-    .send {
-      border-radius: 6px;
-    }
-    .mention-option {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .mention-name {
-      font-weight: 600;
-    }
-    .mention-id {
-      font-size: 12px;
     }
 
     .logs-content {
@@ -220,10 +178,6 @@ type LogViewType = 'comment' | 'all';
         .operator {
           font-weight: bold;
           white-space: nowrap;
-        }
-        .content {
-          color: rgba(0, 0, 0, 0.85);
-          font-size: 14px;
         }
       }
       .empty {
@@ -256,9 +210,9 @@ type LogViewType = 'comment' | 'all';
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IssueCommentAreaComponent {
+export class IssueLogsAreaComponent {
   private readonly mentionPattern = /(@[^\s@,，.。;；:：!?！？]+)/g;
-
+  extractAndRemoveImagePaths = extractAndRemoveImagePaths;
   readonly issueId = input<string>('');
   readonly canComment = input(false);
   readonly logs = input.required<IssueLogEntity[]>();
@@ -281,21 +235,6 @@ export class IssueCommentAreaComponent {
   readonly commentDraft = signal('');
   readonly mentionKeyword = signal('');
 
-  readonly mentionOptions = computed(() => {
-    const keyword = this.mentionKeyword().trim().toLowerCase();
-    const members = this.members();
-    if (!keyword) {
-      return members.slice(0, 20);
-    }
-    return members
-      .filter((member) => {
-        const displayName = (member.displayName || '').toLowerCase();
-        const userId = (member.userId || '').toLowerCase();
-        return displayName.includes(keyword) || userId.includes(keyword);
-      })
-      .slice(0, 20);
-  });
-
   readonly commontLogs = computed(() => this.logs().filter((log) => log.actionType === 'comment'));
 
   readonly viewLogs = computed(() => {
@@ -304,43 +243,6 @@ export class IssueCommentAreaComponent {
     }
     return this.logs();
   });
-
-  handleSubmit() {
-    if (!this.commentDraft().trim()) return;
-    this.submit.emit({
-      content: this.commentDraft(),
-      mentions: this.collectMentions(this.commentDraft()),
-    });
-    this.commentDraft.set('');
-    this.mentionKeyword.set('');
-  }
-
-  roleLabel(roleCode: string): string {
-    return ROLE_LABELS[roleCode] || roleCode;
-  }
-
-  mentionLabel(member: ProjectMemberEntity): string {
-    return member.displayName?.trim() || member.userId;
-  }
-
-  handleMentionSearch(event: MentionOnSearchTypes): void {
-    this.mentionKeyword.set(event.value || '');
-  }
-
-  handleMentionSelect(_member: ProjectMemberEntity): void {
-    this.mentionKeyword.set('');
-  }
-
-  private collectMentions(content: string): string[] {
-    const result = new Set<string>();
-    for (const member of this.members()) {
-      const label = this.mentionLabel(member);
-      if (label && content.includes(`@${label}`)) {
-        result.add(member.userId);
-      }
-    }
-    return [...result];
-  }
 
   iconType(item: IssueLogEntity): string {
     const metaKind = this.readMetaKind(item.metaJson);
@@ -377,10 +279,25 @@ export class IssueCommentAreaComponent {
     );
   }
 
-  commentSegments(text: string): Array<{ text: string; mention?: boolean }> {
+  parseLogContent(log: IssueLogEntity): logContent {
     const segments: Array<{ text: string; mention?: boolean }> = [];
+    const imgUrls: string[] = [];
+    let text = log.summary;
 
-    if (!text) return segments;
+    if (!text) return { segments };
+
+    // 如果是评论需要提取图片
+    if (log.actionType === 'comment' || log.actionType === 'reopen') {
+      const extracted = extractAndRemoveImagePaths(
+        text,
+        this.projectId()!,
+        this.issueId(),
+        'issues',
+      );
+
+      text = extracted.text;
+      imgUrls.push(...extracted.imgUrls);
+    }
 
     const regex = this.mentionPattern;
     let lastIndex = 0;
@@ -414,7 +331,7 @@ export class IssueCommentAreaComponent {
       });
     }
 
-    return segments;
+    return { segments, imgUrls };
   }
 
   isMember(name: string): boolean {

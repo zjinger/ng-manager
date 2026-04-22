@@ -71,3 +71,64 @@ export function normalizeImageUrl(
 
   return `/api/client/hub-token/projects/${projectId}/${type}/${id}/uploads/${uploadId}/raw`;
 }
+
+export function replaceImagePaths(
+  mdContent: string,
+  projectId: string,
+  id: string,
+  type: 'issues' | 'rd-items',
+) {
+  // 正则表达式匹配Markdown中的图片路径
+  const regex = /!\[.*?\]\((\/api\/admin\/uploads\/[a-zA-Z0-9_-]+\/raw)\)/g;
+
+  // 替换匹配到的图片路径
+  return mdContent.replace(regex, (match: string, originalPath: string) => {
+    // 提取原路径中的 uploadId (例如upl_mnk0hxvl4xt7)
+    const matchResult = originalPath.match(/uploads\/([a-zA-Z0-9_-]+)/);
+
+    if (!matchResult) {
+      return match;
+    }
+    const itemId = matchResult[1];
+    const newPath = `/api/client/hub-token/projects/${projectId}/${type}/${id}/uploads/${itemId}/raw`;
+
+    return match.replace(originalPath, newPath);
+  });
+}
+
+// 提取Markdown中的图片路径
+export function extractAndRemoveImagePaths(
+  mdContent: string,
+  projectId: string,
+  id: string,
+  type: 'issues' | 'rd-items',
+): {
+  text: string;
+  imgUrls: string[];
+} {
+  const imgUrls: string[] = [];
+
+  const regex = /!\[.*?\]\((\/api\/admin\/uploads\/[a-zA-Z0-9_-]+\/raw)\)/g;
+
+  const text = mdContent
+    .replace(regex, (match, originalPath: string) => {
+      const matchResult = originalPath.match(/uploads\/([a-zA-Z0-9_-]+)/);
+      if (!matchResult) return match;
+
+      const itemId = matchResult[1];
+
+      const newPath = `/api/client/hub-token/projects/${projectId}/${type}/${id}/uploads/${itemId}/raw`;
+
+      imgUrls.push(newPath);
+
+      // 删除图片语法
+      return '';
+    })
+    .replace(/\n{2,}/g, '\n') // 可选：清理空行
+    .trim();
+
+  return {
+    text,
+    imgUrls,
+  };
+}

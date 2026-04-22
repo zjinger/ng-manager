@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
 import { DetailItemCardComponent } from '@app/shared/ui/detail-item-card.component/detail-item-card.component';
+import { replaceImagePaths } from '@app/utils/md-text';
 import { RdItemEntity, RdLogEntity } from '@pages/rd/models/rd.model';
 
 @Component({
@@ -65,7 +66,7 @@ export class RdDescriptionAreaComponent {
   readonly mdContent = computed(() => {
     const rdItem = this.rdItem();
     if (!rdItem) return '';
-    return this.replaceImagePaths(rdItem.description || '', this.projectId(), rdItem.id);
+    return replaceImagePaths(rdItem.description || '', this.projectId(), rdItem.id, 'rd-items');
   });
 
   readonly detailNotes = computed(() => {
@@ -110,23 +111,4 @@ export class RdDescriptionAreaComponent {
 
     return notes;
   });
-
-  private replaceImagePaths(mdContent: string, projectId: string, rdId: string) {
-    // 正则表达式匹配Markdown中的图片路径
-    const regex = /!\[.*?\]\((\/api\/admin\/uploads\/[a-zA-Z0-9_-]+\/raw)\)/g;
-
-    // 替换匹配到的图片路径
-    return mdContent.replace(regex, (match: string, originalPath: string) => {
-      // 提取原路径中的 uploadId (例如upl_mnk0hxvl4xt7)
-      const matchResult = originalPath.match(/uploads\/([a-zA-Z0-9_-]+)/);
-
-      if (!matchResult) {
-        return match;
-      }
-      const itemId = matchResult[1];
-      const newPath = `/api/client/hub-token/projects/${projectId}/rd-items/${rdId}/uploads/${itemId}/raw`;
-
-      return match.replace(originalPath, newPath);
-    });
-  }
 }

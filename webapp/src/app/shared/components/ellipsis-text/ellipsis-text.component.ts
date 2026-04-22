@@ -15,7 +15,13 @@ import {
   selector: 'app-ellipsis-text',
   imports: [CommonModule],
   template: `
-    <span #textRef class="text" [class.expanded]="expanded()" [style.--line-clamp]="lines()">
+    <span
+      #textRef
+      class="text"
+      [class.expanded]="expanded()"
+      [style.--line-clamp]="lines()"
+      [style.--max-height.px]="maxHeight()"
+    >
       @if (!hasTextInput()) {
         <ng-content></ng-content>
       } @else {
@@ -41,10 +47,12 @@ import {
       word-break: break-word;
 
       -webkit-line-clamp: var(--line-clamp);
+      max-height: var(--max-height);
     }
 
     .text.expanded {
       -webkit-line-clamp: unset !important;
+      max-height: none !important;
     }
 
     .toggle {
@@ -59,6 +67,7 @@ import {
 export class EllipsisTextComponent implements AfterViewInit, OnDestroy {
   text = input<string>('');
   lines = input<number>(2);
+  maxHeight = input<number | null>(null);
   enableToggle = input<boolean>(true);
 
   @ViewChild('textRef') textRef!: ElementRef;
@@ -114,7 +123,13 @@ export class EllipsisTextComponent implements AfterViewInit, OnDestroy {
 
     const el = this.textRef?.nativeElement;
     if (!el) return;
-    requestAnimationFrame(() => this.showToggle.set(el.scrollHeight > el.clientHeight));
+
+    requestAnimationFrame(() => {
+      // 判断溢出
+      const isLineOverflow = el.scrollHeight > el.clientHeight;
+      const isHeightOverflow = this.maxHeight() != null && el.scrollHeight > this.maxHeight()!;
+      this.showToggle.set(isLineOverflow || isHeightOverflow);
+    });
   }
 
   // 切换文本展开/收起
