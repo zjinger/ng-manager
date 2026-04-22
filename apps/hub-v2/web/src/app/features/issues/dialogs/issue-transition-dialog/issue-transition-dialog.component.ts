@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzImageModule } from 'ng-zorro-antd/image';
@@ -9,6 +9,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { UPLOAD_TARGETS } from '@shared/constants';
 import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent } from '@shared/ui';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { IssueEntity } from '../../models/issue.model';
 import { composeContentWithMarkdownImages, createUploadId, extractClipboardImages, revokePreviewUrls } from '../../utils';
 
@@ -25,11 +26,11 @@ interface TransitionUploadItem {
 @Component({
   selector: 'app-issue-transition-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzInputModule, NzImageModule, NzTooltipModule, DialogShellComponent],
+  imports: [FormsModule, NzButtonModule, NzInputModule, NzImageModule, NzTooltipModule, DialogShellComponent, NzIconModule],
   template: `
     <app-dialog-shell
       [open]="open()"
-      [width]="680"
+      [width]="700"
       [title]="title()"
       [subtitle]="issue() ? issue()!.title : subtitle()"
       [icon]="mode() === 'resolve' ? 'check-circle' : 'rollback'"
@@ -37,14 +38,14 @@ interface TransitionUploadItem {
     >
       <div dialog-body>
         <form id="issue-transition-form" class="transition-form" (ngSubmit)="submitForm()">
-          <label class="transition-field dialog-field">
+          <div class="transition-field dialog-field">
             <span class="transition-field__label dialog-field__label">{{ fieldLabel() }}</span>
             <div class="transition-input-shell" [class.has-upload]="uploads().length > 0">
               @if (uploads().length > 0) {
-                <div class="upload-list">
+                <div #uploadListRef class="upload-list">
                   @for (item of uploads(); track item.id) {
-                    <div class="upload-item" [class.is-uploading]="item.status === 'uploading'" [class.is-error]="item.status === 'error'">
-                      <img nz-image class="upload-item__thumb" [nzSrc]="item.previewUrl" [alt]="item.file.name || 'reopen-image'" />
+                    <div class="upload-item"  [class.multiple-item]="uploads().length > 1" [class.is-uploading]="item.status === 'uploading'" [class.is-error]="item.status === 'error'">
+                      <img nz-image class="upload-item__thumb" [nzSrc]="item.previewUrl" [alt]="item.file.name || 'reopen-image'" (click)="$event.stopPropagation()" />
                       @if (item.status === 'uploading') {
                         <div class="upload-item__mask">
                           <span class="upload-item__spinner" aria-hidden="true"></span>
@@ -53,7 +54,9 @@ interface TransitionUploadItem {
                       @if (item.status === 'error') {
                         <div class="upload-item__mask upload-item__mask--error">
                           <span class="upload-item__error-text">{{ item.error || '上传失败' }}</span>
-                          <button nz-button nzType="link" class="upload-item__retry" type="button" (click)="retryUpload(item.id)">重试</button>
+                          <button nz-button nzType="link" class="upload-item__retry" type="button" (click)="onRetryUploadClick($event, item.id)">
+                            <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
+                          </button>
                         </div>
                       }
                       <button
@@ -62,10 +65,10 @@ interface TransitionUploadItem {
                         nzType="link"
                         class="upload-item__remove"
                         type="button"
-                        (click)="removeUpload(item.id)"
+                        (click)="onRemoveUploadClick($event, item.id)"
                         nz-tooltip="删除"
                       >
-                        ×
+                        <nz-icon nzType="close" nzTheme="outline"></nz-icon>
                       </button>
                     </div>
                   }
@@ -74,9 +77,11 @@ interface TransitionUploadItem {
               <textarea
                 nz-input
                 rows="6"
+                class="transition__textarea"
                 [placeholder]="placeholder()"
                 [ngModel]="content()"
                 name="content"
+                [style.padding-top.px]="uploads().length > 0 ? textareaPaddingTop() : null"
                 (ngModelChange)="content.set($event)"
                 (paste)="onPaste($event)"
               ></textarea>
@@ -84,7 +89,7 @@ interface TransitionUploadItem {
             @if (mode() === 'reopen') {
               <span class="transition-field__tip">支持直接粘贴截图上传图片。</span>
             }
-          </label>
+          </div>
         </form>
       </div>
 
@@ -111,9 +116,13 @@ interface TransitionUploadItem {
       .transition-input-shell {
         position: relative;
       }
-      .transition-input-shell.has-upload textarea {
-        padding-top: 130px;
+
+      .transition__textarea{
+        border-radius: 12px;
+        padding: 10px 12px;
+        resize: none;
       }
+
       .transition-field__tip {
         margin-top: 8px;
         display: inline-block;
@@ -139,6 +148,10 @@ interface TransitionUploadItem {
         overflow: hidden;
         border: 1px solid color-mix(in srgb, var(--border-color-soft) 80%, transparent);
         background: color-mix(in srgb, var(--bg-subtle) 88%, #000 12%);
+        &.multiple-item {
+              width: 80px;
+              height: 80px;
+          }
       }
       .upload-item__thumb {
         width: 100%;
@@ -156,7 +169,7 @@ interface TransitionUploadItem {
       }
       .upload-item__mask--error {
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
         padding: 8px;
         background: rgba(35, 10, 10, 0.62);
       }
@@ -174,9 +187,8 @@ interface TransitionUploadItem {
         line-height: 1.2;
       }
       .upload-item__retry {
-        height: auto;
+        height: auto; 
         padding: 0 2px;
-        color: #fff;
         font-size: 12px;
       }
       .upload-item__remove {
@@ -217,6 +229,11 @@ export class IssueTransitionDialogComponent implements OnDestroy {
   private readonly imageUpload = inject(ImageUploadService);
   private readonly markdownUploadPolicy = UPLOAD_TARGETS.markdownImage;
 
+  @ViewChild('uploadListRef')
+  set uploadListRef(value: ElementRef<HTMLElement> | undefined) {
+    this.bindUploadListObserver(value?.nativeElement ?? null);
+  }
+
   readonly open = input(false);
   readonly busy = input(false);
   readonly mode = input<IssueTransitionMode>('resolve');
@@ -228,6 +245,10 @@ export class IssueTransitionDialogComponent implements OnDestroy {
   readonly content = signal('');
   readonly uploads = signal<TransitionUploadItem[]>([]);
   readonly uploading = computed(() => this.uploads().some((item) => item.status === 'uploading'));
+  readonly uploadListHeight = signal(0);
+  readonly textareaPaddingTop = computed(() => this.uploadListHeight() + 20);
+
+  private uploadListObserver: ResizeObserver | null = null;
 
   readonly title = computed(() => {
     if (this.mode() === 'resolve') {
@@ -335,7 +356,20 @@ export class IssueTransitionDialogComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.bindUploadListObserver(null);
     this.clearUploadItems();
+  }
+
+  onRetryUploadClick(event: MouseEvent, id: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.retryUpload(id);
+  }
+
+  onRemoveUploadClick(event: MouseEvent, id: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.removeUpload(id);
   }
 
   private enqueueImageUpload(file: File): void {
@@ -380,5 +414,28 @@ export class IssueTransitionDialogComponent implements OnDestroy {
     }
     revokePreviewUrls(items);
     this.uploads.set([]);
+  }
+
+  private bindUploadListObserver(element: HTMLElement | null): void {
+    if (this.uploadListObserver) {
+      this.uploadListObserver.disconnect();
+      this.uploadListObserver = null;
+    }
+
+    if (!element) {
+      this.uploadListHeight.set(0);
+      return;
+    }
+
+    const measure = () => {
+      const height = Math.ceil(element.getBoundingClientRect().height);
+      if (height !== this.uploadListHeight()) {
+        this.uploadListHeight.set(height);
+      }
+    };
+
+    measure();
+    this.uploadListObserver = new ResizeObserver(() => measure());
+    this.uploadListObserver.observe(element);
   }
 }

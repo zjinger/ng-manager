@@ -69,6 +69,13 @@ export class IssueAttachmentRepo {
     return result.changes > 0;
   }
 
+  countByUploadId(uploadId: string): number {
+    const row = this.db
+      .prepare("SELECT COUNT(1) as total FROM issue_attachments WHERE upload_id = ?")
+      .get(uploadId) as { total: number } | undefined;
+    return row?.total ?? 0;
+  }
+
   private mapRow(row: IssueAttachmentRow): IssueAttachmentRecord {
     return {
       id: row.id,

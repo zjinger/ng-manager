@@ -10,6 +10,7 @@ export interface PromoteMarkdownUploadsInput {
 export interface UploadCommandContract {
   create(input: CreateUploadInput, ctx: RequestContext): Promise<UploadEntity>;
   promoteMarkdownUploads(input: PromoteMarkdownUploadsInput, ctx: RequestContext): Promise<void>;
+  deactivateUpload(uploadId: string, ctx: RequestContext): Promise<void>;
 }
 
 export interface UploadQueryContract {

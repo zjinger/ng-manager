@@ -4,6 +4,7 @@ import { AppError } from "../../../shared/errors/app-error";
 import type { EventBus } from "../../../shared/event/event-bus";
 import { genId } from "../../../shared/utils/id";
 import { nowIso } from "../../../shared/utils/time";
+import type { UploadCommandContract } from "../../upload/upload.contract";
 import type { UploadQueryContract } from "../../upload/upload.contract";
 import type { ProjectAccessContract } from "../../project/project-access.contract";
 import { IssueRepo } from "../issue.repo";
@@ -16,6 +17,7 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
   constructor(
     private readonly issueRepo: IssueRepo,
     private readonly attachmentRepo: IssueAttachmentRepo,
+    private readonly uploadCommand: UploadCommandContract,
     private readonly uploadQuery: UploadQueryContract,
     private readonly projectAccess: ProjectAccessContract,
     private readonly eventBus: EventBus
@@ -99,6 +101,9 @@ export class IssueAttachmentService implements IssueAttachmentCommandContract, I
     const deleted = this.attachmentRepo.delete(issue.id, attachmentId);
     if (!deleted) {
       throw new AppError(ERROR_CODES.ISSUE_ATTACHMENT_DELETE_FAILED, "failed to delete attachment", 500);
+    }
+    if (upload.bucket === "issues" && upload.category === "attachment" && this.attachmentRepo.countByUploadId(upload.id) === 0) {
+      await this.uploadCommand.deactivateUpload(upload.id, ctx);
     }
 
     const now = nowIso();

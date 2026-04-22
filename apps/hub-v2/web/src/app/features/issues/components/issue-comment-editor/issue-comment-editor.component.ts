@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ROLE_LABELS } from '@app/shared/constants';
 import { AuthStore } from '@core/auth';
@@ -38,6 +38,12 @@ export class IssueCommentEditorComponent implements OnDestroy {
   private readonly authStore = inject(AuthStore);
   private readonly imageUpload = inject(ImageUploadService);
   private readonly commentUploadPolicy = UPLOAD_TARGETS.commentImage;
+  private uploadListObserver: ResizeObserver | null = null;
+
+  @ViewChild('uploadListRef')
+  set uploadListRef(value: ElementRef<HTMLElement> | undefined) {
+    this.bindUploadListObserver(value?.nativeElement ?? null);
+  }
 
   readonly comments = input.required<IssueCommentEntity[]>();
   readonly members = input<ProjectMemberEntity[]>([]);
@@ -47,6 +53,8 @@ export class IssueCommentEditorComponent implements OnDestroy {
   readonly draft = signal('');
   readonly mentionKeyword = signal('');
   readonly uploads = signal<CommentUploadItem[]>([]);
+  readonly uploadListHeight = signal(0);
+  readonly textareaPaddingTop = computed(() => this.uploadListHeight() + 20);
   readonly uploading = computed(() => this.uploads().some((item) => item.status === 'uploading'));
   readonly canSubmit = computed(() => {
     const hasText = !!this.draft().trim();
@@ -137,6 +145,7 @@ export class IssueCommentEditorComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.bindUploadListObserver(null);
     this.clearUploadItems();
   }
 
@@ -261,5 +270,28 @@ export class IssueCommentEditorComponent implements OnDestroy {
   private clearUploadItems(): void {
     revokePreviewUrls(this.uploads());
     this.uploads.set([]);
+  }
+
+  private bindUploadListObserver(element: HTMLElement | null): void {
+    if (this.uploadListObserver) {
+      this.uploadListObserver.disconnect();
+      this.uploadListObserver = null;
+    }
+
+    if (!element) {
+      this.uploadListHeight.set(0);
+      return;
+    }
+
+    const measure = () => {
+      const height = Math.ceil(element.getBoundingClientRect().height);
+      if (height !== this.uploadListHeight()) {
+        this.uploadListHeight.set(height);
+      }
+    };
+
+    measure();
+    this.uploadListObserver = new ResizeObserver(() => measure());
+    this.uploadListObserver.observe(element);
   }
 }

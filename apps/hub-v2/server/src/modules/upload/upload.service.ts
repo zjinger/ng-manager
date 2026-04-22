@@ -93,6 +93,20 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
     }
   }
 
+  async deactivateUpload(uploadId: string, _ctx: RequestContext): Promise<void> {
+    const normalizedId = uploadId.trim();
+    if (!normalizedId) {
+      return;
+    }
+
+    const upload = this.repo.findById(normalizedId);
+    if (!upload) {
+      return;
+    }
+
+    this.repo.updateStatus(upload.id, "inactive", nowIso());
+  }
+
   private resolveUploadFilePath(storagePath: string, fileName: string): string | null {
     if (storagePath && fs.existsSync(storagePath)) {
       return storagePath;

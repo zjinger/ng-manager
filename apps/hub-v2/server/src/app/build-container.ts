@@ -181,6 +181,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     issueRepo,
     issueAttachmentRepo,
     uploadService,
+    uploadService,
     projectAccess,
     eventBus
   );

@@ -74,6 +74,19 @@ export class UploadRepo {
     return result.changes > 0;
   }
 
+  updateStatus(id: string, status: "active" | "inactive", updatedAt: string): boolean {
+    const result = this.db
+      .prepare(
+        `
+          UPDATE uploads
+          SET status = ?, updated_at = ?
+          WHERE id = ?
+        `
+      )
+      .run(status, updatedAt, id);
+    return result.changes > 0;
+  }
+
   private mapRow(row: UploadRow): UploadEntity {
     return {
       id: row.id,
