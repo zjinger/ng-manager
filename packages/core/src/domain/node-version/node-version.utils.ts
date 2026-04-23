@@ -159,22 +159,18 @@ function calculateMatchScore(version: string, requirement: string): number {
 export function findBestMatchingVersion(available: string[], requirement: string): string | null {
   const matching: Array<{ version: string; score: number }> = [];
 
-  console.log('[DEBUG] findBestMatchingVersion - available:', available, 'requirement:', requirement);
 
   for (const version of available) {
     if (satisfiesVersion(version, requirement)) {
       const score = calculateMatchScore(version, requirement);
       matching.push({ version, score });
-      console.log('[DEBUG] Match found:', version, 'score:', score);
     }
   }
 
   if (matching.length === 0) {
-    console.log('[DEBUG] No matching versions found');
     return null;
   }
 
   matching.sort((a, b) => b.score - a.score);
-  console.log('[DEBUG] Best match:', matching[0].version);
   return matching[0].version;
 }
