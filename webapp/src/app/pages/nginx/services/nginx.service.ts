@@ -242,6 +242,76 @@ export class NginxService {
     );
   }
 
+  async validateSslPaths(
+    sslCert?: string,
+    sslKey?: string
+  ): Promise<{
+    success: boolean;
+    valid: boolean;
+    cert?: { exists: boolean; readable: boolean; error?: string };
+    key?: { exists: boolean; readable: boolean; error?: string };
+    error?: string;
+  }> {
+    return await firstValueFrom(
+      this.http.post<{
+        success: boolean;
+        valid: boolean;
+        cert?: { exists: boolean; readable: boolean; error?: string };
+        key?: { exists: boolean; readable: boolean; error?: string };
+        error?: string;
+      }>(`${this.baseUrl}/servers/validate-ssl-paths`, {
+        sslCert,
+        sslKey,
+      })
+    );
+  }
+
+  async parseImportServers(content: string): Promise<{
+    success: boolean;
+    candidates: Array<{
+      request?: CreateNginxServerRequest;
+      error?: string;
+    }>;
+    error?: string;
+  }> {
+    return await firstValueFrom(
+      this.http.post<{
+        success: boolean;
+        candidates: Array<{
+          request?: CreateNginxServerRequest;
+          error?: string;
+        }>;
+        error?: string;
+      }>(`${this.baseUrl}/servers/import/parse`, { content })
+    );
+  }
+
+  async analyzeImportServers(
+    requests: CreateNginxServerRequest[]
+  ): Promise<{
+    success: boolean;
+    candidates: Array<{
+      request?: CreateNginxServerRequest;
+      issues?: Array<{ level: 'error' | 'warning'; message: string; field?: 'name' | 'domains' | 'listen' }>;
+      error?: string;
+    }>;
+    error?: string;
+  }> {
+    return await firstValueFrom(
+      this.http.post<{
+        success: boolean;
+        candidates: Array<{
+          request?: CreateNginxServerRequest;
+          issues?: Array<{ level: 'error' | 'warning'; message: string; field?: 'name' | 'domains' | 'listen' }>;
+          error?: string;
+        }>;
+        error?: string;
+      }>(`${this.baseUrl}/servers/import/analyze`, {
+        requests,
+      })
+    );
+  }
+
   // ========== Phase2：Upstream / SSL / 流量 / 性能 ==========
 
   async getUpstreams(): Promise<{ success: boolean; upstreams?: NginxUpstream[]; error?: string }> {

@@ -110,6 +110,8 @@ export interface NginxServer {
   updatedAt?: string;
   /** 创建人 */
   createdBy?: string;
+  /** 运行状态（与 Nginx 实例状态联动） */
+  runtimeStatus?: NginxServerRuntimeStatus;
 }
 
 /**
@@ -140,7 +142,11 @@ export interface CreateNginxServerRequest {
   enabled?: boolean;
   /** 自定义配置片段 */
   extraConfig?: string;
+  /** 创建人 */
+  createdBy?: string;
 }
+
+export type NginxServerRuntimeStatus = 'running' | 'stopped' | 'disabled' | 'unknown';
 
 /**
  * 更新 Server 请求

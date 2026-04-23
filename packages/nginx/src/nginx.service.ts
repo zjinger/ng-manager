@@ -19,6 +19,26 @@ const execFileAsync = promisify(execFile);
 export class NginxService {
   private instance: NginxInstance | null = null;
 
+  async validateFileReadable(path: string): Promise<{ exists: boolean; readable: boolean; error?: string }> {
+    const target = this.normalizePath(path);
+    if (!target) {
+      return { exists: false, readable: false, error: '路径不能为空' };
+    }
+
+    try {
+      await access(target, constants.F_OK);
+    } catch {
+      return { exists: false, readable: false, error: '文件不存在' };
+    }
+
+    try {
+      await access(target, constants.R_OK);
+      return { exists: true, readable: true };
+    } catch {
+      return { exists: true, readable: false, error: '文件不可读' };
+    }
+  }
+
   /**
    * 获取当前绑定的 Nginx 实例
    */

@@ -25,7 +25,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NginxService } from '../../services/nginx.service';
 import { NginxServerDrawerComponent } from '../nginx-server-drawer/nginx-server-drawer.component';
 import type { NginxServer } from '../../models/nginx.types';
-import type { CreateNginxServerRequest, NginxLocation } from '../../models/nginx.types';
+import type { CreateNginxServerRequest } from '../../models/nginx.types';
 
 interface ImportCandidate {
   id: string;
@@ -92,12 +92,17 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
   importModalVisible = false;
   importText = signal('');
   importing = signal(false);
+  parsingImport = signal(false);
   importCandidates = signal<ImportCandidate[]>([]);
   readonly skeletonRows = [1, 2, 3, 4, 5];
   undoVisible = signal(false);
   undoText = signal('');
   private undoHandler: (() => Promise<void>) | null = null;
   private undoTimer: ReturnType<typeof setTimeout> | null = null;
+  private importParseTimer: ReturnType<typeof setTimeout> | null = null;
+  private importParseRequestSeq = 0;
+  private importConflictTimer: ReturnType<typeof setTimeout> | null = null;
+  private importConflictSeq = 0;
 
   ngOnInit() {
     this.loadServers();
@@ -105,6 +110,14 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearUndoState();
+    if (this.importParseTimer) {
+      clearTimeout(this.importParseTimer);
+      this.importParseTimer = null;
+    }
+    if (this.importConflictTimer) {
+      clearTimeout(this.importConflictTimer);
+      this.importConflictTimer = null;
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -172,7 +185,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     try {
       const text = await navigator.clipboard.readText();
       this.importText.set(String(text || '').trim());
-      this.refreshImportCandidates();
+      this.scheduleRefreshImportCandidates();
       this.message.success('已读取剪贴板内容');
     } catch {
       this.message.warning('读取剪贴板失败，请手动粘贴');
@@ -188,7 +201,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     try {
       const text = await file.text();
       this.importText.set(String(text || '').trim());
-      this.refreshImportCandidates();
+      this.scheduleRefreshImportCandidates();
       this.message.success(`已载入文件：${file.name}`);
     } catch {
       this.message.error('读取文件失败');
@@ -199,8 +212,9 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
 
   async submitImport(): Promise<void> {
     if (!this.importCandidates().length) {
-      this.refreshImportCandidates();
+      await this.refreshImportCandidates();
     }
+    await this.recalculateImportConflicts();
     const selected = this.importCandidates().filter(item => item.selected && item.request);
     if (!selected.length) {
       this.message.warning('请至少选择一条可导入项');
@@ -252,7 +266,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
 
   onImportTextChange(value: string): void {
     this.importText.set(value);
-    this.refreshImportCandidates();
+    this.scheduleRefreshImportCandidates();
   }
 
   get importTotalCount(): number {
@@ -305,11 +319,11 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
         ...item,
         request: {
           ...item.request,
-          name: nextName || item.request.name,
+          name: nextName,
         },
       };
     }));
-    this.recalculateImportConflicts();
+    void this.scheduleRecalculateImportConflicts();
   }
 
   getImportCandidateDomainsText(item: ImportCandidate): string {
@@ -330,7 +344,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
         },
       };
     }));
-    this.recalculateImportConflicts();
+    void this.scheduleRecalculateImportConflicts();
   }
 
   getImportCandidateListenText(item: ImportCandidate): string {
@@ -351,7 +365,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
         },
       };
     }));
-    this.recalculateImportConflicts();
+    void this.scheduleRecalculateImportConflicts();
   }
 
   getImportCandidateIssues(item: ImportCandidate): Array<{ level: 'error' | 'warning'; message: string; field?: 'name' | 'domains' | 'listen' }> {
@@ -378,110 +392,100 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     }, 0);
   }
 
-  private refreshImportCandidates(): void {
+  private scheduleRefreshImportCandidates(): void {
+    if (this.importParseTimer) {
+      clearTimeout(this.importParseTimer);
+      this.importParseTimer = null;
+    }
+    this.importParseTimer = setTimeout(() => {
+      this.importParseTimer = null;
+      void this.refreshImportCandidates();
+    }, 300);
+  }
+
+  private async refreshImportCandidates(): Promise<void> {
     const source = this.importText().trim();
     if (!source) {
       this.importCandidates.set([]);
       return;
     }
 
-    const blocks = this.extractServerBlocks(source);
-    const parsed = blocks.map((block, index) => {
-      const request = this.parseServerBlockToRequest(block);
-      return {
-        id: `candidate-${index}`,
-        selected: Boolean(request),
-        request,
-        error: request ? undefined : '解析失败：未识别为标准 server 块',
-        issues: [],
-      } as ImportCandidate;
-    });
+    const reqId = ++this.importParseRequestSeq;
+    this.parsingImport.set(true);
+    let parsed: ImportCandidate[] = [];
+    try {
+      const res = await this.nginxService.parseImportServers(source);
+      if (res.success && Array.isArray(res.candidates)) {
+        parsed = res.candidates.map((item, index) => ({
+          id: `candidate-${index}`,
+          selected: Boolean(item.request),
+          request: item.request,
+          error: item.error || (item.request ? undefined : '解析失败：未识别为标准 server 块'),
+          issues: [],
+        }));
+      }
+    } catch {
+      parsed = [];
+    } finally {
+      if (reqId === this.importParseRequestSeq) {
+        this.parsingImport.set(false);
+      }
+    }
 
+    if (reqId !== this.importParseRequestSeq) {
+      return;
+    }
     this.importCandidates.set(parsed);
-    this.recalculateImportConflicts();
+    void this.scheduleRecalculateImportConflicts();
   }
 
-  private recalculateImportConflicts(): void {
-    const currentServers = this.servers();
-    const existingNameSet = new Set(
-      currentServers.map(server => String(server.name || '').trim().toLowerCase()).filter(Boolean)
-    );
-    const existingEnabledPorts = new Set<number>();
-    currentServers
-      .filter(server => server.enabled)
-      .forEach(server => {
-        this.extractPorts(server.listen || []).forEach(port => existingEnabledPorts.add(port));
-      });
+  private async scheduleRecalculateImportConflicts(): Promise<void> {
+    if (this.importConflictTimer) {
+      clearTimeout(this.importConflictTimer);
+      this.importConflictTimer = null;
+    }
+    this.importConflictTimer = setTimeout(() => {
+      this.importConflictTimer = null;
+      void this.recalculateImportConflicts();
+    }, 250);
+  }
 
-    const candidates = this.importCandidates();
-    const nameCounts = new Map<string, number>();
-    const portCounts = new Map<number, number>();
-
-    candidates.forEach(item => {
-      if (!item.request) {
+  private async recalculateImportConflicts(): Promise<void> {
+    const seq = ++this.importConflictSeq;
+    const requestCandidates = this.importCandidates().filter(item => Boolean(item.request));
+    if (!requestCandidates.length) {
+      return;
+    }
+    try {
+      const requests = requestCandidates.map(item => item.request!) as CreateNginxServerRequest[];
+      const res = await this.nginxService.analyzeImportServers(requests);
+      if (seq !== this.importConflictSeq) {
         return;
       }
-      const nameKey = String(item.request.name || '').trim().toLowerCase();
-      if (nameKey) {
-        nameCounts.set(nameKey, (nameCounts.get(nameKey) || 0) + 1);
-      }
-      const enabled = item.request.enabled !== false;
-      if (!enabled) {
+      if (res.success && Array.isArray(res.candidates) && res.candidates.length === requests.length) {
+        let cursor = 0;
+        this.importCandidates.update(list => list.map(item => {
+          if (!item.request) {
+            return item;
+          }
+          const analyzed = res.candidates[cursor++];
+          const issues = analyzed?.issues || [];
+          return {
+            ...item,
+            issues,
+            selected: issues.some(issue => issue.level === 'error') ? false : item.selected,
+          };
+        }));
         return;
       }
-      const ports = (item.request.listen || [])
-        .map(value => Number(value))
-        .filter(port => Number.isInteger(port) && port >= 1 && port <= 65535);
-      ports.forEach(port => {
-        portCounts.set(port, (portCounts.get(port) || 0) + 1);
-      });
-    });
+    } catch {
+      // 后端分析失败时不再走前端本地规则，避免双端规则漂移
+    }
 
-    this.importCandidates.update(list => list.map(item => {
-      if (!item.request) {
-        return item;
-      }
-      const issues: Array<{ level: 'error' | 'warning'; message: string; field?: 'name' | 'domains' | 'listen' }> = [];
-      const request = item.request;
-      const nameKey = String(request.name || '').trim().toLowerCase();
-      if (!nameKey) {
-        issues.push({ level: 'error', message: '名称不能为空', field: 'name' });
-      } else {
-        if (existingNameSet.has(nameKey)) {
-          issues.push({ level: 'error', message: `名称冲突：${request.name}`, field: 'name' });
-        }
-        if ((nameCounts.get(nameKey) || 0) > 1) {
-          issues.push({ level: 'error', message: `导入批次内名称重复：${request.name}`, field: 'name' });
-        }
-      }
-
-      const ports = (request.listen || [])
-        .map(value => Number(value))
-        .filter(port => Number.isInteger(port) && port >= 1 && port <= 65535);
-      if (!ports.length) {
-        issues.push({ level: 'error', message: '监听端口无效', field: 'listen' });
-      }
-      if (request.enabled !== false) {
-        ports.forEach(port => {
-          if (existingEnabledPorts.has(port)) {
-            issues.push({ level: 'error', message: `端口冲突：${port} 已被现有启用 Server 使用`, field: 'listen' });
-          }
-          if ((portCounts.get(port) || 0) > 1) {
-            issues.push({ level: 'error', message: `导入批次内端口重复：${port}`, field: 'listen' });
-          }
-        });
-      }
-
-      if (!(request.domains || []).length) {
-        issues.push({ level: 'warning', message: '域名为空，将使用默认域名', field: 'domains' });
-      }
-
-      return {
-        ...item,
-        issues,
-        selected: issues.some(issue => issue.level === 'error') ? false : item.selected,
-      };
-    }));
+    if (seq !== this.importConflictSeq) {
+      return;
+    }
+    this.message.warning('冲突分析服务暂时不可用，已跳过冲突校验');
   }
 
   private normalizeTagInput(raw: string, fallback: string[] = []): string[] {
@@ -698,16 +702,28 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   getRuntimeState(server: NginxServer): { label: string; toneClass: string } {
+    if (server.runtimeStatus) {
+      if (server.runtimeStatus === 'running') {
+        return { label: '运行中', toneClass: 'running' };
+      }
+      if (server.runtimeStatus === 'stopped') {
+        return { label: '已停止', toneClass: 'stopped' };
+      }
+      if (server.runtimeStatus === 'disabled') {
+        return { label: '已禁用', toneClass: 'disabled' };
+      }
+      return { label: '未知', toneClass: 'unknown' };
+    }
     if (this.nginxRunning === null) {
       return { label: '未知', toneClass: 'unknown' };
     }
     if (!this.nginxRunning) {
-      return { label: 'Stopped', toneClass: 'stopped' };
+      return { label: '已停止', toneClass: 'stopped' };
     }
     if (!server.enabled) {
-      return { label: 'Disabled', toneClass: 'disabled' };
+      return { label: '已禁用', toneClass: 'disabled' };
     }
-    return { label: 'Running', toneClass: 'running' };
+    return { label: '运行中', toneClass: 'running' };
   }
 
   private buildAccessUrls(server: NginxServer): string[] {
@@ -972,197 +988,4 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     return text;
   }
 
-  private extractServerBlocks(configText: string): string[] {
-    const content = String(configText || '');
-    const blocks: string[] = [];
-    const token = /\bserver\b/g;
-    let match: RegExpExecArray | null = null;
-
-    while ((match = token.exec(content)) !== null) {
-      let cursor = match.index + match[0].length;
-      while (cursor < content.length && /\s/.test(content[cursor])) {
-        cursor += 1;
-      }
-      if (content[cursor] !== '{') {
-        continue;
-      }
-      const end = this.findBlockEnd(content, cursor);
-      if (end < 0) {
-        continue;
-      }
-      blocks.push(content.slice(match.index, end + 1));
-      token.lastIndex = end + 1;
-    }
-    return blocks;
-  }
-
-  private findBlockEnd(content: string, openBraceIndex: number): number {
-    let depth = 0;
-    for (let i = openBraceIndex; i < content.length; i += 1) {
-      const ch = content[i];
-      if (ch === '{') {
-        depth += 1;
-      } else if (ch === '}') {
-        depth -= 1;
-        if (depth === 0) {
-          return i;
-        }
-      }
-    }
-    return -1;
-  }
-
-  private parseServerBlockToRequest(serverBlock: string): CreateNginxServerRequest | null {
-    const openIndex = serverBlock.indexOf('{');
-    const closeIndex = serverBlock.lastIndexOf('}');
-    if (openIndex < 0 || closeIndex <= openIndex) {
-      return null;
-    }
-    const body = serverBlock.slice(openIndex + 1, closeIndex);
-    const topLevel = this.extractTopLevelDirectives(body);
-
-    const listenRaw = topLevel.get('listen') || [];
-    const listens = listenRaw
-      .map(item => this.parseListenPort(item))
-      .filter((value): value is number => value !== null)
-      .map(value => String(value));
-    const domains = (topLevel.get('server_name') || [])
-      .flatMap(item => item.split(/\s+/))
-      .map(item => item.trim())
-      .filter(item => item && item !== '_');
-    const root = (topLevel.get('root') || [])[0]?.trim() || '';
-    const index = ((topLevel.get('index') || [])[0] || '')
-      .split(/\s+/)
-      .map(item => item.trim())
-      .filter(Boolean);
-    const sslCert = (topLevel.get('ssl_certificate') || [])[0]?.trim() || '';
-    const sslKey = (topLevel.get('ssl_certificate_key') || [])[0]?.trim() || '';
-    const locations = this.parseLocations(body);
-
-    const hasSslListen = listenRaw.some(item => /\bssl\b/i.test(item));
-    const ssl = Boolean(sslCert && sslKey) || hasSslListen;
-    const name = domains[0] || `imported-server-${Date.now()}`;
-    const uniqueListen = Array.from(new Set(listens));
-
-    return {
-      name,
-      listen: uniqueListen.length ? uniqueListen : [ssl ? '443' : '80'],
-      domains: domains.length ? Array.from(new Set(domains)) : ['127.0.0.1'],
-      root,
-      index: index.length ? Array.from(new Set(index)) : ['index.html'],
-      locations,
-      ssl,
-      protocol: ssl ? 'https' : 'http',
-      enabled: true,
-      sslCert: sslCert || undefined,
-      sslKey: sslKey || undefined,
-      extraConfig: '',
-    };
-  }
-
-  private extractTopLevelDirectives(content: string): Map<string, string[]> {
-    const directiveMap = new Map<string, string[]>();
-    let depth = 0;
-    let statement = '';
-    const flush = () => {
-      const normalized = statement.trim();
-      statement = '';
-      if (!normalized) {
-        return;
-      }
-      const m = normalized.match(/^([a-zA-Z_][\w]*)\s+([\s\S]+)$/);
-      if (!m) {
-        return;
-      }
-      const key = m[1].toLowerCase();
-      const value = m[2].replace(/;$/, '').trim();
-      if (!value) {
-        return;
-      }
-      if (!directiveMap.has(key)) {
-        directiveMap.set(key, []);
-      }
-      directiveMap.get(key)!.push(value);
-    };
-
-    for (let i = 0; i < content.length; i += 1) {
-      const ch = content[i];
-      if (ch === '#') {
-        while (i < content.length && content[i] !== '\n') {
-          i += 1;
-        }
-        continue;
-      }
-      if (ch === '{') {
-        depth += 1;
-        continue;
-      }
-      if (ch === '}') {
-        if (depth > 0) {
-          depth -= 1;
-        }
-        continue;
-      }
-      if (depth > 0) {
-        continue;
-      }
-      statement += ch;
-      if (ch === ';') {
-        flush();
-      }
-    }
-    return directiveMap;
-  }
-
-  private parseLocations(content: string): NginxLocation[] {
-    const locations: NginxLocation[] = [];
-    const locationRegex = /location\s+(\S+)\s*\{([\s\S]*?)\}/g;
-    let match: RegExpExecArray | null = null;
-    while ((match = locationRegex.exec(content)) !== null) {
-      const path = String(match[1] || '').trim() || '/';
-      const block = String(match[2] || '');
-      const lines = block
-        .split(/\r?\n/)
-        .map(item => item.trim())
-        .filter(Boolean);
-      let proxyPass: string | undefined;
-      let root: string | undefined;
-      let index: string[] | undefined;
-      let tryFiles: string[] | undefined;
-      const raw: string[] = [];
-
-      lines.forEach(line => {
-        const normalized = line.replace(/;$/, '');
-        if (/^proxy_pass\s+/i.test(normalized)) {
-          proxyPass = normalized.replace(/^proxy_pass\s+/i, '').trim();
-          return;
-        }
-        if (/^root\s+/i.test(normalized)) {
-          root = normalized.replace(/^root\s+/i, '').trim();
-          return;
-        }
-        if (/^index\s+/i.test(normalized)) {
-          index = normalized.replace(/^index\s+/i, '').split(/\s+/).map(item => item.trim()).filter(Boolean);
-          return;
-        }
-        if (/^try_files\s+/i.test(normalized)) {
-          tryFiles = normalized.replace(/^try_files\s+/i, '').split(/\s+/).map(item => item.trim()).filter(Boolean);
-          return;
-        }
-        raw.push(line.endsWith(';') ? line : `${line};`);
-      });
-
-      locations.push({
-        path,
-        proxyPass,
-        root,
-        index,
-        tryFiles,
-        rawConfig: raw.length ? raw.join('\n') : undefined,
-      });
-    }
-    return locations;
-  }
-
 }
-

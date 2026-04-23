@@ -330,6 +330,10 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         this.message.warning('SSL 私钥路径格式无效，请填写绝对路径');
         return;
       }
+      const sslValidated = await this.validateSslReadable();
+      if (!sslValidated) {
+        return;
+      }
     }
 
     this.syncIndex();
@@ -507,6 +511,35 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       return true;
     }
     return false;
+  }
+
+  private async validateSslReadable(): Promise<boolean> {
+    try {
+      const certPath = String(this.formData.sslCert || '').trim();
+      const keyPath = String(this.formData.sslKey || '').trim();
+      const res = await this.nginxService.validateSslPaths(certPath, keyPath);
+      if (!res.success) {
+        this.message.warning(res.error || 'SSL 文件校验失败');
+        return false;
+      }
+      if (!res.valid) {
+        if (!res.cert?.exists) {
+          this.message.warning(`SSL 证书不存在: ${certPath}`);
+        } else if (!res.cert?.readable) {
+          this.message.warning(`SSL 证书不可读: ${certPath}`);
+        }
+        if (!res.key?.exists) {
+          this.message.warning(`SSL 私钥不存在: ${keyPath}`);
+        } else if (!res.key?.readable) {
+          this.message.warning(`SSL 私钥不可读: ${keyPath}`);
+        }
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      this.message.warning('SSL 文件校验失败: ' + this.extractErrorMessage(err));
+      return false;
+    }
   }
 
   private async detectPortConflict(): Promise<boolean> {

@@ -272,6 +272,9 @@
         </label>
         <span>共 {{ importTotalCount }} 项，可导入 {{ importValidCount }} 项，已选择 {{ importSelectedCount }} 项</span>
       </div>
+      @if (parsingImport()) {
+        <div class="import-parsing-hint">正在解析配置...</div>
+      }
       <div class="import-preview-list">
         @for (item of importCandidates(); track item.id) {
           <div

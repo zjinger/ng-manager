@@ -59,6 +59,7 @@ export class NginxServerService {
     const ssl = this.resolveSsl(request.ssl, request.protocol);
     const normalizedName = this.normalizeName(request.name);
     const now = new Date().toISOString();
+    const createdBy = this.normalizeManagedDisplayName(request.createdBy);
     const normalizedServer: NginxServer = {
       id: '',
       name: normalizedName,
@@ -75,7 +76,7 @@ export class NginxServerService {
       configText: '',
       createdAt: now,
       updatedAt: now,
-      createdBy: 'system',
+      createdBy,
     };
     await this.parseServersFromConfig();
     this.ensureNoPortConflicts(null, normalizedServer.listen, normalizedServer.enabled);
