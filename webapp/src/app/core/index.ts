@@ -4,3 +4,4 @@ export * from "./ws"
 export * from './http'
 export * from "./local-state"
 export * from './common'
+export * from './stores'

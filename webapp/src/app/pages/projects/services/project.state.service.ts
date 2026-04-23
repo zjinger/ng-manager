@@ -1,11 +1,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { EditingProjectDraft, Project, ProjectMemberEntity } from '@models/project.model';
-import { ProjectApiService } from './project-api.service';
-import { UiNotifierService } from '@core/ui-notifier.service';
-import { NzModalService } from 'ng-zorro-antd/modal';
-import { LocalStateStore, LS_KEYS } from '@core/local-state';
 import { Router } from '@angular/router';
-import { ProjectContextStore } from '@app/core/stores/project-context/project-context.store';
+import { ProjectContextStore } from '@app/core';
+import { UiNotifierService } from '@core/ui-notifier.service';
+import { EditingProjectDraft, Project } from '@models/project.model';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { ProjectApiService } from './project-api.service';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectStateService {
@@ -13,7 +12,6 @@ export class ProjectStateService {
   private notify = inject(UiNotifierService);
   private projectService = inject(ProjectApiService);
   private projectContext = inject(ProjectContextStore);
-  private ls = inject(LocalStateStore);
   private router = inject(Router);
 
   projects = computed(() => this.projectContext.projects());
@@ -31,7 +29,7 @@ export class ProjectStateService {
     const kw = this.keyword().trim().toLowerCase();
     if (!kw) return this.projects();
     return this.projects().filter((p) => p.name.toLowerCase().includes(kw));
-  }); 
+  });
   favoriteProjects = computed(() => this.filteredProjects().filter((p) => p.isFavorite));
   moreProjects = computed(() => this.filteredProjects().filter((p) => !p.isFavorite));
   recentProjects = computed(() =>
