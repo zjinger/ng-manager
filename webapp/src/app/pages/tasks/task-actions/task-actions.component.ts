@@ -8,7 +8,7 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
   imports: [NzSpaceModule, NzButtonModule, NzIconModule, NzPopconfirmModule],
   template: `
     <nz-space>
-    @if(isStopped){
+    @if(isStartable){
         <button
           nz-button
           nzType="primary"
@@ -65,7 +65,7 @@ import { NzSpaceModule } from 'ng-zorro-antd/space';
 export class TaskActionsComponent {
   @Input() isRunning = false;
   @Input() isStopping = false;
-  @Input() isStopped = false;
+  @Input() isStartable = false;
   @Output() toggle = new EventEmitter<void>();
   @Output() restart = new EventEmitter<void>();
 

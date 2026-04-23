@@ -55,7 +55,7 @@ export class QuickTaskWidgetComponent implements OnChanges {
 
   readonly isRunning = computed(() => this.curRuntime().status === "running");
   readonly isStopping = computed(() => this.curRuntime().status === "stopping");
-  readonly isStopped = computed(() => {
+  readonly isStartable = computed(() => {
     const st = this.curRuntime().status;
     return st === "idle" || st === "stopped" || st === "failed" || st === "success";
   });
@@ -124,7 +124,7 @@ export class QuickTaskWidgetComponent implements OnChanges {
     const taskId = this.curConfig()!.taskId;
     if (this.isRunning()) {
       this.taskState.stopSelected(taskId);
-    } else if (this.isStopped()) {
+    } else if (this.isStartable()) {
       this.taskState.startSelected(taskId);
     }
     this.goToTask();

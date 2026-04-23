@@ -39,7 +39,7 @@ import { TaskStatus } from '@core/ws';
                   </div>
                 </div>
               </div>
-              <button nz-button nzType="text" type="button" (click)="$event.stopPropagation(); toggleTask(task)">
+              <button nz-button nzType="text" type="button" [disabled]="task.runtime?.status === 'stopping'" (click)="$event.stopPropagation(); toggleTask(task)">
                 <nz-icon [nzType]="getTaskActionIcon(task)" nzTheme="outline"   />
               </button>
             </div>
@@ -147,6 +147,7 @@ export class ProjectItemPopoverComponent implements OnChanges {
   toggleTask(task: TaskRow) {
     const taskId = task?.spec?.id?.trim();
     if (!taskId) return;
+    if (task.runtime?.status === "stopping") return;
     if (task.runtime?.status === "running") {
       this.state.stopSelected(taskId);
     } else {

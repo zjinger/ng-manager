@@ -114,7 +114,7 @@ export class TaskStreamService {
       // 事件先发出去（StateService 用它维护 taskId -> runId）
       this.event$.next(msg);
       // 组装 TaskRuntime，然后 setRuntime
-      const nextRt = this.applyEventToRuntime(type, payload);
+      const nextRt = this.applyEventToRuntime(type, payload, msg.ts);
       if (nextRt) {
         this.runtimeStore.setRuntime(nextRt);
       }
@@ -143,7 +143,7 @@ export class TaskStreamService {
     return this.outputByTaskId.get(id)!;
   }
 
-  private applyEventToRuntime<K extends TaskEventType>(type: K, payload: TaskEventPayloadMap[K]): TaskRuntime | null {
+  private applyEventToRuntime<K extends TaskEventType>(type: K, payload: TaskEventPayloadMap[K], eventTs?: number): TaskRuntime | null {
     const taskId = String(payload?.taskId ?? '').trim();
     const runId = String(payload?.runId ?? '').trim();
     if (!taskId || !runId) return null;
@@ -171,10 +171,17 @@ export class TaskStreamService {
         base.signal = snapPayload.signal;
         return base;
       case 'started':
+        if (prev && prev.runId === runId) {
+          const st = prev.status;
+          if (st === 'success' || st === 'failed' || st === 'stopped') {
+            // 同一 run 已终态，忽略乱序 started
+            return prev;
+          }
+        }
         base.projectId = String(payload?.projectId ?? base.projectId ?? '').trim();
         base.status = 'running';
         base.pid = (payload as TaskStartedPayload)?.pid ?? base.pid;
-        base.startedAt = (payload as TaskStartedPayload)?.startedAt ?? base.startedAt ?? Date.now();
+        base.startedAt = (payload as TaskStartedPayload)?.startedAt ?? base.startedAt ?? eventTs ?? Date.now();
         // 清理上一次退出字段
         base.stoppedAt = undefined;
         base.exitCode = undefined;
@@ -185,6 +192,13 @@ export class TaskStreamService {
         return base;
       case 'exited':
         // exited payload: { taskId, runId, exitCode, signal, stoppedAt }
+        if (base.status === 'success' || base.status === 'stopped' || base.status === 'failed') {
+          // 同一 run 已是终态：只补充字段，不再重算状态，避免重复/乱序 exited 覆盖
+          base.exitCode = (payload as TaskExitedPayload)?.exitCode ?? base.exitCode ?? null;
+          base.signal = (payload as TaskExitedPayload)?.signal ?? base.signal ?? null;
+          base.stoppedAt = (payload as TaskExitedPayload)?.stoppedAt ?? base.stoppedAt ?? eventTs ?? Date.now();
+          return base;
+        }
         const wasStopping = base.status === 'stopping';
         base.exitCode = (payload as TaskExitedPayload)?.exitCode ?? null;
         base.signal = (payload as TaskExitedPayload)?.signal ?? null;
@@ -200,7 +214,7 @@ export class TaskStreamService {
         } else {
           base.status = 'failed';
         }
-        base.stoppedAt = (payload as TaskExitedPayload)?.stoppedAt ?? Date.now();
+        base.stoppedAt = (payload as TaskExitedPayload)?.stoppedAt ?? eventTs ?? Date.now();
         return base;
       case 'failed':
         // failed payload: { taskId, runId, error }

@@ -102,8 +102,12 @@ export class TaskCatalogService {
   setRows(projectId: string, rows: TaskRow[]) {
     const pid = (projectId ?? "").trim();
     if (!pid) return;
+    // refresh 结果是快照，可能落后于 WS 实时事件。
+    // 这里仅在本地还没有 runtime 时才初始化，避免用旧快照覆盖实时态。
     for (const row of rows ?? []) {
-      if (row.runtime) this.runtimeStore.setRuntime(row.runtime);
+      if (!row.runtime) continue;
+      const current = this.runtimeStore.runtimeSignal(row.runtime.taskId)();
+      if (!current) this.runtimeStore.setRuntime(row.runtime);
     }
     this.state.update((st) => ({
       ...st,

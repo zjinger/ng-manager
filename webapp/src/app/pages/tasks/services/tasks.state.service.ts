@@ -6,6 +6,7 @@ import { TaskRuntimeStore } from "./task-runtime-store";
 import { TaskCatalogService } from "./task-catalog.service";
 import { ProjectContextStore } from "@app/core/stores/project-context/project-context.store";
 import { NodeVersionService } from '../node-version/node-version.service';
+import { UiNotifierService } from "@app/core";
 
 @Injectable({ providedIn: "root" })
 export class TaskStateService {
@@ -15,6 +16,7 @@ export class TaskStateService {
   private catalog = inject(TaskCatalogService);
   private nodeVersion = inject(NodeVersionService);
   private projectContext = inject(ProjectContextStore);
+  private notify = inject(UiNotifierService);
   private subscribedTaskIds = new Set<string>();
 
   /* ---------------- 基础状态 ---------------- */
@@ -71,7 +73,7 @@ export class TaskStateService {
 
   readonly isRunning = computed(() => this.selectedRuntimeStatus().status === "running");
   readonly isStopping = computed(() => this.selectedRuntimeStatus().status === "stopping");
-  readonly isStopped = computed(() => {
+  readonly isStartable = computed(() => {
     const st = this.selectedRuntimeStatus().status;
     return st === "idle" || st === "stopped" || st === "failed" || st === "success";
   });
@@ -153,6 +155,17 @@ export class TaskStateService {
     this.api.refresh(pid).subscribe({
       next: (rows) => {
         this.catalog.setRows(pid, rows ?? []);
+        const selectedId = this.selectedTaskId();
+        if (selectedId) {
+          const exists = (rows ?? []).some((r) => r?.spec?.id === selectedId);
+          if (!exists) {
+            const first = (rows ?? [])[0];
+            this.selectedTaskId.set(first?.spec?.id ?? "");
+          }
+        } else {
+          const first = (rows ?? [])[0];
+          if (first) this.selectedTaskId.set(first.spec.id);
+        }
         this.loading.set(false);
       },
       error: (e) => {
@@ -176,7 +189,7 @@ export class TaskStateService {
   toggleTask() {
     if (this.isRunning()) {
       this.stopSelected();
-    } else if (this.isStopped()) {
+    } else if (this.isStartable()) {
       this.startSelected();
     }
   }
@@ -194,6 +207,9 @@ export class TaskStateService {
       next: () => {
         // 任务启动后刷新 Node 版本信息（可能已自动切换）
           this.nodeVersion.refresh();
+      },
+      error: (e) => {
+        this.notify.error(e?.message || '任务启动失败');
       }
     });
   }
@@ -207,7 +223,7 @@ export class TaskStateService {
     if (!taskId) return;
     // 取当前 runtime（必须要有 runId/projectId 才能工程化维护 runningCount） 
     const curRt = this.getRuntimeSignal(taskId);
-    if (curRt) {
+    if (curRt?.status === 'running') {
       // 先置 stopping（保留 pid/startedAt/runId/projectId）
       this.runtimeStore.setRuntime({ ...curRt, status: 'stopping' });
     }
@@ -220,9 +236,10 @@ export class TaskStateService {
         if (
           curRt &&
           curRt.status === 'running' &&
-          nowRt &&
-          nowRt.runId === curRt.runId &&
-          nowRt.status === 'stopping'
+          (
+            !nowRt ||
+            (nowRt.runId === curRt.runId && nowRt.status === 'stopping')
+          )
         ) {
           this.runtimeStore.setRuntime(curRt);
         }
@@ -237,7 +254,11 @@ export class TaskStateService {
   restartSelected(taskId?: string) {
     taskId = taskId?.trim() || this.selectedTaskId();
     if (!taskId) return;
-    this.api.restart(taskId).subscribe();
+    this.api.restart(taskId).subscribe({
+      error: (e) => {
+        this.notify.error(e?.message || '任务重启失败');
+      }
+    });
   }
 
   /* ---------------- 给 popover 用 ---------------- */

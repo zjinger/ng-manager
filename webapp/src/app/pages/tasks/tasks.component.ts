@@ -56,7 +56,7 @@ import { NodeVersionComponent } from './node-version/node-version.component';
         <app-task-actions 
           [isStopping]="taskState.isStopping()"
           [isRunning]="taskState.isRunning()"
-          [isStopped]="taskState.isStopped()"
+          [isStartable]="taskState.isStartable()"
           (toggle)="taskState.toggleTask()"
           (restart)="taskState.restartSelected()"
           >
