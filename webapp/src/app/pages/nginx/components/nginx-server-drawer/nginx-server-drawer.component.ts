@@ -17,20 +17,26 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 import { NginxService } from '../../services/nginx.service';
 import type { NginxLocation, NginxServer, CreateNginxServerRequest } from '../../models/nginx.types';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
 interface ServerDiffRow {
   label: string;
   before: string;
   after: string;
 }
+
+type FrontendServiceType = 'static' | 'web';
 
 /**
  * Nginx Server 新增/编辑 Drawer
@@ -47,10 +53,14 @@ interface ServerDiffRow {
     NzFormModule,
     NzIconModule,
     NzInputModule,
+    NzInputNumberModule,
     NzModalModule,
+    NzRadioModule,
     NzSelectModule,
+    NzSwitchModule,
     NzTooltipModule,
     NzPopconfirmModule,
+    NzCheckboxModule
   ],
   templateUrl: './nginx-server-drawer.component.html',
   styleUrls: ['./nginx-server-drawer.component.less'],
@@ -75,13 +85,18 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   previewVisible = signal(false);
   previewContent = signal('');
 
-  readonly commonListenOptions = ['80', '443', '8080', '8443'];
-  readonly commonDomainOptions = ['127.0.0.1', 'localhost', 'example.com'];
+  commonDomainOptions = ['127.0.0.1'];
+  localIp: string | null = null;
+  hasFetchedLocalIp = false;
   readonly commonIndexOptions = ['index.html'];
 
-  listenValues: string[] = [];
+  listenPort: number | null = null;
   domainValues: string[] = ['127.0.0.1'];
-  indexValues: string[] = ['index.html'];
+  indexFile = 'index.html';
+  frontendServiceType: FrontendServiceType = 'web';
+  frontendStaticRoot = '';
+  frontendWebService = '';
+  apiProxies: Array<{ pathPrefix: string; backendService: string; isWebSocket: boolean }> = [];
 
   formData: CreateNginxServerRequest = {
     name: '',
@@ -121,6 +136,10 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
 
     if (shouldReset) {
       this.scheduleResetForm();
+      if (this.visible && !this.hasFetchedLocalIp) {
+        this.hasFetchedLocalIp = true;
+        this.getLocalIp();
+      }
     }
   }
 
@@ -158,10 +177,10 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
 
   private resetForm(): void {
     if (this.editingServer) {
-      const parsedListen = this.parseListenValues(this.editingServer.listen);
+      const parsedPort = this.parseListenPort(this.editingServer.listen);
       this.formData = {
         name: this.editingServer.name,
-        listen: parsedListen.length ? parsedListen : ['80'],
+        listen: parsedPort ? [String(parsedPort)] : ['80'],
         domains: [...(this.editingServer.domains || [])],
         root: this.editingServer.root || '',
         index: [...(this.editingServer.index?.length ? this.editingServer.index : ['index.html'])],
@@ -173,14 +192,15 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         sslKey: this.editingServer.sslKey || '',
         extraConfig: this.editingServer.extraConfig || '',
       };
-      this.listenValues = [...this.formData.listen];
+      this.listenPort = parsedPort || 80;
       this.domainValues = [...(this.formData.domains || [])];
-      this.indexValues = [...(this.formData.index || ['index.html'])];
+      this.indexFile = (this.formData.index || ['index.html'])[0] || 'index.html';
+      this.initScenarioFromFormData();
     } else if (this.duplicateSourceServer) {
-      const parsedListen = this.parseListenValues(this.duplicateSourceServer.listen);
+      const parsedPort = this.parseListenPort(this.duplicateSourceServer.listen);
       this.formData = {
         name: this.makeCopyName(this.duplicateSourceServer.name),
-        listen: parsedListen.length ? parsedListen : [],
+        listen: parsedPort ? [String(parsedPort)] : [],
         domains: [...(this.duplicateSourceServer.domains || ['127.0.0.1'])],
         root: this.duplicateSourceServer.root || '',
         index: [...(this.duplicateSourceServer.index?.length ? this.duplicateSourceServer.index : ['index.html'])],
@@ -192,17 +212,18 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         sslKey: this.duplicateSourceServer.sslKey || '',
         extraConfig: this.duplicateSourceServer.extraConfig || '',
       };
-      this.listenValues = [...this.formData.listen];
+      this.listenPort = parsedPort;
       this.domainValues = [...(this.formData.domains || [])];
-      this.indexValues = [...(this.formData.index || ['index.html'])];
+      this.indexFile = (this.formData.index || ['index.html'])[0] || 'index.html';
+      this.initScenarioFromFormData();
     } else {
       this.formData = {
         name: '',
-        listen: [],
+        listen: ['80'],
         domains: ['127.0.0.1'],
         root: '',
         index: ['index.html'],
-        locations: [],//{ path: '/', proxyPass: '' }
+        locations: [],
         ssl: false,
         protocol: 'http',
         enabled: true,
@@ -210,9 +231,13 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         sslKey: '',
         extraConfig: '',
       };
-      this.listenValues = [];
+      this.listenPort = 80;
       this.domainValues = ['127.0.0.1'];
-      this.indexValues = ['index.html'];
+      this.indexFile = 'index.html';
+      this.frontendServiceType = 'web';
+      this.frontendStaticRoot = '';
+      this.frontendWebService = '';
+      this.apiProxies = [];
     }
   }
 
@@ -236,55 +261,53 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     this.emitVisibleChange(false);
   }
 
-  syncIndex(): void {
-    const normalized = (this.indexValues || [])
-      .flatMap(item => String(item || '').split(/[,\s]+/))
-      .map(item => item.trim())
-      .filter(Boolean)
-      .filter((item, index, arr) => arr.indexOf(item) === index);
-
-    this.indexValues = normalized.length ? normalized : ['index.html'];
-    this.formData.index = [...this.indexValues];
-  }
-
-  addLocation(template: 'empty' | 'api' | 'static' | 'reverse' = 'empty'): void {
-    const list = [...(this.formData.locations || [])];
-    if (template === 'api') {
-      list.push({
-        path: '/api/',
-        proxyPass: 'http://127.0.0.1:6808',
-      });
-    } else if (template === 'static') {
-      list.push({
-        path: '/',
-        root: this.formData.root || '/var/www/html',
-        index: ['index.html', 'index.htm'],
-      });
-    } else if (template === 'reverse') {
-      list.push({
-        path: '/',
-        proxyPass: 'http://127.0.0.1:8080',
-      });
+  onFrontendServiceTypeChange(next: FrontendServiceType): void {
+    this.frontendServiceType = next;
+    if (next === 'static') {
+      this.frontendWebService = '';
+      this.frontendStaticRoot = this.frontendStaticRoot || String(this.formData.root || '').trim();
+      if (!this.indexFile) {
+        this.indexFile = 'index.html';
+      }
     } else {
-      list.push({
-        path: '',
-        proxyPass: '',
-      });
+      this.frontendStaticRoot = '';
+      this.indexFile = 'index.html';
     }
-    this.formData.locations = list;
   }
 
-  removeLocation(index: number): void {
-    const list = [...(this.formData.locations || [])];
+  async getLocalIp(): Promise<void> {
+    try {
+      const res = await this.nginxService.getLocalIp();
+      if (res.success && res.ip) {
+        this.localIp = res.ip;
+        if (!this.commonDomainOptions.includes(res.ip)) {
+          this.commonDomainOptions = [...this.commonDomainOptions, res.ip];
+        }
+        const currentDomains = this.domainValues || [];
+        if (!currentDomains.includes(res.ip)) {
+          this.domainValues = [...currentDomains, res.ip];
+          this.syncDomains();
+        }
+      }
+    } catch {
+      // 静默失败
+    }
+  }
+
+  addApiProxy(): void {
+    this.apiProxies = [...this.apiProxies, { pathPrefix: '/api', backendService: '', isWebSocket: false }];
+  }
+
+  removeApiProxy(index: number): void {
+    const list = [...this.apiProxies];
     list.splice(index, 1);
-    this.formData.locations = list;
+    this.apiProxies = list;
   }
 
   previewConfig(): void {
     this.syncListen();
     this.syncDomains();
-    this.syncIndex();
-    this.normalizeLocations();
+    this.syncScenarioToFormData();
     const request = this.toComparableRequestFromForm();
     this.previewContent.set(this.generatePreviewConfig(request));
     this.previewVisible.set(true);
@@ -309,8 +332,41 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
 
     this.syncListen();
     if (!this.formData.listen.length) {
-      this.message.warning('请至少填写一个监听端口');
+      this.message.warning('请填写监听端口');
       return;
+    }
+
+    if (this.frontendServiceType === 'static') {
+      const root = String(this.frontendStaticRoot || '').trim();
+      if (!root) {
+        this.message.warning('选择“静态文件目录”时，请填写前端静态目录');
+        return;
+      }
+      if (!this.isValidFilePath(root)) {
+        this.message.warning('前端静态目录路径格式无效，请填写绝对路径');
+        return;
+      }
+    } else {
+      const web = String(this.frontendWebService || '').trim();
+      if (!web) {
+        this.message.warning('选择“Web服务地址”时，请填写前端服务地址');
+        return;
+      }
+      if (!this.isValidHttpUrl(web)) {
+        this.message.warning('前端服务地址无效，请填写 http:// 或 https:// 开头的完整地址');
+        return;
+      }
+    }
+
+    for (let i = 0; i < this.apiProxies.length; i++) {
+      const proxy = this.apiProxies[i];
+      const prefix = this.normalizeApiPathPrefix(proxy.pathPrefix);
+      proxy.pathPrefix = prefix;
+      const backend = String(proxy.backendService || '').trim();
+      if (backend && !this.isValidHttpUrl(backend)) {
+        this.message.warning(`第 ${i + 1} 个 API 代理的后端服务地址无效，请填写 http:// 或 https:// 开头的完整地址`);
+        return;
+      }
     }
 
     if (this.formData.protocol === 'https') {
@@ -336,8 +392,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       }
     }
 
-    this.syncIndex();
-    this.normalizeLocations();
+    this.syncScenarioToFormData();
     const changedConfirmed = await this.confirmDiffBeforeSave();
     if (!changedConfirmed) {
       return;
@@ -362,7 +417,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       }
 
       if (res.success) {
-        this.message.success(isEditMode ? 'Server 已更新' : 'Server 已创建');
+        this.message.success(isEditMode ? 'Server 已更新，请点击“重载”使变更生效' : 'Server 已创建，请点击“重载”使变更生效');
         this.saved.emit();
         this.emitVisibleChange(false);
       } else {
@@ -378,96 +433,125 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   async runConfigTest(): Promise<void> {
     this.syncListen();
     this.syncDomains();
-    this.syncIndex();
-    this.normalizeLocations();
+    this.syncScenarioToFormData();
     await this.validateBeforeSave(true);
   }
 
   private syncListen(): void {
-    const normalized: string[] = [];
-    for (const item of this.listenValues || []) {
-      const raw = String(item || '').trim();
-      if (!raw) {
-        continue;
-      }
-      const parsed = Number(raw);
-      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
-        this.message.warning(`监听端口 "${raw}" 无效，请输入 1-65535 的整数`);
-        continue;
-      }
-      const port = String(parsed);
-      if (!normalized.includes(port)) {
-        normalized.push(port);
-      }
+    if (this.listenPort === null || this.listenPort === undefined) {
+      this.formData.listen = [];
+      return;
     }
-    this.listenValues = normalized;
-    this.formData.listen = [...normalized];
+    const port = Math.floor(this.listenPort);
+    if (port < 1 || port > 65535) {
+      this.message.warning(`监听端口 ${this.listenPort} 无效，请输入 1-65535 的整数`);
+      this.formData.listen = [];
+      return;
+    }
+    this.formData.listen = [String(port)];
   }
 
-  private parseListenValues(listenValues?: string[]): string[] {
-    const normalized: string[] = [];
-    for (const item of listenValues || []) {
+  private parseListenPort(listenValues?: string[]): number | null {
+    if (!listenValues || listenValues.length === 0) {
+      return null;
+    }
+    for (const item of listenValues) {
       const match = String(item || '').match(/\d+/);
       if (!match) {
         continue;
       }
       const parsed = Number(match[0]);
-      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
-        continue;
-      }
-      const port = String(parsed);
-      if (!normalized.includes(port)) {
-        normalized.push(port);
+      if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535) {
+        return parsed;
       }
     }
-    return normalized;
+    return null;
   }
 
-  private normalizeLocations(): void {
-    const normalizeText = (value?: string): string | undefined => {
-      const text = String(value || '').trim();
-      return text ? text : undefined;
-    };
+  private initScenarioFromFormData(): void {
+    const locations = [...(this.formData.locations || [])];
+    const rootLocation = locations.find(loc => String(loc.path || '').trim() === '/');
 
-    const parseList = (value?: string | string[]): string[] | undefined => {
-      if (Array.isArray(value)) {
-        const arr = value.map(item => String(item || '').trim()).filter(Boolean);
-        return arr.length ? arr : undefined;
+    if (rootLocation?.proxyPass) {
+      this.frontendServiceType = 'web';
+      this.frontendWebService = String(rootLocation.proxyPass || '').trim();
+      this.frontendStaticRoot = '';
+    } else {
+      this.frontendServiceType = 'static';
+      this.frontendStaticRoot = String(rootLocation?.root || this.formData.root || '').trim();
+      this.frontendWebService = '';
+      const indexArr = rootLocation?.index?.length ? rootLocation.index : (this.formData.index || []);
+      this.indexFile = indexArr[0] || 'index.html';
+    }
+
+    const apiLocations = locations.filter(loc => {
+      const path = String(loc.path || '').trim();
+      return !!path && path !== '/' && Boolean(loc.proxyPass);
+    });
+
+    if (apiLocations.length > 0) {
+      this.apiProxies = apiLocations.map(loc => ({
+        pathPrefix: this.normalizeApiPathPrefix(String(loc.path || '/api')),
+        backendService: String(loc.proxyPass || '').trim(),
+        isWebSocket: false,
+      }));
+    } else {
+      this.apiProxies = [];
+    }
+  }
+
+  private syncScenarioToFormData(): void {
+    const locations: NginxLocation[] = [];
+    const staticRoot = String(this.frontendStaticRoot || '').trim();
+    const webService = String(this.frontendWebService || '').trim();
+
+    if (this.frontendServiceType === 'static') {
+      this.formData.root = staticRoot;
+      this.formData.index = this.indexFile ? [this.indexFile] : [];
+    } else {
+      this.formData.root = '';
+      this.formData.index = [];
+      if (webService) {
+        locations.push({
+          path: '/',
+          proxyPass: webService,
+        });
       }
-      const text = String(value || '').trim();
-      if (!text) {
-        return undefined;
+    }
+
+    if (this.apiProxies.length > 0) {
+      for (const proxy of this.apiProxies) {
+        const normalizedPath = this.normalizeApiPathPrefix(proxy.pathPrefix);
+        const backend = String(proxy.backendService || '').trim();
+        if (normalizedPath && backend) {
+          const wsRawConfig = proxy.isWebSocket
+            ? [
+                'proxy_http_version 1.1;',
+                'proxy_set_header Upgrade $http_upgrade;',
+                'proxy_set_header Connection "upgrade";',
+              ].join('\n')
+            : undefined;
+          locations.push({
+            path: normalizedPath,
+            proxyPass: backend,
+            rawConfig: wsRawConfig,
+          });
+        }
       }
-      const arr = text.split(/\s+/).map(item => item.trim()).filter(Boolean);
-      return arr.length ? arr : undefined;
-    };
+    }
 
-    const normalized: NginxLocation[] = (this.formData.locations || [])
-      .map(location => {
-        const path = String(location.path || '').trim() || '/';
-        const proxyPass = normalizeText(location.proxyPass);
-        const root = normalizeText(location.root);
-        const index = parseList(location.index as unknown as string | string[]);
-        const tryFiles = parseList(location.tryFiles as unknown as string | string[]);
-        const rawConfig = normalizeText(location.rawConfig);
-        return {
-          path,
-          proxyPass,
-          root,
-          index,
-          tryFiles,
-          rawConfig,
-        };
-      })
-      .filter(location => Boolean(
-        location.proxyPass ||
-        location.root ||
-        location.index?.length ||
-        location.tryFiles?.length ||
-        location.rawConfig
-      ));
+    this.formData.locations = locations;
+  }
 
-    this.formData.locations = normalized;
+  private normalizeApiPathPrefix(raw: string): string {
+    let next = String(raw || '').trim();
+    if (!next) {
+      return '/api';
+    }
+    if (!next.startsWith('/')) {
+      next = `/${next}`;
+    }
+    return next;
   }
 
   private extractErrorMessage(err: unknown): string {
@@ -511,6 +595,19 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       return true;
     }
     return false;
+  }
+
+  private isValidHttpUrl(value: string): boolean {
+    const text = String(value || '').trim();
+    if (!text) {
+      return false;
+    }
+    try {
+      const url = new URL(text);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
   }
 
   private async validateSslReadable(): Promise<boolean> {
@@ -576,8 +673,9 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         return true;
       }
       return false;
-    } catch {
-      return false;
+    } catch (err: any) {
+      this.message.warning('端口冲突校验失败，已阻止保存: ' + this.extractErrorMessage(err));
+      return true;
     }
   }
 
@@ -726,10 +824,30 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   }
 
   private serializeLocations(list: NginxLocation[]): string {
-    return (list || [])
-      .map(item => JSON.stringify(item))
-      .sort((x, y) => x.localeCompare(y, 'zh-CN'))
-      .join(' | ');
+    const lines = (list || [])
+      .map(item => {
+        const path = String(item.path || '/').trim() || '/';
+        const proxy = String(item.proxyPass || '').trim();
+        const root = String(item.root || '').trim();
+        const index = (item.index || []).join(', ');
+        const tryFiles = (item.tryFiles || []).join(' ');
+        const raw = String(item.rawConfig || '').trim();
+        const wsEnabled =
+          /proxy_set_header\s+upgrade\s+\$http_upgrade/i.test(raw) ||
+          /proxy_set_header\s+connection\s+"?upgrade"?/i.test(raw);
+        const parts = [
+          `path=${path}`,
+          proxy ? `proxy=${proxy}` : '',
+          root ? `root=${root}` : '',
+          index ? `index=${index}` : '',
+          tryFiles ? `try_files=${tryFiles}` : '',
+          wsEnabled ? 'ws=on' : 'ws=off',
+          raw ? `raw=${raw.replace(/\s+/g, ' ')}` : '',
+        ].filter(Boolean);
+        return parts.join(' | ');
+      })
+      .sort((x, y) => x.localeCompare(y, 'zh-CN'));
+    return lines.join('\n');
   }
 
   private generatePreviewConfig(request: CreateNginxServerRequest): string {
@@ -768,31 +886,61 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     }
 
     (request.locations || []).forEach(loc => {
-      const path = String(loc.path || '/').trim() || '/';
+      const normalizedPath = String(loc.path || '/').trim() || '/';
+      const proxyPass = String(loc.proxyPass || '').trim();
+      const rawLines = String(loc.rawConfig || '')
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean);
+      const rawSet = new Set(rawLines.map(line => line.replace(/\s+/g, ' ')));
+      const isWsProxy = rawLines.some(line => /upgrade\s+\$http_upgrade/i.test(line));
+
       lines.push('');
-      lines.push(`    location ${path} {`);
-      if (loc.proxyPass) {
-        lines.push(`        proxy_pass ${loc.proxyPass};`);
-      }
-      if (loc.root) {
-        lines.push(`        root ${loc.root};`);
-      }
-      if (loc.index?.length) {
-        lines.push(`        index ${loc.index.join(' ')};`);
-      }
-      if (loc.tryFiles?.length) {
-        lines.push(`        try_files ${loc.tryFiles.join(' ')};`);
-      }
-      if (loc.rawConfig) {
-        loc.rawConfig
-          .split(/\r?\n/)
-          .map(item => item.trim())
-          .filter(Boolean)
-          .forEach(item => {
+      lines.push(`    location ${normalizedPath} {`);
+        if (proxyPass) {
+          lines.push(`        proxy_pass ${proxyPass};`);
+          const defaultProxyLines = [
+            'proxy_set_header Host $host;',
+            'proxy_set_header X-Real-IP $remote_addr;',
+            'proxy_set_header REMOTE-HOST $remote_addr;',
+            'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;',
+            'proxy_set_header X-Forwarded-Proto $scheme;',
+            'proxy_set_header X-Forwarded-Host $host;',
+            'proxy_set_header X-Forwarded-Port $server_port;',
+          ];
+          for (const directive of defaultProxyLines) {
+            if (!rawSet.has(directive)) {
+              lines.push(`        ${directive}`);
+            }
+          }
+          if (isWsProxy) {
+            const wsLines = [
+              'proxy_http_version 1.1;',
+              'proxy_set_header Upgrade $http_upgrade;',
+              'proxy_set_header Connection "upgrade";',
+            ];
+            for (const directive of wsLines) {
+              if (!rawSet.has(directive)) {
+                lines.push(`        ${directive}`);
+              }
+            }
+          }
+        }
+        if (loc.root) {
+          lines.push(`        root ${loc.root};`);
+        }
+        if (loc.index?.length) {
+          lines.push(`        index ${loc.index.join(' ')};`);
+        }
+        if (loc.tryFiles?.length) {
+          lines.push(`        try_files ${loc.tryFiles.join(' ')};`);
+        }
+        if (rawLines.length) {
+          rawLines.forEach(item => {
             lines.push(`        ${item.endsWith(';') ? item : `${item};`}`);
           });
-      }
-      lines.push('    }');
+        }
+        lines.push('    }');
     });
 
     if (request.extraConfig) {
@@ -811,26 +959,31 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   }
 
   private renderDiffHtml(rows: ServerDiffRow[], hiddenCount: number): string {
-    const body = rows.map(row => (
-      `<tr>
-        <td style="padding:6px 8px;border:1px solid #f0f0f0;vertical-align:top;width:120px;font-weight:600;">${this.escapeHtml(row.label)}</td>
-        <td style="padding:6px 8px;border:1px solid #f0f0f0;vertical-align:top;color:rgba(0,0,0,0.65);max-width:260px;word-break:break-all;">${this.formatDiffValue(row.before)}</td>
-        <td style="padding:6px 8px;border:1px solid #f0f0f0;vertical-align:top;color:#262626;max-width:260px;word-break:break-all;">${this.formatDiffValue(row.after)}</td>
-      </tr>`
-    )).join('');
+    const body = rows.map(row => {
+      const beforeContent = this.formatDiffValue(row.before);
+      const afterContent = this.formatDiffValue(row.after);
+      return `<tr>
+        <td style="padding:8px 10px;border:1px solid #f0f0f0;vertical-align:top;font-weight:600;min-width:110px;">${this.escapeHtml(row.label)}</td>
+        <td style="padding:8px 10px;border:1px solid #f0f0f0;vertical-align:top;white-space:pre-wrap;word-break:break-word;max-width:360px;color:#595959;background:#fff7f7;">${beforeContent}</td>
+        <td style="padding:8px 10px;border:1px solid #f0f0f0;vertical-align:top;white-space:pre-wrap;word-break:break-word;max-width:360px;color:#262626;background:#f6ffed;">${afterContent}</td>
+      </tr>`;
+    }).join('');
 
     const extraText = hiddenCount > 0
-      ? `<div style="margin-top:8px;color:rgba(0,0,0,0.45);">还有 ${hiddenCount} 项变更未展开</div>`
+      ? `<div style="margin-top:8px;color:#8c8c8c;font-size:12px;">还有 ${hiddenCount} 项变更未展开</div>`
       : '';
 
     return `
-      <div style="max-height:420px;overflow:auto;">
+      <div style="max-height:460px;overflow:auto;">
+        <div style="margin-bottom:10px;padding:8px 10px;background:#f6ffed;border:1px solid #b7eb8f;border-radius:6px;color:#237804;">
+          检测到 ${rows.length} 项配置变更
+        </div>
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr>
-              <th style="padding:6px 8px;border:1px solid #f0f0f0;background:#fafafa;text-align:left;">字段</th>
-              <th style="padding:6px 8px;border:1px solid #f0f0f0;background:#fafafa;text-align:left;">原值</th>
-              <th style="padding:6px 8px;border:1px solid #f0f0f0;background:#fafafa;text-align:left;">新值</th>
+              <th style="padding:8px 10px;border:1px solid #f0f0f0;background:#fafafa;text-align:left;">字段</th>
+              <th style="padding:8px 10px;border:1px solid #f0f0f0;background:#fff1f0;text-align:left;">原值</th>
+              <th style="padding:8px 10px;border:1px solid #f0f0f0;background:#f6ffed;text-align:left;">新值</th>
             </tr>
           </thead>
           <tbody>${body}</tbody>

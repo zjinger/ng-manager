@@ -7,6 +7,7 @@ import {
   OnInit,
   Output,
   SimpleChanges,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -66,6 +67,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
   @Input() showToolbar = true;
   @Input() nginxRunning: boolean | null = null;
   @Input() openCreateToken = 0;
+  @Input() refreshToken = 0;
   @Output() summaryChange = new EventEmitter<{ total: number; enabled: number }>();
   @Output() serverListMutated = new EventEmitter<void>();
 
@@ -77,10 +79,42 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
   loading = signal(false);
   selectedServerIds = signal<Set<string>>(new Set<string>());
 
-  keyword = '';
-  runtimeFilter: 'all' | 'running' | 'stopped' | 'disabled' = 'all';
-  sortField: 'name' | 'enabled' | 'ports' | 'runtime' = 'name';
-  sortOrder: 'asc' | 'desc' = 'asc';
+  private keywordSig = signal('');
+  private runtimeFilterSig = signal<'all' | 'running' | 'stopped' | 'disabled' | 'pending'>('all');
+  private sortFieldSig = signal<'name' | 'enabled' | 'ports' | 'runtime'>('name');
+  private sortOrderSig = signal<'asc' | 'desc'>('asc');
+
+  get keyword(): string {
+    return this.keywordSig();
+  }
+
+  set keyword(value: string) {
+    this.keywordSig.set(String(value || ''));
+  }
+
+  get runtimeFilter(): 'all' | 'running' | 'stopped' | 'disabled' | 'pending' {
+    return this.runtimeFilterSig();
+  }
+
+  set runtimeFilter(value: 'all' | 'running' | 'stopped' | 'disabled' | 'pending') {
+    this.runtimeFilterSig.set(value);
+  }
+
+  get sortField(): 'name' | 'enabled' | 'ports' | 'runtime' {
+    return this.sortFieldSig();
+  }
+
+  set sortField(value: 'name' | 'enabled' | 'ports' | 'runtime') {
+    this.sortFieldSig.set(value);
+  }
+
+  get sortOrder(): 'asc' | 'desc' {
+    return this.sortOrderSig();
+  }
+
+  set sortOrder(value: 'asc' | 'desc') {
+    this.sortOrderSig.set(value);
+  }
 
   drawerVisible = false;
   editingServer = signal<NginxServer | null>(null);
@@ -103,6 +137,25 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
   private importParseRequestSeq = 0;
   private importConflictTimer: ReturnType<typeof setTimeout> | null = null;
   private importConflictSeq = 0;
+  private mutationInProgress = false;
+  private deferReloadAfterMutation = false;
+  readonly renderedServers = computed<NginxServer[]>(() => {
+    const list = [...this.servers()];
+    const keyword = this.keywordSig().trim().toLowerCase();
+    const keywordFiltered = keyword
+      ? list.filter(server => {
+          const haystacks = [
+            server.name || '',
+            ...(server.domains || []),
+            ...(server.listen || []),
+          ].map(item => String(item).toLowerCase());
+          return haystacks.some(item => item.includes(keyword));
+        })
+      : list;
+
+    const filtered = keywordFiltered.filter(server => this.matchesRuntimeFilter(server));
+    return filtered.sort((a, b) => this.compareServers(a, b));
+  });
 
   ngOnInit() {
     this.loadServers();
@@ -125,6 +178,10 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     if (openCreate && !openCreate.firstChange) {
       this.openDrawer(null);
     }
+    const refresh = changes['refreshToken'];
+    if (refresh && !refresh.firstChange) {
+      void this.loadServers();
+    }
   }
 
   async loadServers(): Promise<void> {
@@ -132,6 +189,10 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     try {
       const res = await this.nginxService.getServers();
       if (res.success && res.servers) {
+        if (this.mutationInProgress) {
+          this.deferReloadAfterMutation = true;
+          return;
+        }
         this.servers.set(res.servers);
         this.reconcileSelection(res.servers);
         this.emitSummary(res.servers);
@@ -478,14 +539,30 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
         }));
         return;
       }
+      this.markImportConflictsUnavailable('冲突分析结果不完整，已阻止导入');
+      return;
     } catch {
-      // 后端分析失败时不再走前端本地规则，避免双端规则漂移
-    }
-
-    if (seq !== this.importConflictSeq) {
+      this.markImportConflictsUnavailable('冲突分析服务暂时不可用，已阻止导入');
       return;
     }
-    this.message.warning('冲突分析服务暂时不可用，已跳过冲突校验');
+  }
+
+  private markImportConflictsUnavailable(message: string): void {
+    this.importCandidates.update(list => list.map(item => {
+      if (!item.request) {
+        return item;
+      }
+      const baseIssues = (item.issues || []).filter(issue => issue.message !== '冲突分析不可用，请稍后重试');
+      return {
+        ...item,
+        selected: false,
+        issues: [
+          ...baseIssues,
+          { level: 'error', message: '冲突分析不可用，请稍后重试', field: 'listen' as const },
+        ],
+      };
+    }));
+    this.message.warning(message);
   }
 
   private normalizeTagInput(raw: string, fallback: string[] = []): string[] {
@@ -507,30 +584,12 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     return unique.length ? unique : ['80'];
   }
 
-  get renderedServers(): NginxServer[] {
-    const list = [...this.servers()];
-    const keyword = this.keyword.trim().toLowerCase();
-    const keywordFiltered = keyword
-      ? list.filter(server => {
-          const haystacks = [
-            server.name || '',
-            ...(server.domains || []),
-            ...(server.listen || []),
-          ].map(item => String(item).toLowerCase());
-          return haystacks.some(item => item.includes(keyword));
-        })
-      : list;
-
-    const filtered = keywordFiltered.filter(server => this.matchesRuntimeFilter(server));
-    return filtered.sort((a, b) => this.compareServers(a, b));
-  }
-
   get selectedCount(): number {
     return this.selectedServerIds().size;
   }
 
   get allVisibleSelected(): boolean {
-    const visible = this.renderedServers;
+    const visible = this.renderedServers();
     if (!visible.length) {
       return false;
     }
@@ -539,7 +598,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   get someVisibleSelected(): boolean {
-    const visible = this.renderedServers;
+    const visible = this.renderedServers();
     if (!visible.length) {
       return false;
     }
@@ -550,7 +609,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
 
   toggleSelectAllVisible(checked: boolean): void {
     const next = new Set(this.selectedServerIds());
-    const visibleIds = this.renderedServers.map(server => server.id);
+    const visibleIds = this.renderedServers().map(server => server.id);
     if (checked) {
       visibleIds.forEach(id => next.add(id));
     } else {
@@ -581,58 +640,45 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     const previous = this.servers();
+    this.mutationInProgress = true;
+    this.deferReloadAfterMutation = false;
     this.applyOptimisticEnabled(selectedIds, enabled);
 
-    const failures: string[] = [];
-    await Promise.all(selectedIds.map(async id => {
-      try {
-        const res = enabled
-          ? await this.nginxService.enableServer(id)
-          : await this.nginxService.disableServer(id);
-        if (!res.success) {
+    try {
+      const failures: string[] = [];
+      await Promise.all(selectedIds.map(async id => {
+        try {
+          const res = enabled
+            ? await this.nginxService.enableServer(id)
+            : await this.nginxService.disableServer(id);
+          if (!res.success) {
+            failures.push(id);
+          }
+        } catch {
           failures.push(id);
         }
-      } catch {
-        failures.push(id);
-      }
-    }));
+      }));
 
-    if (failures.length) {
-      this.rollbackEnabled(previous, failures);
-      this.message.warning(`${failures.length} 项操作失败，已回滚`);
-    } else {
-      this.message.success(enabled ? '批量启用成功' : '批量禁用成功');
-      this.registerUndo(
-        enabled ? `已批量启用 ${selectedIds.length} 项` : `已批量禁用 ${selectedIds.length} 项`,
-        async () => {
-          const rollbackTo = !enabled;
-          this.applyOptimisticEnabled(selectedIds, rollbackTo);
-          const revertFailures: string[] = [];
-          await Promise.all(selectedIds.map(async id => {
-            try {
-              const res = rollbackTo
-                ? await this.nginxService.enableServer(id)
-                : await this.nginxService.disableServer(id);
-              if (!res.success) {
-                revertFailures.push(id);
-              }
-            } catch {
-              revertFailures.push(id);
-            }
-          }));
-          if (revertFailures.length) {
-            await this.loadServers();
-            throw new Error(`撤销失败 ${revertFailures.length} 项`);
-          }
-          this.message.success('已撤销批量操作');
-        }
-      );
-      this.serverListMutated.emit();
+      if (failures.length) {
+        this.rollbackEnabled(previous, failures);
+        this.selectedServerIds.set(new Set<string>(failures));
+        this.message.warning(`${failures.length} 项操作失败，已回滚`);
+      } else {
+        this.message.success(enabled ? '批量启用成功，请点击“重载”使变更生效' : '批量禁用成功，请点击“重载”使变更生效');
+        this.clearSelection();
+      }
+    } finally {
+      this.mutationInProgress = false;
+      if (this.deferReloadAfterMutation) {
+        this.deferReloadAfterMutation = false;
+      }
     }
   }
 
   async toggleServer(id: string, enabled: boolean): Promise<void> {
     const previous = this.servers();
+    this.mutationInProgress = true;
+    this.deferReloadAfterMutation = false;
     this.applyOptimisticEnabled([id], enabled);
     try {
       const res = enabled
@@ -640,23 +686,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
         : await this.nginxService.disableServer(id);
 
       if (res.success) {
-        this.message.success(enabled ? '已启用' : '已禁用');
-        this.registerUndo(
-          enabled ? '已启用，可撤销' : '已禁用，可撤销',
-          async () => {
-            const rollbackTo = !enabled;
-            this.applyOptimisticEnabled([id], rollbackTo);
-            const undoRes = rollbackTo
-              ? await this.nginxService.enableServer(id)
-              : await this.nginxService.disableServer(id);
-            if (!undoRes.success) {
-              await this.loadServers();
-              throw new Error(undoRes.error || '撤销失败');
-            }
-            this.message.success('已撤销操作');
-          }
-        );
-        this.serverListMutated.emit();
+        this.message.success(enabled ? '已启用，请点击“重载”使变更生效' : '已禁用，请点击“重载”使变更生效');
       } else {
         this.rollbackEnabled(previous, [id]);
         this.message.error(res.error || '操作失败');
@@ -664,6 +694,11 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     } catch (err: any) {
       this.rollbackEnabled(previous, [id]);
       this.message.error('操作失败: ' + err.message);
+    } finally {
+      this.mutationInProgress = false;
+      if (this.deferReloadAfterMutation) {
+        this.deferReloadAfterMutation = false;
+      }
     }
   }
 
@@ -673,14 +708,22 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   async deleteServer(server: NginxServer): Promise<void> {
+    if (this.shouldBlockDelete(server)) {
+      this.message.warning('该 Server 仍在运行中，请先停用并重载后再删除');
+      return;
+    }
     try {
       const res = await this.nginxService.deleteServer(server.id);
       if (res.success) {
         this.message.success('已删除');
         this.removeServerLocally(server.id);
-        const restoreRequest = this.toCreateRequestFromServer(server);
+        const snapshotId = String(res.snapshotId || '').trim();
         this.registerUndo('已删除，可撤销', async () => {
-          const undoRes = await this.nginxService.createServer(restoreRequest);
+          if (!snapshotId) {
+            await this.loadServers();
+            throw new Error('恢复快照不存在，请刷新后重试');
+          }
+          const undoRes = await this.nginxService.restoreDeletedServer(snapshotId);
           if (!undoRes.success) {
             await this.loadServers();
             throw new Error(undoRes.error || '恢复失败');
@@ -697,33 +740,29 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
+  private shouldBlockDelete(server: NginxServer): boolean {
+    const runtimeTone = this.resolveRuntimeTone(server);
+    if (runtimeTone === 'running') {
+      return true;
+    }
+    // nginx 运行中且配置处于待重载时，当前生效配置可能仍在提供服务
+    if (this.nginxRunning && server.runtimeStatus === 'pending') {
+      return true;
+    }
+    return false;
+  }
+
   getAccessUrls(server: NginxServer): string[] {
     return this.buildAccessUrls(server);
   }
 
-  getRuntimeState(server: NginxServer): { label: string; toneClass: string } {
-    if (server.runtimeStatus) {
-      if (server.runtimeStatus === 'running') {
-        return { label: '运行中', toneClass: 'running' };
-      }
-      if (server.runtimeStatus === 'stopped') {
-        return { label: '已停止', toneClass: 'stopped' };
-      }
-      if (server.runtimeStatus === 'disabled') {
-        return { label: '已禁用', toneClass: 'disabled' };
-      }
-      return { label: '未知', toneClass: 'unknown' };
-    }
-    if (this.nginxRunning === null) {
-      return { label: '未知', toneClass: 'unknown' };
-    }
-    if (!this.nginxRunning) {
-      return { label: '已停止', toneClass: 'stopped' };
-    }
-    if (!server.enabled) {
-      return { label: '已禁用', toneClass: 'disabled' };
-    }
-    return { label: '运行中', toneClass: 'running' };
+  getProxyTargets(server: NginxServer): Array<{ path: string; proxyPass: string }> {
+    return (server.locations || [])
+      .map(item => ({
+        path: String(item.path || '/').trim() || '/',
+        proxyPass: String(item.proxyPass || '').trim(),
+      }))
+      .filter(item => Boolean(item.proxyPass));
   }
 
   private buildAccessUrls(server: NginxServer): string[] {
@@ -789,41 +828,93 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     if (this.runtimeFilter === 'all') {
       return true;
     }
-    const state = this.getRuntimeState(server).toneClass;
+    const state = this.resolveRuntimeTone(server);
     return state === this.runtimeFilter;
   }
 
   private getRuntimeRank(server: NginxServer): number {
-    const state = this.getRuntimeState(server).toneClass;
+    const state = this.resolveRuntimeTone(server);
     if (state === 'running') {
       return 3;
     }
     if (state === 'disabled') {
       return 2;
     }
-    if (state === 'stopped') {
+    if (state === 'pending') {
       return 1;
     }
-    return 0;
+    if (state === 'stopped') {
+      return 0;
+    }
+    return -1;
+  }
+
+  private resolveRuntimeTone(server: NginxServer): 'running' | 'stopped' | 'disabled' | 'pending' | 'unknown' {
+    const status = server.runtimeStatus;
+    if (status === 'running' || status === 'stopped' || status === 'disabled' || status === 'pending' || status === 'unknown') {
+      return status;
+    }
+    if (this.nginxRunning === null) {
+      return 'unknown';
+    }
+    if (!this.nginxRunning) {
+      return 'stopped';
+    }
+    return server.enabled ? 'running' : 'disabled';
   }
 
   private applyOptimisticEnabled(ids: string[], enabled: boolean): void {
     const idSet = new Set(ids);
     const updated = this.servers().map(server => (
-      idSet.has(server.id) ? { ...server, enabled } : server
+      idSet.has(server.id)
+        ? {
+            ...server,
+            enabled,
+            runtimeStatus: this.resolveRuntimeStatusAfterToggle(server, enabled),
+          }
+        : server
     ));
     this.servers.set(updated);
     this.emitSummary(updated);
   }
 
   private rollbackEnabled(previous: NginxServer[], ids: string[]): void {
-    const rollbackMap = new Map(previous.map(server => [server.id, server.enabled]));
+    const rollbackMap = new Map(previous.map(server => [server.id, server]));
     const idSet = new Set(ids);
-    const rolledBack = this.servers().map(server => (
-      idSet.has(server.id) ? { ...server, enabled: rollbackMap.get(server.id) ?? server.enabled } : server
-    ));
+    const rolledBack = this.servers().map(server => {
+      if (!idSet.has(server.id)) {
+        return server;
+      }
+      const source = rollbackMap.get(server.id);
+      if (!source) {
+        return server;
+      }
+      return {
+        ...server,
+        enabled: source.enabled,
+        runtimeStatus: source.runtimeStatus,
+      };
+    });
     this.servers.set(rolledBack);
     this.emitSummary(rolledBack);
+  }
+
+  private resolveRuntimeStatusAfterToggle(
+    server: NginxServer,
+    enabled: boolean
+  ): NginxServer['runtimeStatus'] {
+    const current = server.runtimeStatus;
+    if (current === 'pending' || current === 'unknown') {
+      return current;
+    }
+    if (this.nginxRunning) {
+      // 运行中变更配置需 reload 才能生效
+      return 'pending';
+    }
+    if (this.nginxRunning === null) {
+      return 'unknown';
+    }
+    return enabled ? 'stopped' : 'disabled';
   }
 
   async undoLastAction(): Promise<void> {
@@ -871,23 +962,6 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     const nextSelected = new Set(this.selectedServerIds());
     nextSelected.delete(id);
     this.selectedServerIds.set(nextSelected);
-  }
-
-  private toCreateRequestFromServer(server: NginxServer): CreateNginxServerRequest {
-    return {
-      name: String(server.name || '').trim(),
-      listen: [...(server.listen || [])],
-      domains: [...(server.domains || [])],
-      root: String(server.root || '').trim() || undefined,
-      index: [...(server.index || [])],
-      locations: (server.locations || []).map(item => ({ ...item })),
-      ssl: Boolean(server.ssl),
-      protocol: server.ssl ? 'https' : 'http',
-      enabled: Boolean(server.enabled),
-      sslCert: String(server.sslCert || '').trim() || undefined,
-      sslKey: String(server.sslKey || '').trim() || undefined,
-      extraConfig: String(server.extraConfig || '').trim() || undefined,
-    };
   }
 
   private extractPorts(listen: string[]): number[] {

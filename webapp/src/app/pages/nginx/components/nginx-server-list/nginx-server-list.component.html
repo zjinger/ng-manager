@@ -21,9 +21,10 @@
         </nz-select>
         <nz-select class="header-runtime-filter" [(ngModel)]="runtimeFilter" nzPlaceHolder="运行态筛选">
           <nz-option nzValue="all" nzLabel="全部状态"></nz-option>
-          <nz-option nzValue="running" nzLabel="Running"></nz-option>
-          <nz-option nzValue="stopped" nzLabel="Stopped"></nz-option>
-          <nz-option nzValue="disabled" nzLabel="Disabled"></nz-option>
+          <nz-option nzValue="running" nzLabel="运行中"></nz-option>
+          <nz-option nzValue="pending" nzLabel="待重载"></nz-option>
+          <nz-option nzValue="stopped" nzLabel="已停止"></nz-option>
+          <nz-option nzValue="disabled" nzLabel="已禁用"></nz-option>
         </nz-select>
       </div>
       <div class="header-right">
@@ -94,7 +95,7 @@
             <div class="cell action-col"><div class="skeleton-block skeleton-actions"></div></div>
           </div>
         }
-      } @else if (!renderedServers.length) {
+      } @else if (!renderedServers().length) {
         <div class="empty-state">
           <nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></nz-icon>
           <p>{{ keyword.trim() ? '未匹配到 Server' : '暂无 Server 配置' }}</p>
@@ -103,7 +104,7 @@
           }
         </div>
       } @else {
-        @for (server of renderedServers; track server.id) {
+        @for (server of renderedServers(); track server.id) {
           <div class="server-grid-row" [class.disabled-row]="!server.enabled">
               <div class="cell select-col">
                 <label
@@ -124,9 +125,6 @@
                 <div class="server-name">
                   <nz-icon nzType="file" nzTheme="outline" class="conf-icon"></nz-icon>
                   <span class="server-name-text">{{ server.name }}</span>
-                  <span [ngClass]="['runtime-pill', getRuntimeState(server).toneClass]">
-                    {{ getRuntimeState(server).label }}
-                  </span>
                 </div>
               </div>
 
@@ -159,11 +157,13 @@
               </div>
               <!--转发地址-->
               <div class="cell proxy-col">
-                @if (server.locations) {
+                @if (getProxyTargets(server).length) {
                   <div class="proxy-links">
-                    @for (proxy of server.locations; track proxy) {
+                    @for (proxy of getProxyTargets(server); track proxy.path + proxy.proxyPass) {
                       <a class="proxy-link" [href]="proxy.proxyPass" target="_blank" rel="noopener noreferrer">
-                        {{ proxy.proxyPass }}
+                        <span class="proxy-path">{{ proxy.path }}</span>
+                        <span class="proxy-arrow">→</span>
+                        <span>{{ proxy.proxyPass }}</span>
                       </a>
                     }
                   </div>

@@ -17,7 +17,13 @@
     }
   </ng-container>
 
-  @if (!instance()) {
+  @if (!statusReady()) {
+    <nz-layout class="console-shell">
+      <nz-content class="unbound-content">
+        <nz-spin nzTip="加载 Nginx 状态中..." style="width: 160px;"></nz-spin>
+      </nz-content>
+    </nz-layout>
+  } @else if (!instance()) {
     <nz-layout class="console-shell">
       <nz-content class="unbound-content">
         <nz-empty
@@ -98,6 +104,7 @@
             [showToolbar]="true"
             [nginxRunning]="status()?.isRunning ?? null"
             [openCreateToken]="openServerDrawerToken()"
+            [refreshToken]="serverListRefreshToken()"
             (summaryChange)="onServerSummaryChange($event)"
             (serverListMutated)="onServerListMutated()"
           ></app-nginx-server-list>

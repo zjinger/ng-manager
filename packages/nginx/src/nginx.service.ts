@@ -18,6 +18,15 @@ const execFileAsync = promisify(execFile);
  */
 export class NginxService {
   private instance: NginxInstance | null = null;
+  private lastConfigAppliedAt: number | null = null;
+
+  getLastConfigAppliedAt(): number | null {
+    return this.lastConfigAppliedAt;
+  }
+
+  private markConfigAppliedNow(): void {
+    this.lastConfigAppliedAt = Date.now();
+  }
 
   async validateFileReadable(path: string): Promise<{ exists: boolean; readable: boolean; error?: string }> {
     const target = this.normalizePath(path);
@@ -74,6 +83,39 @@ export class NginxService {
   }
 
   /**
+   * 获取本机 IP 地址
+   */
+  async getLocalIp(): Promise<{ success: boolean; ip?: string; error?: string }> {
+    try {
+      const { networkInterfaces } = await import('os');
+      const interfaces = networkInterfaces();
+
+      const candidates: string[] = [];
+
+      for (const name of Object.keys(interfaces)) {
+        const net = interfaces[name];
+        if (!net) continue;
+
+        for (const info of net) {
+          if (info.internal) continue;
+          if (info.family !== 'IPv4') continue;
+          const addr = info.address;
+          if (!addr || addr.startsWith('127.')) continue;
+          candidates.push(addr);
+        }
+      }
+
+      if (candidates.length === 0) {
+        return { success: false, error: '未找到有效的本机 IP 地址' };
+      }
+
+      return { success: true, ip: candidates[0] };
+    } catch (error: any) {
+      return { success: false, error: error.message || '获取本机 IP 失败' };
+    }
+  }
+
+  /**
    * 获取 Nginx 状态
    */
   async getStatus(): Promise<NginxStatus> {
@@ -88,6 +130,10 @@ export class NginxService {
 
     const uptime = await this.getProcessUptime(pid);
     const activeConnections = await this.getActiveConnections(await this.findAllPids(pid));
+    if (this.lastConfigAppliedAt === null) {
+      // 进程已在运行但尚未有本进程内 reload/start 记录时，建立一个基线时间。
+      this.markConfigAppliedNow();
+    }
 
     return {
       isRunning: true,
@@ -150,6 +196,7 @@ export class NginxService {
 
       const finalStatus = await this.getStatus();
       if (finalStatus.isRunning) {
+        this.markConfigAppliedNow();
         return { success: true, output: 'Nginx 启动成功' };
       } else {
         return { success: false, error: 'Nginx 启动失败，请检查配置' };
@@ -266,6 +313,7 @@ export class NginxService {
         this.buildSignalArgs('reload'),
         { cwd: this.instance.prefixPath }
       );
+      this.markConfigAppliedNow();
 
       return {
         success: true,
@@ -286,6 +334,7 @@ export class NginxService {
         if (stopResult.success) {
           const startResult = await this.start();
           if (startResult.success) {
+            this.markConfigAppliedNow();
             return {
               success: true,
               output: 'reload 信号失败，已自动重启并应用配置',

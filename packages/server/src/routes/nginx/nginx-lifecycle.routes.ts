@@ -78,6 +78,11 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
     });
   });
 
+  fastify.get('/local-ip', async (_request: FastifyRequest, reply: FastifyReply) => {
+    const result = await nginx.service.getLocalIp();
+    return reply.send(result);
+  });
+
   fastify.post('/start', async (_request: FastifyRequest, reply: FastifyReply) => {
     const result = await nginx.service.start();
     if (result.success) {

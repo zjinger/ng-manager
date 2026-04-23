@@ -28,6 +28,7 @@ import type {
 export class NginxService {
   private http = inject(ApiClient);
   private readonly baseUrl = '/api/nginx';
+  private statusCache: NginxStatusResponse | null = null;
 
   // ========== 实例管理 ==========
 
@@ -35,14 +36,26 @@ export class NginxService {
    * 获取 Nginx 状态和实例信息
    */
   async getStatus(): Promise<NginxStatusResponse> {
-    return await firstValueFrom(this.http.get<NginxStatusResponse>(`${this.baseUrl}/status`));
+    const res = await firstValueFrom(this.http.get<NginxStatusResponse>(`${this.baseUrl}/status`));
+    this.statusCache = {
+      instance: res.instance || null,
+      status: res.status,
+    };
+    return res;
   }
 
   /**
    * 获取首页统计信息（状态 + server 汇总）
    */
   async getStats(): Promise<NginxStatsResponse> {
-    return await firstValueFrom(this.http.get<NginxStatsResponse>(`${this.baseUrl}/stats`));
+    const res = await firstValueFrom(this.http.get<NginxStatsResponse>(`${this.baseUrl}/stats`));
+    if (res.success && res.status) {
+      this.statusCache = {
+        instance: res.instance || null,
+        status: res.status,
+      };
+    }
+    return res;
   }
 
   /**
@@ -56,7 +69,30 @@ export class NginxService {
    * 解绑 Nginx 实例
    */
   async unbind(): Promise<{ success: boolean }> {
-    return await firstValueFrom(this.http.post<{ success: boolean }>(`${this.baseUrl}/unbind`, {}));
+    const res = await firstValueFrom(this.http.post<{ success: boolean }>(`${this.baseUrl}/unbind`, {}));
+    if (res.success) {
+      this.statusCache = null;
+    }
+    return res;
+  }
+
+  getCachedStatusSnapshot(): NginxStatusResponse | null {
+    if (!this.statusCache) {
+      return null;
+    }
+    return {
+      instance: this.statusCache.instance ? { ...this.statusCache.instance } : null,
+      status: { ...this.statusCache.status },
+    };
+  }
+
+  /**
+   * 获取本机 IP 地址
+   */
+  async getLocalIp(): Promise<{ success: boolean; ip?: string; error?: string }> {
+    return await firstValueFrom(
+      this.http.get<{ success: boolean; ip?: string; error?: string }>(`${this.baseUrl}/local-ip`)
+    );
   }
 
   // ========== 服务控制 ==========
@@ -218,9 +254,18 @@ export class NginxService {
   /**
    * 删除 server
    */
-  async deleteServer(id: string): Promise<{ success: boolean; error?: string }> {
+  async deleteServer(id: string): Promise<{ success: boolean; snapshotId?: string; error?: string }> {
     return await firstValueFrom(
-      this.http.delete<{ success: boolean; error?: string }>(`${this.baseUrl}/servers/${id}`)
+      this.http.delete<{ success: boolean; snapshotId?: string; error?: string }>(`${this.baseUrl}/servers/${id}`)
+    );
+  }
+
+  async restoreDeletedServer(snapshotId: string): Promise<{ success: boolean; server?: NginxServer; error?: string }> {
+    return await firstValueFrom(
+      this.http.post<{ success: boolean; server?: NginxServer; error?: string }>(
+        `${this.baseUrl}/servers/restore-deleted`,
+        { snapshotId }
+      )
     );
   }
 

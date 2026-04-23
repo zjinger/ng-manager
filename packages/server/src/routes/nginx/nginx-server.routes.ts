@@ -9,7 +9,7 @@ interface ParsedImportCandidate {
   issues?: Array<{ level: 'error' | 'warning'; message: string; field?: 'name' | 'domains' | 'listen' }>;
 }
 
-type ServerRuntimeStatus = 'running' | 'stopped' | 'disabled' | 'unknown';
+type ServerRuntimeStatus = 'running' | 'stopped' | 'disabled' | 'pending' | 'unknown';
 
 /**
  * Nginx Server 块路由
@@ -17,14 +17,48 @@ type ServerRuntimeStatus = 'running' | 'stopped' | 'disabled' | 'unknown';
 export function registerNginxServerRoutes(context: NginxRouteContext): void {
   const { fastify, nginx } = context;
 
-  const buildRuntimeStatus = (enabled: boolean, nginxRunning: boolean | null): ServerRuntimeStatus => {
+  const buildRuntimeStatus = (
+    enabled: boolean,
+    nginxRunning: boolean | null,
+    pendingReload: boolean
+  ): ServerRuntimeStatus => {
     if (!enabled) {
       return 'disabled';
     }
     if (nginxRunning === null) {
       return 'unknown';
     }
+    if (pendingReload) {
+      return 'pending';
+    }
     return nginxRunning ? 'running' : 'stopped';
+  };
+
+  const parseIsoMs = (value?: string): number | null => {
+    const text = String(value || '').trim();
+    if (!text) {
+      return null;
+    }
+    const ms = Date.parse(text);
+    return Number.isFinite(ms) ? ms : null;
+  };
+
+  const isServerPendingReload = (
+    server: { enabled?: boolean; updatedAt?: string; createdAt?: string },
+    nginxRunning: boolean | null,
+    lastAppliedAt: number | null
+  ): boolean => {
+    if (!server.enabled || !nginxRunning) {
+      return false;
+    }
+    if (lastAppliedAt === null) {
+      return false;
+    }
+    const changedAt = parseIsoMs(server.updatedAt) ?? parseIsoMs(server.createdAt);
+    if (changedAt === null) {
+      return false;
+    }
+    return changedAt > lastAppliedAt;
   };
 
   const resolveActor = (request: FastifyRequest): string | undefined => {
@@ -306,15 +340,21 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
     try {
       const servers = await nginx.server.getAllServers();
       let nginxRunning: boolean | null = null;
+      let lastAppliedAt: number | null = null;
       try {
         const status = await nginx.service.getStatus();
         nginxRunning = Boolean(status.isRunning);
+        lastAppliedAt = nginx.service.getLastConfigAppliedAt();
       } catch {
         nginxRunning = null;
       }
       const enriched = servers.map(server => ({
         ...server,
-        runtimeStatus: buildRuntimeStatus(Boolean(server.enabled), nginxRunning),
+        runtimeStatus: buildRuntimeStatus(
+          Boolean(server.enabled),
+          nginxRunning,
+          isServerPendingReload(server, nginxRunning, lastAppliedAt)
+        ),
       }));
       return reply.send({
         success: true,
@@ -336,15 +376,21 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
           throw new AppError('NOT_FOUND', 'Server 不存在');
         }
         let nginxRunning: boolean | null = null;
+        let lastAppliedAt: number | null = null;
         try {
           const status = await nginx.service.getStatus();
           nginxRunning = Boolean(status.isRunning);
+          lastAppliedAt = nginx.service.getLastConfigAppliedAt();
         } catch {
           nginxRunning = null;
         }
         const enriched = {
           ...server,
-          runtimeStatus: buildRuntimeStatus(Boolean(server.enabled), nginxRunning),
+          runtimeStatus: buildRuntimeStatus(
+            Boolean(server.enabled),
+            nginxRunning,
+            isServerPendingReload(server, nginxRunning, lastAppliedAt)
+          ),
         };
 
         return reply.send({
@@ -399,9 +445,29 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
       const { id } = request.params;
 
       try {
-        await nginx.server.deleteServer(id);
+        const result = await nginx.server.deleteServer(id);
         return reply.send({
           success: true,
+          snapshotId: result.snapshotId,
+        });
+      } catch (error) {
+        return sendBadRequest(reply, error);
+      }
+    }
+  );
+
+  fastify.post<{ Body: { snapshotId?: string } }>(
+    '/servers/restore-deleted',
+    async (request: FastifyRequest<{ Body: { snapshotId?: string } }>, reply: FastifyReply) => {
+      try {
+        const snapshotId = String(request.body?.snapshotId || '').trim();
+        if (!snapshotId) {
+          throw new AppError('BAD_REQUEST', 'snapshotId 不能为空');
+        }
+        const server = await nginx.server.restoreDeletedServer(snapshotId);
+        return reply.send({
+          success: true,
+          server,
         });
       } catch (error) {
         return sendBadRequest(reply, error);

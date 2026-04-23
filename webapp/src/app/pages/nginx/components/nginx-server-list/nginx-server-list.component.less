@@ -149,38 +149,6 @@
     justify-self: end;
 }
 
-.runtime-pill {
-    display: inline-block;
-    border-radius: 999px;
-    padding: 0 8px;
-    line-height: 18px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    background: rgba(0, 0, 0, 0.06);
-    color: rgba(0, 0, 0, 0.55);
-
-    &.running {
-        background: rgba(82, 196, 26, 0.16);
-        color: #3f8600;
-    }
-
-    &.stopped {
-        background: rgba(255, 77, 79, 0.14);
-        color: #cf1322;
-    }
-
-    &.disabled {
-        background: rgba(250, 140, 22, 0.15);
-        color: #ad6800;
-    }
-
-    &.unknown {
-        background: rgba(140, 140, 140, 0.14);
-        color: rgba(0, 0, 0, 0.55);
-    }
-}
-
 .server-name-text {
     min-width: 0;
     overflow: hidden;
@@ -419,6 +387,18 @@
         border-left: 3px solid #ff4d4f;
         background: rgba(255, 77, 79, 0.06);
     }
+}
+
+.proxy-path {
+    display: inline-block;
+    min-width: 48px;
+    margin-right: 6px;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.proxy-arrow {
+    margin-right: 6px;
+    color: rgba(0, 0, 0, 0.45);
 }
 
 .import-parsing-hint {

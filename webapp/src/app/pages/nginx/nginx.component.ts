@@ -83,6 +83,7 @@ export class NginxComponent implements OnInit, OnDestroy {
   status = signal<NginxStatus | null>(null);
   loading = signal(false);
   binding = signal(false);
+  statusReady = signal(false);
 
   // 操作中状态，防止重复点击
   controlling = signal(false);
@@ -93,6 +94,7 @@ export class NginxComponent implements OnInit, OnDestroy {
   secondaryTab = signal<SecondaryTab>('upstream');
   configExpanded = signal(false);
   openServerDrawerToken = signal(0);
+  serverListRefreshToken = signal(0);
   configEditorRefreshToken = signal(0);
   configLoading = signal(false);
 
@@ -119,6 +121,7 @@ export class NginxComponent implements OnInit, OnDestroy {
   ];
 
   async ngOnInit() {
+    this.hydrateFromCache();
     await this.loadStatus();
     await this.loadConfigFiles();
   }
@@ -245,6 +248,7 @@ export class NginxComponent implements OnInit, OnDestroy {
     } catch {
       // 静默失败，等待用户手动绑定
     } finally {
+      this.statusReady.set(true);
       this.loading.set(false);
     }
   }
@@ -337,6 +341,7 @@ export class NginxComponent implements OnInit, OnDestroy {
         this.appendLog('ok', 'nginx start executed');
         this.message.success('启动成功');
         await this.loadStatus();
+        this.serverListRefreshToken.update(token => token + 1);
       } else {
         this.message.error(res.error || '启动失败');
       }
@@ -358,6 +363,7 @@ export class NginxComponent implements OnInit, OnDestroy {
         this.appendLog('warn', 'nginx stop executed');
         this.message.success('停止成功');
         await this.loadStatus();
+        this.serverListRefreshToken.update(token => token + 1);
       } else {
         this.message.error(res.error || '停止失败');
       }
@@ -379,6 +385,7 @@ export class NginxComponent implements OnInit, OnDestroy {
         this.appendLog('ok', 'nginx reload executed');
         this.message.success('重载成功');
         await this.loadStatus();
+        this.serverListRefreshToken.update(token => token + 1);
       } else {
         this.message.error(res.error || '重载失败');
       }
@@ -407,6 +414,7 @@ export class NginxComponent implements OnInit, OnDestroy {
         this.appendLog('info', 'nginx restart executed');
         this.message.success('重启成功');
         await this.loadStatus();
+        this.serverListRefreshToken.update(token => token + 1);
       } else {
         this.message.error('重启失败: ' + (startRes.error || '启动失败'));
       }
@@ -492,6 +500,17 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.runtimeStartedAtLabel.set(this.formatDateTime(startedAt));
     this.updateRuntimeDisplay();
     this.startRuntimeTicker();
+  }
+
+  private hydrateFromCache(): void {
+    const cached = this.nginxService.getCachedStatusSnapshot();
+    if (!cached) {
+      return;
+    }
+    this.instance.set(cached.instance);
+    this.status.set(cached.status);
+    this.syncRuntimeState(cached.status);
+    this.statusReady.set(true);
   }
 
   private startRuntimeTicker(): void {

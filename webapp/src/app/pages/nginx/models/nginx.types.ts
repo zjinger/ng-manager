@@ -146,7 +146,7 @@ export interface CreateNginxServerRequest {
   createdBy?: string;
 }
 
-export type NginxServerRuntimeStatus = 'running' | 'stopped' | 'disabled' | 'unknown';
+export type NginxServerRuntimeStatus = 'running' | 'stopped' | 'disabled' | 'pending' | 'unknown';
 
 /**
  * 更新 Server 请求

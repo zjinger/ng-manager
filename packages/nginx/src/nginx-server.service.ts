@@ -18,8 +18,10 @@ import type {
 export class NginxServerService {
   private readonly disableStartMarker = '# ngm:disable-start';
   private readonly disableEndMarker = '# ngm:disable-end';
+  private readonly maxDeletedSnapshots = 100;
   private servers: Map<string, NginxServer> = new Map();
   private serverSources: Map<string, { filePath: string; start: number; end: number }> = new Map();
+  private deletedSnapshots: Map<string, { request: CreateNginxServerRequest; createdAt: number }> = new Map();
 
   constructor(
     private nginxService: NginxService,
@@ -189,11 +191,12 @@ export class NginxServerService {
   /**
    * 删除 server
    */
-  async deleteServer(id: string): Promise<void> {
+  async deleteServer(id: string): Promise<{ snapshotId: string }> {
     const server = await this.getServer(id);
     if (!server) {
       throw new Error('Server 不存在');
     }
+    const snapshotId = this.createDeleteSnapshot(server);
 
     const source = this.serverSources.get(id);
     const filePath = source?.filePath || server.filePath;
@@ -218,6 +221,17 @@ export class NginxServerService {
     }
 
     this.servers.delete(id);
+    return { snapshotId };
+  }
+
+  async restoreDeletedServer(snapshotId: string): Promise<NginxServer> {
+    const snapshot = this.deletedSnapshots.get(snapshotId);
+    if (!snapshot) {
+      throw new Error('删除快照不存在或已过期');
+    }
+    const restored = await this.createServer(snapshot.request);
+    this.deletedSnapshots.delete(snapshotId);
+    return restored;
   }
 
   /**
@@ -620,15 +634,51 @@ export class NginxServerService {
     }
 
     for (const loc of server.locations || []) {
+      const normalizedPath = String(loc.path || '/').trim() || '/';
       lines.push('');
-      lines.push(`    location ${loc.path} {`);
+      lines.push(`    location ${normalizedPath} {`);
 
       if (loc.proxyPass) {
         lines.push(`        proxy_pass ${loc.proxyPass};`);
-        lines.push('        proxy_set_header Host $host;');
-        lines.push('        proxy_set_header X-Real-IP $remote_addr;');
-        lines.push('        proxy_set_header REMOTE-HOST $remote_addr;');
-        lines.push('        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;');
+        const rawHeaderLines = new Set(
+          (loc.rawConfig || '')
+            .split(/\r?\n/)
+            .map(line => line.trim().replace(/\s+/g, ' '))
+            .filter(line => /^proxy_set_header\s+/i.test(line))
+        );
+        const rawDirectiveLines = new Set(
+          (loc.rawConfig || '')
+            .split(/\r?\n/)
+            .map(line => line.trim().replace(/\s+/g, ' '))
+            .filter(Boolean)
+        );
+        const defaultHeaderLines = [
+          'proxy_set_header Host $host;',
+          'proxy_set_header X-Real-IP $remote_addr;',
+          'proxy_set_header REMOTE-HOST $remote_addr;',
+          'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;',
+          'proxy_set_header X-Forwarded-Proto $scheme;',
+          'proxy_set_header X-Forwarded-Host $host;',
+          'proxy_set_header X-Forwarded-Port $server_port;',
+        ];
+        for (const headerLine of defaultHeaderLines) {
+          if (!rawHeaderLines.has(headerLine)) {
+            lines.push(`        ${headerLine}`);
+          }
+        }
+        const isWebSocketProxy = this.isWebSocketProxyLocation(loc.rawConfig);
+        if (isWebSocketProxy) {
+          const wsDirectives = [
+            'proxy_http_version 1.1;',
+            'proxy_set_header Upgrade $http_upgrade;',
+            'proxy_set_header Connection "upgrade";',
+          ];
+          for (const directive of wsDirectives) {
+            if (!rawDirectiveLines.has(directive)) {
+              lines.push(`        ${directive}`);
+            }
+          }
+        }
       }
       if (loc.root) {
         lines.push(`        root ${this.toNginxPathValue(loc.root)};`);
@@ -701,8 +751,21 @@ export class NginxServerService {
       'proxy_set_header X-Real-IP $remote_addr;',
       'proxy_set_header REMOTE-HOST $remote_addr;',
       'proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;',
+      'proxy_set_header X-Forwarded-Proto $scheme;',
+      'proxy_set_header X-Forwarded-Host $host;',
+      'proxy_set_header X-Forwarded-Port $server_port;',
+      'proxy_set_header Upgrade $http_upgrade;',
+      'proxy_set_header Connection "upgrade";',
     ]);
     return defaults.has(normalized);
+  }
+
+  private isWebSocketProxyLocation(rawConfig?: string): boolean {
+    const normalizedRaw = String(rawConfig || '').toLowerCase();
+    if (normalizedRaw.includes('upgrade $http_upgrade') || normalizedRaw.includes('connection "upgrade"')) {
+      return true;
+    }
+    return false;
   }
 
   private normalizeDomains(input?: string[]): string[] {
@@ -1086,6 +1149,43 @@ export class NginxServerService {
 
   private genId(prefix: string): string {
     return `${prefix}_${Date.now().toString(36)}${randomUUID().replace(/-/g, '').slice(0, 6)}`;
+  }
+
+  private createDeleteSnapshot(server: NginxServer): string {
+    const snapshotId = this.genId('del');
+    const request: CreateNginxServerRequest = {
+      name: String(server.name || '').trim(),
+      listen: [...(server.listen || [])],
+      domains: [...(server.domains || [])],
+      root: String(server.root || '').trim() || undefined,
+      index: [...(server.index || [])],
+      locations: (server.locations || []).map(item => ({ ...item })),
+      ssl: Boolean(server.ssl),
+      protocol: server.ssl ? 'https' : 'http',
+      enabled: Boolean(server.enabled),
+      sslCert: String(server.sslCert || '').trim() || undefined,
+      sslKey: String(server.sslKey || '').trim() || undefined,
+      extraConfig: String(server.extraConfig || '').trim() || undefined,
+      createdBy: server.createdBy,
+    };
+    this.deletedSnapshots.set(snapshotId, {
+      request,
+      createdAt: Date.now(),
+    });
+    this.compactDeletedSnapshots();
+    return snapshotId;
+  }
+
+  private compactDeletedSnapshots(): void {
+    if (this.deletedSnapshots.size <= this.maxDeletedSnapshots) {
+      return;
+    }
+    const ordered = Array.from(this.deletedSnapshots.entries())
+      .sort((a, b) => a[1].createdAt - b[1].createdAt);
+    const overflow = ordered.length - this.maxDeletedSnapshots;
+    for (let i = 0; i < overflow; i += 1) {
+      this.deletedSnapshots.delete(ordered[i][0]);
+    }
   }
 
   private ensureNoPortConflicts(excludeId: string | null, listen: string[], enabled: boolean): void {

@@ -25,7 +25,8 @@
 
         <!-- 协议 + 域名 + 监听端口 -->
         <nz-form-item>
-          <nz-form-label nzRequired>域名与端口</nz-form-label>
+          <nz-form-label nzRequired>服务器地址</nz-form-label>
+
           <nz-form-control>
             <div nz-input-group nzCompact class="domain-row-wrapper">
               <nz-select
@@ -41,6 +42,7 @@
               <nz-select
                 class="domain-row-domain"
                 nzMode="tags"
+                [nzMaxTagCount]="1"
                 [(ngModel)]="domainValues"
                 name="domains"
                 nzPlaceHolder="可输入或选择多个域名"
@@ -52,123 +54,122 @@
                 }
               </nz-select>
 
-              <nz-select
+              <nz-input-number
                 class="domain-row-listen"
-                nzMode="tags"
-                [(ngModel)]="listenValues"
+                [(ngModel)]="listenPort"
                 name="listenPort"
                 nzPlaceHolder="端口"
-                [nzTokenSeparators]="[',', ' ']"
-              >
-                @for (port of commonListenOptions; track port) {
-                  <nz-option [nzValue]="port" [nzLabel]="port"></nz-option>
-                }
-              </nz-select>
+                nzMin="1"
+                nzMax="65535"
+                style="width: 100px;"
+              ></nz-input-number>
             </div>
           </nz-form-control>
-          <div class="field-hint">域名和端口均支持多个值，例如：localhost, 127.0.0.1 / 80, 443</div>
+          <div class="field-hint">域名支持多个值，端口为单个值，例如：localhost, 192.168.1.100 / 8080</div>
         </nz-form-item>
-
-        <!-- 根目录 + 默认首页 -->
+        <!-- 前端服务 -->
         <nz-form-item>
-          <nz-form-label nzTooltipTitle="静态资源根目录，通常用于提供静态文件服务，如index.html所在目录"
-                  [nzTooltipIcon]="'question-circle'">根目录</nz-form-label>
+          <nz-form-label nzRequired>前端服务</nz-form-label>
           <nz-form-control>
-            <div nz-input-group nzCompact class="root-row-wrapper">
-              <input
-                nz-input
-                class="mono-input root-row-root"
-                [(ngModel)]="formData.root"
-                name="root"
-                placeholder="如：D:\\dist\\www"
-              />
-              <nz-select
-                class="root-row-index"
-                nzMode="tags"
-                [(ngModel)]="indexValues"
-                name="serverIndex"
-                nzPlaceHolder="默认首页"
-                [nzTokenSeparators]="[',', ' ']"
-                (ngModelChange)="syncIndex()"
-              >
-                @for (item of commonIndexOptions; track item) {
-                  <nz-option [nzValue]="item" [nzLabel]="item"></nz-option>
-                }
-              </nz-select>
-            </div>
-          </nz-form-control>
-          <div class="field-hint">根目录示例：D:\dist\www；默认首页示例：index.html, index.htm</div>
-        </nz-form-item>
+            <nz-radio-group
+              [(ngModel)]="frontendServiceType"
+              name="frontendServiceType"
+              (ngModelChange)="onFrontendServiceTypeChange($event)"
+            >
+              <label nz-radio nzValue="web">Web服务地址</label>
+              <label nz-radio nzValue="static">静态文件目录</label>
+            </nz-radio-group>
 
-        <!-- Location 规则 -->
-        <nz-form-item>
-          <nz-form-label nzTooltipTitle="用于定义请求路径的处理规则，如 API 代理服务或静态资源路径"
-                  [nzTooltipIcon]="'question-circle'">Location 规则</nz-form-label>
-          <nz-form-control>
-            <div class="location-toolbar">
-              <button nz-button nzType="default" type="button" (click)="addLocation('empty')">
-                <span nz-icon nzType="plus"></span>
-                新增规则
-              </button>
-              <button nz-button nzType="default" type="button" (click)="addLocation('api')">
-                API 代理模板
-              </button>
-              <button nz-button nzType="default" type="button" (click)="addLocation('reverse')">
-                反向代理模板
-              </button>
-              <button nz-button nzType="default" type="button" (click)="addLocation('static')">
-                静态托管模板
-              </button>
-            </div>
-
-            @for (loc of formData.locations; track $index) {
-              <div class="location-item">
-                <div class="location-item-head">
-                  <span>Location {{ $index + 1 }}</span>
-                  <button
-                    nz-button
-                    nzType="link"
-                    nzDanger
-                    type="button"
-                    nz-tooltip="删除"
-                    nz-popconfirm
-                    nzPopconfirmTitle="确定要删除这个 Location 规则吗？"
-                    nzPopconfirmOkText="删除"
-                    nzPopconfirmCancelText="取消"
-                    (nzOnConfirm)="removeLocation($index)"
-                  >
-                    <nz-icon nzType="delete"></nz-icon>
-                  </button>
-                </div>
-
-                <div class="location-grid">
-                  <input
-                    nz-input
-                    [(ngModel)]="loc.path"
-                    [name]="'locationPath' + $index"
-                    placeholder="/api/"
-                  />
-                  <input
-                    nz-input
-                    class="mono-input"
-                    [(ngModel)]="loc.proxyPass"
-                    [name]="'locationProxy' + $index"
-                    placeholder="http://127.0.0.1:6808"
-                  />
-                </div>
-
-                <textarea
+            @if (frontendServiceType === 'static') {
+              <div class="scenario-panel">
+                <input
                   nz-input
-                  class="mono-textarea location-extra-textarea"
-                  rows="3"
-                  [(ngModel)]="loc.rawConfig"
-                  [name]="'locationExtra' + $index"
-                  placeholder="额外 location 指令，如：&#10;proxy_http_version 1.1;&#10;proxy_set_header Upgrade $http_upgrade;&#10;proxy_set_header Connection &quot;upgrade&quot;;"
-                ></textarea>
+                  class="mono-input"
+                  [(ngModel)]="frontendStaticRoot"
+                  name="frontendStaticRoot"
+                  placeholder="静态目录，如 D:\\dist\\www"
+                />
+                <input
+                  nz-input
+                  class="scenario-index"
+                  [(ngModel)]="indexFile"
+                  name="frontendStaticIndex"
+                  placeholder="默认首页"
+                />
               </div>
+              <div class="field-hint">静态目录用于直接托管前端产物</div>
+            } @else {
+              <div class="scenario-panel">
+                <input
+                  nz-input
+                  class="mono-input"
+                  [(ngModel)]="frontendWebService"
+                  name="frontendWebService"
+                  placeholder="Web 服务地址，如 http://localhost:4200"
+                />
+              </div>
+              <div class="field-hint">适合本地开发服务或反向代理前端网关</div>
             }
           </nz-form-control>
-          <div class="field-hint">常见场景：`location /api/` + `proxy_pass http://127.0.0.1:6808;`</div>
+        </nz-form-item>
+
+        <!-- 代理转发 -->
+        <nz-form-item>
+          <nz-form-label
+            [nzTooltipIcon]="'question-circle'"
+            nzTooltipTitle="配置代理转发规则，用于将特定路径的请求转发到后端服务"
+            >代理转发</nz-form-label
+          >
+          <nz-form-control>
+            <div class="api-proxy-list">
+              @for (proxy of apiProxies; track $index) {
+                <div class="api-proxy-item">
+                  <div class="api-proxy-item-head">
+                    <span>转发规则 {{ $index + 1 }}</span>
+                    <button
+                      nz-button
+                      nzType="link"
+                      nzDanger
+                      nzSize="small"
+                      type="button"
+                      (click)="removeApiProxy($index)"
+                    >
+                      <span nz-icon nzType="delete"></span>
+                    </button>
+                  </div>
+                  <div class="api-proxy-grid">
+                    <input
+                      nz-input
+                      [(ngModel)]="proxy.pathPrefix"
+                      [name]="'apiPathPrefix' + $index"
+                      placeholder="转发路径，如 /api"
+                    />
+                    <input
+                      nz-input
+                      class="mono-input"
+                      [(ngModel)]="proxy.backendService"
+                      [name]="'apiBackendService' + $index"
+                      placeholder="转发地址，如 http://192.168.1.18:8080"
+                    />
+                    <label nz-checkbox [(ngModel)]="proxy.isWebSocket" [name]="'apiIsWs' + $index">
+                      WS
+                    </label>
+                  </div>
+                </div>
+              }
+              <button
+                nz-button
+                nzType="default"
+                type="button"
+                (click)="addApiProxy()"
+                class="add-api-proxy-btn"
+              >
+                <span nz-icon nzType="plus"></span>
+                添加代理规则
+              </button>
+            </div>
+            <div class="field-hint">可配置多个不同路径的代理规则，如 /api、/ws 等</div>
+          </nz-form-control>
         </nz-form-item>
 
         <!-- SSL 配置（协议为 HTTPS 时显示） -->
@@ -213,7 +214,9 @@
               placeholder="# 在此添加自定义 nginx 配置&#10;location /api {&#10;    proxy_pass http://backend_cluster;&#10;}"
             ></textarea>
           </nz-form-control>
-          <div class="field-hint">用于补充高级指令（`location` 常规场景建议在上面的 Location 规则中配置）</div>
+          <div class="field-hint">
+            用于补充高级指令（`location` 常规场景建议在上面的 代理转发 中配置）
+          </div>
         </nz-form-item>
       </form>
     </div>
