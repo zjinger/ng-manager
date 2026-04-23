@@ -367,7 +367,7 @@ export class IssueRepo {
         `
           SELECT * FROM issue_logs
           WHERE issue_id = ?
-          ORDER BY created_at DESC
+          ORDER BY created_at DESC, rowid DESC
         `
       )
       .all(issueId) as IssueLogRow[];

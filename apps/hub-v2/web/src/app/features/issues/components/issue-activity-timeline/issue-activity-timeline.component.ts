@@ -45,7 +45,7 @@ export class IssueActivityTimelineComponent {
   );
   readonly showFilter = computed(() => this.logs().length > 10);
   readonly timelineItems = computed<IssueTimelineItem[]>(() =>
-    this.logs().map((item) => {
+    this.sortedLogs().map((item) => {
       const rawAction = this.logText(item);
       const markdownImages = this.extractInlineImages(rawAction);
       const actionWithoutMarkdownImages = this.stripInlineImages(rawAction);
@@ -131,6 +131,42 @@ export class IssueActivityTimelineComponent {
         update: 'edit',
       }[item.actionType] || 'clock-circle'
     );
+  }
+
+  private sortedLogs(): IssueLogEntity[] {
+    return this.logs()
+      .map((item, index) => ({ item, index }))
+      .sort((left, right) => {
+        const leftTs = this.parseTimestamp(left.item.createdAt);
+        const rightTs = this.parseTimestamp(right.item.createdAt);
+        if (leftTs !== rightTs) {
+          return rightTs - leftTs;
+        }
+
+        const leftRank = this.sameTimestampActionRank(left.item);
+        const rightRank = this.sameTimestampActionRank(right.item);
+        if (leftRank !== rightRank) {
+          return rightRank - leftRank;
+        }
+
+        return left.index - right.index;
+      })
+      .map((entry) => entry.item);
+  }
+
+  private parseTimestamp(value: string): number {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+  }
+
+  private sameTimestampActionRank(item: IssueLogEntity): number {
+    if (item.actionType === 'assign' && (item.summary || '').includes('创建时指派负责人')) {
+      return 2;
+    }
+    if (item.actionType === 'create') {
+      return 1;
+    }
+    return 0;
   }
 
   private logText(item: IssueLogEntity): string {
