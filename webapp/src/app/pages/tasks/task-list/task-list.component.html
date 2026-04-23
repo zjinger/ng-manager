@@ -34,6 +34,10 @@
             <nz-badge nzStatus="processing" />
             } @else if (t?.runtime?.status === 'stopping') {
             <nz-badge nzStatus="warning" />
+            } @else if (t?.runtime?.status === 'success') {
+            <nz-badge nzStatus="success" />
+            } @else if (t?.runtime?.status === 'failed') {
+            <nz-badge nzStatus="error" />
             } @else {
             <nz-badge nzStatus="default" />
             }
@@ -47,6 +51,10 @@
                   ? '运行中'
                   : t.runtime?.status === 'stopping'
                   ? '停止中'
+                  : t.runtime?.status === 'success'
+                  ? '已完成'
+                  : t.runtime?.status === 'failed'
+                  ? '失败'
                   : t.runtime?.status === 'stopped'
                   ? '已停止'
                   : t.spec.description || '空闲中'

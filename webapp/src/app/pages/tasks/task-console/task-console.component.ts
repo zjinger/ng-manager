@@ -1,5 +1,5 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
-import { Component, DestroyRef, inject, Input, OnDestroy, ViewChild } from "@angular/core";
+import { Component, DestroyRef, inject, Input, isDevMode, OnDestroy, ViewChild } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { UiNotifierService } from "@app/core";
@@ -33,14 +33,15 @@ export class TaskConsoleComponent implements OnDestroy {
   set taskId(id: string) {
     const next = (id ?? "").trim();
     if (!next) {
-      // queueMicrotask(() => this.term?.reset());
+      this._taskId = "";
+      this.term?.reset();
       return;
     };
     if (next === this._taskId) return;
     // 切换 run：先退订旧 run（并清 UI）
     if (this._taskId) {
       this.stream.unsubscribeTask(this._taskId);
-      this.term?.clear();
+      this.term?.reset();
     }
 
     this._taskId = next;
@@ -80,8 +81,8 @@ export class TaskConsoleComponent implements OnDestroy {
   }
   private bind(taskId: string) {
     // 订阅 run 输出
-    this.stream.subscribeTask(taskId, this.tail);
-
+    // 每次切回任务都请求一次 tail 回放，避免只看到切换后的增量输出
+    this.stream.subscribeTask(taskId, this.tail, { replay: true });
     // 重绑 rx 订阅
     this.sub.unsubscribe();
     this.sub = new Subscription();

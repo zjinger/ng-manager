@@ -10,7 +10,7 @@ export class TaskStreamService {
   private outputByTaskId = new Map<string, Subject<TaskOutputMsg>>(); // taskId -> output stream
   private event$ = new Subject<TaskEventMsg>();
 
-  private subs = new Map<string, number>(); // taskId -> tail
+  private subs = new Map<string, { tail: number; refs: number }>(); // taskId -> sub state
   private lastWsState: WsState = "idle";
 
   constructor(
@@ -31,21 +31,38 @@ export class TaskStreamService {
     this.ws.connect();
   }
 
-  subscribeTask(taskId: string, tail = 200) {
+  subscribeTask(taskId: string, tail = 200, opts?: { replay?: boolean }) {
     const id = taskId.trim();
     if (!id) return;
     const t = Math.max(0, Math.min(5000, tail | 0));
-    if (this.subs.get(id) === t) return;
+    const prev = this.subs.get(id);
+    const replay = !!opts?.replay;
+    if (!prev) {
+      this.subs.set(id, { tail: t, refs: 1 });
+      if (this.ws.isOpen()) {
+        this.ws.send({ op: "sub", topic: "task", taskId: id, tail: t });
+      }
+      return;
+    }
 
-    this.subs.set(id, t);
-    if (this.ws.isOpen()) {
-      this.ws.send({ op: "sub", topic: "task", taskId: id, tail: t });
+    const nextTail = Math.max(prev.tail, t);
+    this.subs.set(id, { tail: nextTail, refs: prev.refs + 1 });
+    if (this.ws.isOpen() && (nextTail !== prev.tail || replay)) {
+      this.ws.send({ op: "sub", topic: "task", taskId: id, tail: nextTail });
     }
   }
 
   unsubscribeTask(taskId: string) {
     const id = taskId.trim();
-    if (!this.subs.has(id)) return;
+    const prev = this.subs.get(id);
+    if (!prev) return;
+
+    const nextRefs = prev.refs - 1;
+    if (nextRefs > 0) {
+      this.subs.set(id, { ...prev, refs: nextRefs });
+      return;
+    }
+
     this.subs.delete(id);
     if (this.ws.isOpen()) {
       this.ws.send({ op: "unsub", topic: "task", taskId: id });
@@ -74,8 +91,8 @@ export class TaskStreamService {
 
 
   private replaySubs() {
-    for (const [taskId, tail] of this.subs.entries()) {
-      this.ws.send({ op: "sub", topic: "task", taskId, tail } as WsClientMsg);
+    for (const [taskId, state] of this.subs.entries()) {
+      this.ws.send({ op: "sub", topic: "task", taskId, tail: state.tail } as WsClientMsg);
     }
   }
 
@@ -168,9 +185,21 @@ export class TaskStreamService {
         return base;
       case 'exited':
         // exited payload: { taskId, runId, exitCode, signal, stoppedAt }
-        base.status = 'stopped'; // 后端规则里 stopping/exited 都归 stopped，但前端先落 stopped
+        const wasStopping = base.status === 'stopping';
         base.exitCode = (payload as TaskExitedPayload)?.exitCode ?? null;
         base.signal = (payload as TaskExitedPayload)?.signal ?? null;
+        if (wasStopping) {
+          // 用户主动 stop 场景优先按 stopped 处理，避免把 Ctrl+C/非0退出码误判为 failed
+          base.status = 'stopped';
+        } else if (base.signal) {
+          base.status = 'stopped';
+        } else if (base.exitCode === 0) {
+          base.status = 'success';
+        } else if (base.exitCode == null) {
+          base.status = 'stopped';
+        } else {
+          base.status = 'failed';
+        }
         base.stoppedAt = (payload as TaskExitedPayload)?.stoppedAt ?? Date.now();
         return base;
       case 'failed':

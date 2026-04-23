@@ -145,10 +145,12 @@ export class ProjectItemPopoverComponent implements OnChanges {
   }
 
   toggleTask(task: TaskRow) {
+    const taskId = task?.spec?.id?.trim();
+    if (!taskId) return;
     if (task.runtime?.status === "running") {
-      this.state.stopSelected();
+      this.state.stopSelected(taskId);
     } else {
-      this.state.startSelected();
+      this.state.startSelected(taskId);
     }
     this.openTask(task);
   }

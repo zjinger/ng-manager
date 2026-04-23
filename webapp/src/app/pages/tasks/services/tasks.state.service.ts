@@ -15,6 +15,7 @@ export class TaskStateService {
   private catalog = inject(TaskCatalogService);
   private nodeVersion = inject(NodeVersionService);
   private projectContext = inject(ProjectContextStore);
+  private subscribedTaskIds = new Set<string>();
 
   /* ---------------- 基础状态 ---------------- */
 
@@ -83,19 +84,43 @@ export class TaskStateService {
     // console.log("[task state] event", e);
     // });
 
-    /** 选中 runId → 自动订阅 WS */
+    /** project tasks -> WS 订阅同步（保证未选中任务状态也实时） */
+    effect(() => {
+      const pid = this.projectId();
+      const ids = new Set<string>();
+      if (pid) {
+        for (const row of this.rows()) {
+          const taskId = row?.spec?.id?.trim();
+          if (taskId) ids.add(taskId);
+        }
+      }
+      this.syncTaskSubs(ids);
+      if (ids.size > 0) this.stream.ensureConnected();
+    });
+
+    /** 选中任务提高 tail（便于 console 立即拿到上下文日志） */
     effect((onCleanup) => {
       const taskId = this.selectedTaskId();
       if (!taskId) return;
-      // console.log("[task state effect] subscribe task stream", taskId);
-      this.stream.ensureConnected();
       this.stream.subscribeTask(taskId, 200);
-      const sub = this.runtimeStore.status$(taskId).subscribe();
       onCleanup(() => {
-        sub.unsubscribe();
         this.stream.unsubscribeTask(taskId);
       });
     });
+  }
+
+  private syncTaskSubs(nextIds: Set<string>) {
+    for (const taskId of this.subscribedTaskIds) {
+      if (!nextIds.has(taskId)) {
+        this.stream.unsubscribeTask(taskId);
+      }
+    }
+    for (const taskId of nextIds) {
+      if (!this.subscribedTaskIds.has(taskId)) {
+        this.stream.subscribeTask(taskId, 0);
+      }
+    }
+    this.subscribedTaskIds = nextIds;
   }
 
   getRuntime(taskId: string): TaskRuntimeStatus {
@@ -191,7 +216,14 @@ export class TaskStateService {
       next: () => { },
       error: () => {
         // 回滚：如果乐观置了 stopping，则恢复为 running（前提：原来确实在 running）
-        if (curRt && curRt.status === 'running') {
+        const nowRt = this.getRuntimeSignal(taskId!);
+        if (
+          curRt &&
+          curRt.status === 'running' &&
+          nowRt &&
+          nowRt.runId === curRt.runId &&
+          nowRt.status === 'stopping'
+        ) {
           this.runtimeStore.setRuntime(curRt);
         }
       }
