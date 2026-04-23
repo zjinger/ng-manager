@@ -25,7 +25,7 @@ type DirCrumb = { label: string; dir: string }; // dir = '' 表示 root
           </div>
       </div>
       @if(cachedImages().length === 0){
-        <nz-empty nzNotFoundContent="暂无图片列表（后续可从 cutImageSvn 扫描并映射 URL）"></nz-empty>
+        <nz-empty nzNotFoundContent="暂无图片列表"></nz-empty>
       } @else {
         <div class="dir-stack">
          @for(crumb of dirStack;let i = $index; track crumb.dir) {
