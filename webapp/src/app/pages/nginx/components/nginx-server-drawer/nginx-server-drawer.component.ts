@@ -18,12 +18,19 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { NginxService } from '../../services/nginx.service';
 import type { NginxLocation, NginxServer, CreateNginxServerRequest } from '../../models/nginx.types';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+
+interface ServerDiffRow {
+  label: string;
+  before: string;
+  after: string;
+}
 
 /**
  * Nginx Server 新增/编辑 Drawer
@@ -40,6 +47,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
     NzFormModule,
     NzIconModule,
     NzInputModule,
+    NzModalModule,
     NzSelectModule,
     NzTooltipModule,
     NzPopconfirmModule,
@@ -57,11 +65,15 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
 
   private nginxService = inject(NginxService);
   private message = inject(NzMessageService);
+  private modal = inject(NzModalService);
   private cdr = inject(ChangeDetectorRef);
   private resetTimer: ReturnType<typeof setTimeout> | null = null;
   private visibleEmitTimer: ReturnType<typeof setTimeout> | null = null;
 
   saving = signal(false);
+  validatingConfig = signal(false);
+  previewVisible = signal(false);
+  previewContent = signal('');
 
   readonly commonListenOptions = ['80', '443', '8080', '8443'];
   readonly commonDomainOptions = ['127.0.0.1', 'localhost', 'example.com'];
@@ -235,12 +247,23 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     this.formData.index = [...this.indexValues];
   }
 
-  addLocation(template: 'empty' | 'api' = 'empty'): void {
+  addLocation(template: 'empty' | 'api' | 'static' | 'reverse' = 'empty'): void {
     const list = [...(this.formData.locations || [])];
     if (template === 'api') {
       list.push({
         path: '/api/',
         proxyPass: 'http://127.0.0.1:6808',
+      });
+    } else if (template === 'static') {
+      list.push({
+        path: '/',
+        root: this.formData.root || '/var/www/html',
+        index: ['index.html', 'index.htm'],
+      });
+    } else if (template === 'reverse') {
+      list.push({
+        path: '/',
+        proxyPass: 'http://127.0.0.1:8080',
       });
     } else {
       list.push({
@@ -262,7 +285,9 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     this.syncDomains();
     this.syncIndex();
     this.normalizeLocations();
-    this.message.info('配置预览功能开发中');
+    const request = this.toComparableRequestFromForm();
+    this.previewContent.set(this.generatePreviewConfig(request));
+    this.previewVisible.set(true);
   }
 
   async save(): Promise<void> {
@@ -274,6 +299,11 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     this.syncDomains();
     if (!this.formData.domains?.length) {
       this.message.warning('请至少填写一个域名');
+      return;
+    }
+    const invalidDomains = this.getInvalidDomains(this.formData.domains);
+    if (invalidDomains.length) {
+      this.message.warning(`域名格式无效: ${invalidDomains.join(', ')}`);
       return;
     }
 
@@ -292,10 +322,30 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         this.message.warning('请填写 SSL 私钥路径');
         return;
       }
+      if (!this.isValidFilePath(this.formData.sslCert)) {
+        this.message.warning('SSL 证书路径格式无效，请填写绝对路径');
+        return;
+      }
+      if (!this.isValidFilePath(this.formData.sslKey)) {
+        this.message.warning('SSL 私钥路径格式无效，请填写绝对路径');
+        return;
+      }
     }
 
     this.syncIndex();
     this.normalizeLocations();
+    const changedConfirmed = await this.confirmDiffBeforeSave();
+    if (!changedConfirmed) {
+      return;
+    }
+    const hasPortConflict = await this.detectPortConflict();
+    if (hasPortConflict) {
+      return;
+    }
+    const validated = await this.validateBeforeSave();
+    if (!validated) {
+      return;
+    }
 
     this.saving.set(true);
     try {
@@ -319,6 +369,14 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  async runConfigTest(): Promise<void> {
+    this.syncListen();
+    this.syncDomains();
+    this.syncIndex();
+    this.normalizeLocations();
+    await this.validateBeforeSave(true);
   }
 
   private syncListen(): void {
@@ -416,5 +474,351 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       error?.message ||
       '请求失败'
     );
+  }
+
+  private getInvalidDomains(domains: string[]): string[] {
+    return (domains || []).filter(domain => !this.isValidDomain(domain));
+  }
+
+  private isValidDomain(domain: string): boolean {
+    const text = String(domain || '').trim();
+    if (!text) {
+      return false;
+    }
+    if (text === '_' || text === '*' || text === 'localhost') {
+      return true;
+    }
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(text)) {
+      return text.split('.').every(part => Number(part) >= 0 && Number(part) <= 255);
+    }
+    const domainPattern = /^(?=.{1,253}$)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$/;
+    return domainPattern.test(text);
+  }
+
+  private isValidFilePath(path: string): boolean {
+    const text = String(path || '').trim();
+    if (!text) {
+      return false;
+    }
+    if (/^[a-zA-Z]:\\/.test(text)) {
+      return true;
+    }
+    if (text.startsWith('/')) {
+      return true;
+    }
+    return false;
+  }
+
+  private async detectPortConflict(): Promise<boolean> {
+    try {
+      const res = await this.nginxService.getServers();
+      if (!res.success || !res.servers?.length) {
+        return false;
+      }
+
+      const currentServerId = this.mode === 'edit' ? this.editingServer?.id : null;
+      const targetPorts = new Set((this.formData.listen || []).map(item => String(item).trim()).filter(Boolean));
+      if (!targetPorts.size) {
+        return false;
+      }
+
+      const conflictServer = res.servers.find(server => {
+        if (!server.enabled) {
+          return false;
+        }
+        if (currentServerId && server.id === currentServerId) {
+          return false;
+        }
+        const listenPorts = new Set((server.listen || []).map(item => this.extractListenPort(item)).filter(Boolean));
+        for (const port of targetPorts) {
+          if (listenPorts.has(port)) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (conflictServer) {
+        this.message.warning(`检测到端口可能冲突：${conflictServer.name}`);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  private extractListenPort(listen: string): string {
+    const matched = String(listen || '').match(/(\d{1,5})/);
+    if (!matched) {
+      return '';
+    }
+    return String(Number(matched[1]));
+  }
+
+  private async validateBeforeSave(isManual: boolean = false): Promise<boolean> {
+    this.validatingConfig.set(true);
+    try {
+      const res = await this.nginxService.validateConfig();
+      if (res.valid) {
+        if (isManual) {
+          this.message.success('配置检测通过');
+        }
+        return true;
+      }
+      this.message.error('配置检测失败，请先修复全局配置错误后再保存');
+      (res.errors || []).slice(0, 3).forEach(item => this.message.error(item));
+      return false;
+    } catch (err: any) {
+      this.message.error('配置检测失败: ' + this.extractErrorMessage(err));
+      return false;
+    } finally {
+      this.validatingConfig.set(false);
+    }
+  }
+
+  private async confirmDiffBeforeSave(): Promise<boolean> {
+    if (this.mode !== 'edit' || !this.editingServer) {
+      return true;
+    }
+
+    const previous = this.toComparableRequestFromServer(this.editingServer);
+    const current = this.toComparableRequestFromForm();
+    const diffs = this.buildDiffRows(previous, current);
+
+    if (!diffs.length) {
+      this.message.info('未检测到配置变更');
+      return false;
+    }
+
+    const preview = diffs.slice(0, 12);
+    const content = this.renderDiffHtml(preview, diffs.length - preview.length);
+
+    return await new Promise<boolean>(resolve => {
+      this.modal.confirm({
+        nzTitle: '确认保存以下变更',
+        nzContent: content,
+        nzWidth: 860,
+        nzOkText: '确认保存',
+        nzCancelText: '取消',
+        nzOnOk: () => resolve(true),
+        nzOnCancel: () => resolve(false),
+      });
+    });
+  }
+
+  private toComparableRequestFromServer(server: NginxServer): CreateNginxServerRequest {
+    return {
+      name: String(server.name || '').trim(),
+      listen: this.normalizeStringArray(server.listen || []),
+      domains: this.normalizeStringArray(server.domains || []),
+      root: String(server.root || '').trim(),
+      index: this.normalizeStringArray(server.index || []),
+      locations: this.normalizeLocationsForCompare(server.locations || []),
+      ssl: Boolean(server.ssl),
+      protocol: server.ssl ? 'https' : 'http',
+      sslCert: String(server.sslCert || '').trim(),
+      sslKey: String(server.sslKey || '').trim(),
+      enabled: Boolean(server.enabled),
+      extraConfig: String(server.extraConfig || '').trim(),
+    };
+  }
+
+  private toComparableRequestFromForm(): CreateNginxServerRequest {
+    return {
+      name: String(this.formData.name || '').trim(),
+      listen: this.normalizeStringArray(this.formData.listen || []),
+      domains: this.normalizeStringArray(this.formData.domains || []),
+      root: String(this.formData.root || '').trim(),
+      index: this.normalizeStringArray(this.formData.index || []),
+      locations: this.normalizeLocationsForCompare(this.formData.locations || []),
+      ssl: this.formData.protocol === 'https',
+      protocol: this.formData.protocol === 'https' ? 'https' : 'http',
+      sslCert: String(this.formData.sslCert || '').trim(),
+      sslKey: String(this.formData.sslKey || '').trim(),
+      enabled: this.formData.enabled !== false,
+      extraConfig: String(this.formData.extraConfig || '').trim(),
+    };
+  }
+
+  private buildDiffRows(a: CreateNginxServerRequest, b: CreateNginxServerRequest): ServerDiffRow[] {
+    const diffs: ServerDiffRow[] = [];
+    this.pushDiff(diffs, '名称', a.name, b.name);
+    this.pushDiff(diffs, '监听端口', (a.listen || []).join(', '), (b.listen || []).join(', '));
+    this.pushDiff(diffs, '域名', (a.domains || []).join(', '), (b.domains || []).join(', '));
+    this.pushDiff(diffs, '根目录', a.root || '', b.root || '');
+    this.pushDiff(diffs, '默认首页', (a.index || []).join(', '), (b.index || []).join(', '));
+    this.pushDiff(diffs, '协议', a.protocol || '', b.protocol || '');
+    this.pushDiff(diffs, 'SSL证书', a.sslCert || '', b.sslCert || '');
+    this.pushDiff(diffs, 'SSL私钥', a.sslKey || '', b.sslKey || '');
+    this.pushDiff(diffs, '启用状态', String(Boolean(a.enabled)), String(Boolean(b.enabled)));
+    this.pushDiff(diffs, '自定义配置', a.extraConfig || '', b.extraConfig || '');
+    this.pushDiff(
+      diffs,
+      'Location 规则',
+      this.serializeLocations(a.locations || []),
+      this.serializeLocations(b.locations || [])
+    );
+    return diffs;
+  }
+
+  private pushDiff(lines: ServerDiffRow[], label: string, oldValue: string, newValue: string): void {
+    const left = String(oldValue || '').trim();
+    const right = String(newValue || '').trim();
+    if (left === right) {
+      return;
+    }
+    lines.push({
+      label,
+      before: left || '空',
+      after: right || '空',
+    });
+  }
+
+  private normalizeStringArray(list: string[]): string[] {
+    return Array.from(new Set(
+      (list || []).map(item => String(item || '').trim()).filter(Boolean)
+    )).sort((x, y) => x.localeCompare(y, 'zh-CN'));
+  }
+
+  private normalizeLocationsForCompare(list: NginxLocation[]): NginxLocation[] {
+    return (list || []).map(item => ({
+      path: String(item.path || '').trim(),
+      proxyPass: String(item.proxyPass || '').trim() || undefined,
+      root: String(item.root || '').trim() || undefined,
+      index: this.normalizeStringArray(item.index || []),
+      tryFiles: this.normalizeStringArray(item.tryFiles || []),
+      rawConfig: String(item.rawConfig || '').trim() || undefined,
+    }));
+  }
+
+  private serializeLocations(list: NginxLocation[]): string {
+    return (list || [])
+      .map(item => JSON.stringify(item))
+      .sort((x, y) => x.localeCompare(y, 'zh-CN'))
+      .join(' | ');
+  }
+
+  private generatePreviewConfig(request: CreateNginxServerRequest): string {
+    const lines: string[] = ['server {'];
+    const listenValues = this.normalizeStringArray(request.listen || []);
+    const domainValues = this.normalizeStringArray(request.domains || []);
+    const indexValues = this.normalizeStringArray(request.index || []);
+    const ssl = request.protocol === 'https' || request.ssl === true;
+
+    lines.push(`    # ngm-name: ${request.name || 'unnamed'}`);
+    listenValues.forEach(item => {
+      const normalized = String(item || '').trim();
+      if (!normalized) {
+        return;
+      }
+      if (ssl && normalized === '443') {
+        lines.push(`    listen ${normalized} ssl;`);
+      } else {
+        lines.push(`    listen ${normalized};`);
+      }
+    });
+    lines.push(`    server_name ${(domainValues.length ? domainValues : ['_']).join(' ')};`);
+
+    if (request.root) {
+      lines.push(`    root ${request.root};`);
+    }
+    if (indexValues.length) {
+      lines.push(`    index ${indexValues.join(' ')};`);
+    }
+
+    if (ssl) {
+      lines.push('');
+      lines.push('    # SSL 配置');
+      lines.push(`    ssl_certificate ${request.sslCert || '/path/to/cert.pem'};`);
+      lines.push(`    ssl_certificate_key ${request.sslKey || '/path/to/key.pem'};`);
+    }
+
+    (request.locations || []).forEach(loc => {
+      const path = String(loc.path || '/').trim() || '/';
+      lines.push('');
+      lines.push(`    location ${path} {`);
+      if (loc.proxyPass) {
+        lines.push(`        proxy_pass ${loc.proxyPass};`);
+      }
+      if (loc.root) {
+        lines.push(`        root ${loc.root};`);
+      }
+      if (loc.index?.length) {
+        lines.push(`        index ${loc.index.join(' ')};`);
+      }
+      if (loc.tryFiles?.length) {
+        lines.push(`        try_files ${loc.tryFiles.join(' ')};`);
+      }
+      if (loc.rawConfig) {
+        loc.rawConfig
+          .split(/\r?\n/)
+          .map(item => item.trim())
+          .filter(Boolean)
+          .forEach(item => {
+            lines.push(`        ${item.endsWith(';') ? item : `${item};`}`);
+          });
+      }
+      lines.push('    }');
+    });
+
+    if (request.extraConfig) {
+      lines.push('');
+      request.extraConfig
+        .split(/\r?\n/)
+        .map(item => item.trimEnd())
+        .filter(Boolean)
+        .forEach(item => {
+          lines.push(`    ${item}`);
+        });
+    }
+
+    lines.push('}');
+    return lines.join('\n');
+  }
+
+  private renderDiffHtml(rows: ServerDiffRow[], hiddenCount: number): string {
+    const body = rows.map(row => (
+      `<tr>
+        <td style="padding:6px 8px;border:1px solid #f0f0f0;vertical-align:top;width:120px;font-weight:600;">${this.escapeHtml(row.label)}</td>
+        <td style="padding:6px 8px;border:1px solid #f0f0f0;vertical-align:top;color:rgba(0,0,0,0.65);max-width:260px;word-break:break-all;">${this.formatDiffValue(row.before)}</td>
+        <td style="padding:6px 8px;border:1px solid #f0f0f0;vertical-align:top;color:#262626;max-width:260px;word-break:break-all;">${this.formatDiffValue(row.after)}</td>
+      </tr>`
+    )).join('');
+
+    const extraText = hiddenCount > 0
+      ? `<div style="margin-top:8px;color:rgba(0,0,0,0.45);">还有 ${hiddenCount} 项变更未展开</div>`
+      : '';
+
+    return `
+      <div style="max-height:420px;overflow:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr>
+              <th style="padding:6px 8px;border:1px solid #f0f0f0;background:#fafafa;text-align:left;">字段</th>
+              <th style="padding:6px 8px;border:1px solid #f0f0f0;background:#fafafa;text-align:left;">原值</th>
+              <th style="padding:6px 8px;border:1px solid #f0f0f0;background:#fafafa;text-align:left;">新值</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+        ${extraText}
+      </div>
+    `;
+  }
+
+  private formatDiffValue(value: string): string {
+    const text = String(value || '');
+    const normalized = text.length > 300 ? `${text.slice(0, 300)} ...` : text;
+    return this.escapeHtml(normalized).replace(/\n/g, '<br/>');
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }

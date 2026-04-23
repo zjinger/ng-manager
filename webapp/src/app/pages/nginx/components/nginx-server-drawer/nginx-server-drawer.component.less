@@ -52,6 +52,7 @@
 
 .location-toolbar {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 10px;
 }
@@ -92,6 +93,21 @@
     justify-content: flex-end;
     gap: 8px;
     background: #fff;
+}
+
+.config-preview {
+    margin: 0;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fafafa;
+    max-height: 520px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--nginx-font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+    font-size: 12px;
+    line-height: 1.6;
 }
 
 @media (max-width: 640px) {

@@ -3,6 +3,40 @@
   @if (showToolbar) {
     <div class="list-header">
       <div class="header-left">
+        <input
+          nz-input
+          class="header-search"
+          [(ngModel)]="keyword"
+          placeholder="搜索名称/域名/端口"
+        />
+        <nz-select class="header-sort-field" [(ngModel)]="sortField" nzPlaceHolder="排序字段">
+          <nz-option nzValue="name" nzLabel="按名称"></nz-option>
+          <nz-option nzValue="enabled" nzLabel="按启用状态"></nz-option>
+          <nz-option nzValue="ports" nzLabel="按端口"></nz-option>
+          <nz-option nzValue="runtime" nzLabel="按运行态"></nz-option>
+        </nz-select>
+        <nz-select class="header-sort-order" [(ngModel)]="sortOrder" nzPlaceHolder="排序方向">
+          <nz-option nzValue="asc" nzLabel="升序"></nz-option>
+          <nz-option nzValue="desc" nzLabel="降序"></nz-option>
+        </nz-select>
+        <nz-select class="header-runtime-filter" [(ngModel)]="runtimeFilter" nzPlaceHolder="运行态筛选">
+          <nz-option nzValue="all" nzLabel="全部状态"></nz-option>
+          <nz-option nzValue="running" nzLabel="Running"></nz-option>
+          <nz-option nzValue="stopped" nzLabel="Stopped"></nz-option>
+          <nz-option nzValue="disabled" nzLabel="Disabled"></nz-option>
+        </nz-select>
+      </div>
+      <div class="header-right">
+        <span class="selection-summary">已选 {{ selectedCount }} 项</span>
+        <button nz-button nzType="default" (click)="bulkSetEnabled(true)" [disabled]="!selectedCount">
+          批量启用
+        </button>
+        <button nz-button nzType="default" (click)="bulkSetEnabled(false)" [disabled]="!selectedCount">
+          批量禁用
+        </button>
+        <button nz-button nzType="default" (click)="clearSelection()" [disabled]="!selectedCount">
+          清空选择
+        </button>
         <button nz-button nzType="default" (click)="importServer()">
           <nz-icon nzType="upload" nzTheme="outline"></nz-icon>
           导入
@@ -13,10 +47,27 @@
         </button>
       </div>
     </div>
+    @if (undoVisible()) {
+      <div class="undo-banner">
+        <span>{{ undoText() }}</span>
+        <div class="undo-actions">
+          <button nz-button nzType="link" (click)="undoLastAction()">撤销</button>
+          <button nz-button nzType="link" (click)="dismissUndo()">关闭</button>
+        </div>
+      </div>
+    }
   }
 
   <div class="server-grid-shell">
     <div class="server-grid-head">
+      <div class="cell select-col">
+        <label
+          nz-checkbox
+          [ngModel]="allVisibleSelected"
+          [nzIndeterminate]="someVisibleSelected"
+          (ngModelChange)="toggleSelectAllVisible($event)"
+        ></label>
+      </div>
       <div class="cell status-col">状态</div>
       <div class="cell">Server 名称</div>
       <div class="cell listen-col">监听端口</div>
@@ -28,16 +79,39 @@
       <div class="cell action-col">操作</div>
     </div>
 
-    <nz-spin [nzSpinning]="loading()">
-      <div class="server-grid-body">
-        @if (!loading() && !servers().length) {
-          <div class="empty-state">
-            <nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></nz-icon>
-            <p>暂无 Server 配置</p>
+    <div class="server-grid-body">
+      @if (loading()) {
+        @for (row of skeletonRows; track row) {
+          <div class="server-grid-row skeleton-row">
+            <div class="cell select-col"><div class="skeleton-block skeleton-checkbox"></div></div>
+            <div class="cell status-col"><div class="skeleton-block skeleton-switch"></div></div>
+            <div class="cell"><div class="skeleton-block skeleton-title"></div></div>
+            <div class="cell listen-col"><div class="skeleton-block"></div></div>
+            <div class="cell domain-col"><div class="skeleton-block"></div></div>
+            <div class="cell access-col"><div class="skeleton-block"></div></div>
+            <div class="cell proxy-col"><div class="skeleton-block"></div></div>
+            <div class="cell root-col"><div class="skeleton-block"></div></div>
+            <div class="cell action-col"><div class="skeleton-block skeleton-actions"></div></div>
           </div>
-        } @else {
-          @for (server of servers(); track server.id) {
-            <div class="server-grid-row" [class.disabled-row]="!server.enabled">
+        }
+      } @else if (!renderedServers.length) {
+        <div class="empty-state">
+          <nz-icon nzType="inbox" nzTheme="outline" class="empty-icon"></nz-icon>
+          <p>{{ keyword.trim() ? '未匹配到 Server' : '暂无 Server 配置' }}</p>
+          @if (!keyword.trim()) {
+            <button nz-button nzType="primary" (click)="openDrawer(null)">立即创建</button>
+          }
+        </div>
+      } @else {
+        @for (server of renderedServers; track server.id) {
+          <div class="server-grid-row" [class.disabled-row]="!server.enabled">
+              <div class="cell select-col">
+                <label
+                  nz-checkbox
+                  [ngModel]="selectedServerIds().has(server.id)"
+                  (ngModelChange)="toggleSelectOne(server.id, $event)"
+                ></label>
+              </div>
               <div class="cell status-col">
                 <nz-switch
                   nzSize="small"
@@ -49,7 +123,10 @@
               <div class="cell">
                 <div class="server-name">
                   <nz-icon nzType="file" nzTheme="outline" class="conf-icon"></nz-icon>
-                  {{ server.name }}
+                  <span class="server-name-text">{{ server.name }}</span>
+                  <span [ngClass]="['runtime-pill', getRuntimeState(server).toneClass]">
+                    {{ getRuntimeState(server).label }}
+                  </span>
                 </div>
               </div>
 
@@ -125,11 +202,10 @@
                   </button>
                 </div>
               </div>
-            </div>
-          }
+          </div>
         }
-      </div>
-    </nz-spin>
+      }
+    </div>
   </div>
 </div>
 
@@ -153,5 +229,133 @@
 >
   <ng-container *nzModalContent>
     <pre class="config-preview">{{ viewingConfig() }}</pre>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [(nzVisible)]="importModalVisible"
+  nzTitle="导入 Nginx Server"
+  [nzOkText]="'解析并导入'"
+  [nzCancelText]="'取消'"
+  [nzOkLoading]="importing()"
+  (nzOnOk)="submitImport()"
+  (nzOnCancel)="closeImportModal()"
+  nzWidth="860px"
+>
+  <ng-container *nzModalContent>
+    <div class="import-toolbar">
+      <button nz-button nzType="default" (click)="readFromClipboard()">
+        从剪贴板读取
+      </button>
+      <label class="import-file-label">
+        <input type="file" accept=".conf,.txt" (change)="onImportFileChange($event)" />
+        <span>从文件导入</span>
+      </label>
+    </div>
+    <textarea
+      nz-input
+      class="import-editor"
+      rows="18"
+      [ngModel]="importText()"
+      (ngModelChange)="onImportTextChange($event)"
+      placeholder="粘贴包含 server { ... } 的 nginx 配置，可包含多个 server "
+    ></textarea>
+    @if (importTotalCount) {
+      <div class="import-preview-head">
+        <label
+          nz-checkbox
+          [ngModel]="allImportSelectableSelected"
+          [nzIndeterminate]="someImportSelectableSelected"
+          (ngModelChange)="toggleSelectAllImport($event)"
+        >
+          全选可导入项
+        </label>
+        <span>共 {{ importTotalCount }} 项，可导入 {{ importValidCount }} 项，已选择 {{ importSelectedCount }} 项</span>
+      </div>
+      <div class="import-preview-list">
+        @for (item of importCandidates(); track item.id) {
+          <div
+            class="import-preview-item"
+            [class.invalid]="!item.request"
+            [class.conflict]="isImportCandidateBlocked(item)"
+          >
+            <label
+              nz-checkbox
+              [ngModel]="item.selected"
+              [nzDisabled]="!item.request || isImportCandidateBlocked(item)"
+              (ngModelChange)="toggleSelectImport(item.id, $event)"
+            ></label>
+            @if (item.request) {
+              <div class="import-preview-meta">
+                <div class="import-edit-grid">
+                  <div class="field">
+                    <span class="field-label">名称</span>
+                    <input
+                      nz-input
+                      [attr.data-import-id]="item.id"
+                      data-field="name"
+                      [ngModel]="item.request.name"
+                      (ngModelChange)="updateImportCandidateName(item.id, $event)"
+                      placeholder="server 名称"
+                    />
+                  </div>
+                  <div class="field">
+                    <span class="field-label">域名</span>
+                    <input
+                      nz-input
+                      [attr.data-import-id]="item.id"
+                      data-field="domains"
+                      [ngModel]="getImportCandidateDomainsText(item)"
+                      (ngModelChange)="updateImportCandidateDomains(item.id, $event)"
+                      placeholder="如: example.com, localhost"
+                    />
+                  </div>
+                  <div class="field">
+                    <span class="field-label">端口</span>
+                    <input
+                      nz-input
+                      [attr.data-import-id]="item.id"
+                      data-field="listen"
+                      [ngModel]="getImportCandidateListenText(item)"
+                      (ngModelChange)="updateImportCandidateListen(item.id, $event)"
+                      placeholder="如: 80, 443"
+                    />
+                  </div>
+                </div>
+                <div class="sub">
+                  {{ item.request.protocol || 'http' }} | {{ item.request.ssl ? 'SSL' : 'No SSL' }}
+                </div>
+                @if (getImportCandidateIssues(item).length) {
+                  <div class="issue-list">
+                    @for (issue of getImportCandidateIssues(item); track $index) {
+                      @if (issue.field) {
+                        <button
+                          type="button"
+                          class="issue-item issue-link"
+                          [class.error]="issue.level === 'error'"
+                          [class.warning]="issue.level === 'warning'"
+                          (click)="focusImportField(item.id, issue.field)"
+                        >
+                          {{ issue.message }}
+                        </button>
+                      } @else {
+                        <div class="issue-item" [class.error]="issue.level === 'error'" [class.warning]="issue.level === 'warning'">
+                          {{ issue.message }}
+                        </div>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="import-preview-meta">
+                <div class="name">无效 server </div>
+                <div class="sub">{{ item.error }}</div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
   </ng-container>
 </nz-modal>

@@ -25,7 +25,7 @@
 
         <!-- 协议 + 域名 + 监听端口 -->
         <nz-form-item>
-          <nz-form-label nzRequired>域名</nz-form-label>
+          <nz-form-label nzRequired>域名与端口</nz-form-label>
           <nz-form-control>
             <div nz-input-group nzCompact class="domain-row-wrapper">
               <nz-select
@@ -110,9 +110,15 @@
                 <span nz-icon nzType="plus"></span>
                 新增规则
               </button>
-              <!-- <button nz-button nzType="default" type="button" (click)="addLocation('api')">
-                快速新增 API 代理
-              </button> -->
+              <button nz-button nzType="default" type="button" (click)="addLocation('api')">
+                API 代理模板
+              </button>
+              <button nz-button nzType="default" type="button" (click)="addLocation('reverse')">
+                反向代理模板
+              </button>
+              <button nz-button nzType="default" type="button" (click)="addLocation('static')">
+                静态托管模板
+              </button>
             </div>
 
             @for (loc of formData.locations; track $index) {
@@ -214,8 +220,23 @@
 
     <div class="drawer-footer">
       <button nz-button nzType="default" (click)="onClose()">取消</button>
-      <!-- <button nz-button nzType="default" (click)="previewConfig()">预览配置</button> -->
+      <button nz-button nzType="default" (click)="previewConfig()">预览配置</button>
+      <button nz-button nzType="default" (click)="runConfigTest()" [nzLoading]="validatingConfig()">
+        测试配置
+      </button>
       <button nz-button nzType="primary" (click)="save()" [nzLoading]="saving()">保存</button>
     </div>
   </ng-container>
 </nz-drawer>
+
+<nz-modal
+  [nzVisible]="previewVisible()"
+  nzTitle="配置预览"
+  [nzFooter]="null"
+  nzWidth="900px"
+  (nzOnCancel)="previewVisible.set(false)"
+>
+  <ng-container *nzModalContent>
+    <pre class="config-preview">{{ previewContent() }}</pre>
+  </ng-container>
+</nz-modal>

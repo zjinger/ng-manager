@@ -93,7 +93,7 @@ export class NginxUpstreamService {
         sourceFile: filePath,
         managed,
         readonly: !managed,
-        health: nodes.length ? `${nodes.length}/${nodes.length} 已配置` : '0/0',
+        health: nodes.length ? 'healthy' : 'unknown',
         healthy: nodes.length > 0,
       });
 
@@ -172,7 +172,7 @@ export class NginxUpstreamService {
         sourceFile,
         managed,
         readonly: !managed,
-        health: `${nodes.length}/${nodes.length} 已配置`,
+        health: nodes.length ? 'healthy' : 'unknown',
         healthy: true,
       });
     }

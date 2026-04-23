@@ -58,6 +58,7 @@ export class NginxServerService {
 
     const ssl = this.resolveSsl(request.ssl, request.protocol);
     const normalizedName = this.normalizeName(request.name);
+    const now = new Date().toISOString();
     const normalizedServer: NginxServer = {
       id: '',
       name: normalizedName,
@@ -72,6 +73,9 @@ export class NginxServerService {
       enabled: request.enabled !== false,
       extraConfig: this.normalizeOptionalText(request.extraConfig),
       configText: '',
+      createdAt: now,
+      updatedAt: now,
+      createdBy: 'system',
     };
     await this.parseServersFromConfig();
     this.ensureNoPortConflicts(null, normalizedServer.listen, normalizedServer.enabled);
@@ -127,6 +131,7 @@ export class NginxServerService {
     if (request.sslCert !== undefined) nextServer.sslCert = this.normalizeOptionalText(request.sslCert);
     if (request.sslKey !== undefined) nextServer.sslKey = this.normalizeOptionalText(request.sslKey);
     if (request.extraConfig !== undefined) nextServer.extraConfig = this.normalizeOptionalText(request.extraConfig);
+    nextServer.updatedAt = new Date().toISOString();
 
     const nextEnabled = request.enabled ?? nextServer.enabled;
     this.ensureNoPortConflicts(id, nextServer.listen, nextEnabled);
@@ -355,6 +360,9 @@ export class NginxServerService {
         .filter(Boolean) || [];
 
     const metadataName = this.parseManagedDisplayName(content);
+    const metadataCreatedAt = this.parseManagedMeta(content, 'created-at');
+    const metadataUpdatedAt = this.parseManagedMeta(content, 'updated-at');
+    const metadataCreatedBy = this.parseManagedMeta(content, 'created-by');
     const name = this.normalizeName(metadataName || domains[0] || basename(filePath, '.conf') || '_');
     const rootValue =
       this.extractTopLevelDirectiveValues(sanitizedContent, 'root')[0] ||
@@ -400,6 +408,9 @@ export class NginxServerService {
       extraConfig: '',
       configText: `server {${content}}`,
       filePath,
+      createdAt: metadataCreatedAt,
+      updatedAt: metadataUpdatedAt,
+      createdBy: metadataCreatedBy,
     };
   }
 
@@ -564,11 +575,23 @@ export class NginxServerService {
     sslCert?: string;
     sslKey?: string;
     extraConfig?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    createdBy?: string;
   }): string {
     const lines: string[] = ['server {'];
     const displayName = this.normalizeManagedDisplayName(server.name);
     if (displayName) {
       lines.push(`    # ngm-name: ${displayName}`);
+    }
+    if (server.createdAt) {
+      lines.push(`    # ngm-created-at: ${server.createdAt}`);
+    }
+    if (server.updatedAt) {
+      lines.push(`    # ngm-updated-at: ${server.updatedAt}`);
+    }
+    if (server.createdBy) {
+      lines.push(`    # ngm-created-by: ${server.createdBy}`);
     }
 
     for (const listen of this.normalizeListenValues(server.listen, Boolean(server.ssl))) {
@@ -656,11 +679,18 @@ export class NginxServerService {
   }
 
   private parseManagedDisplayName(content: string): string | undefined {
-    const marker = content.match(/^\s*#\s*ngm-name\s*:\s*(.+?)\s*$/m);
+    return this.normalizeManagedDisplayName(this.parseManagedMeta(content, 'name'));
+  }
+
+  private parseManagedMeta(content: string, key: string): string | undefined {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^\\s*#\\s*ngm-${escaped}\\s*:\\s*(.+?)\\s*$`, 'm');
+    const marker = content.match(regex);
     if (!marker?.[1]) {
       return undefined;
     }
-    return this.normalizeManagedDisplayName(marker[1]);
+    const value = String(marker[1] || '').trim();
+    return value || undefined;
   }
 
   private isDefaultProxySetHeaderLine(line: string): boolean {

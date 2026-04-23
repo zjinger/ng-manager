@@ -65,21 +65,27 @@ export class NginxService {
    * 启动 Nginx
    */
   async start(): Promise<NginxCommandResult> {
-    return await firstValueFrom(this.http.post<NginxCommandResult>(`${this.baseUrl}/start`, {}));
+    return this.executeWithRetry(
+      () => firstValueFrom(this.http.post<NginxCommandResult>(`${this.baseUrl}/start`, {}))
+    );
   }
 
   /**
    * 停止 Nginx
    */
   async stop(): Promise<NginxCommandResult> {
-    return await firstValueFrom(this.http.post<NginxCommandResult>(`${this.baseUrl}/stop`, {}));
+    return this.executeWithRetry(
+      () => firstValueFrom(this.http.post<NginxCommandResult>(`${this.baseUrl}/stop`, {}))
+    );
   }
 
   /**
    * 重载配置
    */
   async reload(): Promise<NginxCommandResult> {
-    return await firstValueFrom(this.http.post<NginxCommandResult>(`${this.baseUrl}/reload`, {}));
+    return this.executeWithRetry(
+      () => firstValueFrom(this.http.post<NginxCommandResult>(`${this.baseUrl}/reload`, {}))
+    );
   }
 
   /**
@@ -356,5 +362,30 @@ export class NginxService {
         `${this.baseUrl}/logs/info`
       )
     );
+  }
+
+  private async executeWithRetry<T>(
+    fn: () => Promise<T>,
+    options: { retries?: number; delayMs?: number } = {}
+  ): Promise<T> {
+    const retries = Math.max(0, options.retries ?? 1);
+    const delayMs = Math.max(0, options.delayMs ?? 500);
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        if (attempt >= retries) {
+          throw error;
+        }
+        if (delayMs > 0) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    throw lastError;
   }
 }

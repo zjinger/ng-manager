@@ -104,6 +104,12 @@ export interface NginxServer {
   configText: string;
   /** 配置文件路径 */
   filePath?: string;
+  /** 创建时间（ISO 字符串） */
+  createdAt?: string;
+  /** 更新时间（ISO 字符串） */
+  updatedAt?: string;
+  /** 创建人 */
+  createdBy?: string;
 }
 
 /**
@@ -196,6 +202,7 @@ export interface NginxConfigValidation {
  * Upstream 负载策略
  */
 export type NginxUpstreamStrategy = 'round-robin' | 'least_conn' | 'ip_hash' | 'hash';
+export type NginxUpstreamHealth = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 
 /**
  * Upstream 配置
@@ -215,8 +222,8 @@ export interface NginxUpstream {
   managed?: boolean;
   /** 是否只读 */
   readonly?: boolean;
-  /** 健康检查文案（占位） */
-  health?: string;
+  /** 健康状态 */
+  health?: NginxUpstreamHealth;
   /** 是否健康 */
   healthy?: boolean;
 }
