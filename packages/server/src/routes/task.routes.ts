@@ -1,4 +1,4 @@
-import { AppError } from "@yinuo-ngm/core";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 /** 判断该项目是否已有 specs（用于懒加载） */
 async function ensureSpecs(fastify: FastifyInstance, projectId: string) {
@@ -40,7 +40,7 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.post("/start", async (req) => {
         const body = req.body as { taskId?: string };
         const taskId = body?.taskId?.trim();
-        if (!taskId) throw new AppError("TASK_ID_REQUIRED", "taskId is required", { body });
+        if (!taskId) throw new CoreError(CoreErrorCodes.TASK_ID_REQUIRED, "taskId is required", { body });
         return await fastify.core.task.start(taskId);
     });
 
@@ -53,7 +53,7 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.post("/stop", async (req) => {
         const body = req.body as { taskId?: string };
         const taskId = body?.taskId?.trim();
-        if (!taskId) throw new AppError("TASK_ID_REQUIRED", "taskId is required", { body });
+        if (!taskId) throw new CoreError(CoreErrorCodes.TASK_ID_REQUIRED, "taskId is required", { body });
         return await fastify.core.task.stop(taskId);
     });
 
@@ -65,7 +65,7 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.post("/restart", async (req) => {
         const body = req.body as { taskId?: string };
         const taskId = body?.taskId?.trim();
-        if (!taskId) throw new AppError("TASK_ID_REQUIRED", "taskId is required", { body });
+        if (!taskId) throw new CoreError(CoreErrorCodes.TASK_ID_REQUIRED, "taskId is required", { body });
         return await fastify.core.task.restart(taskId);
     });
 

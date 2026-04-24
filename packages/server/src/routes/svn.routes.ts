@@ -1,4 +1,4 @@
-import { AppError, ProjectAssetSourceSvn } from "@yinuo-ngm/core";
+import { CoreError, CoreErrorCodes, ProjectAssetSourceSvn } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 import mime from "mime-types";
 import fs, { createReadStream } from "node:fs";
@@ -13,7 +13,7 @@ export default async function svnRoutes(fastify: FastifyInstance) {
         const p = await fastify.core.project.get(projectId);
         const assets = p.assets;
         if (!assets) {
-            throw new AppError('ASSET_NOT_FOUND', 'Project assets are required for SVN sync');
+            throw new CoreError(CoreErrorCodes.ASSET_NOT_FOUND, 'Project assets are required for SVN sync');;
         }
         const { iconsSvn, cutImageSvn } = assets
         const svnSources = [iconsSvn, cutImageSvn].filter(s => s && s.kind === "svn") as ProjectAssetSourceSvn[];
@@ -42,7 +42,7 @@ export default async function svnRoutes(fastify: FastifyInstance) {
         const { projectId } = req.params as { projectId: string };
         const assets = (await fastify.core.project.get(projectId)).assets;
         if (!assets) {
-            throw new AppError('ASSET_NOT_FOUND', 'Project assets are required for SVN sync');
+            throw new CoreError(CoreErrorCodes.ASSET_NOT_FOUND, 'Project assets are required for SVN sync');;
         }
         const { iconsSvn, cutImageSvn } = assets;
         const svnSources = [iconsSvn, cutImageSvn].filter(s => s && s.kind === "svn") as ProjectAssetSourceSvn[];

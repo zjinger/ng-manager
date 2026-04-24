@@ -1,7 +1,7 @@
 import { realpath } from 'fs/promises';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { resolve } from 'path';
-import { AppError } from '@yinuo-ngm/core';
+import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/core';
 
 export interface NginxRouteContext {
   fastify: FastifyInstance;
@@ -53,7 +53,7 @@ export function createNginxRouteContext(fastify: FastifyInstance): NginxRouteCon
 
 export function sendBadRequest(reply: FastifyReply, error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? '未知错误');
-  throw new AppError('BAD_REQUEST', message, {
+  throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, message, {
     route: reply.request?.url,
     method: reply.request?.method,
   });

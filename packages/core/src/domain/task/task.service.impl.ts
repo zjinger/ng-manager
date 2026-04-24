@@ -273,9 +273,8 @@ export class TaskServiceImpl implements TaskService {
         if (!cur) throw new CoreError(CoreErrorCodes.RUN_NOT_FOUND, "Run not found", { taskId });
         const { runId, rt } = cur;
 
-        if (rt.status !== "running") { // 非 running 状态，直接启动（或报错）
-            // throw new AppError("TASK_NOT_RUNNING", "Task is not running, cannot restart", { taskId });
-             return await this.start(taskId);
+        if (rt.status !== "running") {
+            return await this.start(taskId);
         }
 
         const projectId = rt.projectId;

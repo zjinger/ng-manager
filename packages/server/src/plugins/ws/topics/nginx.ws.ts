@@ -1,4 +1,4 @@
-import type { WsClientMsg, WsServerMsg, NginxLogType } from "@yinuo-ngm/core";
+import { GlobalErrorCodes, type WsClientMsg, type WsServerMsg, NginxLogType } from "@yinuo-ngm/core";
 import type { NginxLogEntry, NginxLogService } from "@yinuo-ngm/nginx";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
@@ -38,7 +38,7 @@ export function createNginxTopicHandler(
             if (!logType || (logType !== "error" && logType !== "access")) {
                 ctx.send({
                     op: "error",
-                    code: "BAD_MSG",
+                    code: GlobalErrorCodes.BAD_MSG,
                     message: "logType must be 'error' or 'access'",
                     ts: Date.now()
                 });

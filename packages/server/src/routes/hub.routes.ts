@@ -1,4 +1,4 @@
-import { AppError } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 
 type FeedbackCategory = "bug" | "suggestion" | "feature" | "other";
@@ -19,18 +19,18 @@ const DEFAULT_HUB_PUBLIC_BASE_URL = "http://192.168.1.31:7070/api/public";
 function normalizeText(value: unknown, maxLen: number, fieldName: string) {
     if (value === undefined || value === null) return undefined;
     if (typeof value !== "string") {
-        throw new AppError("BAD_REQUEST", `${fieldName} must be string`);
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, `${fieldName} must be string`);
     }
     const text = value.trim();
     if (text.length > maxLen) {
-        throw new AppError("BAD_REQUEST", `${fieldName} length must <= ${maxLen}`);
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, `${fieldName} length must <= ${maxLen}`);
     }
     return text;
 }
 
 function validateBody(input: unknown): Required<Pick<SubmitFeedbackBody, "category" | "title" | "content">> & SubmitFeedbackBody {
     if (!input || typeof input !== "object") {
-        throw new AppError("BAD_REQUEST", "invalid feedback payload");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "invalid feedback payload");
     }
 
     const body = input as SubmitFeedbackBody;
@@ -44,13 +44,13 @@ function validateBody(input: unknown): Required<Pick<SubmitFeedbackBody, "catego
     const osInfo = normalizeText(body.osInfo, 200, "osInfo");
 
     if (!category || !["bug", "suggestion", "feature", "other"].includes(category)) {
-        throw new AppError("BAD_REQUEST", "invalid feedback category");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "invalid feedback category");
     }
     if (!title) {
-        throw new AppError("BAD_REQUEST", "feedback title is required");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "feedback title is required");
     }
     if (!content) {
-        throw new AppError("BAD_REQUEST", "feedback content is required");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "feedback content is required");
     }
 
     return {
@@ -100,7 +100,7 @@ export default async function hubRoutes(app: FastifyInstance) {
                 }),
             });
         } catch (error: any) {
-            throw new AppError("UNKNOWN_ERROR", "failed to connect hub service", { cause: error?.message || String(error), targetUrl });
+            throw new GlobalError(GlobalErrorCodes.UNKNOWN_ERROR, "failed to connect hub service", { cause: error?.message || String(error), targetUrl });
         }
 
         let payload: any = null;
@@ -112,11 +112,11 @@ export default async function hubRoutes(app: FastifyInstance) {
 
         if (!response.ok) {
             const message = payload?.message || `hub response error (${response.status})`;
-            throw new AppError("UNKNOWN_ERROR", message, { status: response.status, payload });
+            throw new GlobalError(GlobalErrorCodes.UNKNOWN_ERROR, message, { status: response.status, payload });
         }
 
         if (payload?.code !== "OK") {
-            throw new AppError("UNKNOWN_ERROR", payload?.message || "hub feedback submit failed", { payload });
+            throw new GlobalError(GlobalErrorCodes.UNKNOWN_ERROR, payload?.message || "hub feedback submit failed", { payload });
         }
 
         return payload?.data ?? payload;

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { AppError, GenerateSpriteOptions, Project, type ProjectAssets, type SpriteConfig } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes, GenerateSpriteOptions, Project, type ProjectAssets, type SpriteConfig } from "@yinuo-ngm/core";
 
 import { FastifyInstance } from "fastify";
 /**
@@ -24,13 +24,13 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         const { projectId } = req.params as { projectId: string };
         const body = req.body as { config: Omit<SpriteConfig, "updatedAt" | "projectId">, assets?: ProjectAssets };
         if (!body || !body.config) {
-            throw new AppError('BAD_REQUEST', 'Missing config in request body');
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, 'Missing config in request body');
         }
         const nextCfg = body.config;
         const nextAssets = body.assets || {};
         const hasLocalImageRoot = !!String(nextCfg.localImageRoot ?? "").trim();
         if (!nextAssets.iconsSvn && !hasLocalImageRoot) {
-            throw new AppError('BAD_REQUEST', 'iconsSvn asset or localImageRoot is required');
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, 'iconsSvn asset or localImageRoot is required');
         }
 
         if (nextCfg.localDir && nextAssets.iconsSvn) {

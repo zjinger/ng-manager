@@ -2,7 +2,14 @@
 
 export { createCoreApp, } from "./app/core-app";
 export { type CoreApp } from "./app/types";
-export { type ErrorCode, AppError } from "./common/errors";
+export { AppError, GlobalError, globalErrors, CoreError, coreErrors } from "./common/errors";
+export {
+    type ErrorCode,
+    GlobalErrorCodes,
+    GlobalErrorCode,
+    CoreErrorCodes,
+    CoreErrorCode,
+} from "./common/errors";
 export type {
     NodeVersionInfo,
     ProjectNodeRequirement,

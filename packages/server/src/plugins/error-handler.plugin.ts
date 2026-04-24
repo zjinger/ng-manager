@@ -1,142 +1,129 @@
 import fp from "fastify-plugin";
 import type { FastifyPluginAsync } from "fastify";
-import { AppError, type ErrorCode } from "@yinuo-ngm/core";
+import { AppError, CoreErrorCodes, GlobalErrorCodes, type ErrorCode } from "@yinuo-ngm/core";
 
 /**
- * ErrorCode → HTTP Status 映射
+ * ErrorCode (numeric) → HTTP Status 映射
  *
  * 约定：
  * - 4xx：客户端/业务条件不满足
  * - 5xx：服务端/系统错误
  */
-export const ERROR_STATUS: Record<ErrorCode, number> = {
-    /* ---------------- Project ---------------- */
-    PROJECT_NOT_FOUND: 404,
-    PROJECT_ROOT_INVALID: 400,
-    PROJECT_ALREADY_EXISTS: 409,
-    PROJECT_ID_REQUIRED: 400,
+export const ERROR_STATUS: Partial<Record<ErrorCode, number>> = {
+    /* ---------------- Global 1XXXX ---------------- */
+    [GlobalErrorCodes.UNKNOWN_ERROR]: 500,
+    [GlobalErrorCodes.BAD_REQUEST]: 400,
+    [GlobalErrorCodes.NOT_FOUND]: 404,
+    [GlobalErrorCodes.NOT_IMPLEMENTED]: 501,
+    [GlobalErrorCodes.STORAGE_IO_ERROR]: 500,
+    [GlobalErrorCodes.FS_PATH_NOT_FOUND]: 404,
+    [GlobalErrorCodes.FS_PERMISSION_DENIED]: 403,
+    [GlobalErrorCodes.FS_ALREADY_EXISTS]: 409,
+    [GlobalErrorCodes.FS_INVALID_NAME]: 400,
+    [GlobalErrorCodes.FS_MKDIR_FAILED]: 500,
+    [GlobalErrorCodes.BAD_JSON]: 400,
+    [GlobalErrorCodes.BAD_MSG]: 400,
+    [GlobalErrorCodes.OP_NOT_SUPPORTED]: 400,
+    [GlobalErrorCodes.TOPIC_NOT_FOUND]: 404,
+    [GlobalErrorCodes.HANDLER_FAILED]: 500,
+    [GlobalErrorCodes.OP_NOT_FOUND]: 400,
+    [GlobalErrorCodes.UNAUTHORIZED]: 401,
+    [GlobalErrorCodes.INVALID_TIMESTAMP]: 400,
 
-    /* ---------------- Project Import ---------------- */
-    PROJECT_IMPORT_NOT_EXISTS: 404, // 路径不存在
-    PROJECT_IMPORT_NOT_DIR: 400, // 不是目录
-    PROJECT_IMPORT_ALREADY_REGISTERED: 409, // 已导入
-    PROJECT_IMPORT_NOT_RECOGNIZED: 422, // 不像项目（语义错误）
-    PROJECT_IMPORT_SCAN_FAILED: 500, // 扫描失败（IO/解析）
+    /* ---------------- Core Project 22XXX ---------------- */
+    [CoreErrorCodes.PROJECT_NOT_FOUND]: 404,
+    [CoreErrorCodes.PROJECT_ROOT_INVALID]: 400,
+    [CoreErrorCodes.PROJECT_ALREADY_EXISTS]: 409,
+    [CoreErrorCodes.PROJECT_ID_REQUIRED]: 400,
+    [CoreErrorCodes.PROJECT_IMPORT_NOT_EXISTS]: 404,
+    [CoreErrorCodes.PROJECT_IMPORT_NOT_DIR]: 400,
+    [CoreErrorCodes.PROJECT_IMPORT_ALREADY_REGISTERED]: 409,
+    [CoreErrorCodes.PROJECT_IMPORT_NOT_RECOGNIZED]: 422,
+    [CoreErrorCodes.PROJECT_IMPORT_SCAN_FAILED]: 500,
+    [CoreErrorCodes.BOOTSTRAP_NOT_IN_PICK_STATE]: 400,
+    [CoreErrorCodes.BOOTSTRAP_CTX_NOT_FOUND]: 404,
+    [CoreErrorCodes.BOOTSTRAP_INVALID_PICKED_ROOT]: 400,
+    [CoreErrorCodes.BOOTSTRAP_NOT_WAITING_PICK]: 400,
+    [CoreErrorCodes.INVALID_NAME]: 400,
+    [CoreErrorCodes.TARGET_EXISTS]: 409,
+    [CoreErrorCodes.INVALID_REPO_URL]: 400,
+    [CoreErrorCodes.INVALID_PARENT_DIR]: 400,
+    [CoreErrorCodes.GIT_CHECKOUT_FAILED]: 500,
+    [CoreErrorCodes.PROJECT_ANGULAR_JSON_INVALID]: 400,
+    [CoreErrorCodes.PROJECT_ANGULAR_JSON_NOT_FOUND]: 404,
+    [CoreErrorCodes.PROJECT_VITE_CONFIG_INVALID]: 400,
+    [CoreErrorCodes.PROJECT_VUE_CONFIG_NOT_FOUND]: 404,
+    [CoreErrorCodes.ASSET_NOT_FOUND]: 404,
+    [CoreErrorCodes.ASSET_KIND_NOT_SUPPORTED]: 400,
+    [CoreErrorCodes.ASSET_URL_REQUIRED]: 400,
+    [CoreErrorCodes.ASSET_LABEL_REQUIRED]: 400,
+    [CoreErrorCodes.ASSET_URL_INVALID]: 400,
+    [CoreErrorCodes.ASSET_MODE_INVALID]: 400,
 
-    /* ---------------- Project Assets ---------------- */
-    ASSET_NOT_FOUND: 404,
-    ASSET_KIND_NOT_SUPPORTED: 400,
-    ASSET_URL_REQUIRED: 400,
-    ASSET_LABEL_REQUIRED: 400,
-    ASSET_URL_INVALID: 400,
-    ASSET_MODE_INVALID: 400,
+    /* ---------------- Core Config 4XXXX ---------------- */
+    [CoreErrorCodes.CONFIG_BACKUP_NOT_FOUND]: 404,
+    [CoreErrorCodes.CONFIG_READ_FAILED]: 500,
+    [CoreErrorCodes.CONFIG_WRITE_FAILED]: 500,
+    [CoreErrorCodes.CONFIG_CONFLICT]: 409,
+    [CoreErrorCodes.CONFIG_OPEN_FAILED]: 500,
+    [CoreErrorCodes.CONFIG_SCHEMA_NOT_FOUND]: 404,
+    [CoreErrorCodes.CONFIG_DOMAIN_NOT_FOUND]: 404,
+    [CoreErrorCodes.CONFIG_DOC_NOT_FOUND]: 404,
 
-    /* ---------------- Project Creation ---------------- */
-    INVALID_NAME: 400, // 无效的项目名称
-    TARGET_EXISTS: 409, // 目标路径已存在
-    INVALID_REPO_URL: 400, // 无效的仓库地址
-    INVALID_PARENT_DIR: 400, // 无效的父目录
-    GIT_CHECKOUT_FAILED: 500, // Git 检出失败
-    BOOTSTRAP_NOT_IN_PICK_STATE: 400, // 当前不处于选择根目录状态
-    BOOTSTRAP_CTX_NOT_FOUND: 404, // 引导上下文未找到
-    BOOTSTRAP_INVALID_PICKED_ROOT: 400, // 选择的根目录无效
-    BOOTSTRAP_NOT_WAITING_PICK: 400, // 引导未处于等待选择状态
+    /* ---------------- Core Task 32XXX ---------------- */
+    [CoreErrorCodes.TASK_NOT_FOUND]: 404,
+    [CoreErrorCodes.RUN_NOT_FOUND]: 404,
+    [CoreErrorCodes.TASK_ID_REQUIRED]: 400,
+    [CoreErrorCodes.TASK_ALREADY_RUNNING]: 409,
+    [CoreErrorCodes.PROCESS_SPAWN_FAILED]: 500,
+    [CoreErrorCodes.TASK_SPEC_NOT_FOUND]: 404,
+    [CoreErrorCodes.TASK_NOT_RUNNABLE]: 400,
+    [CoreErrorCodes.COMMAND_NOT_FOUND]: 404,
 
+    /* ---------------- Core FS 5XXXX ---------------- */
+    [CoreErrorCodes.FS_EXISTS_FAILED]: 500,
+    [CoreErrorCodes.FS_INVALID_NAME]: 400,
+    [CoreErrorCodes.FS_ALREADY_EXISTS]: 409,
+    [CoreErrorCodes.FS_PERMISSION_DENIED]: 403,
+    [CoreErrorCodes.FS_MKDIR_FAILED]: 500,
+    [CoreErrorCodes.FS_PATH_NOT_FOUND]: 404,
 
-    /* ---------------- Project Analysis ---------------- */
-    PROJECT_ANGULAR_JSON_INVALID: 400, // angular.json 无效
-    PROJECT_ANGULAR_JSON_NOT_FOUND: 404, // angular.json 未找到
-    PROJECT_VITE_CONFIG_INVALID: 400, // vite 配置无效
-    PROJECT_VUE_CONFIG_NOT_FOUND: 404, // vite 配置未找到
+    /* ---------------- Core Dashboard 6XXXX ---------------- */
+    [CoreErrorCodes.DASHBOARD_CONFLICT]: 409,
+    [CoreErrorCodes.WIDGET_NOT_FOUND]: 404,
+    [CoreErrorCodes.WIDGET_LOCKED]: 423,
 
+    /* ---------------- Core Sprite 7XXXX ---------------- */
+    [CoreErrorCodes.SPRITE_CONFIG_NOT_FOUND]: 404,
+    [CoreErrorCodes.SPRITE_GROUP_NOT_FOUND]: 404,
+    [CoreErrorCodes.SPRITE_ICONS_ROOT_NOT_FOUND]: 404,
 
-    /* ---------------- Config ---------------- */
-    CONFIG_BACKUP_NOT_FOUND: 404, // 配置备份不存在
-    CONFIG_READ_FAILED: 500, // 配置读取失败
-    CONFIG_WRITE_FAILED: 500, // 配置写入失败
-    CONFIG_CONFLICT: 409, // 配置冲突
-    CONFIG_OPEN_FAILED: 500, // 配置文件打开失败
-    CONFIG_SCHEMA_NOT_FOUND: 404, // 配置 schema 未找到
-    CONFIG_DOMAIN_NOT_FOUND: 404, // 配置 domain 未找到
-    CONFIG_DOC_NOT_FOUND: 404, // 配置 doc 未找到
+    /* ---------------- Core SVN 8XXXX ---------------- */
+    [CoreErrorCodes.SVN_SYNC_ALREADY_RUNNING]: 409,
+    [CoreErrorCodes.SVN_SYNC_FAILED]: 500,
+    [CoreErrorCodes.SVN_SOURCE_ID_REQUIRED]: 400,
 
+    /* ---------------- Core Deps 9XXXX ---------------- */
+    [CoreErrorCodes.DEP_INSTALL_FAILED]: 500,
+    [CoreErrorCodes.DEP_UNINSTALL_FAILED]: 500,
+    [CoreErrorCodes.DEP_NOT_FOUND]: 404,
 
-    /* ---------------- Task / Process ---------------- */
-    TASK_NOT_FOUND: 404,
-    TASK_ALREADY_RUNNING: 409,
-    PROCESS_SPAWN_FAILED: 500,
-    TASK_SPEC_NOT_FOUND: 404,
-    TASK_NOT_RUNNABLE: 400,
-    RUN_NOT_FOUND: 404,
-    TASK_ID_REQUIRED: 400,
-    COMMAND_NOT_FOUND: 404,
+    /* ---------------- Core NodeVersion 10XXXX ---------------- */
+    [CoreErrorCodes.NO_VERSION_MANAGER]: 503,
+    [CoreErrorCodes.SWITCH_VERSION_FAILED]: 500,
+    [CoreErrorCodes.NO_AVAILABLE_VERSIONS]: 409,
+    [CoreErrorCodes.VERSION_REQUIRED]: 400,
+    [CoreErrorCodes.PROJECT_PATH_REQUIRED]: 400,
 
-    // WS 
-    BAD_JSON: 400,
-    BAD_MSG: 400,
-    OP_NOT_SUPPORTED: 400,
-    HANDLER_FAILED: 500,
-    TOPIC_NOT_FOUND: 404,
-    OP_NOT_FOUND: 400,
-    /* ---------------- File System ---------------- */
-    FS_PATH_NOT_FOUND: 404,
-    FS_ALREADY_EXISTS: 409,
-    FS_PERMISSION_DENIED: 403,
-    FS_EXISTS_FAILED: 500,
-    FS_INVALID_NAME: 400,
-    FS_MKDIR_FAILED: 500,
+    /* ---------------- Core Editor 11XXXX ---------------- */
+    [CoreErrorCodes.EDITOR_NOT_FOUND]: 404,
+    [CoreErrorCodes.EDITOR_LAUNCH_FAILED]: 500,
 
-    /* ---------------- Editor ---------------- */
-    EDITOR_NOT_FOUND: 404,
-    EDITOR_LAUNCH_FAILED: 500,
-
-    /* ---------------- Infra / Auth ---------------- */
-    STORAGE_IO_ERROR: 500,
-    UNAUTHORIZED: 401,
-    INVALID_TIMESTAMP: 400, // 时间戳无效
-
-
-
-    /* ---------------- Deps ---------------- */
-    DEP_INSTALL_FAILED: 500,
-    DEP_UNINSTALL_FAILED: 500,
-    DEP_NOT_FOUND: 404,
-
-    /* ---------------- Dashboard ---------------- */
-    DASHBOARD_CONFLICT: 409,
-    WIDGET_NOT_FOUND: 404,
-    WIDGET_LOCKED: 423,
-    /* ---------------- Port Killer ---------------- */
-    KILL_PORT_FAILED: 500,
-    INVALID_PORT: 400,
-
-    /* ---------------- Dashboard RSS ---------------- */
-    RSS_FETCH_FAILED: 500,
-    INVALID_RSS_URL: 400,
-
-    /* ---------------- Fallback ---------------- */
-    UNKNOWN_ERROR: 500,
-
-    /* ---------------- Generic ---------------- */
-    BAD_REQUEST: 400,
-    NOT_IMPLEMENTED: 501,
-    NOT_FOUND: 404,
-
-    /* ---------------- SVN Sync ---------------- */
-    SVN_SYNC_ALREADY_RUNNING: 409,
-    SVN_SYNC_FAILED: 500,
-    SVN_SOURCE_ID_REQUIRED: 400,
-
-    /* ---------------- Sprite ---------------- */
-    SPRITE_CONFIG_NOT_FOUND: 404,
-    SPRITE_ICONS_ROOT_NOT_FOUND: 404,
-    SPRITE_GROUP_NOT_FOUND: 404,
-    /* ---------------- Node Version ---------------- */
-    NO_VERSION_MANAGER: 503, // 服务不可用：未安装 Node 版本管理器
-    NO_AVAILABLE_VERSIONS: 409, // 资源冲突：没有可用的 Node 版本
-    VERSION_REQUIRED: 400, // 缺少必需参数
-    PROJECT_PATH_REQUIRED: 400, // 缺少必需参数
-    SWITCH_VERSION_FAILED: 500, // 服务器内部错误：切换版本失败
+    /* ---------------- Core RSS / Port Killer 12XXXX ---------------- */
+    [CoreErrorCodes.RSS_FETCH_FAILED]: 500,
+    [CoreErrorCodes.INVALID_RSS_URL]: 400,
+    [CoreErrorCodes.KILL_PORT_FAILED]: 500,
+    [CoreErrorCodes.INVALID_PORT]: 400,
 };
 
 export function mapStatus(code: ErrorCode): number {
@@ -146,7 +133,7 @@ export function mapStatus(code: ErrorCode): number {
 /**
  * 构建错误响应体
  */
-function buildErrorBody(reqId: string | undefined, code: string, message: string, details?: any) {
+function buildErrorBody(reqId: string | undefined, code: number, message: string, details?: unknown) {
     return {
         ok: false as const,
         error: {
@@ -171,7 +158,7 @@ export const errorHandlerPlugin: FastifyPluginAsync = fp(async (app) => {
     app.setErrorHandler((err, req, reply) => {
         const requestId = req.id;
         // 1) core 业务错误
-        if (err instanceof AppError || isCoreAppError(err)) {
+        if (err instanceof AppError || isAppErrorLike(err)) {
             const status = mapStatus(err.code as ErrorCode);
             return reply.status(status).send(buildErrorBody(requestId, err.code, err.message, err.meta));
         }
@@ -182,19 +169,19 @@ export const errorHandlerPlugin: FastifyPluginAsync = fp(async (app) => {
             return reply
                 .status(400)
                 // @ts-expect-error
-                .send(buildErrorBody(requestId, "VALIDATION_ERROR", "参数不合法", err.validation));
+                .send(buildErrorBody(requestId, GlobalErrorCodes.BAD_REQUEST, "参数不合法", err.validation));
         }
 
         // 3) 未知错误：只记录日志
-        console.log('err', err)
+        console.log('err', err);
         req.log.error({ err, requestId }, "Unhandled error");
-        return reply.status(500).send(buildErrorBody(requestId, "INTERNAL_ERROR", "服务异常，请稍后重试"));
+        return reply.status(500).send(buildErrorBody(requestId, GlobalErrorCodes.UNKNOWN_ERROR, "服务异常，请稍后重试"));
     });
 });
 
 
-function isCoreAppError(err: any): err is { code: string; message: string; meta?: any } {
-    return err && typeof err === "object" && typeof err.code === "string" && typeof err.message === "string";
+function isAppErrorLike(err: unknown): err is { code: number; message: string; meta?: unknown } {
+    return err !== null && typeof err === 'object' && typeof (err as any).code === 'number' && typeof (err as any).message === 'string';
 }
 
 export default errorHandlerPlugin;

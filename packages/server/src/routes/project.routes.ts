@@ -1,8 +1,7 @@
-import { AppError } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes, ProjectAssets } from "@yinuo-ngm/core";
 import { type FastifyInstance } from "fastify";
 import * as path from "path";
 import { openFolder } from "../common/editor";
-import { ProjectAssets } from "@yinuo-ngm/core";
 
 /**
  * Project routes
@@ -174,7 +173,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const { id } = req.params as { id: string };
         const body = req.body as { timestamp: number };
         if (typeof body?.timestamp !== "number") {
-            throw new AppError("INVALID_TIMESTAMP", "timestamp must be a number");
+            throw new GlobalError(GlobalErrorCodes.INVALID_TIMESTAMP, "timestamp must be a number");
         }
         const updated = await fastify.core.project.setLastOpened(id, body.timestamp);
         return updated;
@@ -184,7 +183,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const { id } = req.params as { id: string };
         const body = req.body as { name: string };
         if (typeof body?.name !== "string" || body.name.trim() === "") {
-            throw new AppError("INVALID_NAME", "name must be a non-empty string");
+            throw new CoreError(CoreErrorCodes.INVALID_NAME, "name must be a non-empty string");
         }
         const updated = await fastify.core.project.rename(id, body.name.trim());
         return updated;
@@ -202,7 +201,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const { id } = req.params as { id: string };
         const body = req.body as { name: string; description?: string; repoPageUrl?: string; };
         if (typeof body?.name !== "string" || body.name.trim() === "") {
-            throw new AppError("INVALID_NAME", "name must be a non-empty string");
+            throw new CoreError(CoreErrorCodes.INVALID_NAME, "name must be a non-empty string");
         }
         const updated = await fastify.core.project.edit(id, {
             name: body.name.trim(),
@@ -217,7 +216,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const body = req.body as { assets: ProjectAssets };
         const assets = body?.assets;
         if (!assets || !assets.iconsSvn) {
-            throw new AppError("BAD_REQUEST", "参数错误，assets.iconsSvn 是必需的");
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "参数错误，assets.iconsSvn 是必需的");
         }
         const updated = await fastify.core.project.updateAssets(id, assets);
         return updated;
@@ -237,7 +236,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
             await openFolder(p.root, { editor });
             return { ok: true };
         } catch (e: any) {
-            throw new AppError("EDITOR_LAUNCH_FAILED", e?.message || "openInEditor failed");
+            throw new CoreError(CoreErrorCodes.EDITOR_LAUNCH_FAILED, e?.message || "openInEditor failed");
         }
     });
 
@@ -255,8 +254,8 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const body = req.body as any;
         const taskId = String(body?.taskId ?? "").trim();
         const pickedRoot = String(body?.pickedRoot ?? "").trim();
-        if (!taskId) throw new AppError("BAD_REQUEST", "taskId is required");
-        if (!pickedRoot) throw new AppError("BAD_REQUEST", "pickedRoot is required");
+        if (!taskId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "taskId is required");
+        if (!pickedRoot) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "pickedRoot is required");
         const r = await fastify.core.bootstrap.pickWorkspaceRoot({ taskId, pickedRoot });
         return r;
     });

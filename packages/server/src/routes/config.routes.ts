@@ -1,4 +1,4 @@
-import { AppError } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 import { openFolder } from "../common/editor";
 
@@ -24,7 +24,7 @@ export default async function configRoutes(fastify: FastifyInstance) {
         // 约定：raw 优先，其次 data
         const next = body?.raw ?? body?.data;
         if (next === undefined) {
-            throw new AppError("CONFIG_WRITE_FAILED", "missing body.raw or body.data", { projectId, docId });
+            throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, "missing body.raw or body.data", { projectId, docId });
         }
         return await fastify.core.config.writeDoc(projectId, docId, next);
     });
@@ -41,7 +41,7 @@ export default async function configRoutes(fastify: FastifyInstance) {
             await openFolder(filePath, { editor: 'code' });
             return { ok: true };
         } catch (e: any) {
-            throw new AppError("EDITOR_LAUNCH_FAILED", e?.message || "openInEditor failed");
+            throw new CoreError(CoreErrorCodes.EDITOR_LAUNCH_FAILED, e?.message || "openInEditor failed");
         }
     });
 
@@ -57,7 +57,7 @@ export default async function configRoutes(fastify: FastifyInstance) {
         const body = req.body as any;
         const vm = body?.vm;
         if (vm === undefined) {
-            throw new AppError("BAD_REQUEST", "missing body.vm");
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.vm");
         }
         await fastify.core.config.writeDomainSchema(projectId, domainId, vm);
         return {
@@ -78,7 +78,7 @@ export default async function configRoutes(fastify: FastifyInstance) {
         const body = req.body as any;
         const vm = body?.vm;
         if (vm === undefined) {
-            throw new AppError("BAD_REQUEST", "missing body.vm");
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.vm");
         }
         return await fastify.core.config.diffDomainSchema(projectId, domainId, vm);
     });

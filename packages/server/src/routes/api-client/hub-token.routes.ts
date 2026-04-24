@@ -1,4 +1,4 @@
-import { AppError, Project } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes, Project } from "@yinuo-ngm/core";
 import { ProjectTokenApiClient } from "@yinuo-ngm/api";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { Readable } from "node:stream";
@@ -34,7 +34,7 @@ type HubProjectConfig = {
 
 function normalizeNonEmptyString(value: unknown, field: string): string {
     if (typeof value !== "string" || value.trim() === "") {
-        throw new AppError("BAD_REQUEST", `${field} is required`);
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, `${field} is required`);
     }
     return value.trim();
 }
@@ -68,15 +68,15 @@ async function resolveHubTokenConfig(
     }
 
     if (!body.projectId) {
-        throw new AppError("BAD_REQUEST", "projectId is required when baseUrl/token are not provided");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when baseUrl/token are not provided");
     }
 
     const project = await app.core.project.get(body.projectId);
     const config = readHubTokenConfigFromProject(project);
     const resolvedToken = tokenType === "personal" ? body.personalToken?.trim() || config.personalToken : config.token;
     if (!config.baseUrl || !resolvedToken) {
-        throw new AppError(
-            "BAD_REQUEST",
+        throw new GlobalError(
+            GlobalErrorCodes.BAD_REQUEST,
             tokenType === "personal"
                 ? "project hub-v2 config missing (NGM_HUB_V2_BASE_URL/NGM_HUB_V2_PERSONAL_TOKEN)"
                 : "project hub-v2 config missing (NGM_HUB_V2_BASE_URL/NGM_HUB_V2_TOKEN)"
@@ -101,7 +101,7 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
         const response = await requestHubApiRaw(baseUrl, "/api/token", token, "GET", normalizedPath);
         if (!response.ok) {
             const payload = await parseJson(response);
-            throw new AppError("BAD_REQUEST", payload?.message || `hub-v2 request failed (${response.status})`, {
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, payload?.message || `hub-v2 request failed (${response.status})`, {
                 status: response.status,
                 response: payload,
             });
@@ -126,7 +126,7 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
         const response = await requestHubApiRaw(baseUrl, "/api/token", token, "GET", normalizedPath);
         if (!response.ok) {
             const payload = await parseJson(response);
-            throw new AppError("BAD_REQUEST", payload?.message || `hub-v2 request failed (${response.status})`, {
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, payload?.message || `hub-v2 request failed (${response.status})`, {
                 status: response.status,
                 response: payload,
             });
@@ -151,7 +151,7 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
         const response = await requestHubApiRaw(baseUrl, "/api/token", token, "GET", normalizedPath);
         if (!response.ok) {
             const payload = await parseJson(response);
-            throw new AppError("BAD_REQUEST", payload?.message || `hub-v2 request failed (${response.status})`, {
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, payload?.message || `hub-v2 request failed (${response.status})`, {
                 status: response.status,
                 response: payload,
             });
@@ -287,14 +287,14 @@ async function requestHubApi(
 
     const payload = await parseJson(response);
     if (!response.ok) {
-        throw new AppError("BAD_REQUEST", payload?.message || `hub-v2 request failed (${response.status})`, {
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, payload?.message || `hub-v2 request failed (${response.status})`, {
             status: response.status,
             response: payload,
         });
     }
     if (payload && typeof payload === "object" && "code" in payload) {
         if ((payload as { code?: string }).code !== "OK") {
-            throw new AppError("BAD_REQUEST", (payload as { message?: string }).message || "hub-v2 response error", {
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, (payload as { message?: string }).message || "hub-v2 response error", {
                 response: payload,
             });
         }
@@ -354,8 +354,8 @@ function assertPathProjectSegmentNotLocalProjectId(path: string, projectId?: str
 
     const projectSegment = (matched[1] ?? "").trim();
     if (projectSegment && projectSegment === localProjectId) {
-        throw new AppError(
-            "BAD_REQUEST",
+        throw new GlobalError(
+            GlobalErrorCodes.BAD_REQUEST,
             "path must use projectKey (or business relative path), not local projectId"
         );
     }
@@ -370,7 +370,7 @@ function normalizeHubTokenPath(path: string, projectKey?: string): string {
         return `/projects/${key}${rest}`;
     }
     if (!projectKey) {
-        throw new AppError("BAD_REQUEST", "projectKey is required when path does not include /projects/:projectKey");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectKey is required when path does not include /projects/:projectKey");
     }
     return `/projects/${projectKey}${p}`;
 }

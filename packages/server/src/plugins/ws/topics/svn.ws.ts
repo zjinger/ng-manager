@@ -1,4 +1,4 @@
-import type { SvnEventMsg, SvnEventPayloadMap, SvnEventType, SvnRuntime, WsClientMsg, WsServerMsg } from "@yinuo-ngm/core";
+import { CoreErrorCodes, type SvnEventMsg, type SvnEventPayloadMap, type SvnEventType, type SvnRuntime, type WsClientMsg, type WsServerMsg } from "@yinuo-ngm/core";
 import { WsContext } from "../ws.context";
 import { TopicHandler } from "../ws.router";
 
@@ -17,7 +17,7 @@ export function createSvnSyncTopicHandler(
         async sub(ctx, msg: Extract<WsClientMsg, { op: "sub"; topic: "svn" }>) {
             const projectId = String(msg?.projectId ?? "").trim();
             if (!projectId) {
-                ctx.send({ op: "error", code: "PROJECT_ID_REQUIRED", message: "projectId is required", ts: Date.now() });
+                ctx.send({ op: "error", code: CoreErrorCodes.PROJECT_ID_REQUIRED, message: "projectId is required", ts: Date.now() });
                 return;
             }
             const t = Number(msg?.tail ?? 0) || 0;
@@ -40,7 +40,7 @@ export function createSvnSyncTopicHandler(
         async unsub(ctx, msg: Extract<WsClientMsg, { op: "unsub"; topic: "svn" }>) {
             const projectId = String(msg?.projectId ?? "").trim();
             if (!projectId) {
-                ctx.send({ op: "error", code: "PROJECT_ID_REQUIRED", message: "projectId is required", ts: Date.now() });
+                ctx.send({ op: "error", code: CoreErrorCodes.PROJECT_ID_REQUIRED, message: "projectId is required", ts: Date.now() });
                 return;
             }
             ctx.delSub("svn", keyOf(projectId));

@@ -1,4 +1,4 @@
-import type { WsClientMsg, WsServerMsg, TaskEventPayloadMap, TaskEventType, TaskOutputPayload, TaskOutputMsg, TaskEventMsg, LogLine, TaskRuntime } from "@yinuo-ngm/core";
+import { CoreErrorCodes, type WsClientMsg, type WsServerMsg, type TaskEventPayloadMap, type TaskEventType, type TaskOutputPayload, type TaskOutputMsg, type TaskEventMsg, type LogLine, type TaskRuntime } from "@yinuo-ngm/core";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 
@@ -24,7 +24,7 @@ export function createTaskTopicHandler(
             const tail = Number(msg?.tail ?? 0);
 
             if (!taskId) {
-                ctx.send({ op: "error", code: "TASK_ID_REQUIRED", message: "taskId is required", ts: Date.now() });
+                ctx.send({ op: "error", code: CoreErrorCodes.TASK_ID_REQUIRED, message: "taskId is required", ts: Date.now() });
                 return;
             }
             ctx.addSub("task", keyOfTask(taskId));

@@ -1,4 +1,4 @@
-import { AppError } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 import mime from "mime-types";
 import fs, { createReadStream } from "node:fs";
@@ -25,7 +25,7 @@ export default async function staticFileRoutes(fastify: FastifyInstance) {
         const filePath = safeJoin(cacheDir, file);
 
         if (!fs.existsSync(filePath)) {
-            throw new AppError("NOT_FOUND", "Requested file not found in cache");
+            throw new GlobalError(GlobalErrorCodes.NOT_FOUND, "Requested file not found in cache");
         }
         // await pipeline(createReadStream(filePath), reply.raw);
         const ct = mime.lookup(filePath) || "application/octet-stream";
@@ -44,12 +44,12 @@ export default async function staticFileRoutes(fastify: FastifyInstance) {
                 ? project?.assets?.iconsSvn?.localDir
                 : project?.assets?.cutImageSvn?.localDir;
         if (!root) {
-            throw new AppError("ASSET_NOT_FOUND", "Project asset source not found");
+            throw new CoreError(CoreErrorCodes.ASSET_NOT_FOUND, "Project asset source not found");
         }
 
         const filePath = safeJoin(root, file);
         if (!fs.existsSync(filePath)) {
-            throw new AppError("NOT_FOUND", "Requested file not found in SVN");
+            throw new GlobalError(GlobalErrorCodes.NOT_FOUND, "Requested file not found in SVN");
         }
         const ct = mime.lookup(filePath) || "application/octet-stream";
         reply.header("Content-Type", ct);
@@ -66,12 +66,12 @@ export default async function staticFileRoutes(fastify: FastifyInstance) {
         const cfg = await fastify.core.sprite.getConfig(projectId);
         const root = String(cfg?.localImageRoot ?? "").trim();
         if (!root) {
-            throw new AppError("ASSET_NOT_FOUND", "localImageRoot not configured");
+            throw new CoreError(CoreErrorCodes.ASSET_NOT_FOUND, "localImageRoot not configured");
         }
 
         const filePath = safeJoin(root, file);
         if (!fs.existsSync(filePath)) {
-            throw new AppError("NOT_FOUND", "Requested file not found in local folder");
+            throw new GlobalError(GlobalErrorCodes.NOT_FOUND, "Requested file not found in local folder");
         }
         const ct = mime.lookup(filePath) || "application/octet-stream";
         reply.header("Content-Type", ct);

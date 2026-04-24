@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { CreateNginxServerRequest, UpdateNginxServerRequest } from '@yinuo-ngm/nginx';
-import { AppError } from '@yinuo-ngm/core';
+import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/core';
 import { NginxRouteContext, sendBadRequest } from './nginx-route.context';
 
 interface ParsedImportCandidate {
@@ -116,7 +116,7 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
       try {
         const server = await nginx.server.getServer(id);
         if (!server) {
-          throw new AppError('NOT_FOUND', 'Server 不存在');
+          throw new GlobalError(GlobalErrorCodes.NOT_FOUND, 'Server 不存在');
         }
         let nginxRunning: boolean | null = null;
         let lastAppliedAt: number | null = null;
@@ -205,7 +205,7 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
       try {
         const snapshotId = String(request.body?.snapshotId || '').trim();
         if (!snapshotId) {
-          throw new AppError('BAD_REQUEST', 'snapshotId 不能为空');
+          throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, 'snapshotId 不能为空');
         }
         const server = await nginx.server.restoreDeletedServer(snapshotId);
         return reply.send({

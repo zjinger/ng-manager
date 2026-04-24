@@ -1,4 +1,4 @@
-import { AppError } from "@yinuo-ngm/core";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
 import launchEditor from "launch-editor";
 import * as path from "path";
 
@@ -39,7 +39,7 @@ export async function openFolder(folder: string, opts: OpenFolderOptions = {}): 
                 settled = true;
                 clearTimeout(timer);
                 if (errorMsg) {
-                    reject(new AppError("EDITOR_NOT_FOUND", errorMsg, { fileName, editor, folder, file, target }));
+                    reject(new CoreError(CoreErrorCodes.EDITOR_NOT_FOUND, errorMsg, { fileName, editor, folder, file, target }));
                     return;
                 }
                 resolve();

@@ -1,4 +1,4 @@
-import { AppError } from "@yinuo-ngm/core";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 import Parser from "rss-parser";
 
@@ -14,7 +14,7 @@ export default async function rssRoutes(app: FastifyInstance) {
         const url = (q.url ?? "").trim();
         if (!url) {
             //  return reply.code(400).send({ ok: false, message: "url required" });
-            throw new AppError("INVALID_RSS_URL", "url required", { query: q });
+            throw new CoreError(CoreErrorCodes.INVALID_RSS_URL, "url required", { query: q });
         }
         // limit between 1 and 100, default 20
         const limit = Math.min(Math.max(parseInt(q.limit ?? "20", 10) || 20, 1), 100);
@@ -52,7 +52,7 @@ export default async function rssRoutes(app: FastifyInstance) {
             //     message: "RSS_FETCH_FAILED",
             //     detail: e?.message || String(e),
             // });
-            throw new AppError(`RSS_FETCH_FAILED`, e?.message || String(e), { url });
+            throw new CoreError(CoreErrorCodes.RSS_FETCH_FAILED, e?.message || String(e), { url });
         }
     });
 }
