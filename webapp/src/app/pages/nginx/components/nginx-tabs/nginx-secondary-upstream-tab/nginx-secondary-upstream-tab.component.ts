@@ -395,7 +395,7 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
     this.loading.set(true);
     try {
       const res = await this.moduleStore.loadUpstreams();
-      if (res.success && res.upstreams) {
+      if (res.upstreams) {
         this.rows.set(
           this.moduleStore.upstreams().map(item => ({
             id: item.id,
@@ -408,8 +408,6 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
           })),
         );
         this.dirty.set(false);
-      } else {
-        this.message.error(res.error || '加载 Upstream 失败');
       }
     } catch (err: any) {
       this.message.error('加载 Upstream 失败: ' + err.message);
@@ -537,14 +535,10 @@ export class NginxSecondaryUpstreamTabComponent implements OnInit {
 
     this.saving.set(true);
     try {
-      const res = await this.moduleStore.saveUpstreams(payload);
-      if (res.success) {
-        this.message.success('Upstream 配置已保存');
-        this.dirty.set(false);
-        await this.loadData();
-      } else {
-        this.message.error(res.error || '保存 Upstream 失败');
-      }
+      await this.moduleStore.saveUpstreams(payload);
+      this.message.success('Upstream 配置已保存');
+      this.dirty.set(false);
+      await this.loadData();
     } catch (err: any) {
       this.message.error('保存 Upstream 失败: ' + err.message);
     } finally {

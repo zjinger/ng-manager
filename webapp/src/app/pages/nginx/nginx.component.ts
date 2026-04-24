@@ -228,7 +228,7 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     try {
       const stats = await this.nginxService.getStats();
-      if (stats.success && stats.status) {
+      if (stats.status) {
         this.instance.set(stats.instance || null);
         this.status.set(stats.status);
         this.syncRuntimeState(stats.status);
@@ -257,7 +257,7 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.configLoading.set(true);
     try {
       const res = await this.nginxService.getConfigFiles();
-      this.configFiles.set(res.success ? res.files || [] : []);
+      this.configFiles.set(res.files || []);
     } catch {
       this.configFiles.set([]);
     } finally {
@@ -294,13 +294,11 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.binding.set(true);
     try {
       const res = await this.nginxService.bind(this.bindPath.trim());
-      if (res.success && res.instance) {
+      if (res.instance) {
         this.instance.set(res.instance);
         this.bindModalVisible = false;
         this.message.success('绑定成功');
         await this.refreshAll();
-      } else {
-        this.message.error(res.error || '绑定失败');
       }
     } catch (err: any) {
       this.message.error('绑定失败: ' + err.message);
@@ -336,15 +334,11 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.controlling.set(true);
     this.loading.set(true);
     try {
-      const res = await this.nginxService.start();
-      if (res.success) {
-        this.appendLog('ok', 'nginx start executed');
-        this.message.success('启动成功');
-        await this.loadStatus();
-        this.serverListRefreshToken.update(token => token + 1);
-      } else {
-        this.message.error(res.error || '启动失败');
-      }
+      await this.nginxService.start();
+      this.appendLog('ok', 'nginx start executed');
+      this.message.success('启动成功');
+      await this.loadStatus();
+      this.serverListRefreshToken.update(token => token + 1);
     } catch (err: any) {
       this.message.error('启动失败: ' + err.message);
     } finally {
@@ -358,15 +352,11 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.controlling.set(true);
     this.loading.set(true);
     try {
-      const res = await this.nginxService.stop();
-      if (res.success) {
-        this.appendLog('warn', 'nginx stop executed');
-        this.message.success('停止成功');
-        await this.loadStatus();
-        this.serverListRefreshToken.update(token => token + 1);
-      } else {
-        this.message.error(res.error || '停止失败');
-      }
+      await this.nginxService.stop();
+      this.appendLog('warn', 'nginx stop executed');
+      this.message.success('停止成功');
+      await this.loadStatus();
+      this.serverListRefreshToken.update(token => token + 1);
     } catch (err: any) {
       this.message.error('停止失败: ' + err.message);
     } finally {
@@ -380,15 +370,11 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.controlling.set(true);
     this.loading.set(true);
     try {
-      const res = await this.nginxService.reload();
-      if (res.success) {
-        this.appendLog('ok', 'nginx reload executed');
-        this.message.success('重载成功');
-        await this.loadStatus();
-        this.serverListRefreshToken.update(token => token + 1);
-      } else {
-        this.message.error(res.error || '重载失败');
-      }
+      await this.nginxService.reload();
+      this.appendLog('ok', 'nginx reload executed');
+      this.message.success('重载成功');
+      await this.loadStatus();
+      this.serverListRefreshToken.update(token => token + 1);
     } catch (err: any) {
       this.message.error('重载失败: ' + err.message);
     } finally {
@@ -402,22 +388,12 @@ export class NginxComponent implements OnInit, OnDestroy {
     this.controlling.set(true);
     this.loading.set(true);
     try {
-      // 先停止
-      const stopRes = await this.nginxService.stop();
-      if (!stopRes.success) {
-        this.message.error('重启失败: ' + (stopRes.error || '停止失败'));
-        return;
-      }
-      // 再启动
-      const startRes = await this.nginxService.start();
-      if (startRes.success) {
-        this.appendLog('info', 'nginx restart executed');
-        this.message.success('重启成功');
-        await this.loadStatus();
-        this.serverListRefreshToken.update(token => token + 1);
-      } else {
-        this.message.error('重启失败: ' + (startRes.error || '启动失败'));
-      }
+      await this.nginxService.stop();
+      await this.nginxService.start();
+      this.appendLog('info', 'nginx restart executed');
+      this.message.success('重启成功');
+      await this.loadStatus();
+      this.serverListRefreshToken.update(token => token + 1);
     } catch (err: any) {
       this.message.error('重启失败: ' + err.message);
     } finally {

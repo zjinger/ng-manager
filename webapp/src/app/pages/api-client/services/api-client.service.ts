@@ -39,7 +39,7 @@ export class ApiClientService {
     let params = new HttpParams().set('scope', scope);
     if (projectId) params = params.set('projectId', projectId);
     return await firstValueFrom(
-      this.http.delete<{ ok: true }>(`${this.base}/requests/${id}`, params)
+      this.http.delete<void>(`${this.base}/requests/${id}`, params)
     );
   }
 
@@ -97,7 +97,7 @@ export class ApiClientService {
   async deleteEnv(id: string, scope: ApiScope, projectId?: string) {
     let params = new HttpParams().set('scope', scope);
     if (projectId) params = params.set('projectId', projectId);
-    return await firstValueFrom(this.http.delete<{ ok: true }>(`${this.base}/envs/${id}`, params));
+    return await firstValueFrom(this.http.delete<void>(`${this.base}/envs/${id}`, params));
   }
 
   // Collection APIs
@@ -123,7 +123,7 @@ export class ApiClientService {
   async deleteCollection(id: string, scope: ApiScope, projectId?: string) {
     const params = new HttpParams().set('scope', scope).set('projectId', projectId ?? '');
     return await firstValueFrom(
-      this.http.delete<{ ok: true }>(`${this.base}/collections/${id}`, params)
+      this.http.delete<void>(`${this.base}/collections/${id}`, params)
     );
   }
 

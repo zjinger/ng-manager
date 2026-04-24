@@ -266,11 +266,11 @@ export class NginxSecondaryLogsTabComponent implements OnInit, OnDestroy {
         this.nginxService.getAccessLogs(100)
       ]);
 
-      if (errorRes.success && errorRes.lines) {
+      if (errorRes.lines) {
         this.errorLogs.set(errorRes.lines.map((line: string) => this.parseLogLine(line)));
       }
 
-      if (accessRes.success && accessRes.lines) {
+      if (accessRes.lines) {
         this.accessLogs.set(accessRes.lines.map((line: string) => this.parseLogLine(line)));
       }
 

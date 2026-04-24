@@ -2,6 +2,7 @@
  * Nginx 管理相关类型定义
  */
 
+
 /**
  * Nginx 实例信息
  */
@@ -182,12 +183,8 @@ export interface UpdateNginxServerRequest {
  * Nginx 命令执行结果
  */
 export interface NginxCommandResult {
-  /** 是否成功 */
-  success: boolean;
   /** 输出内容 */
   output?: string;
-  /** 错误内容 */
-  error?: string;
   /** 退出码 */
   exitCode?: number;
 }
@@ -219,21 +216,19 @@ export interface NginxServerSummary {
 }
 
 export interface NginxStatsResponse {
-  success: boolean;
   instance?: NginxInstance | null;
   status?: NginxStatus;
   serverSummary?: NginxServerSummary;
-  error?: string;
 }
 
 /**
  * Nginx 绑定响应
  */
-export interface NginxBindResponse {
-  success: boolean;
+export interface NginxBindData {
   instance?: NginxInstance;
-  error?: string;
 }
+
+export type NginxBindResponse = NginxBindData;
 
 /**
  * Upstream 负载策略

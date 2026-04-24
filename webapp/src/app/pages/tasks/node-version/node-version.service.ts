@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { ProjectContextStore } from '@app/core/stores';
-import { ApiClient } from '@core/api';
-import { lastValueFrom, Observable, catchError, map, of } from 'rxjs';
+import { ApiClient, getApiErrorMessage } from '@core/api';
+import { lastValueFrom } from 'rxjs';
 
 export interface NodeVersionInfo {
   current: string | null;
@@ -137,7 +137,7 @@ export class NodeVersionService {
       }
       return false;
     } catch (e: any) {
-      const errorMsg = e?.error?.message || e?.message || '切换 Node 版本失败';
+      const errorMsg = getApiErrorMessage(e, '切换 Node 版本失败');
       this.switchError.set(errorMsg);
       return false;
     } finally {
@@ -229,7 +229,7 @@ export class NodeVersionService {
         return false;
       }
     } catch (e: any) {
-      const errorMsg = e?.error?.message || e?.message || '安装 Node 版本失败';
+      const errorMsg = getApiErrorMessage(e, '安装 Node 版本失败');
       this.error.set(errorMsg);
       return false;
     }
@@ -275,7 +275,7 @@ export class NodeVersionService {
       );
       return success;
     } catch (e: any) {
-      this.error.set(e?.error?.message || e?.message || '删除版本失败');
+      this.error.set(getApiErrorMessage(e, '删除版本失败'));
       return false;
     }
   }
@@ -301,7 +301,7 @@ export class NodeVersionService {
       );
       return success;
     } catch (e: any) {
-      this.error.set(e?.error?.message || e?.message || '写入配置失败');
+      this.error.set(getApiErrorMessage(e, '写入配置失败'));
       return false;
     }
   }

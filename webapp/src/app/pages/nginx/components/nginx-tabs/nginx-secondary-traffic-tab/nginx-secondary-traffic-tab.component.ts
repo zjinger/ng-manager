@@ -187,7 +187,7 @@ export class NginxSecondaryTrafficTabComponent implements OnInit {
   async load() {
     try {
       const res = await this.moduleStore.loadTrafficConfig();
-      if (res.success && res.traffic) {
+      if (res.traffic) {
         const traffic = this.moduleStore.trafficConfig();
         this.config.set({
           ...traffic,
@@ -195,8 +195,6 @@ export class NginxSecondaryTrafficTabComponent implements OnInit {
         });
         this.blacklistText.set((traffic.blacklistIps || []).join('\n'));
         this.dirty.set(false);
-      } else {
-        this.message.error(res.error || '加载流量配置失败');
       }
     } catch (err: any) {
       this.message.error('加载流量配置失败: ' + err.message);
@@ -237,14 +235,10 @@ export class NginxSecondaryTrafficTabComponent implements OnInit {
 
     this.saving.set(true);
     try {
-      const res = await this.moduleStore.saveTrafficConfig(payload);
-      if (res.success) {
-        this.message.success('流量控制配置已保存');
-        this.dirty.set(false);
-        await this.load();
-      } else {
-        this.message.error(res.error || '保存流量控制配置失败');
-      }
+      await this.moduleStore.saveTrafficConfig(payload);
+      this.message.success('流量控制配置已保存');
+      this.dirty.set(false);
+      await this.load();
     } catch (err: any) {
       this.message.error('保存流量控制配置失败: ' + err.message);
     } finally {

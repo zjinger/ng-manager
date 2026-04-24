@@ -278,7 +278,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   async getLocalIp(): Promise<void> {
     try {
       const res = await this.nginxService.getLocalIp();
-      if (res.success && res.ip) {
+      if (res.ip) {
         this.localIp = res.ip;
         if (!this.commonDomainOptions.includes(res.ip)) {
           this.commonDomainOptions = [...this.commonDomainOptions, res.ip];
@@ -416,13 +416,9 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         res = await this.nginxService.createServer(this.formData);
       }
 
-      if (res.success) {
-        this.message.success(isEditMode ? 'Server 已更新，请点击“重载”使变更生效' : 'Server 已创建，请点击“重载”使变更生效');
-        this.saved.emit();
-        this.emitVisibleChange(false);
-      } else {
-        this.message.error(res.error || '操作失败');
-      }
+      this.message.success(isEditMode ? 'Server 已更新，请点击“重载”使变更生效' : 'Server 已创建，请点击“重载”使变更生效');
+      this.saved.emit();
+      this.emitVisibleChange(false);
     } catch (err: any) {
       this.message.error('操作失败: ' + this.extractErrorMessage(err));
     } finally {
@@ -615,10 +611,6 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       const certPath = String(this.formData.sslCert || '').trim();
       const keyPath = String(this.formData.sslKey || '').trim();
       const res = await this.nginxService.validateSslPaths(certPath, keyPath);
-      if (!res.success) {
-        this.message.warning(res.error || 'SSL 文件校验失败');
-        return false;
-      }
       if (!res.valid) {
         if (!res.cert?.exists) {
           this.message.warning(`SSL 证书不存在: ${certPath}`);
@@ -642,7 +634,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
   private async detectPortConflict(): Promise<boolean> {
     try {
       const res = await this.nginxService.getServers();
-      if (!res.success || !res.servers?.length) {
+      if (!res.servers?.length) {
         return false;
       }
 

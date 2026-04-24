@@ -47,7 +47,7 @@ export class ProjectApiService {
   }
 
   bootstrapPickRoot(input: { taskId: string; pickedRoot: string }) {
-    return this.api.post<{ ok: boolean; reason?: string; projectId?: string; rootPath?: string }>(
+    return this.api.post<{ projectId: string; rootPath: string }>(
       '/api/projects/bootstrap/pickRoot',
       input,
     );
@@ -120,7 +120,7 @@ export class ProjectApiService {
   }
 
   openInEditor(id: string, editor: 'code' | 'system' = 'code') {
-    return this.api.post<{ ok: boolean }>(`/api/projects/openInEditor/${id}`, { editor });
+    return this.api.post<void>(`/api/projects/openInEditor/${id}`, { editor });
   }
 
   edit(

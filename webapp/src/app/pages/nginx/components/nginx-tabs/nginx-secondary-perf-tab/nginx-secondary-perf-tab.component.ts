@@ -217,13 +217,11 @@ export class NginxSecondaryPerfTabComponent implements OnInit {
   async load() {
     try {
       const res = await this.moduleStore.loadPerformanceConfig();
-      if (res.success && res.performance) {
+      if (res.performance) {
         this.config.set({
           ...this.moduleStore.performanceConfig(),
         });
         this.dirty.set(false);
-      } else {
-        this.message.error(res.error || '加载性能配置失败');
       }
     } catch (err: any) {
       this.message.error('加载性能配置失败: ' + err.message);
@@ -255,14 +253,10 @@ export class NginxSecondaryPerfTabComponent implements OnInit {
 
     this.saving.set(true);
     try {
-      const res = await this.moduleStore.savePerformanceConfig(payload);
-      if (res.success) {
-        this.message.success('性能优化配置已保存');
-        this.dirty.set(false);
-        await this.load();
-      } else {
-        this.message.error(res.error || '保存性能配置失败');
-      }
+      await this.moduleStore.savePerformanceConfig(payload);
+      this.message.success('性能优化配置已保存');
+      this.dirty.set(false);
+      await this.load();
     } catch (err: any) {
       this.message.error('保存性能配置失败: ' + err.message);
     } finally {

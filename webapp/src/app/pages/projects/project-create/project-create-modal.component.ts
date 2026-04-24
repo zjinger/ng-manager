@@ -3,6 +3,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskEventMsg, UiNotifierService } from '@app/core';
+import { getApiErrorMessage } from '@app/core/api';
 import { DetectResult } from '@models/project.model';
 import { TaskStreamService } from '@pages/tasks/services/task-stream.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -295,11 +296,6 @@ export class ProjectCreateModal implements OnInit {
         )
       );
 
-      if (!pickResult.ok) {
-        this.notify.error(pickResult.reason ?? '项目导入失败');
-        return;
-      }
-
       this.notify.success('项目导入完成');
       this.projectState.getProjects(pickResult.projectId);
       this.modalRef.close({ ok: true });
@@ -327,7 +323,7 @@ export class ProjectCreateModal implements OnInit {
       const msg =
         err?.name === 'TimeoutError'
           ? '创建超时：脚手架/克隆可能卡住了，请查看任务日志'
-          : (err?.error?.message || err?.message || '创建失败');
+          : getApiErrorMessage(err, '创建失败');
       console.error('创建项目失败', err);
       this.notify.error(msg);
     } finally {

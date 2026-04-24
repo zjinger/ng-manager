@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { DashboardLayoutService } from '@pages/dashboard/services/dashboard-layout.service';
 import { RssService } from '@pages/dashboard/services/rss.service';
+import { getApiErrorMessage } from '@core/api';
 @Component({
   selector: 'app-news-feed-widget',
   imports: [
@@ -78,7 +79,7 @@ export class NewsFeedWidgetComponent implements OnChanges {
         }
       },
       error: (err) => {
-        this.errorMsg.set(err?.error?.detail || err?.message || '加载失败');
+        this.errorMsg.set(getApiErrorMessage(err, '加载失败'));
         this.loading.set(false);
       }
     });

@@ -188,7 +188,7 @@ export class NginxSecondarySettingsTabComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     try {
       const res = await this.moduleStore.loadModuleSettings();
-      if (res.success && res.settings) {
+      if (res.settings) {
         this.patchSettingsFromResponse(res.settings);
       }
     } catch {
@@ -217,12 +217,10 @@ export class NginxSecondarySettingsTabComponent implements OnInit {
         backupRetention: this.backupRetention(),
         configBackupRetention: this.configBackupRetention(),
       });
-      if (res.success && res.settings) {
+      if (res.settings) {
         this.patchSettingsFromResponse(res.settings);
         this.settingsDirty.set(false);
         this.message.success('设置已保存');
-      } else {
-        this.message.error(res.error || '保存设置失败');
       }
     } catch (err: any) {
       this.message.error('保存设置失败: ' + err.message);

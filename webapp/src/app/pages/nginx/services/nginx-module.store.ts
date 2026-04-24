@@ -46,7 +46,7 @@ export class NginxModuleStore {
     this.upstreamsLoading.set(true);
     try {
       const res = await this.nginxService.getUpstreams();
-      if (res.success && res.upstreams) {
+      if (res.upstreams) {
         this.upstreams.set(res.upstreams);
       }
       return res;
@@ -56,18 +56,15 @@ export class NginxModuleStore {
   }
 
   async saveUpstreams(upstreams: NginxUpstream[]) {
-    const res = await this.nginxService.saveUpstreams(upstreams);
-    if (res.success) {
-      this.upstreams.set(upstreams.map(item => ({ ...item })));
-    }
-    return res;
+    await this.nginxService.saveUpstreams(upstreams);
+    this.upstreams.set(upstreams.map(item => ({ ...item })));
   }
 
   async loadSslCertificates() {
     this.sslLoading.set(true);
     try {
       const res = await this.nginxService.getSslCertificates();
-      if (res.success && res.certificates) {
+      if (res.certificates) {
         this.sslCertificates.set(res.certificates.map(item => ({ ...item })));
       }
       return res;
@@ -77,18 +74,15 @@ export class NginxModuleStore {
   }
 
   async saveSslCertificates(certificates: NginxSslCertificate[]) {
-    const res = await this.nginxService.saveSslCertificates(certificates);
-    if (res.success) {
-      this.sslCertificates.set(certificates.map(item => ({ ...item })));
-    }
-    return res;
+    await this.nginxService.saveSslCertificates(certificates);
+    this.sslCertificates.set(certificates.map(item => ({ ...item })));
   }
 
   async loadTrafficConfig() {
     this.trafficLoading.set(true);
     try {
       const res = await this.nginxService.getTrafficConfig();
-      if (res.success && res.traffic) {
+      if (res.traffic) {
         this.trafficConfig.set({
           ...res.traffic,
           connLimit: Math.max(0, Number(res.traffic.connLimit ?? 0)),
@@ -101,18 +95,15 @@ export class NginxModuleStore {
   }
 
   async saveTrafficConfig(traffic: NginxTrafficConfig) {
-    const res = await this.nginxService.saveTrafficConfig(traffic);
-    if (res.success) {
-      this.trafficConfig.set({ ...traffic });
-    }
-    return res;
+    await this.nginxService.saveTrafficConfig(traffic);
+    this.trafficConfig.set({ ...traffic });
   }
 
   async loadPerformanceConfig() {
     this.performanceLoading.set(true);
     try {
       const res = await this.nginxService.getPerformanceConfig();
-      if (res.success && res.performance) {
+      if (res.performance) {
         this.performanceConfig.set({
           ...res.performance,
         });
@@ -124,18 +115,15 @@ export class NginxModuleStore {
   }
 
   async savePerformanceConfig(performance: NginxPerformanceConfig) {
-    const res = await this.nginxService.savePerformanceConfig(performance);
-    if (res.success) {
-      this.performanceConfig.set({ ...performance });
-    }
-    return res;
+    await this.nginxService.savePerformanceConfig(performance);
+    this.performanceConfig.set({ ...performance });
   }
 
   async loadModuleSettings() {
     this.settingsLoading.set(true);
     try {
       const res = await this.nginxService.getModuleSettings();
-      if (res.success && res.settings) {
+      if (res.settings) {
         this.moduleSettings.set({
           backupRetention: Math.max(1, Number(res.settings.backupRetention ?? 5)),
           configBackupRetention: Math.max(1, Number(res.settings.configBackupRetention ?? 20)),
@@ -149,7 +137,7 @@ export class NginxModuleStore {
 
   async saveModuleSettings(settings: Partial<NginxModuleSettings>) {
     const res = await this.nginxService.saveModuleSettings(settings);
-    if (res.success && res.settings) {
+    if (res.settings) {
       this.moduleSettings.set({
         backupRetention: Math.max(1, Number(res.settings.backupRetention ?? 5)),
         configBackupRetention: Math.max(1, Number(res.settings.configBackupRetention ?? 20)),

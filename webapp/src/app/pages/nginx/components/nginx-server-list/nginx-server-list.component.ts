@@ -188,7 +188,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     this.loading.set(true);
     try {
       const res = await this.nginxService.getServers();
-      if (res.success && res.servers) {
+      if (res.servers) {
         if (this.mutationInProgress) {
           this.deferReloadAfterMutation = true;
           return;
@@ -298,12 +298,8 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     for (const item of selected) {
       const request = item.request!;
       try {
-        const res = await this.nginxService.createServer(request);
-        if (res.success) {
-          success += 1;
-        } else {
-          errors.push(res.error || `导入失败（${request.name}）`);
-        }
+        await this.nginxService.createServer(request);
+        success += 1;
       } catch (err: any) {
         errors.push(err?.message || `导入失败（${request.name}）`);
       }
@@ -476,7 +472,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     let parsed: ImportCandidate[] = [];
     try {
       const res = await this.nginxService.parseImportServers(source);
-      if (res.success && Array.isArray(res.candidates)) {
+      if (Array.isArray(res.candidates)) {
         parsed = res.candidates.map((item, index) => ({
           id: `candidate-${index}`,
           selected: Boolean(item.request),
@@ -523,7 +519,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
       if (seq !== this.importConflictSeq) {
         return;
       }
-      if (res.success && Array.isArray(res.candidates) && res.candidates.length === requests.length) {
+      if (Array.isArray(res.candidates) && res.candidates.length === requests.length) {
         let cursor = 0;
         this.importCandidates.update(list => list.map(item => {
           if (!item.request) {
@@ -648,11 +644,10 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
       const failures: string[] = [];
       await Promise.all(selectedIds.map(async id => {
         try {
-          const res = enabled
-            ? await this.nginxService.enableServer(id)
-            : await this.nginxService.disableServer(id);
-          if (!res.success) {
-            failures.push(id);
+          if (enabled) {
+            await this.nginxService.enableServer(id);
+          } else {
+            await this.nginxService.disableServer(id);
           }
         } catch {
           failures.push(id);
@@ -681,16 +676,12 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     this.deferReloadAfterMutation = false;
     this.applyOptimisticEnabled([id], enabled);
     try {
-      const res = enabled
-        ? await this.nginxService.enableServer(id)
-        : await this.nginxService.disableServer(id);
-
-      if (res.success) {
-        this.message.success(enabled ? '已启用，请点击“重载”使变更生效' : '已禁用，请点击“重载”使变更生效');
+      if (enabled) {
+        await this.nginxService.enableServer(id);
       } else {
-        this.rollbackEnabled(previous, [id]);
-        this.message.error(res.error || '操作失败');
+        await this.nginxService.disableServer(id);
       }
+      this.message.success(enabled ? '已启用，请点击“重载”使变更生效' : '已禁用，请点击“重载”使变更生效');
     } catch (err: any) {
       this.rollbackEnabled(previous, [id]);
       this.message.error('操作失败: ' + err.message);
@@ -714,27 +705,19 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     }
     try {
       const res = await this.nginxService.deleteServer(server.id);
-      if (res.success) {
-        this.message.success('已删除');
-        this.removeServerLocally(server.id);
-        const snapshotId = String(res.snapshotId || '').trim();
-        this.registerUndo('已删除，可撤销', async () => {
-          if (!snapshotId) {
-            await this.loadServers();
-            throw new Error('恢复快照不存在，请刷新后重试');
-          }
-          const undoRes = await this.nginxService.restoreDeletedServer(snapshotId);
-          if (!undoRes.success) {
-            await this.loadServers();
-            throw new Error(undoRes.error || '恢复失败');
-          }
+      this.message.success('已删除');
+      this.removeServerLocally(server.id);
+      const snapshotId = String(res.snapshotId || '').trim();
+      this.registerUndo('已删除，可撤销', async () => {
+        if (!snapshotId) {
           await this.loadServers();
-          this.message.success('已恢复删除项');
-        });
-        this.serverListMutated.emit();
-      } else {
-        this.message.error(res.error || '删除失败');
-      }
+          throw new Error('恢复快照不存在，请刷新后重试');
+        }
+        await this.nginxService.restoreDeletedServer(snapshotId);
+        await this.loadServers();
+        this.message.success('已恢复删除项');
+      });
+      this.serverListMutated.emit();
     } catch (err: any) {
       this.message.error('删除失败: ' + err.message);
     }

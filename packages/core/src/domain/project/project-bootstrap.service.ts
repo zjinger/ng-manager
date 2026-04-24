@@ -134,7 +134,7 @@ export class ProjectBootstrapService {
     async pickWorkspaceRoot(input: {
         taskId: string;
         pickedRoot: string;
-    }) {
+    }): Promise<{ projectId: string; rootPath: string }> {
         const ctx = this.mustGetCtx(input.taskId);
         if (ctx.status !== "waitingPick") {
             throw new CoreError(CoreErrorCodes.BOOTSTRAP_NOT_WAITING_PICK, "not waiting pick", input);
@@ -150,10 +150,14 @@ export class ProjectBootstrapService {
             const project = await this.finalizeImport(ctx);
             ctx.status = "done";
             this.emitDone(ctx, project.id, project.projectName);
-            return { ok: true, projectId: project.id, rootPath: ctx.root };
+            return { projectId: project.id, rootPath: ctx.root };
         } catch (e: any) {
-            this.emitFailed(ctx, e?.message ?? "pick finalize failed");
-            return { ok: false, reason: e?.message };
+            const reason = e?.message ?? "pick finalize failed";
+            this.emitFailed(ctx, reason);
+            throw new CoreError(CoreErrorCodes.PROJECT_IMPORT_SCAN_FAILED, reason, {
+                taskId: input.taskId,
+                pickedRoot: input.pickedRoot,
+            });
         }
         finally {
             this.cleanup(input.taskId);

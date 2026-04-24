@@ -394,11 +394,9 @@ export class NginxSecondarySslTabComponent implements OnInit {
     this.loading.set(true);
     try {
       const res = await this.moduleStore.loadSslCertificates();
-      if (res.success && res.certificates) {
+      if (res.certificates) {
         this.rows.set(this.moduleStore.sslCertificates().map(item => ({ ...item })));
         this.dirty.set(false);
-      } else {
-        this.message.error(res.error || '加载 SSL 配置失败');
       }
     } catch (err: any) {
       this.message.error('加载 SSL 配置失败: ' + err.message);
@@ -549,14 +547,10 @@ export class NginxSecondarySslTabComponent implements OnInit {
 
     this.saving.set(true);
     try {
-      const res = await this.moduleStore.saveSslCertificates(payload);
-      if (res.success) {
-        this.message.success('SSL 配置已保存');
-        this.dirty.set(false);
-        await this.loadData();
-      } else {
-        this.message.error(res.error || '保存 SSL 配置失败');
-      }
+      await this.moduleStore.saveSslCertificates(payload);
+      this.message.success('SSL 配置已保存');
+      this.dirty.set(false);
+      await this.loadData();
     } catch (err: any) {
       this.message.error('保存 SSL 配置失败: ' + err.message);
     } finally {

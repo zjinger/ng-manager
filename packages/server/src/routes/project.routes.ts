@@ -234,7 +234,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
             const p = await fastify.core.project.get(id);
             const editor = body?.editor || "code";
             await openFolder(p.root, { editor });
-            return { ok: true };
+            return {};
         } catch (e: any) {
             throw new CoreError(CoreErrorCodes.EDITOR_LAUNCH_FAILED, e?.message || "openInEditor failed");
         }

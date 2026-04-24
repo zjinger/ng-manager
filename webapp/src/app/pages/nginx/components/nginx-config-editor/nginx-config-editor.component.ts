@@ -382,7 +382,7 @@ export class NginxConfigEditorComponent implements OnInit, OnChanges, AfterViewI
       const targetPath = this.selectedFilePath();
       const useMain = forceMain || !targetPath || this.isSamePath(targetPath, this.mainConfigPath || targetPath);
       const res = useMain ? await this.nginxService.getConfig() : await this.nginxService.getConfigFile(targetPath);
-      if (res.success && res.config) {
+      if (res.config) {
         const content = res.config.content || '';
         this.config.set(res.config);
         this.originalContent.set(content);
@@ -395,8 +395,6 @@ export class NginxConfigEditorComponent implements OnInit, OnChanges, AfterViewI
         this.mergeConfigFiles([res.config.mainConfigPath]);
         this.updateEditorHeight();
         this.scheduleLayout();
-      } else {
-        this.message.error(res.error || '加载配置失败');
       }
     } catch (err: any) {
       this.message.error('加载配置失败: ' + err.message);
@@ -416,16 +414,14 @@ export class NginxConfigEditorComponent implements OnInit, OnChanges, AfterViewI
     try {
       const latestContent = this.getCurrentEditorContent();
       const useMain = this.isSamePath(targetPath, this.mainConfigPath || targetPath);
-      const res = useMain
-        ? await this.nginxService.updateConfig(latestContent)
-        : await this.nginxService.updateConfigFile(targetPath, latestContent);
-      if (res.success) {
-        this.message.success('保存成功');
-        await this.loadConfig();
-        await this.loadConfigFiles();
+      if (useMain) {
+        await this.nginxService.updateConfig(latestContent);
       } else {
-        this.message.error(res.error || '保存失败');
+        await this.nginxService.updateConfigFile(targetPath, latestContent);
       }
+      this.message.success('保存成功');
+      await this.loadConfig();
+      await this.loadConfigFiles();
     } catch (err: any) {
       this.message.error('保存失败: ' + err.message);
     } finally {
@@ -454,17 +450,13 @@ export class NginxConfigEditorComponent implements OnInit, OnChanges, AfterViewI
     this.filesLoading.set(true);
     try {
       const res = await this.nginxService.getConfigFiles();
-      if (res.success) {
-        const incoming = res.files || [];
-        const merged = this.buildFileList(incoming);
-        this.configFiles.set(merged);
-        const current = this.selectedFilePath();
-        if (current && merged.length && !merged.some(item => this.isSamePath(item, current))) {
-          this.selectedFilePath.set(merged[0]);
-          await this.loadConfig();
-        }
-      } else {
-        this.message.error(res.error || '加载文件列表失败');
+      const incoming = res.files || [];
+      const merged = this.buildFileList(incoming);
+      this.configFiles.set(merged);
+      const current = this.selectedFilePath();
+      if (current && merged.length && !merged.some(item => this.isSamePath(item, current))) {
+        this.selectedFilePath.set(merged[0]);
+        await this.loadConfig();
       }
     } catch (err: any) {
       this.message.error('加载文件列表失败: ' + err.message);
