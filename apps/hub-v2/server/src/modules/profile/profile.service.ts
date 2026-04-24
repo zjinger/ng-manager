@@ -10,7 +10,8 @@ import type {
 } from "./profile.types";
 
 const DEFAULT_CHANNELS: Record<string, boolean> = {
-  inbox: true
+  inbox: true,
+  system_notification: true
 };
 
 const DEFAULT_EVENTS: Record<string, boolean> = {

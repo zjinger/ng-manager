@@ -2,7 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 
 import { NotificationStore } from '../../features/notifications/store/notification.store';
+import { SystemNotificationService } from '../../shared/services/system-notification.service';
 import { NavigationBadgeStore } from '../navigation/navigation-badge.store';
+import { ProjectContextStore } from '../state/project-context.store';
 import { DashboardRefreshBusService } from './dashboard-refresh-bus.service';
 import { WsClientService } from './ws-client.service';
 import type { WsRefreshHint, WsServerMessage } from './ws-message.types';
@@ -13,6 +15,8 @@ export class RealtimeSyncService {
   private readonly notificationStore = inject(NotificationStore);
   private readonly navigationBadgeStore = inject(NavigationBadgeStore);
   private readonly dashboardRefreshBus = inject(DashboardRefreshBusService);
+  private readonly projectContext = inject(ProjectContextStore);
+  private readonly systemNotification = inject(SystemNotificationService);
 
   private started = false;
   private subscriptions = new Subscription();
@@ -47,6 +51,7 @@ export class RealtimeSyncService {
     // notification.new carries full item payload, so we can update store incrementally without full reload.
     if (message.type === 'notification.new') {
       this.notificationStore.upsertFromWs(message.payload.notification, message.payload.unreadCount);
+      this.systemNotification.showFromNotificationItem(message.payload.notification, this.projectContext.systemNotificationEnabled());
       return;
     }
 

@@ -4,17 +4,13 @@ import { Observable, map, of, switchMap, tap } from 'rxjs';
 import { ApiClientService } from '@core/http';
 import { ProjectApiService } from '../../features/projects/services/project-api.service';
 import type { ProjectSummary } from '../../features/projects/models/project.model';
+import type { ProfileNotificationPrefs } from '../../features/profile/models/profile.model';
 
 const STORAGE_KEY = 'hub-v2.current-project-id';
 const PROJECT_SCOPE_STORAGE_KEY = 'hub-v2.project-scope-mode';
 const INCLUDE_ARCHIVED_STORAGE_KEY = 'hub-v2.include-archived-projects';
 
 export type ProjectScopeMode = 'all_accessible' | 'member_only';
-
-type ProfilePreferencesResponse = {
-  projectScopeMode?: ProjectScopeMode;
-  includeArchivedProjects?: boolean;
-};
 
 @Injectable({ providedIn: 'root' })
 export class ProjectContextStore {
@@ -33,6 +29,7 @@ export class ProjectContextStore {
   private readonly includeArchivedProjectsState = signal<boolean>(
     typeof localStorage === 'undefined' ? false : localStorage.getItem(INCLUDE_ARCHIVED_STORAGE_KEY) === '1'
   );
+  private readonly notificationPrefsState = signal<ProfileNotificationPrefs | null>(null);
 
   readonly projects = computed(() => this.projectsState());
   readonly currentProjectId = computed(() => this.currentProjectIdState());
@@ -46,6 +43,10 @@ export class ProjectContextStore {
   readonly currentProjectIsArchived = computed(() => this.currentProject()?.status === 'inactive');
   // 是否active
   readonly currentProjectIsActive = computed(() => this.currentProject()?.status === 'active');
+  readonly notificationPrefs = computed(() => this.notificationPrefsState());
+  readonly systemNotificationEnabled = computed(
+    () => this.notificationPrefsState()?.channels['system_notification'] ?? true
+  );
 
 
 
@@ -107,8 +108,9 @@ export class ProjectContextStore {
   }
 
   private loadScopeFromServer(): Observable<ProjectScopeMode> {
-    return this.api.get<ProfilePreferencesResponse>('/profile/preferences').pipe(
+    return this.api.get<ProfileNotificationPrefs>('/profile/preferences').pipe(
       map((prefs): ProjectScopeMode => {
+        this.notificationPrefsState.set(prefs);
         const mode: ProjectScopeMode = prefs?.projectScopeMode === 'all_accessible' ? 'all_accessible' : 'member_only';
         this.setProjectScopeMode(mode);
         if (typeof prefs?.includeArchivedProjects === 'boolean') {

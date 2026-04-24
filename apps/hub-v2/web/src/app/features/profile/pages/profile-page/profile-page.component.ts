@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore, type ProjectScopeMode } from '@core/state';
 import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { AvatarImageNormalizerService } from '@shared/services/avatar-image-normalizer.service';
+import { SystemNotificationService } from '@shared/services/system-notification.service';
 import { PageHeaderComponent } from '@shared/ui';
 import { ProfileBasicFormComponent } from '../../components/profile-basic-form/profile-basic-form.component';
 import { ProfileHeroComponent } from '../../components/profile-hero/profile-hero.component';
@@ -25,6 +27,7 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'project-visibility' 
   selector: 'app-profile-page',
   standalone: true,
   imports: [
+    NzAlertModule,
     PageHeaderComponent,
     ProfileHeroComponent,
     ProfileTabsComponent,
@@ -34,94 +37,8 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'project-visibility' 
     ProfileProjectVisibilitySettingsComponent,
     ProfilePersonalTokenComponent,
   ],
-  template: `
-    <app-page-header title="个人中心" subtitle="管理你的个人信息、安全设置与偏好" />
-
-    <app-profile-hero
-      [initials]="initials()"
-      [name]="displayName()"
-      [subtitle]="email()"
-      [avatarUrl]="authStore.currentUser()?.avatarUrl ?? null"
-      [tags]="heroTags()"
-      [stats]="heroStats()"
-      (avatarChange)="updateAvatar($event)"
-    />
-
-    <app-profile-tabs [tabs]="tabs" [activeId]="activeTab()" (tabChange)="activeTab.set($any($event))" />
-
-    @switch (activeTab()) {
-      @case ('basic') {
-        <app-profile-basic-form
-          [user]="authStore.currentUser()"
-          [busy]="basicSaving()"
-          [submittedVersion]="basicSubmittedVersion()"
-          (save)="saveBasicProfile($event)"
-        />
-      }
-
-      @case ('security') {
-        <section class="profile-stack">
-          <app-profile-password-form
-            [busy]="busy()"
-            [submitted]="submittedVersion() > 0"
-            (changePassword)="changePassword($event)"
-          />
-
-          <!-- <app-profile-security-overview [methods]="securityMethods()" [sessions]="sessions()" /> -->
-        </section>
-      }
-
-      @case ('notifications') {
-        <app-profile-notification-settings
-          [channels]="channelPrefs()"
-          [events]="eventPrefs()"
-          [editable]="prefsEditing()"
-          [dirty]="prefsDirty()"
-          [saving]="prefsSaving()"
-          (toggle)="togglePref($event.group, $event.id, $event.enabled)"
-          (edit)="startEditPrefs()"
-          (save)="saveNotificationPrefs()"
-          (cancel)="cancelEditPrefs()"
-        />
-      }
-
-      @case ('tokens') {
-        <app-profile-personal-token />
-      }
-
-      @case ('project-visibility') {
-        <app-profile-project-visibility-settings
-          [mode]="projectScopeMode()"
-          [includeArchivedProjects]="includeArchivedProjects()"
-          [editable]="projectScopeEditing()"
-          [dirty]="projectScopeDirty()"
-          [saving]="projectScopeSaving()"
-          (modeChange)="changeProjectScopeMode($event)"
-          (includeArchivedProjectsChange)="changeIncludeArchivedProjects($event)"
-          (edit)="startEditProjectScope()"
-          (save)="saveProjectScope()"
-          (cancel)="cancelEditProjectScope()"
-        />
-      }
-    }
-  `,
-  styles: [
-    `
-      :host {
-        display: block;
-      }
-
-      app-profile-hero {
-        display: block;
-        margin-bottom: 24px;
-      }
-
-      .profile-stack {
-        display: grid;
-        gap: 20px;
-      }
-    `,
-  ],
+  templateUrl: './profile-page.component.html',
+  styleUrl: './profile-page.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfilePageComponent {
@@ -131,6 +48,7 @@ export class ProfilePageComponent {
   private readonly message = inject(NzMessageService);
   private readonly avatarUploadPolicy = UPLOAD_TARGETS.profileAvatar;
   private readonly avatarNormalizer = inject(AvatarImageNormalizerService);
+  private readonly systemNotification = inject(SystemNotificationService);
 
   readonly activeTab = signal<ProfileTab>('basic');
   readonly busy = signal(false);
@@ -146,6 +64,9 @@ export class ProfilePageComponent {
   readonly savedPrefs = signal<ProfileNotificationPrefs | null>(null);
   readonly projectScopeMode = signal<ProjectScopeMode>('member_only');
   readonly includeArchivedProjects = signal(false);
+  readonly notificationPermissionDenied = signal(false);
+
+  readonly showPermissionAlert = computed(() => this.notificationPermissionDenied());
 
   readonly tabs = [
     { id: 'basic', label: '基本信息', icon: 'user' },
@@ -157,6 +78,13 @@ export class ProfilePageComponent {
 
   readonly channelPrefs = signal<ProfileNotificationSetting[]>([
     { id: 'inbox', title: '站内消息', description: '通过站内通知中心接收提醒', enabled: true, icon: 'inbox' },
+    {
+      id: 'system_notification',
+      title: '系统通知',
+      description: '通过系统通知接收提醒（需浏览器支持并授权）',
+      enabled: true,
+      icon: 'bell',
+    },
   ]);
 
   readonly eventPrefs = signal<ProfileNotificationSetting[]>([
@@ -206,6 +134,13 @@ export class ProfilePageComponent {
       const user = this.authStore.currentUser();
       if (!user) return;
       this.loadNotificationPrefs();
+    });
+
+    effect(() => {
+      const tab = this.activeTab();
+      if (tab === 'notifications') {
+        this.syncNotificationPermissionAlert();
+      }
     });
   }
 
@@ -332,12 +267,21 @@ export class ProfilePageComponent {
     this.prefsSaving.set(true);
     const payload = this.currentPrefsPayload(this.savedPrefs()?.projectScopeMode ?? this.projectScopeMode());
     this.profileApi.saveNotificationPrefs(payload).subscribe({
-      next: (saved) => {
+      next: async (saved) => {
         this.prefsSaving.set(false);
         this.savedPrefs.set(saved);
         this.applyNotificationPrefs(saved);
         this.prefsDirty.set(false);
         this.prefsEditing.set(false);
+
+        const systemNotificationEnabled = saved.channels['system_notification'];
+        if (systemNotificationEnabled) {
+          const result = await this.systemNotification.checkAndPromptPermission();
+          this.notificationPermissionDenied.set(result === 'denied');
+        } else {
+          this.notificationPermissionDenied.set(false);
+        }
+
         this.message.success('通知偏好已保存');
       },
       error: () => {
@@ -389,6 +333,7 @@ export class ProfilePageComponent {
       next: (prefs) => {
         this.savedPrefs.set(prefs);
         this.applyNotificationPrefs(prefs);
+        this.syncNotificationPermissionAlert();
         this.prefsDirty.set(false);
         this.prefsEditing.set(false);
         this.projectScopeDirty.set(false);
@@ -434,5 +379,11 @@ export class ProfilePageComponent {
     const sameScope = (saved?.projectScopeMode ?? 'member_only') === this.projectScopeMode();
     const sameArchivedFlag = !!saved?.includeArchivedProjects === this.includeArchivedProjects();
     this.projectScopeDirty.set(!(sameScope && sameArchivedFlag));
+  }
+
+  private syncNotificationPermissionAlert(): void {
+    const enabled = this.channelPrefs().find((item) => item.id === 'system_notification')?.enabled ?? false;
+    const permissionDenied = enabled && this.systemNotification.getPermission() === 'denied';
+    this.notificationPermissionDenied.set(permissionDenied);
   }
 }

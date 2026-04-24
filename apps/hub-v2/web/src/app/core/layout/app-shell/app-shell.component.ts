@@ -7,6 +7,7 @@ import { NavigationBadgeStore } from '../../navigation/navigation-badge.store';
 import { RealtimeSyncService } from '../../realtime/realtime-sync.service';
 import { ProjectContextStore } from '../../state/project-context.store';
 import { UiStore } from '../../state/ui.store';
+import { SystemNotificationService } from '../../../shared/services/system-notification.service';
 import { GlobalSearchModalComponent } from '../../../features/search/components/global-search-modal/global-search-modal.component';
 import { GlobalSearchStore } from '../../../features/search/store/global-search.store';
 import { SidebarComponent } from '../sidebar/sidebar.component';
@@ -26,6 +27,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly navigationBadgeStore = inject(NavigationBadgeStore);
   private readonly realtimeSync = inject(RealtimeSyncService);
   private readonly globalSearchStore = inject(GlobalSearchStore);
+  private readonly systemNotification = inject(SystemNotificationService);
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
@@ -34,7 +36,14 @@ export class AppShellComponent implements OnDestroy {
     this.projectContext
       .loadProjects({ refreshScope: true })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe();
+      .subscribe({
+        next: () => {
+          if (!this.projectContext.systemNotificationEnabled()) {
+            return;
+          }
+          void this.systemNotification.checkAndPromptPermission();
+        },
+      });
 
     effect(() => {
       const projectId = this.projectContext.currentProjectId();

@@ -1,0 +1,76 @@
+    <app-page-header title="个人中心" subtitle="管理你的个人信息、安全设置与偏好" />
+
+    <app-profile-hero
+      [initials]="initials()"
+      [name]="displayName()"
+      [subtitle]="email()"
+      [avatarUrl]="authStore.currentUser()?.avatarUrl ?? null"
+      [tags]="heroTags()"
+      [stats]="heroStats()"
+      (avatarChange)="updateAvatar($event)"
+    />
+
+    <app-profile-tabs [tabs]="tabs" [activeId]="activeTab()" (tabChange)="activeTab.set($any($event))" />
+
+    @switch (activeTab()) {
+      @case ('basic') {
+        <app-profile-basic-form
+          [user]="authStore.currentUser()"
+          [busy]="basicSaving()"
+          [submittedVersion]="basicSubmittedVersion()"
+          (save)="saveBasicProfile($event)"
+        />
+      }
+
+      @case ('security') {
+        <section class="profile-stack">
+          <app-profile-password-form
+            [busy]="busy()"
+            [submitted]="submittedVersion() > 0"
+            (changePassword)="changePassword($event)"
+          />
+
+          <!-- <app-profile-security-overview [methods]="securityMethods()" [sessions]="sessions()" /> -->
+        </section>
+      }
+
+      @case ('notifications') {
+        @if (showPermissionAlert()) {
+          <nz-alert
+            nzType="warning"
+            nzMessage="系统通知已开启，但浏览器通知权限被拒绝。请在浏览器设置中允许通知"
+            nzCloseable
+          />
+        }
+        <app-profile-notification-settings
+          [channels]="channelPrefs()"
+          [events]="eventPrefs()"
+          [editable]="prefsEditing()"
+          [dirty]="prefsDirty()"
+          [saving]="prefsSaving()"
+          (toggle)="togglePref($event.group, $event.id, $event.enabled)"
+          (edit)="startEditPrefs()"
+          (save)="saveNotificationPrefs()"
+          (cancel)="cancelEditPrefs()"
+        />
+      }
+
+      @case ('tokens') {
+        <app-profile-personal-token />
+      }
+
+      @case ('project-visibility') {
+        <app-profile-project-visibility-settings
+          [mode]="projectScopeMode()"
+          [includeArchivedProjects]="includeArchivedProjects()"
+          [editable]="projectScopeEditing()"
+          [dirty]="projectScopeDirty()"
+          [saving]="projectScopeSaving()"
+          (modeChange)="changeProjectScopeMode($event)"
+          (includeArchivedProjectsChange)="changeIncludeArchivedProjects($event)"
+          (edit)="startEditProjectScope()"
+          (save)="saveProjectScope()"
+          (cancel)="cancelEditProjectScope()"
+        />
+      }
+    }
