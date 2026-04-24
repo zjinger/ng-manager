@@ -1,0 +1,19 @@
+{
+  "name": "@yinuo-ngm/errors",
+  "version": "1.0.0",
+  "description": "统一错误码与 AppError 定义中心",
+  "author": "ZhangJing <892295834@qq.com>",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {}
+}
