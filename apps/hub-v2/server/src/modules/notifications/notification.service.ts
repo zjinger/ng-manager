@@ -46,6 +46,8 @@ const DEFAULT_EVENT_FLAGS: Record<string, boolean> = {
   project_member_changed: true
 };
 
+const MAX_NOTIFICATION_TITLE_LENGTH = 80;
+
 /**
  * 通知服务
  * 
@@ -138,7 +140,7 @@ export class NotificationService
         entityType: normalized.entityType,
         entityId: normalized.entityId,
         action: normalized.action,
-        title: normalized.title,
+        title: this.truncateText(normalized.title, MAX_NOTIFICATION_TITLE_LENGTH),
         description: normalized.description,
         sourceLabel: normalized.sourceLabel,
         projectId: normalized.projectId,
@@ -750,5 +752,17 @@ export class NotificationService
 
   private pickString(value: unknown): string {
     return typeof value === "string" ? value.trim() : "";
+  }
+
+  private truncateText(value: string, maxChars: number): string {
+    const normalized = value.trim();
+    if (maxChars <= 0 || !normalized) {
+      return "";
+    }
+    const chars = Array.from(normalized);
+    if (chars.length <= maxChars) {
+      return normalized;
+    }
+    return `${chars.slice(0, maxChars - 3).join("")}...`;
   }
 }

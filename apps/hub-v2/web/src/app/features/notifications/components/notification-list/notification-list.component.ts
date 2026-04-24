@@ -91,15 +91,20 @@ import { buildNotificationRouteTarget, type NotificationRouteTarget } from '../.
         font-size: 12px;
       }
       .notification-row__title {
+        min-width: 0;
         color: var(--text-primary);
         font-size: 14px;
         font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .notification-row__title-line {
         margin-top: 8px;
         display: flex;
         align-items: center;
         gap: 8px;
+        min-width: 0;
       }
       .notification-row__unread-dot {
         width: 5px;

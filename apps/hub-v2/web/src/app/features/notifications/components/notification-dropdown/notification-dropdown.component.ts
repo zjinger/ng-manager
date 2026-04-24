@@ -138,16 +138,21 @@ import { buildNotificationRouteTarget, type NotificationRouteTarget } from '../.
         cursor: default;
       }
       .notification-item__title {
+        min-width: 0;
         color: var(--text-primary);
         font-size: 13px;
         font-weight: 700;
         line-height: 1.4;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .notification-item__title-line {
         margin-top: 6px;
         display: flex;
         align-items: center;
         gap: 8px;
+        min-width: 0;
       }
       .notification-item__unread-dot {
         width: 5px;
