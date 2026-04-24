@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { spriteErrors } from "@yinuo-ngm/errors";
 import { detectGroupType } from "./detect";
 import { generatePngGroup } from "./png";
 import { generateSvgGroup } from "./svg";
@@ -75,12 +76,12 @@ export async function generateGroupBatch(opts: GenerateGroupBatchOptions): Promi
     const outDir = String(opts.outDir ?? "").trim();
     const spriteUrlTemplate = String(opts.spriteUrlTemplate ?? "").trim();
 
-    if (!iconsRoot) throw new Error("iconsRoot is required");
-    if (!outDir) throw new Error("outDir is required");
-    if (!spriteUrlTemplate) throw new Error("spriteUrlTemplate is required");
+    if (!iconsRoot) throw spriteErrors.iconsRootRequired();
+    if (!outDir) throw spriteErrors.outDirRequired();
+    if (!spriteUrlTemplate) throw spriteErrors.urlTemplateRequired();
 
     if (!fs.existsSync(iconsRoot)) {
-        throw new Error(`iconsRoot not found: ${iconsRoot}`);
+        throw spriteErrors.iconsRootNotFound(iconsRoot);
     }
 
     ensureDir(outDir);
@@ -103,8 +104,8 @@ export async function generateGroupBatch(opts: GenerateGroupBatchOptions): Promi
         const groupDir = isRootGroup ? iconsRoot : path.join(iconsRoot, group);
         try {
             const type = detectGroupType(groupDir);
-            if (type === "empty") throw new Error(`group "${outputGroup}" is empty`);
-            if (type === "mixed") throw new Error(`group "${outputGroup}" has both png and svg (mixed)`);
+            if (type === "empty") throw spriteErrors.groupEmpty(outputGroup);
+            if (type === "mixed") throw spriteErrors.groupMixed(outputGroup);
 
             if (type === "svg") {
                 const result = await generateSvgGroup({

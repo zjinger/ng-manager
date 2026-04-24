@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { spriteErrors } from "@yinuo-ngm/errors";
 import type { GenerateSvgGroupOptions, GenerateSvgGroupResult, SvgIconMeta, SvgMetaFile } from "./types";
 import { detectGroupType, parseGroupSize, defaultFileSort } from "./detect";
 import { readMeta, writeMeta } from "./file";
@@ -21,7 +22,7 @@ import { readMeta, writeMeta } from "./file";
 export async function generateSvgGroup(opts: GenerateSvgGroupOptions): Promise<GenerateSvgGroupResult> {
     const { group, groupDir } = opts;
 
-    if (!fs.existsSync(groupDir)) throw new Error(`Icon group not found: ${groupDir}`);
+    if (!fs.existsSync(groupDir)) throw spriteErrors.groupNotFound(groupDir);
 
     const type = detectGroupType(groupDir);
     const prefix = opts.prefix || "sl";
@@ -29,7 +30,7 @@ export async function generateSvgGroup(opts: GenerateSvgGroupOptions): Promise<G
 
     // meta 输出路径
     const outDir = opts.outDir;
-    if (!outDir) throw new Error("generateSvgGroup requires opts.outDir");
+    if (!outDir) throw spriteErrors.outDirRequired();
     fs.mkdirSync(outDir, { recursive: true });
     const metaSuffix = opts.cache?.metaSuffix ?? ".meta.json";
     const metaPath = path.join(outDir, `${group}${metaSuffix}`);

@@ -15,5 +15,8 @@
     "build": "tsc -b tsconfig.json",
     "test": "npm run build && node --test test/local-server-runtime.test.js"
   },
-  "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"
+  "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48",
+  "dependencies": {
+    "@yinuo-ngm/errors": "^1.0.0"
+  }
 }

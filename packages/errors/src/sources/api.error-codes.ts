@@ -16,6 +16,7 @@
  * | 21011  | API_HISTORY_NOT_FOUND       | 历史记录不存在         | 404         |
  * | 21012  | API_PROJECT_ID_REQUIRED     | projectId 必填         | 400         |
  * | 21013  | API_REQUEST_ID_REQUIRED     | request.id 必填       | 400         |
+ * | 21014  | API_COLLECTION_NOT_EMPTY    | 集合不为空             | 409         |
  */
 export const ApiErrorCodes = {
   API_REQUEST_NOT_FOUND: 21001,
@@ -31,6 +32,7 @@ export const ApiErrorCodes = {
   API_HISTORY_NOT_FOUND: 21011,
   API_PROJECT_ID_REQUIRED: 21012,
   API_REQUEST_ID_REQUIRED: 21013,
+  API_COLLECTION_NOT_EMPTY: 21014,
 } as const;
 
 export type ApiErrorCode = typeof ApiErrorCodes[keyof typeof ApiErrorCodes];

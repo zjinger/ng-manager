@@ -20,6 +20,7 @@
     "@types/spritesmith": "^3.4.5"
   },
   "dependencies": {
+    "@yinuo-ngm/errors": "^1.0.0",
     "spritesmith": "^3.5.1"
   },
   "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"

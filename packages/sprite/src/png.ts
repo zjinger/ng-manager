@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Spritesmith from "spritesmith";
+import { spriteErrors } from "@yinuo-ngm/errors";
 import type {
     GeneratePngGroupOptions,
     GenerateSpriteResult,
@@ -31,13 +32,13 @@ async function runSpritesmith(srcFiles: string[], algorithm: SpritesmithOptionsA
 export async function generatePngGroup(opts: GeneratePngGroupOptions): Promise<GenerateSpriteResult> {
     const type = detectGroupType(opts.groupDir);
     if (type === "mixed") {
-        throw new Error(`Group "${opts.group}" has both png and svg. Please normalize assets (split dirs).`);
+        throw spriteErrors.groupMixed(opts.group);
     }
     if (type === "empty") {
-        throw new Error(`No icon files found in groupDir: ${opts.groupDir}`);
+        throw spriteErrors.groupEmpty(opts.group);
     }
     if (type === "svg") {
-        throw new Error(`Group "${opts.group}" is svg-only. Use generateSvgGroup().`);
+        throw spriteErrors.groupInvalidType(opts.group, "svg-only");
     }
 
     const {
@@ -101,7 +102,7 @@ export async function generatePngGroup(opts: GeneratePngGroupOptions): Promise<G
         .map((f) => path.join(groupDir, f));
 
     if (!files.length) {
-        throw new Error(`No png icons found: group=${group}, dir=${groupDir}`);
+        throw spriteErrors.groupEmpty(group);
     }
 
     const algorithm = spritesmith?.algorithm || "binary-tree";

@@ -71,4 +71,22 @@ export const spriteErrors = {
 
   iconsRootNotFound: (path: string) =>
     new SpriteError(CoreErrorCodes.SPRITE_ICONS_ROOT_NOT_FOUND, `图标目录不存在: ${path}`, { path }),
+
+  iconsRootRequired: () =>
+    new SpriteError(CoreErrorCodes.SPRITE_ICONS_ROOT_REQUIRED, `iconsRoot is required`),
+
+  outDirRequired: () =>
+    new SpriteError(CoreErrorCodes.SPRITE_OUT_DIR_REQUIRED, `outDir is required`),
+
+  urlTemplateRequired: () =>
+    new SpriteError(CoreErrorCodes.SPRITE_URL_TEMPLATE_REQUIRED, `spriteUrlTemplate is required`),
+
+  groupEmpty: (group: string) =>
+    new SpriteError(CoreErrorCodes.SPRITE_GROUP_EMPTY, `group "${group}" is empty`, { group }),
+
+  groupMixed: (group: string) =>
+    new SpriteError(CoreErrorCodes.SPRITE_GROUP_MIXED, `group "${group}" has both png and svg (mixed)`, { group }),
+
+  groupInvalidType: (group: string, type: string) =>
+    new SpriteError(CoreErrorCodes.SPRITE_GROUP_INVALID_TYPE, `Group "${group}" is ${type}. Use generateSvgGroup() for SVG.`, { group, type }),
 } as const;

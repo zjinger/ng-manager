@@ -1,3 +1,5 @@
+import { runtimeErrors } from "@yinuo-ngm/errors";
+
 export type LocalServerLockInfo = {
     pid: number;
     port: number;
@@ -177,7 +179,7 @@ export function createLocalServerRuntime<
             await deps.sleep(150);
         }
 
-        throw new Error(
+        throw runtimeErrors.healthCheckFailed(
             `Server did not become healthy at http://${host}:${port} within ${timeoutMs}ms.`
         );
     }

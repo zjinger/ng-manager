@@ -1,4 +1,5 @@
 import { ApiScope, ApiCollectionKind, ApiCollectionEntity, newId, ApiRequestEntity } from "@yinuo-ngm/api";
+import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
 import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 
@@ -88,7 +89,7 @@ export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
     });
 
     // post /api/collections/:id
-    fastify.post("/:id", async (req, reply) => {
+    fastify.post("/:id", async (req) => {
         const params = req.params as { id: string };
         const q = req.query as ListQuery;
         const body = req.body as UpdateBody;
@@ -98,7 +99,7 @@ export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
 
         const old = await api.getCollection(params.id, scope, q.projectId);
         if (!old) {
-            return reply.code(404).send({ code: "COLLECTION_NOT_FOUND", message: `collection not found: ${params.id}` });
+            throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_FOUND, `collection not found: ${params.id}`);
         }
 
         const ts = now();
@@ -116,7 +117,7 @@ export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
 
     // DELETE /api/collections/:id?scope=project&projectId=xxx
     // MVP：非空校验（子 collection 或 request 归属该 collection）→ 409
-    fastify.delete("/:id", async (req, reply) => {
+    fastify.delete("/:id", async (req) => {
         const params = req.params as { id: string };
         const q = req.query as ListQuery;
 
@@ -127,14 +128,14 @@ export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
         const allCols = await api.listCollections(scope, q.projectId);
         const hasChildCol = allCols.some(c => (c.parentId ?? null) === params.id);
         if (hasChildCol) {
-            return reply.code(409).send({ code: "COLLECTION_NOT_EMPTY", message: "collection has child collections" });
+            throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_EMPTY, "collection has child collections");
         }
 
         // 2) requests 归属
         const reqs = await api.listRequests(scope, q.projectId);
         const hasReq = reqs.some((r: ApiRequestEntity) => (r.collectionId ?? null) === params.id);
         if (hasReq) {
-            return reply.code(409).send({ code: "COLLECTION_NOT_EMPTY", message: "collection has requests" });
+            throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_EMPTY, "collection has requests");
         }
 
         await api.deleteCollection(params.id, scope, q.projectId);
