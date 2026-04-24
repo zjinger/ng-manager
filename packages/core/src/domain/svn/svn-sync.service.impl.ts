@@ -18,7 +18,7 @@ import { SvnSyncService } from "./svn-sync.service";
 import { CoreEventMap, Events, IEventBus } from "../../infra/event";
 import { SystemLogService } from "../logger";
 import { SvnTaskManager } from "./svn-task.manager";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { Project, ProjectAssetSourceSvn, ProjectService } from "../project";
 
 const execFileAsync = promisify(execFile);
@@ -190,7 +190,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
      */
     async syncWithStream(projectId: string, sourceId: string, dir: string, url: string) {
         if (this.taskManager.isRunning(projectId, sourceId)) {
-            throw new AppError("SVN_SYNC_ALREADY_RUNNING", `SVN sync is already running for project ${projectId}, source ${sourceId}`);
+            throw new CoreError(CoreErrorCodes.SVN_SYNC_ALREADY_RUNNING, `SVN sync is already running for project ${projectId}, source ${sourceId}`);
         }
 
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -267,7 +267,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 lastSyncAt: now,
                 lastStderr: (msg || "").slice(0, 5000),
             });
-            throw new AppError("SVN_SYNC_FAILED", msg);
+            throw new CoreError(CoreErrorCodes.SVN_SYNC_FAILED, msg);
         } finally {
             this.taskManager.finish(projectId, sourceId);
         }
@@ -340,7 +340,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
 
             const r = await this.runSvnStreamOnce(projectId, sourceId, dir, ["checkout", desiredUrl, "."], progress);
             if (r.exitCode !== 0) {
-                throw new AppError("SVN_SYNC_FAILED", `SVN checkout failed with exit code ${r.exitCode}. Stderr: ${r.stderrTail}`);
+                throw new CoreError(CoreErrorCodes.SVN_SYNC_FAILED, `SVN checkout failed with exit code ${r.exitCode}. Stderr: ${r.stderrTail}`);
             }
 
             const currentUrl = safeSvnPath(await this.svnInfoUrl(dir));
@@ -358,7 +358,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
         if (isCheckout) {
             const r = await this.runSvnStreamOnce(projectId, sourceId, dir, ["checkout", desiredUrl, "."], progress);
             if (r.exitCode !== 0) {
-                throw new AppError("SVN_SYNC_FAILED", `SVN checkout failed with exit code ${r.exitCode}. Stderr: ${r.stderrTail}`);
+                throw new CoreError(CoreErrorCodes.SVN_SYNC_FAILED, `SVN checkout failed with exit code ${r.exitCode}. Stderr: ${r.stderrTail}`);
             }
             const currentUrl = safeSvnPath(await this.svnInfoUrl(dir));
             return {
@@ -393,7 +393,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 // 可选：switch 后再 update 一次更稳（建议开启）
                 const up = await this.runSvnStreamOnce(projectId, sourceId, dir, ["update"], progress);
                 if (up.exitCode !== 0) {
-                    throw new AppError("SVN_SYNC_FAILED", `SVN update after switch failed with exit code ${up.exitCode}. Stderr: ${up.stderrTail}`);
+                    throw new CoreError(CoreErrorCodes.SVN_SYNC_FAILED, `SVN update after switch failed with exit code ${up.exitCode}. Stderr: ${up.stderrTail}`);
                 }
 
                 const currentUrl = safeSvnPath(await this.svnInfoUrl(dir));
@@ -415,7 +415,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
         const up = await this.runSvnStreamOnce(projectId, sourceId, dir, ["update"], progress);
         // update 失败 → recheckout 
         if (up.exitCode !== 0) {
-            throw new AppError("SVN_SYNC_FAILED", `SVN update failed with exit code ${up.exitCode}. Stderr: ${up.stderrTail}`);
+            throw new CoreError(CoreErrorCodes.SVN_SYNC_FAILED, `SVN update failed with exit code ${up.exitCode}. Stderr: ${up.stderrTail}`);
         }
         const currentUrl = safeSvnPath(await this.svnInfoUrl(dir));
         return {

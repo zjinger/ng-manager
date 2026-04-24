@@ -1,6 +1,6 @@
 import { promises as fsp } from "node:fs";
 import * as path from "node:path";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { uid } from "../../common/id";
 import type { ProjectRepo } from "./project.repo";
 import type { ImportCheckResult, CreateProjectInput, DetectResult, Project, CheckRootResult, ProjectAssets, ProjectAssetSourceSvn } from "./project.types";
@@ -17,8 +17,8 @@ export class ProjectServiceImpl implements ProjectService {
         const check = await this.checkImport(root);
 
         if (!check.ok || !check.meta) {
-            throw new AppError(
-                check.code ?? "PROJECT_ROOT_INVALID",
+            throw new CoreError(
+                CoreErrorCodes.PROJECT_ROOT_INVALID,
                 check.reason ?? "Import project failed",
                 { root, detect: check.detect, meta: check.meta }
             );
@@ -116,7 +116,7 @@ export class ProjectServiceImpl implements ProjectService {
 
     async get(id: string): Promise<Project> {
         const p = await this.repo.get(id);
-        if (!p) throw new AppError("PROJECT_NOT_FOUND", `Project not found: ${id}`, { projectId: id });
+        if (!p) throw new CoreError(CoreErrorCodes.PROJECT_NOT_FOUND, `Project not found: ${id}`, { projectId: id });
         return p;
     }
 
@@ -124,7 +124,7 @@ export class ProjectServiceImpl implements ProjectService {
         // root 去重（避免重复导入同一路径）
         const existed = await this.repo.findByRoot(input.root);
         if (existed) {
-            throw new AppError("PROJECT_ALREADY_EXISTS", `Project already exists: ${input.root}`, { projectId: existed.id });
+            throw new CoreError(CoreErrorCodes.PROJECT_ALREADY_EXISTS, `Project already exists: ${input.root}`, { projectId: existed.id });
         }
 
         //  自动扫描 package.json scripts（除非用户传了 scripts）
@@ -232,20 +232,20 @@ export class ProjectServiceImpl implements ProjectService {
         const kind = String(source.kind || "svn").trim();
         const mode = (String(source.mode || "manual").trim() as any) || "manual";
         if (!["manual", "export", "checkout"].includes(mode)) {
-            throw new AppError("ASSET_MODE_INVALID", `source.mode invalid: ${mode}`);
+            throw new CoreError(CoreErrorCodes.ASSET_MODE_INVALID, `source.mode invalid: ${mode}`);
         }
         if (kind !== "svn") {
-            throw new AppError("ASSET_KIND_NOT_SUPPORTED", `source.kind not supported: ${kind}`);
+            throw new CoreError(CoreErrorCodes.ASSET_KIND_NOT_SUPPORTED, `source.kind not supported: ${kind}`);
         }
         if (!url) {
-            throw new AppError("ASSET_URL_REQUIRED", "source.url is required");
+            throw new CoreError(CoreErrorCodes.ASSET_URL_REQUIRED, "source.url is required");
         }
         if (!url.startsWith("svn://")) {
-            throw new AppError("ASSET_URL_INVALID", `source.url must start with svn://: ${url}`);
+            throw new CoreError(CoreErrorCodes.ASSET_URL_INVALID, `source.url must start with svn://: ${url}`);
         }
         const label = String(source.label).trim();
         if (!label) {
-            throw new AppError("ASSET_LABEL_REQUIRED", "source.label is required");
+            throw new CoreError(CoreErrorCodes.ASSET_LABEL_REQUIRED, "source.label is required");
         }
 
         const sourceId = String(source.id || "").trim() || uid("svn");

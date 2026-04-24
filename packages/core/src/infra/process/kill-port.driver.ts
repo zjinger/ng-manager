@@ -2,7 +2,7 @@ import os from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { KillPortResult } from "./process.types";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 const execFileAsync = promisify(execFile);
 
 function isWin32(): boolean {
@@ -11,7 +11,7 @@ function isWin32(): boolean {
 
 export async function killPort(port: number): Promise<KillPortResult> {
     if (!Number.isFinite(port) || port <= 0 || port > 65535) {
-        throw new AppError("INVALID_PORT", `invalid port: ${port}`, { port });
+        throw new CoreError(CoreErrorCodes.INVALID_PORT, `invalid port: ${port}`, { port });
     }
     const isWin = isWin32();
     const pids = isWin

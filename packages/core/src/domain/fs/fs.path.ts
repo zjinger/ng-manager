@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import { promises as fsp } from "node:fs";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 
 /**
  * 规范化输入路径
@@ -55,14 +55,14 @@ export async function readdirSafe(p: string): Promise<import("fs").Dirent[] | nu
 export function validateDirName(name: string): string {
     const n = (name || "").trim();
     if (!n) {
-        throw new AppError("FS_INVALID_NAME" as any, "name is required", { name });
+        throw new CoreError(CoreErrorCodes.FS_INVALID_NAME, "name is required", { name });
     }
     if (n === "." || n === "..") {
-        throw new AppError("FS_INVALID_NAME" as any, "invalid name", { name: n });
+        throw new CoreError(CoreErrorCodes.FS_INVALID_NAME, "invalid name", { name: n });
     }
     // 不允许包含路径分隔符，避免注入子路径
     if (n.includes("/") || n.includes("\\") || n.includes(":")) {
-        throw new AppError("FS_INVALID_NAME" as any, "name must be a single folder name", { name: n });
+        throw new CoreError(CoreErrorCodes.FS_INVALID_NAME, "name must be a single folder name", { name: n });
     }
     return n;
 }
@@ -74,6 +74,6 @@ export async function resolveReal(inputPath: string): Promise<string> {
     try {
         return await fsp.realpath(abs);
     } catch {
-        throw new AppError("PROJECT_ROOT_INVALID" as any, "path not found", { path: abs });
+        throw new CoreError(CoreErrorCodes.PROJECT_ROOT_INVALID, "path not found", { path: abs });
     }
 }

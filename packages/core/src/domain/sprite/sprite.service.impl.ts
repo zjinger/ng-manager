@@ -1,7 +1,7 @@
 import { generateGroupBatch, GenerateSpriteResult, SpriteMetaFile, SvgMetaFile } from "@yinuo-ngm/sprite";
 import fs from "node:fs";
 import path from "node:path";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { SystemLogService } from "../logger";
 import { Project, ProjectAssetSourceSvn, ProjectService } from "../project";
 import { SpriteRepo } from "./sprite.repo";
@@ -62,13 +62,13 @@ export class SpriteServiceImpl implements SpriteService {
 
     async generate(projectId: string, options?: GenerateSpriteOptions): Promise<SpriteSnapshot> {
         const cfg = await this.spriteRepo.getByProjectId(projectId);
-        if (!cfg) throw new AppError("SPRITE_CONFIG_NOT_FOUND", `Sprite config not found for project ${projectId}`);
+        if (!cfg) throw new CoreError(CoreErrorCodes.SPRITE_CONFIG_NOT_FOUND, `Sprite config not found for project ${projectId}`);
 
         const project = await this.project.get(projectId);
-        if (!project) throw new AppError("PROJECT_NOT_FOUND", `Project not found: ${projectId}`);
+        if (!project) throw new CoreError(CoreErrorCodes.PROJECT_NOT_FOUND, `Project not found: ${projectId}`);
 
         const iconsRoot = resolveIconsRoot(project, cfg);
-        if (!fs.existsSync(iconsRoot)) throw new AppError("SPRITE_ICONS_ROOT_NOT_FOUND", `iconsRoot not found: ${iconsRoot}`);
+        if (!fs.existsSync(iconsRoot)) throw new CoreError(CoreErrorCodes.SPRITE_ICONS_ROOT_NOT_FOUND, `iconsRoot not found: ${iconsRoot}`);
 
         // 本地文件夹模式使用单独的缓存目录
         const isLocalFolderMode = !!String(cfg.localImageRoot ?? "").trim();
@@ -199,7 +199,7 @@ export class SpriteServiceImpl implements SpriteService {
 
     async getSprites(projectId: string, local = false): Promise<SpriteSnapshot> {
         const cfg = await this.getConfig(projectId);
-        if (!cfg) throw new AppError("SPRITE_CONFIG_NOT_FOUND", `Sprite config not found for project ${projectId}`);
+        if (!cfg) throw new CoreError(CoreErrorCodes.SPRITE_CONFIG_NOT_FOUND, `Sprite config not found for project ${projectId}`);
 
         const isLocalFolderMode = !!String(cfg.localImageRoot ?? "").trim();
         const cacheOutDir = local && isLocalFolderMode
@@ -295,7 +295,7 @@ function resolveIconsRoot(project: Project, cfg: SpriteConfig): string {
     const iconsSvnLocal = String(project?.assets?.iconsSvn?.localDir ?? "").trim();
     if (iconsSvnLocal) return iconsSvnLocal;
 
-    throw new AppError("SPRITE_ICONS_ROOT_NOT_FOUND", "Cannot resolve icons root for sprite generation");
+    throw new CoreError(CoreErrorCodes.SPRITE_ICONS_ROOT_NOT_FOUND, "Cannot resolve icons root for sprite generation");
 }
 
 /**

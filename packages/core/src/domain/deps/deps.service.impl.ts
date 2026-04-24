@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import type { ProjectService } from "../project/project.service"; // 你现有的
 import type { DepGroup, DepItem, ProjectDepsResult } from "./deps.types";
 import type { DepsService, InstallDepOptions, UninstallDepOptions } from "./deps.service";
@@ -214,7 +214,7 @@ export class DepsServiceImpl implements DepsService {
         if (opts.target === "latest") spec = `${opts.name}@latest`;
         else if (opts.target === "custom") {
             if (!opts.version) {
-                throw new AppError("DEP_INSTALL_FAILED", "version is required when target=custom", { name: opts.name });
+                throw new CoreError(CoreErrorCodes.DEP_INSTALL_FAILED, "version is required when target=custom", { name: opts.name });
             };
             spec = `${opts.name}@${opts.version}`;
         } else {
@@ -227,7 +227,7 @@ export class DepsServiceImpl implements DepsService {
 
         const r = await this.npm.run(root, args);
         if (r.code !== 0) {
-            throw new AppError("DEP_INSTALL_FAILED", r.stderr || r.stdout || `npm install failed: ${spec}`, { spec });
+            throw new CoreError(CoreErrorCodes.DEP_INSTALL_FAILED, r.stderr || r.stdout || `npm install failed: ${spec}`, { spec });
         }
     }
 
@@ -239,7 +239,7 @@ export class DepsServiceImpl implements DepsService {
         // npm uninstall 会按 package.json 自动移除 dependencies/devDependencies，不需要额外参数
         const r = await this.npm.run(root, args);
         if (r.code !== 0) {
-            throw new AppError("DEP_UNINSTALL_FAILED", r.stderr || r.stdout || `npm uninstall failed: ${opts.name}`, { name: opts.name });
+            throw new CoreError(CoreErrorCodes.DEP_UNINSTALL_FAILED, r.stderr || r.stdout || `npm uninstall failed: ${opts.name}`, { name: opts.name });
         }
     }
 }

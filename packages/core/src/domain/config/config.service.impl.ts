@@ -1,6 +1,6 @@
 // core/src/domain/config/config.service.impl.ts
 import * as path from "node:path";
-import { AppError } from "../../common/errors";
+import { coreErrors, CoreError, CoreErrorCodes } from "../../common/errors";
 import { FileLock } from "../../infra/storage/file-lock";
 import { ProjectService } from "../project";
 import { ConfigRegistry } from "./config.registry";
@@ -44,9 +44,9 @@ export class ConfigServiceImpl implements ConfigService {
         const project = await this.projectService.get(projectId);
         const catalog = this.getCachedCatalog(projectId, project.root);
         const rd = this.findResolvedDoc(catalog, docId);
-        if (!rd) throw new AppError("CONFIG_READ_FAILED", "unknown config docId", { docId, projectId });
+        if (!rd) throw new CoreError(CoreErrorCodes.CONFIG_READ_FAILED, `unknown config docId: ${docId}`, { docId, projectId });
         if (!rd.exists || !rd.absPath || !rd.chosen) {
-            throw new AppError("CONFIG_READ_FAILED", "config doc not found on disk", {
+            throw new CoreError(CoreErrorCodes.CONFIG_READ_FAILED, `config doc not found on disk: ${docId}`, {
                 docId,
                 projectId,
                 rootDir: project.root,
@@ -73,16 +73,16 @@ export class ConfigServiceImpl implements ConfigService {
             this.catalogCache.delete(projectId);
             return;
         }
-        throw new AppError("CONFIG_WRITE_FAILED", "unknown config docId", { docId, projectId, rootDir: project.root });
+        throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, `unknown config docId: ${docId}`, { docId, projectId, rootDir: project.root });
     }
 
     async openDoc(projectId: string, docId: string): Promise<{ root: string; filePath: string }> {
         const project = await this.projectService.get(projectId);
         const catalog = this.getCachedCatalog(projectId, project.root);
         const rd = this.findResolvedDoc(catalog, docId);
-        if (!rd) throw new AppError("CONFIG_OPEN_FAILED", "unknown config docId", { docId, projectId });
+        if (!rd) throw new CoreError(CoreErrorCodes.CONFIG_OPEN_FAILED, `unknown config docId: ${docId}`, { docId, projectId });
         if (!rd.exists || !rd.absPath || !rd.chosen) {
-            throw new AppError("CONFIG_OPEN_FAILED", "config doc not found on disk", { docId, projectId, rootDir: project.root });
+            throw new CoreError(CoreErrorCodes.CONFIG_OPEN_FAILED, `config doc not found on disk: ${docId}`, { docId, projectId, rootDir: project.root });
         }
         return { root: project.root, filePath: rd.absPath! };
     }
@@ -148,7 +148,7 @@ export class ConfigServiceImpl implements ConfigService {
         for (const [docId, patch] of Object.entries(docPatch)) {
             const rd = this.findResolvedDoc(catalog, docId);
             if (!rd?.exists || !rd.absPath || !rd.chosen) {
-                throw new AppError("CONFIG_WRITE_FAILED", "docPatch target not found on disk", {
+                throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, `docPatch target not found on disk: ${docId}`, {
                     projectId,
                     domainId,
                     docId,
@@ -165,7 +165,7 @@ export class ConfigServiceImpl implements ConfigService {
         // 2) 写回引用文件（relPath）
         for (const fp of filePatch) {
             if (!fp?.relPath) {
-                throw new AppError("CONFIG_WRITE_FAILED", "filePatch.relPath is required", {
+                throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, `filePatch.relPath is required`, {
                     projectId,
                     domainId,
                     fp,
@@ -205,7 +205,7 @@ export class ConfigServiceImpl implements ConfigService {
     private getProvider(domainId: string): DomainSchemaProvider {
         const provider = this.schemaRegistry.get(domainId);
         if (!provider) {
-            throw new AppError("CONFIG_SCHEMA_NOT_FOUND", "schema provider not found", { domainId });
+            throw new CoreError(CoreErrorCodes.CONFIG_SCHEMA_NOT_FOUND, `schema provider not found: ${domainId}`, { domainId });
         }
         return provider;
     }
@@ -213,7 +213,7 @@ export class ConfigServiceImpl implements ConfigService {
     private async getDomain(projectId: string, domainId: string): Promise<ResolvedDomain> {
         const catalog = await this.getCatalog(projectId);
         const domain = catalog.find((d) => d.domain.id === domainId);
-        if (!domain) throw new AppError("CONFIG_DOMAIN_NOT_FOUND", domainId);
+        if (!domain) throw new CoreError(CoreErrorCodes.CONFIG_DOMAIN_NOT_FOUND, `domain not found: ${domainId}`, { domainId });
         return domain;
     }
 

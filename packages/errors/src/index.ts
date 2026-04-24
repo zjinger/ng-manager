@@ -22,3 +22,11 @@ export { ApiError, apiErrors } from './sub-classes/api.errors';
 export { AisError, aisErrors } from './sub-classes/ais.errors';
 export { RuntimeError, runtimeErrors } from './sub-classes/runtime.errors';
 export { CoreError, coreErrors, SpriteError, spriteErrors } from './sub-classes/core.errors';
+
+import type { GlobalErrorCode } from './sources/global.error-codes';
+import type { CoreErrorCode } from './sources/core.error-codes';
+import type { NginxErrorCode } from './sources/nginx.error-codes';
+import type { ApiErrorCode } from './sources/api.error-codes';
+import type { AisErrorCode } from './sources/ais.error-codes';
+import type { RuntimeErrorCode } from './sources/runtime.error-codes';
+export type ErrorCode = GlobalErrorCode | CoreErrorCode | NginxErrorCode | ApiErrorCode | AisErrorCode | RuntimeErrorCode;

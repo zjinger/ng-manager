@@ -8,7 +8,7 @@ import {
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { ConfigFileReadResult, ConfigFileWriteOptions } from "./config.types";
 import { type ConfigCodec } from "./domains";
 
@@ -72,7 +72,7 @@ export class ConfigDocumentStore {
                     // 把错误变成可读 message
                     const first = errors[0];
                     const code = printParseErrorCode(first.error);
-                    throw new AppError('CONFIG_READ_FAILED', `读取 JSONC 配置失败：${code} at offset ${first.offset}`, { absPath, error: first });
+                    throw new CoreError(CoreErrorCodes.CONFIG_READ_FAILED, `读取 JSONC 配置失败：${code} at offset ${first.offset}`, { absPath, error: first });
                 }
                 return { codec, raw, data, relPath, absPath };
             }
@@ -118,7 +118,7 @@ export class ConfigDocumentStore {
         // Raw 写入
         else {
             if (typeof next !== "string") {
-                throw new AppError('CONFIG_WRITE_FAILED', `写入 ${codec} 配置时内容必须为字符串`);
+                throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, `写入 ${codec} 配置时内容必须为字符串`);
             }
             content = next;
         }
@@ -139,7 +139,7 @@ export class ConfigDocumentStore {
         opts?: { formatting?: FormattingOptions }
     ): void {
         if (codec !== "json" && codec !== "jsonc") {
-            throw new AppError("CONFIG_WRITE_FAILED", `patchJsonLike only supports json/jsonc, got: ${codec}`);
+            throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, `patchJsonLike only supports json/jsonc, got: ${codec}`);
         }
 
         const dir = path.dirname(absPath);

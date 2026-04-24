@@ -1,4 +1,4 @@
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { IProcessDriver , SpawnOptions, SpawnedProcess } from "../../infra/process";
 
 export class ProcessService {
@@ -12,14 +12,14 @@ export class ProcessService {
             return await this.driver.spawn(command, args, opts);
         } catch (e: any) {
             if (e?.code === "ENOENT") {
-                throw new AppError("COMMAND_NOT_FOUND", `Command not found: ${command}`, {
+                throw new CoreError(CoreErrorCodes.COMMAND_NOT_FOUND, `Command not found: ${command}`, {
                     command,
                     args,
                     cwd: opts.cwd,
                 });
             }
-            throw new AppError(
-                "PROCESS_SPAWN_FAILED",
+            throw new CoreError(
+                CoreErrorCodes.PROCESS_SPAWN_FAILED,
                 e?.message || "spawn failed",
                 { command, args, cwd: opts.cwd }
             );

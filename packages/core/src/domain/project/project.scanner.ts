@@ -4,13 +4,13 @@ import { ProjectMeta } from "./project.meta";
 import { parsePackageJson } from "./parsers/parsePackageJson";
 import { detectFramework } from "./detectors/detectFramework";
 import { detectPackageManager } from "./detectors/detectPackageManager";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 
 export async function scanProject(
     rootDir: string
 ): Promise<ProjectMeta> {
     if (!fs.existsSync(rootDir)) {
-        throw new AppError('PROJECT_NOT_FOUND', `Project root not found: ${rootDir}`, { path: rootDir });
+        throw new CoreError(CoreErrorCodes.PROJECT_NOT_FOUND, `Project root not found: ${rootDir}`, { path: rootDir });
     }
 
     const pkgPath = path.join(rootDir, "package.json");

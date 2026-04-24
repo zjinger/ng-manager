@@ -1,4 +1,4 @@
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { uid } from "../../common/id";
 import { type CoreEventMap, Events, IEventBus } from "../../infra/event";
 import { ILogStore, LogLine } from "../../infra/log";
@@ -41,14 +41,14 @@ export class TaskServiceImpl implements TaskService {
     async start(taskId: string): Promise<TaskRuntime> {
         const spec = this.specs.get(taskId);
         if (!spec?.command) {
-            throw new AppError("TASK_SPEC_NOT_FOUND", "Task spec not found or not runnable", { taskId });
+            throw new CoreError(CoreErrorCodes.TASK_SPEC_NOT_FOUND, "Task spec not found or not runnable", { taskId });
         }
         // 同 task 不允许同时跑（running / stopping 都算占用）
         const active = this.activeRunByTaskId.get(taskId);
         if (active) {
             const rt = this.runtimes.get(active);
             if (rt?.status === "running" || rt?.status === "stopping") {
-                throw new AppError("TASK_ALREADY_RUNNING", "Task already running", { taskId, runId: active });
+                throw new CoreError(CoreErrorCodes.TASK_ALREADY_RUNNING, "Task already running", { taskId, runId: active });
             }
             // active 指向了一个已经结束的 run：清掉
             this.activeRunByTaskId.delete(taskId);
@@ -143,7 +143,7 @@ export class TaskServiceImpl implements TaskService {
                 cols: 140,
                 rows: 40,
             });
-        } catch (e: AppError | any) {
+        } catch (e: CoreError | any) {
             // spawn 失败：runtime 置失败 + syslog + 事件
             const cur = this.runtimes.get(runId);
             if (cur) {
@@ -249,7 +249,7 @@ export class TaskServiceImpl implements TaskService {
 
     async stop(taskId: string): Promise<TaskRuntime> {
         const cur = this.getActiveRuntime(taskId);
-        if (!cur) throw new AppError("RUN_NOT_FOUND", "Run not found", { taskId });
+        if (!cur) throw new CoreError(CoreErrorCodes.RUN_NOT_FOUND, "Run not found", { taskId });
         const { runId, rt } = cur;
 
         if (rt.status !== "running") return rt;
@@ -270,7 +270,7 @@ export class TaskServiceImpl implements TaskService {
 
     async restart(taskId: string): Promise<TaskRuntime> {
         const cur = this.getActiveRuntime(taskId);
-        if (!cur) throw new AppError("RUN_NOT_FOUND", "Run not found", { taskId });
+        if (!cur) throw new CoreError(CoreErrorCodes.RUN_NOT_FOUND, "Run not found", { taskId });
         const { runId, rt } = cur;
 
         if (rt.status !== "running") { // 非 running 状态，直接启动（或报错）
@@ -299,7 +299,7 @@ export class TaskServiceImpl implements TaskService {
 
     async status(taskId: string): Promise<TaskRuntime> {
         const cur = this.getActiveRuntime(taskId);
-        if (!cur) throw new AppError("RUN_NOT_FOUND", `Run not found for task: ${taskId}`, { taskId });
+        if (!cur) throw new CoreError(CoreErrorCodes.RUN_NOT_FOUND, `Run not found for task: ${taskId}`, { taskId });
         return cur.rt;
     }
 

@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import * as path from "path";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { uid } from "../../common/id";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { Events, type CoreEventMap } from "../../infra/event/events";
@@ -137,11 +137,11 @@ export class ProjectBootstrapService {
     }) {
         const ctx = this.mustGetCtx(input.taskId);
         if (ctx.status !== "waitingPick") {
-            throw new AppError("BOOTSTRAP_NOT_WAITING_PICK", "not waiting pick", input);
+            throw new CoreError(CoreErrorCodes.BOOTSTRAP_NOT_WAITING_PICK, "not waiting pick", input);
         }
         const picked = path.resolve(input.pickedRoot);
         if (!ctx.candidates?.some(c => path.resolve(c.path) === picked)) {
-            throw new AppError("BOOTSTRAP_INVALID_PICKED_ROOT", "picked root invalid", input);
+            throw new CoreError(CoreErrorCodes.BOOTSTRAP_INVALID_PICKED_ROOT, "picked root invalid", input);
         }
         const normalizedRoot = await this.getNormalizedRoot(input.pickedRoot);
         try {
@@ -224,10 +224,10 @@ export class ProjectBootstrapService {
     private async getNormalizedRoot(rootPath: string): Promise<string> {
         const chk = await this.project.checkRoot(rootPath);
         if (chk.alreadyRegistered) {
-            throw new AppError("PROJECT_ALREADY_EXISTS", "project already registered", { root: chk.root });
+            throw new CoreError(CoreErrorCodes.PROJECT_ALREADY_EXISTS, "project already registered", { root: chk.root });
         }
         if (!chk.ok) {
-            throw new AppError("PROJECT_ROOT_INVALID", "invalid project root", { details: chk });
+            throw new CoreError(CoreErrorCodes.PROJECT_ROOT_INVALID, "invalid project root", { details: chk });
         }
         return chk.root;
     }
@@ -238,7 +238,7 @@ export class ProjectBootstrapService {
 
     private mustGetCtx(taskId: string): BootstrapCtx {
         const ctx = this.ctxByTaskId.get(taskId);
-        if (!ctx) throw new AppError("BOOTSTRAP_CTX_NOT_FOUND", "ctx not found", { taskId });
+        if (!ctx) throw new CoreError(CoreErrorCodes.BOOTSTRAP_CTX_NOT_FOUND, "ctx not found", { taskId });
         return ctx;
     }
 
@@ -258,7 +258,7 @@ export class ProjectBootstrapService {
         }
         if (fs.existsSync(root)) {
             if (!overwrite) {
-                throw new AppError("TARGET_EXISTS", "target directory already exists", { root });
+                throw new CoreError(CoreErrorCodes.TARGET_EXISTS, "target directory already exists", { root });
             }
             fs.rmSync(root, { recursive: true, force: true });
         }
@@ -271,7 +271,7 @@ export class ProjectBootstrapService {
      */
     private prepareDirForClone(root: string, overwrite: boolean) {
         if (!fs.existsSync(root)) return;
-        if (!overwrite) throw new AppError("TARGET_EXISTS", "target directory already exists", { root });
+        if (!overwrite) throw new CoreError(CoreErrorCodes.TARGET_EXISTS, "target directory already exists", { root });
         fs.rmSync(root, { recursive: true, force: true });
     }
 
@@ -364,8 +364,8 @@ export class ProjectBootstrapService {
         }
 
         // 3) 仍失败：明确失败（不要 import/create）
-        throw new AppError(
-            "GIT_CHECKOUT_FAILED",
+        throw new CoreError(
+            CoreErrorCodes.GIT_CHECKOUT_FAILED,
             "GIT_CHECKOUT_FAILED: remote HEAD invalid, cannot checkout any branch. Please specify branch (e.g. main).",
             { root, preferredBranch }
         );
@@ -438,7 +438,7 @@ export class ProjectBootstrapService {
 function getRepoName(repoUrl: string): string {
     const cleaned = repoUrl.replace(/[#?].*$/, "").replace(/\.git$/i, "");
     const seg = cleaned.split("/").pop();
-    if (!seg) throw new AppError("INVALID_REPO_URL", "cannot infer repo name", { repoUrl });
+    if (!seg) throw new CoreError(CoreErrorCodes.INVALID_REPO_URL, "cannot infer repo name", { repoUrl });
     return seg;
 }
 
@@ -463,17 +463,17 @@ function isValidNpmName(name: string): boolean {
  */
 function splitRelPathName(inputName: string) {
     const raw = (inputName || "").trim();
-    if (!raw) throw new AppError("INVALID_NAME", "name is required");
+    if (!raw) throw new CoreError(CoreErrorCodes.INVALID_NAME, "name is required");
 
     // 统一分隔符：\ / -> /
     const norm = raw.replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "");
-    if (!norm) throw new AppError("INVALID_NAME", "name is required");
+    if (!norm) throw new CoreError(CoreErrorCodes.INVALID_NAME, "name is required");
 
     const parts = norm.split("/").filter(Boolean);
 
     // 禁止危险片段
     if (parts.some((p) => p === "." || p === "..")) {
-        throw new AppError("INVALID_NAME", "name contains invalid path segment", { name: raw });
+        throw new CoreError(CoreErrorCodes.INVALID_NAME, "name contains invalid path segment", { name: raw });
     }
 
     const projectName = parts[parts.length - 1]!;

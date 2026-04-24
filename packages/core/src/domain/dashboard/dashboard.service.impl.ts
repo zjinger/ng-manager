@@ -1,7 +1,7 @@
 import { DashboardDocV1, WidgetKey, } from "./dashboard.types";
 import { DashboardService } from "./dashboard.service";
 import { defaultDashboard } from "./dashboard.defaults";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { DashboardRepo } from "./dashboard.repo";
 import { DashboardItemConfig, makeWidgetItem, WidgetMeta, WIDGETS } from "./dashboard.widgets";
 import { killPort, KillPortResult } from "../../infra/process";
@@ -25,7 +25,7 @@ export class DashboardServiceImpl implements DashboardService {
     async saveWithConflictCheck(projectId: string, incoming: DashboardDocV1): Promise<DashboardDocV1> {
         const current = await this.repo.load(projectId);
         if (current && incoming.updatedAt < current.updatedAt) {
-            throw new AppError("DASHBOARD_CONFLICT", "dashboard updated elsewhere", {
+            throw new CoreError(CoreErrorCodes.DASHBOARD_CONFLICT, "dashboard updated elsewhere", {
                 serverUpdatedAt: current.updatedAt,
             });
         }
@@ -44,7 +44,7 @@ export class DashboardServiceImpl implements DashboardService {
     async addWidget(projectId: string, widgetKey: WidgetKey, x: number, y: number): Promise<DashboardDocV1> {
         const doc = await this.getOrCreate(projectId);
         const meta = WIDGETS[widgetKey];
-        if (!meta) throw new AppError("WIDGET_NOT_FOUND", "unknown widget", { widgetKey });
+        if (!meta) throw new CoreError(CoreErrorCodes.WIDGET_NOT_FOUND, "unknown widget", { widgetKey });
 
         // singleton：只允许一个
         if (meta.singleton) {
@@ -77,7 +77,7 @@ export class DashboardServiceImpl implements DashboardService {
         if (!target) return doc; // 幂等：没有就当成功
 
         if (target.locked) {
-            throw new AppError("WIDGET_LOCKED", "widget is locked", { itemId, key: target.key });
+            throw new CoreError(CoreErrorCodes.WIDGET_LOCKED, "widget is locked", { itemId, key: target.key });
         }
 
         const nextItems = doc.items.filter(it => it.id !== itemId);
@@ -113,7 +113,7 @@ export class DashboardServiceImpl implements DashboardService {
         const doc = await this.getOrCreate(projectId);
         const itemIndex = doc.items.findIndex(it => it.id === widgetId);
         if (itemIndex === -1) {
-            throw new AppError("WIDGET_NOT_FOUND", "widget not found", { widgetId });
+            throw new CoreError(CoreErrorCodes.WIDGET_NOT_FOUND, "widget not found", { widgetId });
         }
         const item = doc.items[itemIndex];
         const updatedItem: typeof item = {

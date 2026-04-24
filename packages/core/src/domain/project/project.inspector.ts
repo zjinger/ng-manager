@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { AppError } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import type { ProjectMeta } from "./project.meta";
 import { analyzeAngularJson } from "./analyzers/angular.analyzer";
 
@@ -42,7 +42,7 @@ export class ProjectInspector {
 
         const configPath = vite.found.configPath;
         if (!fs.existsSync(configPath)) {
-            throw new AppError("PROJECT_VUE_CONFIG_NOT_FOUND", `vite config not found: ${configPath}`, { path: configPath });
+            throw new CoreError(CoreErrorCodes.PROJECT_VUE_CONFIG_NOT_FOUND, `vite config not found: ${configPath}`, { path: configPath });
         }
 
         // MVP：只判定 static/dynamic/unknown（不 eval，不 AST）

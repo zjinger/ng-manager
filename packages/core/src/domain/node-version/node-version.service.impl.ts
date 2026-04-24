@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { AppError } from '../../common/errors';
+import { CoreError, CoreErrorCodes } from '../../common/errors';
 import type { SystemLogService } from '../logger';
 import { getEnginesByAngular } from './angular-node.version';
 import { NodeVersionInfo, NodeVersionService, ProjectNodeRequirement, ProjectType, VersionManager } from './node-version.service';
@@ -42,7 +42,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     const manager = this.detectManager();
     if (manager === VersionManager.None) {
       this.logText('没有安装 Node 版本管理器 (nvm/Volta)', 'warn');
-      throw new AppError('NO_VERSION_MANAGER', '没有安装 Node 版本管理器 (nvm/Volta)', {});
+      throw new CoreError(CoreErrorCodes.NO_VERSION_MANAGER, '没有安装 Node 版本管理器 (nvm/Volta)', {});
     }
     this.logText(`检测到版本管理器: ${manager}`);
 
@@ -66,7 +66,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
       }
     } catch (e: any) {
       this.logText(`切换 Node 版本失败: ${e?.message}`, 'error');
-      throw new AppError('SWITCH_VERSION_FAILED', `切换 Node 版本失败: ${e?.message}`, { version, manager });
+      throw new CoreError(CoreErrorCodes.SWITCH_VERSION_FAILED, `切换 Node 版本失败: ${e?.message}`, { version, manager });
     }
 
     return this.getCurrentVersion();
