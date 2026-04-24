@@ -2,6 +2,7 @@ import { access, constants, readFile } from 'fs/promises';
 import { basename, join } from 'path';
 import { NginxConfigService } from '../core/nginx-config.service';
 import { findBlockEnd, stripCommentsPreserveOffsets } from '../utils/nginx-module-utils';
+import { extractTopLevelDirectiveValues } from '../utils/nginx-directive-parser';
 import { ServerIdGenerator } from '../utils/server-id-generator';
 import type { NginxLocation, NginxServer } from '../types/nginx.types';
 import { ServerGeneratorService } from './server-generator.service';
@@ -129,11 +130,11 @@ export class ServerParserService {
     blockIndex: number,
     enabledOverride?: boolean
   ): Promise<NginxServer | null> {
-    const listenValues = this.extractTopLevelDirectiveValues(sanitizedContent, 'listen');
+    const listenValues = extractTopLevelDirectiveValues(sanitizedContent, 'listen');
     const listen = listenValues.length ? listenValues : ['80'];
 
     const serverNameValue =
-      this.extractTopLevelDirectiveValues(sanitizedContent, 'server_name')[0] ||
+      extractTopLevelDirectiveValues(sanitizedContent, 'server_name')[0] ||
       sanitizedContent.match(/server_name\s+([^;]+);/)?.[1] ||
       '';
     const domains =
@@ -151,14 +152,14 @@ export class ServerParserService {
     const metadataCreatedBy = this.generator.parseManagedMeta(content, 'created-by');
     const name = this.generator.normalizeName(metadataName || domains[0] || basename(filePath, '.conf') || '_');
     const rootValue =
-      this.extractTopLevelDirectiveValues(sanitizedContent, 'root')[0] ||
+      extractTopLevelDirectiveValues(sanitizedContent, 'root')[0] ||
       sanitizedContent.match(/^\s*root\s+([^;]+);/m)?.[1];
-    const indexValue = this.extractTopLevelDirectiveValues(sanitizedContent, 'index')[0];
+    const indexValue = extractTopLevelDirectiveValues(sanitizedContent, 'index')[0];
     const sslCertValue =
-      this.extractTopLevelDirectiveValues(sanitizedContent, 'ssl_certificate')[0] ||
+      extractTopLevelDirectiveValues(sanitizedContent, 'ssl_certificate')[0] ||
       sanitizedContent.match(/ssl_certificate\s+([^;]+);/)?.[1];
     const sslKeyValue =
-      this.extractTopLevelDirectiveValues(sanitizedContent, 'ssl_certificate_key')[0] ||
+      extractTopLevelDirectiveValues(sanitizedContent, 'ssl_certificate_key')[0] ||
       sanitizedContent.match(/ssl_certificate_key\s+([^;]+);/)?.[1];
     const ssl = Boolean(sslCertValue) || listen.some(item => /\bssl\b/.test(item));
     const locations = this.parseLocations(sanitizedContent);
@@ -245,49 +246,8 @@ export class ServerParserService {
       .join(lineBreak);
   }
 
-  parseLocations(content: string): NginxLocation[] {
+parseLocations(content: string): NginxLocation[] {
     return this.locationParser.parseLocations(content);
-  }
-
-  extractTopLevelDirectiveValues(content: string, directive: string): string[] {
-    const values: string[] = [];
-    let depth = 0;
-    let statement = '';
-    const prefix = `${directive} `;
-
-    for (let i = 0; i < content.length; i += 1) {
-      const ch = content[i];
-      if (ch === '{') {
-        if (depth === 0) {
-          statement = '';
-        }
-        depth += 1;
-        continue;
-      }
-      if (ch === '}') {
-        if (depth > 0) {
-          depth -= 1;
-        }
-        continue;
-      }
-      if (depth !== 0) {
-        continue;
-      }
-      statement += ch;
-      if (ch !== ';') {
-        continue;
-      }
-      const normalized = statement.replace(/\s+/g, ' ').trim();
-      statement = '';
-      if (!normalized.endsWith(';') || !normalized.startsWith(prefix)) {
-        continue;
-      }
-      const value = normalized.slice(prefix.length, -1).trim();
-      if (value) {
-        values.push(value);
-      }
-    }
-    return values;
   }
 
   extractListenPorts(listen: string[]): number[] {

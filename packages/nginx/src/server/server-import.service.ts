@@ -1,4 +1,5 @@
 import { findBlockEnd } from '../utils/nginx-module-utils';
+import { extractTopLevelDirectives } from '../utils/nginx-directive-parser';
 import type { CreateNginxServerRequest, NginxServer } from '../types/nginx.types';
 import type { NginxImportAnalyzeCandidate, NginxImportIssue, NginxImportParseCandidate } from './nginx-server.import.types';
 import { ServerParserService } from './server-parser.service';
@@ -185,60 +186,6 @@ export class ServerImportService {
     return blocks;
   }
 
-  extractTopLevelDirectives(content: string): Map<string, string[]> {
-    const directiveMap = new Map<string, string[]>();
-    let depth = 0;
-    let statement = '';
-    const flush = () => {
-      const normalized = statement.trim();
-      statement = '';
-      if (!normalized) {
-        return;
-      }
-      const m = normalized.match(/^([a-zA-Z_][\w]*)\s+([\s\S]+)$/);
-      if (!m) {
-        return;
-      }
-      const key = m[1].toLowerCase();
-      const value = m[2].replace(/;$/, '').trim();
-      if (!value) {
-        return;
-      }
-      if (!directiveMap.has(key)) {
-        directiveMap.set(key, []);
-      }
-      directiveMap.get(key)!.push(value);
-    };
-
-    for (let i = 0; i < content.length; i += 1) {
-      const ch = content[i];
-      if (ch === '#') {
-        while (i < content.length && content[i] !== '\n') {
-          i += 1;
-        }
-        continue;
-      }
-      if (ch === '{') {
-        depth += 1;
-        continue;
-      }
-      if (ch === '}') {
-        if (depth > 0) {
-          depth -= 1;
-        }
-        continue;
-      }
-      if (depth > 0) {
-        continue;
-      }
-      statement += ch;
-      if (ch === ';') {
-        flush();
-      }
-    }
-    return directiveMap;
-  }
-
   stripLineCommentPrefix(content: string): string {
     return String(content || '')
       .split(/\r?\n/)
@@ -254,8 +201,8 @@ export class ServerImportService {
     }
     const body = serverBlock.slice(openIndex + 1, closeIndex);
     const uncommentedBody = this.stripLineCommentPrefix(body);
-    const topLevel = this.extractTopLevelDirectives(body);
-    const commentedTopLevel = this.extractTopLevelDirectives(uncommentedBody);
+    const topLevel = extractTopLevelDirectives(body);
+    const commentedTopLevel = extractTopLevelDirectives(uncommentedBody);
     const chooseDirective = (key: string): string[] => {
       const raw = topLevel.get(key) || [];
       if (raw.length) {
