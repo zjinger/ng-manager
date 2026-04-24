@@ -1,3 +1,4 @@
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 
 type Scope = "global" | "project";
@@ -5,7 +6,7 @@ type Scope = "global" | "project";
 function parseScope(q: any): { scope: Scope; projectId?: string } {
     const scope = (q?.scope ?? "project") as Scope;
     const projectId = q?.projectId as string | undefined;
-    if (scope === "project" && !projectId) throw new Error("projectId is required when scope=project");
+    if (scope === "project" && !projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
     return { scope, projectId };
 }
 
@@ -34,7 +35,7 @@ export async function apiClientHistoryRoutes(fastify: FastifyInstance) {
         };
 
         const scope = body?.scope ?? "project";
-        if (scope === "project" && !body.projectId) throw new Error("projectId is required when scope=project");
+        if (scope === "project" && !body.projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
 
         const removed = await api.purgeHistory({
             scope,

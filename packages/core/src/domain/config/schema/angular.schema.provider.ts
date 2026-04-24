@@ -4,6 +4,7 @@ import type { ConfigSchema, DomainSchemaContext, DomainSchemaDiffResult } from "
 import type { ConfigCodec } from "../domains";
 import { angularSchema } from "./angular.schema"; // 你已引入，可后续用于生成 UI schema（此处暂不强依赖）
 import { applySchemaDefaults, getByPath, setByPath } from "./schema-default";
+import { CoreError, CoreErrorCodes } from "../../../common/errors";
 type TsConfigData = Record<string, any>;
 export interface AngularDomainSchemaVM {
     defaultProject?: string;
@@ -268,14 +269,14 @@ export class AngularSchemaProvider implements DomainSchemaProvider<AngularDomain
 
         const readOne = (rel: string, depth: number): TsConfigData => {
             if (depth > maxDepth) {
-                throw new Error(`tsconfig extends too deep (> ${maxDepth}): ${rel}`);
+                throw new CoreError(CoreErrorCodes.CONFIG_READ_FAILED, `tsconfig extends too deep (> ${maxDepth}): ${rel}`);
             }
             const normRel = rel.replace(/\\/g, "/");
 
             if (visited.has(normRel)) {
                 // 循环引用
                 chain.push(normRel);
-                throw new Error(`tsconfig extends cycle detected: ${chain.join(" -> ")}`);
+                throw new CoreError(CoreErrorCodes.CONFIG_READ_FAILED, `tsconfig extends cycle detected: ${chain.join(" -> ")}`);
             }
 
             visited.add(normRel);

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 
 const SKIP = new Set([
     ".svn",
@@ -15,7 +16,7 @@ function safeJoin(root: string, sub: string) {
     const resolved = path.resolve(root, sub);
     const rootResolved = path.resolve(root);
     if (!resolved.startsWith(rootResolved)) {
-        throw new Error("INVALID_PATH");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "INVALID_PATH");
     }
     return resolved;
 }

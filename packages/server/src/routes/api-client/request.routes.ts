@@ -1,3 +1,4 @@
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 
 type Scope = "global" | "project";
@@ -6,8 +7,7 @@ function parseScope(q: any): { scope: Scope; projectId?: string } {
     const scope = (q?.scope ?? "project") as Scope;
     const projectId = q?.projectId as string | undefined;
     if (scope === "project" && !projectId) {
-        // project scope 必须有 projectId
-        throw new Error("projectId is required when scope=project");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
     }
     return { scope, projectId };
 }
@@ -41,8 +41,8 @@ export async function apiClientRequestsRoutes(fastify: FastifyInstance) {
         };
 
         const scope = body?.scope ?? "project";
-        if (scope === "project" && !body.projectId) throw new Error("projectId is required when scope=project");
-        if (!body?.request?.id) throw new Error("request.id is required");
+        if (scope === "project" && !body.projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
+        if (!body?.request?.id) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "request.id is required");
         await api.saveRequest(body.request, scope, body.projectId);
         return { id: body.request.id };
     });
@@ -54,10 +54,10 @@ export async function apiClientRequestsRoutes(fastify: FastifyInstance) {
             request: any;
         };
         const scope = body?.scope ?? "project";
-        if (scope === "project" && !body.projectId) throw new Error("projectId is required when scope=project");
-        if (!body?.request?.id) throw new Error("request.id is required");
+        if (scope === "project" && !body.projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
+        if (!body?.request?.id) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "request.id is required");
         const old = await api.getRequest(body.request.id, scope, body.projectId);
-        if (!old) throw new Error("request not found: " + body.request.id);
+        if (!old) throw new GlobalError(GlobalErrorCodes.NOT_FOUND, "request not found: " + body.request.id);
         const updated = {
             ...old,
             ...body.request,

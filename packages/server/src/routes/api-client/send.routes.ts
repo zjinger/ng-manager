@@ -1,3 +1,4 @@
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 import { clearCookieJar, getCookieJar, mergeCookieJar } from "./hub-cookie-jar";
 
@@ -19,8 +20,8 @@ export async function apiClientSendRoutes(fastify: FastifyInstance) {
         };
 
         const scope = body.scope ?? "project";
-        if (scope === "project" && !body.projectId) throw new Error("projectId is required when scope=project");
-        if (!body.request && !body.requestId) throw new Error("request or requestId is required");
+if (scope === "project" && !body.projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
+        if (!body.request && !body.requestId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "request or requestId is required");
         const useCookieJar = body.useCookieJar !== false;
         const sessionKey = body.sessionKey ?? `${scope}:${body.projectId ?? "global"}:${body.envId ?? "default"}`;
 

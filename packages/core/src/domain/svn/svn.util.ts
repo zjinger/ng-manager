@@ -1,3 +1,5 @@
+import { CoreError, CoreErrorCodes } from "../../common/errors";
+
 export function safeSvnPath(p: string) {
     return p.includes("@") && !p.endsWith("@") ? `${p}@` : p;
 }
@@ -35,6 +37,6 @@ export function normalizeSvnUrl(raw: string): string {
 export function assertNotNested(mainUrl: string, miscUrl?: string) {
     if (!miscUrl) return;
     if (mainUrl.startsWith(miscUrl) || miscUrl.startsWith(mainUrl)) {
-        throw new Error("SVN URLs cannot be parent/child of each other");
+        throw new CoreError(CoreErrorCodes.INVALID_REPO_URL, "SVN URLs cannot be parent/child of each other");
     }
 }

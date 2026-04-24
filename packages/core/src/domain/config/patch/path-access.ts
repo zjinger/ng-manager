@@ -3,8 +3,9 @@
  * - MVP：仅支持 a.b.c
  * - 未来：可扩展到 a.b[0].c 等复杂路径
  */
+import { CoreError, CoreErrorCodes } from "../../../common/errors";
 
-/** 读取：obj.a.b.c */
+ /** 读取：obj.a.b.c */
 export function getByDotPath(obj: any, path: string): any {
   const parts = path.split(".").filter(Boolean);
   let cur = obj;
@@ -30,14 +31,14 @@ export function setByDotPath(obj: any, path: string, value: any, createMissing =
 
     if (cur[k] == null) {
       if (!createMissing) {
-        throw new Error(`Path not exists: ${parts.slice(0, i + 1).join(".")}`);
+        throw new CoreError(CoreErrorCodes.INVALID_PARENT_DIR, `Path not exists: ${parts.slice(0, i + 1).join(".")}`);
       }
       cur[k] = {};
     }
 
     if (typeof cur[k] !== "object") {
       if (!createMissing) {
-        throw new Error(`Path is not an object: ${parts.slice(0, i + 1).join(".")}`);
+        throw new CoreError(CoreErrorCodes.INVALID_NAME, `Path is not an object: ${parts.slice(0, i + 1).join(".")}`);
       }
       cur[k] = {};
     }

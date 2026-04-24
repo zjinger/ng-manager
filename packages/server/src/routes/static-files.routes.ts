@@ -9,7 +9,7 @@ function safeJoin(root: string, sub: string) {
     const resolved = path.resolve(root, sub);
     const rootResolved = path.resolve(root);
     if (!resolved.startsWith(rootResolved)) {
-        throw new Error("INVALID_PATH");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "INVALID_PATH");
     }
     return resolved;
 }

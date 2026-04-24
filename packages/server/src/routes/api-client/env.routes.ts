@@ -1,3 +1,4 @@
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 
 type Scope = "global" | "project";
@@ -6,7 +7,7 @@ function parseScope(q: any): { scope: Scope; projectId?: string } {
     const scope = (q?.scope ?? "project") as Scope;
     const projectId = q?.projectId as string | undefined;
     if (scope === "project" && !projectId) {
-        throw new Error("projectId is required when scope=project");
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
     }
     return { scope, projectId };
 }
@@ -39,8 +40,8 @@ export async function apiClientEnvsRoutes(fastify: FastifyInstance) {
         };
 
         const scope = body?.scope ?? "project";
-        if (scope === "project" && !body.projectId) throw new Error("projectId is required when scope=project");
-        if (!body?.env?.id) throw new Error("env.id is required");
+        if (scope === "project" && !body.projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
+        if (!body?.env?.id) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "env.id is required");
 
         await env.saveEnv(body.env, scope, body.projectId);
         return { id: body.env.id };

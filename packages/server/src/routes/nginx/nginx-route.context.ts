@@ -14,9 +14,9 @@ export function createNginxRouteContext(fastify: FastifyInstance): NginxRouteCon
   const nginx = fastify.nginx;
   const normalizeFsPath = (filePath: string): string => resolve(filePath).replace(/\\/g, '/').toLowerCase();
   const ensureManageableConfigFile = async (rawPath?: string): Promise<string> => {
-    const filePath = rawPath?.trim();
+const filePath = rawPath?.trim();
     if (!filePath) {
-      throw new Error('配置文件路径不能为空');
+      throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, '配置文件路径不能为空');
     }
 
     const included: string[] = await nginx.config.getIncludedConfigs();
@@ -38,7 +38,7 @@ export function createNginxRouteContext(fastify: FastifyInstance): NginxRouteCon
     }
 
     if (!includedSet.has(normalizedTarget)) {
-      throw new Error('配置文件不在当前可管理列表中');
+      throw new GlobalError(GlobalErrorCodes.OP_NOT_FOUND, '配置文件不在当前可管理列表中');
     }
     return resolvedTarget;
   };

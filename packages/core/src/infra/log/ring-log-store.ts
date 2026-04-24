@@ -1,4 +1,5 @@
 
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import type { ILogStore, LogTailFilter } from "./log.store";
 import type { LogLine } from "./log.types";
 
@@ -33,7 +34,7 @@ export class RingLogStore implements ILogStore {
 
     constructor(capacity = 2000) {
         if (!Number.isFinite(capacity) || capacity <= 0) {
-            throw new Error("RingLogStore capacity must be > 0");
+            throw new CoreError(CoreErrorCodes.INVALID_NAME, "RingLogStore capacity must be > 0");
         }
         this.cap = Math.floor(capacity);
         this.buf = new Array(this.cap);

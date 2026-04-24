@@ -1,4 +1,5 @@
 import { SpriteConfig, SpriteRepo } from "../../domain/sprite";
+import { CoreError, CoreErrorCodes } from "../../common/errors";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -45,7 +46,7 @@ export class JsonSpriteRepo implements SpriteRepo {
 
     async update(projectId: string, patch: Partial<SpriteConfig>): Promise<SpriteConfig> {
         const cur = await this.getByProjectId(projectId);
-        if (!cur) throw new Error(`SpriteConfig not found for projectId: ${projectId}`);
+        if (!cur) throw new CoreError(CoreErrorCodes.SPRITE_CONFIG_NOT_FOUND, `SpriteConfig not found for projectId: ${projectId}`);
         const next = { ...cur, ...patch, projectId, updatedAt: Date.now() };
         const file = this.filePath(projectId);
         fs.mkdirSync(path.dirname(file), { recursive: true });

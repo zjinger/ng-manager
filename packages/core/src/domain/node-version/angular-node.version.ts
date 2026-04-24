@@ -1,3 +1,5 @@
+import { CoreError, CoreErrorCodes } from "../../common/errors";
+
 /**
  * Angular <-> Node.js 版本对应配置（10 ~ 21最新）
  * @See https://angular.dev/reference/versions
@@ -64,7 +66,7 @@ const ANGULAR_NODE_VERSIONS: AngularNodeVersion[] = [
 /** 根据 Angular 主版本获取完整配置 */
 function getAngularVersionConfig(ngVersion: number) {
   const config = ANGULAR_NODE_VERSIONS.find(v => v.angularVersion === ngVersion);
-  if (!config) throw new Error(`不支持的 Angular 版本: ${ngVersion}`);
+  if (!config) throw new CoreError(CoreErrorCodes.INVALID_NAME, `不支持的 Angular 版本: ${ngVersion}`);
   return config;
 }
 

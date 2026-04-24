@@ -1,3 +1,5 @@
+import { CoreError, CoreErrorCodes } from "../../common/errors";
+
 /**
  * Vue 版本 <-> Node.js 版本对应配置（2 ~ 3最新）
  * @see https://cn.vuejs.org/guide/quick-start
@@ -21,7 +23,7 @@ const VUE_NODE_VERSIONS: VueNodeVersion[] = [
 /** 根据 Vue 大版本获取推荐配置 */
 function getRecommendedNodeByVue(vueVersion: number) {
   const config = VUE_NODE_VERSIONS.find(v => v.vueVersion === vueVersion);
-  if (!config) throw new Error(`不支持的 Vue 版本: ${vueVersion}`);
+  if (!config) throw new CoreError(CoreErrorCodes.INVALID_NAME, `不支持的 Vue 版本: ${vueVersion}`);
   return config;
 }
 /** 获取 engines 配置（可直接用于 package.json） */

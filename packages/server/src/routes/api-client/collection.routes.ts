@@ -1,4 +1,5 @@
 import { ApiScope, ApiCollectionKind, ApiCollectionEntity, newId, ApiRequestEntity } from "@yinuo-ngm/api";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
 import type { FastifyInstance } from "fastify";
 
 type ListQuery = { scope?: ApiScope; projectId?: string };
@@ -19,7 +20,7 @@ type UpdateBody = {
 };
 
 function assertProjectScope(scope: ApiScope, projectId?: string) {
-    if (scope === "project" && !projectId) throw new Error("projectId is required when scope=project");
+    if (scope === "project" && !projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
 }
 
 function now() { return Date.now(); }

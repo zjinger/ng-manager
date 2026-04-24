@@ -365,7 +365,7 @@ function computeSpriteDefaults(dataDir: string, projectId: string, projectRoot: 
 
 function exportPng(cfg: SpriteConfig, group: string, pngResult: any) {
     const spriteExportDir = String(cfg.spriteExportDir ?? "").trim();
-    if (!spriteExportDir) throw new Error("spriteExportDir is required");
+    if (!spriteExportDir) throw new CoreError(CoreErrorCodes.INVALID_NAME, "spriteExportDir is required");
     ensureDir(spriteExportDir);
 
     const spriteOutPath = path.join(spriteExportDir, `${group}.png`);
@@ -378,7 +378,7 @@ function exportLess(cfg: SpriteConfig, group: string, lessText: string) {
     if (!persistLess) return undefined;
 
     const lessExportDir = String(cfg.lessExportDir ?? "").trim();
-    if (!lessExportDir) throw new Error("lessExportDir is required when persistLess=true");
+    if (!lessExportDir) throw new CoreError(CoreErrorCodes.INVALID_NAME, "lessExportDir is required when persistLess=true");
     ensureDir(lessExportDir);
 
     const lessOutPath = path.join(lessExportDir, `${group}.less`);
