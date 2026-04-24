@@ -1,5 +1,5 @@
 import { NginxModuleStateStore } from './nginx-module-state.store';
-import type { NginxTrafficConfig } from './nginx.types';
+import type { NginxTrafficConfig } from '../types/nginx.types';
 
 /**
  * 流量控制配置服务

@@ -1,17 +1,17 @@
-import { NginxConfigService } from './nginx-config.service';
-import { NginxModuleStateStore } from './nginx-module-state.store';
-import { NginxPerformanceService } from './nginx-performance.service';
-import { NginxService } from './nginx.service';
-import { NginxSslService } from './nginx-ssl.service';
-import { NginxTrafficService } from './nginx-traffic.service';
-import { NginxUpstreamService } from './nginx-upstream.service';
+import { NginxConfigService } from '../core/nginx-config.service';
+import { NginxModuleStateStore } from '../module/nginx-module-state.store';
+import { NginxPerformanceService } from '../module/nginx-performance.service';
+import { NginxService } from '../core/nginx.service';
+import { NginxSslService } from '../module/nginx-ssl.service';
+import { NginxTrafficService } from '../module/nginx-traffic.service';
+import { NginxUpstreamService } from '../module/nginx-upstream.service';
 import type {
   NginxModuleSettings,
   NginxPerformanceConfig,
   NginxSslCertificate,
   NginxTrafficConfig,
   NginxUpstream,
-} from './nginx.types';
+} from '../types/nginx.types';
 
 /**
  * 模块配置

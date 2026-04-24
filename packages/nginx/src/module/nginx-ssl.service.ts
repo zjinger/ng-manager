@@ -1,11 +1,11 @@
 import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
-import { NginxConfigService } from './nginx-config.service';
-import { findBlockEnd, stripCommentsPreserveOffsets } from './nginx-module-utils';
+import { NginxConfigService } from '../core/nginx-config.service';
+import { findBlockEnd, stripCommentsPreserveOffsets } from '../utils/nginx-module-utils';
 import { NginxModuleStateStore } from './nginx-module-state.store';
-import { NginxService } from './nginx.service';
-import type { NginxSslCertificate } from './nginx.types';
+import { NginxService } from '../core/nginx.service';
+import type { NginxSslCertificate } from '../types/nginx.types';
 import { nginxErrors } from '@yinuo-ngm/errors';
 
 /**

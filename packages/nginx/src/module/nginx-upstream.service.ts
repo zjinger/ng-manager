@@ -1,10 +1,10 @@
 import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
 import { dirname, join, resolve } from 'path';
-import { NginxConfigService } from './nginx-config.service';
-import { findBlockEnd, isSamePath, stripCommentsPreserveOffsets } from './nginx-module-utils';
-import { NginxService } from './nginx.service';
-import type { NginxUpstream } from './nginx.types';
+import { NginxConfigService } from '../core/nginx-config.service';
+import { findBlockEnd, isSamePath, stripCommentsPreserveOffsets } from '../utils/nginx-module-utils';
+import { NginxService } from '../core/nginx.service';
+import type { NginxUpstream } from '../types/nginx.types';
 import { nginxErrors } from '@yinuo-ngm/errors';
 
 /**
@@ -195,7 +195,7 @@ export class NginxUpstreamService {
       } else if (upstream.strategy === 'ip_hash') {
         lines.push('    ip_hash;');
       } else if (upstream.strategy === 'hash') {
-        lines.push('    hash $request_uri consistent;');
+        lines.push('    hash $request_uri;');
       }
 
       for (const node of upstream.nodes) {

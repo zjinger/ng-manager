@@ -1,8 +1,8 @@
-import { NginxService } from './nginx.service';
-import { NginxConfigService } from './nginx-config.service';
-import { NginxServerService } from './nginx-server.service';
+import { NginxService } from '../core/nginx.service';
+import { NginxConfigService } from '../core/nginx-config.service';
+import { NginxServerService } from '../server/nginx-server.service';
 import { NginxModuleService } from './nginx-module.service';
-import { NginxLogService } from './nginx-log.service';
+import { NginxLogService } from '../log/nginx-log.service';
 
 /**
  * Nginx 管理应用入口

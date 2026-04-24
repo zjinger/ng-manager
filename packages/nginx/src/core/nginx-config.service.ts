@@ -1,16 +1,19 @@
 import { access, constants, mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises';
-import { basename, dirname, isAbsolute, join, resolve } from 'path';
+import { basename, dirname, join } from 'path';
 import { atomicWrite, FileLock } from '@yinuo-ngm/storage';
 import { NginxService } from './nginx.service';
-import type { NginxConfig, NginxConfigValidation } from './nginx.types';
+import type { NginxConfig, NginxConfigValidation } from '../types/nginx.types';
 import { nginxErrors } from '@yinuo-ngm/errors';
-
-/**
- * Nginx 配置管理服务
- * 负责配置文件的读取、写入、验证等
- */
+import {
+  extractIncludePatterns,
+  injectIncludeIntoHttp,
+  normalizeConfigBackupRetention,
+  normalizeLockPath,
+  resolveFromConfig,
+} from './nginx-config-utils';
 export class NginxConfigService {
   private readonly writeLock = new FileLock();
+  private readonly moduleSettingsCacheTtlMs = 5000;
   private moduleSettingsCache: {
     loadedAt: number;
     value: {
@@ -19,10 +22,6 @@ export class NginxConfigService {
   } | null = null;
 
   constructor(private nginxService: NginxService) {}
-
-  /**
-   * 读取主配置文件
-   */
   async readMainConfig(): Promise<NginxConfig> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
@@ -44,10 +43,6 @@ export class NginxConfigService {
       throw nginxErrors.configReadFailed(configPath, error.message);
     }
   }
-
-  /**
-   * 写入主配置文件
-   */
   async writeMainConfig(content: string): Promise<void> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
@@ -65,7 +60,7 @@ export class NginxConfigService {
       await this.withWriteLock(configPath, async () => {
         await this.backupConfig(configPath);
         try {
-          atomicWrite(configPath, content);
+          await atomicWrite(configPath, content);
         } finally {
           await this.cleanupConfigBackups(configPath, await this.getConfigBackupRetention());
         }
@@ -74,10 +69,6 @@ export class NginxConfigService {
       throw nginxErrors.configWriteFailed(configPath, error.message);
     }
   }
-
-  /**
-   * 验证配置语法
-   */
   async validateConfig(content?: string): Promise<NginxConfigValidation> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
@@ -104,10 +95,6 @@ export class NginxConfigService {
 
     return this.nginxService.testConfig();
   }
-
-  /**
-   * 获取包含的配置文件列表
-   */
   async getIncludedConfigs(): Promise<string[]> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
@@ -141,11 +128,6 @@ export class NginxConfigService {
 
     return includes;
   }
-
-  /**
-   * 解析“新增 server”应保存的目录。
-   * 优先复用 nginx.conf 里已有的 *.conf include 目录；若不存在则自动补 conf.d/*.conf。
-   */
   async resolveServerConfigDir(): Promise<string> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
@@ -153,8 +135,8 @@ export class NginxConfigService {
     }
 
     const mainConfig = await this.readMainConfig();
-    const includePatterns = this.extractIncludePatterns(mainConfig.content).map(pattern =>
-      this.resolveFromConfig(pattern, instance.configPath)
+    const includePatterns = extractIncludePatterns(mainConfig.content).map(pattern =>
+      resolveFromConfig(pattern, instance.configPath)
     );
 
     const preferredPattern = includePatterns.find(pattern => /\*.*\.conf|\.conf.*\*/i.test(pattern));
@@ -165,7 +147,7 @@ export class NginxConfigService {
     const configDir = this.getConfDir() || join(dirname(instance.configPath), 'conf.d');
     const hasConfDInclude = /include\s+["']?(?:[^;"']*[\\/])?conf\.d[\\/]\*\.conf["']?\s*;/i.test(mainConfig.content);
     if (!hasConfDInclude) {
-      const updated = this.injectIncludeIntoHttp(mainConfig.content, 'include conf.d/*.conf;');
+      const updated = injectIncludeIntoHttp(mainConfig.content, 'include conf.d/*.conf;');
       if (updated !== mainConfig.content) {
         await this.writeMainConfig(updated);
       }
@@ -173,10 +155,6 @@ export class NginxConfigService {
 
     return configDir;
   }
-
-  /**
-   * 读取指定配置文件
-   */
   async readConfigFile(filePath: string): Promise<string> {
     try {
       return await readFile(filePath, 'utf-8');
@@ -184,54 +162,50 @@ export class NginxConfigService {
       throw nginxErrors.configReadFailed(filePath, error.message);
     }
   }
-
-  /**
-   * 写入指定配置文件
-   */
   async writeConfigFile(filePath: string, content: string): Promise<void> {
     try {
       await this.withWriteLock(filePath, async () => {
-        const dir = dirname(filePath);
-        try {
-          await access(dir, constants.F_OK);
-        } catch {
-          await mkdir(dir, { recursive: true });
-        }
-
-        await this.backupConfig(filePath);
-        try {
-          atomicWrite(filePath, content);
-        } finally {
-          await this.cleanupConfigBackups(filePath, await this.getConfigBackupRetention());
-        }
+        await this.writeContentWithBackup(filePath, content);
       });
     } catch (error: any) {
       throw nginxErrors.configWriteFailed(filePath, error.message);
     }
   }
 
-  /**
-   * 按保留数量清理所有已纳入管理的配置备份文件（*.conf.backup-*）
-   */
+  async mutateConfigFile(
+    filePath: string,
+    mutator: (
+      original: string
+    ) => Promise<{ type: 'write'; content: string } | { type: 'delete' } | { type: 'noop' }> | { type: 'write'; content: string } | { type: 'delete' } | { type: 'noop' }
+  ): Promise<void> {
+    try {
+      await this.withWriteLock(filePath, async () => {
+        const original = await readFile(filePath, 'utf-8');
+        const mutation = await mutator(original);
+        if (mutation.type === 'noop') {
+          return;
+        }
+        if (mutation.type === 'delete') {
+          await this.deleteFileWithBackup(filePath);
+          return;
+        }
+        await this.writeContentWithBackup(filePath, mutation.content);
+      });
+    } catch (error: any) {
+      throw nginxErrors.configWriteFailed(filePath, error.message);
+    }
+  }
   async cleanupAllConfigBackups(keep: number): Promise<void> {
-    const keepCount = this.normalizeConfigBackupRetention(keep);
+    const keepCount = normalizeConfigBackupRetention(keep);
     const includedFiles = await this.getIncludedConfigs();
     const uniqueFiles = new Set<string>(includedFiles);
     for (const filePath of uniqueFiles) {
       await this.cleanupConfigBackups(filePath, keepCount);
     }
   }
-
-  /**
-   * 判断指定配置文件是否可写
-   */
   async isConfigFileWritable(filePath: string): Promise<boolean> {
     return this.checkWritable(filePath);
   }
-
-  /**
-   * 获取 Nginx 配置目录
-   */
   getConfigDir(): string | null {
     const instance = this.nginxService.getInstance();
     if (!instance) {
@@ -240,30 +214,18 @@ export class NginxConfigService {
 
     return dirname(instance.configPath);
   }
-
-  /**
-   * 获取 sites-available 目录（Debian/Ubuntu 风格）
-   */
   getSitesAvailableDir(): string | null {
     const configDir = this.getConfigDir();
     if (!configDir) return null;
 
     return join(configDir, 'sites-available');
   }
-
-  /**
-   * 获取 sites-enabled 目录（Debian/Ubuntu 风格）
-   */
   getSitesEnabledDir(): string | null {
     const configDir = this.getConfigDir();
     if (!configDir) return null;
 
     return join(configDir, 'sites-enabled');
   }
-
-  /**
-   * 获取 conf.d 目录（通用风格）
-   */
   getConfDir(): string | null {
     const configDir = this.getConfigDir();
     if (!configDir) return null;
@@ -297,12 +259,6 @@ export class NginxConfigService {
     return settings.configBackupRetention;
   }
 
-  private normalizeConfigBackupRetention(input: unknown): number {
-    const raw = Number(input);
-    const normalized = Number.isFinite(raw) ? Math.trunc(raw) : 20;
-    return Math.max(1, Math.min(200, normalized));
-  }
-
   private getModuleSettingsPath(): string | null {
     const instance = this.nginxService.getInstance();
     if (!instance) {
@@ -312,7 +268,7 @@ export class NginxConfigService {
   }
 
   private async cleanupConfigBackups(filePath: string, keep: number): Promise<void> {
-    const keepCount = this.normalizeConfigBackupRetention(keep);
+    const keepCount = normalizeConfigBackupRetention(keep);
     const dir = dirname(filePath);
     const prefix = `${basename(filePath)}.backup-`;
 
@@ -337,20 +293,13 @@ export class NginxConfigService {
     }
   }
 
-  private resolveFromConfig(rawPath: string, configPath: string): string {
-    if (isAbsolute(rawPath)) {
-      return rawPath;
-    }
-    return resolve(dirname(configPath), rawPath);
-  }
-
   private async resolveIncludeTargets(content: string, configPath: string): Promise<string[]> {
     const targets: string[] = [];
     const seen = new Set<string>();
-    const patterns = this.extractIncludePatterns(content);
+    const patterns = extractIncludePatterns(content);
 
     for (const pattern of patterns) {
-      const absolutePattern = this.resolveFromConfig(pattern, configPath);
+      const absolutePattern = resolveFromConfig(pattern, configPath);
       if (absolutePattern.includes('*')) {
         const baseDir = dirname(absolutePattern);
         try {
@@ -380,48 +329,41 @@ export class NginxConfigService {
     return targets;
   }
 
-  private extractIncludePatterns(content: string): string[] {
-    const patterns: string[] = [];
-    const includeRegex = /include\s+([^;]+);/g;
-    let match: RegExpExecArray | null = null;
-
-    while ((match = includeRegex.exec(content)) !== null) {
-      const raw = match[1]?.trim();
-      if (!raw) {
-        continue;
-      }
-      patterns.push(raw.replace(/^["']|["']$/g, ''));
-    }
-
-    return patterns;
-  }
-
-  private injectIncludeIntoHttp(content: string, includeLine: string): string {
-    const httpMatch = /http\s*\{/.exec(content);
-    const newline = content.includes('\r\n') ? '\r\n' : '\n';
-
-    if (!httpMatch) {
-      return `${content.trimEnd()}${newline}${includeLine}${newline}`;
-    }
-
-    const insertPos = httpMatch.index + httpMatch[0].length;
-    return `${content.slice(0, insertPos)}${newline}    ${includeLine}${content.slice(insertPos)}`;
-  }
-
   private async withWriteLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
-    const lockKey = this.normalizeLockPath(filePath);
+    const lockKey = normalizeLockPath(filePath);
     return this.writeLock.withLock(lockKey, fn);
   }
 
-  private normalizeLockPath(filePath: string): string {
-    return resolve(filePath).replace(/\\/g, '/').toLowerCase();
+  private async writeContentWithBackup(filePath: string, content: string): Promise<void> {
+    const dir = dirname(filePath);
+    try {
+      await access(dir, constants.F_OK);
+    } catch {
+      await mkdir(dir, { recursive: true });
+    }
+
+    await this.backupConfig(filePath);
+    try {
+      await atomicWrite(filePath, content);
+    } finally {
+      await this.cleanupConfigBackups(filePath, await this.getConfigBackupRetention());
+    }
+  }
+
+  private async deleteFileWithBackup(filePath: string): Promise<void> {
+    await this.backupConfig(filePath);
+    try {
+      await unlink(filePath);
+    } finally {
+      await this.cleanupConfigBackups(filePath, await this.getConfigBackupRetention());
+    }
   }
 
   private async getModuleSettingsSnapshot(): Promise<{
     configBackupRetention: number;
   }> {
     const now = Date.now();
-    if (this.moduleSettingsCache && now - this.moduleSettingsCache.loadedAt < 1000) {
+    if (this.moduleSettingsCache && now - this.moduleSettingsCache.loadedAt < this.moduleSettingsCacheTtlMs) {
       return this.moduleSettingsCache.value;
     }
 
@@ -441,7 +383,7 @@ export class NginxConfigService {
         configBackupRetention?: unknown;
       };
       const value = {
-        configBackupRetention: this.normalizeConfigBackupRetention(parsed?.configBackupRetention),
+        configBackupRetention: normalizeConfigBackupRetention(parsed?.configBackupRetention),
       };
       this.moduleSettingsCache = { loadedAt: now, value };
       return value;
@@ -452,3 +394,4 @@ export class NginxConfigService {
   }
 
 }
+

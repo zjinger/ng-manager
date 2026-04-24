@@ -1,5 +1,5 @@
 import { NginxModuleStateStore } from './nginx-module-state.store';
-import type { NginxPerformanceConfig } from './nginx.types';
+import type { NginxPerformanceConfig } from '../types/nginx.types';
 
 /**
  * 性能优化配置服务

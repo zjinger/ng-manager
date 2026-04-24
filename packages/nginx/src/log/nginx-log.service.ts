@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { createReadStream, FSWatcher, watch } from 'fs';
 import { readFile, stat } from 'fs/promises';
 import { join } from 'path';
-import { NginxService } from './nginx.service';
+import { NginxService } from '../core/nginx.service';
 
 export type NginxLogType = 'error' | 'access';
 
@@ -19,6 +19,8 @@ export interface NginxLogEntry {
 export class NginxLogService extends EventEmitter {
     private watchers: Map<NginxLogType, FSWatcher> = new Map();
     private filePositions: Map<NginxLogType, number> = new Map();
+    private readingTypes: Set<NginxLogType> = new Set();
+    private pendingTypes: Set<NginxLogType> = new Set();
 
     constructor(private nginxService: NginxService) {
         super();
@@ -65,9 +67,10 @@ export class NginxLogService extends EventEmitter {
         this.recordPosition(type, filePath);
 
         try {
-            const watcher = watch(filePath, async (eventType) => {
+            const watcher = watch(filePath, (eventType) => {
                 if (eventType === 'change') {
-                    await this.handleFileChange(type, filePath);
+                    this.pendingTypes.add(type);
+                    void this.processPendingChanges(type, filePath);
                 }
             });
 
@@ -90,6 +93,8 @@ export class NginxLogService extends EventEmitter {
             watcher.close();
             this.watchers.delete(type);
             this.filePositions.delete(type);
+            this.pendingTypes.delete(type);
+            this.readingTypes.delete(type);
         }
     }
 
@@ -108,6 +113,21 @@ export class NginxLogService extends EventEmitter {
             this.filePositions.set(type, stats.size);
         } catch {
             this.filePositions.set(type, 0);
+        }
+    }
+
+    private async processPendingChanges(type: NginxLogType, filePath: string): Promise<void> {
+        if (this.readingTypes.has(type)) {
+            return;
+        }
+        this.readingTypes.add(type);
+        try {
+            while (this.pendingTypes.has(type)) {
+                this.pendingTypes.delete(type);
+                await this.handleFileChange(type, filePath);
+            }
+        } finally {
+            this.readingTypes.delete(type);
         }
     }
 
@@ -130,25 +150,27 @@ export class NginxLogService extends EventEmitter {
             });
 
             let buffer = '';
-            stream.on('data', (chunk: string) => {
-                buffer += chunk;
-            });
+            try {
+                await new Promise<void>((resolve, reject) => {
+                    stream.on('data', (chunk: string) => {
+                        buffer += chunk;
+                    });
+                    stream.on('end', () => resolve());
+                    stream.on('error', err => reject(err));
+                });
+            } finally {
+                stream.destroy();
+            }
 
-            stream.on('end', () => {
-                const newLines = buffer.split(/\r?\n/).filter(line => line.trim());
-                for (const line of newLines) {
-                    this.emit('log', {
-                        type,
-                        line,
-                        timestamp: Date.now()
-                    } as NginxLogEntry);
-                }
-                this.filePositions.set(type, currentSize);
-            });
-
-            stream.on('error', (err) => {
-                this.emit('error', { type, error: err });
-            });
+            const newLines = buffer.split(/\r?\n/).filter(line => line.trim());
+            for (const line of newLines) {
+                this.emit('log', {
+                    type,
+                    line,
+                    timestamp: Date.now()
+                } as NginxLogEntry);
+            }
+            this.filePositions.set(type, currentSize);
         } catch (err) {
             this.emit('error', { type, error: err });
         }

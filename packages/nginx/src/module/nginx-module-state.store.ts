@@ -1,13 +1,13 @@
 import { readdir, readFile, unlink, writeFile } from 'fs/promises';
 import { basename, dirname, join } from 'path';
-import { NginxService } from './nginx.service';
+import { NginxService } from '../core/nginx.service';
 import type {
   NginxModuleSettings,
   NginxPerformanceConfig,
   NginxSslCertificate,
   NginxTrafficConfig,
   NginxUpstream,
-} from './nginx.types';
+} from '../types/nginx.types';
 
 export interface NginxModuleState {
   upstreams: NginxUpstream[];
