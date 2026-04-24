@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
 
+import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
 import { FileLock, atomicWrite, ensureDir } from "@yinuo-ngm/storage";
 import type { ApiHistoryEntity } from "../../../domain/models";
 import type { HistoryRepo } from "../../../domain/services";
@@ -92,7 +93,7 @@ export class JsonHistoryRepo implements HistoryRepo {
         if (scope === "global") {
             return path.join(this.rootDir, "global", "history", this.fileName);
         }
-        if (!projectId) throw new Error("projectId is required when scope=project");
+        if (!projectId) throw new ApiError(ApiErrorCodes.API_PROJECT_ID_REQUIRED, "projectId is required when scope=project");
         return path.join(this.rootDir, "projects", projectId, "history", this.fileName);
     }
 

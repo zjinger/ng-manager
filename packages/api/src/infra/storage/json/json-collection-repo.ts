@@ -1,3 +1,4 @@
+import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
 import type { ApiScope } from "../../../domain/models/types";
 import type { ApiCollectionEntity } from "../../../domain/models/api-collection";
 import type { CollectionRepo } from "../../../domain/services/collection-repo";
@@ -66,7 +67,7 @@ export class JsonCollectionRepo implements CollectionRepo {
             return path.join(this.rootDir, "global", this.fileName);
         }
         if (!projectId) {
-            throw new Error("projectId is required when scope=project");
+            throw new ApiError(ApiErrorCodes.API_PROJECT_ID_REQUIRED, "projectId is required when scope=project");
         }
         return path.join(this.rootDir, "projects", projectId, this.fileName);
     }

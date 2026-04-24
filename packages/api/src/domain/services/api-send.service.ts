@@ -1,3 +1,4 @@
+import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
 import type { ApiHistoryEntity } from "../models/api-history";
 import type { ApiRequestEntity } from "../models/api-request";
 import type { ApiEnvironmentEntity } from "../models/api-environment";
@@ -82,7 +83,7 @@ export class ApiSendService {
 
     async send(dto: SendDto): Promise<SendResult> {
         const scope = dto.scope ?? "project";
-        if (scope === "project" && !dto.projectId) throw new Error("projectId is required when scope=project");
+        if (scope === "project" && !dto.projectId) throw new ApiError(ApiErrorCodes.API_PROJECT_ID_REQUIRED, "projectId is required when scope=project");
 
         const req = await this.loadRequest(dto, scope);
         const env = await this.loadEnv(dto, scope);
@@ -213,17 +214,17 @@ export class ApiSendService {
 
         if (dto.requestId) {
             const found = await this.requestRepo.get(dto.requestId, scope, dto.projectId);
-            if (!found) throw new Error(`request not found: ${dto.requestId}`);
+            if (!found) throw new ApiError(ApiErrorCodes.API_REQUEST_NOT_FOUND, `request not found: ${dto.requestId}`);
             return found;
         }
 
-        throw new Error("request or requestId is required");
+        throw new ApiError(ApiErrorCodes.API_REQUEST_ID_REQUIRED, "request or requestId is required");
     }
 
     private async loadEnv(dto: SendDto, scope: ApiScope): Promise<ApiEnvironmentEntity | null> {
         if (!dto.envId) return null;
         const env = await this.envRepo.get(dto.envId, scope, dto.projectId);
-        if (!env) throw new Error(`env not found: ${dto.envId}`);
+        if (!env) throw new ApiError(ApiErrorCodes.API_ENV_NOT_FOUND, `env not found: ${dto.envId}`);
         return env;
     }
 

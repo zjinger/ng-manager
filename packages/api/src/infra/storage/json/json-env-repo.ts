@@ -1,3 +1,4 @@
+import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
 import { JsonFileKvRepo } from "@yinuo-ngm/storage";
 import * as path from "node:path";
 import { ApiScope, ApiEnvironmentEntity } from "../../../domain/models";
@@ -33,7 +34,7 @@ export class JsonEnvRepo implements EnvRepo {
     }
 
     async save(env: ApiEnvironmentEntity, scope: ApiScope, projectId?: string): Promise<void> {
-        if (!env?.id) throw new Error("env.id is required");
+        if (!env?.id) throw new ApiError(ApiErrorCodes.API_ENV_NOT_FOUND, "env.id is required");
         const repo = this.kv(scope, projectId);
         await repo.set(env.id, env);
     }
@@ -49,7 +50,7 @@ export class JsonEnvRepo implements EnvRepo {
 
     private filePath(scope: ApiScope, projectId?: string) {
         if (scope === "global") return path.join(this.rootDir, "global", this.fileName);
-        if (!projectId) throw new Error("projectId is required when scope=project");
+        if (!projectId) throw new ApiError(ApiErrorCodes.API_PROJECT_ID_REQUIRED, "projectId is required when scope=project");
         return path.join(this.rootDir, "projects", projectId, this.fileName);
     }
 }

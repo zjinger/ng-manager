@@ -1,3 +1,5 @@
+import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
+
 export type ApiQueryParams = Record<string, string | number | boolean | undefined | null>;
 
 export type ProjectTokenApiClientOptions = {
@@ -54,11 +56,11 @@ export class ProjectTokenApiClient {
     const payload = await this.parseJson(response);
     if (!response.ok) {
       const message = payload?.message || `hub-v2 request failed (${response.status})`;
-      throw new Error(message);
+      throw new ApiError(ApiErrorCodes.API_SEND_FAILED, message);
     }
     if (payload && typeof payload === "object" && "code" in payload) {
       if ((payload as { code?: string }).code !== "OK") {
-        throw new Error((payload as { message?: string }).message || "hub-v2 response error");
+        throw new ApiError(ApiErrorCodes.API_HUB_TOKEN_INVALID, (payload as { message?: string }).message || "hub-v2 response error");
       }
       return (payload as { data: T }).data;
     }

@@ -1,4 +1,4 @@
-// packages/api-client/src/infra/storage/json/json-request-repo.ts
+import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
 import { JsonFileKvRepo } from "@yinuo-ngm/storage";
 import * as path from "node:path";
 import type { ApiScope, ApiRequestEntity } from "../../../domain/models";
@@ -49,7 +49,7 @@ export class JsonRequestRepo implements RequestRepo {
 
     async save(req: ApiRequestEntity, scope: ApiScope, projectId?: string): Promise<void> {
         // 可选：做一些轻量校验，避免写入脏数据
-        if (!req?.id) throw new Error("request.id is required");
+        if (!req?.id) throw new ApiError(ApiErrorCodes.API_REQUEST_ID_REQUIRED, "request.id is required");
         const repo = this.kv(scope, projectId);
         await repo.set(req.id, req);
     }
@@ -71,7 +71,7 @@ export class JsonRequestRepo implements RequestRepo {
             return path.join(this.rootDir, "global", this.fileName);
         }
         if (!projectId) {
-            throw new Error("projectId is required when scope=project");
+            throw new ApiError(ApiErrorCodes.API_PROJECT_ID_REQUIRED, "projectId is required when scope=project");
         }
         return path.join(this.rootDir, "projects", projectId, this.fileName);
     }
