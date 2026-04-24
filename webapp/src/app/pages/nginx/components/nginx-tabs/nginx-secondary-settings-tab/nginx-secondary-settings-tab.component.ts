@@ -57,8 +57,8 @@ import { NginxModuleStore } from '../../../services/nginx-module.store';
         <button
           nz-button
           nzType="default"
-          (click)="saveBackupRetention()"
-          [disabled]="!retentionDirty() || saving()"
+          (click)="saveSettings()"
+          [disabled]="!settingsDirty() || saving()"
         >
           保存
         </button>
@@ -81,8 +81,8 @@ import { NginxModuleStore } from '../../../services/nginx-module.store';
         <button
           nz-button
           nzType="default"
-          (click)="saveBackupRetention()"
-          [disabled]="!retentionDirty() || saving()"
+          (click)="saveSettings()"
+          [disabled]="!settingsDirty() || saving()"
         >
           保存
         </button>
@@ -182,15 +182,14 @@ export class NginxSecondarySettingsTabComponent implements OnInit {
 
   backupRetention = signal(5);
   configBackupRetention = signal(20);
-  retentionDirty = signal(false);
+  settingsDirty = signal(false);
   saving = signal(false);
 
   async ngOnInit(): Promise<void> {
     try {
       const res = await this.moduleStore.loadModuleSettings();
       if (res.success && res.settings) {
-        this.backupRetention.set(Math.max(1, Number(res.settings.backupRetention ?? 5)));
-        this.configBackupRetention.set(Math.max(1, Number(res.settings.configBackupRetention ?? 20)));
+        this.patchSettingsFromResponse(res.settings);
       }
     } catch {
       // 忽略，使用默认值
@@ -201,17 +200,17 @@ export class NginxSecondarySettingsTabComponent implements OnInit {
     const parsed = Number(value);
     const normalized = Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : 1;
     this.backupRetention.set(normalized);
-    this.retentionDirty.set(true);
+    this.settingsDirty.set(true);
   }
 
   setConfigBackupRetention(value: number | string): void {
     const parsed = Number(value);
     const normalized = Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : 1;
     this.configBackupRetention.set(normalized);
-    this.retentionDirty.set(true);
+    this.settingsDirty.set(true);
   }
 
-  async saveBackupRetention(): Promise<void> {
+  async saveSettings(): Promise<void> {
     this.saving.set(true);
     try {
       const res = await this.moduleStore.saveModuleSettings({
@@ -219,17 +218,24 @@ export class NginxSecondarySettingsTabComponent implements OnInit {
         configBackupRetention: this.configBackupRetention(),
       });
       if (res.success && res.settings) {
-        this.backupRetention.set(Math.max(1, Number(res.settings.backupRetention ?? 5)));
-        this.configBackupRetention.set(Math.max(1, Number(res.settings.configBackupRetention ?? 20)));
-        this.retentionDirty.set(false);
-        this.message.success('备份保留数量已保存');
+        this.patchSettingsFromResponse(res.settings);
+        this.settingsDirty.set(false);
+        this.message.success('设置已保存');
       } else {
-        this.message.error(res.error || '保存备份保留数量失败');
+        this.message.error(res.error || '保存设置失败');
       }
     } catch (err: any) {
-      this.message.error('保存备份保留数量失败: ' + err.message);
+      this.message.error('保存设置失败: ' + err.message);
     } finally {
       this.saving.set(false);
     }
+  }
+
+  private patchSettingsFromResponse(settings: {
+    backupRetention?: number;
+    configBackupRetention?: number;
+  }): void {
+    this.backupRetention.set(Math.max(1, Number(settings.backupRetention ?? 5)));
+    this.configBackupRetention.set(Math.max(1, Number(settings.configBackupRetention ?? 20)));
   }
 }

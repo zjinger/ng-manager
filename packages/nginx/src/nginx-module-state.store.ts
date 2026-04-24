@@ -117,7 +117,11 @@ export class NginxModuleStateStore {
   }
 
   async saveSettings(input: Partial<NginxModuleSettings>): Promise<NginxModuleSettings> {
-    const next = this.normalizeSettings(input);
+    const current = await this.getSettings();
+    const next = this.normalizeSettings({
+      ...current,
+      ...(input || {}),
+    });
     this.volatileSettings = next;
 
     const path = this.getSettingsFilePath();

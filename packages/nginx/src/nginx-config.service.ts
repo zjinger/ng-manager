@@ -10,6 +10,12 @@ import type { NginxConfig, NginxConfigValidation } from './nginx.types';
  */
 export class NginxConfigService {
   private readonly writeLock = new FileLock();
+  private moduleSettingsCache: {
+    loadedAt: number;
+    value: {
+      configBackupRetention: number;
+    };
+  } | null = null;
 
   constructor(private nginxService: NginxService) {}
 
@@ -286,18 +292,8 @@ export class NginxConfigService {
   }
 
   private async getConfigBackupRetention(): Promise<number> {
-    const settingsPath = this.getModuleSettingsPath();
-    if (!settingsPath) {
-      return 20;
-    }
-
-    try {
-      const raw = await readFile(settingsPath, 'utf-8');
-      const parsed = JSON.parse(raw) as { configBackupRetention?: unknown };
-      return this.normalizeConfigBackupRetention(parsed?.configBackupRetention);
-    } catch {
-      return 20;
-    }
+    const settings = await this.getModuleSettingsSnapshot();
+    return settings.configBackupRetention;
   }
 
   private normalizeConfigBackupRetention(input: unknown): number {
@@ -419,4 +415,39 @@ export class NginxConfigService {
   private normalizeLockPath(filePath: string): string {
     return resolve(filePath).replace(/\\/g, '/').toLowerCase();
   }
+
+  private async getModuleSettingsSnapshot(): Promise<{
+    configBackupRetention: number;
+  }> {
+    const now = Date.now();
+    if (this.moduleSettingsCache && now - this.moduleSettingsCache.loadedAt < 1000) {
+      return this.moduleSettingsCache.value;
+    }
+
+    const defaults = {
+      configBackupRetention: 20,
+    };
+
+    const settingsPath = this.getModuleSettingsPath();
+    if (!settingsPath) {
+      this.moduleSettingsCache = { loadedAt: now, value: defaults };
+      return defaults;
+    }
+
+    try {
+      const raw = await readFile(settingsPath, 'utf-8');
+      const parsed = JSON.parse(raw) as {
+        configBackupRetention?: unknown;
+      };
+      const value = {
+        configBackupRetention: this.normalizeConfigBackupRetention(parsed?.configBackupRetention),
+      };
+      this.moduleSettingsCache = { loadedAt: now, value };
+      return value;
+    } catch {
+      this.moduleSettingsCache = { loadedAt: now, value: defaults };
+      return defaults;
+    }
+  }
+
 }
