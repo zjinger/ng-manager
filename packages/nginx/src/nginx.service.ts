@@ -9,6 +9,7 @@ import type {
   NginxInstance,
   NginxStatus,
 } from './nginx.types';
+import { nginxErrors } from '@yinuo-ngm/errors';
 
 const execFileAsync = promisify(execFile);
 
@@ -398,7 +399,7 @@ export class NginxService {
     try {
       await access(path, constants.X_OK);
     } catch {
-      throw new Error(`无法访问 Nginx 可执行文件: ${path}`);
+      throw nginxErrors.startFailed(`无法访问 Nginx 可执行文件: ${path}`);
     }
   }
 
@@ -414,7 +415,7 @@ export class NginxService {
       const looseMatch = output.match(/nginx\/([^\s]+)/);
       return looseMatch?.[1] || 'unknown';
     } catch (error: any) {
-      throw new Error(`无法获取 Nginx 版本: ${error.message}`);
+      throw nginxErrors.startFailed(`无法获取 Nginx 版本: ${error.message}`);
     }
   }
 

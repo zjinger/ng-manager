@@ -6,6 +6,7 @@ import { findBlockEnd, stripCommentsPreserveOffsets } from './nginx-module-utils
 import { NginxModuleStateStore } from './nginx-module-state.store';
 import { NginxService } from './nginx.service';
 import type { NginxSslCertificate } from './nginx.types';
+import { nginxErrors } from '@yinuo-ngm/errors';
 
 /**
  * SSL 证书配置服务
@@ -157,7 +158,7 @@ export class NginxSslService {
       if (!strict && idSet.has(next.id)) {
         next.id = this.stateStore.makeId('ssl');
       } else if (idSet.has(next.id)) {
-        throw new Error(`SSL 证书 ID 重复: ${next.id}`);
+        throw nginxErrors.serverAlreadyExists(`ssl:${next.id}`);
       }
       idSet.add(next.id);
       normalized.push(next);
@@ -173,16 +174,16 @@ export class NginxSslService {
     const keyPath = item.keyPath?.trim() || '';
     const expireAt = item.expireAt?.trim() || '';
     if (strict && !domain) {
-      throw new Error('证书域名不能为空');
+      throw nginxErrors.sslCertInvalid(id, '证书域名不能为空');
     }
     if (strict && !certPath) {
-      throw new Error(`域名 "${domain || id}" 的证书路径不能为空`);
+      throw nginxErrors.sslCertNotFound(`"${domain || id}" 的证书路径`);
     }
     if (strict && !keyPath) {
-      throw new Error(`域名 "${domain || id}" 的私钥路径不能为空`);
+      throw nginxErrors.sslKeyNotFound(`"${domain || id}" 的私钥路径`);
     }
     if (strict && expireAt && !/^\d{4}-\d{2}-\d{2}$/.test(expireAt)) {
-      throw new Error(`域名 "${domain || id}" 的到期时间格式无效，应为 YYYY-MM-DD`);
+      throw nginxErrors.sslCertInvalid(id, `域名 "${domain || id}" 的到期时间格式无效，应为 YYYY-MM-DD`);
     }
 
     return {

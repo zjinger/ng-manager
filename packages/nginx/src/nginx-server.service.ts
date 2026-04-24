@@ -11,6 +11,7 @@ import type {
   NginxServer,
   UpdateNginxServerRequest,
 } from './nginx.types';
+import { nginxErrors } from '@yinuo-ngm/errors';
 
 export interface NginxImportIssue {
   level: 'error' | 'warning';
@@ -73,7 +74,7 @@ export class NginxServerService {
   async createServer(request: CreateNginxServerRequest): Promise<NginxServer> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
-      throw new Error('Nginx 未绑定');
+      throw nginxErrors.notBound();
     }
 
     const ssl = this.resolveSsl(request.ssl, request.protocol);
@@ -125,7 +126,7 @@ export class NginxServerService {
   async updateServer(id: string, request: UpdateNginxServerRequest): Promise<NginxServer> {
     const current = await this.getServer(id);
     if (!current) {
-      throw new Error('Server 不存在');
+      throw nginxErrors.serverNotFound(id);
     }
 
     const nextServer: NginxServer = {
@@ -160,7 +161,7 @@ export class NginxServerService {
 
     let source = this.serverSources.get(id);
     if (!source) {
-      throw new Error('Server 配置文件不存在');
+      throw nginxErrors.serverNotFound(id);
     }
 
     const oldId = id;
@@ -211,7 +212,7 @@ export class NginxServerService {
   async deleteServer(id: string): Promise<{ snapshotId: string }> {
     const server = await this.getServer(id);
     if (!server) {
-      throw new Error('Server 不存在');
+      throw nginxErrors.serverNotFound(id);
     }
     const snapshotId = this.createDeleteSnapshot(server);
 
@@ -244,7 +245,7 @@ export class NginxServerService {
   async restoreDeletedServer(snapshotId: string): Promise<NginxServer> {
     const snapshot = this.deletedSnapshots.get(snapshotId);
     if (!snapshot) {
-      throw new Error('删除快照不存在或已过期');
+      throw nginxErrors.serverNotFound(`snapshot:${snapshotId}`);
     }
     const restored = await this.createServer(snapshot.request);
     this.deletedSnapshots.delete(snapshotId);
@@ -378,7 +379,7 @@ export class NginxServerService {
   async enableServer(id: string): Promise<void> {
     const server = await this.getServer(id);
     if (!server) {
-      throw new Error('Server 不存在');
+      throw nginxErrors.serverNotFound(id);
     }
     this.ensureNoPortConflicts(id, server.listen, true);
     await this.applyEnabledState(server, true);
@@ -392,7 +393,7 @@ export class NginxServerService {
   async disableServer(id: string): Promise<void> {
     const server = await this.getServer(id);
     if (!server) {
-      throw new Error('Server 不存在');
+      throw nginxErrors.serverNotFound(id);
     }
     await this.applyEnabledState(server, false);
     server.enabled = false;
@@ -1056,9 +1057,9 @@ export class NginxServerService {
     return Boolean(current);
   }
 
-  private async applyEnabledState(server: NginxServer, enabled: boolean): Promise<void> {
+  private   async applyEnabledState(server: NginxServer, enabled: boolean): Promise<void> {
     if (!server.filePath) {
-      throw new Error('Server 配置文件不存在');
+      throw nginxErrors.serverFileInvalid('', 'Server 配置文件路径不存在');
     }
 
     const sitesEnabledDir = this.configService.getSitesEnabledDir();
@@ -1094,7 +1095,7 @@ export class NginxServerService {
     const source = await this.resolveServerSource(server);
     const original = await readFile(source.filePath, 'utf-8');
     if (source.start < 0 || source.end > original.length || source.start >= source.end) {
-      throw new Error('Server 配置块定位失败，请刷新后重试');
+      throw nginxErrors.serverFileInvalid(source.filePath, 'Server 配置块定位失败，请刷新后重试');
     }
 
     const segment = original.slice(source.start, source.end);
@@ -1226,7 +1227,7 @@ export class NginxServerService {
   ): Promise<void> {
     const original = await readFile(filePath, 'utf-8');
     if (start < 0 || end > original.length || start >= end) {
-      throw new Error('Server 配置块定位失败，请刷新后重试');
+      throw nginxErrors.serverFileInvalid(filePath, 'Server 配置块定位失败，请刷新后重试');
     }
 
     const next = `${original.slice(0, start)}${nextBlockContent}${original.slice(end)}`;
@@ -1236,7 +1237,7 @@ export class NginxServerService {
   private async removeServerBlock(filePath: string, start: number, end: number): Promise<void> {
     const original = await readFile(filePath, 'utf-8');
     if (start < 0 || end > original.length || start >= end) {
-      throw new Error('Server 配置块定位失败，请刷新后重试');
+      throw nginxErrors.serverFileInvalid(filePath, 'Server 配置块定位失败，请刷新后重试');
     }
 
     const next = `${original.slice(0, start)}${original.slice(end)}`;
@@ -1253,8 +1254,11 @@ export class NginxServerService {
   }
 
   private isServerSourceOutdatedError(error: unknown): boolean {
+    if (error && typeof error === 'object' && 'code' in error) {
+      return (error as { code: number }).code === 20205;
+    }
     const message = error instanceof Error ? error.message : String(error ?? '');
-    return message.includes('Server 配置块定位失败');
+    return message.includes('Server 配置块定位失败') || message.includes('Server 配置文件无效');
   }
 
   private createServerId(filePath: string, blockIndex: number): string {
@@ -1373,16 +1377,23 @@ export class NginxServerService {
     }
 
     const conflicts: string[] = [];
+    let firstConflictPort = 0;
+    let firstConflictOwners: string[] = [];
     for (const port of candidatePorts) {
       const owners = ownersByPort.get(port);
       if (!owners?.size) {
         continue;
       }
-      conflicts.push(`${port}（已被 ${Array.from(owners).join('、')} 使用）`);
+      const ownerList = Array.from(owners);
+      conflicts.push(`${port}（已被 ${ownerList.join('、')} 使用）`);
+      if (firstConflictPort === 0) {
+        firstConflictPort = port;
+        firstConflictOwners = ownerList;
+      }
     }
 
     if (conflicts.length) {
-      throw new Error(`监听端口冲突: ${conflicts.join('，')}`);
+      throw nginxErrors.serverPortConflict(firstConflictPort, firstConflictOwners);
     }
   }
 

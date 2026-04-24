@@ -5,6 +5,7 @@ import { NginxConfigService } from './nginx-config.service';
 import { findBlockEnd, isSamePath, stripCommentsPreserveOffsets } from './nginx-module-utils';
 import { NginxService } from './nginx.service';
 import type { NginxUpstream } from './nginx.types';
+import { nginxErrors } from '@yinuo-ngm/errors';
 
 /**
  * Upstream 配置服务
@@ -47,7 +48,7 @@ export class NginxUpstreamService {
   async saveUpstreams(upstreams: NginxUpstream[]): Promise<void> {
     const managedPath = await this.getManagedUpstreamFilePath(true);
     if (!managedPath) {
-      throw new Error('Nginx 未绑定');
+      throw nginxErrors.notBound();
     }
 
     const normalized = this.normalizeUpstreams(upstreams, managedPath);
@@ -138,18 +139,18 @@ export class NginxUpstreamService {
     for (const item of upstreams || []) {
       const name = item.name?.trim();
       if (!name) {
-        throw new Error('Upstream 名称不能为空');
+        throw nginxErrors.upstreamNotFound('unnamed');
       }
       if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
-        throw new Error(`Upstream 名称非法: ${name}`);
+        throw nginxErrors.upstreamNodeInvalid(name, `Upstream 名称非法: ${name}`);
       }
       if (nameSet.has(name)) {
-        throw new Error(`Upstream 名称重复: ${name}`);
+        throw nginxErrors.upstreamAlreadyExists(name);
       }
 
       const nodes = (item.nodes || []).map(node => node.trim()).filter(Boolean);
       if (!nodes.length) {
-        throw new Error(`Upstream "${name}" 至少需要一个节点`);
+        throw nginxErrors.upstreamNodeInvalid(name, `Upstream "${name}" 至少需要一个节点`);
       }
 
       const strategy = strategies.includes(item.strategy) ? item.strategy : 'round-robin';

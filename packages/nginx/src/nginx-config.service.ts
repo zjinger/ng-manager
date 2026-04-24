@@ -3,6 +3,7 @@ import { basename, dirname, isAbsolute, join, resolve } from 'path';
 import { atomicWrite, FileLock } from '@yinuo-ngm/storage';
 import { NginxService } from './nginx.service';
 import type { NginxConfig, NginxConfigValidation } from './nginx.types';
+import { nginxErrors } from '@yinuo-ngm/errors';
 
 /**
  * Nginx 配置管理服务
@@ -25,7 +26,7 @@ export class NginxConfigService {
   async readMainConfig(): Promise<NginxConfig> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
-      throw new Error('Nginx 未绑定');
+      throw nginxErrors.notBound();
     }
 
     const configPath = instance.configPath;
@@ -40,7 +41,7 @@ export class NginxConfigService {
         isWritable,
       };
     } catch (error: any) {
-      throw new Error(`读取配置文件失败: ${error.message}`);
+      throw nginxErrors.configReadFailed(configPath, error.message);
     }
   }
 
@@ -50,14 +51,14 @@ export class NginxConfigService {
   async writeMainConfig(content: string): Promise<void> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
-      throw new Error('Nginx 未绑定');
+      throw nginxErrors.notBound();
     }
 
     const configPath = instance.configPath;
 
     const validation = await this.validateConfig(content);
     if (!validation.valid) {
-      throw new Error(`配置验证失败: ${validation.errors?.join(', ')}`);
+      throw nginxErrors.configInvalid(instance.configPath, validation.errors?.join(', ') || '配置验证失败');
     }
 
     try {
@@ -70,7 +71,7 @@ export class NginxConfigService {
         }
       });
     } catch (error: any) {
-      throw new Error(`写入配置文件失败: ${error.message}`);
+      throw nginxErrors.configWriteFailed(configPath, error.message);
     }
   }
 
@@ -148,7 +149,7 @@ export class NginxConfigService {
   async resolveServerConfigDir(): Promise<string> {
     const instance = this.nginxService.getInstance();
     if (!instance) {
-      throw new Error('Nginx 未绑定');
+      throw nginxErrors.notBound();
     }
 
     const mainConfig = await this.readMainConfig();
@@ -180,7 +181,7 @@ export class NginxConfigService {
     try {
       return await readFile(filePath, 'utf-8');
     } catch (error: any) {
-      throw new Error(`读取配置文件失败: ${error.message}`);
+      throw nginxErrors.configReadFailed(filePath, error.message);
     }
   }
 
@@ -205,7 +206,7 @@ export class NginxConfigService {
         }
       });
     } catch (error: any) {
-      throw new Error(`写入配置文件失败: ${error.message}`);
+      throw nginxErrors.configWriteFailed(filePath, error.message);
     }
   }
 
