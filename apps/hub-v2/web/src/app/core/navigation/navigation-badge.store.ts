@@ -13,10 +13,11 @@ export class NavigationBadgeStore {
   readonly rdCount = computed(() => this.rdCountState());
 
   load(options?: { force?: boolean }): void {
-    this.dashboardApi.getHomeData(options).subscribe({
-      next: (data) => {
-        this.issueCountState.set(data.stats.assignedIssues ?? 0);
-        this.rdCountState.set(data.stats.assignedRdItems ?? data.stats.inProgressRdItems ?? 0);
+    void options;
+    this.dashboardApi.getStats().subscribe({
+      next: (stats) => {
+        this.issueCountState.set(stats.assignedIssues ?? 0);
+        this.rdCountState.set(stats.assignedRdItems ?? stats.inProgressRdItems ?? 0);
       },
       error: () => {
         this.issueCountState.set(0);

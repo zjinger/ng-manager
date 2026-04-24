@@ -47,9 +47,8 @@ export class DashboardStore {
       return;
     }
 
-    const unique = new Set(entityTypes.filter(Boolean));
+    const unique = new Set(entityTypes.map((item) => this.normalizeEntityType(item)).filter(Boolean));
     if (unique.size === 0) {
-      this.load({ force: true, silent: true });
       return;
     }
 
@@ -115,9 +114,33 @@ export class DashboardStore {
           this.todosTotalState.set(partial.todosTotal.total);
         }
       },
-      error: () => {
-        this.load({ force: true, silent: true });
-      },
+      error: () => {},
     });
+  }
+
+  private normalizeEntityType(type: string | null | undefined): string {
+    const source = (type ?? '').trim().toLowerCase();
+    if (!source) {
+      return '';
+    }
+    if (source === 'issue' || source.startsWith('issue_') || source === 'comment' || source === 'issuecomment') {
+      return 'issue';
+    }
+    if (source === 'rd' || source.startsWith('rd_')) {
+      return 'rd';
+    }
+    if (source === 'announcement' || source.startsWith('announcement_')) {
+      return 'announcement';
+    }
+    if (source === 'document' || source.startsWith('document_') || source === 'doc' || source.startsWith('doc_')) {
+      return 'document';
+    }
+    if (source === 'release' || source.startsWith('release_')) {
+      return 'release';
+    }
+    if (source === 'feedback' || source.startsWith('feedback_')) {
+      return 'feedback';
+    }
+    return source;
   }
 }
