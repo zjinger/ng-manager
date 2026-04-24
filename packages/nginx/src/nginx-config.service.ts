@@ -1,5 +1,6 @@
 import { access, constants, mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'path';
+import { atomicWrite, FileLock } from '@yinuo-ngm/storage';
 import { NginxService } from './nginx.service';
 import type { NginxConfig, NginxConfigValidation } from './nginx.types';
 
@@ -8,6 +9,8 @@ import type { NginxConfig, NginxConfigValidation } from './nginx.types';
  * 负责配置文件的读取、写入、验证等
  */
 export class NginxConfigService {
+  private readonly writeLock = new FileLock();
+
   constructor(private nginxService: NginxService) {}
 
   /**
@@ -52,9 +55,14 @@ export class NginxConfigService {
     }
 
     try {
-      await this.backupConfig(configPath);
-      await writeFile(configPath, content, 'utf-8');
-      await this.cleanupConfigBackups(configPath, await this.getConfigBackupRetention());
+      await this.withWriteLock(configPath, async () => {
+        await this.backupConfig(configPath);
+        try {
+          atomicWrite(configPath, content);
+        } finally {
+          await this.cleanupConfigBackups(configPath, await this.getConfigBackupRetention());
+        }
+      });
     } catch (error: any) {
       throw new Error(`写入配置文件失败: ${error.message}`);
     }
@@ -175,16 +183,21 @@ export class NginxConfigService {
    */
   async writeConfigFile(filePath: string, content: string): Promise<void> {
     try {
-      const dir = dirname(filePath);
-      try {
-        await access(dir, constants.F_OK);
-      } catch {
-        await mkdir(dir, { recursive: true });
-      }
+      await this.withWriteLock(filePath, async () => {
+        const dir = dirname(filePath);
+        try {
+          await access(dir, constants.F_OK);
+        } catch {
+          await mkdir(dir, { recursive: true });
+        }
 
-      await this.backupConfig(filePath);
-      await writeFile(filePath, content, 'utf-8');
-      await this.cleanupConfigBackups(filePath, await this.getConfigBackupRetention());
+        await this.backupConfig(filePath);
+        try {
+          atomicWrite(filePath, content);
+        } finally {
+          await this.cleanupConfigBackups(filePath, await this.getConfigBackupRetention());
+        }
+      });
     } catch (error: any) {
       throw new Error(`写入配置文件失败: ${error.message}`);
     }
@@ -396,5 +409,14 @@ export class NginxConfigService {
 
     const insertPos = httpMatch.index + httpMatch[0].length;
     return `${content.slice(0, insertPos)}${newline}    ${includeLine}${content.slice(insertPos)}`;
+  }
+
+  private async withWriteLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
+    const lockKey = this.normalizeLockPath(filePath);
+    return this.writeLock.withLock(lockKey, fn);
+  }
+
+  private normalizeLockPath(filePath: string): string {
+    return resolve(filePath).replace(/\\/g, '/').toLowerCase();
   }
 }

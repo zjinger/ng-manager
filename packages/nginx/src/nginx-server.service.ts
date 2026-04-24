@@ -86,7 +86,7 @@ export class NginxServerService {
     const configDir = await this.configService.resolveServerConfigDir();
     const filePath = await this.makeGeneratedConfigPath(configDir);
     normalizedServer.filePath = filePath;
-    normalizedServer.id = this.createServerId(filePath, 0);
+    normalizedServer.id = this.createManagedServerId();
     normalizedServer.configText = this.generateServerConfig(normalizedServer);
 
     await this.configService.writeConfigFile(filePath, normalizedServer.configText);
@@ -157,7 +157,6 @@ export class NginxServerService {
           filePath: renamed.newFilePath,
         };
         nextServer.filePath = renamed.newFilePath;
-        finalId = this.createServerId(renamed.newFilePath, 0);
       }
     }
 
@@ -375,6 +374,7 @@ export class NginxServerService {
         .filter(Boolean) || [];
 
     const metadataName = this.parseManagedDisplayName(content);
+    const metadataId = this.normalizeManagedServerId(this.parseManagedMeta(content, 'id'));
     const metadataCreatedAt = this.parseManagedMeta(content, 'created-at');
     const metadataUpdatedAt = this.parseManagedMeta(content, 'updated-at');
     const metadataCreatedBy = this.parseManagedMeta(content, 'created-by');
@@ -407,7 +407,7 @@ export class NginxServerService {
       }
     }
 
-    const id = this.createServerId(filePath, blockIndex);
+    const id = this.ensureUniqueServerId(metadataId || this.createServerId(filePath, blockIndex), filePath, blockIndex);
     return {
       id,
       name,
@@ -580,6 +580,7 @@ export class NginxServerService {
   }
 
   private generateServerConfig(server: {
+    id?: string;
     name: string;
     listen: string[];
     domains?: string[];
@@ -596,6 +597,10 @@ export class NginxServerService {
   }): string {
     const lines: string[] = ['server {'];
     const displayName = this.normalizeManagedDisplayName(server.name);
+    const managedId = this.normalizeManagedServerId(server.id);
+    if (managedId) {
+      lines.push(`    # ngm-id: ${managedId}`);
+    }
     if (displayName) {
       lines.push(`    # ngm-name: ${displayName}`);
     }
@@ -727,6 +732,17 @@ export class NginxServerService {
       .replace(/[\r\n]+/g, ' ')
       .trim();
     return normalized || undefined;
+  }
+
+  private normalizeManagedServerId(value?: string): string | undefined {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return undefined;
+    }
+    if (!/^[A-Za-z0-9_-]{6,64}$/.test(normalized)) {
+      return undefined;
+    }
+    return normalized;
   }
 
   private parseManagedDisplayName(content: string): string | undefined {
@@ -1120,6 +1136,24 @@ export class NginxServerService {
 
   private createServerId(filePath: string, blockIndex: number): string {
     return createHash('sha1').update(`${filePath}#${blockIndex}`).digest('hex').slice(0, 24);
+  }
+
+  private createManagedServerId(): string {
+    let candidate = this.genId('srv');
+    while (this.servers.has(candidate) || this.serverSources.has(candidate)) {
+      candidate = this.genId('srv');
+    }
+    return candidate;
+  }
+
+  private ensureUniqueServerId(candidate: string, filePath: string, blockIndex: number): string {
+    let next = candidate;
+    let salt = 0;
+    while (this.servers.has(next) || this.serverSources.has(next)) {
+      salt += 1;
+      next = this.createServerId(filePath, blockIndex + salt);
+    }
+    return next;
   }
 
   private makeSafeFileStem(input: string): string {

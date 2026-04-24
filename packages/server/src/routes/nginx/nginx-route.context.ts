@@ -1,3 +1,4 @@
+import { realpath } from 'fs/promises';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { resolve } from 'path';
 import { AppError } from '@yinuo-ngm/core';
@@ -19,12 +20,27 @@ export function createNginxRouteContext(fastify: FastifyInstance): NginxRouteCon
     }
 
     const included: string[] = await nginx.config.getIncludedConfigs();
-    const includedSet = new Set(included.map(item => normalizeFsPath(item)));
-    const normalizedTarget = normalizeFsPath(filePath);
+    const includedSet = new Set<string>();
+    for (const item of included) {
+      try {
+        includedSet.add(normalizeFsPath(await realpath(item)));
+      } catch {
+        includedSet.add(normalizeFsPath(resolve(item)));
+      }
+    }
+
+    const resolvedTarget = resolve(filePath);
+    let normalizedTarget: string;
+    try {
+      normalizedTarget = normalizeFsPath(await realpath(resolvedTarget));
+    } catch {
+      normalizedTarget = normalizeFsPath(resolvedTarget);
+    }
+
     if (!includedSet.has(normalizedTarget)) {
       throw new Error('配置文件不在当前可管理列表中');
     }
-    return resolve(filePath);
+    return resolvedTarget;
   };
 
   return {

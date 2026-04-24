@@ -14,5 +14,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@yinuo-ngm/storage": "0.1.4"
   }
 }
