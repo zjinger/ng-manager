@@ -1,0 +1,377 @@
+@let req = nodeVersion.projectRequirement();
+@if (req) {
+  @if (req.voltaConfig) {
+    <span
+      nz-icon
+      nzType="check-circle"
+      nzTheme="fill"
+      style="color: #52c41a; font-size: 14px"
+      nz-tooltip
+      nzTooltipTitle="项目已配置 Volta (node@{{ req.voltaConfig }})，由 Volta 自动切换"
+    ></span>
+  } @else if (req.requiredVersion) {
+    @if (req.isMatch) {
+      <span
+        nz-icon
+        nzType="check-circle"
+        nzTheme="fill"
+        style="color: #52c41a; font-size: 14px"
+        nz-tooltip
+        nzTooltipTitle="当前版本 {{ req.satisfiedBy }} 满足项目要求 ({{ req.requiredVersion }})"
+      ></span>
+    } @else if (req.satisfiedBy) {
+      <span
+        nz-icon
+        nzType="warning"
+        nzTheme="fill"
+        style="color: #faad14; font-size: 14px"
+        nz-tooltip
+        nzTooltipTitle="项目要求 {{ req.requiredVersion }}，运行后将自动切换到 {{
+          req.satisfiedBy
+        }}"
+      ></span>
+    } @else {
+      <span
+        nz-icon
+        nzType="close-circle"
+        nzTheme="fill"
+        style="color: #ff4d4f; font-size: 14px"
+        nz-tooltip
+        nzTooltipTitle="项目要求 {{ req.requiredVersion }}，但未找到匹配的已安装版本"
+      ></span>
+    }
+  } @else {
+    <span
+      nz-icon
+      nzType="info-circle"
+      nzTheme="fill"
+      style="color: #1890ff; font-size: 14px"
+      nz-tooltip
+      nzTooltipTitle="该项目未配置 Node 版本要求"
+    ></span>
+  }
+}
+<span class="top-status">
+  <nz-icon nzType="proj:node" nzTheme="outline"></nz-icon>
+  {{ nodeVersion.currentVersion() || '检测中...' }}
+</span>
+
+<span class="manager-badge">{{ getManagerLabel() }}</span>
+
+@if (nodeVersion.manager() === 'none' && !nodeVersion.loading()) {
+  <button
+    nz-button
+    nzType="default"
+    nz-popover
+    [nzPopoverTrigger]="'hover'"
+    [nzPopoverContent]="installNvmTemplate"
+    nzPopoverPlacement="bottomRight"
+  >
+    <span nz-icon nzType="download" nzTheme="outline"></span>
+    安装 NVM
+  </button>
+  <ng-template #installNvmTemplate>
+    <div class="install-popover-content">
+      <p>NVM (Node Version Manager) 是一个用于管理多个 Node.js 版本的工具。</p>
+      <p>使用 NVM 可以轻松地在不同项目间切换 Node 版本，避免版本冲突。</p>
+      <div class="actions">
+        <button nz-button nzType="default" (click)="openNvmLearnMorePage()">了解更多</button>
+        <button nz-button nzType="primary" (click)="openNvmInstallPage()">下载 NVM</button>
+      </div>
+    </div>
+  </ng-template>
+}
+
+<button nz-button nzType="default" (click)="refresh()" [nzLoading]="nodeVersion.loading()">
+  <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
+  刷新
+</button>
+
+<button
+  nz-button
+  nzType="text"
+  nz-tooltip
+  nzTooltipTitle="Node版本设置"
+  (click)="openSettingsModal()"
+>
+  <nz-icon nzType="setting" nzTheme="outline"></nz-icon>
+</button>
+
+<!-- 设置 弹窗内容 -->
+<ng-template #settingsModal>
+  <div class="modal-content">
+    <!-- 未安装版本管理器的提示 -->
+    @if (!nodeVersion.hasVersionManager() && !nodeVersion.loading()) {
+      <div class="warning-message full-width">
+        <span nz-icon nzType="warning" nzTheme="outline"></span>
+        {{ nodeVersion.getNoManagerMessage() }}
+      </div>
+    }
+
+    <!-- 项目版本要求状态 -->
+    @if (req) {
+      @if (req.voltaConfig) {
+        <div class="status-section success">
+          <div class="status-info">
+            <span class="status-title">Volta 自动管理</span>
+            <span class="status-desc">项目已配置 node@{{ req.voltaConfig }}</span>
+          </div>
+        </div>
+      } @else if (req.isMatch) {
+        <div class="status-section success">
+          <div class="status-info">
+            <span class="status-title">版本满足要求</span>
+            <span class="status-desc"
+              >当前 {{ req.satisfiedBy }} 满足 {{ req.requiredVersion }}</span
+            >
+          </div>
+        </div>
+      } @else if (req.satisfiedBy) {
+        <div class="status-section warning">
+          <div class="status-info">
+            <span class="status-title">将自动切换</span>
+            <span class="status-desc"
+              >要求 {{ req.requiredVersion }}，切换到 {{ req.satisfiedBy }}</span
+            >
+          </div>
+        </div>
+      } @else if (req.requiredVersion) {
+        <div class="status-section error">
+          <div class="status-info">
+            <span class="status-title">版本不匹配</span>
+            <span class="status-desc">要求 {{ req.requiredVersion }}，未找到已安装版本</span>
+          </div>
+        </div>
+      }
+
+      @if (!req.hasEnginesConfig) {
+        <div class="status-section info">
+          <div class="status-info">
+            <span class="status-title">未配置要求</span>
+            <span class="status-desc">在 package.json 的 engines.node 字段配置</span>
+          </div>
+          <button
+            nz-button
+            nzType="primary"
+            nzSize="small"
+            nz-tooltip
+            nzTooltipTitle="写入 engines.node 到 package.json"
+            (click)="openWriteConfig()"
+          >
+            <span nz-icon nzType="edit" nzTheme="outline"></span>
+            写入配置
+          </button>
+        </div>
+      } @else {
+        <div class="status-section info">
+          <div class="status-info">
+            <span class="status-title">已配置要求</span>
+            <span class="status-desc">当前 engines.node: {{ req.requiredVersion }}</span>
+          </div>
+          <button
+            nz-button
+            nzType="default"
+            nzSize="small"
+            nz-tooltip
+            nzTooltipTitle="修改 engines.node 配置"
+            (click)="openWriteConfig()"
+          >
+            <span nz-icon nzType="edit" nzTheme="outline"></span>
+            修改配置
+          </button>
+        </div>
+      }
+
+      @if (showWriteConfig) {
+        <div class="write-config-section">
+          <div class="section-header">
+            <span class="section-title"
+              >{{ req.hasEnginesConfig ? '修改' : '写入' }} engines.node 配置</span
+            >
+            <button nz-button nzType="text" nzSize="small" (click)="closeWriteConfig()">
+              <span nz-icon nzType="close" nzTheme="outline"></span>
+            </button>
+          </div>
+
+          <div class="config-options">
+            <div class="option-group">
+              <span class="option-label">推荐版本:</span>
+              <nz-select
+                class="config-select"
+                [(ngModel)]="selectedEngineVersion"
+                [nzOptions]="recommendedEngineVersions"
+                nzPlaceHolder="选择推荐版本"
+              ></nz-select>
+            </div>
+
+            <div class="option-group">
+              <span class="option-label">或手动输入:</span>
+              <input
+                nz-input
+                class="config-input"
+                [(ngModel)]="customEngineVersion"
+                placeholder="如 >=18.0.0"
+              />
+            </div>
+          </div>
+
+          <div class="config-preview">
+            <span class="preview-label">预览:</span>
+            <code class="preview-code">
+              {{ getEngineConfigPreview() }}
+            </code>
+          </div>
+
+          <div class="config-actions">
+            <button
+              nz-button
+              nzType="primary"
+              [nzLoading]="writingConfig"
+              (click)="writeEngineConfig()"
+            >
+              <span nz-icon nzType="save" nzTheme="outline"></span>
+              写入 package.json
+            </button>
+          </div>
+        </div>
+      }
+    }
+
+    <!-- 版本管理器信息 -->
+    <div class="manager-info">
+      <span nz-icon nzType="database" nzTheme="outline"></span>
+      <span
+        >版本管理器:
+        {{
+          nodeVersion.manager() === 'nvm'
+            ? 'NVM'
+            : nodeVersion.manager() === 'volta'
+              ? 'Volta'
+              : '未检测到'
+        }}</span
+      >
+      <span class="current-version">当前: {{ nodeVersion.currentVersion() || '未知' }}</span>
+    </div>
+
+    <!-- 快速安装区 -->
+    @if (nodeVersion.hasVersionManager()) {
+      <div class="install-section">
+        <span class="section-title">快速安装</span>
+        <div class="install-row">
+          <input
+            nz-input
+            class="version-input"
+            [(ngModel)]="selectedInstallVersion"
+            name="selectedInstallVersion"
+            [nzAutocomplete]="versionAuto"
+            (input)="onVersionInput($event)"
+            placeholder="输入版本号 (如 18.20.0)"
+          />
+          <nz-autocomplete #versionAuto>
+            @for (v of filteredVersions; track v) {
+              <nz-auto-option [nzValue]="v" (click)="onVersionSelect(v)">{{ v }}</nz-auto-option>
+            }
+          </nz-autocomplete>
+          <button
+            nz-button
+            nzType="primary"
+            nzSize="small"
+            [nzLoading]="installing()"
+            [disabled]="!selectedInstallVersion"
+            (click)="installVersion()"
+          >
+            <span nz-icon nzType="download" nzTheme="outline"></span>
+            安装
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- 手动命令提示区 -->
+    <div class="manual-section">
+      <div class="section-header">
+        <span class="section-title">手动安装命令</span>
+        <span class="hint-text">如自动安装失败，可使用以下命令</span>
+      </div>
+
+      <div class="command-list">
+        <!-- NVM 命令 -->
+        <div class="command-item">
+          <span class="command-label">NVM:</span>
+          <code class="command-code">nvm install {{ getSuggestedVersion() }}</code>
+          <button
+            nz-button
+            nzType="text"
+            nzSize="small"
+            nz-tooltip
+            nzTooltipTitle="复制命令"
+            (click)="copyCommand('nvm install ' + getSuggestedVersion())"
+          >
+            <span nz-icon nzType="copy" nzTheme="outline"></span>
+          </button>
+        </div>
+
+        <!-- Volta 命令 -->
+        <!-- <div class="command-item">
+              <span class="command-label">Volta:</span>
+              <code class="command-code">volta install node@{{ getSuggestedVersion() }}</code>
+              <button
+                nz-button
+                nzType="text"
+                nzSize="small"
+                nz-tooltip
+                nzTooltipTitle="复制命令"
+                (click)="copyCommand('volta install node@' + getSuggestedVersion())"
+              >
+                <span nz-icon nzType="copy" nzTheme="outline"></span>
+              </button>
+            </div> -->
+      </div>
+    </div>
+
+    <!-- 已安装版本列表 -->
+    @let availableVersions = nodeVersion.availableVersions();
+    @if (availableVersions.length > 0) {
+      <div class="version-list-section">
+        <span class="section-title">已安装版本</span>
+        <nz-spin [nzSpinning]="nodeVersion.switching()">
+          <div class="version-list">
+            @for (v of availableVersions; track v) {
+              <span
+                class="version-tag"
+                [class.active]="v === nodeVersion.currentVersion()"
+                [class.clickable]="v !== nodeVersion.currentVersion()"
+              >
+                <span
+                  class="version-name"
+                  (click)="v !== nodeVersion.currentVersion() && switchVersion(v)"
+                  >{{ v }}</span
+                >
+                @if (v !== nodeVersion.currentVersion()) {
+                  <span
+                    class="delete-btn"
+                    nz-tooltip
+                    nzTooltipTitle="删除"
+                    (click)="confirmDelete(v, $event)"
+                  >
+                    <span nz-icon nzType="close" nzTheme="outline"></span>
+                  </span>
+                } @else {
+                  <span class="active-badge">当前</span>
+                }
+              </span>
+            }
+          </div>
+        </nz-spin>
+      </div>
+    }
+
+    <!-- 错误信息 -->
+    @if (nodeVersion.error()) {
+      <div class="error-message">
+        <span nz-icon nzType="close-circle" nzTheme="outline"></span>
+        {{ nodeVersion.error() }}
+      </div>
+    }
+  </div>
+</ng-template>

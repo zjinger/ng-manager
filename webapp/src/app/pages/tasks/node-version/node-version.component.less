@@ -1,0 +1,502 @@
+:host {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.top-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #52c41a;
+}
+
+.manager-badge {
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 3px;
+    background: #e6f7ff;
+    color: #1890ff;
+}
+
+.info-message,
+.success-message,
+.warning-message,
+.error-message {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 8px 0;
+}
+
+.info-message {
+    color: #1890ff;
+}
+
+.success-message {
+    color: #52c41a;
+}
+
+.warning-message {
+    color: #faad14;
+}
+
+.error-message {
+    color: #ff4d4f;
+}
+
+.muted-text {
+    color: #8c8c8c;
+    font-size: 13px;
+    margin-right: 12px;
+}
+
+.version-list-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 16px 0 4px;
+    border-top: 1px solid #f0f0f0;
+    margin-top: 12px;
+}
+
+.version-tag {
+    padding: 6px 8px;
+    font-size: 13px;
+    border-radius: 6px;
+    background: #fafafa;
+    color: #595959;
+    border: 1px solid #d9d9d9;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+
+    .version-name {
+        padding: 0 6px;
+    }
+
+    &.clickable {
+        cursor: pointer;
+
+        &:hover {
+            background: #e6f7ff;
+            color: #1890ff;
+            border-color: #91d5ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(24, 144, 255, 0.1);
+        }
+    }
+
+    &.active {
+        background: #1890ff;
+        color: white;
+        border-color: #1890ff;
+        font-weight: 500;
+        box-shadow: 0 2px 6px rgba(24, 144, 255, 0.2);
+    }
+
+    .delete-btn {
+        display: none;
+        padding: 2px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+        color: #8c8c8c;
+        transition: all 0.2s ease;
+
+        &:hover {
+            color: #ff4d4f;
+            background: #fff1f0;
+        }
+    }
+
+    &:hover .delete-btn {
+        display: inline-flex;
+    }
+}
+
+.clickable,
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.version-list {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.modal-content {
+    padding: 8px 0;
+}
+
+.install-section {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    margin-top: 8px;
+    background: #fafafa;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.install-section .muted-text {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.version-input {
+    flex: 1;
+    min-width: 180px;
+    max-width: 240px;
+}
+
+.install-section button {
+    flex-shrink: 0;
+}
+
+.modal-content {
+    padding: 8px 0;
+}
+
+.section-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #262626;
+}
+
+.status-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+
+    &.success {
+        background: #f6ffed;
+        border: 1px solid #b7eb8f;
+
+        .status-info .status-title {
+            color: #52c41a;
+        }
+    }
+
+    &.warning {
+        background: #fffbe6;
+        border: 1px solid #ffe58f;
+
+        .status-info .status-title {
+            color: #faad14;
+        }
+    }
+
+    &.error {
+        background: #fff2f0;
+        border: 1px solid #ffccc7;
+
+        .status-info .status-title {
+            color: #ff4d4f;
+        }
+    }
+
+    &.info {
+        background: #e6f7ff;
+        border: 1px solid #91d5ff;
+
+        .status-info .status-title {
+            color: #1890ff;
+        }
+    }
+
+    .status-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .status-title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-desc {
+            font-size: 12px;
+            color: #8c8c8c;
+        }
+    }
+}
+
+.manager-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #595959;
+    margin-bottom: 12px;
+
+    .current-version {
+        margin-left: auto;
+        color: #1890ff;
+        font-weight: 500;
+    }
+}
+
+.install-section {
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+
+    .install-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .version-input {
+        flex: 1;
+        min-width: 160px;
+    }
+}
+
+.manual-section {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+
+        .hint-text {
+            font-size: 11px;
+            color: #8c8c8c;
+        }
+    }
+
+    .command-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .command-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #e8e8e8;
+
+        .command-label {
+            font-size: 12px;
+            color: #8c8c8c;
+            width: 40px;
+        }
+
+        .command-code {
+            flex: 1;
+            font-size: 12px;
+            color: #1890ff;
+            background: #e6f7ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+    }
+}
+
+.version-list-section {
+    .section-title {
+        margin-bottom: 12px;
+    }
+
+    .version-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .version-tag {
+        padding: 6px 8px;
+        font-size: 13px;
+        border-radius: 6px;
+        background: #fafafa;
+        color: #595959;
+        border: 1px solid #d9d9d9;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+
+        &.clickable {
+            cursor: pointer;
+
+            &:hover {
+                background: #e6f7ff;
+                color: #1890ff;
+                border-color: #91d5ff;
+            }
+        }
+
+        &.active {
+            background: #1890ff;
+            color: white;
+            border-color: #1890ff;
+        }
+
+        .version-name {
+            padding: 0 4px;
+        }
+
+        .delete-btn {
+            display: none;
+            padding: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            color: #8c8c8c;
+
+            &:hover {
+                color: #ff4d4f;
+                background: #fff1f0;
+            }
+        }
+
+        .active-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        &:hover .delete-btn {
+            display: inline-flex;
+        }
+    }
+}
+
+.error-message {
+    margin-top: 12px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.write-config-section {
+    background: #f0f5ff;
+    border: 1px solid #adc6ff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 12px;
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1890ff;
+        }
+    }
+
+    .config-options {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+
+            .option-label {
+                font-size: 13px;
+                color: #595959;
+                min-width: 90px;
+            }
+
+            .config-select {
+                flex: 1;
+                max-width: 200px;
+            }
+
+            .config-input {
+                flex: 1;
+                max-width: 200px;
+            }
+        }
+    }
+
+    .config-preview {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #e8e8e8;
+
+        .preview-label {
+            font-size: 12px;
+            color: #8c8c8c;
+        }
+
+        .preview-code {
+            font-size: 13px;
+            color: #1890ff;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+    }
+
+    .config-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+}
+
+.install-popover-content {
+    p {
+        font-size: 13px;
+        color: #595959;
+        line-height: 1.6;
+        margin: 0 0 8px 0;
+
+        &:last-of-type {
+            margin-bottom: 12px;
+        }
+    }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+}
