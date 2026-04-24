@@ -581,7 +581,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
       .filter(port => Number.isInteger(port) && port >= 1 && port <= 65535)
       .map(port => String(port));
     const unique = Array.from(new Set(valid));
-    return unique.length ? unique : ['80'];
+    return unique.length ? unique : ['8080'];
   }
 
   get selectedCount(): number {
@@ -769,7 +769,7 @@ export class NginxServerListComponent implements OnInit, OnChanges, OnDestroy {
     const scheme = server.ssl ? 'https' : 'http';
     const ports = this.extractPorts(server.listen);
     const hosts = this.extractHosts(server);
-    const selectedPorts = ports.length ? ports : [server.ssl ? 443 : 80];
+    const selectedPorts = ports.length ? ports : [server.ssl ? 8443 : 8080];
 
     if (!hosts.length) {
       return [];

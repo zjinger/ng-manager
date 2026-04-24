@@ -180,7 +180,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
       const parsedPort = this.parseListenPort(this.editingServer.listen);
       this.formData = {
         name: this.editingServer.name,
-        listen: parsedPort ? [String(parsedPort)] : ['80'],
+        listen: parsedPort ? [String(parsedPort)] : ['8080'],
         domains: [...(this.editingServer.domains || [])],
         root: this.editingServer.root || '',
         index: [...(this.editingServer.index?.length ? this.editingServer.index : ['index.html'])],
@@ -192,7 +192,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         sslKey: this.editingServer.sslKey || '',
         extraConfig: this.editingServer.extraConfig || '',
       };
-      this.listenPort = parsedPort || 80;
+      this.listenPort = parsedPort || 8080;
       this.domainValues = [...(this.formData.domains || [])];
       this.indexFile = (this.formData.index || ['index.html'])[0] || 'index.html';
       this.initScenarioFromFormData();
@@ -219,7 +219,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     } else {
       this.formData = {
         name: '',
-        listen: ['80'],
+        listen: ['8080'],
         domains: ['127.0.0.1'],
         root: '',
         index: ['index.html'],
@@ -231,7 +231,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         sslKey: '',
         extraConfig: '',
       };
-      this.listenPort = 80;
+      this.listenPort = 8080;
       this.domainValues = ['127.0.0.1'];
       this.indexFile = 'index.html';
       this.frontendServiceType = 'web';
