@@ -14,6 +14,7 @@
     { "path": "packages/logger" },
     { "path": "packages/node-version" },
     { "path": "packages/task" },
+    { "path": "packages/deps" },
     { "path": "packages/runtime" },
     { "path": "packages/core" },
     { "path": "packages/sprite" },

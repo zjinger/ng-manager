@@ -2,9 +2,9 @@ export type DepGroup = "dependencies" | "devDependencies";
 
 export interface DepItem {
     name: string;
-    current?: string;   // node_modules 实际安装版本
-    required?: string;  // package.json 里的范围
-    latest?: string;    // npm registry 最新版本（离线可能为空）
+    current?: string;
+    required?: string;
+    latest?: string;
     installed: boolean;
     hasUpdate: boolean;
     group: DepGroup;
@@ -16,9 +16,19 @@ export interface ProjectDepsResult {
     meta: {
         packageManager: "npm";
         registryOnline: boolean;
-        /** volta 配置的 Node 版本要求 */
         voltaConfig?: string;
-        /** engines 配置的 Node 版本要求 */
         enginesNode?: string;
     };
+}
+
+export interface InstallDepOptions {
+    name: string;
+    group: DepGroup;
+    target: "required" | "latest" | "custom";
+    version?: string;
+}
+
+export interface UninstallDepOptions {
+    name: string;
+    group: DepGroup;
 }

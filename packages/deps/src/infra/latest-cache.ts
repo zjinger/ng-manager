@@ -1,14 +1,5 @@
+import { CacheEntry, LatestCacheOptions } from './types';
 
-
-import { CacheEntry, LatestCacheOptions } from "./types";
-
-
-/**
- * @deprecated 请使用 LatestCacheKv 
- * LatestCache
- * - 纯内存 Map 缓存
- * - 适用于短生命周期场景，如单次命令执行期间的缓存
- */
 export class LatestCache {
     private store = new Map<string, CacheEntry>();
     private inflight = new Map<string, Promise<string | null>>();
@@ -18,8 +9,8 @@ export class LatestCache {
     private maxSize: number;
 
     constructor(opts: LatestCacheOptions = {}) {
-        this.ttlOkMs = opts.ttlOkMs ?? 6 * 60 * 60 * 1000;  // 6小时
-        this.ttlFailMs = opts.ttlFailMs ?? 2 * 60 * 1000;  // 2分钟
+        this.ttlOkMs = opts.ttlOkMs ?? 6 * 60 * 60 * 1000;
+        this.ttlFailMs = opts.ttlFailMs ?? 2 * 60 * 1000;
         this.maxSize = opts.maxSize ?? 2000;
     }
 
@@ -42,7 +33,6 @@ export class LatestCache {
     }
 
     private set(key: string, value: string | null, ttlMs: number): void {
-        // 简单的 size 控制：超了就删最早插入的（Map 迭代顺序）
         if (this.store.size >= this.maxSize) {
             const first = this.store.keys().next().value;
             if (first) this.store.delete(first);
@@ -50,9 +40,6 @@ export class LatestCache {
         this.store.set(key, { value, expiresAt: Date.now() + ttlMs });
     }
 
-    /**
-     * 并发去重：同一个 key 同时请求，只执行一次 loader
-     */
     async getOrLoad(key: string, loader: () => Promise<string | null>): Promise<string | null> {
         const cached = this.get(key);
         if (cached !== undefined) return cached;
@@ -77,7 +64,6 @@ export class LatestCache {
         return p;
     }
 
-    /** 可选：手动清理过期 */
     prune(): void {
         const now = Date.now();
         for (const [k, v] of this.store.entries()) {
@@ -85,7 +71,6 @@ export class LatestCache {
         }
     }
 
-    /** 可选：完全清空 */
     clear(): void {
         this.store.clear();
         this.inflight.clear();

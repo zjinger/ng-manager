@@ -1,16 +1,16 @@
 import * as path from "path";
 
-import { DepsServiceImpl } from "../../domain/deps";
-import type { ProjectService } from "@yinuo-ngm/project";
 import {
     CachedNpmRegistry,
+    DepsServiceImpl,
     LatestCacheKv,
-    type LatestCacheSnapshot,
     NodeModulesReader,
     NpmDriver,
     NpmRegistryByCli,
-} from "../../infra/deps";
-import { JsonFileKvRepo } from "../../infra/storage/json-file-kv.repo";
+    type LatestCacheSnapshot,
+} from "@yinuo-ngm/deps";
+import { JsonFileKvRepo } from "@yinuo-ngm/storage";
+import type { ProjectService } from "@yinuo-ngm/project";
 
 export async function createDepsDomain(opts: {
     cacheDir: string;

@@ -1,5 +1,5 @@
-import type { IKvRepo } from "../storage/kv.repo";
-import type { LatestCacheSnapshot, LatestCacheEntry, LatestCacheOptions } from "./types";
+import type { KvRepo } from '@yinuo-ngm/storage';
+import type { LatestCacheEntry, LatestCacheOptions, LatestCacheSnapshot } from './types';
 
 export class LatestCacheKv {
     private store = new Map<string, LatestCacheEntry>();
@@ -16,8 +16,8 @@ export class LatestCacheKv {
     private pruneTimer: NodeJS.Timeout | null = null;
 
     constructor(
-        private repo: IKvRepo<LatestCacheSnapshot>,
-        private snapshotId: string, // 固定 key，例如 "npm-latest"
+        private repo: KvRepo<LatestCacheSnapshot>,
+        private snapshotId: string,
         opts: LatestCacheOptions = {}
     ) {
         this.ttlOkMs = opts.ttlOkMs ?? 6 * 60 * 60 * 1000;
@@ -26,7 +26,6 @@ export class LatestCacheKv {
         this.flushDebounceMs = opts.flushDebounceMs ?? 800;
     }
 
-    /** 启动时加载 */
     async load(): Promise<void> {
         const snap = await this.repo.get(this.snapshotId);
         if (!snap || snap.version !== 1 || !snap.entries) return;
@@ -43,7 +42,6 @@ export class LatestCacheKv {
         this.enforceMaxSize();
     }
 
-    /** 关闭应用/服务退出前可调用：强制落盘 */
     async flush(): Promise<void> {
         if (!this.dirty) return;
         this.dirty = false;
@@ -62,7 +60,6 @@ export class LatestCacheKv {
         await this.repo.set(this.snapshotId, snap);
     }
 
-    /** 获取缓存；undefined 表示未命中 */
     get(key: string): string | null | undefined {
         const e = this.store.get(key);
         if (!e) return undefined;
@@ -75,7 +72,6 @@ export class LatestCacheKv {
         return e.value;
     }
 
-    /** 并发去重：同 key 同时请求只执行一次 loader */
     async getOrLoad(key: string, loader: () => Promise<string | null>): Promise<string | null> {
         const cached = this.get(key);
         if (cached !== undefined) return cached;
@@ -109,18 +105,6 @@ export class LatestCacheKv {
     }
 
     prune(markDirty = true): number {
-        // const now = Date.now();
-        // let changed = false;
-
-        // for (const [k, v] of this.store.entries()) {
-        //     if (now > v.expiresAt) {
-        //         this.store.delete(k);
-        //         changed = true;
-        //     }
-        // }
-
-        // if (changed && markDirty) this.markDirtyDebounced();
-
         const now = Date.now();
         let removed = 0;
 
@@ -136,7 +120,6 @@ export class LatestCacheKv {
     }
 
     startPruneTimer(intervalMs = 10 * 60 * 1000, onPruned?: (removed: number) => void): void {
-        // 防止重复启动
         if (this.pruneTimer) return;
 
         this.pruneTimer = setInterval(() => {
@@ -144,7 +127,6 @@ export class LatestCacheKv {
             if (removed > 0) onPruned?.(removed);
         }, intervalMs);
 
-        // Node 环境：不阻止进程退出（可选）
         this.pruneTimer.unref?.();
     }
 
@@ -184,7 +166,7 @@ export class LatestCacheKv {
             try {
                 await this.flush();
             } catch {
-                // 落盘失败不影响主流程，下次再试
+                // ignore
             }
         }, this.flushDebounceMs);
     }
