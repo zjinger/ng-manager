@@ -3,6 +3,12 @@
   "version": "0.1.5",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
   "author": "ZhangJing <892295834@qq.com>",
   "description": "",
   "files": [

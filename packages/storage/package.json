@@ -9,6 +9,12 @@
   ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
   "license": "ISC",
   "author": "zhangjing <892295834@qq.com>",
   "files": [

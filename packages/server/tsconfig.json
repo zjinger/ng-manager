@@ -8,6 +8,7 @@
   },
   "include": ["src", "typing.d.ts"],
   "references": [
+    { "path": "../errors" },
     { "path": "../core" },
     { "path": "../api" },
     { "path": "../nginx" }

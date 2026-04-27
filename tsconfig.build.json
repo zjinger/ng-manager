@@ -4,6 +4,7 @@
   "files": [],
   // Building this project will build all of the following:
   "references": [
+    { "path": "packages/errors" },
     { "path": "packages/storage" },
     { "path": "packages/runtime" },
     { "path": "packages/core" },
