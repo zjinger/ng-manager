@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "@yinuo-ngm/core",
   "version": "0.1.8",
   "author": "ZhangJing <892295834@qq.com>",
@@ -20,10 +20,8 @@
     "build": "tsc -b tsconfig.json",
     "test": "npm run build"
   },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
-  },
   "dependencies": {
+    "@yinuo-ngm/config": "^0.1.0",
     "@yinuo-ngm/errors": "^1.0.0",
     "@yinuo-ngm/event": "^0.1.0",
     "@yinuo-ngm/logger": "^0.1.0",
@@ -33,9 +31,7 @@
     "@yinuo-ngm/protocol": "^0.1.0",
     "@yinuo-ngm/shared": "^0.1.0",
     "@yinuo-ngm/sprite": "^0.1.6",
-    "@yinuo-ngm/task": "^0.1.0",
-    "js-yaml": "^4.1.1",
-    "jsonc-parser": "^3.3.1"
+    "@yinuo-ngm/task": "^0.1.0"
   },
   "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"
 }

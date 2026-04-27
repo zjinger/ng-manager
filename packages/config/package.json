@@ -1,0 +1,32 @@
+﻿{
+  "name": "@yinuo-ngm/config",
+  "version": "0.1.0",
+  "author": "ZhangJing <892295834@qq.com>",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@yinuo-ngm/errors": "^1.0.0",
+    "@yinuo-ngm/project": "^0.1.0",
+    "@yinuo-ngm/storage": "^0.1.0",
+    "js-yaml": "^4.1.1",
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
+  }
+}

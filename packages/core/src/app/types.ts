@@ -1,5 +1,5 @@
 
-import { ConfigService } from "../domain/config";
+import type { ConfigService } from "@yinuo-ngm/config";
 import { DashboardService } from "../domain/dashboard";
 import type { DepsService } from "@yinuo-ngm/deps";
 import { FsService } from "../domain/fs";

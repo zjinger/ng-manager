@@ -1,5 +1,4 @@
-//  core/src/domain/config/schema/schema.domain.dto.ts
-import type { ConfigSchema } from "./schema.types";
+﻿import type { ConfigSchema } from "./schema.types";
 
 export interface DomainSchemaDoc<VM = any> {
     domainId: string;

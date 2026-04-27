@@ -1,4 +1,4 @@
-export function deepMerge<T>(base: T, patch: any): T {
+﻿export function deepMerge<T>(base: T, patch: any): T {
     if (patch == null) return base;
     if (Array.isArray(base) || Array.isArray(patch)) {
         // MVP：数组直接替换（后续可做更细粒度）

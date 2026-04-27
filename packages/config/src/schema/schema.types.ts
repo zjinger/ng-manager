@@ -1,4 +1,4 @@
-import { ConfigCodec } from "../domains";
+﻿import { ConfigCodec } from "../domains";
 
 export interface ConfigSchema {
     id: string;

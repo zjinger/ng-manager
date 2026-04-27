@@ -1,6 +1,4 @@
-// packages/core/src/domain/config/domains/angular.domain.ts
-
-import { ConfigDomain } from "./config.domain.types";
+﻿import { ConfigDomain } from "./config.domain.types";
 
 export const angularDomain: ConfigDomain = {
     id: "angular",

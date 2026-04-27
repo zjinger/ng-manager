@@ -1,8 +1,7 @@
-// core/src/domain/config/config.service.impl.ts
-import * as path from "node:path";
-import { coreErrors, CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+﻿import * as path from "node:path";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { FileLock } from "@yinuo-ngm/storage";
-import { Project, type ProjectService } from "@yinuo-ngm/project";
+import { type ProjectService } from "@yinuo-ngm/project";
 import { ConfigRegistry } from "./config.registry";
 import { ConfigResolver } from "./config.resolver";
 import { ConfigService } from "./config.service";
@@ -27,7 +26,7 @@ export class ConfigServiceImpl implements ConfigService {
 
     private catalogCache = new Map<string, { rootDir: string; catalog: ResolvedDomain[]; ts: number }>();
 
-    private readonly CATALOG_TTL = 2000; // 2s，MVP 足够
+    private readonly CATALOG_TTL = 2000;
 
     constructor(private projectService: ProjectService) {
         this.registry.registerMany([angularDomain, qualityDomain]);
@@ -55,10 +54,6 @@ export class ConfigServiceImpl implements ConfigService {
         return { ...result, relPath: rd.chosen.relPath };
     }
 
-    /**
-     * 注意：writeDoc 仍然保留（可用于“整文件覆盖写入”场景）
-     * 但 DomainSchema 写回已改为 patchJsonLike，以最大限度保留原文件格式
-     */
     async writeDoc(projectId: string, docId: string, next: unknown): Promise<void> {
         const project = await this.projectService.get(projectId);
         const catalog = this.getCachedCatalog(projectId, project.root);
@@ -66,7 +61,6 @@ export class ConfigServiceImpl implements ConfigService {
 
         if (rd?.exists && rd.absPath && rd.chosen) {
             await this.fileLock.withLock(rd.absPath, async () => {
-                // 仍按原逻辑：全量写（会重排格式）；留给非 schema 的场景使用
                 this.store.write(rd.absPath!, rd.chosen!.codec, next, { format: "pretty" });
             });
             this.catalogCache.delete(projectId);
@@ -102,9 +96,7 @@ export class ConfigServiceImpl implements ConfigService {
             schema,
             vm,
             options,
-            meta: {
-                // 可选：把 domain docs 的 relPath/codec/exist 也塞进去，UI 可展示“来源文件”
-            },
+            meta: {},
         };
     }
 
@@ -116,34 +108,15 @@ export class ConfigServiceImpl implements ConfigService {
         return provider.assemble(docsData, ctx);
     }
 
-    /**
-     * DomainSchema 写回：
-     * - 不再 deepMerge + 全量 stringify（会改格式/写入默认字段）
-     * - 改为：根据 provider.diff 的 docPatch/filePatch，使用 store.patchJsonLike 增量写回原文件
-     */
     async writeDomainSchema(projectId: string, domainId: string, nextVM: any) {
-        // const project = await this.projectService.get(projectId);
-        // const provider = this.getProvider(domainId);
-        // const ctx = this.buildSchemaCtx(projectId, project.root);
-
-        // const baselineDocs = await this.getBaselineDocs(projectId, domainId);
-        // const baselineVM = provider.assemble(baselineDocs, ctx);
-
-        // provider.validate?.(nextVM, ctx);
-
-        // const diffRes: DomainSchemaDiffResult = provider.diff(baselineVM, nextVM, ctx);
-        // const docPatch = diffRes.docPatch ?? {};
-        // const filePatch = diffRes.filePatch ?? [];
         const diffRes = await this.diffDomainSchema(projectId, domainId, nextVM);
         const docPatch = diffRes.docPatch ?? {};
         const filePatch = diffRes.filePatch ?? [];
         const project = diffRes.project!;
         const ctx = diffRes.ctx;
 
-        // 用最新 catalog 定位 docId -> absPath/codec
         const catalog = this.getCachedCatalog(projectId, project.root);
 
-        // 1) 写回 domain docs（docId）
         for (const [docId, patch] of Object.entries(docPatch)) {
             const rd = this.findResolvedDoc(catalog, docId);
             if (!rd?.exists || !rd.absPath || !rd.chosen) {
@@ -161,7 +134,6 @@ export class ConfigServiceImpl implements ConfigService {
             });
         }
 
-        // 2) 写回引用文件（relPath）
         for (const fp of filePatch) {
             if (!fp?.relPath) {
                 throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, `filePatch.relPath is required`, {
@@ -170,20 +142,13 @@ export class ConfigServiceImpl implements ConfigService {
                     fp,
                 });
             }
-            // ctx.writeFile 在本实现里也是 patch 写回
             await ctx.writeFile(fp.relPath, fp.codec, fp.patch);
         }
 
-        // 写完刷新缓存
         this.catalogCache.delete(projectId);
     }
 
-    /**
-     * 对比指定域的域级配置结构化数据差异
-     * - 返回值可用于 UI 展示差异，也可用于 writeDomainSchema 直接写回
-     */
-    async diffDomainSchema(projectId: string, domainId: string, nextVM: any): Promise<DomainSchemaDiffResult & { project: Project; ctx: DomainSchemaContext }> {
-
+    async diffDomainSchema(projectId: string, domainId: string, nextVM: any): Promise<DomainSchemaDiffResult & { project: any; ctx: DomainSchemaContext }> {
         const project = await this.projectService.get(projectId);
         const provider = this.getProvider(domainId);
         const ctx = this.buildSchemaCtx(projectId, project.root);
@@ -227,18 +192,10 @@ export class ConfigServiceImpl implements ConfigService {
         return docsData;
     }
 
-    /**
-     * 解析配置目录
-     * rootDir 项目根目录
-     * @returns 解析后的配置域数组
-     */
     private resolveCatalog(rootDir: string): ResolvedDomain[] {
         return this.resolver.resolveAll(rootDir, this.registry.list());
     }
 
-    /**
-     * 获取缓存的配置目录
-     */
     private getCachedCatalog(projectId: string, rootDir: string): ResolvedDomain[] {
         const hit = this.catalogCache.get(projectId);
         const now = Date.now();
@@ -250,9 +207,6 @@ export class ConfigServiceImpl implements ConfigService {
         return catalog;
     }
 
-    /**
-     * 从 catalog 中获取指定 doc
-     */
     private findResolvedDoc(catalog: ResolvedDomain[], docId: string): ResolvedDoc | undefined {
         for (const d of catalog) {
             const rd = d.docs.find((x) => x.spec.id === docId);
@@ -261,11 +215,6 @@ export class ConfigServiceImpl implements ConfigService {
         return undefined;
     }
 
-    /**
-     * 构建 DomainSchemaContext
-     * - readFile：读取并返回 data/raw/absPath
-     * - writeFile：改为“patch 写回”（使用 store.patchJsonLike）
-     */
     private buildSchemaCtx(projectId: string, rootDir: string) {
         return {
             projectId,

@@ -1,24 +1,7 @@
-import type { ConfigSchema } from "./schema.types";
+﻿import type { ConfigSchema } from "./schema.types";
 
 /**
  * Angular 工作区配置模式定义
- * 
- * 定义了 Angular 项目的完整配置结构，包括工作区基础配置、构建配置、开发服务器配置和 TypeScript 配置。
- * 
- * @remarks
- * 该配置模式包含以下主要部分：
- * - **基础配置 (workspace)**: 工作区级别的设置，如默认项目选择
- * - **构建配置 (build)**: 构建过程相关的选项，包括优化、输出路径、源码映射等
- * - **开发配置 (serve)**: 开发服务器的配置，包括主机、端口和代理设置
- * - **TypeScript 配置 (ts)**: TypeScript 编译器选项，如目标版本、模块系统和严格模式
- * 
- * @example
- * ```typescript
- * // 使用配置模式进行表单渲染
- * const configForm = renderConfigForm(angularSchema);
- * ```
- * 
- * @see {@link ConfigSchema} 配置模式的类型定义
  */
 export const angularSchema: ConfigSchema = {
     id: "angular-domain",
@@ -44,7 +27,7 @@ export const angularSchema: ConfigSchema = {
                 {
                     key: "build.defaultConfiguration",
                     label: "默认配置",
-                    type: "select", // 重要：不要用 string（你前端 string 是只读 span）
+                    type: "select",
                     level: "basic",
                     desc: "Build 目标的默认配置名称",
                     optionsRef: { key: "configurations" },

@@ -1,10 +1,10 @@
-import type { ConfigSchema } from "./schema.types";
+﻿import type { ConfigSchema } from "./schema.types";
 
 /**
  * 根据 ConfigSchema 中 item.default，对 VM 应用默认值
  * 规则：
  * - 仅当当前值 === undefined 时才写 default
- * - null / false / "" 都视为“用户显式值”，不会覆盖
+ * - null / false / "" 都视为"用户显式值"，不会覆盖
  */
 export function applySchemaDefaults<T extends object>(
     vm: T,
@@ -46,5 +46,3 @@ export  function setByPath(obj: any, path: string, value: any) {
 
     cur[last] = value;
 }
-
-
