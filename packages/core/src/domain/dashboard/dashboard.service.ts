@@ -1,4 +1,4 @@
-import { KillPortResult } from "../../infra/process";
+import type { KillPortResult } from "@yinuo-ngm/process";
 import { DashboardDocV1, WidgetKey, } from "./dashboard.types";
 import { DashboardItemConfig, WidgetMeta } from "./dashboard.widgets";
 export interface DashboardService {

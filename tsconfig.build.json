@@ -6,6 +6,7 @@
   "references": [
     { "path": "packages/errors" },
     { "path": "packages/protocol" },
+    { "path": "packages/process" },
     { "path": "packages/storage" },
     { "path": "packages/runtime" },
     { "path": "packages/core" },

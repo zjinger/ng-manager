@@ -4,7 +4,7 @@ import { defaultDashboard } from "./dashboard.defaults";
 import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { DashboardRepo } from "./dashboard.repo";
 import { DashboardItemConfig, makeWidgetItem, WidgetMeta, WIDGETS } from "./dashboard.widgets";
-import { killPort, KillPortResult } from "../../infra/process";
+import { killPort, type KillPortResult } from "@yinuo-ngm/process";
 
 export class DashboardServiceImpl implements DashboardService {
     constructor(private repo: DashboardRepo) { }

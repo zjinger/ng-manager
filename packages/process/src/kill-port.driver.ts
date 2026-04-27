@@ -1,8 +1,9 @@
-import os from "os";
 import { execFile } from "child_process";
+import os from "os";
 import { promisify } from "util";
-import { KillPortResult } from "./process.types";
-import { CoreError, CoreErrorCodes } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import type { KillPortResult } from "./process.types";
+
 const execFileAsync = promisify(execFile);
 
 function isWin32(): boolean {
@@ -36,10 +37,6 @@ export async function killPort(port: number): Promise<KillPortResult> {
     return { port, pids: uniqPids, killed, failed, note };
 }
 
-/**
-* Windows  只跑 netstat -ano，然后 Node 里过滤，不使用 findstr（避免 code=1 假失败）
-* 默认只抓 TCP LISTENING + UDP（UDP 无 state）
-*/
 async function findPidsOnPortWin(port: number): Promise<number[]> {
     const { stdout } = await execFileAsync("cmd", ["/c", "netstat -ano"], {
         windowsHide: true,
@@ -52,13 +49,11 @@ async function findPidsOnPortWin(port: number): Promise<number[]> {
     for (const line of stdout.split(/\r?\n/)) {
         const s = line.trim();
         if (!s) continue;
-
         if (!(s.startsWith("TCP") || s.startsWith("UDP"))) continue;
         if (!s.includes(needle)) continue;
 
         const parts = s.split(/\s+/);
 
-        // TCP: proto local remote state pid
         if (parts[0] === "TCP" && parts.length >= 5) {
             const local = parts[1];
             const state = parts[3];
@@ -74,7 +69,6 @@ async function findPidsOnPortWin(port: number): Promise<number[]> {
             continue;
         }
 
-        // UDP: proto local remote pid（无 state）
         if (parts[0] === "UDP" && parts.length >= 4) {
             const local = parts[1];
             const pidStr = parts[3];
@@ -84,7 +78,6 @@ async function findPidsOnPortWin(port: number): Promise<number[]> {
 
             const pid = Number(pidStr);
             if (Number.isFinite(pid)) pids.push(pid);
-            continue;
         }
     }
 
@@ -92,7 +85,6 @@ async function findPidsOnPortWin(port: number): Promise<number[]> {
 }
 
 async function findPidsOnPortUnix(port: number): Promise<number[]> {
-    // 1) lsof
     {
         const r = await execFileAsync("sh", ["-lc", `command -v lsof >/dev/null 2>&1 && lsof -i :${port} -sTCP:LISTEN -t || true`], {
             maxBuffer: 2 * 1024 * 1024,
@@ -106,7 +98,6 @@ async function findPidsOnPortUnix(port: number): Promise<number[]> {
         if (pids.length) return pids;
     }
 
-    // 2) ss
     {
         const r = await execFileAsync("sh", ["-lc", `command -v ss >/dev/null 2>&1 && ss -ltnp 2>/dev/null | grep ":${port} " || true`], {
             maxBuffer: 2 * 1024 * 1024,
@@ -115,7 +106,6 @@ async function findPidsOnPortUnix(port: number): Promise<number[]> {
         if (pids.length) return pids;
     }
 
-    // 3) netstat
     {
         const r = await execFileAsync("sh", ["-lc", `command -v netstat >/dev/null 2>&1 && netstat -ltnp 2>/dev/null | grep ":${port} " || true`], {
             maxBuffer: 2 * 1024 * 1024,
@@ -157,7 +147,6 @@ async function killPidsWin(pids: number[]): Promise<{ killed: number[]; failed: 
     const failed: { pid: number; reason: string }[] = [];
 
     for (const pid of pids) {
-        // /F 强制；/T 杀子进程树
         const r = await execFileAsync("cmd", ["/c", `taskkill /PID ${pid} /F /T`], {
             windowsHide: true,
             maxBuffer: 2 * 1024 * 1024,
@@ -177,7 +166,6 @@ async function killPidsWin(pids: number[]): Promise<{ killed: number[]; failed: 
 }
 
 async function killPidsUnix(pids: number[]): Promise<{ killed: number[]; failed: { pid: number; reason: string }[] }> {
-    // 逐个 kill，便于给出 failed 明细
     const killed: number[] = [];
     const failed: { pid: number; reason: string }[] = [];
 

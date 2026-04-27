@@ -1,8 +1,10 @@
-import { CoreError, CoreErrorCodes } from "../../common/errors";
-import { IProcessDriver , SpawnOptions, SpawnedProcess } from "../../infra/process";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import type { IProcessDriver } from "./process.driver";
+import type { SpawnOptions, SpawnedProcess } from "./process.types";
 
 export class ProcessService {
     constructor(private driver: IProcessDriver) { }
+
     async spawn(
         command: string,
         args: string[],

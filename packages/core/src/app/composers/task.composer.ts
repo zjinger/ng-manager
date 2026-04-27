@@ -1,5 +1,5 @@
 import type { NodeVersionService } from "../../domain/node-version/node-version.service";
-import type { ProcessService } from "../../domain/process";
+import type { ProcessService } from "@yinuo-ngm/process";
 import type { ProjectService } from "../../domain/project";
 import { TaskServiceImpl } from "../../domain/task/task.service.impl";
 import type { CoreEventMap } from "../../infra/event/events";

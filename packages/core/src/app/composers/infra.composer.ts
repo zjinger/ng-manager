@@ -1,10 +1,9 @@
 import * as path from "path";
 
-import { ProcessService } from "../../domain/process";
+import { ProcessService, PtyProcessDriver } from "@yinuo-ngm/process";
 import type { CoreEventMap } from "../../infra/event/events";
 import { MemoryEventBus } from "../../infra/event/memory-event-bus";
 import { RingLogStore } from "../../infra/log/ring-log-store";
-import { PtyProcessDriver } from "../../infra/process";
 import { SystemLogServiceImpl } from "../../domain/logger";
 
 export function createInfra(opts: {
