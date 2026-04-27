@@ -3,14 +3,14 @@ import * as fs from "fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import * as path from "path";
-import { CoreError, CoreErrorCodes } from "../../common/errors";
-import { uid } from "../../common/id";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import { uid } from "@yinuo-ngm/shared";
 import type { IEventBus } from "@yinuo-ngm/event";
 import { Events, type CoreEventMap } from "../../infra/event/events";
 import type { TaskService } from "@yinuo-ngm/task";
 import { BootstrapCtx } from "./bootstrap.types";
 import { scanWorkspaceCandidates } from "./detectors/detectFramework";
-import type { ProjectService } from "./project.service";
+import type { ProjectService } from "@yinuo-ngm/project";
 import type { SystemLogService } from "@yinuo-ngm/logger";
 const execFileAsync = promisify(execFile);
 export class ProjectBootstrapService {

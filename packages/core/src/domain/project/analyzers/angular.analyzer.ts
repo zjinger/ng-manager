@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
-import type { ProjectMeta } from "../project.meta";
+import type { ProjectMeta } from "@yinuo-ngm/project";
 
 type AngularSnapshot = NonNullable<ProjectMeta["angular"]>["snapshot"];
 

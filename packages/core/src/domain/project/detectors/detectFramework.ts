@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ProjectFramework } from "../project.meta";
+import { ProjectFramework } from "@yinuo-ngm/project";
 import { ParsedPackageJson } from "../parsers/parsePackageJson";
 import { PickCandidate } from "../bootstrap.types";
 
