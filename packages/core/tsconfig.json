@@ -14,6 +14,7 @@
     { "path": "../project" },
     { "path": "../event" },
     { "path": "../node-version" },
+    { "path": "../task" },
     { "path": "../sprite" }
   ]
 }

@@ -12,6 +12,7 @@
     { "path": "packages/project" },
     { "path": "packages/event" },
     { "path": "packages/node-version" },
+    { "path": "packages/task" },
     { "path": "packages/runtime" },
     { "path": "packages/core" },
     { "path": "packages/sprite" },
