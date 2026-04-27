@@ -1,4 +1,4 @@
-﻿import { ProjectNodeRequirement } from '../node-version.service';
+import { ProjectNodeRequirement } from '../node-version.service';
 import { detectFramework } from './framework.detector';
 import { readPackageJson } from './package-json.reader';
 import { satisfiesVersion, findBestMatchingVersion } from '../node-version.utils';
@@ -8,10 +8,15 @@ import { InstalledVersion, ProjectType } from '../managers/manager.types';
 
 export interface DetectRequirementOptions {
   projectPath: string;
-  /** Current normalised Node version (e.g. 'v20.19.0') */
+  /** Server 进程当前的 Node 版本（normalised 'v20.19.0'），非 project 的 Volta 托管版本 */
   currentVersion: string | null;
-  /** All installed versions from the manager driver */
+  /** 所有已安装版本 */
   available: InstalledVersion[];
+}
+
+/** 规范化 Volta package.json 版本（可能带 v 前缀） */
+function normaliseVoltaVersion(v: string): string {
+  return v.startsWith('v') ? v : `v${v}`;
 }
 
 export async function detectProjectRequirement(
@@ -31,9 +36,8 @@ export async function detectProjectRequirement(
     };
   }
 
-  // Volta 配置优先
-  const voltaVersion: string | null = pkg.volta?.node ?? null;
-
+  // Volta 配置优先（精确版本锁定）
+  const voltaVersion: string | null = (pkg.volta?.node as string | undefined) ?? null;
   // engines.node 字段
   const enginesNode: string | null = pkg.engines?.node ?? null;
 
@@ -49,20 +53,33 @@ export async function detectProjectRequirement(
   const requiredVersion = enginesNode ?? inferredVersion;
   const hasEnginesConfig = enginesNode !== null;
 
+  // 已安装版本列表（normalised）
+  const availableVersions = options.available.map(v => v.version);
+
   let satisfiedBy: string | null = null;
   let isMatch = false;
 
-  if (voltaVersion && currentVersion) {
-    // Volta 锁定精确版本
-    isMatch = currentVersion === voltaVersion || currentVersion === `v${voltaVersion}`;
-    if (isMatch) satisfiedBy = currentVersion;
-  } else if (requiredVersion && currentVersion) {
-    isMatch = satisfiesVersion(currentVersion, requiredVersion);
-    if (isMatch) {
+  if (voltaVersion) {
+    // Voltaproject：requiredVersion 为 Volta 锁定的精确版本
+    const normalisedVolta = normaliseVoltaVersion(voltaVersion);
+
+    // 检查 server 当前 Node 是否满足项目的 Volta 要求
+    if (currentVersion && satisfiesVersion(currentVersion, normalisedVolta)) {
+      isMatch = true;
       satisfiedBy = currentVersion;
     } else {
-      // 寻找满足条件的最佳可用版本
-      const availableVersions = options.available.map(v => v.version);
+      // server 版本不满足，在已安装列表中寻找满足 Volta 要求的版本
+      const match = availableVersions.find(v => satisfiesVersion(v, normalisedVolta));
+      if (match) {
+        satisfiedBy = match;
+      }
+    }
+  } else if (requiredVersion) {
+    // engines 或框架推断版本：允许 semver 范围
+    if (currentVersion && satisfiesVersion(currentVersion, requiredVersion)) {
+      isMatch = true;
+      satisfiedBy = currentVersion;
+    } else {
       const match = findBestMatchingVersion(availableVersions, requiredVersion);
       if (match) satisfiedBy = match;
     }

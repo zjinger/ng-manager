@@ -12,6 +12,10 @@ export class NoneDriver implements INodeVersionManagerDriver {
     throw new Error('No version manager installed');
   }
 
+  async use(_version: string): Promise<void> {
+    throw new Error('No version manager installed');
+  }
+
   async getCurrentVersion(): Promise<NormalisedVersion | null> {
     return null;
   }

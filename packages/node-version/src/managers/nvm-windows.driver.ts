@@ -30,6 +30,11 @@ export class NvmWindowsDriver implements INodeVersionManagerDriver {
     await execFileAsync(this.binary, ['uninstall', clean], { windowsHide: true });
   }
 
+  async use(version: string): Promise<void> {
+    const clean = version.replace(/^v/, '');
+    await execFileAsync(this.binary, ['use', clean], { windowsHide: true });
+  }
+
   async getCurrentVersion(): Promise<NormalisedVersion | null> {
     try {
       const { stdout } = await execFileAsync(this.binary, ['current'], { windowsHide: true });

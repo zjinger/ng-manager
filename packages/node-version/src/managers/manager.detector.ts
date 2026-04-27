@@ -9,8 +9,9 @@ export function detectManager(): ManagerDescriptor {
   const nvm = detectNvm();
 
   if (volta.kind !== ManagerKind.None && nvm.kind !== ManagerKind.None) {
-    // Both detected — prefer Volta for current-version reads, but caller
-    // can decide which to use for install/uninstall
+    // 同时检测到 Volta 和 nvm，优先使用 Volta。
+    // 当前只返回一个 descriptor，调用方无法感知 nvm 也存在；
+    // 中期可扩展为返回多检测结果。
     return volta;
   }
   if (volta.kind !== ManagerKind.None) return volta;
@@ -74,22 +75,33 @@ function detectNvm(): ManagerDescriptor {
 }
 
 function detectNvmWindows(): ManagerDescriptor {
-  const isWin = true;
   const appData = process.env.APPDATA ?? '';
   const programFiles = process.env['ProgramFiles'] ?? 'C:\\Program Files';
   const programData = process.env['ProgramData'] ?? 'C:\\ProgramData';
 
-  const candidates = [
-    path.join(programFiles, 'nvm', 'nvm.exe'),
-    path.join(programData, 'nvm', 'nvm.exe'),
-    path.join(appData, 'nvm', 'nvm.exe'),
-  ];
+  // 优先级：NVM_HOME 环境变量 > PATH > 常见安装路径
+  const candidates: string[] = [];
 
-  // 同时扫描 PATH 中的 nvm.exe
+  const nvmHome = process.env.NVM_HOME;
+  if (nvmHome) {
+    candidates.push(path.join(nvmHome, 'nvm.exe'));
+  }
+
   const pathEnv = process.env.PATH ?? '';
   for (const dir of pathEnv.split(path.delimiter)) {
     const candidate = path.join(dir, 'nvm.exe');
     if (!candidates.includes(candidate)) candidates.push(candidate);
+  }
+
+  // 常见安装路径兜底
+  if (!candidates.includes(path.join(programFiles, 'nvm', 'nvm.exe'))) {
+    candidates.push(path.join(programFiles, 'nvm', 'nvm.exe'));
+  }
+  if (!candidates.includes(path.join(programData, 'nvm', 'nvm.exe'))) {
+    candidates.push(path.join(programData, 'nvm', 'nvm.exe'));
+  }
+  if (!candidates.includes(path.join(appData, 'nvm', 'nvm.exe'))) {
+    candidates.push(path.join(appData, 'nvm', 'nvm.exe'));
   }
 
   for (const p of candidates) {

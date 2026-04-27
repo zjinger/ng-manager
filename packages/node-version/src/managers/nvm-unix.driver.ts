@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import os from 'node:os';
 import { INodeVersionManagerDriver, NormalisedVersion, InstalledVersion } from './node-version-manager.driver';
 import { ManagerDescriptor, ManagerKind } from './manager.types';
 
@@ -21,13 +22,14 @@ export class NvmUnixDriver implements INodeVersionManagerDriver {
 
   constructor(private descriptor: ManagerDescriptor) {}
 
-  private get nvmSh(): string {
-    return this.descriptor.nvmShPath ?? '~/.nvm/nvm.sh';
+  private shellQuote(s: string): string {
+    return `'${s.replace(/'/g, "'\\''")}'`;
   }
 
   private async bashLc(cmd: string): Promise<string> {
-    // 将 ~ 展开为 $HOME
-    const sh = this.nvmSh.replace('~', '$HOME');
+    const sh = this.shellQuote(
+      this.descriptor.nvmShPath ?? `${os.homedir()}/.nvm/nvm.sh`,
+    );
     const full = `source ${sh} && ${cmd}`;
     const { stdout } = await execFileAsync('bash', ['-lc', full]);
     return stdout;
@@ -41,6 +43,11 @@ export class NvmUnixDriver implements INodeVersionManagerDriver {
   async uninstall(version: string): Promise<void> {
     const clean = version.replace(/^v/, '');
     await this.bashLc(`nvm uninstall ${clean}`);
+  }
+
+  async use(version: string): Promise<void> {
+    const clean = version.replace(/^v/, '');
+    await this.bashLc(`nvm use ${clean}`);
   }
 
   async getCurrentVersion(): Promise<NormalisedVersion | null> {

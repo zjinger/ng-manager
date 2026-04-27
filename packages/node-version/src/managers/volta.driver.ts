@@ -12,17 +12,18 @@ function normalise(v: string): NormalisedVersion {
   return { raw: stripped, normalised };
 }
 
-/** 从 `volta current` 输出中提取 Node 版本。
+/** 从 `volta current node` 输出中提取 Node 版本。
  *
- * Volta 的 `current` 输出为多行，可能包含额外工具信息。
- * 示例：
+ * 输出可能为多行，格式示例：
  *   node    20.19.0 (with manifest /path/to/default.json)
  *   node    v20.19.0
+ *   Node: v20.19.0
+ *   node: v20.19.0
  *
  * 这里提取第一个符合版本格式的令牌。
  */
 function extractNodeVersion(stdout: string): NormalisedVersion | null {
-  const match = stdout.match(/node\s+(v?\d+\.\d+\.\d+)/m);
+  const match = stdout.match(/node\s*:?\s+(v?\d+\.\d+\.\d+)/im);
   if (!match) return null;
   return normalise(match[1]);
 }
@@ -50,6 +51,13 @@ export class VoltaDriver implements INodeVersionManagerDriver {
     await execFileAsync(this.binary, ['uninstall', `node@${clean}`], { windowsHide: true });
   }
 
+  /**
+   * Volta 的 install 包含 pin 语义，等同于 use，无需单独 use() 实现。
+   */
+  async use(version: string): Promise<void> {
+    await this.install(version);
+  }
+
   async getCurrentVersion(): Promise<NormalisedVersion | null> {
     try {
       const { stdout } = await execFileAsync(this.binary, ['current', 'node'], { windowsHide: true });
@@ -71,8 +79,15 @@ export class VoltaDriver implements INodeVersionManagerDriver {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;
-        // 格式："node    20.19.0" 或 "node    v20.19.0"
-        const match = trimmed.match(/node\s+(v?\d+\.\d+\.\d+)/);
+        // 兼容多种格式：
+        //   node    20.19.0
+        //   node    v20.19.0
+        //   node@20.19.0
+        //   20.19.0 (plain)
+        const match =
+          trimmed.match(/node\s*:?\s+(v?\d+\.\d+\.\d+)/i) ??
+          trimmed.match(/node@?(v?\d+\.\d+\.\d+)/i) ??
+          trimmed.match(/\b(v?\d+\.\d+\.\d+)\b/);
         if (!match) continue;
         const nv = normalise(match[1]);
         installed.push({

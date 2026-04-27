@@ -8,13 +8,15 @@ export type SystemLogScope =
     | "sprite"
     | "fs"
     | "terminal"
-    | "ai";
+    | "ai"
+    | "node-version";
 
 export type SystemLogSource =
     | "system"
     | "task"
     | "server"
-    | "desktop";
+    | "desktop"
+    | "web";
 
 export interface SystemLogEntry {
     id?: string;
