@@ -1,4 +1,4 @@
-import type { NodeVersionService } from "../../domain/node-version/node-version.service";
+import type { NodeVersionService } from "@yinuo-ngm/node-version";
 import type { ProcessService } from "@yinuo-ngm/process";
 import type { ProjectService } from "../../domain/project";
 import { TaskServiceImpl } from "../../domain/task/task.service.impl";

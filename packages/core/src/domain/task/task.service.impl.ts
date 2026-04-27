@@ -7,7 +7,7 @@ import type { LogStreamType, SystemLogLevel, TaskOutputPayload } from "@yinuo-ng
 import { SystemLogService } from "../logger";
 import type { ProcessService } from "@yinuo-ngm/process";
 import { ProjectService } from "@yinuo-ngm/project";
-import { NodeVersionService } from "../node-version/node-version.service";
+import type { NodeVersionService } from "@yinuo-ngm/node-version";
 import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
 import type { TaskService } from "./task.service";
 import type { TaskDefinition, TaskRow, TaskRuntime } from "./task.types";

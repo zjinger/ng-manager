@@ -5,7 +5,7 @@ export { type CoreApp } from "./app/types";
 export type {
     NodeVersionInfo,
     ProjectNodeRequirement,
-} from "./domain/node-version/node-version.service";
+} from "@yinuo-ngm/node-version";
 
 export { Events } from './infra/event'
 

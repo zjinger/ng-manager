@@ -1,6 +1,6 @@
-import { NodeVersionServiceImpl } from "../../domain/node-version/node-version.service.impl";
-import type { SystemLogService } from "../../domain/logger";
+import { createNodeVersionService } from '@yinuo-ngm/node-version';
+import type { SystemLogService } from '../../domain/logger';
 
-export function createNodeVersionDomain(sysLog: SystemLogService) {
-    return new NodeVersionServiceImpl(sysLog);
-}
+export { createNodeVersionService as createNodeVersionDomain };
+
+export type { NodeVersionService } from '@yinuo-ngm/node-version';

@@ -12,6 +12,8 @@
     { "path": "../protocol" },
     { "path": "../process" },
     { "path": "../project" },
+    { "path": "../event" },
+    { "path": "../node-version" },
     { "path": "../sprite" }
   ]
 }

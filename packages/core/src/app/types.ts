@@ -9,7 +9,7 @@ import { ProjectBootstrapService } from "../domain/project";
 import { SpriteService } from "../domain/sprite";
 import { SvnSyncService } from "../domain/svn";
 import { TaskService } from "../domain/task";
-import { NodeVersionService } from "../domain/node-version/node-version.service";
+import type { NodeVersionService } from "@yinuo-ngm/node-version";
 import type { IEventBus } from "../infra/event/event-bus";
 import type { CoreEventMap } from "../infra/event/events";
 
