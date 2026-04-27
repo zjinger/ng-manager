@@ -10,8 +10,7 @@ import { genSpecsFromScripts } from './infra/generators/genSpecsFromScripts';
 import type { TaskService } from './task.service';
 import type { TaskDefinition, TaskRow, TaskRuntime } from './task.types';
 import { TaskEvents, type TaskEventMap } from './infra/task-event-map';
-import type { TaskLogStore } from './infra/task-log-store';
-import type { SystemLogService } from './infra/system-log-port';
+import type { ILogStore, SystemLogService } from '@yinuo-ngm/logger';
 
 function bufToText(b: Buffer) {
     return b.toString("utf8");
@@ -30,7 +29,7 @@ export class TaskServiceImpl implements TaskService {
         private projectService: ProjectService,
         private proc: ProcessService,
         private sysLog: SystemLogService,
-        private taskStreamLog: TaskLogStore,
+        private taskStreamLog: ILogStore,
         private events: IEventBus<TaskEventMap>,
         private nodeVersionService: NodeVersionService
     ) { }

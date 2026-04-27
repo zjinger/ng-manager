@@ -26,6 +26,7 @@
   "dependencies": {
     "@yinuo-ngm/errors": "^1.0.0",
     "@yinuo-ngm/event": "^0.1.0",
+    "@yinuo-ngm/logger": "^0.1.0",
     "@yinuo-ngm/node-version": "^0.1.0",
     "@yinuo-ngm/process": "^0.1.0",
     "@yinuo-ngm/project": "^0.1.0",

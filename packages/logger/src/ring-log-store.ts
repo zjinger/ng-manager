@@ -1,9 +1,8 @@
+import { CoreError, CoreErrorCodes } from '@yinuo-ngm/errors';
+import type { ILogStore, LogTailFilter } from './log-store';
+import type { SystemLogEntry } from '@yinuo-ngm/protocol';
 
-import { CoreError, CoreErrorCodes } from "../../common/errors";
-import type { ILogStore, LogTailFilter } from "./log.store";
-import type { LogLine } from "./log.types";
-
-function matchFilter(line: LogLine, filter?: LogTailFilter) {
+function matchFilter(line: SystemLogEntry, filter?: LogTailFilter) {
     if (!filter) return true;
     if (filter.refId !== undefined && line.refId !== filter.refId) return false;
     if (filter.source !== undefined && line.source !== filter.source) return false;
@@ -11,7 +10,7 @@ function matchFilter(line: LogLine, filter?: LogTailFilter) {
     if (filter.scope !== undefined && line.scope !== filter.scope) return false;
 
     if (filter.data) {
-        const d = (line.data ?? {}) as Record<string, any>;
+        const d = (line.data ?? {}) as Record<string, unknown>;
         for (const [k, v] of Object.entries(filter.data)) {
             if (d[k] !== v) return false;
         }
@@ -19,18 +18,11 @@ function matchFilter(line: LogLine, filter?: LogTailFilter) {
     return true;
 }
 
-
-/**
- * Ring Buffer 日志存储：固定容量，性能稳定
- * - append O(1)
- * - tail O(n)（n <= capacity）
- */
 export class RingLogStore implements ILogStore {
-    private buf: Array<LogLine | undefined>;
+    private buf: Array<SystemLogEntry | undefined>;
     private cap: number;
-
-    private head = 0; // 下一次写入位置
-    private len = 0;  // 当前有效长度
+    private head = 0;
+    private len = 0;
 
     constructor(capacity = 2000) {
         if (!Number.isFinite(capacity) || capacity <= 0) {
@@ -40,18 +32,17 @@ export class RingLogStore implements ILogStore {
         this.buf = new Array(this.cap);
     }
 
-    append(line: LogLine): void {
+    append(line: SystemLogEntry): void {
         this.buf[this.head] = line;
         this.head = (this.head + 1) % this.cap;
         if (this.len < this.cap) this.len++;
     }
 
-    tail(limit: number, filter?: LogTailFilter): LogLine[] {
+    tail(limit: number, filter?: LogTailFilter): SystemLogEntry[] {
         const lim = Math.max(0, Math.floor(limit));
         if (lim === 0 || this.len === 0) return [];
 
-        // 从最旧开始遍历到最新
-        const out: LogLine[] = [];
+        const out: SystemLogEntry[] = [];
         const start = (this.head - this.len + this.cap) % this.cap;
 
         for (let i = 0; i < this.len; i++) {
@@ -62,19 +53,14 @@ export class RingLogStore implements ILogStore {
             out.push(line);
         }
 
-        // 只取最后 lim 条
         if (out.length <= lim) return out;
         return out.slice(out.length - lim);
     }
 
-    tailById(refId: string, n: number): LogLine[] {
+    tailById(refId: string, n: number): SystemLogEntry[] {
         return this.tail(n, { refId });
     }
 
-    /**
-     * 清空日志（可按 refId/source 过滤）
-     * @returns 被清除的条数
-     */
     clear(filter?: LogTailFilter): number {
         let len = this.len;
         if (!filter) {
@@ -84,7 +70,6 @@ export class RingLogStore implements ILogStore {
             return len;
         }
 
-        // 有过滤条件：保留不匹配的，重新构建 ring
         const kept = this.tail(this.len, undefined).filter((l) => !matchFilter(l, filter));
         this.buf = new Array(this.cap);
         this.head = 0;

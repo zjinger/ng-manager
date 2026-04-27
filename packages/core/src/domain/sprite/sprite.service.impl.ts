@@ -2,7 +2,7 @@ import { generateGroupBatch, GenerateSpriteResult, SpriteMetaFile, SvgMetaFile }
 import fs from "node:fs";
 import path from "node:path";
 import { CoreError, CoreErrorCodes } from "../../common/errors";
-import { SystemLogService } from "../logger";
+import type { SystemLogService } from "@yinuo-ngm/logger";
 import { Project, ProjectAssetSourceSvn, type ProjectService } from "@yinuo-ngm/project";
 import { SpriteRepo } from "./sprite.repo";
 import { SpriteService } from "./sprite.service";

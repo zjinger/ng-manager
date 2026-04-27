@@ -1,4 +1,4 @@
-import type { SystemLogService } from "../../domain/logger";
+import type { SystemLogService } from "@yinuo-ngm/logger";
 import { type ProjectService } from "@yinuo-ngm/project";
 import { ProjectBootstrapService } from "../../domain/project";
 import type { TaskService } from "@yinuo-ngm/task";

@@ -16,7 +16,7 @@ import type {
 import { SvnRuntimeRepo } from "./svn-runtime.repo";
 import { SvnSyncService } from "./svn-sync.service";
 import { CoreEventMap, Events } from "../../infra/event";
-import { SystemLogService } from "../logger";
+import type { SystemLogService } from "@yinuo-ngm/logger";
 import { SvnTaskManager } from "./svn-task.manager";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { Project, ProjectAssetSourceSvn, type ProjectService } from "@yinuo-ngm/project";

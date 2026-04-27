@@ -1,7 +1,7 @@
 {
-  "name": "@yinuo-ngm/task",
+  "name": "@yinuo-ngm/logger",
   "version": "0.1.0",
-  "description": "task management for ng-manager",
+  "description": "system logging and ring buffer storage for ng-manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
   "main": "lib/index.js",
@@ -23,11 +23,6 @@
   },
   "dependencies": {
     "@yinuo-ngm/errors": "^1.0.0",
-    "@yinuo-ngm/event": "^0.1.0",
-    "@yinuo-ngm/logger": "^0.1.0",
-    "@yinuo-ngm/node-version": "^0.1.0",
-    "@yinuo-ngm/process": "^0.1.0",
-    "@yinuo-ngm/project": "^0.1.0",
     "@yinuo-ngm/protocol": "^0.1.0",
     "@yinuo-ngm/shared": "^0.1.0"
   }

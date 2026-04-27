@@ -11,6 +11,7 @@
     { "path": "packages/storage" },
     { "path": "packages/project" },
     { "path": "packages/event" },
+    { "path": "packages/logger" },
     { "path": "packages/node-version" },
     { "path": "packages/task" },
     { "path": "packages/runtime" },

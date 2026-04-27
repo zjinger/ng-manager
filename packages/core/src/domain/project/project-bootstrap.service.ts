@@ -11,7 +11,7 @@ import type { TaskService } from "@yinuo-ngm/task";
 import { BootstrapCtx } from "./bootstrap.types";
 import { scanWorkspaceCandidates } from "./detectors/detectFramework";
 import type { ProjectService } from "./project.service";
-import { SystemLogService } from "../logger";
+import type { SystemLogService } from "@yinuo-ngm/logger";
 const execFileAsync = promisify(execFile);
 export class ProjectBootstrapService {
     private ctxByTaskId = new Map<string, BootstrapCtx>();

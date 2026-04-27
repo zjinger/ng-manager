@@ -1,5 +1,4 @@
-import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "@yinuo-ngm/protocol";
-import { LogLine } from "../log/log.types";
+import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload, SystemLogEntry } from "@yinuo-ngm/protocol";
 
 export const Events = {
     // project
@@ -48,7 +47,7 @@ export type CoreEventMap = {
 
     [Events.TASK_SPECS_REFRESHED]: { projectId: string; count: number };
 
-    [Events.SYSLOG_APPENDED]: { entry: LogLine };
+    [Events.SYSLOG_APPENDED]: { entry: SystemLogEntry };
 
     [Events.PROJECT_BOOTSTRAP_DONE]: TaskBootstrapDonePayload;// { taskId: string; runId: string; projectId: string; rootPath: string };
     [Events.PROJECT_BOOTSTRAP_FAILED]: TaskBootstrapFailedPayload;// { taskId: string; runId: string; rootPath: string; reason: string };

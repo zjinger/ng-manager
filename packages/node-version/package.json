@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@yinuo-ngm/errors": "^1.0.0",
+    "@yinuo-ngm/logger": "^0.1.0",
     "@yinuo-ngm/protocol": "^0.1.0",
     "@yinuo-ngm/shared": "^0.1.0"
   }

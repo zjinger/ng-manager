@@ -1,5 +1,5 @@
 import { createNodeVersionService } from '@yinuo-ngm/node-version';
-import type { SystemLogService } from '../../domain/logger';
+import type { SystemLogService } from '@yinuo-ngm/logger';
 
 export { createNodeVersionService as createNodeVersionDomain };
 

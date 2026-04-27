@@ -4,15 +4,14 @@ import type { NodeVersionService } from '@yinuo-ngm/node-version';
 import type { IEventBus } from '@yinuo-ngm/event';
 import type { TaskService } from '../task.service';
 import { TaskServiceImpl } from '../task.service.impl';
-import type { TaskLogStore } from './task-log-store';
+import type { ILogStore, SystemLogService } from '@yinuo-ngm/logger';
 import type { TaskEventMap } from './task-event-map';
-import type { SystemLogService } from './system-log-port';
 
 export function createTaskDomain(opts: {
     projectService: ProjectService;
     processService: ProcessService;
     sysLog: SystemLogService;
-    taskLogStore: TaskLogStore;
+    taskLogStore: ILogStore;
     events: IEventBus<any>;
     nodeVersionService: NodeVersionService;
 }): TaskService {

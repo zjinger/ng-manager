@@ -1,5 +1,5 @@
 import { SpriteServiceImpl } from "../../domain/sprite";
-import type { SystemLogService } from "../../domain/logger";
+import type { SystemLogService } from "@yinuo-ngm/logger";
 import type { ProjectService } from "@yinuo-ngm/project";
 import { JsonSpriteRepo } from "../../infra/sprite";
 

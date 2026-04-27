@@ -3,7 +3,7 @@ import { ConfigService } from "../domain/config";
 import { DashboardService } from "../domain/dashboard";
 import { DepsService } from "../domain/deps";
 import { FsService } from "../domain/fs";
-import { SystemLogService } from "../domain/logger";
+import type { SystemLogService } from "@yinuo-ngm/logger";
 import { type ProjectService } from "@yinuo-ngm/project";
 import { ProjectBootstrapService } from "../domain/project";
 import { SpriteService } from "../domain/sprite";

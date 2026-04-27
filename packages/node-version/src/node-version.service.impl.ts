@@ -7,13 +7,13 @@ import { getEnginesByAngular } from './angular-node.version';
 import { NodeVersionInfo, NodeVersionService, ProjectNodeRequirement, ProjectType, VersionManager } from './node-version.service';
 import { findBestMatchingVersion, satisfiesVersion } from './node-version.utils';
 import { getEnginesByVue } from './vue-node.version';
-import type { SystemLogPort } from './infra/system-log-port';
+import type { SystemLogService } from '@yinuo-ngm/logger';
 
 const execFileAsync = promisify(execFile);
 
 export class NodeVersionServiceImpl implements NodeVersionService {
   constructor(
-    private sysLog: SystemLogPort,
+    private sysLog: SystemLogService,
   ) {}
 
   async getCurrentVersion(): Promise<NodeVersionInfo> {

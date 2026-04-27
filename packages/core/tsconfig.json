@@ -13,6 +13,7 @@
     { "path": "../process" },
     { "path": "../project" },
     { "path": "../event" },
+    { "path": "../logger" },
     { "path": "../node-version" },
     { "path": "../task" },
     { "path": "../sprite" }

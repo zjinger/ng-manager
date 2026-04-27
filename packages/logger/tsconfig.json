@@ -6,8 +6,5 @@
     "composite": true,
     "strict": true
   },
-  "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../logger" }
-  ]
+  "include": ["src/**/*.ts"]
 }
