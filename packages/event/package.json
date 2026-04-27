@@ -1,0 +1,25 @@
+{
+  "name": "@yinuo-ngm/event",
+  "version": "0.1.0",
+  "description": "minimal in-memory event bus for ng-manager",
+  "author": "ZhangJing <892295834@qq.com>",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {}
+}
