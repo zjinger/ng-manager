@@ -1,5 +1,5 @@
-import type { Project } from "../../domain/project/project.types";
-import type { ProjectRepo } from "../../domain/project/project.repo";
+import type { Project } from "../project.types";
+import type { ProjectRepo } from "../project.repo";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import type { KvRepo } from "@yinuo-ngm/storage";
 

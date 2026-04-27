@@ -15,5 +15,3 @@ export type { DashboardDocV1 } from './domain/dashboard'
 export type { SpriteConfig, GenerateSpriteOptions } from "./domain/sprite";
 
 export type { SvnRuntime } from "./domain/svn";
-
-export type { ProjectAssets, ProjectAssetSourceSvn, Project } from "./domain/project";

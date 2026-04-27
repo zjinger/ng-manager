@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CoreError, CoreErrorCodes } from "../../common/errors";
 import { SystemLogService } from "../logger";
-import { Project, ProjectAssetSourceSvn, ProjectService } from "../project";
+import { Project, ProjectAssetSourceSvn, type ProjectService } from "@yinuo-ngm/project";
 import { SpriteRepo } from "./sprite.repo";
 import { SpriteService } from "./sprite.service";
 import { GenerateSpriteOptions, SpriteConfig, SpriteGroupItem, SpriteSnapshot } from "./sprite.types";

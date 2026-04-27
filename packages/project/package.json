@@ -1,0 +1,33 @@
+{
+  "name": "@yinuo-ngm/project",
+  "version": "0.1.0",
+  "description": "project domain for ng-manager",
+  "author": "ZhangJing <892295834@qq.com>",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./infra": {
+      "types": "./lib/infra/index.d.ts",
+      "default": "./lib/infra/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@yinuo-ngm/errors": "^1.0.0",
+    "@yinuo-ngm/shared": "^0.1.0",
+    "@yinuo-ngm/storage": "^0.1.4"
+  }
+}

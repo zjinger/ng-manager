@@ -8,8 +8,10 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../errors" },
+    { "path": "../shared" },
     { "path": "../protocol" },
     { "path": "../process" },
+    { "path": "../project" },
     { "path": "../sprite" }
   ]
 }

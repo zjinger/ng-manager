@@ -5,9 +5,11 @@
   // Building this project will build all of the following:
   "references": [
     { "path": "packages/errors" },
+    { "path": "packages/shared" },
     { "path": "packages/protocol" },
     { "path": "packages/process" },
     { "path": "packages/storage" },
+    { "path": "packages/project" },
     { "path": "packages/runtime" },
     { "path": "packages/core" },
     { "path": "packages/sprite" },

@@ -2,7 +2,7 @@ import * as path from "path";
 
 import { SvnSyncServiceImpl, SvnTaskManager } from "../../domain/svn";
 import type { SystemLogService } from "../../domain/logger";
-import type { ProjectService } from "../../domain/project";
+import type { ProjectService } from "@yinuo-ngm/project";
 import type { CoreEventMap } from "../../infra/event/events";
 import type { IEventBus } from "../../infra/event/event-bus";
 import { JsonSvnRuntimeRepo } from "../../infra/svn";

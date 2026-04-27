@@ -1,12 +1,12 @@
-import { CoreError, CoreErrorCodes } from "../../common/errors";
-import { uid } from "../../common/id";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import { uid } from "@yinuo-ngm/shared";
 import { type CoreEventMap, Events, IEventBus } from "../../infra/event";
 import { ILogStore, LogLine } from "../../infra/log";
 import type { ProcHandle, SpawnedProcess } from "@yinuo-ngm/process";
 import type { LogStreamType, SystemLogLevel, TaskOutputPayload } from "@yinuo-ngm/protocol";
 import { SystemLogService } from "../logger";
 import type { ProcessService } from "@yinuo-ngm/process";
-import { ProjectService } from "../project";
+import { ProjectService } from "@yinuo-ngm/project";
 import { NodeVersionService } from "../node-version/node-version.service";
 import { genSpecsFromScripts } from "./generators/genSpecsFromScripts";
 import type { TaskService } from "./task.service";

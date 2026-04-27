@@ -1,4 +1,4 @@
-import { ProjectAssetSourceSvn } from "@yinuo-ngm/core";
+import { ProjectAssetSourceSvn } from "@yinuo-ngm/project";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
 import path from "node:path";

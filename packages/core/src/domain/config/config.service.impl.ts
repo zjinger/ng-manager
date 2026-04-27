@@ -1,8 +1,8 @@
 // core/src/domain/config/config.service.impl.ts
 import * as path from "node:path";
-import { coreErrors, CoreError, CoreErrorCodes } from "../../common/errors";
-import { FileLock } from "../../infra/storage/file-lock";
-import { ProjectService } from "../project";
+import { coreErrors, CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import { FileLock } from "@yinuo-ngm/storage";
+import { Project, type ProjectService } from "@yinuo-ngm/project";
 import { ConfigRegistry } from "./config.registry";
 import { ConfigResolver } from "./config.resolver";
 import { ConfigService } from "./config.service";
@@ -17,7 +17,6 @@ import {
     DomainSchemaRegistry,
 } from "./schema";
 import type { DomainSchemaContext, DomainSchemaDiffResult } from "./schema/schema.types";
-import { Project } from "../project/project.types";
 
 export class ConfigServiceImpl implements ConfigService {
     private readonly fileLock = new FileLock();

@@ -1,5 +1,6 @@
 import type { SystemLogService } from "../../domain/logger";
-import { ProjectBootstrapService, type ProjectService } from "../../domain/project";
+import { type ProjectService } from "@yinuo-ngm/project";
+import { ProjectBootstrapService } from "../../domain/project";
 import type { TaskService } from "../../domain/task";
 import type { CoreEventMap } from "../../infra/event/events";
 import type { IEventBus } from "../../infra/event/event-bus";

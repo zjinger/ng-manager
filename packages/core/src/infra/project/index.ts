@@ -1,2 +1,1 @@
-export * from './project.migrate';
-export * from './project.repo.jsonkv';
+export { ProjectRepoJsonKv, migrateProjectsIfNeeded, createProjectDomain } from "@yinuo-ngm/project";

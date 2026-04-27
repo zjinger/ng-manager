@@ -7,11 +7,11 @@ import {
     createFsDomain,
     createInfra,
     createNodeVersionDomain,
-    createProjectDomain,
     createSpriteDomain,
     createSvnDomain,
     createTaskDomain,
 } from "./composers";
+import { createProjectDomain } from "@yinuo-ngm/project";
 
 /**
  * 创建 CoreApp

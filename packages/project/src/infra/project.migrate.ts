@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import type { Project } from "../../domain/project/project.types";
+import type { Project } from "../project.types";
 import type { KvRepo } from "@yinuo-ngm/storage";
 
 type LegacyShape = { projects: Project[] };

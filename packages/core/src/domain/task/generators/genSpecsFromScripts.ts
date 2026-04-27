@@ -1,6 +1,6 @@
 import type { TaskDefinition, TaskKind } from "../task.types";
-import { PackageManager } from "../../project/project.meta";
-import { buildTaskId } from "../../../common/id";
+import { PackageManager } from "@yinuo-ngm/project";
+import { buildTaskId } from "@yinuo-ngm/shared";
 
 function buildRunCommand(pm: PackageManager, scriptName: string) {
     if (pm === "yarn") return `yarn ${scriptName}`;

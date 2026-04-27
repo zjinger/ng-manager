@@ -18,8 +18,8 @@ import { SvnSyncService } from "./svn-sync.service";
 import { CoreEventMap, Events, IEventBus } from "../../infra/event";
 import { SystemLogService } from "../logger";
 import { SvnTaskManager } from "./svn-task.manager";
-import { CoreError, CoreErrorCodes } from "../../common/errors";
-import { Project, ProjectAssetSourceSvn, ProjectService } from "../project";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import { Project, ProjectAssetSourceSvn, type ProjectService } from "@yinuo-ngm/project";
 
 const execFileAsync = promisify(execFile);
 

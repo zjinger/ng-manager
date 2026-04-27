@@ -1,6 +1,6 @@
 import { SpriteServiceImpl } from "../../domain/sprite";
 import type { SystemLogService } from "../../domain/logger";
-import type { ProjectService } from "../../domain/project";
+import type { ProjectService } from "@yinuo-ngm/project";
 import { JsonSpriteRepo } from "../../infra/sprite";
 
 export function createSpriteDomain(opts: {

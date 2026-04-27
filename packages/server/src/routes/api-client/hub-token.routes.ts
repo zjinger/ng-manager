@@ -1,5 +1,5 @@
 import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
-import { Project } from "@yinuo-ngm/core";
+import { Project } from "@yinuo-ngm/project";
 import { ProjectTokenApiClient } from "@yinuo-ngm/api";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { Readable } from "node:stream";

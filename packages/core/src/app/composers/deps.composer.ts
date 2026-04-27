@@ -1,7 +1,7 @@
 import * as path from "path";
 
 import { DepsServiceImpl } from "../../domain/deps";
-import type { ProjectService } from "../../domain/project";
+import type { ProjectService } from "@yinuo-ngm/project";
 import {
     CachedNpmRegistry,
     LatestCacheKv,

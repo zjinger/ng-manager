@@ -1,8 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { CoreError, CoreErrorCodes } from "../../common/errors";
-import type { ProjectService } from "../project/project.service"; // 你现有的
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import type { ProjectService } from "@yinuo-ngm/project";
 import type { DepGroup, DepItem, ProjectDepsResult } from "./deps.types";
 import type { DepsService, InstallDepOptions, UninstallDepOptions } from "./deps.service";
 

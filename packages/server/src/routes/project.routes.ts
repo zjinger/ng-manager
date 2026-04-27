@@ -1,5 +1,5 @@
 import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
-import { ProjectAssets } from "@yinuo-ngm/core";
+import { ProjectAssets } from "@yinuo-ngm/project";
 import { type FastifyInstance } from "fastify";
 import * as path from "path";
 import { openFolder } from "../common/editor";
