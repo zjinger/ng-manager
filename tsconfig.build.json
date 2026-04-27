@@ -16,6 +16,7 @@
     { "path": "packages/task" },
     { "path": "packages/deps" },
     { "path": "packages/config" },
+    { "path": "packages/svn" },
     { "path": "packages/runtime" },
     { "path": "packages/core" },
     { "path": "packages/sprite" },

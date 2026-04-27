@@ -1,4 +1,4 @@
-import { CoreError, CoreErrorCodes } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 
 export function safeSvnPath(p: string) {
     return p.includes("@") && !p.endsWith("@") ? `${p}@` : p;

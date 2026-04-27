@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type SvnRuntime, SvnRuntimeRepo } from "../../domain/svn";
+import { type SvnRuntime } from "../svn.types";
+import type { SvnRuntimeRepo } from "../svn-runtime.repo";
 
 export class JsonSvnRuntimeRepo implements SvnRuntimeRepo {
     constructor(private runtimeFile: string) {

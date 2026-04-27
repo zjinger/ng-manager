@@ -1,4 +1,3 @@
-// svn-task.manager.ts
 import type { ChildProcess } from "node:child_process";
 
 export class SvnTaskManager {

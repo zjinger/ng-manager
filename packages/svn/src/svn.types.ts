@@ -1,8 +1,10 @@
 import type { SvnSyncMode } from "@yinuo-ngm/protocol";
+
 export type ProgressState = {
-    total: number;      // 估算总条目数
-    changed: number;    // 已处理条目数
+    total: number;
+    changed: number;
 };
+
 export interface SvnWorkingCopyResult {
     mode: SvnSyncMode;
     stdout: string;
@@ -14,6 +16,7 @@ export interface SvnWorkingCopyResult {
 export interface SvnWorkingCopyStreamResult extends SvnWorkingCopyResult {
     progress: ProgressState;
 }
+
 export interface SvnSyncResult {
     ok: boolean;
     projectId: string;
@@ -36,4 +39,3 @@ export interface SvnRuntime {
     lastStdout?: string;
     lastStderr?: string;
 }
-

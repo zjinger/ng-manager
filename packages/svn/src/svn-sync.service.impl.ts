@@ -15,28 +15,27 @@ import type {
 } from "./svn.types";
 import { SvnRuntimeRepo } from "./svn-runtime.repo";
 import { SvnSyncService } from "./svn-sync.service";
-import { CoreEventMap, Events } from "../../infra/event";
+import { SvnEvents, type SvnEventMap } from "./svn.events";
 import type { SystemLogService } from "@yinuo-ngm/logger";
 import { SvnTaskManager } from "./svn-task.manager";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { Project, ProjectAssetSourceSvn, type ProjectService } from "@yinuo-ngm/project";
-import { IEventBus } from "@yinuo-ngm/event";
+import type { IEventBus } from "@yinuo-ngm/event";
 
 const execFileAsync = promisify(execFile);
 
 type StreamType = "stdout" | "stderr";
 
 type RunStreamResult = {
-    exitCode: number;         // 0 success, -1 spawn error
-    stdoutTail: string;       // tail buffer
+    exitCode: number;
+    stdoutTail: string;
     stderrTail: string;
 };
-
 
 export class SvnSyncServiceImpl implements SvnSyncService {
     constructor(
         private runtimeRepo: SvnRuntimeRepo,
-        private events: IEventBus<CoreEventMap>,
+        private events: IEventBus<SvnEventMap>,
         private sysLog: SystemLogService,
         private taskManager: SvnTaskManager,
         private project: ProjectService,
@@ -186,9 +185,6 @@ export class SvnSyncServiceImpl implements SvnSyncService {
         };
     }
 
-    /**
-     * 实时流式版本的 sync，适用于需要实时展示日志的场景
-     */
     async syncWithStream(projectId: string, sourceId: string, dir: string, url: string) {
         if (this.taskManager.isRunning(projectId, sourceId)) {
             throw new CoreError(CoreErrorCodes.SVN_SYNC_ALREADY_RUNNING, `SVN sync is already running for project ${projectId}, source ${sourceId}`);
@@ -196,10 +192,9 @@ export class SvnSyncServiceImpl implements SvnSyncService {
 
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-        // 注册 task
         this.taskManager.register(projectId, sourceId, undefined);
 
-        this.events.emit(Events.SVN_SYNC_STARTED, { projectId, sourceId, status: "running" });
+        this.events.emit(SvnEvents.SYNC_STARTED, { projectId, sourceId, status: "running" });
 
         const desiredUrl = safeSvnPath(url);
         this.sysLog.info({
@@ -211,7 +206,6 @@ export class SvnSyncServiceImpl implements SvnSyncService {
         const now = new Date().toISOString();
         try {
             const r = await this.checkoutOrUpdateStream(projectId, sourceId, dir, url);
-            // r.stdout/r.stderr 是 tail（最后 5000）
             this.runtimeRepo.update(projectId, sourceId, {
                 lastSyncAt: now,
                 lastSyncMode: r.mode,
@@ -228,7 +222,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 text: `SVN Sync done mode=${r.mode}`,
             });
             const progress = r.progress || { total: 0, changed: 0 };
-            this.events.emit(Events.SVN_SYNC_PROGRESS, {
+            this.events.emit(SvnEvents.SYNC_PROGRESS, {
                 projectId,
                 sourceId,
                 total: progress.total || 0,
@@ -236,7 +230,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 percent: progress.total > 0 ? 100 : undefined,
                 status: "success",
             });
-            this.events.emit(Events.SVN_SYNC_DONE, {
+            this.events.emit(SvnEvents.SYNC_DONE, {
                 projectId,
                 sourceId,
                 mode: r.mode,
@@ -255,7 +249,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 text: msg,
             });
 
-            this.events.emit(Events.SVN_SYNC_FAILED, {
+            this.events.emit(SvnEvents.SYNC_FAILED, {
                 projectId,
                 sourceId,
                 error: msg,
@@ -263,7 +257,6 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 status: "error",
             });
 
-            // 同步失败也写 runtime（ lastSyncAt + error 摘要）
             this.runtimeRepo.update(projectId, sourceId, {
                 lastSyncAt: now,
                 lastStderr: (msg || "").slice(0, 5000),
@@ -312,18 +305,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
         svnUrlRaw: string,
     ): Promise<SvnWorkingCopyStreamResult> {
         const progress: ProgressState = { total: 0, changed: 0 };
-        // 先估算 total（如果有 working copy）
         progress.total = await this.estimateTotalByStatus(dir);
-
-        // // 推一次初始进度
-        // this.events.emit(Events.SVN_SYNC_PROGRESS, {
-        //     projectId,
-        //     sourceId,
-        //     total: progress.total || 0,
-        //     changed: 0,
-        //     percent: progress.total > 0 ? 0 : undefined,
-        //     status: "running",
-        // });
 
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
@@ -333,9 +315,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
         const svnDir = path.join(dir, ".svn");
         const isCheckout = !fs.existsSync(svnDir);
 
-        // helper: recheckout
         const doRecheckout = async (): Promise<SvnWorkingCopyStreamResult> => {
-            // 安全删除：确保 dir 存在且是目录
             await fs.promises.rm(dir, { recursive: true, force: true });
             fs.mkdirSync(dir, { recursive: true });
 
@@ -355,7 +335,6 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             };
         };
 
-        // 1) 首次 checkout
         if (isCheckout) {
             const r = await this.runSvnStreamOnce(projectId, sourceId, dir, ["checkout", desiredUrl, "."], progress);
             if (r.exitCode !== 0) {
@@ -372,16 +351,13 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             };
         }
 
-        // 2) 已存在工作副本：先 info 当前 URL
         const currentUrl0 = safeSvnPath(await this.svnInfoUrl(dir));
         if (!currentUrl0) {
-            // 工作副本损坏 / info 失败 → recheckout
             return doRecheckout();
         }
 
         const currentNorm0 = normalizeSvnUrl(currentUrl0);
 
-        // 3) URL 变了 → switch (失败则 recheckout)
         if (currentNorm0 !== desiredNorm) {
             const sw = await this.runSvnStreamOnce(projectId, sourceId, dir, [
                 "switch",
@@ -391,7 +367,6 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             ], progress);
 
             if (sw.exitCode === 0) {
-                // 可选：switch 后再 update 一次更稳（建议开启）
                 const up = await this.runSvnStreamOnce(projectId, sourceId, dir, ["update"], progress);
                 if (up.exitCode !== 0) {
                     throw new CoreError(CoreErrorCodes.SVN_SYNC_FAILED, `SVN update after switch failed with exit code ${up.exitCode}. Stderr: ${up.stderrTail}`);
@@ -408,13 +383,10 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 };
             }
 
-            // switch 失败 → recheckout
             return doRecheckout();
         }
 
-        // 4) URL 没变 → update
         const up = await this.runSvnStreamOnce(projectId, sourceId, dir, ["update"], progress);
-        // update 失败 → recheckout 
         if (up.exitCode !== 0) {
             throw new CoreError(CoreErrorCodes.SVN_SYNC_FAILED, `SVN update failed with exit code ${up.exitCode}. Stderr: ${up.stderrTail}`);
         }
@@ -430,21 +402,17 @@ export class SvnSyncServiceImpl implements SvnSyncService {
     }
 
     private countChangedLines(text: string): number {
-        // 统计以 A/U/D/G/C/R/M 等开头的变更行
-        // SVN 输出有时是 "A    file" 或 "U file"（多空格），用 \s+
         const lines = text.split(/\r?\n/);
         let n = 0;
         for (const line of lines) {
             const s = line.trimStart();
             if (!s) continue;
-            // 常见的 action codes
             if (/^(A|U|D|G|C|R|M)\s+/.test(s)) n++;
         }
         return n;
     }
 
     private async estimateTotalByStatus(dir: string): Promise<number> {
-        // 只有存在 .svn 时才尝试，否则直接未知
         if (!fs.existsSync(path.join(dir, ".svn"))) return 0;
         try {
             const { stdout } = await execFileAsync(
@@ -452,16 +420,11 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 ["status", "-u"],
                 { cwd: dir, maxBuffer: 10 * 1024 * 1024 }
             );
-            // status 输出也可能包含 action code 行
-            // 例： "M       file" 或 "       * file"
-            // 优先用 action code（A/U/D/M...），也允许 status 的第一列是字符
             const lines = stdout.split(/\r?\n/);
             let total = 0;
             for (const line of lines) {
                 const s = line.trimStart();
                 if (!s) continue;
-                // status 的第一列一般是 [!~MADRC?] 或空格
-                // 简单处理，只要开头是字母动作码就算一个条目
                 if (/^(A|U|D|G|C|R|M|\!|\~|\?|\+)\s+/.test(s)) total++;
             }
             return total;
@@ -484,7 +447,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             if (type === "stdout") stdoutTail = (stdoutTail + chunk).slice(-5000);
             else stderrTail = (stderrTail + chunk).slice(-5000);
 
-            this.events.emit(Events.SVN_SYNC_OUTPUT, {
+            this.events.emit(SvnEvents.SYNC_OUTPUT, {
                 projectId,
                 sourceId,
                 type,
@@ -495,31 +458,11 @@ export class SvnSyncServiceImpl implements SvnSyncService {
 
         const child = spawn(this.svnBinary, args, { cwd });
 
-        // 让 cancel 生效：更新 child 指针
         this.taskManager.setChild(projectId, sourceId, child);
 
         child.stdout.on("data", (d) => {
             const chunk = d.toString();
             push("stdout", chunk);
-            // const delta = this.countChangedLines(chunk);
-            // if (delta > 0) {
-            //     progress.changed += delta;
-            //     progress.changed = Math.min(progress.changed, progress.total);
-            //     const payload: any = {
-            //         projectId,
-            //         sourceId,
-            //         total: progress.total || 0,
-            //         changed: progress.changed,
-            //     };
-
-            //     if (progress.total > 0) {
-            //         // 运行中最多到 99，close 时再补 100
-            //         payload.percent = Math.min(99, Math.floor((progress.changed / progress.total) * 100));
-            //     }
-
-            //     this.events.emit(Events.SVN_SYNC_PROGRESS, payload);
-            // }
-
         });
         child.stderr.on("data", (d) => push("stderr", d.toString()));
 
@@ -532,7 +475,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             };
 
             child.once("close", (code) => done(typeof code === "number" ? code : -1));
-            child.once("error", () => done(-1)); // spawn 失败
+            child.once("error", () => done(-1));
         });
 
         return { exitCode, stdoutTail, stderrTail };

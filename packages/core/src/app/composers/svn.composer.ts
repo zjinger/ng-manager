@@ -1,11 +1,9 @@
-import * as path from "path";
-
-import { SvnSyncServiceImpl, SvnTaskManager } from "../../domain/svn";
+import { createSvnDomain as createSvnDomainImpl } from "@yinuo-ngm/svn";
 import type { SystemLogService } from "@yinuo-ngm/logger";
 import type { ProjectService } from "@yinuo-ngm/project";
-import type { CoreEventMap } from "../../infra/event/events";
 import type { IEventBus } from "@yinuo-ngm/event";
-import { JsonSvnRuntimeRepo } from "../../infra/svn";
+import type { SvnEventMap } from "@yinuo-ngm/svn";
+import type { CoreEventMap } from "../../infra/event/events";
 
 export function createSvnDomain(opts: {
     dataDir: string;
@@ -13,13 +11,10 @@ export function createSvnDomain(opts: {
     sysLog: SystemLogService;
     project: ProjectService;
 }) {
-    const svnRepo = new JsonSvnRuntimeRepo(path.join(opts.dataDir, "runtime", "svn.runtime.json"));
-    const svnTaskManager = new SvnTaskManager();
-    return new SvnSyncServiceImpl(
-        svnRepo,
-        opts.events,
-        opts.sysLog,
-        svnTaskManager,
-        opts.project
-    );
+    return createSvnDomainImpl({
+        dataDir: opts.dataDir,
+        events: opts.events as IEventBus<SvnEventMap>,
+        sysLog: opts.sysLog,
+        project: opts.project,
+    });
 }
