@@ -1,4 +1,4 @@
-import { CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import launchEditor from "launch-editor";
 import * as path from "path";
 

@@ -1,4 +1,4 @@
-import { CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
 import Parser from "rss-parser";
 

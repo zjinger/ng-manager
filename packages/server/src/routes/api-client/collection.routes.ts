@@ -1,6 +1,6 @@
 import { ApiScope, ApiCollectionKind, ApiCollectionEntity, newId, ApiRequestEntity } from "@yinuo-ngm/api";
 import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
-import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
 
 type ListQuery = { scope?: ApiScope; projectId?: string };

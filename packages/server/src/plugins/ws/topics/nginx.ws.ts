@@ -1,4 +1,5 @@
-import { GlobalErrorCodes, type WsClientMsg, type WsServerMsg, NginxLogType } from "@yinuo-ngm/core";
+import { GlobalErrorCodes } from "@yinuo-ngm/errors";
+import { type WsClientMsg, type WsServerMsg, NginxLogType } from "@yinuo-ngm/core";
 import type { NginxLogEntry, NginxLogService } from "@yinuo-ngm/nginx";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";

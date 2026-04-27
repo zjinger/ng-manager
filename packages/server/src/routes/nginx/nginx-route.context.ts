@@ -1,7 +1,7 @@
 import { realpath } from 'fs/promises';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { resolve } from 'path';
-import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/core';
+import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/errors';
 
 export interface NginxRouteContext {
   fastify: FastifyInstance;

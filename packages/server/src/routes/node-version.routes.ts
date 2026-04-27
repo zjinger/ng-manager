@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { CoreError, CoreErrorCodes } from '@yinuo-ngm/core';
+import { CoreError, CoreErrorCodes } from '@yinuo-ngm/errors';
 /** Node 版本管理 路由 */
 export default async function nodeVersionRoutes(fastify: FastifyInstance) {
 

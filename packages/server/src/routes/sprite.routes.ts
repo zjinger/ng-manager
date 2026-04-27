@@ -1,6 +1,7 @@
 import path from "node:path";
 
-import { GlobalError, GlobalErrorCodes, GenerateSpriteOptions, Project, type ProjectAssets, type SpriteConfig } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
+import { GenerateSpriteOptions, Project, type ProjectAssets, type SpriteConfig } from "@yinuo-ngm/core";
 
 import { FastifyInstance } from "fastify";
 /**

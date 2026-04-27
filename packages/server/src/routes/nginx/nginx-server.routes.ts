@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { CreateNginxServerRequest, UpdateNginxServerRequest } from '@yinuo-ngm/nginx';
-import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/core';
+import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/errors';
 import { NginxRouteContext, sendBadRequest } from './nginx-route.context';
 
 interface ParsedImportCandidate {

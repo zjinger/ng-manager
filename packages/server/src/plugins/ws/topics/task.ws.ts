@@ -1,4 +1,5 @@
-import { CoreErrorCodes, type WsClientMsg, type WsServerMsg, type TaskEventPayloadMap, type TaskEventType, type TaskOutputPayload, type TaskOutputMsg, type TaskEventMsg, type LogLine, type TaskRuntime } from "@yinuo-ngm/core";
+import { CoreErrorCodes } from "@yinuo-ngm/errors";
+import { type WsClientMsg, type WsServerMsg, type TaskEventPayloadMap, type TaskEventType, type TaskOutputPayload, type TaskOutputMsg, type TaskEventMsg, type LogLine, type TaskRuntime } from "@yinuo-ngm/core";
 import { WsContext } from "../ws.context";
 import type { TopicHandler } from "../ws.router";
 

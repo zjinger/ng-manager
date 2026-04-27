@@ -1,4 +1,5 @@
-import { WsClientMsg, WsServerMsg, WsTopic, GlobalErrorCodes, type ErrorCode } from "@yinuo-ngm/core";
+import { WsClientMsg, WsServerMsg, WsTopic } from "@yinuo-ngm/core";
+import { GlobalErrorCodes, type ErrorCode } from "@yinuo-ngm/errors";
 import { WsContext } from "./ws.context";
 
 export type TopicHandler = {

@@ -1,4 +1,4 @@
-import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
 import { openFolder } from "../common/editor";
 

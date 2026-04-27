@@ -1,4 +1,4 @@
-import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
 
 type FeedbackCategory = "bug" | "suggestion" | "feature" | "other";

@@ -1,9 +1,7 @@
-import { CoreError, CoreErrorCodes, ProjectAssetSourceSvn } from "@yinuo-ngm/core";
+import { ProjectAssetSourceSvn } from "@yinuo-ngm/core";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
-import mime from "mime-types";
-import fs, { createReadStream } from "node:fs";
 import path from "node:path";
-import { pipeline } from "node:stream/promises";
 import { env } from "../env";
 export default async function svnRoutes(fastify: FastifyInstance) {
 

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
-import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
 
 const SKIP = new Set([
     ".svn",

@@ -1,4 +1,4 @@
-import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/core";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
 import { clearCookieJar, getCookieJar, mergeCookieJar } from "./hub-cookie-jar";
 
