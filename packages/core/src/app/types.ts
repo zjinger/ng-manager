@@ -8,9 +8,9 @@ import { type ProjectService } from "@yinuo-ngm/project";
 import { ProjectBootstrapService } from "../domain/project";
 import { SpriteService } from "../domain/sprite";
 import { SvnSyncService } from "../domain/svn";
-import { TaskService } from "../domain/task";
+import type { TaskService } from "@yinuo-ngm/task";
 import type { NodeVersionService } from "@yinuo-ngm/node-version";
-import type { IEventBus } from "../infra/event/event-bus";
+import type { IEventBus } from "@yinuo-ngm/event";
 import type { CoreEventMap } from "../infra/event/events";
 
 /**

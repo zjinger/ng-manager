@@ -9,7 +9,7 @@ export type {
 
 export { Events } from './infra/event'
 
-export type { TaskRuntime } from "./domain/task/task.types";
+export type { TaskRuntime } from "@yinuo-ngm/task";
 export type { DashboardDocV1 } from './domain/dashboard'
 
 export type { SpriteConfig, GenerateSpriteOptions } from "./domain/sprite";

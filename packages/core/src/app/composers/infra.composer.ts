@@ -1,8 +1,8 @@
 import * as path from "path";
 
 import { ProcessService, PtyProcessDriver } from "@yinuo-ngm/process";
+import { MemoryEventBus } from "@yinuo-ngm/event";
 import type { CoreEventMap } from "../../infra/event/events";
-import { MemoryEventBus } from "../../infra/event/memory-event-bus";
 import { RingLogStore } from "../../infra/log/ring-log-store";
 import { SystemLogServiceImpl } from "../../domain/logger";
 

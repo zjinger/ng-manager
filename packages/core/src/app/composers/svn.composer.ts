@@ -4,7 +4,7 @@ import { SvnSyncServiceImpl, SvnTaskManager } from "../../domain/svn";
 import type { SystemLogService } from "../../domain/logger";
 import type { ProjectService } from "@yinuo-ngm/project";
 import type { CoreEventMap } from "../../infra/event/events";
-import type { IEventBus } from "../../infra/event/event-bus";
+import type { IEventBus } from "@yinuo-ngm/event";
 import { JsonSvnRuntimeRepo } from "../../infra/svn";
 
 export function createSvnDomain(opts: {

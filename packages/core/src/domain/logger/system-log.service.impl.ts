@@ -1,5 +1,6 @@
+import { IEventBus } from "@yinuo-ngm/event";
 import { uid } from "../../common/id";
-import { Events, type IEventBus, type CoreEventMap } from "../../infra/event";
+import { Events, type CoreEventMap } from "../../infra/event";
 import type { ILogStore, LogLine, LogTailFilter } from "../../infra/log";
 import type {
     SystemLogFilter,
