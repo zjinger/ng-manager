@@ -1,14 +1,10 @@
-export const enum VersionManager {
+import { ManagerKind, ProjectType } from './node-version.types';
+
+export enum VersionManager {
   NVM = 'nvm',
   Volta = 'volta',
   NVM_Volta = 'nvm+volta',
   None = 'none',
-}
-
-export const enum ProjectType {
-  Angular = 'angular',
-  Vue = 'vue',
-  Unknown = 'unknown',
 }
 
 export interface NodeVersionInfo {

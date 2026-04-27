@@ -1,409 +1,181 @@
-import { execFile } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
-import { promisify } from 'node:util';
 import { CoreError, CoreErrorCodes } from '@yinuo-ngm/errors';
-import { getEnginesByAngular } from './angular-node.version';
-import { NodeVersionInfo, NodeVersionService, ProjectNodeRequirement, ProjectType, VersionManager } from './node-version.service';
-import { findBestMatchingVersion, satisfiesVersion } from './node-version.utils';
-import { getEnginesByVue } from './vue-node.version';
 import type { SystemLogService } from '@yinuo-ngm/logger';
+import {
+  NodeVersionService,
+  NodeVersionInfo,
+  ProjectNodeRequirement,
+  VersionManager,
+} from './node-version.service';
+import type { INodeVersionManagerDriver } from './managers/node-version-manager.driver';
+import type { InstalledVersion } from './managers/manager.types';
+import {
+  ManagerKind,
+  detectManager,
+  createVoltaDriver,
+  createNvmWindowsDriver,
+  createNvmUnixDriver,
+  NoneDriver,
+} from './managers';
+import { detectProjectRequirement } from './project-requirement';
+import { writePackageJsonField } from './project-requirement/package-json.reader';
+import { satisfiesVersion } from './node-version.utils';
 
-const execFileAsync = promisify(execFile);
+// 将内部 ManagerKind 映射为对外 VersionManager
+function kindToPublicManager(kind: ManagerKind): VersionManager {
+  switch (kind) {
+    case ManagerKind.NVM_Windows:
+    case ManagerKind.NVM_Unix:
+      return VersionManager.NVM;
+    case ManagerKind.Volta:
+      return VersionManager.Volta;
+    default:
+      return VersionManager.None;
+  }
+}
+
+// 根据检测到的管理器类型构造对应的 driver 实例
+function buildDriver(): INodeVersionManagerDriver {
+  const descriptor = detectManager();
+  switch (descriptor.kind) {
+    case ManagerKind.Volta:
+      return createVoltaDriver(descriptor);
+    case ManagerKind.NVM_Windows:
+      return createNvmWindowsDriver(descriptor);
+    case ManagerKind.NVM_Unix:
+      return createNvmUnixDriver(descriptor);
+    default:
+      return new NoneDriver();
+  }
+}
 
 export class NodeVersionServiceImpl implements NodeVersionService {
-  constructor(
-    private sysLog: SystemLogService,
-  ) {}
+  private driver: INodeVersionManagerDriver;
+  private descriptor = detectManager();
+
+  constructor(private sysLog: SystemLogService) {
+    this.driver = buildDriver();
+  }
+
+  private log(level: 'info' | 'warn' | 'error', text: string) {
+    this.sysLog?.[level]({ scope: 'task', text });
+  }
 
   async getCurrentVersion(): Promise<NodeVersionInfo> {
-    const manager = this.detectManager();
-    let current: string | null = null;
-    let available: string[] = [];
-
-    try {
-      current = await this.getNodeVersion();
-    } catch {
-      current = null;
-    }
-
-    try {
-      available = await this.getAvailableVersions(manager);
-    } catch {
-      available = [];
-    }
+    const [currentNv, installed] = await Promise.all([
+      this.driver.getCurrentVersion(),
+      this.driver.listInstalled(),
+    ]);
 
     return {
-      current,
-      manager,
-      available,
+      current: currentNv?.normalised ?? null,
+      manager: kindToPublicManager(this.descriptor.kind),
+      available: installed.map(v => v.version),
     };
   }
 
-  async switchVersion(version: string, runId?: string): Promise<NodeVersionInfo> {
-    const manager = this.detectManager();
-    if (manager === VersionManager.None) {
-      this.logText('没有安装 Node 版本管理器 (nvm/Volta)', 'warn');
-      throw new CoreError(CoreErrorCodes.NO_VERSION_MANAGER, '没有安装 Node 版本管理器 (nvm/Volta)', {});
+  async switchVersion(version: string, _runId?: string): Promise<NodeVersionInfo> {
+    if (this.descriptor.kind === ManagerKind.None) {
+      this.log('warn', '没有安装 Node 版本管理器 (nvm/Volta)');
+      throw new CoreError(
+        CoreErrorCodes.NO_VERSION_MANAGER,
+        '没有安装 Node 版本管理器 (nvm/Volta)',
+        {},
+      );
     }
-    this.logText(`检测到版本管理器: ${manager}`);
+
+    const clean = version.replace(/^v/, '');
+    this.log('info', `正在安装/切换到 Node.js ${clean}，管理器: ${this.driver.name}`);
 
     try {
-      if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
-        let command: string;
-        let args: string[];
-        if (version.startsWith('node@')) {
-          command = 'volta';
-          args = ['install', version];
-        } else {
-          command = 'volta';
-          args = ['install', `node@${version.replace(/^v/, '')}`];
-        }
-        this.logText(`执行命令: ${command} ${args.join(' ')}`);
-        await execFileAsync(command, args, { windowsHide: true });
-      } else if (manager === VersionManager.NVM) {
-        const nvmVersion = version.replace(/^v/, '');
-        this.logText(`执行命令: nvm use ${nvmVersion}`);
-        await execFileAsync('nvm', ['use', nvmVersion], { windowsHide: true });
-      }
-    } catch (e: any) {
-      this.logText(`切换 Node 版本失败: ${e?.message}`, 'error');
-      throw new CoreError(CoreErrorCodes.SWITCH_VERSION_FAILED, `切换 Node 版本失败: ${e?.message}`, { version, manager });
+      await this.driver.install(clean);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.log('error', `切换 Node 版本失败: ${msg}`);
+      throw new CoreError(CoreErrorCodes.SWITCH_VERSION_FAILED, `切换 Node 版本失败: ${msg}`, {
+        version,
+        manager: kindToPublicManager(this.descriptor.kind),
+      });
     }
 
     return this.getCurrentVersion();
   }
 
-  private detectManager(): VersionManager {
-    const hasNvm = this.detectNvm();
-    const hasVolta = this.detectVolta();
-    if (hasNvm && hasVolta) {
-      return VersionManager.NVM_Volta;
-    } else if (hasNvm) {
-      return VersionManager.NVM;
-    } else if (hasVolta) {
-      return VersionManager.Volta;
-    }
-    return VersionManager.None;
-  }
-
-  private detectNvm(): boolean {
-    const pathEnv = process.env.PATH || '';
-    const pathDirs = pathEnv.split(path.delimiter);
-
-    for (const dir of pathDirs) {
-      const nvmExe = path.join(dir, 'nvm.exe');
-      if (fs.existsSync(nvmExe)) {
-        return true;
-      }
-    }
-
-    const nvmPaths = ['C:\\Program Files\\nvm\\nvm.exe', 'C:\\ProgramData\\nvm\\nvm.exe', path.join(process.env.APPDATA || '', 'nvm', 'nvm.exe')];
-    for (const nvmPath of nvmPaths) {
-      if (fs.existsSync(nvmPath)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  private detectVolta(): boolean {
-    const pathEnv = process.env.PATH || '';
-    const pathDirs = pathEnv.split(path.delimiter);
-
-    for (const dir of pathDirs) {
-      const voltaExe = path.join(dir, 'volta.exe');
-      if (fs.existsSync(voltaExe)) {
-        return true;
-      }
-    }
-
-    const voltaPaths = [path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Volta', 'volta.exe'), path.join(process.env.APPDATA || '', 'volta', 'volta.exe')];
-    for (const voltaPath of voltaPaths) {
-      if (fs.existsSync(voltaPath)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  private async getNodeVersion(): Promise<string> {
-    const manager = this.detectManager();
-
-    if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
-      try {
-        const { stdout } = await execFileAsync('volta', ['current'], { windowsHide: true });
-        const v = stdout.trim();
-        if (v) return v.startsWith('v') ? v : 'v' + v;
-      } catch {}
-    } else {
-      try {
-        const { stdout } = await execFileAsync('nvm', ['current'], { windowsHide: true });
-        const v = stdout.trim();
-        if (v) return v.startsWith('v') ? v : 'v' + v;
-      } catch {}
-    }
-    return process.version;
-  }
-
-  private async getAvailableVersions(manager: VersionManager): Promise<string[]> {
-    if (manager === VersionManager.None) {
-      return [];
-    }
-
-    const versions: Set<string> = new Set();
-
-    try {
-      if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
-        try {
-          const result = await execFileAsync('volta', ['list', 'node'], { windowsHide: true });
-          const lines = result.stdout.split('\n');
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-            const match = trimmed.match(/(\d+\.\d+\.\d+)/);
-            if (match) {
-              versions.add('v' + match[1]);
-            }
-          }
-          if (versions.size > 0) {
-            return Array.from(versions);
-          }
-        } catch {}
-      }
-
-      if (manager === VersionManager.NVM || manager === VersionManager.NVM_Volta) {
-        const result = await execFileAsync('nvm', ['list'], { windowsHide: true });
-        const lines = result.stdout.split('\n');
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith('*')) continue;
-
-          const match = trimmed.match(/^v?(\d+\.\d+\.\d+)/);
-          if (match) {
-            versions.add('v' + match[1]);
-          }
-        }
-      }
-    } catch {
-      return [];
-    }
-
-    return Array.from(versions);
-  }
-
   async detectProjectRequirement(projectPath: string): Promise<ProjectNodeRequirement> {
-    const { requiredVersion, hasEnginesConfig } = await this.readProjectNodeVersion(projectPath);
-    const voltaVersion = await this.readProjectVoltaConfig(projectPath);
-    const versionInfo = await this.getCurrentVersion();
-    const currentVersion = versionInfo.current;
+    const { current, available } = await this.getCurrentVersion();
+    const installed: InstalledVersion[] = available.map(v => ({
+      version: v,
+      isCurrent: v === current,
+    }));
 
-    let satisfiedBy: string | null = null;
-    let isMatch = false;
-
-    if (voltaVersion) {
-      satisfiedBy = currentVersion;
-      isMatch = true;
-    } else if (requiredVersion && currentVersion) {
-      isMatch = satisfiesVersion(currentVersion, requiredVersion);
-      if (isMatch) {
-        satisfiedBy = currentVersion;
-      } else {
-        const matchingVersion = findBestMatchingVersion(versionInfo.available, requiredVersion);
-        if (matchingVersion) {
-          satisfiedBy = matchingVersion;
-        }
-      }
-    }
-
-    return {
+    return detectProjectRequirement({
       projectPath,
-      requiredVersion,
-      voltaConfig: voltaVersion,
-      satisfiedBy,
-      isMatch,
-      hasEnginesConfig,
-    };
-  }
-
-  private async readProjectVoltaConfig(projectPath: string): Promise<string | null> {
-    try {
-      const packageJsonPath = path.join(projectPath, 'package.json');
-      const content = await fs.promises.readFile(packageJsonPath, 'utf-8');
-      const pkg = JSON.parse(content);
-
-      if (pkg.volta && pkg.volta.node) {
-        return pkg.volta.node;
-      }
-
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  private async readProjectNodeVersion(projectPath: string): Promise<{ requiredVersion: string | null; hasEnginesConfig: boolean }> {
-    try {
-      const packageJsonPath = path.join(projectPath, 'package.json');
-      const content = await fs.promises.readFile(packageJsonPath, 'utf-8');
-      const pkg = JSON.parse(content);
-
-      if (pkg.engines && pkg.engines.node) {
-        return { requiredVersion: pkg.engines.node, hasEnginesConfig: true };
-      }
-
-      const projectType = this.detectProjectType(pkg);
-      if (projectType === ProjectType.Angular) {
-        const angularVersion = this.detectAngularVersion(pkg);
-        if (angularVersion) {
-          const engines = getEnginesByAngular(angularVersion);
-          return { requiredVersion: engines.node, hasEnginesConfig: false };
-        }
-      } else if (projectType === ProjectType.Vue) {
-        const vueVersion = this.detectVueVersion(pkg);
-        if (vueVersion) {
-          const engines = getEnginesByVue(vueVersion);
-          return { requiredVersion: engines.node, hasEnginesConfig: false };
-        }
-      }
-      return { requiredVersion: null, hasEnginesConfig: false };
-    } catch {
-      return { requiredVersion: null, hasEnginesConfig: false };
-    }
-  }
-
-  private detectAngularVersion(pkg: any): number | null {
-    const deps = { ...(pkg.dependencies || {}) };
-    for (const [dep, version] of Object.entries(deps)) {
-      if (dep === '@angular/core' && typeof version === 'string') {
-        const match = version.match(/^[\^~]?(\d+)/);
-        if (match) {
-          return parseInt(match[1], 10);
-        }
-      }
-    }
-    return null;
-  }
-
-  private detectVueVersion(pkg: any): number | null {
-    const deps = { ...(pkg.dependencies || {}) };
-    for (const [dep, version] of Object.entries(deps)) {
-      if ((dep === 'vue' || dep === '@vue/runtime-core') && typeof version === 'string') {
-        const match = version.match(/^[\^~]?(\d+)/);
-        if (match) {
-          return parseInt(match[1], 10);
-        }
-      }
-    }
-    return null;
-  }
-
-  private detectProjectType(pkg: any): ProjectType {
-    if (this.detectAngularVersion(pkg)) {
-      return ProjectType.Angular;
-    }
-    if (this.detectVueVersion(pkg)) {
-      return ProjectType.Vue;
-    }
-    return ProjectType.Unknown;
+      currentVersion: current,
+      available: installed,
+    });
   }
 
   getManager(): VersionManager {
-    return this.detectManager();
+    return kindToPublicManager(this.descriptor.kind);
   }
 
-  async installNodeVersion(version: string): Promise<{ success: boolean; error?: string; alreadyInstalled?: boolean }> {
-    const manager = this.detectManager();
-    if (manager === VersionManager.None) {
-      this.logText('没有安装 Node 版本管理器，无法自动安装', 'warn');
+  async installNodeVersion(
+    version: string,
+  ): Promise<{ success: boolean; error?: string; alreadyInstalled?: boolean }> {
+    if (this.descriptor.kind === ManagerKind.None) {
+      this.log('warn', '没有安装 Node 版本管理器，无法自动安装');
       return { success: false, error: '没有安装 Node 版本管理器 (nvm/Volta)' };
     }
 
-    this.logText(`开始安装 Node.js ${version}，使用版本管理器: ${manager}`);
+    const clean = version.replace(/^v/, '');
+    this.log('info', `开始安装 Node.js ${clean}，管理器: ${this.driver.name}`);
 
     try {
-      if (manager === VersionManager.NVM) {
-        const args = ['install', version];
-        this.logText(`执行命令: nvm ${args.join(' ')}`);
-        const result = await execFileAsync('nvm', args, { windowsHide: true });
-        const output = result.stdout + result.stderr;
-
-        if (output.toLowerCase().includes('already installed')) {
-          this.logText(`Node.js ${version} 已安装，跳过安装`);
-          return { success: true, alreadyInstalled: true };
-        }
-
-        const errorPatterns = ['not found', 'not yet released', 'not available', 'invalid', 'error'];
-        const hasError = errorPatterns.some(pattern => output.toLowerCase().includes(pattern));
-        if (hasError) {
-          this.logText(`Node.js ${version} 安装失败: ${output}`, 'error');
-          return { success: false, error: `Node.js ${version} ${output.includes('not') ? '版本未发布或不可用' : '安装失败'}` };
-        }
-        this.logText(`Node.js ${version} 安装成功`);
-        return { success: true };
+      await this.driver.install(clean);
+      this.log('info', `Node.js ${clean} 安装成功`);
+      return { success: true };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // Check for "already installed" in the error message (heuristic)
+      const alreadyInstalled = /already\s+installed/i.test(msg);
+      if (alreadyInstalled) {
+        this.log('info', `Node.js ${clean} 已安装，跳过安装`);
+        return { success: true, alreadyInstalled: true };
       }
-      return { success: false, error: '未知的版本管理器' };
-    } catch (e: any) {
-      this.logText(`Node.js 安装失败: ${e?.message}`, 'error');
-      return { success: false, error: e?.message || '安装失败' };
+      this.log('error', `Node.js ${clean} 安装失败: ${msg}`);
+      return { success: false, error: msg };
     }
   }
 
   async uninstallNodeVersion(version: string): Promise<boolean> {
-    const manager = this.detectManager();
-    if (manager === VersionManager.None) {
-      this.logText('没有安装 Node 版本管理器，无法卸载', 'warn');
+    if (this.descriptor.kind === ManagerKind.None) {
+      this.log('warn', '没有安装 Node 版本管理器，无法卸载');
       return false;
     }
 
-    const cleanVersion = version.replace(/^v/, '');
-    this.logText(`开始卸载 Node.js ${version}，使用版本管理器: ${manager}`);
+    const clean = version.replace(/^v/, '');
+    this.log('info', `开始卸载 Node.js ${clean}，管理器: ${this.driver.name}`);
 
     try {
-      if (manager === VersionManager.Volta || manager === VersionManager.NVM_Volta) {
-        const args = ['uninstall', `node@${cleanVersion}`];
-        this.logText(`执行命令: volta ${args.join(' ')}`);
-        await execFileAsync('volta', args, { windowsHide: true });
-      } else if (manager === VersionManager.NVM) {
-        const args = ['uninstall', cleanVersion];
-        this.logText(`执行命令: nvm ${args.join(' ')}`);
-        await execFileAsync('nvm', args, { windowsHide: true });
-      }
-      this.logText(`Node.js ${version} 卸载成功`);
+      await this.driver.uninstall(clean);
+      this.log('info', `Node.js ${clean} 卸载成功`);
       return true;
-    } catch (e: any) {
-      this.logText(`Node.js 卸载失败: ${e?.message}`, 'error');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.log('error', `Node.js ${clean} 卸载失败: ${msg}`);
       return false;
     }
   }
 
   async writeEngineConfig(projectPath: string, version: string): Promise<boolean> {
-    this.logText(`开始写入 engines.node 配置到 ${projectPath}`);
-
+    this.log('info', `写入 engines.node = ${version} 到 ${projectPath}/package.json`);
     try {
-      const packageJsonPath = path.join(projectPath, 'package.json');
-      const content = await fs.promises.readFile(packageJsonPath, 'utf-8');
-      const pkg = JSON.parse(content);
-
-      if (!pkg.engines) {
-        pkg.engines = {};
-      }
-      pkg.engines.node = version;
-
-      await fs.promises.writeFile(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
-      this.logText(`engines.node 已写入: ${version}`);
+      await writePackageJsonField(projectPath, 'engines.node', version);
+      this.log('info', `engines.node 已写入: ${version}`);
       return true;
-    } catch (e: any) {
-      this.logText(`写入 engines.node 失败: ${e?.message}`, 'error');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.log('error', `写入 engines.node 失败: ${msg}`);
       return false;
     }
-  }
-
-  private logText(text: string, level: 'info' | 'warn' | 'error' = 'info') {
-    this.sysLog?.[level]({ scope: 'task', text });
   }
 }

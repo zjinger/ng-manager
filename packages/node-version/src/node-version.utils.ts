@@ -1,4 +1,4 @@
-function compareVersions(v1: string, v2: string): number {
+export function compareVersions(v1: string, v2: string): number {
   const parts1 = v1.split('.').map(Number);
   const parts2 = v2.split('.').map(Number);
 
@@ -13,6 +13,7 @@ function compareVersions(v1: string, v2: string): number {
   return 0;
 }
 
+// ^x.y.z 语义：主版本相同，允许次版本和补丁升级
 function satisfiesCaret(version: string, required: string): boolean {
   const versionParts = version.split('.').map(Number);
   const requiredParts = required.split('.').map(Number);
@@ -28,6 +29,7 @@ function satisfiesCaret(version: string, required: string): boolean {
   return versionParts[1] > requiredParts[1] || (versionParts[1] === requiredParts[1] && versionParts[2] >= requiredParts[2]);
 }
 
+// ~x.y.z 语义：主次版本相同，允许补丁升级
 function satisfiesTilde(version: string, required: string): boolean {
   const versionParts = version.split('.').map(Number);
   const requiredParts = required.split('.').map(Number);
@@ -39,6 +41,7 @@ function satisfiesTilde(version: string, required: string): boolean {
   return versionParts[2] >= requiredParts[2];
 }
 
+// 单个版本范围（不含 ||）是否满足
 function satisfiesSingleRange(version: string, range: string): boolean {
   range = range.trim();
   const cleanVersion = version.replace(/^v/, '');
@@ -62,7 +65,7 @@ function satisfiesSingleRange(version: string, range: string): boolean {
       return result;
     }
     return cleanVersion === required;
-  } else if (range === '*' || range === 'x' || range === 'X') {
+  } else if (range === '*' || range === 'x' || range === 'X') {  // 通配符
     return true;
   } else {
     return cleanVersion === range;
@@ -83,6 +86,7 @@ export function satisfiesVersion(version: string, requirement: string): boolean 
   return false;
 }
 
+// 计算版本对需求的匹配得分，用于 findBestMatchingVersion 排序
 function calculateMatchScore(version: string, requirement: string): number {
   const cleanVersion = version.replace(/^v/, '');
   const versionParts = cleanVersion.split('.').map(Number);

@@ -1,4 +1,4 @@
-import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import { CoreError, CoreErrorCodes } from '@yinuo-ngm/errors';
 
 interface AngularNodeVersion {
   angularVersion: number;
@@ -20,13 +20,12 @@ const ANGULAR_NODE_VERSIONS: AngularNodeVersion[] = [
   { angularVersion: 10, supportedNodeRange: '^10.13.0 || ^12.11.0' },
 ];
 
-function getAngularVersionConfig(ngVersion: number) {
+export function getEnginesByAngular(ngVersion: number): { node: string } {
   const config = ANGULAR_NODE_VERSIONS.find(v => v.angularVersion === ngVersion);
-  if (!config) throw new CoreError(CoreErrorCodes.INVALID_NAME, `不支持的 Angular 版本: ${ngVersion}`);
-  return config;
+  if (!config) {
+    throw new CoreError(CoreErrorCodes.INVALID_NAME, `不支持的 Angular 版本: ${ngVersion}`);
+  }
+  return { node: config.supportedNodeRange };
 }
 
-export function getEnginesByAngular(ngVersion: number) {
-  const { supportedNodeRange } = getAngularVersionConfig(ngVersion);
-  return { node: supportedNodeRange };
-}
+export { ANGULAR_NODE_VERSIONS };
