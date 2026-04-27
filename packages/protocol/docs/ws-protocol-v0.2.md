@@ -8,7 +8,7 @@
 > Goals:
 > - Support **runId-based task execution sessions**
 > - Separate **task output (terminal)** from **system logs (syslog)**
-> - Ensure correct **stop semantics** (stopRequested → exited)
+> - Ensure correct **stop semantics** (stopRequested -> exited)
 > - Be backward-compatible with v0.1 (taskId-based)
 
 ---
@@ -17,10 +17,10 @@
 
 ### 1.1 Task vs Run
 
-- **Task**: A logical definition derived from project scripts  
+- **Task**: A logical definition derived from project scripts
   Identified by `taskId` (== `spec.id`)
 
-- **Run**: A single execution instance of a task  
+- **Run**: A single execution instance of a task
   Identified by **`runId`** (generated on every `start`)
 
 > A task can have multiple runs over time (even if concurrency is disallowed).
@@ -29,10 +29,10 @@
 
 ### 1.2 Log Types
 
-| Type        | Purpose                              | Scope      |
-|-------------|--------------------------------------|------------|
-| Task Output | stdout / stderr stream (terminal)    | per runId  |
-| Syslog     | system actions (run / stop / error)  | global     |
+| Type        | Purpose                           | Scope      |
+|-------------|-----------------------------------|------------|
+| Task Output | stdout / stderr stream (terminal) | per runId  |
+| Syslog      | system actions (run / stop / error) | global   |
 
 ---
 
@@ -46,7 +46,7 @@ export type WsTopic =
 
 ---
 
-## 3. Client → Server Messages
+## 3. Client -> Server Messages
 
 ### 3.1 Common
 
@@ -104,7 +104,7 @@ export type WsTopic =
 
 ---
 
-## 4. Server → Client Messages
+## 4. Server -> Client Messages
 
 ### 4.1 Handshake / Control
 
@@ -164,13 +164,13 @@ Characteristics:
 
 #### Event Semantics
 
-| type           | Meaning |
-|----------------|---------|
-| snapshot       | Initial state after subscribe |
-| started        | Process spawned successfully |
-| stopRequested  | Stop requested (SIGTERM sent) |
-| exited         | Process exited (final state) |
-| failed         | Spawn or runtime failure |
+| type          | Meaning |
+|---------------|---------|
+| snapshot      | Initial state after subscribe |
+| started       | Process spawned successfully |
+| stopRequested | Stop requested (SIGTERM sent) |
+| exited        | Process exited (final state) |
+| failed        | Spawn or runtime failure |
 
 > UI MUST treat `stopRequested` as **stopping**, not stopped.
 
@@ -185,7 +185,7 @@ Characteristics:
 }
 ```
 
-`LogLine` (from core):
+`LogLine` (from protocol):
 
 ```ts
 {

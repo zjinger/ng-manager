@@ -1,6 +1,6 @@
 // core/src/domain/log/system-log.service.ts
 
-import type { SystemLogEntry, SystemLogLevel, SystemLogScope, SystemLogSource, LogOutputPayload } from "../../protocol";
+import type { LogOutputPayload, SystemLogEntry, SystemLogLevel, SystemLogScope, SystemLogSource } from "@yinuo-ngm/protocol";
 
 /**
  * 用于 tail/query 的过滤器

@@ -3,12 +3,9 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib",
-    "composite": true
+    "composite": true,
+    "strict": true
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../errors" },
-    { "path": "../protocol" },
-    { "path": "../sprite" }
-  ]
+  "references": [{ "path": "../errors" }]
 }

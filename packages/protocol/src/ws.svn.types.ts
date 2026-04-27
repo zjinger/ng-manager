@@ -1,4 +1,3 @@
-
 export type SvnSyncMode = "checkout" | "update" | "switch" | "recheckout";
 
 export type SvnTaskStatus =
@@ -70,11 +69,11 @@ export type SvnSyncDonePayload = {
 export type SvnSyncProgressPayload = {
     projectId: string;
     sourceId: string;
-    total?: number;        // 0/undefined 表示未知
+    total?: number;
     changed: number;
-    percent?: number;      // total 已知才有
+    percent?: number;
     status: SvnTaskStatus;
-}
+};
 
 export type SvnSyncRuntimePayload = {
     projectId: string;
@@ -85,4 +84,4 @@ export type SvnSyncRuntimePayload = {
     currentUrl?: string;
     lastStdout?: string;
     lastStderr?: string;
-}
+};

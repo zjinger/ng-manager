@@ -3,7 +3,7 @@ import { uid } from "../../common/id";
 import { type CoreEventMap, Events, IEventBus } from "../../infra/event";
 import { ILogStore, LogLine } from "../../infra/log";
 import { type ProcHandle, SpawnedProcess } from "../../infra/process";
-import { LogStreamType, SystemLogLevel, TaskOutputPayload } from "../../protocol";
+import type { LogStreamType, SystemLogLevel, TaskOutputPayload } from "@yinuo-ngm/protocol";
 import { SystemLogService } from "../logger";
 import { ProcessService, } from "../process";
 import { ProjectService } from "../project";

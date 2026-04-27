@@ -1,4 +1,4 @@
-import { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "../../protocol";
+import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload } from "@yinuo-ngm/protocol";
 import { LogLine } from "../log/log.types";
 
 export const Events = {

@@ -1,5 +1,6 @@
 import { CoreErrorCodes } from "@yinuo-ngm/errors";
-import { type SvnEventMsg, type SvnEventPayloadMap, type SvnEventType, type SvnRuntime, type WsClientMsg, type WsServerMsg } from "@yinuo-ngm/core";
+import type { SvnRuntime } from "@yinuo-ngm/core";
+import type { SvnEventMsg, SvnEventPayloadMap, SvnEventType, WsClientMsg, WsServerMsg } from "@yinuo-ngm/protocol";
 import { WsContext } from "../ws.context";
 import { TopicHandler } from "../ws.router";
 

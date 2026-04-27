@@ -9,7 +9,7 @@ import type {
     SystemLogSubscriber,
     Unsubscribe,
 } from "./system-log.service";
-import type { LogOutputPayload, SystemLogEntry, SystemLogSource } from "../../protocol";
+import type { LogOutputPayload, SystemLogEntry, SystemLogSource } from "@yinuo-ngm/protocol";
 
 /**
  * SystemLogServiceImpl

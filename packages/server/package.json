@@ -32,6 +32,7 @@
     "@yinuo-ngm/core": "^0.1.8",
     "@yinuo-ngm/errors": "^1.0.0",
     "@yinuo-ngm/nginx": "^0.1.1",
+    "@yinuo-ngm/protocol": "^0.1.0",
     "fastify": "^5.6.2",
     "fastify-plugin": "^5.1.0",
     "launch-editor": "^2.12.0",

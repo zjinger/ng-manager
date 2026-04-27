@@ -7,17 +7,16 @@ export type TaskStatus =
     | "failed";
 
 export type TaskEventType =
-    | "snapshot" // 全量快照
-    | "started" // 任务启动
-    | "stopRequested" // 请求停止
-    | "exited" // 任务退出
-    | "failed" // 任务失败
-    | "bootstrapDone" // 任务关联的项目 bootstrap 完成
-    | "bootstrapFailed" // 任务关联的项目 bootstrap 失败
-    | "bootstrapNeedPickRoot"  // 任务关联的项目 bootstrap 需要用户选择根目录
+    | "snapshot"
+    | "started"
+    | "stopRequested"
+    | "exited"
+    | "failed"
+    | "bootstrapDone"
+    | "bootstrapFailed"
+    | "bootstrapNeedPickRoot";
 
 export type LogStreamType = "stdout" | "stderr" | "system";
-
 
 export type TaskSnapshotPayload = {
     taskId: string;
@@ -25,11 +24,9 @@ export type TaskSnapshotPayload = {
     runId: string;
     status: TaskStatus;
     name?: string;
-
     pid?: number;
     startedAt?: number;
     stoppedAt?: number;
-
     exitCode?: number | null;
     signal?: string | null;
 };
@@ -78,12 +75,12 @@ export type TaskBootstrapFailedPayload = {
 export type TaskBootstrapNeedPickRootPayload = {
     taskId: string;
     runId: string;
-    rootPath: string;           // clone 出来的仓库根目录
-    candidates: Array<{         // 可选子目录（绝对路径）
+    rootPath: string;
+    candidates: Array<{
         path: string;
         kind: "angular" | "vue";
     }>;
-}
+};
 
 export type TaskEventPayloadMap = {
     snapshot: TaskSnapshotPayload;
@@ -96,8 +93,6 @@ export type TaskEventPayloadMap = {
     bootstrapNeedPickRoot: TaskBootstrapNeedPickRootPayload;
 };
 
-
-
 export type TaskEventMsg =
     {
         [K in TaskEventType]: {
@@ -107,7 +102,6 @@ export type TaskEventMsg =
             ts: number;
         };
     }[TaskEventType];
-
 
 export type TaskOutputPayload = {
     runId: string;
@@ -120,4 +114,4 @@ export type TaskOutputMsg = {
     op: "task.output";
     payload: TaskOutputPayload;
     ts: number;
-}
+};

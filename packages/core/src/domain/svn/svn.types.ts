@@ -1,4 +1,4 @@
-import { SvnSyncMode } from "../../protocol";
+import type { SvnSyncMode } from "@yinuo-ngm/protocol";
 export type ProgressState = {
     total: number;      // 估算总条目数
     changed: number;    // 已处理条目数
