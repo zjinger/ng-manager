@@ -19,8 +19,9 @@ export interface INodeVersionManagerDriver {
   /** 切换到指定 Node 版本（若未安装则先安装）。
    *
    *  与 install 的区别：use 会将版本设为当前激活版本（nvm use / volta pin）。
-   *  对于 Volta，install node@x.y.z 本身已包含 pin 语义，可直接调用 install。
-   *  对于 nvm，install 与 use 是两件事，必须分别调用。
+   *  - Volta：install node@x.y.z 已包含 pin 语义，use 等同于 install。
+   *  - NVM-Windows / NVM-Unix：install 与 use 是两件事，use() 内部会先 install 再 activate。
+   *  未安装时调用 use() 会失败（NVM 不自动装，Volta 由其自身行为决定）。
    */
   use(version: string): Promise<void>;
 

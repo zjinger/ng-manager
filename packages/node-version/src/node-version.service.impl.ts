@@ -36,7 +36,7 @@ export class NodeVersionServiceImpl implements NodeVersionService {
   constructor(private sysLog: SystemLogService) {}
 
   private log(level: 'info' | 'warn' | 'error', text: string, refId?: string) {
-    this.sysLog?.[level]({ source: 'web', scope: 'node-version', refId, text });
+    this.sysLog?.[level]({ source: 'node-version', scope: 'node-version', refId, text });
   }
 
   /** 每次操作前动态检测管理器，避免缓存导致重启才能识别新装的管理器。 */

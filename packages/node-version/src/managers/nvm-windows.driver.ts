@@ -2,14 +2,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { INodeVersionManagerDriver, NormalisedVersion, InstalledVersion } from './node-version-manager.driver';
 import { ManagerDescriptor, ManagerKind } from './manager.types';
+import { normalizeVersion } from '../node-version.utils';
 
 const execFileAsync = promisify(execFile);
-
-function normalise(v: string): NormalisedVersion {
-  const stripped = v.trim().replace(/^\*/, '').trim();
-  const normalised = stripped.startsWith('v') ? stripped : `v${stripped}`;
-  return { raw: stripped, normalised };
-}
 
 export class NvmWindowsDriver implements INodeVersionManagerDriver {
   readonly name = 'NVM-Windows';
@@ -30,8 +25,13 @@ export class NvmWindowsDriver implements INodeVersionManagerDriver {
     await execFileAsync(this.binary, ['uninstall', clean], { windowsHide: true });
   }
 
+  /**
+   * NVM-Windows 的 use 必须目标版本已安装，未安装时直接失败。
+   * 此处先 install 再 use，确保版本存在。
+   */
   async use(version: string): Promise<void> {
     const clean = version.replace(/^v/, '');
+    await this.install(clean);
     await execFileAsync(this.binary, ['use', clean], { windowsHide: true });
   }
 
@@ -41,7 +41,7 @@ export class NvmWindowsDriver implements INodeVersionManagerDriver {
       const v = stdout.trim();
       if (!v || v === 'No Active Version') return null;
       // nvm-windows current 可能返回 'v20.19.0' 或纯 '20.19.0'
-      return normalise(v);
+      return normalizeVersion(v);
     } catch {
       return null;
     }
@@ -65,7 +65,7 @@ export class NvmWindowsDriver implements INodeVersionManagerDriver {
         const match = trimmed.match(/(?:\*\s*)?v?(\d+\.\d+\.\d+)/);
         if (!match) continue;
 
-        const nv = normalise(match[1]);
+        const nv = normalizeVersion(match[1]);
         installed.push({
           version: nv.normalised,
           isCurrent: currentNv?.normalised === nv.normalised,

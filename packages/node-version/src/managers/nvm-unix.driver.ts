@@ -3,14 +3,9 @@ import { promisify } from 'node:util';
 import os from 'node:os';
 import { INodeVersionManagerDriver, NormalisedVersion, InstalledVersion } from './node-version-manager.driver';
 import { ManagerDescriptor, ManagerKind } from './manager.types';
+import { normalizeVersion } from '../node-version.utils';
 
 const execFileAsync = promisify(execFile);
-
-function normalise(v: string): NormalisedVersion {
-  const stripped = v.trim();
-  const normalised = stripped.startsWith('v') ? stripped : `v${stripped}`;
-  return { raw: stripped, normalised };
-}
 
 /**
  * NVM-Unix 需要在 bash 登录 shell 中 source `nvm.sh`：
@@ -45,8 +40,13 @@ export class NvmUnixDriver implements INodeVersionManagerDriver {
     await this.bashLc(`nvm uninstall ${clean}`);
   }
 
+  /**
+   * NVM-Unix 的 use 必须目标版本已安装，未安装时直接失败。
+   * 此处先 install 再 use，确保版本存在。
+   */
   async use(version: string): Promise<void> {
     const clean = version.replace(/^v/, '');
+    await this.install(clean);
     await this.bashLc(`nvm use ${clean}`);
   }
 
@@ -55,7 +55,7 @@ export class NvmUnixDriver implements INodeVersionManagerDriver {
       const stdout = await this.bashLc('nvm current');
       const v = stdout.trim();
       if (!v || v === 'N/A') return null;
-      return normalise(v);
+      return normalizeVersion(v);
     } catch {
       return null;
     }
@@ -74,7 +74,7 @@ export class NvmUnixDriver implements INodeVersionManagerDriver {
         // 每行为一个版本，格式如 '      v18.19.1'
         const match = trimmed.match(/v?(\d+\.\d+\.\d+)/);
         if (!match) continue;
-        const nv = normalise(match[1]);
+        const nv = normalizeVersion(match[1]);
         installed.push({
           version: nv.normalised,
           isCurrent: currentNv?.normalised === nv.normalised,

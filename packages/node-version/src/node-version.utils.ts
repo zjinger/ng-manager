@@ -13,6 +13,29 @@ export function compareVersions(v1: string, v2: string): number {
   return 0;
 }
 
+// ─── 模块内部类型，不在 public API 中 ─────────────────────────────────────────
+interface NormalisedVersion {
+  raw: string;
+  normalised: string;
+}
+
+/**
+ * 将任意版本字符串规范化为 { raw, normalised }，normalised 格式为 'v大版本.次版本.补丁'。
+ *
+ * 支持的输入格式：
+ *   '20.19.0'  → { raw: '20.19.0',  normalised: 'v20.19.0' }
+ *   'v20.19.0' → { raw: 'v20.19.0', normalised: 'v20.19.0' }
+ *   '  * 18'   → { raw: '18',       normalised: 'v18' }    （NVM-Windows list 输出）
+ *   '  18.19.1'→ { raw: '18.19.1', normalised: 'v18.19.1' }
+ *
+ * 不合规输入（空字符串、含非版本字符）：返回 raw = trimmed，normalised = trimmed（不抛异常）。
+ */
+export function normalizeVersion(v: string): NormalisedVersion {
+  const stripped = v.trim().replace(/^\*/, '').trim();
+  const normalised = stripped.startsWith('v') ? stripped : `v${stripped}`;
+  return { raw: stripped, normalised };
+}
+
 // ^x.y.z 语义：主版本相同，允许次版本和补丁升级
 function satisfiesCaret(version: string, required: string): boolean {
   const versionParts = version.split('.').map(Number);
@@ -61,11 +84,10 @@ function satisfiesSingleRange(version: string, range: string): boolean {
   } else if (range.startsWith('=')) {
     const required = range.substring(1).trim();
     if (!required.includes('.')) {
-      const result = cleanVersion.startsWith(required + '.') || cleanVersion === required;
-      return result;
+      return cleanVersion.startsWith(required + '.') || cleanVersion === required;
     }
     return cleanVersion === required;
-  } else if (range === '*' || range === 'x' || range === 'X') {  // 通配符
+  } else if (range === '*' || range === 'x' || range === 'X') {
     return true;
   } else {
     return cleanVersion === range;

@@ -2,15 +2,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { INodeVersionManagerDriver, NormalisedVersion, InstalledVersion } from './node-version-manager.driver';
 import { ManagerDescriptor, ManagerKind } from './manager.types';
+import { normalizeVersion } from '../node-version.utils';
 
 const execFileAsync = promisify(execFile);
-
-/** 将 Volta 版本字符串规范化为 'v大版本.次版本.补丁'。 */
-function normalise(v: string): NormalisedVersion {
-  const stripped = v.trim();
-  const normalised = stripped.startsWith('v') ? stripped : `v${stripped}`;
-  return { raw: stripped, normalised };
-}
 
 /** 从 `volta current node` 输出中提取 Node 版本。
  *
@@ -25,7 +19,7 @@ function normalise(v: string): NormalisedVersion {
 function extractNodeVersion(stdout: string): NormalisedVersion | null {
   const match = stdout.match(/node\s*:?\s+(v?\d+\.\d+\.\d+)/im);
   if (!match) return null;
-  return normalise(match[1]);
+  return normalizeVersion(match[1]);
 }
 
 export class VoltaDriver implements INodeVersionManagerDriver {
@@ -52,7 +46,9 @@ export class VoltaDriver implements INodeVersionManagerDriver {
   }
 
   /**
-   * Volta 的 install 包含 pin 语义，等同于 use，无需单独 use() 实现。
+   * Volta install 确保版本可用并将其设为默认工具版本（相当于 nvm install + nvm use）。
+   * use() 等同于 install，Volta 无需单独 pin 操作。
+   * 项目级 pin（写入 package.json volta 字段）后续单独支持。
    */
   async use(version: string): Promise<void> {
     await this.install(version);
@@ -89,7 +85,7 @@ export class VoltaDriver implements INodeVersionManagerDriver {
           trimmed.match(/node@?(v?\d+\.\d+\.\d+)/i) ??
           trimmed.match(/\b(v?\d+\.\d+\.\d+)\b/);
         if (!match) continue;
-        const nv = normalise(match[1]);
+        const nv = normalizeVersion(match[1]);
         installed.push({
           version: nv.normalised,
           isCurrent: current?.normalised === nv.normalised,
