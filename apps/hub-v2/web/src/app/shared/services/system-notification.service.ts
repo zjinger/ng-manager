@@ -1,9 +1,13 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, NgZone } from '@angular/core';
+import { Router } from '@angular/router';
 
 import type { NotificationItem } from '../../features/notifications/models/notification.model';
+import { buildNotificationRouteTarget } from '../../features/notifications/utils/notification-route.util';
 
 @Injectable({ providedIn: 'root' })
 export class SystemNotificationService {
+  private readonly router = inject(Router);
+  private readonly ngZone = inject(NgZone);
   private permissionCache: NotificationPermission =
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied';
 
@@ -28,7 +32,7 @@ export class SystemNotificationService {
     return result;
   }
 
-  async show(title: string, body: string, icon?: string): Promise<void> {
+  async show(title: string, body: string, icon?: string, clickUrl?: string): Promise<void> {
     if (!this.isSupported()) return;
     if (this.permissionCache !== 'granted') {
       const permission = await this.requestPermission();
@@ -37,18 +41,30 @@ export class SystemNotificationService {
 
     const notification = new Notification(title, {
       body,
-      icon: icon ?? '/favicon.ico',
+      icon: icon ?? '/favicon.png',
     });
 
     notification.onclick = () => {
       window.focus();
       notification.close();
+      if (!clickUrl) {
+        return;
+      }
+      this.ngZone.run(() => {
+        void this.router.navigateByUrl(clickUrl).catch(() => {
+          window.location.assign(clickUrl);
+        });
+      });
     };
   }
 
   async showFromNotificationItem(item: NotificationItem, enabled: boolean): Promise<void> {
     if (!enabled) return;
-    await this.show(item.title, item.description, '/favicon.ico');
+    const target = buildNotificationRouteTarget(item);
+    const clickUrl = target.path
+      ? this.router.serializeUrl(this.router.createUrlTree(target.path, { queryParams: target.query }))
+      : undefined;
+    await this.show(item.title, item.description, '/favicon.png', clickUrl);
   }
 
   async checkAndPromptPermission(): Promise<'granted' | 'denied' | 'default'> {
