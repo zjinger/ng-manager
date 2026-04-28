@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@yinuo-ngm/errors": "^1.0.1",
+    "@yinuo-ngm/process": "^0.1.1",
     "@yinuo-ngm/storage": "^0.1.5"
   }
 }

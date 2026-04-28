@@ -1,7 +1,8 @@
 import path from "path";
 import fs from "fs";
-import { spawn, type ChildProcess } from "child_process";
+import { type ChildProcess } from "child_process";
 import { getLocalServerDataDir } from "@yinuo-ngm/runtime";
+import { silentSpawn } from "@yinuo-ngm/process";
 
 export type ServerOptions = {
     port?: number;
@@ -55,8 +56,9 @@ export async function startServer(opts: ServerOptions): Promise<ChildProcess> {
 
     // 前台模式：直接继承 stdio
     if (opts.foreground) {
-        const child = spawn(process.execPath, [entry], {
+        const child = silentSpawn(process.execPath, [entry], {
             stdio: 'inherit',
+            hideWindow: false,
             env,
         });
         return child;
@@ -74,12 +76,12 @@ export async function startServer(opts: ServerOptions): Promise<ChildProcess> {
     const stdoutStream = fs.openSync(stdoutFile, 'a');
     const stderrStream = fs.openSync(stderrFile, 'a');
 
-    const child = spawn(process.execPath, [entry], {
+    const child = silentSpawn(process.execPath, [entry], {
         detached: true,
         stdio: ['ignore', stdoutStream, stderrStream],
-        ...(process.platform === 'win32' && { creationflags: 0x08000000 }),
+        hideWindow: true,
         env,
-    } as any);
+    });
 
     child.unref();
     return child;

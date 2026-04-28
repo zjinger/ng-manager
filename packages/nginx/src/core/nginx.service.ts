@@ -1,7 +1,5 @@
-import { execFile, spawn } from 'child_process';
 import { access, constants } from 'fs/promises';
 import { platform } from 'os';
-import { promisify } from 'util';
 import { normalizePath, resolveNginxPaths } from './nginx-path-utils';
 import { extractNginxVersion, parseNginxErrors, parseNginxWarnings } from './nginx-output-utils';
 import { buildRuntimeArgs, buildSignalArgs, waitForState } from './nginx-lifecycle-utils';
@@ -18,8 +16,8 @@ import type {
   NginxStatus,
 } from '../types/nginx.types';
 import { nginxErrors } from '@yinuo-ngm/errors';
+import { silentExecFile, silentSpawn } from '@yinuo-ngm/process';
 
-const execFileAsync = promisify(execFile);
 export class NginxService {
   private instance: NginxInstance | null = null;
   private lastConfigAppliedAt: number | null = null;
@@ -113,16 +111,15 @@ export class NginxService {
       return { isRunning: false };
     }
 
-    const pid = await findNginxPid(execFileAsync);
+    const pid = await findNginxPid(silentExecFile);
     if (!pid) {
       return { isRunning: false };
     }
 
-    const uptime = await getNginxProcessUptime(execFileAsync, pid);
-    const allPids = await findAllNginxPids(execFileAsync, pid);
-    const activeConnections = await getNginxActiveConnections(execFileAsync, allPids);
+    const uptime = await getNginxProcessUptime(silentExecFile, pid);
+    const allPids = await findAllNginxPids(silentExecFile, pid);
+    const activeConnections = await getNginxActiveConnections(silentExecFile, allPids);
     if (this.lastConfigAppliedAt === null) {
-      // 进程已在运行但尚未有本进程内 reload/start 记录时，建立一个基线时间。
       this.markConfigAppliedNow();
     }
 
@@ -147,13 +144,10 @@ export class NginxService {
     try {
       const startArgs = buildRuntimeArgs(this.instance);
       await new Promise<void>((resolve, reject) => {
-        const isWindows = process.platform === 'win32';
-
-        // 统一通过 spawn 事件确认子进程已成功拉起，再由 waitForStart 做运行态验证。
-        const child = spawn(this.instance!.path, startArgs, {
+        const child = silentSpawn(this.instance!.path, startArgs, {
           cwd: this.instance!.prefixPath,
-          detached: !isWindows,      // Linux/Mac 使用 detached
-          windowsHide: isWindows,    // Windows 隐藏窗口
+          detached: false,
+          hideWindow: true,
           stdio: ['ignore', 'pipe', 'pipe'],
         });
 
@@ -167,14 +161,10 @@ export class NginxService {
         });
 
         child.on('spawn', () => {
-          if (!isWindows) {
-            child.unref();
-          }
           resolve();
         });
       });
 
-      // 等待 nginx 完全启动
       await waitForState(this.startStopWaitTimeoutMs, this.statusPollIntervalMs, async () => {
         const statusAfter = await this.getStatus();
         return statusAfter.isRunning;
@@ -200,7 +190,6 @@ export class NginxService {
       return { success: false, error: 'Nginx 未绑定' };
     }
 
-    // 先检查是否在运行
     const status = await this.getStatus();
     if (!status.isRunning) {
       return { success: true, output: 'Nginx 未在运行' };
@@ -210,22 +199,19 @@ export class NginxService {
 
     try {
       if (isWindows) {
-        // Windows: 优先使用 nginx -s quit（优雅退出），失败则用 taskkill
         try {
-          await execFileAsync(this.instance.path, buildSignalArgs(this.instance, 'quit'), {
+          await silentExecFile(this.instance.path, buildSignalArgs(this.instance, 'quit'), {
             cwd: this.instance.prefixPath,
-            timeout: 5000
+            timeout: 5000,
           });
         } catch {
-          // nginx -s quit 在 Windows 上可能失败，使用 taskkill
-          await execFileAsync('taskkill', ['/F', '/IM', 'nginx.exe'], {
-            timeout: 5000
+          await silentExecFile('taskkill', ['/F', '/IM', 'nginx.exe'], {
+            timeout: 5000,
           });
         }
       } else {
-        // Linux/Mac: 使用 nginx -s stop
-        await execFileAsync(this.instance.path, buildSignalArgs(this.instance, 'stop'), {
-          cwd: this.instance.prefixPath
+        await silentExecFile(this.instance.path, buildSignalArgs(this.instance, 'stop'), {
+          cwd: this.instance.prefixPath,
         });
       }
 
@@ -239,7 +225,6 @@ export class NginxService {
         output: 'Nginx 停止成功',
       };
     } catch (error: any) {
-      // 检查是否实际已停止
       const currentStatus = await this.getStatus();
       if (!currentStatus.isRunning) {
         return { success: true, output: 'Nginx 已停止' };
@@ -257,14 +242,13 @@ export class NginxService {
       return { success: false, error: 'Nginx 未绑定' };
     }
 
-    // 先检查是否在运行
     const status = await this.getStatus();
     if (!status.isRunning) {
       return { success: false, error: 'Nginx 未在运行，无法重载配置' };
     }
 
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await silentExecFile(
         this.instance.path,
         buildSignalArgs(this.instance, 'reload'),
         { cwd: this.instance.prefixPath }
@@ -318,7 +302,7 @@ export class NginxService {
     const args = ['-t', ...buildRuntimeArgs(this.instance, configPath)];
 
     try {
-      const { stdout, stderr } = await execFileAsync(
+      const { stdout, stderr } = await silentExecFile(
         this.instance.path,
         args,
         { cwd: this.instance.prefixPath }
@@ -348,8 +332,7 @@ export class NginxService {
 
   private async resolveVersion(path: string): Promise<string> {
     try {
-      // nginx -v 典型输出在 stderr，需合并 stdout/stderr 解析
-      const { stdout, stderr } = await execFileAsync(path, ['-v']);
+      const { stdout, stderr } = await silentExecFile(path, ['-v']);
       const output = `${stdout || ''}\n${stderr || ''}`;
       return extractNginxVersion(output);
     } catch (error: any) {
@@ -359,7 +342,7 @@ export class NginxService {
 
   private async resolvePaths(path: string): Promise<{ configPath: string; prefixPath: string }> {
     try {
-      const { stdout, stderr } = await execFileAsync(path, ['-V']);
+      const { stdout, stderr } = await silentExecFile(path, ['-V']);
       return resolveNginxPaths(path, `${stdout}${stderr}`);
     } catch (error: any) {
       return resolveNginxPaths(path);
@@ -367,4 +350,3 @@ export class NginxService {
   }
 
 }
-

@@ -240,4 +240,3 @@ async function getWindowsOldestNginxUptimeSeconds(execFileAsync: ExecFileAsyncLi
     return undefined;
   }
 }
-

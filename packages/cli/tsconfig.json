@@ -5,6 +5,7 @@
     "outDir": "lib"
   },
   "references": [
+    { "path": "../process" },
     { "path": "../runtime" },
     { "path": "../server" }
   ],
