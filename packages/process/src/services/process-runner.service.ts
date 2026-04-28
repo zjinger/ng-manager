@@ -7,11 +7,14 @@ export class ProcessRunnerService {
     const startedAt = Date.now();
     const args = options.args ?? [];
     const encoding = options.encoding ?? 'utf8';
+    const maxBytes = options.maxBuffer ?? 10 * 1024 * 1024;
 
     return new Promise((resolve, reject) => {
       let stdout = '';
       let stderr = '';
       let timedOut = false;
+      let exceeded = false;
+      let totalBytes = 0;
 
       const child = silentSpawn(options.command, args, {
         cwd: options.cwd,
@@ -30,17 +33,22 @@ export class ProcessRunnerService {
           }, options.timeoutMs)
         : undefined;
 
-      child.stdout?.on('data', chunk => {
-        stdout += Buffer.isBuffer(chunk)
-          ? chunk.toString(encoding)
-          : String(chunk);
-      });
+      function collect(chunk: string | Buffer, target: 'stdout' | 'stderr') {
+        if (exceeded) return;
+        const str = Buffer.isBuffer(chunk) ? chunk.toString(encoding) : String(chunk);
+        const bytes = Buffer.byteLength(str, encoding);
+        if (totalBytes + bytes > maxBytes) {
+          exceeded = true;
+          child.kill();
+          return;
+        }
+        totalBytes += bytes;
+        if (target === 'stdout') stdout += str;
+        else stderr += str;
+      }
 
-      child.stderr?.on('data', chunk => {
-        stderr += Buffer.isBuffer(chunk)
-          ? chunk.toString(encoding)
-          : String(chunk);
-      });
+      child.stdout?.on('data', chunk => collect(chunk, 'stdout'));
+      child.stderr?.on('data', chunk => collect(chunk, 'stderr'));
 
       child.once('error', error => {
         if (timer) clearTimeout(timer);
@@ -49,6 +57,14 @@ export class ProcessRunnerService {
 
       child.once('exit', (exitCode, signal) => {
         if (timer) clearTimeout(timer);
+
+        if (exceeded) {
+          reject(new Error(
+            `Process output exceeded maxBuffer (${maxBytes} bytes).` +
+            ` command=${options.command} args=[${args.join(', ')}]`
+          ));
+          return;
+        }
 
         resolve({
           command: options.command,

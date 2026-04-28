@@ -1,6 +1,4 @@
 import * as fs from "node:fs";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import * as path from "node:path";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { uid } from "@yinuo-ngm/shared";
@@ -10,12 +8,11 @@ import { scanWorkspaceCandidates } from "@yinuo-ngm/project";
 import type { ProjectService } from "@yinuo-ngm/project";
 import type { TaskService } from "@yinuo-ngm/task";
 import { TaskEvents } from "@yinuo-ngm/task";
+import { silentExecFile } from "@yinuo-ngm/process";
 import { BootstrapEvents, type BootstrapEventMap } from "./bootstrap.events";
 import type { BootstrapCtx } from "./bootstrap.types";
 import type { TaskExitedPayload, TaskFailedPayload } from "@yinuo-ngm/protocol";
 import type { ProjectBootstrapService } from "./bootstrap.service";
-
-const execFileAsync = promisify(execFile);
 
 export class ProjectBootstrapServiceImpl implements ProjectBootstrapService {
     private ctxByTaskId = new Map<string, BootstrapCtx>();
@@ -274,8 +271,7 @@ export class ProjectBootstrapServiceImpl implements ProjectBootstrapService {
     }
 
     private async gitExec(root: string, args: string[]): Promise<void> {
-        await execFileAsync("git", ["-C", root, ...args], {
-            windowsHide: true,
+        await silentExecFile("git", ["-C", root, ...args], {
             maxBuffer: 10 * 1024 * 1024,
         });
     }

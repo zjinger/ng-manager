@@ -1,11 +1,6 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { silentExecFile } from '@yinuo-ngm/process';
 
-const execFileAsync = promisify(execFile);
-
-export interface ExecOptions {  // execFile 执行选项
-  /** 是否隐藏 Windows 窗口 */
-  windowsHide?: boolean;
+export interface ExecOptions {
   /** 超时时间（毫秒），默认 60000 */
   timeout?: number;
   /** 工作目录 */
@@ -17,5 +12,8 @@ export async function execFileRunner(
   args: string[],
   options: ExecOptions = {},
 ): Promise<{ stdout: string; stderr: string }> {
-  return execFileAsync(command, args, { timeout: options.timeout ?? 60_000, windowsHide: options.windowsHide ?? true });
+  return silentExecFile(command, args, {
+    timeoutMs: options.timeout ?? 60_000,
+    cwd: options.cwd,
+  });
 }

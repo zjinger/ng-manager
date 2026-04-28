@@ -10,6 +10,7 @@
     { "path": "../errors" },
     { "path": "../event" },
     { "path": "../logger" },
+    { "path": "../process" },
     { "path": "../project" },
     { "path": "../protocol" },
     { "path": "../shared" },

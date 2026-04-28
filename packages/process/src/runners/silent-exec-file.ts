@@ -7,6 +7,7 @@ import { CREATE_NO_WINDOW } from '../constants/windows';
 
 export interface SilentExecFileOptions extends ExecFileOptions {
   hideWindow?: boolean;
+  timeoutMs?: number;
 }
 
 export function silentExecFile(
@@ -22,6 +23,9 @@ export function silentExecFile(
     if (hideWindow) {
       execOpts.creationflags = CREATE_NO_WINDOW;
     }
+  }
+  if (options.timeoutMs) {
+    execOpts.timeout = options.timeoutMs;
   }
 
   return new Promise((resolve, reject) => {

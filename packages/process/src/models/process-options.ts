@@ -6,4 +6,5 @@ export interface RunCommandOptions {
   timeoutMs?: number;
   encoding?: BufferEncoding;
   hideWindow?: boolean;
+  maxBuffer?: number;
 }

@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import { CREATE_NO_WINDOW } from "./constants/windows";
 import type { IProcessDriver } from "./process.driver";
 import type { SpawnOptions, SpawnedProcess } from "./process.types";
 
@@ -8,14 +9,20 @@ export class NodeProcessDriver implements IProcessDriver {
         args: string[],
         opts: SpawnOptions
     ): Promise<SpawnedProcess> {
-        const child = spawn(command, args, {
+        const spawnOpts: any = {
             cwd: opts.cwd,
             env: { ...process.env, ...(opts.env || {}) },
             shell: opts.shell ?? false,
-            windowsHide: true,
             detached: !!opts.detached,
             stdio: opts.stdio ?? "pipe",
-        });
+        };
+
+        if (process.platform === 'win32') {
+            spawnOpts.windowsHide = true;
+            spawnOpts.creationflags = CREATE_NO_WINDOW;
+        }
+
+        const child = spawn(command, args, spawnOpts);
 
         if (opts.detached && opts.stdio === "ignore") {
             child.unref();

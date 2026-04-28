@@ -1,4 +1,6 @@
 import * as pty from "node-pty";
+import { spawn } from "child_process";
+import { CREATE_NO_WINDOW } from "./constants/windows";
 import type { IProcessDriver } from "./process.driver";
 import type { SpawnOptions, SpawnedProcess } from "./process.types";
 
@@ -50,6 +52,7 @@ export class PtyProcessDriver implements IProcessDriver {
                 rows,
                 cwd: opts.cwd,
                 env,
+                ...(isWin && { hideWindow: true }),
             });
         } else if (isWin) {
             const commandLine = [command, ...(args ?? [])].map(quoteWin).join(" ");
@@ -60,6 +63,7 @@ export class PtyProcessDriver implements IProcessDriver {
                 rows,
                 cwd: opts.cwd,
                 env,
+                ...(isWin && { hideWindow: true }),
             });
         } else {
             p = pty.spawn(command, args ?? [], {
@@ -100,8 +104,20 @@ export class PtyProcessDriver implements IProcessDriver {
             interrupt: () => {
                 try { p.write("\x03"); } catch { }
             },
-            kill: () => {
-                try { p.kill(); } catch { }
+            kill: (signal?: string) => {
+                if (isWin) {
+                    try { p.kill(); } catch { }
+                    const pid = p.pid;
+                    const tk = spawn("taskkill", ["/F", "/T", "/PID", String(pid)], {
+                        windowsHide: true,
+                        creationFlags: CREATE_NO_WINDOW,
+                        stdio: "ignore",
+                    } as any);
+                    tk.on("error", () => { });
+                    tk.unref();
+                } else {
+                    try { p.kill(); } catch { }
+                }
             },
             resize: (c, r) => {
                 try { p.resize(Math.max(10, c), Math.max(5, r)); } catch { }
