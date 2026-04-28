@@ -1,5 +1,6 @@
 // server/src/plugins/ws/ws.plugin.ts
 import { Events } from "@yinuo-ngm/core";
+import { BootstrapEvents } from "@yinuo-ngm/bootstrap";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
@@ -78,15 +79,15 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         syslogHandler.push(e.entry);
     }));
 
-    offs.push(events.on(Events.PROJECT_BOOTSTRAP_DONE, (e) => {
+    offs.push(events.on(BootstrapEvents.DONE, (e) => {
         taskHandler.pushEvent("bootstrapDone", e);
     }))
 
-    offs.push(events.on(Events.PROJECT_BOOTSTRAP_FAILED, (e) => {
+    offs.push(events.on(BootstrapEvents.FAILED, (e) => {
         taskHandler.pushEvent("bootstrapFailed", e);
     }))
 
-    offs.push(events.on(Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT, (e) => {
+    offs.push(events.on(BootstrapEvents.NEED_PICK_ROOT, (e) => {
         taskHandler.pushEvent("bootstrapNeedPickRoot", e);
     }))
 

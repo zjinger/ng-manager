@@ -1,4 +1,5 @@
-import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload, SystemLogEntry } from "@yinuo-ngm/protocol";
+import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload, SystemLogEntry } from "@yinuo-ngm/protocol";
+import type { BootstrapEventMap } from "@yinuo-ngm/bootstrap";
 
 export const Events = {
     // project
@@ -7,20 +8,15 @@ export const Events = {
     PROJECT_REMOVED: "project.removed",
 
     // task
-    TASK_STARTED: "task.started",          // run started
-    TASK_OUTPUT: "task.output",            // run output
-    TASK_STOP_REQUESTED: "task.stopRequested", // stop requested 
-    TASK_EXITED: "task.exited",            // run exited    
-    TASK_FAILED: "task.failed",            // run failed (start error etc)
-    TASK_SPECS_REFRESHED: "task.specs.refreshed", // specs refreshed from project
+    TASK_STARTED: "task.started",
+    TASK_OUTPUT: "task.output",
+    TASK_STOP_REQUESTED: "task.stopRequested",
+    TASK_EXITED: "task.exited",
+    TASK_FAILED: "task.failed",
+    TASK_SPECS_REFRESHED: "task.specs.refreshed",
 
     // system / log
     SYSLOG_APPENDED: "syslog.appended",
-
-    // bootstrap
-    PROJECT_BOOTSTRAP_DONE: "project.bootstrap.done", // 创建成功
-    PROJECT_BOOTSTRAP_FAILED: "project.bootstrap.failed", // 创建失败
-    PROJECT_BOOTSTRAP_NEED_PICK_ROOT: "project.bootstrap.needPickRoot",  // 需要用户选择根目录
 
     // svn
     SVN_SYNC_STARTED: "svn.sync.started",
@@ -33,27 +29,22 @@ export const Events = {
 
 export type EventName = (typeof Events)[keyof typeof Events];
 
-// payload 类型
-export type CoreEventMap = {
+export type CoreEventMap = BootstrapEventMap & {
     [Events.PROJECT_ADDED]: { projectId: string };
     [Events.PROJECT_UPDATED]: { projectId: string };
     [Events.PROJECT_REMOVED]: { projectId: string };
 
     [Events.TASK_STARTED]: TaskStartedPayload;
-    [Events.TASK_OUTPUT]: TaskOutputPayload;  //{ taskId: string; runId: string; text: string; stream: "stdout" | "stderr" };
-    [Events.TASK_STOP_REQUESTED]: TaskStopRequestedPayload;// { taskId: string; runId: string };
-    [Events.TASK_EXITED]: TaskExitedPayload,  //{ taskId: string; runId: string; stoppedAt: number; exitCode: number | null; signal: string | null };
-    [Events.TASK_FAILED]: TaskFailedPayload,  //{ taskId: string; runId: string; error: string | null };
+    [Events.TASK_OUTPUT]: TaskOutputPayload;
+    [Events.TASK_STOP_REQUESTED]: TaskStopRequestedPayload;
+    [Events.TASK_EXITED]: TaskExitedPayload;
+    [Events.TASK_FAILED]: TaskFailedPayload;
 
     [Events.TASK_SPECS_REFRESHED]: { projectId: string; count: number };
 
     [Events.SYSLOG_APPENDED]: { entry: SystemLogEntry };
 
-    [Events.PROJECT_BOOTSTRAP_DONE]: TaskBootstrapDonePayload;// { taskId: string; runId: string; projectId: string; rootPath: string };
-    [Events.PROJECT_BOOTSTRAP_FAILED]: TaskBootstrapFailedPayload;// { taskId: string; runId: string; rootPath: string; reason: string };
-    [Events.PROJECT_BOOTSTRAP_NEED_PICK_ROOT]: TaskBootstrapNeedPickRootPayload;
-
-    // svn sync 相关事件
+    // svn sync
     [Events.SVN_SYNC_STARTED]: SvnSyncStartedPayload;
     [Events.SVN_SYNC_OUTPUT]: SvnSyncOutputPayload;
     [Events.SVN_SYNC_FAILED]: SvnSyncFailedPayload;

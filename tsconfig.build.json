@@ -20,6 +20,7 @@
     { "path": "packages/runtime" },
     { "path": "packages/core" },
     { "path": "packages/sprite" },
+    { "path": "packages/bootstrap" },
     { "path": "packages/ais" },
     { "path": "packages/nginx" },
     { "path": "packages/server" },

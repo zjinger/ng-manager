@@ -8,15 +8,11 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../errors" },
-    { "path": "../shared" },
-    { "path": "../protocol" },
-    { "path": "../process" },
-    { "path": "../project" },
     { "path": "../event" },
     { "path": "../logger" },
-    { "path": "../node-version" },
-    { "path": "../task" },
-    { "path": "../sprite" },
-    { "path": "../bootstrap" }
+    { "path": "../project" },
+    { "path": "../protocol" },
+    { "path": "../shared" },
+    { "path": "../task" }
   ]
 }

@@ -5,5 +5,6 @@ export * from './project.service.impl';
 export * from './project.scanner';
 export * from './project.inspector';
 export * from './project.meta';
-export * from './bootstrap.types';
+export * from './workspace-candidate.types';
+export * from './detectors';
 export { ProjectRepoJsonKv, migrateProjectsIfNeeded, createProjectDomain } from './infra';

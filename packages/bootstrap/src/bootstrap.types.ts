@@ -1,9 +1,6 @@
-export type BootstrapStatus = 'running' | 'waitingPick' | 'finalizing' | 'done';
+import type { PickCandidate } from "@yinuo-ngm/project";
 
-export type PickCandidate = {
-    path: string;
-    kind: "angular" | "vue";
-};
+export type BootstrapStatus = 'running' | 'waitingPick' | 'finalizing' | 'done';
 
 export type BootstrapCtx = {
     taskId: string;
@@ -14,4 +11,4 @@ export type BootstrapCtx = {
     branch?: string;
     status: BootstrapStatus;
     candidates?: PickCandidate[];
-}
+};

@@ -1,0 +1,38 @@
+{
+  "name": "@yinuo-ngm/bootstrap",
+  "version": "0.1.0",
+  "description": "Project bootstrap service - scaffolding and project initialization",
+  "author": "ZhangJing <892295834@qq.com>",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./infra": {
+      "types": "./lib/infra/index.d.ts",
+      "default": "./lib/infra/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@yinuo-ngm/errors": "^1.0.0",
+    "@yinuo-ngm/event": "^0.1.0",
+    "@yinuo-ngm/logger": "^0.1.0",
+    "@yinuo-ngm/project": "^0.1.0",
+    "@yinuo-ngm/protocol": "^0.1.0",
+    "@yinuo-ngm/shared": "^0.1.0",
+    "@yinuo-ngm/task": "^0.1.0"
+  }
+}

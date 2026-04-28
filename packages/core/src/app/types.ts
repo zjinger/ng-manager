@@ -5,7 +5,7 @@ import type { DepsService } from "@yinuo-ngm/deps";
 import { FsService } from "../domain/fs";
 import type { SystemLogService } from "@yinuo-ngm/logger";
 import { type ProjectService } from "@yinuo-ngm/project";
-import { ProjectBootstrapService } from "../domain/project";
+import type { ProjectBootstrapService } from "@yinuo-ngm/bootstrap";
 import type { SpriteService } from "@yinuo-ngm/sprite";
 import type { SvnSyncService } from "@yinuo-ngm/svn";
 import type { TaskService } from "@yinuo-ngm/task";

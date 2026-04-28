@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { ProjectFramework } from "../project.meta";
 import { ParsedPackageJson } from "../parsers/parsePackageJson";
-import { PickCandidate } from "../bootstrap.types";
+import { PickCandidate } from "../workspace-candidate.types";
 
 export function detectFramework(
     rootDir: string,
