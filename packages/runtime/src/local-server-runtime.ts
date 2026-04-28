@@ -5,6 +5,9 @@ export type LocalServerLockInfo = {
     port: number;
     startedAt: number;
     host?: string;
+    dataDir?: string;
+    version?: string;
+    shutdownToken?: string;
 };
 
 export type ManagedServerInfo<TChild> = {
@@ -28,7 +31,7 @@ type RuntimeDeps<TChild extends ManagedServerProcess, TOptions extends { host?: 
     writeLock: (info: LocalServerLockInfo) => void;
     clearLock: () => void;
     pickPort: () => Promise<number>;
-    tryHttpShutdown: (port: number, host?: string) => Promise<boolean>;
+    tryHttpShutdown: (port: number, host?: string, shutdownToken?: string) => Promise<boolean>;
     pidExists: (pid: number) => boolean;
     sleep: (ms: number) => Promise<void>;
     startupTimeoutMs?: number;
@@ -36,7 +39,7 @@ type RuntimeDeps<TChild extends ManagedServerProcess, TOptions extends { host?: 
 
 export function createLocalServerRuntime<
     TChild extends ManagedServerProcess,
-    TOptions extends { host?: string; port?: number }
+    TOptions extends { host?: string; port?: number; shutdownToken?: string; dataDir?: string; version?: string }
 >(
     deps: RuntimeDeps<TChild, TOptions>
 ) {
@@ -76,6 +79,9 @@ export function createLocalServerRuntime<
             port,
             host,
             startedAt: Date.now(),
+            dataDir: opts.dataDir,
+            version: opts.version,
+            shutdownToken: opts.shutdownToken,
         });
 
         return {
@@ -136,7 +142,7 @@ export function createLocalServerRuntime<
         if (!lock) return false;
 
         const host = lock.host ?? "127.0.0.1";
-        const shutdownAccepted = await deps.tryHttpShutdown(lock.port, host);
+        const shutdownAccepted = await deps.tryHttpShutdown(lock.port, host, lock.shutdownToken);
         if (shutdownAccepted) {
             const stopped = await waitUntilStopped(lock, 3000);
             if (stopped) {

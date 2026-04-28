@@ -7,6 +7,7 @@ export const env = {
     dataDir:
         process.env.NGM_DATA_DIR ||
         path.join(os.homedir(), ".ng-manager"),
-    logLevel: process.env.NGM_LOG_LEVEL || "info",
+    logLevel: process.env.NGM_LOG_LEVEL || "info", // 开发环境默认 info，生产环境可通过环境变量覆盖
+    shutdownToken: process.env.NGM_SHUTDOWN_TOKEN || "",
     sysLogCapacity: 3000,
 };

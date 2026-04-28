@@ -13,13 +13,19 @@ export default async function systemRoutes(fastify: FastifyInstance) {
     }
   ));
 
-  fastify.post("/shutdown", async () => {
+  fastify.post("/shutdown", async (request) => {
+    const token = request.headers["x-ngm-shutdown-token"] as string | undefined;
+
+    if (env.shutdownToken && env.shutdownToken !== token) {
+      fastify.log.warn("Shutdown rejected: invalid token");
+      return { ok: false, error: "Invalid shutdown token" };
+    }
+
     fastify.log.info("Shutdown requested via /shutdown");
 
-    // 异步关闭，避免阻塞响应
     setTimeout(async () => {
       try {
-        await fastify.close(); // ← 会触发 onClose
+        await fastify.close();
         process.exit(0);
       } catch (e) {
         console.error("Graceful shutdown failed", e);

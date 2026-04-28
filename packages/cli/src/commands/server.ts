@@ -6,6 +6,8 @@ export type ServerOptions = {
     host?: string;
     dataDir?: string;
     logLevel?: string;
+    shutdownToken?: string;
+    version?: string;
 };
 
 export function startServer(opts: ServerOptions) {
@@ -19,6 +21,7 @@ export function startServer(opts: ServerOptions) {
         ...(opts.host && { NGM_SERVER_HOST: opts.host }),
         ...(opts.dataDir && { NGM_DATA_DIR: opts.dataDir }),
         ...(opts.logLevel && { NGM_LOG_LEVEL: opts.logLevel }),
+        ...(opts.shutdownToken && { NGM_SHUTDOWN_TOKEN: opts.shutdownToken }),
     };
 
     // 纯启动器：不在这里绑 process.on('SIGINT')，避免重复注册/泄露

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import getPort from "get-port";
 import {
     createLocalServerRuntime,
@@ -10,6 +11,10 @@ import { isHealthy } from "./health";
 import { readLock, writeLock, clearLock } from "./lock";
 
 type CliServerProcess = ReturnType<typeof startServer> & ManagedServerProcess;
+
+function generateShutdownToken(): string {
+    return crypto.randomUUID();
+}
 
 const runtime = createLocalServerRuntime<CliServerProcess, ServerOptions>({
     startServer: (opts) => startServer(opts) as CliServerProcess,
@@ -24,7 +29,9 @@ const runtime = createLocalServerRuntime<CliServerProcess, ServerOptions>({
 });
 
 export async function ensureManagedServer(opts: ServerOptions) {
-    return runtime.ensureServer(opts);
+    const token = generateShutdownToken();
+    const version = require("@yinuo-ngm/cli/package.json").version;
+    return runtime.ensureServer({ ...opts, shutdownToken: token, version });
 }
 
 export async function waitForManagedServerExit(child: ReturnType<typeof startServer>): Promise<void> {
@@ -35,9 +42,13 @@ export async function stopManagedServer(lock = readLock()): Promise<boolean> {
     return runtime.stopServer(lock as LocalServerLockInfo | null);
 }
 
-async function tryHttpShutdown(port: number, host = "127.0.0.1"): Promise<boolean> {
+async function tryHttpShutdown(port: number, host = "127.0.0.1", shutdownToken?: string): Promise<boolean> {
     try {
-        const r = await fetch(`http://${host}:${port}/shutdown`, { method: "POST" });
+        const headers: HeadersInit = {};
+        if (shutdownToken) {
+            headers["X-NGM-Shutdown-Token"] = shutdownToken;
+        }
+        const r = await fetch(`http://${host}:${port}/shutdown`, { method: "POST", headers });
         return r.ok;
     } catch {
         return false;
