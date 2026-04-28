@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/core",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -21,19 +21,19 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@yinuo-ngm/bootstrap": "^0.1.1",
+    "@yinuo-ngm/bootstrap": "^0.1.2",
     "@yinuo-ngm/config": "^0.1.1",
-    "@yinuo-ngm/deps": "^0.1.1",
+    "@yinuo-ngm/deps": "^0.1.2",
     "@yinuo-ngm/errors": "^1.0.1",
     "@yinuo-ngm/event": "^0.1.1",
     "@yinuo-ngm/logger": "^0.1.1",
-    "@yinuo-ngm/node-version": "^0.1.1",
-    "@yinuo-ngm/process": "^0.1.1",
+    "@yinuo-ngm/node-version": "^0.1.2",
+    "@yinuo-ngm/process": "^0.1.2",
     "@yinuo-ngm/project": "^0.1.1",
     "@yinuo-ngm/protocol": "^0.1.1",
     "@yinuo-ngm/shared": "^0.1.1",
     "@yinuo-ngm/sprite": "^0.1.8",
-    "@yinuo-ngm/svn": "^0.1.1",
-    "@yinuo-ngm/task": "^0.1.1"
+    "@yinuo-ngm/svn": "^0.1.2",
+    "@yinuo-ngm/task": "^0.1.2"
   }
 }

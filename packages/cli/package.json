@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/cli",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "a CLI tool for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "bin": {
@@ -21,9 +21,9 @@
     "test": "npm run build && node --test test/commands.test.js"
   },
   "dependencies": {
-    "@yinuo-ngm/process": "^0.1.1",
+    "@yinuo-ngm/process": "^0.1.2",
     "@yinuo-ngm/runtime": "^0.1.2",
-    "@yinuo-ngm/server": "^1.0.19",
+    "@yinuo-ngm/server": "^1.0.20",
     "commander": "^12.0.0",
     "env-paths": "^3.0.0",
     "execa": "^9.0.0",
