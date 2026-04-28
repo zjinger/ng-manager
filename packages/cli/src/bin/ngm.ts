@@ -12,7 +12,7 @@ const { version } = require("../../package.json") as { version: string };
 program
     .name("ngm")
     .description("yinuo-ngm · ng-manager local control plane")
-    .version(version);
+    .version(version, "-v, --version");
 
 program
     .command("status")
