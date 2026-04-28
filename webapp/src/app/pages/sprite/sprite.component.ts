@@ -154,11 +154,8 @@ export class SpriteComponent implements OnInit, OnDestroy {
         this.term?.writeln(`[更新状态]: ${lastStatus}`);
         this.term?.writeln(`[SVN 路径]: ${desiredUrl}`);
         this.term?.writeln(`-----------------------------`);
-        // 雪碧图匹配
-        if (runtime.sourceId === this.cfg()?.sourceId && runtime.lastSyncAt) {
-          this.lastSyncAt.set(dayjs(runtime.lastSyncAt).format('YYYY-MM-DD HH:mm:ss'));
-        }
       })
+      this.updateLastSyncAt(runtimes);
     }
     const sprite = await this.state.getSprites();
     this.sprite.set(sprite);
@@ -170,11 +167,11 @@ export class SpriteComponent implements OnInit, OnDestroy {
     }
 
     this.sub.add(this.svnStream.watchProject(projectId, 1000));
-    // this.sub.add(
-    //   this.svnStream.runtimes$(projectId).subscribe(list => {
-    //     console.log('SVN Runtimes updated:', list);
-    //   })
-    // );
+    this.sub.add(
+      this.svnStream.runtimes$(projectId).subscribe((list) => {
+        this.updateLastSyncAt(list);
+      })
+    );
     this.sub.add(this.svnStream.output$(projectId).subscribe(chunk => {
       if (this.term) {
         this.term.write(chunk.text);
@@ -234,10 +231,24 @@ export class SpriteComponent implements OnInit, OnDestroy {
 
   async streamCheckout() {
     if (!this.hasSvnSource()) return;
-    this.loading.set(true);
-    this.isDrawerOpen = true
-    await this.state.streamCheckout();
-    this.loading.set(false);
+    try {
+      this.loading.set(true);
+      this.isDrawerOpen = true
+      await this.state.streamCheckout();
+      const runtimes = await this.state.getSvnRuntimes();
+      this.updateLastSyncAt(runtimes);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private updateLastSyncAt(runtimes: Array<{ sourceId: string; lastSyncAt?: string }>) {
+    const sourceId = this.cfg()?.sourceId;
+    if (!sourceId) return;
+    const runtime = runtimes.find((item) => item.sourceId === sourceId && item.lastSyncAt);
+    if (runtime?.lastSyncAt) {
+      this.lastSyncAt.set(dayjs(runtime.lastSyncAt).format('YYYY-MM-DD HH:mm:ss'));
+    }
   }
 
   openSettingModal() {
