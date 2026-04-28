@@ -6,7 +6,18 @@
   "command": {
     "run": { "stream": true },
     "version": {
-      "push": false
+      "push": false,
+      "ignoreChanges": [
+        "**/*.md",
+        "**/README.md",
+        "**/CHANGELOG.md",
+        "**/LICENSE",
+        "**/lib/**",
+        "**/dist/**",
+        "**/*.tsbuildinfo",
+        ".artifacts/**",
+        "docs/**"
+      ]
     }
   }
 }
