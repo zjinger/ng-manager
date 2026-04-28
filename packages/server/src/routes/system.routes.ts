@@ -1,5 +1,13 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { env } from "../env";
+
+function isLocalAddress(ip?: string): boolean {
+  return (
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip === '::ffff:127.0.0.1'
+  );
+}
 
 export default async function systemRoutes(fastify: FastifyInstance) {
   fastify.get("/health", async () => (
@@ -13,12 +21,25 @@ export default async function systemRoutes(fastify: FastifyInstance) {
     }
   ));
 
-  fastify.post("/shutdown", async (request) => {
-    const token = request.headers["x-ngm-shutdown-token"] as string | undefined;
+  fastify.post("/shutdown", async (request: FastifyRequest, reply) => {
+    // localhost 限制
+    if (!isLocalAddress(request.ip)) {
+      fastify.log.warn(`Shutdown rejected: not localhost (${request.ip})`);
+      return reply.code(403).send({ ok: false, error: 'Localhost only' });
+    }
 
-    if (env.shutdownToken && env.shutdownToken !== token) {
+    const token = request.headers["x-ngm-shutdown-token"] as string | undefined;
+    const expected = env.shutdownToken;
+
+    // 强制要求 token
+    if (!expected) {
+      fastify.log.warn("Shutdown rejected: no shutdown token configured");
+      return reply.code(403).send({ ok: false, error: 'Shutdown token required' });
+    }
+
+    if (token !== expected) {
       fastify.log.warn("Shutdown rejected: invalid token");
-      return { ok: false, error: "Invalid shutdown token" };
+      return reply.code(403).send({ ok: false, error: 'Invalid shutdown token' });
     }
 
     fastify.log.info("Shutdown requested via /shutdown");

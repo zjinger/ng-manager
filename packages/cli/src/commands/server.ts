@@ -1,19 +1,48 @@
 import path from "path";
-import { execa } from "execa";
+import fs from "fs";
+import { spawn, type ChildProcess } from "child_process";
+import { getLocalServerDataDir } from "@yinuo-ngm/runtime";
 
 export type ServerOptions = {
     port?: number;
     host?: string;
     dataDir?: string;
+    logDir?: string;
     logLevel?: string;
     shutdownToken?: string;
     version?: string;
+    foreground?: boolean;
 };
 
-export function startServer(opts: ServerOptions) {
-    const serverPkgJson = require.resolve("@yinuo-ngm/server/package.json");
-    const serverDir = path.dirname(serverPkgJson);
-    const entry = path.join(serverDir, "lib", "index.js");
+function safeTimestamp(): string {
+    return new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-');
+}
+
+async function rotateIfExists(file: string): Promise<void> {
+    try {
+        await fs.promises.access(file);
+    } catch {
+        return;
+    }
+    const backup = `${file}.${safeTimestamp()}.backup`;
+    await fs.promises.rename(file, backup);
+}
+
+function getLogDir(dataDir?: string): string {
+    const base = dataDir || getLocalServerDataDir();
+    return path.join(base, 'logs');
+}
+
+async function ensureLogDir(dataDir?: string): Promise<string> {
+    const logDir = getLogDir(dataDir);
+    await fs.promises.mkdir(logDir, { recursive: true });
+    return logDir;
+}
+
+export async function startServer(opts: ServerOptions): Promise<ChildProcess> {
+    const entry = require.resolve("@yinuo-ngm/server");
 
     const env = {
         ...process.env,
@@ -24,49 +53,89 @@ export function startServer(opts: ServerOptions) {
         ...(opts.shutdownToken && { NGM_SHUTDOWN_TOKEN: opts.shutdownToken }),
     };
 
-    // 纯启动器：不在这里绑 process.on('SIGINT')，避免重复注册/泄露
-    return execa(process.execPath, [entry], { stdio: "inherit", env });
+    // 前台模式：直接继承 stdio
+    if (opts.foreground) {
+        const child = spawn(process.execPath, [entry], {
+            stdio: 'inherit',
+            env,
+        });
+        return child;
+    }
+
+    // 后台模式：detached + stdio 重定向到日志文件
+    const logDir = await ensureLogDir(opts.dataDir);
+    const stdoutFile = path.join(logDir, 'server.out.log');
+    const stderrFile = path.join(logDir, 'server.err.log');
+
+    // 启动前轮转旧日志
+    await rotateIfExists(stdoutFile);
+    await rotateIfExists(stderrFile);
+
+    const stdoutStream = fs.openSync(stdoutFile, 'a');
+    const stderrStream = fs.openSync(stderrFile, 'a');
+
+    const child = spawn(process.execPath, [entry], {
+        detached: true,
+        stdio: ['ignore', stdoutStream, stderrStream],
+        windowsHide: true,
+        env,
+    });
+
+    child.unref();
+    return child;
 }
 
 /** commander action：必须返回 void 或 Promise<void> */
 export async function startServerAction(opts: ServerOptions): Promise<void> {
-    const child = startServer(opts);
+    const child = await startServer(opts);
 
-    // 可选：这个 action 也把 SIGINT/SIGTERM 视为正常退出
-    const onSigint = () => {
+    // 前台模式需要处理信号
+    if (opts.foreground) {
+        const onSigint = () => {
+            try {
+                child.kill("SIGINT");
+            } finally {
+                process.exitCode = 0;
+            }
+        };
+        const onSigterm = () => {
+            try {
+                child.kill("SIGTERM");
+            } finally {
+                process.exitCode = 0;
+            }
+        };
+
+        process.once("SIGINT", onSigint);
+        process.once("SIGTERM", onSigterm);
+
         try {
-            child.kill("SIGINT");
+            await new Promise<void>((resolve, reject) => {
+                child.once('exit', (code, signal) => {
+                    if (code === 0 || signal === 'SIGINT' || signal === 'SIGTERM') {
+                        resolve();
+                    } else if (code !== null) {
+                        reject(new Error(`Server exited with code ${code}`));
+                    } else {
+                        resolve();
+                    }
+                });
+                child.once('error', reject);
+            });
+        } catch (err: any) {
+            if (
+                err?.signal === "SIGINT" ||
+                err?.signal === "SIGTERM" ||
+                err?.signal === "SIGKILL" ||
+                err?.exitCode === 3221225786 // Windows Ctrl+C
+            ) {
+                return;
+            }
+            throw err;
         } finally {
-            process.exitCode = 0;
+            process.off("SIGINT", onSigint);
+            process.off("SIGTERM", onSigterm);
         }
-    };
-    const onSigterm = () => {
-        try {
-            child.kill("SIGTERM");
-        } finally {
-            process.exitCode = 0;
-        }
-    };
-
-    process.once("SIGINT", onSigint);
-    process.once("SIGTERM", onSigterm);
-
-    try {
-        await child;
-    } catch (err: any) {
-        // Ctrl+C / SIGINT / SIGTERM / SIGKILL：忽略
-        if (
-            err?.isCanceled ||
-            err?.signal === "SIGINT" ||
-            err?.signal === "SIGTERM" ||
-            err?.signal === "SIGKILL" ||
-            err?.exitCode === 3221225786 // Windows Ctrl+C
-        ) {
-            return;
-        }
-        throw err; // 真错误才抛
-    } finally {
-        process.off("SIGINT", onSigint);
-        process.off("SIGTERM", onSigterm);
     }
+    // 后台模式：直接返回，不等待子进程
 }

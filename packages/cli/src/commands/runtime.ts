@@ -1,7 +1,9 @@
 import crypto from "crypto";
+import path from "path";
 import getPort from "get-port";
 import {
     createLocalServerRuntime,
+    getLocalServerDataDir,
     type LocalServerLockInfo,
     type ManagedServerProcess,
 } from "@yinuo-ngm/runtime";
@@ -9,15 +11,16 @@ import {
 import { startServer, type ServerOptions } from "./server";
 import { isHealthy } from "./health";
 import { readLock, writeLock, clearLock } from "./lock";
+import type { ChildProcess } from "child_process";
 
-type CliServerProcess = ReturnType<typeof startServer> & ManagedServerProcess;
+type CliServerProcess = ChildProcess & ManagedServerProcess;
 
 function generateShutdownToken(): string {
     return crypto.randomUUID();
 }
 
 const runtime = createLocalServerRuntime<CliServerProcess, ServerOptions>({
-    startServer: (opts) => startServer(opts) as CliServerProcess,
+    startServer: (opts) => startServer(opts) as Promise<CliServerProcess>,
     isHealthy,
     readLock: () => readLock() as LocalServerLockInfo | null,
     writeLock: (info) => writeLock(info),
@@ -31,10 +34,12 @@ const runtime = createLocalServerRuntime<CliServerProcess, ServerOptions>({
 export async function ensureManagedServer(opts: ServerOptions) {
     const token = generateShutdownToken();
     const version = require("@yinuo-ngm/cli/package.json").version;
-    return runtime.ensureServer({ ...opts, shutdownToken: token, version });
+    const dataDir = opts.dataDir || getLocalServerDataDir();
+    const logDir = path.join(dataDir, 'logs');
+    return runtime.ensureServer({ ...opts, shutdownToken: token, version, logDir });
 }
 
-export async function waitForManagedServerExit(child: ReturnType<typeof startServer>): Promise<void> {
+export async function waitForManagedServerExit(child: ChildProcess): Promise<void> {
     await runtime.waitForServerExit(child as CliServerProcess);
 }
 

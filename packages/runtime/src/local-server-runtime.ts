@@ -8,6 +8,7 @@ export type LocalServerLockInfo = {
     dataDir?: string;
     version?: string;
     shutdownToken?: string;
+    logDir?: string;
 };
 
 export type ManagedServerInfo<TChild> = {
@@ -25,7 +26,7 @@ export type ManagedServerProcess = PromiseLike<unknown> & {
 };
 
 type RuntimeDeps<TChild extends ManagedServerProcess, TOptions extends { host?: string; port?: number }> = {
-    startServer: (opts: TOptions) => TChild;
+    startServer: (opts: TOptions) => TChild | Promise<TChild>;
     isHealthy: (port: number, host?: string) => Promise<boolean>;
     readLock: () => LocalServerLockInfo | null;
     writeLock: (info: LocalServerLockInfo) => void;
@@ -39,7 +40,7 @@ type RuntimeDeps<TChild extends ManagedServerProcess, TOptions extends { host?: 
 
 export function createLocalServerRuntime<
     TChild extends ManagedServerProcess,
-    TOptions extends { host?: string; port?: number; shutdownToken?: string; dataDir?: string; version?: string }
+    TOptions extends { host?: string; port?: number; shutdownToken?: string; dataDir?: string; version?: string; logDir?: string; foreground?: boolean }
 >(
     deps: RuntimeDeps<TChild, TOptions>
 ) {
@@ -61,7 +62,7 @@ export function createLocalServerRuntime<
 
         const host = opts.host || "127.0.0.1";
         const port = opts.port ?? (await deps.pickPort());
-        const child = deps.startServer({ ...opts, host, port });
+        const child = await deps.startServer({ ...opts, host, port }) as TChild;
 
         try {
             await waitUntilHealthyOrThrow(port, host, deps.startupTimeoutMs ?? 6000);
@@ -82,6 +83,7 @@ export function createLocalServerRuntime<
             dataDir: opts.dataDir,
             version: opts.version,
             shutdownToken: opts.shutdownToken,
+            logDir: opts.logDir,
         });
 
         return {

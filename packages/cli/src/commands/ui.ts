@@ -19,9 +19,11 @@ export function createStartUi(deps: UiDeps = defaultUiDeps) {
 
         deps.log(`🎉  Ready on ${server.url}`);
 
-        if (server.child) {
+        // 前台模式：等待子进程退出
+        if (opts.foreground && server.child) {
             await deps.waitForManagedServerExit(server.child);
         }
+        // 后台模式：直接返回，CLI 退出
     };
 }
 

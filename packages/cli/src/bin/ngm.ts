@@ -5,6 +5,7 @@ import { startServerAction } from "../commands/server";
 import { statusCmd } from "../commands/status";
 import { stopCmd } from "../commands/stop";
 import { restartCmd } from "../commands/restart";
+import { logsCmd } from "../commands/logs";
 const program = new Command();
 const { version } = require("../../package.json") as { version: string };
 
@@ -29,6 +30,7 @@ function withServerOptions(cmd: Command) {
         .option("--host <host>", "server host", "127.0.0.1")
         .option("--data-dir <dir>", "data directory")
         .option("--log-level <level>", "log level", "silent")
+        .option("--foreground", "run server in foreground mode")
         .option("--no-open", "do not open browser");
 }
 
@@ -51,6 +53,16 @@ withServerOptions(
 withServerOptions(
     program.command("ui:restart").description("restart server and open UI")
 ).action((opts) => restartCmd({ ...opts, ui: true }));
+
+/** logs */
+program
+    .command("logs")
+    .description("view server logs")
+    .option("--err", "view stderr log")
+    .option("-f, --follow", "follow log output")
+    .option("-n, --lines <number>", "number of lines to show", (v) => Number(v), 100)
+    .option("--data-dir <dir>", "data directory")
+    .action(logsCmd);
 
 
 program.parse();

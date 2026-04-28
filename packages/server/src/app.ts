@@ -18,27 +18,13 @@ function normalizeLogLevel(v?: string) {
 }
 function createFastifyLogger(): false | FastifyBaseLogger | undefined {
     const level = normalizeLogLevel(env.logLevel);
-    console.log(`Logger initialized with level: ${level || "silent (disabled)"}`);
+    if (process.env.NGM_DEBUG === '1') {
+        console.log(`Logger initialized with level: ${level || 'silent (disabled)'}`);
+    }
     // 1) 未指定级别 => 默认关闭（安静）
     if (!level) return false;
 
-    // 2) dev 下可读输出（需要安装 pino-pretty）
-    const isDev = process.env.NODE_ENV !== "production";
-    if (isDev) {
-        return {
-            level,
-            transport: {
-                target: "pino-pretty",
-                options: {
-                    colorize: true,
-                    translateTime: "HH:MM:ss.l",
-                    ignore: "pid,hostname",
-                },
-            },
-        } as any;
-    }
-
-    // 3) prod 下输出 JSON（结构化）
+    // 2) 始终输出 JSON 到 stdout，由 runtime 决定日志去向
     return { level } as any;
 }
 export async function createServer() {
