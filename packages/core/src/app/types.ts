@@ -6,7 +6,7 @@ import { FsService } from "../domain/fs";
 import type { SystemLogService } from "@yinuo-ngm/logger";
 import { type ProjectService } from "@yinuo-ngm/project";
 import { ProjectBootstrapService } from "../domain/project";
-import { SpriteService } from "../domain/sprite";
+import type { SpriteService } from "@yinuo-ngm/sprite";
 import type { SvnSyncService } from "@yinuo-ngm/svn";
 import type { TaskService } from "@yinuo-ngm/task";
 import type { NodeVersionService } from "@yinuo-ngm/node-version";

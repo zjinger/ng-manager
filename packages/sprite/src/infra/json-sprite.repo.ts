@@ -1,5 +1,5 @@
-import { SpriteConfig, SpriteRepo } from "../../domain/sprite";
-import { CoreError, CoreErrorCodes } from "../../common/errors";
+import { SpriteConfig, SpriteRepo } from "../domain/sprite.repo";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import * as fs from "fs";
 import * as path from "path";
 

@@ -1,4 +1,5 @@
-import { SpriteConfig } from "./sprite.types";
+export { SpriteConfig } from "./sprite.types";
+import type { SpriteConfig } from "./sprite.types";
 
 export interface SpriteRepo {
     getByProjectId(projectId: string): Promise<SpriteConfig | null>;

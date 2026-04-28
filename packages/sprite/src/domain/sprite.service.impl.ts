@@ -1,12 +1,15 @@
-import { generateGroupBatch, GenerateSpriteResult, SpriteMetaFile, SvgMetaFile } from "@yinuo-ngm/sprite";
+import { generateGroupBatch } from "../batch";
+import { GenerateSpriteResult, SpriteMetaFile, SvgMetaFile } from "../types";
+import type { GenerateGroupBatchItem } from "../types";
 import fs from "node:fs";
 import path from "node:path";
-import { CoreError, CoreErrorCodes } from "../../common/errors";
+import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import type { SystemLogService } from "@yinuo-ngm/logger";
 import { Project, ProjectAssetSourceSvn, type ProjectService } from "@yinuo-ngm/project";
 import { SpriteRepo } from "./sprite.repo";
 import { SpriteService } from "./sprite.service";
 import { GenerateSpriteOptions, SpriteConfig, SpriteGroupItem, SpriteSnapshot } from "./sprite.types";
+
 export class SpriteServiceImpl implements SpriteService {
     constructor(
         private spriteRepo: SpriteRepo,
@@ -49,16 +52,18 @@ export class SpriteServiceImpl implements SpriteService {
             lessExportDir: defaults.lessExportDir,
         } as SpriteConfig;
     }
+
     async createConfig(projectId: string, config: Omit<SpriteConfig, "projectId" | "updatedAt">): Promise<SpriteConfig> {
         return this.spriteRepo.create(projectId, config);
     }
+
     async updateConfig(projectId: string, patch: Partial<SpriteConfig>): Promise<SpriteConfig> {
         return this.spriteRepo.update(projectId, patch);
     }
+
     async removeConfig(projectId: string): Promise<void> {
         return this.spriteRepo.remove(projectId);
     }
-
 
     async generate(projectId: string, options?: GenerateSpriteOptions): Promise<SpriteSnapshot> {
         const cfg = await this.spriteRepo.getByProjectId(projectId);
@@ -70,7 +75,6 @@ export class SpriteServiceImpl implements SpriteService {
         const iconsRoot = resolveIconsRoot(project, cfg);
         if (!fs.existsSync(iconsRoot)) throw new CoreError(CoreErrorCodes.SPRITE_ICONS_ROOT_NOT_FOUND, `iconsRoot not found: ${iconsRoot}`);
 
-        // 本地文件夹模式使用单独的缓存目录
         const isLocalFolderMode = !!String(cfg.localImageRoot ?? "").trim();
         const cacheOutDir = isLocalFolderMode
             ? this.ensureLocalCacheDir(projectId)
@@ -88,7 +92,6 @@ export class SpriteServiceImpl implements SpriteService {
         const persistLess = cfg.persistLess ?? true;
         const spriteUrlTpl = String(cfg.spriteUrl ?? "").trim();
 
-        // 本地文件夹模式：两级遍历
         let groups: string[] | undefined;
         if (isLocalFolderMode) {
             groups = scanLocalFolderTwoLevels(iconsRoot);
@@ -108,14 +111,14 @@ export class SpriteServiceImpl implements SpriteService {
             },
             concurrency,
             continueOnError,
-            svgUrlResolver: ({ group, file }) =>
+            svgUrlResolver: ({ group, file }: { group: string; file: string }) =>
                 `/assets/icons/${encodeURIComponent(group)}/${encodeURIComponent(file)}`,
         });
         if (isLocalFolderMode) {
-            pruneLocalCacheByGroups(cacheOutDir, new Set(batch.items.map((it) => it.group)));
+            pruneLocalCacheByGroups(cacheOutDir, new Set(batch.items.map((it: GenerateGroupBatchItem) => it.group)));
         }
 
-        const outGroups: SpriteGroupItem[] = batch.items.map((it) => {
+        const outGroups: SpriteGroupItem[] = batch.items.map((it: GenerateGroupBatchItem) => {
             if (!it.ok) {
                 return { group: it.group, status: "error", error: it.error };
             }
@@ -137,7 +140,6 @@ export class SpriteServiceImpl implements SpriteService {
                 lessText = String(result?.lessText ?? "");
             }
 
-            // 导出：失败只影响该 group 状态，不影响其他 group
             try {
                 let spriteOutPath: string | undefined;
                 let lessOutPath: string | undefined;
@@ -235,16 +237,9 @@ export class SpriteServiceImpl implements SpriteService {
                     const lessPath = path.join(cacheOutDir, `${group}.less`);
                     if (fs.existsSync(lessPath)) {
                         try { lessText = fs.readFileSync(lessPath, "utf-8"); } catch {
-                            /* ignore */
                             console.warn(`Failed to read less file for group ${group}: ${lessPath}`);
                         }
                     }
-                } else if (meta.mode === 'svg') {
-                    // svg 的 previewUrl 直接指向原 svg 文件（不经过 spriteUrl 模板）
-                    // const m = meta as SvgMetaFile;
-                    // m.icons.forEach((icon) => { 
-                    //     icon.previewUrl = `/assets/icons/${encodeURIComponent(group)}/${encodeURIComponent(icon.file)}`;
-                    // })
                 }
                 return {
                     group,
@@ -277,15 +272,7 @@ export class SpriteServiceImpl implements SpriteService {
     }
 }
 
-/**
- * 决定 iconsRoot：
- * 1) spriteConfig.localImageRoot（如果配置了，本地文件夹模式）
- * 2) spriteConfig.localDir（如果配置了）
- * 3) project.assets 中 id==sourceId 的 localDir
- * 4) fallback project.assets.iconsSvn.localDir
- */
 function resolveIconsRoot(project: Project, cfg: SpriteConfig): string {
-    // 本地文件夹模式优先
     const localImageRoot = String(cfg.localImageRoot ?? "").trim();
     if (localImageRoot) return localImageRoot;
 
@@ -298,27 +285,19 @@ function resolveIconsRoot(project: Project, cfg: SpriteConfig): string {
     throw new CoreError(CoreErrorCodes.SPRITE_ICONS_ROOT_NOT_FOUND, "Cannot resolve icons root for sprite generation");
 }
 
-/**
- * 扫描本地文件夹，返回两级遍历的 groups
- * - 根目录图片 -> group 为 "."（表示使用 iconsRoot 本身）
- * - 一级子目录图片 -> group 为子目录名
- */
 function scanLocalFolderTwoLevels(localImageRoot: string): string[] {
     if (!fs.existsSync(localImageRoot)) return [];
 
     const groups: string[] = [];
     const entries = fs.readdirSync(localImageRoot, { withFileTypes: true });
 
-    // 检查根目录是否有图片
     const rootHasImages = entries.some((e) => e.isFile() && isImageFile(e.name));
     if (rootHasImages) {
-        groups.push("."); // "." 表示根目录
+        groups.push(".");
     }
 
-    // 扫描一级子目录
     for (const entry of entries) {
         if (entry.isDirectory()) {
-            // 跳过隐藏目录
             if (entry.name.startsWith('.')) continue;
             const subDir = path.join(localImageRoot, entry.name);
             const subEntries = fs.readdirSync(subDir, { withFileTypes: true });
@@ -337,10 +316,6 @@ function isImageFile(name: string): boolean {
     return ext === '.png' || ext === '.svg';
 }
 
-/**
- * 按 projectId + spriteConfig.sourceId 找到对应 asset.localDir
- * - assets 结构：iconsSvn/cutImageSvn/... 每个都有 id/kind/localDir
- */
 function resolveAssetLocalDir(project: Project, sourceId: string): string | null {
     const assets = project?.assets;
     if (!assets) return null;
@@ -392,7 +367,6 @@ function safeReadJson(file: string) {
 }
 
 function applyGroupTpl(tpl: string, group: string) {
-    // return String(tpl || "").replaceAll("{group}", group);
     return String(tpl || "").replace(/{group}/g, group);
 }
 

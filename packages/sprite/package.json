@@ -5,10 +5,14 @@
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "exports": {
+"exports": {
     ".": {
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
+    },
+    "./infra": {
+      "types": "./lib/infra/index.d.ts",
+      "default": "./lib/infra/index.js"
     }
   },
   "scripts": {
@@ -27,6 +31,8 @@
   },
   "dependencies": {
     "@yinuo-ngm/errors": "^1.0.0",
+    "@yinuo-ngm/logger": "^0.1.0",
+    "@yinuo-ngm/project": "^0.1.0",
     "spritesmith": "^3.5.1"
   },
   "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"

@@ -12,6 +12,6 @@ export { Events } from './infra/event'
 export type { TaskRuntime } from "@yinuo-ngm/task";
 export type { DashboardDocV1 } from './domain/dashboard'
 
-export type { SpriteConfig, GenerateSpriteOptions } from "./domain/sprite";
+export type { SpriteConfig, GenerateSpriteOptions } from "@yinuo-ngm/sprite";
 
 export type { SvnRuntime } from "@yinuo-ngm/svn";
