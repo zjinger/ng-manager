@@ -16,10 +16,11 @@ npm run release:preflight
 
 该命令会依次执行：
 
-1. `clean:githead` — 清除所有 packages/*/package.json 中的 gitHead 字段
+1. `check:githead` — 检查 Git 工作区是否干净，是否有未提交的更改
 2. `clean` — 清除 lib/dist/tsbuildinfo 产物
 3. `build` — 全量构建
-4. `pack:all` — 打包所有非 private 包到 `.artifacts/npm`
+4. `prepare:server-www` — 准备服务器端静态资源
+5. `pack:all` — 打包所有非 private 包到 `.artifacts/npm`
 
 ## 推荐流程：Lerna 管理版本并发布
 

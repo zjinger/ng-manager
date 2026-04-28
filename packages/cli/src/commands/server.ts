@@ -77,9 +77,9 @@ export async function startServer(opts: ServerOptions): Promise<ChildProcess> {
     const child = spawn(process.execPath, [entry], {
         detached: true,
         stdio: ['ignore', stdoutStream, stderrStream],
-        windowsHide: true,
+        creationflags: 0x08000000, // CREATE_NO_WINDOW
         env,
-    });
+    } as any);
 
     child.unref();
     return child;

@@ -17,6 +17,7 @@
     { "path": "../node-version" },
     { "path": "../task" },
     { "path": "../sprite" },
-    { "path": "../bootstrap" }
+    { "path": "../bootstrap" },
+    { "path": "../deps" }
   ]
 }
