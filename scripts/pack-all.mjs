@@ -8,9 +8,6 @@ const root = process.cwd();
 const packagesDir = path.join(root, 'packages');
 const outDir = path.join(root, '.artifacts', 'npm');
 
-fs.rmSync(outDir, { recursive: true, force: true });
-fs.mkdirSync(outDir, { recursive: true });
-
 const packages = fs
   .readdirSync(packagesDir, { withFileTypes: true })
   .filter(d => d.isDirectory())
@@ -36,6 +33,9 @@ if (listOnly) {
   console.log(`[pack:list] total: ${packages.length}`);
   process.exit(0);
 }
+
+fs.rmSync(outDir, { recursive: true, force: true });
+fs.mkdirSync(outDir, { recursive: true });
 
 for (const pkg of packages) {
   console.log(`[pack] ${pkg.name}`);

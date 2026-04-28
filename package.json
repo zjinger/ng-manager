@@ -14,7 +14,9 @@
     "dev": "lerna run dev --stream --parallel",
     "dev:server": "tsx watch packages/server/src/index.ts",
 
-    "release:preflight": "npm run clean:githead && npm run clean && npm run build && npm run pack:all",
+    "clean:server-www": "rimraf packages/server/www",
+    "prepare:server-www": "npm run clean:server-www && cd webapp && npm run web:build",
+    "release:preflight": "npm run clean:githead && npm run clean && npm run build && npm run prepare:server-www && npm run pack:all",
     "release:dry": "npm run release:preflight",
     "release:changed": "lerna changed",
     "release:version": "lerna version",
@@ -22,6 +24,7 @@
     "release:publish:pkg": "lerna publish from-package",
 
     "pack:all": "node scripts/pack-all.mjs",
+    "pack:list": "node scripts/pack-all.mjs --list",
     "publish:all": "npm run release:publish:pkg",
 
     "build:core": "tsc -b packages/core",
