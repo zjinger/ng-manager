@@ -173,7 +173,6 @@ export const errorHandlerPlugin: FastifyPluginAsync = fp(async (app) => {
         }
 
         // 3) 未知错误：只记录日志
-        console.log('err', err);
         req.log.error({ err, requestId }, "Unhandled error");
         return reply.status(500).send(buildErrorBody(requestId, GlobalErrorCodes.UNKNOWN_ERROR, "服务异常，请稍后重试"));
     });
