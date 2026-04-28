@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@yinuo-ngm/core",
   "version": "0.1.8",
   "author": "ZhangJing <892295834@qq.com>",
@@ -30,9 +30,8 @@
     "@yinuo-ngm/project": "^0.1.0",
     "@yinuo-ngm/protocol": "^0.1.0",
     "@yinuo-ngm/shared": "^0.1.0",
-"@yinuo-ngm/sprite": "^0.1.6",
+    "@yinuo-ngm/sprite": "^0.1.6",
     "@yinuo-ngm/svn": "^0.1.0",
     "@yinuo-ngm/task": "^0.1.0"
-  },
-  "gitHead": "7089a08d14051ba29a064938e5cdb6964cb3eb48"
+  }
 }
