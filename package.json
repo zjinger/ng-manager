@@ -4,6 +4,7 @@
   "scripts": {
     "clean": "rimraf -g \"packages/**/lib\" \"packages/**/dist\" \"packages/**/*.tsbuildinfo\"",
     "clean:githead": "node scripts/clean-githead.mjs",
+    "check:githead": "node scripts/clean-githead.mjs --check",
     "clean:pack": "rimraf .artifacts/npm",
 
     "build": "tsc -b tsconfig.build.json",
@@ -16,7 +17,7 @@
 
     "clean:server-www": "rimraf packages/server/www",
     "prepare:server-www": "npm run clean:server-www && cd webapp && npm run web:build",
-    "release:preflight": "npm run clean:githead && npm run clean && npm run build && npm run prepare:server-www && npm run pack:all",
+    "release:preflight": "npm run check:githead && npm run clean && npm run build && npm run prepare:server-www && npm run pack:all",
     "release:dry": "npm run release:preflight",
     "release:changed": "lerna changed",
     "release:version": "lerna version",
