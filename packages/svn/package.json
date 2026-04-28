@@ -23,6 +23,7 @@
     "@yinuo-ngm/errors": "^1.0.1",
     "@yinuo-ngm/event": "^0.1.1",
     "@yinuo-ngm/logger": "^0.1.1",
+    "@yinuo-ngm/process": "^0.1.1",
     "@yinuo-ngm/project": "^0.1.1",
     "@yinuo-ngm/protocol": "^0.1.1"
   }

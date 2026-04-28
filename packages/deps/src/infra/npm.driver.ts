@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { silentSpawn } from "@yinuo-ngm/process";
 
 export class NpmDriver {
     constructor(private opts: { timeoutMs?: number } = {}) { }
@@ -7,7 +7,7 @@ export class NpmDriver {
         const timeoutMs = this.opts.timeoutMs ?? 60_000;
 
         return new Promise((resolve, reject) => {
-            const p = spawn("npm", args, { cwd, shell: true });
+            const p = silentSpawn("npm", args, { cwd, shell: true, hideWindow: true });
 
             let stdout = "";
             let stderr = "";
@@ -17,8 +17,8 @@ export class NpmDriver {
                 reject(new Error(`npm timeout: npm ${args.join(" ")}`));
             }, timeoutMs);
 
-            p.stdout.on("data", (d) => (stdout += d.toString()));
-            p.stderr.on("data", (d) => (stderr += d.toString()));
+            p.stdout!.on("data", (d) => (stdout += d.toString()));
+            p.stderr!.on("data", (d) => (stderr += d.toString()));
 
             p.on("error", (e) => {
                 clearTimeout(timer);

@@ -1,5 +1,4 @@
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
+import { silentExecFile, silentSpawn } from "@yinuo-ngm/process";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -22,8 +21,6 @@ import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { Project, ProjectAssetSourceSvn, type ProjectService } from "@yinuo-ngm/project";
 import type { IEventBus } from "@yinuo-ngm/event";
 
-const execFileAsync = promisify(execFile);
-
 type StreamType = "stdout" | "stderr";
 
 type RunStreamResult = {
@@ -44,7 +41,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
 
     private async svnInfoUrl(dir: string): Promise<string> {
         try {
-            const { stdout } = await execFileAsync(
+            const { stdout } = await silentExecFile(
                 this.svnBinary,
                 ["info", "--show-item", "url"],
                 { cwd: dir }
@@ -68,7 +65,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
         const isCheckout = !fs.existsSync(svnDir);
 
         if (isCheckout) {
-            const { stdout, stderr } = await execFileAsync(
+            const { stdout, stderr } = await silentExecFile(
                 this.svnBinary,
                 ["checkout", desiredUrl, "."],
                 { cwd: dir }
@@ -88,7 +85,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             await fs.promises.rm(dir, { recursive: true, force: true });
             fs.mkdirSync(dir, { recursive: true });
 
-            const { stdout, stderr } = await execFileAsync(
+            const { stdout, stderr } = await silentExecFile(
                 this.svnBinary,
                 ["checkout", desiredUrl, "."],
                 { cwd: dir }
@@ -107,7 +104,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
 
         if (currentNorm !== desiredNorm) {
             try {
-                const { stdout, stderr } = await execFileAsync(
+                const { stdout, stderr } = await silentExecFile(
                     this.svnBinary,
                     ["switch", desiredUrl, ".", "--ignore-ancestry"],
                     { cwd: dir }
@@ -124,7 +121,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
                 await fs.promises.rm(dir, { recursive: true, force: true });
                 fs.mkdirSync(dir, { recursive: true });
 
-                const { stdout, stderr } = await execFileAsync(
+                const { stdout, stderr } = await silentExecFile(
                     this.svnBinary,
                     ["checkout", desiredUrl, "."],
                     { cwd: dir }
@@ -140,7 +137,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             }
         }
 
-        const { stdout, stderr } = await execFileAsync(
+        const { stdout, stderr } = await silentExecFile(
             this.svnBinary,
             ["update"],
             { cwd: dir }
@@ -415,7 +412,7 @@ export class SvnSyncServiceImpl implements SvnSyncService {
     private async estimateTotalByStatus(dir: string): Promise<number> {
         if (!fs.existsSync(path.join(dir, ".svn"))) return 0;
         try {
-            const { stdout } = await execFileAsync(
+            const { stdout } = await silentExecFile(
                 this.svnBinary,
                 ["status", "-u"],
                 { cwd: dir, maxBuffer: 10 * 1024 * 1024 }
@@ -456,15 +453,15 @@ export class SvnSyncServiceImpl implements SvnSyncService {
             });
         };
 
-        const child = spawn(this.svnBinary, args, { cwd });
+        const child = silentSpawn(this.svnBinary, args, { cwd, hideWindow: true });
 
         this.taskManager.setChild(projectId, sourceId, child);
 
-        child.stdout.on("data", (d) => {
+        child.stdout!.on("data", (d) => {
             const chunk = d.toString();
             push("stdout", chunk);
         });
-        child.stderr.on("data", (d) => push("stderr", d.toString()));
+        child.stderr!.on("data", (d) => push("stderr", d.toString()));
 
         const exitCode: number = await new Promise((resolve) => {
             let settled = false;

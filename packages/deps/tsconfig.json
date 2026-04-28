@@ -6,5 +6,11 @@
     "composite": true,
     "strict": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../errors" },
+    { "path": "../process" },
+    { "path": "../project" },
+    { "path": "../storage" }
+  ]
 }
