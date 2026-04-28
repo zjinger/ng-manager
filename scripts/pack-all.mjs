@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+const listOnly = process.argv.includes('--list');
+
 const root = process.cwd();
 const packagesDir = path.join(root, 'packages');
 const outDir = path.join(root, '.artifacts', 'npm');
@@ -25,6 +27,15 @@ const packages = fs
   })
   .filter(pkg => !pkg.private)
   .sort((a, b) => a.name.localeCompare(b.name));
+
+if (listOnly) {
+  console.log('[pack:list] packages to be packed:');
+  for (const pkg of packages) {
+    console.log(`  ${pkg.name}`);
+  }
+  console.log(`[pack:list] total: ${packages.length}`);
+  process.exit(0);
+}
 
 for (const pkg of packages) {
   console.log(`[pack] ${pkg.name}`);

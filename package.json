@@ -16,6 +16,7 @@
 
     "release:preflight": "npm run clean:githead && npm run clean && npm run build && npm run pack:all",
     "release:dry": "npm run release:preflight",
+    "release:changed": "lerna changed",
     "release:version": "lerna version",
     "release:publish:git": "lerna publish from-git",
     "release:publish:pkg": "lerna publish from-package",
