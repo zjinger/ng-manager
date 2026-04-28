@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/svn",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -20,10 +20,10 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.0",
-    "@yinuo-ngm/event": "^0.1.0",
-    "@yinuo-ngm/logger": "^0.1.0",
-    "@yinuo-ngm/project": "^0.1.0",
-    "@yinuo-ngm/protocol": "^0.1.0"
+    "@yinuo-ngm/errors": "^1.0.1",
+    "@yinuo-ngm/event": "^0.1.1",
+    "@yinuo-ngm/logger": "^0.1.1",
+    "@yinuo-ngm/project": "^0.1.1",
+    "@yinuo-ngm/protocol": "^0.1.1"
   }
 }

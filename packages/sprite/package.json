@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/sprite",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "a sprite generation tool",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
@@ -30,9 +30,9 @@
     "@types/spritesmith": "^3.4.5"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.0",
-    "@yinuo-ngm/logger": "^0.1.0",
-    "@yinuo-ngm/project": "^0.1.0",
+    "@yinuo-ngm/errors": "^1.0.1",
+    "@yinuo-ngm/logger": "^0.1.1",
+    "@yinuo-ngm/project": "^0.1.1",
     "spritesmith": "^3.5.1"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/shared",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "shared utilities for ng-manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
@@ -20,6 +20,5 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
-  },
-  "dependencies": {}
+  }
 }

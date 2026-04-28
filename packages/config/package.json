@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/config",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -20,9 +20,9 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.0",
-    "@yinuo-ngm/project": "^0.1.0",
-    "@yinuo-ngm/storage": "^0.1.0",
+    "@yinuo-ngm/errors": "^1.0.1",
+    "@yinuo-ngm/project": "^0.1.1",
+    "@yinuo-ngm/storage": "^0.1.5",
     "js-yaml": "^4.1.1",
     "jsonc-parser": "^3.3.1"
   },

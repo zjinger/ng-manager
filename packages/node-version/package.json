@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/node-version",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "node version management for ng-manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
@@ -22,9 +22,9 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.0",
-    "@yinuo-ngm/logger": "^0.1.0",
-    "@yinuo-ngm/protocol": "^0.1.0",
-    "@yinuo-ngm/shared": "^0.1.0"
+    "@yinuo-ngm/errors": "^1.0.1",
+    "@yinuo-ngm/logger": "^0.1.1",
+    "@yinuo-ngm/protocol": "^0.1.1",
+    "@yinuo-ngm/shared": "^0.1.1"
   }
 }

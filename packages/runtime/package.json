@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/runtime",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "local server runtime helpers for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
@@ -22,6 +22,6 @@
     "test": "npm run build && node --test test/local-server-runtime.test.js"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.0"
+    "@yinuo-ngm/errors": "^1.0.1"
   }
 }

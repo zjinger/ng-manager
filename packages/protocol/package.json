@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/protocol",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared HTTP and WebSocket protocol types for Yinuo NG Manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
@@ -22,6 +22,6 @@
     "build": "tsc -b tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.0"
+    "@yinuo-ngm/errors": "^1.0.1"
   }
 }
