@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/sprite",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "a sprite generation tool",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
