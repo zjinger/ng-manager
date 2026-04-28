@@ -75,3 +75,5 @@ ng-manager-packages-refactor-plan.md
 ng-manager-root-scripts-release-optimization.md
 ng-manager-packages-core-analysis.md
 ng-manager-process-module-analysis.md
+apps/hub-v2/server/backup
+apps/hub-v2/server/backupdev
