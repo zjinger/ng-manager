@@ -2,35 +2,32 @@
   "name": "ng-manager",
   "private": true,
   "scripts": {
-    "清除产物": "",
     "clean": "rimraf -g \"packages/**/lib\" \"packages/**/dist\" \"packages/**/*.tsbuildinfo\"",
-    "clean:githead": "node -e \"const fs=require('fs');const path=require('path');for(const d of fs.readdirSync('packages',{withFileTypes:true}).filter(x=>x.isDirectory()).map(x=>x.name)){const p=path.join('packages',d,'package.json');if(!fs.existsSync(p)) continue;const raw=fs.readFileSync(p,'utf8').replace(/^\\uFEFF/,'');const j=JSON.parse(raw);if(Object.prototype.hasOwnProperty.call(j,'gitHead')){delete j.gitHead;fs.writeFileSync(p,JSON.stringify(j,null,2)+'\\n');}}\"",
+    "clean:githead": "node scripts/clean-githead.mjs",
     "clean:pack": "rimraf .artifacts/npm",
-    "prepare:pack-dir": "node -e \"require('fs').mkdirSync('.artifacts/npm',{recursive:true})\"",
-    "全量：TS references ": "",
+
     "build": "tsc -b tsconfig.build.json",
-    "增量：只构建变更包": "",
+    "build:clean": "npm run clean && npm run build",
     "build:since": "lerna run build --since --stream",
-    "看看 since 会命中哪些包": "",
     "since": "lerna ls --since --json",
-    "dev 编排": "",
+
     "dev": "lerna run dev --stream --parallel",
-    "1.发布前演练（不发布）": "",
-    "release:dry": "npm run clean && npm run build && npm run pack:all",
-    "2.版本管理（Lerna 管理版本号和 changelog）": "",
+    "dev:server": "tsx watch packages/server/src/index.ts",
+
+    "release:preflight": "npm run clean:githead && npm run clean && npm run build && npm run pack:all",
+    "release:dry": "npm run release:preflight",
     "release:version": "lerna version",
-    "3.按 tag 发布：from-git": "",
     "release:publish:git": "lerna publish from-git",
-    "3.按package.json 发布：from-package": "",
     "release:publish:pkg": "lerna publish from-package",
-    "不用 lerna，一条命令发布所有包": "",
-    "publish:all": "npm run clean && npm run build && npm publish -w @yinuo-ngm/errors && npm publish -w @yinuo-ngm/protocol && npm publish -w @yinuo-ngm/process && npm publish -w @yinuo-ngm/core  && npm publish -w @yinuo-ngm/server  && npm publish -w @yinuo-ngm/cli  && npm publish -w @yinuo-ngm/ais  && npm publish -w @yinuo-ngm/sprite  && npm publish -w @yinuo-ngm/api  && npm publish -w @yinuo-ngm/storage  ",
-    "pack:all": "npm run clean:pack && npm run prepare:pack-dir && npm pack --pack-destination .artifacts/npm ./packages/errors && npm pack --pack-destination .artifacts/npm ./packages/protocol && npm pack --pack-destination .artifacts/npm ./packages/process && npm pack --pack-destination .artifacts/npm ./packages/storage && npm pack --pack-destination .artifacts/npm ./packages/core && npm pack --pack-destination .artifacts/npm ./packages/api && npm pack --pack-destination .artifacts/npm ./packages/sprite && npm pack --pack-destination .artifacts/npm ./packages/server && npm pack --pack-destination .artifacts/npm ./packages/runtime && npm pack --pack-destination .artifacts/npm ./packages/cli && npm pack --pack-destination .artifacts/npm ./packages/ais",
+
+    "pack:all": "node scripts/pack-all.mjs",
+    "publish:all": "npm run release:publish:pkg",
+
     "build:core": "tsc -b packages/core",
     "build:server": "tsc -b packages/server && cd webapp && npm run web:build",
     "build:ais": "tsc -b packages/ais",
     "build:sprite": "tsc -b packages/sprite",
-    "dev:server": "tsx watch packages/server/src/index.ts",
+
     "test:cli:ui": "node packages/cli/lib/bin/ngm.js ui"
   },
   "devDependencies": {

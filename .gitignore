@@ -72,3 +72,4 @@ apps/hub-v2/config.toml
 ng-manager-log-strategy.md
 ng-manager-packages-refactor-plan-flat.md
 ng-manager-packages-refactor-plan.md
+ng-manager-root-scripts-release-optimization.md
