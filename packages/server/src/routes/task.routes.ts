@@ -1,5 +1,52 @@
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import type {
+    TaskCommandRequestDto,
+    TaskDefinitionDto,
+    TaskRowDto,
+    TaskRuntimeDto,
+} from "@yinuo-ngm/protocol";
+import type { TaskDefinition, TaskRow, TaskRuntime } from "@yinuo-ngm/task";
 import type { FastifyInstance } from "fastify";
+
+function toTaskDefinitionDto(spec: TaskDefinition): TaskDefinitionDto {
+    return {
+        id: spec.id,
+        projectId: spec.projectId,
+        projectRoot: spec.projectRoot,
+        projectName: spec.projectName,
+        name: spec.name,
+        kind: spec.kind,
+        description: spec.description,
+        command: spec.command,
+        file: spec.file,
+        args: spec.args,
+        runnable: spec.runnable,
+    };
+}
+
+function toTaskRuntimeDto(runtime: TaskRuntime): TaskRuntimeDto {
+    return {
+        taskId: runtime.taskId,
+        projectId: runtime.projectId,
+        name: runtime.name,
+        runId: runtime.runId,
+        status: runtime.status,
+        pid: runtime.pid,
+        startedAt: runtime.startedAt,
+        stoppedAt: runtime.stoppedAt,
+        exitCode: runtime.exitCode,
+        signal: runtime.signal,
+        lastError: runtime.lastError,
+    };
+}
+
+function toTaskRowDto(row: TaskRow): TaskRowDto {
+    return {
+        spec: toTaskDefinitionDto(row.spec),
+        runtime: row.runtime ? toTaskRuntimeDto(row.runtime) : undefined,
+    };
+}
+
 /** 判断该项目是否已有 specs（用于懒加载） */
 async function ensureSpecs(fastify: FastifyInstance, projectId: string) {
     const specs = await fastify.core.task.listSpecsByProject(projectId);
@@ -18,7 +65,8 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.get("/list/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
         await ensureSpecs(fastify, projectId);
-        return fastify.core.task.listViewsByProject(projectId);
+        const rows = await fastify.core.task.listViewsByProject(projectId);
+        return rows.map(toTaskRowDto);
     });
 
     /**
@@ -29,7 +77,8 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.post("/refresh/:projectId", async (req) => {
         const { projectId } = req.params as { projectId: string };
         // refreshByProject 内部会从 ProjectService.get() 拉 root/scripts/pm 并更新 specs
-        return await fastify.core.task.refreshByProject(projectId);
+        const rows = await fastify.core.task.refreshByProject(projectId);
+        return rows.map(toTaskRowDto);
     });
 
     /**
@@ -38,10 +87,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
      * body: { taskId: string } 
      */
     fastify.post("/start", async (req) => {
-        const body = req.body as { taskId?: string };
+        const body = req.body as Partial<TaskCommandRequestDto>;
         const taskId = body?.taskId?.trim();
         if (!taskId) throw new CoreError(CoreErrorCodes.TASK_ID_REQUIRED, "taskId is required", { body });
-        return await fastify.core.task.start(taskId);
+        const runtime = await fastify.core.task.start(taskId);
+        return toTaskRuntimeDto(runtime);
     });
 
 
@@ -51,10 +101,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
      * body: { taskId: string } 
      */
     fastify.post("/stop", async (req) => {
-        const body = req.body as { taskId?: string };
+        const body = req.body as Partial<TaskCommandRequestDto>;
         const taskId = body?.taskId?.trim();
         if (!taskId) throw new CoreError(CoreErrorCodes.TASK_ID_REQUIRED, "taskId is required", { body });
-        return await fastify.core.task.stop(taskId);
+        const runtime = await fastify.core.task.stop(taskId);
+        return toTaskRuntimeDto(runtime);
     });
 
     /**
@@ -63,10 +114,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
      * body: { taskId: string } 
      */
     fastify.post("/restart", async (req) => {
-        const body = req.body as { taskId?: string };
+        const body = req.body as Partial<TaskCommandRequestDto>;
         const taskId = body?.taskId?.trim();
         if (!taskId) throw new CoreError(CoreErrorCodes.TASK_ID_REQUIRED, "taskId is required", { body });
-        return await fastify.core.task.restart(taskId);
+        const runtime = await fastify.core.task.restart(taskId);
+        return toTaskRuntimeDto(runtime);
     });
 
     /**
@@ -75,12 +127,14 @@ export default async function taskRoutes(fastify: FastifyInstance) {
      */
     fastify.get("/status/:taskId", async (req) => {
         const { taskId } = req.params as { taskId: string };
-        return await fastify.core.task.status(taskId);
+        const runtime = await fastify.core.task.status(taskId);
+        return toTaskRuntimeDto(runtime);
     });
 
     /** 列出所有活跃的任务（running / stopping） */
     fastify.get("/active", async () => {
-        return await fastify.core.task.listActive();
+        const runtimes = await fastify.core.task.listActive();
+        return runtimes.map(toTaskRuntimeDto);
     });
 
     /**
