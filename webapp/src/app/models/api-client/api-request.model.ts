@@ -1,45 +1,27 @@
-import { ApiHttpMethod } from "./api-types.model";
+import type {
+    ApiRequestAuthDto,
+    ApiRequestBodyDto,
+    ApiRequestBodyMode,
+    ApiRequestEntityDto,
+    ApiRequestKvDto,
+    ApiRequestOptionsDto,
+    ApiRequestAuthType,
+} from "@yinuo-ngm/protocol";
 
 export type ApiRequestKvRow = { id: string; key: string; value: string; enabled: boolean; description?: string };
 
-export type ApiRequestEntityBodyMode = "none" | "json" | "text" | "form" | "urlencoded" | "binary";
+export type ApiRequestEntityBodyMode = ApiRequestBodyMode;
 
-export type ApiRequestEntityAuthType = "none" | "basic" | "bearer" | "apikey" | "cookie";
+export type ApiRequestEntityAuthType = ApiRequestAuthType;
 
-export interface ApiRequestEntityBody {
-    mode: ApiRequestEntityBodyMode;
-    content?: any;
-    contentType?: string;
-}
+export type ApiRequestEntityBody = ApiRequestBodyDto;
 
-export interface ApiRequestEntityAuth {
-    type: ApiRequestEntityAuthType;
-    basic?: { username: string; password: string };
-    bearer?: { token: string };
-    apikey?: { in: "header" | "query"; key: string; value: string };
-    cookie?: { value: string };
-}
+export type ApiRequestEntityAuth = ApiRequestAuthDto;
 
-export interface ApiRequestEntityOptions {
-    timeoutMs?: number;
-    followRedirects?: boolean;
-    insecureTLS?: boolean;
-    proxy?: string;
-}
-export interface ApiRequestEntity {
-    id: string;
-    name: string;
-    method: ApiHttpMethod;
-    url: string;
-    collectionId?: string | null;
-    order?: number;
+export type ApiRequestEntityOptions = ApiRequestOptionsDto;
+export type ApiRequestKv = ApiRequestKvDto;
+export type ApiRequestEntity = Omit<ApiRequestEntityDto, "query" | "pathParams" | "headers"> & {
     query: ApiRequestKvRow[];
     pathParams: ApiRequestKvRow[];
     headers: ApiRequestKvRow[];
-    body?: ApiRequestEntityBody;
-    auth?: ApiRequestEntityAuth;
-    options?: ApiRequestEntityOptions;
-    tags?: string[];
-    createdAt: number;
-    updatedAt: number;
-}
+};

@@ -1,20 +1,14 @@
-import { ApiRequestEntity, } from "./api-request.model";
+import type { SendRequestBodyDto, SendResultDto } from "@yinuo-ngm/protocol";
+import { ApiRequestEntity } from "./api-request.model";
 import { ApiResponseEntity } from "./api-response.model";
 import { ApiScope } from "./api-types.model";
 
-export type SendRequestBody = {
+export type SendRequestBody = Omit<SendRequestBodyDto, "request" | "scope"> & {
     scope: ApiScope;
-    projectId?: string;
-    requestId?: string;
     request?: ApiRequestEntity;
-    envId?: string;
-    projectRoot?: string;
 };
 
-export type SendResponse = {
-    historyId: string;
+export type SendResponse = Omit<SendResultDto, "response" | "curl"> & {
     response?: ApiResponseEntity;
-    error?: { code: string; message: string };
-    metrics: { startedAt: number; endedAt: number; durationMs: number };
     curl?: { bash: string; powershell: string; cmd: string };
 };

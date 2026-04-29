@@ -1,144 +1,145 @@
-import { ApiScope, ApiCollectionKind, ApiCollectionEntity, newId, ApiRequestEntity } from "@yinuo-ngm/api";
-import { ApiError, ApiErrorCodes } from "@yinuo-ngm/errors";
-import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
+import type { ApiClient, ApiCollectionEntity, ApiRequestEntity } from "@yinuo-ngm/api";
+import { ApiScope, newId } from "@yinuo-ngm/api";
+import { ApiError, ApiErrorCodes, GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
+import type {
+    CollectionIdParamDto,
+    CollectionsBundleDto,
+    CreateCollectionBodyDto,
+    ListCollectionsQueryDto,
+    UpdateCollectionBodyDto
+} from "@yinuo-ngm/protocol";
 import type { FastifyInstance } from "fastify";
-
-type ListQuery = { scope?: ApiScope; projectId?: string };
-
-type CreateBody = {
-    scope: ApiScope;
-    projectId: string;
-    name: string;
-    kind: ApiCollectionKind;
-    parentId?: string | null;
-    order?: number;
-};
-
-type UpdateBody = {
-    name?: string;
-    parentId?: string | null;
-    order?: number;
-};
+import { toApiCollectionEntityDto, toApiRequestEntityDto } from "./route-mappers";
 
 function assertProjectScope(scope: ApiScope, projectId?: string) {
-    if (scope === "project" && !projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
+    if (scope === "project" && !projectId) {
+        throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
+    }
 }
 
-function now() { return Date.now(); }
+function now(): number { return Date.now(); }
 
 export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
-    const api = fastify.core.apiClient;
+    const api = fastify.core.apiClient as ApiClient;
 
-    // GET /api/collections?scope=project&projectId=xxx
-    fastify.get("/", async (req) => {
-        const q = req.query as ListQuery;
-        const scope: ApiScope = (q.scope ?? "project") as ApiScope;
-        assertProjectScope(scope, q.projectId);
-        const collections = await api.listCollections(scope, q.projectId);
-        // 保证排序稳定
-        return collections.sort((a, b) => (a.parentId ?? "").localeCompare(b.parentId ?? "") || a.order - b.order || a.name.localeCompare(b.name));
-    });
-
-    // GET /api/collections/bundle?scope=project&projectId=xxx
-    fastify.get("/bundle", async (req) => {
-        const q = req.query as ListQuery;
-        const scope: ApiScope = (q.scope ?? "project") as ApiScope;
-        assertProjectScope(scope, q.projectId);
-
-        const [collections, requests] = await Promise.all([
-            api.listCollections(scope, q.projectId),
-            api.listRequests(scope, q.projectId),
-        ]);
-
-        // 保证排序稳定（collections / requests 都做）
-        const cols = (collections ?? []).sort(
-            (a, b) =>
-                (a.parentId ?? "").localeCompare(b.parentId ?? "") ||
-                a.order - b.order ||
-                (a.name ?? "").localeCompare(b.name ?? "")
-        );
-        const reqs = (requests ?? []).sort(
-            (a, b) =>
-                (a.collectionId ?? "").localeCompare(b.collectionId ?? "") ||
-                (a.order ?? 0) - (b.order ?? 0) ||
-                (a.name ?? "").localeCompare(b.name ?? "")
-        );
-        return { collections: cols, requests: reqs };
-    })
-
-    // POST /api/collections
-    fastify.post("/", async (req) => {
-        const body = req.body as CreateBody;
-        const scope: ApiScope = (body.scope ?? "project") as ApiScope;
-        assertProjectScope(scope, body.projectId);
-        const ts = now();
-        const entity: ApiCollectionEntity = {
-            id: newId("col"),
-            name: String(body.name ?? "").trim() || "New Collection",
-            kind: body.kind ?? "collection",
-            scope,
-            nodes: [],
-            projectId: scope === "project" ? body.projectId : undefined,
-            parentId: body.parentId ?? null,
-            order: body.order ?? ts, // MVP: 用时间做 order，后续可改为同级 max+1
-            createdAt: ts,
-            updatedAt: ts,
-        };
-        await api.saveCollection(entity, scope, body.projectId);
-        return entity;
-    });
-
-    // post /api/collections/:id
-    fastify.post("/:id", async (req) => {
-        const params = req.params as { id: string };
-        const q = req.query as ListQuery;
-        const body = req.body as UpdateBody;
-
-        const scope: ApiScope = (q.scope ?? "project") as ApiScope;
-        assertProjectScope(scope, q.projectId);
-
-        const old = await api.getCollection(params.id, scope, q.projectId);
-        if (!old) {
-            throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_FOUND, `collection not found: ${params.id}`);
+    fastify.get<{ Querystring: ListCollectionsQueryDto }>(
+        "/",
+        async (req) => {
+            const scope: ApiScope = (req.query?.scope ?? "project") as ApiScope;
+            assertProjectScope(scope, req.query?.projectId);
+            const collections = await api.listCollections(scope, req.query?.projectId);
+            return collections.sort(
+                (a, b) =>
+                    (a.parentId ?? "").localeCompare(b.parentId ?? "") ||
+                    a.order - b.order ||
+                    a.name.localeCompare(b.name)
+            ).map(toApiCollectionEntityDto);
         }
+    );
 
-        const ts = now();
-        const next: ApiCollectionEntity = {
-            ...old,
-            name: body.name != null ? String(body.name).trim() || old.name : old.name,
-            parentId: body.parentId !== undefined ? body.parentId : old.parentId,
-            order: body.order !== undefined ? Number(body.order) : old.order,
-            updatedAt: ts,
-        };
+    fastify.get<{ Querystring: ListCollectionsQueryDto }>(
+        "/bundle",
+        async (req) => {
+            const scope: ApiScope = (req.query?.scope ?? "project") as ApiScope;
+            assertProjectScope(scope, req.query?.projectId);
 
-        await api.saveCollection(next, scope, q.projectId);
-        return next;
-    });
+            const [collections, requests] = await Promise.all([
+                api.listCollections(scope, req.query?.projectId),
+                api.listRequests(scope, req.query?.projectId),
+            ]);
 
-    // DELETE /api/collections/:id?scope=project&projectId=xxx
-    // MVP：非空校验（子 collection 或 request 归属该 collection）→ 409
-    fastify.delete("/:id", async (req) => {
-        const params = req.params as { id: string };
-        const q = req.query as ListQuery;
+            const cols = collections.sort(
+                (a, b) =>
+                    (a.parentId ?? "").localeCompare(b.parentId ?? "") ||
+                    a.order - b.order ||
+                    (a.name ?? "").localeCompare(b.name ?? "")
+            ).map(toApiCollectionEntityDto);
 
-        const scope: ApiScope = (q.scope ?? "project") as ApiScope;
-        assertProjectScope(scope, q.projectId);
+            const reqs = requests.sort(
+                (a, b) =>
+                    (a.collectionId ?? "").localeCompare(b.collectionId ?? "") ||
+                    (a.order ?? 0) - (b.order ?? 0) ||
+                    (a.name ?? "").localeCompare(b.name ?? "")
+            ).map(toApiRequestEntityDto);
 
-        // 1) 子 collection
-        const allCols = await api.listCollections(scope, q.projectId);
-        const hasChildCol = allCols.some(c => (c.parentId ?? null) === params.id);
-        if (hasChildCol) {
-            throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_EMPTY, "collection has child collections");
+            return { collections: cols, requests: reqs } as CollectionsBundleDto;
         }
+    );
 
-        // 2) requests 归属
-        const reqs = await api.listRequests(scope, q.projectId);
-        const hasReq = reqs.some((r: ApiRequestEntity) => (r.collectionId ?? null) === params.id);
-        if (hasReq) {
-            throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_EMPTY, "collection has requests");
+    fastify.post<{ Body: CreateCollectionBodyDto }>(
+        "/",
+        async (req) => {
+            const body = req.body as CreateCollectionBodyDto;
+            const scope: ApiScope = (body.scope ?? "project") as ApiScope;
+            assertProjectScope(scope, body.projectId);
+
+            const ts = now();
+            const entity: ApiCollectionEntity = {
+                id: newId("col"),
+                name: String(body.name ?? "").trim() || "New Collection",
+                kind: body.kind ?? "collection",
+                scope,
+                nodes: [],
+                projectId: scope === "project" ? body.projectId : undefined,
+                parentId: body.parentId ?? null,
+                order: body.order ?? ts,
+                createdAt: ts,
+                updatedAt: ts,
+            };
+
+            await api.saveCollection(entity, scope, body.projectId);
+            return toApiCollectionEntityDto(entity);
         }
+    );
 
-        await api.deleteCollection(params.id, scope, q.projectId);
-        return { ok: true };
-    });
+    fastify.post<{ Querystring: ListCollectionsQueryDto; Params: CollectionIdParamDto; Body: UpdateCollectionBodyDto }>(
+        "/:id",
+        async (req) => {
+            const q = req.query as ListCollectionsQueryDto;
+            const body = req.body as UpdateCollectionBodyDto;
+            const scope: ApiScope = (q?.scope ?? "project") as ApiScope;
+            assertProjectScope(scope, q?.projectId);
+
+            const old = await api.getCollection(req.params.id, scope, q?.projectId);
+            if (!old) {
+                throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_FOUND, `collection not found: ${req.params.id}`);
+            }
+
+            const ts = now();
+            const next: ApiCollectionEntity = {
+                ...old,
+                name: body.name != null ? String(body.name).trim() || old.name : old.name,
+                parentId: body.parentId !== undefined ? body.parentId : old.parentId,
+                order: body.order !== undefined ? Number(body.order) : old.order,
+                updatedAt: ts,
+            };
+
+            await api.saveCollection(next, scope, q?.projectId);
+            return toApiCollectionEntityDto(next);
+        }
+    );
+
+    fastify.delete<{ Querystring: ListCollectionsQueryDto; Params: CollectionIdParamDto }>(
+        "/:id",
+        async (req) => {
+            const q = req.query as ListCollectionsQueryDto;
+            const scope: ApiScope = (q?.scope ?? "project") as ApiScope;
+            assertProjectScope(scope, q?.projectId);
+
+            const allCols = await api.listCollections(scope, q?.projectId);
+            const hasChildCol = (allCols as ApiCollectionEntity[]).some(c => (c.parentId ?? null) === req.params.id);
+            if (hasChildCol) {
+                throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_EMPTY, "collection has child collections");
+            }
+
+            const reqs = await api.listRequests(scope, q?.projectId);
+            const hasReq = (reqs as ApiRequestEntity[]).some(r => (r.collectionId ?? null) === req.params.id);
+            if (hasReq) {
+                throw new ApiError(ApiErrorCodes.API_COLLECTION_NOT_EMPTY, "collection has requests");
+            }
+
+            await api.deleteCollection(req.params.id, scope, q?.projectId);
+            return { ok: true };
+        }
+    );
 }

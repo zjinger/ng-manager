@@ -1,20 +1,7 @@
-import { ApiScope } from "./api-types.model";
+import type { ApiEnvironmentEntityDto, ApiEnvironmentVariableDto } from "@yinuo-ngm/protocol";
 
-export interface ApiEnvVariable {
-    key: string;
-    value: string;
-    secret?: boolean;
-    enabled: boolean;
-    description?: string;
-}
+export type ApiEnvVariable = ApiEnvironmentVariableDto & { description?: string };
 
-export interface ApiEnvEntity {
-    id: string;
-    name: string;
-    scope: ApiScope;
-    projectId?: string;
-    baseUrl?: string; // 前置URL
-    variables: Array<ApiEnvVariable>;
-    createdAt: number;
-    updatedAt: number;
-}
+export type ApiEnvEntity = Omit<ApiEnvironmentEntityDto, "variables"> & {
+    variables: ApiEnvVariable[];
+};

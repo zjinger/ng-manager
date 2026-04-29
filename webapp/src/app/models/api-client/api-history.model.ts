@@ -1,43 +1,11 @@
+import type { ApiHistoryEntityDto, ApiResponseErrorDto, ApiResponseMetricsDto } from "@yinuo-ngm/protocol";
 import { ApiRequestEntity } from "./api-request.model";
 
-export interface ApiHistoryEntity {
-    id: string; // hist_xxx
-    projectId?: string;
-    collectionId?: string;
-
+export type ApiHistoryEntity = Omit<ApiHistoryEntityDto, "requestSnapshot"> & {
     requestSnapshot: ApiRequestEntity;
-
-    resolved: {
-        url: string;
-        headers: Record<string, string>;
-        curl?: {
-            bash: string;
-            powershell: string;
-        }
+    resolved: ApiHistoryEntityDto["resolved"] & {
+        curl?: { bash: string; powershell: string };
     };
-
-    response?: {
-        status: number;
-        statusText?: string;
-        headers: Record<string, string>;
-        bodyText?: string;
-        bodySize?: number;
-    };
-
-    error?: {
-        code: string;
-        message: string;
-    };
-
-    metrics: {
-        startedAt: number;
-        endedAt: number;
-        durationMs: number;
-        dnsMs?: number;
-        tcpMs?: number;
-        tlsMs?: number;
-        ttfbMs?: number;
-    };
-
-    createdAt: number;
-}
+    error?: ApiResponseErrorDto;
+    metrics: ApiResponseMetricsDto;
+};

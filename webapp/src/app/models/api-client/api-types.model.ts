@@ -1,9 +1,4 @@
-export type ApiHttpMethod =
-    | "GET"
-    | "POST"
-    | "PUT"
-    | "PATCH"
-    | "DELETE"
-    | "HEAD"
-    | "OPTIONS";
-export type ApiScope = "global" | "project";
+import type { ApiHttpMethod as ApiHttpMethodDto, ApiScope as ApiScopeDto } from "@yinuo-ngm/protocol";
+
+export type ApiHttpMethod = ApiHttpMethodDto;
+export type ApiScope = ApiScopeDto;

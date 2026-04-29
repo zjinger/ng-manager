@@ -1,10 +1,17 @@
 import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
+import type {
+    ApiScope,
+    ListEnvsQueryDto,
+    SaveEnvBodyDto,
+    EnvIdParamDto,
+    ApiEnvironmentEntityDto,
+} from "@yinuo-ngm/protocol";
+import type { ApiClient } from "@yinuo-ngm/api";
+import { toApiEnvironmentEntityDto } from "./route-mappers";
 
-type Scope = "global" | "project";
-
-function parseScope(q: any): { scope: Scope; projectId?: string } {
-    const scope = (q?.scope ?? "project") as Scope;
+function parseScope(q: ListEnvsQueryDto): { scope: ApiScope; projectId?: string } {
+    const scope = (q?.scope ?? "project") as ApiScope;
     const projectId = q?.projectId as string | undefined;
     if (scope === "project" && !projectId) {
         throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
@@ -13,45 +20,57 @@ function parseScope(q: any): { scope: Scope; projectId?: string } {
 }
 
 export async function apiClientEnvsRoutes(fastify: FastifyInstance) {
-    const env = fastify.core.apiClient
+    const api = fastify.core.apiClient as ApiClient;
 
-    fastify.get("/", async (req) => {
-        const { scope, projectId } = parseScope((req as any).query);
-        return await env.listEnvs(scope, projectId);
-    });
-
-    fastify.get("/:id", async (req, reply) => {
-        const { scope, projectId } = parseScope((req as any).query);
-        const id = (req as any).params.id as string;
-
-        const item = await env.getEnv(id, scope, projectId);
-        if (!item) {
-            reply.code(404);
-            return { message: "env not found", id };
+    fastify.get<{ Querystring: ListEnvsQueryDto }>(
+        "/",
+        async (req) => {
+            const { scope, projectId } = parseScope(req.query);
+            const items = await api.listEnvs(scope, projectId);
+            return items.map(toApiEnvironmentEntityDto);
         }
-        return item;
-    });
+    );
 
-    fastify.post("/", async (req) => {
-        const body = (req as any).body as {
-            scope: Scope;
-            projectId?: string;
-            env: any;
-        };
+    fastify.get<{ Querystring: ListEnvsQueryDto; Params: EnvIdParamDto }>(
+        "/:id",
+        async (req, reply) => {
+            const { scope, projectId } = parseScope(req.query);
+            const id = req.params.id;
 
-        const scope = body?.scope ?? "project";
-        if (scope === "project" && !body.projectId) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
-        if (!body?.env?.id) throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "env.id is required");
+            const item = await api.getEnv(id, scope, projectId);
+            if (!item) {
+                reply.code(404);
+                return { message: "env not found", id };
+            }
+            return toApiEnvironmentEntityDto(item);
+        }
+    );
 
-        await env.saveEnv(body.env, scope, body.projectId);
-        return { id: body.env.id };
-    });
+    fastify.post<{ Body: SaveEnvBodyDto }>(
+        "/",
+        async (req) => {
+            const body = req.body as SaveEnvBodyDto;
+            const scope = body?.scope ?? "project";
+            if (scope === "project" && !body.projectId) {
+                throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "projectId is required when scope=project");
+            }
+            if (!body?.env?.id) {
+                throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "env.id is required");
+            }
 
-    fastify.delete("/:id", async (req) => {
-        const { scope, projectId } = parseScope((req as any).query);
-        const id = (req as any).params.id as string;
+            await api.saveEnv(body.env, scope, body.projectId);
+            return { id: body.env.id };
+        }
+    );
 
-        await env.deleteEnv(id, scope, projectId);
-        return { id };
-    });
+    fastify.delete<{ Querystring: ListEnvsQueryDto; Params: EnvIdParamDto }>(
+        "/:id",
+        async (req) => {
+            const { scope, projectId } = parseScope(req.query);
+            const id = req.params.id;
+
+            await api.deleteEnv(id, scope, projectId);
+            return { id };
+        }
+    );
 }
