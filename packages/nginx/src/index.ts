@@ -14,5 +14,6 @@ export { NginxTrafficService } from './module/nginx-traffic.service';
 export { NginxPerformanceService } from './module/nginx-performance.service';
 export { NginxModuleStateStore } from './module/nginx-module-state.store';
 export { NginxLogService, NginxLogType, NginxLogEntry } from './log/nginx-log.service';
+export { createNginxBindingStore, type NginxBindingStore } from './storage/nginx-binding.store';
 export * from './server/nginx-server.import.types';
 export * from './types/nginx.types';

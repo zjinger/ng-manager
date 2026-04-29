@@ -3,6 +3,7 @@ import * as path from "path";
 import {
     CachedNpmRegistry,
     DepsServiceImpl,
+    type DepsService,
     LatestCacheKv,
     NodeModulesReader,
     NpmDriver,
@@ -16,7 +17,7 @@ import type { CoreDomainHandle } from "./types";
 export async function createDepsDomain(opts: {
     cacheDir: string;
     project: ProjectService;
-}): Promise<CoreDomainHandle<DepsServiceImpl>> {
+}): Promise<CoreDomainHandle<DepsService>> {
     const latestRepo = new JsonFileKvRepo<LatestCacheSnapshot>(
         path.join(opts.cacheDir, "npm-latest.kv.json")
     );

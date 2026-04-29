@@ -1,7 +1,9 @@
-import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload, SystemLogEntry } from "@yinuo-ngm/protocol";
+import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, SystemLogEntry } from "@yinuo-ngm/protocol";
 import type { BootstrapEventMap } from "@yinuo-ngm/bootstrap";
 import { TaskEvents } from "@yinuo-ngm/task";
 import { SvnEvents } from "@yinuo-ngm/svn";
+import type { TaskEventMap } from "@yinuo-ngm/task";
+import type { SvnEventMap } from "@yinuo-ngm/svn";
 
 export const Events = {
     // project
@@ -31,25 +33,15 @@ export const Events = {
 
 export type EventName = (typeof Events)[keyof typeof Events];
 
-export type CoreEventMap = BootstrapEventMap & {
+export type CoreOwnEventMap = {
     [Events.PROJECT_ADDED]: { projectId: string };
     [Events.PROJECT_UPDATED]: { projectId: string };
     [Events.PROJECT_REMOVED]: { projectId: string };
-
-    [Events.TASK_STARTED]: TaskStartedPayload;
-    [Events.TASK_OUTPUT]: TaskOutputPayload;
-    [Events.TASK_STOP_REQUESTED]: TaskStopRequestedPayload;
-    [Events.TASK_EXITED]: TaskExitedPayload;
-    [Events.TASK_FAILED]: TaskFailedPayload;
-
-    [Events.TASK_SPECS_REFRESHED]: { projectId: string; count: number };
-
     [Events.SYSLOG_APPENDED]: { entry: SystemLogEntry };
-
-    // svn sync
-    [Events.SVN_SYNC_STARTED]: SvnSyncStartedPayload;
-    [Events.SVN_SYNC_OUTPUT]: SvnSyncOutputPayload;
-    [Events.SVN_SYNC_FAILED]: SvnSyncFailedPayload;
-    [Events.SVN_SYNC_DONE]: SvnSyncDonePayload;
-    [Events.SVN_SYNC_PROGRESS]: SvnSyncProgressPayload;
 };
+
+export type CoreEventMap =
+    & CoreOwnEventMap
+    & TaskEventMap
+    & SvnEventMap
+    & BootstrapEventMap;
