@@ -10,3 +10,4 @@ export * from "./nginx";
 export * from "./config";
 export * from "./deps";
 export * from "./api";
+export * from "./sprite";
