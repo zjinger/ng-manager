@@ -1,3 +1,4 @@
+export { WsOp, type WsOp as WsOpType } from "./ws-op";
 export * from "./ws.types";
 export * from "./ws.task.types";
 export * from "./ws.svn.types";

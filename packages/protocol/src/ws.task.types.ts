@@ -1,3 +1,5 @@
+import { WsOp } from "./ws-op";
+
 export type TaskStatus =
     | "idle"
     | "running"
@@ -102,7 +104,7 @@ export type TaskEventPayloadMap = {
 export type TaskEventMsg =
     {
         [K in TaskEventType]: {
-            op: "task.event";
+            op: typeof WsOp.TASK_EVENT;
             type: K;
             payload: TaskEventPayloadMap[K];
             ts: number;
@@ -117,7 +119,7 @@ export type TaskOutputPayload = {
 };
 
 export type TaskOutputMsg = {
-    op: "task.output";
+    op: typeof WsOp.TASK_OUTPUT;
     payload: TaskOutputPayload;
     ts: number;
 };

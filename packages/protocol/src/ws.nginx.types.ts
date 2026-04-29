@@ -1,28 +1,30 @@
+import { WsOp } from "./ws-op";
+
 export type NginxLogType = "error" | "access";
 
 export interface NginxLogTailMsg {
-    op: "nginx.log.tail";
+    op: typeof WsOp.NGINX_LOG_TAIL;
     logType: NginxLogType;
     lines: string[];
     ts: number;
 }
 
 export interface NginxLogAppendMsg {
-    op: "nginx.log.append";
+    op: typeof WsOp.NGINX_LOG_APPEND;
     logType: NginxLogType;
     line: string;
     ts: number;
 }
 
 export interface NginxSubMsg {
-    op: "sub";
+    op: typeof WsOp.SUB;
     topic: "nginx";
     logType: NginxLogType;
     tail?: number;
 }
 
 export interface NginxUnsubMsg {
-    op: "unsub";
+    op: typeof WsOp.UNSUB;
     topic: "nginx";
     logType?: NginxLogType;
 }

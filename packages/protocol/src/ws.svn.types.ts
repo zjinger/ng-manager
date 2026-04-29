@@ -1,3 +1,5 @@
+import { WsOp } from "./ws-op";
+
 export type SvnSyncMode = "checkout" | "update" | "switch" | "recheckout";
 
 export type SvnTaskStatus =
@@ -27,7 +29,7 @@ export type SvnEventPayloadMap = {
 export type SvnEventMsg =
     {
         [K in SvnEventType]: {
-            op: "svn.event";
+            op: typeof WsOp.SVN_EVENT;
             type: K;
             payload: SvnEventPayloadMap[K];
             ts: number;
