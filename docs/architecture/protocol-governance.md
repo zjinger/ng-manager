@@ -346,14 +346,28 @@ created_at: string;
 
 ### 时间字段
 
-跨层协议中的时间统一使用 ISO string：
+跨层协议中的时间字段允许使用 epoch number 或 ISO string，必须沿用当前模块已有语义，并在同一模块内保持一致。
+
+推荐约定：
 
 ```ts
+// 绝对时间，若模块已有 number 语义，通常表示 epoch milliseconds
+startedAt: number;
+endedAt: number;
+
+// 持续时间，通常使用 milliseconds
+_durationMs: number;
+```
+
+```ts
+// 新增 HTTP DTO 若没有历史兼容要求，可优先使用 ISO string
 createdAt: string;
 updatedAt: string;
 ```
 
 不要在 DTO 中使用 `Date` 对象。
+
+禁止为了统一格式而直接修改既有字段类型，例如将已有的 `ts: number`、`startedAt: number` 改成 ISO string。此类修改属于 breaking change。
 
 ### 可选字段
 
@@ -368,16 +382,46 @@ exitCode?: number;
 
 ## 8. WebSocket / Event 类型规范
 
-WebSocket envelope 应由 protocol 定义：
+### 当前 WS 协议形态
+
+当前实现以 `op` 区分不同 WebSocket 消息，并通过联合类型描述服务端与客户端消息。协议中已支持可选 `version` 字段注入。
+
+文档与代码应以当前 `op-union` 模型为准，新增 WS 消息时应扩展现有联合类型，而不是直接引入新的 envelope 结构。
+
+示意：
 
 ```ts
-export interface WsServerMsg<T = unknown> {
+export type WsServerMsg =
+  | { op: "log"; line: LogLine; version?: string }
+  | { op: "task:event"; event: unknown; version?: string }
+  | { op: "svn:event"; event: unknown; version?: string };
+```
+
+### 长期演进方向
+
+长期可以评估将 WS 消息演进为统一 envelope：
+
+```ts
+export interface WsEnvelope<T = unknown> {
   topic: WsTopic;
   type: string;
   payload: T;
   timestamp?: number;
+  version?: string;
 }
 ```
+
+但该模型属于长期目标，不能直接替代现有 `op-union` 协议。
+
+迁移策略应遵循：
+
+1. 先保留现有 `op-union` 消息类型。
+2. 新增 envelope 类型作为并行协议，而不是覆盖原类型。
+3. server 同时发送或兼容两种格式。
+4. webapp 完成兼容处理后，再标记旧格式 deprecated。
+5. 保留至少一个小版本周期后，再考虑移除旧格式。
+
+### Event payload 规则
 
 事件 payload 应由 protocol 定义，领域包引用。
 
@@ -410,9 +454,10 @@ export type CoreEventMap =
 1. 删除已导出的 DTO。
 2. 修改已导出字段名称。
 3. 修改字段类型且不兼容。
-4. 将必填字段改为可选或将可选字段改为必填。
-5. 修改 WebSocket topic 或 event type 字符串。
-6. 修改 HTTP response 的顶层结构。
+4. 将可选字段改为必填字段。
+5. 将必填字段改为可选字段通常是向后兼容的，但如果 server / webapp 依赖该字段必定存在，仍需要按兼容性风险评审。
+6. 修改 WebSocket topic、op 或 event type 字符串。
+7. 修改 HTTP response 的顶层结构。
 
 ### 安全修改方式
 
@@ -569,7 +614,7 @@ Protocol 强化建议分阶段推进：
 Phase 1: WS / Event payload 稳定化
 Phase 2: webapp type-only 接入 protocol
 Phase 3: task HTTP DTO 试点
-Phase 4: project / nginx / config DTO 迁移
+Phase 4: 按模块迁移 HTTP DTO，包括 project / nginx / config / deps / api / sprite / svn 等
 Phase 5: 协议版本化与破坏性变更治理
 ```
 
