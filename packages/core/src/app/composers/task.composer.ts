@@ -4,7 +4,6 @@ import type { ProcessService } from '@yinuo-ngm/process';
 import type { ProjectService } from '@yinuo-ngm/project';
 import type { TaskService } from '@yinuo-ngm/task';
 import type { ILogStore, SystemLogService } from '@yinuo-ngm/logger';
-import type { TaskEventMap } from '@yinuo-ngm/task';
 import type { IEventBus } from '@yinuo-ngm/event';
 import type { CoreEventMap } from '../../infra/event/events';
 
@@ -21,7 +20,7 @@ export function createTaskDomain(opts: {
         opts.processService,
         opts.sysLog,
         opts.taskStreamLogStore,
-        opts.events as IEventBus<TaskEventMap>,
+        opts.events,
         opts.nodeVersion
     );
 }

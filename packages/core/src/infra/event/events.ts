@@ -1,5 +1,7 @@
 import type { SvnSyncDonePayload, SvnSyncFailedPayload, SvnSyncOutputPayload, SvnSyncProgressPayload, SvnSyncStartedPayload, TaskExitedPayload, TaskFailedPayload, TaskOutputPayload, TaskStartedPayload, TaskStopRequestedPayload, SystemLogEntry } from "@yinuo-ngm/protocol";
 import type { BootstrapEventMap } from "@yinuo-ngm/bootstrap";
+import { TaskEvents } from "@yinuo-ngm/task";
+import { SvnEvents } from "@yinuo-ngm/svn";
 
 export const Events = {
     // project
@@ -7,23 +9,23 @@ export const Events = {
     PROJECT_UPDATED: "project.updated",
     PROJECT_REMOVED: "project.removed",
 
-    // task
-    TASK_STARTED: "task.started",
-    TASK_OUTPUT: "task.output",
-    TASK_STOP_REQUESTED: "task.stopRequested",
-    TASK_EXITED: "task.exited",
-    TASK_FAILED: "task.failed",
-    TASK_SPECS_REFRESHED: "task.specs.refreshed",
+    // task (引用 domain 包常量，确保值一致)
+    TASK_STARTED: TaskEvents.TASK_STARTED,
+    TASK_OUTPUT: TaskEvents.TASK_OUTPUT,
+    TASK_STOP_REQUESTED: TaskEvents.TASK_STOP_REQUESTED,
+    TASK_EXITED: TaskEvents.TASK_EXITED,
+    TASK_FAILED: TaskEvents.TASK_FAILED,
+    TASK_SPECS_REFRESHED: TaskEvents.TASK_SPECS_REFRESHED,
 
     // system / log
     SYSLOG_APPENDED: "syslog.appended",
 
-    // svn
-    SVN_SYNC_STARTED: "svn.sync.started",
-    SVN_SYNC_OUTPUT: "svn.sync.output",
-    SVN_SYNC_FAILED: "svn.sync.failed",
-    SVN_SYNC_DONE: "svn.sync.done",
-    SVN_SYNC_PROGRESS: "svn.sync.progress",
+    // svn (引用 domain 包常量，确保值一致)
+    SVN_SYNC_STARTED: SvnEvents.SYNC_STARTED,
+    SVN_SYNC_OUTPUT: SvnEvents.SYNC_OUTPUT,
+    SVN_SYNC_FAILED: SvnEvents.SYNC_FAILED,
+    SVN_SYNC_DONE: SvnEvents.SYNC_DONE,
+    SVN_SYNC_PROGRESS: SvnEvents.SYNC_PROGRESS,
 
 } as const;
 
