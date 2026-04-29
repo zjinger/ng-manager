@@ -1,5 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { NginxRouteContext, sendBadRequest } from './nginx-route.context';
+import type {
+  UpdateNginxConfigFileRequestDto,
+  UpdateNginxConfigRequestDto,
+  ValidateNginxConfigRequestDto,
+} from '@yinuo-ngm/protocol';
+import { NginxRouteContext, sendBadRequest, toNginxConfigDto, toNginxConfigValidationDto } from './nginx-route.context';
 
 /**
  * Nginx 配置文件路由
@@ -12,16 +17,16 @@ export function registerNginxConfigRoutes(context: NginxRouteContext): void {
       const config = await nginx.config.readMainConfig();
       return reply.send({
         success: true,
-        config,
+        config: toNginxConfigDto(config),
       });
     } catch (error) {
       return sendBadRequest(reply, error);
     }
   });
 
-  fastify.put<{ Body: { content: string } }>(
+  fastify.put<{ Body: UpdateNginxConfigRequestDto }>(
     '/config',
-    async (request: FastifyRequest<{ Body: { content: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: UpdateNginxConfigRequestDto }>, reply: FastifyReply) => {
       const { content } = request.body;
 
       try {
@@ -35,13 +40,13 @@ export function registerNginxConfigRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.post<{ Body: { content?: string } }>(
+  fastify.post<{ Body: ValidateNginxConfigRequestDto }>(
     '/config/validate',
-    async (request: FastifyRequest<{ Body: { content?: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: ValidateNginxConfigRequestDto }>, reply: FastifyReply) => {
       const { content } = request.body;
 
       const result = await nginx.config.validateConfig(content);
-      return reply.send(result);
+      return reply.send(toNginxConfigValidationDto(result));
     }
   );
 
@@ -68,7 +73,7 @@ export function registerNginxConfigRoutes(context: NginxRouteContext): void {
         if (isMainConfig) {
           return reply.send({
             success: true,
-            config: mainConfig,
+            config: toNginxConfigDto(mainConfig),
           });
         }
 
@@ -88,9 +93,9 @@ export function registerNginxConfigRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.put<{ Body: { filePath: string; content: string } }>(
+  fastify.put<{ Body: UpdateNginxConfigFileRequestDto }>(
     '/config/file',
-    async (request: FastifyRequest<{ Body: { filePath: string; content: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: UpdateNginxConfigFileRequestDto }>, reply: FastifyReply) => {
       try {
         const filePath = await ensureManageableConfigFile(request.body?.filePath);
         const content = request.body?.content ?? '';

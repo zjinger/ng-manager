@@ -1,10 +1,17 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { CreateNginxServerRequest, UpdateNginxServerRequest } from '@yinuo-ngm/nginx';
+import type {
+  AnalyzeNginxImportServersRequestDto,
+  CreateNginxServerRequestDto,
+  ParseNginxImportServersRequestDto,
+  RestoreDeletedNginxServerRequestDto,
+  UpdateNginxServerRequestDto,
+  ValidateNginxSslPathsRequestDto,
+} from '@yinuo-ngm/protocol';
 import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/errors';
-import { NginxRouteContext, sendBadRequest } from './nginx-route.context';
+import { NginxRouteContext, sendBadRequest, toNginxServerDto } from './nginx-route.context';
 
 interface ParsedImportCandidate {
-  request?: CreateNginxServerRequest;
+  request?: CreateNginxServerRequestDto;
   error?: string;
   issues?: Array<{ level: 'error' | 'warning'; message: string; field?: 'name' | 'domains' | 'listen' }>;
 }
@@ -101,7 +108,7 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
       }));
       return reply.send({
         success: true,
-        servers: enriched,
+        servers: enriched.map(toNginxServerDto),
       });
     } catch (error) {
       return sendBadRequest(reply, error);
@@ -138,7 +145,7 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
 
         return reply.send({
           success: true,
-          server: enriched,
+          server: toNginxServerDto(enriched),
         });
       } catch (error) {
         return sendBadRequest(reply, error);
@@ -146,18 +153,18 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.post<{ Body: CreateNginxServerRequest }>(
+  fastify.post<{ Body: CreateNginxServerRequestDto }>(
     '/servers',
-    async (request: FastifyRequest<{ Body: CreateNginxServerRequest }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: CreateNginxServerRequestDto }>, reply: FastifyReply) => {
       try {
         const actor = resolveActor(request);
-        const payload: CreateNginxServerRequest = actor
+        const payload: CreateNginxServerRequestDto = actor
           ? { ...request.body, createdBy: request.body?.createdBy || actor }
           : { ...request.body };
         const server = await nginx.server.createServer(payload);
         return reply.send({
           success: true,
-          server,
+          server: toNginxServerDto(server),
         });
       } catch (error) {
         return sendBadRequest(reply, error);
@@ -165,16 +172,16 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.put<{ Params: { id: string }; Body: UpdateNginxServerRequest }>(
+  fastify.put<{ Params: { id: string }; Body: UpdateNginxServerRequestDto }>(
     '/servers/:id',
-    async (request: FastifyRequest<{ Params: { id: string }; Body: UpdateNginxServerRequest }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Params: { id: string }; Body: UpdateNginxServerRequestDto }>, reply: FastifyReply) => {
       const { id } = request.params;
 
       try {
         const server = await nginx.server.updateServer(id, request.body);
         return reply.send({
           success: true,
-          server,
+          server: toNginxServerDto(server),
         });
       } catch (error) {
         return sendBadRequest(reply, error);
@@ -199,9 +206,9 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.post<{ Body: { snapshotId?: string } }>(
+  fastify.post<{ Body: RestoreDeletedNginxServerRequestDto }>(
     '/servers/restore-deleted',
-    async (request: FastifyRequest<{ Body: { snapshotId?: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: RestoreDeletedNginxServerRequestDto }>, reply: FastifyReply) => {
       try {
         const snapshotId = String(request.body?.snapshotId || '').trim();
         if (!snapshotId) {
@@ -210,7 +217,7 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
         const server = await nginx.server.restoreDeletedServer(snapshotId);
         return reply.send({
           success: true,
-          server,
+          server: toNginxServerDto(server),
         });
       } catch (error) {
         return sendBadRequest(reply, error);
@@ -250,9 +257,9 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.post<{ Body: { content?: string } }>(
+  fastify.post<{ Body: ParseNginxImportServersRequestDto }>(
     '/servers/import/parse',
-    async (request: FastifyRequest<{ Body: { content?: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: ParseNginxImportServersRequestDto }>, reply: FastifyReply) => {
       try {
         const content = String(request.body?.content || '').trim();
         if (!content) {
@@ -272,9 +279,9 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.post<{ Body: { requests?: CreateNginxServerRequest[] } }>(
+  fastify.post<{ Body: AnalyzeNginxImportServersRequestDto }>(
     '/servers/import/analyze',
-    async (request: FastifyRequest<{ Body: { requests?: CreateNginxServerRequest[] } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: AnalyzeNginxImportServersRequestDto }>, reply: FastifyReply) => {
       try {
         const requests = Array.isArray(request.body?.requests) ? request.body.requests : [];
         const candidates = await nginx.server.analyzeImportRequests(requests);
@@ -289,9 +296,9 @@ export function registerNginxServerRoutes(context: NginxRouteContext): void {
     }
   );
 
-  fastify.post<{ Body: { sslCert?: string; sslKey?: string } }>(
+  fastify.post<{ Body: ValidateNginxSslPathsRequestDto }>(
     '/servers/validate-ssl-paths',
-    async (request: FastifyRequest<{ Body: { sslCert?: string; sslKey?: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: ValidateNginxSslPathsRequestDto }>, reply: FastifyReply) => {
       try {
         const certPath = String(request.body?.sslCert || '').trim();
         const keyPath = String(request.body?.sslKey || '').trim();

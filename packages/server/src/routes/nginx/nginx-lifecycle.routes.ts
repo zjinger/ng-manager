@@ -1,8 +1,15 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { NginxBindRequest } from '@yinuo-ngm/nginx';
+import type { NginxBindRequestDto } from '@yinuo-ngm/protocol';
 import { savePersistedNginxPath, clearPersistedNginxPath } from "@yinuo-ngm/core";
 import { env } from '../../env';
-import { NginxRouteContext, sendBadRequest } from './nginx-route.context';
+import {
+  NginxRouteContext,
+  sendBadRequest,
+  toNginxCommandResultDto,
+  toNginxConfigValidationDto,
+  toNginxInstanceDto,
+  toNginxStatusDto,
+} from './nginx-route.context';
 
 /**
  * Nginx 生命周期与服务控制路由
@@ -15,8 +22,8 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
     const status = await nginx.service.getStatus();
 
     return reply.send({
-      instance,
-      status,
+      instance: toNginxInstanceDto(instance),
+      status: toNginxStatusDto(status),
     });
   });
 
@@ -29,8 +36,8 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
 
       return reply.send({
         success: true,
-        instance,
-        status,
+        instance: toNginxInstanceDto(instance),
+        status: toNginxStatusDto(status),
         serverSummary: {
           total: servers.length,
           enabled,
@@ -42,9 +49,9 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
     }
   });
 
-  fastify.post<{ Body: NginxBindRequest }>(
+  fastify.post<{ Body: NginxBindRequestDto }>(
     '/bind',
-    async (request: FastifyRequest<{ Body: NginxBindRequest }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: NginxBindRequestDto }>, reply: FastifyReply) => {
       const { path } = request.body;
 
       try {
@@ -56,7 +63,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
         }
         return reply.send({
           success: true,
-          instance,
+          instance: toNginxInstanceDto(instance) ?? undefined,
         });
       } catch (error) {
         return sendBadRequest(reply, error);
@@ -78,7 +85,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
 
   fastify.get('/local-ip', async (_request: FastifyRequest, reply: FastifyReply) => {
     const result = await nginx.service.getLocalIp();
-    return reply.send(result);
+    return reply.send(toNginxCommandResultDto(result));
   });
 
   fastify.post('/start', async (_request: FastifyRequest, reply: FastifyReply) => {
@@ -88,7 +95,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
     } else {
       fastify.core.sysLog.error({ scope: 'system', source: 'server', text: `[Nginx] 启动失败: ${result.error || '未知错误'}` });
     }
-    return reply.send(result);
+    return reply.send(toNginxCommandResultDto(result));
   });
 
   fastify.post('/stop', async (_request: FastifyRequest, reply: FastifyReply) => {
@@ -98,7 +105,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
     } else {
       fastify.core.sysLog.error({ scope: 'system', source: 'server', text: `[Nginx] 停止失败: ${result.error || '未知错误'}` });
     }
-    return reply.send(result);
+    return reply.send(toNginxCommandResultDto(result));
   });
 
   fastify.post('/reload', async (_request: FastifyRequest, reply: FastifyReply) => {
@@ -118,7 +125,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
     } else {
       fastify.core.sysLog.error({ scope: 'system', source: 'server', text: `[Nginx] 配置检测失败: ${(result.errors || []).join(', ')}` });
     }
-    return reply.send(result);
+    return reply.send(toNginxConfigValidationDto(result));
   });
 }
 

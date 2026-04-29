@@ -1,298 +1,49 @@
-/**
- * Nginx 管理相关类型定义
- */
+import type {
+  CreateNginxServerRequestDto,
+  NginxBindRequestDto,
+  NginxBindResponseDto,
+  NginxCommandResultDto,
+  NginxConfigDto,
+  NginxConfigValidationDto,
+  NginxInstanceDto,
+  NginxLocationDto,
+  NginxModuleSettingsDto,
+  NginxPerformanceConfigDto,
+  NginxServerDto,
+  NginxServerRuntimeStatusDto,
+  NginxServerSummaryDto,
+  NginxSslCertificateDto,
+  NginxSslStatusDto,
+  NginxStatsResponseDto,
+  NginxStatusDto,
+  NginxStatusResponseDto,
+  NginxTrafficConfigDto,
+  NginxUpstreamDto,
+  NginxUpstreamHealthDto,
+  NginxUpstreamStrategyDto,
+  UpdateNginxServerRequestDto,
+} from "@yinuo-ngm/protocol";
 
-
-/**
- * Nginx 实例信息
- */
-export interface NginxInstance {
-  /** nginx 可执行文件路径 */
-  path: string;
-  /** 版本号 */
-  version: string;
-  /** 主配置文件路径 */
-  configPath: string;
-  /** 安装前缀路径 */
-  prefixPath: string;
-  /** 是否已绑定 */
-  isBound: boolean;
-}
-
-/**
- * Nginx 运行状态
- */
-export interface NginxStatus {
-  /** 是否运行中 */
-  isRunning: boolean;
-  /** 进程 ID */
-  pid?: number;
-  /** 运行时间 */
-  uptime?: string;
-  /** 活跃连接数（尽力统计，可能为空） */
-  activeConnections?: number;
-  /** worker 进程数 */
-  workerProcesses?: number;
-}
-
-/**
- * Nginx 绑定请求
- */
-export interface NginxBindRequest {
-  /** nginx 可执行文件路径 */
-  path: string;
-}
-
-/**
- * Nginx 配置信息
- */
-export interface NginxConfig {
-  /** 主配置文件路径 */
-  mainConfigPath: string;
-  /** 配置文件内容 */
-  content: string;
-  /** 是否可写 */
-  isWritable: boolean;
-}
-
-/**
- * Location 块
- */
-export interface NginxLocation {
-  /** location 路径 */
-  path: string;
-  /** 代理目标 */
-  proxyPass?: string;
-  /** 根目录 */
-  root?: string;
-  /** 默认文件 */
-  index?: string[];
-  /** try_files 配置 */
-  tryFiles?: string[];
-  /** 原始配置文本 */
-  rawConfig?: string;
-}
-
-/**
- * Server 块
- */
-export interface NginxServer {
-  /** 唯一标识 */
-  id: string;
-  /** server_name */
-  name: string;
-  /** 监听端口 */
-  listen: string[];
-  /** 域名列表 */
-  domains?: string[];
-  /** 根目录 */
-  root?: string;
-  /** server 级默认首页 */
-  index?: string[];
-  /** location 块列表 */
-  locations: NginxLocation[];
-  /** 是否启用 SSL */
-  ssl: boolean;
-  /** SSL 证书路径 */
-  sslCert?: string;
-  /** SSL 密钥路径 */
-  sslKey?: string;
-  /** 是否启用 */
-  enabled: boolean;
-  /** 自定义配置片段 */
-  extraConfig?: string;
-  /** 原始配置文本 */
-  configText: string;
-  /** 配置文件路径 */
-  filePath?: string;
-  /** 创建时间（ISO 字符串） */
-  createdAt?: string;
-  /** 更新时间（ISO 字符串） */
-  updatedAt?: string;
-  /** 创建人 */
-  createdBy?: string;
-  /** 运行状态（与 Nginx 实例状态联动） */
-  runtimeStatus?: NginxServerRuntimeStatus;
-}
-
-/**
- * 创建 Server 请求
- */
-export interface CreateNginxServerRequest {
-  /** server_name */
-  name: string;
-  /** 监听端口 */
-  listen: string[];
-  /** 域名列表 */
-  domains?: string[];
-  /** 根目录 */
-  root?: string;
-  /** server 级默认首页 */
-  index?: string[];
-  /** location 块列表 */
-  locations: NginxLocation[];
-  /** 是否启用 SSL */
-  ssl?: boolean;
-  /** 协议 */
-  protocol?: 'http' | 'https';
-  /** SSL 证书路径 */
-  sslCert?: string;
-  /** SSL 密钥路径 */
-  sslKey?: string;
-  /** 是否立即启用 */
-  enabled?: boolean;
-  /** 自定义配置片段 */
-  extraConfig?: string;
-  /** 创建人 */
-  createdBy?: string;
-}
-
-export type NginxServerRuntimeStatus = 'running' | 'stopped' | 'disabled' | 'pending' | 'unknown';
-
-/**
- * 更新 Server 请求
- */
-export interface UpdateNginxServerRequest {
-  /** server_name */
-  name?: string;
-  /** 监听端口 */
-  listen?: string[];
-  /** 域名列表 */
-  domains?: string[];
-  /** 根目录 */
-  root?: string;
-  /** server 级默认首页 */
-  index?: string[];
-  /** location 块列表 */
-  locations?: NginxLocation[];
-  /** 是否启用 SSL */
-  ssl?: boolean;
-  /** 协议 */
-  protocol?: 'http' | 'https';
-  /** SSL 证书路径 */
-  sslCert?: string;
-  /** SSL 密钥路径 */
-  sslKey?: string;
-  /** 是否启用 */
-  enabled?: boolean;
-  /** 自定义配置片段 */
-  extraConfig?: string;
-}
-
-/**
- * Nginx 命令执行结果
- */
-export interface NginxCommandResult {
-  /** 输出内容 */
-  output?: string;
-  /** 退出码 */
-  exitCode?: number;
-}
-
-/**
- * 配置验证结果
- */
-export interface NginxConfigValidation {
-  /** 是否有效 */
-  valid: boolean;
-  /** 错误信息 */
-  errors?: string[];
-  /** 警告信息 */
-  warnings?: string[];
-}
-
-/**
- * Nginx 状态响应
- */
-export interface NginxStatusResponse {
-  instance: NginxInstance | null;
-  status: NginxStatus;
-}
-
-export interface NginxServerSummary {
-  total: number;
-  enabled: number;
-  disabled: number;
-}
-
-export interface NginxStatsResponse {
-  instance?: NginxInstance | null;
-  status?: NginxStatus;
-  serverSummary?: NginxServerSummary;
-}
-
-/**
- * Nginx 绑定响应
- */
-export interface NginxBindData {
-  instance?: NginxInstance;
-}
-
-export type NginxBindResponse = NginxBindData;
-
-/**
- * Upstream 负载策略
- */
-export type NginxUpstreamStrategy = 'round-robin' | 'least_conn' | 'ip_hash' | 'hash';
-export type NginxUpstreamHealth = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
-
-/**
- * Upstream 配置
- */
-export interface NginxUpstream {
-  id: string;
-  name: string;
-  strategy: NginxUpstreamStrategy;
-  nodes: string[];
-  sourceFile?: string;
-  managed?: boolean;
-  readonly?: boolean;
-  health?: NginxUpstreamHealth;
-  healthy?: boolean;
-}
-
-/**
- * SSL 状态
- */
-export type NginxSslStatus = 'valid' | 'expiring' | 'expired' | 'pending';
-
-/**
- * SSL 证书配置
- */
-export interface NginxSslCertificate {
-  id: string;
-  domain: string;
-  certPath: string;
-  keyPath: string;
-  expireAt: string;
-  status: NginxSslStatus;
-  autoRenew: boolean;
-}
-
-/**
- * 流量控制配置
- */
-export interface NginxTrafficConfig {
-  rateLimitEnabled: boolean;
-  rateLimit: string;
-  connLimitEnabled: boolean;
-  connLimit: number;
-  blacklistIps: string[];
-}
-
-/**
- * 性能优化配置
- */
-export interface NginxPerformanceConfig {
-  gzipEnabled: boolean;
-  gzipTypes: string;
-  keepaliveTimeout: string;
-  workerProcesses: string;
-  sendfile: boolean;
-  tcpNopush: boolean;
-}
-
-export interface NginxModuleSettings {
-  backupRetention: number;
-  configBackupRetention: number;
-}
+export type NginxInstance = NginxInstanceDto;
+export type NginxStatus = NginxStatusDto;
+export type NginxBindRequest = NginxBindRequestDto;
+export type NginxConfig = NginxConfigDto;
+export type NginxLocation = NginxLocationDto;
+export type NginxServer = NginxServerDto;
+export type CreateNginxServerRequest = CreateNginxServerRequestDto;
+export type UpdateNginxServerRequest = UpdateNginxServerRequestDto;
+export type NginxServerRuntimeStatus = NginxServerRuntimeStatusDto;
+export type NginxCommandResult = NginxCommandResultDto;
+export type NginxConfigValidation = NginxConfigValidationDto;
+export type NginxStatusResponse = NginxStatusResponseDto;
+export type NginxServerSummary = NginxServerSummaryDto;
+export type NginxStatsResponse = NginxStatsResponseDto;
+export type NginxBindResponse = NginxBindResponseDto;
+export type NginxUpstreamStrategy = NginxUpstreamStrategyDto;
+export type NginxUpstreamHealth = NginxUpstreamHealthDto;
+export type NginxUpstream = NginxUpstreamDto;
+export type NginxSslStatus = NginxSslStatusDto;
+export type NginxSslCertificate = NginxSslCertificateDto;
+export type NginxTrafficConfig = NginxTrafficConfigDto;
+export type NginxPerformanceConfig = NginxPerformanceConfigDto;
+export type NginxModuleSettings = NginxModuleSettingsDto;
