@@ -356,7 +356,7 @@ startedAt: number;
 endedAt: number;
 
 // 持续时间，通常使用 milliseconds
-_durationMs: number;
+durationMs: number;
 ```
 
 ```ts
