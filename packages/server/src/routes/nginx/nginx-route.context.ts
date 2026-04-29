@@ -2,10 +2,11 @@ import { realpath } from 'fs/promises';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { resolve } from 'path';
 import { GlobalError, GlobalErrorCodes } from '@yinuo-ngm/errors';
+import type { NginxApp } from '@yinuo-ngm/nginx';
 
 export interface NginxRouteContext {
   fastify: FastifyInstance;
-  nginx: FastifyInstance['nginx'];
+  nginx: NginxApp;
   normalizeFsPath: (filePath: string) => string;
   ensureManageableConfigFile: (rawPath?: string) => Promise<string>;
 }

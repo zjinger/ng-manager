@@ -1,6 +1,6 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
-import { TaskStatus } from '@core/ws';
-import { TaskRuntime, TaskRuntimeStatus } from '@models/task.model';
+import type { TaskStatus } from '@core/ws';
+import type { TaskRuntime, TaskRuntimeStatus } from '@models/task.model';
 import { BehaviorSubject, Observable } from 'rxjs';
 /**
  * TaskRuntimeStore

@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable } from "@angular/core";
-import { WsClientMsg, WsServerMsg, WsState } from "@app/core/ws";
+import type { WsClientMsg, WsServerMsg, WsState } from "@app/core/ws";
 import { WsClientService } from "@app/core/ws/ws-client.service";
 import type {
     SvnEventMsg,

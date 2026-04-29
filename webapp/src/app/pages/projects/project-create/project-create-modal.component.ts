@@ -2,7 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { TaskBootstrapDonePayload, TaskBootstrapFailedPayload, TaskBootstrapNeedPickRootPayload, TaskEventMsg, UiNotifierService } from '@app/core';
+import { UiNotifierService } from '@app/core';
+import type {
+  TaskBootstrapDonePayload,
+  TaskBootstrapFailedPayload,
+  TaskBootstrapNeedPickRootPayload,
+  TaskEventMsg,
+} from '@app/core';
 import { getApiErrorMessage } from '@app/core/api';
 import { DetectResult } from '@models/project.model';
 import { TaskStreamService } from '@pages/tasks/services/task-stream.service';

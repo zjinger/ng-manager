@@ -7,7 +7,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { ProjectStateService } from '../services/project.state.service';
-import { TaskStatus } from '@core/ws';
+import type { TaskStatus } from '@core/ws';
 
 @Component({
   selector: 'app-project-item-popover',

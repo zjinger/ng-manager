@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, signal, Signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { WsClientService, WsState } from '@app/core/ws';
+import { WsClientService } from '@app/core/ws';
+import type { WsState } from '@app/core/ws';
 import { NzBreadCrumbModule } from 'ng-zorro-antd/breadcrumb';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';

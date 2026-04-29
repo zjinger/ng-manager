@@ -1,4 +1,6 @@
 import type { CoreApp } from "@yinuo-ngm/core";
+import type { NginxApp } from "@yinuo-ngm/nginx";
+import type { ApiClient } from "@yinuo-ngm/api";
 
 /**
  * Fastify 装饰器类型扩展
@@ -8,5 +10,7 @@ import type { CoreApp } from "@yinuo-ngm/core";
 declare module "fastify" {
     interface FastifyInstance {
         core: CoreApp;
+        nginx: NginxApp;
+        api: ApiClient;
     }
 }
