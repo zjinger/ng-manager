@@ -106,6 +106,7 @@ export class IssuePermissionService {
     issue: IssueEntity,
     user: HubAuthUser | null,
     participants: IssueParticipantEntity[],
+    isProjectAdmin = false,
   ): boolean {
     if (['verified', 'closed'].includes(issue.status)) {
       return false;
@@ -113,7 +114,7 @@ export class IssuePermissionService {
     if (participants.length === 0) {
       return false;
     }
-    return this.matchActor(user, issue.assigneeId);
+    return isProjectAdmin || this.matchActor(user, issue.assigneeId);
   }
 
   canStartBranchActions(issue: IssueEntity, user: HubAuthUser | null): boolean {

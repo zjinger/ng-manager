@@ -53,7 +53,6 @@ export class IssueDetailStore {
   readonly busy = computed(() => this.busyState());
   readonly actionTick = computed(() => this.actionTickState());
 
-
   readonly branchSummary = computed<IssueBranchSummary>(() => {
     const branches = this.branchesState();
     const total = branches.length;
@@ -67,7 +66,9 @@ export class IssueDetailStore {
       todo,
     };
   });
-  readonly pendingBranchCount = computed(() => this.branchSummary().total - this.branchSummary().done);
+  readonly pendingBranchCount = computed(
+    () => this.branchSummary().total - this.branchSummary().done,
+  );
 
   readonly currentUser = this.userStore.currentUser;
 
@@ -196,11 +197,12 @@ export class IssueDetailStore {
   });
 
   canRead = computed(() => {
-    const issue = this.issueState();
-    const user = this.currentUser();
-    if (!issue || !user || !this.permissionService.hasPermissionToRead(user)) {
-      return false;
-    }
+    // const issue = this.issueState();
+    // const user = this.currentUser();
+    // if (!issue || !user || !this.permissionService.hasPermissionToRead(user)) {
+    //   return false;
+    // }
+    // 只要绑定了projectId就可以查看
     return true;
   });
 
@@ -225,9 +227,11 @@ export class IssueDetailStore {
       return false;
     }
 
-    return (
-      this.isProjectAdmin() ||
-      this.permissionService.canCreateBranches(issue, this.currentUser(), this.participants())
+    return this.permissionService.canCreateBranches(
+      issue,
+      this.currentUser(),
+      this.participants(),
+      this.isProjectAdmin(),
     );
   });
 
@@ -428,49 +432,6 @@ export class IssueDetailStore {
       },
     });
   }
-
-  // uploadAttachment(file: File): void {
-  //   const issueId = this.issueState()?.id;
-  //   if (!issueId) {
-  //     return;
-  //   }
-
-  //   this.busyState.set(true);
-  //   this.issueApi.uploadFile(file, issueId).subscribe({
-  //     next: (upload) => {
-  //       this.issueApi.addAttachment(issueId, upload.id).subscribe({
-  //         next: (attachment) => {
-  //           this.attachmentsState.update((items) => [...items, attachment]);
-  //           this.busyState.set(false);
-  //         },
-  //         error: () => {
-  //           this.busyState.set(false);
-  //         },
-  //       });
-  //     },
-  //     error: () => {
-  //       this.busyState.set(false);
-  //     },
-  //   });
-  // }
-
-  // removeAttachment(attachmentId: string): void {
-  //   const issueId = this.issueState()?.id;
-  //   if (!issueId) {
-  //     return;
-  //   }
-
-  //   this.busyState.set(true);
-  //   this.issueApi.removeAttachment(issueId, attachmentId).subscribe({
-  //     next: () => {
-  //       this.attachmentsState.update((items) => items.filter((item) => item.id !== attachmentId));
-  //       this.busyState.set(false);
-  //     },
-  //     error: () => {
-  //       this.busyState.set(false);
-  //     },
-  //   });
-  // }
 
   createBranch(input: CreateIssueBranchInput): void {
     const issueId = this.issueState()?.id;

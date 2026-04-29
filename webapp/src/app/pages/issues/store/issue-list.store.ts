@@ -18,7 +18,7 @@ const DEFAULT_QUERY: IssueListQuery = {
   pageSize: 10,
   keyword: '',
   projectId: '',
-  status: ['open', 'in_progress', 'reopened'],
+  status: [],
   types: [],
   priority: [],
   reporterIds: [],

@@ -11,10 +11,11 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { log } from 'ng-zorro-antd/core/logger';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-issue-action-area',
-  imports: [NzStepsModule, NzButtonModule, NzModalModule, DetailItemCardComponent],
+  imports: [NzStepsModule, NzButtonModule, NzModalModule, NzTooltipModule, DetailItemCardComponent],
   template: `
     <app-detail-item-card>
       <div class="action-area">
@@ -71,6 +72,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               nz-button
               nzType="default"
               class="detail-header__action-btn"
+              nz-tooltip="代码已提交等待测试环境更新"
               (click)="actionClick.emit('wait_update')"
             >
               标记待提测
@@ -81,6 +83,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
               nz-button
               nzType="primary"
               class="detail-header__action-btn"
+              nz-tooltip="问题已经解决，可以测试"
               (click)="actionClick.emit('resolve')"
             >
               标记解决
