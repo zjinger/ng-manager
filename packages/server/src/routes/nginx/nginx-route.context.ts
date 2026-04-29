@@ -11,7 +11,7 @@ export interface NginxRouteContext {
 }
 
 export function createNginxRouteContext(fastify: FastifyInstance): NginxRouteContext {
-  const nginx = fastify.nginx;
+  const nginx = fastify.core.nginx;
   const normalizeFsPath = (filePath: string): string => resolve(filePath).replace(/\\/g, '/').toLowerCase();
   const ensureManageableConfigFile = async (rawPath?: string): Promise<string> => {
 const filePath = rawPath?.trim();

@@ -47,7 +47,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
 
     // nginx log
     const nginxHandler = createNginxTopicHandler(
-        { logService: fastify.nginx.log },
+        { logService: fastify.core.nginx.log },
         () => clients.values()
     );
     router.register(nginxHandler);
@@ -113,7 +113,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
             try { off(); } catch { }
         });
         // 停止 nginx 日志监听
-        fastify.nginx.log.stopAll();
+        fastify.core.nginx.log.stopAll();
         clients.clear();
     });
 

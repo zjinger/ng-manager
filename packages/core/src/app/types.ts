@@ -14,6 +14,8 @@ import type { IEventBus } from "@yinuo-ngm/event";
 import type { CoreEventMap } from "../infra/event/events";
 import type { ProcessService } from "@yinuo-ngm/process";
 import type { IProcessDriver } from "@yinuo-ngm/process";
+import type { NginxApp } from "@yinuo-ngm/nginx";
+import type { ApiClient } from "@yinuo-ngm/api";
 
 /**
  * 创建 CoreApp 的参数
@@ -71,6 +73,12 @@ export interface CoreApp {
 
     /* Node 版本管理 */
     nodeVersion: NodeVersionService;
+
+    /** Nginx 管理 */
+    nginx: NginxApp;
+
+    /** API 客户端管理 */
+    apiClient: ApiClient;
 
     /** 关闭应用/服务前调用，做一些清理工作 */
     dispose(): Promise<void>;

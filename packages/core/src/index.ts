@@ -15,3 +15,5 @@ export type { DashboardDocV1 } from './domain/dashboard'
 export type { SpriteConfig, GenerateSpriteOptions } from "@yinuo-ngm/sprite";
 
 export type { SvnRuntime } from "@yinuo-ngm/svn";
+
+export { savePersistedNginxPath, clearPersistedNginxPath } from "./app/composers";

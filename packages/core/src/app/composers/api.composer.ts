@@ -1,3 +1,4 @@
+import * as path from "path";
 import {
     ApiClient,
     JsonEnvRepo,
@@ -8,13 +9,15 @@ import {
     ApiSendService,
     JsonCollectionRepo
 } from "@yinuo-ngm/api";
-import type { FastifyInstance } from "fastify";
-import fp from "fastify-plugin";
-import * as path from "path";
-import { env } from "../env";
+import type { CoreDomainHandle } from "./types";
 
-export default fp(async function apiClientPlugin(fastify: FastifyInstance) {
-    const rootDir = path.join(env.dataDir, "api");
+const API_SUBDIR = "api";
+
+export function createApiClientDomain(opts: {
+    dataDir: string;
+}): CoreDomainHandle<ApiClient> {
+    const rootDir = path.join(opts.dataDir, API_SUBDIR);
+
     const repo = new JsonRequestRepo({ rootDir });
     const envRepo = new JsonEnvRepo({ rootDir });
     const historyRepo = new JsonHistoryRepo({ rootDir });
@@ -25,8 +28,5 @@ export default fp(async function apiClientPlugin(fastify: FastifyInstance) {
     const sendService = new ApiSendService(repo, envRepo, historyRepo, http, resolver);
     const apiClient = new ApiClient(repo, envRepo, historyRepo, collectionRepo, sendService);
 
-    fastify.decorate("api", apiClient);
-
-    fastify.log.info("[api] api client initialized");
-
-});
+    return { service: apiClient };
+}

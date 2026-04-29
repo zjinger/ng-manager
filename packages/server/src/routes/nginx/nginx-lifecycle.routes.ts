@@ -1,9 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { NginxBindRequest } from '@yinuo-ngm/nginx';
-import {
-  clearPersistedNginxPath,
-  savePersistedNginxPath,
-} from '../../plugins/nginx.binding.store';
+import { savePersistedNginxPath, clearPersistedNginxPath } from "@yinuo-ngm/core";
+import { env } from '../../env';
 import { NginxRouteContext, sendBadRequest } from './nginx-route.context';
 
 /**
@@ -52,7 +50,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
       try {
         const instance = await nginx.service.bind(path);
         try {
-          await savePersistedNginxPath(instance.path);
+          await savePersistedNginxPath(env.dataDir, instance.path);
         } catch (persistError) {
           fastify.log.warn(`[nginx] binding persisted failed: ${String(persistError)}`);
         }
@@ -69,7 +67,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
   fastify.post('/unbind', async (_request: FastifyRequest, reply: FastifyReply) => {
     nginx.service.unbind();
     try {
-      await clearPersistedNginxPath();
+      await clearPersistedNginxPath(env.dataDir);
     } catch (error) {
       fastify.log.warn(`[nginx] clear persisted binding failed: ${String(error)}`);
     }

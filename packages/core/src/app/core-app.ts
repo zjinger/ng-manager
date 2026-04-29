@@ -1,11 +1,13 @@
 import type { CoreApp, CreateCoreAppOptions } from "./types";
 import {
+    createApiClientDomain,
     createBootstrapDomain,
     createConfigDomain,
     createDashboardDomain,
     createDepsDomain,
     createFsDomain,
     createInfra,
+    createNginxDomain,
     createNodeVersionDomain,
     createSpriteDomain,
     createSvnDomain,
@@ -62,6 +64,11 @@ export async function createCoreApp(
         sysLog: infra.sysLog,
         project,
     });
+    const nginxHandle = await createNginxDomain({ dataDir: infra.dataDir });
+    if (nginxHandle.dispose) {
+        disposables.push(nginxHandle.dispose);
+    }
+    const apiClientHandle = createApiClientDomain({ dataDir: infra.dataDir });
 
     return {
         events: infra.events,
@@ -76,6 +83,8 @@ export async function createCoreApp(
         sprite,
         svnSync,
         nodeVersion,
+        nginx: nginxHandle.service,
+        apiClient: apiClientHandle.service,
         async dispose() {
             for (const dispose of disposables.reverse()) {
                 await dispose();

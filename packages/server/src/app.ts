@@ -6,8 +6,6 @@ import routesPlugin from "./plugins/routes.plugin";
 import staticPlugin from "./plugins/static.plugin";
 import successHandlerPlugin from "./plugins/success-handle.plugin";
 import wsPlugin from "./plugins/ws/ws.plugin";
-import apiClientPlugin from "./plugins/api-client.plugin";
-import nginxPlugin from "./plugins/nginx.plugin";
 import { env } from './env'
 function normalizeLogLevel(v?: string) {
     // pino levels: fatal error warn info debug trace silent
@@ -46,14 +44,8 @@ export async function createServer() {
     // core
     await fastify.register(corePlugin);
 
-    // nginx (需要在 ws 之前，因为 ws 需要 nginx log service)
-    await fastify.register(nginxPlugin);
-
     // websocket
     await fastify.register(wsPlugin);
-
-    // api client
-    await fastify.register(apiClientPlugin);
 
     // routes
     await fastify.register(routesPlugin);
