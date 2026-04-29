@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core/api';
-import { Project, ProjectMemberEntity } from '@models/project.model';
+import { ProjectMemberEntity } from '@models/project.model';
+import type { ProjectListResponseDto } from '@yinuo-ngm/protocol';
 
 @Injectable({
   providedIn: 'root',
@@ -10,7 +11,7 @@ export class ProjectContextApiService {
 
   // 获取项目列表
   list() {
-    return this.api.get<Project[]>('/api/projects/list');
+    return this.api.get<ProjectListResponseDto>('/api/projects/list');
   }
 
   // 从hub-v2中获取项目成员

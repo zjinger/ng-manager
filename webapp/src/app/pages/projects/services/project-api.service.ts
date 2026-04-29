@@ -1,16 +1,29 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@core/api';
-import {
-  CheckRootResult,
-  DetectResult,
-  ImportCheckResult,
-  Project,
-  ProjectAssets,
-} from '@models/project.model';
 import { lastValueFrom, Observable } from 'rxjs';
 import { FsExplorerApiService } from '../components/fs-explorer';
 import { CreateProjectDraft } from '../models/project-draft';
 import { ProjectMemberEntity } from '@models/project.model';
+import type {
+  CheckProjectRootRequestDto,
+  CreateProjectRequestDto,
+  DetectProjectRequestDto,
+  EditProjectRequestDto,
+  ImportProjectRequestDto,
+  OpenProjectInEditorRequestDto,
+  ProjectAssetsDto,
+  ProjectCheckRootResponseDto,
+  ProjectDetectResponseDto,
+  ProjectDetailResponseDto,
+  ProjectIdResponseDto,
+  ProjectImportCheckResponseDto,
+  ProjectListResponseDto,
+  ProjectMutationResponseDto,
+  SetProjectFavoriteRequestDto,
+  SetProjectLastOpenedRequestDto,
+  UpdateProjectAssetsRequestDto,
+  UpdateProjectRequestDto,
+} from '@yinuo-ngm/protocol';
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
   api = inject(ApiClient);
@@ -21,8 +34,9 @@ export class ProjectApiService {
     return await lastValueFrom(this.fs.pathExists(path));
   }
 
-  detect(rootPath: string): Observable<DetectResult> {
-    return this.api.post<DetectResult>('/api/projects/detect', { rootPath });
+  detect(rootPath: string): Observable<ProjectDetectResponseDto> {
+    const body: DetectProjectRequestDto = { rootPath };
+    return this.api.post<ProjectDetectResponseDto>('/api/projects/detect', body);
   }
 
   // Electron 里建议通过 preload 暴露 window.ngm.pickFolder()
@@ -76,61 +90,69 @@ export class ProjectApiService {
   }
 
   list() {
-    return this.api.get<Project[]>('/api/projects/list');
+    return this.api.get<ProjectListResponseDto>('/api/projects/list');
   }
 
   get(id: string) {
-    return this.api.get<Project>(`/api/projects/getInfo/${id}`);
+    return this.api.get<ProjectDetailResponseDto>(`/api/projects/getInfo/${id}`);
   }
 
   check(rootPath: string) {
-    return this.api.post<CheckRootResult>('/api/projects/check', { rootPath });
+    const body: CheckProjectRootRequestDto = { rootPath };
+    return this.api.post<ProjectCheckRootResponseDto>('/api/projects/check', body);
   }
 
   createByPath(data: { root: string; name: string; syncTasks?: boolean }) {
-    return this.api.post<{ id: string }>('/api/projects/create', data);
+    const body: CreateProjectRequestDto = data;
+    return this.api.post<ProjectIdResponseDto>('/api/projects/create', body);
   }
 
   checkImport(root: string) {
-    return this.api.post<ImportCheckResult>('/api/projects/checkImport', { root });
+    return this.api.post<ProjectImportCheckResponseDto>('/api/projects/checkImport', { root });
   }
 
   importByPath(data: { root: string; name?: string; syncTasks?: boolean }) {
-    return this.api.post<{ id: string }>('/api/projects/import', data);
+    const body: ImportProjectRequestDto = data;
+    return this.api.post<ProjectIdResponseDto>('/api/projects/import', body);
   }
 
   delete(id: string) {
-    return this.api.delete<{ id: string }>(`/api/projects/delete/${id}`);
+    return this.api.delete<ProjectIdResponseDto>(`/api/projects/delete/${id}`);
   }
 
-  update(id: string, data: Partial<Project>) {
-    return this.api.post<Project>(`/api/projects/update/${id}`, data);
+  update(id: string, data: UpdateProjectRequestDto) {
+    return this.api.post<ProjectMutationResponseDto>(`/api/projects/update/${id}`, data);
   }
 
   setFavorite(id: string, isFavorite: boolean) {
-    return this.api.post<Project>(`/api/projects/favorite/${id}`, { isFavorite });
+    const body: SetProjectFavoriteRequestDto = { isFavorite };
+    return this.api.post<ProjectMutationResponseDto>(`/api/projects/favorite/${id}`, body);
   }
 
   toggleFavorite(id: string) {
-    return this.api.post<Project>(`/api/projects/favorite/${id}/toggle`, {});
+    return this.api.post<ProjectMutationResponseDto>(`/api/projects/favorite/${id}/toggle`, {});
   }
 
   setLastOpened(id: string, timestamp: number) {
-    return this.api.post<Project>(`/api/projects/lastOpened/${id}`, { timestamp });
+    const body: SetProjectLastOpenedRequestDto = { timestamp };
+    return this.api.post<ProjectMutationResponseDto>(`/api/projects/lastOpened/${id}`, body);
   }
 
   openInEditor(id: string, editor: 'code' | 'system' = 'code') {
-    return this.api.post<void>(`/api/projects/openInEditor/${id}`, { editor });
+    const body: OpenProjectInEditorRequestDto = { editor };
+    return this.api.post<void>(`/api/projects/openInEditor/${id}`, body);
   }
 
   edit(
     projectId: string,
     data: { name: string; description?: string; repoPageUrl?: string },
-  ): Observable<Project> {
-    return this.api.post<Project>(`/api/projects/edit/${projectId}`, data);
+  ): Observable<ProjectMutationResponseDto> {
+    const body: EditProjectRequestDto = data;
+    return this.api.post<ProjectMutationResponseDto>(`/api/projects/edit/${projectId}`, body);
   }
 
-  updateAssets(projectId: string, assets: ProjectAssets): Observable<Project> {
-    return this.api.post<Project>(`/api/projects/updateAssets/${projectId}`, { assets });
+  updateAssets(projectId: string, assets: ProjectAssetsDto): Observable<ProjectMutationResponseDto> {
+    const body: UpdateProjectAssetsRequestDto = { assets };
+    return this.api.post<ProjectMutationResponseDto>(`/api/projects/updateAssets/${projectId}`, body);
   }
 }

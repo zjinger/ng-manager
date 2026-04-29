@@ -5,3 +5,4 @@ export * from "./ws.log.types";
 export * from "./ws.nginx.types";
 export * from "./event";
 export * from "./task";
+export * from "./project";

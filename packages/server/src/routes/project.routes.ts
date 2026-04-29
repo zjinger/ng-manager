@@ -1,8 +1,108 @@
 import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
-import { ProjectAssets } from "@yinuo-ngm/project";
+import type {
+    CheckProjectRootRequestDto,
+    CreateProjectRequestDto,
+    DetectProjectRequestDto,
+    EditProjectRequestDto,
+    ImportProjectRequestDto,
+    OpenProjectInEditorRequestDto,
+    ProjectAssetsDto,
+    ProjectAssetSourceSvnDto,
+    ProjectDto,
+    ProjectImportCheckResponseDto,
+    RenameProjectRequestDto,
+    SetProjectFavoriteRequestDto,
+    SetProjectLastOpenedRequestDto,
+    UpdateProjectAssetsRequestDto,
+    UpdateProjectRequestDto,
+} from "@yinuo-ngm/protocol";
+import type {
+    CheckRootResult,
+    DetectResult,
+    ImportCheckResult,
+    Project,
+    ProjectAssets,
+    ProjectAssetSourceSvn,
+} from "@yinuo-ngm/project";
 import { type FastifyInstance } from "fastify";
 import * as path from "path";
 import { openFolder } from "../common/editor";
+
+function toProjectAssetSourceSvnDto(source: ProjectAssetSourceSvn): ProjectAssetSourceSvnDto {
+    return {
+        kind: source.kind,
+        id: source.id,
+        label: source.label,
+        url: source.url,
+        localDir: source.localDir,
+        mode: source.mode,
+    };
+}
+
+function toProjectAssetsDto(assets?: ProjectAssets): ProjectAssetsDto | undefined {
+    if (!assets) return undefined;
+    return {
+        iconsSvn: assets.iconsSvn ? toProjectAssetSourceSvnDto(assets.iconsSvn) : undefined,
+        cutImageSvn: assets.cutImageSvn ? toProjectAssetSourceSvnDto(assets.cutImageSvn) : undefined,
+    };
+}
+
+function toProjectDto(project: Project): ProjectDto {
+    return {
+        id: project.id,
+        name: project.name,
+        description: (project as Project & { description?: string }).description,
+        root: project.root,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        scripts: project.scripts,
+        packageManager: project.packageManager,
+        framework: project.framework,
+        env: project.env,
+        isFavorite: project.isFavorite,
+        lastOpened: project.lastOpened,
+        repoUrl: project.repoUrl,
+        repoPageUrl: project.repoPageUrl,
+        assets: toProjectAssetsDto(project.assets),
+    };
+}
+
+function toDetectResultDto(detect?: DetectResult) {
+    if (!detect) return undefined;
+    return {
+        framework: detect.framework,
+        hasPackageJson: detect.hasPackageJson,
+        scripts: detect.scripts,
+        scriptsCount: detect.scriptsCount,
+        recommendedScript: detect.recommendedScript,
+        lockFile: detect.lockFile,
+        hasGit: detect.hasGit,
+        hasMakefile: detect.hasMakefile,
+        hasDockerCompose: detect.hasDockerCompose,
+    };
+}
+
+function toImportCheckResultDto(result: ImportCheckResult): ProjectImportCheckResponseDto {
+    return {
+        ok: result.ok,
+        root: result.root,
+        code: result.code,
+        reason: result.reason,
+        detect: toDetectResultDto(result.detect),
+        warnings: result.warnings,
+    };
+}
+
+function toCheckRootResultDto(result: CheckRootResult) {
+    return {
+        ok: result.ok,
+        root: result.root,
+        exists: result.exists,
+        isDir: result.isDir,
+        alreadyRegistered: result.alreadyRegistered,
+        message: result.message,
+    };
+}
 
 /**
  * Project routes
@@ -14,7 +114,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     */
     fastify.get("/list", async () => {
         const projects = await fastify.core.project.list();
-        return projects;
+        return projects.map(toProjectDto);
     });
 
     /**
@@ -22,11 +122,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     */
     fastify.post("/update/:id", async (req, reply) => {
         const { id } = req.params as { id: string };
-        const body = req.body as Partial<{
-            name: string;
-            env: Record<string, string>;
-            scripts: Record<string, string>;
-        }>;
+        const body = req.body as Partial<UpdateProjectRequestDto>;
         try {
             // 明确禁止修改的字段
             if ((body as any).root) {
@@ -38,7 +134,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
                 ...(body.env !== undefined ? { env: body.env } : {}),
                 ...(body.scripts !== undefined ? { scripts: body.scripts } : {}),
             });
-            return updated;
+            return toProjectDto(updated);
         } catch (err) {
             if (err instanceof Error) {
                 reply.code(400);
@@ -53,7 +149,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     fastify.get("/getInfo/:id", async (req,) => {
         const { id } = req.params as { id: string };
         const project = await fastify.core.project.get(id);
-        return project;
+        return toProjectDto(project);
     });
 
     /**
@@ -69,8 +165,9 @@ export default async function projectRoutes(fastify: FastifyInstance) {
      * 检查路径是否合法 / 是否已存在项目
      */
     fastify.post("/check", async (req) => {
-        const body = req.body as { rootPath: string };
-        return fastify.core.project.checkRoot(body.rootPath);
+        const body = req.body as CheckProjectRootRequestDto;
+        const result = await fastify.core.project.checkRoot(body.rootPath);
+        return toCheckRootResultDto(result);
     });
 
     /**
@@ -78,7 +175,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
      * POST /detect
      */
     fastify.post("/detect", async (req) => {
-        const body = req.body as { rootPath: string };
+        const body = req.body as DetectProjectRequestDto;
         const root = path.resolve(body.rootPath);
 
         // 直接复用 core.project.scan
@@ -87,7 +184,8 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         return {
             framework: meta.framework ?? "unknown",
             hasPackageJson: !!meta.scripts && Object.keys(meta.scripts).length > 0,
-            scripts: meta.scripts ?? {},
+            scripts: Object.keys(meta.scripts ?? {}),
+            scriptsCount: Object.keys(meta.scripts ?? {}).length,
             recommendedScript:
                 meta.scripts?.dev
                     ? "dev"
@@ -95,6 +193,8 @@ export default async function projectRoutes(fastify: FastifyInstance) {
                         ? "start"
                         : Object.keys(meta.scripts ?? {})[0],
             hasGit: meta.hasGit ?? false,
+            hasMakefile: meta.hasMakefile ?? false,
+            hasDockerCompose: meta.hasDockerCompose ?? false,
         };
     });
 
@@ -102,11 +202,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
      * 导入已有项目
      */
     fastify.post("/import", async (req) => {
-        const body = req.body as {
-            root: string;
-            name?: string;
-            syncTasks?: boolean;
-        };
+        const body = req.body as ImportProjectRequestDto;
         const project = await fastify.core.project.importProject({
             root: body.root,
             name: body.name,
@@ -125,17 +221,15 @@ export default async function projectRoutes(fastify: FastifyInstance) {
      */
     fastify.post("/checkImport", async (req) => {
         const body = req.body as { root: string };
-        return fastify.core.project.checkImport(body.root);
+        const result = await fastify.core.project.checkImport(body.root);
+        return toImportCheckResultDto(result);
     });
 
     /**
      * 创建新项目（暂不接 scaffold） 
      */
     fastify.post("/create", async (req) => {
-        const body = req.body as {
-            name: string;
-            root: string;
-        };
+        const body = req.body as CreateProjectRequestDto;
         const project = await fastify.core.project.create({
             name: body.name,
             root: body.root,
@@ -151,13 +245,13 @@ export default async function projectRoutes(fastify: FastifyInstance) {
      */
     fastify.post("/favorite/:id", async (req, reply) => {
         const { id } = req.params as { id: string };
-        const body = req.body as { isFavorite?: boolean };
+        const body = req.body as Partial<SetProjectFavoriteRequestDto>;
         if (typeof body?.isFavorite !== "boolean") {
             reply.code(400);
             return { message: "isFavorite must be boolean" };
         }
         const updated = await fastify.core.project.setFavorite(id, body.isFavorite);
-        return updated;
+        return toProjectDto(updated);
     });
 
     /**
@@ -167,27 +261,27 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     fastify.post("/favorite/:id/toggle", async (req) => {
         const { id } = req.params as { id: string };
         const updated = await fastify.core.project.toggleFavorite(id);
-        return updated;
+        return toProjectDto(updated);
     });
 
     fastify.post("/lastOpened/:id", async (req) => {
         const { id } = req.params as { id: string };
-        const body = req.body as { timestamp: number };
+        const body = req.body as SetProjectLastOpenedRequestDto;
         if (typeof body?.timestamp !== "number") {
             throw new GlobalError(GlobalErrorCodes.INVALID_TIMESTAMP, "timestamp must be a number");
         }
         const updated = await fastify.core.project.setLastOpened(id, body.timestamp);
-        return updated;
+        return toProjectDto(updated);
     });
 
     fastify.post("/rename/:id", async (req) => {
         const { id } = req.params as { id: string };
-        const body = req.body as { name: string };
+        const body = req.body as RenameProjectRequestDto;
         if (typeof body?.name !== "string" || body.name.trim() === "") {
             throw new CoreError(CoreErrorCodes.INVALID_NAME, "name must be a non-empty string");
         }
         const updated = await fastify.core.project.rename(id, body.name.trim());
-        return updated;
+        return toProjectDto(updated);
     })
 
     /**
@@ -196,11 +290,11 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     fastify.post("/refreshScripts/:id", async (req) => {
         const { id } = req.params as { id: string };
         const updated = await fastify.core.project.refreshScripts(id);
-        return updated;
+        return toProjectDto(updated);
     })
     fastify.post("/edit/:id", async (req) => {
         const { id } = req.params as { id: string };
-        const body = req.body as { name: string; description?: string; repoPageUrl?: string; };
+        const body = req.body as EditProjectRequestDto;
         if (typeof body?.name !== "string" || body.name.trim() === "") {
             throw new CoreError(CoreErrorCodes.INVALID_NAME, "name must be a non-empty string");
         }
@@ -209,18 +303,18 @@ export default async function projectRoutes(fastify: FastifyInstance) {
             description: body.description?.trim(),
             repoPageUrl: body.repoPageUrl?.trim(),
         });
-        return updated;
+        return toProjectDto(updated);
     })
 
     fastify.post("/updateAssets/:id", async (req) => {
         const { id } = req.params as { id: string };
-        const body = req.body as { assets: ProjectAssets };
-        const assets = body?.assets;
+        const body = req.body as UpdateProjectAssetsRequestDto;
+        const assets = body?.assets as ProjectAssets | undefined;
         if (!assets || !assets.iconsSvn) {
             throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "参数错误，assets.iconsSvn 是必需的");
         }
         const updated = await fastify.core.project.updateAssets(id, assets);
-        return updated;
+        return toProjectDto(updated);
     });
 
     /**
@@ -231,7 +325,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     fastify.post("/openInEditor/:id", async (req) => {
         try {
             const { id } = req.params as { id: string };
-            const body = req.body as { editor?: "code" | "system" };
+            const body = req.body as OpenProjectInEditorRequestDto;
             const p = await fastify.core.project.get(id);
             const editor = body?.editor || "code";
             await openFolder(p.root, { editor });
