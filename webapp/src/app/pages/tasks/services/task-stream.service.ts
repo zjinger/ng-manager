@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import { WsClientService } from "@app/core/ws/ws-client.service";
-import type { TaskEventMsg, TaskEventPayloadMap, TaskEventType, TaskExitedPayload, TaskOutputMsg, TaskOutputPayload, TaskSnapshotPayload, TaskStartedPayload, TaskStatus, WsClientMsg, WsServerMsg, WsState } from "@core/ws";
+import type { TaskEventMsg, TaskEventPayloadMap, TaskEventType, TaskExitedPayload, TaskOutputMsg, TaskOutputPayload, TaskSnapshotPayload, TaskStartedPayload, TaskStatus, WsClientMsg, WsServerMsg, WsState } from "@yinuo-ngm/protocol";
 import type { TaskRuntime } from "@models/task.model";
 import { Subject } from "rxjs";
 import { TaskRuntimeStore } from "./task-runtime-store";

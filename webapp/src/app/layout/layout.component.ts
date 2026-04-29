@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, signal, Signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { WsClientService } from '@app/core/ws';
-import type { WsState } from '@app/core/ws';
+import type { WsState } from '@yinuo-ngm/protocol';
 import { NzBreadCrumbModule } from 'ng-zorro-antd/breadcrumb';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';

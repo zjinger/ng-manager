@@ -2,8 +2,8 @@ import { Injectable, signal } from "@angular/core";
 import { filter } from "rxjs/operators";
 import { Subscription } from "rxjs";
 import { WsClientService } from "@app/core";
-import type { WsServerMsg } from "@app/core";
-import { LogLine } from "@models/log.model";
+import type { WsServerMsg } from "@yinuo-ngm/protocol";
+import type { LogLine } from "@models/log.model";
 
 function isSysTail(m: WsServerMsg): m is Extract<WsServerMsg, { op: "syslog.tail" }> {
   return m.op === "syslog.tail";

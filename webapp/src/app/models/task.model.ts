@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@core/ws";
+import type { TaskStatus } from "@yinuo-ngm/protocol";
 
 export type TaskKind = "run" | "build" | "test" | "lint" | "custom";
 export interface TaskDefinition {

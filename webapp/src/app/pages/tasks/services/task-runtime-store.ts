@@ -1,5 +1,5 @@
 import { Injectable, signal, WritableSignal } from '@angular/core';
-import type { TaskStatus } from '@core/ws';
+import type { TaskStatus } from '@yinuo-ngm/protocol';
 import type { TaskRuntime, TaskRuntimeStatus } from '@models/task.model';
 import { BehaviorSubject, Observable } from 'rxjs';
 /**

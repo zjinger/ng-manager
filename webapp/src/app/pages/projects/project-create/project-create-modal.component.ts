@@ -8,7 +8,7 @@ import type {
   TaskBootstrapFailedPayload,
   TaskBootstrapNeedPickRootPayload,
   TaskEventMsg,
-} from '@app/core';
+} from '@yinuo-ngm/protocol';
 import { getApiErrorMessage } from '@app/core/api';
 import { DetectResult } from '@models/project.model';
 import { TaskStreamService } from '@pages/tasks/services/task-stream.service';

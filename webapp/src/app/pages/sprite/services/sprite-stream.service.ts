@@ -1,5 +1,4 @@
 import { DestroyRef, Injectable } from "@angular/core";
-import type { WsClientMsg, WsServerMsg, WsState } from "@app/core/ws";
 import { WsClientService } from "@app/core/ws/ws-client.service";
 import type {
     SvnEventMsg,
@@ -11,7 +10,10 @@ import type {
     SvnSyncRuntimePayload,
     SvnSyncStartedPayload,
     SvnTaskStatus,
-} from "@app/core/ws";
+    WsClientMsg,
+    WsServerMsg,
+    WsState,
+} from "@yinuo-ngm/protocol";
 import { BehaviorSubject, Observable, Subject, Subscription } from "rxjs";
 import { distinctUntilChanged } from "rxjs/operators";
 

@@ -1,4 +1,6 @@
-export type SvnSyncMode = "checkout" | "update" | "switch" | "recheckout";
+import type { SvnSyncMode, SvnSyncRuntimePayload } from "@yinuo-ngm/protocol";
+
+export type { SvnSyncMode } from "@yinuo-ngm/protocol";
 
 export interface SvnWorkingCopyResult {
     mode: SvnSyncMode;
@@ -20,13 +22,4 @@ export interface SvnSyncResult {
     stderr?: string;
 }
 
-export interface SvnRuntime {
-    projectId: string;
-    sourceId: string;
-    lastSyncAt?: string;
-    lastSyncMode?: SvnSyncMode;
-    desiredUrl?: string;
-    currentUrl?: string;
-    lastStdout?: string;
-    lastStderr?: string;
-}
+export interface SvnRuntime extends SvnSyncRuntimePayload {}
