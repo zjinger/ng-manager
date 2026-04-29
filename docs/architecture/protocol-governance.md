@@ -393,8 +393,8 @@ exitCode?: number;
 ```ts
 export type WsServerMsg =
   | { op: "log"; line: LogLine; version?: string }
-  | { op: "task:event"; event: unknown; version?: string }
-  | { op: "svn:event"; event: unknown; version?: string };
+  | { op: "task.event"; event: unknown; version?: string }
+  | { op: "svn.event"; event: unknown; version?: string };
 ```
 
 ### 长期演进方向
