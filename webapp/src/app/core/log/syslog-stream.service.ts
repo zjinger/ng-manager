@@ -3,7 +3,7 @@ import { filter } from "rxjs/operators";
 import { Subscription } from "rxjs";
 
 import { WsClientService } from "@app/core/ws/ws-client.service";
-import type { WsServerMsg, WsState } from "@app/core/ws/ws.types";
+import type { WsServerMsg, WsState } from "@app/core/ws";
 import type { LogLine, LogLevel } from "@models/log.model";
 
 export type SyslogFilter = {

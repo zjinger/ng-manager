@@ -1,6 +1,14 @@
 export type LogScope =
+    | "system"
     | "task"
     | "project"
+    | "git"
+    | "svn"
+    | "sprite"
+    | "fs"
+    | "terminal"
+    | "ai"
+    | "node-version"
     | "server"
     | "ws"
     | "desktop"
@@ -13,7 +21,12 @@ export type LogScope =
 export type LogLevel = "debug" | "info" | "warn" | "error" | "success";
 
 // 记录日志的来源
-export type LogSource = "system" | "task";
+export type LogSource =
+    | "system"
+    | "task"
+    | "server"
+    | "desktop"
+    | "node-version";
 
 export interface LogLine {
     ts: number;                 // Date.now()

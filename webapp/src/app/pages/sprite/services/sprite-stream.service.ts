@@ -2,16 +2,16 @@ import { DestroyRef, Injectable } from "@angular/core";
 import { WsClientMsg, WsServerMsg, WsState } from "@app/core/ws";
 import { WsClientService } from "@app/core/ws/ws-client.service";
 import type {
-  SvnEventMsg,
-  SvnEventType,
-  SvnSyncDonePayload,
-  SvnSyncFailedPayload,
-  SvnSyncOutputPayload,
-  SvnSyncProgressPayload,
-  SvnSyncRuntimePayload,
-  SvnSyncStartedPayload,
-  SvnTaskStatus,
-} from "@core/ws/ws.svn.types";
+    SvnEventMsg,
+    SvnEventType,
+    SvnSyncDonePayload,
+    SvnSyncFailedPayload,
+    SvnSyncOutputPayload,
+    SvnSyncProgressPayload,
+    SvnSyncRuntimePayload,
+    SvnSyncStartedPayload,
+    SvnTaskStatus,
+} from "@app/core/ws";
 import { BehaviorSubject, Observable, Subject, Subscription } from "rxjs";
 import { distinctUntilChanged } from "rxjs/operators";
 

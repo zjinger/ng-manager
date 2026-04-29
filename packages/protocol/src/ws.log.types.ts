@@ -48,7 +48,14 @@ export type SystemLogScope =
     | "fs"
     | "terminal"
     | "ai"
-    | "node-version";
+    | "node-version"
+    | "server"
+    | "ws"
+    | "desktop"
+    | "plugin"
+    | "storage"
+    | "process"
+    | "core";
 
 export interface SystemLogEntry {
     id?: string;

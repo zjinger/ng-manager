@@ -1,6 +1,6 @@
 import { Injectable, NgZone } from "@angular/core";
 import { BehaviorSubject, Observable, Subject, Subscription, timer } from "rxjs";
-import { WsClientMsg, WsServerMsg, WsState } from "./ws.types";
+import type { WsClientMsg, WsServerMsg, WsState } from "@yinuo-ngm/protocol";
 import { APP_CONFIG } from "@env/environment";
 
 @Injectable({ providedIn: "root" })

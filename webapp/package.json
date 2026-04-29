@@ -22,8 +22,9 @@
     ]
   },
   "private": true,
-  "dependencies": {
+"dependencies": {
     "@yinuo-ngm/errors": "file:../packages/errors",
+    "@yinuo-ngm/protocol": "file:../packages/protocol",
     "@angular/common": "^20.3.0",
     "@angular/compiler": "^20.3.0",
     "@angular/core": "^20.3.0",

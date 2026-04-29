@@ -25,7 +25,7 @@ export function registerNginxLifecycleRoutes(context: NginxRouteContext): void {
       const instance = nginx.service.getInstance();
       const status = await nginx.service.getStatus();
       const servers = await nginx.server.getAllServers();
-      const enabled = servers.filter(item => item.enabled).length;
+      const enabled = servers.filter((item: { enabled: boolean }) => item.enabled).length;
 
       return reply.send({
         success: true,

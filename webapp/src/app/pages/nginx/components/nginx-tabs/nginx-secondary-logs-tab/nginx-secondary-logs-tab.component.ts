@@ -8,7 +8,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { LogEntry, NginxLogViewerComponent } from '../../nginx-log-viewer/nginx-log-viewer.component';
 import { NginxService } from '../../../services/nginx.service';
 import { WsClientService } from '@app/core/ws';
-import type { NginxLogAppendMsg, NginxLogTailMsg, NginxLogType } from '@app/core/ws/ws.types';
+import type { NginxLogAppendMsg, NginxLogTailMsg, NginxLogType } from '@app/core/ws';
 
 @Component({
   selector: 'app-nginx-secondary-logs-tab',

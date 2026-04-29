@@ -24,5 +24,5 @@ export interface NginxSubMsg {
 export interface NginxUnsubMsg {
     op: "unsub";
     topic: "nginx";
-    logType: NginxLogType;
+    logType?: NginxLogType;
 }

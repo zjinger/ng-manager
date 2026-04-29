@@ -42,6 +42,7 @@ export type TaskStartedPayload = {
 export type TaskStopRequestedPayload = {
     taskId: string;
     runId: string;
+    projectId?: string;
 };
 
 export type TaskExitedPayload = {
@@ -50,11 +51,13 @@ export type TaskExitedPayload = {
     stoppedAt: number;
     exitCode: number | null;
     signal: string | null;
+    projectId?: string;
 };
 
 export type TaskFailedPayload = {
     taskId: string;
     runId: string;
+    projectId?: string;
     error: string;
 };
 
@@ -66,6 +69,7 @@ export type TaskBootstrapDonePayload = {
 };
 
 export type TaskBootstrapFailedPayload = {
+    projectId?: string;
     taskId: string;
     runId: string;
     rootPath: string;
@@ -76,10 +80,12 @@ export type TaskBootstrapNeedPickRootPayload = {
     taskId: string;
     runId: string;
     rootPath: string;
+    projectId?: string;
     candidates: Array<{
         path: string;
         kind: "angular" | "vue";
     }>;
+    reason?: string;
 };
 
 export type TaskEventPayloadMap = {

@@ -1,3 +1,40 @@
-export * from './ws-client.service';
-export * from './ws.types';
-export * from './ws.task.types';
+export { WsClientService } from './ws-client.service';
+export type {
+    WsTopic,
+    WsState,
+    WsServerMsg,
+    WsClientMsg,
+    NginxLogType,
+    NginxLogTailMsg,
+    NginxLogAppendMsg,
+} from "@yinuo-ngm/protocol";
+export type {
+    TaskStatus,
+    TaskEventType,
+    LogStreamType,
+    TaskSnapshotPayload,
+    TaskStartedPayload,
+    TaskStopRequestedPayload,
+    TaskExitedPayload,
+    TaskFailedPayload,
+    TaskBootstrapDonePayload,
+    TaskBootstrapFailedPayload,
+    TaskBootstrapNeedPickRootPayload,
+    TaskEventPayloadMap,
+    TaskEventMsg,
+    TaskOutputPayload,
+    TaskOutputMsg,
+} from "@yinuo-ngm/protocol";
+export type {
+    SvnSyncMode,
+    SvnTaskStatus,
+    SvnEventType,
+    SvnEventPayloadMap,
+    SvnEventMsg,
+    SvnSyncStartedPayload,
+    SvnSyncOutputPayload,
+    SvnSyncFailedPayload,
+    SvnSyncDonePayload,
+    SvnSyncProgressPayload,
+    SvnSyncRuntimePayload,
+} from "@yinuo-ngm/protocol";
