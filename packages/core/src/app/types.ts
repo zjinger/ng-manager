@@ -12,6 +12,8 @@ import type { TaskService } from "@yinuo-ngm/task";
 import type { NodeVersionService } from "@yinuo-ngm/node-version";
 import type { IEventBus } from "@yinuo-ngm/event";
 import type { CoreEventMap } from "../infra/event/events";
+import type { ProcessService } from "@yinuo-ngm/process";
+import type { IProcessDriver } from "@yinuo-ngm/process";
 
 /**
  * 创建 CoreApp 的参数
@@ -21,6 +23,18 @@ export interface CreateCoreAppOptions {
     sysLogCapacity?: number;
     /** 数据目录（存储项目列表等） */
     dataDir: string;
+    /**
+     * 外部注入的 ProcessService
+     * - 优先级高于 processDriver
+     * - 用于测试或自定义进程管理
+     */
+    processService?: ProcessService;
+    /**
+     * 外部注入的 ProcessDriver
+     * - 如果未传入 processService，则使用此 driver 创建 ProcessService
+     * - 默认使用 PtyProcessDriver
+     */
+    processDriver?: IProcessDriver;
 }
 
 /**

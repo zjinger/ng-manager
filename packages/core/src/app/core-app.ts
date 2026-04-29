@@ -21,6 +21,8 @@ import { createProjectDomain } from "@yinuo-ngm/project";
 export async function createCoreApp(
     opts: CreateCoreAppOptions
 ): Promise<CoreApp> {
+    const disposables: Array<() => Promise<void> | void> = [];
+
     const infra = createInfra(opts);
     const project = await createProjectDomain(infra.dataDir);
     const nodeVersion = createNodeVersionDomain(infra.sysLog);
@@ -39,10 +41,13 @@ export async function createCoreApp(
         sysLog: infra.sysLog,
     });
     const fs = createFsDomain();
-    const { deps, latestCache } = await createDepsDomain({
+    const depsHandle = await createDepsDomain({
         cacheDir: infra.cacheDir,
         project,
     });
+    if (depsHandle.dispose) {
+        disposables.push(depsHandle.dispose);
+    }
     const dashboard = createDashboardDomain(infra.dataDir);
     const config = createConfigDomain(project);
     const sprite = createSpriteDomain({
@@ -65,15 +70,16 @@ export async function createCoreApp(
         project,
         bootstrap,
         fs,
-        deps,
+        deps: depsHandle.service,
         dashboard,
         config,
         sprite,
         svnSync,
         nodeVersion,
         async dispose() {
-            latestCache.stopPruneTimer();
-            await latestCache.flush();
+            for (const dispose of disposables.reverse()) {
+                await dispose();
+            }
         }
     }
 }

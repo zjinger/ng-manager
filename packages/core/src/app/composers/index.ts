@@ -9,3 +9,4 @@ export { createSpriteDomain } from "./sprite.composer";
 export { createSvnDomain } from "./svn.composer";
 export { createTaskDomain } from "./task.composer";
 export type { CoreInfra } from "./infra.composer";
+export type { CoreDomainHandle } from "./types";

@@ -11,11 +11,12 @@ import {
 } from "@yinuo-ngm/deps";
 import { JsonFileKvRepo } from "@yinuo-ngm/storage";
 import type { ProjectService } from "@yinuo-ngm/project";
+import type { CoreDomainHandle } from "./types";
 
 export async function createDepsDomain(opts: {
     cacheDir: string;
     project: ProjectService;
-}) {
+}): Promise<CoreDomainHandle<DepsServiceImpl>> {
     const latestRepo = new JsonFileKvRepo<LatestCacheSnapshot>(
         path.join(opts.cacheDir, "npm-latest.kv.json")
     );
@@ -48,7 +49,10 @@ export async function createDepsDomain(opts: {
     );
 
     return {
-        deps,
-        latestCache,
+        service: deps,
+        async dispose() {
+            latestCache.stopPruneTimer();
+            await latestCache.flush();
+        }
     };
 }
