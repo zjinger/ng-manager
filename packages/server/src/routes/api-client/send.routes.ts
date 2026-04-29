@@ -5,7 +5,7 @@ import { clearCookieJar, getCookieJar, mergeCookieJar } from "./hub-cookie-jar";
 type Scope = "global" | "project";
 
 export async function apiClientSendRoutes(fastify: FastifyInstance) {
-    const api = fastify.api
+    const api = fastify.core.apiClient
     fastify.post("/", async (req) => {
         const body = (req as any).body as {
             scope?: Scope;
@@ -59,7 +59,7 @@ if (scope === "project" && !body.projectId) throw new GlobalError(GlobalErrorCod
 }
 
 async function buildRequestWithCookie(
-    api: FastifyInstance["api"],
+    api: FastifyInstance["core"]["apiClient"],
     params: {
         scope: Scope;
         projectId?: string;

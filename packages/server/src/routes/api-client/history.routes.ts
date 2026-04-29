@@ -16,7 +16,7 @@ function parseNum(v: any, fallback: number) {
 }
 
 export async function apiClientHistoryRoutes(fastify: FastifyInstance) {
-    const api = fastify.api 
+    const api = fastify.core.apiClient
 
     fastify.get("/", async (req) => {
         const { scope, projectId } = parseScope((req as any).query);

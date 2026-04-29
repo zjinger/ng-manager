@@ -8,7 +8,5 @@ import type { CoreApp } from "@yinuo-ngm/core";
 declare module "fastify" {
     interface FastifyInstance {
         core: CoreApp;
-        api: CoreApp['apiClient'];
-        nginx: CoreApp['nginx'];
     }
 }

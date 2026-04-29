@@ -27,7 +27,7 @@ function assertProjectScope(scope: ApiScope, projectId?: string) {
 function now() { return Date.now(); }
 
 export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
-    const api = fastify.api;
+    const api = fastify.core.apiClient;
 
     // GET /api/collections?scope=project&projectId=xxx
     fastify.get("/", async (req) => {

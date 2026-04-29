@@ -13,7 +13,7 @@ function parseScope(q: any): { scope: Scope; projectId?: string } {
 }
 
 export async function apiClientRequestsRoutes(fastify: FastifyInstance) {
-    const api = fastify.api
+    const api = fastify.core.apiClient
 
     fastify.get("/", async (req) => {
         const { scope, projectId } = parseScope((req as any).query);
