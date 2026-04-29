@@ -18,16 +18,18 @@ export type WsConn = {
 };
 
 export type WsServerMsg =
-    | { op: "hello"; connId: string; ts: number }
-    | { op: "pong"; ts: number }
-    | TaskOutputMsg
-    | TaskEventMsg
-    | SvnEventMsg
-    | { op: "syslog.append"; entry: LogLine }
-    | { op: "syslog.tail"; entries: LogLine[] }
-    | NginxLogTailMsg
-    | NginxLogAppendMsg
-    | { op: "error"; code: ErrorCode; message: string; details?: any; ts: number; fatal?: boolean };
+    (
+        | { op: "hello"; connId: string; ts: number }
+        | { op: "pong"; ts: number }
+        | TaskOutputMsg
+        | TaskEventMsg
+        | SvnEventMsg
+        | { op: "syslog.append"; entry: LogLine }
+        | { op: "syslog.tail"; entries: LogLine[] }
+        | NginxLogTailMsg
+        | NginxLogAppendMsg
+        | { op: "error"; code: ErrorCode; message: string; details?: any; ts: number; fatal?: boolean }
+    ) & { version?: string };
 
 export type WsClientMsg =
     | { op: "ping" }

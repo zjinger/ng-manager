@@ -1,3 +1,4 @@
+import { PROTOCOL_VERSION } from "@yinuo-ngm/protocol";
 import type { WsServerMsg, WsTopic } from "@yinuo-ngm/protocol";
 export class WsContext {
     readonly connId: string;
@@ -9,7 +10,8 @@ export class WsContext {
 
     send(msg: WsServerMsg) {
         if (this.socket.readyState !== this.socket.OPEN) return;
-        this.socket.send(JSON.stringify(msg));
+        const payload = msg.version ? msg : { ...msg, version: PROTOCOL_VERSION };
+        this.socket.send(JSON.stringify(payload));
     }
 
     addSub(topic: WsTopic, key: string) {
