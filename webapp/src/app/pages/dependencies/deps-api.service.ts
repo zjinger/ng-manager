@@ -1,7 +1,13 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core';
-import { DepGroup, DepItem, DepsResp } from '@models/deps.model';
+import { DepItem, DepsResp } from '@models/deps.model';
 import { ProjectNodeRequirement } from '@pages/tasks/node-version/node-version.service';
+import type {
+  InstallDepRequestDto,
+  OkResponseDto,
+  ProjectDepsResultDto,
+  UninstallDepRequestDto,
+} from '@yinuo-ngm/protocol';
 import { map, Observable } from 'rxjs';
 
 @Injectable({
@@ -11,27 +17,27 @@ export class DepsApiService {
   api = inject(ApiClient)
 
   getDeps(projectId: string): Observable<{ items: DepItem[]; meta: DepsResp['meta'] }> {
-    return this.api.get<DepsResp>(`/api/deps/list/${projectId}`).pipe(
+    return this.api.get<ProjectDepsResultDto>(`/api/deps/list/${projectId}`).pipe(
       map((res) => {
         const items: DepItem[] = [
-          ...res.dependencies.map((x) => ({ ...x, group: "dependencies" as const })),
-          ...res.devDependencies.map((x) => ({ ...x, group: "devDependencies" as const })),
+          ...res.dependencies,
+          ...res.devDependencies,
         ];
         return { items, meta: res.meta };
       })
     );
   }
 
-  install(projectId: string, body: { name: string; group: DepGroup; target: "required" | "latest" | "custom"; version?: string }) {
-    return this.api.post(`/api/deps/install/${projectId}`, body);
+  install(projectId: string, body: InstallDepRequestDto) {
+    return this.api.post<OkResponseDto>(`/api/deps/install/${projectId}`, body);
   }
 
-  uninstall(projectId: string, body: { name: string; group: DepGroup }) {
-    return this.api.post(`/api/deps/uninstall/${projectId}`, body);
+  uninstall(projectId: string, body: UninstallDepRequestDto) {
+    return this.api.post<OkResponseDto>(`/api/deps/uninstall/${projectId}`, body);
   }
 
   installDevtools(projectId: string) {
-    return this.api.post(`/api/deps/devtools/install/${projectId}`, { tool: "devtools" });
+    return this.api.post<OkResponseDto>(`/api/deps/devtools/install/${projectId}`, { tool: "devtools" });
   }
 
   

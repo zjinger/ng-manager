@@ -1,51 +1,94 @@
 import type { FastifyInstance } from "fastify";
+import type {
+    DepItemDto,
+    InstallDepRequestDto,
+    ProjectDepsMetaDto,
+    UninstallDepRequestDto,
+    ProjectDepsResultDto,
+    OkResponseDto,
+} from "@yinuo-ngm/protocol";
+import type { DepsService } from "@yinuo-ngm/deps";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
+
+function toDepItemDto(item: import("@yinuo-ngm/deps").DepItem): DepItemDto {
+    return {
+        name: item.name,
+        current: item.current,
+        required: item.required,
+        latest: item.latest,
+        installed: item.installed,
+        hasUpdate: item.hasUpdate,
+        group: item.group,
+    };
+}
+
+function toProjectDepsMetaDto(meta: import("@yinuo-ngm/deps").ProjectDepsResult["meta"]): ProjectDepsMetaDto {
+    return {
+        packageManager: meta.packageManager,
+        registryOnline: meta.registryOnline,
+        voltaConfig: meta.voltaConfig,
+        enginesNode: meta.enginesNode,
+    };
+}
+
+function toProjectDepsResultDto(result: import("@yinuo-ngm/deps").ProjectDepsResult): ProjectDepsResultDto {
+    return {
+        dependencies: result.dependencies.map(toDepItemDto),
+        devDependencies: result.devDependencies.map(toDepItemDto),
+        meta: toProjectDepsMetaDto(result.meta),
+    };
+}
 
 export default async function depsRoutes(fastify: FastifyInstance) {
+    const deps = fastify.core.deps as DepsService;
 
-    fastify.get("/list/:projectId", async (req) => {
-        const { projectId } = req.params as any;
-        const data = await fastify.core.deps.list(projectId);
-        return data;
-    });
+    fastify.get<{ Params: { projectId: string } }>(
+        "/list/:projectId",
+        async (req): Promise<ProjectDepsResultDto> => {
+            const { projectId } = req.params;
+            const result = await deps.list(projectId);
+            return toProjectDepsResultDto(result);
+        }
+    );
 
-    fastify.post("/install/:projectId", async (req) => {
-        const { projectId } = req.params as any;
-        const body = req.body as {
-            name: string;
-            group: "dependencies" | "devDependencies";
-            target: "required" | "latest" | "custom";
-            version?: string;
-        };
+    fastify.post<{ Params: { projectId: string }; Body: Partial<InstallDepRequestDto> }>(
+        "/install/:projectId",
+        async (req): Promise<OkResponseDto> => {
+            const { projectId } = req.params;
+            const body = req.body as Partial<InstallDepRequestDto>;
+            if (!body.name || !body.group || !body.target) {
+                throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing required fields: name, group, target");
+            }
+            await deps.install(projectId, {
+                name: body.name,
+                group: body.group,
+                target: body.target,
+                version: body.version,
+            });
+            return { ok: true };
+        }
+    );
 
-        await fastify.core.deps.install(projectId, body);
-        return { ok: true };
-    });
+    fastify.post<{ Params: { projectId: string }; Body: Partial<UninstallDepRequestDto> }>(
+        "/uninstall/:projectId",
+        async (req): Promise<OkResponseDto> => {
+            const { projectId } = req.params;
+            const body = req.body as Partial<UninstallDepRequestDto>;
+            if (!body.name || !body.group) {
+                throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing required fields: name, group");
+            }
+            await deps.uninstall(projectId, {
+                name: body.name,
+                group: body.group,
+            });
+            return { ok: true };
+        }
+    );
 
-    fastify.post("/uninstall/:projectId", async (req) => {
-        const { projectId } = req.params as any;
-        const body = req.body as {
-            name: string;
-            group: "dependencies" | "devDependencies";
-        };
-
-        await fastify.core.deps.uninstall(projectId, body);
-        return { ok: true };
-    });
-
-    fastify.post("/devtools/install/:projectId", async (req) => {
-        // // 先给最小实现：安装一组推荐包（可按需要改）
-        // const { projectId } = req.params as any;
-        // const project = await fastify.core.project.get(projectId);
-
-        // // 举例：eslint/prettier（也可以换成你自己的 devtools 集合）
-        // const pkgs = ["eslint", "prettier"];
-        // for (const name of pkgs) {
-        //     await fastify.core.deps.install(projectId, {
-        //         name,
-        //         group: "devDependencies",
-        //         target: "latest",
-        //     });
-        // }
-        return { ok: true };
-    });
+    fastify.post<{ Params: { projectId: string } }>(
+        "/devtools/install/:projectId",
+        async (): Promise<OkResponseDto> => {
+            return { ok: true };
+        }
+    );
 }
