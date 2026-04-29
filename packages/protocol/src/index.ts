@@ -6,3 +6,7 @@ export * from "./ws.nginx.types";
 export * from "./event";
 export * from "./task";
 export * from "./project";
+export * from "./nginx";
+export * from "./config";
+export * from "./deps";
+export * from "./api";

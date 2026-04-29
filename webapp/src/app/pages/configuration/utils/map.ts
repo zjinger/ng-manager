@@ -3,13 +3,13 @@ import { ConfigNavNodeVM } from "../models/config-ui.model";
 
 function mapResolvedToNav(catalog: ResolvedDomain[]): ConfigNavNodeVM[] {
     return catalog
-        .sort((a, b) => (a.domain?.nav?.order ?? 0) - (b.domain?.nav?.order ?? 0))
+        .sort((a, b) => (a.nav?.order ?? 0) - (b.nav?.order ?? 0))
         .map(d => ({
-            id: d.domain.id,
+            id: d.domainId,
             type: "domain",
-            label: d.domain.label,
-            icon: d.domain.icon,
-            description: d.domain.description,
+            label: d.label,
+            icon: d.icon,
+            description: d.description,
             children: (d.docs ?? []).map((x: any) => ({
                 id: x.spec.id,
                 type: "doc",

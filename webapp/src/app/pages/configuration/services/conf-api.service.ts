@@ -1,6 +1,14 @@
 import { inject, Injectable } from "@angular/core";
 import { ApiClient } from "@core/api";
-import { DomainSchemaDiffResult, DomainSchemaDoc, ResolvedDomain } from "../models";
+import { ResolvedDomain } from "../models";
+import type {
+  DiffSchemaRequestDto,
+  DomainSchemaDiffResultDto,
+  DomainSchemaDocDto,
+  OpenDocResponseDto,
+  WriteSchemaRequestDto,
+  WriteSchemaResponseDto,
+} from "@yinuo-ngm/protocol";
 
 @Injectable({ providedIn: "root" })
 export class ConfApiService {
@@ -11,21 +19,23 @@ export class ConfApiService {
   }
   // /openInEditor/:projectId/:docId
   openInEditor(projectId: string, docId: string) {
-    return this.api.post(
+    return this.api.post<OpenDocResponseDto>(
       `/api/config/openInEditor/${projectId}/${encodeURIComponent(docId)}`,
       {}
     );
   }
 
   writeDomainSchema(projectId: string, domainId: string, vm: any) {
-    return this.api.post(`/api/config/writeSchema/${projectId}/${domainId}`, { vm });
+    const body: WriteSchemaRequestDto = { vm };
+    return this.api.post<WriteSchemaResponseDto>(`/api/config/writeSchema/${projectId}/${domainId}`, body);
   }
 
   getDomainSchemas(projectId: string, domainId: string) {
-    return this.api.get<DomainSchemaDoc>(`/api/config/getDomainSchema/${projectId}/${domainId}`)
+    return this.api.get<DomainSchemaDocDto>(`/api/config/getDomainSchema/${projectId}/${domainId}`)
   }
 
   diffDomainSchema(projectId: string, domainId: string, vm: any) {
-    return this.api.post<DomainSchemaDiffResult>(`/api/config/diffSchema/${projectId}/${domainId}`, { vm });
+    const body: DiffSchemaRequestDto = { vm };
+    return this.api.post<DomainSchemaDiffResultDto>(`/api/config/diffSchema/${projectId}/${domainId}`, body);
   }
 }

@@ -137,7 +137,7 @@ export class ProjectConfComponent {
 
   activeDomain = computed(() => {
     const did = this.activeDomainId();
-    return (this.catalog() ?? []).find(x => x.domain.id === did) ?? null;
+    return (this.catalog() ?? []).find(x => x.domainId === did) ?? null;
   });
 
   activeDocs = computed(() => this.activeDomain()?.docs ?? []);
@@ -177,7 +177,7 @@ export class ProjectConfComponent {
     this.api.getCatalog(pid).subscribe({
       next: (catalog) => {
         this.catalog.set(catalog);
-        const firstDomainId = catalog[0]?.domain?.id ?? "";
+        const firstDomainId = catalog[0]?.domainId ?? "";
         if (firstDomainId) {
           this.activeDomainId.set(firstDomainId);
           this.loadDomainSchema(firstDomainId);

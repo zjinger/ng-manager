@@ -1,4 +1,4 @@
-import { type ConfigCodec } from "./config-domain.model";
+import type { ConfigCodec, DomainSchemaDiffResultDto } from "@yinuo-ngm/protocol";
 
 export interface ConfigSchema {
     id: string;
@@ -51,12 +51,4 @@ export interface DomainSchemaContext {
     writeFile(relPath: string, codec: ConfigCodec, next: any): Promise<void>;
 }
 
-export interface DomainSchemaDiffResult {
-    /** 写回 domain docs（docId） */
-    docPatch?: Record<string, any>;
-    /**
-     * 写回引用文件（relPath）
-     * patch 会被 deepMerge 回 base 后写入
-     */
-    filePatch?: Array<{ relPath: string; codec: ConfigCodec; patch: any }>;
-}
+export type DomainSchemaDiffResult = DomainSchemaDiffResultDto;
