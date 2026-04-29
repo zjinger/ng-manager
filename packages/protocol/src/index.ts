@@ -11,3 +11,4 @@ export * from "./config";
 export * from "./deps";
 export * from "./api";
 export * from "./sprite";
+export * from "./svn";

@@ -62,7 +62,8 @@ export async function apiClientCollectionsRoutes(fastify: FastifyInstance) {
                     (a.name ?? "").localeCompare(b.name ?? "")
             ).map(toApiRequestEntityDto);
 
-            return { collections: cols, requests: reqs } as CollectionsBundleDto;
+            const response: CollectionsBundleDto = { collections: cols, requests: reqs };
+            return response;
         }
     );
 

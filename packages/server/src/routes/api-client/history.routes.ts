@@ -54,7 +54,8 @@ export async function apiClientHistoryRoutes(fastify: FastifyInstance) {
                 maxCount: body.maxCount,
             });
 
-            return { removed } as PurgeHistoryResultDto;
+            const response: PurgeHistoryResultDto = { removed };
+            return response;
         }
     );
 }

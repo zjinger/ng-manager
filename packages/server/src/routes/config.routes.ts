@@ -49,11 +49,20 @@ function toConfigFileReadResultDto(result: import("@yinuo-ngm/config").ConfigFil
 }
 
 function toDomainSchemaDocDto<VM>(doc: import("@yinuo-ngm/config").DomainSchemaDoc<VM>): DomainSchemaDocDto<VM> {
-    return doc as DomainSchemaDocDto<VM>;
+    return {
+        domainId: doc.domainId,
+        schema: doc.schema,
+        vm: doc.vm,
+        options: doc.options,
+        meta: doc.meta,
+    };
 }
 
 function toDomainSchemaDiffResultDto(result: import("@yinuo-ngm/config").DomainSchemaDiffResult): DomainSchemaDiffResultDto {
-    return result as DomainSchemaDiffResultDto;
+    return {
+        docPatch: result.docPatch,
+        filePatch: result.filePatch,
+    };
 }
 
 export default async function configRoutes(fastify: FastifyInstance) {
@@ -91,7 +100,8 @@ export default async function configRoutes(fastify: FastifyInstance) {
                 const { projectId, docId } = req.params;
                 const { filePath } = await config.openDoc(projectId, docId);
                 await openFolder(filePath, { editor: 'code' });
-                return { ok: true, filePath } as OpenDocResponseDto;
+                const response: OpenDocResponseDto = { ok: true, filePath };
+                return response;
             } catch (e: unknown) {
                 throw new CoreError(CoreErrorCodes.EDITOR_LAUNCH_FAILED, e instanceof Error ? e.message : "openInEditor failed");
             }
@@ -116,7 +126,8 @@ export default async function configRoutes(fastify: FastifyInstance) {
                 throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.vm");
             }
             await config.writeDomainSchema(projectId, domainId, vm);
-            return { projectId, domainId } as WriteSchemaResponseDto;
+            const response: WriteSchemaResponseDto = { projectId, domainId };
+            return response;
         }
     );
 

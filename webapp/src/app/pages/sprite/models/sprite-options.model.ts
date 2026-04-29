@@ -1,4 +1,5 @@
 import { SpriteConfig, SpritesmithOptionsAlgorithm } from "@models/sprite.model";
+import type { SvnCheckoutOptions as SvnCheckoutOptionsDto } from "@models/svn.model";
 
 export type GenerateSpriteOptions = {
     // 资源分组，默认为空表示不分组
@@ -19,13 +20,5 @@ export type GenerateSpriteOptions = {
     concurrency?: number;
 }
 
-export type SvnCheckoutOptions = {
-    // 是否强制重拉取
-    forceRefresh?: boolean;
-    // 需要拉取的资源类型，默认为全部
-    types?: ('icons' | 'images')[];
-    // 拉取后是否自动生成雪碧图
-    generateAfterCheckout?: boolean;
-
-}
+export type SvnCheckoutOptions = SvnCheckoutOptionsDto;
 
