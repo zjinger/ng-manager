@@ -39,7 +39,7 @@ export class RdStore {
   private readonly projectMembersState = this.projectContextStore.currentProjectMembers;
   private readonly queryState = signal<RdListQuery>({
     page: 1,
-    pageSize: 10,
+    pageSize: 20,
     stageId: '',
     status: [],
     type: [],

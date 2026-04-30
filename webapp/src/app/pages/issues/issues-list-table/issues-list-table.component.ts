@@ -1,4 +1,12 @@
-import { Component, effect, input, output } from '@angular/core';
+import {
+  Component,
+  effect,
+  input,
+  output,
+  ViewChild,
+  ElementRef,
+  afterNextRender,
+} from '@angular/core';
 import {
   IssueEntity,
   IssueListQuery,
@@ -20,6 +28,7 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { set } from 'lodash';
 import { parseDescriptionImage } from '@app/utils/md-text';
+import { ScrollableTableListComponent } from '@app/shared/components/scrollable-table-list/scrollable-table-list.component';
 
 @Component({
   selector: 'app-issues-list-table',
@@ -30,6 +39,7 @@ import { parseDescriptionImage } from '@app/utils/md-text';
     NzPopoverModule,
     NzTooltipModule,
     EllipsisTextComponent,
+    ScrollableTableListComponent,
     CommonModule,
   ],
   templateUrl: './issues-list-table.component.html',
@@ -42,6 +52,16 @@ export class IssuesListTableComponent {
   readonly selectItem = output<IssueEntity>();
   readonly loading = input(false);
   readonly query = input.required<IssueListQuery>();
+
+  // 列表表头配置
+  readonly columns = [
+    { title: '序号', width: 66 },
+    { title: '标题', width: '', nzEllipsis: true },
+    { title: '状态', width: 100 },
+    { title: '提报人', width: 100 },
+    { title: '负责人', width: 120, nzEllipsis: true },
+    { title: '更新时间', width: 140 },
+  ];
 
   // hover 预览状态
   readonly hoveredPreview = signal<{
@@ -66,7 +86,6 @@ export class IssuesListTableComponent {
     return map;
   });
 
-  // readonly currentTitleOverflowing = signal(false);
   readonly titleOverflowPreview = signal<{ issueId: string; overflowing: boolean } | null>(null);
 
   getStatusLabel(status: IssueStatus) {

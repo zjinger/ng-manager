@@ -1,4 +1,13 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  input,
+  output,
+  signal,
+  ViewChild,
+} from '@angular/core';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import {
   ProjectMemberEntity,
@@ -22,7 +31,8 @@ import { EllipsisTextComponent } from '@app/shared/components/ellipsis-text/elli
 import { parseDescriptionImage } from '@app/utils/md-text';
 import { ImageHoverPreviewComponent } from '@app/shared/components/image-hover-preview/image-hover-preview.component';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
-
+import { ScrollableTableListComponent } from '@app/shared/components/scrollable-table-list/scrollable-table-list.component';
+import { ScrollableTableListColumn } from '@app/shared/components/scrollable-table-list/scrollable-table-list.component';
 @Component({
   selector: 'app-rd-list-table',
   imports: [
@@ -34,79 +44,55 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     CommonModule,
     EllipsisTextComponent,
     ImageHoverPreviewComponent,
+    ScrollableTableListComponent,
   ],
   template: `
-    <nz-table
-      [nzData]="rdItems()"
-      [nzFrontPagination]="false"
-      [nzShowPagination]="false"
-      [nzShowSizeChanger]="true"
-      class="rd-list"
-    >
-      <thead>
-        <tr>
-          <th nzWidth="66px">序号</th>
-          <th [nzEllipsis]="true">研发项</th>
-          <th nzWidth="100px">阶段</th>
-          <!-- <th nzWidth="7%">状态</th> -->
-          <!-- <th nzWidth="7%">优先级</th> -->
-          <th nzWidth="100px">创建人</th>
-          <th nzWidth="140px">执行人</th>
-          <th nzWidth="150px">进度</th>
-          <th nzWidth="140px">更新时间</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (item of rdItems(); track item.id) {
-          <tr
-            (click)="selectItem.emit(item)"
-            [class.selected-row]="item.id === selectedItem()?.id"
-            class="rd-item-row"
-          >
-            <td>{{ $index + 1 + query().pageSize * (query().page - 1) }}</td>
-            <td class="title-col">
-              <div class="rd-title-wrap">
-                <div class="title-text">
-                  <app-ellipsis-text [lines]="1" [enableToggle]="false">
-                    <span class="rd-no">[{{ item.rdNo }}]</span>
-                    <span class="rd-title"> {{ item.title }} </span>
-                  </app-ellipsis-text>
-
-                  <nz-tag [nzColor]="getStatusColor(item.status)">
-                    {{ getStatusLabel(item.status) }}
-                  </nz-tag>
-                  <nz-tag [nzColor]="getPriorityColor(item.priority)">
-                    {{ getPriorityLabel(item.priority) }}
-                  </nz-tag>
-                </div>
-                <div class="des-text">
-                  <app-ellipsis-text [lines]="2" [enableToggle]="false">
-                    {{ previewSummary(item) }}
-                  </app-ellipsis-text>
-                </div>
-              </div>
-              <app-image-hover-preview
-                [src]="previewImageUrl(item)"
-                [previewSrc]="previewImageUrl(item)"
-              ></app-image-hover-preview>
-            </td>
-            <td>{{ getStagesName(item.stageId) || '-' }}</td>
-            <td>{{ item.creatorName || '-' }}</td>
-            <td>
-              @if (memberNamesText(item); as memberNames) {
+    <app-scrollable-table-list [columns]="columns" [loading]="loading()" [data]="rdItems()">
+      @for (item of rdItems(); track item.id) {
+        <tr (click)="selectItem.emit(item)" [class.selected]="item.id === selectedItem()?.id">
+          <td>{{ $index + 1 + query().pageSize * (query().page - 1) }}</td>
+          <td class="title-col">
+            <div class="rd-title-wrap">
+              <div class="title-text">
                 <app-ellipsis-text [lines]="1" [enableToggle]="false">
-                  <span class="rd-member-text" [nz-tooltip]="memberNames">{{ memberNames }}</span>
+                  <span class="rd-no">[{{ item.rdNo }}]</span>
+                  <span class="rd-title"> {{ item.title }} </span>
                 </app-ellipsis-text>
-              } @else {
-                <span class="no-member">未指派</span>
-              }
-            </td>
-            <td><nz-progress [nzPercent]="item.progress" nzSize="small" /></td>
-            <td>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</td>
-          </tr>
-        }
-      </tbody>
-    </nz-table>
+
+                <nz-tag [nzColor]="getStatusColor(item.status)">
+                  {{ getStatusLabel(item.status) }}
+                </nz-tag>
+                <nz-tag [nzColor]="getPriorityColor(item.priority)">
+                  {{ getPriorityLabel(item.priority) }}
+                </nz-tag>
+              </div>
+              <div class="des-text">
+                <app-ellipsis-text [lines]="2" [enableToggle]="false">
+                  {{ previewSummary(item) }}
+                </app-ellipsis-text>
+              </div>
+            </div>
+            <app-image-hover-preview
+              [src]="previewImageUrl(item)"
+              [previewSrc]="previewImageUrl(item)"
+            ></app-image-hover-preview>
+          </td>
+          <td>{{ getStagesName(item.stageId) || '-' }}</td>
+          <td>{{ item.creatorName || '-' }}</td>
+          <td>
+            @if (memberNamesText(item); as memberNames) {
+              <app-ellipsis-text [lines]="1" [enableToggle]="false">
+                <span class="rd-member-text" [nz-tooltip]="memberNames">{{ memberNames }}</span>
+              </app-ellipsis-text>
+            } @else {
+              <span class="no-member">未指派</span>
+            }
+          </td>
+          <td><nz-progress [nzPercent]="item.progress" nzSize="small" /></td>
+          <td>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</td>
+        </tr>
+      }
+    </app-scrollable-table-list>
   `,
   styles: `
     .title-col {
@@ -139,24 +125,6 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         margin-left: auto;
       }
     }
-    .rd-item-row {
-      cursor: pointer;
-      &.selected-row > td:first-child {
-        border-left: 4px solid #91d5ff;
-      }
-
-      &.selected-row > td {
-        background-color: #e6f7ff;
-      }
-
-      &.selected-row:hover > td {
-        background-color: #e6f7ff;
-      }
-    }
-
-    ::ng-deep .nz-disable-td.ant-table-cell{
-      border-bottom: 0;
-    }
   `,
 })
 export class RdListTableComponent {
@@ -165,8 +133,21 @@ export class RdListTableComponent {
   readonly projectId = input<string | null>(null);
   readonly selectedItem = input<RdItemEntity | null>(null);
   readonly stages = input<RdStageEntity[]>([]);
-  readonly selectItem = output<RdItemEntity>();
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly loading = input(false);
+
+  readonly selectItem = output<RdItemEntity>();
+
+  // 列表表头
+  readonly columns: ScrollableTableListColumn[] = [
+    { title: '序号', width: '66px' },
+    { title: '研发项', ellipsis: true },
+    { title: '阶段', width: '100px' },
+    { title: '创建人', width: '100px' },
+    { title: '执行人', width: '140px' },
+    { title: '进度', width: '150px' },
+    { title: '更新时间', width: '140px' },
+  ];
 
   readonly previewMap = computed(() => {
     const map = new Map<string, { summary: string; imageUrl: string | null; imageAlt: string }>();

@@ -15,7 +15,7 @@ import { IssueApiService } from '../services/issue-api.service';
 
 const DEFAULT_QUERY: IssueListQuery = {
   page: 1,
-  pageSize: 10,
+  pageSize: 20,
   keyword: '',
   projectId: '',
   status: [],

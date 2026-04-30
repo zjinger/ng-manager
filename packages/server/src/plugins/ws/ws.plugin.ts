@@ -47,7 +47,7 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
 
     // nginx log
     const nginxHandler = createNginxTopicHandler(
-        { logService: fastify.core.nginx.log },
+        { logService: fastify.core.nginx?.log },
         () => clients.values()
     );
     router.register(nginxHandler);

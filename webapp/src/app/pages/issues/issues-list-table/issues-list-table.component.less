@@ -61,22 +61,6 @@
   white-space: nowrap;
 }
 
-.issue-item-row {
-  cursor: pointer;
-
-  &.selected-row > td:first-child {
-    border-left: 4px solid #91d5ff;
-  }
-
-  &.selected-row:hover > td {
-    background-color: #e6f7ff;
-  }
-
-  &.selected-row > td {
-    background-color: #e6f7ff;
-  }
-}
-
 .preview-float {
   padding: 6px;
   position: fixed;
@@ -115,14 +99,4 @@
 
 ::ng-deep .issue-tooltip-popover .ant-popover-arrow-content {
   background-color: rgba(0, 0, 0, 0.8);
-}
-
-::ng-deep .ant-table-thead.ng-star-inserted {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-::ng-deep .nz-disable-td.ant-table-cell {
-  border-bottom: 0;
 }

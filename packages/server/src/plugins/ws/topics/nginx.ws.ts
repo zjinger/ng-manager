@@ -29,7 +29,7 @@ export function createNginxTopicHandler(
         }
     };
 
-    logService.on("log", onLog);
+    logService?.on("log", onLog);
 
     return {
         topic: "nginx",
