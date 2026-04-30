@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import {
   ProjectMemberEntity,
@@ -152,6 +152,10 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       &.selected-row:hover > td {
         background-color: #e6f7ff;
       }
+    }
+
+    ::ng-deep .nz-disable-td.ant-table-cell{
+      border-bottom: 0;
     }
   `,
 })

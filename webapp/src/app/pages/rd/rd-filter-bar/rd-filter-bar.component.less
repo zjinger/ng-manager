@@ -1,9 +1,8 @@
 .toolbar {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid #f0f0f0;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
-  margin-top: 16px;
   padding: 16px;
   .search-form {
     // width: 62%;
@@ -41,4 +40,10 @@
       justify-content: end;
     }
   }
+}
+
+::ng-deep .ant-table-thead.ng-star-inserted{
+  position: sticky;
+  top: 0; 
+  z-index: 100;
 }

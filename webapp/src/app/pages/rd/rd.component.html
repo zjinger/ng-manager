@@ -16,13 +16,12 @@
                 [selectedItem]="currentRdItem()" [stages]="stages()" [members]="members()"
                 (selectItem)="selectItem($event)"></app-rd-list-board>
             }
-
-            <div class=" pagination-bar">
-                <nz-pagination [nzPageIndex]="query().page" [nzTotal]="total()" [nzShowTotal]="totalTemplate"
-                    [nzPageSize]="query().pageSize" nzShowSizeChanger nzShowQuickJumper
-                    (nzPageIndexChange)="onPageChange($event)" (nzPageSizeChange)="onPageSizeChange($event)" />
-                <ng-template #totalTemplate let-total>共 {{ total }} 条记录</ng-template>
-            </div>
+        </div>
+        <div class="pagination-bar">
+            <nz-pagination [nzPageIndex]="query().page" [nzTotal]="total()" [nzShowTotal]="totalTemplate"
+                [nzPageSize]="query().pageSize" nzShowSizeChanger nzShowQuickJumper
+                (nzPageIndexChange)="onPageChange($event)" (nzPageSizeChange)="onPageSizeChange($event)" />
+            <ng-template #totalTemplate let-total>共 {{ total }} 条记录</ng-template>
         </div>
     </div>
 
