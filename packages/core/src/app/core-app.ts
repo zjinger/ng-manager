@@ -50,7 +50,7 @@ export async function createCoreApp(
     if (depsHandle.dispose) {
         disposables.push(depsHandle.dispose);
     }
-    const dashboard = createDashboardDomain(infra.dataDir);
+    const dashboard = await createDashboardDomain(infra.dataDir);
     const config = createConfigDomain(project);
     const sprite = createSpriteDomain({
         dataDir: infra.dataDir,

@@ -18,6 +18,7 @@
     { "path": "../task" },
     { "path": "../sprite" },
     { "path": "../bootstrap" },
-    { "path": "../deps" }
+    { "path": "../deps" },
+    { "path": "../storage" }
   ]
 }

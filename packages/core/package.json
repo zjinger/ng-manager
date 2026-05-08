@@ -31,6 +31,7 @@
     "@yinuo-ngm/process": "^0.1.2",
     "@yinuo-ngm/project": "^0.1.1",
     "@yinuo-ngm/protocol": "^0.1.1",
+    "@yinuo-ngm/storage": "^0.1.5",
     "@yinuo-ngm/shared": "^0.1.1",
     "@yinuo-ngm/sprite": "^0.1.8",
     "@yinuo-ngm/svn": "^0.1.2",
