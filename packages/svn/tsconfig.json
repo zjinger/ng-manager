@@ -13,6 +13,7 @@
     { "path": "../logger" },
     { "path": "../process" },
     { "path": "../project" },
-    { "path": "../protocol" }
+    { "path": "../protocol" },
+    { "path": "../storage" }
   ]
 }
