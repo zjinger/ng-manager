@@ -7,21 +7,21 @@ export const routes: Routes = [
     path: 'login',
     loadComponent: () =>
       import('./features/auth/pages/login-page/login-page.component').then(
-        (m) => m.LoginPageComponent
+        (m) => m.LoginPageComponent,
       ),
   },
   {
     path: 'public/docs/:projectKey/:slug',
     loadComponent: () =>
       import('./features/content/pages/public-document-page/public-document-page.component').then(
-        (m) => m.PublicDocumentPageComponent
+        (m) => m.PublicDocumentPageComponent,
       ),
   },
   {
     path: 'public/docs/:slug',
     loadComponent: () =>
       import('./features/content/pages/public-document-legacy-page/public-document-legacy-page.component').then(
-        (m) => m.PublicDocumentLegacyPageComponent
+        (m) => m.PublicDocumentLegacyPageComponent,
       ),
   },
   // {
@@ -37,23 +37,21 @@ export const routes: Routes = [
           path: 'public/surveys/:slug',
           loadComponent: () =>
             import('./features/survey/pages/public-survey-form-page/public-survey-form-page.component').then(
-              (m) => m.PublicSurveyFormPageComponent
+              (m) => m.PublicSurveyFormPageComponent,
             ),
         },
       ]
     : []),
-  {
-    path: 'public/report',
-    loadChildren: () =>
-      import('./features/public-report/routes').then((m) => m.PUBLIC_REPORT_ROUTES),
-  },
+  // {
+  //   path: 'public/report',
+  //   loadChildren: () =>
+  //     import('./features/public-report/routes').then((m) => m.PUBLIC_REPORT_ROUTES),
+  // },
   {
     path: '',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./core/layout/app-shell/app-shell.component').then(
-        (m) => m.AppShellComponent
-      ),
+      import('./core/layout/app-shell/app-shell.component').then((m) => m.AppShellComponent),
     children: [
       {
         path: '',
@@ -62,69 +60,64 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
-        loadChildren: () =>
-          import('./features/dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
+        loadChildren: () => import('./features/dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
       },
-      {
-        path: 'report',
-        pathMatch: 'full',
-        redirectTo: 'reports',
-      },
-      {
-        path: 'reports',
-        loadChildren: () =>
-          import('./features/report/routes').then((m) => m.REPORT_ROUTES),
-      },
+      // {
+      //   path: 'report',
+      //   pathMatch: 'full',
+      //   redirectTo: 'reports',
+      // },
+      // {
+      //   path: 'reports',
+      //   loadChildren: () => import('./features/report/routes').then((m) => m.REPORT_ROUTES),
+      // },
       {
         path: 'issues',
-        loadChildren: () =>
-          import('./features/issues/routes').then((m) => m.ISSUE_ROUTES),
+        loadChildren: () => import('./features/issues/routes').then((m) => m.ISSUE_ROUTES),
       },
       {
         path: 'rd',
-        loadChildren: () =>
-          import('./features/rd/routes').then((m) => m.RD_ROUTES),
+        loadChildren: () => import('./features/rd/routes').then((m) => m.RD_ROUTES),
       },
       {
         path: 'content',
-        loadChildren: () =>
-          import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
+        loadChildren: () => import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
       },
-      {
-        path: 'feedbacks',
-        loadChildren: () =>
-          import('./features/feedback/routes').then((m) => m.FEEDBACK_ROUTES),
-      },
+
+      ...(FEATURE_FLAGS.feedback
+        ? [
+            {
+              path: 'feedbacks',
+              loadChildren: () =>
+                import('./features/feedback/routes').then((m) => m.FEEDBACK_ROUTES),
+            },
+          ]
+        : []),
+
       ...(FEATURE_FLAGS.survey
         ? [
             {
               path: 'surveys',
-              loadChildren: () =>
-                import('./features/survey/routes').then((m) => m.SURVEY_ROUTES),
+              loadChildren: () => import('./features/survey/routes').then((m) => m.SURVEY_ROUTES),
             },
           ]
         : []),
       {
         path: 'projects',
-        loadChildren: () =>
-          import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
+        loadChildren: () => import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
       },
       {
         path: 'users',
-        loadChildren: () =>
-          import('./features/users/routes').then((m) => m.USER_ROUTES),
+        loadChildren: () => import('./features/users/routes').then((m) => m.USER_ROUTES),
       },
       {
         path: 'shared-config',
         loadChildren: () =>
-          import('./features/shared-config/routes').then(
-            (m) => m.SHARED_CONFIG_ROUTES
-          ),
+          import('./features/shared-config/routes').then((m) => m.SHARED_CONFIG_ROUTES),
       },
       {
         path: 'profile',
-        loadChildren: () =>
-          import('./features/profile/routes').then((m) => m.PROFILE_ROUTES),
+        loadChildren: () => import('./features/profile/routes').then((m) => m.PROFILE_ROUTES),
       },
       {
         path: 'notifications',

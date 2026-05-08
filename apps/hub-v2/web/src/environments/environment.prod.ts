@@ -1,5 +1,6 @@
 export const APP_CONFIG = {
   production: true,
   environment: 'PROD',
-  surveyEnabled: false
+  surveyEnabled: false,
+  feedbackEnabled:false
 };
