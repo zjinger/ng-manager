@@ -1,2 +1,2 @@
-export * from "./json-sprite.repo";
 export { createSpriteDomain } from "./create-sprite-domain";
+export * from "./sqlite-sprite.repo";

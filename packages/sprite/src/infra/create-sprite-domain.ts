@@ -1,7 +1,9 @@
+import path from "node:path";
 import type { SystemLogService } from "@yinuo-ngm/logger";
 import type { ProjectService } from "@yinuo-ngm/project";
+import { createSqliteDatabase } from "@yinuo-ngm/storage";
 import { SpriteServiceImpl } from "../domain/sprite.service.impl";
-import { JsonSpriteRepo } from "./json-sprite.repo";
+import { SqliteSpriteRepo } from "./sqlite-sprite.repo";
 import type { SpriteService } from "../domain/sprite.service";
 
 export function createSpriteDomain(opts: {
@@ -10,7 +12,10 @@ export function createSpriteDomain(opts: {
     project: ProjectService;
     sysLog: SystemLogService;
 }): SpriteService {
-    const spriteRepo = new JsonSpriteRepo(opts.dataDir);
+    const spriteRepo = new SqliteSpriteRepo(
+        createSqliteDatabase(path.join(opts.dataDir, "sprite.db")),
+        opts.dataDir
+    );
     return new SpriteServiceImpl(
         spriteRepo,
         opts.project,
