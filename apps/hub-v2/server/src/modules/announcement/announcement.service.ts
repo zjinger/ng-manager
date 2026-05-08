@@ -140,7 +140,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
 
   async getById(id: string, ctx: RequestContext): Promise<AnnouncementEntity> {
     const entity = this.requireById(id);
-    await this.requireProjectOrAdmin(entity.projectId, ctx, "get announcement");
+    await this.requireReadableAnnouncement(entity, ctx, "get announcement");
     return entity;
   }
 
@@ -254,6 +254,18 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden: project admin only`, 403);
     }
     requireAdmin(ctx);
+  }
+
+  private async requireReadableAnnouncement(entity: AnnouncementEntity, ctx: RequestContext, action: string): Promise<void> {
+    if (entity.status !== "published") {
+      await this.requireProjectOrAdmin(entity.projectId, ctx, action);
+      return;
+    }
+
+    if (entity.projectId) {
+      await this.projectAccess.requireProjectAccess(entity.projectId, ctx, action);
+      return;
+    }
   }
 
   private resolveActorId(ctx: RequestContext): string | null {
