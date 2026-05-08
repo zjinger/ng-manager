@@ -1,11 +1,23 @@
 import * as path from "path";
 import { ProjectServiceImpl } from "../project.service.impl";
 import type { Project } from "../project.types";
-import { migrateProjectsIfNeeded, ProjectRepoJsonKv } from "./index";
-import { JsonFileKvRepo } from "@yinuo-ngm/storage";
+import { migrateProjectsIfNeeded } from "./project.migrate";
+import { ProjectRepoJsonKv } from "./project.repo.jsonkv";
+import {
+    createSqliteDatabase,
+    migrateJsonKvFileIfNeeded,
+    SqliteJsonKvRepo,
+} from "@yinuo-ngm/storage";
 
 export async function createProjectDomain(dataDir: string) {
-    const projectKv = new JsonFileKvRepo<Project>(path.join(dataDir, "projects.kv.json"));
+    const db = createSqliteDatabase(path.join(dataDir, "projects.db"));
+    const projectKv = new SqliteJsonKvRepo<Project>(db, { tableName: "projects" });
+
+    await migrateJsonKvFileIfNeeded({
+        sourceFile: path.join(dataDir, "projects.kv.json"),
+        target: projectKv,
+        backup: true,
+    });
 
     await migrateProjectsIfNeeded({
         dbDir: dataDir,
