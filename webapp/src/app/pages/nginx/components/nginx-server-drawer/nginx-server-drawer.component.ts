@@ -638,8 +638,8 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         return false;
       }
 
-      const currentServerId = this.mode === 'edit' ? this.editingServer?.id : null;
-      const targetPorts = new Set((this.formData.listen || []).map(item => String(item).trim()).filter(Boolean));
+      const currentServer = this.mode === 'edit' ? this.editingServer : null;
+      const targetPorts = new Set((this.formData.listen || []).map(item => this.extractListenPort(item)).filter(Boolean));
       if (!targetPorts.size) {
         return false;
       }
@@ -648,7 +648,7 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
         if (!server.enabled) {
           return false;
         }
-        if (currentServerId && server.id === currentServerId) {
+        if (currentServer && this.isSameEditingServer(server, currentServer)) {
           return false;
         }
         const listenPorts = new Set((server.listen || []).map(item => this.extractListenPort(item)).filter(Boolean));
@@ -671,12 +671,35 @@ export class NginxServerDrawerComponent implements OnChanges, OnDestroy {
     }
   }
 
+  private isSameEditingServer(server: NginxServer, editingServer: NginxServer): boolean {
+    if (server.id && editingServer.id && server.id === editingServer.id) {
+      return true;
+    }
+
+    const serverConfig = String(server.configText || '').trim();
+    const editingConfig = String(editingServer.configText || '').trim();
+    return Boolean(serverConfig && editingConfig && serverConfig === editingConfig);
+  }
+
   private extractListenPort(listen: string): string {
-    const matched = String(listen || '').match(/(\d{1,5})/);
-    if (!matched) {
+    const text = String(listen || '').trim();
+    if (!text || /^unix:/i.test(text)) {
       return '';
     }
-    return String(Number(matched[1]));
+    const headToken = text.split(/\s+/)[0] || '';
+    let portToken = headToken;
+
+    if (/^\[[^\]]+\]:\d+$/.test(headToken)) {
+      portToken = headToken.replace(/^.*\]:/, '');
+    } else if (headToken.includes(':')) {
+      portToken = headToken.slice(headToken.lastIndexOf(':') + 1);
+    }
+
+    const port = Number(portToken);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      return '';
+    }
+    return String(port);
   }
 
   private async validateBeforeSave(isManual: boolean = false): Promise<boolean> {
