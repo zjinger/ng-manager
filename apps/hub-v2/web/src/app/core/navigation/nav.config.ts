@@ -8,7 +8,7 @@ export const NAV_ITEMS: NavSection[] = [
     items: [
       { key: 'dashboard', label: '工作台', icon: 'dashboard', route: '/dashboard', exact: true },
       { key: 'dashboard-board', label: '数据看板', icon: 'line-chart', route: '/dashboard/board' },
-      { key: 'reports', label: '积木报表', icon: 'robot', route: '/reports' },
+      // { key: 'reports', label: '积木报表', icon: 'robot', route: '/reports' },
     ],
   },
   {
@@ -26,16 +26,16 @@ export const NAV_ITEMS: NavSection[] = [
       { key: 'content', label: '内容管理', icon: 'read', route: '/content' },
     ],
   },
-  {
-    key: 'feedback-center',
-    label: '反馈中心',
-    items: [
-      { key: 'feedbacks', label: '系统反馈', icon: 'message', route: '/feedbacks' },
-      ...(FEATURE_FLAGS.survey
-        ? [{ key: 'surveys', label: '问卷调查', icon: 'form', route: '/surveys' }]
-        : []),
-    ],
-  },
+  // {
+  //   key: 'feedback-center',
+  //   label: '反馈中心',
+  //   items: [
+  //     { key: 'feedbacks', label: '系统反馈', icon: 'message', route: '/feedbacks' },
+  //     ...(FEATURE_FLAGS.survey
+  //       ? [{ key: 'surveys', label: '问卷调查', icon: 'form', route: '/surveys' }]
+  //       : []),
+  //   ],
+  // },
   {
     key: 'management',
     label: '系统管理',
