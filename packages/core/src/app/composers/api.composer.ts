@@ -1,27 +1,60 @@
 import * as path from "path";
 import {
     ApiClient,
-    JsonEnvRepo,
-    JsonHistoryRepo,
-    JsonRequestRepo,
+    SqliteCollectionRepo,
+    SqliteEnvRepo,
+    SqliteHistoryRepo,
+    SqliteRequestRepo,
     NodeHttpClient,
     VariableResolver,
     ApiSendService,
-    JsonCollectionRepo
+} from "@yinuo-ngm/api";
+import {
+    createSqliteDatabase,
+} from "@yinuo-ngm/storage";
+import {
+    migrateJsonlHistoryFilesIfNeeded,
+    migrateScopedJsonKvFilesIfNeeded,
 } from "@yinuo-ngm/api";
 import type { CoreDomainHandle } from "./types";
 
 const API_SUBDIR = "api";
 
-export function createApiClientDomain(opts: {
+export async function createApiClientDomain(opts: {
     dataDir: string;
-}): CoreDomainHandle<ApiClient> {
+}): Promise<CoreDomainHandle<ApiClient>> {
     const rootDir = path.join(opts.dataDir, API_SUBDIR);
+    const db = createSqliteDatabase(path.join(rootDir, "api.db"));
 
-    const repo = new JsonRequestRepo({ rootDir });
-    const envRepo = new JsonEnvRepo({ rootDir });
-    const historyRepo = new JsonHistoryRepo({ rootDir });
-    const collectionRepo = new JsonCollectionRepo({ rootDir });
+    const repo = new SqliteRequestRepo(db);
+    const envRepo = new SqliteEnvRepo(db);
+    const historyRepo = new SqliteHistoryRepo(db);
+    const collectionRepo = new SqliteCollectionRepo(db);
+
+    await migrateScopedJsonKvFilesIfNeeded({
+        rootDir,
+        fileName: "requests.kv.json",
+        target: repo,
+        backup: true,
+    });
+    await migrateScopedJsonKvFilesIfNeeded({
+        rootDir,
+        fileName: "envs.kv.json",
+        target: envRepo,
+        backup: true,
+    });
+    await migrateScopedJsonKvFilesIfNeeded({
+        rootDir,
+        fileName: "collections.kv.json",
+        target: collectionRepo,
+        backup: true,
+    });
+    await migrateJsonlHistoryFilesIfNeeded({
+        rootDir,
+        fileName: "history.jsonl",
+        target: historyRepo,
+        backup: true,
+    });
 
     const http = new NodeHttpClient();
     const resolver = new VariableResolver();

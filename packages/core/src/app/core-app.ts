@@ -68,7 +68,7 @@ export async function createCoreApp(
     if (nginxHandle.dispose) {
         disposables.push(nginxHandle.dispose);
     }
-    const apiClientHandle = createApiClientDomain({ dataDir: infra.dataDir });
+    const apiClientHandle = await createApiClientDomain({ dataDir: infra.dataDir });
 
     return {
         events: infra.events,
