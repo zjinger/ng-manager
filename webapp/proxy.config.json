@@ -1,6 +1,6 @@
 {
   "/api": {
-    "target": "http://localhost:3210",
+    "target": "http://localhost:3211",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
@@ -15,13 +15,13 @@
     }
   },
   "/sprites": {
-    "target": "http://localhost:3210",
+    "target": "http://localhost:3211",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
   },
   "/ws": {
-    "target": "ws://localhost:3210",
+    "target": "ws://localhost:3211",
     "ws": true,
     "secure": false,
     "changeOrigin": true,

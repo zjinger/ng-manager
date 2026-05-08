@@ -1,8 +1,15 @@
 import path from "path";
 import os from "os";
 
+const isDevMode =
+    process.env.NODE_ENV === "development" ||
+    process.env.npm_lifecycle_event === "dev" ||
+    process.env.npm_lifecycle_event === "dev:server";
+
+const defaultPort = isDevMode ? 3211 : 3210;
+
 export const env = {
-    port: Number(process.env.NGM_SERVER_PORT || 3210),
+    port: Number(process.env.NGM_SERVER_PORT || defaultPort),
     host: process.env.NGM_SERVER_HOST || "127.0.0.1",
     dataDir:
         process.env.NGM_DATA_DIR ||
