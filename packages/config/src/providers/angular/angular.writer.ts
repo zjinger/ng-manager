@@ -8,8 +8,8 @@ function validatePatches(patches: ConfigPatch[]): void {
   for (const patch of patches) {
     if (!patch.path.startsWith("/") && patch.path !== "") {
       throw new CoreError(
-        `Invalid config patch path: ${patch.path}`,
         CoreErrorCodes.CONFIG_PATCH_INVALID,
+        `Invalid config patch path: ${patch.path}`,
         { patch }
       );
     }
@@ -61,7 +61,7 @@ export async function writeAngularWorkspace(input: {
       backupPath: result.backupPath
     };
   } catch (error) {
-    throw new CoreError(`配置写入失败：${absPath}`, CoreErrorCodes.CONFIG_WRITE_FAILED, {
+    throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, `配置写入失败：${absPath}`, {
       filePath: absPath,
       cause: error
     });

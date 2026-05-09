@@ -60,8 +60,8 @@ export class EnvConfigProvider implements ConfigProvider {
     const rawPatch = ctx.patches.find((patch) => patch.op === "set" && patch.path === "/raw");
     if (!rawPatch || typeof rawPatch.value !== "string") {
       throw new CoreError(
-        "Env Provider 当前仅支持通过 /raw 进行 set 写入",
         CoreErrorCodes.CONFIG_UNSUPPORTED_WRITE,
+        "Env Provider 当前仅支持通过 /raw 进行 set 写入",
         { type: this.type, patches: ctx.patches }
       );
     }

@@ -69,16 +69,16 @@ async function walkExtends(input: {
 
   if (input.visited.has(normalizedAbsPath)) {
     throw new CoreError(
-      `检测到 tsconfig extends 循环引用：${displayPath}`,
       CoreErrorCodes.CONFIG_READ_FAILED,
+      `检测到 tsconfig extends 循环引用：${displayPath}`,
       { filePath: displayPath }
     );
   }
 
   if (input.depth > input.maxDepth) {
     throw new CoreError(
-      `tsconfig extends 超过最大深度（${input.maxDepth}）：${displayPath}`,
       CoreErrorCodes.CONFIG_READ_FAILED,
+      `tsconfig extends 超过最大深度（${input.maxDepth}）：${displayPath}`,
       { filePath: displayPath }
     );
   }

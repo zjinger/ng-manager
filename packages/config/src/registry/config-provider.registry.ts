@@ -7,8 +7,8 @@ export class ConfigProviderRegistry {
   register(provider: ConfigProvider): void {
     if (this.providers.has(provider.type)) {
       throw new CoreError(
-        `Config provider already registered: ${provider.type}`,
         CoreErrorCodes.CONFIG_PATCH_INVALID,
+        `Config provider already registered: ${provider.type}`,
         { type: provider.type }
       );
     }
@@ -28,8 +28,8 @@ export class ConfigProviderRegistry {
     const provider = this.get(type);
     if (!provider) {
       throw new CoreError(
-        `Config provider not found: ${type}`,
         CoreErrorCodes.CONFIG_PROVIDER_NOT_FOUND,
+        `Config provider not found: ${type}`,
         { type }
       );
     }

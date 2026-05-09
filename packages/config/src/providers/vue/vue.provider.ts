@@ -82,8 +82,8 @@ export class VueConfigProvider implements ConfigProvider {
 
   async write(_ctx: ConfigWriteContext): Promise<ConfigWriteResult> {
     throw new CoreError(
-      "当前 Provider 不支持写入：vue-project",
       CoreErrorCodes.CONFIG_UNSUPPORTED_WRITE,
+      "当前 Provider 不支持写入：vue-project",
       { type: this.type }
     );
   }

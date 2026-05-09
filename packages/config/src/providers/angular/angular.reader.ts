@@ -27,7 +27,7 @@ export async function readAngularWorkspace(input: {
       schema: buildAngularSchema(viewModel.selectedProjectName)
     };
   } catch (error) {
-    throw new CoreError(`配置解析失败：${absPath}`, CoreErrorCodes.CONFIG_READ_FAILED, {
+    throw new CoreError(CoreErrorCodes.CONFIG_READ_FAILED, `配置解析失败：${absPath}`, {
       filePath: absPath,
       cause: error
     });

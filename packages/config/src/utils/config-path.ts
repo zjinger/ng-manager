@@ -5,15 +5,15 @@ export function normalizeConfigFilePath(filePath: string): string {
   const normalized = filePath.replace(/\\/g, "/").replace(/^\.\//, "");
   if (!normalized || normalized === ".") {
     throw new CoreError(
-      `Invalid config file path: ${filePath}`,
       CoreErrorCodes.CONFIG_FILE_OUT_OF_PROJECT,
+      `Invalid config file path: ${filePath}`,
       { filePath }
     );
   }
   if (path.isAbsolute(normalized)) {
     throw new CoreError(
-      `Config file path must be relative: ${filePath}`,
       CoreErrorCodes.CONFIG_FILE_OUT_OF_PROJECT,
+      `Config file path must be relative: ${filePath}`,
       { filePath }
     );
   }
@@ -28,8 +28,8 @@ export function resolveProjectFile(projectRoot: string, filePath: string): strin
 
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new CoreError(
-      `Config file path is out of project: ${filePath}`,
       CoreErrorCodes.CONFIG_FILE_OUT_OF_PROJECT,
+      `Config file path is out of project: ${filePath}`,
       { projectRoot, filePath }
     );
   }
@@ -43,8 +43,8 @@ export function toRelativeConfigPath(projectRoot: string, absPath: string): stri
   const relative = path.relative(root, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new CoreError(
-      `Config file path is out of project: ${absPath}`,
       CoreErrorCodes.CONFIG_FILE_OUT_OF_PROJECT,
+      `Config file path is out of project: ${absPath}`,
       { projectRoot, absPath }
     );
   }

@@ -54,8 +54,8 @@ export class ConfigService {
     const provider = this.registry.require(input.type);
     if (!provider.preview) {
       throw new CoreError(
-        `Provider does not support preview: ${input.type}`,
         CoreErrorCodes.CONFIG_UNSUPPORTED_PREVIEW,
+        `Provider does not support preview: ${input.type}`,
         { type: input.type }
       );
     }

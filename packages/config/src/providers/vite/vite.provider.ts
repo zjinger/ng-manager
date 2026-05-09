@@ -44,8 +44,8 @@ export class ViteConfigProvider implements ConfigProvider {
 
   async write(_ctx: ConfigWriteContext): Promise<ConfigWriteResult> {
     throw new CoreError(
-      "当前 Provider 不支持写入：vite-config",
       CoreErrorCodes.CONFIG_UNSUPPORTED_WRITE,
+      "当前 Provider 不支持写入：vite-config",
       { type: this.type }
     );
   }
