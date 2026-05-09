@@ -39,9 +39,9 @@ import { ConfigItemComponent } from './config-item-component';
 })
 export class ConfigSectionComponent {
   @Input() schema?: ConfigSchema;
-  @Input() vm!: any;
-  @Input() options: Record<string, any> = {};
-  @Output() vmChange = new EventEmitter<any>();
+  @Input() vm: unknown = null;
+  @Input() options: Record<string, unknown> = {};
+  @Output() vmChange = new EventEmitter<unknown>();
 
   get(item: ConfigField) {
     const directValue = getByPath(this.vm, item.path);

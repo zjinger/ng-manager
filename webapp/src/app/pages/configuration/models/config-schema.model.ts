@@ -23,8 +23,7 @@ export interface ConfigField {
     | "json"
     | "path"
     | "table"
-    | "readonly"
-    | string;
+    | "readonly";
   path: string;
   description?: string;
   placeholder?: string;

@@ -88,9 +88,9 @@ import { ConfigField } from '../models';
 })
 export class ConfigItemComponent {
   @Input() item!: ConfigField;
-  @Input() value: any;
+  @Input() value: unknown;
   @Input() options: Array<{ label: string; value: string | number | boolean }> = [];
-  @Output() valueChange = new EventEmitter<any>();
+  @Output() valueChange = new EventEmitter<unknown>();
 
   isReadonly(): boolean {
     return !!this.item?.readonly || this.item?.type === 'readonly' || this.item?.type === 'table';

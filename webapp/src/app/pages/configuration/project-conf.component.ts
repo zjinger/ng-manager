@@ -19,6 +19,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { firstValueFrom } from 'rxjs';
 import { ConfigChangeBarComponent } from './components/config-change-bar-component';
 import { ConfigNavComponent } from './components/config-nav-component';
+import { ConfigPreviewModalComponent } from './components/config-preview-modal.component';
 import { ConfigSectionComponent } from './components/config-section-component';
 import { ConfigDetectResult, ConfigDocument, ConfigNavNodeVM, ConfigPatch } from './models';
 import { ConfApiService } from './services';
@@ -50,6 +51,7 @@ import { getByPath } from './utils/path';
     ConfigChangeBarComponent,
     NzModalModule,
     ConfigSectionComponent,
+    ConfigPreviewModalComponent,
     PageLayoutComponent,
   ],
   styleUrl: './project-conf.component.less',
@@ -120,8 +122,8 @@ export class ProjectConfComponent {
   selectedFilePath = signal<string | null>(null);
 
   document = signal<ConfigDocument | null>(null);
-  editingData = signal<any | null>(null);
-  baselineData = signal<any | null>(null);
+  editingData = signal<unknown>(null);
+  baselineData = signal<unknown>(null);
 
   navNodes = computed<ConfigNavNodeVM[]>(() => {
     const merged = this.detects().map((detect) => {
@@ -270,21 +272,8 @@ export class ProjectConfComponent {
 
       this.modal.create({
         nzTitle: '变更预览',
-        nzContent: `
-          <div style="max-height:60vh; overflow:auto;">
-            ${preview.patches
-              .map(
-                (item) => `
-                <div style="padding:8px 0; border-bottom:1px solid #f0f0f0;">
-                  <div style="font-weight:600;">${item.op}</div>
-                  <div style="opacity:.85; margin-top:4px;">${item.path}</div>
-                  <pre style="margin:6px 0;">value : ${this.safeStringify(item.value)}</pre>
-                </div>
-              `
-              )
-              .join('')}
-          </div>
-        `,
+        nzContent: ConfigPreviewModalComponent,
+        nzData: { patches: preview.patches },
         nzFooter: null,
         nzWidth: 900,
       });
@@ -349,13 +338,5 @@ export class ProjectConfComponent {
         this.msg.error('打开配置文件失败');
       }
     });
-  }
-
-  private safeStringify(v: any): string {
-    try {
-      return JSON.stringify(v, null, 2);
-    } catch {
-      return String(v);
-    }
   }
 }
