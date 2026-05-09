@@ -1,5 +1,5 @@
 import type { ConfigProvider } from "../../types/config-provider";
-import type { ConfigDetectContext, ConfigReadContext, ConfigSchemaContext, ConfigWriteContext, ConfigPreviewContext } from "../../types/config-detect";
+import type { ConfigDetectContext, ConfigReadContext, ConfigWriteContext, ConfigPreviewContext } from "../../types/config-detect";
 import type { ConfigSchema } from "../../types/config-schema";
 import { detectAngularWorkspace, resolveAngularWorkspaceFile } from "./angular.detector";
 import { readAngularWorkspace } from "./angular.reader";
@@ -17,7 +17,7 @@ export class AngularWorkspaceConfigProvider implements ConfigProvider {
     return readAngularWorkspace(ctx);
   }
 
-  async getSchema(ctx: ConfigSchemaContext): Promise<ConfigSchema> {
+  async getSchema(ctx: ConfigReadContext): Promise<ConfigSchema> {
     const doc = await readAngularWorkspace(ctx);
     return doc.schema;
   }

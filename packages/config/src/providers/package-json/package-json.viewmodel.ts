@@ -1,3 +1,5 @@
+import { asObject } from "../../utils/config-utils";
+
 export interface PackageJsonViewModel {
   name?: string;
   version?: string;
@@ -22,13 +24,6 @@ function asRecordOfString(input: unknown): Record<string, string> {
     }
   }
   return out;
-}
-
-function asObject(input: unknown): Record<string, unknown> {
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
 }
 
 export function buildPackageJsonViewModel(raw: unknown): PackageJsonViewModel {

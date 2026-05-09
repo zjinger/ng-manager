@@ -107,6 +107,7 @@ export const httpStatusMap: Record<number, number> = {
   [CoreErrorCodes.CONFIG_PATCH_INVALID]: 400,
   [CoreErrorCodes.CONFIG_UNSUPPORTED_WRITE]: 400,
   [CoreErrorCodes.CONFIG_UNSUPPORTED_PREVIEW]: 400,
+  [CoreErrorCodes.CONFIG_PROVIDER_ALREADY_EXISTS]: 409,
 
   // Core - FS 5XXXX
   [CoreErrorCodes.FS_EXISTS_FAILED]: 500,

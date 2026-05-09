@@ -1,9 +1,7 @@
 import type { ConfigProvider } from "../../types/config-provider";
-import type { ConfigDetectContext, ConfigReadContext, ConfigSchemaContext, ConfigWriteContext } from "../../types/config-detect";
+import type { ConfigDetectContext, ConfigReadContext } from "../../types/config-detect";
 import type { ConfigDocument } from "../../types/config-document";
-import type { ConfigWriteResult } from "../../types/config-patch";
 import type { ConfigSchema } from "../../types/config-schema";
-import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { detectViteConfig, resolveViteFilePath } from "./vite.detector";
 import { readViteConfig } from "./vite.reader";
 import { buildViteSchema } from "./vite.schema";
@@ -38,15 +36,7 @@ export class ViteConfigProvider implements ConfigProvider {
     };
   }
 
-  async getSchema(_ctx: ConfigSchemaContext): Promise<ConfigSchema> {
+  async getSchema(_ctx: ConfigReadContext): Promise<ConfigSchema> {
     return buildViteSchema();
-  }
-
-  async write(_ctx: ConfigWriteContext): Promise<ConfigWriteResult> {
-    throw new CoreError(
-      CoreErrorCodes.CONFIG_UNSUPPORTED_WRITE,
-      "当前 Provider 不支持写入：vite-config",
-      { type: this.type }
-    );
   }
 }

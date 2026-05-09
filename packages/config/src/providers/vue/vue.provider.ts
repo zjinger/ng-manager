@@ -1,10 +1,8 @@
 import { readJsonFile } from "@yinuo-ngm/shared";
 import type { ConfigProvider } from "../../types/config-provider";
-import type { ConfigDetectContext, ConfigReadContext, ConfigSchemaContext, ConfigWriteContext } from "../../types/config-detect";
+import type { ConfigDetectContext, ConfigReadContext } from "../../types/config-detect";
 import type { ConfigDocument } from "../../types/config-document";
-import type { ConfigWriteResult } from "../../types/config-patch";
 import type { ConfigSchema } from "../../types/config-schema";
-import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { resolveProjectFile } from "../../utils/config-path";
 import { detectVueProject } from "./vue.detector";
 import { buildVueSchema } from "./vue.schema";
@@ -89,15 +87,7 @@ export class VueConfigProvider implements ConfigProvider {
     };
   }
 
-  async getSchema(_ctx: ConfigSchemaContext): Promise<ConfigSchema> {
+  async getSchema(_ctx: ConfigReadContext): Promise<ConfigSchema> {
     return buildVueSchema();
-  }
-
-  async write(_ctx: ConfigWriteContext): Promise<ConfigWriteResult> {
-    throw new CoreError(
-      CoreErrorCodes.CONFIG_UNSUPPORTED_WRITE,
-      "当前 Provider 不支持写入：vue-project",
-      { type: this.type }
-    );
   }
 }

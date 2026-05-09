@@ -2,7 +2,6 @@ import type { ConfigProvider } from "../../types/config-provider";
 import type {
   ConfigDetectContext,
   ConfigReadContext,
-  ConfigSchemaContext,
   ConfigWriteContext
 } from "../../types/config-detect";
 import type { ConfigDocument } from "../../types/config-document";
@@ -45,7 +44,7 @@ export class EnvConfigProvider implements ConfigProvider {
     };
   }
 
-  async getSchema(_ctx: ConfigSchemaContext): Promise<ConfigSchema> {
+  async getSchema(_ctx: ConfigReadContext): Promise<ConfigSchema> {
     return buildEnvSchema();
   }
 

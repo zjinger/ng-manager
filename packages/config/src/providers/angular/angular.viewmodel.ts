@@ -1,3 +1,5 @@
+import { asObject } from "../../utils/config-utils";
+
 export interface AngularWorkspaceViewModel {
   defaultProject?: string;
   selectedProjectName?: string;
@@ -22,13 +24,6 @@ export interface AngularTargetViewModel {
   defaultConfiguration?: string;
   options?: Record<string, unknown>;
   configurations?: Record<string, unknown>;
-}
-
-function asObject(input: unknown): Record<string, unknown> {
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
 }
 
 function toTarget(name: string, input: unknown): AngularTargetViewModel | undefined {

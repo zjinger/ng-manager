@@ -3,7 +3,6 @@ import type {
   ConfigDetectContext,
   ConfigPreviewContext,
   ConfigReadContext,
-  ConfigSchemaContext,
   ConfigWriteContext
 } from "../../types/config-detect";
 import type { ConfigSchema } from "../../types/config-schema";
@@ -24,7 +23,7 @@ export class TsConfigProvider implements ConfigProvider {
     return readTsConfig(ctx);
   }
 
-  async getSchema(_ctx: ConfigSchemaContext): Promise<ConfigSchema> {
+  async getSchema(_ctx: ConfigReadContext): Promise<ConfigSchema> {
     return buildTsConfigSchema();
   }
 

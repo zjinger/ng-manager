@@ -1,3 +1,5 @@
+import { asObject } from "../../utils/config-utils";
+
 export interface TsConfigInheritanceItem {
   filePath: string;
   exists: boolean;
@@ -15,13 +17,6 @@ export interface TsConfigViewModel {
   exclude?: string[];
   references?: Array<{ path: string }>;
   inheritance: TsConfigInheritanceItem[];
-}
-
-function asObject(input: unknown): Record<string, unknown> {
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
 }
 
 function asStringArray(input: unknown): string[] | undefined {

@@ -58,6 +58,7 @@
  * | 40011   | CONFIG_PATCH_INVALID          | 配置补丁非法        | 400         |
  * | 40012   | CONFIG_UNSUPPORTED_WRITE      | Provider 不支持写入 | 400         |
  * | 40013   | CONFIG_UNSUPPORTED_PREVIEW    | Provider 不支持预览 | 400         |
+ * | 40014   | CONFIG_PROVIDER_ALREADY_EXISTS | Provider 已注册    | 409         |
  * |          【FS 5XXXX】                                 |
  * | 50001   | FS_EXISTS_FAILED             | 存在性检查失败      | 500         |
  * |          【Dashboard 6XXXX】                         |
@@ -135,6 +136,7 @@ export const CoreErrorCodes = {
   CONFIG_PATCH_INVALID: 40011,
   CONFIG_UNSUPPORTED_WRITE: 40012,
   CONFIG_UNSUPPORTED_PREVIEW: 40013,
+  CONFIG_PROVIDER_ALREADY_EXISTS: 40014,
   // Task 32XXX
   TASK_NOT_FOUND: 32001,
   RUN_NOT_FOUND: 32002,

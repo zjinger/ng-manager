@@ -7,7 +7,7 @@ export class ConfigProviderRegistry {
   register(provider: ConfigProvider): void {
     if (this.providers.has(provider.type)) {
       throw new CoreError(
-        CoreErrorCodes.CONFIG_PATCH_INVALID,
+        CoreErrorCodes.CONFIG_PROVIDER_ALREADY_EXISTS,
         `Config provider already registered: ${provider.type}`,
         { type: provider.type }
       );

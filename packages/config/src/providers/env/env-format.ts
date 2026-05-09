@@ -5,11 +5,15 @@ export interface EnvEntry {
   sensitive?: boolean;
 }
 
-const SENSITIVE_MARKERS = ["TOKEN", "SECRET", "PASSWORD", "PASS", "KEY"];
+const SENSITIVE_MARKERS = ["TOKEN", "SECRET", "PASSWORD", "PASS"];
+const SENSITIVE_KEY_PATTERNS = [/_KEY$/, /^KEY_/, /_KEY_/, /^API_KEY$/, /^SSH_KEY$/];
 
 function isSensitiveKey(key: string): boolean {
   const upper = key.toUpperCase();
-  return SENSITIVE_MARKERS.some((marker) => upper.includes(marker));
+  if (SENSITIVE_MARKERS.some((marker) => upper.includes(marker))) {
+    return true;
+  }
+  return SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(upper));
 }
 
 export function parseEnvContent(content: string): EnvEntry[] {

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { deepMerge, fileExists, readJsoncFile } from "@yinuo-ngm/shared";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import { asObject } from "../../utils/config-utils";
 
 export interface ResolvedTsConfig {
   filePath: string;
@@ -18,13 +19,6 @@ interface WalkResult {
   raw: Record<string, unknown>;
   resolved: Record<string, unknown>;
   inheritance: TsConfigInheritanceItem[];
-}
-
-function asObject(input: unknown): Record<string, unknown> {
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
 }
 
 function mergeTsConfig(

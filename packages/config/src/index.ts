@@ -7,6 +7,7 @@ export * from "./types/config-error";
 
 export * from "./registry/config-provider.registry";
 export * from "./service/config.service";
+export * from "./utils/config-path";
 
 export * from "./providers/angular/angular-workspace.provider";
 export * from "./providers/tsconfig/tsconfig.provider";

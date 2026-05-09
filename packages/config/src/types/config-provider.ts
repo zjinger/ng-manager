@@ -4,7 +4,6 @@ import type {
   ConfigDetectResult,
   ConfigPreviewContext,
   ConfigReadContext,
-  ConfigSchemaContext,
   ConfigWriteContext
 } from "./config-detect";
 import type { ConfigPreviewResult, ConfigWriteResult } from "./config-patch";
@@ -17,7 +16,7 @@ export interface ConfigProvider {
 
   detect(ctx: ConfigDetectContext): Promise<ConfigDetectResult>;
   read(ctx: ConfigReadContext): Promise<ConfigDocument>;
-  getSchema(ctx: ConfigSchemaContext): Promise<ConfigSchema>;
+  getSchema(ctx: ConfigReadContext): Promise<ConfigSchema>;
   preview?(ctx: ConfigPreviewContext): Promise<ConfigPreviewResult>;
-  write(ctx: ConfigWriteContext): Promise<ConfigWriteResult>;
+  write?(ctx: ConfigWriteContext): Promise<ConfigWriteResult>;
 }

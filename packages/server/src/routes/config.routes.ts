@@ -1,6 +1,5 @@
-import path from "node:path";
 import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
-import type { ConfigPatch, ConfigService } from "@yinuo-ngm/config";
+import { resolveProjectFile, type ConfigPatch } from "@yinuo-ngm/config";
 import type { FastifyInstance } from "fastify";
 import { openFolder } from "../common/editor";
 
@@ -8,6 +7,29 @@ interface WriteConfigBody {
   type?: string;
   filePath?: string;
   patches?: ConfigPatch[];
+}
+
+const PATCH_OPS = new Set<ConfigPatch["op"]>(["set", "remove", "append", "merge"]);
+
+function isPatchValid(patch: unknown): patch is ConfigPatch {
+  if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
+    return false;
+  }
+
+  const candidate = patch as { op?: unknown; path?: unknown; value?: unknown };
+  if (typeof candidate.op !== "string" || !PATCH_OPS.has(candidate.op as ConfigPatch["op"])) {
+    return false;
+  }
+  if (typeof candidate.path !== "string" || candidate.path.length === 0) {
+    return false;
+  }
+  if (
+    (candidate.op === "set" || candidate.op === "append" || candidate.op === "merge") &&
+    candidate.value === undefined
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function ensureWriteBody(body: WriteConfigBody): {
@@ -21,6 +43,12 @@ function ensureWriteBody(body: WriteConfigBody): {
       "missing body.type/body.filePath/body.patches"
     );
   }
+  if (!body.patches.every(isPatchValid)) {
+    throw new GlobalError(
+      GlobalErrorCodes.BAD_REQUEST,
+      "invalid body.patches[] (require op/path/value)"
+    );
+  }
 
   return {
     type: body.type,
@@ -30,7 +58,7 @@ function ensureWriteBody(body: WriteConfigBody): {
 }
 
 export default async function configRoutes(fastify: FastifyInstance) {
-  const config = fastify.core.config as ConfigService;
+  const config = fastify.core.config;
 
   fastify.get("/providers", async () => {
     return config.listProviders();
@@ -89,10 +117,9 @@ export default async function configRoutes(fastify: FastifyInstance) {
       throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.filePath");
     }
     const project = await fastify.core.project.get(req.params.projectId);
-    const absPath = path.resolve(project.root, req.body.filePath);
+    const absPath = resolveProjectFile(project.root, req.body.filePath);
     await openFolder(absPath, { editor: "code" });
     return {
-      ok: true,
       filePath: absPath
     };
   });

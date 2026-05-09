@@ -7,11 +7,6 @@ export interface ConfigReadContext {
   filePath?: string;
 }
 
-export interface ConfigSchemaContext {
-  projectRoot: string;
-  filePath?: string;
-}
-
 export interface ConfigWriteContext {
   projectRoot: string;
   filePath: string;
