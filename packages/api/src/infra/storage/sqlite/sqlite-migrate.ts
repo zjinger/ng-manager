@@ -37,6 +37,26 @@ function backupFilePath(sourceFile: string) {
     return path.join(dir, `${base}.legacy.${Date.now()}${ext || ".json"}`);
 }
 
+function resolveSourceFile(sourceFile: string): { path: string; fromLegacy: boolean } | null {
+    if (fs.existsSync(sourceFile)) return { path: sourceFile, fromLegacy: false };
+
+    const dir = path.dirname(sourceFile);
+    if (!fs.existsSync(dir)) return null;
+
+    const ext = path.extname(sourceFile);
+    const base = path.basename(sourceFile, ext);
+    const prefix = `${base}.legacy.`;
+
+    const candidates = fs
+        .readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.startsWith(prefix))
+        .map((entry) => path.join(dir, entry.name))
+        .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+
+    if (candidates.length === 0) return null;
+    return { path: candidates[0], fromLegacy: true };
+}
+
 async function migrateScopedFileIfNeeded<T>(
     sourceFile: string,
     scope: ApiScope,
@@ -44,12 +64,13 @@ async function migrateScopedFileIfNeeded<T>(
     target: ScopedKvRepo<T>,
     backup: boolean
 ) {
-    if (!fs.existsSync(sourceFile)) return 0;
+    const resolved = resolveSourceFile(sourceFile);
+    if (!resolved) return 0;
 
     const existing = await target.list(scope, projectId);
     if (existing.length > 0) return 0;
 
-    const db = readJsonOrNull<DbShape<T>>(sourceFile);
+    const db = readJsonOrNull<DbShape<T>>(resolved.path);
     if (!db || db.version !== 1 || !db.items || typeof db.items !== "object") return 0;
 
     const entries = Object.entries(db.items);
@@ -57,9 +78,9 @@ async function migrateScopedFileIfNeeded<T>(
         await target.save(value, scope, projectId);
     }
 
-    if (backup) {
+    if (backup && !resolved.fromLegacy) {
         try {
-            fs.renameSync(sourceFile, backupFilePath(sourceFile));
+            fs.renameSync(resolved.path, backupFilePath(resolved.path));
         } catch { }
     }
 
@@ -98,12 +119,13 @@ async function migrateHistoryFileIfNeeded(
     target: ScopedHistoryRepo,
     backup: boolean
 ) {
-    if (!fs.existsSync(sourceFile)) return 0;
+    const resolved = resolveSourceFile(sourceFile);
+    if (!resolved) return 0;
 
     const existing = await target.list({ scope, projectId, limit: 1, offset: 0 });
     if (existing.length > 0) return 0;
 
-    const input = fs.createReadStream(sourceFile, { encoding: "utf8" });
+    const input = fs.createReadStream(resolved.path, { encoding: "utf8" });
     const rl = readline.createInterface({ input, crlfDelay: Infinity });
     let count = 0;
     for await (const line of rl) {
@@ -118,9 +140,9 @@ async function migrateHistoryFileIfNeeded(
         }
     }
 
-    if (backup) {
+    if (backup && !resolved.fromLegacy) {
         try {
-            fs.renameSync(sourceFile, backupFilePath(sourceFile));
+            fs.renameSync(resolved.path, backupFilePath(resolved.path));
         } catch { }
     }
 

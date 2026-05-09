@@ -10,7 +10,7 @@ import {
     ApiSendService,
 } from "@yinuo-ngm/api";
 import {
-    createSqliteDatabase,
+    type SqliteDatabase,
 } from "@yinuo-ngm/storage";
 import {
     migrateJsonlHistoryFilesIfNeeded,
@@ -22,9 +22,10 @@ const API_SUBDIR = "api";
 
 export async function createApiClientDomain(opts: {
     dataDir: string;
+    db: SqliteDatabase;
 }): Promise<CoreDomainHandle<ApiClient>> {
     const rootDir = path.join(opts.dataDir, API_SUBDIR);
-    const db = createSqliteDatabase(path.join(rootDir, "api.db"));
+    const db = opts.db;
 
     const repo = new SqliteRequestRepo(db);
     const envRepo = new SqliteEnvRepo(db);

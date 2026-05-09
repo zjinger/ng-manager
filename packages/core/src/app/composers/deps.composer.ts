@@ -10,17 +10,18 @@ import {
     NpmRegistryByCli,
     type LatestCacheSnapshot,
 } from "@yinuo-ngm/deps";
-import { createSqliteDatabase, migrateJsonKvFileIfNeeded, SqliteJsonKvRepo } from "@yinuo-ngm/storage";
+import { migrateJsonKvFileIfNeeded, type SqliteDatabase, SqliteJsonKvRepo } from "@yinuo-ngm/storage";
 import type { ProjectService } from "@yinuo-ngm/project";
 import type { CoreDomainHandle } from "./types";
 
 export async function createDepsDomain(opts: {
     cacheDir: string;
+    db: SqliteDatabase;
     project: ProjectService;
 }): Promise<CoreDomainHandle<DepsService>> {
     const latestRepo = new SqliteJsonKvRepo<LatestCacheSnapshot>(
-        createSqliteDatabase(path.join(opts.cacheDir, "deps.db")),
-        { tableName: "latest_cache_snapshots" }
+        opts.db,
+        { tableName: "deps_latest_cache_snapshots" }
     );
     const latestCache = new LatestCacheKv(latestRepo, "npm-latest", {
         ttlOkMs: 6 * 60 * 60 * 1000,

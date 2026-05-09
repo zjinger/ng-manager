@@ -4,13 +4,17 @@ import type { Project } from "../project.types";
 import { migrateProjectsIfNeeded } from "./project.migrate";
 import { ProjectRepoJsonKv } from "./project.repo.jsonkv";
 import {
-    createSqliteDatabase,
     migrateJsonKvFileIfNeeded,
+    type SqliteDatabase,
     SqliteJsonKvRepo,
 } from "@yinuo-ngm/storage";
 
-export async function createProjectDomain(dataDir: string) {
-    const db = createSqliteDatabase(path.join(dataDir, "projects.db"));
+export async function createProjectDomain(opts: {
+    dataDir: string;
+    db: SqliteDatabase;
+}) {
+    const dataDir = opts.dataDir;
+    const db = opts.db;
     const projectKv = new SqliteJsonKvRepo<Project>(db, { tableName: "projects" });
 
     await migrateJsonKvFileIfNeeded({

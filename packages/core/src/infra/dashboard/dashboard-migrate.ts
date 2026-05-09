@@ -20,6 +20,13 @@ function backupFilePath(sourceFile: string) {
     return path.join(dir, `${base}.legacy.${Date.now()}${ext || ".json"}`);
 }
 
+function normalizedProjectIdFromFileName(fileName: string) {
+    const withoutExt = fileName.endsWith(".json")
+        ? path.basename(fileName, ".json")
+        : fileName;
+    return withoutExt.replace(/\.legacy\.[0-9]+$/, "");
+}
+
 export async function migrateDashboardJsonFilesIfNeeded(
     opts: MigrateDashboardJsonFilesOptions
 ): Promise<{ count: number }> {
@@ -28,22 +35,22 @@ export async function migrateDashboardJsonFilesIfNeeded(
 
     const files = fs
         .readdirSync(dashboardDir, { withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+        .filter((entry) => entry.isFile() && (entry.name.endsWith(".json") || entry.name.includes(".legacy.")))
         .map((entry) => entry.name);
 
     let count = 0;
     for (const fileName of files) {
-        const projectId = path.basename(fileName, ".json");
-        const existing = await opts.target.load(projectId);
-        if (existing) continue;
-
         const sourceFile = path.join(dashboardDir, fileName);
         try {
             const raw = fs.readFileSync(sourceFile, "utf-8");
             const doc = JSON.parse(raw) as DashboardDocV1;
+            const projectId = String((doc as any)?.projectId ?? "").trim() || normalizedProjectIdFromFileName(fileName);
+            if (!projectId) continue;
+            const existing = await opts.target.load(projectId);
+            if (existing) continue;
             await opts.target.save(projectId, doc);
             count++;
-            if (opts.backup ?? true) {
+            if ((opts.backup ?? true) && !fileName.includes(".legacy.")) {
                 try {
                     fs.renameSync(sourceFile, backupFilePath(sourceFile));
                 } catch { }

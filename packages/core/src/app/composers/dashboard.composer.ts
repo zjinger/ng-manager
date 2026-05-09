@@ -1,10 +1,13 @@
-import * as path from "node:path";
 import { DashboardServiceImpl } from "../../domain/dashboard";
-import { createSqliteDatabase } from "@yinuo-ngm/storage";
+import type { SqliteDatabase } from "@yinuo-ngm/storage";
 import { SqliteDashboardRepo, migrateDashboardJsonFilesIfNeeded } from "../../infra/dashboard";
 
-export async function createDashboardDomain(dataDir: string) {
-    const db = createSqliteDatabase(path.join(dataDir, "dashboard.db"));
+export async function createDashboardDomain(opts: {
+    dataDir: string;
+    db: SqliteDatabase;
+}) {
+    const dataDir = opts.dataDir;
+    const db = opts.db;
     const repo = new SqliteDashboardRepo(db);
 
     await migrateDashboardJsonFilesIfNeeded({

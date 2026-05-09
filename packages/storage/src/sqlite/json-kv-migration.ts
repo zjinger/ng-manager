@@ -16,11 +16,42 @@ export interface MigrateJsonKvFileIfNeededResult {
     backupFile?: string;
 }
 
+interface ResolvedSourceFile {
+    path: string;
+    fromLegacy: boolean;
+}
+
 function buildBackupFile(sourceFile: string) {
     const dir = path.dirname(sourceFile);
     const ext = path.extname(sourceFile);
     const base = path.basename(sourceFile, ext);
     return path.join(dir, `${base}.legacy.${Date.now()}${ext || ".json"}`);
+}
+
+function resolveSourceFile(sourceFile: string): ResolvedSourceFile | null {
+    if (fs.existsSync(sourceFile)) {
+        return { path: sourceFile, fromLegacy: false };
+    }
+
+    const dir = path.dirname(sourceFile);
+    if (!fs.existsSync(dir)) return null;
+
+    const ext = path.extname(sourceFile);
+    const base = path.basename(sourceFile, ext);
+    const prefix = `${base}.legacy.`;
+
+    const candidates = fs
+        .readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.startsWith(prefix))
+        .map((entry) => path.join(dir, entry.name))
+        .sort((a, b) => {
+            const am = fs.statSync(a).mtimeMs;
+            const bm = fs.statSync(b).mtimeMs;
+            return bm - am;
+        });
+
+    if (candidates.length === 0) return null;
+    return { path: candidates[0], fromLegacy: true };
 }
 
 /**
@@ -30,7 +61,8 @@ function buildBackupFile(sourceFile: string) {
 export async function migrateJsonKvFileIfNeeded<T>(
     opts: MigrateJsonKvFileIfNeededOptions<T>
 ): Promise<MigrateJsonKvFileIfNeededResult> {
-    if (!fs.existsSync(opts.sourceFile)) {
+    const resolved = resolveSourceFile(opts.sourceFile);
+    if (!resolved) {
         return { migrated: false, count: 0 };
     }
 
@@ -39,17 +71,17 @@ export async function migrateJsonKvFileIfNeeded<T>(
         return { migrated: false, count: 0 };
     }
 
-    const db = readJsonOrNull<DbShape<T>>(opts.sourceFile);
+    const db = readJsonOrNull<DbShape<T>>(resolved.path);
     if (!db || db.version !== 1 || !db.items || typeof db.items !== "object") {
         return { migrated: false, count: 0 };
     }
 
     const entries = Object.entries(db.items);
     if (entries.length === 0) {
-        if (opts.backup ?? true) {
-            const backupFile = buildBackupFile(opts.sourceFile);
+        if ((opts.backup ?? true) && !resolved.fromLegacy) {
+            const backupFile = buildBackupFile(resolved.path);
             try {
-                fs.renameSync(opts.sourceFile, backupFile);
+                fs.renameSync(resolved.path, backupFile);
                 return { migrated: true, count: 0, backupFile };
             } catch {
                 return { migrated: true, count: 0 };
@@ -62,10 +94,10 @@ export async function migrateJsonKvFileIfNeeded<T>(
         await opts.target.set(id, value);
     }
 
-    if (opts.backup ?? true) {
-        const backupFile = buildBackupFile(opts.sourceFile);
+    if ((opts.backup ?? true) && !resolved.fromLegacy) {
+        const backupFile = buildBackupFile(resolved.path);
         try {
-            fs.renameSync(opts.sourceFile, backupFile);
+            fs.renameSync(resolved.path, backupFile);
             return { migrated: true, count: entries.length, backupFile };
         } catch {
             return { migrated: true, count: entries.length };

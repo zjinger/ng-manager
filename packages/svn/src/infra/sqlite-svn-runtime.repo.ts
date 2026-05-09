@@ -22,15 +22,38 @@ function backupFilePath(sourceFile: string) {
     return path.join(dir, `${base}.legacy.${Date.now()}${ext || ".json"}`);
 }
 
+function resolveSourceFile(sourceFile: string): { path: string; fromLegacy: boolean } | null {
+    if (fs.existsSync(sourceFile)) return { path: sourceFile, fromLegacy: false };
+
+    const dir = path.dirname(sourceFile);
+    if (!fs.existsSync(dir)) return null;
+
+    const ext = path.extname(sourceFile);
+    const base = path.basename(sourceFile, ext);
+    const prefix = `${base}.legacy.`;
+
+    const candidates = fs
+        .readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.startsWith(prefix))
+        .map((entry) => path.join(dir, entry.name))
+        .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+
+    if (candidates.length === 0) return null;
+    return { path: candidates[0], fromLegacy: true };
+}
+
 export function migrateLegacySvnRuntimeIfNeeded(db: SqliteDatabase, runtimeFile: string): number {
     createRuntimeTable(db);
 
     const hasRows = db.prepare(`SELECT 1 FROM svn_runtime LIMIT 1`).get() != null;
-    if (hasRows || !fs.existsSync(runtimeFile)) return 0;
+    if (hasRows) return 0;
+
+    const resolved = resolveSourceFile(runtimeFile);
+    if (!resolved) return 0;
 
     let raw = "";
     try {
-        raw = fs.readFileSync(runtimeFile, "utf-8");
+        raw = fs.readFileSync(resolved.path, "utf-8");
     } catch {
         return 0;
     }
@@ -61,9 +84,9 @@ export function migrateLegacySvnRuntimeIfNeeded(db: SqliteDatabase, runtimeFile:
     });
     tx();
 
-    if (parsed) {
+    if (parsed && !resolved.fromLegacy) {
         try {
-            fs.renameSync(runtimeFile, backupFilePath(runtimeFile));
+            fs.renameSync(resolved.path, backupFilePath(resolved.path));
         } catch { }
     }
 

@@ -14,6 +14,7 @@ import {
     createTaskDomain,
 } from "./composers";
 import { createProjectDomain } from "@yinuo-ngm/project";
+import { createAppStorageContext } from "@yinuo-ngm/storage";
 
 /**
  * 创建 CoreApp
@@ -26,7 +27,12 @@ export async function createCoreApp(
     const disposables: Array<() => Promise<void> | void> = [];
 
     const infra = createInfra(opts);
-    const project = await createProjectDomain(infra.dataDir);
+    const storage = createAppStorageContext({ dataDir: infra.dataDir });
+    disposables.push(() => storage.close());
+    const project = await createProjectDomain({
+        dataDir: infra.dataDir,
+        db: storage.db,
+    });
     const nodeVersion = createNodeVersionDomain(infra.sysLog);
     const task = createTaskDomain({
         project,
@@ -45,21 +51,27 @@ export async function createCoreApp(
     const fs = createFsDomain();
     const depsHandle = await createDepsDomain({
         cacheDir: infra.cacheDir,
+        db: storage.db,
         project,
     });
     if (depsHandle.dispose) {
         disposables.push(depsHandle.dispose);
     }
-    const dashboard = await createDashboardDomain(infra.dataDir);
+    const dashboard = await createDashboardDomain({
+        dataDir: infra.dataDir,
+        db: storage.db,
+    });
     const config = createConfigDomain(project);
     const sprite = createSpriteDomain({
         dataDir: infra.dataDir,
         cacheDir: infra.cacheDir,
+        db: storage.db,
         project,
         sysLog: infra.sysLog,
     });
     const svnSync = createSvnDomain({
         dataDir: infra.dataDir,
+        db: storage.db,
         events: infra.events,
         sysLog: infra.sysLog,
         project,
@@ -68,7 +80,10 @@ export async function createCoreApp(
     if (nginxHandle.dispose) {
         disposables.push(nginxHandle.dispose);
     }
-    const apiClientHandle = await createApiClientDomain({ dataDir: infra.dataDir });
+    const apiClientHandle = await createApiClientDomain({
+        dataDir: infra.dataDir,
+        db: storage.db,
+    });
 
     return {
         events: infra.events,
