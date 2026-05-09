@@ -43,7 +43,7 @@ import { ConfigNavNodeVM } from '../models/config-ui.model';
                 </div>
                 <div class="info">
                   <div class="name">{{ g.label }}</div>
-                  <div class="description">{{ g.description }}</div>
+                  <div class="description">{{ g.available ? '可用' : (g.description || '不可用') }}</div>
                 </div>
               </div>
             </div>
@@ -54,7 +54,7 @@ import { ConfigNavNodeVM } from '../models/config-ui.model';
   styles: [
     `
        .list {
-        height:100%;
+        height: auto;
         width:100%;
         display: flex;
         flex-direction: column;
@@ -71,9 +71,8 @@ import { ConfigNavNodeVM } from '../models/config-ui.model';
             }
         }
         .items {
-            flex: 1 1 auto;
-            overflow: auto;
-            height: 0;
+            flex: 0 0 auto;
+            overflow: visible;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -145,15 +144,11 @@ export class ConfigNavComponent {
     const kw = this.keyword().trim().toLowerCase();
     if (!kw) return this.nodes();
 
-    return this.nodes()
-      .map(g => ({
-        ...g,
-        children: (g.children ?? []).filter(d =>
-          (d.label ?? "").toLowerCase().includes(kw)
-          || (d.relPath ?? "").toLowerCase().includes(kw)
-        )
-      }))
-      .filter(g => (g.children?.length ?? 0) > 0);
+    return this.nodes().filter((item) =>
+      (item.label ?? "").toLowerCase().includes(kw) ||
+      (item.description ?? "").toLowerCase().includes(kw) ||
+      (item.files ?? []).some((file) => file.toLowerCase().includes(kw))
+    );
   });
 
 }

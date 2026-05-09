@@ -1,3 +1,3 @@
-import type { DomainSchemaDocDto } from "@yinuo-ngm/protocol";
+import type { ConfigDocument } from "./config-domain.model";
 
-export type DomainSchemaDoc<VM = any> = DomainSchemaDocDto<VM>;
+export type DomainSchemaDoc<VM = unknown> = ConfigDocument<VM>;

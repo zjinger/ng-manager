@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { ConfigSchema, ConfigSchemaItem } from '../models';
+import { ConfigField, ConfigSchema } from '../models';
 import { getByPath, setByPath } from '../utils';
 import { ConfigItemComponent } from './config-item-component';
 
@@ -10,31 +10,20 @@ import { ConfigItemComponent } from './config-item-component';
   imports: [CommonModule, ConfigItemComponent],
   template: `
   @if(schema){
-    @let sections = schema.sections || [];
-    @for (sec of sections; track sec.id) {
-      <section class="section" [attr.id]="sec.id">
-        <h3 class="section-title">{{ sec.label }}</h3>
-        @for (item of sec.items; track item.key) {
+    @let groups = schema.groups || [];
+    @for (sec of groups; track sec.key) {
+      <section class="section" [attr.id]="sec.key">
+        <h3 class="section-title">{{ sec.title }}</h3>
+        @for (item of sec.fields; track item.key) {
           <app-config-item-component
             [item]="item"
-            [options]="item.options || options[item.optionsRef?.key!] || []"
+            [options]="item.options || []"
             [value]="get(item)"
             (valueChange)="onValueChange($event, item)">
           </app-config-item-component>
-          @if(item.children?.length){
-            @for (child of item.children; track child.key) {
-              <app-config-item-component
-                [item]="child"
-                [options]="child.options || options[child.optionsRef?.key!] || []"
-                [value]="getChild(child,item)"
-                (valueChange)="onValueChange($event, child)">
-              </app-config-item-component>
-            }
-          }
-
         }
       </section>
-  }
+   }
   }@else{
     <div class="empty">
       该配置暂不支持表单模式（可切换 Raw / 或稍后实现 provider）
@@ -54,46 +43,45 @@ export class ConfigSectionComponent {
   @Input() options: Record<string, any> = {};
   @Output() vmChange = new EventEmitter<any>();
 
-  get(item: ConfigSchemaItem) {
-    const v = getByPath(this.vm, item.key);
-    return (v === undefined || v === null) ? item.default : v;
-  }
-
-  getChild(child: ConfigSchemaItem, parent: ConfigSchemaItem) {
-    const parentValue = this.get(parent);
-    if (parentValue === undefined || parentValue === null || parentValue === "") {
-      return child.default;
+  get(item: ConfigField) {
+    const directValue = getByPath(this.vm, item.path);
+    if (directValue !== undefined) {
+      return directValue;
     }
-    const replacedPath = this.resolveDynamicPath(child.key, parent.key, parentValue);
-    const v = getByPath(this.vm, replacedPath);
-    return (v === undefined || v === null) ? child.default : v;
+
+    const fallbackPaths = this.getFallbackPaths(item);
+    for (const fallbackPath of fallbackPaths) {
+      const fallbackValue = getByPath(this.vm, fallbackPath);
+      if (fallbackValue !== undefined) {
+        return fallbackValue;
+      }
+    }
+
+    return this.getDefaultValue(item);
   }
 
-  onValueChange(value: any, item: ConfigSchemaItem) {
-    const path = this.resolvePathForWrite(item);
+  onValueChange(value: any, item: ConfigField) {
+    const path = item.path;
     this.update(path, value);
   }
 
-  private resolvePathForWrite(item: ConfigSchemaItem): string {
-    const key = item.key || "";
-    // 处理 "<parentKey>" 这种占位符：从当前 vm 里读取对应 parent 的值
-    // 约定：占位符里写的是完整 parent.key，例如 "<serve.defaultConfiguration>"
-    const m = key.match(/<([^>]+)>/);
-    if (!m) return key;
-
-    const parentKey = m[1];
-    const parentValue = getByPath(this.vm, parentKey);
-    return this.resolveDynamicPath(key, parentKey, parentValue);
-  }
-
-  private resolveDynamicPath(key: string, placeholderKey: string, placeholderValue: any): string {
-    const token = `<${placeholderKey}>`;
-    return key.replace(token, String(placeholderValue ?? ""));
-  }
-
   private update(path: string, value: any) {
-    const next = structuredClone(this.vm);
-    setByPath(next, path, value);
-    this.vmChange.emit(next);
+    const base = this.vm ?? {};
+    const next = structuredClone(base);
+    const updated = setByPath(next, path, value);
+    this.vmChange.emit(updated ?? next);
+  }
+
+  private getFallbackPaths(item: ConfigField): string[] {
+    const metadata = (item.metadata ?? {}) as { fallbackPaths?: unknown };
+    if (!Array.isArray(metadata.fallbackPaths)) {
+      return [];
+    }
+    return metadata.fallbackPaths.filter((path): path is string => typeof path === "string");
+  }
+
+  private getDefaultValue(item: ConfigField): unknown {
+    const metadata = (item.metadata ?? {}) as { defaultValue?: unknown };
+    return metadata.defaultValue;
   }
 }

@@ -1,5 +1,4 @@
-import type { ConfigFileReadResultDto, ResolvedDocDto, ResolvedDomainDto } from "@yinuo-ngm/protocol";
+import type { ConfigDetectResult, ConfigDocument } from "./config-domain.model";
 
-export type ResolvedDoc = ResolvedDocDto;
-export type ResolvedDomain = ResolvedDomainDto;
-export type ConfigFileReadResult<T = unknown> = ConfigFileReadResultDto & { data?: T };
+export type ResolvedDomain = ConfigDetectResult;
+export type DomainSchemaDoc<VM = unknown> = ConfigDocument<VM>;

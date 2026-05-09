@@ -1,5 +1,4 @@
 import { fileExists, readJsonFile } from "@yinuo-ngm/shared";
-import path from "node:path";
 import type { ConfigDetectResult } from "../../types/config-detect";
 import { resolveProjectFile } from "../../utils/config-path";
 
@@ -27,22 +26,29 @@ export async function detectVueProject(projectRoot: string): Promise<ConfigDetec
       hasKey(devDependencies, "@vitejs/plugin-vue");
   }
 
-  const candidates = ["vite.config.ts", "src/main.ts", "src/App.vue"];
+  const candidates = [
+    "src/App.vue",
+    "vite.config.ts",
+    "vite.config.js",
+    "vite.config.mts",
+    "vite.config.mjs"
+  ];
   const fileChecks = await Promise.all(
     candidates.map(async (item) => {
-      const exists = await fileExists(path.join(projectRoot, item));
+      const exists = await fileExists(resolveProjectFile(projectRoot, item));
       return exists ? item : undefined;
     })
   );
 
   const files = fileChecks.filter((item): item is string => typeof item === "string");
-  const available = hasVueDependency || files.length > 0;
+  const hasVueSfc = files.includes("src/App.vue");
+  const available = hasVueDependency || hasVueSfc;
 
   return {
     type: "vue-project",
     title: "Vue",
     available,
     filePaths: files,
-    reason: available ? undefined : "未检测到 Vue 项目特征"
+    reason: available ? undefined : "未检测到 Vue 依赖或 src/App.vue"
   };
 }

@@ -3,7 +3,6 @@ import type { ConfigDetectContext, ConfigReadContext, ConfigSchemaContext, Confi
 import type { ConfigSchema } from "../../types/config-schema";
 import { detectAngularWorkspace, resolveAngularWorkspaceFile } from "./angular.detector";
 import { readAngularWorkspace } from "./angular.reader";
-import { buildAngularSchema } from "./angular.schema";
 import { previewAngularWorkspace, writeAngularWorkspace } from "./angular.writer";
 
 export class AngularWorkspaceConfigProvider implements ConfigProvider {
@@ -20,7 +19,7 @@ export class AngularWorkspaceConfigProvider implements ConfigProvider {
 
   async getSchema(ctx: ConfigSchemaContext): Promise<ConfigSchema> {
     const doc = await readAngularWorkspace(ctx);
-    return buildAngularSchema((doc.viewModel as { selectedProjectName?: string }).selectedProjectName);
+    return doc.schema;
   }
 
   async preview(ctx: ConfigPreviewContext) {

@@ -7,6 +7,7 @@ export interface AngularWorkspaceViewModel {
 
 export interface AngularProjectViewModel {
   name: string;
+  targetContainer?: "architect" | "targets";
   projectType?: string;
   root?: string;
   sourceRoot?: string;
@@ -48,15 +49,21 @@ export function buildAngularWorkspaceViewModel(raw: unknown): AngularWorkspaceVi
   const workspace = asObject(raw);
   const projectsObject = asObject(workspace.projects);
   const projectNames = Object.keys(projectsObject);
-  const defaultProject =
+  const defaultProjectFromFile =
     typeof workspace.defaultProject === "string" ? workspace.defaultProject : undefined;
-  const selectedProjectName = defaultProject ?? projectNames[0];
+  const selectedProjectName = defaultProjectFromFile ?? projectNames[0];
+  const defaultProject = defaultProjectFromFile ?? selectedProjectName;
 
   const projects = projectNames.map((name) => {
     const project = asObject(projectsObject[name]);
-    const targets = asObject(project.architect ?? project.targets);
+    const targetContainer: "architect" | "targets" =
+      typeof project.architect === "object" && project.architect !== null
+        ? "architect"
+        : "targets";
+    const targets = asObject(project[targetContainer]);
     return {
       name,
+      targetContainer,
       projectType: typeof project.projectType === "string" ? project.projectType : undefined,
       root: typeof project.root === "string" ? project.root : undefined,
       sourceRoot: typeof project.sourceRoot === "string" ? project.sourceRoot : undefined,

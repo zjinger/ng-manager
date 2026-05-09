@@ -1,100 +1,63 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
-import { ConfigSchemaItem } from '../models';
-import { NzSpaceModule } from 'ng-zorro-antd/space';
-import { NzTableModule } from 'ng-zorro-antd/table';
+import { ConfigField } from '../models';
 
 @Component({
   selector: 'app-config-item-component',
-  imports: [
-    CommonModule,
-    FormsModule,
-    NzIconModule,
-    NzSwitchModule,
-    NzInputModule,
-    NzSelectModule,
-    NzSpaceModule,
-    NzTableModule
-  ],
+  imports: [CommonModule, FormsModule, NzSwitchModule, NzInputModule, NzSelectModule],
   template: `
     <div class="config-item">
       <div class="meta">
         <div class="label">{{ item.label }}</div>
-        @if(item.desc){
-          <div class="desc">
-            {{ item.desc }}
-          </div>
+        @if(item.description){
+          <div class="desc">{{ item.description }}</div>
         }
       </div>
       <div class="control">
         @switch (item.type) {
-           @case ('input'){
-            <input nz-input [ngModel]="value" (ngModelChange)="emit($event)" />
+          @case ('text') {
+            <input nz-input [disabled]="isReadonly()" [ngModel]="value" (ngModelChange)="emit($event)" />
           }
-          @case ('path'){
-            <input nz-input [ngModel]="value" (ngModelChange)="emit($event)" />
+          @case ('path') {
+            <input nz-input [disabled]="isReadonly()" [ngModel]="value" (ngModelChange)="emit($event)" />
           }
-          @case('string')
-          {
-            <span>{{value}}</span>
+          @case ('number') {
+            <input nz-input type="number" [disabled]="isReadonly()" [ngModel]="value" (ngModelChange)="emitNumber($event)" />
           }
-          @case('file')
-          {
-            <nz-space nzAlign="center">
-              <nz-icon nzType="file" nzTheme="fill"></nz-icon>
-              <span>{{value}}</span>
-            </nz-space>
+          @case ('boolean') {
+            <nz-switch [nzDisabled]="isReadonly()" [ngModel]="!!value" (ngModelChange)="emit($event)"></nz-switch>
           }
-          @case ('boolean'){
-             <nz-switch [ngModel]="value" (ngModelChange)="emit($event)"> </nz-switch>
-          }
-          @case('select'){
-            <nz-select [ngModel]="value" (ngModelChange)="emit($event)">
+          @case ('select') {
+            <nz-select [ngModel]="value" [nzDisabled]="isReadonly()" (ngModelChange)="emit($event)">
               @for (opt of options; track opt.value) {
                 <nz-option [nzValue]="opt.value" [nzLabel]="opt.label"></nz-option>
               }
             </nz-select>
           }
-          @case('array'){
-            <!-- <span>数组类型配置项，暂不支持表单编辑</span> -->
-             @if (isArrayObjectEditor()) {
-              @for(row of arrayValue(); track $index) {
-                <nz-space>
-                  @if(arrayValue().length>1){
-                    <span >{{$index + 1}}</span>
-                  }
-                  @for (f of arrayFields(); track f.key) {
-                      <nz-icon nzType="file" nzTheme="fill"></nz-icon>
-                      <span>
-                        {{row?.[f.key!]}}
-                      </span>
-                      @if(f !== arrayFields()[arrayFields().length -1]){
-                        <nz-icon nzType="arrow-right" nzTheme="outline"></nz-icon>
-                      }
-                  }
-                </nz-space>
-              }
-            } @else {
-              <span>数组类型配置项，暂不支持表单编辑</span>
-            }
+          @case ('json') {
+            <textarea
+              nz-input
+              rows="4"
+              [disabled]="isReadonly()"
+              [ngModel]="toJsonText(value)"
+              (ngModelChange)="emitJson($event)"
+            ></textarea>
           }
-          <!--object 类型的配置项-->
-          @case('object'){
-            @if (isObjectEditor()) {
-              <div class="kv">
-                @for (field of objectKv(); track field.value) {
-                  <nz-space>
-                    <span class="label">{{field.label}}:</span>
-                    <span class="value">{{field.value}}</span>
-                  </nz-space>
-                }
-              </div>
-            }
+          @case ('multi-text') {
+            <textarea
+              nz-input
+              rows="4"
+              [disabled]="isReadonly()"
+              [ngModel]="toMultilineText(value)"
+              (ngModelChange)="emitMultiText($event)"
+            ></textarea>
+          }
+          @default {
+            <pre>{{ toPrettyText(value) }}</pre>
           }
         }
       </div>
@@ -107,105 +70,84 @@ import { NzTableModule } from 'ng-zorro-antd/table';
       justify-content: space-between;
       align-items: center;
       padding: 12px 16px;
-      &:hover{
-        background: var(--app-primary-2);
-      }
+      &:hover { background: var(--app-primary-2); }
       .meta {
-        .label {
-          font-weight: 500;
-          opacity: 0.75;
-        }
-        .desc {
-          font-size: 14px;
-          margin-top: 4px;
-          opacity: 0.55;
-        }
+        .label { font-weight: 500; opacity: 0.75; }
+        .desc { font-size: 14px; margin-top: 4px; opacity: 0.55; }
       }
       .control {
-        min-width: 200px;
-        max-width: 600px;
+        min-width: 220px;
+        max-width: 640px;
         width: 60%;
-        input[nz-input],nz-select {
-          width: 100%;
-        }
-        .kv {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          width:100%;
-        }
+        input[nz-input], nz-select, textarea[nz-input] { width: 100%; }
+        pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
       }
     }
     `
   ],
 })
 export class ConfigItemComponent {
-  @Input() item!: ConfigSchemaItem;
+  @Input() item!: ConfigField;
   @Input() value: any;
+  @Input() options: Array<{ label: string; value: string | number | boolean }> = [];
   @Output() valueChange = new EventEmitter<any>();
-  @Input() options: { label: string; value: string }[] = [];
+
+  isReadonly(): boolean {
+    return !!this.item?.readonly || this.item?.type === 'readonly' || this.item?.type === 'table';
+  }
+
   emit(v: any) {
+    if (this.isReadonly()) return;
     this.valueChange.emit(v);
   }
-  /* -- ------------- object -------------- */
-  isObjectEditor(): boolean {
-    return this.item?.type === 'object';
-  }
 
-  objectKv(): { label: string; value: string }[] {
-    const obj = this.value ?? {};
-    return Object.values(obj).map((k, idx) => {
-      if (typeof k === 'string') {
-        return { label: Object.keys(obj)[idx], value: k };
-      }
-      return { label: Object.keys(obj)[idx], value: JSON.stringify(k) };
-    });
-  }
-
-
-
-  /* ---------------- array<object> MVP ---------------- */
-
-  isArrayObjectEditor(): boolean {
-    return (
-      this.item?.type === 'array' &&
-      this.item?.item?.type === 'object' &&
-      Array.isArray(this.item?.item?.fields) &&
-      this.item.item.fields.length > 0
-    );
-  }
-
-  arrayFields(): ConfigSchemaItem[] {
-    return (this.item?.item?.fields ?? []) as ConfigSchemaItem[];
-  }
-
-  arrayValue(): any[] {
-    return Array.isArray(this.value) ? this.value : [];
-  }
-
-  addRow() {
-    const fields = this.arrayFields();
-    const row: any = {};
-    for (const f of fields) {
-      if (!f.key) continue;
-      row[f.key] = f.default ?? '';
+  emitNumber(v: any) {
+    if (this.isReadonly()) return;
+    if (v === '' || v === null || v === undefined) {
+      this.valueChange.emit(undefined);
+      return;
     }
-    const next = [...this.arrayValue(), row];
-    this.emit(next);
+    const parsed = Number(v);
+    this.valueChange.emit(Number.isNaN(parsed) ? undefined : parsed);
   }
 
-  removeRow(i: number) {
-    const arr = this.arrayValue();
-    const next = arr.filter((_, idx) => idx !== i);
-    this.emit(next);
+  emitJson(v: string) {
+    if (this.isReadonly()) return;
+    try {
+      this.valueChange.emit(v ? JSON.parse(v) : undefined);
+    } catch {
+      // ignore invalid json input until user fixes it
+    }
   }
 
-  updateCell(i: number, key: string, v: any) {
-    const arr = this.arrayValue();
-    const next = arr.map((row, idx) => {
-      if (idx !== i) return row;
-      return { ...(row ?? {}), [key]: v };
-    });
-    this.emit(next);
+  emitMultiText(v: string) {
+    if (this.isReadonly()) return;
+    const lines = (v ?? '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    this.valueChange.emit(lines);
+  }
+
+  toJsonText(v: unknown): string {
+    if (v === undefined) return '';
+    try {
+      return JSON.stringify(v, null, 2);
+    } catch {
+      return String(v);
+    }
+  }
+
+  toMultilineText(v: unknown): string {
+    return Array.isArray(v) ? v.join('\n') : (v ?? '').toString();
+  }
+
+  toPrettyText(v: unknown): string {
+    if (typeof v === 'string') return v;
+    try {
+      return JSON.stringify(v, null, 2);
+    } catch {
+      return String(v);
+    }
   }
 }

@@ -1,41 +1,43 @@
 import { inject, Injectable } from "@angular/core";
 import { ApiClient } from "@core/api";
-import { ResolvedDomain } from "../models";
 import type {
-  DiffSchemaRequestDto,
-  DomainSchemaDiffResultDto,
-  DomainSchemaDocDto,
-  OpenDocResponseDto,
-  WriteSchemaRequestDto,
-  WriteSchemaResponseDto,
-} from "@yinuo-ngm/protocol";
+  ConfigDetectResult,
+  ConfigDocument,
+  ConfigPatch,
+  ConfigPreviewResult,
+  ConfigProviderItem,
+  ConfigWriteResult
+} from "../models";
 
 @Injectable({ providedIn: "root" })
 export class ConfApiService {
   api = inject(ApiClient)
 
-  getCatalog(projectId: string) {
-    return this.api.get<ResolvedDomain[]>(`/api/config/catalog/${projectId}`)
+  getProviders() {
+    return this.api.get<ConfigProviderItem[]>(`/api/config/providers`);
   }
-  // /openInEditor/:projectId/:docId
-  openInEditor(projectId: string, docId: string) {
-    return this.api.post<OpenDocResponseDto>(
-      `/api/config/openInEditor/${projectId}/${encodeURIComponent(docId)}`,
-      {}
+
+  detect(projectId: string) {
+    return this.api.get<ConfigDetectResult[]>(`/api/config/detect/${projectId}`);
+  }
+
+  getDoc(projectId: string, type: string, filePath?: string) {
+    const query = filePath ? `?filePath=${encodeURIComponent(filePath)}` : "";
+    return this.api.get<ConfigDocument>(`/api/config/doc/${projectId}/${encodeURIComponent(type)}${query}`);
+  }
+
+  preview(projectId: string, input: { type: string; filePath: string; patches: ConfigPatch[] }) {
+    return this.api.post<ConfigPreviewResult>(`/api/config/preview/${projectId}`, input);
+  }
+
+  write(projectId: string, input: { type: string; filePath: string; patches: ConfigPatch[] }) {
+    return this.api.post<ConfigWriteResult>(`/api/config/write/${projectId}`, input);
+  }
+
+  openInEditor(projectId: string, filePath: string) {
+    return this.api.post<{ ok: boolean; filePath: string }>(
+      `/api/config/openInEditor/${projectId}`,
+      { filePath }
     );
-  }
-
-  writeDomainSchema(projectId: string, domainId: string, vm: any) {
-    const body: WriteSchemaRequestDto = { vm };
-    return this.api.post<WriteSchemaResponseDto>(`/api/config/writeSchema/${projectId}/${domainId}`, body);
-  }
-
-  getDomainSchemas(projectId: string, domainId: string) {
-    return this.api.get<DomainSchemaDocDto>(`/api/config/getDomainSchema/${projectId}/${domainId}`)
-  }
-
-  diffDomainSchema(projectId: string, domainId: string, vm: any) {
-    const body: DiffSchemaRequestDto = { vm };
-    return this.api.post<DomainSchemaDiffResultDto>(`/api/config/diffSchema/${projectId}/${domainId}`, body);
   }
 }

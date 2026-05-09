@@ -23,6 +23,15 @@ function asRecordOfString(input: unknown): Record<string, string> {
   return out;
 }
 
+function getPackageVersion(
+  dependencies: Record<string, unknown>,
+  devDependencies: Record<string, unknown>,
+  name: string
+): string | undefined {
+  const version = dependencies[name] ?? devDependencies[name];
+  return typeof version === "string" ? version : undefined;
+}
+
 export class VueConfigProvider implements ConfigProvider {
   readonly type = "vue-project";
   readonly title = "Vue";
@@ -51,13 +60,17 @@ export class VueConfigProvider implements ConfigProvider {
         : {};
 
     const viewModel: VueProjectViewModel = {
+      projectName: typeof pkg.name === "string" ? pkg.name : undefined,
       isVueProject: detectResult.available,
-      isVue3: typeof dependencies.vue === "string" && dependencies.vue.startsWith("^3"),
+      isVue3: /(^|[^\d])3(\.\d+)?/.test(getPackageVersion(dependencies, devDependencies, "vue") ?? ""),
       isVite:
-        typeof devDependencies.vite === "string" ||
+        typeof getPackageVersion(dependencies, devDependencies, "vite") === "string" ||
         detectResult.filePaths.some((item) => item.startsWith("vite.config")),
-      vueVersion: typeof dependencies.vue === "string" ? dependencies.vue : undefined,
-      viteVersion: typeof devDependencies.vite === "string" ? devDependencies.vite : undefined,
+      vueVersion: getPackageVersion(dependencies, devDependencies, "vue"),
+      viteVersion: getPackageVersion(dependencies, devDependencies, "vite"),
+      vueRouterVersion: getPackageVersion(dependencies, devDependencies, "vue-router"),
+      piniaVersion: getPackageVersion(dependencies, devDependencies, "pinia"),
+      antDesignVueVersion: getPackageVersion(dependencies, devDependencies, "ant-design-vue"),
       entryFiles: detectResult.filePaths.filter((item) => item.startsWith("src/")),
       configFiles: detectResult.filePaths.filter((item) => !item.startsWith("src/")),
       scripts: asRecordOfString(pkg.scripts)

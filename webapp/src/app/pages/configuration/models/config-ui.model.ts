@@ -4,19 +4,13 @@
  * 用于配置页面左侧导航树
  */
 export interface ConfigNavNodeVM {
-    id: string;                 // domainId 或 docId
-    type: "domain" | "doc";
-    label: string;
-    icon?: string;
-    description?: string;
-
-    // doc 节点特有
-    docId?: string;             // spec.id
-    relPath?: string;           // chosen.relPath
-    codec?: string;             // json/raw/...
-    exists?: boolean;
-
-    children?: ConfigNavNodeVM[];
+  id: string;
+  type: "provider";
+  label: string;
+  icon?: string;
+  description?: string;
+  available?: boolean;
+  files?: string[];
 }
 
 /**
@@ -46,10 +40,7 @@ export interface DocStateVM {
  * - relPath/codec: chosen
  */
 export interface DomainDocMetaVM {
-    docId: string;
-    title: string;            // spec.title
-    description?: string;     // spec.description（如果有）
-    exists: boolean;
-    relPath?: string;
-    codec?: string;           // "json" | "jsonc" | "yaml" | "raw" ...
+  filePath: string;
+  title: string;
+  exists: boolean;
 }

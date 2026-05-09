@@ -1,8 +1,52 @@
 import type { ConfigSchema } from "../../types/config-schema";
 import { defineConfigSchema } from "../../utils/config-schema-builder";
 
-export function buildAngularSchema(projectName?: string): ConfigSchema {
+export interface AngularSchemaBuildOptions {
+  projectName?: string;
+  targetContainer?: "architect" | "targets";
+  buildDefaultConfiguration?: string;
+  serveDefaultConfiguration?: string;
+  buildConfigurationNames?: string[];
+  serveConfigurationNames?: string[];
+}
+
+function toConfigurationCandidates(defaultConfig?: string, configurationNames: string[] = []): string[] {
+  const commonConfigs = ["production", "development", "dev", "web", "web-production"];
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  // If defaultConfiguration is present, keep field resolution strict to this environment.
+  // This avoids leaking values from other environments (e.g. local -> development form field).
+  const candidates = defaultConfig
+    ? [defaultConfig]
+    : [...configurationNames, ...commonConfigs];
+
+  for (const name of candidates) {
+    if (!name || seen.has(name)) {
+      continue;
+    }
+    seen.add(name);
+    result.push(name);
+  }
+  return result;
+}
+
+function toDefaultConfigFallbacks(
+  base: string,
+  key: string,
+  defaultConfig?: string,
+  configurationNames?: string[]
+): string[] {
+  return toConfigurationCandidates(defaultConfig, configurationNames).map(
+    (config) => `${base}/configurations/${config}/${key}`
+  );
+}
+
+export function buildAngularSchema(options: AngularSchemaBuildOptions = {}): ConfigSchema {
+  const projectName = options.projectName;
   const project = projectName ?? "{projectName}";
+  const targetContainer = options.targetContainer ?? "architect";
+  const targetBase = `/projects/${project}/${targetContainer}`;
 
   return defineConfigSchema({
     groups: [
@@ -17,7 +61,7 @@ export function buildAngularSchema(projectName?: string): ConfigSchema {
             type: "text",
             path: `/projects/${project}/projectType`
           },
-          { key: "root", label: "项目根目录", type: "path", path: `/projects/${project}/root` },
+          // { key: "root", label: "项目根目录", type: "path", path: `/projects/${project}/root` },
           {
             key: "sourceRoot",
             label: "源码根目录",
@@ -34,25 +78,50 @@ export function buildAngularSchema(projectName?: string): ConfigSchema {
             key: "buildDefaultConfiguration",
             label: "默认构建环境",
             type: "text",
-            path: `/projects/${project}/architect/build/defaultConfiguration`
+            path: `${targetBase}/build/defaultConfiguration`
           },
           {
             key: "outputPath",
             label: "构建输出目录",
             type: "path",
-            path: `/projects/${project}/architect/build/options/outputPath`
+            path: `${targetBase}/build/options/outputPath`,
+            metadata: {
+              fallbackPaths: toDefaultConfigFallbacks(
+                `${targetBase}/build`,
+                "outputPath",
+                options.buildDefaultConfiguration,
+                options.buildConfigurationNames
+              )
+            }
           },
           {
             key: "optimization",
             label: "优化",
             type: "boolean",
-            path: `/projects/${project}/architect/build/options/optimization`
+            path: `${targetBase}/build/options/optimization`,
+            metadata: {
+              defaultValue: true,
+              fallbackPaths: toDefaultConfigFallbacks(
+                `${targetBase}/build`,
+                "optimization",
+                options.buildDefaultConfiguration,
+                options.buildConfigurationNames
+              )
+            }
           },
           {
             key: "sourceMap",
             label: "SourceMap",
             type: "boolean",
-            path: `/projects/${project}/architect/build/options/sourceMap`
+            path: `${targetBase}/build/options/sourceMap`,
+            metadata: {
+              fallbackPaths: toDefaultConfigFallbacks(
+                `${targetBase}/build`,
+                "sourceMap",
+                options.buildDefaultConfiguration,
+                options.buildConfigurationNames
+              )
+            }
           }
         ]
       },
@@ -64,25 +133,51 @@ export function buildAngularSchema(projectName?: string): ConfigSchema {
             key: "serveDefaultConfiguration",
             label: "默认开发环境",
             type: "text",
-            path: `/projects/${project}/architect/serve/defaultConfiguration`
+            path: `${targetBase}/serve/defaultConfiguration`
           },
           {
             key: "host",
             label: "开发主机",
             type: "text",
-            path: `/projects/${project}/architect/serve/options/host`
+            path: `${targetBase}/serve/options/host`,
+            metadata: {
+              defaultValue: "localhost",
+              fallbackPaths: toDefaultConfigFallbacks(
+                `${targetBase}/serve`,
+                "host",
+                options.serveDefaultConfiguration,
+                options.serveConfigurationNames
+              )
+            }
           },
           {
             key: "port",
             label: "开发端口",
             type: "number",
-            path: `/projects/${project}/architect/serve/options/port`
+            path: `${targetBase}/serve/options/port`,
+            metadata: {
+              defaultValue: 4200,
+              fallbackPaths: toDefaultConfigFallbacks(
+                `${targetBase}/serve`,
+                "port",
+                options.serveDefaultConfiguration,
+                options.serveConfigurationNames
+              )
+            }
           },
           {
             key: "proxyConfig",
             label: "代理配置",
             type: "path",
-            path: `/projects/${project}/architect/serve/options/proxyConfig`
+            path: `${targetBase}/serve/options/proxyConfig`,
+            metadata: {
+              fallbackPaths: toDefaultConfigFallbacks(
+                `${targetBase}/serve`,
+                "proxyConfig",
+                options.serveDefaultConfiguration,
+                options.serveConfigurationNames
+              )
+            }
           }
         ]
       },
@@ -94,19 +189,19 @@ export function buildAngularSchema(projectName?: string): ConfigSchema {
             key: "assets",
             label: "Assets",
             type: "json",
-            path: `/projects/${project}/architect/build/options/assets`
+            path: `${targetBase}/build/options/assets`
           },
           {
             key: "styles",
             label: "Styles",
             type: "json",
-            path: `/projects/${project}/architect/build/options/styles`
+            path: `${targetBase}/build/options/styles`
           },
           {
             key: "scripts",
             label: "Scripts",
             type: "json",
-            path: `/projects/${project}/architect/build/options/scripts`
+            path: `${targetBase}/build/options/scripts`
           }
         ]
       },
@@ -118,7 +213,7 @@ export function buildAngularSchema(projectName?: string): ConfigSchema {
             key: "tsConfig",
             label: "TSConfig",
             type: "path",
-            path: `/projects/${project}/architect/build/options/tsConfig`
+            path: `${targetBase}/build/options/tsConfig`
           }
         ]
       },
@@ -130,7 +225,19 @@ export function buildAngularSchema(projectName?: string): ConfigSchema {
             key: "productionFileReplacements",
             label: "生产文件替换",
             type: "json",
-            path: `/projects/${project}/architect/build/configurations/production/fileReplacements`
+            path: `${targetBase}/build/configurations/production/fileReplacements`
+          },
+          {
+            key: "buildConfigurations",
+            label: "构建环境配置",
+            type: "json",
+            path: `${targetBase}/build/configurations`
+          },
+          {
+            key: "serveConfigurations",
+            label: "开发环境配置",
+            type: "json",
+            path: `${targetBase}/serve/configurations`
           }
         ]
       },
