@@ -23,6 +23,7 @@ const API_SUBDIR = "api";
 export async function createApiClientDomain(opts: {
     dataDir: string;
     db: SqliteDatabase;
+    migrateIfNeeded?: boolean;
 }): Promise<CoreDomainHandle<ApiClient>> {
     const rootDir = path.join(opts.dataDir, API_SUBDIR);
     const db = opts.db;
@@ -32,30 +33,32 @@ export async function createApiClientDomain(opts: {
     const historyRepo = new SqliteHistoryRepo(db);
     const collectionRepo = new SqliteCollectionRepo(db);
 
-    await migrateScopedJsonKvFilesIfNeeded({
-        rootDir,
-        fileName: "requests.kv.json",
-        target: repo,
-        backup: true,
-    });
-    await migrateScopedJsonKvFilesIfNeeded({
-        rootDir,
-        fileName: "envs.kv.json",
-        target: envRepo,
-        backup: true,
-    });
-    await migrateScopedJsonKvFilesIfNeeded({
-        rootDir,
-        fileName: "collections.kv.json",
-        target: collectionRepo,
-        backup: true,
-    });
-    await migrateJsonlHistoryFilesIfNeeded({
-        rootDir,
-        fileName: "history.jsonl",
-        target: historyRepo,
-        backup: true,
-    });
+    if (opts.migrateIfNeeded ?? true) {
+        await migrateScopedJsonKvFilesIfNeeded({
+            rootDir,
+            fileName: "requests.kv.json",
+            target: repo,
+            backup: true,
+        });
+        await migrateScopedJsonKvFilesIfNeeded({
+            rootDir,
+            fileName: "envs.kv.json",
+            target: envRepo,
+            backup: true,
+        });
+        await migrateScopedJsonKvFilesIfNeeded({
+            rootDir,
+            fileName: "collections.kv.json",
+            target: collectionRepo,
+            backup: true,
+        });
+        await migrateJsonlHistoryFilesIfNeeded({
+            rootDir,
+            fileName: "history.jsonl",
+            target: historyRepo,
+            backup: true,
+        });
+    }
 
     const http = new NodeHttpClient();
     const resolver = new VariableResolver();

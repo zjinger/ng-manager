@@ -15,11 +15,13 @@ export function createSvnDomain(opts: {
     events: IEventBus<SvnEventMap>;
     sysLog: SystemLogService;
     project: ProjectService;
+    migrateIfNeeded?: boolean;
 }): SvnSyncService {
     const runtimeDir = path.join(opts.dataDir, "runtime");
+    const runtimeFile = path.join(runtimeDir, "svn.runtime.json");
     const svnRepo = new SqliteSvnRuntimeRepo(
         opts.db,
-        path.join(runtimeDir, "svn.runtime.json")
+        (opts.migrateIfNeeded ?? true) ? runtimeFile : undefined
     );
     const svnTaskManager = new SvnTaskManager();
     return new SvnSyncServiceImpl(

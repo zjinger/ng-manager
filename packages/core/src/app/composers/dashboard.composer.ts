@@ -5,16 +5,19 @@ import { SqliteDashboardRepo, migrateDashboardJsonFilesIfNeeded } from "../../in
 export async function createDashboardDomain(opts: {
     dataDir: string;
     db: SqliteDatabase;
+    migrateIfNeeded?: boolean;
 }) {
     const dataDir = opts.dataDir;
     const db = opts.db;
     const repo = new SqliteDashboardRepo(db);
 
-    await migrateDashboardJsonFilesIfNeeded({
-        rootDir: dataDir,
-        target: repo,
-        backup: true,
-    });
+    if (opts.migrateIfNeeded ?? true) {
+        await migrateDashboardJsonFilesIfNeeded({
+            rootDir: dataDir,
+            target: repo,
+            backup: true,
+        });
+    }
 
     return new DashboardServiceImpl(repo);
 }

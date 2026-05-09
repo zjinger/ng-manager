@@ -18,6 +18,7 @@ export async function createDepsDomain(opts: {
     cacheDir: string;
     db: SqliteDatabase;
     project: ProjectService;
+    migrateIfNeeded?: boolean;
 }): Promise<CoreDomainHandle<DepsService>> {
     const latestRepo = new SqliteJsonKvRepo<LatestCacheSnapshot>(
         opts.db,
@@ -30,10 +31,12 @@ export async function createDepsDomain(opts: {
         flushDebounceMs: 800,
     });
 
-    await migrateJsonKvFileIfNeeded({
-        sourceFile: path.join(opts.cacheDir, "npm-latest.kv.json"),
-        target: latestRepo,
-    });
+    if (opts.migrateIfNeeded ?? true) {
+        await migrateJsonKvFileIfNeeded({
+            sourceFile: path.join(opts.cacheDir, "npm-latest.kv.json"),
+            target: latestRepo,
+        });
+    }
     await latestCache.load();
 
     latestCache.startPruneTimer(

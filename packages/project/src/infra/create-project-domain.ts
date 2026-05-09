@@ -12,23 +12,26 @@ import {
 export async function createProjectDomain(opts: {
     dataDir: string;
     db: SqliteDatabase;
+    migrateIfNeeded?: boolean;
 }) {
     const dataDir = opts.dataDir;
     const db = opts.db;
     const projectKv = new SqliteJsonKvRepo<Project>(db, { tableName: "projects" });
 
-    await migrateJsonKvFileIfNeeded({
-        sourceFile: path.join(dataDir, "projects.kv.json"),
-        target: projectKv,
-        backup: true,
-    });
+    if (opts.migrateIfNeeded ?? true) {
+        await migrateJsonKvFileIfNeeded({
+            sourceFile: path.join(dataDir, "projects.kv.json"),
+            target: projectKv,
+            backup: true,
+        });
 
-    await migrateProjectsIfNeeded({
-        dbDir: dataDir,
-        projectKv,
-        legacyFileName: "projects.json",
-        backup: true,
-    });
+        await migrateProjectsIfNeeded({
+            dbDir: dataDir,
+            projectKv,
+            legacyFileName: "projects.json",
+            backup: true,
+        });
+    }
 
     const projectRepo = new ProjectRepoJsonKv(projectKv);
     return new ProjectServiceImpl(projectRepo);

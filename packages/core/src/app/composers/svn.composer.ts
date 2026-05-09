@@ -11,6 +11,7 @@ export function createSvnDomain(opts: {
     events: IEventBus<CoreEventMap>;
     sysLog: SystemLogService;
     project: ProjectService;
+    migrateIfNeeded?: boolean;
 }) {
     return createSvnDomainImpl({
         dataDir: opts.dataDir,
@@ -18,5 +19,6 @@ export function createSvnDomain(opts: {
         events: opts.events,
         sysLog: opts.sysLog,
         project: opts.project,
+        migrateIfNeeded: opts.migrateIfNeeded,
     });
 }

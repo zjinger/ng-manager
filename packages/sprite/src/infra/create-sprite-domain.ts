@@ -11,10 +11,11 @@ export function createSpriteDomain(opts: {
     db: SqliteDatabase;
     project: ProjectService;
     sysLog: SystemLogService;
+    migrateIfNeeded?: boolean;
 }): SpriteService {
     const spriteRepo = new SqliteSpriteRepo(
         opts.db,
-        opts.dataDir
+        (opts.migrateIfNeeded ?? true) ? opts.dataDir : undefined
     );
     return new SpriteServiceImpl(
         spriteRepo,

@@ -13,6 +13,7 @@ import {
     createSvnDomain,
     createTaskDomain,
 } from "./composers";
+import { runAppStorageMigrations } from "../infra/storage";
 import { createProjectDomain } from "@yinuo-ngm/project";
 import { createAppStorageContext } from "@yinuo-ngm/storage";
 
@@ -29,9 +30,15 @@ export async function createCoreApp(
     const infra = createInfra(opts);
     const storage = createAppStorageContext({ dataDir: infra.dataDir });
     disposables.push(() => storage.close());
+    await runAppStorageMigrations({
+        dataDir: infra.dataDir,
+        cacheDir: infra.cacheDir,
+        db: storage.db,
+    });
     const project = await createProjectDomain({
         dataDir: infra.dataDir,
         db: storage.db,
+        migrateIfNeeded: false,
     });
     const nodeVersion = createNodeVersionDomain(infra.sysLog);
     const task = createTaskDomain({
@@ -53,6 +60,7 @@ export async function createCoreApp(
         cacheDir: infra.cacheDir,
         db: storage.db,
         project,
+        migrateIfNeeded: false,
     });
     if (depsHandle.dispose) {
         disposables.push(depsHandle.dispose);
@@ -60,6 +68,7 @@ export async function createCoreApp(
     const dashboard = await createDashboardDomain({
         dataDir: infra.dataDir,
         db: storage.db,
+        migrateIfNeeded: false,
     });
     const config = createConfigDomain(project);
     const sprite = createSpriteDomain({
@@ -68,6 +77,7 @@ export async function createCoreApp(
         db: storage.db,
         project,
         sysLog: infra.sysLog,
+        migrateIfNeeded: false,
     });
     const svnSync = createSvnDomain({
         dataDir: infra.dataDir,
@@ -75,6 +85,7 @@ export async function createCoreApp(
         events: infra.events,
         sysLog: infra.sysLog,
         project,
+        migrateIfNeeded: false,
     });
     const nginxHandle = await createNginxDomain({ dataDir: infra.dataDir });
     if (nginxHandle.dispose) {
@@ -83,6 +94,7 @@ export async function createCoreApp(
     const apiClientHandle = await createApiClientDomain({
         dataDir: infra.dataDir,
         db: storage.db,
+        migrateIfNeeded: false,
     });
 
     return {
