@@ -1,6 +1,6 @@
-﻿import { ConfigServiceImpl } from "@yinuo-ngm/config";
+import { ConfigService, createDefaultConfigRegistry } from "@yinuo-ngm/config";
 import type { ProjectService } from "@yinuo-ngm/project";
 
-export function createConfigDomain(project: ProjectService) {
-    return new ConfigServiceImpl(project);
+export function createConfigDomain(_project: ProjectService) {
+    return new ConfigService(createDefaultConfigRegistry());
 }

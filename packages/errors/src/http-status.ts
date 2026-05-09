@@ -102,6 +102,11 @@ export const httpStatusMap: Record<number, number> = {
   [CoreErrorCodes.CONFIG_SCHEMA_NOT_FOUND]: 404,
   [CoreErrorCodes.CONFIG_DOMAIN_NOT_FOUND]: 404,
   [CoreErrorCodes.CONFIG_DOC_NOT_FOUND]: 404,
+  [CoreErrorCodes.CONFIG_PROVIDER_NOT_FOUND]: 404,
+  [CoreErrorCodes.CONFIG_FILE_OUT_OF_PROJECT]: 400,
+  [CoreErrorCodes.CONFIG_PATCH_INVALID]: 400,
+  [CoreErrorCodes.CONFIG_UNSUPPORTED_WRITE]: 400,
+  [CoreErrorCodes.CONFIG_UNSUPPORTED_PREVIEW]: 400,
 
   // Core - FS 5XXXX
   [CoreErrorCodes.FS_EXISTS_FAILED]: 500,

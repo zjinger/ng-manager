@@ -1,156 +1,99 @@
-import { GlobalError, GlobalErrorCodes, CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
+import path from "node:path";
+import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
+import type { ConfigPatch, ConfigService } from "@yinuo-ngm/config";
 import type { FastifyInstance } from "fastify";
-import type {
-    WriteDocRequestDto,
-    WriteSchemaRequestDto,
-    DiffSchemaRequestDto,
-    OpenDocResponseDto,
-    WriteSchemaResponseDto,
-    ResolvedDomainDto,
-    ConfigFileReadResultDto,
-    DomainSchemaDocDto,
-    DomainSchemaDiffResultDto,
-} from "@yinuo-ngm/protocol";
-import type { ConfigService } from "@yinuo-ngm/config";
 import { openFolder } from "../common/editor";
 
-function toResolvedDomainDto(domain: import("@yinuo-ngm/config").ResolvedDomain): ResolvedDomainDto {
-    return {
-        domainId: domain.domain.id,
-        label: domain.domain.label,
-        icon: domain.domain.icon,
-        description: domain.domain.description,
-        docs: domain.docs.map(doc => ({
-            spec: {
-                id: doc.spec.id,
-                title: doc.spec.title,
-                kind: doc.spec.kind,
-                candidates: doc.spec.candidates,
-                missing: doc.spec.missing,
-                writable: doc.spec.writable,
-                policy: doc.spec.policy,
-            },
-            exists: doc.exists,
-            chosen: doc.chosen,
-            absPath: doc.absPath,
-        })),
-        nav: domain.domain.nav,
-    };
+interface WriteConfigBody {
+  type?: string;
+  filePath?: string;
+  patches?: ConfigPatch[];
 }
 
-function toConfigFileReadResultDto(result: import("@yinuo-ngm/config").ConfigFileReadResult): ConfigFileReadResultDto {
-    return {
-        codec: result.codec,
-        absPath: result.absPath,
-        relPath: result.relPath,
-        raw: result.raw,
-        data: result.data,
-    };
-}
+function ensureWriteBody(body: WriteConfigBody): {
+  type: string;
+  filePath: string;
+  patches: ConfigPatch[];
+} {
+  if (!body.type || !body.filePath || !Array.isArray(body.patches)) {
+    throw new GlobalError(
+      GlobalErrorCodes.BAD_REQUEST,
+      "missing body.type/body.filePath/body.patches"
+    );
+  }
 
-function toDomainSchemaDocDto<VM>(doc: import("@yinuo-ngm/config").DomainSchemaDoc<VM>): DomainSchemaDocDto<VM> {
-    return {
-        domainId: doc.domainId,
-        schema: doc.schema,
-        vm: doc.vm,
-        options: doc.options,
-        meta: doc.meta,
-    };
-}
-
-function toDomainSchemaDiffResultDto(result: import("@yinuo-ngm/config").DomainSchemaDiffResult): DomainSchemaDiffResultDto {
-    return {
-        docPatch: result.docPatch,
-        filePatch: result.filePatch,
-    };
+  return {
+    type: body.type,
+    filePath: body.filePath,
+    patches: body.patches
+  };
 }
 
 export default async function configRoutes(fastify: FastifyInstance) {
-    const config = fastify.core.config as ConfigService;
+  const config = fastify.core.config as ConfigService;
 
-    fastify.get<{ Params: { projectId: string } }>("/catalog/:projectId", async (req) => {
-        const { projectId } = req.params;
-        const domains = await config.getCatalog(projectId);
-        return domains.map(toResolvedDomainDto);
+  fastify.get("/providers", async () => {
+    return config.listProviders();
+  });
+
+  fastify.get<{ Params: { projectId: string } }>("/detect/:projectId", async (req) => {
+    const project = await fastify.core.project.get(req.params.projectId);
+    return config.detect(project.root);
+  });
+
+  fastify.get<{
+    Params: { projectId: string; type: string };
+    Querystring: { filePath?: string };
+  }>("/doc/:projectId/:type", async (req) => {
+    const project = await fastify.core.project.get(req.params.projectId);
+    return config.read({
+      projectRoot: project.root,
+      type: req.params.type,
+      filePath: req.query.filePath
     });
+  });
 
-    fastify.get<{ Params: { projectId: string; docId: string } }>("/readDoc/:projectId/:docId", async (req) => {
-        const { projectId, docId } = req.params;
-        const result = await config.readDoc(projectId, docId);
-        return toConfigFileReadResultDto(result);
-    });
+  fastify.post<{ Params: { projectId: string }; Body: WriteConfigBody }>(
+    "/preview/:projectId",
+    async (req) => {
+      const body = ensureWriteBody(req.body ?? {});
+      const project = await fastify.core.project.get(req.params.projectId);
+      return config.preview({
+        projectRoot: project.root,
+        type: body.type,
+        filePath: body.filePath,
+        patches: body.patches
+      });
+    }
+  );
 
-    fastify.post<{ Params: { projectId: string; docId: string }; Body: Partial<WriteDocRequestDto> }>(
-        "/writeDoc/:projectId/:docId",
-        async (req) => {
-            const { projectId, docId } = req.params;
-            const body = req.body as Partial<WriteDocRequestDto>;
-            const next = body?.raw ?? body?.data;
-            if (next === undefined) {
-                throw new CoreError(CoreErrorCodes.CONFIG_WRITE_FAILED, "missing body.raw or body.data", { projectId, docId });
-            }
-            await config.writeDoc(projectId, docId, next);
-        }
-    );
+  fastify.post<{ Params: { projectId: string }; Body: WriteConfigBody }>(
+    "/write/:projectId",
+    async (req) => {
+      const body = ensureWriteBody(req.body ?? {});
+      const project = await fastify.core.project.get(req.params.projectId);
+      return config.write({
+        projectRoot: project.root,
+        type: body.type,
+        filePath: body.filePath,
+        patches: body.patches
+      });
+    }
+  );
 
-    fastify.post<{ Params: { projectId: string; docId: string } }>(
-        "/openInEditor/:projectId/:docId",
-        async (req) => {
-            try {
-                const { projectId, docId } = req.params;
-                const { filePath } = await config.openDoc(projectId, docId);
-                await openFolder(filePath, { editor: 'code' });
-                const response: OpenDocResponseDto = { ok: true, filePath };
-                return response;
-            } catch (e: unknown) {
-                throw new CoreError(CoreErrorCodes.EDITOR_LAUNCH_FAILED, e instanceof Error ? e.message : "openInEditor failed");
-            }
-        }
-    );
-
-    fastify.get<{ Params: { projectId: string; domainId: string } }>(
-        "/readSchema/:projectId/:domainId",
-        async (req) => {
-            const { projectId, domainId } = req.params;
-            return await config.readDomainSchema(projectId, domainId);
-        }
-    );
-
-    fastify.post<{ Params: { projectId: string; domainId: string }; Body: Partial<WriteSchemaRequestDto> }>(
-        "/writeSchema/:projectId/:domainId",
-        async (req) => {
-            const { projectId, domainId } = req.params;
-            const body = req.body as Partial<WriteSchemaRequestDto>;
-            const vm = body?.vm;
-            if (vm === undefined) {
-                throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.vm");
-            }
-            await config.writeDomainSchema(projectId, domainId, vm);
-            const response: WriteSchemaResponseDto = { projectId, domainId };
-            return response;
-        }
-    );
-
-    fastify.get<{ Params: { projectId: string; domainId: string } }>(
-        "/getDomainSchema/:projectId/:domainId",
-        async (req) => {
-            const { projectId, domainId } = req.params;
-            const doc = await config.getDomainSchemaDoc(projectId, domainId);
-            return toDomainSchemaDocDto(doc);
-        }
-    );
-
-    fastify.post<{ Params: { projectId: string; domainId: string }; Body: Partial<DiffSchemaRequestDto> }>(
-        "/diffSchema/:projectId/:domainId",
-        async (req) => {
-            const { projectId, domainId } = req.params;
-            const body = req.body as Partial<DiffSchemaRequestDto>;
-            const vm = body?.vm;
-            if (vm === undefined) {
-                throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.vm");
-            }
-            const result = await config.diffDomainSchema(projectId, domainId, vm);
-            return toDomainSchemaDiffResultDto(result);
-        }
-    );
+  fastify.post<{
+    Params: { projectId: string };
+    Body: { filePath?: string };
+  }>("/openInEditor/:projectId", async (req) => {
+    if (!req.body?.filePath) {
+      throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.filePath");
+    }
+    const project = await fastify.core.project.get(req.params.projectId);
+    const absPath = path.resolve(project.root, req.body.filePath);
+    await openFolder(absPath, { editor: "code" });
+    return {
+      ok: true,
+      filePath: absPath
+    };
+  });
 }

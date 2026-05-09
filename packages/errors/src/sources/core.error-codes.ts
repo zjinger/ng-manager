@@ -53,6 +53,11 @@
  * | 40006   | CONFIG_SCHEMA_NOT_FOUND       | Schema 不存在      | 404         |
  * | 40007   | CONFIG_DOMAIN_NOT_FOUND       | Domain 不存在      | 404         |
  * | 40008   | CONFIG_DOC_NOT_FOUND          | Doc 不存在          | 404         |
+ * | 40009   | CONFIG_PROVIDER_NOT_FOUND     | Provider 不存在     | 404         |
+ * | 40010   | CONFIG_FILE_OUT_OF_PROJECT    | 配置路径越界        | 400         |
+ * | 40011   | CONFIG_PATCH_INVALID          | 配置补丁非法        | 400         |
+ * | 40012   | CONFIG_UNSUPPORTED_WRITE      | Provider 不支持写入 | 400         |
+ * | 40013   | CONFIG_UNSUPPORTED_PREVIEW    | Provider 不支持预览 | 400         |
  * |          【FS 5XXXX】                                 |
  * | 50001   | FS_EXISTS_FAILED             | 存在性检查失败      | 500         |
  * |          【Dashboard 6XXXX】                         |
@@ -125,6 +130,11 @@ export const CoreErrorCodes = {
   CONFIG_SCHEMA_NOT_FOUND: 40006,
   CONFIG_DOMAIN_NOT_FOUND: 40007,
   CONFIG_DOC_NOT_FOUND: 40008,
+  CONFIG_PROVIDER_NOT_FOUND: 40009,
+  CONFIG_FILE_OUT_OF_PROJECT: 40010,
+  CONFIG_PATCH_INVALID: 40011,
+  CONFIG_UNSUPPORTED_WRITE: 40012,
+  CONFIG_UNSUPPORTED_PREVIEW: 40013,
   // Task 32XXX
   TASK_NOT_FOUND: 32001,
   RUN_NOT_FOUND: 32002,

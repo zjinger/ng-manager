@@ -1,12 +1,16 @@
-﻿export * from "./domains";
-export * from "./patch";
+export * from "./types/config-provider";
+export * from "./types/config-document";
+export * from "./types/config-schema";
+export * from "./types/config-patch";
+export * from "./types/config-detect";
+export * from "./types/config-error";
 
-export * from "./config.types";
-export * from "./config.registry";
-export * from "./config.resolver";
-export * from "./config.store";
+export * from "./registry/config-provider.registry";
+export * from "./service/config.service";
 
-export * from "./config.service";
-export * from "./config.service.impl";
-
-export * from "./schema";
+export * from "./providers/angular/angular-workspace.provider";
+export * from "./providers/tsconfig/tsconfig.provider";
+export * from "./providers/package-json/package-json.provider";
+export * from "./providers/vue/vue.provider";
+export * from "./providers/vite/vite.provider";
+export * from "./providers/env/env.provider";
