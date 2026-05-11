@@ -45,7 +45,7 @@ storage
 | 包 | 定位 |
 |---|---|
 | `errors` | 统一错误类型、错误码、业务异常 |
-| `shared` | 通用工具函数、基础类型 |
+| `shared` | 通用工具函数与基础类型（含 fs/json/jsonc/patch/object 等基础能力） |
 | `protocol` | HTTP / WebSocket / IPC / 前后端共享 DTO |
 | `event` | 本地事件总线抽象与实现 |
 | `logger` | 系统日志、任务日志、日志存储抽象 |
