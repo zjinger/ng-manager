@@ -84,11 +84,12 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     }
 
     const clean = version.replace(/^v/, '');
-    this.log('info', `正在切换到 Node.js ${clean}，管理器: ${driver.name}`, runId);
+    // this.log('info', `正在切换到 Node.js ${clean}，管理器: ${driver.name}`, runId);
 
     try {
       // use() 负责 install + activate（nvm）/ pin（Volta），确保版本被激活
       await driver.use(clean);
+      this.log('info', `已切换到 Node.js ${clean}`, runId);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       this.log('error', `切换 Node 版本失败: ${msg}`, runId);
@@ -127,26 +128,26 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     const { descriptor, driver } = this.resolveDriver();
 
     if (descriptor.kind === ManagerKind.None) {
-      this.log('warn', '没有安装 Node 版本管理器，无法自动安装');
+      this.log('warn', '[Node] 没有安装 Node 版本管理器，无法自动安装');
       return { success: false, error: '没有安装 Node 版本管理器 (nvm/Volta)' };
     }
 
     const clean = version.replace(/^v/, '');
-    this.log('info', `开始安装 Node.js ${clean}，管理器: ${driver.name}`);
+    this.log('info', `[Node] 开始安装 Node.js ${clean}，管理器: ${driver.name}`);
 
     try {
       await driver.install(clean);
-      this.log('info', `Node.js ${clean} 安装成功`);
+      this.log('info', `[Node] Node.js ${clean} 安装成功`);
       return { success: true };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       // 尝试从错误信息中判断是否已安装（启发式）
       const alreadyInstalled = /already\s+installed/i.test(msg);
       if (alreadyInstalled) {
-        this.log('info', `Node.js ${clean} 已安装，跳过安装`);
+        this.log('info', `[Node] Node.js ${clean} 已安装，跳过安装`);
         return { success: true, alreadyInstalled: true };
       }
-      this.log('error', `Node.js ${clean} 安装失败: ${msg}`);
+      this.log('error', `[Node] Node.js ${clean} 安装失败: ${msg}`);
       return { success: false, error: msg };
     }
   }
@@ -155,33 +156,33 @@ export class NodeVersionServiceImpl implements NodeVersionService {
     const { descriptor, driver } = this.resolveDriver();
 
     if (descriptor.kind === ManagerKind.None) {
-      this.log('warn', '没有安装 Node 版本管理器，无法卸载');
+      this.log('warn', '[Node] 没有安装 Node 版本管理器，无法卸载');
       return false;
     }
 
     const clean = version.replace(/^v/, '');
-    this.log('info', `开始卸载 Node.js ${clean}，管理器: ${driver.name}`);
+    this.log('info', `[Node] 开始卸载 Node.js ${clean}，管理器: ${driver.name}`);
 
     try {
       await driver.uninstall(clean);
-      this.log('info', `Node.js ${clean} 卸载成功`);
+      this.log('info', `[Node] Node.js ${clean} 卸载成功`);
       return true;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      this.log('error', `Node.js ${clean} 卸载失败: ${msg}`);
+      this.log('error', `[Node] Node.js ${clean} 卸载失败: ${msg}`);
       return false;
     }
   }
 
   async writeEngineConfig(projectPath: string, version: string): Promise<boolean> {
-    this.log('info', `写入 engines.node = ${version} 到 ${projectPath}/package.json`);
+    this.log('info', `[Node] 写入 engines.node = ${version} 到 ${projectPath}/package.json`);
     try {
       await writePackageJsonField(projectPath, 'engines.node', version);
-      this.log('info', `engines.node 已写入: ${version}`);
+      this.log('info', `[Node] engines.node 已写入: ${version}`);
       return true;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      this.log('error', `写入 engines.node 失败: ${msg}`);
+      this.log('error', `[Node] 写入 engines.node 失败: ${msg}`);
       return false;
     }
   }
