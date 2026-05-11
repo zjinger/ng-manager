@@ -87,7 +87,11 @@ export async function createCoreApp(
         project,
         migrateIfNeeded: false,
     });
-    const nginxHandle = await createNginxDomain({ dataDir: infra.dataDir });
+    const nginxHandle = await createNginxDomain({
+        dataDir: infra.dataDir,
+        db: storage.db,
+        migrateIfNeeded: false,
+    });
     if (nginxHandle.dispose) {
         disposables.push(nginxHandle.dispose);
     }

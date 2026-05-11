@@ -1,10 +1,16 @@
-import { NginxApp, createNginxBindingStore } from "@yinuo-ngm/nginx";
+import { NginxApp, createSqliteNginxBindingStore } from "@yinuo-ngm/nginx";
+import { createAppStorageContext, type SqliteDatabase } from "@yinuo-ngm/storage";
 import type { CoreDomainHandle } from "./types";
 
 export async function createNginxDomain(opts: {
     dataDir: string;
+    db: SqliteDatabase;
+    migrateIfNeeded?: boolean;
 }): Promise<CoreDomainHandle<NginxApp>> {
-    const bindingStore = createNginxBindingStore(opts.dataDir);
+    const bindingStore = createSqliteNginxBindingStore(
+        opts.db,
+        (opts.migrateIfNeeded ?? true) ? opts.dataDir : undefined
+    );
     const nginxApp = new NginxApp();
 
     const persistedPath = await bindingStore.load();
@@ -25,11 +31,21 @@ export async function createNginxDomain(opts: {
 }
 
 export async function savePersistedNginxPath(dataDir: string, path: string): Promise<void> {
-    const store = createNginxBindingStore(dataDir);
-    await store.save(path);
+    const storage = createAppStorageContext({ dataDir });
+    try {
+        const store = createSqliteNginxBindingStore(storage.db);
+        await store.save(path);
+    } finally {
+        storage.close();
+    }
 }
 
 export async function clearPersistedNginxPath(dataDir: string): Promise<void> {
-    const store = createNginxBindingStore(dataDir);
-    await store.clear();
+    const storage = createAppStorageContext({ dataDir });
+    try {
+        const store = createSqliteNginxBindingStore(storage.db);
+        await store.clear();
+    } finally {
+        storage.close();
+    }
 }

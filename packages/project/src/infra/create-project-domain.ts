@@ -25,12 +25,12 @@ export async function createProjectDomain(opts: {
             backup: true,
         });
 
-        await migrateProjectsIfNeeded({
-            dbDir: dataDir,
-            projectKv,
-            legacyFileName: "projects.json",
-            backup: true,
-        });
+        // await migrateProjectsIfNeeded({
+        //     dbDir: dataDir,
+        //     projectKv,
+        //     legacyFileName: "projects.json",
+        //     backup: true,
+        // });
     }
 
     const projectRepo = new ProjectRepoJsonKv(projectKv);
