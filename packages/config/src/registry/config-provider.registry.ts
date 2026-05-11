@@ -38,6 +38,7 @@ export class ConfigProviderRegistry {
 }
 
 import { AngularWorkspaceConfigProvider } from "../providers/angular/angular-workspace.provider";
+import { AngularEnvironmentConfigProvider } from "../providers/angular-environment/angular-environment.provider";
 import { EnvConfigProvider } from "../providers/env/env.provider";
 import { PackageJsonConfigProvider } from "../providers/package-json/package-json.provider";
 import { TsConfigProvider } from "../providers/tsconfig/tsconfig.provider";
@@ -48,6 +49,7 @@ export function createDefaultConfigRegistry(): ConfigProviderRegistry {
   const registry = new ConfigProviderRegistry();
 
   registry.register(new AngularWorkspaceConfigProvider());
+  registry.register(new AngularEnvironmentConfigProvider());
   registry.register(new TsConfigProvider());
   registry.register(new PackageJsonConfigProvider());
   registry.register(new VueConfigProvider());

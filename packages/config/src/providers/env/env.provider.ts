@@ -17,7 +17,8 @@ import { writeEnvRawFile } from "./env.writer";
 
 export class EnvConfigProvider implements ConfigProvider {
   readonly type = "env";
-  readonly title = "Env";
+  readonly title = "Env 文件";
+  readonly description = ".env 文件内容管理";
 
   async detect(ctx: ConfigDetectContext) {
     return detectEnvFiles(ctx.projectRoot);

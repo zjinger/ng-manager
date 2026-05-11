@@ -75,12 +75,6 @@ export function buildAngularSchema(options: AngularSchemaBuildOptions = {}): Con
         title: "构建配置",
         fields: [
           {
-            key: "buildDefaultConfiguration",
-            label: "默认构建环境",
-            type: "text",
-            path: `${targetBase}/build/defaultConfiguration`
-          },
-          {
             key: "outputPath",
             label: "构建输出目录",
             type: "path",
@@ -129,12 +123,6 @@ export function buildAngularSchema(options: AngularSchemaBuildOptions = {}): Con
         key: "serve",
         title: "开发配置",
         fields: [
-          {
-            key: "serveDefaultConfiguration",
-            label: "默认开发环境",
-            type: "text",
-            path: `${targetBase}/serve/defaultConfiguration`
-          },
           {
             key: "host",
             label: "开发主机",
@@ -218,9 +206,21 @@ export function buildAngularSchema(options: AngularSchemaBuildOptions = {}): Con
         ]
       },
       {
-        key: "advanced",
-        title: "高级配置",
+        key: "environment",
+        title: "环境映射",
         fields: [
+          {
+            key: "buildDefaultConfiguration",
+            label: "默认构建环境",
+            type: "text",
+            path: `${targetBase}/build/defaultConfiguration`
+          },
+          {
+            key: "serveDefaultConfiguration",
+            label: "默认开发环境",
+            type: "text",
+            path: `${targetBase}/serve/defaultConfiguration`
+          },
           {
             key: "productionFileReplacements",
             label: "生产文件替换",

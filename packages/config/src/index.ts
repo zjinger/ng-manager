@@ -11,6 +11,7 @@ export * from "./utils/config-path";
 export * from "./utils/config-patch";
 
 export * from "./providers/angular/angular-workspace.provider";
+export * from "./providers/angular-environment/angular-environment.provider";
 export * from "./providers/tsconfig/tsconfig.provider";
 export * from "./providers/package-json/package-json.provider";
 export * from "./providers/vue/vue.provider";

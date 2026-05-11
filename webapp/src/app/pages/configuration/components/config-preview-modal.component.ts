@@ -93,6 +93,9 @@ export class ConfigPreviewModalComponent {
   }
 
   formatValue(v: unknown): string {
+    if (typeof v === 'string') {
+      return v;
+    }
     try {
       return JSON.stringify(v, null, 2);
     } catch {

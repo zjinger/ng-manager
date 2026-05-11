@@ -1,7 +1,7 @@
 import { detectExistingFiles } from "../../utils/config-detect";
 import type { ConfigDetectResult } from "../../types/config-detect";
 
-const ENV_CANDIDATES = [
+const ENV_FILE_NAMES = [
   ".env",
   ".env.local",
   ".env.development",
@@ -10,13 +10,19 @@ const ENV_CANDIDATES = [
   ".env.production.local"
 ];
 
+const ENV_DIR_CANDIDATES = [".", "env"];
+
+const ENV_CANDIDATES = ENV_DIR_CANDIDATES.flatMap((dir) =>
+  ENV_FILE_NAMES.map((name) => (dir === "." ? name : `${dir}/${name}`))
+);
+
 export async function detectEnvFiles(projectRoot: string): Promise<ConfigDetectResult> {
   const files = await detectExistingFiles(projectRoot, ENV_CANDIDATES);
   const available = files.length > 0;
 
   return {
     type: "env",
-    title: "Env",
+    title: "Env 文件",
     available,
     filePaths: files,
     reason: available ? undefined : "未发现 .env 配置文件"

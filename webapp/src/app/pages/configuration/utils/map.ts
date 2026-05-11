@@ -3,6 +3,7 @@ import { ConfigNavNodeVM } from "../models/config-ui.model";
 
 const providerIconMap: Record<string, string> = {
   "angular-workspace": "proj:angular",
+  "angular-environment": "appstore",
   "tsconfig": "proj:ts",
   "package-json": "codepen-circle",
   "vue-project": "proj:vue",
