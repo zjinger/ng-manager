@@ -129,6 +129,14 @@ export class TaskAnalysisComponent implements OnDestroy {
     return (this.report?.stats?.modules ?? []).slice(0, 10);
   }
 
+  get statsInsights() {
+    const insights = this.report?.stats?.insights ?? [];
+    const statsJsonCleaned = (this.report?.warnings ?? []).some((warning) => warning.code === "stats-json-cleaned");
+    const hasStatsJsonAsset = (this.report?.assets ?? []).some((asset) => asset.name === "stats.json");
+    if (!statsJsonCleaned && hasStatsJsonAsset) return insights;
+    return insights.filter((insight) => insight.code !== "deployment-stats-json");
+  }
+
   get emptyText(): string {
     if (this.loading || this.analyzing) return "正在加载分析报告...";
     return this.error || "暂无分析报告，build 成功后会自动生成。";

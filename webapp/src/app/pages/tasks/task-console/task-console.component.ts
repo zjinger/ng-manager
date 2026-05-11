@@ -1,5 +1,5 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
-import { Component, DestroyRef, inject, Input, isDevMode, OnDestroy, ViewChild } from "@angular/core";
+import { AfterViewInit, Component, DestroyRef, inject, Input, OnDestroy, ViewChild } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { UiNotifierService } from "@app/core";
@@ -26,14 +26,16 @@ import { TaskStreamService } from "../services/task-stream.service";
   templateUrl: "./task-console.component.html",
   styleUrls: ["./task-console.component.less"],
 })
-export class TaskConsoleComponent implements OnDestroy {
+export class TaskConsoleComponent implements AfterViewInit, OnDestroy {
   private _taskId = "";
+  private _active = true;
   private destroyRef = inject(DestroyRef);
   @Input()
   set taskId(id: string) {
     const next = (id ?? "").trim();
     if (!next) {
       this._taskId = "";
+      this.pendingOutput = [];
       this.term?.reset();
       return;
     };
@@ -41,6 +43,7 @@ export class TaskConsoleComponent implements OnDestroy {
     // 切换 run：先退订旧 run（并清 UI）
     if (this._taskId) {
       this.stream.unsubscribeTask(this._taskId);
+      this.pendingOutput = [];
       this.term?.reset();
     }
 
@@ -53,6 +56,19 @@ export class TaskConsoleComponent implements OnDestroy {
 
   @Input() tail = 200;
 
+  @Input()
+  set active(value: boolean) {
+    const next = value !== false;
+    if (next === this._active) return;
+    this._active = next;
+    if (next) {
+      this.activate();
+    }
+  }
+  get active() {
+    return this._active;
+  }
+
   follow = true;
   status: TaskRuntimeStatus = { status: "idle" };
 
@@ -60,6 +76,7 @@ export class TaskConsoleComponent implements OnDestroy {
 
   private sub = new Subscription();
   private resizeSub = new Subscription();
+  private pendingOutput: string[] = [];
   /** WS resize：只在这一层做“协议级收敛” */
   private resize$ = new Subject<{ cols: number; rows: number }>();
   constructor(
@@ -80,25 +97,28 @@ export class TaskConsoleComponent implements OnDestroy {
     );
   }
   private bind(taskId: string) {
-    // 订阅 run 输出
-    // 每次切回任务都请求一次 tail 回放，避免只看到切换后的增量输出
-    this.stream.subscribeTask(taskId, this.tail, { replay: true });
     // 重绑 rx 订阅
     this.sub.unsubscribe();
     this.sub = new Subscription();
-    // 输出：每个 chunk 直接写 xterm
+
+    // 先订阅前端输出流，再向后端请求 tail，避免回放响应快于订阅导致日志丢失。
     this.sub.add(
       this.stream.output$(taskId).subscribe((m) => {
-        if (!this.term) return;
         // 如果想对 stderr 做更明显的颜色：可以在写入前加 ANSI SGR
         // 这里不强行染色，尊重原始 ANSI（如果有）
         // 仅在无 ANSI 且 stderr 时加一个轻微红色，可以后续再做
-        this.term.follow = this.follow;
-        this.term.write(m.payload.text);
+        this.writeOutput(m.payload.text);
       })
     );
     // 状态
     this.sub.add(this.stream.status$(taskId).subscribe((s) => (this.status = s)));
+
+    // 绑定任务时请求一次 tail 回放，避免首次进入输出页只看到后续增量。
+    this.stream.subscribeTask(taskId, this.tail, { replay: true });
+  }
+
+  ngAfterViewInit() {
+    this.flushPendingOutput();
   }
 
   activate() {
@@ -107,8 +127,7 @@ export class TaskConsoleComponent implements OnDestroy {
 
     setTimeout(() => {
       this.term?.fit();
-      this.term?.reset();
-      this.stream.replayTask(taskId, this.tail);
+      this.flushPendingOutput();
       if (this.follow) this.term?.scrollToBottom();
     }, 80);
   }
@@ -125,6 +144,7 @@ export class TaskConsoleComponent implements OnDestroy {
   }
 
   clear() {
+    this.pendingOutput = [];
     this.term?.clear();
   }
 
@@ -144,7 +164,32 @@ export class TaskConsoleComponent implements OnDestroy {
   }
 
   onTermResized(size: { cols: number; rows: number }) {
+    if (!this.active) return;
+    if (size.cols < 20 || size.rows < 8) return;
     // 使用rxjs 节流发送到后端
     this.resize$.next(size);
+  }
+
+  private writeOutput(text: string) {
+    if (!this.term) {
+      this.pendingOutput.push(text);
+      if (this.pendingOutput.length > this.tail * 4) {
+        this.pendingOutput.splice(0, this.pendingOutput.length - this.tail * 4);
+      }
+      return;
+    }
+    this.term.follow = this.follow;
+    this.term.write(text);
+  }
+
+  private flushPendingOutput() {
+    if (!this.term || this.pendingOutput.length === 0) return;
+    const chunks = this.pendingOutput;
+    this.pendingOutput = [];
+    this.term.follow = this.follow;
+    for (const chunk of chunks) {
+      this.term.write(chunk);
+    }
+    if (this.follow) this.term.scrollToBottom();
   }
 }

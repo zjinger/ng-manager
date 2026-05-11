@@ -92,7 +92,10 @@ import { TaskListComponent } from './task-list/task-list.component';
               <div class="task-panel" [class.panel-hidden]="selectedViewId !== view.id">
                 @switch (view.id) {
                 @case ('output') {
-                <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
+                <app-task-console
+                  [taskId]="taskState.selectedTaskId()"
+                  [active]="selectedViewId === 'output'"
+                ></app-task-console>
                 }
                 @case ('dashboard') {
                 <app-task-dashboard
@@ -169,11 +172,19 @@ import { TaskListComponent } from './task-list/task-list.component';
         position: relative;
       }
       .task-panel {
+        position: absolute;
+        inset: 0;
         height: 100%;
         min-height: 0;
+        overflow: hidden;
+        visibility: visible;
+        pointer-events: auto;
+        z-index: 1;
       }
       .task-panel.panel-hidden {
-        display: none;
+        visibility: hidden;
+        pointer-events: none;
+        z-index: 0;
       }
       app-task-console,
       app-task-analysis,

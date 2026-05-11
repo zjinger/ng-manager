@@ -35,7 +35,7 @@
           <strong>{{ formatSize(report.summary.totalRawSize) }}</strong>
         </div>
       </div>
-      <div class="metric">
+      <div class="metric metric-default">
         <div class="metric-icon compress">
           <nz-icon nzType="compress" />
         </div>
@@ -65,7 +65,7 @@
           <div class="metric-tag">{{ report.summary.cssFileCount || 0 }} 个文件</div>
         </div>
       </div>
-      <div class="metric">
+      <div class="metric metric-default">
         <div class="metric-icon">
           <nz-icon nzType="file" />
         </div>
@@ -167,9 +167,9 @@
         <span class="stats-path">{{ report.stats.statsPath }}</span>
       </div>
 
-      @if (report.stats.insights.length > 0) {
+      @if (statsInsights.length > 0) {
       <div class="insight-list">
-        @for (insight of report.stats.insights; track insight.code) {
+        @for (insight of statsInsights; track insight.code) {
         <div class="insight" [class.warning]="insight.level === 'warning'" [class.info]="insight.level === 'info'">
           <div class="insight-icon">
             @if (insight.level === 'warning') {

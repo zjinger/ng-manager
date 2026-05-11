@@ -150,11 +150,12 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
         const statsPath = await findStatsJsonCandidates(ctx.spec.projectRoot, outputPath);
         if (!statsPath) return null;
 
-        const allAssets = await scanDistAssets(outputPath, { includeMap: true });
-        const assets = allAssets.filter((asset) => asset.type !== "map");
         const text = await fs.readFile(statsPath, "utf8");
         const stats = parseStats(statsPath, JSON.parse(text));
         if (!stats) return null;
+        const cleanupWarning = await cleanupStatsJson(statsPath);
+        const allAssets = await scanDistAssets(outputPath, { includeMap: true });
+        const assets = allAssets.filter((asset) => asset.type !== "map");
 
         stats.insights = [
             ...stats.insights,
@@ -162,7 +163,6 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
             ...buildDeploymentRiskInsights({ assets: allAssets, chunks: stats.chunks }),
         ];
 
-        const cleanupWarning = await cleanupStatsJson(statsPath);
         const warnings: TaskAnalyzeWarning[] = [
             ...(detection.buildTool === "angular-webpack"
                 ? [{

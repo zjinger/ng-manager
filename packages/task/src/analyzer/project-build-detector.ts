@@ -52,6 +52,60 @@ async function readJson(filePath: string): Promise<any | null> {
     }
 }
 
+function stripJsonComments(text: string): string {
+    let out = "";
+    let inString = false;
+    let escaped = false;
+
+    for (let i = 0; i < text.length; i++) {
+        const cur = text[i]!;
+        const next = text[i + 1];
+
+        if (inString) {
+            out += cur;
+            if (escaped) {
+                escaped = false;
+            } else if (cur === "\\") {
+                escaped = true;
+            } else if (cur === "\"") {
+                inString = false;
+            }
+            continue;
+        }
+
+        if (cur === "\"") {
+            inString = true;
+            out += cur;
+            continue;
+        }
+
+        if (cur === "/" && next === "/") {
+            while (i < text.length && text[i] !== "\n") i++;
+            out += "\n";
+            continue;
+        }
+
+        if (cur === "/" && next === "*") {
+            i += 2;
+            while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++;
+            i++;
+            continue;
+        }
+
+        out += cur;
+    }
+
+    return out.replace(/,\s*([}\]])/g, "$1");
+}
+
+async function readJsonc(filePath: string): Promise<any | null> {
+    try {
+        return JSON.parse(stripJsonComments(await fs.readFile(filePath, "utf8")));
+    } catch {
+        return null;
+    }
+}
+
 async function exists(filePath: string) {
     try {
         await fs.access(filePath);
@@ -59,6 +113,35 @@ async function exists(filePath: string) {
     } catch {
         return false;
     }
+}
+
+async function readTsconfigCompilerOptions(filePath: string, seen = new Set<string>()): Promise<Record<string, any>> {
+    const resolved = path.resolve(filePath);
+    if (seen.has(resolved)) return {};
+    seen.add(resolved);
+
+    const json = await readJsonc(resolved);
+    if (!json) return {};
+
+    let baseOptions: Record<string, any> = {};
+    if (typeof json.extends === "string" && json.extends.trim()) {
+        const extendsPath = json.extends.endsWith(".json") ? json.extends : `${json.extends}.json`;
+        const basePath = path.resolve(path.dirname(resolved), extendsPath);
+        baseOptions = await readTsconfigCompilerOptions(basePath, seen);
+    }
+
+    return {
+        ...baseOptions,
+        ...(json.compilerOptions ?? {}),
+    };
+}
+
+function resolveAngularTsconfigPath(projectRoot: string, build: any): string {
+    const configured = build?.options?.tsConfig;
+    if (typeof configured === "string" && configured.trim()) {
+        return path.resolve(projectRoot, configured);
+    }
+    return path.join(projectRoot, "tsconfig.app.json");
 }
 
 function depsOf(pkg: any): Record<string, string> {
@@ -137,7 +220,9 @@ function buildMigrationHints(input: {
         hints.push("检测到 tsconfig.server.json。迁移 application builder 时通常会合并到 tsconfig.app.json。");
     }
 
-    if (input.appTsconfigEsModuleInterop !== true) {
+    const shouldCheckEsModuleInterop = input.buildSystem === "application-builder"
+        && (input.hasLegacyServerBuilder || input.hasLegacyPrerenderBuilder || input.hasTsconfigServer);
+    if (shouldCheckEsModuleInterop && input.appTsconfigEsModuleInterop !== true) {
         hints.push("tsconfig.app.json 未检测到 compilerOptions.esModuleInterop=true，SSR/Express ESM 兼容场景可能需要关注。");
     }
 
@@ -162,9 +247,9 @@ async function detectAngularBuild(
     const hasLegacyServerBuilder = serverBuilder.includes("@angular-devkit/build-angular:server");
     const hasLegacyPrerenderBuilder = prerenderBuilder.includes("@angular-devkit/build-angular:prerender");
     const hasTsconfigServer = await exists(path.join(projectRoot, "tsconfig.server.json"));
-    const appTsconfig = await readJson(path.join(projectRoot, "tsconfig.app.json"));
-    const appTsconfigEsModuleInterop = typeof appTsconfig?.compilerOptions?.esModuleInterop === "boolean"
-        ? appTsconfig.compilerOptions.esModuleInterop
+    const appCompilerOptions = await readTsconfigCompilerOptions(resolveAngularTsconfigPath(projectRoot, build));
+    const appTsconfigEsModuleInterop = typeof appCompilerOptions.esModuleInterop === "boolean"
+        ? appCompilerOptions.esModuleInterop
         : undefined;
 
     return {

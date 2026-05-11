@@ -22,8 +22,23 @@ function getTaskKindFromName(name: string): TaskKind {
     return "custom";
 }
 
-function getTaskViews(kind: TaskKind): TaskViewDefinition[] {
-    if (kind === "serve" || kind === "build") {
+function isAngularServeScript(raw: string): boolean {
+    return /\bng(?:\.cmd)?\s+(?:serve|s)\b/.test(raw);
+}
+
+function getTaskViews(kind: TaskKind, raw: string): TaskViewDefinition[] {
+    if (kind === "serve") {
+        const views: TaskViewDefinition[] = [
+            { id: "output", title: "输出" },
+            { id: "dashboard", title: "仪表盘" },
+        ];
+        if (!isAngularServeScript(raw)) {
+            views.push({ id: "analyzer", title: "分析" });
+        }
+        return views;
+    }
+
+    if (kind === "build") {
         return [
             { id: "output", title: "输出" },
             { id: "dashboard", title: "仪表盘" },
@@ -33,9 +48,9 @@ function getTaskViews(kind: TaskKind): TaskViewDefinition[] {
     return [{ id: "output", title: "输出" }];
 }
 
-function getTaskCapabilities(kind: TaskKind): TaskCapabilities {
+function getTaskCapabilities(kind: TaskKind, raw: string): TaskCapabilities {
     if (kind === "serve") {
-        return { dashboard: true, analyzer: true };
+        return { dashboard: true, analyzer: !isAngularServeScript(raw) };
     }
     if (kind === "build") {
         return { dashboard: true, analyzer: true, report: true };
@@ -93,8 +108,8 @@ export function genSpecsFromScripts(
             cwd: rootDir,
             shell: true,
         };
-        spec.views = getTaskViews(spec.kind ?? "custom");
-        spec.capabilities = getTaskCapabilities(spec.kind ?? "custom");
+        spec.views = getTaskViews(spec.kind ?? "custom", raw);
+        spec.capabilities = getTaskCapabilities(spec.kind ?? "custom", raw);
         if (pendingDescription) {
             spec.description = pendingDescription;
             pendingDescription = undefined;

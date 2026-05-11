@@ -4,6 +4,10 @@ export interface TaskOutputRuntimePatch {
     rebuildDurationMs?: number;
     warning?: boolean;
     error?: boolean;
+    warningsCount?: number;
+    errorsCount?: number;
+    resetProblems?: boolean;
+    compilationFinished?: boolean;
 }
 
 const URL_RE = /\b(?:https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[^\]]+\]|[a-zA-Z0-9.-]+)|(?:localhost|127\.0\.0\.1|0\.0\.0\.0))(?::\d+)(?:\/[^\s'"<]*)?|\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[^\]]+\]|[a-zA-Z0-9.-]+)(?:\/[^\s'"<]*)?/g;
@@ -21,6 +25,24 @@ function parseDurationMs(text: string): number | undefined {
     return undefined;
 }
 
+function parseProblemCount(text: string, kind: "warning" | "error"): number | undefined {
+    const word = kind === "warning" ? "warnings?" : "errors?";
+    const patterns = [
+        new RegExp(`(?:compiled|built|finished|completed)\\s+with\\s+(\\d+)\\s+${word}`, "i"),
+        new RegExp(`\\bwith\\s+(\\d+)\\s+${word}`, "i"),
+        new RegExp(`(\\d+)\\s+${word}\\s+(?:found|detected)`, "i"),
+        new RegExp(`found\\s+(\\d+)\\s+${word}`, "i"),
+        new RegExp(`^\\s*(\\d+)\\s+${word}\\b`, "im"),
+    ];
+
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) return Math.max(0, Number(match[1]) || 0);
+    }
+
+    return undefined;
+}
+
 export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
     const clean = normalizeTaskOutput(text);
     const urls = [...new Set((clean.match(URL_RE) ?? []).map((url) => {
@@ -33,9 +55,22 @@ export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
         || lower.includes("application bundle generation complete")
         || lower.includes("app running at")
         || lower.includes("ready in");
+    const compilationFinished = ready
+        || lower.includes("compiled with")
+        || lower.includes("failed to compile")
+        || lower.includes("compilation failed")
+        || lower.includes("build failed")
+        || lower.includes("application bundle generation failed");
+    const resetProblems = ready
+        || lower.includes("compiled successfully")
+        || lower.includes("no errors found")
+        || lower.includes("0 errors")
+        || lower.includes("0 warnings");
     const warning = /\bwarning\b|warn/i.test(clean);
     const error = /\berror\b|failed|exception/i.test(clean);
     const rebuildDurationMs = parseDurationMs(clean);
+    const warningsCount = parseProblemCount(clean, "warning");
+    const errorsCount = parseProblemCount(clean, "error");
 
     return {
         urls: urls.length > 0 ? urls : undefined,
@@ -43,5 +78,9 @@ export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
         rebuildDurationMs,
         warning,
         error,
+        warningsCount,
+        errorsCount,
+        resetProblems,
+        compilationFinished,
     };
 }

@@ -21,13 +21,6 @@ export function buildAngularBuildInsights(detection?: ProjectBuildDetection): Ta
             message: "当前项目使用 browser-esbuild builder，属于 Angular 新构建体系的过渡形态。",
             data: angular,
         });
-    } else if (angular.buildSystem === "application-builder") {
-        insights.push({
-            level: "info",
-            code: "angular-application-builder",
-            message: "当前项目使用 Angular application builder，已处于 Angular 新构建体系。",
-            data: angular,
-        });
     }
 
     if (angular.hasLegacyServerBuilder || angular.hasLegacyPrerenderBuilder) {
@@ -48,7 +41,9 @@ export function buildAngularBuildInsights(detection?: ProjectBuildDetection): Ta
         });
     }
 
-    if (angular.appTsconfigEsModuleInterop !== true) {
+    const shouldCheckEsModuleInterop = angular.buildSystem === "application-builder"
+        && (angular.hasLegacyServerBuilder || angular.hasLegacyPrerenderBuilder || angular.hasTsconfigServer);
+    if (shouldCheckEsModuleInterop && angular.appTsconfigEsModuleInterop !== true) {
         insights.push({
             level: "info",
             code: "angular-es-module-interop",

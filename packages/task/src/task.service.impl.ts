@@ -701,14 +701,20 @@ export class TaskServiceImpl implements TaskService {
             changed = true;
         }
 
-        if (patch.warning || stream === "stderr") {
-            runtime.warningsCount = (runtime.warningsCount ?? 0) + 1;
-            changed = true;
-        }
-
-        if (patch.error) {
-            runtime.errorsCount = (runtime.errorsCount ?? 0) + 1;
-            runtime.lastError = text.trim().slice(0, 500);
+        if (patch.compilationFinished) {
+            if (patch.resetProblems) {
+                runtime.errorsCount = patch.errorsCount ?? 0;
+                runtime.warningsCount = patch.warningsCount ?? 0;
+                if ((runtime.errorsCount ?? 0) === 0) {
+                    runtime.lastError = undefined;
+                }
+            } else {
+                runtime.errorsCount = patch.errorsCount ?? (patch.error ? 1 : runtime.errorsCount ?? 0);
+                runtime.warningsCount = patch.warningsCount ?? (patch.warning || stream === "stderr" ? 1 : runtime.warningsCount ?? 0);
+                if ((runtime.errorsCount ?? 0) > 0) {
+                    runtime.lastError = text.trim().slice(0, 500);
+                }
+            }
             changed = true;
         }
 
