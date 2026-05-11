@@ -2,6 +2,7 @@ import { CommonModule } from "@angular/common";
 import { ChangeDetectorRef, Component, DestroyRef, Input, OnDestroy, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { Clipboard } from "@angular/cdk/clipboard";
+import { ScrollingModule } from "@angular/cdk/scrolling";
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import type { TaskAnalyzeResultDto, TaskAssetInfoDto, TaskEventMsg } from "@yinuo-ngm/protocol";
@@ -34,6 +35,7 @@ interface TreemapCell {
     NzTagModule,
     NzIconModule,
     NzTooltipModule,
+    ScrollingModule,
   ],
   templateUrl: "./task-analysis.component.html",
   styleUrls: ["./task-analysis.component.less"],
@@ -104,6 +106,15 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   get assets(): TaskAssetInfoDto[] {
     return this.report?.assets ?? [];
+  }
+
+  get assetViewportHeight(): number {
+    if (this.assets.length === 0) return 80;
+    return Math.min(360, Math.max(80, this.assets.length * 40));
+  }
+
+  get useVirtualAssetTable(): boolean {
+    return this.assets.length > 200;
   }
 
   get statsChunks() {
@@ -251,8 +262,8 @@ export class TaskAnalysisComponent implements OnDestroy {
     return item.name;
   }
 
-  trackByModPath(_: number, item: { path?: string; name: string }): string {
-    return item.path || item.name;
+  trackByModPath(index: number, item: { path?: string; name: string }): string {
+    return `${item.path || item.name}:${index}`;
   }
 
   trackByCellPath(_: number, item: TreemapCell): string {

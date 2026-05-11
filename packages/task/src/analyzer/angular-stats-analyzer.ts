@@ -2,15 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveAngularOutputPath } from "./angular-output-path";
 import { scanDistAssets } from "./dist-scanner";
+import { buildAngularBuildInsights } from "./insights/angular-build-insights";
+import { buildDeploymentRiskInsights } from "./insights/deployment-risk-insights";
+import { parseEsbuildMetafile } from "./parsers/esbuild-metafile.parser";
+import { parseWebpackStats } from "./parsers/webpack-stats.parser";
 import { detectProjectBuild } from "./project-build-detector";
 import type {
-    TaskAnalyzeChunk,
     TaskAnalyzeContext,
-    TaskAnalyzeDependency,
-    TaskAnalyzeInsight,
-    TaskAnalyzeModule,
     TaskAnalyzeResult,
     TaskAnalyzeStats,
+    TaskAnalyzeWarning,
     TaskAnalyzer,
     TaskAssetInfo,
 } from "./task-analyzer.types";
@@ -51,27 +52,18 @@ async function findStatsJson(root: string, depth = 4): Promise<string | null> {
     return null;
 }
 
+async function findStatsJsonCandidates(projectRoot: string, outputPath: string): Promise<string | null> {
+    return await findStatsJson(outputPath)
+        ?? await findStatsJson(path.resolve(projectRoot, "dist"))
+        ?? await findStatsJson(path.resolve(projectRoot, "dist", "browser"))
+        ?? await findStatsJson(projectRoot, 0);
+}
+
 async function resolveBuildOutputPath(projectRoot: string, isAngular: boolean): Promise<string> {
     if (isAngular) return (await resolveAngularOutputPath(projectRoot)).outputPath;
     const dist = path.resolve(projectRoot, "dist");
     if (await exists(dist)) return dist;
     return projectRoot;
-}
-
-function packageNameFromPath(inputPath: string): string | undefined {
-    const normalized = inputPath.replace(/\\/g, "/");
-    const marker = "node_modules/";
-    const idx = normalized.lastIndexOf(marker);
-    if (idx < 0) return undefined;
-    const rest = normalized.slice(idx + marker.length);
-    const parts = rest.split("/").filter(Boolean);
-    if (parts.length === 0) return undefined;
-    if (parts[0]!.startsWith("@") && parts.length > 1) return `${parts[0]}/${parts[1]}`;
-    return parts[0];
-}
-
-function basenameNoQuery(filePath: string) {
-    return path.basename(filePath.split("?")[0] ?? filePath);
 }
 
 function sumAssets(assets: TaskAssetInfo[]) {
@@ -105,161 +97,9 @@ function sumAssets(assets: TaskAssetInfo[]) {
             type: item.type,
             rawSize: item.rawSize,
             gzipSize: item.gzipSize,
+            brotliSize: item.brotliSize,
             ratio: item.ratio,
         })),
-    };
-}
-
-function buildDependencies(modules: TaskAnalyzeModule[]): TaskAnalyzeDependency[] {
-    const byName = new Map<string, { rawSize: number; moduleCount: number }>();
-    let total = 0;
-
-    for (const mod of modules) {
-        total += mod.rawSize;
-        if (!mod.packageName) continue;
-        const cur = byName.get(mod.packageName) ?? { rawSize: 0, moduleCount: 0 };
-        cur.rawSize += mod.rawSize;
-        cur.moduleCount += 1;
-        byName.set(mod.packageName, cur);
-    }
-
-    return [...byName.entries()]
-        .map(([name, item]) => ({
-            name,
-            rawSize: item.rawSize,
-            moduleCount: item.moduleCount,
-            ratio: total > 0 ? item.rawSize / total : 0,
-        }))
-        .sort((a, b) => b.rawSize - a.rawSize);
-}
-
-function buildInsights(chunks: TaskAnalyzeChunk[], modules: TaskAnalyzeModule[], dependencies: TaskAnalyzeDependency[]): TaskAnalyzeInsight[] {
-    const insights: TaskAnalyzeInsight[] = [];
-    const largestChunk = chunks[0];
-    const largestDep = dependencies[0];
-    const largestModule = modules[0];
-
-    if (largestChunk && largestChunk.rawSize > 500 * 1024) {
-        insights.push({
-            level: "warning",
-            code: "large-chunk",
-            message: `最大 chunk ${largestChunk.name} 超过 500KB，建议检查是否可拆分懒加载。`,
-            data: largestChunk,
-        });
-    }
-
-    if (largestDep && (largestDep.ratio ?? 0) > 0.35) {
-        insights.push({
-            level: "warning",
-            code: "large-dependency",
-            message: `第三方依赖 ${largestDep.name} 占模块体积较高，建议确认是否可按需引入。`,
-            data: largestDep,
-        });
-    }
-
-    if (largestModule && largestModule.rawSize > 200 * 1024) {
-        insights.push({
-            level: "info",
-            code: "large-module",
-            message: `最大模块为 ${largestModule.name}，可以优先查看该模块的引入路径。`,
-            data: largestModule,
-        });
-    }
-
-    return insights;
-}
-
-function parseEsbuildMetafile(statsPath: string, json: Record<string, any>): TaskAnalyzeStats {
-    const outputs = isObject(json.outputs) ? json.outputs : {};
-    const inputs = isObject(json.inputs) ? json.inputs : {};
-    const moduleBytes = new Map<string, { rawSize: number; chunk?: string }>();
-
-    const chunks: TaskAnalyzeChunk[] = Object.entries(outputs).map(([file, output]: [string, any]) => {
-        const outputInputs = isObject(output?.inputs) ? output.inputs : {};
-        for (const [inputName, inputMeta] of Object.entries(outputInputs) as Array<[string, any]>) {
-            const bytes = Number(inputMeta?.bytesInOutput ?? inputMeta?.bytes ?? inputs[inputName]?.bytes ?? 0) || 0;
-            const cur = moduleBytes.get(inputName) ?? { rawSize: 0, chunk: basenameNoQuery(file) };
-            cur.rawSize += bytes;
-            moduleBytes.set(inputName, cur);
-        }
-
-        return {
-            name: basenameNoQuery(file),
-            files: [file],
-            rawSize: Number(output?.bytes ?? 0) || 0,
-            entry: !!output?.entryPoint,
-            initial: !!output?.entryPoint,
-        };
-    }).sort((a, b) => b.rawSize - a.rawSize);
-
-    for (const [inputName, inputMeta] of Object.entries(inputs) as Array<[string, any]>) {
-        if (moduleBytes.has(inputName)) continue;
-        moduleBytes.set(inputName, { rawSize: Number(inputMeta?.bytes ?? 0) || 0 });
-    }
-
-    const modules = [...moduleBytes.entries()]
-        .map(([inputPath, item]) => ({
-            name: basenameNoQuery(inputPath),
-            path: inputPath,
-            rawSize: item.rawSize,
-            packageName: packageNameFromPath(inputPath),
-            chunk: item.chunk,
-        }))
-        .filter((item) => item.rawSize > 0)
-        .sort((a, b) => b.rawSize - a.rawSize);
-    const dependencies = buildDependencies(modules);
-
-    return {
-        statsPath,
-        format: "esbuild-metafile",
-        chunks,
-        modules,
-        dependencies,
-        insights: buildInsights(chunks, modules, dependencies),
-    };
-}
-
-function parseWebpackStats(statsPath: string, json: Record<string, any>): TaskAnalyzeStats {
-    const rawAssets = Array.isArray(json.assets) ? json.assets : [];
-    const rawChunks = Array.isArray(json.chunks) ? json.chunks : [];
-    const rawModules = Array.isArray(json.modules) ? json.modules : [];
-
-    const chunks: TaskAnalyzeChunk[] = rawChunks.length > 0
-        ? rawChunks.map((chunk: any) => ({
-            name: Array.isArray(chunk.names) && chunk.names.length > 0 ? chunk.names.join(", ") : String(chunk.id ?? "chunk"),
-            files: Array.isArray(chunk.files) ? chunk.files.map(String) : [],
-            rawSize: Number(chunk.size ?? 0) || 0,
-            initial: typeof chunk.initial === "boolean" ? chunk.initial : undefined,
-            entry: typeof chunk.entry === "boolean" ? chunk.entry : undefined,
-        }))
-        : rawAssets.map((asset: any) => ({
-            name: String(asset.name ?? "asset"),
-            files: [String(asset.name ?? "")],
-            rawSize: Number(asset.size ?? 0) || 0,
-        }));
-
-    const modules: TaskAnalyzeModule[] = rawModules
-        .map((mod: any) => {
-            const modName = String(mod.nameForCondition ?? mod.name ?? mod.identifier ?? "module");
-            return {
-                name: basenameNoQuery(modName),
-                path: modName,
-                rawSize: Number(mod.size ?? 0) || 0,
-                packageName: packageNameFromPath(modName),
-                chunk: Array.isArray(mod.chunks) ? mod.chunks.map(String).join(",") : undefined,
-            };
-        })
-        .filter((item: TaskAnalyzeModule) => item.rawSize > 0)
-        .sort((a: TaskAnalyzeModule, b: TaskAnalyzeModule) => b.rawSize - a.rawSize);
-    const dependencies = buildDependencies(modules);
-
-    return {
-        statsPath,
-        format: "webpack-stats",
-        chunks: chunks.sort((a, b) => b.rawSize - a.rawSize),
-        modules,
-        dependencies,
-        insights: buildInsights(chunks, modules, dependencies),
     };
 }
 
@@ -270,6 +110,25 @@ function parseStats(statsPath: string, json: unknown): TaskAnalyzeStats | null {
         return parseWebpackStats(statsPath, json);
     }
     return null;
+}
+
+async function cleanupStatsJson(statsPath: string): Promise<TaskAnalyzeWarning | null> {
+    if (path.basename(statsPath) !== "stats.json") return null;
+
+    try {
+        await fs.rm(statsPath, { force: true });
+        return {
+            code: "stats-json-cleaned",
+            message: "已读取并清理 stats.json，避免分析文件进入部署产物。",
+            data: { statsPath },
+        };
+    } catch (e: any) {
+        return {
+            code: "stats-json-cleanup-failed",
+            message: "stats.json 已读取，但清理失败。请在部署脚本中排除 stats.json。",
+            data: { statsPath, error: e?.message ?? String(e) },
+        };
+    }
 }
 
 export class AngularStatsAnalyzer implements TaskAnalyzer {
@@ -288,13 +147,32 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
         if (!isAngular && !isWebpack) return null;
 
         const outputPath = await resolveBuildOutputPath(ctx.spec.projectRoot, isAngular);
-        const statsPath = await findStatsJson(outputPath) ?? await findStatsJson(path.resolve(ctx.spec.projectRoot, "dist")) ?? await findStatsJson(ctx.spec.projectRoot, 2);
+        const statsPath = await findStatsJsonCandidates(ctx.spec.projectRoot, outputPath);
         if (!statsPath) return null;
 
-        const assets = await scanDistAssets(outputPath, { includeMap: false });
+        const allAssets = await scanDistAssets(outputPath, { includeMap: true });
+        const assets = allAssets.filter((asset) => asset.type !== "map");
         const text = await fs.readFile(statsPath, "utf8");
         const stats = parseStats(statsPath, JSON.parse(text));
         if (!stats) return null;
+
+        stats.insights = [
+            ...stats.insights,
+            ...buildAngularBuildInsights(detection),
+            ...buildDeploymentRiskInsights({ assets: allAssets, chunks: stats.chunks }),
+        ];
+
+        const cleanupWarning = await cleanupStatsJson(statsPath);
+        const warnings: TaskAnalyzeWarning[] = [
+            ...(detection.buildTool === "angular-webpack"
+                ? [{
+                    code: "angular-webpack-stats",
+                    message: "检测到 Angular webpack 构建链路，stats.json 将按 webpack-bundle-analyzer 兼容结构解析。",
+                    data: detection,
+                }]
+                : []),
+            ...(cleanupWarning ? [cleanupWarning] : []),
+        ];
         const summary = sumAssets(assets);
 
         return {
@@ -312,13 +190,7 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
             },
             assets,
             stats,
-            warnings: detection.buildTool === "angular-webpack"
-                ? [{
-                    code: "angular-webpack-stats",
-                    message: "检测到 Angular webpack 构建链路，stats.json 将按 webpack-bundle-analyzer 兼容结构解析。",
-                    data: detection,
-                }]
-                : undefined,
+            warnings: warnings.length > 0 ? warnings : undefined,
         };
     }
 }

@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ProjectContextStore } from '@app/core/stores';
 import { PageLayoutComponent } from '@app/shared';
-import type { TaskDashboardDto, TaskViewDefinitionDto, TaskViewIdDto } from '@yinuo-ngm/protocol';
+import type { TaskAnalyzeResultDto, TaskDashboardDto, TaskViewDefinitionDto, TaskViewIdDto } from '@yinuo-ngm/protocol';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -194,6 +194,8 @@ export class TasksComponent {
   selectedTask = this.taskState.selectedRow;
   selectedViewId: TaskViewIdDto = 'output';
   taskDashboard: TaskDashboardDto | null = null;
+  private loadedDashboardTaskId = '';
+  private dashboardUpdateTimer: ReturnType<typeof setTimeout> | null = null;
   @ViewChild(TaskConsoleComponent) private taskConsole?: TaskConsoleComponent;
 
   constructor() {
@@ -224,8 +226,19 @@ export class TasksComponent {
         if (event.type !== 'analyzeFinished') return;
         const taskId = String(event.payload?.taskId ?? '').trim();
         if (!taskId || taskId !== this.taskState.selectedTaskId()) return;
-        this.loadDashboard(taskId);
+        const report = event.payload?.report as TaskAnalyzeResultDto | null | undefined;
+        if (report) {
+          this.setTaskDashboard(this.dashboardFromReport(report));
+        }
+        this.loadDashboard(taskId, { force: true });
       });
+
+    this.destroyRef.onDestroy(() => {
+      if (this.dashboardUpdateTimer) {
+        clearTimeout(this.dashboardUpdateTimer);
+        this.dashboardUpdateTimer = null;
+      }
+    });
   }
 
   selectedViews(): TaskViewDefinitionDto[] {
@@ -250,28 +263,75 @@ export class TasksComponent {
     if (this.selectedViewId === viewId) return;
     this.selectedViewId = viewId;
     if (viewId === 'dashboard') {
-      this.loadDashboard(this.taskState.selectedTaskId());
+      this.loadDashboard(this.taskState.selectedTaskId(), { force: true });
     }
     if (viewId === 'output') {
       this.taskConsole?.activate();
     }
   }
 
-  private loadDashboard(taskId: string | null | undefined) {
+  private loadDashboard(taskId: string | null | undefined, opts?: { force?: boolean }) {
     const id = (taskId ?? '').trim();
     if (!id) {
-      this.taskDashboard = null;
+      this.loadedDashboardTaskId = '';
+      this.setTaskDashboard(null);
       return;
     }
+    if (!opts?.force && this.loadedDashboardTaskId === id) return;
+    this.loadedDashboardTaskId = id;
     this.api.getDashboard(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (dashboard) => {
-          this.taskDashboard = dashboard;
+          if (this.loadedDashboardTaskId !== id) return;
+          this.setTaskDashboard(dashboard);
         },
         error: () => {
-          this.taskDashboard = null;
+          this.loadedDashboardTaskId = '';
+          this.setTaskDashboard(null);
         },
       });
+  }
+
+  private setTaskDashboard(dashboard: TaskDashboardDto | null) {
+    if (this.dashboardUpdateTimer) {
+      clearTimeout(this.dashboardUpdateTimer);
+    }
+    this.dashboardUpdateTimer = setTimeout(() => {
+      this.dashboardUpdateTimer = null;
+      this.taskDashboard = dashboard;
+    }, 0);
+  }
+
+  private dashboardFromReport(report: TaskAnalyzeResultDto): TaskDashboardDto {
+    const runtime = this.selectedTask()?.runtime;
+    return {
+      taskId: report.taskId,
+      projectId: report.projectId,
+      runId: report.runId,
+      status: runtime?.status ?? 'success',
+      progress: {
+        startedAt: runtime?.startedAt,
+        stoppedAt: runtime?.stoppedAt,
+        durationMs: report.summary.durationMs,
+        readyAt: runtime?.readyAt,
+        rebuildDurationMs: runtime?.rebuildDurationMs,
+      },
+      sizes: {
+        outputPath: report.summary.outputPath,
+        fileCount: report.summary.fileCount,
+        totalRawSize: report.summary.totalRawSize,
+        totalGzipSize: report.summary.totalGzipSize,
+        jsRawSize: report.summary.jsRawSize,
+        cssRawSize: report.summary.cssRawSize,
+        assetRawSize: report.summary.assetRawSize,
+      },
+      problems: {
+        warningsCount: runtime?.warningsCount ?? 0,
+        errorsCount: runtime?.errorsCount ?? 0,
+        lastError: runtime?.lastError,
+      },
+      urls: runtime?.urls ?? [],
+    };
   }
 }

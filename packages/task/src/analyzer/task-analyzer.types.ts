@@ -17,6 +17,7 @@ export interface TaskAssetInfo {
     type: TaskAssetType;
     rawSize: number;
     gzipSize?: number;
+    brotliSize?: number;
     ratio?: number;
 }
 
@@ -43,6 +44,7 @@ export interface TaskAnalyzeSummary {
         type: TaskAssetType;
         rawSize: number;
         gzipSize?: number;
+        brotliSize?: number;
         ratio?: number;
     }>;
 }

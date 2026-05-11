@@ -446,8 +446,10 @@
   grid-template-columns: minmax(160px, 1.2fr) 92px 96px 96px 72px minmax(220px, 1.6fr);
   gap: 12px;
   align-items: center;
+  box-sizing: border-box;
+  height: 40px;
   min-height: 40px;
-  padding: 8px 12px;
+  padding: 0 12px;
   border-top: 1px solid #f3f5f7;
   color: #34495e;
   font-size: 13px;
@@ -465,12 +467,26 @@
 }
 
 .asset-body {
-  max-height: 360px;
+  display: block;
+  width: 100%;
   overflow: auto;
+}
+
+.asset-body-plain {
+  max-height: 360px;
 }
 
 .asset-body .asset-row:hover {
   background: #fbfdff;
+}
+
+.asset-row > div {
+  min-width: 0;
+}
+
+.asset-row nz-tag {
+  line-height: 20px;
+  margin-right: 0;
 }
 
 .asset-name,

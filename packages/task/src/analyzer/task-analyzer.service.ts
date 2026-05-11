@@ -6,7 +6,6 @@ import { RollupVisualizerAnalyzer } from "./rollup-visualizer-analyzer";
 import type { TaskAnalyzeResult, TaskAnalyzer } from "./task-analyzer.types";
 
 interface AnalyzerPlan {
-    detection: ProjectBuildDetection;
     primary: TaskAnalyzer[];
     fallback: TaskAnalyzer[];
 }
@@ -28,7 +27,11 @@ export class TaskAnalyzerService {
 
         const detection = await detectProjectBuild(spec.projectRoot);
         const plan = this.createPlan(detection);
-        const analyzers = this.customAnalyzers ?? [...plan.primary, ...plan.fallback];
+        const analyzers = [
+            ...plan.primary,
+            ...(this.customAnalyzers ?? []),
+            ...plan.fallback,
+        ];
 
         for (const analyzer of analyzers) {
             const report = await this.tryAnalyze(analyzer, spec, runtime, detection);
@@ -46,21 +49,18 @@ export class TaskAnalyzerService {
         switch (detection.buildTool) {
             case "angular-esbuild":
                 return {
-                    detection,
                     primary: [this.angularStats],
                     fallback: [this.angularDist],
                 };
 
             case "angular-webpack":
                 return {
-                    detection,
                     primary: [this.angularStats],
                     fallback: [this.angularDist],
                 };
 
             case "vite":
                 return {
-                    detection,
                     primary: [this.rollupVisualizer],
                     fallback: [],
                 };
@@ -68,14 +68,12 @@ export class TaskAnalyzerService {
             case "vue-cli-webpack":
             case "webpack":
                 return {
-                    detection,
                     primary: [this.angularStats],
                     fallback: [],
                 };
 
             default:
                 return {
-                    detection,
                     primary: [],
                     fallback: [],
                 };
@@ -95,6 +93,7 @@ export class TaskAnalyzerService {
         try {
             return await analyzer.analyze(ctx);
         } catch {
+            // TODO: surface analyzer errors in diagnostics while preserving fallback execution.
             return null;
         }
     }

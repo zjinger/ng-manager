@@ -82,6 +82,7 @@ function sumAssets(assets: TaskAssetInfo[]) {
             type: item.type,
             rawSize: item.rawSize,
             gzipSize: item.gzipSize,
+            brotliSize: item.brotliSize,
             ratio: item.ratio,
         })),
     };

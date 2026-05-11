@@ -11,6 +11,7 @@ export interface TaskAssetInfoDto {
     type: TaskAssetTypeDto;
     rawSize: number;
     gzipSize?: number;
+    brotliSize?: number;
     ratio?: number;
 }
 
@@ -37,6 +38,7 @@ export interface TaskAnalyzeSummaryDto {
         type: TaskAssetTypeDto;
         rawSize: number;
         gzipSize?: number;
+        brotliSize?: number;
         ratio?: number;
     }>;
 }

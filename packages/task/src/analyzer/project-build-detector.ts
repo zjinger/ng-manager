@@ -3,10 +3,40 @@ import path from "node:path";
 
 export type ProjectFramework = "angular" | "vue" | "react" | "unknown";
 export type ProjectBuildTool = "angular-esbuild" | "angular-webpack" | "vite" | "vue-cli-webpack" | "webpack" | "unknown";
+export type AngularBuildSystem =
+    | "legacy-browser-webpack"
+    | "browser-esbuild"
+    | "application-builder"
+    | "unknown";
+
+export interface AngularBuildDetection {
+    builder?: string;
+    buildSystem: AngularBuildSystem;
+
+    usesApplicationBuilder: boolean;
+    usesBrowserBuilder: boolean;
+    usesBrowserEsbuildBuilder: boolean;
+
+    usesAngularBuildPackage: boolean;
+    usesAngularDevkitBuildAngular: boolean;
+
+    hasLegacyServerBuilder: boolean;
+    hasLegacyPrerenderBuilder: boolean;
+    hasTsconfigServer: boolean;
+    appTsconfigEsModuleInterop?: boolean;
+
+    outputPathKind?: "string" | "object" | "unknown";
+    outputPathBase?: string;
+    outputPathBrowser?: string;
+    outputPathServer?: string;
+
+    migrationHints: string[];
+}
 
 export interface ProjectBuildDetection {
     framework: ProjectFramework;
     buildTool: ProjectBuildTool;
+    angular?: AngularBuildDetection;
     angularBuilder?: string;
     hasViteConfig: boolean;
     hasVueCliService: boolean;
@@ -38,13 +68,126 @@ function depsOf(pkg: any): Record<string, string> {
     };
 }
 
-function detectAngularBuilder(angularJson: any): string | undefined {
+function getAngularProject(angularJson: any): any | undefined {
     const projects = angularJson?.projects ?? {};
     const projectName = angularJson?.defaultProject && projects[angularJson.defaultProject]
         ? angularJson.defaultProject
         : Object.keys(projects)[0];
-    const project = projectName ? projects[projectName] : undefined;
-    return project?.architect?.build?.builder ?? project?.targets?.build?.builder;
+    return projectName ? projects[projectName] : undefined;
+}
+
+function getAngularTarget(project: any, targetName: string): any | undefined {
+    return project?.architect?.[targetName] ?? project?.targets?.[targetName];
+}
+
+function detectAngularBuildSystem(builder?: string): AngularBuildSystem {
+    if (!builder) return "unknown";
+    if (builder.includes(":application")) return "application-builder";
+    if (builder.includes(":browser-esbuild")) return "browser-esbuild";
+    if (builder.includes(":browser")) return "legacy-browser-webpack";
+    return "unknown";
+}
+
+function detectOutputPath(outputPath: unknown): Pick<
+    AngularBuildDetection,
+    "outputPathKind" | "outputPathBase" | "outputPathBrowser" | "outputPathServer"
+> {
+    if (typeof outputPath === "string") {
+        return {
+            outputPathKind: "string",
+            outputPathBase: outputPath,
+        };
+    }
+
+    if (outputPath && typeof outputPath === "object") {
+        const value = outputPath as { base?: unknown; browser?: unknown; server?: unknown };
+        return {
+            outputPathKind: "object",
+            outputPathBase: typeof value.base === "string" ? value.base : undefined,
+            outputPathBrowser: typeof value.browser === "string" ? value.browser : undefined,
+            outputPathServer: typeof value.server === "string" ? value.server : undefined,
+        };
+    }
+
+    return { outputPathKind: "unknown" };
+}
+
+function buildMigrationHints(input: {
+    buildSystem: AngularBuildSystem;
+    hasLegacyServerBuilder: boolean;
+    hasLegacyPrerenderBuilder: boolean;
+    hasTsconfigServer: boolean;
+    appTsconfigEsModuleInterop?: boolean;
+}): string[] {
+    const hints: string[] = [];
+
+    if (input.buildSystem === "legacy-browser-webpack") {
+        hints.push("当前项目使用旧 Angular browser webpack builder，可考虑执行 ng update @angular/cli --name use-application-builder 迁移到 application builder。");
+    }
+
+    if (input.buildSystem === "browser-esbuild") {
+        hints.push("当前项目使用 browser-esbuild builder，属于新构建体系过渡形态，可进一步迁移到 application builder。");
+    }
+
+    if (input.hasLegacyServerBuilder || input.hasLegacyPrerenderBuilder) {
+        hints.push("检测到旧 SSR/server builder。application builder 已集成 SSR/prerender，迁移时需检查服务器入口和输出目录结构。");
+    }
+
+    if (input.hasTsconfigServer) {
+        hints.push("检测到 tsconfig.server.json。迁移 application builder 时通常会合并到 tsconfig.app.json。");
+    }
+
+    if (input.appTsconfigEsModuleInterop !== true) {
+        hints.push("tsconfig.app.json 未检测到 compilerOptions.esModuleInterop=true，SSR/Express ESM 兼容场景可能需要关注。");
+    }
+
+    return hints;
+}
+
+async function detectAngularBuild(
+    projectRoot: string,
+    angularJson: any,
+    deps: Record<string, string>
+): Promise<AngularBuildDetection | undefined> {
+    if (!angularJson && !deps["@angular/core"]) return undefined;
+
+    const project = angularJson ? getAngularProject(angularJson) : undefined;
+    const build = getAngularTarget(project, "build");
+    const server = getAngularTarget(project, "server");
+    const prerender = getAngularTarget(project, "prerender");
+    const builder = build?.builder as string | undefined;
+    const buildSystem = detectAngularBuildSystem(builder);
+    const serverBuilder = String(server?.builder ?? "");
+    const prerenderBuilder = String(prerender?.builder ?? "");
+    const hasLegacyServerBuilder = serverBuilder.includes("@angular-devkit/build-angular:server");
+    const hasLegacyPrerenderBuilder = prerenderBuilder.includes("@angular-devkit/build-angular:prerender");
+    const hasTsconfigServer = await exists(path.join(projectRoot, "tsconfig.server.json"));
+    const appTsconfig = await readJson(path.join(projectRoot, "tsconfig.app.json"));
+    const appTsconfigEsModuleInterop = typeof appTsconfig?.compilerOptions?.esModuleInterop === "boolean"
+        ? appTsconfig.compilerOptions.esModuleInterop
+        : undefined;
+
+    return {
+        builder,
+        buildSystem,
+        usesApplicationBuilder: buildSystem === "application-builder",
+        usesBrowserBuilder: buildSystem === "legacy-browser-webpack",
+        usesBrowserEsbuildBuilder: buildSystem === "browser-esbuild",
+        usesAngularBuildPackage: !!deps["@angular/build"],
+        usesAngularDevkitBuildAngular: !!deps["@angular-devkit/build-angular"],
+        hasLegacyServerBuilder,
+        hasLegacyPrerenderBuilder,
+        hasTsconfigServer,
+        appTsconfigEsModuleInterop,
+        ...detectOutputPath(build?.options?.outputPath),
+        migrationHints: buildMigrationHints({
+            buildSystem,
+            hasLegacyServerBuilder,
+            hasLegacyPrerenderBuilder,
+            hasTsconfigServer,
+            appTsconfigEsModuleInterop,
+        }),
+    };
 }
 
 export async function detectProjectBuild(projectRoot: string): Promise<ProjectBuildDetection> {
@@ -52,7 +195,8 @@ export async function detectProjectBuild(projectRoot: string): Promise<ProjectBu
     const angularJson = await readJson(path.join(projectRoot, "angular.json"));
     const deps = depsOf(pkg);
     const scripts = (pkg?.scripts ?? {}) as Record<string, string>;
-    const angularBuilder = angularJson ? detectAngularBuilder(angularJson) : undefined;
+    const angular = await detectAngularBuild(projectRoot, angularJson, deps);
+    const angularBuilder = angular?.builder;
     const hasViteConfig = await exists(path.join(projectRoot, "vite.config.ts"))
         || await exists(path.join(projectRoot, "vite.config.js"))
         || await exists(path.join(projectRoot, "vite.config.mjs"));
@@ -67,9 +211,10 @@ export async function detectProjectBuild(projectRoot: string): Promise<ProjectBu
     else if (deps.react || deps["react-dom"]) framework = "react";
 
     let buildTool: ProjectBuildTool = "unknown";
-    if (angularBuilder) {
-        if (angularBuilder.includes("browser-esbuild") || angularBuilder.includes("application")) buildTool = "angular-esbuild";
-        else if (angularBuilder.includes("browser")) buildTool = "angular-webpack";
+    if (angular?.buildSystem === "application-builder" || angular?.buildSystem === "browser-esbuild") {
+        buildTool = "angular-esbuild";
+    } else if (angular?.buildSystem === "legacy-browser-webpack") {
+        buildTool = "angular-webpack";
     } else if (hasViteConfig || deps.vite || Object.values(scripts).some((script) => /\bvite\b/.test(script))) {
         buildTool = "vite";
     } else if (hasVueCliService) {
@@ -81,6 +226,7 @@ export async function detectProjectBuild(projectRoot: string): Promise<ProjectBu
     return {
         framework,
         buildTool,
+        angular,
         angularBuilder,
         hasViteConfig,
         hasVueCliService,

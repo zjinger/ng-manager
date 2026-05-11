@@ -22,6 +22,7 @@ function topAssets(assets: TaskAssetInfo[]) {
         type: item.type,
         rawSize: item.rawSize,
         gzipSize: item.gzipSize,
+        brotliSize: item.brotliSize,
         ratio: item.ratio,
     }));
 }
@@ -33,6 +34,7 @@ export class AngularDistAnalyzer implements TaskAnalyzer {
         if (ctx.spec.kind !== "build" || ctx.runtime.status !== "success") return false;
 
         const detection = ctx.detection;
+        // Compatibility for direct analyzer usage; TaskAnalyzerService normally provides detection.
         if (!detection) return true;
 
         return detection.framework === "angular";

@@ -225,7 +225,7 @@
             <nz-icon nzType="node-index" />
             模块 Top
           </div>
-          @for (mod of statsModules; track mod.path || mod.name) {
+          @for (mod of statsModules; track trackByModPath($index, mod)) {
           <div class="stats-row">
             <span [title]="mod.packageName || mod.name">{{ mod.packageName || mod.name }}</span>
             <strong>{{ formatSize(mod.rawSize) }}</strong>
@@ -252,23 +252,51 @@
           <div role="columnheader">占比</div>
           <div role="columnheader">路径</div>
         </div>
-        <div class="asset-body">
-          @for (asset of assets; track asset.relativePath) {
-          <div class="asset-row" role="row">
-            <div class="asset-name" role="cell" [title]="asset.name">{{ asset.name }}</div>
-            <div role="cell">
-              <nz-tag [nzColor]="getTypeColor(asset.type)">
-                <nz-icon [nzType]="getTypeIcon(asset.type)" />
-                {{ asset.type }}
-              </nz-tag>
+        @if (useVirtualAssetTable) {
+          <cdk-virtual-scroll-viewport
+            class="asset-body"
+            [itemSize]="40"
+            [minBufferPx]="400"
+            [maxBufferPx]="800"
+            [style.height.px]="assetViewportHeight"
+          >
+            <div
+              class="asset-row"
+              role="row"
+              *cdkVirtualFor="let asset of assets; trackBy: trackByAssetPath"
+            >
+              <div class="asset-name" role="cell" [title]="asset.name">{{ asset.name }}</div>
+              <div role="cell">
+                <nz-tag [nzColor]="getTypeColor(asset.type)">
+                  <nz-icon [nzType]="getTypeIcon(asset.type)" />
+                  {{ asset.type }}
+                </nz-tag>
+              </div>
+              <div role="cell" class="asset-size" [class]="'size-' + sizeLevel(asset.rawSize)">{{ formatSize(asset.rawSize) }}</div>
+              <div role="cell" class="asset-size">{{ formatSize(asset.gzipSize) }}</div>
+              <div role="cell" class="asset-size">{{ formatRatio(asset.ratio) }}</div>
+              <div role="cell" class="asset-path" [title]="asset.relativePath">{{ asset.relativePath }}</div>
             </div>
-            <div role="cell" class="asset-size" [class]="'size-' + sizeLevel(asset.rawSize)">{{ formatSize(asset.rawSize) }}</div>
-            <div role="cell" class="asset-size">{{ formatSize(asset.gzipSize) }}</div>
-            <div role="cell" class="asset-size">{{ formatRatio(asset.ratio) }}</div>
-            <div role="cell" class="asset-path" [title]="asset.relativePath">{{ asset.relativePath }}</div>
+          </cdk-virtual-scroll-viewport>
+        } @else {
+          <div class="asset-body asset-body-plain">
+            @for (asset of assets; track asset.relativePath) {
+            <div class="asset-row" role="row">
+              <div class="asset-name" role="cell" [title]="asset.name">{{ asset.name }}</div>
+              <div role="cell">
+                <nz-tag [nzColor]="getTypeColor(asset.type)">
+                  <nz-icon [nzType]="getTypeIcon(asset.type)" />
+                  {{ asset.type }}
+                </nz-tag>
+              </div>
+              <div role="cell" class="asset-size" [class]="'size-' + sizeLevel(asset.rawSize)">{{ formatSize(asset.rawSize) }}</div>
+              <div role="cell" class="asset-size">{{ formatSize(asset.gzipSize) }}</div>
+              <div role="cell" class="asset-size">{{ formatRatio(asset.ratio) }}</div>
+              <div role="cell" class="asset-path" [title]="asset.relativePath">{{ asset.relativePath }}</div>
+            </div>
+            }
           </div>
-          }
-        </div>
+        }
       </div>
     </div>
 

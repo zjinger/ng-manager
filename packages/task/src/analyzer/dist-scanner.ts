@@ -1,7 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { brotliCompressSync } from "node:zlib";
 import { calcGzipSize } from "./gzip-size";
 import type { TaskAssetInfo, TaskAssetType } from "./task-analyzer.types";
+
+const maxCompressedSizeBytes = 5 * 1024 * 1024;
 
 function getAssetType(ext: string): TaskAssetType {
     const lower = ext.toLowerCase();
@@ -14,6 +17,10 @@ function getAssetType(ext: string): TaskAssetType {
     if (lower === ".map") return "map";
 
     return "asset";
+}
+
+function shouldCalculateCompressedSize(type: TaskAssetType, rawSize: number): boolean {
+    return (type === "js" || type === "css" || type === "html") && rawSize <= maxCompressedSizeBytes;
 }
 
 export async function scanDistAssets(
@@ -40,16 +47,19 @@ export async function scanDistAssets(
 
             const buffer = await fs.readFile(fullPath);
             const rawSize = buffer.length;
-            const gzipSize = calcGzipSize(buffer);
+            const type = getAssetType(ext);
+            const gzipSize = shouldCalculateCompressedSize(type, rawSize) ? calcGzipSize(buffer) : undefined;
+            const brotliSize = shouldCalculateCompressedSize(type, rawSize) ? brotliCompressSync(buffer).length : undefined;
 
             assets.push({
                 name: entry.name,
                 path: fullPath,
                 relativePath: path.relative(root, fullPath).replace(/\\/g, "/"),
                 ext,
-                type: getAssetType(ext),
+                type,
                 rawSize,
                 gzipSize,
+                brotliSize,
             });
         }
     }
