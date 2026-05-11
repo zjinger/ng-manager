@@ -38,6 +38,7 @@ export interface TaskAnalyzeSummary {
         name: string;
         rawSize: number;
         gzipSize?: number;
+        brotliSize?: number;
     };
     topAssets?: Array<{
         name: string;

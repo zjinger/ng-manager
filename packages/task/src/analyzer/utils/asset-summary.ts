@@ -22,6 +22,7 @@ export function summarizeAssets(assets: TaskAssetInfo[]): TaskAnalyzeSummary {
                 name: largest.relativePath,
                 rawSize: largest.rawSize,
                 gzipSize: largest.gzipSize,
+                brotliSize: largest.brotliSize,
             }
             : undefined,
         topAssets: assets.slice(0, 10).map((item) => ({

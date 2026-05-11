@@ -75,6 +75,7 @@ export interface TaskDashboard {
         fileCount: number;
         totalRawSize: number;
         totalGzipSize: number;
+        totalBrotliSize?: number;
         jsRawSize: number;
         cssRawSize: number;
         assetRawSize: number;

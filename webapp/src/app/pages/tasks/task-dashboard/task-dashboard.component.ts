@@ -183,6 +183,44 @@ import { interval } from 'rxjs';
           </div>
         </div>
 
+        @if (hasSizeData()) {
+          <div class="dash-section-title compact">
+            <nz-icon nzType="compress" />
+            <span>构建压缩体积</span>
+          </div>
+
+          <div class="dash-grid build-size-grid">
+            <div class="dash-card accent-blue">
+              <div class="dash-card-label">
+                <nz-icon nzType="database" />
+                <span>Raw Size</span>
+              </div>
+              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.totalRawSize) }}</div>
+              <div class="dash-card-sub">{{ taskDashboard?.sizes?.fileCount || 0 }} 个文件</div>
+            </div>
+
+            <div class="dash-card accent-green">
+              <div class="dash-card-label">
+                <nz-icon nzType="compress" />
+                <span>Gzip</span>
+              </div>
+              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.totalGzipSize) }}</div>
+              <div class="dash-card-sub">节省 {{ gzipSavings() }}</div>
+            </div>
+
+            @if ((taskDashboard?.sizes?.totalBrotliSize || 0) > 0) {
+              <div class="dash-card accent-indigo">
+                <div class="dash-card-label">
+                  <nz-icon nzType="compress" />
+                  <span>Brotli</span>
+                </div>
+                <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.totalBrotliSize) }}</div>
+                <div class="dash-card-sub">节省 {{ brotliSavings() }}</div>
+              </div>
+            }
+          </div>
+        }
+
       }
     </div>
   `,
@@ -209,6 +247,10 @@ import { interval } from 'rxjs';
         font-weight: 600;
         color: #26394d;
         padding: 4px 0;
+      }
+
+      .dash-section-title.compact {
+        margin-top: 4px;
       }
 
       .dash-section-title nz-icon {
@@ -567,6 +609,13 @@ export class TaskDashboardComponent implements OnInit {
     const s = this.taskDashboard?.sizes;
     if (!s?.totalRawSize || !s?.totalGzipSize) return '0%';
     const savings = ((s.totalRawSize - s.totalGzipSize) / s.totalRawSize) * 100;
+    return `${savings.toFixed(1)}%`;
+  }
+
+  brotliSavings(): string {
+    const s = this.taskDashboard?.sizes;
+    if (!s?.totalRawSize || !s?.totalBrotliSize) return '0%';
+    const savings = ((s.totalRawSize - s.totalBrotliSize) / s.totalRawSize) * 100;
     return `${savings.toFixed(1)}%`;
   }
 

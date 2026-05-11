@@ -32,6 +32,7 @@ export interface TaskAnalyzeSummaryDto {
         name: string;
         rawSize: number;
         gzipSize?: number;
+        brotliSize?: number;
     };
     topAssets?: Array<{
         name: string;
@@ -106,6 +107,7 @@ export interface TaskDashboardDto {
         fileCount: number;
         totalRawSize: number;
         totalGzipSize: number;
+        totalBrotliSize?: number;
         jsRawSize: number;
         cssRawSize: number;
         assetRawSize: number;

@@ -333,6 +333,7 @@ export class TasksComponent {
         fileCount: report.summary.fileCount,
         totalRawSize: report.summary.totalRawSize,
         totalGzipSize: report.summary.totalGzipSize,
+        totalBrotliSize: report.summary.totalBrotliSize,
         jsRawSize: report.summary.jsRawSize,
         cssRawSize: report.summary.cssRawSize,
         assetRawSize: report.summary.assetRawSize,
