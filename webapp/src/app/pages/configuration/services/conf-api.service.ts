@@ -1,6 +1,7 @@
 import { inject, Injectable } from "@angular/core";
 import { ApiClient } from "@core/api";
 import type {
+  ConfigOpenInEditorResponse,
   ConfigDetectResult,
   ConfigDocument,
   ConfigPatch,
@@ -35,7 +36,7 @@ export class ConfApiService {
   }
 
   openInEditor(projectId: string, filePath: string) {
-    return this.api.post<{ ok: boolean; filePath: string }>(
+    return this.api.post<ConfigOpenInEditorResponse>(
       `/api/config/openInEditor/${projectId}`,
       { filePath }
     );

@@ -242,6 +242,26 @@ export function buildAngularSchema(options: AngularSchemaBuildOptions = {}): Con
         ]
       },
       {
+        key: "effective",
+        title: "生效配置",
+        fields: [
+          {
+            key: "effectiveValues",
+            label: "生效值（按默认环境解析）",
+            type: "json",
+            path: "/__ngmEffective/values",
+            readonly: true
+          },
+          {
+            key: "effectiveSources",
+            label: "值来源",
+            type: "json",
+            path: "/__ngmEffective/sources",
+            readonly: true
+          }
+        ]
+      },
+      {
         key: "tools",
         title: "Angular 工具",
         fields: [

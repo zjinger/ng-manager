@@ -1,23 +1,25 @@
 import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
-import { resolveProjectFile, type ConfigPatch } from "@yinuo-ngm/config";
+import { resolveProjectFile } from "@yinuo-ngm/config";
+import type {
+  ConfigOpenInEditorRequestDto,
+  ConfigPatchDto,
+  ConfigPreviewRequestDto,
+  ConfigWriteRequestDto
+} from "@yinuo-ngm/protocol";
 import type { FastifyInstance } from "fastify";
 import { openFolder } from "../common/editor";
 
-interface WriteConfigBody {
-  type?: string;
-  filePath?: string;
-  patches?: ConfigPatch[];
-}
+type WriteConfigBody = Partial<ConfigWriteRequestDto>;
 
-const PATCH_OPS = new Set<ConfigPatch["op"]>(["set", "remove", "append", "merge"]);
+const PATCH_OPS = new Set<ConfigPatchDto["op"]>(["set", "remove", "append", "merge"]);
 
-function isPatchValid(patch: unknown): patch is ConfigPatch {
+function isPatchValid(patch: unknown): patch is ConfigPatchDto {
   if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
     return false;
   }
 
   const candidate = patch as { op?: unknown; path?: unknown; value?: unknown };
-  if (typeof candidate.op !== "string" || !PATCH_OPS.has(candidate.op as ConfigPatch["op"])) {
+  if (typeof candidate.op !== "string" || !PATCH_OPS.has(candidate.op as ConfigPatchDto["op"])) {
     return false;
   }
   if (typeof candidate.path !== "string" || candidate.path.length === 0) {
@@ -35,7 +37,7 @@ function isPatchValid(patch: unknown): patch is ConfigPatch {
 function ensureWriteBody(body: WriteConfigBody): {
   type: string;
   filePath: string;
-  patches: ConfigPatch[];
+  patches: ConfigPatchDto[];
 } {
   if (!body.type || !body.filePath || !Array.isArray(body.patches)) {
     throw new GlobalError(
@@ -81,7 +83,7 @@ export default async function configRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post<{ Params: { projectId: string }; Body: WriteConfigBody }>(
+  fastify.post<{ Params: { projectId: string }; Body: ConfigPreviewRequestDto }>(
     "/preview/:projectId",
     async (req) => {
       const body = ensureWriteBody(req.body ?? {});
@@ -95,7 +97,7 @@ export default async function configRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.post<{ Params: { projectId: string }; Body: WriteConfigBody }>(
+  fastify.post<{ Params: { projectId: string }; Body: ConfigWriteRequestDto }>(
     "/write/:projectId",
     async (req) => {
       const body = ensureWriteBody(req.body ?? {});
@@ -111,7 +113,7 @@ export default async function configRoutes(fastify: FastifyInstance) {
 
   fastify.post<{
     Params: { projectId: string };
-    Body: { filePath?: string };
+    Body: Partial<ConfigOpenInEditorRequestDto>;
   }>("/openInEditor/:projectId", async (req) => {
     if (!req.body?.filePath) {
       throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "missing body.filePath");

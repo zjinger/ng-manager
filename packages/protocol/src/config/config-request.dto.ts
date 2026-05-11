@@ -1,12 +1,21 @@
-export interface WriteDocRequestDto {
-    raw?: string;
-    data?: unknown;
+export interface ConfigPatchDto {
+    op: "set" | "remove" | "append" | "merge";
+    path: string;
+    value?: unknown;
 }
 
-export interface WriteSchemaRequestDto {
-    vm: unknown;
+export interface ConfigWriteRequestDto {
+    type: string;
+    filePath: string;
+    patches: ConfigPatchDto[];
 }
 
-export interface DiffSchemaRequestDto {
-    vm: unknown;
+export interface ConfigPreviewRequestDto {
+    type: string;
+    filePath: string;
+    patches: ConfigPatchDto[];
+}
+
+export interface ConfigOpenInEditorRequestDto {
+    filePath: string;
 }

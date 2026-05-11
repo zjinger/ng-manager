@@ -13,6 +13,7 @@ export interface ResolvedTsConfig {
 export interface TsConfigInheritanceItem {
   filePath: string;
   exists: boolean;
+  raw?: Record<string, unknown>;
 }
 
 interface WalkResult {
@@ -90,7 +91,7 @@ async function walkExtends(input: {
 
   const current = await readJsoncFile<Record<string, unknown>>(normalizedAbsPath);
   const extendsValue = typeof current.extends === "string" ? current.extends : undefined;
-  const inheritance: TsConfigInheritanceItem[] = [{ filePath: displayPath, exists: true }];
+  const inheritance: TsConfigInheritanceItem[] = [{ filePath: displayPath, exists: true, raw: current }];
 
   if (!extendsValue) {
     return {

@@ -1,38 +1,8 @@
-export interface ConfigSchema {
-  groups: ConfigGroup[];
-}
+import type {
+  ConfigField,
+  ConfigGroup,
+  ConfigSchema,
+} from "@yinuo-ngm/protocol";
 
-export interface ConfigGroup {
-  key: string;
-  title: string;
-  description?: string;
-  defaultExpanded?: boolean;
-  jsonPath?: string;
-  fields: ConfigField[];
-}
-
-export interface ConfigField {
-  key: string;
-  label: string;
-  type:
-    | "text"
-    | "number"
-    | "boolean"
-    | "select"
-    | "multi-text"
-    | "json"
-    | "path"
-    | "table"
-    | "readonly";
-  path: string;
-  description?: string;
-  placeholder?: string;
-  readonly?: boolean;
-  options?: Array<{
-    label: string;
-    value: string | number | boolean;
-  }>;
-  metadata?: Record<string, unknown>;
-}
-
+export type { ConfigField, ConfigGroup, ConfigSchema };
 export type ConfigSchemaItem = ConfigField;

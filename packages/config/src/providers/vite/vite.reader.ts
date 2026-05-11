@@ -173,6 +173,40 @@ export async function readViteConfig(input: {
       build: {
         outDir: extractStringValue(buildBlock ?? "", "outDir"),
         hasLibMode: /\blib\s*:\s*\{/m.test(buildBlock ?? "")
+      },
+      effective: {
+        values: {
+          base: extractStringValue(returnBlock, "base") ?? "/",
+          envDir: extractStringValue(returnBlock, "envDir") ?? ".",
+          server: {
+            host: extractStringValue(serverBlock ?? "", "host") ?? "localhost",
+            port: extractNumberValue(serverBlock ?? "", "port") ?? 5173,
+            strictPort: extractBooleanValue(serverBlock ?? "", "strictPort") ?? false
+          },
+          build: {
+            outDir: extractStringValue(buildBlock ?? "", "outDir") ?? "dist"
+          }
+        },
+        sources: {
+          base: extractStringValue(returnBlock, "base") !== undefined ? "/base" : "(default)",
+          envDir: extractStringValue(returnBlock, "envDir") !== undefined ? "/envDir" : "(default)",
+          "server.host":
+            extractStringValue(serverBlock ?? "", "host") !== undefined
+              ? "/server/host"
+              : "(default)",
+          "server.port":
+            extractNumberValue(serverBlock ?? "", "port") !== undefined
+              ? "/server/port"
+              : "(default)",
+          "server.strictPort":
+            extractBooleanValue(serverBlock ?? "", "strictPort") !== undefined
+              ? "/server/strictPort"
+              : "(default)",
+          "build.outDir":
+            extractStringValue(buildBlock ?? "", "outDir") !== undefined
+              ? "/build/outDir"
+              : "(default)"
+        }
       }
     }
   };

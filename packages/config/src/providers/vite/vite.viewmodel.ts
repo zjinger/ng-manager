@@ -24,4 +24,19 @@ export interface ViteConfigViewModel {
     outDir?: string;
     hasLibMode: boolean;
   };
+  effective: {
+    values: {
+      base: string;
+      envDir: string;
+      server: {
+        host: string;
+        port: number;
+        strictPort: boolean;
+      };
+      build: {
+        outDir: string;
+      };
+    };
+    sources: Record<string, string>;
+  };
 }

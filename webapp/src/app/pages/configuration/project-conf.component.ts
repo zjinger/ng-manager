@@ -236,16 +236,67 @@ export class ProjectConfComponent {
         if (!field.path || field.readonly) continue;
         const before = getByPath(baseline, field.path);
         const after = getByPath(current, field.path);
-        if (_.isEqual(before, after)) continue;
-
-        if (after === undefined) {
-          patches.push({ op: 'remove', path: field.path });
-        } else {
-          patches.push({ op: 'set', path: field.path, value: after });
-        }
+        patches.push(...this.buildFieldPatches(field.path, before, after));
       }
     }
     return patches;
+  }
+
+  private buildFieldPatches(path: string, before: unknown, after: unknown): ConfigPatch[] {
+    if (_.isEqual(before, after)) {
+      return [];
+    }
+    if (after === undefined) {
+      return [{ op: 'remove', path }];
+    }
+    if (before === undefined) {
+      return [{ op: 'set', path, value: after }];
+    }
+    if (this.isPlainObject(before) && this.isPlainObject(after)) {
+      return this.diffObject(path, before, after);
+    }
+    return [{ op: 'set', path, value: after }];
+  }
+
+  private diffObject(path: string, before: Record<string, unknown>, after: Record<string, unknown>): ConfigPatch[] {
+    const patches: ConfigPatch[] = [];
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+
+    for (const key of keys) {
+      const childPath = this.joinPatchPath(path, key);
+      const childBefore = before[key];
+      const childAfter = after[key];
+      if (_.isEqual(childBefore, childAfter)) {
+        continue;
+      }
+      if (childAfter === undefined) {
+        patches.push({ op: 'remove', path: childPath });
+        continue;
+      }
+      if (childBefore === undefined) {
+        patches.push({ op: 'set', path: childPath, value: childAfter });
+        continue;
+      }
+      if (this.isPlainObject(childBefore) && this.isPlainObject(childAfter)) {
+        patches.push(...this.diffObject(childPath, childBefore, childAfter));
+        continue;
+      }
+      patches.push({ op: 'set', path: childPath, value: childAfter });
+    }
+
+    return patches;
+  }
+
+  private isPlainObject(input: unknown): input is Record<string, unknown> {
+    return typeof input === 'object' && input !== null && !Array.isArray(input);
+  }
+
+  private joinPatchPath(basePath: string, segment: string): string {
+    if (basePath.startsWith('/')) {
+      const encoded = segment.replace(/~/g, '~0').replace(/\//g, '~1');
+      return `${basePath}/${encoded}`;
+    }
+    return `${basePath}.${segment}`;
   }
 
   async onDiff() {

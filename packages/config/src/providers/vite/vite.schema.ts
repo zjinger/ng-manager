@@ -108,6 +108,26 @@ export function buildViteSchema(): ConfigSchema {
         ]
       },
       {
+        key: "effective",
+        title: "生效配置",
+        fields: [
+          {
+            key: "effectiveValues",
+            label: "生效值",
+            type: "json",
+            path: "/effective/values",
+            readonly: true
+          },
+          {
+            key: "effectiveSources",
+            label: "值来源",
+            type: "json",
+            path: "/effective/sources",
+            readonly: true
+          }
+        ]
+      },
+      {
         key: "raw",
         title: "原始配置",
         fields: [

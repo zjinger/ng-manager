@@ -59,6 +59,26 @@ export function buildTsConfigSchema(): ConfigSchema {
         fields: [{ key: "chain", label: "inheritance", type: "readonly", path: "/extends", readonly: true }]
       },
       {
+        key: "effective",
+        title: "生效配置",
+        fields: [
+          {
+            key: "effectiveValues",
+            label: "生效值（extends 合并后）",
+            type: "json",
+            path: "/__ngmEffective/values",
+            readonly: true
+          },
+          {
+            key: "effectiveSources",
+            label: "值来源",
+            type: "json",
+            path: "/__ngmEffective/sources",
+            readonly: true
+          }
+        ]
+      },
+      {
         key: "raw",
         title: "原始 JSON",
         fields: [{ key: "raw", label: "raw", type: "json", path: "/", readonly: true }]
