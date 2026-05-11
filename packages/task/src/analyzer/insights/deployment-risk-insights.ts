@@ -11,7 +11,9 @@ export function buildDeploymentRiskInsights(input: {
     const largeAssets = input.assets
         .filter((asset) => asset.rawSize > 2 * 1024 * 1024)
         .sort((a, b) => b.rawSize - a.rawSize);
-    const largeInitialChunk = (input.chunks ?? []).find((chunk) => chunk.initial && chunk.rawSize > 500 * 1024);
+    const largeInitialChunks = (input.chunks ?? [])
+        .filter((chunk) => chunk.initial && chunk.rawSize > 500 * 1024)
+        .sort((a, b) => b.rawSize - a.rawSize);
 
     if (statsJson) {
         insights.push({
@@ -49,12 +51,12 @@ export function buildDeploymentRiskInsights(input: {
         });
     }
 
-    if (largeInitialChunk) {
+    if (largeInitialChunks.length > 0) {
         insights.push({
             level: "warning",
             code: "deployment-large-initial-chunk",
-            message: `首屏 initial chunk ${largeInitialChunk.name} 超过 500KB，建议检查懒加载拆分。`,
-            data: largeInitialChunk,
+            message: `存在 ${largeInitialChunks.length} 个超过 500KB 的 initial chunk，建议检查懒加载拆分。`,
+            data: { count: largeInitialChunks.length, top: largeInitialChunks.slice(0, 10) },
         });
     }
 

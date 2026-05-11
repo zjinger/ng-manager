@@ -1,5 +1,6 @@
 import type {
     TaskDefinitionDto,
+    TaskAnalyzeSummaryDto,
     TaskKindDto,
     TaskRowDto,
     TaskRuntimeDto,
@@ -8,6 +9,7 @@ import type {
 
 export type TaskKind = TaskKindDto;
 export type TaskDefinition = TaskDefinitionDto;
+export type TaskAnalyzeSummary = TaskAnalyzeSummaryDto;
 export type TaskRuntime = TaskRuntimeDto;
 export type TaskRow = TaskRowDto;
 

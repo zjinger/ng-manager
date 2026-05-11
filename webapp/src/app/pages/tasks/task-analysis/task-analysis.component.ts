@@ -193,6 +193,13 @@ export class TaskAnalysisComponent implements OnDestroy {
     return `${savings.toFixed(1)}%`;
   }
 
+  get brotliSavingsPercent(): string {
+    const s = this.report?.summary;
+    if (!s?.totalRawSize || !s?.totalBrotliSize) return "0%";
+    const savings = ((s.totalRawSize - s.totalBrotliSize) / s.totalRawSize) * 100;
+    return `${savings.toFixed(1)}%`;
+  }
+
   refresh() {
     this.load();
   }

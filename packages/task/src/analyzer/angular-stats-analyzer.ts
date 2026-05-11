@@ -7,13 +7,13 @@ import { buildDeploymentRiskInsights } from "./insights/deployment-risk-insights
 import { parseEsbuildMetafile } from "./parsers/esbuild-metafile.parser";
 import { parseWebpackStats } from "./parsers/webpack-stats.parser";
 import { detectProjectBuild } from "./project-build-detector";
+import { summarizeAssets } from "./utils/asset-summary";
 import type {
     TaskAnalyzeContext,
     TaskAnalyzeResult,
     TaskAnalyzeStats,
     TaskAnalyzeWarning,
     TaskAnalyzer,
-    TaskAssetInfo,
 } from "./task-analyzer.types";
 
 function isObject(value: unknown): value is Record<string, any> {
@@ -70,45 +70,6 @@ async function resolveBuildOutputPath(projectRoot: string, isAngular: boolean): 
     const dist = path.resolve(projectRoot, "dist");
     if (await exists(dist)) return dist;
     return projectRoot;
-}
-
-function sumAssets(assets: TaskAssetInfo[]) {
-    const totalRawSize = assets.reduce((sum, item) => sum + item.rawSize, 0);
-    const totalGzipSize = assets.reduce((sum, item) => sum + (item.gzipSize ?? 0), 0);
-    const totalBrotliSize = assets.reduce((sum, item) => sum + (item.brotliSize ?? 0), 0);
-    const jsAssets = assets.filter((item) => item.type === "js");
-    const cssAssets = assets.filter((item) => item.type === "css");
-    const otherAssets = assets.filter((item) => item.type !== "js" && item.type !== "css");
-    const largest = assets[0];
-
-    return {
-        fileCount: assets.length,
-        totalRawSize,
-        totalGzipSize,
-        totalBrotliSize,
-        jsRawSize: jsAssets.reduce((sum, item) => sum + item.rawSize, 0),
-        cssRawSize: cssAssets.reduce((sum, item) => sum + item.rawSize, 0),
-        assetRawSize: otherAssets.reduce((sum, item) => sum + item.rawSize, 0),
-        jsFileCount: jsAssets.length,
-        cssFileCount: cssAssets.length,
-        assetFileCount: otherAssets.length,
-        largestFile: largest
-            ? {
-                name: largest.relativePath,
-                rawSize: largest.rawSize,
-                gzipSize: largest.gzipSize,
-            }
-            : undefined,
-        topAssets: assets.slice(0, 10).map((item) => ({
-            name: item.name,
-            relativePath: item.relativePath,
-            type: item.type,
-            rawSize: item.rawSize,
-            gzipSize: item.gzipSize,
-            brotliSize: item.brotliSize,
-            ratio: item.ratio,
-        })),
-    };
 }
 
 function parseStats(statsPath: string, json: unknown): TaskAnalyzeStats | null {
@@ -181,7 +142,7 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
                 : []),
             ...(cleanupWarning ? [cleanupWarning] : []),
         ];
-        const summary = sumAssets(assets);
+        const summary = summarizeAssets(assets);
 
         return {
             runId: ctx.runtime.runId,
