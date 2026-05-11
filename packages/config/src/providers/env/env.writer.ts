@@ -12,3 +12,12 @@ export async function writeEnvFile(input: {
   const content = serializeEnvEntries(input.entries);
   return writeTextFile(absPath, content, { ensureDir: true, newline: true });
 }
+
+export async function writeEnvRawFile(input: {
+  projectRoot: string;
+  filePath: string;
+  content: string;
+}) {
+  const absPath = resolveProjectFile(input.projectRoot, input.filePath);
+  return writeTextFile(absPath, input.content, { ensureDir: true, newline: true });
+}

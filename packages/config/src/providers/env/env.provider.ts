@@ -1,19 +1,19 @@
 import type { ConfigProvider } from "../../types/config-provider";
 import type {
   ConfigDetectContext,
+  ConfigPreviewContext,
   ConfigReadContext,
   ConfigWriteContext
 } from "../../types/config-detect";
 import type { ConfigDocument } from "../../types/config-document";
 import type { ConfigSchema } from "../../types/config-schema";
-import type { ConfigWriteResult } from "../../types/config-patch";
+import type { ConfigPreviewResult, ConfigWriteResult } from "../../types/config-patch";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import { detectEnvFiles, resolveEnvFilePath } from "./env.detector";
 import { readEnvFile } from "./env.reader";
 import { buildEnvSchema } from "./env.schema";
 import type { EnvViewModel } from "./env.viewmodel";
-import { parseEnvContent } from "./env-format";
-import { writeEnvFile } from "./env.writer";
+import { writeEnvRawFile } from "./env.writer";
 
 export class EnvConfigProvider implements ConfigProvider {
   readonly type = "env";
@@ -48,6 +48,30 @@ export class EnvConfigProvider implements ConfigProvider {
     return buildEnvSchema();
   }
 
+  async preview(ctx: ConfigPreviewContext): Promise<ConfigPreviewResult> {
+    const filePath = await resolveEnvFilePath(ctx.projectRoot, ctx.filePath);
+    const current = await readEnvFile({
+      projectRoot: ctx.projectRoot,
+      filePath
+    });
+    const rawPatch = ctx.patches.find((patch) => patch.op === "set" && patch.path === "/raw");
+    if (!rawPatch || typeof rawPatch.value !== "string") {
+      throw new CoreError(
+        CoreErrorCodes.CONFIG_UNSUPPORTED_PREVIEW,
+        "Env Provider 当前仅支持通过 /raw 进行 set 预览",
+        { type: this.type, patches: ctx.patches }
+      );
+    }
+
+    return {
+      type: this.type,
+      filePath,
+      before: current.content,
+      after: rawPatch.value,
+      patches: ctx.patches
+    };
+  }
+
   async write(ctx: ConfigWriteContext): Promise<ConfigWriteResult> {
     const filePath = await resolveEnvFilePath(ctx.projectRoot, ctx.filePath);
     const current = await readEnvFile({
@@ -65,11 +89,10 @@ export class EnvConfigProvider implements ConfigProvider {
       );
     }
 
-    const entries = parseEnvContent(rawPatch.value);
-    const result = await writeEnvFile({
+    const result = await writeEnvRawFile({
       projectRoot: ctx.projectRoot,
       filePath,
-      entries
+      content: rawPatch.value
     });
 
     return {

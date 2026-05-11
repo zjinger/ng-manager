@@ -13,21 +13,25 @@ type WriteConfigBody = Partial<ConfigWriteRequestDto>;
 
 const PATCH_OPS = new Set<ConfigPatchDto["op"]>(["set", "remove", "append", "merge"]);
 
+function hasOwn(obj: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
 function isPatchValid(patch: unknown): patch is ConfigPatchDto {
   if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
     return false;
   }
 
-  const candidate = patch as { op?: unknown; path?: unknown; value?: unknown };
+  const candidate = patch as object & { op?: unknown; path?: unknown; value?: unknown };
   if (typeof candidate.op !== "string" || !PATCH_OPS.has(candidate.op as ConfigPatchDto["op"])) {
     return false;
   }
-  if (typeof candidate.path !== "string" || candidate.path.length === 0) {
+  if (typeof candidate.path !== "string") {
     return false;
   }
   if (
     (candidate.op === "set" || candidate.op === "append" || candidate.op === "merge") &&
-    (candidate.value === undefined || candidate.value === null)
+    !hasOwn(candidate, "value")
   ) {
     return false;
   }
