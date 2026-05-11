@@ -101,6 +101,18 @@ export class TaskConsoleComponent implements OnDestroy {
     this.sub.add(this.stream.status$(taskId).subscribe((s) => (this.status = s)));
   }
 
+  activate() {
+    const taskId = this._taskId;
+    if (!taskId) return;
+
+    setTimeout(() => {
+      this.term?.fit();
+      this.term?.reset();
+      this.stream.replayTask(taskId, this.tail);
+      if (this.follow) this.term?.scrollToBottom();
+    }, 80);
+  }
+
   ngOnDestroy() {
     if (this._taskId) this.stream.unsubscribeTask(this._taskId);
     this.sub.unsubscribe();

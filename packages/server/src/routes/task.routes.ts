@@ -18,9 +18,12 @@ function toTaskDefinitionDto(spec: TaskDefinition): TaskDefinitionDto {
         kind: spec.kind,
         description: spec.description,
         command: spec.command,
+        displayCommand: spec.displayCommand,
         file: spec.file,
         args: spec.args,
         runnable: spec.runnable,
+        views: spec.views,
+        capabilities: spec.capabilities,
     };
 }
 
@@ -37,6 +40,12 @@ function toTaskRuntimeDto(runtime: TaskRuntime): TaskRuntimeDto {
         exitCode: runtime.exitCode,
         signal: runtime.signal,
         lastError: runtime.lastError,
+        urls: runtime.urls,
+        lastOutputAt: runtime.lastOutputAt,
+        readyAt: runtime.readyAt,
+        rebuildDurationMs: runtime.rebuildDurationMs,
+        warningsCount: runtime.warningsCount,
+        errorsCount: runtime.errorsCount,
     };
 }
 
@@ -135,6 +144,21 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.get("/active", async () => {
         const runtimes = await fastify.core.task.listActive();
         return runtimes.map(toTaskRuntimeDto);
+    });
+
+    fastify.get("/report/run/:runId", async (req) => {
+        const { runId } = req.params as { runId: string };
+        return await fastify.core.task.getReportByRunId(runId);
+    });
+
+    fastify.get("/report/latest/:taskId", async (req) => {
+        const { taskId } = req.params as { taskId: string };
+        return await fastify.core.task.getLatestReportByTaskId(taskId);
+    });
+
+    fastify.get("/dashboard/:taskId", async (req) => {
+        const { taskId } = req.params as { taskId: string };
+        return await fastify.core.task.getDashboardByTaskId(taskId);
     });
 
     /**

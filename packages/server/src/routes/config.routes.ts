@@ -25,7 +25,7 @@ function isPatchValid(patch: unknown): patch is ConfigPatch {
   }
   if (
     (candidate.op === "set" || candidate.op === "append" || candidate.op === "merge") &&
-    candidate.value === undefined
+    (candidate.value === undefined || candidate.value === null)
   ) {
     return false;
   }

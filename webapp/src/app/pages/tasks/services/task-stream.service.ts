@@ -69,6 +69,20 @@ export class TaskStreamService {
     }
   }
 
+  replayTask(taskId: string, tail = 200) {
+    const id = String(taskId ?? "").trim();
+    if (!id) return;
+    const t = Math.max(0, Math.min(5000, tail | 0));
+    const prev = this.subs.get(id);
+    const nextTail = Math.max(prev?.tail ?? 0, t);
+    if (prev && nextTail !== prev.tail) {
+      this.subs.set(id, { ...prev, tail: nextTail });
+    }
+    if (this.ws.isOpen()) {
+      this.ws.send({ op: "sub", topic: "task", taskId: id, tail: nextTail || t });
+    }
+  }
+
   resize(taskId: string, cols: number, rows: number) {
     const id = String(taskId ?? "").trim();
     if (!id) return;
@@ -169,6 +183,12 @@ export class TaskStreamService {
         base.pid = snapPayload.pid;
         base.exitCode = snapPayload.exitCode;
         base.signal = snapPayload.signal;
+        base.urls = snapPayload.urls;
+        base.lastOutputAt = snapPayload.lastOutputAt;
+        base.readyAt = snapPayload.readyAt;
+        base.rebuildDurationMs = snapPayload.rebuildDurationMs;
+        base.warningsCount = snapPayload.warningsCount;
+        base.errorsCount = snapPayload.errorsCount;
         return base;
       case 'started':
         if (prev && prev.runId === runId) {

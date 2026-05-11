@@ -14,6 +14,9 @@ export type TaskEventType =
     | "stopRequested"
     | "exited"
     | "failed"
+    | "analyzeStarted"
+    | "analyzeFinished"
+    | "analyzeFailed"
     | "bootstrapDone"
     | "bootstrapFailed"
     | "bootstrapNeedPickRoot";
@@ -31,6 +34,12 @@ export type TaskSnapshotPayload = {
     stoppedAt?: number;
     exitCode?: number | null;
     signal?: string | null;
+    urls?: string[];
+    lastOutputAt?: number;
+    readyAt?: number;
+    rebuildDurationMs?: number;
+    warningsCount?: number;
+    errorsCount?: number;
 };
 
 export type TaskStartedPayload = {
@@ -60,6 +69,26 @@ export type TaskFailedPayload = {
     taskId: string;
     runId: string;
     projectId?: string;
+    error: string;
+};
+
+export type TaskAnalyzeStartedPayload = {
+    projectId: string;
+    taskId: string;
+    runId: string;
+};
+
+export type TaskAnalyzeFinishedPayload = {
+    projectId: string;
+    taskId: string;
+    runId: string;
+    report: unknown;
+};
+
+export type TaskAnalyzeFailedPayload = {
+    projectId: string;
+    taskId: string;
+    runId: string;
     error: string;
 };
 
@@ -96,6 +125,9 @@ export type TaskEventPayloadMap = {
     stopRequested: TaskStopRequestedPayload;
     exited: TaskExitedPayload;
     failed: TaskFailedPayload;
+    analyzeStarted: TaskAnalyzeStartedPayload;
+    analyzeFinished: TaskAnalyzeFinishedPayload;
+    analyzeFailed: TaskAnalyzeFailedPayload;
     bootstrapDone: TaskBootstrapDonePayload;
     bootstrapFailed: TaskBootstrapFailedPayload;
     bootstrapNeedPickRoot: TaskBootstrapNeedPickRootPayload;

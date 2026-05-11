@@ -7,8 +7,11 @@ import type { ProcessService } from '@yinuo-ngm/process';
 import type { ProjectService } from '@yinuo-ngm/project';
 import type { NodeVersionService } from '@yinuo-ngm/node-version';
 import { genSpecsFromScripts } from './infra/generators/genSpecsFromScripts';
+import { TaskAnalyzerService } from './analyzer/task-analyzer.service';
+import { detectProjectBuild } from './analyzer/project-build-detector';
+import { normalizeTaskOutput, parseTaskOutput } from './runtime/task-output-parser';
 import type { TaskService } from './task.service';
-import type { TaskDefinition, TaskRow, TaskRuntime } from './task.types';
+import type { TaskDashboard, TaskDefinition, TaskRow, TaskRuntime } from './task.types';
 import { TaskEvents, type TaskEventMap } from './infra/task-event-map';
 import type { ILogStore, SystemLogService } from '@yinuo-ngm/logger';
 
@@ -22,6 +25,8 @@ export class TaskServiceImpl implements TaskService {
     private runtimes = new Map<string, TaskRuntime>();
     private procs = new Map<string, ProcHandle>();
     private runIdsByTaskId = new Map<string, string[]>();
+    private outputTailByRunId = new Map<string, string>();
+    private analyzerService: TaskAnalyzerService;
     private readonly MAX_RUNS_PER_TASK = 5;
     private readonly MAX_TOTAL_RUNS = 200;
 
@@ -31,8 +36,11 @@ export class TaskServiceImpl implements TaskService {
         private sysLog: SystemLogService,
         private taskStreamLog: ILogStore,
         private events: IEventBus<TaskEventMap>,
-        private nodeVersionService: NodeVersionService
-    ) { }
+        private nodeVersionService: NodeVersionService,
+        analyzerService?: TaskAnalyzerService
+    ) {
+        this.analyzerService = analyzerService ?? new TaskAnalyzerService();
+    }
 
     async start(taskId: string): Promise<TaskRuntime> {
         const spec = this.specs.get(taskId);
@@ -62,7 +70,8 @@ export class TaskServiceImpl implements TaskService {
         this.runtimes.set(runId, rt);
         this.trackRun(taskId, runId);
 
-        const cmdStr = `${spec.command}${(spec.args?.length ? " " + spec.args.join(" ") : "")}`;
+        const launchSpec = await this.prepareLaunchSpec(spec, runId);
+        const cmdStr = `${launchSpec.command}${(launchSpec.args?.length ? " " + launchSpec.args.join(" ") : "")}`;
         const text = `[Task] ${spec.projectRoot}: ${cmdStr} started`;
         this.appendSysLog(runId, text, 'info');
 
@@ -107,10 +116,10 @@ export class TaskServiceImpl implements TaskService {
                 }
             }
 
-            p = await this.proc.spawn(spec.command, spec.args ?? [], {
-                cwd: spec.cwd!,
-                env: spec.env,
-                shell: spec.shell ?? false,
+            p = await this.proc.spawn(launchSpec.command!, launchSpec.args ?? [], {
+                cwd: launchSpec.cwd!,
+                env: launchSpec.env,
+                shell: launchSpec.shell ?? false,
                 cols: 140,
                 rows: 40,
             });
@@ -198,6 +207,11 @@ export class TaskServiceImpl implements TaskService {
             this.events.emit(TaskEvents.TASK_EXITED, { taskId, runId, exitCode: code, signal, stoppedAt: cur.stoppedAt! });
             if (cur.status === "failed") {
                 this.events.emit(TaskEvents.TASK_FAILED, { taskId, runId, error: `[Task] exit code=${code}` });
+            }
+            if (cur.status === "success" && spec.kind === "build") {
+                this.analyzeAfterExit(spec, cur).catch((e) => {
+                    this.appendSysLog(runId, `[Task Analyze] failed: ${e?.message ?? String(e)}`, "warn");
+                });
             }
             this.pruneRunsForTask(taskId);
             this.pruneRunsGlobal();
@@ -346,6 +360,57 @@ export class TaskServiceImpl implements TaskService {
         return null;
     }
 
+    async getReportByRunId(runId: string) {
+        return this.analyzerService.getReportByRunId(runId);
+    }
+
+    async getLatestReportByTaskId(taskId: string) {
+        return this.analyzerService.getLatestReportByTaskId(taskId);
+    }
+
+    async getDashboardByTaskId(taskId: string): Promise<TaskDashboard | null> {
+        const spec = this.specs.get(taskId);
+        const runtime = await this.getSnapshotByTaskId(taskId);
+        const report = this.analyzerService.getLatestReportByTaskId(taskId);
+        const projectId = runtime?.projectId ?? spec?.projectId;
+        if (!projectId) return null;
+
+        const durationMs = runtime?.startedAt
+            ? Math.max(0, (runtime.stoppedAt ?? Date.now()) - runtime.startedAt)
+            : report?.summary.durationMs;
+
+        return {
+            taskId,
+            projectId,
+            runId: runtime?.runId ?? report?.runId,
+            status: runtime?.status ?? "idle",
+            progress: {
+                startedAt: runtime?.startedAt,
+                stoppedAt: runtime?.stoppedAt,
+                durationMs,
+                readyAt: runtime?.readyAt,
+                rebuildDurationMs: runtime?.rebuildDurationMs,
+            },
+            sizes: report
+                ? {
+                    outputPath: report.summary.outputPath,
+                    fileCount: report.summary.fileCount,
+                    totalRawSize: report.summary.totalRawSize,
+                    totalGzipSize: report.summary.totalGzipSize,
+                    jsRawSize: report.summary.jsRawSize,
+                    cssRawSize: report.summary.cssRawSize,
+                    assetRawSize: report.summary.assetRawSize,
+                }
+                : undefined,
+            problems: {
+                warningsCount: runtime?.warningsCount ?? 0,
+                errorsCount: runtime?.errorsCount ?? 0,
+                lastError: runtime?.lastError,
+            },
+            urls: runtime?.urls ?? [],
+        };
+    }
+
     async getTailLogsByRun(runId: string, tail: number) {
         return this.taskStreamLog.tail(Math.min(tail, 1000), { refId: runId, source: "task" });
     }
@@ -364,6 +429,47 @@ export class TaskServiceImpl implements TaskService {
 
     registerSpec(spec: TaskDefinition): void {
         this.specs.set(spec.id, spec);
+    }
+
+    private async prepareLaunchSpec(spec: TaskDefinition, runId: string): Promise<TaskDefinition> {
+        if (spec.kind !== "build" || !spec.command || !spec.projectRoot) return spec;
+
+        let detection: Awaited<ReturnType<typeof detectProjectBuild>>;
+        try {
+            detection = await detectProjectBuild(spec.projectRoot);
+        } catch (e: any) {
+            this.appendSysLog(runId, `[Task Analyze] 项目构建类型检测失败: ${e?.message ?? String(e)}`, "warn");
+            return spec;
+        }
+
+        if (detection.framework !== "angular") {
+            if (detection.buildTool === "vite") {
+                this.appendSysLog(runId, "[Task Analyze] Vite/Rollup 项目将优先读取 rollup-plugin-visualizer 生成的 stats.html / stats.json", "info");
+            } else if (detection.buildTool === "webpack" || detection.buildTool === "vue-cli-webpack") {
+                this.appendSysLog(runId, "[Task Analyze] webpack 项目将优先读取 webpack stats.json，可用 webpack-bundle-analyzer 生成/查看同一份 stats", "info");
+            }
+            return spec;
+        }
+
+        const current = `${spec.command} ${(spec.args ?? []).join(" ")}`.trim();
+        if (/\b--stats-json\b/.test(current)) return spec;
+
+        const command = this.appendStatsJsonArg(spec.command);
+        if (command === spec.command) return spec;
+
+        this.appendSysLog(runId, "[Task Analyze] Angular build 自动追加 --stats-json，用官方 stats.json 生成分析报告", "info");
+        return {
+            ...spec,
+            command,
+        };
+    }
+
+    private appendStatsJsonArg(command: string): string {
+        const trimmed = command.trim();
+        if (/\b(?:npm|pnpm)(?:\.cmd)?\s+run\s+\S+/.test(trimmed)) return `${trimmed} -- --stats-json`;
+        if (/\byarn(?:\.cmd)?\s+\S+/.test(trimmed)) return `${trimmed} --stats-json`;
+        if (/\bng(?:\.cmd)?\s+build\b/.test(trimmed)) return `${trimmed} --stats-json`;
+        return trimmed;
     }
 
     private sleep(ms: number) {
@@ -478,6 +584,7 @@ export class TaskServiceImpl implements TaskService {
 
             this.runtimes.delete(runId);
             this.procs.delete(runId);
+            this.outputTailByRunId.delete(runId);
             target--;
         }
     }
@@ -525,12 +632,91 @@ export class TaskServiceImpl implements TaskService {
         this.pruneOrphanSafe(orphanTaskIds);
     }
 
+    private async analyzeAfterExit(spec: TaskDefinition, runtime: TaskRuntime) {
+        this.events.emit(TaskEvents.TASK_ANALYZE_STARTED, {
+            projectId: spec.projectId,
+            taskId: spec.id,
+            runId: runtime.runId,
+        });
+
+        try {
+            const report = await this.analyzerService.analyze(spec, runtime);
+            this.events.emit(TaskEvents.TASK_ANALYZE_FINISHED, {
+                projectId: spec.projectId,
+                taskId: spec.id,
+                runId: runtime.runId,
+                report,
+            });
+        } catch (e: any) {
+            this.events.emit(TaskEvents.TASK_ANALYZE_FAILED, {
+                projectId: spec.projectId,
+                taskId: spec.id,
+                runId: runtime.runId,
+                error: e?.message ?? String(e),
+            });
+            throw e;
+        }
+    }
+
     private appendTaskOutput(runId: string, taskId: string, text: string, stream: LogStreamType = 'stdout') {
         const outputPayload: TaskOutputPayload = { runId, taskId, stream, text };
         const level: SystemLogLevel = stream === 'stderr' ? 'warn' : 'info';
         const log = { ts: Date.now(), level, source: "task" as const, scope: "task" as const, refId: runId, text };
         this.taskStreamLog.append(log);
+        this.updateRuntimeFromOutput(runId, text, stream);
         this.events.emit(TaskEvents.TASK_OUTPUT, outputPayload);
+    }
+
+    private updateRuntimeFromOutput(runId: string, text: string, stream: LogStreamType) {
+        const runtime = this.runtimes.get(runId);
+        if (!runtime) return;
+
+        const clean = normalizeTaskOutput(text);
+        const prevTail = this.outputTailByRunId.get(runId) ?? "";
+        const nextTail = (prevTail + clean).slice(-4000);
+        this.outputTailByRunId.set(runId, nextTail);
+        const patch = parseTaskOutput(nextTail);
+        let changed = false;
+        const now = Date.now();
+        runtime.lastOutputAt = now;
+        changed = true;
+
+        if (patch.urls?.length) {
+            const urls = new Set(runtime.urls ?? []);
+            for (const url of patch.urls) urls.add(url);
+            const next = [...urls];
+            if (next.length !== (runtime.urls?.length ?? 0)) {
+                runtime.urls = next;
+                changed = true;
+            }
+        }
+
+        if (patch.ready && !runtime.readyAt) {
+            runtime.readyAt = now;
+            changed = true;
+        }
+
+        if (typeof patch.rebuildDurationMs === "number") {
+            runtime.rebuildDurationMs = patch.rebuildDurationMs;
+            changed = true;
+        }
+
+        if (patch.warning || stream === "stderr") {
+            runtime.warningsCount = (runtime.warningsCount ?? 0) + 1;
+            changed = true;
+        }
+
+        if (patch.error) {
+            runtime.errorsCount = (runtime.errorsCount ?? 0) + 1;
+            runtime.lastError = text.trim().slice(0, 500);
+            changed = true;
+        }
+
+        if (!changed) return;
+        this.runtimes.set(runId, runtime);
+        this.events.emit(TaskEvents.TASK_RUNTIME_UPDATED, {
+            ...runtime,
+        });
     }
 
     private appendSysLog(refId: string, text: string, level: SystemLogLevel, data?: any) {

@@ -5,7 +5,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   overflow: hidden;
-
+  background: #000;
   min-height: 0;
   /* 关键：允许子元素在 flex 中正确收缩 */
 }
@@ -16,7 +16,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-
+  color: #fff;
   .title {
     display: flex;
     align-items: center;
@@ -39,6 +39,11 @@
       }
     }
   }
+  .actions button{
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+  }
 }
 
 .viewport {
@@ -46,6 +51,4 @@
   min-height: 0; // 让 xterm 能正确撑开并滚动
   overflow: hidden;
   padding: 8px;
-  background: #000;
-  border-radius: 8px;
 }

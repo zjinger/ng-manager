@@ -75,6 +75,22 @@ export default fp(async function wsPlugin(fastify: FastifyInstance) {
         taskHandler.pushEvent("failed", e);
     }));
 
+    offs.push(events.on(Events.TASK_ANALYZE_STARTED, (e) => {
+        taskHandler.pushEvent("analyzeStarted", e);
+    }));
+
+    offs.push(events.on(Events.TASK_ANALYZE_FINISHED, (e) => {
+        taskHandler.pushEvent("analyzeFinished", e);
+    }));
+
+    offs.push(events.on(Events.TASK_ANALYZE_FAILED, (e) => {
+        taskHandler.pushEvent("analyzeFailed", e);
+    }));
+
+    offs.push(events.on(Events.TASK_RUNTIME_UPDATED, (e) => {
+        taskHandler.pushEvent("snapshot", e);
+    }));
+
     offs.push(events.on(Events.SYSLOG_APPENDED, (e) => {
         syslogHandler.push(e.entry);
     }));

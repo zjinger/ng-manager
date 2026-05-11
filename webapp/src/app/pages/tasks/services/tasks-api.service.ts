@@ -6,8 +6,10 @@ import { Project } from "@models/project.model";
 import type {
   TaskActiveResponseDto,
   TaskCommandRequestDto,
+  TaskDashboardResponseDto,
   TaskListResponseDto,
   TaskRefreshResponseDto,
+  TaskReportResponseDto,
   TaskRunLogResponseDto,
   TaskRuntimeResponseDto,
 } from "@yinuo-ngm/protocol";
@@ -70,6 +72,14 @@ export class TasksApiService {
   getRunLog(runId: string, tail = 200): Observable<TaskRunLogResponseDto> {
     const params = new HttpParams().set("tail", tail.toString());
     return this.api.get<TaskRunLogResponseDto>(`/api/tasks/log/run/${runId}`, params);
+  }
+
+  getLatestReport(taskId: string): Observable<TaskReportResponseDto> {
+    return this.api.get<TaskReportResponseDto>(`/api/tasks/report/latest/${taskId}`);
+  }
+
+  getDashboard(taskId: string): Observable<TaskDashboardResponseDto> {
+    return this.api.get<TaskDashboardResponseDto>(`/api/tasks/dashboard/${taskId}`);
   }
 
   getSyslog(tail = 200) {

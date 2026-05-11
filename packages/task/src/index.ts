@@ -1,5 +1,12 @@
 export * from './task.types';
 export * from './task.service';
+export * from './analyzer/task-analyzer.types';
+export { TaskAnalyzerService } from './analyzer/task-analyzer.service';
+export { AngularDistAnalyzer } from './analyzer/angular-dist-analyzer';
+export { AngularStatsAnalyzer } from './analyzer/angular-stats-analyzer';
+export { RollupVisualizerAnalyzer } from './analyzer/rollup-visualizer-analyzer';
+export { detectProjectBuild } from './analyzer/project-build-detector';
+export type { ProjectBuildDetection, ProjectBuildTool, ProjectFramework } from './analyzer/project-build-detector';
 export { TaskServiceImpl } from './task.service.impl';
 export { TaskEvents, type TaskEventMap } from './infra/task-event-map';
 export { createTaskDomain } from './infra/task.composer';

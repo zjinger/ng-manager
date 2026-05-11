@@ -1,6 +1,18 @@
 import type { TaskStatus } from "../ws.task.types";
 
-export type TaskKindDto = "run" | "build" | "test" | "lint" | "custom";
+export type TaskKindDto = "run" | "serve" | "build" | "test" | "lint" | "inspect" | "custom";
+export type TaskViewIdDto = "output" | "dashboard" | "analyzer";
+
+export interface TaskViewDefinitionDto {
+    id: TaskViewIdDto;
+    title: string;
+}
+
+export interface TaskCapabilitiesDto {
+    dashboard?: boolean;
+    analyzer?: boolean;
+    report?: boolean;
+}
 
 export interface TaskDefinitionDto {
     id: string;
@@ -11,9 +23,12 @@ export interface TaskDefinitionDto {
     kind?: TaskKindDto;
     description?: string;
     command?: string;
+    displayCommand?: string;
     file?: string;
     args?: string[];
     runnable?: boolean;
+    views?: TaskViewDefinitionDto[];
+    capabilities?: TaskCapabilitiesDto;
 }
 
 export interface TaskRuntimeDto {
@@ -28,6 +43,12 @@ export interface TaskRuntimeDto {
     exitCode?: number | null;
     signal?: string | null;
     lastError?: string;
+    urls?: string[];
+    lastOutputAt?: number;
+    readyAt?: number;
+    rebuildDurationMs?: number;
+    warningsCount?: number;
+    errorsCount?: number;
 }
 
 export interface TaskRowDto {

@@ -1,6 +1,6 @@
 import type { PackageManager } from '@yinuo-ngm/project';
 import { buildTaskId } from '@yinuo-ngm/shared';
-import type { TaskDefinition, TaskKind } from '../../task.types';
+import type { TaskCapabilities, TaskDefinition, TaskKind, TaskViewDefinition } from '../../task.types';
 
 function buildRunCommand(pm: PackageManager, scriptName: string) {
     if (pm === "yarn") return `yarn ${scriptName}`;
@@ -12,11 +12,35 @@ function buildRunCommand(pm: PackageManager, scriptName: string) {
 
 function getTaskKindFromName(name: string): TaskKind {
     const lower = name.toLowerCase();
+
     if (lower.includes("build")) return "build";
     if (lower.includes("test")) return "test";
     if (lower.includes("lint")) return "lint";
-    if (lower === "run" || lower === "dev" || lower === "start") return "run";
+    if (lower.includes("inspect") || lower.includes("analyze")) return "inspect";
+    if (lower === "serve" || lower === "dev" || lower === "start" || lower.includes("serve")) return "serve";
+
     return "custom";
+}
+
+function getTaskViews(kind: TaskKind): TaskViewDefinition[] {
+    if (kind === "serve" || kind === "build") {
+        return [
+            { id: "output", title: "输出" },
+            { id: "dashboard", title: "仪表盘" },
+            { id: "analyzer", title: "分析" },
+        ];
+    }
+    return [{ id: "output", title: "输出" }];
+}
+
+function getTaskCapabilities(kind: TaskKind): TaskCapabilities {
+    if (kind === "serve") {
+        return { dashboard: true, analyzer: true };
+    }
+    if (kind === "build") {
+        return { dashboard: true, analyzer: true, report: true };
+    }
+    return {};
 }
 
 function shouldIncludeScript(name: string, raw: string): { ok: boolean; reason?: string } {
@@ -65,9 +89,12 @@ export function genSpecsFromScripts(
             kind: getTaskKindFromName(name),
             runnable: packageManager !== "unknown",
             command: buildRunCommand(packageManager, name),
+            displayCommand: raw,
             cwd: rootDir,
             shell: true,
         };
+        spec.views = getTaskViews(spec.kind ?? "custom");
+        spec.capabilities = getTaskCapabilities(spec.kind ?? "custom");
         if (pendingDescription) {
             spec.description = pendingDescription;
             pendingDescription = undefined;

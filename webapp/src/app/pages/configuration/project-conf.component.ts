@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { ProjectContextStore } from '@app/core/stores';
+import { PageLayoutComponent } from '@app/shared';
 import { NgDevtoolComponent } from '@app/shared/devtools/ng-devtool.component';
+import * as _ from 'lodash';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -11,11 +14,10 @@ import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzTypographyModule } from 'ng-zorro-antd/typography';
-import * as _ from 'lodash';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { firstValueFrom } from 'rxjs';
 import { ConfigChangeBarComponent } from './components/config-change-bar-component';
 import { ConfigNavComponent } from './components/config-nav-component';
@@ -24,8 +26,6 @@ import { ConfigSectionComponent } from './components/config-section-component';
 import { ConfigDetectResult, ConfigDocument, ConfigNavNodeVM, ConfigPatch } from './models';
 import { ConfApiService } from './services';
 import { mapResolvedToNav, pickFirstDocId } from './utils';
-import { PageLayoutComponent } from '@app/shared';
-import { ProjectContextStore } from '@app/core/stores';
 import { getByPath } from './utils/path';
 
 @Component({
@@ -51,7 +51,6 @@ import { getByPath } from './utils/path';
     ConfigChangeBarComponent,
     NzModalModule,
     ConfigSectionComponent,
-    ConfigPreviewModalComponent,
     PageLayoutComponent,
   ],
   styleUrl: './project-conf.component.less',

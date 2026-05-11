@@ -8,8 +8,8 @@ export const successHandlerPlugin: FastifyPluginAsync = fp(async (app) => {
             return payload;
         }
 
-        //  没有 payload（204 等）
-        if (payload === undefined || payload === null) {
+        //  没有 payload（204 等）。null 是合法业务数据，需要包装成 { ok, data: null }。
+        if (payload === undefined) {
             return payload;
         }
 
