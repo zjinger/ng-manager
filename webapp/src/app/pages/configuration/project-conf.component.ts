@@ -327,7 +327,7 @@ export class ProjectConfComponent {
       this.modal.create({
         nzTitle: '变更预览',
         nzContent: ConfigPreviewModalComponent,
-        nzData: { patches: preview.patches, before: preview.before, after: preview.after },
+        nzData: { patches: preview.patches, before: preview.before, after: preview.after, schema: doc.schema },
         nzFooter: null,
         nzWidth: 900,
       });

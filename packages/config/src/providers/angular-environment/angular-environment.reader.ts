@@ -23,7 +23,7 @@ export async function readAngularEnvironmentFile(input: {
   return {
     id: `angular-environment:${filePath}`,
     type: "angular-environment",
-    title: "Angular 环境文件",
+    title: "Angular 环境",
     projectRoot: input.projectRoot,
     filePath,
     raw: { raw: content },

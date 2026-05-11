@@ -15,7 +15,7 @@ import { previewAngularEnvironmentFile, writeAngularEnvironmentFile } from "./an
 
 export class AngularEnvironmentConfigProvider implements ConfigProvider {
   readonly type = "angular-environment";
-  readonly title = "Angular 环境文件";
+  readonly title = "Angular 环境";
   readonly description = "管理 src/environments/environment*.ts";
 
   async detect(ctx: ConfigDetectContext) {
