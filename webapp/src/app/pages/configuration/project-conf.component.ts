@@ -302,7 +302,11 @@ export class ProjectConfComponent {
   async onDiff() {
     const pid = this.projectId();
     const doc = this.document();
-    if (!pid || !doc || doc.readonly) return;
+    if (!pid || !doc) return;
+    if (doc.readonly) {
+      this.msg.warning('当前配置为只读，无法预览写回变更');
+      return;
+    }
 
     const patches = this.buildPatches();
     if (patches.length === 0) {
@@ -323,7 +327,7 @@ export class ProjectConfComponent {
       this.modal.create({
         nzTitle: '变更预览',
         nzContent: ConfigPreviewModalComponent,
-        nzData: { patches: preview.patches },
+        nzData: { patches: preview.patches, before: preview.before, after: preview.after },
         nzFooter: null,
         nzWidth: 900,
       });
@@ -345,7 +349,11 @@ export class ProjectConfComponent {
   async saveActive() {
     const pid = this.projectId();
     const doc = this.document();
-    if (!pid || !doc || doc.readonly) return;
+    if (!pid || !doc) return;
+    if (doc.readonly) {
+      this.msg.warning('当前配置为只读，无法保存');
+      return;
+    }
 
     const patches = this.buildPatches();
     if (patches.length === 0) {

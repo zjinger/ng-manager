@@ -122,6 +122,10 @@ export class ConfigItemComponent {
 
   emitMultiText(v: string) {
     if (this.isReadonly()) return;
+    if (typeof this.value === 'string') {
+      this.valueChange.emit(v ?? '');
+      return;
+    }
     const lines = (v ?? '')
       .split(/\r?\n/)
       .map((line) => line.trim())

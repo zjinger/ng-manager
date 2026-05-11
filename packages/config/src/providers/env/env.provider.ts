@@ -23,7 +23,7 @@ export class EnvConfigProvider implements ConfigProvider {
     return detectEnvFiles(ctx.projectRoot);
   }
 
-  async read(ctx: ConfigReadContext): Promise<ConfigDocument<EnvViewModel, string>> {
+  async read(ctx: ConfigReadContext): Promise<ConfigDocument<EnvViewModel, Record<string, unknown>>> {
     const filePath = await resolveEnvFilePath(ctx.projectRoot, ctx.filePath);
     const result = await readEnvFile({
       projectRoot: ctx.projectRoot,
@@ -36,7 +36,10 @@ export class EnvConfigProvider implements ConfigProvider {
       title: this.title,
       projectRoot: ctx.projectRoot,
       filePath,
-      raw: result.content,
+      raw: {
+        raw: result.content,
+        files: [{ filePath, entries: result.entries }]
+      },
       viewModel: {
         files: [{ filePath, entries: result.entries }]
       },

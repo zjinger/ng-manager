@@ -5,9 +5,14 @@ export function buildEnvSchema(): ConfigSchema {
   return defineConfigSchema({
     groups: [
       {
+        key: "raw",
+        title: "原始内容",
+        fields: [{ key: "raw", label: ".env 内容", type: "multi-text", path: "/raw" }]
+      },
+      {
         key: "entries",
         title: "环境变量",
-        fields: [{ key: "entries", label: "entries", type: "table", path: "/files" }]
+        fields: [{ key: "entries", label: "entries", type: "json", path: "/files", readonly: true }]
       }
     ]
   });
