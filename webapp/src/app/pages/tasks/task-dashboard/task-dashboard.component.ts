@@ -183,44 +183,6 @@ import { interval } from 'rxjs';
           </div>
         </div>
 
-        @if (hasSizeData()) {
-          <div class="dash-section-title compact">
-            <nz-icon nzType="compress" />
-            <span>构建压缩体积</span>
-          </div>
-
-          <div class="dash-grid build-size-grid">
-            <div class="dash-card accent-blue">
-              <div class="dash-card-label">
-                <nz-icon nzType="database" />
-                <span>Raw Size</span>
-              </div>
-              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.totalRawSize) }}</div>
-              <div class="dash-card-sub">{{ taskDashboard?.sizes?.fileCount || 0 }} 个文件</div>
-            </div>
-
-            <div class="dash-card accent-green">
-              <div class="dash-card-label">
-                <nz-icon nzType="compress" />
-                <span>Gzip</span>
-              </div>
-              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.totalGzipSize) }}</div>
-              <div class="dash-card-sub">节省 {{ gzipSavings() }}</div>
-            </div>
-
-            @if ((taskDashboard?.sizes?.totalBrotliSize || 0) > 0) {
-              <div class="dash-card accent-indigo">
-                <div class="dash-card-label">
-                  <nz-icon nzType="compress" />
-                  <span>Brotli</span>
-                </div>
-                <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.totalBrotliSize) }}</div>
-                <div class="dash-card-sub">节省 {{ brotliSavings() }}</div>
-              </div>
-            }
-          </div>
-        }
-
       }
     </div>
   `,
@@ -268,10 +230,6 @@ import { interval } from 'rxjs';
       }
 
       .build-grid {
-        grid-template-columns: repeat(5, 1fr);
-      }
-
-      .build-size-grid {
         grid-template-columns: repeat(5, 1fr);
       }
 
@@ -500,9 +458,6 @@ import { interval } from 'rxjs';
         .build-grid {
           grid-template-columns: repeat(3, 1fr);
         }
-        .build-size-grid {
-          grid-template-columns: repeat(3, 1fr);
-        }
       }
 
       @media (max-width: 768px) {
@@ -510,9 +465,6 @@ import { interval } from 'rxjs';
           grid-template-columns: repeat(2, 1fr);
         }
         .build-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-        .build-size-grid {
           grid-template-columns: repeat(2, 1fr);
         }
       }
@@ -584,41 +536,6 @@ export class TaskDashboardComponent implements OnInit {
     return this.runtime?.urls || this.taskDashboard?.urls || [];
   }
 
-  hasSizeData(): boolean {
-    const s = this.taskDashboard?.sizes;
-    return !!(s && s.fileCount > 0);
-  }
-
-  jsPercent(): number {
-    const s = this.taskDashboard?.sizes;
-    if (!s?.totalRawSize) return 0;
-    return Math.round(((s.jsRawSize || 0) / s.totalRawSize) * 100);
-  }
-
-  cssPercent(): number {
-    const s = this.taskDashboard?.sizes;
-    if (!s?.totalRawSize) return 0;
-    return Math.round(((s.cssRawSize || 0) / s.totalRawSize) * 100);
-  }
-
-  assetPercent(): number {
-    return 100 - this.jsPercent() - this.cssPercent();
-  }
-
-  gzipSavings(): string {
-    const s = this.taskDashboard?.sizes;
-    if (!s?.totalRawSize || !s?.totalGzipSize) return '0%';
-    const savings = ((s.totalRawSize - s.totalGzipSize) / s.totalRawSize) * 100;
-    return `${savings.toFixed(1)}%`;
-  }
-
-  brotliSavings(): string {
-    const s = this.taskDashboard?.sizes;
-    if (!s?.totalRawSize || !s?.totalBrotliSize) return '0%';
-    const savings = ((s.totalRawSize - s.totalBrotliSize) / s.totalRawSize) * 100;
-    return `${savings.toFixed(1)}%`;
-  }
-
   formatTime(value?: number): string {
     if (!value) return '-';
     return new Date(value).toLocaleTimeString();
@@ -627,13 +544,6 @@ export class TaskDashboardComponent implements OnInit {
   formatMs(value?: number): string {
     if (typeof value !== 'number') return '-';
     return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`;
-  }
-
-  formatSize(size?: number): string {
-    const value = Number(size ?? 0);
-    if (value < 1024) return `${value} B`;
-    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-    return `${(value / 1024 / 1024).toFixed(2)} MB`;
   }
 
   copyUrl(url: string) {

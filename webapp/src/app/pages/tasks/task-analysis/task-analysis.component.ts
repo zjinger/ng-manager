@@ -1,18 +1,18 @@
-import { CommonModule } from "@angular/common";
-import { ChangeDetectorRef, Component, DestroyRef, Input, OnDestroy, inject } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { Clipboard } from "@angular/cdk/clipboard";
-import { ScrollingModule } from "@angular/cdk/scrolling";
-import { NzIconModule } from "ng-zorro-antd/icon";
-import { NzTooltipModule } from "ng-zorro-antd/tooltip";
-import type { TaskAnalyzeResultDto, TaskAssetInfoDto, TaskEventMsg } from "@yinuo-ngm/protocol";
-import type { TaskKind, TaskRuntime } from "@models/task.model";
-import { NzEmptyModule } from "ng-zorro-antd/empty";
-import { NzProgressModule } from "ng-zorro-antd/progress";
-import { NzTagModule } from "ng-zorro-antd/tag";
-import { Subscription } from "rxjs";
-import { TaskStreamService } from "../services/task-stream.service";
-import { TasksApiService } from "../services/tasks-api.service";
+import { Clipboard } from '@angular/cdk/clipboard';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, Component, DestroyRef, Input, OnDestroy, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import type { TaskKind, TaskRuntime } from '@models/task.model';
+import type { TaskAnalyzeResultDto, TaskAssetInfoDto, TaskEventMsg } from '@yinuo-ngm/protocol';
+import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { Subscription } from 'rxjs';
+import { TaskStreamService } from '../services/task-stream.service';
+import { TasksApiService } from '../services/tasks-api.service';
 
 interface TreemapCell {
   name: string;
@@ -26,7 +26,7 @@ interface TreemapCell {
 }
 
 @Component({
-  selector: "app-task-analysis",
+  selector: 'app-task-analysis',
   standalone: true,
   imports: [
     CommonModule,
@@ -37,8 +37,8 @@ interface TreemapCell {
     NzTooltipModule,
     ScrollingModule,
   ],
-  templateUrl: "./task-analysis.component.html",
-  styleUrls: ["./task-analysis.component.less"],
+  templateUrl: './task-analysis.component.html',
+  styleUrls: ['./task-analysis.component.less'],
 })
 export class TaskAnalysisComponent implements OnDestroy {
   private api = inject(TasksApiService);
@@ -47,21 +47,21 @@ export class TaskAnalysisComponent implements OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private clipboard = inject(Clipboard);
   private loadSub?: Subscription;
-  private _taskId = "";
+  private _taskId = '';
   private _taskKind: TaskKind | undefined;
   private loadScheduled = false;
   private renderScheduled = false;
 
-  copiedUrl = "";
+  copiedUrl = '';
 
   @Input()
   set taskId(value: string | null | undefined) {
-    const next = (value ?? "").trim();
+    const next = (value ?? '').trim();
     if (next === this._taskId) return;
     this.updateView(() => {
       this._taskId = next;
       this.report = null;
-      this.error = "";
+      this.error = '';
       this.loading = false;
       this.analyzing = false;
     });
@@ -90,11 +90,12 @@ export class TaskAnalysisComponent implements OnDestroy {
   runtimeSnapshot: TaskRuntime | null = null;
   loading = false;
   analyzing = false;
-  error = "";
+  error = '';
 
   constructor() {
     this.cdr.detach();
-    this.stream.events$()
+    this.stream
+      .events$()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => this.onTaskEvent(event));
     this.scheduleRender();
@@ -131,17 +132,21 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   get statsInsights() {
     const insights = this.report?.stats?.insights ?? [];
-    const statsJsonCleaned = (this.report?.warnings ?? []).some((warning) => warning.code === "stats-json-cleaned");
-    const hasStatsJsonAsset = (this.report?.assets ?? []).some((asset) => asset.name === "stats.json");
+    const statsJsonCleaned = (this.report?.warnings ?? []).some(
+      (warning) => warning.code === 'stats-json-cleaned',
+    );
+    const hasStatsJsonAsset = (this.report?.assets ?? []).some(
+      (asset) => asset.name === 'stats.json',
+    );
     if (!statsJsonCleaned && hasStatsJsonAsset) return insights;
-    return insights.filter((insight) => insight.code !== "deployment-stats-json");
+    return insights.filter((insight) => insight.code !== 'deployment-stats-json');
   }
 
   get reportWarningsAsInsights() {
     return (this.report?.warnings ?? [])
-      .filter((warning) => warning.code !== "stats-json-cleaned")
+      .filter((warning) => warning.code !== 'stats-json-cleaned')
       .map((warning) => ({
-        level: "warning" as const,
+        level: 'warning' as const,
         code: `warning:${warning.code}`,
         message: warning.message,
         data: warning.data,
@@ -149,19 +154,16 @@ export class TaskAnalysisComponent implements OnDestroy {
   }
 
   get analysisInsights() {
-    return [
-      ...this.reportWarningsAsInsights,
-      ...this.statsInsights,
-    ];
+    return [...this.reportWarningsAsInsights, ...this.statsInsights];
   }
 
   get emptyText(): string {
-    if (this.loading || this.analyzing) return "正在加载分析报告...";
-    return this.error || "暂无分析报告，build 成功后会自动生成。";
+    if (this.loading || this.analyzing) return '正在加载分析报告...';
+    return this.error || '暂无分析报告，build 成功后会自动生成。';
   }
 
   get showRuntimeAnalysis(): boolean {
-    return this._taskKind === "serve";
+    return this._taskKind === 'serve';
   }
 
   get runtimeUrls(): string[] {
@@ -206,14 +208,14 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   get gzipSavingsPercent(): string {
     const s = this.report?.summary;
-    if (!s?.totalRawSize || !s?.totalGzipSize) return "0%";
+    if (!s?.totalRawSize || !s?.totalGzipSize) return '0%';
     const savings = ((s.totalRawSize - s.totalGzipSize) / s.totalRawSize) * 100;
     return `${savings.toFixed(1)}%`;
   }
 
   get brotliSavingsPercent(): string {
     const s = this.report?.summary;
-    if (!s?.totalRawSize || !s?.totalBrotliSize) return "0%";
+    if (!s?.totalRawSize || !s?.totalBrotliSize) return '0%';
     const savings = ((s.totalRawSize - s.totalBrotliSize) / s.totalRawSize) * 100;
     return `${savings.toFixed(1)}%`;
   }
@@ -234,51 +236,51 @@ export class TaskAnalysisComponent implements OnDestroy {
   }
 
   formatTime(value?: number): string {
-    if (!value) return "-";
+    if (!value) return '-';
     return new Date(value).toLocaleTimeString();
   }
 
   formatMs(value?: number): string {
-    if (typeof value !== "number") return "-";
+    if (typeof value !== 'number') return '-';
     return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`;
   }
 
   sizeLevel(size?: number): string {
     const value = Number(size ?? 0);
-    if (value > 500 * 1024) return "danger";
-    if (value > 200 * 1024) return "warning";
-    return "good";
+    if (value > 500 * 1024) return 'danger';
+    if (value > 200 * 1024) return 'warning';
+    return 'good';
   }
 
   getTypeColor(type: string): string {
     const map: Record<string, string> = {
-      js: "#1677ff",
-      css: "#52c41a",
-      html: "#722ed1",
-      image: "#fa8c16",
-      font: "#13c2c2",
-      asset: "#8c8c8c",
+      js: '#1677ff',
+      css: '#52c41a',
+      html: '#722ed1',
+      image: '#fa8c16',
+      font: '#13c2c2',
+      asset: '#8c8c8c',
     };
-    return map[type] || "#d9d9d9";
+    return map[type] || '#d9d9d9';
   }
 
   getTypeIcon(type: string): string {
     const map: Record<string, string> = {
-      js: "code",
-      css: "bg-colors",
-      html: "html5",
-      image: "picture",
-      font: "font-size",
-      asset: "file",
+      js: 'code',
+      css: 'bg-colors',
+      html: 'html5',
+      image: 'picture',
+      font: 'font-size',
+      asset: 'file',
     };
-    return map[type] || "file";
+    return map[type] || 'file';
   }
 
   copyUrl(url: string) {
     if (this.clipboard.copy(url)) {
       this.copiedUrl = url;
       setTimeout(() => {
-        if (this.copiedUrl === url) this.copiedUrl = "";
+        if (this.copiedUrl === url) this.copiedUrl = '';
       }, 2000);
     }
   }
@@ -336,26 +338,26 @@ export class TaskAnalysisComponent implements OnDestroy {
     const payload = event.payload as { taskId?: string; error?: string };
     if (!this._taskId || payload.taskId !== this._taskId) return;
 
-    if (event.type === "analyzeStarted") {
+    if (event.type === 'analyzeStarted') {
       this.updateView(() => {
         this.analyzing = true;
-        this.error = "";
+        this.error = '';
       });
       return;
     }
 
-    if (event.type === "analyzeFinished") {
+    if (event.type === 'analyzeFinished') {
       this.updateView(() => {
         this.analyzing = false;
-        this.load();
       });
+      this.load();
       return;
     }
 
-    if (event.type === "analyzeFailed") {
+    if (event.type === 'analyzeFailed') {
       this.updateView(() => {
         this.analyzing = false;
-        this.error = payload.error || "分析失败";
+        this.error = payload.error || '分析失败';
       });
     }
   }
@@ -371,7 +373,7 @@ export class TaskAnalysisComponent implements OnDestroy {
 
     this.updateView(() => {
       this.loading = true;
-      this.error = "";
+      this.error = '';
     });
     this.loadSub = this.api.getLatestReport(this._taskId).subscribe({
       next: (report) => {
@@ -382,7 +384,7 @@ export class TaskAnalysisComponent implements OnDestroy {
       },
       error: (e) => {
         this.updateView(() => {
-          this.error = e?.message || "加载分析报告失败";
+          this.error = e?.message || '加载分析报告失败';
           this.loading = false;
         });
       },
