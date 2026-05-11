@@ -138,12 +138,14 @@ export class TaskAnalysisComponent implements OnDestroy {
   }
 
   get reportWarningsAsInsights() {
-    return (this.report?.warnings ?? []).map((warning) => ({
-      level: warning.code === "stats-json-cleaned" ? "info" as const : "warning" as const,
-      code: `warning:${warning.code}`,
-      message: warning.message,
-      data: warning.data,
-    }));
+    return (this.report?.warnings ?? [])
+      .filter((warning) => warning.code !== "stats-json-cleaned")
+      .map((warning) => ({
+        level: "warning" as const,
+        code: `warning:${warning.code}`,
+        message: warning.message,
+        data: warning.data,
+      }));
   }
 
   get analysisInsights() {

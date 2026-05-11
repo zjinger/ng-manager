@@ -51,7 +51,7 @@ export function buildDeploymentRiskInsights(input: {
         });
     }
 
-    if (largeInitialChunks.length > 0) {
+    if (largeInitialChunks.length > 1) {
         insights.push({
             level: "warning",
             code: "deployment-large-initial-chunk",
