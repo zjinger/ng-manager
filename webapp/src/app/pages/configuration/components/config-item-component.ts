@@ -5,10 +5,22 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { ConfigField } from '../models';
+import { ConfigJsonEditorComponent } from './config-json-editor.component';
+import { ConfigJsonSummaryComponent } from './config-json-summary.component';
+import { ConfigRawEditorComponent } from './config-raw-editor.component';
 
 @Component({
   selector: 'app-config-item-component',
-  imports: [CommonModule, FormsModule, NzSwitchModule, NzInputModule, NzSelectModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzSwitchModule,
+    NzInputModule,
+    NzSelectModule,
+    ConfigJsonEditorComponent,
+    ConfigJsonSummaryComponent,
+    ConfigRawEditorComponent,
+  ],
   template: `
     <div class="config-item">
       <div class="meta">
@@ -39,22 +51,40 @@ import { ConfigField } from '../models';
             </nz-select>
           }
           @case ('json') {
-            <textarea
-              nz-input
-              rows="4"
-              [disabled]="isReadonly()"
-              [ngModel]="toJsonText(value)"
-              (ngModelChange)="emitJson($event)"
-            ></textarea>
+            @if (shouldUseSummary(value, item)) {
+              <app-config-json-summary
+                [value]="value"
+                [readonly]="isReadonly()"
+                (valueChange)="emit($event)"
+              ></app-config-json-summary>
+            } @else {
+              <app-config-json-editor
+                [value]="value"
+                [readonly]="isReadonly()"
+                (valueChange)="emit($event)"
+              ></app-config-json-editor>
+            }
           }
           @case ('multi-text') {
-            <textarea
-              nz-input
-              rows="4"
-              [disabled]="isReadonly()"
-              [ngModel]="toMultilineText(value)"
-              (ngModelChange)="emitMultiText($event)"
-            ></textarea>
+            @if (typeof value === 'string' || value === undefined || value === null) {
+              <app-config-raw-editor
+                [value]="toMultilineText(value)"
+                [readonly]="isReadonly()"
+                (valueChange)="emitRawText($event)"
+              ></app-config-raw-editor>
+            } @else if (shouldUseSummary(value, item)) {
+              <app-config-json-summary
+                [value]="value"
+                [readonly]="isReadonly()"
+                (valueChange)="emit($event)"
+              ></app-config-json-summary>
+            } @else {
+              <app-config-json-editor
+                [value]="value"
+                [readonly]="isReadonly()"
+                (valueChange)="emit($event)"
+              ></app-config-json-editor>
+            }
           }
           @default {
             <pre>{{ toPrettyText(value) }}</pre>
@@ -79,7 +109,10 @@ import { ConfigField } from '../models';
         min-width: 220px;
         max-width: 640px;
         width: 60%;
-        input[nz-input], nz-select, textarea[nz-input] { width: 100%; }
+        input[nz-input], nz-select, textarea[nz-input], app-config-json-editor, app-config-json-summary, app-config-raw-editor {
+          width: 100%;
+          display: block;
+        }
         pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
       }
     }
@@ -111,39 +144,32 @@ export class ConfigItemComponent {
     this.valueChange.emit(Number.isNaN(parsed) ? undefined : parsed);
   }
 
-  emitJson(v: string) {
+  emitRawText(v: string) {
     if (this.isReadonly()) return;
-    try {
-      this.valueChange.emit(v ? JSON.parse(v) : undefined);
-    } catch {
-      // ignore invalid json input until user fixes it
-    }
-  }
-
-  emitMultiText(v: string) {
-    if (this.isReadonly()) return;
-    if (typeof this.value === 'string') {
-      this.valueChange.emit(v ?? '');
-      return;
-    }
-    const lines = (v ?? '')
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    this.valueChange.emit(lines);
-  }
-
-  toJsonText(v: unknown): string {
-    if (v === undefined) return '';
-    try {
-      return JSON.stringify(v, null, 2);
-    } catch {
-      return String(v);
-    }
+    this.valueChange.emit(v ?? '');
   }
 
   toMultilineText(v: unknown): string {
     return Array.isArray(v) ? v.join('\n') : (v ?? '').toString();
+  }
+
+  shouldUseSummary(value: unknown, item: ConfigField): boolean {
+    const summaryKeys = new Set([
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ]);
+    if (summaryKeys.has(item.key)) {
+      return true;
+    }
+    if (Array.isArray(value)) {
+      return value.length > 6;
+    }
+    if (value !== null && typeof value === 'object') {
+      return Object.keys(value as Record<string, unknown>).length > 8;
+    }
+    return false;
   }
 
   toPrettyText(v: unknown): string {

@@ -72,3 +72,5 @@ apps/hub-v2/config.toml
 apps/hub-v2/server/backup
 apps/hub-v2/server/backupdev
 md/
+docs/ui/
+
