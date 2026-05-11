@@ -44,7 +44,7 @@ function basenameNoQuery(filePath: string) {
 
 function packageNameFromPath(inputPath: string): string | undefined {
     const normalized = inputPath.replace(/\\/g, "/");
-    const marker = "/node_modules/";
+    const marker = "node_modules/";
     const idx = normalized.lastIndexOf(marker);
     if (idx < 0) return undefined;
     const rest = normalized.slice(idx + marker.length);

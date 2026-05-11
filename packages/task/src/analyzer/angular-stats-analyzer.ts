@@ -28,6 +28,8 @@ async function exists(filePath: string) {
     }
 }
 
+const ignoredStatsDirs = new Set(["node_modules", ".git", ".angular", ".vite", ".cache", "coverage"]);
+
 async function findStatsJson(root: string, depth = 4): Promise<string | null> {
     const direct = path.join(root, "stats.json");
     if (await exists(direct)) return direct;
@@ -42,6 +44,7 @@ async function findStatsJson(root: string, depth = 4): Promise<string | null> {
 
     for (const entry of entries) {
         if (!entry.isDirectory()) continue;
+        if (ignoredStatsDirs.has(entry.name)) continue;
         const found = await findStatsJson(path.join(root, entry.name), depth - 1);
         if (found) return found;
     }
@@ -57,7 +60,7 @@ async function resolveBuildOutputPath(projectRoot: string, isAngular: boolean): 
 
 function packageNameFromPath(inputPath: string): string | undefined {
     const normalized = inputPath.replace(/\\/g, "/");
-    const marker = "/node_modules/";
+    const marker = "node_modules/";
     const idx = normalized.lastIndexOf(marker);
     if (idx < 0) return undefined;
     const rest = normalized.slice(idx + marker.length);

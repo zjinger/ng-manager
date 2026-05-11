@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, ViewChild, effect, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ProjectContextStore } from '@app/core/stores';
 import { PageLayoutComponent } from '@app/shared';
+import type { TaskDashboardDto, TaskViewDefinitionDto, TaskViewIdDto } from '@yinuo-ngm/protocol';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -12,17 +14,16 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpaceModule } from 'ng-zorro-antd/space';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NodeVersionComponent } from './node-version/node-version.component';
+import { TaskStreamService } from './services/task-stream.service';
+import { TasksApiService } from './services/tasks-api.service';
 import { TaskStateService } from './services/tasks.state.service';
 import { TaskActionsComponent } from './task-actions/task-actions.component';
+import { TaskAnalysisComponent } from './task-analysis/task-analysis.component';
 import { TaskConsoleComponent } from './task-console/task-console.component';
+import { TaskDashboardComponent } from './task-dashboard/task-dashboard.component';
 import { TaskHeaderComponent } from './task-header/task-header.component';
 import { TaskListComponent } from './task-list/task-list.component';
-import { NodeVersionComponent } from './node-version/node-version.component';
-import { TaskAnalysisComponent } from './task-analysis/task-analysis.component';
-import { TaskDashboardComponent } from './task-dashboard/task-dashboard.component';
-import { TasksApiService } from './services/tasks-api.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import type { TaskDashboardDto } from '@yinuo-ngm/protocol';
 
 @Component({
   selector: 'app-tasks',
@@ -71,61 +72,45 @@ import type { TaskDashboardDto } from '@yinuo-ngm/protocol';
           </app-task-actions>
           <div class="task-panel-shell">
             <div class="task-panel-switcher">
+              @for (view of selectedViews(); track view.id) {
               <button
                 type="button"
                 nz-button
                 class="task-panel-button"
-                [class.active]="selectedTabIndex === 0"
-                [nzType]="selectedTabIndex === 0 ? 'primary' : 'default'"
-                (click)="selectTaskPanel(0)"
+                [class.active]="selectedViewId === view.id"
+                [nzType]="selectedViewId === view.id ? 'primary' : 'default'"
+                (click)="selectTaskPanel(view.id)"
               >
-                <nz-icon nzType="desktop" />
-                输出
+                <nz-icon [nzType]="viewIcon(view.id)" />
+                {{ view.title }}
               </button>
-              <button
-                type="button"
-                nz-button
-                class="task-panel-button"
-                [class.active]="selectedTabIndex === 1"
-                [nzType]="selectedTabIndex === 1 ? 'primary' : 'default'"
-                (click)="selectTaskPanel(1)"
-              >
-                <nz-icon [nzType]="isServeTask() ? 'cloud-server' : 'dashboard'" />
-                {{ isServeTask() ? '仪表盘' : '仪表盘' }}
-              </button>
-              <button
-                type="button"
-                nz-button
-                class="task-panel-button"
-                [class.active]="selectedTabIndex === 2"
-                [nzType]="selectedTabIndex === 2 ? 'primary' : 'default'"
-                (click)="selectTaskPanel(2)"
-              >
-                <nz-icon [nzType]="isServeTask() ? 'line-chart' : 'bar-chart'" />
-                {{ isServeTask() ? '分析' : '分析' }}
-              </button>
+              }
             </div>
 
             <div class="task-panel-body">
-              <div class="task-panel" [class.panel-hidden]="selectedTabIndex !== 0">
+              @for (view of selectedViews(); track view.id) {
+              <div class="task-panel" [class.panel-hidden]="selectedViewId !== view.id">
+                @switch (view.id) {
+                @case ('output') {
                 <app-task-console [taskId]="taskState.selectedTaskId()"></app-task-console>
-              </div>
-
-              <div class="task-panel" [class.panel-hidden]="selectedTabIndex !== 1">
+                }
+                @case ('dashboard') {
                 <app-task-dashboard
                   [taskRow]="selectedTask()"
                   [taskDashboard]="taskDashboard"
                   [taskKind]="selectedTask()?.spec?.kind"
                 ></app-task-dashboard>
-              </div>
-
-              <div class="task-panel" [class.panel-hidden]="selectedTabIndex !== 2">
+                }
+                @case ('analyzer') {
                 <app-task-analysis
                   [taskId]="taskState.selectedTaskId()"
                   [taskKind]="selectedTask()?.spec?.kind"
                   [runtime]="selectedTask()?.runtime"
                 ></app-task-analysis>
+                }
+                }
               </div>
+              }
             </div>
           </div>
         </nz-content>
@@ -203,10 +188,11 @@ export class TasksComponent {
   projectContext = inject(ProjectContextStore);
   taskState = inject(TaskStateService);
   private api = inject(TasksApiService);
+  private stream = inject(TaskStreamService);
   private destroyRef = inject(DestroyRef);
 
   selectedTask = this.taskState.selectedRow;
-  selectedTabIndex = 0;
+  selectedViewId: TaskViewIdDto = 'output';
   taskDashboard: TaskDashboardDto | null = null;
   @ViewChild(TaskConsoleComponent) private taskConsole?: TaskConsoleComponent;
 
@@ -220,25 +206,51 @@ export class TasksComponent {
 
     effect(() => {
       const taskId = this.taskState.selectedTaskId();
-      if (this.selectedTabIndex === 1) {
+      const views = this.selectedViews();
+      if (!views.some((view) => view.id === this.selectedViewId)) {
+        this.selectedViewId = views[0]?.id ?? 'output';
+      }
+
+      if (this.selectedViewId === 'dashboard') {
         this.loadDashboard(taskId);
       } else if (!taskId) {
         this.taskDashboard = null;
       }
     });
+
+    this.stream.events$()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (event.type !== 'analyzeFinished') return;
+        const taskId = String(event.payload?.taskId ?? '').trim();
+        if (!taskId || taskId !== this.taskState.selectedTaskId()) return;
+        this.loadDashboard(taskId);
+      });
   }
 
-  isServeTask(): boolean {
-    return this.selectedTask()?.spec?.kind === 'serve';
+  selectedViews(): TaskViewDefinitionDto[] {
+    const views = this.selectedTask()?.spec?.views;
+    return views?.length ? views : [{ id: 'output', title: '输出' }];
   }
 
-  selectTaskPanel(index: number) {
-    if (this.selectedTabIndex === index) return;
-    this.selectedTabIndex = index;
-    if (index === 1) {
+  viewIcon(viewId: TaskViewIdDto): string {
+    if (viewId === 'dashboard') {
+      return this.selectedTask()?.spec?.kind === 'serve' ? 'cloud-server' : 'dashboard';
+    }
+    if (viewId === 'analyzer') {
+      return this.selectedTask()?.spec?.kind === 'serve' ? 'line-chart' : 'bar-chart';
+    }
+    return 'desktop';
+  }
+
+  selectTaskPanel(viewId: TaskViewIdDto) {
+    if (!this.selectedViews().some((view) => view.id === viewId)) return;
+    if (this.selectedViewId === viewId) return;
+    this.selectedViewId = viewId;
+    if (viewId === 'dashboard') {
       this.loadDashboard(this.taskState.selectedTaskId());
     }
-    if (index === 0) {
+    if (viewId === 'output') {
       this.taskConsole?.activate();
     }
   }

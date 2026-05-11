@@ -48,14 +48,22 @@ export async function resolveAngularOutputPath(projectRoot: string): Promise<Ang
         const project = projectName ? projects[projectName] : undefined;
         const build = project?.architect?.build ?? project?.targets?.build;
         const configured = resolveConfiguredOutput(projectRoot, build?.options?.outputPath);
-        const outputPath = configured ?? path.resolve(projectRoot, "dist", projectName ?? "");
-        const distBrowser = path.resolve(projectRoot, "dist", "browser");
 
-        if (await pathExists(distBrowser)) {
-            return { outputPath: distBrowser, source: "angular.json", projectName };
+        if (configured) {
+            return { outputPath: configured, source: "angular.json", projectName };
         }
 
-        return { outputPath, source: "angular.json", projectName };
+        const outputPath = path.resolve(projectRoot, "dist", projectName ?? "");
+        if (await pathExists(outputPath)) {
+            return { outputPath, source: "angular.json", projectName };
+        }
+
+        const distBrowser = path.resolve(projectRoot, "dist", "browser");
+        if (await pathExists(distBrowser)) {
+            return { outputPath: distBrowser, source: "fallback", projectName };
+        }
+
+        return { outputPath, source: "fallback", projectName };
     } catch {
         const distBrowser = path.resolve(projectRoot, "dist", "browser");
         if (await pathExists(distBrowser)) {

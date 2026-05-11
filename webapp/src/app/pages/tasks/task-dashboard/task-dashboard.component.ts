@@ -1,19 +1,34 @@
-import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, Input, inject, signal, computed, effect, OnInit, OnChanges, SimpleChanges } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
-import { NzProgressModule } from 'ng-zorro-antd/progress';
-import { interval } from 'rxjs';
-import type { TaskDashboardDto } from '@yinuo-ngm/protocol';
+import { CommonModule } from '@angular/common';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  Input,
+  OnInit,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { TaskKind, TaskRow, TaskRuntime } from '@models/task.model';
+import type { TaskDashboardDto } from '@yinuo-ngm/protocol';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipDirective, NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { interval } from 'rxjs';
 
 @Component({
   selector: 'app-task-dashboard',
   standalone: true,
-  imports: [CommonModule, NzIconModule, NzTagModule, NzToolTipModule, NzProgressModule, ClipboardModule],
+  imports: [
+    CommonModule,
+    NzIconModule,
+    NzTagModule,
+    NzTooltipModule,
+    NzProgressModule,
+    ClipboardModule,
+    NzTooltipDirective,
+  ],
   template: `
     <div class="dashboard-panel">
       @if (taskKind === 'serve') {
@@ -101,7 +116,11 @@ import type { TaskKind, TaskRow, TaskRuntime } from '@models/task.model';
                   @for (url of serveUrls(); track url) {
                     <div class="url-item">
                       <a [href]="url" target="_blank" rel="noopener noreferrer">{{ url }}</a>
-                      <button class="copy-btn" (click)="copyUrl(url)" nz-tooltip [nzTooltipTitle]="copiedUrl === url ? '已复制' : '复制'">
+                      <button
+                        class="copy-btn"
+                        (click)="copyUrl(url)"
+                        [nz-tooltip]="copiedUrl === url ? '已复制' : '复制'"
+                      >
                         <nz-icon [nzType]="copiedUrl === url ? 'check' : 'copy'" />
                       </button>
                     </div>
@@ -173,25 +192,36 @@ import type { TaskKind, TaskRow, TaskRuntime } from '@models/task.model';
           <div class="dash-grid build-size-grid">
             <div class="dash-card accent-blue">
               <div class="dash-card-label">总体积</div>
-              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.totalRawSize) }}</div>
+              <div class="dash-card-value size">
+                {{ formatSize(taskDashboard?.sizes?.totalRawSize) }}
+              </div>
               @if (taskDashboard?.sizes?.totalGzipSize) {
-                <div class="dash-card-sub">Gzip: {{ formatSize(taskDashboard?.sizes?.totalGzipSize) }} (节省 {{ gzipSavings() }})</div>
+                <div class="dash-card-sub">
+                  Gzip: {{ formatSize(taskDashboard?.sizes?.totalGzipSize) }} (节省
+                  {{ gzipSavings() }})
+                </div>
               }
             </div>
 
             <div class="dash-card accent-indigo">
               <div class="dash-card-label">JS</div>
-              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.jsRawSize) }}</div>
+              <div class="dash-card-value size">
+                {{ formatSize(taskDashboard?.sizes?.jsRawSize) }}
+              </div>
             </div>
 
             <div class="dash-card accent-green">
               <div class="dash-card-label">CSS</div>
-              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.cssRawSize) }}</div>
+              <div class="dash-card-value size">
+                {{ formatSize(taskDashboard?.sizes?.cssRawSize) }}
+              </div>
             </div>
 
             <div class="dash-card accent-orange">
               <div class="dash-card-label">其他资源</div>
-              <div class="dash-card-value size">{{ formatSize(taskDashboard?.sizes?.assetRawSize) }}</div>
+              <div class="dash-card-value size">
+                {{ formatSize(taskDashboard?.sizes?.assetRawSize) }}
+              </div>
             </div>
 
             <div class="dash-card">
@@ -203,17 +233,32 @@ import type { TaskKind, TaskRow, TaskRuntime } from '@models/task.model';
           <!-- 体积比例条 -->
           <div class="size-bar-container">
             <div class="size-bar">
-              <div class="size-bar-segment js" [style.flex]="taskDashboard?.sizes?.jsRawSize || 0" nz-tooltip nzTooltipTitle="JS">
+              <div
+                class="size-bar-segment js"
+                [style.flex]="taskDashboard?.sizes?.jsRawSize || 0"
+                nz-tooltip
+                nzTooltipTitle="JS"
+              >
                 @if (jsPercent() > 8) {
                   <span>JS {{ jsPercent() }}%</span>
                 }
               </div>
-              <div class="size-bar-segment css" [style.flex]="taskDashboard?.sizes?.cssRawSize || 0" nz-tooltip nzTooltipTitle="CSS">
+              <div
+                class="size-bar-segment css"
+                [style.flex]="taskDashboard?.sizes?.cssRawSize || 0"
+                nz-tooltip
+                nzTooltipTitle="CSS"
+              >
                 @if (cssPercent() > 8) {
                   <span>CSS {{ cssPercent() }}%</span>
                 }
               </div>
-              <div class="size-bar-segment asset" [style.flex]="taskDashboard?.sizes?.assetRawSize || 0" nz-tooltip nzTooltipTitle="其他资源">
+              <div
+                class="size-bar-segment asset"
+                [style.flex]="taskDashboard?.sizes?.assetRawSize || 0"
+                nz-tooltip
+                nzTooltipTitle="其他资源"
+              >
                 @if (assetPercent() > 8) {
                   <span>资源 {{ assetPercent() }}%</span>
                 }
@@ -244,264 +289,298 @@ import type { TaskKind, TaskRow, TaskRuntime } from '@models/task.model';
       }
     </div>
   `,
-  styles: [`
-    :host {
-      display: block;
-      height: 100%;
-      overflow: auto;
-    }
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100%;
+        overflow: auto;
+      }
 
-    .dashboard-panel {
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+      .dashboard-panel {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
 
-    .dash-section-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #26394d;
-      padding: 4px 0;
-    }
+      .dash-section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #26394d;
+        padding: 4px 0;
+      }
 
-    .dash-section-title nz-icon {
-      font-size: 16px;
-      color: #1677ff;
-    }
+      .dash-section-title nz-icon {
+        font-size: 16px;
+        color: #1677ff;
+      }
 
-    .dash-grid {
-      display: grid;
-      gap: 12px;
-    }
+      .dash-grid {
+        display: grid;
+        gap: 12px;
+      }
 
-    .serve-grid {
-      grid-template-columns: repeat(4, 1fr);
-    }
+      .serve-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
 
-    .build-grid {
-      grid-template-columns: repeat(5, 1fr);
-    }
+      .build-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
 
-    .build-size-grid {
-      grid-template-columns: repeat(5, 1fr);
-    }
+      .build-size-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
 
-    .dash-card {
-      background: #fff;
-      border: 1px solid #eef1f4;
-      border-radius: 8px;
-      padding: 12px;
-      min-width: 0;
-      transition: box-shadow 0.2s;
-    }
+      .dash-card {
+        background: #fff;
+        border: 1px solid #eef1f4;
+        border-radius: 8px;
+        padding: 12px;
+        min-width: 0;
+        transition: box-shadow 0.2s;
+      }
 
-    .dash-card:hover {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    }
+      .dash-card:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
 
-    .dash-card-full {
-      grid-column: 1 / -1;
-    }
+      .dash-card-full {
+        grid-column: 1 / -1;
+      }
 
-    .dash-card-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: #7a8a99;
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
+      .dash-card-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #7a8a99;
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
 
-    .dash-card-label nz-icon {
-      font-size: 13px;
-    }
+      .dash-card-label nz-icon {
+        font-size: 13px;
+      }
 
-    .dash-card-value {
-      color: #26394d;
-      font-size: 18px;
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+      .dash-card-value {
+        color: #26394d;
+        font-size: 18px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-    .dash-card-value.size {
-      font-size: 20px;
-    }
+      .dash-card-value.size {
+        font-size: 20px;
+      }
 
-    .dash-card-value.mono {
-      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    }
+      .dash-card-value.mono {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      }
 
-    .dash-card-value.text-sm {
-      font-size: 13px;
-      font-weight: 500;
-    }
+      .dash-card-value.text-sm {
+        font-size: 13px;
+        font-weight: 500;
+      }
 
-    .dash-card-value.warn {
-      color: #faad14;
-    }
+      .dash-card-value.warn {
+        color: #faad14;
+      }
 
-    .dash-card-value.error {
-      color: #ff4d4f;
-    }
+      .dash-card-value.error {
+        color: #ff4d4f;
+      }
 
-    .dash-card-sub {
-      margin-top: 4px;
-      color: #7a8a99;
-      font-size: 12px;
-    }
+      .dash-card-sub {
+        margin-top: 4px;
+        color: #7a8a99;
+        font-size: 12px;
+      }
 
-    /* 彩色顶部边框变体 */
-    .accent-blue { border-top: 3px solid #1677ff; }
-    .accent-indigo { border-top: 3px solid #722ed1; }
-    .accent-green { border-top: 3px solid #52c41a; }
-    .accent-orange { border-top: 3px solid #fa8c16; }
+      /* 彩色顶部边框变体 */
+      .accent-blue {
+        border-top: 3px solid #1677ff;
+      }
+      .accent-indigo {
+        border-top: 3px solid #722ed1;
+      }
+      .accent-green {
+        border-top: 3px solid #52c41a;
+      }
+      .accent-orange {
+        border-top: 3px solid #fa8c16;
+      }
 
-    /* URL 列表 */
-    .url-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+      /* URL 列表 */
+      .url-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
 
-    .url-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+      .url-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-    .url-item a {
-      color: #1677ff;
-      font-size: 14px;
-      font-weight: 500;
-      text-decoration: none;
-      word-break: break-all;
-    }
+      .url-item a {
+        color: #1677ff;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        word-break: break-all;
+      }
 
-    .url-item a:hover {
-      text-decoration: underline;
-    }
+      .url-item a:hover {
+        text-decoration: underline;
+      }
 
-    .copy-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      border: 1px solid #d9d9d9;
-      border-radius: 6px;
-      background: #fff;
-      cursor: pointer;
-      color: #595959;
-      transition: all 0.2s;
-      flex-shrink: 0;
-    }
+      .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+        color: #595959;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
 
-    .copy-btn:hover {
-      border-color: #1677ff;
-      color: #1677ff;
-    }
+      .copy-btn:hover {
+        border-color: #1677ff;
+        color: #1677ff;
+      }
 
-    /* 体积比例条 */
-    .size-bar-container {
-      padding: 4px 0;
-    }
+      /* 体积比例条 */
+      .size-bar-container {
+        padding: 4px 0;
+      }
 
-    .size-bar {
-      display: flex;
-      height: 32px;
-      border-radius: 6px;
-      overflow: hidden;
-      background: #f0f2f5;
-    }
+      .size-bar {
+        display: flex;
+        height: 32px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #f0f2f5;
+      }
 
-    .size-bar-segment {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 0;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 600;
-      transition: flex 0.3s;
-      overflow: hidden;
-    }
+      .size-bar-segment {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        transition: flex 0.3s;
+        overflow: hidden;
+      }
 
-    .size-bar-segment span {
-      white-space: nowrap;
-      padding: 0 6px;
-    }
+      .size-bar-segment span {
+        white-space: nowrap;
+        padding: 0 6px;
+      }
 
-    .size-bar-segment.js { background: #1677ff; }
-    .size-bar-segment.css { background: #52c41a; }
-    .size-bar-segment.asset { background: #fa8c16; }
+      .size-bar-segment.js {
+        background: #1677ff;
+      }
+      .size-bar-segment.css {
+        background: #52c41a;
+      }
+      .size-bar-segment.asset {
+        background: #fa8c16;
+      }
 
-    .size-bar-legend {
-      display: flex;
-      gap: 16px;
-      margin-top: 8px;
-      font-size: 12px;
-      color: #7a8a99;
-    }
+      .size-bar-legend {
+        display: flex;
+        gap: 16px;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #7a8a99;
+      }
 
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
 
-    .dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
-    }
+      .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+      }
 
-    .dot.js { background: #1677ff; }
-    .dot.css { background: #52c41a; }
-    .dot.asset { background: #fa8c16; }
+      .dot.js {
+        background: #1677ff;
+      }
+      .dot.css {
+        background: #52c41a;
+      }
+      .dot.asset {
+        background: #fa8c16;
+      }
 
-    /* 空状态 */
-    .dash-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 48px 16px;
-      color: #7a8a99;
-    }
+      /* 空状态 */
+      .dash-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 48px 16px;
+        color: #7a8a99;
+      }
 
-    .empty-icon {
-      font-size: 40px;
-      color: #d9d9d9;
-    }
+      .empty-icon {
+        font-size: 40px;
+        color: #d9d9d9;
+      }
 
-    .text-muted {
-      color: #7a8a99;
-      font-size: 13px;
-      font-weight: 400;
-    }
+      .text-muted {
+        color: #7a8a99;
+        font-size: 13px;
+        font-weight: 400;
+      }
 
-    @media (max-width: 1100px) {
-      .serve-grid { grid-template-columns: repeat(3, 1fr); }
-      .build-grid { grid-template-columns: repeat(3, 1fr); }
-      .build-size-grid { grid-template-columns: repeat(3, 1fr); }
-    }
+      @media (max-width: 1100px) {
+        .serve-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .build-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .build-size-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
 
-    @media (max-width: 768px) {
-      .serve-grid { grid-template-columns: repeat(2, 1fr); }
-      .build-grid { grid-template-columns: repeat(2, 1fr); }
-      .build-size-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-  `],
+      @media (max-width: 768px) {
+        .serve-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .build-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .build-size-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    `,
+  ],
 })
-export class TaskDashboardComponent implements OnInit, OnChanges {
+export class TaskDashboardComponent implements OnInit {
   @Input() taskRow: TaskRow | null = null;
   @Input() taskDashboard: TaskDashboardDto | null = null;
   @Input() taskKind: TaskKind | undefined;
@@ -518,18 +597,11 @@ export class TaskDashboardComponent implements OnInit, OnChanges {
       .subscribe(() => this._liveNow.set(Date.now()));
   }
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['taskRow'] || changes['taskDashboard']) {
-      // inputs 更新时自动触发变更检测
-    }
-  }
-
   get runtime(): TaskRuntime | undefined {
     return this.taskRow?.runtime;
   }
 
-
-  statusColor = computed(() => {
+  statusColor(): string {
     const s = this.runtime?.status;
     if (s === 'running') return 'processing';
     if (s === 'stopping') return 'warning';
@@ -537,9 +609,9 @@ export class TaskDashboardComponent implements OnInit, OnChanges {
     if (s === 'failed') return 'error';
     if (s === 'stopped') return 'default';
     return 'default';
-  });
+  }
 
-  statusText = computed(() => {
+  statusText(): string {
     const s = this.runtime?.status;
     const map: Record<string, string> = {
       idle: '空闲',
@@ -550,57 +622,56 @@ export class TaskDashboardComponent implements OnInit, OnChanges {
       stopped: '已停止',
     };
     return map[s || 'idle'] || s || '-';
-  });
+  }
 
-  liveDuration = computed(() => {
+  liveDuration(): string {
     const r = this.runtime;
     if (!r?.startedAt) return '-';
     if (r.stoppedAt) {
       return this.calcDuration(r.startedAt, r.stoppedAt);
     }
-    // 实时计算
     const now = this._liveNow();
     return this.calcDuration(r.startedAt, now);
-  });
+  }
 
-  buildDuration = computed(() => {
+  buildDuration(): string {
     const r = this.runtime;
     if (!r?.startedAt) return '-';
     const end = r.stoppedAt || this._liveNow();
     return this.calcDuration(r.startedAt, end);
-  });
+  }
 
-  serveUrls = computed(() => {
+  serveUrls(): string[] {
     return this.runtime?.urls || this.taskDashboard?.urls || [];
-  });
+  }
 
-  hasSizeData = computed(() => {
+  hasSizeData(): boolean {
     const s = this.taskDashboard?.sizes;
     return !!(s && s.fileCount > 0);
-  });
+  }
 
-  jsPercent = computed(() => {
+  jsPercent(): number {
     const s = this.taskDashboard?.sizes;
     if (!s?.totalRawSize) return 0;
     return Math.round(((s.jsRawSize || 0) / s.totalRawSize) * 100);
-  });
+  }
 
-  cssPercent = computed(() => {
+  cssPercent(): number {
     const s = this.taskDashboard?.sizes;
     if (!s?.totalRawSize) return 0;
     return Math.round(((s.cssRawSize || 0) / s.totalRawSize) * 100);
-  });
+  }
 
-  assetPercent = computed(() => {
+  assetPercent(): number {
     return 100 - this.jsPercent() - this.cssPercent();
-  });
+  }
 
-  gzipSavings = computed(() => {
+  gzipSavings(): string {
     const s = this.taskDashboard?.sizes;
     if (!s?.totalRawSize || !s?.totalGzipSize) return '0%';
     const savings = ((s.totalRawSize - s.totalGzipSize) / s.totalRawSize) * 100;
     return `${savings.toFixed(1)}%`;
-  });
+  }
 
   formatTime(value?: number): string {
     if (!value) return '-';

@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -11,20 +12,19 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import type { editor } from 'monaco-editor';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCodeEditorModule } from 'ng-zorro-antd/code-editor';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
-import type { editor } from 'monaco-editor';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
+import { registerNginxLanguage } from '../../../../utils/monaco-languages';
 import type { NginxConfig } from '../../models/nginx.types';
 import { NginxService } from '../../services/nginx.service';
-import { registerNginxLanguage } from '../../../../utils/monaco-languages';
 
 /**
  * Nginx 配置编辑器组件
@@ -40,7 +40,7 @@ import { registerNginxLanguage } from '../../../../utils/monaco-languages';
     NzIconModule,
     NzPopconfirmModule,
     NzSelectModule,
-    NzToolTipModule,
+    NzTooltipModule,
   ],
   template: `
     <div class="config-editor">
