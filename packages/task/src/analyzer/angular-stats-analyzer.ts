@@ -263,28 +263,13 @@ function parseWebpackStats(statsPath: string, json: Record<string, any>): TaskAn
     };
 }
 
-function parseUnknownStats(statsPath: string): TaskAnalyzeStats {
-    return {
-        statsPath,
-        format: "unknown",
-        chunks: [],
-        modules: [],
-        dependencies: [],
-        insights: [{
-            level: "info",
-            code: "unknown-stats-format",
-            message: "已找到 stats.json，但暂未识别其结构。",
-        }],
-    };
-}
-
-function parseStats(statsPath: string, json: unknown): TaskAnalyzeStats {
-    if (!isObject(json)) return parseUnknownStats(statsPath);
+function parseStats(statsPath: string, json: unknown): TaskAnalyzeStats | null {
+    if (!isObject(json)) return null;
     if (isObject(json.inputs) && isObject(json.outputs)) return parseEsbuildMetafile(statsPath, json);
     if (Array.isArray(json.assets) || Array.isArray(json.chunks) || Array.isArray(json.modules)) {
         return parseWebpackStats(statsPath, json);
     }
-    return parseUnknownStats(statsPath);
+    return null;
 }
 
 export class AngularStatsAnalyzer implements TaskAnalyzer {
@@ -297,7 +282,7 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
     async analyze(ctx: TaskAnalyzeContext): Promise<TaskAnalyzeResult | null> {
         if (!this.supports(ctx)) return null;
 
-        const detection = await detectProjectBuild(ctx.spec.projectRoot);
+        const detection = ctx.detection ?? await detectProjectBuild(ctx.spec.projectRoot);
         const isAngular = detection.framework === "angular";
         const isWebpack = detection.buildTool === "webpack" || detection.buildTool === "vue-cli-webpack";
         if (!isAngular && !isWebpack) return null;
@@ -309,6 +294,7 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
         const assets = await scanDistAssets(outputPath, { includeMap: false });
         const text = await fs.readFile(statsPath, "utf8");
         const stats = parseStats(statsPath, JSON.parse(text));
+        if (!stats) return null;
         const summary = sumAssets(assets);
 
         return {

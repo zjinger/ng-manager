@@ -165,7 +165,7 @@ export class RollupVisualizerAnalyzer implements TaskAnalyzer {
 
     async analyze(ctx: TaskAnalyzeContext): Promise<TaskAnalyzeResult | null> {
         if (!this.supports(ctx)) return null;
-        const detection = await detectProjectBuild(ctx.spec.projectRoot);
+        const detection = ctx.detection ?? await detectProjectBuild(ctx.spec.projectRoot);
         if (detection.buildTool !== "vite") return null;
 
         const statsPath = await findVisualizerReport(ctx.spec.projectRoot);

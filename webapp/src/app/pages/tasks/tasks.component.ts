@@ -235,10 +235,12 @@ export class TasksComponent {
 
   viewIcon(viewId: TaskViewIdDto): string {
     if (viewId === 'dashboard') {
-      return this.selectedTask()?.spec?.kind === 'serve' ? 'cloud-server' : 'dashboard';
+      // return this.selectedTask()?.spec?.kind === 'serve' ? 'cloud-server' : 'dashboard';
+      return 'dashboard';
     }
     if (viewId === 'analyzer') {
-      return this.selectedTask()?.spec?.kind === 'serve' ? 'line-chart' : 'bar-chart';
+      // return this.selectedTask()?.spec?.kind === 'serve' ? 'line-chart' : 'bar-chart';
+      return 'bar-chart';
     }
     return 'desktop';
   }

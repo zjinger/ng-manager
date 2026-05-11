@@ -457,7 +457,7 @@ export class TaskServiceImpl implements TaskService {
         const command = this.appendStatsJsonArg(spec.command);
         if (command === spec.command) return spec;
 
-        this.appendSysLog(runId, "[Task Analyze] Angular build 自动追加 --stats-json，用官方 stats.json 生成分析报告", "info");
+        this.appendSysLog(runId, "[Task Analyze] 检测到 Angular 构建任务，将优先尝试读取 stats.json；如未生成或无法解析，将回退到 dist 产物扫描。", "info");
         return {
             ...spec,
             command,

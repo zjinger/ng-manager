@@ -1,10 +1,12 @@
 import type { TaskDefinition, TaskRuntime } from "../task.types";
+import type { ProjectBuildDetection } from "./project-build-detector";
 
 export type TaskAssetType = "js" | "css" | "html" | "image" | "font" | "map" | "asset";
 
 export interface TaskAnalyzeContext {
     spec: TaskDefinition;
     runtime: TaskRuntime;
+    detection?: ProjectBuildDetection;
 }
 
 export interface TaskAssetInfo {

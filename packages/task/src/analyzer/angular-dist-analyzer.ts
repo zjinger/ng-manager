@@ -30,7 +30,12 @@ export class AngularDistAnalyzer implements TaskAnalyzer {
     name = "angular-dist";
 
     supports(ctx: TaskAnalyzeContext): boolean {
-        return ctx.spec.kind === "build" && ctx.runtime.status === "success";
+        if (ctx.spec.kind !== "build" || ctx.runtime.status !== "success") return false;
+
+        const detection = ctx.detection;
+        if (!detection) return true;
+
+        return detection.framework === "angular";
     }
 
     async analyze(ctx: TaskAnalyzeContext): Promise<TaskAnalyzeResult | null> {
