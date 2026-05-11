@@ -8,7 +8,9 @@ export function buildDeploymentRiskInsights(input: {
     const statsJson = input.assets.find((asset) => asset.name === "stats.json");
     const statsHtml = input.assets.find((asset) => asset.name === "stats.html");
     const maps = input.assets.filter((asset) => asset.type === "map");
-    const largeAsset = input.assets.find((asset) => asset.rawSize > 2 * 1024 * 1024);
+    const largeAssets = input.assets
+        .filter((asset) => asset.rawSize > 2 * 1024 * 1024)
+        .sort((a, b) => b.rawSize - a.rawSize);
     const largeInitialChunk = (input.chunks ?? []).find((chunk) => chunk.initial && chunk.rawSize > 500 * 1024);
 
     if (statsJson) {
@@ -38,12 +40,12 @@ export function buildDeploymentRiskInsights(input: {
         });
     }
 
-    if (largeAsset) {
+    if (largeAssets.length > 0) {
         insights.push({
             level: "warning",
             code: "deployment-large-asset",
-            message: `构建产物 ${largeAsset.relativePath} 超过 2MB，可能影响首次下载或缓存刷新成本。`,
-            data: largeAsset,
+            message: `dist 中存在 ${largeAssets.length} 个超过 2MB 的构建产物，可能影响首次下载或缓存刷新成本。`,
+            data: { count: largeAssets.length, top: largeAssets.slice(0, 10) },
         });
     }
 

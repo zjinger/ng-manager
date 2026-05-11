@@ -50,6 +50,7 @@ export class AngularDistAnalyzer implements TaskAnalyzer {
         const assetRawSize = sumBy(assets, (item) => item.type !== "js" && item.type !== "css");
         const totalRawSize = assets.reduce((sum, item) => sum + item.rawSize, 0);
         const totalGzipSize = assets.reduce((sum, item) => sum + (item.gzipSize ?? 0), 0);
+        const totalBrotliSize = assets.reduce((sum, item) => sum + (item.brotliSize ?? 0), 0);
         const largestFile = assets[0]
             ? {
                 name: assets[0].relativePath,
@@ -72,6 +73,7 @@ export class AngularDistAnalyzer implements TaskAnalyzer {
                 fileCount: assets.length,
                 totalRawSize,
                 totalGzipSize,
+                totalBrotliSize,
                 jsRawSize,
                 cssRawSize,
                 assetRawSize,

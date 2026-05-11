@@ -28,9 +28,23 @@ export async function scanDistAssets(
     opts: { includeMap?: boolean } = {}
 ): Promise<TaskAssetInfo[]> {
     const assets: TaskAssetInfo[] = [];
+    let rootStat: import("node:fs").Stats;
+
+    try {
+        rootStat = await fs.stat(root);
+    } catch {
+        return [];
+    }
+
+    if (!rootStat.isDirectory()) return [];
 
     async function walk(dir: string) {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
+        let entries: Array<import("node:fs").Dirent>;
+        try {
+            entries = await fs.readdir(dir, { withFileTypes: true });
+        } catch {
+            return;
+        }
 
         for (const entry of entries) {
             const fullPath = path.join(dir, entry.name);
@@ -45,7 +59,12 @@ export async function scanDistAssets(
             const ext = path.extname(entry.name);
             if (!opts.includeMap && ext.toLowerCase() === ".map") continue;
 
-            const buffer = await fs.readFile(fullPath);
+            let buffer: Buffer;
+            try {
+                buffer = await fs.readFile(fullPath);
+            } catch {
+                continue;
+            }
             const rawSize = buffer.length;
             const type = getAssetType(ext);
             const gzipSize = shouldCalculateCompressedSize(type, rawSize) ? calcGzipSize(buffer) : undefined;

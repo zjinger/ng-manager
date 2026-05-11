@@ -53,9 +53,15 @@ async function findStatsJson(root: string, depth = 4): Promise<string | null> {
 }
 
 async function findStatsJsonCandidates(projectRoot: string, outputPath: string): Promise<string | null> {
-    return await findStatsJson(outputPath)
-        ?? await findStatsJson(path.resolve(projectRoot, "dist"))
-        ?? await findStatsJson(path.resolve(projectRoot, "dist", "browser"))
+    const resolvedProjectRoot = path.resolve(projectRoot);
+    const resolvedOutputPath = path.resolve(outputPath);
+    const outputCandidate = resolvedOutputPath === resolvedProjectRoot
+        ? await findStatsJson(resolvedOutputPath, 0)
+        : await findStatsJson(resolvedOutputPath, 2);
+
+    return outputCandidate
+        ?? await findStatsJson(path.resolve(projectRoot, "dist"), 2)
+        ?? await findStatsJson(path.resolve(projectRoot, "dist", "browser"), 1)
         ?? await findStatsJson(projectRoot, 0);
 }
 
@@ -69,6 +75,7 @@ async function resolveBuildOutputPath(projectRoot: string, isAngular: boolean): 
 function sumAssets(assets: TaskAssetInfo[]) {
     const totalRawSize = assets.reduce((sum, item) => sum + item.rawSize, 0);
     const totalGzipSize = assets.reduce((sum, item) => sum + (item.gzipSize ?? 0), 0);
+    const totalBrotliSize = assets.reduce((sum, item) => sum + (item.brotliSize ?? 0), 0);
     const jsAssets = assets.filter((item) => item.type === "js");
     const cssAssets = assets.filter((item) => item.type === "css");
     const otherAssets = assets.filter((item) => item.type !== "js" && item.type !== "css");
@@ -78,6 +85,7 @@ function sumAssets(assets: TaskAssetInfo[]) {
         fileCount: assets.length,
         totalRawSize,
         totalGzipSize,
+        totalBrotliSize,
         jsRawSize: jsAssets.reduce((sum, item) => sum + item.rawSize, 0),
         cssRawSize: cssAssets.reduce((sum, item) => sum + item.rawSize, 0),
         assetRawSize: otherAssets.reduce((sum, item) => sum + item.rawSize, 0),
