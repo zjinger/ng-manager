@@ -1,0 +1,95 @@
+@import '../task-analysis.shared.less';
+
+.stats-section {
+  display: grid;
+  gap: 12px;
+}
+
+.stats-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #7a8a99;
+  font-size: 12px;
+}
+
+.stats-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stats-card {
+  min-width: 0;
+  border: 1px solid #eef1f4;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.stats-card-title {
+  color: #536577;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stats-card-title nz-icon {
+  color: #1677ff;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  border-top: 1px solid #f3f5f7;
+}
+
+.stats-row-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.stats-row-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-tag {
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 4px;
+  margin-left: 4px;
+}
+
+.stats-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #34495e;
+}
+
+.stats-row strong {
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

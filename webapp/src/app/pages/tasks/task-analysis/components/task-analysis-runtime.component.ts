@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import type { TaskRuntime } from '@models/task.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -101,6 +101,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
     </div>
   `,
   styleUrls: ['./task-analysis-runtime.component.less'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskAnalysisRuntimeComponent {
   @Input() runtimeSnapshot: TaskRuntime | null = null;

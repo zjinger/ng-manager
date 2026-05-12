@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import type { TaskAnalyzeDiagnosticDto } from '@yinuo-ngm/protocol';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -49,6 +49,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
     </div>
   `,
   styleUrls: ['./task-analysis-diagnostics.component.less'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskAnalysisDiagnosticsComponent {
   @Input() items: TaskAnalyzeDiagnosticDto[] = [];

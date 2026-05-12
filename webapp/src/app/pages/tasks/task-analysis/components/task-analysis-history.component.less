@@ -1,0 +1,62 @@
+@import '../task-analysis.shared.less';
+
+.history-table {
+  border: 1px solid #eef1f4;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) repeat(6, minmax(80px, 1fr));
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid #f3f5f7;
+  font-size: 12px;
+}
+
+.history-head {
+  border-top: 0;
+  background: #f8fafc;
+  color: #697a8c;
+  font-weight: 600;
+}
+
+.history-row.current {
+  background: #f6fbff;
+}
+
+.history-delta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.history-delta-card {
+  padding: 8px 10px;
+  background: #fafbfc;
+}
+
+.history-delta-card span {
+  color: #7a8a99;
+  font-size: 12px;
+}
+
+.history-delta-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-delta-card strong.up { color: #ff4d4f; }
+.history-delta-card strong.down { color: #52c41a; }
+.history-delta-card strong.neutral { color: #536577; }
+
+@media (max-width: 900px) {
+  .history-delta-grid {
+    grid-template-columns: 1fr;
+  }
+}
