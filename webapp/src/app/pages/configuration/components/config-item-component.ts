@@ -22,9 +22,15 @@ import { ConfigRawEditorComponent } from './config-raw-editor.component';
     ConfigRawEditorComponent,
   ],
   template: `
-    <div class="config-item">
+    <div class="config-item" [class.readonly]="isReadonly()" [class.large-control]="isLargeControl()">
       <div class="meta">
         <div class="label">{{ item.label }}</div>
+        @if (isLargeControl()) {
+          <div class="path" [title]="item.path">{{ item.path }}</div>
+        }
+        @if(defaultValue() !== undefined){
+          <div class="default-value">默认值: <code>{{ toInlineText(defaultValue()) }}</code></div>
+        }
         @if(item.description){
           <div class="desc">{{ item.description }}</div>
         }
@@ -70,6 +76,7 @@ import { ConfigRawEditorComponent } from './config-raw-editor.component';
               <app-config-raw-editor
                 [value]="toMultilineText(value)"
                 [readonly]="isReadonly()"
+                [backendEntries]="backendEntries()"
                 (valueChange)="emitRawText($event)"
               ></app-config-raw-editor>
             } @else if (shouldUseSummary(value, item)) {
@@ -90,6 +97,9 @@ import { ConfigRawEditorComponent } from './config-raw-editor.component';
             <pre>{{ toPrettyText(value) }}</pre>
           }
         }
+        @if (!isLargeControl()) {
+          <div class="path" [title]="item.path">{{ item.path }}</div>
+        }
       </div>
     </div>
   `,
@@ -97,23 +107,125 @@ import { ConfigRawEditorComponent } from './config-raw-editor.component';
     `
     .config-item {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--app-border-color);
+      transition: background .18s ease;
+    }
+    .config-item:hover {
+      background: #fafafa;
+    }
+    .config-item:last-child {
+      border-bottom: 0;
+    }
+    .config-item.readonly {
+      background: #fafafa;
+    }
+    .config-item.large-control {
+      flex-direction: column;
+      gap: 8px;
       padding: 12px 16px;
-      &:hover { background: var(--app-primary-2); }
+    }
+    .meta {
+      flex: 0 0 200px;
+      min-width: 0;
+      padding-top: 4px;
+    }
+    .large-control .meta {
+      flex: none;
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+      column-gap: 12px;
+      row-gap: 2px;
+      align-items: baseline;
+      padding-top: 0;
+    }
+    .label {
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 500;
+      opacity: 0.75;
+    }
+    .path {
+      margin-top: 2px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--app-text-secondary);
+      font-family: Consolas, Menlo, Monaco, 'Courier New', monospace;
+      word-break: break-all;
+      opacity: 0;
+      transition: opacity .18s ease;
+    }
+    .large-control .path {
+      margin-top: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      word-break: normal;
+      text-align: right;
+    }
+    .config-item:hover .path,
+    .config-item:focus-within .path {
+      opacity: 1;
+    }
+    .default-value,
+    .desc {
+      font-size: 11px;
+      line-height: 1.4;
+      margin-top: 3px;
+      opacity: 0.6;
+    }
+    .large-control .default-value,
+    .large-control .desc {
+      grid-column: 1 / -1;
+      margin-top: 0;
+    }
+    code {
+      font-family: Consolas, Menlo, Monaco, 'Courier New', monospace;
+      word-break: break-word;
+    }
+    .control {
+      flex: 1 1 auto;
+      min-width: 260px;
+    }
+    .large-control .control {
+      width: 100%;
+      min-width: 0;
+    }
+    .control input[nz-input],
+    .control nz-select,
+    .control textarea[nz-input],
+    .control app-config-json-editor,
+    .control app-config-json-summary,
+    .control app-config-raw-editor {
+      width: 100%;
+      display: block;
+    }
+    .control pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    @media (max-width: 780px) {
+      .config-item {
+        flex-direction: column;
+      }
       .meta {
-        .label { font-weight: 500; opacity: 0.75; }
-        .desc { font-size: 14px; margin-top: 4px; opacity: 0.55; }
+        flex-basis: auto;
+        width: 100%;
+      }
+      .large-control .meta {
+        display: block;
+      }
+      .large-control .path {
+        margin-top: 2px;
+        text-align: left;
       }
       .control {
-        min-width: 220px;
-        max-width: 640px;
-        width: 60%;
-        input[nz-input], nz-select, textarea[nz-input], app-config-json-editor, app-config-json-summary, app-config-raw-editor {
-          width: 100%;
-          display: block;
-        }
-        pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+        width: 100%;
+        min-width: 0;
       }
     }
     `
@@ -122,11 +234,16 @@ import { ConfigRawEditorComponent } from './config-raw-editor.component';
 export class ConfigItemComponent {
   @Input() item!: ConfigField;
   @Input() value: unknown;
+  @Input() viewModel: unknown;
   @Input() options: Array<{ label: string; value: string | number | boolean }> = [];
   @Output() valueChange = new EventEmitter<unknown>();
 
   isReadonly(): boolean {
     return !!this.item?.readonly || this.item?.type === 'readonly' || this.item?.type === 'table';
+  }
+
+  isLargeControl(): boolean {
+    return this.item?.type === 'json' || this.item?.type === 'multi-text';
   }
 
   emit(v: any) {
@@ -154,13 +271,13 @@ export class ConfigItemComponent {
   }
 
   shouldUseSummary(value: unknown, item: ConfigField): boolean {
-    const summaryKeys = new Set([
-      'dependencies',
-      'devDependencies',
-      'peerDependencies',
-      'optionalDependencies',
-    ]);
-    if (summaryKeys.has(item.key)) {
+    const key = `${item.key ?? ''}`.toLowerCase();
+    if (
+      key.includes('dependencies') ||
+      key.includes('devdependencies') ||
+      key.includes('peerdependencies') ||
+      key.includes('optionaldependencies')
+    ) {
       return true;
     }
     if (Array.isArray(value)) {
@@ -179,5 +296,36 @@ export class ConfigItemComponent {
     } catch {
       return String(v);
     }
+  }
+
+  defaultValue(): unknown {
+    const metadata = (this.item?.metadata ?? {}) as { defaultValue?: unknown };
+    return metadata.defaultValue;
+  }
+
+  toInlineText(v: unknown): string {
+    if (typeof v === 'string') return v;
+    if (typeof v === 'undefined') return '无';
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+
+  backendEntries(): unknown[] {
+    if (this.item?.path !== '/raw') {
+      return [];
+    }
+    const direct = (this.viewModel as { entries?: unknown })?.entries;
+    if (Array.isArray(direct)) {
+      return direct;
+    }
+    const files = (this.viewModel as { files?: unknown })?.files;
+    if (Array.isArray(files)) {
+      const firstFile = files[0] as { entries?: unknown } | undefined;
+      return Array.isArray(firstFile?.entries) ? firstFile.entries : [];
+    }
+    return [];
   }
 }

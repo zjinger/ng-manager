@@ -14,7 +14,7 @@ function decodePointerSegment(segment: string): string {
   return segment.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-function getByPointer(input: unknown, pointer: string): unknown {
+export function getByPointer(input: unknown, pointer: string): unknown {
   if (pointer === '') {
     return input;
   }
@@ -95,7 +95,7 @@ export function buildConfigDiffItems(input: {
     try {
       const beforeValue = getByPatchPath(input.before, path);
       const afterValue = getByPatchPath(input.after, path);
-      const meta = fieldMap.get(path);
+      const meta = findFieldMeta(fieldMap, path);
       const sampleValue = afterValue !== undefined ? afterValue : beforeValue;
       return {
         path,
@@ -117,5 +117,37 @@ export function buildConfigDiffItems(input: {
       };
     }
   });
+}
+
+function findFieldMeta(
+  fieldMap: Map<string, { label: string; groupTitle?: string }>,
+  path: string
+): { label: string; groupTitle?: string } | undefined {
+  const direct = fieldMap.get(path);
+  if (direct) {
+    return direct;
+  }
+
+  let current = path;
+  while (current) {
+    current = parentPath(current);
+    const meta = fieldMap.get(current);
+    if (meta) {
+      return meta;
+    }
+  }
+  return undefined;
+}
+
+function parentPath(path: string): string {
+  if (!path) {
+    return '';
+  }
+  const separator = path.startsWith('/') ? '/' : '.';
+  const index = path.lastIndexOf(separator);
+  if (index <= 0) {
+    return '';
+  }
+  return path.slice(0, index);
 }
 

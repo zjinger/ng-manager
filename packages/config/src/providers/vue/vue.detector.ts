@@ -6,6 +6,27 @@ function hasKey(record: Record<string, unknown>, key: string): boolean {
   return typeof record[key] === "string";
 }
 
+export const VUE_PROJECT_OVERVIEW_FILE_PATH = "vue-project:overview";
+
+const RELATED_FILE_CANDIDATES = [
+  "src/App.vue",
+  "vite.config.ts",
+  "vite.config.js",
+  "vite.config.mts",
+  "vite.config.mjs"
+];
+
+export async function detectVueRelatedFiles(projectRoot: string): Promise<string[]> {
+  const fileChecks = await Promise.all(
+    RELATED_FILE_CANDIDATES.map(async (item) => {
+      const exists = await fileExists(resolveProjectFile(projectRoot, item));
+      return exists ? item : undefined;
+    })
+  );
+
+  return fileChecks.filter((item): item is string => typeof item === "string");
+}
+
 export async function detectVueProject(projectRoot: string): Promise<ConfigDetectResult> {
   const packageFile = resolveProjectFile(projectRoot, "package.json");
   const packageExists = await fileExists(packageFile);
@@ -26,21 +47,7 @@ export async function detectVueProject(projectRoot: string): Promise<ConfigDetec
       hasKey(devDependencies, "@vitejs/plugin-vue");
   }
 
-  const candidates = [
-    "src/App.vue",
-    "vite.config.ts",
-    "vite.config.js",
-    "vite.config.mts",
-    "vite.config.mjs"
-  ];
-  const fileChecks = await Promise.all(
-    candidates.map(async (item) => {
-      const exists = await fileExists(resolveProjectFile(projectRoot, item));
-      return exists ? item : undefined;
-    })
-  );
-
-  const files = fileChecks.filter((item): item is string => typeof item === "string");
+  const files = await detectVueRelatedFiles(projectRoot);
   const hasVueSfc = files.includes("src/App.vue");
   const available = hasVueDependency || hasVueSfc;
 
@@ -48,7 +55,7 @@ export async function detectVueProject(projectRoot: string): Promise<ConfigDetec
     type: "vue-project",
     title: "Vue",
     available,
-    filePaths: files,
+    filePaths: available ? [VUE_PROJECT_OVERVIEW_FILE_PATH] : [],
     reason: available ? undefined : "未检测到 Vue 依赖或 src/App.vue"
   };
 }

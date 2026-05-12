@@ -4,7 +4,7 @@ import type { ConfigDetectContext, ConfigReadContext } from "../../types/config-
 import type { ConfigDocument } from "../../types/config-document";
 import type { ConfigSchema } from "../../types/config-schema";
 import { resolveProjectFile } from "../../utils/config-path";
-import { detectVueProject } from "./vue.detector";
+import { detectVueProject, detectVueRelatedFiles, VUE_PROJECT_OVERVIEW_FILE_PATH } from "./vue.detector";
 import { buildVueSchema } from "./vue.schema";
 import type { VueProjectViewModel } from "./vue.viewmodel";
 
@@ -41,6 +41,7 @@ export class VueConfigProvider implements ConfigProvider {
 
   async read(ctx: ConfigReadContext): Promise<ConfigDocument<VueProjectViewModel>> {
     const detectResult = await detectVueProject(ctx.projectRoot);
+    const relatedFiles = await detectVueRelatedFiles(ctx.projectRoot);
     const packageFilePath = "package.json";
     const packageAbsPath = resolveProjectFile(ctx.projectRoot, packageFilePath);
     const pkg = await readJsonFile<Record<string, unknown>>(packageAbsPath, {
@@ -63,14 +64,14 @@ export class VueConfigProvider implements ConfigProvider {
       isVue3: /(^|[^\d])3(\.\d+)?/.test(getPackageVersion(dependencies, devDependencies, "vue") ?? ""),
       isVite:
         typeof getPackageVersion(dependencies, devDependencies, "vite") === "string" ||
-        detectResult.filePaths.some((item) => item.startsWith("vite.config")),
+        relatedFiles.some((item) => item.startsWith("vite.config")),
       vueVersion: getPackageVersion(dependencies, devDependencies, "vue"),
       viteVersion: getPackageVersion(dependencies, devDependencies, "vite"),
       vueRouterVersion: getPackageVersion(dependencies, devDependencies, "vue-router"),
       piniaVersion: getPackageVersion(dependencies, devDependencies, "pinia"),
       antDesignVueVersion: getPackageVersion(dependencies, devDependencies, "ant-design-vue"),
-      entryFiles: detectResult.filePaths.filter((item) => item.startsWith("src/")),
-      configFiles: detectResult.filePaths.filter((item) => !item.startsWith("src/")),
+      entryFiles: relatedFiles.filter((item) => item.startsWith("src/")),
+      configFiles: relatedFiles.filter((item) => item.startsWith("vite.config")),
       scripts: asRecordOfString(pkg.scripts)
     };
 
@@ -79,7 +80,7 @@ export class VueConfigProvider implements ConfigProvider {
       type: this.type,
       title: this.title,
       projectRoot: ctx.projectRoot,
-      filePath: ctx.filePath ?? packageFilePath,
+      filePath: ctx.filePath ?? VUE_PROJECT_OVERVIEW_FILE_PATH,
       raw: pkg,
       viewModel,
       schema: buildVueSchema(),

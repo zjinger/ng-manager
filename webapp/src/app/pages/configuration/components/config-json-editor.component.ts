@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -23,8 +23,11 @@ import { NzMessageService } from 'ng-zorro-antd/message';
         </div>
       </div>
       <textarea
+        #jsonTextarea
         nz-input
-        [disabled]="readonly"
+        [readOnly]="readonly"
+        wrap="off"
+        spellcheck="false"
         [ngStyle]="{ minHeight: minHeight + 'px', height: currentHeight + 'px', maxHeight: currentHeight + 'px' }"
         [ngModel]="jsonText"
         (ngModelChange)="onTextChange($event)"
@@ -73,6 +76,8 @@ import { NzMessageService } from 'ng-zorro-antd/message';
       overflow: auto;
       padding: 10px;
       line-height: 1.6;
+      white-space: pre;
+      overflow-wrap: normal;
       font-family: Consolas, Menlo, Monaco, 'Courier New', monospace;
       background: transparent;
     }
@@ -93,6 +98,7 @@ export class ConfigJsonEditorComponent implements OnChanges {
   @Input() minHeight = 120;
   @Input() maxHeight = 280;
   @Output() valueChange = new EventEmitter<unknown>();
+  @ViewChild('jsonTextarea') private jsonTextarea?: ElementRef<HTMLTextAreaElement>;
 
   jsonText = '';
   errorMessage = '';
@@ -142,6 +148,12 @@ export class ConfigJsonEditorComponent implements OnChanges {
       this.jsonText = this.stringifyValue(parsed);
       this.errorMessage = '';
       this.valueChange.emit(parsed);
+      queueMicrotask(() => {
+        const textarea = this.jsonTextarea?.nativeElement;
+        if (!textarea) return;
+        textarea.scrollTop = 0;
+        textarea.scrollLeft = 0;
+      });
       this.message.success('JSON 已格式化');
     } catch {
       this.errorMessage = 'JSON 格式错误，请修正后再保存';

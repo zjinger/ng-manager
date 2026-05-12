@@ -42,6 +42,8 @@ export class EnvConfigProvider implements ConfigProvider {
         files: [{ filePath, entries: result.entries }]
       },
       viewModel: {
+        filePath,
+        entries: result.entries,
         files: [{ filePath, entries: result.entries }]
       },
       schema: buildEnvSchema()

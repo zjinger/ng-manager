@@ -3,8 +3,12 @@ import { resolveProjectFile } from "../../utils/config-path";
 import { resolveAngularEnvironmentFilePath } from "./angular-environment.detector";
 import type { ConfigDocument } from "../../types/config-document";
 import { buildAngularEnvironmentSchema } from "./angular-environment.schema";
+import { parseAngularEnvironmentEntries, type AngularEnvironmentEntry } from "./angular-environment.viewmodel";
 
 export interface AngularEnvironmentViewModel {
+  filePath: string;
+  entries: AngularEnvironmentEntry[];
+  parseMode: "simple";
   files: Array<{
     filePath: string;
     kind: "angular-environment";
@@ -19,6 +23,7 @@ export async function readAngularEnvironmentFile(input: {
   const filePath = await resolveAngularEnvironmentFilePath(input.projectRoot, input.filePath);
   const absPath = resolveProjectFile(input.projectRoot, filePath);
   const content = await readTextFile(absPath, { allowMissing: true, defaultValue: "" });
+  const entries = parseAngularEnvironmentEntries(content);
 
   return {
     id: `angular-environment:${filePath}`,
@@ -28,6 +33,9 @@ export async function readAngularEnvironmentFile(input: {
     filePath,
     raw: { raw: content },
     viewModel: {
+      filePath,
+      entries,
+      parseMode: "simple",
       files: [
         {
           filePath,

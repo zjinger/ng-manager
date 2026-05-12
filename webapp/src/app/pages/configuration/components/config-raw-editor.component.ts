@@ -4,11 +4,13 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, injec
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { parseEnvKeyValues, EnvKeyValueEntry, normalizeEnvKeyValueEntries } from '../utils';
+import { ConfigKvPreviewComponent } from './config-kv-preview.component';
 
 @Component({
   selector: 'app-config-raw-editor',
   standalone: true,
-  imports: [CommonModule, ClipboardModule, FormsModule, NzButtonModule, NzInputModule],
+  imports: [CommonModule, ClipboardModule, FormsModule, NzButtonModule, NzInputModule, ConfigKvPreviewComponent],
   template: `
     <div class="raw-editor" [class.readonly]="readonly">
       <div class="header">
@@ -19,11 +21,12 @@ import { NzInputModule } from 'ng-zorro-antd/input';
       </div>
       <textarea
         nz-input
-        [disabled]="readonly"
+        [readOnly]="readonly"
         [ngModel]="textValue"
         [ngStyle]="{ minHeight: minHeight + 'px' }"
         (ngModelChange)="onTextChange($event)"
       ></textarea>
+      <app-config-kv-preview [entries]="entries"></app-config-kv-preview>
     </div>
   `,
   styles: [`
@@ -69,18 +72,22 @@ export class ConfigRawEditorComponent implements OnChanges {
   @Input() value = '';
   @Input() readonly = false;
   @Input() minHeight = 240;
+  @Input() backendEntries: unknown[] = [];
   @Output() valueChange = new EventEmitter<string>();
 
   textValue = '';
+  entries: EnvKeyValueEntry[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
-    if ('value' in changes) {
+    if ('value' in changes || 'backendEntries' in changes) {
       this.textValue = this.value ?? '';
+      this.entries = this.resolvePreviewEntries(this.textValue);
     }
   }
 
   onTextChange(value: string): void {
     this.textValue = value ?? '';
+    this.entries = this.resolvePreviewEntries(this.textValue);
     if (this.readonly) {
       return;
     }
@@ -89,6 +96,14 @@ export class ConfigRawEditorComponent implements OnChanges {
 
   copyText(): void {
     this.clipboard.copy(this.textValue ?? '');
+  }
+
+  private resolvePreviewEntries(raw: string): EnvKeyValueEntry[] {
+    const liveEntries = parseEnvKeyValues(raw);
+    if (liveEntries.length > 0) {
+      return liveEntries;
+    }
+    return normalizeEnvKeyValueEntries(this.backendEntries);
   }
 }
 

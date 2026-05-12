@@ -10,7 +10,15 @@ export interface ConfigNavNodeVM {
   icon?: string;
   description?: string;
   available?: boolean;
-  files?: string[];
+  readonly?: boolean;
+  dirty?: boolean;
+  files?: ConfigNavFileVM[];
+  fileCount?: number;
+}
+
+export interface ConfigNavFileVM {
+  filePath: string;
+  title: string;
 }
 
 /**

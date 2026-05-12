@@ -1,25 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ProjectContextStore } from '@app/core/stores';
 import { PageLayoutComponent } from '@app/shared';
 import { NgDevtoolComponent } from '@app/shared/devtools/ng-devtool.component';
 import * as _ from 'lodash';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
-import { NzPopoverModule } from 'ng-zorro-antd/popover';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzSwitchModule } from 'ng-zorro-antd/switch';
+import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
-import { NzTypographyModule } from 'ng-zorro-antd/typography';
 import { firstValueFrom } from 'rxjs';
-import { ConfigChangeBarComponent } from './components/config-change-bar-component';
 import { ConfigNavComponent } from './components/config-nav-component';
 import { ConfigPreviewModalComponent } from './components/config-preview-modal.component';
 import { ConfigSectionComponent } from './components/config-section-component';
@@ -33,23 +26,14 @@ import { getByPath } from './utils/path';
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
     NzLayoutModule,
     NzMenuModule,
-    NzFormModule,
-    NzInputModule,
-    NzSelectModule,
-    NzSwitchModule,
     NzButtonModule,
-    NzTypographyModule,
-    NzPopoverModule,
     NzTooltipModule,
     NgDevtoolComponent,
     NzIconModule,
+    NzTagModule,
     ConfigNavComponent,
-    ConfigChangeBarComponent,
-    NzModalModule,
     ConfigSectionComponent,
     PageLayoutComponent,
   ],
@@ -57,52 +41,45 @@ import { getByPath } from './utils/path';
   template: `
     <app-page-layout [title]="'项目配置'" [loading]="loading()">
       <ng-container ngProjectAs="actions">
-        <button nz-button nzType="primary" (click)="isModalVisible.set(true)">打开配置文件</button>
+        <div class="page-actions">
+          <button nz-button (click)="openConfig()" [disabled]="!document()?.filePath">
+            <nz-icon nzType="folder-open" />
+            打开文件
+          </button>
+          <button nz-button (click)="onDiff()" [disabled]="!canWriteChanged()">
+            <nz-icon nzType="diff" />
+            变更预览
+          </button>
+          <button nz-button (click)="onReset()" [disabled]="!canWriteChanged()">
+            <nz-icon nzType="rollback" />
+            重置
+          </button>
+          <button nz-button nzType="primary" (click)="saveActive()" [disabled]="!canWriteChanged()">
+            <nz-icon nzType="save" />
+            保存
+          </button>
+        </div>
         <app-ng-devtool></app-ng-devtool>
       </ng-container>
-      <div class="panel">
+      <div class="config-workbench">
+        <div class="panel">
         <app-config-nav-component
           [nodes]="navNodes()"
           [activeDomainId]="activeType() ?? ''"
-          (domainSelect)="onTypeSelect($event)"
+          [activeFilePath]="selectedFilePath() ?? ''"
+          (documentSelect)="onDocumentSelect($event)"
         ></app-config-nav-component>
         <div class="content">
           <app-config-section-component
             [schema]="document()?.schema"
             [vm]="editingData()"
+            [viewModel]="document()?.viewModel"
             (vmChange)="editingData.set($event)"
           ></app-config-section-component>
-          <app-config-change-bar-component
-            [dirty]="domainDirty()"
-            (diff)="onDiff()"
-            (reset)="onReset()"
-            (save)="saveActive()"
-          ></app-config-change-bar-component>
+        </div>
         </div>
       </div>
     </app-page-layout>
-    <nz-modal
-      [(nzVisible)]="isModalVisible"
-      nzTitle="配置文件"
-      (nzOnCancel)="isModalVisible.set(false)"
-      [nzMaskClosable]="false"
-    >
-      <ng-container *nzModalContent>
-        <div class="modal-body">
-          <label>选择配置文件</label>
-          <nz-select style="width: 100%" [(ngModel)]="selectedFilePath" nzPlaceHolder="请选择配置文件">
-            @for (file of activeFiles() || []; track file.filePath) {
-              <nz-option [nzLabel]="file.title" [nzValue]="file.filePath"></nz-option>
-            }
-          </nz-select>
-        </div>
-      </ng-container>
-      <ng-container *nzModalFooter>
-        <button nz-button nzType="primary" (click)="openConfig()" [disabled]="!selectedFilePath()">
-          打开配置文件
-        </button>
-      </ng-container>
-    </nz-modal>
   `
 })
 export class ProjectConfComponent {
@@ -113,7 +90,6 @@ export class ProjectConfComponent {
 
   projectId = computed(() => this.projectContext.currentProjectId() || '');
   loading = signal(false);
-  isModalVisible = signal(false);
 
   providers = signal<Array<{ type: string; title: string; description?: string }>>([]);
   detects = signal<ConfigDetectResult[]>([]);
@@ -132,7 +108,14 @@ export class ProjectConfComponent {
         title: provider?.title ?? detect.title
       };
     });
-    return mapResolvedToNav(merged);
+    const activeType = this.activeType();
+    const doc = this.document();
+    const dirty = this.domainDirty();
+    return mapResolvedToNav(merged).map((node) => ({
+      ...node,
+      readonly: node.id === activeType ? !!doc?.readonly : node.readonly,
+      dirty: node.id === activeType ? dirty : node.dirty
+    }));
   });
 
   activeDetect = computed(() => {
@@ -150,6 +133,13 @@ export class ProjectConfComponent {
     const doc = this.document();
     if (!doc || doc.readonly) return false;
     return !_.isEqual(this.baselineData(), this.editingData());
+  });
+
+  dirtyCount = computed(() => this.buildPatches().length);
+
+  canWriteChanged = computed(() => {
+    const doc = this.document();
+    return !!doc && !doc.readonly && this.domainDirty();
   });
 
   constructor() {
@@ -196,6 +186,11 @@ export class ProjectConfComponent {
   async onTypeSelect(type: string) {
     this.activeType.set(type);
     await this.loadDocument(type);
+  }
+
+  async onDocumentSelect(input: { type: string; filePath?: string }) {
+    this.activeType.set(input.type);
+    await this.loadDocument(input.type, input.filePath);
   }
 
   async loadDocument(type: string, filePath?: string) {
@@ -327,7 +322,14 @@ export class ProjectConfComponent {
       this.modal.create({
         nzTitle: '变更预览',
         nzContent: ConfigPreviewModalComponent,
-        nzData: { patches: preview.patches, before: preview.before, after: preview.after, schema: doc.schema },
+        nzData: {
+          patches: preview.patches,
+          before: preview.before,
+          after: preview.after,
+          schema: doc.schema,
+          providerTitle: this.getActiveProviderTitle(),
+          filePath: doc.filePath
+        },
         nzFooter: null,
         nzWidth: 900,
       });
@@ -389,12 +391,18 @@ export class ProjectConfComponent {
     this.api.openInEditor(this.projectId()!, filePath).subscribe({
       next: () => {
         this.msg.success('已在默认编辑器中打开该配置文件');
-        this.isModalVisible.set(false);
       },
       error: (error) => {
         console.error(error);
         this.msg.error('打开配置文件失败');
       }
     });
+  }
+
+  private getActiveProviderTitle(): string {
+    const type = this.activeType();
+    const doc = this.document();
+    const provider = this.providers().find((item) => item.type === type);
+    return provider?.title ?? doc?.title ?? this.detects().find((item) => item.type === type)?.title ?? '';
   }
 }
