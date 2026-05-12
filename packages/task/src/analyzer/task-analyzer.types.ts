@@ -91,6 +91,33 @@ export interface TaskAnalyzeInsight {
     data?: unknown;
 }
 
+export type TaskAnalyzerProviderStatus =
+    | "available"
+    | "missing-dependency"
+    | "missing-artifact"
+    | "unsupported"
+    | "disabled";
+
+export interface TaskAnalyzerProviderSuggestion {
+    title: string;
+    message: string;
+    packageName?: string;
+    installCommand?: string;
+    configExample?: string;
+    docsUrl?: string;
+}
+
+export interface TaskAnalyzerProviderCapability {
+    provider: string;
+    buildTool: string;
+    status: TaskAnalyzerProviderStatus;
+    packageName?: string;
+    packageVersion?: string;
+    artifacts?: string[];
+    reason?: string;
+    suggestions?: TaskAnalyzerProviderSuggestion[];
+}
+
 export interface TaskAnalyzeStats {
     statsPath: string;
     format: "esbuild-metafile" | "webpack-stats" | "rollup-visualizer" | "vite-manifest" | "unknown";

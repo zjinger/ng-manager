@@ -2,10 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { scanDistAssets } from "./dist-scanner";
 import { detectProjectBuild } from "./project-build-detector";
+import { detectAnalyzerProviderCapabilities } from "./providers/provider-capability";
 import { summarizeAssets } from "./utils/asset-summary";
 import { basenameNoQuery, packageNameFromPath } from "./utils/module-path";
 import type {
     TaskAnalyzeContext,
+    TaskAnalyzeDiagnostic,
     TaskAnalyzeResult,
     TaskAnalyzeStats,
     TaskAnalyzer,
@@ -23,9 +25,10 @@ async function exists(filePath: string) {
 async function findVisualizerReport(projectRoot: string): Promise<string | null> {
     const candidates = [
         path.join(projectRoot, "dist", "stats.json"),
-        path.join(projectRoot, "dist", "stats.html"),
+        path.join(projectRoot, "dist", "visualizer.json"),
+        path.join(projectRoot, "dist", "bundle-stats.json"),
+        path.join(projectRoot, "dist", ".vite", "stats.json"),
         path.join(projectRoot, "stats.json"),
-        path.join(projectRoot, "stats.html"),
     ];
     for (const candidate of candidates) {
         if (await exists(candidate)) return candidate;
@@ -41,10 +44,14 @@ async function resolveDistPath(projectRoot: string) {
 
 function tryParseJson(text: string): any | null {
     try {
-        return JSON.parse(text);
+        return JSON.parse(text.replace(/^\uFEFF/, ""));
     } catch {
         return null;
     }
+}
+
+function pushDiagnostic(ctx: TaskAnalyzeContext, item: Omit<TaskAnalyzeDiagnostic, "createdAt">) {
+    ctx.diagnostics?.push({ ...item, createdAt: Date.now() });
 }
 
 function collectModules(node: any, out: Array<{ name: string; rawSize: number; path?: string }>) {
@@ -121,12 +128,45 @@ export class RollupVisualizerAnalyzer implements TaskAnalyzer {
         const detection = ctx.detection ?? await detectProjectBuild(ctx.spec.projectRoot);
         if (detection.buildTool !== "vite") return null;
 
+        const capabilities = await detectAnalyzerProviderCapabilities({
+            projectRoot: ctx.spec.projectRoot,
+            detection,
+        });
+        const capability = capabilities.find((item) => item.provider === "rollup-visualizer");
+        if (capability) {
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: capability.status === "available" ? "success" : "skipped",
+                phase: "analyze",
+                message: capabilityMessage(capability.status, capability.reason),
+                data: capability,
+            });
+        }
+
+        if (capability?.status !== "available") return null;
+
         const statsPath = await findVisualizerReport(ctx.spec.projectRoot);
-        if (!statsPath) return null;
+        if (!statsPath) {
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "skipped",
+                phase: "analyze",
+                message: "Provider capability 可用，但未找到可解析的 rollup visualizer JSON 产物。",
+                data: capability,
+            });
+            return null;
+        }
 
         const outputPath = await resolveDistPath(ctx.spec.projectRoot);
         const assets = await scanDistAssets(outputPath, { includeMap: false });
         const stats = await parseVisualizerStats(statsPath);
+        pushDiagnostic(ctx, {
+            analyzer: this.name,
+            status: "success",
+            phase: "parse",
+            message: "已解析 rollup-plugin-visualizer JSON 产物。",
+            data: { statsPath },
+        });
 
         return {
             runId: ctx.runtime.runId,
@@ -145,4 +185,12 @@ export class RollupVisualizerAnalyzer implements TaskAnalyzer {
             stats,
         };
     }
+}
+
+function capabilityMessage(status: string, reason?: string): string {
+    if (status === "available") return "检测到 rollup-plugin-visualizer JSON/raw-data 产物，将优先使用 visualizer 分析。";
+    if (reason === "html-only") return "检测到 rollup-plugin-visualizer HTML 产物，但当前仅解析 JSON/raw-data；将回退到通用 dist 分析。";
+    if (status === "missing-artifact") return "已检测到 rollup-plugin-visualizer 依赖，但未找到 visualizer JSON/raw-data 产物。";
+    if (status === "missing-dependency") return "未检测到 rollup-plugin-visualizer 依赖，将回退到通用 dist 分析。";
+    return "rollup visualizer provider 当前不可用，将回退到通用 dist 分析。";
 }

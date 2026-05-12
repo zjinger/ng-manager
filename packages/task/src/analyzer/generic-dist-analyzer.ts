@@ -2,14 +2,17 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { scanDistAssets } from "./dist-scanner";
 import { buildDeploymentRiskInsights } from "./insights/deployment-risk-insights";
+import { detectAnalyzerProviderCapabilities } from "./providers/provider-capability";
 import { summarizeAssets } from "./utils/asset-summary";
 import type {
     TaskAnalyzeContext,
     TaskAnalyzeChunk,
     TaskAnalyzeDiagnostic,
+    TaskAnalyzeInsight,
     TaskAnalyzeResult,
     TaskAnalyzeStats,
     TaskAnalyzer,
+    TaskAnalyzerProviderCapability,
 } from "./task-analyzer.types";
 
 async function exists(filePath: string) {
@@ -107,9 +110,11 @@ export class GenericDistAnalyzer implements TaskAnalyzer {
             dependencies: [],
             insights: [],
         };
+        const providerInsights = await buildProviderSuggestionInsights(ctx, outputPath);
         stats.insights = [
             ...stats.insights,
             ...buildDeploymentRiskInsights({ assets: allAssets, chunks: stats.chunks }),
+            ...providerInsights,
         ];
 
         return {
@@ -129,6 +134,45 @@ export class GenericDistAnalyzer implements TaskAnalyzer {
             stats,
         };
     }
+}
+
+async function buildProviderSuggestionInsights(ctx: TaskAnalyzeContext, outputPath: string): Promise<TaskAnalyzeInsight[]> {
+    if (ctx.detection?.buildTool !== "vite") return [];
+    const capabilities = await detectAnalyzerProviderCapabilities({
+        projectRoot: ctx.spec.projectRoot,
+        detection: ctx.detection,
+        outputPath,
+    });
+    const capability = capabilities.find((item) => item.provider === "rollup-visualizer");
+    if (!capability || capability.status === "available") return [];
+
+    pushDiagnostic(ctx, {
+        analyzer: "generic-dist",
+        status: "success",
+        phase: "fallback",
+        message: "GenericDistAnalyzer 已作为 Vite fallback 生成基础构建分析报告。",
+        data: { providerCapability: capability },
+    });
+
+    return [{
+        level: "info",
+        code: "provider-suggestion",
+        category: "diagnostic",
+        message: providerSuggestionMessage(capability),
+        data: capability,
+    }];
+}
+
+function providerSuggestionMessage(capability: TaskAnalyzerProviderCapability): string {
+    if (capability.reason === "html-only") {
+        return "检测到 rollup-plugin-visualizer HTML 产物，但当前仅基于 Vite manifest/dist 进行基础分析；如需依赖级 treemap，请配置输出 raw-data JSON。";
+    }
+
+    if (capability.status === "missing-artifact") {
+        return "已检测到 rollup-plugin-visualizer 依赖，但未找到 visualizer JSON/raw-data；当前仅基于 Vite manifest/dist 进行基础分析。";
+    }
+
+    return "未检测到 rollup-plugin-visualizer，当前仅基于 Vite manifest/dist 进行基础分析。如需依赖级 treemap，可安装并配置 rollup-plugin-visualizer 输出 raw-data JSON。";
 }
 
 async function readViteManifest(

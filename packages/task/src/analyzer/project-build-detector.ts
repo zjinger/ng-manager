@@ -33,6 +33,12 @@ export interface AngularBuildDetection {
     migrationHints: string[];
 }
 
+export interface ProjectAnalyzerProviderDetection {
+    packageName: string;
+    installed: boolean;
+    version?: string;
+}
+
 export interface ProjectBuildDetection {
     framework: ProjectFramework;
     buildTool: ProjectBuildTool;
@@ -42,6 +48,11 @@ export interface ProjectBuildDetection {
     hasVueCliService: boolean;
     hasWebpackConfig: boolean;
     packageManagerScripts: Record<string, string>;
+    analyzerProviders?: {
+        rollupVisualizer?: ProjectAnalyzerProviderDetection;
+        webpackBundleAnalyzer?: ProjectAnalyzerProviderDetection;
+        sourceMapExplorer?: ProjectAnalyzerProviderDetection;
+    };
 }
 
 async function readJson(filePath: string): Promise<any | null> {
@@ -148,6 +159,15 @@ function depsOf(pkg: any): Record<string, string> {
     return {
         ...(pkg?.dependencies ?? {}),
         ...(pkg?.devDependencies ?? {}),
+    };
+}
+
+function providerOf(deps: Record<string, string>, packageName: string): ProjectAnalyzerProviderDetection {
+    const version = deps[packageName];
+    return {
+        packageName,
+        installed: typeof version === "string",
+        version,
     };
 }
 
@@ -317,5 +337,10 @@ export async function detectProjectBuild(projectRoot: string): Promise<ProjectBu
         hasVueCliService,
         hasWebpackConfig,
         packageManagerScripts: scripts,
+        analyzerProviders: {
+            rollupVisualizer: providerOf(deps, "rollup-plugin-visualizer"),
+            webpackBundleAnalyzer: providerOf(deps, "webpack-bundle-analyzer"),
+            sourceMapExplorer: providerOf(deps, "source-map-explorer"),
+        },
     };
 }
