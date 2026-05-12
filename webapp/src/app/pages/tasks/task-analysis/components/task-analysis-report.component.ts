@@ -54,7 +54,6 @@ import { TaskAnalysisSummaryComponent } from './task-analysis-summary.component'
       [sizeLevelFn]="sizeLevelFn"
       [getTypeColorFn]="getTypeColorFn"
       [getTypeIconFn]="getTypeIconFn"
-      [trackByAssetPathFn]="trackByAssetPathFn"
     ></app-task-analysis-assets>
     <app-task-analysis-history
       [currentRunId]="report.runId"
@@ -106,5 +105,4 @@ export class TaskAnalysisReportComponent {
     index: number,
     item: { path?: string; name: string },
   ) => string;
-  @Input({ required: true }) trackByAssetPathFn!: (index: number, item: TaskAssetInfoDto) => string;
 }

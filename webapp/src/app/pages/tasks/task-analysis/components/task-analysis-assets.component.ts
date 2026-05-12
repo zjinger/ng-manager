@@ -1,6 +1,6 @@
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, Input, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import type { TaskAssetInfoDto } from '@yinuo-ngm/protocol';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
@@ -93,7 +93,7 @@ import type { TreemapCell } from '../task-analysis.types';
             <div
               class="asset-row"
               role="row"
-              *cdkVirtualFor="let asset of assets; trackBy: trackByAssetPathFn"
+              *cdkVirtualFor="let asset of assets; trackBy: trackByAsset"
             >
               <div class="asset-name" role="cell" [title]="asset.name">{{ asset.name }}</div>
               <div role="cell">
@@ -110,7 +110,7 @@ import type { TreemapCell } from '../task-analysis.types';
           </cdk-virtual-scroll-viewport>
         } @else {
           <div class="asset-body asset-body-plain">
-            @for (asset of assets; track asset.relativePath) {
+            @for (asset of assets; track trackByAsset($index, asset)) {
             <div class="asset-row" role="row">
               <div class="asset-name" role="cell" [title]="asset.name">{{ asset.name }}</div>
               <div role="cell">
@@ -133,7 +133,8 @@ import type { TreemapCell } from '../task-analysis.types';
   styleUrls: ['./task-analysis-assets.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TaskAnalysisAssetsComponent {
+export class TaskAnalysisAssetsComponent implements AfterViewInit, OnChanges {
+  @ViewChild(CdkVirtualScrollViewport) private viewport?: CdkVirtualScrollViewport;
   @Input() treemapCells: TreemapCell[] = [];
   @Input() topAssets: TaskAssetInfoDto[] = [];
   @Input() assets: TaskAssetInfoDto[] = [];
@@ -144,5 +145,21 @@ export class TaskAnalysisAssetsComponent {
   @Input({ required: true }) sizeLevelFn!: (size?: number) => string;
   @Input({ required: true }) getTypeColorFn!: (type: string) => string;
   @Input({ required: true }) getTypeIconFn!: (type: string) => string;
-  @Input({ required: true }) trackByAssetPathFn!: (index: number, item: TaskAssetInfoDto) => string;
+  ngAfterViewInit(): void {
+    this.scheduleViewportCheck();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['assets'] || changes['useVirtualAssetTable'] || changes['assetViewportHeight']) {
+      this.scheduleViewportCheck();
+    }
+  }
+
+  trackByAsset(index: number, item: TaskAssetInfoDto): string {
+    return `${item.relativePath || item.name}:${index}`;
+  }
+
+  private scheduleViewportCheck(): void {
+    queueMicrotask(() => this.viewport?.checkViewportSize());
+  }
 }

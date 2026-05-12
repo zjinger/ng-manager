@@ -1,12 +1,9 @@
 import { Clipboard } from '@angular/cdk/clipboard';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, DestroyRef, Input, OnDestroy, inject } from '@angular/core';
+import { Component, DestroyRef, Input, OnDestroy, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { TaskKind, TaskRuntime } from '@models/task.model';
-import type {
-  TaskAssetInfoDto,
-  TaskEventMsg,
-} from '@yinuo-ngm/protocol';
+import type { TaskEventMsg } from '@yinuo-ngm/protocol';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -38,12 +35,10 @@ export class TaskAnalysisComponent implements OnDestroy {
   private api = inject(TasksApiService);
   private stream = inject(TaskStreamService);
   private destroyRef = inject(DestroyRef);
-  private cdr = inject(ChangeDetectorRef);
   private clipboard = inject(Clipboard);
   private facade = inject(TaskAnalysisFacade);
   private loadSub?: Subscription;
   private loadScheduled = false;
-  private renderScheduled = false;
 
   readonly formatSizeFn = this.facade.formatSize.bind(this.facade);
   readonly formatRatioFn = this.facade.formatRatio.bind(this.facade);
@@ -53,7 +48,6 @@ export class TaskAnalysisComponent implements OnDestroy {
   readonly getTypeColorFn = this.facade.getTypeColor.bind(this.facade);
   readonly getTypeIconFn = this.facade.getTypeIcon.bind(this.facade);
   readonly trackByModPathFn = (index: number, item: { path?: string; name: string }) => this.trackByModPath(index, item);
-  readonly trackByAssetPathFn = (index: number, item: TaskAssetInfoDto) => this.trackByAssetPath(index, item);
 
   copiedUrl = '';
 
@@ -80,12 +74,10 @@ export class TaskAnalysisComponent implements OnDestroy {
   }
 
   constructor() {
-    this.cdr.detach();
     this.stream
       .events$()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => this.onTaskEvent(event));
-    this.scheduleRender();
   }
 
   get report() {
@@ -225,10 +217,6 @@ export class TaskAnalysisComponent implements OnDestroy {
     }
   }
 
-  trackByAssetPath(_: number, item: TaskAssetInfoDto): string {
-    return item.relativePath;
-  }
-
   trackByModPath(index: number, item: { path?: string; name: string }): string {
     return `${item.path || item.name}:${index}`;
   }
@@ -239,17 +227,6 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   private updateView(update: () => void) {
     update();
-    this.scheduleRender();
-  }
-
-  private scheduleRender() {
-    if (this.renderScheduled) return;
-    this.renderScheduled = true;
-    setTimeout(() => {
-      this.renderScheduled = false;
-      if (this.destroyRef.destroyed) return;
-      this.cdr.detectChanges();
-    }, 0);
   }
 
   private scheduleLoad() {
