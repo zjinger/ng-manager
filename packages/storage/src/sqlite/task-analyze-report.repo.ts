@@ -34,6 +34,9 @@ export interface TaskAnalyzeReportLike {
         cssFileCount: number;
         assetFileCount: number;
         durationMs?: number;
+        outputPath?: string;
+        largestFile?: unknown;
+        topAssets?: unknown;
     };
     stats?: unknown;
     assets?: unknown;

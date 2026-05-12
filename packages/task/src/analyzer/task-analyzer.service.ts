@@ -264,12 +264,18 @@ export class TaskAnalyzerService {
         return list[0] ?? null;
     }
 
-    getDiagnosticsByRunId(runId: string): TaskAnalyzeDiagnostic[] {
-        return this.diagnosticsByRunId.get(runId) ?? [];
+    async getDiagnosticsByRunId(runId: string): Promise<TaskAnalyzeDiagnostic[]> {
+        const memory = this.diagnosticsByRunId.get(runId);
+        if (memory) return memory;
+        const report = await this.reportStore?.getByRunId(runId);
+        return report?.diagnostics ?? [];
     }
 
-    getLatestDiagnosticsByTaskId(taskId: string): TaskAnalyzeDiagnostic[] {
-        return this.latestDiagnosticsByTaskId.get(taskId) ?? [];
+    async getLatestDiagnosticsByTaskId(taskId: string): Promise<TaskAnalyzeDiagnostic[]> {
+        const memory = this.latestDiagnosticsByTaskId.get(taskId);
+        if (memory) return memory;
+        const reports = await this.reportStore?.listByTaskId(taskId, 1) ?? [];
+        return reports[0]?.diagnostics ?? [];
     }
 
     async listReportsByTaskId(taskId: string, limit = 20): Promise<TaskAnalyzeResult[]> {

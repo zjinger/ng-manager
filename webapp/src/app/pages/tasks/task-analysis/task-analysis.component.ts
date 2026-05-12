@@ -292,7 +292,6 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   refresh() {
     this.load();
-    this.loadHistory();
   }
 
   formatSize(size?: number): string {

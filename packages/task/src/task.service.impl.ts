@@ -371,11 +371,11 @@ export class TaskServiceImpl implements TaskService {
     }
 
     async getDiagnosticsByRunId(runId: string) {
-        return this.analyzerService.getDiagnosticsByRunId(runId);
+        return await this.analyzerService.getDiagnosticsByRunId(runId);
     }
 
     async getLatestDiagnosticsByTaskId(taskId: string) {
-        return this.analyzerService.getLatestDiagnosticsByTaskId(taskId);
+        return await this.analyzerService.getLatestDiagnosticsByTaskId(taskId);
     }
 
     async listReportsByTaskId(taskId: string, limit?: number) {
