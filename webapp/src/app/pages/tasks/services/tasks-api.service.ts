@@ -6,6 +6,7 @@ import { Project } from "@models/project.model";
 import type {
   TaskActiveResponseDto,
   TaskAnalyzeDiagnosticsResponseDto,
+  TaskAnalyzeReportSummaryResponseDto,
   TaskCommandRequestDto,
   TaskDashboardResponseDto,
   TaskListResponseDto,
@@ -81,6 +82,11 @@ export class TasksApiService {
 
   getLatestDiagnostics(taskId: string): Observable<TaskAnalyzeDiagnosticsResponseDto> {
     return this.api.get<TaskAnalyzeDiagnosticsResponseDto>(`/api/tasks/diagnostics/latest/${taskId}`);
+  }
+
+  getReportSummariesByTask(taskId: string, limit = 10): Observable<TaskAnalyzeReportSummaryResponseDto> {
+    const params = new HttpParams().set("limit", String(limit));
+    return this.api.get<TaskAnalyzeReportSummaryResponseDto>(`/api/tasks/report/summary/task/${taskId}`, params);
   }
 
   getDashboard(taskId: string): Observable<TaskDashboardResponseDto> {

@@ -92,6 +92,22 @@ export interface TaskAnalyzeResultDto {
     diagnostics?: TaskAnalyzeDiagnosticDto[];
 }
 
+export interface TaskAnalyzeReportSummaryDto {
+    runId: string;
+    taskId: string;
+    projectId: string;
+    analyzer: string;
+    createdAt: number;
+    totalRawSize: number;
+    totalGzipSize: number;
+    totalBrotliSize?: number;
+    jsRawSize: number;
+    cssRawSize: number;
+    assetRawSize: number;
+    fileCount: number;
+    durationMs?: number;
+}
+
 export type TaskAnalyzeDiagnosticStatusDto = "success" | "skipped" | "failed" | "supported" | "no-report" | "succeeded";
 
 export type TaskAnalyzeDiagnosticPhaseDto = "detect" | "supports" | "analyze" | "parse" | "fallback";
@@ -142,5 +158,7 @@ export type TaskRuntimeResponseDto = TaskRuntimeDto;
 export type TaskActiveResponseDto = TaskRuntimeDto[];
 export type TaskRunLogResponseDto = LogLine[];
 export type TaskReportResponseDto = TaskAnalyzeResultDto | null;
+export type TaskAnalyzeReportHistoryResponseDto = TaskAnalyzeResultDto[];
+export type TaskAnalyzeReportSummaryResponseDto = TaskAnalyzeReportSummaryDto[];
 export type TaskAnalyzeDiagnosticsResponseDto = TaskAnalyzeDiagnosticDto[];
 export type TaskDashboardResponseDto = TaskDashboardDto | null;

@@ -1,5 +1,5 @@
 import type { LogLine } from '@yinuo-ngm/protocol';
-import type { TaskAnalyzeDiagnostic, TaskAnalyzeResult } from './analyzer/task-analyzer.types';
+import type { TaskAnalyzeDiagnostic, TaskAnalyzeReportSummary, TaskAnalyzeResult } from './analyzer/task-analyzer.types';
 import type { TaskRuntime, TaskDefinition, TaskRow, TaskDashboard } from './task.types';
 
 export interface TaskService {
@@ -17,6 +17,10 @@ export interface TaskService {
     getLatestReportByTaskId(taskId: string): Promise<TaskAnalyzeResult | null>;
     getDiagnosticsByRunId(runId: string): Promise<TaskAnalyzeDiagnostic[]>;
     getLatestDiagnosticsByTaskId(taskId: string): Promise<TaskAnalyzeDiagnostic[]>;
+    listReportsByTaskId(taskId: string, limit?: number): Promise<TaskAnalyzeResult[]>;
+    listReportsByProjectId(projectId: string, limit?: number): Promise<TaskAnalyzeResult[]>;
+    listReportSummariesByTaskId(taskId: string, limit?: number): Promise<TaskAnalyzeReportSummary[]>;
+    listReportSummariesByProjectId(projectId: string, limit?: number): Promise<TaskAnalyzeReportSummary[]>;
     getDashboardByTaskId(taskId: string): Promise<TaskDashboard | null>;
     getTailLogsByRun(runId: string, tail: number): Promise<LogLine[]>;
     getSyslogTail(tail: number): Promise<LogLine[]>;

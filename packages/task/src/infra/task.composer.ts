@@ -6,6 +6,7 @@ import type { TaskService } from '../task.service';
 import { TaskServiceImpl } from '../task.service.impl';
 import type { ILogStore, SystemLogService } from '@yinuo-ngm/logger';
 import type { TaskEventMap } from './task-event-map';
+import type { TaskAnalyzeReportStore } from '../analyzer/task-analyzer.types';
 
 export function createTaskDomain(opts: {
     projectService: ProjectService;
@@ -14,6 +15,7 @@ export function createTaskDomain(opts: {
     taskLogStore: ILogStore;
     events: IEventBus<any>;
     nodeVersionService: NodeVersionService;
+    reportStore?: TaskAnalyzeReportStore;
 }): TaskService {
     return new TaskServiceImpl(
         opts.projectService,
@@ -21,6 +23,8 @@ export function createTaskDomain(opts: {
         opts.sysLog,
         opts.taskLogStore,
         opts.events as IEventBus<TaskEventMap>,
-        opts.nodeVersionService
+        opts.nodeVersionService,
+        undefined,
+        opts.reportStore
     );
 }

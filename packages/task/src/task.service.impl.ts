@@ -8,6 +8,7 @@ import type { ProjectService } from '@yinuo-ngm/project';
 import type { NodeVersionService } from '@yinuo-ngm/node-version';
 import { genSpecsFromScripts } from './infra/generators/genSpecsFromScripts';
 import { TaskAnalyzerService } from './analyzer/task-analyzer.service';
+import type { TaskAnalyzeReportStore } from './analyzer/task-analyzer.types';
 import { detectProjectBuild } from './analyzer/project-build-detector';
 import { normalizeTaskOutput, parseTaskOutput } from './runtime/task-output-parser';
 import type { TaskService } from './task.service';
@@ -37,9 +38,10 @@ export class TaskServiceImpl implements TaskService {
         private taskStreamLog: ILogStore,
         private events: IEventBus<TaskEventMap>,
         private nodeVersionService: NodeVersionService,
-        analyzerService?: TaskAnalyzerService
+        analyzerService?: TaskAnalyzerService,
+        reportStore?: TaskAnalyzeReportStore
     ) {
-        this.analyzerService = analyzerService ?? new TaskAnalyzerService();
+        this.analyzerService = analyzerService ?? new TaskAnalyzerService(undefined, reportStore);
     }
 
     async start(taskId: string): Promise<TaskRuntime> {
@@ -361,11 +363,11 @@ export class TaskServiceImpl implements TaskService {
     }
 
     async getReportByRunId(runId: string) {
-        return this.analyzerService.getReportByRunId(runId);
+        return await this.analyzerService.getReportByRunId(runId);
     }
 
     async getLatestReportByTaskId(taskId: string) {
-        return this.analyzerService.getLatestReportByTaskId(taskId);
+        return await this.analyzerService.getLatestReportByTaskId(taskId);
     }
 
     async getDiagnosticsByRunId(runId: string) {
@@ -376,10 +378,26 @@ export class TaskServiceImpl implements TaskService {
         return this.analyzerService.getLatestDiagnosticsByTaskId(taskId);
     }
 
+    async listReportsByTaskId(taskId: string, limit?: number) {
+        return await this.analyzerService.listReportsByTaskId(taskId, limit);
+    }
+
+    async listReportsByProjectId(projectId: string, limit?: number) {
+        return await this.analyzerService.listReportsByProjectId(projectId, limit);
+    }
+
+    async listReportSummariesByTaskId(taskId: string, limit?: number) {
+        return await this.analyzerService.listReportSummariesByTaskId(taskId, limit);
+    }
+
+    async listReportSummariesByProjectId(projectId: string, limit?: number) {
+        return await this.analyzerService.listReportSummariesByProjectId(projectId, limit);
+    }
+
     async getDashboardByTaskId(taskId: string): Promise<TaskDashboard | null> {
         const spec = this.specs.get(taskId);
         const runtime = await this.getSnapshotByTaskId(taskId);
-        const report = this.analyzerService.getLatestReportByTaskId(taskId);
+        const report = await this.analyzerService.getLatestReportByTaskId(taskId);
         const projectId = runtime?.projectId ?? spec?.projectId;
         if (!projectId) return null;
 

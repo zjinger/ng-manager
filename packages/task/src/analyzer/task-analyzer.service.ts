@@ -5,7 +5,13 @@ import { detectProjectBuild, type ProjectBuildDetection } from "./project-build-
 import { GenericDistAnalyzer } from "./generic-dist-analyzer";
 import { RollupVisualizerAnalyzer } from "./rollup-visualizer-analyzer";
 import { WebpackStatsAnalyzer } from "./webpack-stats-analyzer";
-import type { TaskAnalyzeDiagnostic, TaskAnalyzeResult, TaskAnalyzer } from "./task-analyzer.types";
+import type {
+    TaskAnalyzeDiagnostic,
+    TaskAnalyzeReportStore,
+    TaskAnalyzeReportSummary,
+    TaskAnalyzeResult,
+    TaskAnalyzer,
+} from "./task-analyzer.types";
 
 interface AnalyzerPlan {
     primary: TaskAnalyzer[];
@@ -29,7 +35,10 @@ export class TaskAnalyzerService {
     private angularDist = new AngularDistAnalyzer();
     private genericDist = new GenericDistAnalyzer();
 
-    constructor(private customAnalyzers?: TaskAnalyzer[]) {}
+    constructor(
+        private customAnalyzers?: TaskAnalyzer[],
+        private reportStore?: TaskAnalyzeReportStore
+    ) {}
 
     async analyze(spec: TaskDefinition, runtime: TaskRuntime): Promise<TaskAnalyzeResult | null> {
         if (spec.kind !== "build" || runtime.status !== "success") {
@@ -100,6 +109,7 @@ export class TaskAnalyzerService {
             if (!report) continue;
 
             report.diagnostics = diagnostics;
+            await this.persistReport(report, diagnostics);
             this.reportsByRunId.set(runtime.runId, report);
             this.latestReportByTaskId.set(spec.id, report);
             this.storeDiagnostics(spec.id, runtime.runId, diagnostics);
@@ -215,12 +225,43 @@ export class TaskAnalyzerService {
         this.latestDiagnosticsByTaskId.set(taskId, diagnostics);
     }
 
-    getReportByRunId(runId: string): TaskAnalyzeResult | null {
-        return this.reportsByRunId.get(runId) ?? null;
+    private async persistReport(report: TaskAnalyzeResult, diagnostics: TaskAnalyzeDiagnostic[]) {
+        if (!this.reportStore) return;
+        try {
+            await this.reportStore.save(report);
+        } catch (e: any) {
+            const message = e?.message ?? String(e);
+            diagnostics.push({
+                analyzer: "task-report-store",
+                status: "failed",
+                phase: "analyze",
+                message: "构建分析报告持久化失败。",
+                error: message,
+                createdAt: Date.now(),
+            });
+            report.warnings = [
+                ...(report.warnings ?? []),
+                {
+                    code: "task-report-store-save-failed",
+                    message: "构建分析报告持久化失败，本次任务成功状态不受影响。",
+                    data: { error: message },
+                },
+            ];
+            report.diagnostics = diagnostics;
+        }
     }
 
-    getLatestReportByTaskId(taskId: string): TaskAnalyzeResult | null {
-        return this.latestReportByTaskId.get(taskId) ?? null;
+    async getReportByRunId(runId: string): Promise<TaskAnalyzeResult | null> {
+        const memory = this.reportsByRunId.get(runId);
+        if (memory) return memory;
+        return await this.reportStore?.getByRunId(runId) ?? null;
+    }
+
+    async getLatestReportByTaskId(taskId: string): Promise<TaskAnalyzeResult | null> {
+        const memory = this.latestReportByTaskId.get(taskId);
+        if (memory) return memory;
+        const list = await this.reportStore?.listByTaskId(taskId, 1) ?? [];
+        return list[0] ?? null;
     }
 
     getDiagnosticsByRunId(runId: string): TaskAnalyzeDiagnostic[] {
@@ -229,5 +270,53 @@ export class TaskAnalyzerService {
 
     getLatestDiagnosticsByTaskId(taskId: string): TaskAnalyzeDiagnostic[] {
         return this.latestDiagnosticsByTaskId.get(taskId) ?? [];
+    }
+
+    async listReportsByTaskId(taskId: string, limit = 20): Promise<TaskAnalyzeResult[]> {
+        if (this.reportStore) return await this.reportStore.listByTaskId(taskId, limit);
+        return this.memoryReports()
+            .filter((report) => report.taskId === taskId)
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, limit);
+    }
+
+    async listReportsByProjectId(projectId: string, limit = 20): Promise<TaskAnalyzeResult[]> {
+        if (this.reportStore) return await this.reportStore.listByProjectId(projectId, limit);
+        return this.memoryReports()
+            .filter((report) => report.projectId === projectId)
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, limit);
+    }
+
+    async listReportSummariesByTaskId(taskId: string, limit = 20): Promise<TaskAnalyzeReportSummary[]> {
+        if (this.reportStore) return await this.reportStore.listSummaryByTaskId(taskId, limit);
+        return this.summarizeReports(await this.listReportsByTaskId(taskId, limit));
+    }
+
+    async listReportSummariesByProjectId(projectId: string, limit = 20): Promise<TaskAnalyzeReportSummary[]> {
+        if (this.reportStore) return await this.reportStore.listSummaryByProjectId(projectId, limit);
+        return this.summarizeReports(await this.listReportsByProjectId(projectId, limit));
+    }
+
+    private memoryReports(): TaskAnalyzeResult[] {
+        return [...this.reportsByRunId.values()];
+    }
+
+    private summarizeReports(reports: TaskAnalyzeResult[]): TaskAnalyzeReportSummary[] {
+        return reports.map((report) => ({
+            runId: report.runId,
+            taskId: report.taskId,
+            projectId: report.projectId,
+            analyzer: report.analyzer,
+            createdAt: report.createdAt,
+            totalRawSize: report.summary.totalRawSize,
+            totalGzipSize: report.summary.totalGzipSize,
+            totalBrotliSize: report.summary.totalBrotliSize,
+            jsRawSize: report.summary.jsRawSize,
+            cssRawSize: report.summary.cssRawSize,
+            assetRawSize: report.summary.assetRawSize,
+            fileCount: report.summary.fileCount,
+            durationMs: report.summary.durationMs,
+        }));
     }
 }

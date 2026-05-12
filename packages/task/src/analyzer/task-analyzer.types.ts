@@ -127,6 +127,31 @@ export interface TaskAnalyzeResult {
     diagnostics?: TaskAnalyzeDiagnostic[];
 }
 
+export interface TaskAnalyzeReportSummary {
+    runId: string;
+    taskId: string;
+    projectId: string;
+    analyzer: string;
+    createdAt: number;
+    totalRawSize: number;
+    totalGzipSize: number;
+    totalBrotliSize?: number;
+    jsRawSize: number;
+    cssRawSize: number;
+    assetRawSize: number;
+    fileCount: number;
+    durationMs?: number;
+}
+
+export interface TaskAnalyzeReportStore {
+    save(report: TaskAnalyzeResult): Promise<void> | void;
+    getByRunId(runId: string): Promise<TaskAnalyzeResult | null> | TaskAnalyzeResult | null;
+    listByTaskId(taskId: string, limit?: number): Promise<TaskAnalyzeResult[]> | TaskAnalyzeResult[];
+    listByProjectId(projectId: string, limit?: number): Promise<TaskAnalyzeResult[]> | TaskAnalyzeResult[];
+    listSummaryByTaskId(taskId: string, limit?: number): Promise<TaskAnalyzeReportSummary[]> | TaskAnalyzeReportSummary[];
+    listSummaryByProjectId(projectId: string, limit?: number): Promise<TaskAnalyzeReportSummary[]> | TaskAnalyzeReportSummary[];
+}
+
 export interface TaskAnalyzer {
     name: string;
     supports(ctx: TaskAnalyzeContext): boolean;

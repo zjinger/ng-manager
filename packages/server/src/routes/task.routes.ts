@@ -56,6 +56,11 @@ function toTaskRowDto(row: TaskRow): TaskRowDto {
     };
 }
 
+function limitFromQuery(query: unknown): number {
+    const limit = Number((query as { limit?: string | number } | undefined)?.limit);
+    return Math.min(Math.max(Number.isFinite(limit) ? limit : 20, 1), 100);
+}
+
 /** 判断该项目是否已有 specs（用于懒加载） */
 async function ensureSpecs(fastify: FastifyInstance, projectId: string) {
     const specs = await fastify.core.task.listSpecsByProject(projectId);
@@ -154,6 +159,26 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     fastify.get("/report/latest/:taskId", async (req) => {
         const { taskId } = req.params as { taskId: string };
         return await fastify.core.task.getLatestReportByTaskId(taskId);
+    });
+
+    fastify.get("/report/history/task/:taskId", async (req) => {
+        const { taskId } = req.params as { taskId: string };
+        return await fastify.core.task.listReportsByTaskId(taskId, limitFromQuery(req.query));
+    });
+
+    fastify.get("/report/history/project/:projectId", async (req) => {
+        const { projectId } = req.params as { projectId: string };
+        return await fastify.core.task.listReportsByProjectId(projectId, limitFromQuery(req.query));
+    });
+
+    fastify.get("/report/summary/task/:taskId", async (req) => {
+        const { taskId } = req.params as { taskId: string };
+        return await fastify.core.task.listReportSummariesByTaskId(taskId, limitFromQuery(req.query));
+    });
+
+    fastify.get("/report/summary/project/:projectId", async (req) => {
+        const { projectId } = req.params as { projectId: string };
+        return await fastify.core.task.listReportSummariesByProjectId(projectId, limitFromQuery(req.query));
     });
 
     fastify.get("/diagnostics/run/:runId", async (req) => {

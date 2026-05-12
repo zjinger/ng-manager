@@ -148,6 +148,47 @@
     </div>
     }
 
+    <div class="section">
+      <div class="section-title">
+        <nz-icon nzType="line-chart" />
+        <span>历史趋势</span>
+      </div>
+      @if (historyRows.length > 0) {
+      <div class="history-delta">
+        <span>Raw <strong [class]="deltaClass(rawDelta)">{{ formatDeltaSize(rawDelta) }}</strong></span>
+        <span>Gzip <strong [class]="deltaClass(gzipDelta)">{{ formatDeltaSize(gzipDelta) }}</strong></span>
+        <span>Duration <strong [class]="deltaClass(durationDelta)">{{ formatDeltaMs(durationDelta) }}</strong></span>
+      </div>
+      <div class="history-table" role="table" aria-label="历史趋势">
+        <div class="history-row history-head" role="row">
+          <div role="columnheader">构建时间</div>
+          <div role="columnheader">Raw Size</div>
+          <div role="columnheader">Gzip Size</div>
+          <div role="columnheader">Brotli Size</div>
+          <div role="columnheader">JS Size</div>
+          <div role="columnheader">CSS Size</div>
+          <div role="columnheader">Duration</div>
+        </div>
+        @for (item of historyRows; track item.runId) {
+        <div class="history-row" role="row" [class.current]="item.runId === report.runId">
+          <div role="cell">{{ formatTime(item.createdAt) }}</div>
+          <div role="cell">{{ formatSize(item.totalRawSize) }}</div>
+          <div role="cell">{{ formatSize(item.totalGzipSize) }}</div>
+          <div role="cell">{{ item.totalBrotliSize ? formatSize(item.totalBrotliSize) : '-' }}</div>
+          <div role="cell">{{ formatSize(item.jsRawSize) }}</div>
+          <div role="cell">{{ formatSize(item.cssRawSize) }}</div>
+          <div role="cell">{{ formatMs(item.durationMs) }}</div>
+        </div>
+        }
+      </div>
+      } @else {
+      <div class="hint">
+        <nz-icon nzType="info-circle" />
+        {{ historyError || '暂无历史构建记录。' }}
+      </div>
+      }
+    </div>
+
     <!-- ========== 文件体积 Treemap ========== -->
     @if (treemapCells.length > 0) {
     <div class="section">

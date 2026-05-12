@@ -48,6 +48,7 @@ export async function createCoreApp(
         taskStreamLogStore: infra.taskStreamLogStore,
         events: infra.events,
         nodeVersion,
+        db: storage.db,
     });
     const bootstrap = createBootstrapDomain({
         project,

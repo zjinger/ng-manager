@@ -61,7 +61,7 @@ async function resolveDistPath(projectRoot: string): Promise<string | null> {
     ];
 
     for (const candidate of candidates) {
-        if (await exists(candidate)) return candidate;
+        if (await isDirectory(candidate)) return candidate;
     }
 
     return null;

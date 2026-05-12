@@ -4,7 +4,13 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, DestroyRef, Input, OnDestroy, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { TaskKind, TaskRuntime } from '@models/task.model';
-import type { TaskAnalyzeDiagnosticDto, TaskAnalyzeResultDto, TaskAssetInfoDto, TaskEventMsg } from '@yinuo-ngm/protocol';
+import type {
+  TaskAnalyzeDiagnosticDto,
+  TaskAnalyzeReportSummaryDto,
+  TaskAnalyzeResultDto,
+  TaskAssetInfoDto,
+  TaskEventMsg,
+} from '@yinuo-ngm/protocol';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
@@ -62,6 +68,8 @@ export class TaskAnalysisComponent implements OnDestroy {
       this._taskId = next;
       this.report = null;
       this.diagnostics = [];
+      this.history = [];
+      this.historyError = '';
       this.error = '';
       this.loading = false;
       this.analyzing = false;
@@ -89,6 +97,8 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   report: TaskAnalyzeResultDto | null = null;
   diagnostics: TaskAnalyzeDiagnosticDto[] = [];
+  history: TaskAnalyzeReportSummaryDto[] = [];
+  historyError = '';
   runtimeSnapshot: TaskRuntime | null = null;
   loading = false;
   analyzing = false;
@@ -186,6 +196,37 @@ export class TaskAnalysisComponent implements OnDestroy {
     }));
   }
 
+  get historyRows(): TaskAnalyzeReportSummaryDto[] {
+    return this.history.slice(0, 10);
+  }
+
+  get previousHistory(): TaskAnalyzeReportSummaryDto | null {
+    const currentRunId = this.report?.runId;
+    if (!currentRunId) return this.historyRows[1] ?? this.historyRows[0] ?? null;
+    return this.historyRows.find((item) => item.runId !== currentRunId) ?? null;
+  }
+
+  get rawDelta(): number | null {
+    const prev = this.previousHistory;
+    const cur = this.report?.summary;
+    if (!prev || !cur) return null;
+    return cur.totalRawSize - prev.totalRawSize;
+  }
+
+  get gzipDelta(): number | null {
+    const prev = this.previousHistory;
+    const cur = this.report?.summary;
+    if (!prev || !cur) return null;
+    return cur.totalGzipSize - prev.totalGzipSize;
+  }
+
+  get durationDelta(): number | null {
+    const prev = this.previousHistory;
+    const cur = this.report?.summary;
+    if (!prev || !cur || typeof cur.durationMs !== 'number' || typeof prev.durationMs !== 'number') return null;
+    return cur.durationMs - prev.durationMs;
+  }
+
   get emptyText(): string {
     if (this.loading || this.analyzing) return '正在加载分析报告...';
     return this.error || '暂无分析报告，build 成功后会自动生成。';
@@ -251,6 +292,7 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   refresh() {
     this.load();
+    this.loadHistory();
   }
 
   formatSize(size?: number): string {
@@ -272,6 +314,23 @@ export class TaskAnalysisComponent implements OnDestroy {
   formatMs(value?: number): string {
     if (typeof value !== 'number') return '-';
     return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`;
+  }
+
+  formatDeltaSize(value: number | null): string {
+    if (value === null) return '-';
+    const prefix = value > 0 ? '+' : value < 0 ? '-' : '';
+    return `${prefix}${this.formatSize(Math.abs(value))}`;
+  }
+
+  formatDeltaMs(value: number | null): string {
+    if (value === null) return '-';
+    const prefix = value > 0 ? '+' : value < 0 ? '-' : '';
+    return `${prefix}${this.formatMs(Math.abs(value))}`;
+  }
+
+  deltaClass(value: number | null): string {
+    if (value === null || value === 0) return 'neutral';
+    return value > 0 ? 'up' : 'down';
   }
 
   insightLabel(category?: string): string {
@@ -428,6 +487,7 @@ export class TaskAnalysisComponent implements OnDestroy {
           this.loading = false;
         });
         if (!report) this.loadDiagnostics();
+        this.loadHistory();
       },
       error: (e) => {
         this.updateView(() => {
@@ -454,6 +514,26 @@ export class TaskAnalysisComponent implements OnDestroy {
         });
       },
     });
+  }
+
+  private loadHistory() {
+    if (!this._taskId) return;
+    this.api.getReportSummariesByTask(this._taskId, 10)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (history) => {
+          this.updateView(() => {
+            this.history = history ?? [];
+            this.historyError = '';
+          });
+        },
+        error: (e) => {
+          this.updateView(() => {
+            this.history = [];
+            this.historyError = e?.message || '历史趋势加载失败';
+          });
+        },
+      });
   }
 
   private formatDiagnostic(item: TaskAnalyzeDiagnosticDto): string {
