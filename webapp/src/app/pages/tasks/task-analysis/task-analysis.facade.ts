@@ -22,7 +22,24 @@ export class TaskAnalysisFacade {
   readonly error = signal('');
 
   readonly topAssets = computed<TaskAssetInfoDto[]>(() => (this.report()?.assets ?? []).slice(0, 8));
-  readonly assets = computed<TaskAssetInfoDto[]>(() => this.report()?.assets ?? []);
+  readonly assets = computed<TaskAssetInfoDto[]>(() => {
+    const typeOrder: Record<string, number> = {
+      js: 0,
+      css: 1,
+      html: 2,
+      image: 3,
+      font: 4,
+      asset: 5,
+      map: 6,
+    };
+    return [...(this.report()?.assets ?? [])].sort((a, b) => {
+      const typeDiff = (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99);
+      if (typeDiff !== 0) return typeDiff;
+      const sizeDiff = (b.rawSize ?? 0) - (a.rawSize ?? 0);
+      if (sizeDiff !== 0) return sizeDiff;
+      return (a.relativePath ?? a.name ?? '').localeCompare(b.relativePath ?? b.name ?? '');
+    });
+  });
   readonly assetViewportHeight = computed(() => {
     const len = this.assets().length;
     if (len === 0) return 80;
@@ -207,6 +224,10 @@ export class TaskAnalysisFacade {
     if (value < 1024) return `${value} B`;
     if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
     return `${(value / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  formatOptionalSize(size?: number | null): string {
+    return typeof size === 'number' ? this.formatSize(size) : '-';
   }
 
   formatRatio(value?: number): string {

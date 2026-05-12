@@ -50,6 +50,7 @@ import { TaskAnalysisSummaryComponent } from './task-analysis-summary.component'
       [useVirtualAssetTable]="useVirtualAssetTable"
       [assetViewportHeight]="assetViewportHeight"
       [formatSizeFn]="formatSizeFn"
+      [formatOptionalSizeFn]="formatOptionalSizeFn"
       [formatRatioFn]="formatRatioFn"
       [sizeLevelFn]="sizeLevelFn"
       [getTypeColorFn]="getTypeColorFn"
@@ -95,6 +96,7 @@ export class TaskAnalysisReportComponent {
   @Input() diagnosticInsights: TaskAnalyzeDiagnosticDto[] = [];
 
   @Input({ required: true }) formatSizeFn!: (size?: number) => string;
+  @Input({ required: true }) formatOptionalSizeFn!: (size?: number | null) => string;
   @Input({ required: true }) formatRatioFn!: (value?: number) => string;
   @Input({ required: true }) formatTimeFn!: (value?: number) => string;
   @Input({ required: true }) formatMsFn!: (value?: number) => string;

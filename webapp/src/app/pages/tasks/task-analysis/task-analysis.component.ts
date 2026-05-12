@@ -41,6 +41,7 @@ export class TaskAnalysisComponent implements OnDestroy {
   private loadScheduled = false;
 
   readonly formatSizeFn = this.facade.formatSize.bind(this.facade);
+  readonly formatOptionalSizeFn = this.facade.formatOptionalSize.bind(this.facade);
   readonly formatRatioFn = this.facade.formatRatio.bind(this.facade);
   readonly formatTimeFn = this.facade.formatTime.bind(this.facade);
   readonly formatMsFn = this.facade.formatMs.bind(this.facade);

@@ -103,7 +103,7 @@ import type { TreemapCell } from '../task-analysis.types';
                 </nz-tag>
               </div>
               <div role="cell" class="asset-size" [class]="'size-' + sizeLevelFn(asset.rawSize)">{{ formatSizeFn(asset.rawSize) }}</div>
-              <div role="cell" class="asset-size">{{ formatSizeFn(asset.gzipSize) }}</div>
+               <div role="cell" class="asset-size">{{ formatOptionalSizeFn(asset.gzipSize) }}</div>
               <div role="cell" class="asset-size">{{ formatRatioFn(asset.ratio) }}</div>
               <div role="cell" class="asset-path" [title]="asset.relativePath">{{ asset.relativePath }}</div>
             </div>
@@ -120,7 +120,7 @@ import type { TreemapCell } from '../task-analysis.types';
                 </nz-tag>
               </div>
               <div role="cell" class="asset-size" [class]="'size-' + sizeLevelFn(asset.rawSize)">{{ formatSizeFn(asset.rawSize) }}</div>
-              <div role="cell" class="asset-size">{{ formatSizeFn(asset.gzipSize) }}</div>
+               <div role="cell" class="asset-size">{{ formatOptionalSizeFn(asset.gzipSize) }}</div>
               <div role="cell" class="asset-size">{{ formatRatioFn(asset.ratio) }}</div>
               <div role="cell" class="asset-path" [title]="asset.relativePath">{{ asset.relativePath }}</div>
             </div>
@@ -141,6 +141,7 @@ export class TaskAnalysisAssetsComponent implements AfterViewInit, OnChanges {
   @Input() useVirtualAssetTable = false;
   @Input() assetViewportHeight = 80;
   @Input({ required: true }) formatSizeFn!: (size?: number) => string;
+  @Input({ required: true }) formatOptionalSizeFn!: (size?: number | null) => string;
   @Input({ required: true }) formatRatioFn!: (value?: number) => string;
   @Input({ required: true }) sizeLevelFn!: (size?: number) => string;
   @Input({ required: true }) getTypeColorFn!: (type: string) => string;
