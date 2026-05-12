@@ -20,6 +20,7 @@ export function buildSizeInsights(
             level: "warning",
             code: "large-chunk",
             message: `最大 chunk ${largestChunk.name} 超过 500KB，建议检查是否可拆分懒加载。`,
+            category: "optimization",
             data: largestChunk,
         });
     }
@@ -29,6 +30,7 @@ export function buildSizeInsights(
             level: "warning",
             code: "large-dependency",
             message: `第三方依赖 ${largestDep.name} 占模块体积较高，建议确认是否可按需引入。`,
+            category: "optimization",
             data: largestDep,
         });
     }
@@ -38,6 +40,7 @@ export function buildSizeInsights(
             level: "info",
             code: "large-module",
             message: `最大模块为 ${largestModule.name}，可以优先查看该模块的引入路径。`,
+            category: "optimization",
             data: largestModule,
         });
     }

@@ -20,6 +20,7 @@ export function buildDeploymentRiskInsights(input: {
             level: "warning",
             code: "deployment-stats-json",
             message: "dist 中存在 stats.json，分析文件不应进入生产部署产物。",
+            category: "risk",
             data: statsJson,
         });
     }
@@ -29,6 +30,7 @@ export function buildDeploymentRiskInsights(input: {
             level: "warning",
             code: "deployment-stats-html",
             message: "dist 中存在 stats.html，分析报告不应进入生产部署产物。",
+            category: "risk",
             data: statsHtml,
         });
     }
@@ -38,6 +40,7 @@ export function buildDeploymentRiskInsights(input: {
             level: "warning",
             code: "deployment-source-maps",
             message: `dist 中存在 ${maps.length} 个 source map 文件，生产部署前请确认是否需要排除。`,
+            category: "risk",
             data: { count: maps.length, top: maps.slice(0, 10) },
         });
     }
@@ -47,6 +50,7 @@ export function buildDeploymentRiskInsights(input: {
             level: "warning",
             code: "deployment-large-asset",
             message: `dist 中存在 ${largeAssets.length} 个超过 2MB 的构建产物，可能影响首次下载或缓存刷新成本。`,
+            category: "risk",
             data: { count: largeAssets.length, top: largeAssets.slice(0, 10) },
         });
     }
@@ -56,6 +60,7 @@ export function buildDeploymentRiskInsights(input: {
             level: "warning",
             code: "deployment-large-initial-chunk",
             message: `存在 ${largeInitialChunks.length} 个超过 500KB 的 initial chunk，建议检查懒加载拆分。`,
+            category: "optimization",
             data: { count: largeInitialChunks.length, top: largeInitialChunks.slice(0, 10) },
         });
     }

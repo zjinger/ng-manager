@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveAngularOutputPath } from "./angular-output-path";
+import { buildAngularBudgetInsights } from "./insights/angular-budget-insights";
 import { scanDistAssets } from "./dist-scanner";
 import { buildAngularBuildInsights } from "./insights/angular-build-insights";
 import { buildDeploymentRiskInsights } from "./insights/deployment-risk-insights";
@@ -75,6 +76,7 @@ async function resolveBuildOutputPath(projectRoot: string, isAngular: boolean): 
 function parseStats(statsPath: string, json: unknown): TaskAnalyzeStats | null {
     if (!isObject(json)) return null;
     if (isObject(json.inputs) && isObject(json.outputs)) return parseEsbuildMetafile(statsPath, json);
+    // TODO: keep moving generic webpack stats behavior into WebpackStatsAnalyzer as analyzer responsibilities settle.
     if (Array.isArray(json.assets) || Array.isArray(json.chunks) || Array.isArray(json.modules)) {
         return parseWebpackStats(statsPath, json);
     }
@@ -112,8 +114,7 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
 
         const detection = ctx.detection ?? await detectProjectBuild(ctx.spec.projectRoot);
         const isAngular = detection.framework === "angular";
-        const isWebpack = detection.buildTool === "webpack" || detection.buildTool === "vue-cli-webpack";
-        if (!isAngular && !isWebpack) return null;
+        if (!isAngular) return null;
 
         const outputPath = await resolveBuildOutputPath(ctx.spec.projectRoot, isAngular);
         const statsPath = await findStatsJsonCandidates(ctx.spec.projectRoot, outputPath);
@@ -126,10 +127,17 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
         const allAssets = await scanDistAssets(outputPath, { includeMap: true });
         const assets = allAssets.filter((asset) => asset.type !== "map");
 
+        const summary = summarizeAssets(assets);
         stats.insights = [
             ...stats.insights,
             ...buildAngularBuildInsights(detection),
             ...buildDeploymentRiskInsights({ assets: allAssets, chunks: stats.chunks }),
+            ...(await buildAngularBudgetInsights({
+                projectRoot: ctx.spec.projectRoot,
+                summary,
+                assets,
+                chunks: stats.chunks,
+            })),
         ];
 
         const warnings: TaskAnalyzeWarning[] = [
@@ -142,13 +150,11 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
                 : []),
             ...(cleanupWarning ? [cleanupWarning] : []),
         ];
-        const summary = summarizeAssets(assets);
-
         return {
             runId: ctx.runtime.runId,
             taskId: ctx.runtime.taskId,
             projectId: ctx.runtime.projectId,
-            analyzer: isAngular ? "angular-official-stats-json" : "webpack-bundle-analyzer-stats",
+            analyzer: "angular-official-stats-json",
             createdAt: Date.now(),
             summary: {
                 outputPath,

@@ -55,7 +55,7 @@ export interface TaskAnalyzeResultDto {
     assets: TaskAssetInfoDto[];
     stats?: {
         statsPath: string;
-        format: "esbuild-metafile" | "webpack-stats" | "rollup-visualizer" | "unknown";
+        format: "esbuild-metafile" | "webpack-stats" | "rollup-visualizer" | "vite-manifest" | "unknown";
         chunks: Array<{
             name: string;
             files: string[];
@@ -80,6 +80,7 @@ export interface TaskAnalyzeResultDto {
             level: "info" | "warning";
             code: string;
             message: string;
+            category?: "risk" | "optimization" | "migration" | "budget" | "diagnostic";
             data?: unknown;
         }>;
     };
@@ -88,6 +89,17 @@ export interface TaskAnalyzeResultDto {
         message: string;
         data?: unknown;
     }>;
+    diagnostics?: TaskAnalyzeDiagnosticDto[];
+}
+
+export type TaskAnalyzeDiagnosticStatusDto = "supported" | "skipped" | "failed" | "no-report" | "succeeded";
+
+export interface TaskAnalyzeDiagnosticDto {
+    analyzer: string;
+    status: TaskAnalyzeDiagnosticStatusDto;
+    phase: "supports" | "analyze";
+    message?: string;
+    data?: unknown;
 }
 
 export interface TaskDashboardDto {
@@ -126,4 +138,5 @@ export type TaskRuntimeResponseDto = TaskRuntimeDto;
 export type TaskActiveResponseDto = TaskRuntimeDto[];
 export type TaskRunLogResponseDto = LogLine[];
 export type TaskReportResponseDto = TaskAnalyzeResultDto | null;
+export type TaskAnalyzeDiagnosticsResponseDto = TaskAnalyzeDiagnosticDto[];
 export type TaskDashboardResponseDto = TaskDashboardDto | null;

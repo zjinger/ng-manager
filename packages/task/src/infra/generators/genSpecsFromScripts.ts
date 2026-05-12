@@ -22,7 +22,7 @@ function getTaskKindFromName(name: string): TaskKind {
     return "custom";
 }
 
-function getTaskViews(kind: TaskKind, raw: string): TaskViewDefinition[] {
+function getTaskViews(kind: TaskKind, _raw: string): TaskViewDefinition[] {
     if (kind === "serve") {
         return [
             { id: "output", title: "输出" },
@@ -40,7 +40,7 @@ function getTaskViews(kind: TaskKind, raw: string): TaskViewDefinition[] {
     return [{ id: "output", title: "输出" }];
 }
 
-function getTaskCapabilities(kind: TaskKind, raw: string): TaskCapabilities {
+function getTaskCapabilities(kind: TaskKind, _raw: string): TaskCapabilities {
     if (kind === "serve") {
         return { dashboard: true, analyzer: false };
     }

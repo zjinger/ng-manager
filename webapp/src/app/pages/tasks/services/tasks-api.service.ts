@@ -5,6 +5,7 @@ import { HttpParams } from "@angular/common/http";
 import { Project } from "@models/project.model";
 import type {
   TaskActiveResponseDto,
+  TaskAnalyzeDiagnosticsResponseDto,
   TaskCommandRequestDto,
   TaskDashboardResponseDto,
   TaskListResponseDto,
@@ -76,6 +77,10 @@ export class TasksApiService {
 
   getLatestReport(taskId: string): Observable<TaskReportResponseDto> {
     return this.api.get<TaskReportResponseDto>(`/api/tasks/report/latest/${taskId}`);
+  }
+
+  getLatestDiagnostics(taskId: string): Observable<TaskAnalyzeDiagnosticsResponseDto> {
+    return this.api.get<TaskAnalyzeDiagnosticsResponseDto>(`/api/tasks/diagnostics/latest/${taskId}`);
   }
 
   getDashboard(taskId: string): Observable<TaskDashboardResponseDto> {

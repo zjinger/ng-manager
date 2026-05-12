@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, DestroyRef, Input, OnDestroy, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { TaskKind, TaskRuntime } from '@models/task.model';
-import type { TaskAnalyzeResultDto, TaskAssetInfoDto, TaskEventMsg } from '@yinuo-ngm/protocol';
+import type { TaskAnalyzeDiagnosticDto, TaskAnalyzeResultDto, TaskAssetInfoDto, TaskEventMsg } from '@yinuo-ngm/protocol';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
@@ -61,6 +61,7 @@ export class TaskAnalysisComponent implements OnDestroy {
     this.updateView(() => {
       this._taskId = next;
       this.report = null;
+      this.diagnostics = [];
       this.error = '';
       this.loading = false;
       this.analyzing = false;
@@ -87,6 +88,7 @@ export class TaskAnalysisComponent implements OnDestroy {
   }
 
   report: TaskAnalyzeResultDto | null = null;
+  diagnostics: TaskAnalyzeDiagnosticDto[] = [];
   runtimeSnapshot: TaskRuntime | null = null;
   loading = false;
   analyzing = false;
@@ -149,12 +151,39 @@ export class TaskAnalysisComponent implements OnDestroy {
         level: 'warning' as const,
         code: `warning:${warning.code}`,
         message: warning.message,
+        category: warning.code === 'stats-json-cleanup-failed' ? 'risk' as const : 'diagnostic' as const,
         data: warning.data,
       }));
   }
 
   get analysisInsights() {
-    return [...this.reportWarningsAsInsights, ...this.statsInsights];
+    const priority = new Map<string, number>([
+      ['risk', 0],
+      ['budget', 1],
+      ['optimization', 2],
+      ['migration', 3],
+      ['diagnostic', 4],
+    ]);
+    return [...this.reportWarningsAsInsights, ...this.statsInsights]
+      .sort((a, b) => (priority.get(a.category ?? 'diagnostic') ?? 4) - (priority.get(b.category ?? 'diagnostic') ?? 4));
+  }
+
+  get visibleAnalysisInsights() {
+    return this.analysisInsights.slice(0, 6);
+  }
+
+  get hiddenAnalysisInsightCount() {
+    return Math.max(0, this.analysisInsights.length - this.visibleAnalysisInsights.length);
+  }
+
+  get diagnosticInsights() {
+    return this.diagnostics.map((item, index) => ({
+      level: item.status === 'failed' ? 'warning' as const : 'info' as const,
+      code: `diagnostic:${item.analyzer}:${item.phase}:${item.status}:${index}`,
+      message: this.formatDiagnostic(item),
+      category: 'diagnostic' as const,
+      data: item.data,
+    }));
   }
 
   get emptyText(): string {
@@ -245,6 +274,17 @@ export class TaskAnalysisComponent implements OnDestroy {
     return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`;
   }
 
+  insightLabel(category?: string): string {
+    const map: Record<string, string> = {
+      risk: '风险',
+      optimization: '优化',
+      migration: '迁移',
+      budget: '预算',
+      diagnostic: '诊断',
+    };
+    return map[category ?? 'diagnostic'] ?? '提示';
+  }
+
   sizeLevel(size?: number): string {
     const value = Number(size ?? 0);
     if (value > 500 * 1024) return 'danger';
@@ -305,6 +345,10 @@ export class TaskAnalysisComponent implements OnDestroy {
     return item.relativePath;
   }
 
+  trackByInsight(index: number, item: { code: string }): string {
+    return `${item.code}:${index}`;
+  }
+
   ngOnDestroy() {
     this.loadSub?.unsubscribe();
   }
@@ -341,6 +385,7 @@ export class TaskAnalysisComponent implements OnDestroy {
     if (event.type === 'analyzeStarted') {
       this.updateView(() => {
         this.analyzing = true;
+        this.diagnostics = [];
         this.error = '';
       });
       return;
@@ -379,8 +424,10 @@ export class TaskAnalysisComponent implements OnDestroy {
       next: (report) => {
         this.updateView(() => {
           this.report = report;
+          this.diagnostics = report?.diagnostics ?? [];
           this.loading = false;
         });
+        if (!report) this.loadDiagnostics();
       },
       error: (e) => {
         this.updateView(() => {
@@ -389,5 +436,28 @@ export class TaskAnalysisComponent implements OnDestroy {
         });
       },
     });
+  }
+
+  private loadDiagnostics() {
+    if (!this._taskId) return;
+    this.api.getLatestDiagnostics(this._taskId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+      next: (diagnostics) => {
+        this.updateView(() => {
+          this.diagnostics = diagnostics ?? [];
+        });
+      },
+      error: () => {
+        this.updateView(() => {
+          this.diagnostics = [];
+        });
+      },
+    });
+  }
+
+  private formatDiagnostic(item: TaskAnalyzeDiagnosticDto): string {
+    const base = `${item.analyzer}: ${item.status}`;
+    return item.message ? `${base}，${item.message}` : base;
   }
 }

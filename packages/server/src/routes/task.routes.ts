@@ -156,6 +156,16 @@ export default async function taskRoutes(fastify: FastifyInstance) {
         return await fastify.core.task.getLatestReportByTaskId(taskId);
     });
 
+    fastify.get("/diagnostics/run/:runId", async (req) => {
+        const { runId } = req.params as { runId: string };
+        return await fastify.core.task.getDiagnosticsByRunId(runId);
+    });
+
+    fastify.get("/diagnostics/latest/:taskId", async (req) => {
+        const { taskId } = req.params as { taskId: string };
+        return await fastify.core.task.getLatestDiagnosticsByTaskId(taskId);
+    });
+
     fastify.get("/dashboard/:taskId", async (req) => {
         const { taskId } = req.params as { taskId: string };
         return await fastify.core.task.getDashboardByTaskId(taskId);

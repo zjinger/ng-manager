@@ -57,6 +57,8 @@ export interface TaskAnalyzeWarning {
     data?: unknown;
 }
 
+export type TaskAnalyzeInsightCategory = "risk" | "optimization" | "migration" | "budget" | "diagnostic";
+
 export interface TaskAnalyzeChunk {
     name: string;
     files: string[];
@@ -84,16 +86,27 @@ export interface TaskAnalyzeInsight {
     level: "info" | "warning";
     code: string;
     message: string;
+    category?: TaskAnalyzeInsightCategory;
     data?: unknown;
 }
 
 export interface TaskAnalyzeStats {
     statsPath: string;
-    format: "esbuild-metafile" | "webpack-stats" | "rollup-visualizer" | "unknown";
+    format: "esbuild-metafile" | "webpack-stats" | "rollup-visualizer" | "vite-manifest" | "unknown";
     chunks: TaskAnalyzeChunk[];
     modules: TaskAnalyzeModule[];
     dependencies: TaskAnalyzeDependency[];
     insights: TaskAnalyzeInsight[];
+}
+
+export type TaskAnalyzeDiagnosticStatus = "supported" | "skipped" | "failed" | "no-report" | "succeeded";
+
+export interface TaskAnalyzeDiagnostic {
+    analyzer: string;
+    status: TaskAnalyzeDiagnosticStatus;
+    phase: "supports" | "analyze";
+    message?: string;
+    data?: unknown;
 }
 
 export interface TaskAnalyzeResult {
@@ -106,6 +119,7 @@ export interface TaskAnalyzeResult {
     assets: TaskAssetInfo[];
     stats?: TaskAnalyzeStats;
     warnings?: TaskAnalyzeWarning[];
+    diagnostics?: TaskAnalyzeDiagnostic[];
 }
 
 export interface TaskAnalyzer {

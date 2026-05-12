@@ -2,12 +2,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { scanDistAssets } from "./dist-scanner";
 import { detectProjectBuild } from "./project-build-detector";
+import { summarizeAssets } from "./utils/asset-summary";
+import { basenameNoQuery, packageNameFromPath } from "./utils/module-path";
 import type {
     TaskAnalyzeContext,
     TaskAnalyzeResult,
     TaskAnalyzeStats,
     TaskAnalyzer,
-    TaskAssetInfo,
 } from "./task-analyzer.types";
 
 async function exists(filePath: string) {
@@ -36,56 +37,6 @@ async function resolveDistPath(projectRoot: string) {
     const dist = path.resolve(projectRoot, "dist");
     if (await exists(dist)) return dist;
     return projectRoot;
-}
-
-function basenameNoQuery(filePath: string) {
-    return path.basename(filePath.split("?")[0] ?? filePath);
-}
-
-function packageNameFromPath(inputPath: string): string | undefined {
-    const normalized = inputPath.replace(/\\/g, "/");
-    const marker = "node_modules/";
-    const idx = normalized.lastIndexOf(marker);
-    if (idx < 0) return undefined;
-    const rest = normalized.slice(idx + marker.length);
-    const parts = rest.split("/").filter(Boolean);
-    if (parts.length === 0) return undefined;
-    if (parts[0]!.startsWith("@") && parts.length > 1) return `${parts[0]}/${parts[1]}`;
-    return parts[0];
-}
-
-function sumAssets(assets: TaskAssetInfo[]) {
-    const jsAssets = assets.filter((item) => item.type === "js");
-    const cssAssets = assets.filter((item) => item.type === "css");
-    const otherAssets = assets.filter((item) => item.type !== "js" && item.type !== "css");
-    const largest = assets[0];
-    return {
-        fileCount: assets.length,
-        totalRawSize: assets.reduce((sum, item) => sum + item.rawSize, 0),
-        totalGzipSize: assets.reduce((sum, item) => sum + (item.gzipSize ?? 0), 0),
-        jsRawSize: jsAssets.reduce((sum, item) => sum + item.rawSize, 0),
-        cssRawSize: cssAssets.reduce((sum, item) => sum + item.rawSize, 0),
-        assetRawSize: otherAssets.reduce((sum, item) => sum + item.rawSize, 0),
-        jsFileCount: jsAssets.length,
-        cssFileCount: cssAssets.length,
-        assetFileCount: otherAssets.length,
-        largestFile: largest
-            ? {
-                name: largest.relativePath,
-                rawSize: largest.rawSize,
-                gzipSize: largest.gzipSize,
-            }
-            : undefined,
-        topAssets: assets.slice(0, 10).map((item) => ({
-            name: item.name,
-            relativePath: item.relativePath,
-            type: item.type,
-            rawSize: item.rawSize,
-            gzipSize: item.gzipSize,
-            brotliSize: item.brotliSize,
-            ratio: item.ratio,
-        })),
-    };
 }
 
 function tryParseJson(text: string): any | null {
@@ -149,6 +100,7 @@ async function parseVisualizerStats(statsPath: string): Promise<TaskAnalyzeStats
         insights: [{
             level: "info",
             code: "rollup-visualizer-report",
+            category: "diagnostic",
             message: statsPath.toLowerCase().endsWith(".html")
                 ? "已找到 rollup-plugin-visualizer HTML 报告；模块明细请打开该报告查看。"
                 : "已读取 rollup-plugin-visualizer JSON 报告。",
@@ -187,7 +139,7 @@ export class RollupVisualizerAnalyzer implements TaskAnalyzer {
                 durationMs: ctx.runtime.startedAt && ctx.runtime.stoppedAt
                     ? Math.max(0, ctx.runtime.stoppedAt - ctx.runtime.startedAt)
                     : undefined,
-                ...sumAssets(assets),
+                ...summarizeAssets(assets),
             },
             assets,
             stats,

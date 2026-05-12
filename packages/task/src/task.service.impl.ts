@@ -201,8 +201,8 @@ export class TaskServiceImpl implements TaskService {
             const sysLevel = cur.status === "failed" ? "error" : "info";
             const sysText = `[Task] ${spec.projectRoot}: ${cmdStr} ${cur.status}`;
             this.appendSysLog(runId, sysText, sysLevel);
-            const taskOutputText = `[Task] exited: status=${cur.status} code=${code} signal=${signal}`;
-            this.appendTaskOutput(runId, taskId, taskOutputText, stream);
+            // const taskOutputText = `[Task] exited: status=${cur.status} code=${code} signal=${signal}`;
+            // this.appendTaskOutput(runId, taskId, taskOutputText, stream);
 
             this.events.emit(TaskEvents.TASK_EXITED, { taskId, runId, exitCode: code, signal, stoppedAt: cur.stoppedAt! });
             if (cur.status === "failed") {
@@ -366,6 +366,14 @@ export class TaskServiceImpl implements TaskService {
 
     async getLatestReportByTaskId(taskId: string) {
         return this.analyzerService.getLatestReportByTaskId(taskId);
+    }
+
+    async getDiagnosticsByRunId(runId: string) {
+        return this.analyzerService.getDiagnosticsByRunId(runId);
+    }
+
+    async getLatestDiagnosticsByTaskId(taskId: string) {
+        return this.analyzerService.getLatestDiagnosticsByTaskId(taskId);
     }
 
     async getDashboardByTaskId(taskId: string): Promise<TaskDashboard | null> {

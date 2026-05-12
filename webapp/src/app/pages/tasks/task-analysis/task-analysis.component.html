@@ -118,7 +118,7 @@
         <span>构建分析提示</span>
       </div>
       <div class="insight-list">
-        @for (insight of analysisInsights; track insight.code) {
+        @for (insight of visibleAnalysisInsights; track trackByInsight($index, insight)) {
         <div class="insight" [class.warning]="insight.level === 'warning'" [class.info]="insight.level === 'info'">
           <div class="insight-icon">
             @if (insight.level === 'warning') {
@@ -128,8 +128,19 @@
             }
           </div>
           <div class="insight-body">
-            <strong>{{ insight.level === 'warning' ? '建议' : '提示' }}</strong>
+            <strong>{{ insightLabel(insight.category) }}</strong>
             <span>{{ insight.message }}</span>
+          </div>
+        </div>
+        }
+        @if (hiddenAnalysisInsightCount > 0) {
+        <div class="insight muted">
+          <div class="insight-icon">
+            <nz-icon nzType="ellipsis" style="color: #8a99a8" />
+          </div>
+          <div class="insight-body">
+            <strong>更多提示</strong>
+            <span>已折叠 {{ hiddenAnalysisInsightCount }} 条低优先级提示。</span>
           </div>
         </div>
         }
@@ -411,6 +422,31 @@
     </div>
 
   } @else {
+    @if (diagnosticInsights.length > 0) {
+    <div class="section">
+      <div class="section-title">
+        <nz-icon nzType="bug" />
+        <span>Analyzer 诊断</span>
+      </div>
+      <div class="insight-list">
+        @for (insight of diagnosticInsights; track trackByInsight($index, insight)) {
+        <div class="insight" [class.warning]="insight.level === 'warning'" [class.info]="insight.level === 'info'">
+          <div class="insight-icon">
+            @if (insight.level === 'warning') {
+              <nz-icon nzType="exclamation-circle" style="color: #fa8c16" />
+            } @else {
+              <nz-icon nzType="info-circle" style="color: #1677ff" />
+            }
+          </div>
+          <div class="insight-body">
+            <strong>{{ insightLabel(insight.category) }}</strong>
+            <span>{{ insight.message }}</span>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
     <div class="empty">
       <nz-empty [nzNotFoundContent]="emptyText"></nz-empty>
     </div>
