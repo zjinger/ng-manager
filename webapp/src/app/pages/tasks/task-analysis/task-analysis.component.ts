@@ -9,9 +9,7 @@ import type {
 } from '@yinuo-ngm/protocol';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { Subscription } from 'rxjs';
 import { TaskStreamService } from '../services/task-stream.service';
 import { TasksApiService } from '../services/tasks-api.service';
@@ -27,10 +25,8 @@ import { TaskAnalysisFacade } from './task-analysis.facade';
   imports: [
     CommonModule,
     NzEmptyModule,
-    NzProgressModule,
     NzTagModule,
     NzIconModule,
-    NzTooltipModule,
     TaskAnalysisReportComponent,
     TaskAnalysisRuntimeComponent,
     TaskAnalysisDiagnosticsComponent,
@@ -156,12 +152,12 @@ export class TaskAnalysisComponent implements OnDestroy {
     return this.facade.insightGroups();
   }
 
-  get diagnosticInsights() {
-    return this.facade.diagnosticInsights();
+  get analyzerDiagnostics() {
+    return this.facade.analyzerDiagnostics();
   }
 
-  get diagnosticInsightCount() {
-    return this.facade.diagnosticInsightCount();
+  get analyzerDiagnosticCount() {
+    return this.facade.analyzerDiagnosticCount();
   }
 
   get historyRows() {

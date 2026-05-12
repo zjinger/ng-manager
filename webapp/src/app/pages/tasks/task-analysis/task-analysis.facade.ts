@@ -75,8 +75,8 @@ export class TaskAnalysisFacade {
       }))
       .filter((group) => group.items.length > 0);
   });
-  readonly diagnosticInsights = computed(() => this.diagnostics());
-  readonly diagnosticInsightCount = computed(() => this.diagnosticInsights().length);
+  readonly analyzerDiagnostics = computed(() => this.diagnostics());
+  readonly analyzerDiagnosticCount = computed(() => this.analyzerDiagnostics().length);
   readonly historyRows = computed(() => this.history().slice(0, 10));
   readonly previousHistory = computed(() => {
     const currentRunId = this.report()?.runId;
@@ -102,11 +102,16 @@ export class TaskAnalysisFacade {
     if (!prev || !cur || typeof cur.durationMs !== 'number' || typeof prev.durationMs !== 'number') return null;
     return cur.durationMs - prev.durationMs;
   });
-  readonly historyDeltaItems = computed(() => ([
-    { label: 'Raw', value: this.formatDeltaSize(this.rawDelta()), className: this.deltaClass(this.rawDelta()) },
-    { label: 'Gzip', value: this.formatDeltaSize(this.gzipDelta()), className: this.deltaClass(this.gzipDelta()) },
-    { label: 'Duration', value: this.formatDeltaMs(this.durationDelta()), className: this.deltaClass(this.durationDelta()) },
-  ]));
+  readonly historyDeltaItems = computed(() => {
+    const rawDelta = this.rawDelta();
+    const gzipDelta = this.gzipDelta();
+    const durationDelta = this.durationDelta();
+    return [
+      { label: 'Raw', value: this.formatDeltaSize(rawDelta), className: this.deltaClass(rawDelta) },
+      { label: 'Gzip', value: this.formatDeltaSize(gzipDelta), className: this.deltaClass(gzipDelta) },
+      { label: 'Duration', value: this.formatDeltaMs(durationDelta), className: this.deltaClass(durationDelta) },
+    ];
+  });
   readonly emptyText = computed(() => {
     if (this.loading() || this.analyzing()) return '正在加载分析报告...';
     return this.error() || '暂无分析报告，build 成功后会自动生成。';

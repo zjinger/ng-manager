@@ -38,7 +38,7 @@
       [statsModules]="statsModules"
       [useVirtualAssetTable]="useVirtualAssetTable"
       [assetViewportHeight]="assetViewportHeight"
-      [diagnosticInsights]="diagnosticInsights"
+      [diagnosticInsights]="analyzerDiagnostics"
       [formatSizeFn]="formatSizeFn"
       [formatRatioFn]="formatRatioFn"
       [formatTimeFn]="formatTimeFn"
@@ -59,9 +59,9 @@
       (copyUrl)="copyUrl($event)"
     ></app-task-analysis-runtime>
   } @else {
-    @if (diagnosticInsights.length > 0) {
+    @if (analyzerDiagnostics.length > 0) {
       <app-task-analysis-diagnostics
-        [items]="diagnosticInsights"
+        [items]="analyzerDiagnostics"
         [open]="true"
       ></app-task-analysis-diagnostics>
     }

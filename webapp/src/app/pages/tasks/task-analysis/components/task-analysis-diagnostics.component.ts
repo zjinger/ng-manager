@@ -33,6 +33,9 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
                 @if (item.error) {
                   <div class="diagnostic-error">{{ item.error }}</div>
                 }
+                @if (item.data !== undefined) {
+                  <pre class="diagnostic-data">{{ formatDiagnosticData(item.data) }}</pre>
+                }
               </div>
             }
           </div>
@@ -67,5 +70,13 @@ export class TaskAnalysisDiagnosticsComponent {
     if (status === 'failed') return 'failed';
     if (status === 'skipped' || status === 'no-report') return 'skipped';
     return 'success';
+  }
+
+  formatDiagnosticData(data: unknown): string {
+    try {
+      return JSON.stringify(data, null, 2);
+    } catch {
+      return String(data);
+    }
   }
 }
