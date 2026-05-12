@@ -1,6 +1,5 @@
-import { Clipboard } from '@angular/cdk/clipboard';
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, Input, OnDestroy, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, Input, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { TaskKind, TaskRuntime } from '@models/task.model';
 import type { TaskEventMsg } from '@yinuo-ngm/protocol';
@@ -30,33 +29,21 @@ import { TaskAnalysisFacade } from './task-analysis.facade';
   ],
   templateUrl: './task-analysis.component.html',
   styleUrls: ['./task-analysis.component.less'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TaskAnalysisComponent implements OnDestroy {
+export class TaskAnalysisComponent {
   private api = inject(TasksApiService);
   private stream = inject(TaskStreamService);
   private destroyRef = inject(DestroyRef);
-  private clipboard = inject(Clipboard);
   private facade = inject(TaskAnalysisFacade);
   private loadSub?: Subscription;
   private loadScheduled = false;
-
-  readonly formatSizeFn = this.facade.formatSize.bind(this.facade);
-  readonly formatOptionalSizeFn = this.facade.formatOptionalSize.bind(this.facade);
-  readonly formatRatioFn = this.facade.formatRatio.bind(this.facade);
-  readonly formatTimeFn = this.facade.formatTime.bind(this.facade);
-  readonly formatMsFn = this.facade.formatMs.bind(this.facade);
-  readonly sizeLevelFn = this.facade.sizeLevel.bind(this.facade);
-  readonly getTypeColorFn = this.facade.getTypeColor.bind(this.facade);
-  readonly getTypeIconFn = this.facade.getTypeIcon.bind(this.facade);
-  readonly trackByModPathFn = (index: number, item: { path?: string; name: string }) => this.trackByModPath(index, item);
-
-  copiedUrl = '';
 
   @Input()
   set taskId(value: string | null | undefined) {
     const next = (value ?? '').trim();
     if (next === this.facade.taskId) return;
-    this.updateView(() => this.facade.setTaskId(next));
+    this.facade.setTaskId(next);
     this.scheduleLoad();
   }
 
@@ -66,13 +53,38 @@ export class TaskAnalysisComponent implements OnDestroy {
 
   @Input()
   set taskKind(value: TaskKind | undefined | null) {
-    this.updateView(() => this.facade.setTaskKind(value ?? undefined));
+    this.facade.setTaskKind(value ?? undefined);
   }
 
   @Input()
   set runtime(value: TaskRuntime | undefined | null) {
-    this.updateView(() => this.facade.setRuntime(value ?? null));
+    this.facade.setRuntime(value ?? null);
   }
+
+  readonly report = this.facade.report;
+  readonly diagnostics = this.facade.diagnostics;
+  readonly history = this.facade.history;
+  readonly historyError = this.facade.historyError;
+  readonly runtimeSnapshot = this.facade.runtimeSnapshot;
+  readonly loading = this.facade.loading;
+  readonly analyzing = this.facade.analyzing;
+  readonly error = this.facade.error;
+  readonly topAssets = this.facade.topAssets;
+  readonly assets = this.facade.assets;
+  readonly assetViewportHeight = this.facade.assetViewportHeight;
+  readonly useVirtualAssetTable = this.facade.useVirtualAssetTable;
+  readonly statsChunks = this.facade.statsChunks;
+  readonly statsDependencies = this.facade.statsDependencies;
+  readonly statsModules = this.facade.statsModules;
+  readonly insightGroups = this.facade.insightGroups;
+  readonly analyzerDiagnostics = this.facade.analyzerDiagnostics;
+  readonly analyzerDiagnosticCount = this.facade.analyzerDiagnosticCount;
+  readonly historyRows = this.facade.historyRows;
+  readonly historyDeltaItems = this.facade.historyDeltaItems;
+  readonly emptyText = this.facade.emptyText;
+  readonly showRuntimeAnalysis = this.facade.showRuntimeAnalysis;
+  readonly runtimeUrls = this.facade.runtimeUrls;
+  readonly treemapCells = this.facade.treemapCells;
 
   constructor() {
     this.stream
@@ -81,153 +93,12 @@ export class TaskAnalysisComponent implements OnDestroy {
       .subscribe((event) => this.onTaskEvent(event));
   }
 
-  get report() {
-    return this.facade.report();
-  }
-
-  get diagnostics() {
-    return this.facade.diagnostics();
-  }
-
-  get history() {
-    return this.facade.history();
-  }
-
-  get historyError() {
-    return this.facade.historyError();
-  }
-
-  get runtimeSnapshot() {
-    return this.facade.runtimeSnapshot();
-  }
-
-  get loading() {
-    return this.facade.loading();
-  }
-
-  get analyzing() {
-    return this.facade.analyzing();
-  }
-
-  get error() {
-    return this.facade.error();
-  }
-
-  get topAssets() {
-    return this.facade.topAssets();
-  }
-
-  get assets() {
-    return this.facade.assets();
-  }
-
-  get assetViewportHeight() {
-    return this.facade.assetViewportHeight();
-  }
-
-  get useVirtualAssetTable() {
-    return this.facade.useVirtualAssetTable();
-  }
-
-  get statsChunks() {
-    return this.facade.statsChunks();
-  }
-
-  get statsDependencies() {
-    return this.facade.statsDependencies();
-  }
-
-  get statsModules() {
-    return this.facade.statsModules();
-  }
-
-  get insightGroups() {
-    return this.facade.insightGroups();
-  }
-
-  get analyzerDiagnostics() {
-    return this.facade.analyzerDiagnostics();
-  }
-
-  get analyzerDiagnosticCount() {
-    return this.facade.analyzerDiagnosticCount();
-  }
-
-  get historyRows() {
-    return this.facade.historyRows();
-  }
-
-  get historyDeltaItems() {
-    return this.facade.historyDeltaItems();
-  }
-
-  get emptyText() {
-    return this.facade.emptyText();
-  }
-
-  get showRuntimeAnalysis() {
-    return this.facade.showRuntimeAnalysis();
-  }
-
-  get runtimeUrls() {
-    return this.facade.runtimeUrls();
-  }
-
-  get treemapCells() {
-    return this.facade.treemapCells();
-  }
-
   refresh() {
     this.load();
   }
 
-  formatSize(size?: number): string {
-    return this.facade.formatSize(size);
-  }
-
-  formatRatio(value?: number): string {
-    return this.facade.formatRatio(value);
-  }
-
-  formatTime(value?: number): string {
-    return this.facade.formatTime(value);
-  }
-
-  formatMs(value?: number): string {
-    return this.facade.formatMs(value);
-  }
-
-  sizeLevel(size?: number): string {
-    return this.facade.sizeLevel(size);
-  }
-
-  getTypeColor(type: string): string {
-    return this.facade.getTypeColor(type);
-  }
-
-  getTypeIcon(type: string): string {
-    return this.facade.getTypeIcon(type);
-  }
-
-  copyUrl(url: string) {
-    if (this.clipboard.copy(url)) {
-      this.copiedUrl = url;
-      setTimeout(() => {
-        if (this.copiedUrl === url) this.copiedUrl = '';
-      }, 2000);
-    }
-  }
-
-  trackByModPath(index: number, item: { path?: string; name: string }): string {
-    return `${item.path || item.name}:${index}`;
-  }
-
   ngOnDestroy() {
     this.loadSub?.unsubscribe();
-  }
-
-  private updateView(update: () => void) {
-    update();
   }
 
   private scheduleLoad() {
@@ -245,54 +116,38 @@ export class TaskAnalysisComponent implements OnDestroy {
     if (!this.facade.taskId || payload.taskId !== this.facade.taskId) return;
 
     if (event.type === 'analyzeStarted') {
-      this.updateView(() => {
-        this.facade.setAnalyzing(true);
-        this.facade.setDiagnostics([]);
-        this.facade.setError('');
-      });
+      this.facade.onAnalyzeStarted();
       return;
     }
 
     if (event.type === 'analyzeFinished') {
-      this.updateView(() => this.facade.setAnalyzing(false));
+      this.facade.onAnalyzeFinished();
       this.load();
       return;
     }
 
     if (event.type === 'analyzeFailed') {
-      this.updateView(() => {
-        this.facade.setAnalyzing(false);
-        this.facade.setError(payload.error || '分析失败');
-      });
+      this.facade.onAnalyzeFailed(payload.error || '分析失败');
     }
   }
 
   private load() {
     this.loadSub?.unsubscribe();
     if (!this.facade.taskId) {
-      this.updateView(() => this.facade.setLoading(false));
+      this.facade.onReportLoaded(null);
       return;
     }
 
-    this.updateView(() => {
-      this.facade.setLoading(true);
-      this.facade.setError('');
-    });
+    this.facade.loading.set(true);
+    this.facade.error.set('');
     this.loadSub = this.api.getLatestReport(this.facade.taskId).subscribe({
       next: (report) => {
-        this.updateView(() => {
-          this.facade.setReport(report);
-          this.facade.setDiagnostics(report?.diagnostics ?? []);
-          this.facade.setLoading(false);
-        });
+        this.facade.onReportLoaded(report);
         if (!report) this.loadDiagnostics();
         this.loadHistory();
       },
       error: (e) => {
-        this.updateView(() => {
-          this.facade.setError(e?.message || '加载分析报告失败');
-          this.facade.setLoading(false);
-        });
+        this.facade.onLoadError(e?.message || '加载分析报告失败');
       },
     });
   }
@@ -302,12 +157,8 @@ export class TaskAnalysisComponent implements OnDestroy {
     this.api.getLatestDiagnostics(this.facade.taskId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (diagnostics) => {
-          this.updateView(() => this.facade.setDiagnostics(diagnostics ?? []));
-        },
-        error: () => {
-          this.updateView(() => this.facade.setDiagnostics([]));
-        },
+        next: (diagnostics) => this.facade.onDiagnosticsLoaded(diagnostics ?? []),
+        error: () => this.facade.onDiagnosticsLoaded([]),
       });
   }
 
@@ -316,18 +167,8 @@ export class TaskAnalysisComponent implements OnDestroy {
     this.api.getReportSummariesByTask(this.facade.taskId, 10)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (history) => {
-          this.updateView(() => {
-            this.facade.setHistory(history ?? []);
-            this.facade.setHistoryError('');
-          });
-        },
-        error: (e) => {
-          this.updateView(() => {
-            this.facade.setHistory([]);
-            this.facade.setHistoryError(e?.message || '历史趋势加载失败');
-          });
-        },
+        next: (history) => this.facade.onHistoryLoaded(history ?? []),
+        error: (e) => this.facade.onHistoryError(e?.message || '历史趋势加载失败'),
       });
   }
 }

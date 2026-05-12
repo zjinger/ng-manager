@@ -7,6 +7,7 @@ import type {
   TaskAssetInfoDto,
 } from '@yinuo-ngm/protocol';
 import type { AnalysisInsight, InsightCategory, InsightGroup, TreemapCell } from './task-analysis.types';
+import { getAssetTypeColor } from '@app/shared';
 
 @Injectable()
 export class TaskAnalysisFacade {
@@ -156,7 +157,7 @@ export class TaskAnalysisFacade {
         type: asset.type,
         colSpan: span,
         rowSpan: 1,
-        color: this.getTypeColor(asset.type),
+        color: getAssetTypeColor(asset.type),
       });
     }
     const currentTotal = cells.reduce((sum, c) => sum + c.colSpan, 0);
@@ -191,103 +192,63 @@ export class TaskAnalysisFacade {
     this.runtimeSnapshot.set(value);
   }
 
-  setReport(value: TaskAnalyzeResultDto | null) {
-    this.report.set(value);
+  onReportLoaded(report: TaskAnalyzeResultDto | null, diagnostics?: TaskAnalyzeDiagnosticDto[]) {
+    this.report.set(report);
+    this.diagnostics.set(diagnostics ?? report?.diagnostics ?? []);
+    this.loading.set(false);
   }
 
-  setDiagnostics(value: TaskAnalyzeDiagnosticDto[]) {
-    this.diagnostics.set(value);
+  onLoadError(message: string) {
+    this.error.set(message);
+    this.loading.set(false);
   }
 
-  setHistory(value: TaskAnalyzeReportSummaryDto[]) {
-    this.history.set(value);
+  onAnalyzeStarted() {
+    this.analyzing.set(true);
+    this.diagnostics.set([]);
+    this.error.set('');
   }
 
-  setHistoryError(value: string) {
-    this.historyError.set(value);
+  onAnalyzeFinished() {
+    this.analyzing.set(false);
   }
 
-  setError(value: string) {
-    this.error.set(value);
+  onAnalyzeFailed(message: string) {
+    this.analyzing.set(false);
+    this.error.set(message);
   }
 
-  setLoading(value: boolean) {
-    this.loading.set(value);
+  onHistoryLoaded(history: TaskAnalyzeReportSummaryDto[]) {
+    this.history.set(history ?? []);
+    this.historyError.set('');
   }
 
-  setAnalyzing(value: boolean) {
-    this.analyzing.set(value);
+  onHistoryError(message: string) {
+    this.history.set([]);
+    this.historyError.set(message);
   }
 
-  formatSize(size?: number): string {
-    const value = Number(size ?? 0);
-    if (value < 1024) return `${value} B`;
-    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-    return `${(value / 1024 / 1024).toFixed(2)} MB`;
+  onDiagnosticsLoaded(diagnostics: TaskAnalyzeDiagnosticDto[]) {
+    this.diagnostics.set(diagnostics ?? []);
   }
 
-  formatOptionalSize(size?: number | null): string {
-    return typeof size === 'number' ? this.formatSize(size) : '-';
-  }
-
-  formatRatio(value?: number): string {
-    return `${((value ?? 0) * 100).toFixed(1)}%`;
-  }
-
-  formatTime(value?: number): string {
-    if (!value) return '-';
-    return new Date(value).toLocaleTimeString();
-  }
-
-  formatMs(value?: number): string {
-    if (typeof value !== 'number') return '-';
-    return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`;
-  }
-
-  sizeLevel(size?: number): string {
-    const value = Number(size ?? 0);
-    if (value > 500 * 1024) return 'danger';
-    if (value > 200 * 1024) return 'warning';
-    return 'good';
-  }
-
-  getTypeColor(type: string): string {
-    const map: Record<string, string> = {
-      js: '#1677ff',
-      css: '#52c41a',
-      html: '#722ed1',
-      image: '#fa8c16',
-      font: '#13c2c2',
-      asset: '#8c8c8c',
-    };
-    return map[type] || '#d9d9d9';
-  }
-
-  getTypeIcon(type: string): string {
-    const map: Record<string, string> = {
-      js: 'code',
-      css: 'bg-colors',
-      html: 'html5',
-      image: 'picture',
-      font: 'font-size',
-      asset: 'file',
-    };
-    return map[type] || 'file';
-  }
-
-  private formatDeltaSize(value: number | null): string {
+  formatDeltaSize(value: number | null): string {
     if (value === null) return '-';
     const prefix = value > 0 ? '+' : value < 0 ? '-' : '';
-    return `${prefix}${this.formatSize(Math.abs(value))}`;
+    const abs = Math.abs(value);
+    if (abs < 1024) return `${prefix}${abs} B`;
+    if (abs < 1024 * 1024) return `${prefix}${(abs / 1024).toFixed(1)} KB`;
+    return `${prefix}${(abs / 1024 / 1024).toFixed(2)} MB`;
   }
 
-  private formatDeltaMs(value: number | null): string {
+  formatDeltaMs(value: number | null): string {
     if (value === null) return '-';
     const prefix = value > 0 ? '+' : value < 0 ? '-' : '';
-    return `${prefix}${this.formatMs(Math.abs(value))}`;
+    const abs = Math.abs(value);
+    return abs >= 1000 ? `${prefix}${(abs / 1000).toFixed(2)}s` : `${prefix}${abs}ms`;
   }
 
-  private deltaClass(value: number | null): string {
+  deltaClass(value: number | null): string {
     if (value === null || value === 0) return 'neutral';
     return value > 0 ? 'up' : 'down';
   }

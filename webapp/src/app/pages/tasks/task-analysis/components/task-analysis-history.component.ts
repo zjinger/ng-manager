@@ -2,11 +2,12 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import type { TaskAnalyzeReportSummaryDto } from '@yinuo-ngm/protocol';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { FormatSizePipe, FormatTimePipe, FormatMsPipe } from '@app/shared';
 
 @Component({
   selector: 'app-task-analysis-history',
   standalone: true,
-  imports: [CommonModule, NzIconModule],
+  imports: [CommonModule, NzIconModule, FormatSizePipe, FormatTimePipe, FormatMsPipe],
   template: `
     <div class="section">
       <div class="section-title">
@@ -35,13 +36,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         </div>
         @for (item of historyRows; track item.runId) {
         <div class="history-row" role="row" [class.current]="item.runId === currentRunId">
-          <div role="cell">{{ formatTimeFn(item.createdAt) }}</div>
-          <div role="cell">{{ formatSizeFn(item.totalRawSize) }}</div>
-          <div role="cell">{{ formatSizeFn(item.totalGzipSize) }}</div>
-          <div role="cell">{{ item.totalBrotliSize ? formatSizeFn(item.totalBrotliSize) : '-' }}</div>
-          <div role="cell">{{ formatSizeFn(item.jsRawSize) }}</div>
-          <div role="cell">{{ formatSizeFn(item.cssRawSize) }}</div>
-          <div role="cell">{{ formatMsFn(item.durationMs) }}</div>
+          <div role="cell">{{ item.createdAt | formatTime }}</div>
+          <div role="cell">{{ item.totalRawSize | formatSize }}</div>
+          <div role="cell">{{ item.totalGzipSize | formatSize }}</div>
+          <div role="cell">{{ item.totalBrotliSize ? (item.totalBrotliSize | formatSize) : '-' }}</div>
+          <div role="cell">{{ item.jsRawSize | formatSize }}</div>
+          <div role="cell">{{ item.cssRawSize | formatSize }}</div>
+          <div role="cell">{{ item.durationMs | formatMs }}</div>
         </div>
         }
       </div>
@@ -61,7 +62,4 @@ export class TaskAnalysisHistoryComponent {
   @Input() historyRows: TaskAnalyzeReportSummaryDto[] = [];
   @Input() historyDeltaItems: Array<{ label: string; value: string; className: string }> = [];
   @Input() historyError = '';
-  @Input({ required: true }) formatTimeFn!: (value?: number) => string;
-  @Input({ required: true }) formatSizeFn!: (size?: number) => string;
-  @Input({ required: true }) formatMsFn!: (value?: number) => string;
 }

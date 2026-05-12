@@ -1,0 +1,29 @@
+<app-task-analysis-summary
+  [report]="report"
+></app-task-analysis-summary>
+
+<app-task-analysis-insights [insightGroups]="insightGroups"></app-task-analysis-insights>
+
+<app-task-analysis-stats
+  [report]="report"
+  [statsChunks]="statsChunks"
+  [statsDependencies]="statsDependencies"
+  [statsModules]="statsModules"
+></app-task-analysis-stats>
+
+<app-task-analysis-assets
+  [treemapCells]="treemapCells"
+  [topAssets]="topAssets"
+  [assets]="assets"
+  [useVirtualAssetTable]="useVirtualAssetTable"
+  [assetViewportHeight]="assetViewportHeight"
+></app-task-analysis-assets>
+
+<app-task-analysis-history
+  [currentRunId]="report.runId"
+  [historyRows]="historyRows"
+  [historyDeltaItems]="historyDeltaItems"
+  [historyError]="historyError"
+></app-task-analysis-history>
+
+<app-task-analysis-diagnostics [items]="diagnosticInsights"></app-task-analysis-diagnostics>

@@ -2,15 +2,15 @@
   <div class="panel-header">
     <div>
       <div class="title">
-        <nz-icon [nzType]="showRuntimeAnalysis ? 'line-chart' : 'bar-chart'" />
-        {{ showRuntimeAnalysis ? '运行分析' : '构建分析' }}
+        <nz-icon [nzType]="showRuntimeAnalysis() ? 'line-chart' : 'bar-chart'" />
+        {{ showRuntimeAnalysis() ? '运行分析' : '构建分析' }}
       </div>
-      @if (report?.summary?.outputPath) {
-        <div class="sub">{{ report?.summary?.outputPath }}</div>
+      @if (report()?.summary?.outputPath) {
+        <div class="sub">{{ report()?.summary?.outputPath }}</div>
       }
     </div>
     <div class="header-actions">
-      @if (analyzing) {
+      @if (analyzing()) {
         <nz-tag nzColor="processing">
           <nz-icon nzType="sync" nzSpin />
           分析中...
@@ -23,50 +23,37 @@
     </div>
   </div>
 
-  @if (report) {
+  @if (report()) {
     <app-task-analysis-report
-      [report]="report"
-      [topAssets]="topAssets"
-      [assets]="assets"
-      [insightGroups]="insightGroups"
-      [historyRows]="historyRows"
-      [historyDeltaItems]="historyDeltaItems"
-      [historyError]="historyError"
-      [treemapCells]="treemapCells"
-      [statsChunks]="statsChunks"
-      [statsDependencies]="statsDependencies"
-      [statsModules]="statsModules"
-      [useVirtualAssetTable]="useVirtualAssetTable"
-      [assetViewportHeight]="assetViewportHeight"
-      [diagnosticInsights]="analyzerDiagnostics"
-      [formatSizeFn]="formatSizeFn"
-      [formatOptionalSizeFn]="formatOptionalSizeFn"
-      [formatRatioFn]="formatRatioFn"
-      [formatTimeFn]="formatTimeFn"
-      [formatMsFn]="formatMsFn"
-      [sizeLevelFn]="sizeLevelFn"
-      [getTypeColorFn]="getTypeColorFn"
-      [getTypeIconFn]="getTypeIconFn"
-      [trackByModPathFn]="trackByModPathFn"
+      [report]="report()!"
+      [topAssets]="topAssets()"
+      [assets]="assets()"
+      [insightGroups]="insightGroups()"
+      [historyRows]="historyRows()"
+      [historyDeltaItems]="historyDeltaItems()"
+      [historyError]="historyError()"
+      [treemapCells]="treemapCells()"
+      [statsChunks]="statsChunks()"
+      [statsDependencies]="statsDependencies()"
+      [statsModules]="statsModules()"
+      [useVirtualAssetTable]="useVirtualAssetTable()"
+      [assetViewportHeight]="assetViewportHeight()"
+      [diagnosticInsights]="analyzerDiagnostics()"
     ></app-task-analysis-report>
-  } @else if (showRuntimeAnalysis) {
+  } @else if (showRuntimeAnalysis()) {
     <app-task-analysis-runtime
-      [runtimeSnapshot]="runtimeSnapshot"
-      [runtimeUrls]="runtimeUrls"
-      [copiedUrl]="copiedUrl"
-      [formatTimeFn]="formatTimeFn"
-      [formatMsFn]="formatMsFn"
-      (copyUrl)="copyUrl($event)"
+      [runtimeSnapshot]="runtimeSnapshot()"
+      [runtimeUrls]="runtimeUrls()"
     ></app-task-analysis-runtime>
   } @else {
-    @if (analyzerDiagnostics.length > 0) {
+    @if (analyzerDiagnostics().length > 0) {
       <app-task-analysis-diagnostics
-        [items]="analyzerDiagnostics"
+        [items]="analyzerDiagnostics()"
         [open]="true"
       ></app-task-analysis-diagnostics>
     }
     <div class="empty">
-      <nz-empty [nzNotFoundContent]="emptyText"></nz-empty>
+      <nz-empty [nzNotFoundContent]="emptyText()"></nz-empty>
     </div>
   }
 </div>

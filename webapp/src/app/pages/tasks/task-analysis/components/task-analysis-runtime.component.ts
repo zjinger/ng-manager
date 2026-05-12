@@ -1,14 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
+import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import type { TaskRuntime } from '@models/task.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { FormatTimePipe, FormatMsPipe } from '@app/shared';
 
 @Component({
   selector: 'app-task-analysis-runtime',
   standalone: true,
-  imports: [CommonModule, NzIconModule, NzTagModule, NzTooltipModule],
+  imports: [CommonModule, NzIconModule, NzTagModule, NzTooltipModule, ClipboardModule, FormatTimePipe, FormatMsPipe],
   template: `
     <div class="summary-grid">
       <div class="metric">
@@ -30,7 +32,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         </div>
         <div class="metric-body">
           <span>Ready</span>
-          <strong>{{ formatTimeFn(runtimeSnapshot?.readyAt) }}</strong>
+          <strong>{{ runtimeSnapshot?.readyAt | formatTime }}</strong>
         </div>
       </div>
       <div class="metric">
@@ -39,7 +41,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         </div>
         <div class="metric-body">
           <span>最近编译</span>
-          <strong>{{ formatMsFn(runtimeSnapshot?.rebuildDurationMs) }}</strong>
+          <strong>{{ runtimeSnapshot?.rebuildDurationMs | formatMs }}</strong>
         </div>
       </div>
       <div class="metric">
@@ -75,7 +77,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
             <nz-icon nzType="global" />
             {{ url }}
           </a>
-          <button class="copy-btn" (click)="copyUrl.emit(url)" [nz-tooltip]="copiedUrl === url ? '已复制' : '复制'">
+          <button class="copy-btn" (click)="copyUrl(url)" [nz-tooltip]="copiedUrl === url ? '已复制' : '复制'">
             <nz-icon [nzType]="copiedUrl === url ? 'check' : 'copy'" />
           </button>
         </div>
@@ -104,11 +106,19 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskAnalysisRuntimeComponent {
+  private clipboard = inject(Clipboard);
+
   @Input() runtimeSnapshot: TaskRuntime | null = null;
   @Input() runtimeUrls: string[] = [];
-  @Input() copiedUrl = '';
-  @Input({ required: true }) formatTimeFn!: (value?: number) => string;
-  @Input({ required: true }) formatMsFn!: (value?: number) => string;
 
-  @Output() copyUrl = new EventEmitter<string>();
+  copiedUrl = '';
+
+  copyUrl(url: string) {
+    if (this.clipboard.copy(url)) {
+      this.copiedUrl = url;
+      setTimeout(() => {
+        if (this.copiedUrl === url) this.copiedUrl = '';
+      }, 2000);
+    }
+  }
 }

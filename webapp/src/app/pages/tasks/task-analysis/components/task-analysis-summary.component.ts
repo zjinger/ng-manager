@@ -2,20 +2,22 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import type { TaskAnalyzeResultDto } from '@yinuo-ngm/protocol';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { FormatSizePipe } from '@app/shared';
+import { getSizeLevel } from '@app/shared';
 
 @Component({
   selector: 'app-task-analysis-summary',
   standalone: true,
-  imports: [CommonModule, NzIconModule],
+  imports: [CommonModule, NzIconModule, FormatSizePipe],
   template: `
     <div class="summary-grid">
-      <div class="metric" [class.metric-good]="sizeLevelFn(report.summary.totalRawSize) === 'good'" [class.metric-warn]="sizeLevelFn(report.summary.totalRawSize) === 'warning'" [class.metric-danger]="sizeLevelFn(report.summary.totalRawSize) === 'danger'">
+      <div class="metric" [class.metric-good]="sizeLevel(report.summary.totalRawSize) === 'good'" [class.metric-warn]="sizeLevel(report.summary.totalRawSize) === 'warning'" [class.metric-danger]="sizeLevel(report.summary.totalRawSize) === 'danger'">
         <div class="metric-icon">
           <nz-icon nzType="database" />
         </div>
         <div class="metric-body">
           <span>总体积</span>
-          <strong>{{ formatSizeFn(report.summary.totalRawSize) }}</strong>
+          <strong>{{ report.summary.totalRawSize | formatSize }}</strong>
         </div>
       </div>
       <div class="metric accent-blue">
@@ -24,7 +26,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         </div>
         <div class="metric-body">
           <span>JS</span>
-          <strong>{{ formatSizeFn(report.summary.jsRawSize) }}</strong>
+          <strong>{{ report.summary.jsRawSize | formatSize }}</strong>
           <div class="metric-tag">{{ report.summary.jsFileCount || 0 }} 个文件</div>
         </div>
       </div>
@@ -34,7 +36,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         </div>
         <div class="metric-body">
           <span>CSS</span>
-          <strong>{{ formatSizeFn(report.summary.cssRawSize) }}</strong>
+          <strong>{{ report.summary.cssRawSize | formatSize }}</strong>
           <div class="metric-tag">{{ report.summary.cssFileCount || 0 }} 个文件</div>
         </div>
       </div>
@@ -44,7 +46,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         </div>
         <div class="metric-body">
           <span>Gzip</span>
-          <strong>{{ formatSizeFn(report.summary.totalGzipSize) }}</strong>
+          <strong>{{ report.summary.totalGzipSize | formatSize }}</strong>
           <div class="metric-tag">节省 {{ gzipSavingsPercent }}</div>
         </div>
       </div>
@@ -55,7 +57,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         </div>
         <div class="metric-body">
           <span>Brotli</span>
-          <strong>{{ formatSizeFn(report.summary.totalBrotliSize) }}</strong>
+          <strong>{{ report.summary.totalBrotliSize | formatSize }}</strong>
           <div class="metric-tag">节省 {{ brotliSavingsPercent }}</div>
         </div>
       </div>
@@ -98,8 +100,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 })
 export class TaskAnalysisSummaryComponent {
   @Input({ required: true }) report!: TaskAnalyzeResultDto;
-  @Input({ required: true }) formatSizeFn!: (size?: number) => string;
-  @Input({ required: true }) sizeLevelFn!: (size?: number) => string;
+
+  protected readonly sizeLevel = getSizeLevel;
 
   get gzipSavingsPercent(): string {
     const s = this.report?.summary;

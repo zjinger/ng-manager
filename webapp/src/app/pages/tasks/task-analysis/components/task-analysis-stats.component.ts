@@ -3,11 +3,12 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import type { TaskAnalyzeResultDto } from '@yinuo-ngm/protocol';
+import { FormatSizePipe } from '@app/shared';
 
 @Component({
   selector: 'app-task-analysis-stats',
   standalone: true,
-  imports: [CommonModule, NzIconModule, NzTagModule],
+  imports: [CommonModule, NzIconModule, NzTagModule, FormatSizePipe],
   template: `
     @if (report.stats) {
       <div class="section stats-section">
@@ -37,7 +38,7 @@ import type { TaskAnalyzeResultDto } from '@yinuo-ngm/protocol';
                   <nz-tag nzColor="purple" class="mini-tag">entry</nz-tag>
                 }
               </div>
-              <strong>{{ formatSizeFn(chunk.rawSize) }}</strong>
+              <strong>{{ chunk.rawSize | formatSize }}</strong>
             </div>
             }
           </div>
@@ -49,7 +50,7 @@ import type { TaskAnalyzeResultDto } from '@yinuo-ngm/protocol';
             @for (dep of statsDependencies; track dep.name) {
             <div class="stats-row">
               <span [title]="dep.name">{{ dep.name }}</span>
-              <strong>{{ formatSizeFn(dep.rawSize) }}</strong>
+              <strong>{{ dep.rawSize | formatSize }}</strong>
             </div>
             }
           </div>
@@ -58,10 +59,10 @@ import type { TaskAnalyzeResultDto } from '@yinuo-ngm/protocol';
               <nz-icon nzType="node-index" />
               模块 Top
             </div>
-            @for (mod of statsModules; track trackByModPathFn($index, mod)) {
+            @for (mod of statsModules; track mod.path || mod.name) {
             <div class="stats-row">
               <span [title]="mod.packageName || mod.name">{{ mod.packageName || mod.name }}</span>
-              <strong>{{ formatSizeFn(mod.rawSize) }}</strong>
+              <strong>{{ mod.rawSize | formatSize }}</strong>
             </div>
             }
           </div>
@@ -77,6 +78,4 @@ export class TaskAnalysisStatsComponent {
   @Input() statsChunks: Array<{ name: string; rawSize: number; initial?: boolean; entry?: boolean }> = [];
   @Input() statsDependencies: Array<{ name: string; rawSize: number }> = [];
   @Input() statsModules: Array<{ name: string; packageName?: string; path?: string; rawSize: number }> = [];
-  @Input({ required: true }) formatSizeFn!: (size?: number) => string;
-  @Input({ required: true }) trackByModPathFn!: (index: number, item: { path?: string; name: string }) => string;
 }

@@ -6,12 +6,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { FormatSizePipe, FormatRatioPipe, getAssetTypeColor, getAssetTypeIcon, getSizeLevel } from '@app/shared';
 import type { TreemapCell } from '../task-analysis.types';
 
 @Component({
   selector: 'app-task-analysis-assets',
   standalone: true,
-  imports: [CommonModule, NzIconModule, NzTagModule, NzProgressModule, NzTooltipModule, ScrollingModule],
+  imports: [CommonModule, NzIconModule, NzTagModule, NzProgressModule, NzTooltipModule, ScrollingModule, FormatSizePipe, FormatRatioPipe],
   template: `
     @if (treemapCells.length > 0) {
       <div class="section">
@@ -25,11 +26,11 @@ import type { TreemapCell } from '../task-analysis.types';
             class="treemap-cell"
             [style.flex]="cell.colSpan"
             [style.background]="cell.color"
-            [nz-tooltip]="cell.relativePath + ' (' + formatSizeFn(cell.size) + ')'"
+            [nz-tooltip]="cell.relativePath + ' (' + (cell.size | formatSize) + ')'"
           >
             @if (cell.colSpan > 3) {
               <div class="treemap-name">{{ cell.name }}</div>
-              <div class="treemap-size">{{ formatSizeFn(cell.size) }}</div>
+              <div class="treemap-size">{{ cell.size | formatSize }}</div>
             }
           </div>
           }
@@ -54,14 +55,14 @@ import type { TreemapCell } from '../task-analysis.types';
         @for (asset of topAssets; track asset.relativePath) {
         <div class="top-row">
           <div class="top-name">
-            <nz-tag [nzColor]="getTypeColorFn(asset.type)">
-              <nz-icon [nzType]="getTypeIconFn(asset.type)" />
+            <nz-tag [nzColor]="typeColor(asset.type)">
+              <nz-icon [nzType]="typeIcon(asset.type)" />
               {{ asset.type }}
             </nz-tag>
             <span [title]="asset.relativePath">{{ asset.relativePath }}</span>
           </div>
-          <div class="top-size" [class]="'size-' + sizeLevelFn(asset.rawSize)">{{ formatSizeFn(asset.rawSize) }}</div>
-          <nz-progress [nzPercent]="(asset.ratio || 0) * 100" [nzShowInfo]="false" [nzStrokeColor]="getTypeColorFn(asset.type)"></nz-progress>
+          <div class="top-size" [class]="'size-' + sizeLevel(asset.rawSize)">{{ asset.rawSize | formatSize }}</div>
+          <nz-progress [nzPercent]="(asset.ratio || 0) * 100" [nzShowInfo]="false" [nzStrokeColor]="typeColor(asset.type)"></nz-progress>
         </div>
         }
       </div>
@@ -73,7 +74,12 @@ import type { TreemapCell } from '../task-analysis.types';
         <span>文件明细</span>
         <span class="section-count">{{ assets.length }} 个文件</span>
       </div>
-      <div class="asset-table" role="table" aria-label="文件明细">
+      <div
+        class="asset-table"
+        role="table"
+        aria-label="文件明细"
+        [class.has-scrollbar]="useVirtualAssetTable || assets.length > 9"
+      >
         <div class="asset-row asset-head" role="row">
           <div role="columnheader">文件名</div>
           <div role="columnheader">类型</div>
@@ -97,14 +103,14 @@ import type { TreemapCell } from '../task-analysis.types';
             >
               <div class="asset-name" role="cell" [title]="asset.name">{{ asset.name }}</div>
               <div role="cell">
-                <nz-tag [nzColor]="getTypeColorFn(asset.type)">
-                  <nz-icon [nzType]="getTypeIconFn(asset.type)" />
+                <nz-tag [nzColor]="typeColor(asset.type)">
+                  <nz-icon [nzType]="typeIcon(asset.type)" />
                   {{ asset.type }}
                 </nz-tag>
               </div>
-              <div role="cell" class="asset-size" [class]="'size-' + sizeLevelFn(asset.rawSize)">{{ formatSizeFn(asset.rawSize) }}</div>
-               <div role="cell" class="asset-size">{{ formatOptionalSizeFn(asset.gzipSize) }}</div>
-              <div role="cell" class="asset-size">{{ formatRatioFn(asset.ratio) }}</div>
+              <div role="cell" class="asset-size" [class]="'size-' + sizeLevel(asset.rawSize)">{{ asset.rawSize | formatSize }}</div>
+              <div role="cell" class="asset-size">{{ asset.gzipSize == null ? '-' : (asset.gzipSize | formatSize) }}</div>
+              <div role="cell" class="asset-size">{{ asset.ratio | formatRatio }}</div>
               <div role="cell" class="asset-path" [title]="asset.relativePath">{{ asset.relativePath }}</div>
             </div>
           </cdk-virtual-scroll-viewport>
@@ -114,14 +120,14 @@ import type { TreemapCell } from '../task-analysis.types';
             <div class="asset-row" role="row">
               <div class="asset-name" role="cell" [title]="asset.name">{{ asset.name }}</div>
               <div role="cell">
-                <nz-tag [nzColor]="getTypeColorFn(asset.type)">
-                  <nz-icon [nzType]="getTypeIconFn(asset.type)" />
+                <nz-tag [nzColor]="typeColor(asset.type)">
+                  <nz-icon [nzType]="typeIcon(asset.type)" />
                   {{ asset.type }}
                 </nz-tag>
               </div>
-              <div role="cell" class="asset-size" [class]="'size-' + sizeLevelFn(asset.rawSize)">{{ formatSizeFn(asset.rawSize) }}</div>
-               <div role="cell" class="asset-size">{{ formatOptionalSizeFn(asset.gzipSize) }}</div>
-              <div role="cell" class="asset-size">{{ formatRatioFn(asset.ratio) }}</div>
+              <div role="cell" class="asset-size" [class]="'size-' + sizeLevel(asset.rawSize)">{{ asset.rawSize | formatSize }}</div>
+              <div role="cell" class="asset-size">{{ asset.gzipSize == null ? '-' : (asset.gzipSize | formatSize) }}</div>
+              <div role="cell" class="asset-size">{{ asset.ratio | formatRatio }}</div>
               <div role="cell" class="asset-path" [title]="asset.relativePath">{{ asset.relativePath }}</div>
             </div>
             }
@@ -140,12 +146,11 @@ export class TaskAnalysisAssetsComponent implements AfterViewInit, OnChanges {
   @Input() assets: TaskAssetInfoDto[] = [];
   @Input() useVirtualAssetTable = false;
   @Input() assetViewportHeight = 80;
-  @Input({ required: true }) formatSizeFn!: (size?: number) => string;
-  @Input({ required: true }) formatOptionalSizeFn!: (size?: number | null) => string;
-  @Input({ required: true }) formatRatioFn!: (value?: number) => string;
-  @Input({ required: true }) sizeLevelFn!: (size?: number) => string;
-  @Input({ required: true }) getTypeColorFn!: (type: string) => string;
-  @Input({ required: true }) getTypeIconFn!: (type: string) => string;
+
+  protected readonly typeColor = getAssetTypeColor;
+  protected readonly typeIcon = getAssetTypeIcon;
+  protected readonly sizeLevel = getSizeLevel;
+
   ngAfterViewInit(): void {
     this.scheduleViewportCheck();
   }
