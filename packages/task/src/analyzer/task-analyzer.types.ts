@@ -7,6 +7,7 @@ export interface TaskAnalyzeContext {
     spec: TaskDefinition;
     runtime: TaskRuntime;
     detection?: ProjectBuildDetection;
+    diagnostics?: TaskAnalyzeDiagnostic[];
 }
 
 export interface TaskAssetInfo {
@@ -99,14 +100,18 @@ export interface TaskAnalyzeStats {
     insights: TaskAnalyzeInsight[];
 }
 
-export type TaskAnalyzeDiagnosticStatus = "supported" | "skipped" | "failed" | "no-report" | "succeeded";
+export type TaskAnalyzeDiagnosticStatus = "success" | "skipped" | "failed" | "supported" | "no-report" | "succeeded";
+
+export type TaskAnalyzeDiagnosticPhase = "detect" | "supports" | "analyze" | "parse" | "fallback";
 
 export interface TaskAnalyzeDiagnostic {
     analyzer: string;
     status: TaskAnalyzeDiagnosticStatus;
-    phase: "supports" | "analyze";
+    phase: TaskAnalyzeDiagnosticPhase;
     message?: string;
+    error?: string;
     data?: unknown;
+    createdAt: number;
 }
 
 export interface TaskAnalyzeResult {

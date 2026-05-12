@@ -5,21 +5,15 @@ import { buildAngularBudgetInsights } from "./insights/angular-budget-insights";
 import { scanDistAssets } from "./dist-scanner";
 import { buildAngularBuildInsights } from "./insights/angular-build-insights";
 import { buildDeploymentRiskInsights } from "./insights/deployment-risk-insights";
-import { parseEsbuildMetafile } from "./parsers/esbuild-metafile.parser";
-import { parseWebpackStats } from "./parsers/webpack-stats.parser";
 import { detectProjectBuild } from "./project-build-detector";
+import { StatsJsonAnalyzer } from "./stats-json-analyzer";
 import { summarizeAssets } from "./utils/asset-summary";
 import type {
     TaskAnalyzeContext,
     TaskAnalyzeResult,
-    TaskAnalyzeStats,
     TaskAnalyzeWarning,
     TaskAnalyzer,
 } from "./task-analyzer.types";
-
-function isObject(value: unknown): value is Record<string, any> {
-    return typeof value === "object" && value !== null;
-}
 
 async function exists(filePath: string) {
     try {
@@ -73,16 +67,6 @@ async function resolveBuildOutputPath(projectRoot: string, isAngular: boolean): 
     return projectRoot;
 }
 
-function parseStats(statsPath: string, json: unknown): TaskAnalyzeStats | null {
-    if (!isObject(json)) return null;
-    if (isObject(json.inputs) && isObject(json.outputs)) return parseEsbuildMetafile(statsPath, json);
-    // TODO: keep moving generic webpack stats behavior into WebpackStatsAnalyzer as analyzer responsibilities settle.
-    if (Array.isArray(json.assets) || Array.isArray(json.chunks) || Array.isArray(json.modules)) {
-        return parseWebpackStats(statsPath, json);
-    }
-    return null;
-}
-
 async function cleanupStatsJson(statsPath: string): Promise<TaskAnalyzeWarning | null> {
     if (path.basename(statsPath) !== "stats.json") return null;
 
@@ -104,6 +88,7 @@ async function cleanupStatsJson(statsPath: string): Promise<TaskAnalyzeWarning |
 
 export class AngularStatsAnalyzer implements TaskAnalyzer {
     name = "official-stats-json";
+    private statsJsonAnalyzer = new StatsJsonAnalyzer();
 
     supports(ctx: TaskAnalyzeContext): boolean {
         return ctx.spec.kind === "build" && ctx.runtime.status === "success";
@@ -120,8 +105,11 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
         const statsPath = await findStatsJsonCandidates(ctx.spec.projectRoot, outputPath);
         if (!statsPath) return null;
 
-        const text = await fs.readFile(statsPath, "utf8");
-        const stats = parseStats(statsPath, JSON.parse(text));
+        const parsed = await this.statsJsonAnalyzer.analyze(statsPath);
+        if (ctx.diagnostics && parsed.diagnostics.length > 0) {
+            ctx.diagnostics.push(...parsed.diagnostics);
+        }
+        const stats = parsed.stats;
         if (!stats) return null;
         const cleanupWarning = await cleanupStatsJson(statsPath);
         const allAssets = await scanDistAssets(outputPath, { includeMap: true });

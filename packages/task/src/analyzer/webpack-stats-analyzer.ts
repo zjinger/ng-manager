@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { scanDistAssets } from "./dist-scanner";
 import { buildDeploymentRiskInsights } from "./insights/deployment-risk-insights";
-import { parseWebpackStats } from "./parsers/webpack-stats.parser";
 import { detectProjectBuild } from "./project-build-detector";
+import { StatsJsonAnalyzer } from "./stats-json-analyzer";
 import { summarizeAssets } from "./utils/asset-summary";
 import type {
     TaskAnalyzeContext,
@@ -47,12 +47,9 @@ async function resolveDistPath(projectRoot: string): Promise<string> {
     return projectRoot;
 }
 
-function isObject(value: unknown): value is Record<string, any> {
-    return typeof value === "object" && value !== null;
-}
-
 export class WebpackStatsAnalyzer implements TaskAnalyzer {
     name = "webpack-stats-json";
+    private statsJsonAnalyzer = new StatsJsonAnalyzer();
 
     supports(ctx: TaskAnalyzeContext): boolean {
         if (ctx.spec.kind !== "build" || ctx.runtime.status !== "success") return false;
@@ -69,10 +66,22 @@ export class WebpackStatsAnalyzer implements TaskAnalyzer {
         const statsPath = await findStatsJson(ctx.spec.projectRoot);
         if (!statsPath) return null;
 
-        const json = JSON.parse(await fs.readFile(statsPath, "utf8"));
-        if (!isObject(json)) return null;
-
-        const stats = parseWebpackStats(statsPath, json);
+        const parsed = await this.statsJsonAnalyzer.analyze(statsPath);
+        if (ctx.diagnostics && parsed.diagnostics.length > 0) {
+            ctx.diagnostics.push(...parsed.diagnostics);
+        }
+        const stats = parsed.stats;
+        if (!stats || stats.format !== "webpack-stats") {
+            ctx.diagnostics?.push({
+                analyzer: this.name,
+                status: "skipped",
+                phase: "parse",
+                message: stats ? "stats.json 可解析，但格式不是 webpack-stats。" : "stats.json 解析失败。",
+                data: { statsPath, format: stats?.format },
+                createdAt: Date.now(),
+            });
+            return null;
+        }
         const outputPath = await resolveDistPath(ctx.spec.projectRoot);
         const allAssets = await scanDistAssets(outputPath, { includeMap: true });
         const assets = allAssets.filter((asset) => asset.type !== "map");

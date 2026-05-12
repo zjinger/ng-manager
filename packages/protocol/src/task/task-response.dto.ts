@@ -92,14 +92,18 @@ export interface TaskAnalyzeResultDto {
     diagnostics?: TaskAnalyzeDiagnosticDto[];
 }
 
-export type TaskAnalyzeDiagnosticStatusDto = "supported" | "skipped" | "failed" | "no-report" | "succeeded";
+export type TaskAnalyzeDiagnosticStatusDto = "success" | "skipped" | "failed" | "supported" | "no-report" | "succeeded";
+
+export type TaskAnalyzeDiagnosticPhaseDto = "detect" | "supports" | "analyze" | "parse" | "fallback";
 
 export interface TaskAnalyzeDiagnosticDto {
     analyzer: string;
     status: TaskAnalyzeDiagnosticStatusDto;
-    phase: "supports" | "analyze";
+    phase: TaskAnalyzeDiagnosticPhaseDto;
     message?: string;
+    error?: string;
     data?: unknown;
+    createdAt: number;
 }
 
 export interface TaskDashboardDto {

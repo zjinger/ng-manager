@@ -12,6 +12,11 @@ interface AnalyzerPlan {
     fallback: TaskAnalyzer[];
 }
 
+interface AnalyzerStep {
+    analyzer: TaskAnalyzer;
+    stage: "primary" | "custom" | "fallback";
+}
+
 export class TaskAnalyzerService {
     private reportsByRunId = new Map<string, TaskAnalyzeResult>();
     private latestReportByTaskId = new Map<string, TaskAnalyzeResult>();
@@ -31,20 +36,45 @@ export class TaskAnalyzerService {
             return null;
         }
 
-        this.latestReportByTaskId.delete(spec.id);
         this.latestDiagnosticsByTaskId.delete(spec.id);
 
-        const detection = await detectProjectBuild(spec.projectRoot);
-        const plan = this.createPlan(detection);
-        const analyzers = [
-            ...plan.primary,
-            ...(this.customAnalyzers ?? []),
-            ...plan.fallback,
-        ];
         const diagnostics: TaskAnalyzeDiagnostic[] = [];
+        const pushDiagnostic = (item: Omit<TaskAnalyzeDiagnostic, "createdAt">) => {
+            diagnostics.push({ ...item, createdAt: Date.now() });
+        };
 
-        if (analyzers.length === 0) {
-            diagnostics.push({
+        let detection: ProjectBuildDetection;
+        try {
+            detection = await detectProjectBuild(spec.projectRoot);
+            pushDiagnostic({
+                analyzer: "project-build-detector",
+                status: "success",
+                phase: "detect",
+                message: "项目构建类型检测成功。",
+                data: detection,
+            });
+        } catch (e: any) {
+            pushDiagnostic({
+                analyzer: "project-build-detector",
+                status: "failed",
+                phase: "detect",
+                message: "项目构建类型检测失败。",
+                error: e?.message ?? String(e),
+                data: { projectRoot: spec.projectRoot },
+            });
+            this.storeDiagnostics(spec.id, runtime.runId, diagnostics);
+            return null;
+        }
+
+        const plan = this.createPlan(detection);
+        const steps: AnalyzerStep[] = [
+            ...plan.primary.map((analyzer) => ({ analyzer, stage: "primary" as const })),
+            ...(this.customAnalyzers ?? []).map((analyzer) => ({ analyzer, stage: "custom" as const })),
+            ...plan.fallback.map((analyzer) => ({ analyzer, stage: "fallback" as const })),
+        ];
+
+        if (steps.length === 0) {
+            pushDiagnostic({
                 analyzer: "task-analyzer-plan",
                 status: "skipped",
                 phase: "supports",
@@ -53,8 +83,20 @@ export class TaskAnalyzerService {
             });
         }
 
-        for (const analyzer of analyzers) {
-            const report = await this.tryAnalyze(analyzer, spec, runtime, detection, diagnostics);
+        let fallbackTracked = false;
+        for (const step of steps) {
+            if (step.stage === "fallback" && !fallbackTracked) {
+                fallbackTracked = true;
+                pushDiagnostic({
+                    analyzer: step.analyzer.name,
+                    status: "success",
+                    phase: "fallback",
+                    message: "进入 fallback analyzer 阶段。",
+                    data: { buildTool: detection.buildTool },
+                });
+            }
+
+            const report = await this.tryAnalyze(step.analyzer, spec, runtime, detection, diagnostics);
             if (!report) continue;
 
             report.diagnostics = diagnostics;
@@ -111,22 +153,27 @@ export class TaskAnalyzerService {
         diagnostics: TaskAnalyzeDiagnostic[]
     ): Promise<TaskAnalyzeResult | null> {
         const ctx = { spec, runtime, detection };
+        const pushDiagnostic = (item: Omit<TaskAnalyzeDiagnostic, "createdAt">) => {
+            diagnostics.push({ ...item, createdAt: Date.now() });
+        };
+        const ctxWithDiagnostics = { ...ctx, diagnostics };
 
         let supported = false;
         try {
-            supported = analyzer.supports(ctx);
+            supported = analyzer.supports(ctxWithDiagnostics);
         } catch (e: any) {
-            diagnostics.push({
+            pushDiagnostic({
                 analyzer: analyzer.name,
                 status: "failed",
                 phase: "supports",
-                message: e?.message ?? String(e),
+                message: "supports(ctx) 执行失败。",
+                error: e?.message ?? String(e),
             });
             return null;
         }
 
         if (!supported) {
-            diagnostics.push({
+            pushDiagnostic({
                 analyzer: analyzer.name,
                 status: "skipped",
                 phase: "supports",
@@ -135,28 +182,29 @@ export class TaskAnalyzerService {
             return null;
         }
 
-        diagnostics.push({
+        pushDiagnostic({
             analyzer: analyzer.name,
-            status: "supported",
+            status: "success",
             phase: "supports",
         });
 
         try {
-            const report = await analyzer.analyze(ctx);
-            diagnostics.push({
+            const report = await analyzer.analyze(ctxWithDiagnostics);
+            pushDiagnostic({
                 analyzer: analyzer.name,
-                status: report ? "succeeded" : "no-report",
+                status: report ? "success" : "skipped",
                 phase: "analyze",
                 message: report ? undefined : "Analyzer returned null.",
             });
             return report;
         } catch (e: any) {
             // Keep fallback analyzers available even when a primary analyzer fails.
-            diagnostics.push({
+            pushDiagnostic({
                 analyzer: analyzer.name,
                 status: "failed",
                 phase: "analyze",
-                message: e?.message ?? String(e),
+                message: "analyze(ctx) 执行失败。",
+                error: e?.message ?? String(e),
             });
             return null;
         }

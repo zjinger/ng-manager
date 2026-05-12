@@ -16,6 +16,7 @@ export type {
     TaskAnalyzeSummaryDto,
     TaskAnalyzeDiagnosticDto,
     TaskAnalyzeDiagnosticsResponseDto,
+    TaskAnalyzeDiagnosticPhaseDto,
     TaskAnalyzeDiagnosticStatusDto,
     TaskAssetInfoDto,
     TaskAssetTypeDto,
