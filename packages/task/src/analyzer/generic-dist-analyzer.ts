@@ -6,6 +6,7 @@ import { summarizeAssets } from "./utils/asset-summary";
 import type {
     TaskAnalyzeContext,
     TaskAnalyzeChunk,
+    TaskAnalyzeDiagnostic,
     TaskAnalyzeResult,
     TaskAnalyzeStats,
     TaskAnalyzer,
@@ -20,6 +21,14 @@ async function exists(filePath: string) {
     }
 }
 
+async function isDirectory(filePath: string) {
+    try {
+        return (await fs.stat(filePath)).isDirectory();
+    } catch {
+        return false;
+    }
+}
+
 async function resolveDistPath(projectRoot: string): Promise<string | null> {
     const candidates = [
         path.resolve(projectRoot, "dist"),
@@ -27,10 +36,14 @@ async function resolveDistPath(projectRoot: string): Promise<string | null> {
     ];
 
     for (const candidate of candidates) {
-        if (await exists(candidate)) return candidate;
+        if (await isDirectory(candidate)) return candidate;
     }
 
     return null;
+}
+
+function pushDiagnostic(ctx: TaskAnalyzeContext, item: Omit<TaskAnalyzeDiagnostic, "createdAt">) {
+    ctx.diagnostics?.push({ ...item, createdAt: Date.now() });
 }
 
 export class GenericDistAnalyzer implements TaskAnalyzer {
@@ -50,13 +63,42 @@ export class GenericDistAnalyzer implements TaskAnalyzer {
         if (!this.supports(ctx)) return null;
 
         const outputPath = await resolveDistPath(ctx.spec.projectRoot);
-        if (!outputPath) return null;
+        if (!outputPath) {
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "skipped",
+                phase: "analyze",
+                message: "未找到明确的通用构建输出目录，仅允许扫描 dist 或 build。",
+                data: {
+                    projectRoot: ctx.spec.projectRoot,
+                    candidates: ["dist", "build"],
+                },
+            });
+            return null;
+        }
+
+        pushDiagnostic(ctx, {
+            analyzer: this.name,
+            status: "success",
+            phase: "analyze",
+            message: "已选择通用构建输出目录。",
+            data: { outputPath },
+        });
 
         const allAssets = await scanDistAssets(outputPath, { includeMap: true });
         const assets = allAssets.filter((asset) => asset.type !== "map");
-        if (assets.length === 0) return null;
+        if (assets.length === 0) {
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "skipped",
+                phase: "analyze",
+                message: "构建输出目录存在，但未扫描到可分析的产物文件。",
+                data: { outputPath },
+            });
+            return null;
+        }
 
-        const manifestStats = await readViteManifest(outputPath, assets);
+        const manifestStats = await readViteManifest(outputPath, assets, ctx);
         const stats: TaskAnalyzeStats = manifestStats ?? {
             statsPath: outputPath,
             format: "unknown",
@@ -91,15 +133,33 @@ export class GenericDistAnalyzer implements TaskAnalyzer {
 
 async function readViteManifest(
     outputPath: string,
-    assets: Array<{ relativePath: string; rawSize: number }>
+    assets: Array<{ relativePath: string; rawSize: number }>,
+    ctx: TaskAnalyzeContext
 ): Promise<TaskAnalyzeStats | null> {
     const manifestPath = path.resolve(outputPath, ".vite", "manifest.json");
-    if (!await exists(manifestPath)) return null;
+    if (!await exists(manifestPath)) {
+        pushDiagnostic(ctx, {
+            analyzer: "generic-dist",
+            status: "skipped",
+            phase: "parse",
+            message: "未检测到 Vite manifest，将仅生成基础 dist assets report。",
+            data: { manifestPath },
+        });
+        return null;
+    }
 
     let json: Record<string, any>;
     try {
         json = JSON.parse(await fs.readFile(manifestPath, "utf8"));
-    } catch {
+    } catch (e: any) {
+        pushDiagnostic(ctx, {
+            analyzer: "generic-dist",
+            status: "failed",
+            phase: "parse",
+            message: "检测到 Vite manifest，但解析失败；将继续生成基础 dist assets report。",
+            error: e?.message ?? String(e),
+            data: { manifestPath },
+        });
         return null;
     }
 
@@ -123,6 +183,17 @@ async function readViteManifest(
         })
         .filter((chunk) => chunk.files.length > 0 || chunk.rawSize > 0)
         .sort((a, b) => b.rawSize - a.rawSize);
+
+    pushDiagnostic(ctx, {
+        analyzer: "generic-dist",
+        status: "success",
+        phase: "parse",
+        message: "已解析 Vite manifest。",
+        data: {
+            manifestPath,
+            chunkCount: chunks.length,
+        },
+    });
 
     return {
         statsPath: manifestPath,

@@ -1,25 +1,26 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { CommonModule } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   inject,
   Input,
-  OnInit,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { TaskKind, TaskRow, TaskRuntime } from '@models/task.model';
 import type { TaskDashboardDto } from '@yinuo-ngm/protocol';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipDirective, NzTooltipModule } from 'ng-zorro-antd/tooltip';
-import { interval } from 'rxjs';
 
 @Component({
   selector: 'app-task-dashboard',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     NzIconModule,
@@ -471,21 +472,29 @@ import { interval } from 'rxjs';
     `,
   ],
 })
-export class TaskDashboardComponent implements OnInit {
+export class TaskDashboardComponent implements OnChanges, OnDestroy {
   @Input() taskRow: TaskRow | null = null;
   @Input() taskDashboard: TaskDashboardDto | null = null;
   @Input() taskKind: TaskKind | undefined;
+  @Input() active = false;
 
-  private destroyRef = inject(DestroyRef);
   private clipboard = inject(Clipboard);
+  private liveTimer: ReturnType<typeof setInterval> | null = null;
 
   private _liveNow = signal(Date.now());
   copiedUrl = '';
 
-  ngOnInit() {
-    interval(1000)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this._liveNow.set(Date.now()));
+  ngOnChanges(changes: SimpleChanges) {
+    if (!('active' in changes)) return;
+    if (this.active) {
+      this.startLiveTicker();
+      return;
+    }
+    this.stopLiveTicker();
+  }
+
+  ngOnDestroy() {
+    this.stopLiveTicker();
   }
 
   get runtime(): TaskRuntime | undefined {
@@ -564,5 +573,16 @@ export class TaskDashboardComponent implements OnInit {
     if (hours > 0) return `${hours}h ${restMinutes}m ${restSeconds}s`;
     if (minutes > 0) return `${minutes}m ${restSeconds}s`;
     return `${restSeconds}s`;
+  }
+
+  private startLiveTicker() {
+    if (this.liveTimer) return;
+    this.liveTimer = setInterval(() => this._liveNow.set(Date.now()), 1000);
+  }
+
+  private stopLiveTicker() {
+    if (!this.liveTimer) return;
+    clearInterval(this.liveTimer);
+    this.liveTimer = null;
   }
 }

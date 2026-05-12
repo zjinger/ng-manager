@@ -5,6 +5,7 @@ import { calcGzipSize } from "./gzip-size";
 import type { TaskAssetInfo, TaskAssetType } from "./task-analyzer.types";
 
 const maxCompressedSizeBytes = 5 * 1024 * 1024;
+const ignoredDistDirs = new Set(["node_modules", ".git", ".angular", ".vite", ".cache", "coverage"]);
 
 function getAssetType(ext: string): TaskAssetType {
     const lower = ext.toLowerCase();
@@ -50,6 +51,7 @@ export async function scanDistAssets(
             const fullPath = path.join(dir, entry.name);
 
             if (entry.isDirectory()) {
+                if (ignoredDistDirs.has(entry.name)) continue;
                 await walk(fullPath);
                 continue;
             }

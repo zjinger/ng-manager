@@ -91,7 +91,9 @@ export class AngularStatsAnalyzer implements TaskAnalyzer {
     private statsJsonAnalyzer = new StatsJsonAnalyzer();
 
     supports(ctx: TaskAnalyzeContext): boolean {
-        return ctx.spec.kind === "build" && ctx.runtime.status === "success";
+        if (ctx.spec.kind !== "build" || ctx.runtime.status !== "success") return false;
+        if (!ctx.detection) return true;
+        return ctx.detection.framework === "angular";
     }
 
     async analyze(ctx: TaskAnalyzeContext): Promise<TaskAnalyzeResult | null> {

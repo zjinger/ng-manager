@@ -7,6 +7,10 @@ import { StatsJsonAnalyzer } from "./stats-json-analyzer";
 import { summarizeAssets } from "./utils/asset-summary";
 import type {
     TaskAnalyzeContext,
+    TaskAnalyzeDiagnostic,
+    TaskAnalyzeStats,
+    TaskAssetInfo,
+    TaskAssetType,
     TaskAnalyzeResult,
     TaskAnalyzer,
 } from "./task-analyzer.types";
@@ -20,6 +24,22 @@ async function exists(filePath: string) {
     }
 }
 
+async function isDirectory(filePath: string) {
+    try {
+        return (await fs.stat(filePath)).isDirectory();
+    } catch {
+        return false;
+    }
+}
+
+async function isFile(filePath: string) {
+    try {
+        return (await fs.stat(filePath)).isFile();
+    } catch {
+        return false;
+    }
+}
+
 async function findStatsJson(projectRoot: string): Promise<string | null> {
     const candidates = [
         path.resolve(projectRoot, "dist", "stats.json"),
@@ -28,13 +48,13 @@ async function findStatsJson(projectRoot: string): Promise<string | null> {
     ];
 
     for (const candidate of candidates) {
-        if (await exists(candidate)) return candidate;
+        if (await isFile(candidate)) return candidate;
     }
 
     return null;
 }
 
-async function resolveDistPath(projectRoot: string): Promise<string> {
+async function resolveDistPath(projectRoot: string): Promise<string | null> {
     const candidates = [
         path.resolve(projectRoot, "dist"),
         path.resolve(projectRoot, "build"),
@@ -44,7 +64,52 @@ async function resolveDistPath(projectRoot: string): Promise<string> {
         if (await exists(candidate)) return candidate;
     }
 
-    return projectRoot;
+    return null;
+}
+
+function pushDiagnostic(ctx: TaskAnalyzeContext, item: Omit<TaskAnalyzeDiagnostic, "createdAt">) {
+    ctx.diagnostics?.push({ ...item, createdAt: Date.now() });
+}
+
+function assetTypeFromFile(fileName: string): TaskAssetType {
+    const ext = path.extname(fileName).toLowerCase();
+    if (ext === ".js" || ext === ".mjs" || ext === ".cjs") return "js";
+    if (ext === ".css") return "css";
+    if (ext === ".html") return "html";
+    if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"].includes(ext)) return "image";
+    if ([".woff", ".woff2", ".ttf", ".otf", ".eot"].includes(ext)) return "font";
+    if (ext === ".map") return "map";
+    return "asset";
+}
+
+function assetsFromWebpackStats(stats: TaskAnalyzeStats, statsPath: string): TaskAssetInfo[] {
+    const assets: TaskAssetInfo[] = [];
+    let total = 0;
+
+    for (const chunk of stats.chunks) {
+        const files = chunk.files.length > 0 ? chunk.files : [chunk.name];
+        const sizePerFile = files.length > 0 ? Math.floor(chunk.rawSize / files.length) : chunk.rawSize;
+
+        for (const file of files) {
+            const rawSize = sizePerFile || chunk.rawSize || 0;
+            if (rawSize <= 0) continue;
+            total += rawSize;
+            assets.push({
+                name: path.basename(file),
+                path: path.resolve(path.dirname(statsPath), file),
+                relativePath: file.replace(/\\/g, "/"),
+                ext: path.extname(file),
+                type: assetTypeFromFile(file),
+                rawSize,
+            });
+        }
+    }
+
+    for (const asset of assets) {
+        asset.ratio = total > 0 ? asset.rawSize / total : 0;
+    }
+
+    return assets.sort((a, b) => b.rawSize - a.rawSize);
 }
 
 export class WebpackStatsAnalyzer implements TaskAnalyzer {
@@ -64,7 +129,27 @@ export class WebpackStatsAnalyzer implements TaskAnalyzer {
         if (detection.buildTool !== "webpack" && detection.buildTool !== "vue-cli-webpack") return null;
 
         const statsPath = await findStatsJson(ctx.spec.projectRoot);
-        if (!statsPath) return null;
+        if (!statsPath) {
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "skipped",
+                phase: "analyze",
+                message: "未在允许范围内找到 stats.json。",
+                data: {
+                    projectRoot: ctx.spec.projectRoot,
+                    candidates: ["dist/stats.json", "build/stats.json", "stats.json"],
+                },
+            });
+            return null;
+        }
+
+        pushDiagnostic(ctx, {
+            analyzer: this.name,
+            status: "success",
+            phase: "analyze",
+            message: "已找到 webpack stats.json。",
+            data: { statsPath },
+        });
 
         const parsed = await this.statsJsonAnalyzer.analyze(statsPath);
         if (ctx.diagnostics && parsed.diagnostics.length > 0) {
@@ -72,19 +157,45 @@ export class WebpackStatsAnalyzer implements TaskAnalyzer {
         }
         const stats = parsed.stats;
         if (!stats || stats.format !== "webpack-stats") {
-            ctx.diagnostics?.push({
+            pushDiagnostic(ctx, {
                 analyzer: this.name,
                 status: "skipped",
                 phase: "parse",
                 message: stats ? "stats.json 可解析，但格式不是 webpack-stats。" : "stats.json 解析失败。",
                 data: { statsPath, format: stats?.format },
-                createdAt: Date.now(),
             });
             return null;
         }
         const outputPath = await resolveDistPath(ctx.spec.projectRoot);
-        const allAssets = await scanDistAssets(outputPath, { includeMap: true });
-        const assets = allAssets.filter((asset) => asset.type !== "map");
+        let allAssets: TaskAssetInfo[] = [];
+        let assets: TaskAssetInfo[] = [];
+
+        if (outputPath) {
+            allAssets = await scanDistAssets(outputPath, { includeMap: true });
+            assets = allAssets.filter((asset) => asset.type !== "map");
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "success",
+                phase: "analyze",
+                message: "已选择 webpack 构建输出目录用于 assets 扫描。",
+                data: { outputPath },
+            });
+        } else {
+            assets = assetsFromWebpackStats(stats, statsPath);
+            allAssets = assets;
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "skipped",
+                phase: "analyze",
+                message: "未找到 dist/build，跳过输出目录扫描，仅基于 stats.json 生成报告。",
+                data: {
+                    projectRoot: ctx.spec.projectRoot,
+                    candidates: ["dist", "build"],
+                    statsPath,
+                },
+            });
+        }
+
         const summary = summarizeAssets(assets);
         stats.insights = [
             ...stats.insights,
@@ -98,7 +209,7 @@ export class WebpackStatsAnalyzer implements TaskAnalyzer {
             analyzer: this.name,
             createdAt: Date.now(),
             summary: {
-                outputPath,
+                outputPath: outputPath ?? undefined,
                 durationMs: ctx.runtime.startedAt && ctx.runtime.stoppedAt
                     ? Math.max(0, ctx.runtime.stoppedAt - ctx.runtime.startedAt)
                     : undefined,

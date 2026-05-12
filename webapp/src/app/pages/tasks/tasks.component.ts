@@ -57,10 +57,12 @@ import { TaskListComponent } from './task-list/task-list.component';
       <nz-layout class="page">
         <app-task-list></app-task-list>
         <nz-content class="content">
+          @let task = selectedTask();
+          @let views = selectedViews();
           <app-task-header
-            [name]="selectedTask()?.spec?.name"
-            [description]="selectedTask()?.spec?.description"
-            [command]="selectedTask()?.spec?.displayCommand || selectedTask()?.spec?.command"
+            [name]="task?.spec?.name"
+            [description]="task?.spec?.description"
+            [command]="task?.spec?.displayCommand || task?.spec?.command"
           ></app-task-header>
           <app-task-actions
             [isStopping]="taskState.isStopping()"
@@ -72,7 +74,7 @@ import { TaskListComponent } from './task-list/task-list.component';
           </app-task-actions>
           <div class="task-panel-shell">
             <div class="task-panel-switcher">
-              @for (view of selectedViews(); track view.id) {
+              @for (view of views; track view.id) {
               <button
                 type="button"
                 nz-button
@@ -88,7 +90,7 @@ import { TaskListComponent } from './task-list/task-list.component';
             </div>
 
             <div class="task-panel-body">
-              @for (view of selectedViews(); track view.id) {
+              @for (view of views; track view.id) {
               <div class="task-panel" [class.panel-hidden]="selectedViewId !== view.id">
                 @switch (view.id) {
                 @case ('output') {
@@ -99,16 +101,17 @@ import { TaskListComponent } from './task-list/task-list.component';
                 }
                 @case ('dashboard') {
                 <app-task-dashboard
-                  [taskRow]="selectedTask()"
+                  [taskRow]="task"
                   [taskDashboard]="taskDashboard"
-                  [taskKind]="selectedTask()?.spec?.kind"
+                  [taskKind]="task?.spec?.kind"
+                  [active]="selectedViewId === 'dashboard'"
                 ></app-task-dashboard>
                 }
                 @case ('analyzer') {
                 <app-task-analysis
                   [taskId]="taskState.selectedTaskId()"
-                  [taskKind]="selectedTask()?.spec?.kind"
-                  [runtime]="selectedTask()?.runtime"
+                  [taskKind]="task?.spec?.kind"
+                  [runtime]="task?.runtime"
                 ></app-task-analysis>
                 }
                 }
@@ -206,7 +209,6 @@ export class TasksComponent {
   selectedViewId: TaskViewIdDto = 'output';
   taskDashboard: TaskDashboardDto | null = null;
   private loadedDashboardTaskId = '';
-  private dashboardUpdateTimer: ReturnType<typeof setTimeout> | null = null;
   @ViewChild(TaskConsoleComponent) private taskConsole?: TaskConsoleComponent;
 
   constructor() {
@@ -244,12 +246,6 @@ export class TasksComponent {
         this.loadDashboard(taskId, { force: true });
       });
 
-    this.destroyRef.onDestroy(() => {
-      if (this.dashboardUpdateTimer) {
-        clearTimeout(this.dashboardUpdateTimer);
-        this.dashboardUpdateTimer = null;
-      }
-    });
   }
 
   selectedViews(): TaskViewDefinitionDto[] {
@@ -305,13 +301,7 @@ export class TasksComponent {
   }
 
   private setTaskDashboard(dashboard: TaskDashboardDto | null) {
-    if (this.dashboardUpdateTimer) {
-      clearTimeout(this.dashboardUpdateTimer);
-    }
-    this.dashboardUpdateTimer = setTimeout(() => {
-      this.dashboardUpdateTimer = null;
-      this.taskDashboard = dashboard;
-    }, 0);
+    this.taskDashboard = dashboard;
   }
 
   private dashboardFromReport(report: TaskAnalyzeResultDto): TaskDashboardDto {
