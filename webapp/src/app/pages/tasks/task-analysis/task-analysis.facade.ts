@@ -1,0 +1,291 @@
+import { Injectable, computed, signal } from '@angular/core';
+import type { TaskKind, TaskRuntime } from '@models/task.model';
+import type {
+  TaskAnalyzeDiagnosticDto,
+  TaskAnalyzeReportSummaryDto,
+  TaskAnalyzeResultDto,
+  TaskAssetInfoDto,
+} from '@yinuo-ngm/protocol';
+import type { AnalysisInsight, InsightCategory, InsightGroup, TreemapCell } from './task-analysis.types';
+
+@Injectable()
+export class TaskAnalysisFacade {
+  private _taskId = signal('');
+  private _taskKind = signal<TaskKind | undefined>(undefined);
+  readonly report = signal<TaskAnalyzeResultDto | null>(null);
+  readonly diagnostics = signal<TaskAnalyzeDiagnosticDto[]>([]);
+  readonly history = signal<TaskAnalyzeReportSummaryDto[]>([]);
+  readonly historyError = signal('');
+  readonly runtimeSnapshot = signal<TaskRuntime | null>(null);
+  readonly loading = signal(false);
+  readonly analyzing = signal(false);
+  readonly error = signal('');
+
+  readonly topAssets = computed<TaskAssetInfoDto[]>(() => (this.report()?.assets ?? []).slice(0, 8));
+  readonly assets = computed<TaskAssetInfoDto[]>(() => this.report()?.assets ?? []);
+  readonly assetViewportHeight = computed(() => {
+    const len = this.assets().length;
+    if (len === 0) return 80;
+    return Math.min(360, Math.max(80, len * 40));
+  });
+  readonly useVirtualAssetTable = computed(() => this.assets().length > 200);
+  readonly statsChunks = computed(() => (this.report()?.stats?.chunks ?? []).slice(0, 8));
+  readonly statsDependencies = computed(() => (this.report()?.stats?.dependencies ?? []).slice(0, 8));
+  readonly statsModules = computed(() => (this.report()?.stats?.modules ?? []).slice(0, 10));
+  readonly statsInsights = computed(() => {
+    const report = this.report();
+    const insights = report?.stats?.insights ?? [];
+    const statsJsonCleaned = (report?.warnings ?? []).some((warning) => warning.code === 'stats-json-cleaned');
+    const hasStatsJsonAsset = (report?.assets ?? []).some((asset) => asset.name === 'stats.json');
+    if (!statsJsonCleaned && hasStatsJsonAsset) return insights;
+    return insights.filter((insight) => insight.code !== 'deployment-stats-json');
+  });
+  readonly reportWarningsAsInsights = computed(() =>
+    (this.report()?.warnings ?? [])
+      .filter((warning) => warning.code !== 'stats-json-cleaned')
+      .map((warning) => ({
+        level: 'warning' as const,
+        code: `warning:${warning.code}`,
+        message: warning.message,
+        category: warning.code === 'stats-json-cleanup-failed' ? 'risk' as const : 'diagnostic' as const,
+        data: warning.data,
+      }))
+  );
+  readonly analysisInsights = computed(() => {
+    const priority = new Map<string, number>([
+      ['risk', 0],
+      ['budget', 1],
+      ['optimization', 2],
+      ['migration', 3],
+      ['diagnostic', 4],
+    ]);
+    return this.uniqueInsights([...this.reportWarningsAsInsights(), ...this.statsInsights()])
+      .sort((a, b) => (priority.get(a.category ?? 'diagnostic') ?? 4) - (priority.get(b.category ?? 'diagnostic') ?? 4));
+  });
+  readonly buildInsights = computed<AnalysisInsight[]>(() =>
+    this.analysisInsights().filter((insight) => (insight.category ?? 'diagnostic') !== 'diagnostic')
+  );
+  readonly insightGroups = computed<InsightGroup[]>(() => {
+    const categories: InsightCategory[] = ['risk', 'budget', 'optimization', 'migration'];
+    return categories
+      .map((category) => ({
+        category,
+        label: this.insightLabel(category),
+        items: this.buildInsights().filter((insight) => (insight.category ?? 'diagnostic') === category),
+      }))
+      .filter((group) => group.items.length > 0);
+  });
+  readonly diagnosticInsights = computed(() => this.diagnostics());
+  readonly diagnosticInsightCount = computed(() => this.diagnosticInsights().length);
+  readonly historyRows = computed(() => this.history().slice(0, 10));
+  readonly previousHistory = computed(() => {
+    const currentRunId = this.report()?.runId;
+    const rows = this.historyRows();
+    if (!currentRunId) return rows[1] ?? rows[0] ?? null;
+    return rows.find((item) => item.runId !== currentRunId) ?? null;
+  });
+  readonly rawDelta = computed(() => {
+    const prev = this.previousHistory();
+    const cur = this.report()?.summary;
+    if (!prev || !cur) return null;
+    return cur.totalRawSize - prev.totalRawSize;
+  });
+  readonly gzipDelta = computed(() => {
+    const prev = this.previousHistory();
+    const cur = this.report()?.summary;
+    if (!prev || !cur) return null;
+    return cur.totalGzipSize - prev.totalGzipSize;
+  });
+  readonly durationDelta = computed(() => {
+    const prev = this.previousHistory();
+    const cur = this.report()?.summary;
+    if (!prev || !cur || typeof cur.durationMs !== 'number' || typeof prev.durationMs !== 'number') return null;
+    return cur.durationMs - prev.durationMs;
+  });
+  readonly historyDeltaItems = computed(() => ([
+    { label: 'Raw', value: this.formatDeltaSize(this.rawDelta()), className: this.deltaClass(this.rawDelta()) },
+    { label: 'Gzip', value: this.formatDeltaSize(this.gzipDelta()), className: this.deltaClass(this.gzipDelta()) },
+    { label: 'Duration', value: this.formatDeltaMs(this.durationDelta()), className: this.deltaClass(this.durationDelta()) },
+  ]));
+  readonly emptyText = computed(() => {
+    if (this.loading() || this.analyzing()) return '正在加载分析报告...';
+    return this.error() || '暂无分析报告，build 成功后会自动生成。';
+  });
+  readonly showRuntimeAnalysis = computed(() => this._taskKind() === 'serve');
+  readonly runtimeUrls = computed(() => this.runtimeSnapshot()?.urls ?? []);
+  readonly treemapCells = computed<TreemapCell[]>(() => {
+    const allAssets = this.report()?.assets ?? [];
+    if (!allAssets.length) return [];
+
+    const top = allAssets.slice(0, 20);
+    const totalSize = top.reduce((sum, a) => sum + (a.rawSize || 0), 0);
+    if (totalSize <= 0) return [];
+
+    const totalCells = 100;
+    const cells: TreemapCell[] = [];
+    for (const asset of top) {
+      const ratio = (asset.rawSize || 0) / totalSize;
+      const span = Math.max(1, Math.round(ratio * totalCells));
+      cells.push({
+        name: asset.name,
+        relativePath: asset.relativePath,
+        size: asset.rawSize || 0,
+        ratio,
+        type: asset.type,
+        colSpan: span,
+        rowSpan: 1,
+        color: this.getTypeColor(asset.type),
+      });
+    }
+    const currentTotal = cells.reduce((sum, c) => sum + c.colSpan, 0);
+    if (currentTotal > totalCells && cells.length > 0) {
+      const diff = currentTotal - totalCells;
+      cells[cells.length - 1].colSpan = Math.max(1, cells[cells.length - 1].colSpan - diff);
+    }
+    return cells;
+  });
+
+  get taskId() {
+    return this._taskId();
+  }
+
+  setTaskId(value: string) {
+    if (value === this._taskId()) return;
+    this._taskId.set(value);
+    this.report.set(null);
+    this.diagnostics.set([]);
+    this.history.set([]);
+    this.historyError.set('');
+    this.error.set('');
+    this.loading.set(false);
+    this.analyzing.set(false);
+  }
+
+  setTaskKind(value: TaskKind | undefined) {
+    this._taskKind.set(value);
+  }
+
+  setRuntime(value: TaskRuntime | null) {
+    this.runtimeSnapshot.set(value);
+  }
+
+  setReport(value: TaskAnalyzeResultDto | null) {
+    this.report.set(value);
+  }
+
+  setDiagnostics(value: TaskAnalyzeDiagnosticDto[]) {
+    this.diagnostics.set(value);
+  }
+
+  setHistory(value: TaskAnalyzeReportSummaryDto[]) {
+    this.history.set(value);
+  }
+
+  setHistoryError(value: string) {
+    this.historyError.set(value);
+  }
+
+  setError(value: string) {
+    this.error.set(value);
+  }
+
+  setLoading(value: boolean) {
+    this.loading.set(value);
+  }
+
+  setAnalyzing(value: boolean) {
+    this.analyzing.set(value);
+  }
+
+  formatSize(size?: number): string {
+    const value = Number(size ?? 0);
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  formatRatio(value?: number): string {
+    return `${((value ?? 0) * 100).toFixed(1)}%`;
+  }
+
+  formatTime(value?: number): string {
+    if (!value) return '-';
+    return new Date(value).toLocaleTimeString();
+  }
+
+  formatMs(value?: number): string {
+    if (typeof value !== 'number') return '-';
+    return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${value}ms`;
+  }
+
+  sizeLevel(size?: number): string {
+    const value = Number(size ?? 0);
+    if (value > 500 * 1024) return 'danger';
+    if (value > 200 * 1024) return 'warning';
+    return 'good';
+  }
+
+  getTypeColor(type: string): string {
+    const map: Record<string, string> = {
+      js: '#1677ff',
+      css: '#52c41a',
+      html: '#722ed1',
+      image: '#fa8c16',
+      font: '#13c2c2',
+      asset: '#8c8c8c',
+    };
+    return map[type] || '#d9d9d9';
+  }
+
+  getTypeIcon(type: string): string {
+    const map: Record<string, string> = {
+      js: 'code',
+      css: 'bg-colors',
+      html: 'html5',
+      image: 'picture',
+      font: 'font-size',
+      asset: 'file',
+    };
+    return map[type] || 'file';
+  }
+
+  private formatDeltaSize(value: number | null): string {
+    if (value === null) return '-';
+    const prefix = value > 0 ? '+' : value < 0 ? '-' : '';
+    return `${prefix}${this.formatSize(Math.abs(value))}`;
+  }
+
+  private formatDeltaMs(value: number | null): string {
+    if (value === null) return '-';
+    const prefix = value > 0 ? '+' : value < 0 ? '-' : '';
+    return `${prefix}${this.formatMs(Math.abs(value))}`;
+  }
+
+  private deltaClass(value: number | null): string {
+    if (value === null || value === 0) return 'neutral';
+    return value > 0 ? 'up' : 'down';
+  }
+
+  private insightLabel(category?: string): string {
+    const map: Record<string, string> = {
+      risk: '风险',
+      optimization: '优化',
+      migration: '迁移',
+      budget: '预算',
+      diagnostic: '诊断',
+    };
+    return map[category ?? 'diagnostic'] ?? '提示';
+  }
+
+  private uniqueInsights(insights: AnalysisInsight[]): AnalysisInsight[] {
+    const seen = new Set<string>();
+    const result: AnalysisInsight[] = [];
+    for (const insight of insights) {
+      const key = `${insight.category ?? 'diagnostic'}:${insight.code}:${insight.message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(insight);
+    }
+    return result;
+  }
+}

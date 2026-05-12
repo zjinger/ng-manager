@@ -1,0 +1,65 @@
+@import '../task-analysis.shared.less';
+
+.diagnostic-section {
+  padding-bottom: 8px;
+}
+
+.diagnostic-details {
+  border: 1px solid #eef1f4;
+}
+
+.diagnostic-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  cursor: pointer;
+  color: #536577;
+  font-weight: 600;
+  list-style: none;
+}
+
+.diagnostic-details summary span { display: inline-flex; align-items: center; gap: 8px; }
+
+.diagnostic-details summary em {
+  color: #8a99a8;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.diagnostic-list {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.diagnostic-item {
+  border-left: 3px solid #d9d9d9;
+  padding: 8px 10px;
+}
+
+.diagnostic-item.success { border-left-color: #52c41a; }
+.diagnostic-item.skipped { border-left-color: #bfbfbf; }
+.diagnostic-item.failed { border-left-color: #ff4d4f; }
+
+.diagnostic-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.diagnostic-main strong { color: #26394d; font-size: 13px; }
+.diagnostic-main span { color: #8a99a8; }
+
+.diagnostic-message,
+.diagnostic-error {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.diagnostic-error {
+  color: #b42318;
+}
