@@ -37,6 +37,7 @@ export async function writeTsConfig(input: {
       (json) => applyJsonPatches(json, input.patches),
       {
         backup: true,
+        cleanupBackupOnSuccess: true,
         atomic: true,
         spaces: 2
       }

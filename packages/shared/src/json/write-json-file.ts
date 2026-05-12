@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { atomicWriteFile } from "../fs/atomic-write-file";
 import { backupFile } from "../fs/backup-file";
 import { fileExists } from "../fs/file-exists";
@@ -38,6 +38,7 @@ export async function writeJsonFile<T = unknown>(
     ensureDir: needEnsureDir = true,
     newline = true,
     backup = false,
+    cleanupBackupOnSuccess = false,
     backupSuffix,
     atomic = true
   } = options;
@@ -77,6 +78,11 @@ export async function writeJsonFile<T = unknown>(
         await ensureDir(dirname(filePath));
       }
       await writeFile(filePath, content, { encoding });
+    }
+
+    if (cleanupBackupOnSuccess && backupPath) {
+      await rm(backupPath, { force: true });
+      backupPath = undefined;
     }
 
     return {

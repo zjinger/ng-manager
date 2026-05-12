@@ -67,6 +67,8 @@ import { ConfigRawEditorComponent } from './config-raw-editor.component';
               <app-config-json-editor
                 [value]="value"
                 [readonly]="isReadonly()"
+                [expectedJsonType]="expectedJsonType()"
+                [jsonExample]="jsonExample()"
                 (valueChange)="emit($event)"
               ></app-config-json-editor>
             }
@@ -89,6 +91,8 @@ import { ConfigRawEditorComponent } from './config-raw-editor.component';
               <app-config-json-editor
                 [value]="value"
                 [readonly]="isReadonly()"
+                [expectedJsonType]="expectedJsonType()"
+                [jsonExample]="jsonExample()"
                 (valueChange)="emit($event)"
               ></app-config-json-editor>
             }
@@ -327,5 +331,15 @@ export class ConfigItemComponent {
       return Array.isArray(firstFile?.entries) ? firstFile.entries : [];
     }
     return [];
+  }
+
+  expectedJsonType(): string | undefined {
+    const metadata = (this.item?.metadata ?? {}) as { expectedJsonType?: unknown };
+    return typeof metadata.expectedJsonType === 'string' ? metadata.expectedJsonType : undefined;
+  }
+
+  jsonExample(): unknown {
+    const metadata = (this.item?.metadata ?? {}) as { jsonExample?: unknown };
+    return metadata.jsonExample;
   }
 }

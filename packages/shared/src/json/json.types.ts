@@ -10,6 +10,7 @@ export interface WriteJsonFileOptions {
   ensureDir?: boolean;
   newline?: boolean;
   backup?: boolean;
+  cleanupBackupOnSuccess?: boolean;
   backupSuffix?: string;
   atomic?: boolean;
 }

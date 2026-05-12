@@ -22,20 +22,12 @@ function getTaskKindFromName(name: string): TaskKind {
     return "custom";
 }
 
-function isAngularServeScript(raw: string): boolean {
-    return /\bng(?:\.cmd)?\s+(?:serve|s)\b/.test(raw);
-}
-
 function getTaskViews(kind: TaskKind, raw: string): TaskViewDefinition[] {
     if (kind === "serve") {
-        const views: TaskViewDefinition[] = [
+        return [
             { id: "output", title: "输出" },
             { id: "dashboard", title: "仪表盘" },
         ];
-        if (!isAngularServeScript(raw)) {
-            views.push({ id: "analyzer", title: "分析" });
-        }
-        return views;
     }
 
     if (kind === "build") {
@@ -50,7 +42,7 @@ function getTaskViews(kind: TaskKind, raw: string): TaskViewDefinition[] {
 
 function getTaskCapabilities(kind: TaskKind, raw: string): TaskCapabilities {
     if (kind === "serve") {
-        return { dashboard: true, analyzer: !isAngularServeScript(raw) };
+        return { dashboard: true, analyzer: false };
     }
     if (kind === "build") {
         return { dashboard: true, analyzer: true, report: true };

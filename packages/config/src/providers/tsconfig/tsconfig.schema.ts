@@ -41,47 +41,61 @@ export function buildTsConfigSchema(): ConfigSchema {
         title: "路径别名",
         fields: [
           { key: "baseUrl", label: "baseUrl", type: "path", path: "/compilerOptions/baseUrl" },
-          { key: "paths", label: "paths", type: "json", path: "/compilerOptions/paths" }
+          {
+            key: "paths",
+            label: "paths",
+            type: "json",
+            path: "/compilerOptions/paths",
+            metadata: {
+              expectedJsonType: "stringArrayRecord",
+              jsonExample: {
+                "@app/*": ["src/app/*"],
+                "@env/*": ["src/environments/*"]
+              }
+            }
+          }
         ]
       },
       {
         key: "includeExclude",
         title: "Include / Exclude",
         fields: [
-          { key: "include", label: "include", type: "json", path: "/include" },
-          { key: "exclude", label: "exclude", type: "json", path: "/exclude" },
-          { key: "references", label: "references", type: "json", path: "/references" }
+          {
+            key: "include",
+            label: "include",
+            type: "json",
+            path: "/include",
+            metadata: {
+              expectedJsonType: "string[]",
+              jsonExample: ["src/**/*.ts", "src/**/*.d.ts"]
+            }
+          },
+          {
+            key: "exclude",
+            label: "exclude",
+            type: "json",
+            path: "/exclude",
+            metadata: {
+              expectedJsonType: "string[]",
+              jsonExample: ["node_modules", "dist", "coverage"]
+            }
+          },
+          {
+            key: "references",
+            label: "references",
+            type: "json",
+            path: "/references",
+            metadata: {
+              expectedJsonType: "reference[]",
+              jsonExample: [{ path: "./tsconfig.app.json" }, { path: "./tsconfig.spec.json" }]
+            }
+          }
         ]
       },
       {
         key: "inheritance",
         title: "继承链",
         fields: [{ key: "chain", label: "inheritance", type: "readonly", path: "/extends", readonly: true }]
-      },
-      {
-        key: "effective",
-        title: "生效配置",
-        fields: [
-          {
-            key: "effectiveValues",
-            label: "生效值（extends 合并后）",
-            type: "json",
-            path: "/__ngmEffective/values",
-            readonly: true
-          },
-          {
-            key: "effectiveSources",
-            label: "值来源",
-            type: "json",
-            path: "/__ngmEffective/sources",
-            readonly: true
-          }
-        ]
-      },
-      {
-        key: "raw",
-        title: "原始 JSON",
-        fields: [{ key: "raw", label: "raw", type: "json", path: "/", readonly: true }]
       }
     ]
   });

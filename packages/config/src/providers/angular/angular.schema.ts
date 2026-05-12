@@ -177,19 +177,34 @@ export function buildAngularSchema(options: AngularSchemaBuildOptions = {}): Con
             key: "assets",
             label: "Assets",
             type: "json",
-            path: `${targetBase}/build/options/assets`
+            path: `${targetBase}/build/options/assets`,
+            metadata: {
+              jsonExample: [
+                "src/favicon.ico",
+                "src/assets",
+                { glob: "**/*", input: "public", output: "/" }
+              ]
+            }
           },
           {
             key: "styles",
             label: "Styles",
             type: "json",
-            path: `${targetBase}/build/options/styles`
+            path: `${targetBase}/build/options/styles`,
+            metadata: {
+              expectedJsonType: "string[]",
+              jsonExample: ["src/styles.less", "src/theme/default.less"]
+            }
           },
           {
             key: "scripts",
             label: "Scripts",
             type: "json",
-            path: `${targetBase}/build/options/scripts`
+            path: `${targetBase}/build/options/scripts`,
+            metadata: {
+              expectedJsonType: "string[]",
+              jsonExample: ["src/assets/runtime-config.js", "../node_modules/some-lib/dist/some-lib.js"]
+            }
           }
         ]
       },
@@ -225,39 +240,53 @@ export function buildAngularSchema(options: AngularSchemaBuildOptions = {}): Con
             key: "productionFileReplacements",
             label: "生产文件替换",
             type: "json",
-            path: `${targetBase}/build/configurations/production/fileReplacements`
+            path: `${targetBase}/build/configurations/production/fileReplacements`,
+            metadata: {
+              expectedJsonType: "fileReplacement[]",
+              jsonExample: [
+                {
+                  replace: "src/environments/environment.ts",
+                  with: "src/environments/environment.prod.ts"
+                }
+              ]
+            }
           },
           {
             key: "buildConfigurations",
             label: "构建环境配置",
             type: "json",
-            path: `${targetBase}/build/configurations`
+            path: `${targetBase}/build/configurations`,
+            metadata: {
+              expectedJsonType: "object",
+              jsonExample: {
+                production: {
+                  optimization: true,
+                  sourceMap: false,
+                  outputHashing: "all"
+                },
+                development: {
+                  optimization: false,
+                  sourceMap: true
+                }
+              }
+            }
           },
           {
             key: "serveConfigurations",
             label: "开发环境配置",
             type: "json",
-            path: `${targetBase}/serve/configurations`
-          }
-        ]
-      },
-      {
-        key: "effective",
-        title: "生效配置",
-        fields: [
-          {
-            key: "effectiveValues",
-            label: "生效值（按默认环境解析）",
-            type: "json",
-            path: "/__ngmEffective/values",
-            readonly: true
-          },
-          {
-            key: "effectiveSources",
-            label: "值来源",
-            type: "json",
-            path: "/__ngmEffective/sources",
-            readonly: true
+            path: `${targetBase}/serve/configurations`,
+            metadata: {
+              expectedJsonType: "object",
+              jsonExample: {
+                development: {
+                  browserTarget: `${project}:build:development`
+                },
+                production: {
+                  browserTarget: `${project}:build:production`
+                }
+              }
+            }
           }
         ]
       },

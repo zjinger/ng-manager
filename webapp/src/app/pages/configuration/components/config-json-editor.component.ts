@@ -33,7 +33,12 @@ import { NzMessageService } from 'ng-zorro-antd/message';
         (ngModelChange)="onTextChange($event)"
       ></textarea>
       @if (errorMessage) {
-        <div class="error-tip">{{ errorMessage }}</div>
+        <div class="error-tip">
+          <div>{{ errorMessage }}</div>
+          @if (exampleText) {
+            <pre>合法示例：{{ exampleText }}</pre>
+          }
+        </div>
       }
     </div>
   `,
@@ -88,6 +93,12 @@ import { NzMessageService } from 'ng-zorro-antd/message';
       border-top: 1px solid #ffe5e5;
       background: #fff2f0;
     }
+    .error-tip pre {
+      margin: 4px 0 0;
+      white-space: pre-wrap;
+      color: #8c1d18;
+      font-family: Consolas, Menlo, Monaco, 'Courier New', monospace;
+    }
   `],
 })
 export class ConfigJsonEditorComponent implements OnChanges {
@@ -98,6 +109,8 @@ export class ConfigJsonEditorComponent implements OnChanges {
   @Input() minHeight = 120;
   @Input() maxHeight = 280;
   @Input() expandedHeight = 560;
+  @Input() expectedJsonType?: string;
+  @Input() jsonExample?: unknown;
   @Output() valueChange = new EventEmitter<unknown>();
   @ViewChild('jsonTextarea') private jsonTextarea?: ElementRef<HTMLTextAreaElement>;
 
@@ -132,6 +145,10 @@ export class ConfigJsonEditorComponent implements OnChanges {
     return 'JSON Value';
   }
 
+  get exampleText(): string {
+    return this.stringifyExample(this.jsonExample);
+  }
+
   onTextChange(value: string): void {
     this.jsonText = value ?? '';
     this.errorMessage = '';
@@ -140,6 +157,11 @@ export class ConfigJsonEditorComponent implements OnChanges {
     }
     try {
       const parsed = this.jsonText ? JSON.parse(this.jsonText) : undefined;
+      const validationError = this.validateParsedValue(parsed);
+      if (validationError) {
+        this.errorMessage = validationError;
+        return;
+      }
       this.valueChange.emit(parsed);
     } catch {
       this.errorMessage = 'JSON 格式错误，请修正后再保存';
@@ -152,6 +174,12 @@ export class ConfigJsonEditorComponent implements OnChanges {
     }
     try {
       const parsed = this.jsonText ? JSON.parse(this.jsonText) : undefined;
+      const validationError = this.validateParsedValue(parsed);
+      if (validationError) {
+        this.errorMessage = validationError;
+        this.message.error(validationError);
+        return;
+      }
       this.jsonText = this.stringifyValue(parsed);
       this.errorMessage = '';
       this.valueChange.emit(parsed);
@@ -200,6 +228,83 @@ export class ConfigJsonEditorComponent implements OnChanges {
       return 1;
     }
     return value.split(/\r?\n/).length;
+  }
+
+  private validateParsedValue(value: unknown): string {
+    if (!this.expectedJsonType) {
+      return '';
+    }
+    if (this.expectedJsonType === 'string[]') {
+      if (!Array.isArray(value)) {
+        return '此字段必须是字符串数组';
+      }
+      if (!value.every((item) => typeof item === 'string')) {
+        return '此字段数组中的每一项都必须是字符串';
+      }
+      return '';
+    }
+    if (this.expectedJsonType === 'object') {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return '此字段必须是 JSON 对象';
+      }
+      return '';
+    }
+    if (this.expectedJsonType === 'stringRecord') {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return '此字段必须是键值对象';
+      }
+      if (!Object.values(value as Record<string, unknown>).every((item) => typeof item === 'string')) {
+        return '此字段对象的每个值都必须是字符串';
+      }
+      return '';
+    }
+    if (this.expectedJsonType === 'stringArrayRecord') {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return '此字段必须是键值对象';
+      }
+      const values = Object.values(value as Record<string, unknown>);
+      if (!values.every((item) => Array.isArray(item) && item.every((nested) => typeof nested === 'string'))) {
+        return '此字段对象的每个值都必须是字符串数组';
+      }
+      return '';
+    }
+    if (this.expectedJsonType === 'reference[]') {
+      if (!Array.isArray(value)) {
+        return '此字段必须是引用对象数组';
+      }
+      if (!value.every((item) => typeof item === 'object' && item !== null && !Array.isArray(item) && typeof (item as Record<string, unknown>)['path'] === 'string')) {
+        return '此字段数组中的每一项都必须包含字符串 path';
+      }
+      return '';
+    }
+    if (this.expectedJsonType === 'fileReplacement[]') {
+      if (!Array.isArray(value)) {
+        return '此字段必须是文件替换对象数组';
+      }
+      if (!value.every((item) => {
+        if (typeof item !== 'object' || item === null || Array.isArray(item)) return false;
+        const record = item as Record<string, unknown>;
+        return typeof record['replace'] === 'string' && typeof record['with'] === 'string';
+      })) {
+        return '此字段数组中的每一项都必须包含字符串 replace 和 with';
+      }
+      return '';
+    }
+    return '';
+  }
+
+  private stringifyExample(example: unknown): string {
+    if (typeof example === 'undefined') {
+      return '';
+    }
+    if (typeof example === 'string') {
+      return example;
+    }
+    try {
+      return JSON.stringify(example, null, 2);
+    } catch {
+      return String(example);
+    }
   }
 }
 

@@ -15,7 +15,26 @@ export function buildPackageJsonSchema(): ConfigSchema {
           { key: "type", label: "type", type: "text", path: "/type" }
         ]
       },
-      { key: "scripts", title: "Scripts", fields: [{ key: "scripts", label: "scripts", type: "json", path: "/scripts" }] },
+      {
+        key: "scripts",
+        title: "Scripts",
+        fields: [
+          {
+            key: "scripts",
+            label: "scripts",
+            type: "json",
+            path: "/scripts",
+            metadata: {
+              expectedJsonType: "stringRecord",
+              jsonExample: {
+                start: "ng serve",
+                build: "ng build",
+                test: "ng test"
+              }
+            }
+          }
+        ]
+      },
       {
         key: "dependencies",
         title: "Dependencies",
@@ -26,7 +45,25 @@ export function buildPackageJsonSchema(): ConfigSchema {
         title: "DevDependencies",
         fields: [{ key: "devDependencies", label: "devDependencies", type: "json", path: "/devDependencies", readonly: true }]
       },
-      { key: "engines", title: "Engines", fields: [{ key: "engines", label: "engines", type: "json", path: "/engines" }] },
+      {
+        key: "engines",
+        title: "Engines",
+        fields: [
+          {
+            key: "engines",
+            label: "engines",
+            type: "json",
+            path: "/engines",
+            metadata: {
+              expectedJsonType: "stringRecord",
+              jsonExample: {
+                node: ">=20.19.0 || >=22.12.0",
+                npm: ">=10.0.0"
+              }
+            }
+          }
+        ]
+      },
       {
         key: "packageManager",
         title: "Package Manager",

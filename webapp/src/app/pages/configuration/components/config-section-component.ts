@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ConfigField, ConfigSchema } from '../models';
 import { getByPath, setByPath } from '../utils';
@@ -126,7 +126,7 @@ import { ConfigItemComponent } from './config-item-component';
     }
   `],
 })
-export class ConfigSectionComponent {
+export class ConfigSectionComponent implements OnChanges {
   @Input() schema?: ConfigSchema;
   @Input() vm: unknown = null;
   @Input() viewModel: unknown = null;
@@ -134,6 +134,12 @@ export class ConfigSectionComponent {
   @Output() vmChange = new EventEmitter<unknown>();
 
   private collapsed = signal<Record<string, boolean>>({});
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if ('schema' in changes) {
+      this.resetCollapsedState();
+    }
+  }
 
   get(item: ConfigField) {
     const directValue = getByPath(this.vm, item.path);
@@ -182,5 +188,14 @@ export class ConfigSectionComponent {
   private getDefaultValue(item: ConfigField): unknown {
     const metadata = (item.metadata ?? {}) as { defaultValue?: unknown };
     return metadata.defaultValue;
+  }
+
+  private resetCollapsedState(): void {
+    const groups = this.schema?.groups ?? [];
+    const next: Record<string, boolean> = {};
+    groups.forEach((group, index) => {
+      next[group.key] = index > 0;
+    });
+    this.collapsed.set(next);
   }
 }

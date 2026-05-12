@@ -48,6 +48,7 @@ export async function writePackageJson(input: {
       (json) => applyJsonPatches(json, input.patches),
       {
         backup: true,
+        cleanupBackupOnSuccess: true,
         atomic: true,
         spaces: 2
       }
