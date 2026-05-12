@@ -229,19 +229,19 @@ export class FinancingQuickEntryComponent {
       icon: 'plus-circle',
       title: '差旅费报销',
       meta: '行程与交通住宿',
-      routerLink: ['/financing/addTravelExpense'],
+      routerLink: ['/travel-expense/new'],
     },
     {
       icon: 'file-text',
       title: '费用报销',
       meta: '办公采购等',
-      routerLink: ['/financing/addExpense'],
+      routerLink: ['/expense/new'],
     },
     {
       icon: 'history',
       title: '我的报销',
       meta: '查看进度',
-      routerLink: ['/financing/my-reimbursements'],
+      routerLink: ['/my-expenses'],
     },
     {
       icon: 'bar-chart',

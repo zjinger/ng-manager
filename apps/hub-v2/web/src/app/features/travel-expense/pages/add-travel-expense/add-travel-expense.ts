@@ -4,21 +4,20 @@ import { PageHeaderComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import {
-  TravelExpenseBasicInfo,
-  TravelExpenseBasicInfoComponent,
-} from '../../components/travel-expense-basicInfo/travel-expense-basicInfo.component';
-import {
-  ExpenseDetailsComponent,
-  TravelExpenseItem,
-} from '../../components/expense-details/expense-details.component';
-import {
-  ExpenseSummary,
-  ExpenseSummaryAttachmentComponent,
-} from '../../components/expense-summary-attachment/expense-summary-attachment.component';
+import { TravelExpenseBasicInfoComponent } from '../../components/travel-expense-basicInfo/travel-expense-basicInfo.component';
+import { ExpenseDetailsComponent } from '../../components/expense-details/expense-details.component';
+import { ExpenseSummaryAttachmentComponent } from '../../components/expense-summary-attachment/expense-summary-attachment.component';
 import { ExpensePreviewComponent } from '../../components/expense-preview/expense-preview.component';
 import { ApprovalFlowComponent } from '../../components/approval-flow/approval-flow.component';
-
+import {
+  ExpenseSummary,
+  TravelExpenseBasicInfo,
+  TravelExpenseDetailData,
+  TravelExpenseItem,
+} from '../../models';
+import { ActivatedRoute } from '@angular/router';
+// 模拟数据
+import { MockDetailData } from '../../models/detail';
 // 完整报销单类型
 type TravelExpenseDraft = {
   basicInfo: TravelExpenseBasicInfo;
@@ -63,7 +62,7 @@ const DEFAULT_DRAFT: TravelExpenseDraft = {
     ExpenseDetailsComponent,
     ExpenseSummaryAttachmentComponent,
     ExpensePreviewComponent,
-    ApprovalFlowComponent
+    ApprovalFlowComponent,
   ],
   templateUrl: './add-travel-expense.html',
   styleUrls: ['./add-travel-expense.less'],
@@ -71,10 +70,15 @@ const DEFAULT_DRAFT: TravelExpenseDraft = {
 })
 export class AddTravelExpense {
   private readonly message = inject(NzMessageService);
-
+  private readonly route = inject(ActivatedRoute);
+  //路由参数
+  public expenseId = this.route.snapshot.paramMap.get('id');
+  // 是否编辑模式
+  readonly isEditMode = computed(() => !!this.expenseId);
+  // 加载状态
+  readonly loading = signal(false);
   // 完整草稿
   readonly draft = signal<TravelExpenseDraft>({ ...DEFAULT_DRAFT });
-
   // 基础信息是否有效
   readonly basicInfoValid = signal(false);
 
@@ -98,12 +102,12 @@ export class AddTravelExpense {
       !!basicInfo.name?.trim() ||
       !!basicInfo.position?.trim() ||
       !!basicInfo.reportDate ||
-      !!basicInfo.travelReason?.trim()||
+      !!basicInfo.travelReason?.trim() ||
       !!basicInfo.startDate ||
       !!basicInfo.startTime ||
       !!basicInfo.endDate ||
       !!basicInfo.endTime ||
-      (basicInfo.travelDays ?? 0) > 0 || 
+      (basicInfo.travelDays ?? 0) > 0 ||
       (basicInfo.receiptCount ?? 0) > 0;
 
     const hasExpenseItems = draft.expenseItems.length > 0;
@@ -111,6 +115,20 @@ export class AddTravelExpense {
     const hasAdvanceAmount = (draft.summary.advanceAmount ?? 0) > 0;
     return hasBasicInfo || hasExpenseItems || hasAttachments || hasAdvanceAmount;
   });
+
+  constructor() {
+    this.initPage();
+  }
+  // 初始化页面
+  private initPage(): void {
+    // 编辑模式
+    if (this.isEditMode()) {
+      this.loadDetailData();
+      return;
+    }
+    // 新建模式
+    this.resetForm();
+  }
 
   // 处理基础信息变化
   onBasicInfoChange(basicInfo: TravelExpenseBasicInfo): void {
@@ -162,6 +180,9 @@ export class AddTravelExpense {
   onAdvanceAmountChange(amount: number): void {
     // 可以在这里做额外处理，比如验证预支金额不能超过总计等
   }
+  goBack(): void {
+    window.history.back();
+  }
   // 保存草稿
   saveDraft(): void {
     if (!this.canSaveDraft()) {
@@ -197,7 +218,50 @@ export class AddTravelExpense {
       this.submitting.set(false);
     }, 1000);
   }
+  /**
+   * 加载详情数据（编辑模式）
+   */
+  private loadDetailData(): void {
+    try {
+      this.loading.set(true);
 
+      // TODO:
+      // const detail = await api.getDetail(this.expenseId)
+
+      // Mock 数据
+      const detail: TravelExpenseDetailData = MockDetailData;
+      // 转换为草稿数据
+      const draft = this.transformDetailToDraft(detail);
+
+      // 回填
+      this.draft.set(draft);
+
+      // 设置基础信息有效
+      this.basicInfoValid.set(true);
+    } catch (error) {
+      this.message.error('详情加载失败');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+  /**
+   * 详情数据转换为编辑草稿
+   */
+  private transformDetailToDraft(detail: TravelExpenseDetailData): TravelExpenseDraft {
+    return {
+      basicInfo: {
+        ...detail.basicInfo,
+      },
+
+      expenseItems: detail.expenseItems ?? [],
+
+      summary: {
+        ...detail.summary,
+      },
+
+      status: 'draft',
+    };
+  }
   // 重置整个表单
   resetForm(): void {
     this.draft.set({ ...DEFAULT_DRAFT });

@@ -8,14 +8,4 @@ export const FINANCING_ROUTES: Routes = [
         (m) => m.FinancingDashboardPageComponent
       ),
   },
-  {
-    path: 'addTravelExpense',
-    loadComponent: () =>
-      import('../travel-expense/pages/add-travel-expense/add-travel-expense').then((m) => m.AddTravelExpense),
-  },
-  {
-    path: 'addExpense',
-    loadComponent: () =>
-      import('../expense/pages/add-expense/add-expense').then((m) => m.AddExpense),
-  },
 ];

@@ -1,5 +1,8 @@
-<app-page-header title="新建差旅费报销" subtitle="结构化填写行程、费用与附件，实时预览单据。">
+<app-page-header title="{{expenseId ? '编辑' : '新建' }}差旅费报销" subtitle="结构化填写行程、费用与附件，实时预览单据。">
   <div page-header-actions class="header-actions">
+    <button nz-button nzType="default" (click)="goBack()">
+      <i nz-icon nzType="close"></i> 取消
+    </button>
     <button nz-button nzType="default" (click)="saveDraft()" [disabled]="!canSaveDraft()">
       <i nz-icon nzType="save"></i> 保存草稿箱
     </button>

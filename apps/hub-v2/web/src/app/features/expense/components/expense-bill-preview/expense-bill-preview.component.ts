@@ -1,9 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-import type { ExpenseBasicInfo } from '../expense-basic-info/expense-basic-info.component';
-import type { ExpenseDetailItem } from '../expense-detail-item/expense-detail-item.component';
-import type { ExpenseSummary } from '@app/features/travel-expense/components/expense-summary-attachment/expense-summary-attachment.component';
+// import type { ExpenseDetailItem } from '../expense-detail-item/expense-detail-item.component';
+import { ExpenseSummary } from '@app/features/travel-expense/models';
+import { ExpenseBasicInfo, ExpenseDetailItem } from '../../models';
 
 // 中文数字映射
 const chineseNumbers = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];

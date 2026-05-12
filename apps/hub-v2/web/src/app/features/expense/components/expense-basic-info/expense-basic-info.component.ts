@@ -13,15 +13,8 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-
-// 基础信息类型
-export type ExpenseBasicInfo = {
-  department: string; // 报销部门
-  expensePerson: string; // 报销人
-  reportDate: string; // 填报日期
-  receiptCount: number | null; // 单据数量
-  remark: string; // 备注
-};
+import { ExpenseBasicInfo } from '../../models';
+import { normalizeOption, parseDate } from '@app/features/travel-expense/models';
 
 // 部门选项
 const DEPARTMENT_OPTIONS = [
@@ -168,6 +161,16 @@ export class ExpenseBasicInfoComponent {
   constructor() {
     effect(() => {
       this.validChange.emit(this.isValid());
+    });
+    effect(() => {
+      this.reportDateValue.set(parseDate(this.value().reportDate));
+    });
+    effect(() => {
+      const department = this.value().department;
+      const normalized = normalizeOption(department, this.departmentOptions);
+      if (normalized && normalized !== department) {
+        this.updateField('department', normalized);
+      }
     });
   }
 

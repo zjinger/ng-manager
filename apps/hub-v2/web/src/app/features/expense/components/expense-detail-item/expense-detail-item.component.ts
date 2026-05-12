@@ -13,13 +13,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
-
-// 费用明细类型
-export interface ExpenseDetailItem {
-  id: string;
-  purpose: string; // 用途
-  amount: number | null; // 金额
-}
+import { ExpenseDetailItem } from '../../models';
 
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import type { TravelExpenseBasicInfo } from '../travel-expense-basicInfo/travel-expense-basicInfo.component';
-import type { TravelExpenseItem } from '../expense-details/expense-details.component';
-import type { ExpenseSummary } from '../expense-summary-attachment/expense-summary-attachment.component';
+import { ExpenseSummary, TravelExpenseBasicInfo, TravelExpenseItem, formatTravelRoute } from '../../models';
 
 // 中文数字映射
 const chineseNumbers = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
@@ -62,295 +60,304 @@ const TIME_LABEL_MAP: Record<string, string> = {
   imports: [CommonModule],
   template: `
     <div class="back">
-      <div class="back-div">
-        <div style="width: 918px; height: 503px">
-          <div class="top-title">
-            <div class="title">差旅费报销单</div>
-            <div class="title-line-div">
-              <div class="title-lineOne"></div>
-              <div class="title-lineTwo"></div>
-            </div>
-          </div>
-
-          <!-- 顶部 -->
-          <div class="top-div">
-            <span style="margin-left: 13px">报销部门：</span>
-            <span style="display: inline-block; width: 128px" class="typeface">{{
-              getDepartmentLabel(basicInfo().department)
-            }}</span>
-            <span style="margin-left: 76px; margin-right: 50px">填报日期：</span>
-            <span class="typeface" style="display: inline-block; width: 43px; margin-right: 6px">
-              {{ getYear(basicInfo().reportDate) }}
-            </span>
-            <span>年</span>
-            <span class="typeface" style="width: 42px; display: inline-block; text-align: center">
-              {{ getMonth(basicInfo().reportDate) }}
-            </span>
-            <span>月</span>
-            <span class="typeface" style="width: 42px; display: inline-block; text-align: center">
-              {{ getDay(basicInfo().reportDate) }}
-            </span>
-            <span>日</span>
-          </div>
-
-          <div class="container-div">
-            <!-- 第一行 -->
-            <div class="rowOne">
-              <div class="rowOne-title" style="width: 88px">姓&nbsp;&nbsp;&nbsp;&nbsp;名</div>
-              <div
-                class="typeface right-div"
-                style="width: 148px; height: 100%; text-align: center; border-right: 1px solid black"
-              >
-                {{ basicInfo().name || '-' }}
-              </div>
-              <div class="rowOne-title" style="width: 91px">职&nbsp;&nbsp;&nbsp;&nbsp;别</div>
-              <div
-                class="typeface right-div"
-                style="width: 157px; height: 100%; text-align: center; border-right: 1px solid black"
-              >
-                {{ basicInfo().position || '-' }}
-              </div>
-              <div class="rowOne-title" style="width: 94px">出差事由</div>
-              <div style="width: 337px; height: 100%; text-align: center" class="typeface">
-                {{ basicInfo().travelReason || '-' }}
+      <div class="back-scroll">
+        <div class="back-div">
+          <!-- <div style="width: 918px; height: 503px"> -->
+          <div class="expense-sheet">
+            <div class="top-title">
+              <div class="title">差旅费报销单</div>
+              <div class="title-line-div">
+                <div class="title-lineOne"></div>
+                <div class="title-lineTwo"></div>
               </div>
             </div>
 
-            <!-- 第二行：出差起止日期 -->
-            <div class="rowTwo">
-              <div>
-                <span style="margin-left: 9px">出差起止日期自</span>
-                <span
-                  style="display: inline-block; text-align: center; width: 71px"
-                  class="typeface"
-                >
-                  {{ getYear(basicInfo().startDate) }}
-                </span>
-                <span>年</span>
-                <span
-                  style="width: 37px; display: inline-block; text-align: center"
-                  class="typeface"
-                >
-                  {{ getMonth(basicInfo().startDate) }}
-                </span>
-                <span>月</span>
-                <span
-                  style="width: 37px; display: inline-block; text-align: center"
-                  class="typeface"
-                >
-                  {{ getDay(basicInfo().startDate) }}
-                </span>
-                <span>日</span>
-                <span
-                  style="display: inline-block; width: 53px; text-align: center"
-                  class="typeface"
-                >
-                  {{ getTimeLabelByValue(basicInfo().startTime) }}
-                </span>
-                <span>起至</span>
-                <span
-                  style="display: inline-block; width: 69px; text-align: center"
-                  class="typeface"
-                >
-                  {{ getYear(basicInfo().endDate) }}
-                </span>
-                <span>年</span>
-                <span
-                  style="width: 37px; display: inline-block; text-align: center"
-                  class="typeface"
-                >
-                  {{ getMonth(basicInfo().endDate) }}
-                </span>
-                <span>月</span>
-                <span
-                  style="width: 37px; display: inline-block; text-align: center"
-                  class="typeface"
-                >
-                  {{ getDay(basicInfo().endDate) }}
-                </span>
-                <span>日</span>
-                <span
-                  style="display: inline-block; width: 53px; text-align: center"
-                  class="typeface"
-                >
-                  {{ getTimeLabelByValue(basicInfo().endTime) }}
-                </span>
-                <span>止&nbsp;共</span>
-                <span
-                  style="width: 67px; display: inline-block; text-align: center"
-                  class="typeface"
-                >
-                  {{ basicInfo().travelDays || 0 }}
-                </span>
-                <span style="margin-right: 15px;">天</span>
-                <span>附单据</span>
-                <span
-                  style="display: inline-block; width: 55px; text-align: center"
-                  class="typeface"
-                >
-                  {{ basicInfo().receiptCount || 0 }}
-                </span>
-                <span>张</span>
-              </div>
-            </div>
-
-            <!-- 表头 -->
-            <div class="rowthree">
-              <div class="rowthree-title" style="width: 75px">
-                <div class="rowthree-titleO">日&nbsp;期</div>
-                <div class="rowthree-titleT">
-                  <div style="width: 50%; border-right: 1px solid black" class="right-div">月</div>
-                  <div style="width: 50%">日</div>
-                </div>
-              </div>
-              <div class="rowthree-title" style="width: 163px">
-                起&nbsp;&nbsp;&nbsp;&nbsp;讫&nbsp;&nbsp;&nbsp;&nbsp;地&nbsp;&nbsp;&nbsp;&nbsp;点
-              </div>
-              <div class="rowthree-title" style="width: 52px">天&nbsp;数</div>
-              <div class="rowthree-title" style="width: 70px">机&nbsp;票&nbsp;费</div>
-              <div class="rowthree-title" style="width: 69px">车&nbsp;船&nbsp;费</div>
-              <div class="rowthree-title" style="width: 82px">
-                <div style="height: 50%; line-height: 26px">市&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;内</div>
-                <div style="height: 50%; line-height: 26px">交&nbsp;通&nbsp;费</div>
-              </div>
-              <div class="rowthree-title" style="width: 72px">住&nbsp;宿&nbsp;费</div>
-              <div class="rowthree-title" style="width: 85px">餐&nbsp;&nbsp;&nbsp;&nbsp;补</div>
-              <div class="rowthree-title" style="width: 84px">餐&nbsp;&nbsp;&nbsp;&nbsp;费</div>
-              <div class="rowthree-title" style="width: 65px">其&nbsp;&nbsp;他</div>
-              <div class="rowthree-title" style="width: 97px; border-right: 0px">
-                小&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;计
-              </div>
-            </div>
-
-            <!-- 动态行数据 - 最多3行 -->
-            @for (item of expenseItems(); track item.id; let idx = $index) {
-            <div class="rowFour" [class.rowFive]="idx === 1" [class.rowSix]="idx === 2">
-              <div class="dateVessel">
-                <div class="dateVesselO typeface">{{ getMonthFromDate(item.date) }}</div>
-                <div
-                  style="width: 50%; display: flex; align-items: center; justify-content: center"
-                  class="typeface"
-                >
-                  {{ getDayFromDate(item.date) }}
-                </div>
-              </div>
-              <div class="place typeface">{{ item.startEndLocation || '-' }}</div>
-              <div class="days typeface">{{ item.days || 0 }}</div>
-              <div class="airFare typeface">{{ formatMoney(item.airfare) }}</div>
-              <div class="carOrShip typeface">{{ formatMoney(item.transportation) }}</div>
-              <div class="traffic typeface">{{ formatMoney(item.localTransport) }}</div>
-              <div class="hotel typeface">{{ formatMoney(item.accommodation) }}</div>
-              <div class="travel typeface">{{ formatMoney(item.mealAllowance) }}</div>
-              <div class="meals typeface">0.00</div>
-              <div class="other typeface">{{ formatMoney(item.other) }}</div>
-              <div class="subtotal typeface">{{ formatMoney(item.subtotal) }}</div>
-            </div>
-            }
-
-            <!-- 合计行 -->
-            <div class="rowSeven" style="height: 45px">
-              <div class="dateVessel">
-                <div style="width: 50%; border-right: 1px solid black" class="right-div"></div>
-                <div style="width: 50%"></div>
-              </div>
-              <div
-                class="total"
-                style="font-family: 微软雅黑体; font-size: 16px; width: 163px;color: #00a0d5;"
-              >
-                合&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;计
-              </div>
-              <div class="total typeface" style="color: black; width: 52px">{{ totalDays() }}</div>
-              <div class="total typeface" style="color: black; width: 70px">
-                {{ formatMoney(totalAirfare()) }}
-              </div>
-              <div class="total typeface" style="color: black; width: 69px">
-                {{ formatMoney(totalTransportation()) }}
-              </div>
-              <div class="total typeface" style="color: black; width: 82px">
-                {{ formatMoney(totalLocalTransport()) }}
-              </div>
-              <div class="total typeface" style="color: black; width: 72px">
-                {{ formatMoney(totalAccommodation()) }}
-              </div>
-              <div class="total typeface" style="color: black; width: 85px">
-                {{ formatMoney(totalMealAllowance()) }}
-              </div>
-              <div class="total typeface" style="color: black; width: 84px">0.00</div>
-              <div class="total typeface" style="color: black; width: 65px">
-                {{ formatMoney(totalOther()) }}
-              </div>
-              <div
-                class="typeface"
-                style=" width: 97px; height: 100%; text-align: center; line-height: 45px"
-              >
-                {{ formatMoney(grandTotal()) }}
-              </div>
-            </div>
-
-            <!-- 第八行：大写金额和预支信息 -->
-            <div class="rowEight">
-              <span style="margin-left: 9px; margin-right: 7px;">总计金额（大写）</span>
-              <span style="position: absolute; left: 174px; font-size: 17px" class="typeface">
-                {{ getChineseDigit(grandTotal(), 1) }}
-              </span>
-              <span style="margin-left: 49px">万</span>
-              <span style="position: absolute; left: 217px; font-size: 17px" class="typeface">
-                {{ getChineseDigit(grandTotal(), 2) }}
-              </span>
-              <span style="margin-left: 27px">仟</span>
-              <span style="position: absolute; left: 261px; font-size: 17px" class="typeface">
-                {{ getChineseDigit(grandTotal(), 3) }}
-              </span>
-              <span style="margin-left: 28px">佰</span>
-              <span style="position: absolute; left: 304px; font-size: 17px" class="typeface">
-                {{ getChineseDigit(grandTotal(), 4) }}
-              </span>
-              <span style="margin-left: 26px">拾</span>
-              <span style="position: absolute; left: 345px; font-size: 17px" class="typeface">
-                {{ getChineseDigit(grandTotal(), 5) }}
-              </span>
-              <span style="margin-left: 26px">元</span>
-              <span style="position: absolute; left: 389px; font-size: 17px" class="typeface">
-                {{ getChineseDigit(grandTotal(), 6) }}
-              </span>
-              <span style="margin-left: 27px">角</span>
-              <span style="position: absolute; left: 430px; font-size: 17px" class="typeface">
-                {{ getChineseDigit(grandTotal(), 7) }}
-              </span>
-              <span style="margin-left: 25px">分</span>
-              <span style="margin-left: 27px">预支</span>
-              <div
-                class="boottom-div"
-                style="width: 88px; text-align: center; border-bottom: 1px solid black; height: 34px; margin-top: 10px"
-              >
-                <span style="display: block; margin-top: -10px" class="typeface">
-                  {{ formatMoney(summary().advanceAmount) }}
-                </span>
-              </div>
-              <span>元</span>
-              <span style="margin-left: 20px">{{
-                summary().advanceAmount - grandTotal() >= 0 ? '应退' : '应补'
+            <!-- 顶部 -->
+            <div class="top-div">
+              <span style="margin-left: 13px">报销部门：</span>
+              <span style="display: inline-block; width: 128px" class="typeface">{{
+                getDepartmentLabel(basicInfo().department)
               }}</span>
-              <div
-                class="boottom-div"
-                style="width: 88px; text-align: center; border-bottom: 1px solid black; height: 34px; margin-top: 10px"
-              >
-                <span style="display: block; margin-top: -10px" class="typeface">
-                  {{ formatMoney(Math.abs(summary().advanceAmount - grandTotal())) }}
-                </span>
-              </div>
-              <span>元</span>
+              <span style="margin-left: 76px; margin-right: 50px">填报日期：</span>
+              <span class="typeface" style="display: inline-block; width: 43px; margin-right: 6px">
+                {{ getYear(basicInfo().reportDate) }}
+              </span>
+              <span>年</span>
+              <span class="typeface" style="width: 42px; display: inline-block; text-align: center">
+                {{ getMonth(basicInfo().reportDate) }}
+              </span>
+              <span>月</span>
+              <span class="typeface" style="width: 42px; display: inline-block; text-align: center">
+                {{ getDay(basicInfo().reportDate) }}
+              </span>
+              <span>日</span>
             </div>
-          </div>
 
-          <!-- 底部 -->
-          <div class="container-base">
-            <span style="margin-left: 16px">负责人</span>
-            <span style="margin-left: 109px">会计</span>
-            <span style="margin-left: 94px">出纳</span>
-            <span style="margin-left: 98px">审核</span>
-            <span style="margin-left: 100px">部门主管</span>
-            <span style="margin-left: 104px">出差人</span>
+            <div class="container-div">
+              <!-- 第一行 -->
+              <div class="rowOne">
+                <div class="rowOne-title" style="width: 88px">姓&nbsp;&nbsp;&nbsp;&nbsp;名</div>
+                <div
+                  class="typeface right-div"
+                  style="width: 148px; height: 100%; text-align: center; border-right: 1px solid black"
+                >
+                  {{ basicInfo().name || '-' }}
+                </div>
+                <div class="rowOne-title" style="width: 91px">职&nbsp;&nbsp;&nbsp;&nbsp;别</div>
+                <div
+                  class="typeface right-div"
+                  style="width: 157px; height: 100%; text-align: center; border-right: 1px solid black"
+                >
+                  {{ basicInfo().position || '-' }}
+                </div>
+                <div class="rowOne-title" style="width: 94px">出差事由</div>
+                <div style="width: 337px; height: 100%; text-align: center" class="typeface">
+                  {{ basicInfo().travelReason || '-' }}
+                </div>
+              </div>
+
+              <!-- 第二行：出差起止日期 -->
+              <div class="rowTwo">
+                <div>
+                  <span style="margin-left: 9px">出差起止日期自</span>
+                  <span
+                    style="display: inline-block; text-align: center; width: 71px"
+                    class="typeface"
+                  >
+                    {{ getYear(basicInfo().startDate) }}
+                  </span>
+                  <span>年</span>
+                  <span
+                    style="width: 37px; display: inline-block; text-align: center"
+                    class="typeface"
+                  >
+                    {{ getMonth(basicInfo().startDate) }}
+                  </span>
+                  <span>月</span>
+                  <span
+                    style="width: 37px; display: inline-block; text-align: center"
+                    class="typeface"
+                  >
+                    {{ getDay(basicInfo().startDate) }}
+                  </span>
+                  <span>日</span>
+                  <span
+                    style="display: inline-block; width: 53px; text-align: center"
+                    class="typeface"
+                  >
+                    {{ getTimeLabelByValue(basicInfo().startTime) }}
+                  </span>
+                  <span>起至</span>
+                  <span
+                    style="display: inline-block; width: 69px; text-align: center"
+                    class="typeface"
+                  >
+                    {{ getYear(basicInfo().endDate) }}
+                  </span>
+                  <span>年</span>
+                  <span
+                    style="width: 37px; display: inline-block; text-align: center"
+                    class="typeface"
+                  >
+                    {{ getMonth(basicInfo().endDate) }}
+                  </span>
+                  <span>月</span>
+                  <span
+                    style="width: 37px; display: inline-block; text-align: center"
+                    class="typeface"
+                  >
+                    {{ getDay(basicInfo().endDate) }}
+                  </span>
+                  <span>日</span>
+                  <span
+                    style="display: inline-block; width: 53px; text-align: center"
+                    class="typeface"
+                  >
+                    {{ getTimeLabelByValue(basicInfo().endTime) }}
+                  </span>
+                  <span>止&nbsp;共</span>
+                  <span
+                    style="width: 67px; display: inline-block; text-align: center"
+                    class="typeface"
+                  >
+                    {{ basicInfo().travelDays || 0 }}
+                  </span>
+                  <span style="margin-right: 15px;">天</span>
+                  <span>附单据</span>
+                  <span
+                    style="display: inline-block; width: 55px; text-align: center"
+                    class="typeface"
+                  >
+                    {{ basicInfo().receiptCount || 0 }}
+                  </span>
+                  <span>张</span>
+                </div>
+              </div>
+
+              <!-- 表头 -->
+              <div class="rowthree">
+                <div class="rowthree-title" style="width: 75px">
+                  <div class="rowthree-titleO">日&nbsp;期</div>
+                  <div class="rowthree-titleT">
+                    <div style="width: 50%; border-right: 1px solid black" class="right-div">
+                      月
+                    </div>
+                    <div style="width: 50%">日</div>
+                  </div>
+                </div>
+                <div class="rowthree-title" style="width: 163px">
+                  起&nbsp;&nbsp;&nbsp;&nbsp;讫&nbsp;&nbsp;&nbsp;&nbsp;地&nbsp;&nbsp;&nbsp;&nbsp;点
+                </div>
+                <div class="rowthree-title" style="width: 52px">天&nbsp;数</div>
+                <div class="rowthree-title" style="width: 70px">机&nbsp;票&nbsp;费</div>
+                <div class="rowthree-title" style="width: 69px">车&nbsp;船&nbsp;费</div>
+                <div class="rowthree-title" style="width: 82px">
+                  <div style="height: 50%; line-height: 26px">
+                    市&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;内
+                  </div>
+                  <div style="height: 50%; line-height: 26px">交&nbsp;通&nbsp;费</div>
+                </div>
+                <div class="rowthree-title" style="width: 72px">住&nbsp;宿&nbsp;费</div>
+                <div class="rowthree-title" style="width: 85px">餐&nbsp;&nbsp;&nbsp;&nbsp;补</div>
+                <div class="rowthree-title" style="width: 84px">餐&nbsp;&nbsp;&nbsp;&nbsp;费</div>
+                <div class="rowthree-title" style="width: 65px">其&nbsp;&nbsp;他</div>
+                <div class="rowthree-title" style="width: 97px; border-right: 0px">
+                  小&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;计
+                </div>
+              </div>
+
+              <!-- 动态行数据 - 最多3行 -->
+              @for (item of expenseItems(); track item.id; let idx = $index) {
+              <div class="rowFour" [class.rowFive]="idx === 1" [class.rowSix]="idx === 2">
+                <div class="dateVessel">
+                  <div class="dateVesselO typeface">{{ getMonthFromDate(item.date) }}</div>
+                  <div
+                    style="width: 50%; display: flex; align-items: center; justify-content: center"
+                    class="typeface"
+                  >
+                    {{ getDayFromDate(item.date) }}
+                  </div>
+                </div>
+                <div class="place typeface">{{ formatTravelRoute(item.startEndLocation || []) }}</div>
+                <div class="days typeface">{{ item.days || 0 }}</div>
+                <div class="airFare typeface">{{ formatMoney(item.airfare) }}</div>
+                <div class="carOrShip typeface">{{ formatMoney(item.transportation) }}</div>
+                <div class="traffic typeface">{{ formatMoney(item.localTransport) }}</div>
+                <div class="hotel typeface">{{ formatMoney(item.accommodation) }}</div>
+                <div class="travel typeface">{{ formatMoney(item.mealAllowance) }}</div>
+                <div class="meals typeface">0.00</div>
+                <div class="other typeface">{{ formatMoney(item.other) }}</div>
+                <div class="subtotal typeface">{{ formatMoney(item.subtotal) }}</div>
+              </div>
+              }
+
+              <!-- 合计行 -->
+              <div class="rowSeven" style="height: 45px">
+                <div class="dateVessel">
+                  <div style="width: 50%; border-right: 1px solid black" class="right-div"></div>
+                  <div style="width: 50%"></div>
+                </div>
+                <div
+                  class="total"
+                  style="font-family: 微软雅黑体; font-size: 16px; width: 163px;color: #00a0d5;"
+                >
+                  合&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;计
+                </div>
+                <div class="total typeface" style="color: black; width: 52px">
+                  {{ totalDays() }}
+                </div>
+                <div class="total typeface" style="color: black; width: 70px">
+                  {{ formatMoney(totalAirfare()) }}
+                </div>
+                <div class="total typeface" style="color: black; width: 69px">
+                  {{ formatMoney(totalTransportation()) }}
+                </div>
+                <div class="total typeface" style="color: black; width: 82px">
+                  {{ formatMoney(totalLocalTransport()) }}
+                </div>
+                <div class="total typeface" style="color: black; width: 72px">
+                  {{ formatMoney(totalAccommodation()) }}
+                </div>
+                <div class="total typeface" style="color: black; width: 85px">
+                  {{ formatMoney(totalMealAllowance()) }}
+                </div>
+                <div class="total typeface" style="color: black; width: 84px">0.00</div>
+                <div class="total typeface" style="color: black; width: 65px">
+                  {{ formatMoney(totalOther()) }}
+                </div>
+                <div
+                  class="typeface"
+                  style=" width: 97px; height: 100%; text-align: center; line-height: 45px"
+                >
+                  {{ formatMoney(grandTotal()) }}
+                </div>
+              </div>
+
+              <!-- 第八行：大写金额和预支信息 -->
+              <div class="rowEight">
+                <span style="margin-left: 9px; margin-right: 7px;">总计金额（大写）</span>
+                <span style="position: absolute; left: 174px; font-size: 17px" class="typeface">
+                  {{ getChineseDigit(grandTotal(), 1) }}
+                </span>
+                <span style="margin-left: 49px">万</span>
+                <span style="position: absolute; left: 217px; font-size: 17px" class="typeface">
+                  {{ getChineseDigit(grandTotal(), 2) }}
+                </span>
+                <span style="margin-left: 27px">仟</span>
+                <span style="position: absolute; left: 261px; font-size: 17px" class="typeface">
+                  {{ getChineseDigit(grandTotal(), 3) }}
+                </span>
+                <span style="margin-left: 28px">佰</span>
+                <span style="position: absolute; left: 304px; font-size: 17px" class="typeface">
+                  {{ getChineseDigit(grandTotal(), 4) }}
+                </span>
+                <span style="margin-left: 26px">拾</span>
+                <span style="position: absolute; left: 345px; font-size: 17px" class="typeface">
+                  {{ getChineseDigit(grandTotal(), 5) }}
+                </span>
+                <span style="margin-left: 26px">元</span>
+                <span style="position: absolute; left: 389px; font-size: 17px" class="typeface">
+                  {{ getChineseDigit(grandTotal(), 6) }}
+                </span>
+                <span style="margin-left: 27px">角</span>
+                <span style="position: absolute; left: 430px; font-size: 17px" class="typeface">
+                  {{ getChineseDigit(grandTotal(), 7) }}
+                </span>
+                <span style="margin-left: 25px">分</span>
+                <span style="margin-left: 27px">预支</span>
+                <div
+                  class="boottom-div"
+                  style="width: 88px; text-align: center; border-bottom: 1px solid black; height: 34px; margin-top: 10px"
+                >
+                  <span style="display: block; margin-top: -10px" class="typeface">
+                    {{ formatMoney(summary().advanceAmount) }}
+                  </span>
+                </div>
+                <span>元</span>
+                <span style="margin-left: 20px">{{
+                  summary().advanceAmount - grandTotal() >= 0 ? '应退' : '应补'
+                }}</span>
+                <div
+                  class="boottom-div"
+                  style="width: 88px; text-align: center; border-bottom: 1px solid black; height: 34px; margin-top: 10px"
+                >
+                  <span style="display: block; margin-top: -10px" class="typeface">
+                    {{ formatMoney(Math.abs(summary().advanceAmount - grandTotal())) }}
+                  </span>
+                </div>
+                <span>元</span>
+              </div>
+            </div>
+
+            <!-- 底部 -->
+            <div class="container-base">
+              <span style="margin-left: 16px">负责人</span>
+              <span style="margin-left: 109px">会计</span>
+              <span style="margin-left: 94px">出纳</span>
+              <span style="margin-left: 98px">审核</span>
+              <span style="margin-left: 100px">部门主管</span>
+              <span style="margin-left: 104px">出差人</span>
+            </div>
           </div>
         </div>
       </div>
@@ -367,17 +374,27 @@ const TIME_LABEL_MAP: Record<string, string> = {
       .back {
         position: relative;
         width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+        .back-scroll {
+          width: fit-content;
+          min-width: 100%;
+          display: flex;
+          justify-content: center;
+        }
         .back-div {
           background-color: white;
           width: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
-
+          .expense-sheet {
+            width: 918px;
+            min-width: 918px;
+            height: 503px;
+          }
           .top-title {
             position: relative;
             margin-bottom: 2px;
@@ -694,7 +711,7 @@ const TIME_LABEL_MAP: Record<string, string> = {
         .boottom-div {
           border-bottom-color: var(--border-color-dark, #334155) !important;
         }
-         .right-div {
+        .right-div {
           border-right-color: var(--border-color-dark, #334155) !important;
         }
       }
@@ -831,6 +848,8 @@ export class ExpensePreviewComponent {
     if (value === null || value === undefined) return '0.00';
     return value.toFixed(2);
   }
-
+  formatTravelRoute(routes: string[]): string {
+    return formatTravelRoute(routes);
+  }
   readonly Math = Math;
 }

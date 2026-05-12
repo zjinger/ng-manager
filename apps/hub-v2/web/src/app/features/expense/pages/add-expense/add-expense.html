@@ -1,5 +1,8 @@
-<app-page-header title="新建费用报销" subtitle="适用于办公用品、行政费用、采购等普通费用报销。">
+<app-page-header title="{{expenseId ? '编辑' : '新建' }}费用报销" subtitle="适用于办公用品、行政费用、采购等普通费用报销。">
   <div page-header-actions class="header-actions">
+    <button nz-button nzType="default" (click)="goBack()">
+      <i nz-icon nzType="close"></i> 取消
+    </button>
     <button nz-button nzType="default" (click)="saveDraft()" [disabled]="!canSaveDraft()">
       <i nz-icon nzType="save"></i> 保存草稿箱
     </button>

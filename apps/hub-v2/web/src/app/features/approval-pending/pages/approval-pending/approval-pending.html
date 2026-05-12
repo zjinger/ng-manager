@@ -1,0 +1,33 @@
+<app-page-header
+  title="待我审批"
+  subtitle="统一处理负责人、部门主管、审核、会计、出纳等节点任务。"
+/>
+
+<!-- 顶部统计 -->
+<approval-dashboard-panel [stats]="dashboardStats()" />
+
+<!-- 筛选栏 -->
+<app-approval-filter-bar
+  [query]="currentQuery()"
+  [expenseTypeOptions]="expenseTypeOptions"
+  [approvalNodeOptions]="approvalNodeOptions"
+  [departmentOptions]="departmentOptions"
+  (submit)="handleFilter($event)"
+/>
+
+<!-- 激活筛选 -->
+<app-active-filters-bar
+  [tags]="activeFilterTags()"
+  (remove)="onRemoveFilter($event)"
+  (clear)="resetFilters()"
+/>
+
+<!-- 报销单列表组件状态 -->
+<app-list-state
+  [loading]="loading()"
+  [empty]="displayData().length === 0"
+  loadingText="正在加载待审批列表…"
+  emptyTitle="当前还没有待审批的报销单"
+>
+
+</app-list-state>

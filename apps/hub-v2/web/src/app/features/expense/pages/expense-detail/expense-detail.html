@@ -1,0 +1,51 @@
+<section>
+  <button nz-button nzType="default" (click)="goBack()">返回</button>
+  <button nz-button nzType="primary" (click)="goEdit()">编辑</button>
+
+  <!-- 顶部信息 -->
+  <app-process-header-card [data]="headerData()" />
+
+  <section class="travel-layout">
+    <!-- 主区域 -->
+    <div class="travel-layout__main">
+      <!-- 单据内容 -->
+      <div class="card query-card">
+        <div class="query-card__label">单据内容</div>
+
+        <app-expense-bill-preview
+          [basicInfo]="basicInfo()!"
+          [expenseItems]="expenseItems()"
+          [summary]="summary()!"
+        />
+      </div>
+
+      <!-- 附件 -->
+      <div class="card query-card">
+        <div class="query-card__label">附件材料</div>
+        @if (hasAttachments()) {
+        <app-attachment-preview-wall
+          [items]="attachmentItems()"
+          [showMeta]="true"
+          [removable]="false"
+        />
+        } @else {
+        <div class="query-card__content">暂无附件</div>
+        }
+      </div>
+
+      <!-- 操作记录 -->
+      <div class="card query-card">
+        <div class="query-card__label">操作记录</div>
+        <app-record-list [records]="recordListData()" />
+      </div>
+    </div>
+
+    <!-- 侧边栏 -->
+    <aside class="report-layout__side">
+      <div class="card query-card">
+        <div class="query-card__label">审批流预览</div>
+        <app-approval-flow />
+      </div>
+    </aside>
+  </section>
+</section>

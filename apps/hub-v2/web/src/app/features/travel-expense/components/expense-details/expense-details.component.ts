@@ -18,21 +18,7 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ExpenseLocationPickerComponent } from '../expense-location-picker/expense-location-picker.component';
 import { COMMON_PLACES, OTHER_PLACES } from '../../models/place';
-// 单条行程明细类型
-export interface TravelExpenseItem {
-  id: string;
-  date: Date | null; // 日期
-  startEndLocation: string; // 起讫地点
-  days: number | null; // 天数
-  airfare: number | null; // 机票
-  transportation: number | null; // 机票
-  localTransport: number | null; // 市内交通
-  accommodation: number | null; // 住宿
-  mealAllowance: number | null; // 餐补
-  other: number | null; // 其他
-  subtotal: number; // 小计
-}
-
+import { TravelExpenseItem, formatDate } from '../../models';
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -40,7 +26,7 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9
 const createEmptyItem = (): TravelExpenseItem => ({
   id: generateId(),
   date: null,
-  startEndLocation: '',
+  startEndLocation: [],
   days: null,
   airfare: null,
   transportation: null,
@@ -101,7 +87,7 @@ const getDefaultItems = (): TravelExpenseItem[] => {
             <tr>
               <td>
                 <nz-date-picker
-                  nzFormat="yyyy-MM-dd"
+                  nzFormat="MM-dd"
                   nzPlaceHolder="请选择日期"
                   [ngModel]="item.date"
                   (ngModelChange)="updateDate(item, $event)"
@@ -430,7 +416,7 @@ export class ExpenseDetailsComponent {
   }
 
   // 获取日期值（字符串转Date对象）
-  getDateValue(dateStr: string): Date | null {
+  getDateValue(dateStr: string | null): Date | null {
     if (!dateStr) return null;
     const date = new Date(dateStr);
     return isNaN(date.getTime()) ? null : date;
@@ -438,12 +424,17 @@ export class ExpenseDetailsComponent {
 
   // 更新日期
   updateDate(item: TravelExpenseItem, date: Date | null): void {
-    // 移除 setTimeout，直接更新
-    const updatedItem = { ...item, date };
+    const updatedItem = {
+      ...item,
+      date,
+    };
+  
     updatedItem.subtotal = this.calculateSubtotal(updatedItem);
-
-    const updatedItems = this.items().map((i) => (i.id === item.id ? updatedItem : i));
-
+  
+    const updatedItems = this.items().map((i) =>
+      i.id === item.id ? updatedItem : i
+    );
+  
     this.items.set(updatedItems);
     this.itemsChange.emit(updatedItems);
   }
@@ -521,7 +512,7 @@ export class ExpenseDetailsComponent {
     this.itemsChange.emit(itemsWithSubtotal);
   }
   // 位置选择器更新
-  onLocationChange(item: TravelExpenseItem, value: string): void {
+  onLocationChange(item: TravelExpenseItem, value: string[]): void {
     const updatedItem = { ...item, startEndLocation: value };
     updatedItem.subtotal = this.calculateSubtotal(updatedItem);
 
@@ -529,12 +520,5 @@ export class ExpenseDetailsComponent {
 
     this.items.set(updatedItems);
     this.itemsChange.emit(updatedItems);
-  }
-  // 格式化日期
-  private formatDate(value: Date): string {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
   }
 }
