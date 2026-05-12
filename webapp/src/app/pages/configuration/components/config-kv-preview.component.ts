@@ -25,9 +25,6 @@ import { EnvKeyValueEntry } from '../utils';
                 @if (entry.valueType) {
                   <span class="meta-tag">{{ entry.valueType }}</span>
                 }
-                @if (entry.line) {
-                  <span class="meta-tag">L{{ entry.line }}</span>
-                }
                 @if (entry.sensitive) {
                   <span class="sensitive-tag">敏感</span>
                 }

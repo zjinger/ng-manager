@@ -97,6 +97,7 @@ export class ConfigJsonEditorComponent implements OnChanges {
   @Input() readonly = false;
   @Input() minHeight = 120;
   @Input() maxHeight = 280;
+  @Input() expandedHeight = 560;
   @Output() valueChange = new EventEmitter<unknown>();
   @ViewChild('jsonTextarea') private jsonTextarea?: ElementRef<HTMLTextAreaElement>;
 
@@ -112,7 +113,13 @@ export class ConfigJsonEditorComponent implements OnChanges {
   }
 
   get currentHeight(): number {
-    return this.expanded ? 420 : this.maxHeight;
+    const lineHeight = 22;
+    const verticalPadding = 26;
+    const contentHeight = this.lineCount(this.jsonText) * lineHeight + verticalPadding;
+    if (this.expanded) {
+      return Math.min(this.expandedHeight, Math.max(this.minHeight, contentHeight + 48));
+    }
+    return Math.min(this.maxHeight, Math.max(this.minHeight, contentHeight));
   }
 
   get valueMeta(): string {
@@ -186,6 +193,13 @@ export class ConfigJsonEditorComponent implements OnChanges {
     } catch {
       return String(value);
     }
+  }
+
+  private lineCount(value: string): number {
+    if (!value) {
+      return 1;
+    }
+    return value.split(/\r?\n/).length;
   }
 }
 
