@@ -22,6 +22,14 @@ async function exists(filePath: string) {
     }
 }
 
+async function isDirectory(filePath: string) {
+    try {
+        return (await fs.stat(filePath)).isDirectory();
+    } catch {
+        return false;
+    }
+}
+
 async function findVisualizerReport(projectRoot: string): Promise<string | null> {
     const candidates = [
         path.join(projectRoot, "dist", "stats.json"),
@@ -36,10 +44,9 @@ async function findVisualizerReport(projectRoot: string): Promise<string | null>
     return null;
 }
 
-async function resolveDistPath(projectRoot: string) {
+async function resolveDistPath(projectRoot: string): Promise<string | null> {
     const dist = path.resolve(projectRoot, "dist");
-    if (await exists(dist)) return dist;
-    return projectRoot;
+    return await isDirectory(dist) ? dist : null;
 }
 
 function tryParseJson(text: string): any | null {
@@ -158,8 +165,30 @@ export class RollupVisualizerAnalyzer implements TaskAnalyzer {
         }
 
         const outputPath = await resolveDistPath(ctx.spec.projectRoot);
+        if (!outputPath) {
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "skipped",
+                phase: "analyze",
+                message: "未找到 dist 输出目录，跳过 rollup visualizer 产物分析以避免扫描 projectRoot。",
+                data: { projectRoot: ctx.spec.projectRoot },
+            });
+            return null;
+        }
+
         const assets = await scanDistAssets(outputPath, { includeMap: false });
         const stats = await parseVisualizerStats(statsPath);
+        if (stats.modules.length === 0 && stats.dependencies.length === 0) {
+            pushDiagnostic(ctx, {
+                analyzer: this.name,
+                status: "skipped",
+                phase: "parse",
+                message: "visualizer JSON 未解析出模块或依赖，可能不是 rollup-plugin-visualizer raw-data；将回退到通用 dist 分析。",
+                data: { statsPath },
+            });
+            return null;
+        }
+
         pushDiagnostic(ctx, {
             analyzer: this.name,
             status: "success",
