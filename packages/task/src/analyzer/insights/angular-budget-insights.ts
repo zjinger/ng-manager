@@ -16,6 +16,20 @@ interface AngularBudget {
     error?: string;
 }
 
+interface AngularBudgetCheck {
+    type?: string;
+    name?: string;
+    status: "ok" | "warning" | "error" | "skipped";
+    measuredLabel?: string;
+    measuredSize?: number;
+    warningLimit?: number;
+    errorLimit?: number;
+    exceededSource?: string;
+    approximated?: boolean;
+    reason?: string;
+    budget: AngularBudget;
+}
+
 async function readJson(filePath: string): Promise<any | null> {
     try {
         return JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -49,18 +63,34 @@ function parseSize(value?: string): number | null {
     return amount;
 }
 
-function exceededLimit(budget: AngularBudget, measuredSize: number): { level: "warning" | "error"; limit: number; source: string } | null {
-    const maxError = parseSize(budget.maximumError ?? budget.error);
-    if (typeof maxError === "number" && measuredSize > maxError) {
-        return { level: "error", limit: maxError, source: budget.maximumError ? "maximumError" : "error" };
+function formatSize(size: number): string {
+    if (size < 1024) return `${Math.round(size)} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function thresholdValue(budget: AngularBudget, kind: "warning" | "error"): { raw?: string; source?: string; size?: number; unsupported?: boolean } {
+    const raw = kind === "warning" ? budget.maximumWarning ?? budget.warning : budget.maximumError ?? budget.error;
+    const source = kind === "warning"
+        ? budget.maximumWarning ? "maximumWarning" : budget.warning ? "warning" : undefined
+        : budget.maximumError ? "maximumError" : budget.error ? "error" : undefined;
+    if (!raw) return {};
+    const size = parseSize(raw);
+    return typeof size === "number" ? { raw, source, size } : { raw, source, unsupported: true };
+}
+
+function limitStatus(check: AngularBudgetCheck): AngularBudgetCheck {
+    if (typeof check.measuredSize !== "number") return check;
+
+    if (typeof check.errorLimit === "number" && check.measuredSize > check.errorLimit) {
+        return { ...check, status: "error", exceededSource: check.budget.maximumError ? "maximumError" : "error" };
     }
 
-    const maxWarning = parseSize(budget.maximumWarning ?? budget.warning);
-    if (typeof maxWarning === "number" && measuredSize > maxWarning) {
-        return { level: "warning", limit: maxWarning, source: budget.maximumWarning ? "maximumWarning" : "warning" };
+    if (typeof check.warningLimit === "number" && check.measuredSize > check.warningLimit) {
+        return { ...check, status: "warning", exceededSource: check.budget.maximumWarning ? "maximumWarning" : "warning" };
     }
 
-    return null;
+    return { ...check, status: "ok" };
 }
 
 function findBundleSize(budget: AngularBudget, assets: TaskAssetInfo[], chunks: TaskAnalyzeChunk[]): number | null {
@@ -80,7 +110,7 @@ function measuredSize(
     summary: TaskAnalyzeSummary,
     assets: TaskAssetInfo[],
     chunks: TaskAnalyzeChunk[]
-): { size: number; label: string } | null {
+): { size: number; label: string; approximated?: boolean; reason?: string } | null {
     switch (budget.type) {
         case "initial": {
             const initial = chunks.filter((chunk) => chunk.initial);
@@ -97,15 +127,114 @@ function measuredSize(
             return { size: summary.totalRawSize, label: "all" };
         case "allScript":
             return { size: summary.jsRawSize, label: "allScript" };
+        case "allStyle":
+            return { size: summary.cssRawSize, label: "allStyle" };
         case "any":
             return assets.length > 0 ? { size: Math.max(...assets.map((asset) => asset.rawSize)), label: "any" } : null;
         case "anyScript": {
             const scripts = assets.filter((asset) => asset.type === "js");
             return scripts.length > 0 ? { size: Math.max(...scripts.map((asset) => asset.rawSize)), label: "anyScript" } : null;
         }
+        case "anyStyle": {
+            const styles = assets.filter((asset) => asset.type === "css");
+            return styles.length > 0 ? { size: Math.max(...styles.map((asset) => asset.rawSize)), label: "anyStyle" } : null;
+        }
+        case "anyComponentStyle": {
+            const styles = assets.filter((asset) => asset.type === "css");
+            return styles.length > 0
+                ? { size: Math.max(...styles.map((asset) => asset.rawSize)), label: "anyComponentStyle", approximated: true }
+                : null;
+        }
         default:
             return null;
     }
+}
+
+function buildCheck(
+    budget: AngularBudget,
+    summary: TaskAnalyzeSummary,
+    assets: TaskAssetInfo[],
+    chunks: TaskAnalyzeChunk[]
+): AngularBudgetCheck {
+    const warning = thresholdValue(budget, "warning");
+    const error = thresholdValue(budget, "error");
+    const base: AngularBudgetCheck = {
+        type: budget.type,
+        name: budget.name,
+        status: "skipped",
+        warningLimit: warning.size,
+        errorLimit: error.size,
+        budget,
+    };
+
+    if (warning.unsupported || error.unsupported) {
+        return { ...base, reason: "unsupported-threshold" };
+    }
+
+    if (typeof warning.size !== "number" && typeof error.size !== "number") {
+        return { ...base, reason: "no-maximum-threshold" };
+    }
+
+    if (!budget.type) {
+        return { ...base, reason: "missing-type" };
+    }
+
+    const supportedTypes = new Set([
+        "initial",
+        "bundle",
+        "all",
+        "allScript",
+        "any",
+        "anyScript",
+        "allStyle",
+        "anyStyle",
+        "anyComponentStyle",
+    ]);
+    if (!supportedTypes.has(budget.type)) {
+        return { ...base, reason: "unsupported-type" };
+    }
+
+    if (budget.type === "bundle" && !budget.name?.trim()) {
+        return { ...base, reason: "missing-bundle-name" };
+    }
+
+    const measured = measuredSize(budget, summary, assets, chunks);
+    if (!measured) {
+        return {
+            ...base,
+            reason: budget.type === "bundle" ? "bundle-not-found" : "no-matching-assets",
+        };
+    }
+
+    return limitStatus({
+        ...base,
+        measuredLabel: measured.label,
+        measuredSize: measured.size,
+        approximated: measured.approximated,
+        reason: measured.reason,
+    });
+}
+
+function skippedMessage(check: AngularBudgetCheck): string {
+    const label = check.name ? `${check.type} ${check.name}` : check.type ?? "unknown";
+    if (check.reason === "bundle-not-found" || check.reason === "missing-bundle-name") {
+        return `Angular budget ${label} 未能匹配到对应 chunk 或 asset，已跳过该预算检查。`;
+    }
+    if (check.reason === "unsupported-threshold") {
+        return `Angular budget ${label} 使用了暂不支持的阈值写法，已跳过该预算检查。`;
+    }
+    if (check.reason === "unsupported-type" || check.reason === "missing-type") {
+        return `Angular budget ${label} 暂不支持，已跳过该预算检查。`;
+    }
+    return `Angular budget ${label} 无法测量，已跳过该预算检查。`;
+}
+
+function exceededMessage(check: AngularBudgetCheck): string {
+    const label = check.name ? `${check.type} ${check.name}` : check.measuredLabel ?? check.type ?? "unknown";
+    const statusLabel = check.status === "error" ? "error" : "warning";
+    const limit = check.status === "error" ? check.errorLimit : check.warningLimit;
+    const suffix = check.approximated ? "（近似计算）" : "";
+    return `Angular budget ${label} 超过 ${statusLabel} 阈值：当前 ${formatSize(check.measuredSize ?? 0)}，限制 ${formatSize(limit ?? 0)}。${suffix}`;
 }
 
 export async function buildAngularBudgetInsights(input: {
@@ -125,24 +254,29 @@ export async function buildAngularBudgetInsights(input: {
     if (budgets.length === 0) return [];
 
     const chunks = input.chunks ?? [];
-    return budgets.flatMap((budget) => {
-        const measured = measuredSize(budget, input.summary, input.assets, chunks);
-        if (!measured) return [];
-        const limit = exceededLimit(budget, measured.size);
-        if (!limit) return [];
+    const checks = budgets.map((budget) => buildCheck(budget, input.summary, input.assets, chunks));
+    return checks.flatMap((check): TaskAnalyzeInsight[] => {
+        if (check.status === "ok") return [];
+
+        if (check.status === "skipped") {
+            if (!["bundle-not-found", "missing-bundle-name", "unsupported-type", "missing-type", "unsupported-threshold"].includes(check.reason ?? "")) {
+                return [];
+            }
+            return [{
+                level: "info" as const,
+                code: "angular-budget-skipped",
+                category: "budget" as const,
+                message: skippedMessage(check),
+                data: { check },
+            }];
+        }
 
         return [{
             level: "warning" as const,
-            code: "angular-budget-exceeded",
+            code: check.status === "error" ? "angular-budget-error" : "angular-budget-warning",
             category: "budget" as const,
-            message: `Angular budget ${measured.label} 超过 ${limit.source} 阈值，建议检查构建预算或拆分产物。`,
-            data: {
-                budget,
-                measuredSize: measured.size,
-                limit: limit.limit,
-                limitLevel: limit.level,
-                source: limit.source,
-            },
+            message: exceededMessage(check),
+            data: { check },
         }];
     });
 }
