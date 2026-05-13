@@ -23,25 +23,11 @@ function normalizeScopeProjectId(scope: ApiScope, projectId?: string) {
     return scopeKey(scope, projectId);
 }
 
-function createScopedJsonTable(db: SqliteDatabase, tableName: string) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS ${tableName} (
-            scope TEXT NOT NULL,
-            project_id TEXT NOT NULL DEFAULT '',
-            id TEXT NOT NULL,
-            value TEXT NOT NULL,
-            PRIMARY KEY (scope, project_id, id)
-        );
-    `);
-}
-
 abstract class SqliteScopedJsonRepoBase<T extends JsonValue> {
     protected constructor(
         protected readonly db: SqliteDatabase,
         private readonly tableName: string
-    ) {
-        createScopedJsonTable(db, tableName);
-    }
+    ) {}
 
     async list(scope: ApiScope, projectId?: string): Promise<T[]> {
         const rows = this.db

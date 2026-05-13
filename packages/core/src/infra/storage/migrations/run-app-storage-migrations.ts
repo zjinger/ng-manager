@@ -1,12 +1,5 @@
-import path from "node:path";
-import type { Project } from "@yinuo-ngm/project";
-import { migrateProjectsIfNeeded } from "@yinuo-ngm/project";
 import {
-    migrateJsonKvFileIfNeeded,
-    type SqliteDatabase,
-    SqliteJsonKvRepo,
-} from "@yinuo-ngm/storage";
-import {
+    initApiSqliteSchema,
     migrateJsonlHistoryFilesIfNeeded,
     migrateScopedJsonKvFilesIfNeeded,
     SqliteCollectionRepo,
@@ -14,15 +7,22 @@ import {
     SqliteHistoryRepo,
     SqliteRequestRepo,
 } from "@yinuo-ngm/api";
-import { migrateLegacySpriteConfigsIfNeeded } from "@yinuo-ngm/sprite";
-import { migrateLegacySvnRuntimeIfNeeded } from "@yinuo-ngm/svn";
+import type { LatestCacheSnapshot } from "@yinuo-ngm/deps";
 import { migrateNginxBindingJsonIfNeeded } from "@yinuo-ngm/nginx";
+import type { Project } from "@yinuo-ngm/project";
+import { migrateLegacySpriteConfigsIfNeeded } from "@yinuo-ngm/sprite";
+import {
+    migrateJsonKvFileIfNeeded,
+    type SqliteDatabase,
+    SqliteJsonKvRepo,
+} from "@yinuo-ngm/storage";
+import { migrateLegacySvnRuntimeIfNeeded } from "@yinuo-ngm/svn";
+import path from "node:path";
 import {
     initDashboardSchema,
-    SqliteDashboardRepo,
     migrateDashboardJsonFilesIfNeeded,
+    SqliteDashboardRepo,
 } from "../../dashboard";
-import type { LatestCacheSnapshot } from "@yinuo-ngm/deps";
 import type { AppMigration } from "./app-migration-runner";
 import { runAppMigrationRunner } from "./app-migration-runner";
 
@@ -70,6 +70,7 @@ export async function runAppStorageMigrations(opts: {
             name: "api-json-to-sqlite",
             up: async (ctx) => {
                 const rootDir = path.join(ctx.dataDir, API_SUBDIR);
+                initApiSqliteSchema(ctx.db);
                 const requestRepo = new SqliteRequestRepo(ctx.db);
                 const envRepo = new SqliteEnvRepo(ctx.db);
                 const historyRepo = new SqliteHistoryRepo(ctx.db);
@@ -145,6 +146,43 @@ export async function runAppStorageMigrations(opts: {
                 await migrateDashboardJsonFilesIfNeeded({
                     rootDir: ctx.dataDir,
                     target: dashboardRepo,
+                    backup: true,
+                });
+            },
+        },
+        {
+            version: "20260513-002",
+            name: "api-json-to-sqlite-backfill",
+            up: async (ctx) => {
+                const rootDir = path.join(ctx.dataDir, API_SUBDIR);
+                initApiSqliteSchema(ctx.db);
+                const requestRepo = new SqliteRequestRepo(ctx.db);
+                const envRepo = new SqliteEnvRepo(ctx.db);
+                const historyRepo = new SqliteHistoryRepo(ctx.db);
+                const collectionRepo = new SqliteCollectionRepo(ctx.db);
+
+                await migrateScopedJsonKvFilesIfNeeded({
+                    rootDir,
+                    fileName: "requests.kv.json",
+                    target: requestRepo,
+                    backup: true,
+                });
+                await migrateScopedJsonKvFilesIfNeeded({
+                    rootDir,
+                    fileName: "envs.kv.json",
+                    target: envRepo,
+                    backup: true,
+                });
+                await migrateScopedJsonKvFilesIfNeeded({
+                    rootDir,
+                    fileName: "collections.kv.json",
+                    target: collectionRepo,
+                    backup: true,
+                });
+                await migrateJsonlHistoryFilesIfNeeded({
+                    rootDir,
+                    fileName: "history.jsonl",
+                    target: historyRepo,
                     backup: true,
                 });
             },

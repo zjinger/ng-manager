@@ -7,22 +7,6 @@ function scopeKey(scope: ApiScope, projectId?: string) {
     return scope === "project" ? String(projectId ?? "").trim() : "";
 }
 
-function createHistoryTable(db: SqliteDatabase) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS api_history (
-            id TEXT PRIMARY KEY,
-            scope TEXT NOT NULL,
-            project_id TEXT NOT NULL DEFAULT '',
-            created_at INTEGER NOT NULL,
-            value TEXT NOT NULL
-        );
-    `);
-    db.exec(`
-        CREATE INDEX IF NOT EXISTS idx_api_history_scope_project_created_at
-        ON api_history (scope, project_id, created_at DESC);
-    `);
-}
-
 function truncateBody(h: ApiHistoryEntity, bodyMaxChars = 200_000): ApiHistoryEntity {
     const body = h.response?.bodyText;
     if (!body) return h;
@@ -45,9 +29,7 @@ export class SqliteHistoryRepo implements HistoryRepo {
     constructor(
         private readonly db: SqliteDatabase,
         private readonly bodyMaxChars = 200_000
-    ) {
-        createHistoryTable(db);
-    }
+    ) {}
 
     async add(h: ApiHistoryEntity, scope: ApiScope, projectId?: string): Promise<void> {
         const safe = truncateBody(h, this.bodyMaxChars);

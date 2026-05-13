@@ -1,6 +1,7 @@
 import * as path from "path";
 import {
     ApiClient,
+    initApiSqliteSchema,
     SqliteCollectionRepo,
     SqliteEnvRepo,
     SqliteHistoryRepo,
@@ -28,6 +29,7 @@ export async function createApiClientDomain(opts: {
     const rootDir = path.join(opts.dataDir, API_SUBDIR);
     const db = opts.db;
 
+    initApiSqliteSchema(db);
     const repo = new SqliteRequestRepo(db);
     const envRepo = new SqliteEnvRepo(db);
     const historyRepo = new SqliteHistoryRepo(db);
