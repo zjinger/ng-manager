@@ -5,7 +5,7 @@ export interface NavItem {
   route: string;
   exact?: boolean;
   badge?: string;
-  tone?: 'default' | 'warning' | 'danger';
+  tone?: 'default' | 'info' | 'warning' | 'danger';
   adminOnly?: boolean;
 }
 

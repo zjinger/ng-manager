@@ -3,7 +3,7 @@
     <button nz-button nzType="text" class="topbar__icon-btn topbar__sidebar-toggle" (click)="toggleSidebar()">
       <span nz-icon [nzType]="sidebarCollapsed() ? 'menu-unfold' : 'menu-fold'"></span>
     </button>
-    <a [routerLink]="['/dashboard']">首页</a>
+    <a [routerLink]="[rootRoute()]">{{ rootLabel() }}</a>
     @for (item of breadcrumbs(); track $index) {
       <span class="breadcrumb__sep">/</span>
       @if (item.route) {
@@ -17,39 +17,55 @@
   <div class="topbar__actions">
     <div
       class="topbar__search"
+      [class.topbar__search--disabled]="!searchEnabled()"
       role="button"
-      tabindex="0"
-      aria-label="打开全局搜索"
-      (click)="openGlobalSearch()"
-      (keydown.enter)="$event.preventDefault(); openGlobalSearch()"
-      (keydown.space)="$event.preventDefault(); openGlobalSearch()"
+      [attr.tabindex]="searchEnabled() ? 0 : -1"
+      [attr.aria-label]="searchEnabled() ? '打开全局搜索' : searchPlaceholder()"
+      [attr.aria-disabled]="!searchEnabled()"
+      (click)="searchEnabled() && openGlobalSearch()"
+      (keydown.enter)="$event.preventDefault(); searchEnabled() && openGlobalSearch()"
+      (keydown.space)="$event.preventDefault(); searchEnabled() && openGlobalSearch()"
     >
       <span nz-icon nzType="search"></span>
-      <span>搜索测试单、研发项、文档、发布…</span>
-      <kbd>Ctrl K</kbd>
+      <span>{{ searchPlaceholder() }}</span>
+      @if (searchEnabled()) {
+        <kbd>Ctrl K</kbd>
+      }
     </div>
 
-    <button
-      nz-button
-      nzType="text"
-      class="topbar__icon-btn"
-      nzShape="circle"
-      [attr.aria-label]="isDark() ? '切换为浅色主题' : '切换为暗黑主题'"
-      (click)="toggleTheme()"
-    >
-      <span nz-icon [nzType]="isDark() ? 'sun' : 'moon'"></span>
-    </button>
+    @if (showReturnToWorkbench()) {
+      <button nz-button nzType="text" class="topbar__icon-btn" nzShape="circle" [routerLink]="['/dashboard']" title="返回工作台">
+        <span nz-icon nzType="home"></span>
+      </button>
+    }
 
-    <span
-      class="topbar__ws-indicator"
-      [attr.data-tone]="wsStateTone()"
-      [attr.title]="wsStateLabel()"
-      [attr.aria-label]="wsStateLabel()"
-    >
-      <i class="topbar__ws-dot"></i>
-    </span>
+    @if (showThemeToggle()) {
+      <button
+        nz-button
+        nzType="text"
+        class="topbar__icon-btn"
+        nzShape="circle"
+        [attr.aria-label]="isDark() ? '切换为浅色主题' : '切换为暗黑主题'"
+        (click)="toggleTheme()"
+      >
+        <span nz-icon [nzType]="isDark() ? 'sun' : 'moon'"></span>
+      </button>
+    }
 
-    <app-notification-bell />
+    @if (showWsIndicator()) {
+      <span
+        class="topbar__ws-indicator"
+        [attr.data-tone]="wsStateTone()"
+        [attr.title]="wsStateLabel()"
+        [attr.aria-label]="wsStateLabel()"
+      >
+        <i class="topbar__ws-dot"></i>
+      </span>
+    }
+
+    @if (showNotificationBell()) {
+      <app-notification-bell />
+    }
 
     <a class="topbar__user" nz-dropdown [nzDropdownMenu]="userMenu" nzTrigger="click" nzPlacement="bottomRight" [nzOverlayStyle]="{'width': '100%'}">
       <span class="topbar__user-avatar">
@@ -71,6 +87,12 @@
       <span nz-icon nzType="user"></span>
       <span>个人中心</span>
     </li>
+    @if (showReturnToWorkbench()) {
+      <li nz-menu-item [routerLink]="['/dashboard']" class="user-menu__item">
+        <span nz-icon nzType="home"></span>
+        <span>返回工作台</span>
+      </li>
+    }
     <li nz-menu-divider></li>
     <li nz-menu-item (click)="logout()" class="user-menu__item">
       <span nz-icon nzType="logout"></span>

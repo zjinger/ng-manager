@@ -1,93 +1,28 @@
-<div class="admin-layout">
-  <aside class="admin-sidebar">
-    <a class="admin-brand" [routerLink]="['/admin']">
-      <span class="admin-brand__icon">H</span>
-      <span class="admin-brand__text">Hub v2 Admin</span>
-      <span class="admin-brand__badge">ADMIN</span>
-    </a>
+<div class="shell" [class.shell--collapsed]="uiStore.sidebarCollapsed()">
+  <app-sidebar
+    [items]="navSections"
+    [collapsed]="uiStore.sidebarCollapsed()"
+    [showProjectSwitcher]="false"
+    brandName="Hub v2 Admin"
+    brandBadge="ADMIN"
+    brandRoute="/admin"
+    brandLogo="/logo.svg"
+    brandLogoAlt="Hub v2 Admin"
+  />
 
-    <nav class="admin-nav" aria-label="后台导航">
-      @for (section of navSections; track section.label) {
-        <section class="admin-nav__section">
-          <div class="admin-nav__label">{{ section.label }}</div>
-          @for (item of section.items; track item.key) {
-            <a
-              class="admin-nav__item"
-              [routerLink]="item.route"
-              routerLinkActive="is-active"
-              [routerLinkActiveOptions]="{ exact: item.route === '/admin' }"
-            >
-              <span nz-icon [nzType]="item.icon"></span>
-              <span>{{ item.label }}</span>
-              @if (item.badge) {
-                <span class="admin-nav__badge" [attr.data-tone]="item.badgeTone || 'info'">{{ item.badge }}</span>
-              }
-            </a>
-          }
-        </section>
-      }
-    </nav>
+  <div class="shell__main">
+    <app-topbar
+      rootLabel="系统管理"
+      rootRoute="/admin"
+      searchPlaceholder="搜索用户、部门、角色…"
+      [searchEnabled]="false"
+      [showWsIndicator]="false"
+      [showNotificationBell]="false"
+      [showReturnToWorkbench]="true"
+    />
 
-    <div class="admin-sidebar__footer">
-      <div class="admin-user">
-        <span class="admin-user__avatar">{{ userInitial() }}</span>
-        <span class="admin-user__meta">
-          <strong>{{ currentUser()?.nickname || currentUser()?.username || 'Admin' }}</strong>
-          <small>系统管理员</small>
-        </span>
-      </div>
-    </div>
-  </aside>
-
-  <section class="admin-main">
-    <header class="admin-topbar">
-      <div class="admin-breadcrumb">
-        <a [routerLink]="['/admin']">系统管理</a>
-        <span>/</span>
-        <strong>{{ currentLabel() }}</strong>
-      </div>
-
-      <div class="admin-topbar__actions">
-        <div class="admin-search" role="button" tabindex="0" aria-label="搜索后台配置">
-          <span nz-icon nzType="search"></span>
-          <span>搜索用户、部门、角色…</span>
-          <kbd>Ctrl K</kbd>
-        </div>
-        <button nz-button nzType="text" class="admin-icon-btn" [routerLink]="['/dashboard']" title="返回工作台">
-          <span nz-icon nzType="home"></span>
-        </button>
-        <button nz-button nzType="text" class="admin-icon-btn" title="通知">
-          <span nz-icon nzType="bell"></span>
-          <i class="admin-dot"></i>
-        </button>
-        <a class="admin-account" nz-dropdown [nzDropdownMenu]="accountMenu" nzTrigger="click" nzPlacement="bottomRight">
-          <span class="admin-account__avatar">{{ userInitial() }}</span>
-          <span>{{ currentUser()?.nickname || currentUser()?.username || 'Admin' }}</span>
-          <span nz-icon nzType="down"></span>
-        </a>
-      </div>
-    </header>
-
-    <main class="admin-content">
+    <main class="shell__content">
       <router-outlet />
     </main>
-  </section>
+  </div>
 </div>
-
-<nz-dropdown-menu #accountMenu="nzDropdownMenu">
-  <ul nz-menu>
-    <li nz-menu-item [routerLink]="['/profile']">
-      <span nz-icon nzType="user"></span>
-      <span>个人中心</span>
-    </li>
-    <li nz-menu-item [routerLink]="['/dashboard']">
-      <span nz-icon nzType="home"></span>
-      <span>返回工作台</span>
-    </li>
-    <li nz-menu-divider></li>
-    <li nz-menu-item (click)="logout()">
-      <span nz-icon nzType="logout"></span>
-      <span>退出登录</span>
-    </li>
-  </ul>
-</nz-dropdown-menu>

@@ -1,252 +1,412 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
-import type { DepartmentEntity, DepartmentStatus, FinanceRoleEntity, FinanceRoleStatus } from '../../models/organization.model';
+import { DepartmentFormDialogComponent } from '../../dialogs/department-form-dialog/department-form-dialog.component';
+import type { CreateDepartmentInput, DepartmentEntity, DepartmentTreeNode, UpdateDepartmentInput } from '../../models/organization.model';
 import { OrganizationApiService } from '../../services/organization-api.service';
+import { USER_TITLE_OPTIONS, type UserEntity, type UserTitleCode } from '../../../users/models/user.model';
+import { UserApiService } from '../../../users/services/user-api.service';
 
-type DepartmentDraft = {
-  id: string | null;
-  code: string;
-  name: string;
-  parentId: string;
-  externalFinanceCode: string;
-  status: DepartmentStatus;
-  sort: number;
-};
-
-type FinanceRoleDraft = {
-  id: string | null;
-  code: string;
-  name: string;
-  description: string;
-  status: FinanceRoleStatus;
-  sort: number;
-};
-
-const DEFAULT_DEPARTMENT_DRAFT: DepartmentDraft = {
-  id: null,
-  code: '',
-  name: '',
-  parentId: '',
-  externalFinanceCode: '',
-  status: 'active',
-  sort: 0,
-};
-
-const DEFAULT_FINANCE_ROLE_DRAFT: FinanceRoleDraft = {
-  id: null,
-  code: '',
-  name: '',
-  description: '',
-  status: 'active',
-  sort: 0,
+type FlatDepartmentNode = DepartmentTreeNode & {
+  level: number;
 };
 
 @Component({
   selector: 'app-organization-page',
-  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule, NzSelectModule, NzTabsModule, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent],
+  imports: [NzButtonModule, NzIconModule, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent, DepartmentFormDialogComponent],
   template: `
-    <app-page-header title="组织管理" [subtitle]="subtitle()" />
+    <app-page-header title="部门组织" subtitle="管理公司组织架构、部门层级和人员分配" />
 
     <app-page-toolbar>
-      <button toolbar-primary nz-button nzType="primary" (click)="resetDrafts()">
+      <button toolbar-primary nz-button nzType="primary" (click)="startCreateDepartment()">
         <nz-icon nzType="plus" nzTheme="outline" />
-        新建
+        新建部门
       </button>
       <app-search-box
         toolbar-search
-        placeholder="搜索编码或名称"
+        placeholder="搜索部门名称或编码"
         [value]="keyword()"
         (valueChange)="keyword.set($event)"
-        (submitted)="loadAll()"
+        (submitted)="loadDepartments()"
       />
     </app-page-toolbar>
 
-    <nz-tabset>
-      <nz-tab nzTitle="部门">
-        <section class="org-layout">
-          <form class="org-panel" (ngSubmit)="saveDepartment()">
-            <h3>{{ departmentDraft().id ? '编辑部门' : '新建部门' }}</h3>
-            <label>
-              <span>部门编码</span>
-              <input nz-input name="departmentCode" [ngModel]="departmentDraft().code" (ngModelChange)="updateDepartmentDraft('code', $event)" />
-            </label>
-            <label>
-              <span>部门名称</span>
-              <input nz-input name="departmentName" [ngModel]="departmentDraft().name" (ngModelChange)="updateDepartmentDraft('name', $event)" />
-            </label>
-            <label>
-              <span>上级部门</span>
-              <nz-select nzAllowClear name="departmentParent" [ngModel]="departmentDraft().parentId" (ngModelChange)="updateDepartmentDraft('parentId', $event || '')">
-                <nz-option nzLabel="无上级部门" nzValue=""></nz-option>
-                @for (department of departments(); track department.id) {
-                  @if (department.id !== departmentDraft().id) {
-                    <nz-option [nzLabel]="department.name" [nzValue]="department.id"></nz-option>
-                  }
+    <section class="department-layout">
+      <aside class="department-card department-tree-card">
+        <header class="department-card__header">
+          <h2>组织架构树</h2>
+          <span>{{ flatTree().length }} 个部门</span>
+        </header>
+        <div class="department-tree">
+          @for (node of flatTree(); track node.id) {
+            <button
+              type="button"
+              class="tree-item"
+              [class.is-active]="selectedDepartmentId() === node.id"
+              [style.padding-left.px]="12 + node.level * 18"
+              (click)="selectDepartment(node.id)"
+            >
+              <span class="tree-item__icon" nz-icon [nzType]="node.children.length ? 'cluster' : 'apartment'"></span>
+              <span class="tree-item__name">{{ node.name }}</span>
+              <span class="tree-item__meta">{{ childCount(node.id) }}</span>
+            </button>
+          } @empty {
+            <div class="empty-state">当前没有部门</div>
+          }
+        </div>
+      </aside>
+
+      <div class="department-main">
+        <section class="department-card">
+          <header class="department-card__header">
+            <h2>
+              <span nz-icon nzType="bank"></span>
+              {{ selectedDepartment()?.name || '请选择部门' }}
+            </h2>
+            <div class="department-actions">
+              @if (selectedDepartment()) {
+                <button nz-button (click)="editDepartment(selectedDepartment()!)">
+                  <span nz-icon nzType="edit"></span>
+                  编辑
+                </button>
+                <button nz-button nzType="primary" (click)="startCreateChildDepartment(selectedDepartment()!)">
+                  <span nz-icon nzType="plus"></span>
+                  添加子部门
+                </button>
+              }
+            </div>
+          </header>
+
+          @if (selectedDepartment(); as department) {
+            <div class="department-info-grid">
+              <div class="department-info-item">
+                <span>部门编号</span>
+                <strong>{{ department.code }}</strong>
+              </div>
+              <div class="department-info-item">
+                <span>成员总数</span>
+                <strong>{{ memberTotal() }} 人</strong>
+              </div>
+              <div class="department-info-item">
+                <span>下级部门</span>
+                <strong>{{ childCount(department.id) }} 个</strong>
+              </div>
+              <div class="department-info-item">
+                <span>创建时间</span>
+                <strong>{{ formatDate(department.createdAt) }}</strong>
+              </div>
+              <div class="department-info-item">
+                <span>状态</span>
+                <strong class="status-text" [class.status-text--inactive]="department.status === 'inactive'">
+                  {{ department.status === 'active' ? '启用' : '停用' }}
+                </strong>
+              </div>
+            </div>
+          } @else {
+            <div class="empty-state">从左侧选择一个部门查看详情</div>
+          }
+        </section>
+
+        <section class="department-card">
+          <header class="department-card__header department-members__header">
+            <h2>部门成员 <span>{{ memberTotal() }}</span></h2>
+            <app-search-box
+              placeholder="搜索成员"
+              [value]="memberKeyword()"
+              (valueChange)="memberKeyword.set($event)"
+              (submitted)="loadMembers()"
+            />
+          </header>
+          <div class="members-table-wrap">
+            <table class="members-table">
+              <thead>
+                <tr>
+                  <th>成员</th>
+                  <th>职位</th>
+                  <th>部门关系</th>
+                  <th>账号状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (member of members(); track member.id) {
+                  <tr>
+                    <td>
+                      <div class="member-cell">
+                        <div class="member-avatar">{{ userInitial(member) }}</div>
+                        <div>
+                          <strong>{{ member.displayName || member.username }}</strong>
+                          <small>{{ member.email || member.username }}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{{ titleLabel(member.titleCode) }}</td>
+                    <td>{{ relationLabel(member) }}</td>
+                    <td>
+                      <span class="status-text" [class.status-text--inactive]="member.status === 'inactive'">
+                        {{ member.status === 'active' ? '活跃' : '停用' }}
+                      </span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4">
+                      <div class="empty-state">当前部门没有匹配成员</div>
+                    </td>
+                  </tr>
                 }
-              </nz-select>
-            </label>
-            <label>
-              <span>财务部门编码</span>
-              <input nz-input name="externalFinanceCode" [ngModel]="departmentDraft().externalFinanceCode" (ngModelChange)="updateDepartmentDraft('externalFinanceCode', $event)" />
-            </label>
-            <div class="org-form-row">
-              <label>
-                <span>状态</span>
-                <nz-select name="departmentStatus" [ngModel]="departmentDraft().status" (ngModelChange)="updateDepartmentDraft('status', $event)">
-                  <nz-option nzLabel="启用" nzValue="active"></nz-option>
-                  <nz-option nzLabel="停用" nzValue="inactive"></nz-option>
-                </nz-select>
-              </label>
-              <label>
-                <span>排序</span>
-                <input nz-input type="number" name="departmentSort" [ngModel]="departmentDraft().sort" (ngModelChange)="updateDepartmentDraft('sort', +$event || 0)" />
-              </label>
-            </div>
-            <button nz-button nzType="primary" [disabled]="!departmentDraft().code.trim() || !departmentDraft().name.trim()">保存部门</button>
-          </form>
-
-          <div class="org-list">
-            @for (department of departments(); track department.id) {
-              <article class="org-item">
-                <div>
-                  <h3>{{ department.name }}</h3>
-                  <p>{{ department.code }} · {{ department.externalFinanceCode || '未设置财务编码' }}</p>
-                </div>
-                <span class="status" [class.status--inactive]="department.status === 'inactive'">{{ department.status === 'active' ? '启用' : '停用' }}</span>
-                <button nz-button nzType="link" (click)="editDepartment(department)">编辑</button>
-              </article>
-            } @empty {
-              <div class="org-empty">当前没有部门</div>
-            }
+              </tbody>
+            </table>
           </div>
         </section>
-      </nz-tab>
+      </div>
+    </section>
 
-      <nz-tab nzTitle="财务角色">
-        <section class="org-layout">
-          <form class="org-panel" (ngSubmit)="saveFinanceRole()">
-            <h3>{{ financeRoleDraft().id ? '编辑财务角色' : '新建财务角色' }}</h3>
-            <label>
-              <span>角色编码</span>
-              <input nz-input name="financeRoleCode" [ngModel]="financeRoleDraft().code" (ngModelChange)="updateFinanceRoleDraft('code', $event)" />
-            </label>
-            <label>
-              <span>角色名称</span>
-              <input nz-input name="financeRoleName" [ngModel]="financeRoleDraft().name" (ngModelChange)="updateFinanceRoleDraft('name', $event)" />
-            </label>
-            <label>
-              <span>描述</span>
-              <input nz-input name="financeRoleDescription" [ngModel]="financeRoleDraft().description" (ngModelChange)="updateFinanceRoleDraft('description', $event)" />
-            </label>
-            <div class="org-form-row">
-              <label>
-                <span>状态</span>
-                <nz-select name="financeRoleStatus" [ngModel]="financeRoleDraft().status" (ngModelChange)="updateFinanceRoleDraft('status', $event)">
-                  <nz-option nzLabel="启用" nzValue="active"></nz-option>
-                  <nz-option nzLabel="停用" nzValue="inactive"></nz-option>
-                </nz-select>
-              </label>
-              <label>
-                <span>排序</span>
-                <input nz-input type="number" name="financeRoleSort" [ngModel]="financeRoleDraft().sort" (ngModelChange)="updateFinanceRoleDraft('sort', +$event || 0)" />
-              </label>
-            </div>
-            <button nz-button nzType="primary" [disabled]="!financeRoleDraft().code.trim() || !financeRoleDraft().name.trim()">保存角色</button>
-          </form>
-
-          <div class="org-list">
-            @for (role of financeRoles(); track role.id) {
-              <article class="org-item">
-                <div>
-                  <h3>{{ role.name }}</h3>
-                  <p>{{ role.code }} · {{ role.description || '无描述' }}</p>
-                </div>
-                <span class="status" [class.status--inactive]="role.status === 'inactive'">{{ role.status === 'active' ? '启用' : '停用' }}</span>
-                <button nz-button nzType="link" (click)="editFinanceRole(role)">编辑</button>
-              </article>
-            } @empty {
-              <div class="org-empty">当前没有财务角色</div>
-            }
-          </div>
-        </section>
-      </nz-tab>
-    </nz-tabset>
+    <app-department-form-dialog
+      [open]="dialogOpen()"
+      [busy]="dialogBusy()"
+      [mode]="dialogMode()"
+      [department]="editingDepartment()"
+      [parentId]="dialogParentId()"
+      [departments]="allDepartments()"
+      (cancel)="closeDepartmentDialog()"
+      (create)="createDepartment($event)"
+      (update)="updateDepartment($event)"
+    />
   `,
   styles: [
     `
-      .org-layout {
+      .department-layout {
         display: grid;
-        grid-template-columns: minmax(280px, 360px) 1fr;
-        gap: 16px;
-        margin-top: 16px;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 20px;
       }
-      .org-panel,
-      .org-list {
-        border: 1px solid var(--border-color-soft);
-        background: var(--bg-surface);
+
+      .department-main {
+        display: grid;
+        gap: 20px;
+        min-width: 0;
+      }
+
+      .department-card {
+        border: 1px solid var(--border-color);
         border-radius: 8px;
+        background: var(--bg-container);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
       }
-      .org-panel {
-        display: grid;
-        gap: 12px;
-        align-content: start;
-        padding: 16px;
+
+      .department-card__header {
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color-soft);
       }
-      .org-panel h3,
-      .org-item h3 {
+
+      .department-card__header h2 {
         margin: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
         color: var(--text-heading);
         font-size: 15px;
-        font-weight: 700;
+        font-weight: 600;
       }
-      .org-panel label {
+
+      .department-card__header > span,
+      .department-card__header h2 span {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .department-tree {
+        padding: 8px;
+        max-height: calc(100vh - 260px);
+        overflow: auto;
+      }
+
+      .tree-item {
+        width: 100%;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+      }
+
+      .tree-item:hover {
+        background: var(--bg-subtle);
+        color: var(--text-primary);
+      }
+
+      .tree-item.is-active {
+        background: var(--color-info-light);
+        color: var(--color-info);
+      }
+
+      .tree-item__icon {
+        width: 18px;
+        text-align: center;
+        flex: 0 0 18px;
+      }
+
+      .tree-item__name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .tree-item__meta {
+        min-width: 22px;
+        border-radius: 999px;
+        padding: 1px 7px;
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .department-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .department-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+        padding: 16px;
+      }
+
+      .department-info-item {
         display: grid;
         gap: 6px;
+        padding: 12px;
       }
-      .org-panel span,
-      .org-item p {
+
+      .department-info-item span,
+      .members-table th,
+      .member-cell small {
         color: var(--text-muted);
         font-size: 12px;
       }
-      .org-form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
+
+      .department-info-item strong {
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 600;
       }
-      .org-list {
-        min-height: 320px;
-        overflow: hidden;
+
+      .department-members__header app-search-box {
+        width: 220px;
       }
-      .org-item {
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        align-items: center;
-        gap: 12px;
+
+      .members-table-wrap {
+        overflow-x: auto;
+      }
+
+      .members-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .members-table th {
+        padding: 10px 16px;
+        background: var(--bg-subtle);
+        font-weight: 600;
+        text-align: left;
+      }
+
+      .members-table td {
         padding: 14px 16px;
-        border-bottom: 1px solid var(--border-color-soft);
+        border-top: 1px solid var(--border-color-soft);
+        color: var(--text-secondary);
       }
-      .status {
+
+      .member-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .member-cell strong,
+      .member-cell small {
+        display: block;
+      }
+
+      .member-cell strong {
+        color: var(--text-primary);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .member-avatar {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--gradient-user-avatar);
+        color: var(--text-inverse);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .status-text {
         color: var(--color-success);
         font-size: 12px;
         font-weight: 700;
       }
-      .status--inactive {
+
+      .status-text--inactive {
         color: var(--text-muted);
       }
-      .org-empty {
+
+      .empty-state {
         padding: 24px;
         color: var(--text-muted);
+        text-align: center;
       }
-      @media (max-width: 900px) {
-        .org-layout {
+
+      @media (max-width: 1080px) {
+        .department-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .department-tree {
+          max-height: none;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .department-card__header,
+        .department-members__header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .department-actions,
+        .department-members__header app-search-box {
+          width: 100%;
+        }
+
+        .department-info-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -255,100 +415,166 @@ const DEFAULT_FINANCE_ROLE_DRAFT: FinanceRoleDraft = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OrganizationPageComponent {
-  private readonly api = inject(OrganizationApiService);
+  private readonly organizationApi = inject(OrganizationApiService);
+  private readonly userApi = inject(UserApiService);
   private readonly message = inject(NzMessageService);
 
   readonly keyword = signal('');
-  readonly departments = signal<DepartmentEntity[]>([]);
-  readonly financeRoles = signal<FinanceRoleEntity[]>([]);
-  readonly departmentDraft = signal<DepartmentDraft>({ ...DEFAULT_DEPARTMENT_DRAFT });
-  readonly financeRoleDraft = signal<FinanceRoleDraft>({ ...DEFAULT_FINANCE_ROLE_DRAFT });
-  readonly subtitle = computed(() => `${this.departments().length} 个部门 · ${this.financeRoles().length} 个财务角色`);
+  readonly memberKeyword = signal('');
+  readonly departmentTree = signal<DepartmentTreeNode[]>([]);
+  readonly allDepartments = signal<DepartmentEntity[]>([]);
+  readonly selectedDepartmentId = signal('');
+  readonly members = signal<UserEntity[]>([]);
+  readonly memberTotal = signal(0);
+  readonly dialogOpen = signal(false);
+  readonly dialogBusy = signal(false);
+  readonly dialogMode = signal<'create' | 'edit'>('create');
+  readonly dialogParentId = signal('');
+  readonly editingDepartment = signal<DepartmentEntity | null>(null);
+
+  readonly flatTree = computed(() => this.flattenTree(this.departmentTree()));
+  readonly selectedDepartment = computed(() => this.allDepartments().find((department) => department.id === this.selectedDepartmentId()) ?? null);
 
   constructor() {
-    this.loadAll();
+    this.loadDepartments();
   }
 
-  loadAll(): void {
+  loadDepartments(): void {
     const query = { keyword: this.keyword().trim() };
-    this.api.listDepartments(query).subscribe({ next: (items) => this.departments.set(items) });
-    this.api.listFinanceRoles(query).subscribe({ next: (items) => this.financeRoles.set(items) });
+    this.organizationApi.listDepartmentTree(query).subscribe({
+      next: (tree) => {
+        this.departmentTree.set(tree);
+        const flat = this.flattenTree(tree);
+        if (!flat.some((department) => department.id === this.selectedDepartmentId())) {
+          this.selectedDepartmentId.set(flat[0]?.id ?? '');
+        }
+        this.loadMembers();
+      },
+      error: () => this.message.error('加载部门树失败'),
+    });
+    this.organizationApi.listDepartments().subscribe({
+      next: (items) => this.allDepartments.set(items),
+      error: () => this.allDepartments.set([]),
+    });
   }
 
-  resetDrafts(): void {
-    this.departmentDraft.set({ ...DEFAULT_DEPARTMENT_DRAFT });
-    this.financeRoleDraft.set({ ...DEFAULT_FINANCE_ROLE_DRAFT });
+  selectDepartment(departmentId: string): void {
+    this.selectedDepartmentId.set(departmentId);
+    this.loadMembers();
   }
 
-  updateDepartmentDraft<K extends keyof DepartmentDraft>(key: K, value: DepartmentDraft[K]): void {
-    this.departmentDraft.update((draft) => ({ ...draft, [key]: value }));
+  startCreateDepartment(): void {
+    this.dialogMode.set('create');
+    this.dialogParentId.set('');
+    this.editingDepartment.set(null);
+    this.dialogOpen.set(true);
   }
 
-  updateFinanceRoleDraft<K extends keyof FinanceRoleDraft>(key: K, value: FinanceRoleDraft[K]): void {
-    this.financeRoleDraft.update((draft) => ({ ...draft, [key]: value }));
+  startCreateChildDepartment(parent: DepartmentEntity): void {
+    this.dialogMode.set('create');
+    this.dialogParentId.set(parent.id);
+    this.editingDepartment.set(null);
+    this.dialogOpen.set(true);
   }
 
   editDepartment(department: DepartmentEntity): void {
-    this.departmentDraft.set({
-      id: department.id,
-      code: department.code,
-      name: department.name,
-      parentId: department.parentId || '',
-      externalFinanceCode: department.externalFinanceCode || '',
-      status: department.status,
-      sort: department.sort,
-    });
+    this.dialogMode.set('edit');
+    this.dialogParentId.set('');
+    this.editingDepartment.set(department);
+    this.dialogOpen.set(true);
   }
 
-  saveDepartment(): void {
-    const draft = this.departmentDraft();
-    const input = {
-      code: draft.code.trim(),
-      name: draft.name.trim(),
-      parentId: draft.parentId || null,
-      externalFinanceCode: draft.externalFinanceCode.trim() || null,
-      status: draft.status,
-      sort: draft.sort,
-    };
-    const request = draft.id ? this.api.updateDepartment(draft.id, input) : this.api.createDepartment(input);
-    request.subscribe({
-      next: () => {
-        this.message.success('部门已保存');
-        this.departmentDraft.set({ ...DEFAULT_DEPARTMENT_DRAFT });
-        this.loadAll();
+  closeDepartmentDialog(): void {
+    this.dialogOpen.set(false);
+    this.dialogBusy.set(false);
+    this.dialogParentId.set('');
+    this.editingDepartment.set(null);
+  }
+
+  createDepartment(input: CreateDepartmentInput): void {
+    this.dialogBusy.set(true);
+    this.organizationApi.createDepartment(input).subscribe({
+      next: (department) => this.handleDepartmentSaved(department),
+      error: () => {
+        this.dialogBusy.set(false);
+        this.message.error('保存部门失败');
       },
-      error: () => this.message.error('保存部门失败'),
     });
   }
 
-  editFinanceRole(role: FinanceRoleEntity): void {
-    this.financeRoleDraft.set({
-      id: role.id,
-      code: role.code,
-      name: role.name,
-      description: role.description || '',
-      status: role.status,
-      sort: role.sort,
-    });
-  }
-
-  saveFinanceRole(): void {
-    const draft = this.financeRoleDraft();
-    const input = {
-      code: draft.code.trim(),
-      name: draft.name.trim(),
-      description: draft.description.trim() || null,
-      status: draft.status,
-      sort: draft.sort,
-    };
-    const request = draft.id ? this.api.updateFinanceRole(draft.id, input) : this.api.createFinanceRole(input);
-    request.subscribe({
-      next: () => {
-        this.message.success('财务角色已保存');
-        this.financeRoleDraft.set({ ...DEFAULT_FINANCE_ROLE_DRAFT });
-        this.loadAll();
+  updateDepartment(input: UpdateDepartmentInput): void {
+    const department = this.editingDepartment();
+    if (!department) {
+      return;
+    }
+    this.dialogBusy.set(true);
+    this.organizationApi.updateDepartment(department.id, input).subscribe({
+      next: (updatedDepartment) => this.handleDepartmentSaved(updatedDepartment),
+      error: () => {
+        this.dialogBusy.set(false);
+        this.message.error('保存部门失败');
       },
-      error: () => this.message.error('保存财务角色失败'),
     });
+  }
+
+  loadMembers(): void {
+    const departmentId = this.selectedDepartmentId();
+    if (!departmentId) {
+      this.members.set([]);
+      this.memberTotal.set(0);
+      return;
+    }
+    this.userApi
+      .list({
+        page: 1,
+        pageSize: 100,
+        departmentId,
+        keyword: this.memberKeyword().trim(),
+      })
+      .subscribe({
+        next: (result) => {
+          this.members.set(result.items);
+          this.memberTotal.set(result.total);
+        },
+        error: () => {
+          this.members.set([]);
+          this.memberTotal.set(0);
+        },
+      });
+  }
+
+  childCount(departmentId: string): number {
+    return this.allDepartments().filter((department) => department.parentId === departmentId).length;
+  }
+
+  formatDate(value: string): string {
+    return value ? value.slice(0, 10) : '-';
+  }
+
+  userInitial(user: UserEntity): string {
+    return (user.displayName || user.username).trim().charAt(0).toUpperCase() || 'U';
+  }
+
+  titleLabel(titleCode: UserTitleCode | null): string {
+    return USER_TITLE_OPTIONS.find((option) => option.value === titleCode)?.label ?? '未设置';
+  }
+
+  relationLabel(user: UserEntity): string {
+    const relation = user.departments.find((department) => department.departmentId === this.selectedDepartmentId());
+    if (!relation) {
+      return '-';
+    }
+    return relation.relationType === 'primary' ? '主部门' : '兼职部门';
+  }
+
+  private flattenTree(nodes: DepartmentTreeNode[], level = 0): FlatDepartmentNode[] {
+    return nodes.flatMap((node) => [{ ...node, level }, ...this.flattenTree(node.children, level + 1)]);
+  }
+
+  private handleDepartmentSaved(department: DepartmentEntity): void {
+    this.message.success('部门已保存');
+    this.selectedDepartmentId.set(department.id);
+    this.closeDepartmentDialog();
+    this.loadDepartments();
   }
 }

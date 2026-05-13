@@ -19,6 +19,42 @@ export class BreadcrumbService {
       return [];
     }
 
+    if (path === '/admin') {
+      return [{ label: '仪表盘' }];
+    }
+
+    if (path.startsWith('/admin/users')) {
+      return [{ label: '用户管理' }];
+    }
+
+    if (path.startsWith('/admin/departments')) {
+      return [{ label: '部门组织' }];
+    }
+
+    if (path.startsWith('/admin/projects')) {
+      return [{ label: '项目治理' }];
+    }
+
+    if (path.startsWith('/admin/roles')) {
+      return [{ label: '角色管理' }];
+    }
+
+    if (path.startsWith('/admin/permissions')) {
+      return [{ label: '权限配置' }];
+    }
+
+    if (path.startsWith('/admin/audit')) {
+      return [{ label: '审计日志' }];
+    }
+
+    if (path.startsWith('/admin/groups')) {
+      return [{ label: '用户组' }];
+    }
+
+    if (path.startsWith('/admin/settings')) {
+      return [{ label: '系统设置' }];
+    }
+
     if (path === '/dashboard/board') {
       return [{ label: '数据看板' }];
     }

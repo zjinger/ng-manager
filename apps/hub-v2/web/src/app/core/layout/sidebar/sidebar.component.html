@@ -1,17 +1,17 @@
 <aside class="sidebar" [class.sidebar--collapsed]="collapsed()">
-  <div class="sidebar__brand">
+  <a class="sidebar__brand" [routerLink]="[brandRoute()]">
     <div class="brand__icon">
-      <img src="/logo.svg" alt="深蓝协作平台" />
+      <img [src]="brandLogo()" [alt]="brandLogoAlt()" />
     </div>
     @if (!collapsed()) {
       <div class="brand__text">
-        <div class="brand__name">深蓝协作平台</div>
-        <span class="brand__badge">v2</span>
+        <div class="brand__name">{{ brandName() }}</div>
+        <span class="brand__badge">{{ brandBadge() }}</span>
       </div>
     }
-  </div>
+  </a>
 
-  @if (!collapsed()) {
+  @if (!collapsed() && showProjectSwitcher()) {
     <app-project-switcher />
   }
 

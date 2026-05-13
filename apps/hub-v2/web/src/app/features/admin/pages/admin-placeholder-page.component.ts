@@ -36,9 +36,9 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         place-items: center;
         align-content: center;
         gap: 14px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-color);
         border-radius: 8px;
-        background: #fff;
+        background: var(--bg-container);
         padding: 48px 24px;
         text-align: center;
       }
@@ -48,20 +48,20 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         display: grid;
         place-items: center;
         border-radius: 16px;
-        background: #eef2ff;
-        color: #4f46e5;
+        background: var(--color-primary-light);
+        color: var(--color-primary);
         font-size: 24px;
       }
       h1 {
         margin: 0;
-        color: #0f172a;
+        color: var(--text-heading);
         font-size: 22px;
         font-weight: 800;
       }
       p {
         max-width: 620px;
         margin: 0;
-        color: #64748b;
+        color: var(--text-muted);
         line-height: 1.7;
       }
       .admin-placeholder__actions {

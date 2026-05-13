@@ -108,10 +108,10 @@ type AdminStat = {
         margin-bottom: 20px;
       }
       .admin-card {
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-color);
         border-radius: 8px;
-        background: #fff;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        background: var(--bg-container);
+        box-shadow: var(--shadow-sm);
       }
       .dashboard-grid {
         display: grid;
@@ -124,14 +124,14 @@ type AdminStat = {
         justify-content: space-between;
         min-height: 52px;
         padding: 0 20px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--border-color-soft);
       }
       .admin-card h2 {
         margin: 0;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        color: #0f172a;
+        color: var(--text-heading);
         font-size: 15px;
         font-weight: 700;
       }
@@ -144,23 +144,23 @@ type AdminStat = {
       .quick-link {
         display: grid;
         gap: 6px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         padding: 14px;
-        color: #334155;
+        color: var(--text-primary);
         text-decoration: none;
       }
       .quick-link:hover {
-        border-color: #a5b4fc;
-        background: #eef2ff;
+        border-color: var(--primary-300);
+        background: var(--color-primary-light);
       }
       .quick-link > span {
-        color: #4f46e5;
+        color: var(--color-primary);
         font-size: 18px;
       }
       .quick-link small,
       .status-item small {
-        color: #64748b;
+        color: var(--text-muted);
       }
       .status-list {
         display: grid;
@@ -170,7 +170,7 @@ type AdminStat = {
         display: flex;
         gap: 12px;
         padding: 16px 20px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--border-color-soft);
       }
       .status-item:last-child {
         border-bottom: 0;
@@ -181,11 +181,11 @@ type AdminStat = {
         border-radius: 50%;
         margin-top: 5px;
       }
-      .status-dot--ok { background: #10b981; }
-      .status-dot--pending { background: #f59e0b; }
+      .status-dot--ok { background: var(--color-success); }
+      .status-dot--pending { background: var(--color-warning); }
       .status-item strong {
         display: block;
-        color: #0f172a;
+        color: var(--text-heading);
       }
       @media (max-width: 1100px) {
         .stats-row,

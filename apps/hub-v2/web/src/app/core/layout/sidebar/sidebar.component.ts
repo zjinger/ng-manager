@@ -19,6 +19,12 @@ import { ProjectSwitcherComponent } from '../project-switcher/project-switcher.c
 export class SidebarComponent {
   readonly items = input.required<NavSection[]>();
   readonly collapsed = input(false);
+  readonly showProjectSwitcher = input(true);
+  readonly brandName = input('深蓝协作平台');
+  readonly brandBadge = input('v2');
+  readonly brandRoute = input('/dashboard');
+  readonly brandLogo = input('/logo.svg');
+  readonly brandLogoAlt = input('深蓝协作平台');
   readonly currentUser = inject(AuthStore).currentUser;
   readonly uiStore = inject(UiStore);
   private readonly badgeStore = inject(NavigationBadgeStore);

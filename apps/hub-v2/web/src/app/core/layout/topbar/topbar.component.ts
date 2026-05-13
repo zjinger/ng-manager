@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterEvent, RouterModule } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
@@ -45,6 +45,14 @@ export class TopbarComponent {
   );
   readonly showAvatarImage = computed(() => !!this.currentUser()?.avatarUrl && !this.avatarLoadFailed());
   readonly wsState = this.wsClient.connectionState;
+  readonly rootLabel = input('首页');
+  readonly rootRoute = input('/dashboard');
+  readonly searchPlaceholder = input('搜索测试单、研发项、文档、发布…');
+  readonly searchEnabled = input(true);
+  readonly showThemeToggle = input(true);
+  readonly showWsIndicator = input(true);
+  readonly showNotificationBell = input(true);
+  readonly showReturnToWorkbench = input(false);
 
   readonly wsStateLabel = computed(() => {
     const state = this.wsState();
