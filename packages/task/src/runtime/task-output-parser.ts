@@ -43,6 +43,38 @@ function parseProblemCount(text: string, kind: "warning" | "error"): number | un
     return undefined;
 }
 
+function countViteRollupWarnings(text: string): number {
+    const lines = text.split(/\r?\n/);
+    let count = 0;
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        const lower = trimmed.toLowerCase();
+        if (
+            /^\(!\)/.test(trimmed)
+            || /\breferenced in\b.+\bdidn['’]?t resolve at build time\b/i.test(trimmed)
+            || /\buse of eval in\b/i.test(trimmed)
+            || /\bis strongly discouraged\b/i.test(trimmed)
+            || /\bsome chunks are larger than\b/i.test(trimmed)
+        ) {
+            count += 1;
+            continue;
+        }
+
+        if (lower.startsWith("(!)") || lower.includes("(!)")) {
+            count += 1;
+        }
+    }
+
+    return count;
+}
+
+function hasViteRollupBuildFinished(text: string): boolean {
+    return /(?:^|\n)\s*(?:[^\w\s]+\s*)?built in\s+[\d.]+\s*(?:ms|s|seconds?)\b/im.test(text);
+}
+
 export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
     const clean = normalizeTaskOutput(text);
     const urls = [...new Set((clean.match(URL_RE) ?? []).map((url) => {
@@ -50,6 +82,9 @@ export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
         return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
     }))];
     const lower = clean.toLowerCase();
+    const viteRollupWarningsCount = countViteRollupWarnings(clean);
+    const hasViteRollupWarning = viteRollupWarningsCount > 0;
+    const viteRollupBuildFinished = hasViteRollupBuildFinished(clean);
     const ready = urls.length > 0
         || lower.includes("compiled successfully")
         || lower.includes("application bundle generation complete")
@@ -60,16 +95,18 @@ export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
         || lower.includes("failed to compile")
         || lower.includes("compilation failed")
         || lower.includes("build failed")
-        || lower.includes("application bundle generation failed");
+        || lower.includes("application bundle generation failed")
+        || viteRollupBuildFinished;
     const resetProblems = ready
         || lower.includes("compiled successfully")
         || lower.includes("no errors found")
         || lower.includes("0 errors")
         || lower.includes("0 warnings");
-    const warning = /\bwarning\b|warn/i.test(clean);
+    const warning = /\bwarning\b|warn/i.test(clean) || hasViteRollupWarning;
     const error = /\berror\b|failed|exception/i.test(clean);
     const rebuildDurationMs = parseDurationMs(clean);
-    const warningsCount = parseProblemCount(clean, "warning");
+    const explicitWarningsCount = parseProblemCount(clean, "warning");
+    const warningsCount = explicitWarningsCount ?? (hasViteRollupWarning ? Math.max(1, viteRollupWarningsCount) : undefined);
     const errorsCount = parseProblemCount(clean, "error");
 
     return {

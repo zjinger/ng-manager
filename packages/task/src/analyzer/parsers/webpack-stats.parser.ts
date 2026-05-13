@@ -1,4 +1,5 @@
-import { buildDependencies } from "../insights/dependency-insights";
+import { buildDependencies, buildDependencyQualityInsights } from "../insights/dependency-insights";
+import { buildChunkStrategyInsights } from "../insights/chunk-strategy-insights";
 import { buildSizeInsights } from "../insights/size-insights";
 import type { TaskAnalyzeChunk, TaskAnalyzeModule, TaskAnalyzeStats } from "../task-analyzer.types";
 import { basenameNoQuery, packageNameFromPath } from "../utils/module-path";
@@ -99,6 +100,10 @@ export function parseWebpackStats(statsPath: string, json: Record<string, any>):
         chunks: chunks.sort((a, b) => b.rawSize - a.rawSize),
         modules,
         dependencies,
-        insights: buildSizeInsights(chunks, modules, dependencies),
+        insights: [
+            ...buildSizeInsights(chunks, modules, dependencies),
+            ...buildDependencyQualityInsights(modules, dependencies),
+            ...buildChunkStrategyInsights({ chunks }),
+        ],
     };
 }

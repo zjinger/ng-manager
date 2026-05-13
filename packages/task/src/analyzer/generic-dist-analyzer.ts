@@ -1,7 +1,9 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import { scanDistAssets } from "./dist-scanner";
+import { buildChunkStrategyInsights } from "./insights/chunk-strategy-insights";
 import { buildDeploymentRiskInsights } from "./insights/deployment-risk-insights";
+import { buildViteRollupInsights } from "./insights/vite-rollup-insights";
 import { detectAnalyzerProviderCapabilities } from "./providers/provider-capability";
 import { summarizeAssets } from "./utils/asset-summary";
 import type {
@@ -11,8 +13,9 @@ import type {
     TaskAnalyzeInsight,
     TaskAnalyzeResult,
     TaskAnalyzeStats,
+    TaskAnalyzeWarning,
     TaskAnalyzer,
-    TaskAnalyzerProviderCapability,
+    TaskAssetInfo,
 } from "./task-analyzer.types";
 
 async function exists(filePath: string) {
@@ -47,6 +50,30 @@ async function resolveDistPath(projectRoot: string): Promise<string | null> {
 
 function pushDiagnostic(ctx: TaskAnalyzeContext, item: Omit<TaskAnalyzeDiagnostic, "createdAt">) {
     ctx.diagnostics?.push({ ...item, createdAt: Date.now() });
+}
+
+async function cleanupAutoViteManifest(manifestPath: string): Promise<TaskAnalyzeWarning> {
+    try {
+        await fs.rm(manifestPath, { force: true });
+        const manifestDir = path.dirname(manifestPath);
+        try {
+            const remaining = await fs.readdir(manifestDir);
+            if (remaining.length === 0) await fs.rmdir(manifestDir);
+        } catch {
+            // 清理空目录是附带动作，失败不影响 manifest 清理结果。
+        }
+        return {
+            code: "vite-manifest-cleaned",
+            message: "已读取并清理 ng-manager 自动生成的 Vite manifest，避免进入生产部署。",
+            data: { manifestPath },
+        };
+    } catch (e: any) {
+        return {
+            code: "vite-manifest-cleanup-failed",
+            message: "Vite manifest 已读取，但清理失败。请确认部署脚本是否需要排除 dist/.vite。",
+            data: { manifestPath, error: e?.message ?? String(e) },
+        };
+    }
 }
 
 export class GenericDistAnalyzer implements TaskAnalyzer {
@@ -101,7 +128,13 @@ export class GenericDistAnalyzer implements TaskAnalyzer {
             return null;
         }
 
-        const manifestStats = await readViteManifest(outputPath, assets, ctx);
+        const manifestResult = await readViteManifest(outputPath, assets, ctx);
+        const manifestStats = manifestResult?.stats ?? null;
+        const manifestCleanupWarning = manifestResult?.cleanupWarning;
+        const allAssetsForReport = manifestCleanupWarning?.code === "vite-manifest-cleaned"
+            ? await scanDistAssets(outputPath, { includeMap: true })
+            : allAssets;
+        const assetsForReport = allAssetsForReport.filter((asset) => asset.type !== "map");
         const stats: TaskAnalyzeStats = manifestStats ?? {
             statsPath: outputPath,
             format: "unknown",
@@ -110,10 +143,11 @@ export class GenericDistAnalyzer implements TaskAnalyzer {
             dependencies: [],
             insights: [],
         };
-        const providerInsights = await buildProviderSuggestionInsights(ctx, outputPath);
+        const providerInsights = await buildProviderSuggestionInsights(ctx, outputPath, assetsForReport, stats);
         stats.insights = [
             ...stats.insights,
-            ...buildDeploymentRiskInsights({ assets: allAssets, chunks: stats.chunks }),
+            ...buildDeploymentRiskInsights({ assets: allAssetsForReport, chunks: stats.chunks }),
+            ...buildChunkStrategyInsights({ chunks: stats.chunks, assets: assetsForReport }),
             ...providerInsights,
         ];
 
@@ -128,15 +162,21 @@ export class GenericDistAnalyzer implements TaskAnalyzer {
                 durationMs: ctx.runtime.startedAt && ctx.runtime.stoppedAt
                     ? Math.max(0, ctx.runtime.stoppedAt - ctx.runtime.startedAt)
                     : undefined,
-                ...summarizeAssets(assets),
+                ...summarizeAssets(assetsForReport),
             },
-            assets,
+            assets: assetsForReport,
             stats,
+            warnings: manifestCleanupWarning ? [manifestCleanupWarning] : undefined,
         };
     }
 }
 
-async function buildProviderSuggestionInsights(ctx: TaskAnalyzeContext, outputPath: string): Promise<TaskAnalyzeInsight[]> {
+async function buildProviderSuggestionInsights(
+    ctx: TaskAnalyzeContext,
+    outputPath: string,
+    assets: TaskAssetInfo[],
+    stats: TaskAnalyzeStats
+): Promise<TaskAnalyzeInsight[]> {
     if (ctx.detection?.buildTool !== "vite") return [];
     const capabilities = await detectAnalyzerProviderCapabilities({
         projectRoot: ctx.spec.projectRoot,
@@ -144,7 +184,21 @@ async function buildProviderSuggestionInsights(ctx: TaskAnalyzeContext, outputPa
         outputPath,
     });
     const capability = capabilities.find((item) => item.provider === "rollup-visualizer");
-    if (!capability || capability.status === "available") return [];
+    if (!capability) {
+        return buildViteRollupInsights({
+            assets,
+            chunks: stats.chunks,
+            dependencies: stats.dependencies,
+        });
+    }
+
+    if (capability.status === "available") {
+        return buildViteRollupInsights({
+            assets,
+            chunks: stats.chunks,
+            dependencies: stats.dependencies,
+        });
+    }
 
     pushDiagnostic(ctx, {
         analyzer: "generic-dist",
@@ -154,32 +208,19 @@ async function buildProviderSuggestionInsights(ctx: TaskAnalyzeContext, outputPa
         data: { providerCapability: capability },
     });
 
-    return [{
-        level: "info",
-        code: "provider-suggestion",
-        category: "diagnostic",
-        message: providerSuggestionMessage(capability),
-        data: capability,
-    }];
-}
-
-function providerSuggestionMessage(capability: TaskAnalyzerProviderCapability): string {
-    if (capability.reason === "html-only") {
-        return "检测到 rollup-plugin-visualizer HTML 产物，但当前仅基于 Vite manifest/dist 进行基础分析；如需依赖级 treemap，请配置输出 raw-data JSON。";
-    }
-
-    if (capability.status === "missing-artifact") {
-        return "已检测到 rollup-plugin-visualizer 依赖，但未找到 visualizer JSON/raw-data；当前仅基于 Vite manifest/dist 进行基础分析。";
-    }
-
-    return "未检测到 rollup-plugin-visualizer，当前仅基于 Vite manifest/dist 进行基础分析。如需依赖级 treemap，可安装并配置 rollup-plugin-visualizer 输出 raw-data JSON。";
+    return buildViteRollupInsights({
+        assets,
+        chunks: stats.chunks,
+        dependencies: stats.dependencies,
+        visualizerCapability: capability,
+    });
 }
 
 async function readViteManifest(
     outputPath: string,
     assets: Array<{ relativePath: string; rawSize: number }>,
     ctx: TaskAnalyzeContext
-): Promise<TaskAnalyzeStats | null> {
+): Promise<{ stats: TaskAnalyzeStats; cleanupWarning?: TaskAnalyzeWarning } | null> {
     const manifestPath = path.resolve(outputPath, ".vite", "manifest.json");
     if (!await exists(manifestPath)) {
         pushDiagnostic(ctx, {
@@ -239,7 +280,7 @@ async function readViteManifest(
         },
     });
 
-    return {
+    const stats: TaskAnalyzeStats = {
         statsPath: manifestPath,
         format: "vite-manifest",
         chunks,
@@ -253,4 +294,10 @@ async function readViteManifest(
             data: { statsPath: manifestPath },
         }],
     };
+
+    const cleanupWarning = ctx.detection?.buildTool === "vite" && ctx.analyzeHints?.addedViteManifest === true
+        ? await cleanupAutoViteManifest(manifestPath)
+        : undefined;
+
+    return { stats, cleanupWarning };
 }
