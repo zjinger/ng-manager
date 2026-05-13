@@ -5,6 +5,8 @@ import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolba
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import type { DepartmentEntity } from '../../../organization/models/organization.model';
+import { OrganizationApiService } from '../../../organization/services/organization-api.service';
 import { UserListTableComponent } from '../../components/user-list-table/user-list-table.component';
 import { UserFormDialogComponent } from '../../dialogs/user-form-dialog/user-form-dialog.component';
 import type { UserEntity } from '../../models/user.model';
@@ -45,6 +47,13 @@ import { UserStore } from '../../store/user.store';
           <nz-option nzLabel="停用" nzValue="inactive"></nz-option>
         </nz-select>
 
+        <nz-select class="toolbar__status" nzAllowClear nzPlaceHolder="全部部门" [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event || '')">
+          <nz-option nzLabel="全部部门" nzValue=""></nz-option>
+          @for (department of departments(); track department.id) {
+            <nz-option [nzLabel]="department.name" [nzValue]="department.id"></nz-option>
+          }
+        </nz-select>
+
         <button nz-button class="toolbar__filter-btn" (click)="applyFilters()">筛选</button>
       </app-filter-bar>
 
@@ -71,6 +80,7 @@ import { UserStore } from '../../store/user.store';
       [busy]="store.busy()"
       [mode]="dialogMode()"
       [user]="editingUser()"
+      [departments]="departments()"
       (cancel)="closeDialog()"
       (create)="createUser($event)"
       (update)="updateUser($event)"
@@ -88,9 +98,12 @@ import { UserStore } from '../../store/user.store';
 export class UserListPageComponent {
   readonly store = inject(UserStore);
   readonly authStore = inject(AuthStore);
+  private readonly organizationApi = inject(OrganizationApiService);
 
   readonly keyword = signal('');
   readonly status = signal<'active' | 'inactive' | ''>('');
+  readonly departmentId = signal('');
+  readonly departments = signal<DepartmentEntity[]>([]);
   readonly dialogOpen = signal(false);
   readonly dialogMode = signal<'create' | 'edit'>('create');
   readonly editingUser = signal<UserEntity | null>(null);
@@ -99,12 +112,17 @@ export class UserListPageComponent {
 
   constructor() {
     this.store.initialize();
+    this.organizationApi.listDepartments({ status: 'active' }).subscribe({
+      next: (items) => this.departments.set(items),
+      error: () => this.departments.set([]),
+    });
   }
 
   applyFilters(): void {
     this.store.updateQuery({
       keyword: this.keyword().trim(),
       status: this.status(),
+      departmentId: this.departmentId(),
     });
   }
 

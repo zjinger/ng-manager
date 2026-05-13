@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
 import { FEATURE_FLAGS } from './core/feature-flags';
 
@@ -47,6 +48,11 @@ export const routes: Routes = [
   //   loadChildren: () =>
   //     import('./features/public-report/routes').then((m) => m.PUBLIC_REPORT_ROUTES),
   // },
+  {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
+  },
   {
     path: '',
     canActivate: [authGuard],
@@ -102,19 +108,6 @@ export const routes: Routes = [
             },
           ]
         : []),
-      {
-        path: 'projects',
-        loadChildren: () => import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
-      },
-      {
-        path: 'users',
-        loadChildren: () => import('./features/users/routes').then((m) => m.USER_ROUTES),
-      },
-      {
-        path: 'shared-config',
-        loadChildren: () =>
-          import('./features/shared-config/routes').then((m) => m.SHARED_CONFIG_ROUTES),
-      },
       {
         path: 'profile',
         loadChildren: () => import('./features/profile/routes').then((m) => m.PROFILE_ROUTES),

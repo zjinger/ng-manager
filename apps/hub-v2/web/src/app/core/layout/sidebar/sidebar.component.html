@@ -23,25 +23,27 @@
         }
 
         @for (item of section.items; track item.key) {
-          <a
-            class="nav__item"
-            [routerLink]="item.route"
-            routerLinkActive="is-active"
-            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-          >
-            <span class="nav__item-main">
-              <span nz-icon [nzType]="item.icon"></span>
-              @if (!collapsed()) {
-                <span>{{ item.label }}</span>
-              }
-            </span>
-
-            @if (!collapsed() && (badgeFor(item.key) || item.badge)) {
-              <span class="nav__item-badge" [attr.data-tone]="item.tone || 'default'">
-                {{ badgeFor(item.key) || item.badge }}
+          @if (!item.adminOnly || currentUser()?.role === 'admin') {
+            <a
+              class="nav__item"
+              [routerLink]="item.route"
+              routerLinkActive="is-active"
+              [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+            >
+              <span class="nav__item-main">
+                <span nz-icon [nzType]="item.icon"></span>
+                @if (!collapsed()) {
+                  <span>{{ item.label }}</span>
+                }
               </span>
-            }
-          </a>
+
+              @if (!collapsed() && (badgeFor(item.key) || item.badge)) {
+                <span class="nav__item-badge" [attr.data-tone]="item.tone || 'default'">
+                  {{ badgeFor(item.key) || item.badge }}
+                </span>
+              }
+            </a>
+          }
         }
       </section>
     }

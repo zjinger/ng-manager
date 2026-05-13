@@ -35,8 +35,8 @@ export class LoginPageComponent {
     }
 
     this.authService.login(this.form.getRawValue()).subscribe({
-      next: () => {
-        void this.router.navigateByUrl('/dashboard');
+      next: (user) => {
+        void this.router.navigateByUrl(user.role === 'admin' ? '/admin' : '/dashboard');
       },
       error: () => {
         this.message.error('登录失败，请检查用户名和密码');

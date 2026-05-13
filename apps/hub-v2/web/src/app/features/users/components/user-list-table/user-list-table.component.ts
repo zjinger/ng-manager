@@ -17,6 +17,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         <div>用户</div>
         <div>邮箱</div>
         <div>手机号</div>
+        <div>部门</div>
         <div>职能</div>
         <div>后台登录</div>
         <div>状态</div>
@@ -43,6 +44,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
             </div>
             <div class="user-cell">{{ item.email || '—' }}</div>
             <div class="user-cell">{{ item.mobile || '—' }}</div>
+            <div class="user-cell">{{ departmentLabel(item) }}</div>
             <div class="user-cell">{{ titleLabel(item.titleCode) }}</div>
             <div class="user-cell">
               <span class="login-tag" [class.login-tag--off]="!item.loginEnabled">
@@ -87,13 +89,13 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       .user-table__head,
       .user-row {
         display: grid;
-        grid-template-columns: 1.6fr 1.3fr 1fr 0.8fr 0.8fr 0.8fr 1.3fr;
+        grid-template-columns: 1.5fr 1.2fr 1fr 1fr 0.8fr 0.8fr 0.8fr 1.3fr;
         gap: 16px;
         align-items: center;
       }
       .user-table__head--editable,
       .user-row--editable {
-        grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.8fr 1.3fr 0.6fr;
+        grid-template-columns: 1.4fr 1.1fr 1fr 1fr 0.8fr 0.8fr 0.8fr 1.2fr 0.6fr;
       }
       .user-table__head {
         padding: 10px 16px;
@@ -227,5 +229,13 @@ export class UserListTableComponent {
       return '—';
     }
     return USER_TITLE_OPTIONS.find((item) => item.value === titleCode)?.label ?? titleCode;
+  }
+
+  departmentLabel(item: UserEntity): string {
+    const primary = item.departments.find((department) => department.relationType === 'primary');
+    if (primary) {
+      return primary.departmentName;
+    }
+    return item.departments[0]?.departmentName ?? '—';
   }
 }

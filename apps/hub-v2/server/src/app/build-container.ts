@@ -31,6 +31,9 @@ import type {
 } from "../modules/notifications/notification.contract";
 import { NotificationRepo } from "../modules/notifications/notification.repo";
 import { NotificationService } from "../modules/notifications/notification.service";
+import type { OrganizationCommandContract, OrganizationQueryContract } from "../modules/organization/organization.contract";
+import { OrganizationRepo } from "../modules/organization/organization.repo";
+import { OrganizationService } from "../modules/organization/organization.service";
 import type { IssueCommandContract, IssueQueryContract } from "../modules/issue/issue.contract";
 import type { IssueAttachmentCommandContract, IssueAttachmentQueryContract } from "../modules/issue/attachment/issue-attachment.contract";
 import { IssueAttachmentRepo } from "../modules/issue/attachment/issue-attachment.repo";
@@ -105,6 +108,8 @@ export type AppContainer = {
   notificationQuery: NotificationQueryContract;
   notificationCommand: NotificationCommandContract;
   notificationIngest: NotificationIngestContract;
+  organizationCommand: OrganizationCommandContract;
+  organizationQuery: OrganizationQueryContract;
   feedbackCommand: FeedbackCommandContract;
   feedbackQuery: FeedbackQueryContract;
   contentLogCommand: ContentLogCommandContract;
@@ -149,8 +154,10 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   });
   const authRepo = new AuthRepo(db);
   const authService = new AuthService(config, authRepo);
+  const organizationRepo = new OrganizationRepo(db);
+  const organizationService = new OrganizationService(organizationRepo);
   const userRepo = new UserRepo(db);
-  const userService = new UserService(userRepo, authRepo);
+  const userService = new UserService(userRepo, authRepo, organizationService);
   const projectRepo = new ProjectRepo(db);
   const rdRepo = new RdRepo(db);
   const projectAccess = new ProjectAccessService(projectRepo);
@@ -265,6 +272,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     notificationQuery: notificationService,
     notificationCommand: notificationService,
     notificationIngest: notificationService,
+    organizationCommand: organizationService,
+    organizationQuery: organizationService,
     feedbackCommand: feedbackService,
     feedbackQuery: feedbackService,
     contentLogCommand: contentLogService,

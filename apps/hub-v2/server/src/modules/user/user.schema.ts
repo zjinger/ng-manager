@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { userDepartmentSchema } from "../organization/organization.schema";
 
 export const createUserSchema = z.object({
   username: z
@@ -10,7 +11,8 @@ export const createUserSchema = z.object({
   mobile: z.string().trim().optional(),
   titleCode: z.string().trim().optional(),
   remark: z.string().trim().optional(),
-  loginEnabled: z.boolean().optional()
+  loginEnabled: z.boolean().optional(),
+  departments: z.array(userDepartmentSchema).optional()
 });
 
 export const updateUserSchema = z.object({
@@ -20,14 +22,16 @@ export const updateUserSchema = z.object({
   titleCode: z.string().trim().nullable().optional(),
   status: z.enum(["active", "inactive"]).optional(),
   remark: z.string().trim().nullable().optional(),
-  loginEnabled: z.boolean().optional()
+  loginEnabled: z.boolean().optional(),
+  departments: z.array(userDepartmentSchema).optional()
 });
 
 export const listUsersQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),
   keyword: z.string().trim().optional(),
-  status: z.enum(["active", "inactive"]).optional()
+  status: z.enum(["active", "inactive"]).optional(),
+  departmentId: z.string().trim().optional()
 });
 
 export const resetUserPasswordSchema = z.object({

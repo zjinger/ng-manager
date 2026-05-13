@@ -79,14 +79,6 @@ export class DashboardPageComponent {
       tone: 'amber',
     },
     {
-      key: 'projects',
-      label: '项目管理',
-      description: '维护项目成员与配置',
-      route: '/projects',
-      icon: 'appstore',
-      tone: 'rose',
-    },
-    {
       key: 'profile',
       label: '个人中心',
       description: '查看并维护个人信息与偏好',

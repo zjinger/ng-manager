@@ -6,6 +6,7 @@ import { hashPassword } from "../../shared/utils/password";
 import { nowIso } from "../../shared/utils/time";
 import { AuthRepo } from "../auth/auth.repo";
 import { requireAdmin } from "../utils/require-admin";
+import { OrganizationService } from "../organization/organization.service";
 import { UserRepo } from "./user.repo";
 import type { UserCommandContract, UserQueryContract } from "./user.contract";
 import type {
@@ -23,7 +24,8 @@ const DEFAULT_USER_PASSWORD = "12345678";
 export class UserService implements UserCommandContract, UserQueryContract {
   constructor(
     private readonly repo: UserRepo,
-    private readonly authRepo: AuthRepo
+    private readonly authRepo: AuthRepo,
+    private readonly organization: OrganizationService
   ) {}
 
   async create(input: CreateUserInput, ctx: RequestContext): Promise<UserEntity> {
@@ -32,6 +34,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     if (this.repo.findByUsername(username) || this.authRepo.findByUsername(username)) {
       throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS, `user already exists: ${input.username}`, 409);
     }
+    this.organization.validateUserDepartmentInputs(input.departments);
 
     const now = nowIso();
     const loginEnabled = input.loginEnabled !== false;
@@ -48,11 +51,13 @@ export class UserService implements UserCommandContract, UserQueryContract {
       status: "active",
       source: "local",
       remark: input.remark?.trim() || null,
+      departments: [],
       createdAt: now,
       updatedAt: now
     };
 
     this.repo.create(entity);
+    this.organization.replaceUserDepartmentsFromUserModule(entity.id, input.departments);
     if (loginEnabled) {
       this.authRepo.create({
         id: genId("adm"),
@@ -69,7 +74,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
       });
     }
 
-    return entity;
+    return this.withDepartments(entity);
   }
 
   async list(query: ListUsersQuery, ctx: RequestContext): Promise<UserListResult> {
@@ -81,7 +86,11 @@ export class UserService implements UserCommandContract, UserQueryContract {
         total: 0
       };
     }
-    return this.repo.list(query);
+    const result = this.repo.list(query);
+    return {
+      ...result,
+      items: this.withDepartmentsMany(result.items)
+    };
   }
 
   async update(id: string, input: UpdateUserInput, ctx: RequestContext): Promise<UserEntity> {
@@ -90,6 +99,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     if (!user) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
+    this.organization.validateUserDepartmentInputs(input.departments);
 
     const updated: UserEntity = {
       ...user,
@@ -127,7 +137,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
     }
 
     this.repo.update(id, updated, updated.updatedAt);
-    return updated;
+    this.organization.replaceUserDepartmentsFromUserModule(id, input.departments);
+    return this.withDepartments(updated);
   }
 
   async getById(id: string, ctx: RequestContext): Promise<UserEntity> {
@@ -138,7 +149,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     if (!user) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
-    return user;
+    return this.withDepartments(user);
   }
 
   async resetPassword(id: string, input: ResetUserPasswordInput, ctx: RequestContext): Promise<ResetUserPasswordResult> {
@@ -177,5 +188,14 @@ export class UserService implements UserCommandContract, UserQueryContract {
       temporaryPassword: nextPassword,
       mustChangePassword: true
     };
+  }
+
+  private withDepartments(user: UserEntity): UserEntity {
+    return this.repo.attachDepartments(user, this.organization.listUserDepartmentsForUsers([user.id]).get(user.id) ?? []);
+  }
+
+  private withDepartmentsMany(users: UserEntity[]): UserEntity[] {
+    const map = this.organization.listUserDepartmentsForUsers(users.map((user) => user.id));
+    return users.map((user) => this.repo.attachDepartments(user, map.get(user.id) ?? []));
   }
 }

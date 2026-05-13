@@ -134,6 +134,45 @@
       <div class="row" nz-row [nzGutter]="16">
         <div class="col" nz-col [nzSpan]="12">
           <nz-form-item>
+            <nz-form-label nzFor="primaryDepartmentId">主部门</nz-form-label>
+            <nz-form-control>
+              <nz-select
+                nzAllowClear
+                nzPlaceHolder="请选择主部门"
+                [ngModel]="draft().primaryDepartmentId"
+                name="primaryDepartmentId"
+                (ngModelChange)="updateField('primaryDepartmentId', $event || '')"
+              >
+                @for (department of departments(); track department.id) {
+                  <nz-option [nzLabel]="department.name" [nzValue]="department.id"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div class="col" nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label nzFor="secondaryDepartmentIds">兼职部门</nz-form-label>
+            <nz-form-control>
+              <nz-select
+                nzMode="multiple"
+                nzAllowClear
+                nzPlaceHolder="请选择兼职部门"
+                [ngModel]="draft().secondaryDepartmentIds"
+                name="secondaryDepartmentIds"
+                (ngModelChange)="updateField('secondaryDepartmentIds', $event || [])"
+              >
+                @for (department of departments(); track department.id) {
+                  <nz-option [nzLabel]="department.name" [nzValue]="department.id"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </div>
+      <div class="row" nz-row [nzGutter]="16">
+        <div class="col" nz-col [nzSpan]="12">
+          <nz-form-item>
             <nz-form-label nzFor="loginEnabled" nzTooltipTitle="关闭后该用户不可登录后台，但保留用户资料" [nzTooltipIcon]="'question-circle'">
               可登录后台
             </nz-form-label>

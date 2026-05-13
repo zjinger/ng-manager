@@ -1,4 +1,5 @@
 import type { PageResult } from '@core/types';
+import type { UserDepartmentEntity, UserDepartmentInput } from '../../organization/models/organization.model';
 
 export type UserStatus = 'active' | 'inactive';
 export type UserTitleCode = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'mobile_dev' | 'qa' | 'operation' | 'business' | 'hr' | 'finance' | 'admin' | 'ops' | 'other';
@@ -32,6 +33,7 @@ export interface UserEntity {
   status: UserStatus;
   source: 'local' | 'imported';
   remark: string | null;
+  departments: UserDepartmentEntity[];
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +43,7 @@ export interface UserListQuery {
   pageSize: number;
   keyword?: string;
   status?: UserStatus | '';
+  departmentId?: string;
 }
 
 export interface CreateUserInput {
@@ -51,6 +54,7 @@ export interface CreateUserInput {
   titleCode?: UserTitleCode;
   remark?: string;
   loginEnabled?: boolean;
+  departments?: UserDepartmentInput[];
 }
 
 export interface UpdateUserInput {
@@ -61,6 +65,7 @@ export interface UpdateUserInput {
   status?: UserStatus;
   remark?: string | null;
   loginEnabled?: boolean;
+  departments?: UserDepartmentInput[];
 }
 
 export interface ResetUserPasswordInput {

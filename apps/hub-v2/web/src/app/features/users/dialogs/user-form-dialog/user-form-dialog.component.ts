@@ -11,6 +11,7 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { USER_TITLE_OPTIONS, type CreateUserInput, type UpdateUserInput, type UserEntity, type UserStatus, type UserTitleCode } from '../../models/user.model';
 import { DatePipe } from '@angular/common';
+import type { DepartmentEntity } from '../../../organization/models/organization.model';
 
 type UserFormMode = 'create' | 'edit';
 
@@ -23,6 +24,8 @@ type Draft = {
   remark: string;
   status: UserStatus;
   loginEnabled: boolean;
+  primaryDepartmentId: string;
+  secondaryDepartmentIds: string[];
 };
 
 const DEFAULT_DRAFT: Draft = {
@@ -34,6 +37,8 @@ const DEFAULT_DRAFT: Draft = {
   remark: '',
   status: 'active',
   loginEnabled: true,
+  primaryDepartmentId: '',
+  secondaryDepartmentIds: [],
 };
 
 @Component({
@@ -109,6 +114,7 @@ export class UserFormDialogComponent {
   readonly busy = input(false);
   readonly mode = input<UserFormMode>('create');
   readonly user = input<UserEntity | null>(null);
+  readonly departments = input<DepartmentEntity[]>([]);
   readonly create = output<CreateUserInput>();
   readonly update = output<UpdateUserInput>();
   readonly cancel = output<void>();
@@ -156,6 +162,10 @@ export class UserFormDialogComponent {
             remark: user.remark || '',
             status: user.status,
             loginEnabled: user.loginEnabled,
+            primaryDepartmentId: user.departments.find((item) => item.relationType === 'primary')?.departmentId || '',
+            secondaryDepartmentIds: user.departments
+              .filter((item) => item.relationType === 'secondary')
+              .map((item) => item.departmentId),
           }
           : { ...DEFAULT_DRAFT }
       );
@@ -175,6 +185,15 @@ export class UserFormDialogComponent {
       return;
     }
 
+    const departments = [
+      ...(draft.primaryDepartmentId
+        ? [{ departmentId: draft.primaryDepartmentId, relationType: 'primary' as const }]
+        : []),
+      ...draft.secondaryDepartmentIds
+        .filter((departmentId) => departmentId && departmentId !== draft.primaryDepartmentId)
+        .map((departmentId) => ({ departmentId, relationType: 'secondary' as const })),
+    ];
+
     if (this.mode() === 'create') {
       this.create.emit({
         username: draft.username.trim(),
@@ -184,6 +203,7 @@ export class UserFormDialogComponent {
         titleCode: draft.titleCode || undefined,
         remark: draft.remark.trim() || undefined,
         loginEnabled: draft.loginEnabled,
+        departments,
       });
       return;
     }
@@ -196,6 +216,7 @@ export class UserFormDialogComponent {
       remark: draft.remark.trim() || null,
       status: draft.status,
       loginEnabled: draft.loginEnabled,
+      departments,
     });
   }
 }

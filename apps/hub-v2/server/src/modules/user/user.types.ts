@@ -1,4 +1,5 @@
 import type { PageResult } from "../../shared/http/pagination";
+import type { UserDepartmentEntity, UserDepartmentInput } from "../organization/organization.types";
 
 export type UserStatus = "active" | "inactive";
 export type UserSource = "local" | "imported";
@@ -16,6 +17,7 @@ export interface UserEntity {
   status: UserStatus;
   source: UserSource;
   remark: string | null;
+  departments: UserDepartmentEntity[];
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +30,7 @@ export interface CreateUserInput {
   titleCode?: string;
   remark?: string;
   loginEnabled?: boolean;
+  departments?: UserDepartmentInput[];
 }
 
 export interface UpdateUserInput {
@@ -38,6 +41,7 @@ export interface UpdateUserInput {
   status?: UserStatus;
   remark?: string | null;
   loginEnabled?: boolean;
+  departments?: UserDepartmentInput[];
 }
 
 export interface ResetUserPasswordInput {
@@ -56,6 +60,7 @@ export interface ListUsersQuery {
   pageSize?: number;
   keyword?: string;
   status?: UserStatus;
+  departmentId?: string;
 }
 
 export type UserListResult = PageResult<UserEntity>;

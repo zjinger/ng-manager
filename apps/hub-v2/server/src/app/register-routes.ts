@@ -13,6 +13,7 @@ import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
 import notificationRoutes from "../modules/notifications/notification.routes";
+import organizationRoutes from "../modules/organization/organization.routes";
 import personalTokenAdminRoutes from "../modules/personal-token/personal-token-admin.routes";
 import personalTokenIntrospectRoutes from "../modules/personal-token/personal-token-introspect.routes";
 import personalTokenIssueRoutes from "../modules/personal-token/personal-token-issue.routes";
@@ -97,6 +98,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(feedbackRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });
   await app.register(notificationRoutes, { prefix: "/api/admin" });
+  await app.register(organizationRoutes, { prefix: "/api/admin" });
   await app.register(profileRoutes, { prefix: "/api/admin" });
   await app.register(personalTokenAdminRoutes, { prefix: "/api/admin" });
   await app.register(issueRoutes, { prefix: "/api/admin" });

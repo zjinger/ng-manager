@@ -71,6 +71,12 @@ function countViteRollupWarnings(text: string): number {
     return count;
 }
 
+function countAngularCliProblems(text: string, kind: "warning" | "error"): number {
+    const marker = kind === "warning" ? "[WARNING]" : "[ERROR]";
+    const matches = text.match(new RegExp(`(?:^|\\n)\\s*(?:[▲⚠✘]\\s*)?\\${marker}`, "gmi"));
+    return matches?.length ?? 0;
+}
+
 function hasViteRollupBuildFinished(text: string): boolean {
     return /(?:^|\n)\s*(?:[^\w\s]+\s*)?built in\s+[\d.]+\s*(?:ms|s|seconds?)\b/im.test(text);
 }
@@ -83,7 +89,10 @@ export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
     }))];
     const lower = clean.toLowerCase();
     const viteRollupWarningsCount = countViteRollupWarnings(clean);
+    const angularWarningsCount = countAngularCliProblems(clean, "warning");
+    const angularErrorsCount = countAngularCliProblems(clean, "error");
     const hasViteRollupWarning = viteRollupWarningsCount > 0;
+    const hasAngularWarning = angularWarningsCount > 0;
     const viteRollupBuildFinished = hasViteRollupBuildFinished(clean);
     const ready = urls.length > 0
         || lower.includes("compiled successfully")
@@ -102,12 +111,14 @@ export function parseTaskOutput(text: string): TaskOutputRuntimePatch {
         || lower.includes("no errors found")
         || lower.includes("0 errors")
         || lower.includes("0 warnings");
-    const warning = /\bwarning\b|warn/i.test(clean) || hasViteRollupWarning;
+    const warning = /\bwarning\b|warn/i.test(clean) || hasViteRollupWarning || hasAngularWarning;
     const error = /\berror\b|failed|exception/i.test(clean);
     const rebuildDurationMs = parseDurationMs(clean);
     const explicitWarningsCount = parseProblemCount(clean, "warning");
-    const warningsCount = explicitWarningsCount ?? (hasViteRollupWarning ? Math.max(1, viteRollupWarningsCount) : undefined);
-    const errorsCount = parseProblemCount(clean, "error");
+    const warningsCount = explicitWarningsCount
+        ?? (hasViteRollupWarning ? Math.max(1, viteRollupWarningsCount) : undefined)
+        ?? (hasAngularWarning ? angularWarningsCount : undefined);
+    const errorsCount = parseProblemCount(clean, "error") ?? (angularErrorsCount > 0 ? angularErrorsCount : undefined);
 
     return {
         urls: urls.length > 0 ? urls : undefined,

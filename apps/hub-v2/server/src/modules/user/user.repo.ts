@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
 import type { ListUsersQuery, UpdateUserInput, UserEntity, UserListResult } from "./user.types";
+import type { UserDepartmentEntity } from "../organization/organization.types";
 
 type UserRow = {
   id: string;
@@ -141,6 +142,13 @@ export class UserRepo {
       params.push(query.status);
     }
 
+    if (query.departmentId?.trim()) {
+      conditions.push(
+        "EXISTS (SELECT 1 FROM user_departments ud_filter WHERE ud_filter.user_id = u.id AND ud_filter.department_id = ?)"
+      );
+      params.push(query.departmentId.trim());
+    }
+
     if (query.keyword?.trim()) {
       conditions.push("(u.username LIKE ? OR u.display_name LIKE ?)");
       const keyword = `%${query.keyword.trim()}%`;
@@ -186,6 +194,13 @@ export class UserRepo {
     };
   }
 
+  attachDepartments(entity: UserEntity, departments: UserDepartmentEntity[]): UserEntity {
+    return {
+      ...entity,
+      departments
+    };
+  }
+
   private mapRow(row: UserRow): UserEntity {
     return {
       id: row.id,
@@ -200,6 +215,7 @@ export class UserRepo {
       status: row.status,
       source: row.source,
       remark: row.remark,
+      departments: [],
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

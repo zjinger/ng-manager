@@ -122,7 +122,8 @@ export class UserStore {
     const query = this.queryState();
     const keyword = query.keyword?.trim().toLowerCase() ?? '';
     const status = query.status?.trim() ?? '';
-    const hasFilter = !!keyword || !!status;
+    const departmentId = query.departmentId?.trim() ?? '';
+    const hasFilter = !!keyword || !!status || !!departmentId;
 
     if (hasFilter) {
       this.load();
@@ -152,7 +153,8 @@ export class UserStore {
     const query = this.queryState();
     const keyword = query.keyword?.trim().toLowerCase() ?? '';
     const status = query.status?.trim() ?? '';
-    const hasFilter = !!keyword || !!status;
+    const departmentId = query.departmentId?.trim() ?? '';
+    const hasFilter = !!keyword || !!status || !!departmentId;
     const notFirstPage = query.page > 1;
 
     if (hasFilter || notFirstPage) {

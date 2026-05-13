@@ -6,6 +6,7 @@ export interface NavItem {
   exact?: boolean;
   badge?: string;
   tone?: 'default' | 'warning' | 'danger';
+  adminOnly?: boolean;
 }
 
 export interface NavSection {
