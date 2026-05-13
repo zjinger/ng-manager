@@ -32,23 +32,50 @@ function formatSize(bytes: number): string {
     return `${bytes} B`;
 }
 
-function dependencyFamily(name: string): string | undefined {
+const ANGULAR_BASELINE_DEPENDENCIES = new Set([
+    "@angular/core",
+    "@angular/common",
+    "@angular/router",
+    "@angular/forms",
+    "@angular/animations",
+    "@angular/platform-browser",
+    "@angular/platform-browser-dynamic",
+    "@angular/cdk",
+    "rxjs",
+    "zone.js",
+    "tslib",
+]);
+
+interface DependencyFamilyHint {
+    priority: number;
+    family: string;
+    message: string;
+}
+
+function isAngularProjectDependencySet(dependencies: TaskAnalyzeDependency[]): boolean {
+    return dependencies.some((dep) => dep.name === "@angular/core" || dep.name === "@angular/common");
+}
+
+function isAngularBaselineDependency(name: string): boolean {
+    return ANGULAR_BASELINE_DEPENDENCIES.has(name.toLowerCase());
+}
+
+function dependencyFamily(name: string): DependencyFamilyHint | undefined {
     const normalized = name.toLowerCase();
-    const families: Array<[RegExp, string, string]> = [
-        [/^(ant-design-vue|antd|@ant-design\/)/, "Ant Design", "建议检查组件按需引入、图标按需引入和主题样式裁剪。"],
-        [/^(echarts|zrender)/, "ECharts", "建议按需注册图表、组件和渲染器，避免一次性引入完整图表库。"],
-        [/^(moment|moment-timezone)$/, "Moment", "建议评估 dayjs/date-fns 或裁剪 locale/timezone 数据。"],
-        [/^(lodash|lodash-es)$/, "Lodash", "建议使用按函数引入或确认 tree-shaking 是否生效。"],
-        [/^(pdfjs-dist|vue-pdf|vue-pdf-next|pdfmake)/, "PDF", "建议评估是否可按路由懒加载 PDF 相关能力。"],
-        [/^(exceljs|xlsx|file-saver)/, "Office/Export", "建议评估导入导出能力是否可按功能懒加载。"],
-        [/^(monaco-editor|codemirror|@codemirror\/)/, "Editor", "建议将编辑器能力拆到独立路由或异步组件。"],
-        [/^(leaflet|mapbox-gl|ol|cesium)/, "Map", "建议将地图能力拆到业务页面懒加载，并检查插件和样式体积。"],
-        [/^(@?vue|vue-router|pinia)/, "Vue Runtime", "框架运行时代码通常不可完全移除，但可检查重复版本和异常放大。"],
-        [/^(@angular|rxjs|zone\.js)/, "Angular Runtime", "框架运行时代码通常不可完全移除，但可检查重复版本和异常放大。"],
+    const families: Array<[RegExp, DependencyFamilyHint]> = [
+        [/^(pdfjs-dist|vue-pdf|vue-pdf-next|pdfmake)/, { priority: 1, family: "PDF", message: "建议评估 PDF 相关能力是否可按路由或功能懒加载。" }],
+        [/^(monaco-editor|codemirror|@codemirror\/)/, { priority: 2, family: "Editor", message: "建议将编辑器能力拆到独立路由或异步组件。" }],
+        [/^(echarts|zrender)/, { priority: 3, family: "Chart", message: "建议按需注册图表、组件和渲染器，避免一次性引入完整图表库。" }],
+        [/^(three|mapbox-gl|leaflet|ol|cesium)/, { priority: 4, family: "Map/3D", message: "建议将地图或 3D 能力拆到业务页面懒加载，并检查插件和样式体积。" }],
+        [/^ng-zorro-antd/, { priority: 5, family: "ng-zorro-antd", message: "检测到 ng-zorro-antd 体积较高，建议检查组件、图标和样式是否按需引入。" }],
+        [/^(ant-design-vue|antd|@ant-design\/|@ant-design\/icons)/, { priority: 5, family: "UI", message: "建议检查组件按需引入、图标按需引入和主题样式裁剪。" }],
+        [/^(moment|moment-timezone)$/, { priority: 6, family: "Date", message: "建议评估 dayjs/date-fns 或裁剪 locale/timezone 数据。" }],
+        [/^(lodash|lodash-es|crypto-js)$/, { priority: 7, family: "Utility", message: "建议检查按函数引入、tree-shaking 或替代实现是否可行。" }],
+        [/^(exceljs|xlsx|file-saver)/, { priority: 8, family: "Office/Export", message: "建议评估导入导出能力是否可按功能懒加载。" }],
     ];
 
     const match = families.find(([pattern]) => pattern.test(normalized));
-    return match ? `${match[1]}：${match[2]}` : undefined;
+    return match?.[1];
 }
 
 export function buildDependencyQualityInsights(
@@ -62,6 +89,7 @@ export function buildDependencyQualityInsights(
     const thirdPartyModules = modules.filter((mod) => mod.packageName);
     const thirdPartySize = thirdPartyModules.reduce((sum, mod) => sum + mod.rawSize, 0);
     const thirdPartyRatio = totalModuleSize > 0 ? thirdPartySize / totalModuleSize : 0;
+    const isAngularProject = isAngularProjectDependencySet(dependencies);
     const largeDependencies = dependencies
         .filter((dep) => dep.rawSize > 700 * KB)
         .sort((a, b) => b.rawSize - a.rawSize)
@@ -96,7 +124,7 @@ export function buildDependencyQualityInsights(
             level: "warning",
             code: "dependency-third-party-ratio-high",
             category: "optimization",
-            message: `第三方依赖约占模块体积 ${(thirdPartyRatio * 100).toFixed(1)}%，建议优先从依赖拆分、按需引入和懒加载边界入手。`,
+            message: `第三方依赖约占模块体积 ${(thirdPartyRatio * 100).toFixed(1)}%。如果首屏体积较大，可优先检查 UI 库、图表、PDF、加密、地图等可选依赖的加载边界。`,
             data: {
                 totalModuleSize,
                 thirdPartySize,
@@ -109,20 +137,25 @@ export function buildDependencyQualityInsights(
     }
 
     const familyHints = dependencies
+        .filter((dep) => !(isAngularProject && isAngularBaselineDependency(dep.name)))
+        .filter((dep) => dep.rawSize > 100 * KB || (dep.ratio ?? 0) > 0.03)
         .map((dep) => ({ dep, hint: dependencyFamily(dep.name) }))
-        .filter((item): item is { dep: TaskAnalyzeDependency; hint: string } => !!item.hint)
-        .slice(0, 8);
-    if (familyHints.length > 0) {
+        .filter((item): item is { dep: TaskAnalyzeDependency; hint: DependencyFamilyHint } => !!item.hint)
+        .sort((a, b) => a.hint.priority - b.hint.priority || b.dep.rawSize - a.dep.rawSize)
+        .slice(0, 5);
+    for (const item of familyHints) {
         insights.push({
             level: "info",
             code: "dependency-heavy-family",
             category: "optimization",
-            message: `检测到常见重型依赖家族：${familyHints.map((item) => item.dep.name).join("、")}。`,
+            message: item.dep.name === "ng-zorro-antd"
+                ? item.hint.message
+                : `检测到 ${item.dep.name} 属于常见重型依赖（${item.hint.family}）。${item.hint.message}`,
             data: {
-                top: familyHints.map((item) => ({
-                    ...item.dep,
-                    hint: item.hint,
-                })),
+                ...item.dep,
+                family: item.hint.family,
+                hint: item.hint.message,
+                priority: item.hint.priority,
             },
         });
     }
