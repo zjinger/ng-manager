@@ -1,6 +1,10 @@
 import { DashboardServiceImpl } from "../../domain/dashboard";
 import type { SqliteDatabase } from "@yinuo-ngm/storage";
-import { SqliteDashboardRepo, migrateDashboardJsonFilesIfNeeded } from "../../infra/dashboard";
+import {
+    initDashboardSchema,
+    SqliteDashboardRepo,
+    migrateDashboardJsonFilesIfNeeded,
+} from "../../infra/dashboard";
 
 export async function createDashboardDomain(opts: {
     dataDir: string;
@@ -9,6 +13,7 @@ export async function createDashboardDomain(opts: {
 }) {
     const dataDir = opts.dataDir;
     const db = opts.db;
+    initDashboardSchema(db);
     const repo = new SqliteDashboardRepo(db);
 
     if (opts.migrateIfNeeded ?? true) {

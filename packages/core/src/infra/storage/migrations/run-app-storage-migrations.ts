@@ -17,7 +17,11 @@ import {
 import { migrateLegacySpriteConfigsIfNeeded } from "@yinuo-ngm/sprite";
 import { migrateLegacySvnRuntimeIfNeeded } from "@yinuo-ngm/svn";
 import { migrateNginxBindingJsonIfNeeded } from "@yinuo-ngm/nginx";
-import { SqliteDashboardRepo, migrateDashboardJsonFilesIfNeeded } from "../../dashboard";
+import {
+    initDashboardSchema,
+    SqliteDashboardRepo,
+    migrateDashboardJsonFilesIfNeeded,
+} from "../../dashboard";
 import type { LatestCacheSnapshot } from "@yinuo-ngm/deps";
 import type { AppMigration } from "./app-migration-runner";
 import { runAppMigrationRunner } from "./app-migration-runner";
@@ -52,6 +56,7 @@ export async function runAppStorageMigrations(opts: {
             version: "20260511-002",
             name: "dashboard-json-to-sqlite",
             up: async (ctx) => {
+                initDashboardSchema(ctx.db);
                 const dashboardRepo = new SqliteDashboardRepo(ctx.db);
                 await migrateDashboardJsonFilesIfNeeded({
                     rootDir: ctx.dataDir,
@@ -129,6 +134,19 @@ export async function runAppStorageMigrations(opts: {
             name: "nginx-binding-json-to-sqlite",
             up: async (ctx) => {
                 migrateNginxBindingJsonIfNeeded(ctx.db, ctx.dataDir);
+            },
+        },
+        {
+            version: "20260513-001",
+            name: "dashboard-json-to-sqlite-backfill",
+            up: async (ctx) => {
+                initDashboardSchema(ctx.db);
+                const dashboardRepo = new SqliteDashboardRepo(ctx.db);
+                await migrateDashboardJsonFilesIfNeeded({
+                    rootDir: ctx.dataDir,
+                    target: dashboardRepo,
+                    backup: true,
+                });
             },
         },
     ];

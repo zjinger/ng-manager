@@ -1,19 +1,8 @@
 import type { SqliteDatabase } from "@yinuo-ngm/storage";
 import type { DashboardDocV1, DashboardRepo } from "../../domain/dashboard";
 
-function createDashboardTable(db: SqliteDatabase) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS dashboard_docs (
-            project_id TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-    `);
-}
-
 export class SqliteDashboardRepo implements DashboardRepo {
-    constructor(private readonly db: SqliteDatabase) {
-        createDashboardTable(db);
-    }
+    constructor(private readonly db: SqliteDatabase) {}
 
     async load(projectId: string): Promise<DashboardDocV1 | null> {
         const row = this.db
