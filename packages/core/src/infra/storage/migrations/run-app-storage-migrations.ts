@@ -10,7 +10,7 @@ import {
 import type { LatestCacheSnapshot } from "@yinuo-ngm/deps";
 import { migrateNginxBindingJsonIfNeeded } from "@yinuo-ngm/nginx";
 import type { Project } from "@yinuo-ngm/project";
-import { migrateLegacySpriteConfigsIfNeeded } from "@yinuo-ngm/sprite";
+import { initSpriteSchema, migrateLegacySpriteConfigsIfNeeded } from "@yinuo-ngm/sprite";
 import {
     migrateJsonKvFileIfNeeded,
     type SqliteDatabase,
@@ -106,6 +106,7 @@ export async function runAppStorageMigrations(opts: {
             version: "20260511-004",
             name: "sprite-json-to-sqlite",
             up: async (ctx) => {
+                initSpriteSchema(ctx.db);
                 migrateLegacySpriteConfigsIfNeeded(ctx.db, ctx.dataDir);
             },
         },

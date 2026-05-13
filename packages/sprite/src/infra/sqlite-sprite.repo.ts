@@ -4,15 +4,6 @@ import type { SqliteDatabase } from "@yinuo-ngm/storage";
 import { CoreError, CoreErrorCodes } from "@yinuo-ngm/errors";
 import type { SpriteConfig, SpriteRepo } from "../domain/sprite.repo";
 
-function createSpriteTable(db: SqliteDatabase) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS sprite_configs (
-            project_id TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-    `);
-}
-
 function normalizeSpriteConfig(projectId: string, cfg: Omit<SpriteConfig, "projectId" | "updatedAt"> | SpriteConfig): SpriteConfig {
     return {
         projectId,
@@ -40,8 +31,6 @@ function backupFilePath(sourceFile: string) {
 }
 
 export function migrateLegacySpriteConfigsIfNeeded(db: SqliteDatabase, dataDir: string): number {
-    createSpriteTable(db);
-
     const hasRows = db.prepare(`SELECT 1 FROM sprite_configs LIMIT 1`).get() != null;
     if (hasRows) return 0;
 
@@ -104,15 +93,7 @@ export function migrateLegacySpriteConfigsIfNeeded(db: SqliteDatabase, dataDir: 
 }
 
 export class SqliteSpriteRepo implements SpriteRepo {
-    constructor(
-        private readonly db: SqliteDatabase,
-        dataDir?: string
-    ) {
-        createSpriteTable(db);
-        if (dataDir) {
-            migrateLegacySpriteConfigsIfNeeded(db, dataDir);
-        }
-    }
+    constructor(private readonly db: SqliteDatabase) {}
 
     async getByProjectId(projectId: string): Promise<SpriteConfig | null> {
         try {
