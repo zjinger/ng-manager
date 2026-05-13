@@ -8,7 +8,7 @@ import {
     SqliteRequestRepo,
 } from "@yinuo-ngm/api";
 import type { LatestCacheSnapshot } from "@yinuo-ngm/deps";
-import { migrateNginxBindingJsonIfNeeded } from "@yinuo-ngm/nginx";
+import { initNginxSchema, migrateNginxBindingJsonIfNeeded } from "@yinuo-ngm/nginx";
 import type { Project } from "@yinuo-ngm/project";
 import { initSpriteSchema, migrateLegacySpriteConfigsIfNeeded } from "@yinuo-ngm/sprite";
 import {
@@ -136,6 +136,7 @@ export async function runAppStorageMigrations(opts: {
             version: "20260511-007",
             name: "nginx-binding-json-to-sqlite",
             up: async (ctx) => {
+                initNginxSchema(ctx.db);
                 migrateNginxBindingJsonIfNeeded(ctx.db, ctx.dataDir);
             },
         },

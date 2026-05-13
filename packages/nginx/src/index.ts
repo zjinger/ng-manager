@@ -20,5 +20,6 @@ export {
     migrateNginxBindingJsonIfNeeded,
     type NginxBindingStore
 } from './storage/nginx-binding.store';
+export { initNginxSchema } from './storage/nginx.schema';
 export * from './server/nginx-server.import.types';
 export * from './types/nginx.types';

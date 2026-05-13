@@ -21,18 +21,7 @@ function backupFilePath(sourceFile: string) {
     return `${base}.legacy.${Date.now()}${ext}`;
 }
 
-function createSqliteBindingTable(db: SqliteDatabase) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS nginx_binding_state (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            path TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-    `);
-}
-
 export function migrateNginxBindingJsonIfNeeded(db: SqliteDatabase, dataDir: string): number {
-    createSqliteBindingTable(db);
     const hasRow = db.prepare(`SELECT 1 FROM nginx_binding_state WHERE id = 1 LIMIT 1`).get() != null;
     if (hasRow) return 0;
 
@@ -108,12 +97,7 @@ export function createNginxBindingStore(dataDir: string): NginxBindingStore {
     };
 }
 
-export function createSqliteNginxBindingStore(db: SqliteDatabase, dataDir?: string): NginxBindingStore {
-    createSqliteBindingTable(db);
-    if (dataDir) {
-        migrateNginxBindingJsonIfNeeded(db, dataDir);
-    }
-
+export function createSqliteNginxBindingStore(db: SqliteDatabase): NginxBindingStore {
     return {
         async load(): Promise<string | null> {
             const row = db
