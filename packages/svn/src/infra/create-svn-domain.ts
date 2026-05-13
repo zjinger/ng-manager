@@ -7,7 +7,11 @@ import type { IEventBus } from "@yinuo-ngm/event";
 import type { SvnEventMap } from "../svn.events";
 import path from "node:path";
 import type { SqliteDatabase } from "@yinuo-ngm/storage";
-import { SqliteSvnRuntimeRepo } from "./sqlite-svn-runtime.repo";
+import {
+    migrateLegacySvnRuntimeIfNeeded,
+    SqliteSvnRuntimeRepo,
+} from "./sqlite-svn-runtime.repo";
+import { initSvnSchema } from "./svn.schema";
 
 export function createSvnDomain(opts: {
     dataDir: string;
@@ -19,10 +23,11 @@ export function createSvnDomain(opts: {
 }): SvnSyncService {
     const runtimeDir = path.join(opts.dataDir, "runtime");
     const runtimeFile = path.join(runtimeDir, "svn.runtime.json");
-    const svnRepo = new SqliteSvnRuntimeRepo(
-        opts.db,
-        (opts.migrateIfNeeded ?? true) ? runtimeFile : undefined
-    );
+    initSvnSchema(opts.db);
+    if (opts.migrateIfNeeded ?? true) {
+        migrateLegacySvnRuntimeIfNeeded(opts.db, runtimeFile);
+    }
+    const svnRepo = new SqliteSvnRuntimeRepo(opts.db);
     const svnTaskManager = new SvnTaskManager();
     return new SvnSyncServiceImpl(
         svnRepo,

@@ -4,17 +4,6 @@ import type { SqliteDatabase } from "@yinuo-ngm/storage";
 import type { SvnRuntime } from "../svn.types";
 import type { SvnRuntimeRepo } from "../svn-runtime.repo";
 
-function createRuntimeTable(db: SqliteDatabase) {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS svn_runtime (
-            project_id TEXT NOT NULL,
-            source_id TEXT NOT NULL,
-            value TEXT NOT NULL,
-            PRIMARY KEY (project_id, source_id)
-        );
-    `);
-}
-
 function backupFilePath(sourceFile: string) {
     const dir = path.dirname(sourceFile);
     const ext = path.extname(sourceFile);
@@ -43,8 +32,6 @@ function resolveSourceFile(sourceFile: string): { path: string; fromLegacy: bool
 }
 
 export function migrateLegacySvnRuntimeIfNeeded(db: SqliteDatabase, runtimeFile: string): number {
-    createRuntimeTable(db);
-
     const hasRows = db.prepare(`SELECT 1 FROM svn_runtime LIMIT 1`).get() != null;
     if (hasRows) return 0;
 
@@ -94,15 +81,7 @@ export function migrateLegacySvnRuntimeIfNeeded(db: SqliteDatabase, runtimeFile:
 }
 
 export class SqliteSvnRuntimeRepo implements SvnRuntimeRepo {
-    constructor(
-        private readonly db: SqliteDatabase,
-        runtimeFile?: string
-    ) {
-        createRuntimeTable(db);
-        if (runtimeFile) {
-            migrateLegacySvnRuntimeIfNeeded(db, runtimeFile);
-        }
-    }
+    constructor(private readonly db: SqliteDatabase) {}
 
     get(projectId: string, sourceId: string): SvnRuntime | undefined {
         const row = this.db

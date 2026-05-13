@@ -16,7 +16,7 @@ import {
     type SqliteDatabase,
     SqliteJsonKvRepo,
 } from "@yinuo-ngm/storage";
-import { migrateLegacySvnRuntimeIfNeeded } from "@yinuo-ngm/svn";
+import { initSvnSchema, migrateLegacySvnRuntimeIfNeeded } from "@yinuo-ngm/svn";
 import path from "node:path";
 import {
     initDashboardSchema,
@@ -113,6 +113,7 @@ export async function runAppStorageMigrations(opts: {
             version: "20260511-005",
             name: "svn-json-to-sqlite",
             up: async (ctx) => {
+                initSvnSchema(ctx.db);
                 migrateLegacySvnRuntimeIfNeeded(ctx.db, path.join(ctx.dataDir, "runtime", "svn.runtime.json"));
             },
         },

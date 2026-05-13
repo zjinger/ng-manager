@@ -1,22 +1,20 @@
 import * as path from "path";
 import {
     ApiClient,
+    ApiSendService,
     initApiSqliteSchema,
+    migrateJsonlHistoryFilesIfNeeded,
+    migrateScopedJsonKvFilesIfNeeded,
+    NodeHttpClient,
     SqliteCollectionRepo,
     SqliteEnvRepo,
     SqliteHistoryRepo,
     SqliteRequestRepo,
-    NodeHttpClient,
     VariableResolver,
-    ApiSendService,
 } from "@yinuo-ngm/api";
 import {
     type SqliteDatabase,
 } from "@yinuo-ngm/storage";
-import {
-    migrateJsonlHistoryFilesIfNeeded,
-    migrateScopedJsonKvFilesIfNeeded,
-} from "@yinuo-ngm/api";
 import type { CoreDomainHandle } from "./types";
 
 const API_SUBDIR = "api";
