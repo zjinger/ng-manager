@@ -8,6 +8,12 @@ export interface TaskAnalyzeContext {
     runtime: TaskRuntime;
     detection?: ProjectBuildDetection;
     diagnostics?: TaskAnalyzeDiagnostic[];
+    analyzeHints?: TaskAnalyzeHints;
+}
+
+export interface TaskAnalyzeHints {
+    addedStatsJson?: boolean;
+    addedViteManifest?: boolean;
 }
 
 export interface TaskAssetInfo {

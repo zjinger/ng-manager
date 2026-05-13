@@ -8,7 +8,7 @@ import type { ProjectService } from '@yinuo-ngm/project';
 import type { NodeVersionService } from '@yinuo-ngm/node-version';
 import { genSpecsFromScripts } from './infra/generators/genSpecsFromScripts';
 import { TaskAnalyzerService } from './analyzer/task-analyzer.service';
-import type { TaskAnalyzeReportStore } from './analyzer/task-analyzer.types';
+import type { TaskAnalyzeHints, TaskAnalyzeReportStore } from './analyzer/task-analyzer.types';
 import { detectProjectBuild } from './analyzer/project-build-detector';
 import { normalizeTaskOutput, parseTaskOutput } from './runtime/task-output-parser';
 import type { TaskService } from './task.service';
@@ -20,6 +20,11 @@ function bufToText(b: Buffer) {
     return b.toString("utf8");
 }
 
+interface PreparedLaunchSpec {
+    spec: TaskDefinition;
+    analyzeHints: TaskAnalyzeHints;
+}
+
 export class TaskServiceImpl implements TaskService {
     private specs = new Map<string, TaskDefinition>();
     private activeRunByTaskId = new Map<string, string>();
@@ -27,6 +32,7 @@ export class TaskServiceImpl implements TaskService {
     private procs = new Map<string, ProcHandle>();
     private runIdsByTaskId = new Map<string, string[]>();
     private outputTailByRunId = new Map<string, string>();
+    private analyzeHintsByRunId = new Map<string, TaskAnalyzeHints>();
     private analyzerService: TaskAnalyzerService;
     private readonly MAX_RUNS_PER_TASK = 5;
     private readonly MAX_TOTAL_RUNS = 200;
@@ -72,7 +78,9 @@ export class TaskServiceImpl implements TaskService {
         this.runtimes.set(runId, rt);
         this.trackRun(taskId, runId);
 
-        const launchSpec = await this.prepareLaunchSpec(spec, runId);
+        const prepared = await this.prepareLaunchSpec(spec, runId);
+        const launchSpec = prepared.spec;
+        this.analyzeHintsByRunId.set(runId, prepared.analyzeHints);
         const cmdStr = `${launchSpec.command}${(launchSpec.args?.length ? " " + launchSpec.args.join(" ") : "")}`;
         const text = `[Task] ${spec.projectRoot}: ${cmdStr} started`;
         this.appendSysLog(runId, text, 'info');
@@ -98,7 +106,7 @@ export class TaskServiceImpl implements TaskService {
                         targetVersion = requirement.satisfiedBy;
                         this.appendSysLog(runId, `[Node] 全局切换到 Node ${targetVersion}（项目要求 ${requirement.requiredVersion}）`, 'info');
                     } else if (requirement.isMatch) {
-                        this.appendSysLog(runId, `[Node] 当前版本 ${requirement.satisfiedBy} 已满足要求 ${requirement.requiredVersion}`, 'info');
+                        // this.appendSysLog(runId, `[Node] 当前版本 ${requirement.satisfiedBy} 已满足要求 ${requirement.requiredVersion}`, 'info');
                     } else {
                         this.appendSysLog(runId, `[Node] 警告: 项目要求 ${requirement.requiredVersion}，未找到匹配的已安装版本`, 'warn');
                     }
@@ -126,6 +134,7 @@ export class TaskServiceImpl implements TaskService {
                 rows: 40,
             });
         } catch (e: CoreError | any) {
+            this.analyzeHintsByRunId.delete(runId);
             const cur = this.runtimes.get(runId);
             if (cur) {
                 cur.status = "failed";
@@ -214,6 +223,8 @@ export class TaskServiceImpl implements TaskService {
                 this.analyzeAfterExit(spec, cur).catch((e) => {
                     this.appendSysLog(runId, `[Task Analyze] failed: ${e?.message ?? String(e)}`, "warn");
                 });
+            } else {
+                this.analyzeHintsByRunId.delete(runId);
             }
             this.pruneRunsForTask(taskId);
             this.pruneRunsGlobal();
@@ -458,37 +469,68 @@ export class TaskServiceImpl implements TaskService {
         this.specs.set(spec.id, spec);
     }
 
-    private async prepareLaunchSpec(spec: TaskDefinition, runId: string): Promise<TaskDefinition> {
-        if (spec.kind !== "build" || !spec.command || !spec.projectRoot) return spec;
+    private async prepareLaunchSpec(spec: TaskDefinition, runId: string): Promise<PreparedLaunchSpec> {
+        const prepared: PreparedLaunchSpec = { spec, analyzeHints: {} };
+        if (spec.kind !== "build" || !spec.command || !spec.projectRoot) return prepared;
 
         let detection: Awaited<ReturnType<typeof detectProjectBuild>>;
         try {
             detection = await detectProjectBuild(spec.projectRoot);
         } catch (e: any) {
             this.appendSysLog(runId, `[Task Analyze] 项目构建类型检测失败: ${e?.message ?? String(e)}`, "warn");
-            return spec;
-        }
-
-        if (detection.framework !== "angular") {
-            if (detection.buildTool === "vite") {
-                this.appendSysLog(runId, "[Task Analyze] Vite/Rollup 项目将优先读取 rollup-plugin-visualizer 生成的 stats.html / stats.json", "info");
-            } else if (detection.buildTool === "webpack" || detection.buildTool === "vue-cli-webpack") {
-                this.appendSysLog(runId, "[Task Analyze] webpack 项目将优先读取 webpack stats.json，可用 webpack-bundle-analyzer 生成/查看同一份 stats", "info");
-            }
-            return spec;
+            return prepared;
         }
 
         const current = `${spec.command} ${(spec.args ?? []).join(" ")}`.trim();
-        if (/\b--stats-json\b/.test(current)) return spec;
 
-        const command = this.appendStatsJsonArg(spec.command);
-        if (command === spec.command) return spec;
+        if (detection.framework === "angular") {
+            if (/\b--stats-json\b/.test(current)) {
+                prepared.analyzeHints.addedStatsJson = false;
+                return prepared;
+            }
 
-        this.appendSysLog(runId, "[Task Analyze] 检测到 Angular 构建任务，将优先尝试读取 stats.json；如未生成或无法解析，将回退到 dist 产物扫描。", "info");
-        return {
-            ...spec,
-            command,
-        };
+            const command = this.appendStatsJsonArg(spec.command);
+            if (command === spec.command) {
+                prepared.analyzeHints.addedStatsJson = false;
+                return prepared;
+            }
+
+            prepared.analyzeHints.addedStatsJson = true;
+            this.appendSysLog(runId, "[Task Analyze] 检测到 Angular 构建任务，将优先尝试读取 stats.json；如未生成或无法解析，将回退到 dist 产物扫描。", "info");
+            prepared.spec = {
+                ...spec,
+                command,
+            };
+            return prepared;
+        }
+
+        if (detection.buildTool === "vite") {
+            if (/\b--manifest\b/.test(current)) {
+                prepared.analyzeHints.addedViteManifest = false;
+                return prepared;
+            }
+
+            const command = this.appendViteManifestArg(spec.command);
+            if (command !== spec.command) {
+                prepared.analyzeHints.addedViteManifest = true;
+                this.appendSysLog(runId, "[Task Analyze] 检测到 Vite 构建任务，将追加 --manifest 以生成 dist/.vite/manifest.json；如需依赖级分析，可配置 rollup-plugin-visualizer。", "info");
+                prepared.spec = {
+                    ...spec,
+                    command,
+                };
+                return prepared;
+            }
+
+            prepared.analyzeHints.addedViteManifest = false;
+            this.appendSysLog(runId, "[Task Analyze] Vite/Rollup 项目将优先读取 rollup-plugin-visualizer 生成的 stats.html / stats.json，未检测到可自动追加 --manifest 的 vite build 命令。", "info");
+            return prepared;
+        }
+
+        if (detection.buildTool === "webpack" || detection.buildTool === "vue-cli-webpack") {
+            this.appendSysLog(runId, "[Task Analyze] webpack 项目将优先读取 webpack stats.json，可用 webpack-bundle-analyzer 生成/查看同一份 stats", "info");
+        }
+
+        return prepared;
     }
 
     private appendStatsJsonArg(command: string): string {
@@ -497,6 +539,15 @@ export class TaskServiceImpl implements TaskService {
         if (/\byarn(?:\.cmd)?\s+\S+/.test(trimmed)) return `${trimmed} --stats-json`;
         if (/\bng(?:\.cmd)?\s+build\b/.test(trimmed)) return `${trimmed} --stats-json`;
         return trimmed;
+    }
+
+    private appendViteManifestArg(command: string): string {
+        const trimmed = command.trim();
+        if (/\b--manifest\b/.test(trimmed)) return trimmed;
+        if (/\b(?:npm|pnpm)(?:\.cmd)?\s+run\s+\S+/.test(trimmed)) return `${trimmed} -- --manifest`;
+        if (/\byarn(?:\.cmd)?\s+(?:run\s+)?\S+/.test(trimmed)) return `${trimmed} --manifest`;
+        if (!/\bvite(?:\.cmd)?\s+build\b/.test(trimmed)) return trimmed;
+        return `${trimmed} --manifest`;
     }
 
     private sleep(ms: number) {
@@ -612,6 +663,7 @@ export class TaskServiceImpl implements TaskService {
             this.runtimes.delete(runId);
             this.procs.delete(runId);
             this.outputTailByRunId.delete(runId);
+            this.analyzeHintsByRunId.delete(runId);
             target--;
         }
     }
@@ -667,7 +719,7 @@ export class TaskServiceImpl implements TaskService {
         });
 
         try {
-            const report = await this.analyzerService.analyze(spec, runtime);
+            const report = await this.analyzerService.analyze(spec, runtime, this.analyzeHintsByRunId.get(runtime.runId));
             this.events.emit(TaskEvents.TASK_ANALYZE_FINISHED, {
                 projectId: spec.projectId,
                 taskId: spec.id,
@@ -682,6 +734,8 @@ export class TaskServiceImpl implements TaskService {
                 error: e?.message ?? String(e),
             });
             throw e;
+        } finally {
+            this.analyzeHintsByRunId.delete(runtime.runId);
         }
     }
 

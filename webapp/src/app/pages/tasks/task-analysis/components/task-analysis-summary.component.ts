@@ -77,17 +77,17 @@ import { getSizeLevel } from '@app/shared';
       <div class="size-bar-section">
         <div class="size-bar">
           <div class="size-bar-seg js" [style.flex]="report.summary.jsRawSize || 0">
-            @if (((report.summary.jsRawSize || 0) / report.summary.totalRawSize * 100) > 8) {
+            @if (((report.summary.jsRawSize || 0) / report.summary.totalRawSize * 100) > 3) {
               <span>JS {{ ((report.summary.jsRawSize || 0) / report.summary.totalRawSize * 100).toFixed(0) }}%</span>
             }
           </div>
           <div class="size-bar-seg css" [style.flex]="report.summary.cssRawSize || 0">
-            @if (((report.summary.cssRawSize || 0) / report.summary.totalRawSize * 100) > 8) {
+            @if (((report.summary.cssRawSize || 0) / report.summary.totalRawSize * 100) > 3) {
               <span>CSS {{ ((report.summary.cssRawSize || 0) / report.summary.totalRawSize * 100).toFixed(0) }}%</span>
             }
           </div>
           <div class="size-bar-seg asset" [style.flex]="report.summary.assetRawSize || 0">
-            @if (((report.summary.assetRawSize || 0) / report.summary.totalRawSize * 100) > 8) {
+            @if (((report.summary.assetRawSize || 0) / report.summary.totalRawSize * 100) > 3) {
               <span>资源 {{ ((report.summary.assetRawSize || 0) / report.summary.totalRawSize * 100).toFixed(0) }}%</span>
             }
           </div>

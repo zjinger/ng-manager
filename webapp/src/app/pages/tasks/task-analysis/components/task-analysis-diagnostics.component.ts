@@ -20,7 +20,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
         </summary>
         @if (items.length > 0) {
           <div class="diagnostic-list">
-            @for (item of items; track item.analyzer + item.phase + item.status + item.createdAt) {
+            @for (item of items; track $index) {
               <div class="diagnostic-item" [class]="diagnosticStatusClass(item.status)">
                 <div class="diagnostic-main">
                   <strong>{{ item.analyzer }}</strong>

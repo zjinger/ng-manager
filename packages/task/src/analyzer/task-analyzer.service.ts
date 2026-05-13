@@ -7,6 +7,7 @@ import { RollupVisualizerAnalyzer } from "./rollup-visualizer-analyzer";
 import { WebpackStatsAnalyzer } from "./webpack-stats-analyzer";
 import type {
     TaskAnalyzeDiagnostic,
+    TaskAnalyzeHints,
     TaskAnalyzeReportStore,
     TaskAnalyzeReportSummary,
     TaskAnalyzeResult,
@@ -40,7 +41,7 @@ export class TaskAnalyzerService {
         private reportStore?: TaskAnalyzeReportStore
     ) {}
 
-    async analyze(spec: TaskDefinition, runtime: TaskRuntime): Promise<TaskAnalyzeResult | null> {
+    async analyze(spec: TaskDefinition, runtime: TaskRuntime, analyzeHints?: TaskAnalyzeHints): Promise<TaskAnalyzeResult | null> {
         if (spec.kind !== "build" || runtime.status !== "success") {
             return null;
         }
@@ -51,6 +52,16 @@ export class TaskAnalyzerService {
         const pushDiagnostic = (item: Omit<TaskAnalyzeDiagnostic, "createdAt">) => {
             diagnostics.push({ ...item, createdAt: Date.now() });
         };
+
+        if (analyzeHints && Object.keys(analyzeHints).length > 0) {
+            pushDiagnostic({
+                analyzer: "task-analyze-hints",
+                status: "success",
+                phase: "detect",
+                message: "已接收任务分析提示信息。",
+                data: analyzeHints,
+            });
+        }
 
         let detection: ProjectBuildDetection;
         try {
@@ -105,7 +116,7 @@ export class TaskAnalyzerService {
                 });
             }
 
-            const report = await this.tryAnalyze(step.analyzer, spec, runtime, detection, diagnostics);
+            const report = await this.tryAnalyze(step.analyzer, spec, runtime, detection, diagnostics, analyzeHints);
             if (!report) continue;
 
             report.diagnostics = diagnostics;
@@ -160,9 +171,10 @@ export class TaskAnalyzerService {
         spec: TaskDefinition,
         runtime: TaskRuntime,
         detection: ProjectBuildDetection,
-        diagnostics: TaskAnalyzeDiagnostic[]
+        diagnostics: TaskAnalyzeDiagnostic[],
+        analyzeHints?: TaskAnalyzeHints
     ): Promise<TaskAnalyzeResult | null> {
-        const ctx = { spec, runtime, detection };
+        const ctx = { spec, runtime, detection, analyzeHints };
         const pushDiagnostic = (item: Omit<TaskAnalyzeDiagnostic, "createdAt">) => {
             diagnostics.push({ ...item, createdAt: Date.now() });
         };
