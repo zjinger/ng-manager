@@ -25,6 +25,10 @@ function isCssAsset(asset: TaskAssetInfo): boolean {
     return asset.type === "css" || /\.css$/i.test(asset.name);
 }
 
+function isCssChunk(chunk: TaskAnalyzeChunk): boolean {
+    return /\.css(?:$|\?)/i.test([chunk.name, ...chunk.files].join(" "));
+}
+
 export function buildChunkStrategyInsights(input: {
     chunks?: TaskAnalyzeChunk[];
     assets?: TaskAssetInfo[];
@@ -64,7 +68,9 @@ export function buildChunkStrategyInsights(input: {
         });
     }
 
-    if (chunks.length > 0 && lazyChunks.length === 0 && (initialTotal > 500 * KB || (chunks[0]?.rawSize ?? 0) > 500 * KB)) {
+    const nonCssChunks = chunks.filter((chunk) => !isCssChunk(chunk));
+    const largestNonCssChunk = nonCssChunks[0];
+    if (nonCssChunks.length > 0 && lazyChunks.length === 0 && (initialTotal > MB || (largestNonCssChunk?.rawSize ?? 0) > 700 * KB)) {
         insights.push({
             level: "warning",
             code: "chunk-strategy-no-lazy",
@@ -73,7 +79,7 @@ export function buildChunkStrategyInsights(input: {
             data: {
                 chunkCount: chunks.length,
                 initialChunkCount: initialChunks.length,
-                largestChunk: chunks[0],
+                largestChunk: largestNonCssChunk ?? chunks[0],
             },
         });
     }
@@ -93,12 +99,12 @@ export function buildChunkStrategyInsights(input: {
 
     const cssAssets = assets.filter(isCssAsset).sort((a, b) => b.rawSize - a.rawSize);
     const totalCssSize = cssAssets.reduce((sum, asset) => sum + asset.rawSize, 0);
-    if (totalCssSize > 350 * KB || (cssAssets[0]?.rawSize ?? 0) > 220 * KB) {
+    if (totalCssSize > 900 * KB || (cssAssets[0]?.rawSize ?? 0) > 700 * KB) {
         insights.push({
-            level: "warning",
+            level: "info",
             code: "chunk-strategy-large-css",
             category: "optimization",
-            message: `CSS 体积集中偏大，总计 ${formatSize(totalCssSize)}，建议检查全局样式、组件库样式和主题样式裁剪。`,
+            message: `CSS 体积为 ${formatSize(totalCssSize)}，如首屏样式加载变慢，可检查全局样式、组件库样式和主题裁剪。`,
             data: {
                 totalCssSize,
                 top: cssAssets.slice(0, 10),

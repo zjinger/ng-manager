@@ -50,6 +50,7 @@ interface DependencyFamilyHint {
     priority: number;
     family: string;
     message: string;
+    minSize: number;
 }
 
 function isAngularProjectDependencySet(dependencies: TaskAnalyzeDependency[]): boolean {
@@ -63,15 +64,15 @@ function isAngularBaselineDependency(name: string): boolean {
 function dependencyFamily(name: string): DependencyFamilyHint | undefined {
     const normalized = name.toLowerCase();
     const families: Array<[RegExp, DependencyFamilyHint]> = [
-        [/^(pdfjs-dist|vue-pdf|vue-pdf-next|pdfmake)/, { priority: 1, family: "PDF", message: "建议评估 PDF 相关能力是否可按路由或功能懒加载。" }],
-        [/^(monaco-editor|codemirror|@codemirror\/)/, { priority: 2, family: "Editor", message: "建议将编辑器能力拆到独立路由或异步组件。" }],
-        [/^(echarts|zrender)/, { priority: 3, family: "Chart", message: "建议按需注册图表、组件和渲染器，避免一次性引入完整图表库。" }],
-        [/^(three|mapbox-gl|leaflet|ol|cesium)/, { priority: 4, family: "Map/3D", message: "建议将地图或 3D 能力拆到业务页面懒加载，并检查插件和样式体积。" }],
-        [/^ng-zorro-antd/, { priority: 5, family: "ng-zorro-antd", message: "检测到 ng-zorro-antd 体积较高，建议检查组件、图标和样式是否按需引入。" }],
-        [/^(ant-design-vue|antd|@ant-design\/|@ant-design\/icons)/, { priority: 5, family: "UI", message: "建议检查组件按需引入、图标按需引入和主题样式裁剪。" }],
-        [/^(moment|moment-timezone)$/, { priority: 6, family: "Date", message: "建议评估 dayjs/date-fns 或裁剪 locale/timezone 数据。" }],
-        [/^(lodash|lodash-es|crypto-js)$/, { priority: 7, family: "Utility", message: "建议检查按函数引入、tree-shaking 或替代实现是否可行。" }],
-        [/^(exceljs|xlsx|file-saver)/, { priority: 8, family: "Office/Export", message: "建议评估导入导出能力是否可按功能懒加载。" }],
+        [/^(pdfjs-dist|vue-pdf|vue-pdf-next|pdfmake)/, { priority: 1, family: "PDF", minSize: 500 * KB, message: "建议评估 PDF 相关能力是否可按路由或功能懒加载。" }],
+        [/^(monaco-editor|codemirror|@codemirror\/)/, { priority: 2, family: "Editor", minSize: 500 * KB, message: "建议将编辑器能力拆到独立路由或异步组件。" }],
+        [/^(echarts|zrender)/, { priority: 3, family: "Chart", minSize: 600 * KB, message: "建议按需注册图表、组件和渲染器，避免一次性引入完整图表库。" }],
+        [/^(three|mapbox-gl|leaflet|ol|cesium)/, { priority: 4, family: "Map/3D", minSize: 500 * KB, message: "建议将地图或 3D 能力拆到业务页面懒加载，并检查插件和样式体积。" }],
+        [/^ng-zorro-antd/, { priority: 5, family: "ng-zorro-antd", minSize: 700 * KB, message: "检测到 ng-zorro-antd 体积较高，建议检查组件、图标和样式是否按需引入。" }],
+        [/^(ant-design-vue|antd|@ant-design\/|@ant-design\/icons)/, { priority: 5, family: "UI", minSize: 700 * KB, message: "建议检查组件按需引入、图标按需引入和主题样式裁剪。" }],
+        [/^(moment|moment-timezone)$/, { priority: 6, family: "Date", minSize: 300 * KB, message: "建议评估 dayjs/date-fns 或裁剪 locale/timezone 数据。" }],
+        [/^(lodash|lodash-es|crypto-js)$/, { priority: 7, family: "Utility", minSize: 250 * KB, message: "建议检查按函数引入、tree-shaking 或替代实现是否可行。" }],
+        [/^(exceljs|xlsx|file-saver)/, { priority: 8, family: "Office/Export", minSize: 500 * KB, message: "建议评估导入导出能力是否可按功能懒加载。" }],
     ];
 
     const match = families.find(([pattern]) => pattern.test(normalized));
@@ -119,9 +120,9 @@ export function buildDependencyQualityInsights(
         });
     }
 
-    if (thirdPartyRatio > 0.65 && thirdPartySize > 500 * KB) {
+    if (thirdPartyRatio > 0.75 && thirdPartySize > 1.5 * MB) {
         insights.push({
-            level: "warning",
+            level: "info",
             code: "dependency-third-party-ratio-high",
             category: "optimization",
             message: `第三方依赖约占模块体积 ${(thirdPartyRatio * 100).toFixed(1)}%。如果首屏体积较大，可优先检查 UI 库、图表、PDF、加密、地图等可选依赖的加载边界。`,
@@ -138,9 +139,9 @@ export function buildDependencyQualityInsights(
 
     const familyHints = dependencies
         .filter((dep) => !(isAngularProject && isAngularBaselineDependency(dep.name)))
-        .filter((dep) => dep.rawSize > 100 * KB || (dep.ratio ?? 0) > 0.03)
         .map((dep) => ({ dep, hint: dependencyFamily(dep.name) }))
         .filter((item): item is { dep: TaskAnalyzeDependency; hint: DependencyFamilyHint } => !!item.hint)
+        .filter((item) => item.dep.rawSize >= item.hint.minSize)
         .sort((a, b) => a.hint.priority - b.hint.priority || b.dep.rawSize - a.dep.rawSize)
         .slice(0, 5);
     for (const item of familyHints) {
@@ -161,7 +162,7 @@ export function buildDependencyQualityInsights(
     }
 
     const splitCandidates = dependencies
-        .filter((dep) => dep.rawSize > 300 * KB && dep.moduleCount > 5)
+        .filter((dep) => dep.rawSize > 700 * KB && dep.moduleCount > 10)
         .sort((a, b) => b.rawSize - a.rawSize)
         .slice(0, 10);
     if (splitCandidates.length > 0) {

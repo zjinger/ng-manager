@@ -140,9 +140,13 @@ function measuredSize(
             return styles.length > 0 ? { size: Math.max(...styles.map((asset) => asset.rawSize)), label: "anyStyle" } : null;
         }
         case "anyComponentStyle": {
-            const styles = assets.filter((asset) => asset.type === "css");
-            return styles.length > 0
-                ? { size: Math.max(...styles.map((asset) => asset.rawSize)), label: "anyComponentStyle", approximated: true }
+            const componentStyles = assets.filter((asset) =>
+                asset.type === "css"
+                && !/^styles[-.]/i.test(asset.name)
+                && !/[/\\]styles[-.]/i.test(asset.relativePath)
+            );
+            return componentStyles.length > 0
+                ? { size: Math.max(...componentStyles.map((asset) => asset.rawSize)), label: "anyComponentStyle", approximated: true }
                 : null;
         }
         default:
