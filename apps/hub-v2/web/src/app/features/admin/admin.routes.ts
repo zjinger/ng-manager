@@ -34,7 +34,7 @@ export const ADMIN_ROUTES: Routes = [
         path: 'permissions',
         data: { title: '权限配置', icon: 'key' },
         loadComponent: () =>
-          import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
+          import('./pages/permissions-page.component').then((m) => m.PermissionsPageComponent),
       },
       {
         path: 'audit',
