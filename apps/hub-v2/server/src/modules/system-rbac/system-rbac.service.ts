@@ -23,7 +23,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   constructor(private readonly repo: SystemRbacRepo) {}
 
   async listSystemRoles(query: ListSystemRolesQuery, ctx: RequestContext): Promise<SystemRoleWithCounts[]> {
-    this.requireReadable(ctx);
+    requireAdmin(ctx);
     const roles = this.repo.listRoles(query);
     return roles.map((role) => ({
       ...role,
@@ -33,7 +33,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async getSystemRoleDetail(id: string, ctx: RequestContext): Promise<SystemRoleDetail> {
-    this.requireReadable(ctx);
+    requireAdmin(ctx);
     const role = this.repo.findRoleById(id);
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${id}`, 404);
@@ -49,12 +49,12 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async listPermissions(ctx: RequestContext): Promise<SystemPermissionEntity[]> {
-    this.requireReadable(ctx);
+    requireAdmin(ctx);
     return this.repo.listPermissions();
   }
 
   async listRoleUsers(roleId: string, ctx: RequestContext): Promise<RoleUserEntity[]> {
-    this.requireReadable(ctx);
+    requireAdmin(ctx);
     if (!this.repo.findRoleById(roleId)) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
     }
@@ -152,6 +152,11 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     if (role.isBuiltin) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "built-in role cannot be modified", 403);
     }
+    for (const permissionId of input.permissionIds) {
+      if (!this.repo.findPermissionById(permissionId)) {
+        throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_NOT_FOUND, `system permission not found: ${permissionId}`, 404);
+      }
+    }
     this.repo.setRolePermissions(roleId, input.permissionIds);
   }
 
@@ -180,11 +185,5 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${userId}`, 404);
     }
     this.repo.removeRoleUser(roleId, userId);
-  }
-
-  private requireReadable(ctx: RequestContext): void {
-    if (!ctx.userId?.trim() && !ctx.roles.includes("admin")) {
-      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "forbidden", 403);
-    }
   }
 }

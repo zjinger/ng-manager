@@ -146,6 +146,19 @@ describe("SystemRbacService", () => {
     }
   });
 
+  it("rejects non-admin from reading system roles", async () => {
+    const db = createDb();
+    try {
+      const service = new SystemRbacService(new SystemRbacRepo(db));
+      await assert.rejects(
+        () => service.listSystemRoles({}, userCtx),
+        /forbidden/
+      );
+    } finally {
+      db.close();
+    }
+  });
+
   it("prevents updating built-in role", async () => {
     const db = createDb();
     try {
@@ -209,6 +222,22 @@ describe("SystemRbacService", () => {
         () => service.setRolePermissions("srole_admin", { permissionIds: ["sperm_1"] }, adminCtx),
         /cannot be modified/
       );
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rejects unknown permission ids before saving", async () => {
+    const db = createDb();
+    try {
+      const service = new SystemRbacService(new SystemRbacRepo(db));
+      const role = await service.createSystemRole({ code: "invalid_perm", name: "非法权限测试" }, adminCtx);
+      await assert.rejects(
+        () => service.setRolePermissions(role.id, { permissionIds: ["missing_perm"] }, adminCtx),
+        /permission not found/
+      );
+      const detail = await service.getSystemRoleDetail(role.id, adminCtx);
+      assert.equal(detail.permissions.length, 0);
     } finally {
       db.close();
     }
