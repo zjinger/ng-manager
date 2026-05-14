@@ -14,6 +14,7 @@ export * from './page-header';
 export * from './page-toolbar';
 export * from './search-box';
 export * from './status-badge';
+export * from './tabs';
 export * from './view-toggle';
 export * from './priority-badge';
 export * from './loading-state';

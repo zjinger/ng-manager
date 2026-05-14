@@ -48,7 +48,7 @@ export const ADMIN_ROUTES: Routes = [
         path: 'settings',
         data: { title: '系统设置', icon: 'setting' },
         loadComponent: () =>
-          import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
+          import('./pages/settings-page/settings-page.component').then((m) => m.SettingsPageComponent),
       },
     ],
   },

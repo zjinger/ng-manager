@@ -8,6 +8,7 @@ import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { AvatarImageNormalizerService } from '@shared/services/avatar-image-normalizer.service';
 import { SystemNotificationService } from '@shared/services/system-notification.service';
 import { PageHeaderComponent } from '@shared/ui';
+import { TabsComponent } from '@shared/ui';
 import { ProfileBasicFormComponent } from '../../components/profile-basic-form/profile-basic-form.component';
 import { ProfileHeroComponent } from '../../components/profile-hero/profile-hero.component';
 import {
@@ -17,7 +18,6 @@ import {
 import { ProfilePasswordFormComponent } from '../../components/profile-password-form/profile-password-form.component';
 import { ProfilePersonalTokenComponent } from '../../components/profile-personal-token/profile-personal-token.component';
 import { ProfileProjectVisibilitySettingsComponent } from '../../components/profile-project-visibility-settings/profile-project-visibility-settings.component';
-import { ProfileTabsComponent } from '../../components/profile-tabs/profile-tabs.component';
 import type { ChangePasswordInput, ProfileNotificationPrefs, UpdateProfileInput } from '../../models/profile.model';
 import { ProfileApiService } from '../../services/profile-api.service';
 
@@ -30,7 +30,7 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'project-visibility' 
     NzAlertModule,
     PageHeaderComponent,
     ProfileHeroComponent,
-    ProfileTabsComponent,
+    TabsComponent,
     ProfileBasicFormComponent,
     ProfilePasswordFormComponent,
     ProfileNotificationSettingsComponent,

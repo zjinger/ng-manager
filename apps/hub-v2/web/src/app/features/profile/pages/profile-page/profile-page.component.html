@@ -10,7 +10,7 @@
       (avatarChange)="updateAvatar($event)"
     />
 
-    <app-profile-tabs [tabs]="tabs" [activeId]="activeTab()" (tabChange)="activeTab.set($any($event))" />
+    <app-tabs [tabs]="tabs" [activeId]="activeTab()" (tabChange)="activeTab.set($any($event))" />
 
     @switch (activeTab()) {
       @case ('basic') {
