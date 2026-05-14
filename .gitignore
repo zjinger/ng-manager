@@ -74,3 +74,4 @@ apps/hub-v2/server/backupdev
 md/
 docs/ui/
 
+apps/hub-v2/server/docs/cleanup_41_44.sql

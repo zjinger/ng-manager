@@ -92,6 +92,9 @@ import OpenAI from "openai";
 import { AiIssueService } from "../modules/ai/ai-issue.service";
 import { ReportPublicRepo } from "../modules/report-public/report-public.repo";
 import { ReportPublicService } from "../modules/report-public/report-public.service";
+import type { ReimbursementCommandContract, ReimbursementQueryContract } from "../modules/reimbursement/reimbursement.contract";
+import { ReimbursementRepo } from "../modules/reimbursement/reimbursement.repo";
+import { ReimbursementService } from "../modules/reimbursement/reimbursement.service";
 
 export type AppContainer = {
   healthQuery: HealthQueryService;
@@ -152,6 +155,8 @@ export type AppContainer = {
   surveyQuery: SurveyQueryContract;
   approvalTemplateCommand: ApprovalTemplateCommandContract;
   approvalTemplateQuery: ApprovalTemplateQueryContract;
+  reimbursementCommand: ReimbursementCommandContract;
+  reimbursementQuery: ReimbursementQueryContract;
 };
 
 type BuildContainerOptions = {
@@ -263,6 +268,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
   const surveyService = new SurveyService(new SurveyRepo(db));
   const approvalTemplateService = new ApprovalTemplateService(new ApprovalTemplateRepo(db));
+  const reimbursementService = new ReimbursementService(new ReimbursementRepo(db));
 
   return {
     healthQuery: new HealthQueryService(config),
@@ -322,6 +328,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     surveyCommand: surveyService,
     surveyQuery: surveyService,
     approvalTemplateCommand: approvalTemplateService,
-    approvalTemplateQuery: approvalTemplateService
+    approvalTemplateQuery: approvalTemplateService,
+    reimbursementCommand: reimbursementService,
+    reimbursementQuery: reimbursementService
   };
 }

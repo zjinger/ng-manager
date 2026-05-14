@@ -74,4 +74,34 @@ describe("upload policy", () => {
       (error) => error instanceof AppError && error.message === "仅支持图片文件"
     );
   });
+
+  it("allows reimbursement PDF attachments and rejects spreadsheets", () => {
+    const policy = resolveUploadPolicy("reimbursements", "attachment");
+
+    assert.doesNotThrow(() =>
+      assertUploadAllowed(
+        {
+          fileName: "invoice.pdf",
+          mimeType: "application/pdf",
+          fileSize: 512 * 1024
+        },
+        policy,
+        10 * 1024 * 1024
+      )
+    );
+
+    assert.throws(
+      () =>
+        assertUploadAllowed(
+          {
+            fileName: "费用.xlsx",
+            mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileSize: 512 * 1024
+          },
+          policy,
+          10 * 1024 * 1024
+        ),
+      (error) => error instanceof AppError && error.message === "仅支持 JPG / PNG / PDF"
+    );
+  });
 });

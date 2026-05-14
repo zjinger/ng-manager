@@ -16,6 +16,7 @@ export interface UploadPolicy {
 // 图片格式
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'] as const;
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.flv', '.wmv'] as const;
+const REIMBURSEMENT_ATTACHMENT_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.pdf'] as const;
 
 // 通用上传策略
 const GENERIC_UPLOAD_POLICY: UploadPolicy = {
@@ -64,6 +65,14 @@ const ISSUE_ATTACHMENT_POLICY: UploadPolicy = {
   sizeLimitMessage: "单个文件最大 10MB"
 };
 
+const REIMBURSEMENT_ATTACHMENT_POLICY: UploadPolicy = {
+  maxSizeBytes: 10 * MB,
+  allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"],
+  allowedExtensions: REIMBURSEMENT_ATTACHMENT_EXTENSIONS,
+  invalidTypeMessage: "仅支持 JPG / PNG / PDF",
+  sizeLimitMessage: "单个文件最大 10MB"
+};
+
 /**
  * 根据上传的 bucket 和 category 决定使用哪个上传策略
  */
@@ -82,6 +91,9 @@ export function resolveUploadPolicy(bucket: string, category: string): UploadPol
   }
   if (bucket === "issues" && category === "attachment") {
     return ISSUE_ATTACHMENT_POLICY;
+  }
+  if (bucket === "reimbursements" && category === "attachment") {
+    return REIMBURSEMENT_ATTACHMENT_POLICY;
   }
   return GENERIC_UPLOAD_POLICY;
 }
