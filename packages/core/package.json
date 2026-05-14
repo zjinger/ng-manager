@@ -35,6 +35,8 @@
     "@yinuo-ngm/shared": "^0.1.1",
     "@yinuo-ngm/sprite": "^0.1.8",
     "@yinuo-ngm/svn": "^0.1.2",
-    "@yinuo-ngm/task": "^0.1.2"
+    "@yinuo-ngm/task": "^0.1.2",
+    "@yinuo-ngm/api": "^0.1.6",
+    "@yinuo-ngm/nginx": "^0.1.3"
   }
 }

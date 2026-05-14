@@ -19,6 +19,8 @@
     { "path": "../sprite" },
     { "path": "../bootstrap" },
     { "path": "../deps" },
-    { "path": "../storage" }
+    { "path": "../storage" },
+    { "path": "../api" },
+    { "path": "../nginx" }
   ]
 }
