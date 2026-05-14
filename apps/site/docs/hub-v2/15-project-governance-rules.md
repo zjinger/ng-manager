@@ -60,7 +60,7 @@
 
 ### 5.1 角色定义
 
-- `owner`：项目创建者，唯一且不可变更
+- `owner`：项目创建者，唯一；默认由创建者担任，后续可按规则转移
 - `project_admin`：项目管理员，可管理成员与项目配置
 - `member`：普通成员
 
@@ -68,7 +68,9 @@
 
 - `owner` 不可删除
 - 成员可被提升为 `project_admin`
-- 不支持转移 `owner`
+- 支持转移 `owner`
+- `owner` 转移后，原 `owner` 自动降级为普通成员
+- 仅当前 `owner` 或具备全局项目治理权限的管理员可执行 `owner` 转移
 
 ## 6. 个人项目显示范围偏好
 
@@ -107,5 +109,4 @@
 - 归档项目写操作统一返回 `PROJECT_INACTIVE`
 - internal/private 读写规则与矩阵一致
 - `projectScopeMode` 切换后项目列表即时刷新
-- owner 不可删除、不可转移
-
+- owner 不可删除，支持按规则转移

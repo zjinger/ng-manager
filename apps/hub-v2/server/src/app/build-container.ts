@@ -59,6 +59,7 @@ import { AuthRepo } from "../modules/auth/auth.repo";
 import { AuthService } from "../modules/auth/auth.service";
 import type { ProjectCommandContract, ProjectQueryContract } from "../modules/project/project.contract";
 import type { ProjectAccessContract } from "../modules/project/project-access.contract";
+import { ProjectAuthorizationService } from "../modules/project/project-authorization.service";
 import { ProjectAccessService } from "../modules/project/project-access.service";
 import { ProjectRepo } from "../modules/project/project.repo";
 import { ProjectService } from "../modules/project/project.service";
@@ -78,6 +79,7 @@ import type { SharedConfigCommandContract, SharedConfigQueryContract } from "../
 import { SharedConfigRepo } from "../modules/shared-config/shared-config.repo";
 import { SharedConfigService } from "../modules/shared-config/shared-config.service";
 import type { SystemRbacCommandContract, SystemRbacQueryContract } from "../modules/system-rbac/system-rbac.contract";
+import { PlatformRoleSyncService } from "../modules/system-rbac/platform-role-sync.service";
 import { SystemRbacRepo } from "../modules/system-rbac/system-rbac.repo";
 import { SystemRbacService } from "../modules/system-rbac/system-rbac.service";
 import { HealthQueryService } from "../modules/system/health.query";
@@ -168,15 +170,18 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     logger: options.eventBusLogger
   });
   const authRepo = new AuthRepo(db);
+  const systemRbacRepo = new SystemRbacRepo(db);
+  const platformRoleSync = new PlatformRoleSyncService(systemRbacRepo);
   const authService = new AuthService(config, authRepo);
   const organizationRepo = new OrganizationRepo(db);
   const organizationService = new OrganizationService(organizationRepo);
   const userRepo = new UserRepo(db);
-  const userService = new UserService(userRepo, authRepo, organizationService);
+  const userService = new UserService(userRepo, authRepo, organizationService, platformRoleSync);
   const projectRepo = new ProjectRepo(db);
   const rdRepo = new RdRepo(db);
-  const projectAccess = new ProjectAccessService(projectRepo);
-  const projectService = new ProjectService(projectRepo, userRepo, rdRepo, projectAccess, eventBus, db);
+  const projectAuthorization = new ProjectAuthorizationService(db, projectRepo);
+  const projectAccess = new ProjectAccessService(projectRepo, projectAuthorization);
+  const projectService = new ProjectService(projectRepo, userRepo, rdRepo, projectAccess, projectAuthorization, eventBus, db);
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
   const personalTokenRepo = new PersonalTokenRepo(db);
@@ -252,7 +257,6 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
-  const systemRbacRepo = new SystemRbacRepo(db);
   const systemRbacService = new SystemRbacService(systemRbacRepo);
   authService.ensureDefaultAdmin();
 

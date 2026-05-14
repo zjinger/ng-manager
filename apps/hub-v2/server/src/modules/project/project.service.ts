@@ -9,8 +9,8 @@ import { nowIso } from "../../shared/utils/time";
 import type { EventBus } from "../../shared/event/event-bus";
 import type { ProjectCommandContract, ProjectQueryContract } from "./project.contract";
 import type { ProjectAccessContract } from "./project-access.contract";
+import { ProjectAuthorizationService } from "./project-authorization.service";
 import { UserRepo } from "../user/user.repo";
-import { requireAdmin } from "../utils/require-admin";
 import { RdRepo } from "../rd/rd.repo";
 import { ProjectRepo } from "./project.repo";
 import type {
@@ -52,13 +52,14 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     private readonly userRepo: UserRepo,
     private readonly rdRepo: RdRepo,
     private readonly access: ProjectAccessContract,
+    private readonly authorization: ProjectAuthorizationService,
     private readonly eventBus: EventBus,
     private readonly db: Database.Database
   ) {}
 
   async create(input: CreateProjectInput, ctx: RequestContext): Promise<ProjectEntity> {
     const creatorId = ctx.userId?.trim();
-    if (!creatorId) {
+    if (!creatorId || !this.authorization.canCreateProject(ctx)) {
       throw new AppError(ERROR_CODES.PROJECT_CREATE_FORBIDDEN, "create project forbidden", 403);
     }
 
@@ -127,10 +128,15 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   }
 
   async update(projectId: string, input: UpdateProjectInput, ctx: RequestContext): Promise<ProjectEntity> {
-    await this.requireProjectMaintainer(projectId, ctx, "update project");
     const current = this.repo.findById(projectId);
     if (!current) {
       throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
+    }
+    const isStatusChanging = input.status !== undefined && input.status !== current.status;
+    if (isStatusChanging) {
+      await this.requireProjectArchiver(projectId, ctx, "archive project");
+    } else {
+      await this.requireProjectMaintainer(projectId, ctx, "update project");
     }
 
     const patch: UpdateProjectInput & { updatedAt: string } = {
@@ -181,7 +187,9 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   }
 
   async list(query: ListProjectsQuery, ctx: RequestContext): Promise<ProjectListResult> {
-    requireAdmin(ctx);
+    if (!this.authorization.canReadAllProjects(ctx)) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "list projects forbidden", 403);
+    }
     return this.repo.list(query);
   }
 
@@ -195,6 +203,10 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         pageSize: query.pageSize && query.pageSize > 0 ? query.pageSize : 20,
         total: 0
       };
+    }
+
+    if (this.authorization.canReadAllProjects(ctx) && query.scope !== "member_only") {
+      return this.repo.list(query);
     }
 
     return this.repo.listAccessibleByUserId(userId, query);
@@ -263,7 +275,10 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     input: UpdateProjectMemberInput,
     ctx: RequestContext
   ): Promise<ProjectMemberEntity> {
-    await this.requireProjectMaintainer(projectId, ctx, "update project member");
+    const isOwnerTransfer = input.isOwner === true;
+    if (!(isOwnerTransfer && this.authorization.canTransferAnyProjectOwner(ctx))) {
+      await this.requireProjectMaintainer(projectId, ctx, "update project member");
+    }
     const project = this.repo.findById(projectId);
     if (!project) {
       throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
@@ -614,7 +629,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   }
 
   private async requireProjectMaintainer(projectId: string, ctx: RequestContext, action: string): Promise<void> {
-    if (ctx.roles.includes("admin")) {
+    if (this.authorization.canManageAllProjects(ctx)) {
       return;
     }
 
@@ -638,7 +653,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   }
 
   private assertCanTransferOwner(projectId: string, ctx: RequestContext): void {
-    if (ctx.roles.includes("admin")) {
+    if (this.authorization.canTransferAnyProjectOwner(ctx)) {
       return;
     }
     const userId = ctx.userId?.trim();
@@ -648,6 +663,20 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const operator = this.repo.findMemberByProjectAndUserId(projectId, userId);
     if (!operator?.isOwner) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "仅项目 Owner 可转移拥有者", 403);
+    }
+  }
+
+  private async requireProjectArchiver(projectId: string, ctx: RequestContext, action: string): Promise<void> {
+    if (this.authorization.canArchiveAnyProject(ctx)) {
+      return;
+    }
+
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
+    }
+    if (!this.authorization.isProjectOwner(projectId, userId)) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限执行该操作，需要项目 Owner 或全局归档权限", 403);
     }
   }
 

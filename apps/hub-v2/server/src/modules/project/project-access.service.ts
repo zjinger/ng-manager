@@ -1,11 +1,15 @@
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
+import { ProjectAuthorizationService } from "./project-authorization.service";
 import { ProjectRepo } from "./project.repo";
 import type { ProjectMemberEntity } from "./project.types";
 
 export class ProjectAccessService {
-  constructor(private readonly repo: ProjectRepo) {}
+  constructor(
+    private readonly repo: ProjectRepo,
+    private readonly authorization: ProjectAuthorizationService
+  ) {}
 
   async listAccessibleProjectIds(ctx: RequestContext): Promise<string[]> {
     if (ctx.projectIds?.length) {
@@ -52,6 +56,10 @@ export class ProjectAccessService {
     const userId = ctx.userId?.trim() || ctx.accountId?.trim();
     if (!userId) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
+    }
+
+    if (this.authorization.canReadAllProjects(ctx)) {
+      return;
     }
 
     if (ctx.projectIds?.includes(projectId) || this.repo.findMemberByProjectAndUserId(projectId, userId)) {

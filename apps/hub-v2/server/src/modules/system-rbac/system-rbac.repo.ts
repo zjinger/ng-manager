@@ -191,6 +191,36 @@ export class SystemRbacRepo {
     this.db.prepare("DELETE FROM user_system_roles WHERE role_id = ? AND user_id = ?").run(roleId, userId);
   }
 
+  syncPlatformRoleForUser(userId: string, legacyRole: "admin" | "user", createdAt: string): void {
+    const targetRoleCode = legacyRole === "admin" ? "admin" : "member";
+    const targetRole = this.findRoleByCode(targetRoleCode);
+    if (!targetRole) {
+      return;
+    }
+
+    const platformRoleIds = this.db
+      .prepare(
+        `
+          SELECT sr.id
+          FROM system_roles sr
+          WHERE sr.code IN ('admin', 'member')
+        `
+      )
+      .all() as Array<{ id: string }>;
+
+    const tx = this.db.transaction(() => {
+      for (const row of platformRoleIds) {
+        if (row.id !== targetRole.id) {
+          this.db.prepare("DELETE FROM user_system_roles WHERE user_id = ? AND role_id = ?").run(userId, row.id);
+        }
+      }
+      this.db
+        .prepare("INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at) VALUES (?, ?, ?, ?)")
+        .run(`usr_${targetRole.code}_${userId}`, userId, targetRole.id, createdAt);
+    });
+    tx();
+  }
+
   listUserSystemRoles(userId: string): UserSystemRoleEntity[] {
     const rows = this.db
       .prepare(`

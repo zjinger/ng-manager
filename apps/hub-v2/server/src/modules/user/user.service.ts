@@ -7,6 +7,7 @@ import { nowIso } from "../../shared/utils/time";
 import { AuthRepo } from "../auth/auth.repo";
 import { requireAdmin } from "../utils/require-admin";
 import { OrganizationService } from "../organization/organization.service";
+import { PlatformRoleSyncService } from "../system-rbac/platform-role-sync.service";
 import { UserRepo } from "./user.repo";
 import type { UserCommandContract, UserQueryContract } from "./user.contract";
 import type {
@@ -25,7 +26,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
   constructor(
     private readonly repo: UserRepo,
     private readonly authRepo: AuthRepo,
-    private readonly organization: OrganizationService
+    private readonly organization: OrganizationService,
+    private readonly platformRoleSync: PlatformRoleSyncService
   ) {}
 
   async create(input: CreateUserInput, ctx: RequestContext): Promise<UserEntity> {
@@ -79,6 +81,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
         createdAt: now,
         updatedAt: now
       });
+      this.platformRoleSync.syncFromLegacyRole(entity.id, "user", now);
     }
 
     return this.withDepartments(entity);
@@ -142,11 +145,14 @@ export class UserService implements UserCommandContract, UserQueryContract {
           createdAt: updated.updatedAt,
           updatedAt: updated.updatedAt
         });
+        this.platformRoleSync.syncFromLegacyRole(user.id, "user", updated.updatedAt);
       } else if (account.status !== "active") {
         this.authRepo.updateStatus(account.id, "active", updated.updatedAt);
+        this.platformRoleSync.syncFromLegacyRole(user.id, account.role, updated.updatedAt);
       }
     } else if (account && account.status !== "inactive") {
       this.authRepo.updateStatus(account.id, "inactive", updated.updatedAt);
+      this.platformRoleSync.syncFromLegacyRole(user.id, account.role, updated.updatedAt);
     }
 
     this.repo.update(id, updated, updated.updatedAt);
@@ -191,8 +197,10 @@ export class UserService implements UserCommandContract, UserQueryContract {
         createdAt: now,
         updatedAt: now
       });
+      this.platformRoleSync.syncFromLegacyRole(user.id, "user", now);
     } else {
       this.authRepo.resetPassword(account.id, passwordHash, now);
+      this.platformRoleSync.syncFromLegacyRole(user.id, account.role, now);
     }
 
     return {
