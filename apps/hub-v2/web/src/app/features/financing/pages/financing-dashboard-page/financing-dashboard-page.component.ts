@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DashboardPanelComponent, PageHeaderComponent, StatCardComponent } from '@shared/ui';
+import {  PageHeaderComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -21,7 +21,6 @@ import { Router } from '@angular/router';
     FinancingMyTodosCardComponent,
     NzButtonModule,
     PageHeaderComponent,
-    DashboardPanelComponent,
     NzPopconfirmModule,
     NzIconModule,
     FinancingQuickEntryComponent,

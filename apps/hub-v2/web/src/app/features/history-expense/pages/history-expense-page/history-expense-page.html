@@ -1,16 +1,17 @@
 <app-page-header
-  title="待我审批"
-  subtitle="统一处理负责人、部门主管、审核、会计、出纳等节点任务。"
+  title="历史报销单"
+  subtitle="用于查看当前登录人的历史报销单，便于追溯流程和查询处理记录。"
 />
 
 <!-- 顶部统计 -->
-<approval-dashboard-panel [stats]="dashboardStats()" />
+<statistics-dashboard-panel [stats]="dashboardStats()" />
 
 <!-- 筛选栏 -->
-<app-approval-filter-bar
+<app-history-expense-filter-bar
   [query]="query()"
-  [expenseTypeOptions]="expenseTypeOptions"
-  [approvalNodeOptions]="approvalNodeOptions"
+  [roleNodeOptions]="roleNodeOptions"
+  [actionTypeOptions]="actionTypeOptions"
+  [statusOptions]="statusOptions"
   [departmentOptions]="departmentOptions"
   (submit)="handleFilter($event)"
 />
@@ -22,20 +23,21 @@
   (clear)="resetFilters()"
 />
 
-<!-- 报销单列表组件状态 -->
+<!-- 列表状态 -->
 <app-list-state
   [loading]="loading()"
   [empty]="displayData().length === 0"
-  loadingText="正在加载待审批列表…"
-  emptyTitle="当前还没有待审批的报销单"
+  loadingText="正在加载历史报销单..."
+  emptyTitle="暂无历史报销单"
 >
-  <!-- 待审批列表 -->
-  <app-approval-list-table 
-    [items]="displayData()" 
-    (approve)="handleApprove($event)" 
+  <!-- 历史列表 -->
+  <app-history-expense-list-table
+    [items]="displayData()"
+    (view)="handleView($event)"
+    (export)="handleExport($event)"
   />
 
-  <!-- 分页组件 -->
+  <!-- 分页 -->
   @if (totalCount() > 0) {
   <div class="expenses-pagination">
     <nz-pagination
@@ -48,8 +50,11 @@
       [nzShowTotal]="totalTpl"
       (nzPageIndexChange)="onPageIndexChange($event)"
       (nzPageSizeChange)="onPageSizeChange($event)"
-    ></nz-pagination>
-    <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+    />
+
+    <ng-template #totalTpl let-total>
+      共 {{ total }} 条
+    </ng-template>
   </div>
   }
 </app-list-state>

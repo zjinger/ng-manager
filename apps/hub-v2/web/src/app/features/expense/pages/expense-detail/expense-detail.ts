@@ -17,6 +17,7 @@ import {
 } from '@app/features/travel-expense/components/record-list/record-list.component';
 import { ApprovalFlowComponent } from '@app/features/travel-expense/components/approval-flow/approval-flow.component';
 import { MockRecordListData } from '@app/features/travel-expense/models/detail';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-expense-detail',
@@ -28,6 +29,7 @@ import { MockRecordListData } from '@app/features/travel-expense/models/detail';
     AttachmentPreviewWallComponent,
     RecordListComponent,
     ApprovalFlowComponent,
+    NzIconModule,
   ],
   templateUrl: './expense-detail.html',
   styleUrls: ['./expense-detail.less'],

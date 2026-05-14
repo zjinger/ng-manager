@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
-import { DashboardPanelComponent, StatusBadgeComponent } from '@shared/ui';
+import { DashboardPanelComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 export interface TodoItem {
@@ -21,14 +21,14 @@ export interface TodoItem {
 @Component({
   selector: 'financing-my-todos-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatusBadgeComponent, DashboardPanelComponent, NzIconModule],
+  imports: [CommonModule, RouterLink, DashboardPanelComponent, NzIconModule],
   template: `
     <app-dashboard-panel
       title="我的待办"
       [count]="total()"
       [actionIcon]="showMoreIcon() ? 'more' : null"
       [actionText]="showMoreIcon() ? '查看更多待办' : null"
-      [actionLink]="showMoreIcon() ? ['/dashboard/todos'] : []"
+      [actionLink]="showMoreIcon() ? ['/financing//my-todos'] : []"
       [empty]="items().length === 0"
       emptyText="当前没有待办"
     >

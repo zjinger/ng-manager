@@ -16,6 +16,7 @@ import {
 } from '../../components/record-list/record-list.component';
 import { TravelExpenseDetailData } from '../../models';
 import { MockDetailData, MockRecordListData } from '../../models/detail';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-travel-expense-detail',
@@ -27,6 +28,7 @@ import { MockDetailData, MockRecordListData } from '../../models/detail';
     AttachmentPreviewWallComponent,
     ApprovalFlowComponent,
     RecordListComponent,
+    NzIconModule,
   ],
   templateUrl: './travel-expense-detail.html',
   styleUrls: ['./travel-expense-detail.less'],

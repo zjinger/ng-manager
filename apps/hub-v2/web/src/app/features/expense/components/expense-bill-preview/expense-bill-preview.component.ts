@@ -227,11 +227,11 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
 
               <td colspan="2" class="caption">
                 <label>
-                  {{ (summary().advanceAmount ?? 0) - totalAmount() >= 0 ? '应退' : '应补' }}:
+                  {{ summary().advanceAmount - totalAmount() >= 0 ? '应退' : '应补' }}
                 </label>
 
                 <span style="width: 70px">
-                  {{ formatMoney(Math.abs((summary().advanceAmount ?? 0) - totalAmount())) }}
+                  {{ formatMoney(Math.abs(summary().advanceAmount - totalAmount())) }}
                 </span>
 
                 <label>元</label>

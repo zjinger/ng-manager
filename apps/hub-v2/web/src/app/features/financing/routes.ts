@@ -8,4 +8,11 @@ export const FINANCING_ROUTES: Routes = [
         (m) => m.FinancingDashboardPageComponent
       ),
   },
+  {
+    path: 'my-todos',
+    loadComponent: () =>
+      import('./pages/my-todos-page/my-todos-page.component').then(
+        (m) => m.MyTodosPageComponent
+      ),
+  },
 ];
