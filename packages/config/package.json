@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/config",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -20,7 +20,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.1",
-    "@yinuo-ngm/shared": "^0.1.1"
+    "@yinuo-ngm/errors": "^1.0.2",
+    "@yinuo-ngm/shared": "^0.1.2"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/storage",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "a storage solution supporting json and sqlite",
   "keywords": [
     "json",

@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/sprite",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "a sprite generation tool",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
@@ -27,10 +27,10 @@
     "access": "public"
   },
   "dependencies": {
-    "@yinuo-ngm/errors": "^1.0.1",
-    "@yinuo-ngm/logger": "^0.1.1",
-    "@yinuo-ngm/project": "^0.1.1",
-    "@yinuo-ngm/storage": "^0.1.5",
+    "@yinuo-ngm/errors": "^1.0.2",
+    "@yinuo-ngm/logger": "^0.1.2",
+    "@yinuo-ngm/project": "^0.1.2",
+    "@yinuo-ngm/storage": "^0.1.6",
     "sharp": "^0.34.5"
   }
 }
