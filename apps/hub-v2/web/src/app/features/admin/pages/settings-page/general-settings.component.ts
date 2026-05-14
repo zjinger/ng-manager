@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -9,6 +9,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { PanelCardComponent } from '@shared/ui/panel-card';
+import { SystemSettingsApiService, type GeneralSettings } from '../../services/system-settings-api.service';
 
 interface PlatformInfo {
   platformName: string;
@@ -103,7 +104,6 @@ interface RegistrationSettings {
                     >
                       <nz-option nzLabel="简体中文" nzValue="zh-CN" />
                       <nz-option nzLabel="English" nzValue="en-US" />
-                      <nz-option nzLabel="日本語" nzValue="ja-JP" />
                     </nz-select>
                   </nz-form-control>
                 </nz-form-item>
@@ -122,7 +122,7 @@ interface RegistrationSettings {
                       [nzDisabled]="!platformEditable()"
                     >
                       <nz-option nzLabel="Asia/Shanghai (UTC+8)" nzValue="Asia/Shanghai" />
-                      <nz-option nzLabel="America/New_York (UTC-5)" nzValue="America/New_York" />
+                      <!-- <nz-option nzLabel="America/New_York (UTC-5)" nzValue="America/New_York" /> -->
                       <nz-option nzLabel="Europe/London (UTC+0)" nzValue="Europe/London" />
                     </nz-select>
                   </nz-form-control>
@@ -275,8 +275,9 @@ interface RegistrationSettings {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GeneralSettingsComponent {
+export class GeneralSettingsComponent implements OnInit {
   private readonly message = inject(NzMessageService);
+  private readonly settingsApi = inject(SystemSettingsApiService);
 
   readonly platformEditable = signal(false);
   readonly platformDirty = signal(false);
@@ -286,19 +287,44 @@ export class GeneralSettingsComponent {
   readonly registrationDirty = signal(false);
   readonly registrationSaving = signal(false);
 
-  readonly platformName = signal('Hub v2 — 内网协作平台');
-  readonly platformDesc = signal('企业级内网协作与项目管理平台');
+  readonly platformName = signal('');
+  readonly platformDesc = signal('');
   readonly defaultLanguage = signal('zh-CN');
   readonly timezone = signal('Asia/Shanghai');
   readonly dateFormat = signal('YYYY-MM-DD');
 
   readonly openRegistration = signal(false);
-  readonly emailWhitelist = signal('@hub.com, @xiaomi.com');
+  readonly emailWhitelist = signal('');
   readonly defaultRole = signal('developer');
   readonly requireApproval = signal(true);
 
   private savedPlatform: PlatformInfo = this.getPlatformSnapshot();
   private savedRegistration: RegistrationSettings = this.getRegistrationSnapshot();
+
+  ngOnInit(): void {
+    this.loadSettings();
+  }
+
+  private loadSettings(): void {
+    this.settingsApi.getGeneralSettings().subscribe({
+      next: (settings) => {
+        this.platformName.set(settings.platformName);
+        this.platformDesc.set(settings.platformDesc);
+        this.defaultLanguage.set(settings.defaultLanguage);
+        this.timezone.set(settings.timezone);
+        this.dateFormat.set(settings.dateFormat);
+        this.openRegistration.set(settings.openRegistration);
+        this.emailWhitelist.set(settings.emailWhitelist);
+        this.defaultRole.set(settings.defaultRole);
+        this.requireApproval.set(settings.requireApproval);
+        this.savedPlatform = this.getPlatformSnapshot();
+        this.savedRegistration = this.getRegistrationSnapshot();
+      },
+      error: () => {
+        this.message.error('加载设置失败');
+      }
+    });
+  }
 
   private getPlatformSnapshot(): PlatformInfo {
     return {
@@ -337,13 +363,26 @@ export class GeneralSettingsComponent {
 
   savePlatform(): void {
     this.platformSaving.set(true);
-    setTimeout(() => {
-      this.savedPlatform = this.getPlatformSnapshot();
-      this.platformSaving.set(false);
-      this.platformEditable.set(false);
-      this.platformDirty.set(false);
-      this.message.success('平台信息已保存');
-    }, 500);
+    const data: GeneralSettings = {
+      ...this.getPlatformSnapshot(),
+      openRegistration: this.openRegistration(),
+      emailWhitelist: this.emailWhitelist(),
+      defaultRole: this.defaultRole(),
+      requireApproval: this.requireApproval(),
+    };
+    this.settingsApi.updateGeneralSettings(data).subscribe({
+      next: () => {
+        this.savedPlatform = this.getPlatformSnapshot();
+        this.platformSaving.set(false);
+        this.platformEditable.set(false);
+        this.platformDirty.set(false);
+        this.message.success('平台信息已保存');
+      },
+      error: () => {
+        this.platformSaving.set(false);
+        this.message.error('保存失败');
+      }
+    });
   }
 
   startEditRegistration(): void {
@@ -363,13 +402,27 @@ export class GeneralSettingsComponent {
 
   saveRegistration(): void {
     this.registrationSaving.set(true);
-    setTimeout(() => {
-      this.savedRegistration = this.getRegistrationSnapshot();
-      this.registrationSaving.set(false);
-      this.registrationEditable.set(false);
-      this.registrationDirty.set(false);
-      this.message.success('注册设置已保存');
-    }, 500);
+    const data: GeneralSettings = {
+      platformName: this.platformName(),
+      platformDesc: this.platformDesc(),
+      defaultLanguage: this.defaultLanguage(),
+      timezone: this.timezone(),
+      dateFormat: this.dateFormat(),
+      ...this.getRegistrationSnapshot(),
+    };
+    this.settingsApi.updateGeneralSettings(data).subscribe({
+      next: () => {
+        this.savedRegistration = this.getRegistrationSnapshot();
+        this.registrationSaving.set(false);
+        this.registrationEditable.set(false);
+        this.registrationDirty.set(false);
+        this.message.success('注册设置已保存');
+      },
+      error: () => {
+        this.registrationSaving.set(false);
+        this.message.error('保存失败');
+      }
+    });
   }
 
   checkPlatformDirty(): void {

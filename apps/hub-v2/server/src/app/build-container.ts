@@ -82,6 +82,9 @@ import type { SystemRbacCommandContract, SystemRbacQueryContract } from "../modu
 import { PlatformRoleSyncService } from "../modules/system-rbac/platform-role-sync.service";
 import { SystemRbacRepo } from "../modules/system-rbac/system-rbac.repo";
 import { SystemRbacService } from "../modules/system-rbac/system-rbac.service";
+import type { SystemSettingsCommandContract, SystemSettingsQueryContract } from "../modules/system-settings/system-settings.contract";
+import { SystemSettingsRepo } from "../modules/system-settings/system-settings.repo";
+import { SystemSettingsService } from "../modules/system-settings/system-settings.service";
 import { HealthQueryService } from "../modules/system/health.query";
 import type { UploadCommandContract, UploadQueryContract } from "../modules/upload/upload.contract";
 import { UploadRepo } from "../modules/upload/upload.repo";
@@ -147,6 +150,8 @@ export type AppContainer = {
   sharedConfigQuery: SharedConfigQueryContract;
   systemRbacCommand: SystemRbacCommandContract;
   systemRbacQuery: SystemRbacQueryContract;
+  systemSettingsCommand: SystemSettingsCommandContract;
+  systemSettingsQuery: SystemSettingsQueryContract;
   uploadCommand: UploadCommandContract;
   uploadQuery: UploadQueryContract;
   eventBus: ReturnType<typeof createInMemoryEventBus>;
@@ -258,6 +263,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
   const systemRbacService = new SystemRbacService(systemRbacRepo);
+  const systemSettingsRepo = new SystemSettingsRepo(db);
+  const systemSettingsService = new SystemSettingsService(systemSettingsRepo);
   authService.ensureDefaultAdmin();
 
   const openaiClient = config.openaiApiKey
@@ -323,6 +330,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     sharedConfigQuery: sharedConfigService,
     systemRbacCommand: systemRbacService,
     systemRbacQuery: systemRbacService,
+    systemSettingsCommand: systemSettingsService,
+    systemSettingsQuery: systemSettingsService,
     uploadCommand: uploadService,
     uploadQuery: uploadService,
     eventBus,

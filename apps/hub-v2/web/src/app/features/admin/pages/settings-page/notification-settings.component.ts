@@ -1,18 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { PanelCardComponent } from '@shared/ui/panel-card';
-
-interface NotificationSettings {
-  emailEnabled: boolean;
-  wechatWorkEnabled: boolean;
-  feishuEnabled: boolean;
-  dingtalkEnabled: boolean;
-  browserPushEnabled: boolean;
-}
+import { SystemSettingsApiService, type NotificationSettings } from '../../services/system-settings-api.service';
 
 @Component({
   selector: 'app-notification-settings',
@@ -135,8 +128,9 @@ interface NotificationSettings {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NotificationSettingsComponent {
+export class NotificationSettingsComponent implements OnInit {
   private readonly message = inject(NzMessageService);
+  private readonly settingsApi = inject(SystemSettingsApiService);
 
   readonly editable = signal(false);
   readonly dirty = signal(false);
@@ -149,6 +143,26 @@ export class NotificationSettingsComponent {
   readonly browserPushEnabled = signal(true);
 
   private savedState: NotificationSettings = this.getSnapshot();
+
+  ngOnInit(): void {
+    this.loadSettings();
+  }
+
+  private loadSettings(): void {
+    this.settingsApi.getNotificationSettings().subscribe({
+      next: (settings) => {
+        this.emailEnabled.set(settings.emailEnabled);
+        this.wechatWorkEnabled.set(settings.wechatWorkEnabled);
+        this.feishuEnabled.set(settings.feishuEnabled);
+        this.dingtalkEnabled.set(settings.dingtalkEnabled);
+        this.browserPushEnabled.set(settings.browserPushEnabled);
+        this.savedState = this.getSnapshot();
+      },
+      error: () => {
+        this.message.error('加载设置失败');
+      }
+    });
+  }
 
   private getSnapshot(): NotificationSettings {
     return {
@@ -178,13 +192,20 @@ export class NotificationSettingsComponent {
 
   save(): void {
     this.saving.set(true);
-    setTimeout(() => {
-      this.savedState = this.getSnapshot();
-      this.saving.set(false);
-      this.editable.set(false);
-      this.dirty.set(false);
-      this.message.success('通知设置已保存');
-    }, 500);
+    const data = this.getSnapshot();
+    this.settingsApi.updateNotificationSettings(data).subscribe({
+      next: () => {
+        this.savedState = this.getSnapshot();
+        this.saving.set(false);
+        this.editable.set(false);
+        this.dirty.set(false);
+        this.message.success('通知设置已保存');
+      },
+      error: () => {
+        this.saving.set(false);
+        this.message.error('保存失败');
+      }
+    });
   }
 
   checkDirty(): void {

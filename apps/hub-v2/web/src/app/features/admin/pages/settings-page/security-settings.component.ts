@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -6,6 +6,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { PanelCardComponent } from '@shared/ui/panel-card';
+import { SystemSettingsApiService, type SecuritySettings } from '../../services/system-settings-api.service';
 
 interface PasswordPolicy {
   minPasswordLength: number;
@@ -222,8 +223,9 @@ interface TwoFactorSettings {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SecuritySettingsComponent {
+export class SecuritySettingsComponent implements OnInit {
   private readonly message = inject(NzMessageService);
+  private readonly settingsApi = inject(SystemSettingsApiService);
 
   readonly passwordEditable = signal(false);
   readonly passwordDirty = signal(false);
@@ -244,6 +246,29 @@ export class SecuritySettingsComponent {
 
   private savedPassword: PasswordPolicy = this.getPasswordSnapshot();
   private savedTwoFA: TwoFactorSettings = this.getTwoFASnapshot();
+
+  ngOnInit(): void {
+    this.loadSettings();
+  }
+
+  private loadSettings(): void {
+    this.settingsApi.getSecuritySettings().subscribe({
+      next: (settings) => {
+        this.minPasswordLength.set(settings.minPasswordLength);
+        this.requireComplexity.set(settings.requireComplexity);
+        this.passwordExpiry.set(settings.passwordExpiry);
+        this.loginFailureLock.set(settings.loginFailureLock);
+        this.globalForce2FA.set(settings.globalForce2FA);
+        this.adminForce2FA.set(settings.adminForce2FA);
+        this.sessionTimeout.set(settings.sessionTimeout);
+        this.savedPassword = this.getPasswordSnapshot();
+        this.savedTwoFA = this.getTwoFASnapshot();
+      },
+      error: () => {
+        this.message.error('加载设置失败');
+      }
+    });
+  }
 
   private getPasswordSnapshot(): PasswordPolicy {
     return {
@@ -279,13 +304,25 @@ export class SecuritySettingsComponent {
 
   savePassword(): void {
     this.passwordSaving.set(true);
-    setTimeout(() => {
-      this.savedPassword = this.getPasswordSnapshot();
-      this.passwordSaving.set(false);
-      this.passwordEditable.set(false);
-      this.passwordDirty.set(false);
-      this.message.success('密码策略已保存');
-    }, 500);
+    const data: SecuritySettings = {
+      ...this.getPasswordSnapshot(),
+      globalForce2FA: this.globalForce2FA(),
+      adminForce2FA: this.adminForce2FA(),
+      sessionTimeout: this.sessionTimeout(),
+    };
+    this.settingsApi.updateSecuritySettings(data).subscribe({
+      next: () => {
+        this.savedPassword = this.getPasswordSnapshot();
+        this.passwordSaving.set(false);
+        this.passwordEditable.set(false);
+        this.passwordDirty.set(false);
+        this.message.success('密码策略已保存');
+      },
+      error: () => {
+        this.passwordSaving.set(false);
+        this.message.error('保存失败');
+      }
+    });
   }
 
   startEditTwoFA(): void {
@@ -304,13 +341,26 @@ export class SecuritySettingsComponent {
 
   saveTwoFA(): void {
     this.twoFASaving.set(true);
-    setTimeout(() => {
-      this.savedTwoFA = this.getTwoFASnapshot();
-      this.twoFASaving.set(false);
-      this.twoFAEditable.set(false);
-      this.twoFADirty.set(false);
-      this.message.success('双因素认证设置已保存');
-    }, 500);
+    const data: SecuritySettings = {
+      minPasswordLength: this.minPasswordLength(),
+      requireComplexity: this.requireComplexity(),
+      passwordExpiry: this.passwordExpiry(),
+      loginFailureLock: this.loginFailureLock(),
+      ...this.getTwoFASnapshot(),
+    };
+    this.settingsApi.updateSecuritySettings(data).subscribe({
+      next: () => {
+        this.savedTwoFA = this.getTwoFASnapshot();
+        this.twoFASaving.set(false);
+        this.twoFAEditable.set(false);
+        this.twoFADirty.set(false);
+        this.message.success('双因素认证设置已保存');
+      },
+      error: () => {
+        this.twoFASaving.set(false);
+        this.message.error('保存失败');
+      }
+    });
   }
 
   checkPasswordDirty(): void {

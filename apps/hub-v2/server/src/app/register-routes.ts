@@ -32,6 +32,7 @@ import releaseRoutes from "../modules/release/release.routes";
 import sharedConfigPublicRoutes from "../modules/shared-config/shared-config-public.routes";
 import sharedConfigRoutes from "../modules/shared-config/shared-config.routes";
 import systemRbacRoutes from "../modules/system-rbac/system-rbac.routes";
+import systemSettingsRoutes from "../modules/system-settings/system-settings.routes";
 import healthRoutes from "../modules/system/health.routes";
 import uploadRoutes from "../modules/upload/upload.routes";
 import userRoutes from "../modules/user/user.routes";
@@ -114,6 +115,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(releaseRoutes, { prefix: "/api/admin" });
   await app.register(sharedConfigRoutes, { prefix: "/api/admin" });
   await app.register(systemRbacRoutes, { prefix: "/api/admin" });
+  await app.register(systemSettingsRoutes, { prefix: "/api/admin" });
   await app.register(userRoutes, { prefix: "/api/admin" });
   await app.register(projectRoutes, { prefix: "/api/admin" });
   await app.register(uploadRoutes, { prefix: "/api/admin" });
