@@ -1,10 +1,10 @@
 import { AnnouncementRepo } from "../modules/announcement/announcement.repo";
 import { AnnouncementService } from "../modules/announcement/announcement.service";
+import type { ApprovalTemplateCommandContract, ApprovalTemplateQueryContract } from "../modules/approval-template/approval-template.contract";
+import { ApprovalTemplateRepo } from "../modules/approval-template/approval-template.repo";
+import { ApprovalTemplateService } from "../modules/approval-template/approval-template.service";
 import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
 import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
-import type { ApprovalTemplateCommandContract, ApprovalTemplateQueryContract } from "../modules/approval/approval-template.contract";
-import { ApprovalTemplateRepo } from "../modules/approval/approval-template.repo";
-import { ApprovalTemplateService } from "../modules/approval/approval-template.service";
 import { SearchRepo } from "../modules/search/search.repo";
 import { SearchService } from "../modules/search/search.service";
 import type { SurveyCommandContract, SurveyQueryContract } from "../modules/survey/survey.contract";
@@ -113,6 +113,8 @@ export type AppContainer = {
   personalTokenQuery: PersonalTokenQueryContract;
   announcementCommand: AnnouncementCommandContract;
   announcementQuery: AnnouncementQueryContract;
+  approvalTemplateCommand: ApprovalTemplateCommandContract;
+  approvalTemplateQuery: ApprovalTemplateQueryContract;
   dashboardQuery: DashboardQueryContract;
   notificationQuery: NotificationQueryContract;
   notificationCommand: NotificationCommandContract;
@@ -153,8 +155,6 @@ export type AppContainer = {
   searchService: SearchService;
   surveyCommand: SurveyCommandContract;
   surveyQuery: SurveyQueryContract;
-  approvalTemplateCommand: ApprovalTemplateCommandContract;
-  approvalTemplateQuery: ApprovalTemplateQueryContract;
   reimbursementCommand: ReimbursementCommandContract;
   reimbursementQuery: ReimbursementQueryContract;
 };
@@ -187,6 +187,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const uploadService = new UploadService(uploadRepo, config.uploadDir);
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus, contentLogService);
+  const approvalTemplateService = new ApprovalTemplateService(new ApprovalTemplateRepo(db));
   const documentRepo = new DocumentRepo(db);
   const documentService = new DocumentService(
     documentRepo,
@@ -267,7 +268,6 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const reportPublicService = new ReportPublicService(config, new ReportPublicRepo(db), projectRepo);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
   const surveyService = new SurveyService(new SurveyRepo(db));
-  const approvalTemplateService = new ApprovalTemplateService(new ApprovalTemplateRepo(db));
   const reimbursementService = new ReimbursementService(new ReimbursementRepo(db));
 
   return {
@@ -287,6 +287,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     personalTokenQuery: personalTokenService,
     announcementCommand: announcementService,
     announcementQuery: announcementService,
+    approvalTemplateCommand: approvalTemplateService,
+    approvalTemplateQuery: approvalTemplateService,
     dashboardQuery: dashboardService,
     notificationQuery: notificationService,
     notificationCommand: notificationService,
@@ -327,8 +329,6 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     searchService,
     surveyCommand: surveyService,
     surveyQuery: surveyService,
-    approvalTemplateCommand: approvalTemplateService,
-    approvalTemplateQuery: approvalTemplateService,
     reimbursementCommand: reimbursementService,
     reimbursementQuery: reimbursementService
   };

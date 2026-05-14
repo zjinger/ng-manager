@@ -5,7 +5,7 @@ import type {
   ListReimbursementClaimsQuery,
   ReimbursementActionInput,
   ReimbursementClaimDetail,
-  ReimbursementClaimEntity,
+  ReimbursementExportFile,
   ReimbursementClaimListResult,
   ReimbursementDashboard,
   ReimbursementStats,
@@ -30,5 +30,6 @@ export interface ReimbursementQueryContract {
   dashboard(ctx: RequestContext): Promise<ReimbursementDashboard>;
   list(query: ListReimbursementClaimsQuery, ctx: RequestContext): Promise<ReimbursementClaimListResult>;
   getById(id: string, ctx: RequestContext): Promise<ReimbursementClaimDetail>;
+  exportWord(id: string, ctx: RequestContext): Promise<ReimbursementExportFile>;
   stats(query: ReimbursementStatsQuery, ctx: RequestContext): Promise<ReimbursementStats>;
 }

@@ -86,8 +86,8 @@ describe("OrganizationService", () => {
       assert.throws(
         () =>
           service.replaceUserDepartmentsFromUserModule("usr_1", [
-            { departmentId: dep1.id, relationType: "primary" },
-            { departmentId: dep2.id, relationType: "primary" }
+            { departmentId: dep1.id },
+            { departmentId: dep2.id }
           ]),
         /only one primary department/
       );
@@ -114,7 +114,6 @@ describe("OrganizationService", () => {
       const departments = await service.listUserDepartments("usr_1", userCtx);
       assert.equal(departments.length, 1);
       assert.equal(departments[0].departmentId, dep2.id);
-      assert.equal(departments[0].relationType, "primary");
     } finally {
       db.close();
     }

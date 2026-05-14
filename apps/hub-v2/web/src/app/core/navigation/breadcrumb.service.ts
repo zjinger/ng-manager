@@ -31,10 +31,6 @@ export class BreadcrumbService {
       return [{ label: '部门组织' }];
     }
 
-    if (path.startsWith('/admin/projects')) {
-      return [{ label: '项目治理' }];
-    }
-
     if (path.startsWith('/admin/roles')) {
       return [{ label: '角色管理' }];
     }

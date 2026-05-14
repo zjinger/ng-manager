@@ -29,7 +29,6 @@ const ADMIN_NAV: NavSection[] = [
     items: [
       { key: 'roles', label: '角色管理', icon: 'safety-certificate', route: '/admin/roles' },
       { key: 'permissions', label: '权限配置', icon: 'key', route: '/admin/permissions' },
-      { key: 'projects', label: '项目治理', icon: 'appstore', route: '/admin/projects' },
       { key: 'audit', label: '审计日志', icon: 'audit', route: '/admin/audit', badge: '占位', tone: 'info' },
     ],
   },

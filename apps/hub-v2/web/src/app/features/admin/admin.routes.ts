@@ -21,10 +21,6 @@ export const ADMIN_ROUTES: Routes = [
         loadChildren: () => import('../organization/routes').then((m) => m.ORGANIZATION_ROUTES),
       },
       {
-        path: 'projects',
-        loadChildren: () => import('../projects/routes').then((m) => m.PROJECT_ROUTES),
-      },
-      {
         path: 'roles',
         data: { title: '角色管理', icon: 'safety-certificate' },
         loadComponent: () =>

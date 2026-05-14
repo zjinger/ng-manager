@@ -119,7 +119,6 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     this.repo.addUserDepartment(userId, {
       id: genId("ud"),
       departmentId: input.departmentId,
-      relationType: "primary",
       roleCode: input.roleCode ?? null,
       createdAt: now,
       updatedAt: now
@@ -180,7 +179,6 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       }
       normalized.push({
         departmentId,
-        relationType: "primary",
         roleCode: input.roleCode?.trim() || null
       });
       seen.add(departmentId);

@@ -2,7 +2,6 @@ import { z } from "zod";
 
 const codeSchema = z.string().trim().regex(/^[A-Za-z0-9_-]{2,48}$/, "code must be 2-48 chars and only contains letters, numbers, _ or -");
 const statusSchema = z.enum(["active", "inactive"]);
-const relationTypeSchema = z.enum(["primary"]);
 
 export const listDepartmentsQuerySchema = z.object({
   keyword: z.string().trim().optional(),
@@ -23,6 +22,5 @@ export const updateDepartmentSchema = createDepartmentSchema.partial();
 
 export const userDepartmentSchema = z.object({
   departmentId: z.string().trim().min(1),
-  relationType: relationTypeSchema.optional(),
   roleCode: z.string().trim().nullable().optional()
 });

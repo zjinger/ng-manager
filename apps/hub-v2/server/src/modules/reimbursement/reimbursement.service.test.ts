@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 import { createRequestContext } from "../../shared/context/request-context";
 import { ReimbursementRepo } from "./reimbursement.repo";
 import { ReimbursementService } from "./reimbursement.service";
+import { resolveTemplateType } from "./reimbursement-word-export";
 
 function createDb() {
   const db = new Database(":memory:");
@@ -269,6 +270,74 @@ describe("ReimbursementService", () => {
         ctx("usr_other")
       );
       assert.equal(submitted.tasks.some((item) => item.status === "addsign_pending" && item.assigneeUserId === "usr_manager"), true);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("exports travel and general claims as docx using balance template type", async () => {
+    assert.equal(resolveTemplateType(0), "0");
+    assert.equal(resolveTemplateType(12.3), "1");
+    assert.equal(resolveTemplateType(-12.3), "2");
+
+    const db = createDb();
+    try {
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const travel = await service.create(
+        {
+          claimType: "travel",
+          departmentId: "dep_rd",
+          reason: "客户现场支持",
+          advanceAmount: 50,
+          items: [
+            {
+              amount: 120,
+              category: "交通",
+              description: "交通",
+              startDate: "2026-05-01",
+              endDate: "2026-05-03",
+              fromLocation: "深圳",
+              toLocation: "上海",
+              meta: { taxi: 120, days: 3 }
+            }
+          ]
+        },
+        ctx("usr_applicant")
+      );
+      const travelFile = await service.exportWord(travel.id, ctx("usr_applicant"));
+      assert.equal(travelFile.templateType, "1");
+      assert.equal(travelFile.mimeType, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      assert.equal(travelFile.buffer.subarray(0, 2).toString(), "PK");
+      assert.match(travelFile.fileName, /差旅费报销单\.docx$/);
+
+      const general = await service.create(
+        {
+          claimType: "general",
+          departmentId: "dep_rd",
+          reason: "办公用品",
+          advanceAmount: 80,
+          items: [{ amount: 30, description: "打印纸" }]
+        },
+        ctx("usr_applicant")
+      );
+      const generalFile = await service.exportWord(general.id, ctx("usr_applicant"));
+      assert.equal(generalFile.templateType, "2");
+      assert.equal(generalFile.buffer.subarray(0, 2).toString(), "PK");
+      assert.match(generalFile.fileName, /费用报销单\.docx$/);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rejects export when the user cannot read the claim", async () => {
+    const db = createDb();
+    try {
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const created = await service.create(
+        { claimType: "general", departmentId: "dep_rd", reason: "办公用品", items: [{ amount: 30 }] },
+        ctx("usr_applicant")
+      );
+      await assert.rejects(() => service.exportWord(created.id, ctx("usr_other")), /forbidden/);
     } finally {
       db.close();
     }

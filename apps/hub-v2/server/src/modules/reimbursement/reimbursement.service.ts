@@ -12,6 +12,7 @@ import type {
   ReimbursementApprovalTaskEntity,
   ReimbursementClaimDetail,
   ReimbursementClaimEntity,
+  ReimbursementExportFile,
   ReimbursementClaimListResult,
   ReimbursementDashboard,
   ReimbursementStats,
@@ -22,6 +23,7 @@ import type {
 import { ReimbursementRepo } from "./reimbursement.repo";
 import type { ApprovalTemplateStage, ApprovalTemplateWithStages, UserApprovalProfile } from "./reimbursement.repo";
 import type { ReimbursementItemEntity, ReimbursementItemInput, ReimbursementLogAction } from "./reimbursement.types";
+import { renderReimbursementWord } from "./reimbursement-word-export";
 
 const DEFAULT_TEMPLATE_CODE = "expense_default";
 
@@ -42,6 +44,12 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     const claim = this.requireClaim(id);
     this.ensureCanRead(claim, ctx);
     return this.repo.detail(claim);
+  }
+
+  async exportWord(id: string, ctx: RequestContext): Promise<ReimbursementExportFile> {
+    const claim = this.requireClaim(id);
+    this.ensureCanRead(claim, ctx);
+    return renderReimbursementWord(this.repo.detail(claim));
   }
 
   async stats(query: ReimbursementStatsQuery, ctx: RequestContext): Promise<ReimbursementStats> {

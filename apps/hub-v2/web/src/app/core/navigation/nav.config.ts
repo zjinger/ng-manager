@@ -34,4 +34,13 @@ export const NAV_ITEMS: NavSection[] = [
   //       : []),
   //   ],
   // },
+  {
+    key: 'management',
+    label: '系统管理',
+    items: [
+      { key: 'projects', label: '项目管理', icon: 'appstore', route: '/projects' },
+      { key: 'users', label: '用户管理', icon: 'team', route: '/users' },
+      // { key: 'shared-config', label: '共享配置', icon: 'setting', route: '/shared-config' },
+    ],
+  },
 ];

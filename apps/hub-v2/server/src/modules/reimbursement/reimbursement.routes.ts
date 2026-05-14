@@ -36,6 +36,18 @@ export default async function reimbursementRoutes(app: FastifyInstance) {
     return reply.status(201).send(ok(await app.container.reimbursementCommand.create(body, ctx), "reimbursement claim created"));
   });
 
+  app.get("/reimbursements/claims/:claimId/export", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const { claimId } = request.params as { claimId: string };
+    const file = await app.container.reimbursementQuery.exportWord(claimId, ctx);
+    const encodedFileName = encodeURIComponent(file.fileName);
+    return reply
+      .type(file.mimeType)
+      .header("Content-Disposition", `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`)
+      .header("X-Reimbursement-Template-Type", file.templateType)
+      .send(file.buffer);
+  });
+
   app.get("/reimbursements/claims/:claimId", async (request) => {
     const ctx = requireAuth(request);
     const { claimId } = request.params as { claimId: string };

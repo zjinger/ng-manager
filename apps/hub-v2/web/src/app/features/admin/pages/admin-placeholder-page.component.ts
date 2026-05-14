@@ -13,7 +13,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
       </div>
       <h1>{{ title() }}</h1>
       <p>
-        该入口已按新版后台导航预留。第一版仅接入已有用户、组织、财务角色和项目管理能力，
+        该入口已按新版后台导航预留。第一版仅接入已有用户、组织、角色与权限管理能力，
         {{ title() }} 暂不保存任何配置变更。
       </p>
       <div class="admin-placeholder__actions">

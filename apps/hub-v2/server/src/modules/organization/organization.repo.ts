@@ -1,7 +1,6 @@
 import type Database from "better-sqlite3";
 import type {
   DepartmentEntity,
-  DepartmentRelationType,
   DepartmentStatus,
   ListDepartmentsQuery,
   UserDepartmentEntity,
@@ -29,7 +28,6 @@ type UserDepartmentRow = {
   department_id: string;
   department_code: string;
   department_name: string;
-  relation_type: DepartmentRelationType;
   role_code: string | null;
   created_at: string;
   updated_at: string;
@@ -160,7 +158,6 @@ export class OrganizationRepo {
             ud.department_id,
             d.code AS department_code,
             d.name AS department_name,
-            ud.relation_type,
             ud.role_code,
             ud.created_at,
             ud.updated_at
@@ -189,7 +186,6 @@ export class OrganizationRepo {
             ud.department_id,
             d.code AS department_code,
             d.name AS department_name,
-            ud.relation_type,
             ud.role_code,
             ud.created_at,
             ud.updated_at
@@ -294,7 +290,6 @@ export class OrganizationRepo {
       departmentId: row.department_id,
       departmentCode: row.department_code,
       departmentName: row.department_name,
-      relationType: "primary",
       roleCode: row.role_code,
       createdAt: row.created_at,
       updatedAt: row.updated_at

@@ -11,14 +11,14 @@ export default async function approvalTemplateRoutes(app: FastifyInstance) {
   app.get("/approval-templates", async (request) => {
     const ctx = requireAuth(request);
     const query = listApprovalTemplatesQuerySchema.parse(request.query);
-    return ok({ items: await app.container.approvalTemplateQuery.list(query, ctx) });
+    return ok(await app.container.approvalTemplateQuery.list(query, ctx));
   });
 
   app.post("/approval-templates", async (request, reply) => {
     const ctx = requireAuth(request);
     const body = createApprovalTemplateSchema.parse(request.body);
-    const item = await app.container.approvalTemplateCommand.create(body, ctx);
-    return reply.status(201).send(ok(item, "approval template created"));
+    const template = await app.container.approvalTemplateCommand.create(body, ctx);
+    return reply.status(201).send(ok(template, "approval template created"));
   });
 
   app.get("/approval-templates/:templateId", async (request) => {

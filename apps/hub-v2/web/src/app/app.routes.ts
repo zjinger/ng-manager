@@ -89,6 +89,10 @@ export const routes: Routes = [
         path: 'content',
         loadChildren: () => import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
       },
+      {
+        path: 'projects',
+        loadChildren: () => import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
+      },
 
       ...(FEATURE_FLAGS.feedback
         ? [

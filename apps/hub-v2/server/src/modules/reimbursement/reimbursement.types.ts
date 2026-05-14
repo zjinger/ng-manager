@@ -188,4 +188,11 @@ export interface ReimbursementStats {
   byStatus: Array<{ status: ReimbursementClaimStatus; totalAmount: number; count: number }>;
 }
 
+export interface ReimbursementExportFile {
+  fileName: string;
+  mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  buffer: Buffer;
+  templateType: "0" | "1" | "2";
+}
+
 export type ReimbursementClaimListResult = PageResult<ReimbursementClaimEntity>;

@@ -1,7 +1,6 @@
 import type { PageResult } from "../../shared/http/pagination";
 
 export type DepartmentStatus = "active" | "inactive";
-export type DepartmentRelationType = "primary";
 
 export interface OrganizationUserRef {
   id: string;
@@ -33,7 +32,6 @@ export interface UserDepartmentEntity {
   departmentId: string;
   departmentCode: string;
   departmentName: string;
-  relationType: DepartmentRelationType;
   roleCode: string | null;
   createdAt: string;
   updatedAt: string;
@@ -41,7 +39,6 @@ export interface UserDepartmentEntity {
 
 export interface UserDepartmentInput {
   departmentId: string;
-  relationType?: DepartmentRelationType;
   roleCode?: string | null;
 }
 

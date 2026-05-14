@@ -21,7 +21,7 @@ type AdminStat = {
   selector: 'app-admin-dashboard-page',
   imports: [RouterLink, NzButtonModule, NzIconModule, PageHeaderComponent, StatCardComponent],
   template: `
-    <app-page-header title="仪表盘" subtitle="集中查看账号、组织、项目治理和后台能力接入状态。">
+    <app-page-header title="仪表盘" subtitle="集中查看账号、组织和后台治理能力接入状态。">
       <!-- <button nz-button nzType="primary" [routerLink]="['/admin/users']">
         <span nz-icon nzType="user-add"></span>
         新建用户
@@ -56,10 +56,10 @@ type AdminStat = {
             <strong>部门组织</strong>
             <small>组织树与财务角色</small>
           </a>
-          <a class="quick-link" [routerLink]="['/admin/projects']">
+          <a class="quick-link" [routerLink]="['/projects']">
             <span nz-icon nzType="appstore"></span>
-            <strong>项目治理</strong>
-            <small>项目空间与成员边界</small>
+            <strong>项目管理</strong>
+            <small>已移回 hub-v2 协作平台</small>
           </a>
           <a class="quick-link" [routerLink]="['/admin/permissions']">
             <span nz-icon nzType="key"></span>
@@ -85,7 +85,7 @@ type AdminStat = {
             <span class="status-dot status-dot--ok"></span>
             <div>
               <strong>项目治理</strong>
-              <small>复用现有项目管理能力</small>
+              <small>已迁回普通平台侧入口</small>
             </div>
           </div>
           <div class="status-item">
@@ -233,7 +233,7 @@ export class AdminDashboardPageComponent {
     {
       label: '项目空间',
       value: this.projectTotal(),
-      sub: '复用现有项目治理',
+      sub: '普通平台可直接访问',
       icon: 'appstore',
       tone: 'purple',
     },
