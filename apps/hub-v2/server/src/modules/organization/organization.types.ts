@@ -1,8 +1,13 @@
 import type { PageResult } from "../../shared/http/pagination";
 
 export type DepartmentStatus = "active" | "inactive";
-export type DepartmentRelationType = "primary" | "secondary";
-export type FinanceRoleStatus = "active" | "inactive";
+export type DepartmentRelationType = "primary";
+
+export interface OrganizationUserRef {
+  id: string;
+  username: string;
+  displayName: string | null;
+}
 
 export interface DepartmentEntity {
   id: string;
@@ -10,6 +15,8 @@ export interface DepartmentEntity {
   code: string;
   name: string;
   externalFinanceCode: string | null;
+  managerUserId: string | null;
+  managerUser: OrganizationUserRef | null;
   status: DepartmentStatus;
   sort: number;
   createdAt: string;
@@ -43,6 +50,7 @@ export interface CreateDepartmentInput {
   name: string;
   parentId?: string | null;
   externalFinanceCode?: string | null;
+  managerUserId?: string | null;
   status?: DepartmentStatus;
   sort?: number;
 }
@@ -52,6 +60,7 @@ export interface UpdateDepartmentInput {
   name?: string;
   parentId?: string | null;
   externalFinanceCode?: string | null;
+  managerUserId?: string | null;
   status?: DepartmentStatus;
   sort?: number;
 }
@@ -59,47 +68,6 @@ export interface UpdateDepartmentInput {
 export interface ListDepartmentsQuery {
   keyword?: string;
   status?: DepartmentStatus | "";
-}
-
-export interface FinanceRoleEntity {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  status: FinanceRoleStatus;
-  sort: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface UserFinanceRoleEntity {
-  id: string;
-  userId: string;
-  roleId: string;
-  roleCode: string;
-  roleName: string;
-  createdAt: string;
-}
-
-export interface CreateFinanceRoleInput {
-  code: string;
-  name: string;
-  description?: string | null;
-  status?: FinanceRoleStatus;
-  sort?: number;
-}
-
-export interface UpdateFinanceRoleInput {
-  code?: string;
-  name?: string;
-  description?: string | null;
-  status?: FinanceRoleStatus;
-  sort?: number;
-}
-
-export interface ListFinanceRolesQuery {
-  keyword?: string;
-  status?: FinanceRoleStatus | "";
 }
 
 export type DepartmentListResult = PageResult<DepartmentEntity>;

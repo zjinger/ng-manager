@@ -23,6 +23,8 @@ function createDb() {
       name TEXT NOT NULL,
       description TEXT,
       is_builtin INTEGER NOT NULL DEFAULT 0,
+      purpose_code TEXT NOT NULL DEFAULT 'platform_admin',
+      purpose_name TEXT NOT NULL DEFAULT '平台管理角色',
       status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
       sort INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -35,6 +37,8 @@ function createDb() {
       name TEXT NOT NULL,
       group_code TEXT NOT NULL,
       group_name TEXT NOT NULL,
+      domain_code TEXT NOT NULL DEFAULT 'admin',
+      domain_name TEXT NOT NULL DEFAULT '后台管理',
       description TEXT,
       sort INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -62,19 +66,19 @@ function createDb() {
   db.prepare("INSERT INTO users (id, username, display_name, email) VALUES (?, ?, ?, ?)").run("usr_admin", "admin", "管理员", "admin@test.com");
 
   const now = new Date().toISOString();
-  db.prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("srole_super_admin", "super_admin", "超级管理员", "Full access", 1, "active", 10, now, now);
-  db.prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("srole_admin", "admin", "管理员", "Admin access", 1, "active", 20, now, now);
-  db.prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("srole_member", "member", "成员", "Member access", 1, "active", 30, now, now);
+  db.prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("srole_super_admin", "super_admin", "超级管理员", "Full access", 1, "hybrid", "混合角色", "active", 10, now, now);
+  db.prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("srole_admin", "admin", "管理员", "Admin access", 1, "platform_admin", "平台管理角色", "active", 20, now, now);
+  db.prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("srole_member", "member", "成员", "Member access", 1, "platform_admin", "平台管理角色", "active", 30, now, now);
 
-  db.prepare("INSERT INTO system_permissions (id, code, name, group_code, group_name, description, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("sperm_1", "admin.dashboard.view", "查看仪表盘", "admin", "后台管理", null, 10, now, now);
-  db.prepare("INSERT INTO system_permissions (id, code, name, group_code, group_name, description, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("sperm_2", "admin.users.manage", "管理用户", "admin", "后台管理", null, 20, now, now);
-  db.prepare("INSERT INTO system_permissions (id, code, name, group_code, group_name, description, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("sperm_3", "admin.roles.manage", "管理系统角色", "admin", "后台管理", null, 30, now, now);
+  db.prepare("INSERT INTO system_permissions (id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("sperm_1", "admin.dashboard.view", "查看仪表盘", "admin", "后台管理", "admin", "后台管理", null, 10, now, now);
+  db.prepare("INSERT INTO system_permissions (id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("sperm_2", "admin.users.manage", "管理用户", "admin", "后台管理", "admin", "后台管理", null, 20, now, now);
+  db.prepare("INSERT INTO system_permissions (id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("sperm_3", "admin.roles.manage", "管理系统角色", "admin", "后台管理", "admin", "后台管理", null, 30, now, now);
 
   db.prepare("INSERT INTO system_role_permissions (role_id, permission_id, created_at) VALUES (?, ?, ?)").run("srole_super_admin", "sperm_1", now);
   db.prepare("INSERT INTO system_role_permissions (role_id, permission_id, created_at) VALUES (?, ?, ?)").run("srole_super_admin", "sperm_2", now);
@@ -123,6 +127,7 @@ describe("SystemRbacService", () => {
       const role = await service.createSystemRole({ code: "qa_lead", name: "QA负责人" }, adminCtx);
       assert.equal(role.code, "qa_lead");
       assert.equal(role.isBuiltin, false);
+      assert.equal(role.purposeCode, "business");
 
       await assert.rejects(
         () => service.createSystemRole({ code: "qa_lead", name: "duplicate" }, adminCtx),
@@ -310,6 +315,7 @@ describe("SystemRbacService", () => {
       const service = new SystemRbacService(new SystemRbacRepo(db));
       const permissions = await service.listPermissions(adminCtx);
       assert.equal(permissions.length, 3);
+      assert.equal(permissions[0].domainCode, "admin");
     } finally {
       db.close();
     }

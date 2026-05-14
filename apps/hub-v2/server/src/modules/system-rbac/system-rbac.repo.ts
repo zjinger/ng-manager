@@ -15,6 +15,8 @@ type SystemRoleRow = {
   name: string;
   description: string | null;
   is_builtin: number;
+  purpose_code: string;
+  purpose_name: string;
   status: SystemRoleStatus;
   sort: number;
   created_at: string;
@@ -27,6 +29,8 @@ type SystemPermissionRow = {
   name: string;
   group_code: string;
   group_name: string;
+  domain_code: string;
+  domain_name: string;
   description: string | null;
   sort: number;
   created_at: string;
@@ -58,14 +62,14 @@ export class SystemRbacRepo {
 
   findRoleById(id: string): SystemRoleEntity | null {
     const row = this.db
-      .prepare("SELECT id, code, name, description, is_builtin, status, sort, created_at, updated_at FROM system_roles WHERE id = ?")
+      .prepare("SELECT id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at FROM system_roles WHERE id = ?")
       .get(id) as SystemRoleRow | undefined;
     return row ? this.mapRole(row) : null;
   }
 
   findRoleByCode(code: string): SystemRoleEntity | null {
     const row = this.db
-      .prepare("SELECT id, code, name, description, is_builtin, status, sort, created_at, updated_at FROM system_roles WHERE code = ?")
+      .prepare("SELECT id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at FROM system_roles WHERE code = ?")
       .get(code) as SystemRoleRow | undefined;
     return row ? this.mapRole(row) : null;
   }
@@ -84,21 +88,21 @@ export class SystemRbacRepo {
     }
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const rows = this.db
-      .prepare(`SELECT id, code, name, description, is_builtin, status, sort, created_at, updated_at FROM system_roles ${whereClause} ORDER BY sort ASC, name ASC, created_at DESC`)
+      .prepare(`SELECT id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at FROM system_roles ${whereClause} ORDER BY sort ASC, name ASC, created_at DESC`)
       .all(...params) as SystemRoleRow[];
     return rows.map((row) => this.mapRole(row));
   }
 
   createRole(entity: SystemRoleEntity): void {
     this.db
-      .prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .run(entity.id, entity.code, entity.name, entity.description, entity.isBuiltin ? 1 : 0, entity.status, entity.sort, entity.createdAt, entity.updatedAt);
+      .prepare("INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(entity.id, entity.code, entity.name, entity.description, entity.isBuiltin ? 1 : 0, entity.purposeCode, entity.purposeName, entity.status, entity.sort, entity.createdAt, entity.updatedAt);
   }
 
   updateRole(entity: SystemRoleEntity): void {
     this.db
-      .prepare("UPDATE system_roles SET code = ?, name = ?, description = ?, status = ?, sort = ?, updated_at = ? WHERE id = ?")
-      .run(entity.code, entity.name, entity.description, entity.status, entity.sort, entity.updatedAt, entity.id);
+      .prepare("UPDATE system_roles SET code = ?, name = ?, description = ?, purpose_code = ?, purpose_name = ?, status = ?, sort = ?, updated_at = ? WHERE id = ?")
+      .run(entity.code, entity.name, entity.description, entity.purposeCode, entity.purposeName, entity.status, entity.sort, entity.updatedAt, entity.id);
   }
 
   deleteRole(id: string): void {
@@ -107,14 +111,14 @@ export class SystemRbacRepo {
 
   listPermissions(): SystemPermissionEntity[] {
     const rows = this.db
-      .prepare("SELECT id, code, name, group_code, group_name, description, sort, created_at, updated_at FROM system_permissions ORDER BY group_code ASC, sort ASC")
+      .prepare("SELECT id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at FROM system_permissions ORDER BY domain_code ASC, group_code ASC, sort ASC")
       .all() as SystemPermissionRow[];
     return rows.map((row) => this.mapPermission(row));
   }
 
   findPermissionById(id: string): SystemPermissionEntity | null {
     const row = this.db
-      .prepare("SELECT id, code, name, group_code, group_name, description, sort, created_at, updated_at FROM system_permissions WHERE id = ?")
+      .prepare("SELECT id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at FROM system_permissions WHERE id = ?")
       .get(id) as SystemPermissionRow | undefined;
     return row ? this.mapPermission(row) : null;
   }
@@ -129,11 +133,11 @@ export class SystemRbacRepo {
   listRolePermissions(roleId: string): SystemPermissionEntity[] {
     const rows = this.db
       .prepare(`
-        SELECT p.id, p.code, p.name, p.group_code, p.group_name, p.description, p.sort, p.created_at, p.updated_at
+        SELECT p.id, p.code, p.name, p.group_code, p.group_name, p.domain_code, p.domain_name, p.description, p.sort, p.created_at, p.updated_at
         FROM system_role_permissions rp
         INNER JOIN system_permissions p ON p.id = rp.permission_id
         WHERE rp.role_id = ?
-        ORDER BY p.group_code ASC, p.sort ASC
+        ORDER BY p.domain_code ASC, p.group_code ASC, p.sort ASC
       `)
       .all(roleId) as SystemPermissionRow[];
     return rows.map((row) => this.mapPermission(row));
@@ -212,6 +216,8 @@ export class SystemRbacRepo {
       name: row.name,
       description: row.description,
       isBuiltin: row.is_builtin === 1,
+      purposeCode: row.purpose_code,
+      purposeName: row.purpose_name,
       status: row.status,
       sort: row.sort,
       createdAt: row.created_at,
@@ -226,6 +232,8 @@ export class SystemRbacRepo {
       name: row.name,
       groupCode: row.group_code,
       groupName: row.group_name,
+      domainCode: row.domain_code,
+      domainName: row.domain_name,
       description: row.description,
       sort: row.sort,
       createdAt: row.created_at,

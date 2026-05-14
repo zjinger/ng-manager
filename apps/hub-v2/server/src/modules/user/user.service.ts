@@ -35,6 +35,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
       throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS, `user already exists: ${input.username}`, 409);
     }
     this.organization.validateUserDepartmentInputs(input.departments);
+    this.validateUserReference(input.managerUserId, "manager user");
+    this.validateUserReference(input.financeApproverUserId, "finance approver user");
 
     const now = nowIso();
     const loginEnabled = input.loginEnabled !== false;
@@ -52,6 +54,11 @@ export class UserService implements UserCommandContract, UserQueryContract {
       source: "local",
       remark: input.remark?.trim() || null,
       departments: [],
+      primaryDepartment: null,
+      managerUserId: input.managerUserId?.trim() || null,
+      managerUser: null,
+      financeApproverUserId: input.financeApproverUserId?.trim() || null,
+      financeApproverUser: null,
       createdAt: now,
       updatedAt: now
     };
@@ -100,6 +107,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
     this.organization.validateUserDepartmentInputs(input.departments);
+    this.validateUserReference(input.managerUserId, "manager user", id);
+    this.validateUserReference(input.financeApproverUserId, "finance approver user", id);
 
     const updated: UserEntity = {
       ...user,
@@ -110,6 +119,10 @@ export class UserService implements UserCommandContract, UserQueryContract {
       loginEnabled: input.loginEnabled === undefined ? user.loginEnabled : input.loginEnabled,
       status: input.status ?? user.status,
       remark: input.remark === undefined ? user.remark : input.remark?.trim() || null,
+      managerUserId: input.managerUserId === undefined ? user.managerUserId : input.managerUserId?.trim() || null,
+      managerUser: input.managerUserId === undefined ? user.managerUser : null,
+      financeApproverUserId: input.financeApproverUserId === undefined ? user.financeApproverUserId : input.financeApproverUserId?.trim() || null,
+      financeApproverUser: input.financeApproverUserId === undefined ? user.financeApproverUser : null,
       updatedAt: nowIso()
     };
 
@@ -197,5 +210,18 @@ export class UserService implements UserCommandContract, UserQueryContract {
   private withDepartmentsMany(users: UserEntity[]): UserEntity[] {
     const map = this.organization.listUserDepartmentsForUsers(users.map((user) => user.id));
     return users.map((user) => this.repo.attachDepartments(user, map.get(user.id) ?? []));
+  }
+
+  private validateUserReference(userId: string | null | undefined, label: string, currentUserId?: string): void {
+    const normalized = userId?.trim();
+    if (!normalized) {
+      return;
+    }
+    if (currentUserId && normalized === currentUserId) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, `${label} cannot be self`, 400);
+    }
+    if (!this.repo.findById(normalized)) {
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, `${label} not found: ${normalized}`, 404);
+    }
   }
 }

@@ -12,6 +12,8 @@ export const createSystemRoleSchema = z.object({
   code: codeSchema,
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().nullable().optional(),
+  purposeCode: z.string().trim().min(1).max(48).optional(),
+  purposeName: z.string().trim().min(1).max(80).optional(),
   status: statusSchema.optional(),
   sort: z.coerce.number().int().min(0).optional(),
   permissionTemplateRoleId: z.string().trim().optional()

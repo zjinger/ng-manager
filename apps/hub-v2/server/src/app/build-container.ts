@@ -2,6 +2,9 @@ import { AnnouncementRepo } from "../modules/announcement/announcement.repo";
 import { AnnouncementService } from "../modules/announcement/announcement.service";
 import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
 import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
+import type { ApprovalTemplateCommandContract, ApprovalTemplateQueryContract } from "../modules/approval/approval-template.contract";
+import { ApprovalTemplateRepo } from "../modules/approval/approval-template.repo";
+import { ApprovalTemplateService } from "../modules/approval/approval-template.service";
 import { SearchRepo } from "../modules/search/search.repo";
 import { SearchService } from "../modules/search/search.service";
 import type { SurveyCommandContract, SurveyQueryContract } from "../modules/survey/survey.contract";
@@ -147,6 +150,8 @@ export type AppContainer = {
   searchService: SearchService;
   surveyCommand: SurveyCommandContract;
   surveyQuery: SurveyQueryContract;
+  approvalTemplateCommand: ApprovalTemplateCommandContract;
+  approvalTemplateQuery: ApprovalTemplateQueryContract;
 };
 
 type BuildContainerOptions = {
@@ -257,6 +262,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const reportPublicService = new ReportPublicService(config, new ReportPublicRepo(db), projectRepo);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
   const surveyService = new SurveyService(new SurveyRepo(db));
+  const approvalTemplateService = new ApprovalTemplateService(new ApprovalTemplateRepo(db));
 
   return {
     healthQuery: new HealthQueryService(config),
@@ -314,6 +320,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     reportPublicService,
     searchService,
     surveyCommand: surveyService,
-    surveyQuery: surveyService
+    surveyQuery: surveyService,
+    approvalTemplateCommand: approvalTemplateService,
+    approvalTemplateQuery: approvalTemplateService
   };
 }

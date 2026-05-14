@@ -8,17 +8,12 @@ import type { OrganizationCommandContract, OrganizationQueryContract } from "./o
 import { OrganizationRepo } from "./organization.repo";
 import type {
   CreateDepartmentInput,
-  CreateFinanceRoleInput,
   DepartmentEntity,
   DepartmentTreeNode,
-  FinanceRoleEntity,
   ListDepartmentsQuery,
-  ListFinanceRolesQuery,
   UpdateDepartmentInput,
-  UpdateFinanceRoleInput,
   UserDepartmentEntity,
-  UserDepartmentInput,
-  UserFinanceRoleEntity
+  UserDepartmentInput
 } from "./organization.types";
 
 export class OrganizationService implements OrganizationCommandContract, OrganizationQueryContract {
@@ -50,6 +45,10 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     if (parentId && !this.repo.findDepartmentById(parentId)) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_PARENT_INVALID, "department parent invalid", 400);
     }
+    const managerUserId = input.managerUserId?.trim() || null;
+    if (managerUserId) {
+      this.ensureUser(managerUserId);
+    }
 
     const now = nowIso();
     const entity: DepartmentEntity = {
@@ -58,6 +57,8 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       code,
       name: input.name.trim(),
       externalFinanceCode: input.externalFinanceCode?.trim() || null,
+      managerUserId,
+      managerUser: null,
       status: input.status ?? "active",
       sort: input.sort ?? 0,
       createdAt: now,
@@ -85,6 +86,10 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     if (parentId && !this.repo.findDepartmentById(parentId)) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_PARENT_INVALID, "department parent invalid", 400);
     }
+    const managerUserId = input.managerUserId === undefined ? current.managerUserId : input.managerUserId?.trim() || null;
+    if (managerUserId) {
+      this.ensureUser(managerUserId);
+    }
 
     const entity: DepartmentEntity = {
       ...current,
@@ -92,6 +97,8 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       code: nextCode,
       name: input.name?.trim() ?? current.name,
       externalFinanceCode: input.externalFinanceCode === undefined ? current.externalFinanceCode : input.externalFinanceCode?.trim() || null,
+      managerUserId,
+      managerUser: managerUserId === current.managerUserId ? current.managerUser : null,
       status: input.status ?? current.status,
       sort: input.sort ?? current.sort,
       updatedAt: nowIso()
@@ -112,7 +119,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     this.repo.addUserDepartment(userId, {
       id: genId("ud"),
       departmentId: input.departmentId,
-      relationType: input.relationType ?? "secondary",
+      relationType: "primary",
       roleCode: input.roleCode ?? null,
       createdAt: now,
       updatedAt: now
@@ -132,94 +139,6 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     }
     this.ensureUser(userId);
     return this.repo.listUserDepartments(userId);
-  }
-
-  async listFinanceRoles(query: ListFinanceRolesQuery, ctx: RequestContext): Promise<FinanceRoleEntity[]> {
-    this.requireReadable(ctx);
-    if (ctx.roles.includes("admin")) {
-      return this.repo.listFinanceRoles(query);
-    }
-    return this.repo
-      .listUserFinanceRoles(ctx.userId ?? "")
-      .map((item) => this.repo.findFinanceRoleById(item.roleId))
-      .filter((item): item is FinanceRoleEntity => !!item && item.status === "active");
-  }
-
-  async createFinanceRole(input: CreateFinanceRoleInput, ctx: RequestContext): Promise<FinanceRoleEntity> {
-    requireAdmin(ctx);
-    const code = input.code.trim();
-    if (this.repo.findFinanceRoleByCode(code)) {
-      throw new AppError(ERROR_CODES.ORGANIZATION_FINANCE_ROLE_EXISTS, `finance role already exists: ${code}`, 409);
-    }
-    const now = nowIso();
-    const entity: FinanceRoleEntity = {
-      id: genId("fr"),
-      code,
-      name: input.name.trim(),
-      description: input.description?.trim() || null,
-      status: input.status ?? "active",
-      sort: input.sort ?? 0,
-      createdAt: now,
-      updatedAt: now
-    };
-    this.repo.createFinanceRole(entity);
-    return entity;
-  }
-
-  async updateFinanceRole(id: string, input: UpdateFinanceRoleInput, ctx: RequestContext): Promise<FinanceRoleEntity> {
-    requireAdmin(ctx);
-    const current = this.repo.findFinanceRoleById(id);
-    if (!current) {
-      throw new AppError(ERROR_CODES.ORGANIZATION_FINANCE_ROLE_NOT_FOUND, `finance role not found: ${id}`, 404);
-    }
-    const nextCode = input.code?.trim() ?? current.code;
-    const sameCode = this.repo.findFinanceRoleByCode(nextCode);
-    if (sameCode && sameCode.id !== current.id) {
-      throw new AppError(ERROR_CODES.ORGANIZATION_FINANCE_ROLE_EXISTS, `finance role already exists: ${nextCode}`, 409);
-    }
-    const entity: FinanceRoleEntity = {
-      ...current,
-      code: nextCode,
-      name: input.name?.trim() ?? current.name,
-      description: input.description === undefined ? current.description : input.description?.trim() || null,
-      status: input.status ?? current.status,
-      sort: input.sort ?? current.sort,
-      updatedAt: nowIso()
-    };
-    this.repo.updateFinanceRole(entity);
-    return entity;
-  }
-
-  async deleteFinanceRole(id: string, ctx: RequestContext): Promise<void> {
-    requireAdmin(ctx);
-    if (!this.repo.findFinanceRoleById(id)) {
-      throw new AppError(ERROR_CODES.ORGANIZATION_FINANCE_ROLE_NOT_FOUND, `finance role not found: ${id}`, 404);
-    }
-    this.repo.deleteFinanceRole(id);
-  }
-
-  async addUserFinanceRole(userId: string, roleId: string, ctx: RequestContext): Promise<UserFinanceRoleEntity> {
-    requireAdmin(ctx);
-    this.ensureUser(userId);
-    if (!this.repo.findFinanceRoleById(roleId)) {
-      throw new AppError(ERROR_CODES.ORGANIZATION_FINANCE_ROLE_NOT_FOUND, `finance role not found: ${roleId}`, 404);
-    }
-    this.repo.addUserFinanceRole(userId, roleId, genId("ufr"), nowIso());
-    return this.repo.listUserFinanceRoles(userId).find((item) => item.roleId === roleId)!;
-  }
-
-  async removeUserFinanceRole(userId: string, roleId: string, ctx: RequestContext): Promise<void> {
-    requireAdmin(ctx);
-    this.ensureUser(userId);
-    this.repo.removeUserFinanceRole(userId, roleId);
-  }
-
-  async listUserFinanceRoles(userId: string, ctx: RequestContext): Promise<UserFinanceRoleEntity[]> {
-    if (!ctx.roles.includes("admin") && ctx.userId !== userId) {
-      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "forbidden", 403);
-    }
-    this.ensureUser(userId);
-    return this.repo.listUserFinanceRoles(userId);
   }
 
   replaceUserDepartmentsFromUserModule(userId: string, inputs: UserDepartmentInput[] | undefined): void {
@@ -250,7 +169,6 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
 
   private normalizeUserDepartmentInputs(inputs: UserDepartmentInput[]): UserDepartmentInput[] {
     const seen = new Set<string>();
-    let primaryCount = 0;
     const normalized: UserDepartmentInput[] = [];
     for (const input of inputs) {
       const departmentId = input.departmentId.trim();
@@ -260,18 +178,14 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       if (!this.repo.findDepartmentById(departmentId)) {
         throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_NOT_FOUND, `department not found: ${departmentId}`, 404);
       }
-      const relationType = input.relationType ?? "secondary";
-      if (relationType === "primary") {
-        primaryCount += 1;
-      }
       normalized.push({
         departmentId,
-        relationType,
+        relationType: "primary",
         roleCode: input.roleCode?.trim() || null
       });
       seen.add(departmentId);
     }
-    if (primaryCount > 1) {
+    if (normalized.length > 1) {
       throw new AppError(ERROR_CODES.ORGANIZATION_USER_PRIMARY_DEPARTMENT_CONFLICT, "only one primary department is allowed", 400);
     }
     return normalized;

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>深蓝协作平台 · 财务中心-报销管理原型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-2: #6366f1;
+      --bg: #f5f7fb;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--ink); }
+    .app-shell { display: grid; grid-template-columns: 240px 1fr; height: 100vh; overflow: hidden; }
+    .sidebar { background: #0f172a; color: #cbd5e1; border-right: 1px solid rgba(255,255,255,.06); }
+    .main { min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 56px; background: rgba(255,255,255,.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); }
+    .content { overflow: auto; padding: 24px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin: 3px 10px; border-radius: 8px; cursor: pointer; transition: .18s ease; font-size: 14px; }
+    .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .nav-item.active { background: linear-gradient(135deg,#4f46e5,#6d5dfc); color: #fff; box-shadow: 0 8px 22px rgba(79,70,229,.28); }
+    .nav-section { padding: 18px 18px 8px; color: #7c8aa5; font-size: 12px; font-weight: 700; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 28px rgba(15,23,42,.04); }
+    .glass { background: rgba(255,255,255,.75); backdrop-filter: blur(18px); border: 1px solid rgba(226,232,240,.85); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 10px; font-size: 14px; transition: .18s ease; white-space: nowrap; }
+    .btn-primary { color:#fff; background: linear-gradient(135deg,#4f46e5,#6d5dfc); box-shadow: 0 10px 24px rgba(79,70,229,.26); }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(79,70,229,.34); }
+    .btn-secondary { color:#334155; background:#fff; border:1px solid var(--line); }
+    .btn-secondary:hover { background:#f8fafc; border-color:#cbd5e1; }
+    .btn-danger { color:#fff; background:#ef4444; }
+    .input, .select, .textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: #0f172a; outline: none; transition: .18s ease; }
+    .input, .select { height: 38px; padding: 0 12px; }
+    .textarea { min-height: 88px; padding: 10px 12px; resize: vertical; }
+    .input:focus, .select:focus, .textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 4px rgba(99,102,241,.12); }
+    .label { display:block; margin-bottom:6px; color:#334155; font-size:13px; font-weight:600; }
+    .required::after { content:' *'; color:#ef4444; }
+    .badge { display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .badge-blue { background:#dbeafe; color:#2563eb; }
+    .badge-purple { background:#ede9fe; color:#6d28d9; }
+    .badge-green { background:#dcfce7; color:#16a34a; }
+    .badge-orange { background:#ffedd5; color:#ea580c; }
+    .badge-red { background:#fee2e2; color:#dc2626; }
+    .badge-gray { background:#f1f5f9; color:#64748b; }
+    .badge-cyan { background:#cffafe; color:#0891b2; }
+    .table { width:100%; border-collapse:separate; border-spacing:0; }
+    .table th { text-align:left; padding:12px 14px; color:#64748b; font-size:12px; font-weight:700; background:#f8fafc; border-bottom:1px solid var(--line); }
+    .table td { padding:14px; border-bottom:1px solid #edf2f7; font-size:13px; color:#334155; vertical-align:middle; }
+    .table tr:hover td { background:#fafbff; }
+    .metric-icon { width: 34px; height: 34px; border-radius: 10px; display:flex; align-items:center; justify-content:center; }
+    .paper { background:#fff; color:#075985; border:1px solid #dbeafe; box-shadow:0 12px 32px rgba(15,23,42,.08); }
+    .paper-table td, .paper-table th { border:1px solid #93c5fd; padding:5px; font-size:11px; color:#0284c7; height:28px; }
+    .workflow-step { display:grid; grid-template-columns:28px 1fr; gap:10px; position:relative; }
+    .workflow-step:not(:last-child)::after { content:''; position:absolute; left:13px; top:28px; bottom:-12px; width:2px; background:#e2e8f0; }
+    .dot { width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#fff; z-index:1; }
+    .page { display:none; animation: fade .18s ease; }
+    .page.active { display:block; }
+    @keyframes fade { from { opacity:.45; transform: translateY(4px);} to { opacity:1; transform:none;} }
+    .modal-mask { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:50; backdrop-filter: blur(4px); }
+    .modal-mask.show { display:flex; }
+    .mobile-nav { display:none; }
+    @media (max-width: 1100px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { display:none; }
+      .mobile-nav { display:flex; }
+      .content { padding: 16px; }
+      .responsive-grid { grid-template-columns:1fr !important; }
+      .form-layout { grid-template-columns:1fr !important; }
+      .table { min-width: 760px; }
+      .card.overflow-hidden { overflow-x: auto; }
+      .sticky { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="h-16 px-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white font-black">S</div>
+        <div>
+          <div class="text-white font-bold">深蓝协作平台</div>
+          <div class="text-xs text-slate-400">v2 · Finance Center</div>
+        </div>
+      </div>
+      <div class="p-3">
+        <div class="mb-3 rounded-xl bg-slate-800/80 p-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-xs text-white font-bold">TST</div>
+            <span class="text-sm text-white">TEST</span>
+          </div>
+          <i data-lucide="chevron-down" class="w-4 h-4"></i>
+        </div>
+      </div>
+      <nav>
+        <div class="nav-section">工作台</div>
+        <div class="nav-item" data-page="dashboard"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> 工作台</div>
+        <div class="nav-item"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> 数据看板</div>
+        <div class="nav-section">协作中心</div>
+        <div class="nav-item"><i data-lucide="bug" class="w-4 h-4"></i> 测试跟踪 <span class="ml-auto badge badge-red">4</span></div>
+        <div class="nav-item"><i data-lucide="git-branch" class="w-4 h-4"></i> 研发管理</div>
+        <div class="nav-section">财务中心</div>
+        <div class="nav-item active" data-page="finance-dashboard"><i data-lucide="wallet-cards" class="w-4 h-4"></i> 报销工作台</div>
+        <div class="nav-item" data-page="my-claims"><i data-lucide="receipt-text" class="w-4 h-4"></i> 我的报销</div>
+        <div class="nav-item" data-page="approvals"><i data-lucide="stamp" class="w-4 h-4"></i> 待我审批 <span class="ml-auto badge badge-red">3</span></div>
+        <div class="nav-item" data-page="stats"><i data-lucide="pie-chart" class="w-4 h-4"></i> 报销统计</div>
+        <div class="nav-section">系统管理</div>
+        <div class="nav-item"><i data-lucide="users" class="w-4 h-4"></i> 用户管理</div>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar flex items-center justify-between px-5">
+        <div class="flex items-center gap-3 min-w-0">
+          <button class="btn btn-secondary !w-9 !px-0 mobile-nav"><i data-lucide="menu" class="w-4 h-4"></i></button>
+          <button class="btn btn-secondary !w-9 !px-0"><i data-lucide="panel-left-close" class="w-4 h-4"></i></button>
+          <div class="text-sm text-slate-500 truncate">首页 / 财务中心 / <span id="crumb" class="text-slate-900 font-semibold">报销工作台</span></div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="hidden md:flex items-center gap-2 h-9 px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-sm min-w-[310px]">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            <span>搜索测试单、研发项、文档、报销单...</span>
+            <span class="ml-auto text-xs bg-white px-1.5 py-0.5 rounded border">Ctrl K</span>
+          </div>
+          <button class="btn btn-secondary !w-9 !px-0"><i data-lucide="bell" class="w-4 h-4"></i></button>
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-bold">开</div>
+          <div class="text-sm font-semibold hidden sm:block">开发测试</div>
+        </div>
+      </header>
+
+      <section class="content">
+        <!-- 报销工作台 -->
+        <div id="finance-dashboard" class="page active">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight">报销工作台</h1>
+              <p class="text-sm text-slate-500 mt-1">集中处理报销申请、审批流转、财务审核与付款进度。</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-secondary go" data-page="general-form"><i data-lucide="file-plus-2" class="w-4 h-4"></i> 新建费用报销</button>
+              <button class="btn btn-primary go" data-page="travel-form"><i data-lucide="plane" class="w-4 h-4"></i> 新建差旅费报销</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">
+            <div class="card p-4"><div class="flex justify-between"><div><div class="text-sm text-slate-500">待我审批</div><div class="text-3xl font-bold mt-3">3</div><div class="text-xs text-slate-400 mt-2">含主管、审核、会计节点</div></div><div class="metric-icon bg-indigo-50 text-indigo-600"><i data-lucide="stamp" class="w-5 h-5"></i></div></div></div>
+            <div class="card p-4"><div class="flex justify-between"><div><div class="text-sm text-slate-500">审批中</div><div class="text-3xl font-bold mt-3">6</div><div class="text-xs text-slate-400 mt-2">我提交后仍在流转中</div></div><div class="metric-icon bg-blue-50 text-blue-600"><i data-lucide="refresh-cw" class="w-5 h-5"></i></div></div></div>
+            <div class="card p-4"><div class="flex justify-between"><div><div class="text-sm text-slate-500">已驳回</div><div class="text-3xl font-bold mt-3">1</div><div class="text-xs text-slate-400 mt-2">需补充票据或说明</div></div><div class="metric-icon bg-red-50 text-red-600"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></div></div></div>
+            <div class="card p-4"><div class="flex justify-between"><div><div class="text-sm text-slate-500">本月已完成</div><div class="text-3xl font-bold mt-3">12</div><div class="text-xs text-slate-400 mt-2">已完成付款归档</div></div><div class="metric-icon bg-green-50 text-green-600"><i data-lucide="check-circle-2" class="w-5 h-5"></i></div></div></div>
+            <div class="card p-4"><div class="flex justify-between"><div><div class="text-sm text-slate-500">本月报销金额</div><div class="text-3xl font-bold mt-3">¥42.8k</div><div class="text-xs text-slate-400 mt-2">较上月 +8.6%</div></div><div class="metric-icon bg-amber-50 text-amber-600"><i data-lucide="coins" class="w-5 h-5"></i></div></div></div>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 responsive-grid">
+            <div class="card xl:col-span-2 p-4">
+              <div class="flex items-center justify-between mb-3"><h2 class="font-bold">我的待办</h2><button class="text-sm text-indigo-600 go" data-page="approvals">查看全部</button></div>
+              <div class="space-y-3">
+                <div class="p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition cursor-pointer go" data-page="detail"><div class="flex justify-between gap-3"><div><div class="flex items-center gap-2"><span class="font-bold text-indigo-700">BX-202604-018</span><span class="badge badge-purple">待部门主管审批</span><span class="badge badge-orange">高金额</span></div><div class="mt-2 text-sm font-semibold">深圳客户现场支持差旅费报销</div><div class="mt-1 text-xs text-slate-500">申请人：周亦航 · 金额：¥3,860.00 · 等待 6 小时</div></div><i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i></div></div>
+                <div class="p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition cursor-pointer go" data-page="detail"><div class="flex justify-between gap-3"><div><div class="flex items-center gap-2"><span class="font-bold text-indigo-700">BX-202604-017</span><span class="badge badge-cyan">待审核</span></div><div class="mt-2 text-sm font-semibold">办公用品采购费用报销</div><div class="mt-1 text-xs text-slate-500">申请人：林梓 · 金额：¥928.00 · 等待 2 小时</div></div><i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i></div></div>
+                <div class="p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition cursor-pointer go" data-page="detail"><div class="flex justify-between gap-3"><div><div class="flex items-center gap-2"><span class="font-bold text-indigo-700">BX-202604-016</span><span class="badge badge-orange">待会计处理</span></div><div class="mt-2 text-sm font-semibold">研发测试设备配件采购报销</div><div class="mt-1 text-xs text-slate-500">申请人：沈知远 · 金额：¥1,420.00 · 等待 1 天</div></div><i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i></div></div>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="card p-4">
+                <h2 class="font-bold mb-3">快捷入口</h2>
+                <div class="grid grid-cols-2 gap-3">
+                  <button class="p-3 rounded-xl bg-indigo-50 text-left go" data-page="travel-form"><i data-lucide="plane" class="w-5 h-5 text-indigo-600 mb-2"></i><div class="font-bold text-sm">差旅报销</div><div class="text-xs text-slate-500 mt-1">行程与交通住宿</div></button>
+                  <button class="p-3 rounded-xl bg-blue-50 text-left go" data-page="general-form"><i data-lucide="file-plus-2" class="w-5 h-5 text-blue-600 mb-2"></i><div class="font-bold text-sm">费用报销</div><div class="text-xs text-slate-500 mt-1">办公采购等</div></button>
+                  <button class="p-3 rounded-xl bg-emerald-50 text-left go" data-page="my-claims"><i data-lucide="receipt-text" class="w-5 h-5 text-emerald-600 mb-2"></i><div class="font-bold text-sm">我的报销</div><div class="text-xs text-slate-500 mt-1">查看进度</div></button>
+                  <button class="p-3 rounded-xl bg-amber-50 text-left go" data-page="stats"><i data-lucide="pie-chart" class="w-5 h-5 text-amber-600 mb-2"></i><div class="font-bold text-sm">报销统计</div><div class="text-xs text-slate-500 mt-1">费用趋势</div></button>
+                </div>
+              </div>
+              <div class="card p-4">
+                <div class="flex justify-between mb-3"><h2 class="font-bold">报销公告</h2><span class="badge badge-gray">2</span></div>
+                <div class="space-y-3 text-sm">
+                  <div><span class="badge badge-orange mr-1">规则</span><b>发票上传规范更新</b><p class="text-slate-500 mt-1 text-xs">电子发票需上传 PDF 原件，拍照件需保持四角完整。</p></div>
+                  <div><span class="badge badge-blue mr-1">提醒</span><b>月底报销截止时间</b><p class="text-slate-500 mt-1 text-xs">本月报销请于 30 日 18:00 前提交审批。</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 我的报销 -->
+        <div id="my-claims" class="page">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+            <div><h1 class="text-2xl font-bold">我的报销</h1><p class="text-sm text-slate-500 mt-1">查看我提交的差旅费报销与费用报销。</p></div>
+            <div class="flex gap-2"><button class="btn btn-secondary go" data-page="general-form"><i data-lucide="file-plus-2" class="w-4 h-4"></i> 新建费用报销</button><button class="btn btn-primary go" data-page="travel-form"><i data-lucide="plane" class="w-4 h-4"></i> 新建差旅费报销</button></div>
+          </div>
+          <div class="card p-4 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <select class="select"><option>全部类型</option><option>差旅费报销</option><option>费用报销</option></select>
+              <select class="select"><option>全部状态</option><option>草稿</option><option>审批中</option><option>已完成</option><option>已驳回</option></select>
+              <select class="select"><option>全部节点</option><option>负责人</option><option>部门主管</option><option>审核</option><option>会计</option><option>出纳</option></select>
+              <input class="input" type="date" />
+              <div class="flex gap-2"><input id="claimKeyword" class="input" placeholder="搜索编号 / 事由" /><button id="filterClaims" class="btn btn-primary">筛选</button></div>
+            </div>
+          </div>
+          <div class="card overflow-hidden">
+            <table class="table">
+              <thead><tr><th>单据编号</th><th>报销类型</th><th>报销事由</th><th>金额</th><th>当前节点</th><th>状态</th><th>提交时间</th><th>操作</th></tr></thead>
+              <tbody id="claimsTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 待我审批 -->
+        <div id="approvals" class="page">
+          <div class="mb-5"><h1 class="text-2xl font-bold">待我审批</h1><p class="text-sm text-slate-500 mt-1">统一处理负责人、部门主管、审核、会计、出纳等节点任务。</p></div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div class="card p-4"><div class="text-sm text-slate-500">待我审批</div><div class="text-2xl font-bold mt-2">3</div></div>
+            <div class="card p-4"><div class="text-sm text-slate-500">今日新增</div><div class="text-2xl font-bold mt-2">2</div></div>
+            <div class="card p-4"><div class="text-sm text-slate-500">已通过</div><div class="text-2xl font-bold mt-2">18</div></div>
+            <div class="card p-4"><div class="text-sm text-slate-500">已驳回</div><div class="text-2xl font-bold mt-2">1</div></div>
+          </div>
+          <div class="card p-4 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3"><select class="select"><option>全部类型</option></select><select class="select"><option>全部节点</option></select><select class="select"><option>全部部门</option></select><input class="input" placeholder="金额区间，如 1000-5000" /><input class="input" placeholder="搜索申请人 / 编号" /></div>
+          </div>
+          <div class="card overflow-hidden">
+            <table class="table"><thead><tr><th>单据编号</th><th>申请人</th><th>部门</th><th>类型</th><th>事由</th><th>金额</th><th>节点</th><th>等待</th><th>操作</th></tr></thead><tbody id="approvalTable"></tbody></table>
+          </div>
+        </div>
+
+        <!-- 新建差旅费报销 -->
+        <div id="travel-form" class="page">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+            <div><h1 class="text-2xl font-bold">新建差旅费报销</h1><p class="text-sm text-slate-500 mt-1">结构化填写行程、费用与附件，右侧实时预览单据。</p></div>
+            <div class="flex gap-2"><button class="btn btn-secondary"><i data-lucide="save" class="w-4 h-4"></i> 保存草稿</button><button class="btn btn-secondary"><i data-lucide="download" class="w-4 h-4"></i> 导出</button><button class="btn btn-primary open-submit"><i data-lucide="send" class="w-4 h-4"></i> 提交审批</button></div>
+          </div>
+          <div class="grid grid-cols-[minmax(0,1fr)_430px] gap-4 form-layout">
+            <div class="space-y-4">
+              <div class="card p-5">
+                <h2 class="font-bold mb-4">基础信息</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div><label class="label required">报销部门</label><select class="select"><option>前端研发一部</option><option>产品设计部</option><option>质量保障部</option></select></div>
+                  <div><label class="label required">姓名</label><input class="input" value="张涛" /></div>
+                  <div><label class="label">职别</label><input class="input" placeholder="请输入职别" /></div>
+                  <div><label class="label required">填报日期</label><input class="input" type="date" value="2026-04-30" /></div>
+                  <div class="md:col-span-2"><label class="label required">出差事由</label><input class="input" placeholder="例如：深圳客户现场支持" /></div>
+                </div>
+              </div>
+              <div class="card p-5">
+                <div class="flex items-center justify-between mb-4"><h2 class="font-bold">行程与费用明细</h2><button id="addTravelRow" class="btn btn-secondary"><i data-lucide="plus" class="w-4 h-4"></i> 添加行程</button></div>
+                <div class="overflow-auto"><table class="table"><thead><tr><th>日期</th><th>起讫地点</th><th>天数</th><th>机票</th><th>车船</th><th>市内交通</th><th>住宿</th><th>餐补</th><th>其他</th><th>小计</th><th></th></tr></thead><tbody id="travelRows"></tbody></table></div>
+              </div>
+              <div class="card p-5">
+                <h2 class="font-bold mb-4">金额汇总与附件</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div><label class="label">总计金额</label><input id="travelTotal" class="input bg-slate-50" readonly value="0" /></div>
+                  <div><label class="label">预支金额</label><input id="travelAdvance" class="input calc" type="number" value="0" /></div>
+                  <div><label class="label">应退 / 应补</label><input id="travelBalance" class="input bg-slate-50" readonly value="0" /></div>
+                </div>
+                <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center"><div class="mx-auto w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 mb-3"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div><div class="font-bold">点击或拖拽上传发票、行程单、审批截图</div><div class="text-xs text-slate-500 mt-1">支持 JPG / PNG / PDF，单个文件最大 10MB</div></div>
+              </div>
+            </div>
+            <aside class="space-y-4">
+              <div class="paper rounded-2xl p-5 overflow-hidden">
+                <div class="text-center mb-4">
+                  <div class="text-2xl font-black tracking-[.28em] text-sky-600">差旅费报销单</div>
+                  <div class="mx-auto mt-2 h-[2px] w-40 bg-sky-500"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs mb-3 text-sky-700">
+                  <div>报销部门：前端研发一部</div>
+                  <div>填报日期：2026 年 4 月 30 日</div>
+                  <div>姓名：张涛</div>
+                </div>
+                <table class="paper-table w-full border-collapse">
+                  <thead>
+                    <tr><th>日期</th><th>起讫地点</th><th>天数</th><th>交通费</th><th>住宿费</th><th>餐补</th><th>其他</th><th>小计</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>4/28</td><td>深圳 → 上海</td><td>1</td><td>860</td><td>480</td><td>120</td><td>0</td><td>1460</td></tr>
+                    <tr><td>4/29</td><td>上海 → 杭州</td><td>1</td><td>320</td><td>520</td><td>120</td><td>80</td><td>1040</td></tr>
+                    <tr><td>4/30</td><td>杭州 → 深圳</td><td>1</td><td>980</td><td>0</td><td>120</td><td>260</td><td>1360</td></tr>
+                    <tr><td colspan="7" class="text-right font-bold">合计</td><td class="font-bold">3860</td></tr>
+                  </tbody>
+                </table>
+                <div class="grid grid-cols-3 gap-2 mt-4 text-xs text-sky-700">
+                  <div>负责人：周亦航</div><div>会计：待处理</div><div>出纳：待处理</div>
+                </div>
+              </div>
+              <div class="card p-5"><h2 class="font-bold mb-4">审批流预览</h2><div id="flowPreview"></div></div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- 新建费用报销 -->
+        <div id="general-form" class="page">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+            <div><h1 class="text-2xl font-bold">新建费用报销</h1><p class="text-sm text-slate-500 mt-1">适用于办公用品、行政费用、采购等普通费用报销。</p></div>
+            <div class="flex gap-2"><button class="btn btn-secondary"><i data-lucide="save" class="w-4 h-4"></i> 保存草稿</button><button class="btn btn-secondary"><i data-lucide="download" class="w-4 h-4"></i> 导出</button><button class="btn btn-primary open-submit"><i data-lucide="send" class="w-4 h-4"></i> 提交审批</button></div>
+          </div>
+          <div class="grid grid-cols-[minmax(0,1fr)_430px] gap-4 form-layout">
+            <div class="space-y-4">
+              <div class="card p-5"><h2 class="font-bold mb-4">基础信息</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="label required">报销部门</label><select class="select"><option>前端研发一部</option></select></div><div><label class="label required">报销人</label><input class="input" value="张涛" /></div><div><label class="label required">填报日期</label><input class="input" type="date" value="2026-04-30" /></div></div></div>
+              <div class="card p-5"><div class="flex justify-between mb-4"><h2 class="font-bold">费用明细</h2><button id="addGeneralRow" class="btn btn-secondary"><i data-lucide="plus" class="w-4 h-4"></i> 添加费用</button></div><table class="table"><thead><tr><th>用途</th><th>金额</th><th>备注</th><th></th></tr></thead><tbody id="generalRows"></tbody></table></div>
+              <div class="card p-5"><h2 class="font-bold mb-4">金额汇总与附件</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"><div><label class="label">合计金额</label><input id="generalTotal" class="input bg-slate-50" readonly value="0" /></div><div><label class="label">预支金额</label><input id="generalAdvance" class="input calc" type="number" value="0" /></div><div><label class="label">应退 / 应补</label><input id="generalBalance" class="input bg-slate-50" readonly value="0" /></div></div><label class="label">备注</label><textarea class="textarea mb-4" placeholder="补充说明费用发生背景、使用范围等"></textarea><div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center"><div class="mx-auto w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 mb-3"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div><div class="font-bold">点击或拖拽上传发票、付款证明等附件</div><div class="text-xs text-slate-500 mt-1">支持 JPG / PNG / PDF，单个文件最大 10MB</div></div></div>
+            </div>
+            <aside class="space-y-4"><div class="paper rounded-2xl p-5 overflow-hidden">
+                <div class="text-center mb-4">
+                  <div class="text-2xl font-black tracking-[.34em] text-sky-600">费用报销单</div>
+                  <div class="mx-auto mt-2 h-[2px] w-36 bg-sky-500"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs mb-3 text-sky-700">
+                  <div>报销部门：前端研发一部</div>
+                  <div>填报日期：2026 年 4 月 30 日</div>
+                  <div>报销人：张涛</div>
+                </div>
+                <table class="paper-table w-full border-collapse">
+                  <thead><tr><th>用途</th><th>金额（元）</th><th>备注</th></tr></thead>
+                  <tbody>
+                    <tr><td>办公用品采购</td><td>628</td><td>键盘、鼠标、转接线</td></tr>
+                    <tr><td>资料打印</td><td>300</td><td>项目评审材料</td></tr>
+                    <tr><td class="font-bold">合计</td><td class="font-bold">928</td><td></td></tr>
+                  </tbody>
+                </table>
+                <div class="grid grid-cols-3 gap-2 mt-4 text-xs text-sky-700">
+                  <div>会计主管：待处理</div><div>审核：待处理</div><div>领款人：张涛</div>
+                </div>
+              </div><div class="card p-5"><h2 class="font-bold mb-4">审批流预览</h2><div id="flowPreview2"></div></div></aside>
+          </div>
+        </div>
+
+        <!-- 详情审批页 -->
+        <div id="detail" class="page">
+          <div class="card p-5 mb-4 bg-gradient-to-r from-white to-indigo-50/60">
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4"><div><div class="flex items-center gap-2 mb-2"><span class="text-xl font-bold text-indigo-700">BX-202604-018</span><span class="badge badge-purple">待部门主管审批</span></div><div class="text-sm text-slate-500">差旅费报销 · 深圳客户现场支持 · 提交时间 2026-04-30 16:51</div></div><div class="grid grid-cols-3 gap-5 text-center"><div><div class="text-xs text-slate-500">报销金额</div><div class="font-bold text-xl">¥3,860.00</div></div><div><div class="text-xs text-slate-500">当前节点</div><div class="font-bold text-xl">部门主管</div></div><div><div class="text-xs text-slate-500">等待时长</div><div class="font-bold text-xl text-orange-600">6h</div></div></div></div>
+          </div>
+          <div class="grid grid-cols-[minmax(0,1fr)_380px] gap-4 form-layout">
+            <div class="space-y-4"><div class="card p-5"><h2 class="font-bold mb-4">单据内容</h2><div class="paper rounded-2xl p-5 overflow-hidden">
+                <div class="text-center mb-4">
+                  <div class="text-2xl font-black tracking-[.28em] text-sky-600">差旅费报销单</div>
+                  <div class="mx-auto mt-2 h-[2px] w-40 bg-sky-500"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs mb-3 text-sky-700">
+                  <div>报销部门：前端研发一部</div>
+                  <div>填报日期：2026 年 4 月 30 日</div>
+                  <div>姓名：张涛</div>
+                </div>
+                <table class="paper-table w-full border-collapse">
+                  <thead>
+                    <tr><th>日期</th><th>起讫地点</th><th>天数</th><th>交通费</th><th>住宿费</th><th>餐补</th><th>其他</th><th>小计</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>4/28</td><td>深圳 → 上海</td><td>1</td><td>860</td><td>480</td><td>120</td><td>0</td><td>1460</td></tr>
+                    <tr><td>4/29</td><td>上海 → 杭州</td><td>1</td><td>320</td><td>520</td><td>120</td><td>80</td><td>1040</td></tr>
+                    <tr><td>4/30</td><td>杭州 → 深圳</td><td>1</td><td>980</td><td>0</td><td>120</td><td>260</td><td>1360</td></tr>
+                    <tr><td colspan="7" class="text-right font-bold">合计</td><td class="font-bold">3860</td></tr>
+                  </tbody>
+                </table>
+                <div class="grid grid-cols-3 gap-2 mt-4 text-xs text-sky-700">
+                  <div>负责人：周亦航</div><div>会计：待处理</div><div>出纳：待处理</div>
+                </div>
+              </div></div><div class="card p-5"><h2 class="font-bold mb-3">附件材料</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-3"><div class="p-3 rounded-xl border flex items-center gap-3"><i data-lucide="file-text" class="w-5 h-5 text-indigo-600"></i><div><div class="font-bold text-sm">发票_001.pdf</div><div class="text-xs text-slate-500">2.4MB · 上传成功</div></div></div><div class="p-3 rounded-xl border flex items-center gap-3"><i data-lucide="image" class="w-5 h-5 text-blue-600"></i><div><div class="font-bold text-sm">行程单.png</div><div class="text-xs text-slate-500">1.1MB · 上传成功</div></div></div></div></div><div class="card p-5"><h2 class="font-bold mb-3">操作记录</h2><table class="table"><tbody><tr><td>04-30 16:51</td><td>张涛</td><td>提交</td><td>提交差旅费报销</td></tr><tr><td>04-30 17:20</td><td>周亦航</td><td>通过</td><td>信息无误</td></tr><tr><td>05-01 09:10</td><td>部门主管</td><td>待处理</td><td>当前节点</td></tr></tbody></table></div></div>
+            <aside class="card p-5 h-fit sticky top-4"><h2 class="font-bold mb-4">审批处理</h2><div id="approvalFlow" class="mb-5"></div><label class="label">审批意见</label><textarea class="textarea mb-4" placeholder="请输入审批意见，例如：票据完整，同意报销"></textarea><div class="grid grid-cols-2 gap-2"><button class="btn btn-primary open-approve"><i data-lucide="check" class="w-4 h-4"></i> 通过</button><button class="btn btn-danger open-reject"><i data-lucide="x" class="w-4 h-4"></i> 驳回</button><button class="btn btn-secondary open-transfer"><i data-lucide="forward" class="w-4 h-4"></i> 转交</button><button class="btn btn-secondary open-addsign"><i data-lucide="user-plus" class="w-4 h-4"></i> 加签</button></div><div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3"><div class="text-xs font-bold text-slate-600 mb-2">辅助流转说明</div><div class="text-xs text-slate-500 leading-5">转交：当前节点责任人变更为其他审批人。<br/>加签：邀请他人补充意见，完成后回到当前审批人继续处理。</div></div></aside>
+          </div>
+        </div>
+
+        <!-- 统计 -->
+        <div id="stats" class="page">
+          <div class="mb-5"><h1 class="text-2xl font-bold">报销统计</h1><p class="text-sm text-slate-500 mt-1">按部门、人员、类型、月份统计报销金额与流程效率。</p></div>
+          <div class="card p-4 mb-4"><div class="grid grid-cols-1 md:grid-cols-5 gap-3"><select class="select"><option>2026 年</option></select><select class="select"><option>全部部门</option></select><select class="select"><option>全部类型</option></select><select class="select"><option>全部状态</option></select><button class="btn btn-primary">生成报表</button></div></div>
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4"><div class="card p-4"><div class="text-sm text-slate-500">本月报销总额</div><div class="text-2xl font-bold mt-2">¥86.5k</div></div><div class="card p-4"><div class="text-sm text-slate-500">已完成金额</div><div class="text-2xl font-bold mt-2">¥64.1k</div></div><div class="card p-4"><div class="text-sm text-slate-500">审批中金额</div><div class="text-2xl font-bold mt-2">¥18.3k</div></div><div class="card p-4"><div class="text-sm text-slate-500">驳回金额</div><div class="text-2xl font-bold mt-2">¥4.1k</div></div><div class="card p-4"><div class="text-sm text-slate-500">平均审批时长</div><div class="text-2xl font-bold mt-2">1.6天</div></div></div>
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 responsive-grid"><div class="card p-5 xl:col-span-2"><h2 class="font-bold mb-4">月度费用趋势</h2><canvas id="trendChart" height="110"></canvas></div><div class="card p-5"><h2 class="font-bold mb-4">费用类型占比</h2><canvas id="typeChart" height="220"></canvas></div><div class="card p-5 xl:col-span-3"><h2 class="font-bold mb-4">部门报销排行</h2><table class="table"><thead><tr><th>排名</th><th>部门</th><th>报销金额</th><th>单据数</th><th>平均审批时长</th></tr></thead><tbody><tr><td>1</td><td>前端研发一部</td><td>¥28,600</td><td>18</td><td>1.4天</td></tr><tr><td>2</td><td>产品设计部</td><td>¥21,420</td><td>12</td><td>1.7天</td></tr><tr><td>3</td><td>质量保障部</td><td>¥17,880</td><td>10</td><td>1.9天</td></tr></tbody></table></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal-mask">
+    <div class="card w-[520px] max-w-[calc(100vw-32px)] p-6">
+      <div class="flex items-start justify-between mb-4"><div><h3 id="modalTitle" class="text-lg font-bold">提交审批</h3><p id="modalText" class="text-sm text-slate-500 mt-1">确认后单据将进入负责人节点。</p></div><button id="closeModal" class="btn btn-secondary !w-9 !px-0"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+      <label class="label">备注说明</label><textarea class="textarea mb-4" placeholder="可填写提交说明或审批意见"></textarea>
+      <div class="flex justify-end gap-2"><button id="cancelModal" class="btn btn-secondary">取消</button><button id="confirmModal" class="btn btn-primary">确认</button></div>
+    </div>
+  </div>
+
+  <div id="transferModal" class="modal-mask">
+    <div class="card w-[620px] max-w-[calc(100vw-32px)] p-6">
+      <div class="flex items-start justify-between mb-4">
+        <div><h3 class="text-lg font-bold">转交审批</h3><p class="text-sm text-slate-500 mt-1">当前节点将由新审批人继续处理，原审批人不再承担本节点审批责任。</p></div>
+        <button class="btn btn-secondary !w-9 !px-0 close-flow"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-4 text-sm text-amber-800">适用于审批人请假、流转错误、职责变更等场景。</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div><label class="label required">转交给</label><select class="select"><option>李明 · 代理主管</option><option>王珊 · 部门负责人</option><option>周宁 · 财务经理</option></select></div>
+        <div><label class="label required">转交原因</label><select class="select"><option>审批人不在岗</option><option>流转到错误负责人</option><option>职责不匹配</option><option>其他原因</option></select></div>
+      </div>
+      <label class="label required">说明</label><textarea class="textarea mb-4" placeholder="例如：本人本周出差，由代理主管李明处理该报销单。"></textarea>
+      <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 mb-4 text-xs text-slate-500 leading-5">
+        流转结果：部门主管（当前你） → 李明（代理主管） → 审核 → 会计 → 出纳 → 完成
+      </div>
+      <div class="flex justify-end gap-2"><button class="btn btn-secondary close-flow">取消</button><button id="confirmTransfer" class="btn btn-primary">确认转交</button></div>
+    </div>
+  </div>
+
+  <div id="addsignModal" class="modal-mask">
+    <div class="card w-[660px] max-w-[calc(100vw-32px)] p-6">
+      <div class="flex items-start justify-between mb-4">
+        <div><h3 class="text-lg font-bold">加签确认</h3><p class="text-sm text-slate-500 mt-1">邀请其他人员补充审批意见，完成后回到当前节点继续审批。</p></div>
+        <button class="btn btn-secondary !w-9 !px-0 close-flow"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="rounded-xl bg-indigo-50 border border-indigo-200 p-3 mb-4 text-sm text-indigo-800">适用于费用归属不清、金额较大、需要项目负责人或行政负责人确认等场景。</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div><label class="label required">加签人</label><select class="select"><option>项目经理 · 赵宇</option><option>行政负责人 · 刘倩</option><option>财务经理 · 周宁</option></select></div>
+        <div><label class="label required">加签方式</label><select class="select"><option>顺序加签：加签人确认后回到我</option><option>并行加签：加签人与我同时处理</option></select></div>
+      </div>
+      <label class="label required">加签说明</label><textarea class="textarea mb-4" placeholder="例如：请确认该客户拜访费用是否计入项目成本。"></textarea>
+      <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 mb-4 text-xs text-slate-500 leading-5">
+        流转结果：部门主管（当前你） → 赵宇（加签确认） → 部门主管（继续审批） → 审核 → 会计 → 出纳 → 完成
+      </div>
+      <div class="flex justify-end gap-2"><button class="btn btn-secondary close-flow">取消</button><button id="confirmAddsign" class="btn btn-primary">确认加签</button></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (s, root=document) => root.querySelector(s);
+    const $$ = (s, root=document) => [...root.querySelectorAll(s)];
+    const pages = {
+      'finance-dashboard': '报销工作台', 'my-claims': '我的报销', 'approvals': '待我审批', 'travel-form': '新建差旅费报销', 'general-form': '新建费用报销', 'detail': '报销单详情', 'stats': '报销统计'
+    };
+
+    function go(page) {
+      $$('.page').forEach(p => p.classList.remove('active'));
+      $('#' + page)?.classList.add('active');
+      $$('.nav-item[data-page]').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+      if (page === 'travel-form' || page === 'general-form' || page === 'detail') {
+        $$('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
+        $('.nav-item[data-page="finance-dashboard"]')?.classList.add('active');
+      }
+      $('#crumb').textContent = pages[page] || '报销管理';
+      $('.content').scrollTop = 0;
+      if (page === 'stats') setTimeout(initCharts, 80);
+      lucide.createIcons();
+    }
+    document.addEventListener('click', e => {
+      const target = e.target.closest('[data-page]');
+      if (target) go(target.dataset.page);
+    });
+
+    const claims = [
+      ['BX-202604-018','差旅费报销','深圳客户现场支持','¥3,860.00','部门主管','待部门主管审批','2026-04-30 16:51','purple'],
+      ['BX-202604-017','费用报销','办公用品采购','¥928.00','审核','待审核','2026-04-29 10:15','cyan'],
+      ['BX-202604-016','费用报销','研发测试设备配件采购','¥1,420.00','会计','待会计处理','2026-04-28 14:00','orange'],
+      ['BX-202604-015','差旅费报销','杭州供应商拜访','¥2,680.00','完成','已完成','2026-04-20 09:37','green'],
+      ['BX-202604-014','费用报销','培训资料打印','¥312.00','报销人','已驳回','2026-04-18 09:26','red']
+    ];
+    function renderClaims(list=claims) {
+      $('#claimsTable').innerHTML = list.map(r => `<tr><td class="font-bold text-indigo-700 cursor-pointer go" data-page="detail">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="font-bold">${r[3]}</td><td>${r[4]}</td><td><span class="badge badge-${r[7]}">${r[5]}</span></td><td>${r[6]}</td><td><button class="text-indigo-600 font-semibold go" data-page="detail">查看</button><span class="mx-2 text-slate-300">|</span><button class="text-slate-600">导出</button></td></tr>`).join('');
+    }
+    renderClaims();
+    $('#filterClaims')?.addEventListener('click', () => {
+      const kw = $('#claimKeyword').value.trim();
+      renderClaims(kw ? claims.filter(x => x.join('').includes(kw)) : claims);
+    });
+
+    const approvals = [
+      ['BX-202604-018','周亦航','前端研发一部','差旅费','深圳客户现场支持','¥3,860.00','部门主管','6小时'],
+      ['BX-202604-017','林梓','产品设计部','费用报销','办公用品采购','¥928.00','审核','2小时'],
+      ['BX-202604-016','沈知远','质量保障部','费用报销','测试设备配件采购','¥1,420.00','会计','1天']
+    ];
+    $('#approvalTable').innerHTML = approvals.map(r => `<tr><td class="font-bold text-indigo-700">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td class="font-bold">${r[5]}</td><td><span class="badge badge-purple">${r[6]}</span></td><td class="text-orange-600 font-semibold">${r[7]}</td><td><button class="btn btn-primary go" data-page="detail">审批</button></td></tr>`).join('');
+
+    function travelRow() {
+      return `<tr class="travel-row"><td><input class="input" type="date"></td><td><input class="input min-w-[140px]" placeholder="深圳 → 上海"></td><td><input class="input days" type="number" value="1" min="0"></td>${['flight','train','traffic','hotel','meal','other'].map(()=>`<td><input class="input cost" type="number" value="0" min="0"></td>`).join('')}<td class="font-bold subtotal">0</td><td><button class="text-red-500 del">删除</button></td></tr>`;
+    }
+    function generalRow() {
+      return `<tr class="general-row"><td><input class="input" placeholder="办公用品 / 资料打印"></td><td><input class="input amount" type="number" value="0"></td><td><input class="input" placeholder="备注"></td><td><button class="text-red-500 del">删除</button></td></tr>`;
+    }
+    function recalcTravel(){
+      let total = 0;
+      $$('.travel-row').forEach(row => { let vals = $$('.cost', row).map(i => +i.value || 0); let sub = vals.reduce((a,b)=>a+b,0); $('.subtotal', row).textContent = sub.toFixed(2); total += sub; });
+      $('#travelTotal').value = total.toFixed(2); $('#travelBalance').value = (total - (+$('#travelAdvance').value||0)).toFixed(2);
+    }
+    function recalcGeneral(){
+      let total = $$('.general-row .amount').reduce((a,i)=>a+(+i.value||0),0);
+      $('#generalTotal').value = total.toFixed(2); $('#generalBalance').value = (total - (+$('#generalAdvance').value||0)).toFixed(2);
+    }
+    $('#addTravelRow')?.addEventListener('click', () => { $('#travelRows').insertAdjacentHTML('beforeend', travelRow()); lucide.createIcons(); });
+    $('#addGeneralRow')?.addEventListener('click', () => { $('#generalRows').insertAdjacentHTML('beforeend', generalRow()); lucide.createIcons(); });
+    document.addEventListener('input', e => { if(e.target.closest('#travel-form')) recalcTravel(); if(e.target.closest('#general-form')) recalcGeneral(); });
+    document.addEventListener('click', e => { if(e.target.classList.contains('del')) { e.target.closest('tr').remove(); recalcTravel(); recalcGeneral(); } });
+    $('#travelRows').innerHTML = travelRow() + travelRow();
+    $('#generalRows').innerHTML = generalRow() + generalRow();
+    recalcTravel(); recalcGeneral();
+
+    function flowHTML(active=2) {
+      const steps = ['报销人/出差人','负责人','部门主管','审核','会计','出纳','完成'];
+      return steps.map((s,i)=>`<div class="workflow-step mb-4"><div class="dot ${i<active?'bg-green-500':i===active?'bg-indigo-500':'bg-slate-300'}">${i<active?'✓':i+1}</div><div><div class="font-bold text-sm">${s}</div><div class="text-xs text-slate-500 mt-1">${i<active?'已通过':i===active?'当前处理节点':'待处理'}</div></div></div>`).join('');
+    }
+    $('#flowPreview').innerHTML = flowHTML(0); $('#flowPreview2').innerHTML = flowHTML(0); $('#approvalFlow').innerHTML = flowHTML(2);
+
+    const modal = $('#modal');
+    function openModal(title, text, danger=false){ $('#modalTitle').textContent=title; $('#modalText').textContent=text; $('#confirmModal').className = 'btn ' + (danger?'btn-danger':'btn-primary'); modal.classList.add('show'); lucide.createIcons(); }
+    $$('.open-submit').forEach(b=>b.addEventListener('click',()=>openModal('提交审批','确认后单据将进入负责人审批节点。')));
+    $$('.open-approve').forEach(b=>b.addEventListener('click',()=>openModal('审批通过','确认通过后，单据将流转到下一个审批节点。')));
+    $$('.open-reject').forEach(b=>b.addEventListener('click',()=>openModal('驳回单据','驳回后单据将退回给报销人修改。', true)));
+    $$('.open-transfer').forEach(b=>b.addEventListener('click',()=>$('#transferModal').classList.add('show')));
+    $$('.open-addsign').forEach(b=>b.addEventListener('click',()=>$('#addsignModal').classList.add('show')));
+    $$('.close-flow').forEach(b=>b.addEventListener('click',()=>$$('.modal-mask').forEach(m=>m.classList.remove('show'))));
+    $('#confirmTransfer').onclick = () => { $('#transferModal').classList.remove('show'); openToast('已转交给李明，当前节点责任人已更新'); };
+    $('#confirmAddsign').onclick = () => { $('#addsignModal').classList.remove('show'); openToast('已发起加签，等待加签人确认'); };
+    $('#closeModal').onclick = $('#cancelModal').onclick = () => modal.classList.remove('show');
+    $('#confirmModal').onclick = () => { modal.classList.remove('show'); openToast(); };
+    function openToast(message='操作成功，流程状态已更新'){ const t=document.createElement('div'); t.className='fixed right-5 top-20 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl z-[80]'; t.textContent=message; document.body.appendChild(t); setTimeout(()=>t.remove(),1800); }
+
+    let chartReady = false;
+    function initCharts(){
+      if(chartReady) return; chartReady = true;
+      new Chart($('#trendChart'), { type:'line', data:{ labels:['1月','2月','3月','4月','5月','6月'], datasets:[{ label:'报销金额', data:[32,45,38,86,64,72], borderColor:'#4f46e5', backgroundColor:'rgba(79,70,229,.12)', tension:.42, fill:true }] }, options:{ plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#eef2f7'}}, x:{grid:{display:false}}} } });
+      new Chart($('#typeChart'), { type:'doughnut', data:{ labels:['差旅费','办公采购','行政费用','其他'], datasets:[{ data:[45,25,18,12], backgroundColor:['#4f46e5','#06b6d4','#10b981','#f59e0b'], borderWidth:0 }] }, options:{ plugins:{legend:{position:'bottom'}} } });
+    }
+
+    lucide.createIcons();
+  </script>
+</body>
+</html>

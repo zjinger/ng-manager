@@ -15,6 +15,12 @@ type UserRow = {
   status: "active" | "inactive";
   source: "local" | "imported";
   remark: string | null;
+  manager_user_id: string | null;
+  manager_username: string | null;
+  manager_display_name: string | null;
+  finance_approver_user_id: string | null;
+  finance_approver_username: string | null;
+  finance_approver_display_name: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,10 +48,18 @@ export class UserRepo {
             u.status,
             u.source,
             u.remark,
+            u.manager_user_id,
+            manager.username AS manager_username,
+            manager.display_name AS manager_display_name,
+            u.finance_approver_user_id,
+            finance_approver.username AS finance_approver_username,
+            finance_approver.display_name AS finance_approver_display_name,
             u.created_at,
             u.updated_at
           FROM users u
           LEFT JOIN admin_accounts aa ON aa.user_id = u.id
+          LEFT JOIN users manager ON manager.id = u.manager_user_id
+          LEFT JOIN users finance_approver ON finance_approver.id = u.finance_approver_user_id
           WHERE u.id = ?
         `
       )
@@ -69,10 +83,18 @@ export class UserRepo {
             u.status,
             u.source,
             u.remark,
+            u.manager_user_id,
+            manager.username AS manager_username,
+            manager.display_name AS manager_display_name,
+            u.finance_approver_user_id,
+            finance_approver.username AS finance_approver_username,
+            finance_approver.display_name AS finance_approver_display_name,
             u.created_at,
             u.updated_at
           FROM users u
           LEFT JOIN admin_accounts aa ON aa.user_id = u.id
+          LEFT JOIN users manager ON manager.id = u.manager_user_id
+          LEFT JOIN users finance_approver ON finance_approver.id = u.finance_approver_user_id
           WHERE u.username = ?
         `
       )
@@ -85,8 +107,9 @@ export class UserRepo {
       .prepare(
         `
         INSERT INTO users (
-          id, username, display_name, email, mobile, title_code, status, source, remark, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, username, display_name, email, mobile, title_code, status, source, remark,
+          manager_user_id, finance_approver_user_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -99,6 +122,8 @@ export class UserRepo {
         entity.status,
         entity.source,
         entity.remark,
+        entity.managerUserId,
+        entity.financeApproverUserId,
         entity.createdAt,
         entity.updatedAt
       );
@@ -116,6 +141,8 @@ export class UserRepo {
           title_code = ?,
           status = ?,
           remark = ?,
+          manager_user_id = ?,
+          finance_approver_user_id = ?,
           updated_at = ?
         WHERE id = ?
       `
@@ -127,6 +154,8 @@ export class UserRepo {
         input.titleCode ?? null,
         input.status ?? "active",
         input.remark ?? null,
+        input.managerUserId ?? null,
+        input.financeApproverUserId ?? null,
         updatedAt,
         id
       );
@@ -175,10 +204,18 @@ export class UserRepo {
             u.status,
             u.source,
             u.remark,
+            u.manager_user_id,
+            manager.username AS manager_username,
+            manager.display_name AS manager_display_name,
+            u.finance_approver_user_id,
+            finance_approver.username AS finance_approver_username,
+            finance_approver.display_name AS finance_approver_display_name,
             u.created_at,
             u.updated_at
           FROM users u
           LEFT JOIN admin_accounts aa ON aa.user_id = u.id
+          LEFT JOIN users manager ON manager.id = u.manager_user_id
+          LEFT JOIN users finance_approver ON finance_approver.id = u.finance_approver_user_id
           ${whereClause}
           ORDER BY u.created_at DESC, u.updated_at DESC
           LIMIT ? OFFSET ?
@@ -197,7 +234,8 @@ export class UserRepo {
   attachDepartments(entity: UserEntity, departments: UserDepartmentEntity[]): UserEntity {
     return {
       ...entity,
-      departments
+      departments,
+      primaryDepartment: departments[0] ?? null
     };
   }
 
@@ -216,6 +254,23 @@ export class UserRepo {
       source: row.source,
       remark: row.remark,
       departments: [],
+      primaryDepartment: null,
+      managerUserId: row.manager_user_id,
+      managerUser: row.manager_user_id
+        ? {
+            id: row.manager_user_id,
+            username: row.manager_username ?? "",
+            displayName: row.manager_display_name
+          }
+        : null,
+      financeApproverUserId: row.finance_approver_user_id,
+      financeApproverUser: row.finance_approver_user_id
+        ? {
+            id: row.finance_approver_user_id,
+            username: row.finance_approver_username ?? "",
+            displayName: row.finance_approver_display_name
+          }
+        : null,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

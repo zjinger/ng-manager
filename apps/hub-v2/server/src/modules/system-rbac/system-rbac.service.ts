@@ -84,6 +84,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       name: input.name.trim(),
       description: input.description?.trim() || null,
       isBuiltin: false,
+      purposeCode: input.purposeCode?.trim() || "business",
+      purposeName: input.purposeName?.trim() || "业务角色",
       status: input.status ?? "active",
       sort: input.sort ?? 0,
       createdAt: now,
@@ -123,6 +125,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       code: nextCode,
       name: input.name?.trim() ?? current.name,
       description: input.description === undefined ? current.description : input.description?.trim() || null,
+      purposeCode: input.purposeCode?.trim() || current.purposeCode,
+      purposeName: input.purposeName?.trim() || current.purposeName,
       status: input.status ?? current.status,
       sort: input.sort ?? current.sort,
       updatedAt: nowIso()

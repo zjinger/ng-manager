@@ -12,7 +12,9 @@ export const createUserSchema = z.object({
   titleCode: z.string().trim().optional(),
   remark: z.string().trim().optional(),
   loginEnabled: z.boolean().optional(),
-  departments: z.array(userDepartmentSchema).optional()
+  departments: z.array(userDepartmentSchema).max(1).optional(),
+  managerUserId: z.string().trim().nullable().optional(),
+  financeApproverUserId: z.string().trim().nullable().optional()
 });
 
 export const updateUserSchema = z.object({
@@ -23,7 +25,9 @@ export const updateUserSchema = z.object({
   status: z.enum(["active", "inactive"]).optional(),
   remark: z.string().trim().nullable().optional(),
   loginEnabled: z.boolean().optional(),
-  departments: z.array(userDepartmentSchema).optional()
+  departments: z.array(userDepartmentSchema).max(1).optional(),
+  managerUserId: z.string().trim().nullable().optional(),
+  financeApproverUserId: z.string().trim().nullable().optional()
 });
 
 export const listUsersQuerySchema = z.object({

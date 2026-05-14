@@ -18,8 +18,19 @@ export interface UserEntity {
   source: UserSource;
   remark: string | null;
   departments: UserDepartmentEntity[];
+  primaryDepartment: UserDepartmentEntity | null;
+  managerUserId: string | null;
+  managerUser: UserRef | null;
+  financeApproverUserId: string | null;
+  financeApproverUser: UserRef | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserRef {
+  id: string;
+  username: string;
+  displayName: string | null;
 }
 
 export interface CreateUserInput {
@@ -31,6 +42,8 @@ export interface CreateUserInput {
   remark?: string;
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
+  managerUserId?: string | null;
+  financeApproverUserId?: string | null;
 }
 
 export interface UpdateUserInput {
@@ -42,6 +55,8 @@ export interface UpdateUserInput {
   remark?: string | null;
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
+  managerUserId?: string | null;
+  financeApproverUserId?: string | null;
 }
 
 export interface ResetUserPasswordInput {

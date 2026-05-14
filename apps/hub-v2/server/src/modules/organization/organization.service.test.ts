@@ -21,6 +21,7 @@ function createDb() {
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
       external_finance_code TEXT,
+      manager_user_id TEXT,
       status TEXT NOT NULL DEFAULT 'active',
       sort INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -31,34 +32,13 @@ function createDb() {
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       department_id TEXT NOT NULL,
-      relation_type TEXT NOT NULL DEFAULT 'secondary',
+      relation_type TEXT NOT NULL DEFAULT 'primary',
       role_code TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       UNIQUE(user_id, department_id)
     );
-    CREATE UNIQUE INDEX idx_user_departments_primary
-      ON user_departments(user_id)
-      WHERE relation_type = 'primary';
-
-    CREATE TABLE finance_roles (
-      id TEXT PRIMARY KEY,
-      code TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      description TEXT,
-      status TEXT NOT NULL DEFAULT 'active',
-      sort INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE user_finance_roles (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      role_id TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      UNIQUE(user_id, role_id)
-    );
+    CREATE UNIQUE INDEX idx_user_departments_primary ON user_departments(user_id);
   `);
   return db;
 }
@@ -116,19 +96,25 @@ describe("OrganizationService", () => {
     }
   });
 
-  it("keeps finance roles independent from system permissions", async () => {
+  it("stores department manager and replaces the user primary department", async () => {
     const db = createDb();
     try {
       db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_1", "u1", "用户一");
+      db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_2", "u2", "用户二");
       const service = new OrganizationService(new OrganizationRepo(db));
-      const role = await service.createFinanceRole({ code: "finance_viewer", name: "财务查看" }, adminCtx);
-      const assigned = await service.addUserFinanceRole("usr_1", role.id, adminCtx);
+      const dep1 = await service.createDepartment({ code: "dep1", name: "部门一", managerUserId: "usr_2" }, adminCtx);
+      const dep2 = await service.createDepartment({ code: "dep2", name: "部门二" }, adminCtx);
 
-      assert.equal(assigned.roleCode, "finance_viewer");
-      await assert.rejects(
-        () => service.createFinanceRole({ code: "blocked", name: "无权限" }, userCtx),
-        /forbidden/
-      );
+      const created = await service.listDepartments({ keyword: "dep1" }, adminCtx);
+      assert.equal(created[0].managerUserId, "usr_2");
+      assert.equal(created[0].managerUser?.username, "u2");
+
+      await service.addUserDepartment("usr_1", { departmentId: dep1.id }, adminCtx);
+      await service.addUserDepartment("usr_1", { departmentId: dep2.id }, adminCtx);
+      const departments = await service.listUserDepartments("usr_1", userCtx);
+      assert.equal(departments.length, 1);
+      assert.equal(departments[0].departmentId, dep2.id);
+      assert.equal(departments[0].relationType, "primary");
     } finally {
       db.close();
     }

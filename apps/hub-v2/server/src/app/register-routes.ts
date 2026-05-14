@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createReadStream } from "node:fs";
 import type { FastifyInstance } from "fastify";
+import approvalTemplateRoutes from "../modules/approval/approval-template.routes";
 import announcementPublicRoutes from "../modules/announcement/announcement-public.routes";
 import announcementRoutes from "../modules/announcement/announcement.routes";
 import apiTokenAdminRoutes from "../modules/api-token/api-token-admin.routes";
@@ -111,6 +112,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(releaseRoutes, { prefix: "/api/admin" });
   await app.register(sharedConfigRoutes, { prefix: "/api/admin" });
   await app.register(systemRbacRoutes, { prefix: "/api/admin" });
+  await app.register(approvalTemplateRoutes, { prefix: "/api/admin" });
   await app.register(userRoutes, { prefix: "/api/admin" });
   await app.register(projectRoutes, { prefix: "/api/admin" });
   await app.register(uploadRoutes, { prefix: "/api/admin" });

@@ -3,13 +3,9 @@ import type {
   DepartmentEntity,
   DepartmentRelationType,
   DepartmentStatus,
-  FinanceRoleEntity,
-  FinanceRoleStatus,
   ListDepartmentsQuery,
-  ListFinanceRolesQuery,
   UserDepartmentEntity,
-  UserDepartmentInput,
-  UserFinanceRoleEntity
+  UserDepartmentInput
 } from "./organization.types";
 
 type DepartmentRow = {
@@ -18,6 +14,9 @@ type DepartmentRow = {
   code: string;
   name: string;
   external_finance_code: string | null;
+  manager_user_id: string | null;
+  manager_username: string | null;
+  manager_display_name: string | null;
   status: DepartmentStatus;
   sort: number;
   created_at: string;
@@ -36,26 +35,6 @@ type UserDepartmentRow = {
   updated_at: string;
 };
 
-type FinanceRoleRow = {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  status: FinanceRoleStatus;
-  sort: number;
-  created_at: string;
-  updated_at: string;
-};
-
-type UserFinanceRoleRow = {
-  id: string;
-  user_id: string;
-  role_id: string;
-  role_code: string;
-  role_name: string;
-  created_at: string;
-};
-
 export class OrganizationRepo {
   constructor(private readonly db: Database.Database) {}
 
@@ -63,11 +42,11 @@ export class OrganizationRepo {
     const conditions: string[] = [];
     const params: unknown[] = [];
     if (query.status) {
-      conditions.push("status = ?");
+      conditions.push("d.status = ?");
       params.push(query.status);
     }
     if (query.keyword?.trim()) {
-      conditions.push("(code LIKE ? OR name LIKE ? OR external_finance_code LIKE ?)");
+      conditions.push("(d.code LIKE ? OR d.name LIKE ? OR d.external_finance_code LIKE ?)");
       const keyword = `%${query.keyword.trim()}%`;
       params.push(keyword, keyword, keyword);
     }
@@ -75,10 +54,15 @@ export class OrganizationRepo {
     const rows = this.db
       .prepare(
         `
-          SELECT id, parent_id, code, name, external_finance_code, status, sort, created_at, updated_at
-          FROM departments
+          SELECT
+            d.id, d.parent_id, d.code, d.name, d.external_finance_code, d.manager_user_id,
+            u.username AS manager_username,
+            u.display_name AS manager_display_name,
+            d.status, d.sort, d.created_at, d.updated_at
+          FROM departments d
+          LEFT JOIN users u ON u.id = d.manager_user_id
           ${whereClause}
-          ORDER BY sort ASC, name ASC, created_at DESC
+          ORDER BY d.sort ASC, d.name ASC, d.created_at DESC
         `
       )
       .all(...params) as DepartmentRow[];
@@ -89,9 +73,14 @@ export class OrganizationRepo {
     const row = this.db
       .prepare(
         `
-          SELECT id, parent_id, code, name, external_finance_code, status, sort, created_at, updated_at
-          FROM departments
-          WHERE id = ?
+          SELECT
+            d.id, d.parent_id, d.code, d.name, d.external_finance_code, d.manager_user_id,
+            u.username AS manager_username,
+            u.display_name AS manager_display_name,
+            d.status, d.sort, d.created_at, d.updated_at
+          FROM departments d
+          LEFT JOIN users u ON u.id = d.manager_user_id
+          WHERE d.id = ?
         `
       )
       .get(id) as DepartmentRow | undefined;
@@ -102,9 +91,14 @@ export class OrganizationRepo {
     const row = this.db
       .prepare(
         `
-          SELECT id, parent_id, code, name, external_finance_code, status, sort, created_at, updated_at
-          FROM departments
-          WHERE code = ?
+          SELECT
+            d.id, d.parent_id, d.code, d.name, d.external_finance_code, d.manager_user_id,
+            u.username AS manager_username,
+            u.display_name AS manager_display_name,
+            d.status, d.sort, d.created_at, d.updated_at
+          FROM departments d
+          LEFT JOIN users u ON u.id = d.manager_user_id
+          WHERE d.code = ?
         `
       )
       .get(code) as DepartmentRow | undefined;
@@ -116,8 +110,8 @@ export class OrganizationRepo {
       .prepare(
         `
           INSERT INTO departments (
-            id, parent_id, code, name, external_finance_code, status, sort, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, parent_id, code, name, external_finance_code, manager_user_id, status, sort, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
@@ -126,6 +120,7 @@ export class OrganizationRepo {
         entity.code,
         entity.name,
         entity.externalFinanceCode,
+        entity.managerUserId,
         entity.status,
         entity.sort,
         entity.createdAt,
@@ -138,7 +133,7 @@ export class OrganizationRepo {
       .prepare(
         `
           UPDATE departments
-          SET parent_id = ?, code = ?, name = ?, external_finance_code = ?, status = ?, sort = ?, updated_at = ?
+          SET parent_id = ?, code = ?, name = ?, external_finance_code = ?, manager_user_id = ?, status = ?, sort = ?, updated_at = ?
           WHERE id = ?
         `
       )
@@ -147,6 +142,7 @@ export class OrganizationRepo {
         entity.code,
         entity.name,
         entity.externalFinanceCode,
+        entity.managerUserId,
         entity.status,
         entity.sort,
         entity.updatedAt,
@@ -171,7 +167,7 @@ export class OrganizationRepo {
           FROM user_departments ud
           INNER JOIN departments d ON d.id = ud.department_id
           WHERE ud.user_id = ?
-          ORDER BY CASE ud.relation_type WHEN 'primary' THEN 0 ELSE 1 END, d.sort ASC, d.name ASC
+          ORDER BY d.sort ASC, d.name ASC
         `
       )
       .all(userId) as UserDepartmentRow[];
@@ -200,7 +196,7 @@ export class OrganizationRepo {
           FROM user_departments ud
           INNER JOIN departments d ON d.id = ud.department_id
           WHERE ud.user_id IN (${placeholders})
-          ORDER BY CASE ud.relation_type WHEN 'primary' THEN 0 ELSE 1 END, d.sort ASC, d.name ASC
+          ORDER BY d.sort ASC, d.name ASC
         `
       )
       .all(...userIds) as UserDepartmentRow[];
@@ -220,7 +216,7 @@ export class OrganizationRepo {
         `
           INSERT INTO user_departments (
             id, user_id, department_id, relation_type, role_code, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, 'primary', ?, ?, ?)
         `
       );
       for (const entry of entries) {
@@ -228,7 +224,6 @@ export class OrganizationRepo {
           entry.id,
           userId,
           entry.departmentId,
-          entry.relationType ?? "secondary",
           entry.roleCode?.trim() || null,
           entry.createdAt,
           entry.updatedAt
@@ -239,134 +234,30 @@ export class OrganizationRepo {
   }
 
   addUserDepartment(userId: string, entry: UserDepartmentInput & { id: string; createdAt: string; updatedAt: string }): void {
-    this.db
-      .prepare(
-        `
-          INSERT INTO user_departments (
-            id, user_id, department_id, relation_type, role_code, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(user_id, department_id) DO UPDATE SET
-            relation_type = excluded.relation_type,
-            role_code = excluded.role_code,
-            updated_at = excluded.updated_at
-        `
-      )
-      .run(
-        entry.id,
-        userId,
-        entry.departmentId,
-        entry.relationType ?? "secondary",
-        entry.roleCode?.trim() || null,
-        entry.createdAt,
-        entry.updatedAt
-      );
+    const transaction = this.db.transaction(() => {
+      this.db.prepare("DELETE FROM user_departments WHERE user_id = ?").run(userId);
+      this.db
+        .prepare(
+          `
+            INSERT INTO user_departments (
+              id, user_id, department_id, relation_type, role_code, created_at, updated_at
+            ) VALUES (?, ?, ?, 'primary', ?, ?, ?)
+          `
+        )
+        .run(
+          entry.id,
+          userId,
+          entry.departmentId,
+          entry.roleCode?.trim() || null,
+          entry.createdAt,
+          entry.updatedAt
+        );
+    });
+    transaction();
   }
 
   removeUserDepartment(userId: string, departmentId: string): void {
     this.db.prepare("DELETE FROM user_departments WHERE user_id = ? AND department_id = ?").run(userId, departmentId);
-  }
-
-  listFinanceRoles(query: ListFinanceRolesQuery = {}): FinanceRoleEntity[] {
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-    if (query.status) {
-      conditions.push("status = ?");
-      params.push(query.status);
-    }
-    if (query.keyword?.trim()) {
-      conditions.push("(code LIKE ? OR name LIKE ?)");
-      const keyword = `%${query.keyword.trim()}%`;
-      params.push(keyword, keyword);
-    }
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-    const rows = this.db
-      .prepare(
-        `
-          SELECT id, code, name, description, status, sort, created_at, updated_at
-          FROM finance_roles
-          ${whereClause}
-          ORDER BY sort ASC, name ASC, created_at DESC
-        `
-      )
-      .all(...params) as FinanceRoleRow[];
-    return rows.map((row) => this.mapFinanceRole(row));
-  }
-
-  findFinanceRoleById(id: string): FinanceRoleEntity | null {
-    const row = this.db
-      .prepare("SELECT id, code, name, description, status, sort, created_at, updated_at FROM finance_roles WHERE id = ?")
-      .get(id) as FinanceRoleRow | undefined;
-    return row ? this.mapFinanceRole(row) : null;
-  }
-
-  findFinanceRoleByCode(code: string): FinanceRoleEntity | null {
-    const row = this.db
-      .prepare("SELECT id, code, name, description, status, sort, created_at, updated_at FROM finance_roles WHERE code = ?")
-      .get(code) as FinanceRoleRow | undefined;
-    return row ? this.mapFinanceRole(row) : null;
-  }
-
-  createFinanceRole(entity: FinanceRoleEntity): void {
-    this.db
-      .prepare(
-        `
-          INSERT INTO finance_roles (id, code, name, description, status, sort, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `
-      )
-      .run(entity.id, entity.code, entity.name, entity.description, entity.status, entity.sort, entity.createdAt, entity.updatedAt);
-  }
-
-  updateFinanceRole(entity: FinanceRoleEntity): void {
-    this.db
-      .prepare(
-        `
-          UPDATE finance_roles
-          SET code = ?, name = ?, description = ?, status = ?, sort = ?, updated_at = ?
-          WHERE id = ?
-        `
-      )
-      .run(entity.code, entity.name, entity.description, entity.status, entity.sort, entity.updatedAt, entity.id);
-  }
-
-  deleteFinanceRole(id: string): void {
-    this.db.prepare("DELETE FROM finance_roles WHERE id = ?").run(id);
-  }
-
-  listUserFinanceRoles(userId: string): UserFinanceRoleEntity[] {
-    const rows = this.db
-      .prepare(
-        `
-          SELECT
-            ufr.id,
-            ufr.user_id,
-            ufr.role_id,
-            fr.code AS role_code,
-            fr.name AS role_name,
-            ufr.created_at
-          FROM user_finance_roles ufr
-          INNER JOIN finance_roles fr ON fr.id = ufr.role_id
-          WHERE ufr.user_id = ?
-          ORDER BY fr.sort ASC, fr.name ASC
-        `
-      )
-      .all(userId) as UserFinanceRoleRow[];
-    return rows.map((row) => this.mapUserFinanceRole(row));
-  }
-
-  addUserFinanceRole(userId: string, roleId: string, id: string, createdAt: string): void {
-    this.db
-      .prepare(
-        `
-          INSERT OR IGNORE INTO user_finance_roles (id, user_id, role_id, created_at)
-          VALUES (?, ?, ?, ?)
-        `
-      )
-      .run(id, userId, roleId, createdAt);
-  }
-
-  removeUserFinanceRole(userId: string, roleId: string): void {
-    this.db.prepare("DELETE FROM user_finance_roles WHERE user_id = ? AND role_id = ?").run(userId, roleId);
   }
 
   userExists(userId: string): boolean {
@@ -381,6 +272,14 @@ export class OrganizationRepo {
       code: row.code,
       name: row.name,
       externalFinanceCode: row.external_finance_code,
+      managerUserId: row.manager_user_id,
+      managerUser: row.manager_user_id
+        ? {
+            id: row.manager_user_id,
+            username: row.manager_username ?? "",
+            displayName: row.manager_display_name
+          }
+        : null,
       status: row.status,
       sort: row.sort,
       createdAt: row.created_at,
@@ -395,34 +294,10 @@ export class OrganizationRepo {
       departmentId: row.department_id,
       departmentCode: row.department_code,
       departmentName: row.department_name,
-      relationType: row.relation_type,
+      relationType: "primary",
       roleCode: row.role_code,
       createdAt: row.created_at,
       updatedAt: row.updated_at
-    };
-  }
-
-  private mapFinanceRole(row: FinanceRoleRow): FinanceRoleEntity {
-    return {
-      id: row.id,
-      code: row.code,
-      name: row.name,
-      description: row.description,
-      status: row.status,
-      sort: row.sort,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
-  }
-
-  private mapUserFinanceRole(row: UserFinanceRoleRow): UserFinanceRoleEntity {
-    return {
-      id: row.id,
-      userId: row.user_id,
-      roleId: row.role_id,
-      roleCode: row.role_code,
-      roleName: row.role_name,
-      createdAt: row.created_at
     };
   }
 }
