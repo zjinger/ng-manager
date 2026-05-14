@@ -28,7 +28,7 @@ export const ADMIN_ROUTES: Routes = [
         path: 'roles',
         data: { title: '角色管理', icon: 'safety-certificate' },
         loadComponent: () =>
-          import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
+          import('./pages/roles-page/roles-page.component').then((m) => m.RolesPageComponent),
       },
       {
         path: 'permissions',

@@ -74,6 +74,9 @@ import { ReleaseService } from "../modules/release/release.service";
 import type { SharedConfigCommandContract, SharedConfigQueryContract } from "../modules/shared-config/shared-config.contract";
 import { SharedConfigRepo } from "../modules/shared-config/shared-config.repo";
 import { SharedConfigService } from "../modules/shared-config/shared-config.service";
+import type { SystemRbacCommandContract, SystemRbacQueryContract } from "../modules/system-rbac/system-rbac.contract";
+import { SystemRbacRepo } from "../modules/system-rbac/system-rbac.repo";
+import { SystemRbacService } from "../modules/system-rbac/system-rbac.service";
 import { HealthQueryService } from "../modules/system/health.query";
 import type { UploadCommandContract, UploadQueryContract } from "../modules/upload/upload.contract";
 import { UploadRepo } from "../modules/upload/upload.repo";
@@ -132,6 +135,8 @@ export type AppContainer = {
   releaseQuery: ReleaseQueryContract;
   sharedConfigCommand: SharedConfigCommandContract;
   sharedConfigQuery: SharedConfigQueryContract;
+  systemRbacCommand: SystemRbacCommandContract;
+  systemRbacQuery: SystemRbacQueryContract;
   uploadCommand: UploadCommandContract;
   uploadQuery: UploadQueryContract;
   eventBus: ReturnType<typeof createInMemoryEventBus>;
@@ -236,6 +241,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
+  const systemRbacRepo = new SystemRbacRepo(db);
+  const systemRbacService = new SystemRbacService(systemRbacRepo);
   authService.ensureDefaultAdmin();
 
   const openaiClient = config.openaiApiKey
@@ -296,6 +303,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     releaseQuery: releaseService,
     sharedConfigCommand: sharedConfigService,
     sharedConfigQuery: sharedConfigService,
+    systemRbacCommand: systemRbacService,
+    systemRbacQuery: systemRbacService,
     uploadCommand: uploadService,
     uploadQuery: uploadService,
     eventBus,
