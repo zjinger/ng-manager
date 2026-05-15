@@ -12,7 +12,8 @@ function createDb() {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL,
-      display_name TEXT
+      display_name TEXT,
+      title_code TEXT
     );
 
     CREATE TABLE departments (
@@ -38,6 +39,27 @@ function createDb() {
       UNIQUE(user_id, department_id)
     );
     CREATE UNIQUE INDEX idx_user_departments_primary ON user_departments(user_id);
+
+    CREATE TABLE system_titles (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      sort INTEGER NOT NULL DEFAULT 0,
+      remark TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE department_titles (
+      id TEXT PRIMARY KEY,
+      department_id TEXT NOT NULL,
+      title_code TEXT NOT NULL,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(department_id, title_code)
+    );
   `);
   return db;
 }
@@ -113,6 +135,33 @@ describe("OrganizationService", () => {
       const departments = await service.listUserDepartments("usr_1", userCtx);
       assert.equal(departments.length, 1);
       assert.equal(departments[0].departmentId, dep2.id);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("manages department title bindings and counts members", async () => {
+    const db = createDb();
+    try {
+      db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_1", "u1", "用户一");
+      db.prepare("INSERT INTO system_titles (id, code, name, status, sort, remark, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run("title_1", "frontend_dev", "前端开发", "active", 10, null, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z");
+
+      const service = new OrganizationService(new OrganizationRepo(db));
+      const dep = await service.createDepartment({ code: "dep1", name: "部门一" }, adminCtx);
+      await service.addUserDepartment("usr_1", { departmentId: dep.id }, adminCtx);
+      db.prepare("UPDATE users SET title_code = ? WHERE id = ?").run("frontend_dev", "usr_1");
+
+      await service.addDepartmentTitle(dep.id, { titleCode: "frontend_dev" }, adminCtx);
+      const titles = await service.listDepartmentTitles(dep.id, adminCtx);
+
+      assert.equal(titles.length, 1);
+      assert.equal(titles[0].titleCode, "frontend_dev");
+      assert.equal(titles[0].memberCount, 1);
+
+      await service.removeDepartmentTitle(dep.id, "frontend_dev", adminCtx);
+      const nextTitles = await service.listDepartmentTitles(dep.id, adminCtx);
+      assert.equal(nextTitles.length, 0);
     } finally {
       db.close();
     }

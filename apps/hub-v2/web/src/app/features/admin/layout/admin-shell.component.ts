@@ -20,7 +20,6 @@ const ADMIN_NAV: NavSection[] = [
     items: [
       { key: 'users', label: '用户管理', icon: 'team', route: '/admin/users' },
       { key: 'departments', label: '部门组织', icon: 'cluster', route: '/admin/departments' },
-      { key: 'titles', label: '职务管理', icon: 'idcard', route: '/admin/titles' },
       // { key: 'groups', label: '用户组', icon: 'usergroup-add', route: '/admin/groups' },
     ],
   },
@@ -34,8 +33,9 @@ const ADMIN_NAV: NavSection[] = [
   },
   {
     key: 'system',
-    label: '系统',
+    label: '系统与日志',
     items: [
+      { key: 'titles', label: '全局职务库', icon: 'idcard', route: '/admin/titles' },
       { key: 'audit', label: '审计日志', icon: 'audit', route: '/admin/audit', badge: '占位', tone: 'info' },
       { key: 'settings', label: '系统设置', icon: 'setting', route: '/admin/settings' },
     ],

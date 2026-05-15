@@ -3,6 +3,7 @@ import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import {
   createDepartmentSchema,
+  departmentTitleSchema,
   listDepartmentsQuerySchema,
   updateDepartmentSchema,
   userDepartmentSchema
@@ -33,6 +34,27 @@ export default async function organizationRoutes(app: FastifyInstance) {
     const params = request.params as { departmentId: string };
     const body = updateDepartmentSchema.parse(request.body);
     return ok(await app.container.organizationCommand.updateDepartment(params.departmentId, body, ctx), "department updated");
+  });
+
+  app.get("/departments/:departmentId/titles", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { departmentId: string };
+    return ok({ items: await app.container.organizationQuery.listDepartmentTitles(params.departmentId, ctx) });
+  });
+
+  app.post("/departments/:departmentId/titles", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { departmentId: string };
+    const body = departmentTitleSchema.parse(request.body);
+    const item = await app.container.organizationCommand.addDepartmentTitle(params.departmentId, body, ctx);
+    return reply.status(201).send(ok(item, "department title added"));
+  });
+
+  app.delete("/departments/:departmentId/titles/:titleCode", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { departmentId: string; titleCode: string };
+    await app.container.organizationCommand.removeDepartmentTitle(params.departmentId, params.titleCode, ctx);
+    return ok({ id: params.titleCode }, "department title removed");
   });
 
   app.get("/users/:userId/departments", async (request) => {

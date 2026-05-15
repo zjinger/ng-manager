@@ -36,6 +36,23 @@ export interface UserDepartmentInput {
   roleCode?: string | null;
 }
 
+export interface DepartmentTitleEntity {
+  id: string;
+  departmentId: string;
+  titleCode: string;
+  titleName: string;
+  status: 'active' | 'inactive';
+  sort: number;
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DepartmentTitleInput {
+  titleCode: string;
+  sort?: number;
+}
+
 export interface CreateDepartmentInput {
   code: string;
   name: string;

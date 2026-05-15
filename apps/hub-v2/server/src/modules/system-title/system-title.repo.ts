@@ -71,6 +71,11 @@ export class SystemTitleRepo {
     return row.cnt;
   }
 
+  countDepartmentBindingsByTitleCode(code: string): number {
+    const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM department_titles WHERE title_code = ?").get(code) as { cnt: number };
+    return row.cnt;
+  }
+
   private mapRow(row: SystemTitleRow): SystemTitleEntity {
     return {
       id: row.id,

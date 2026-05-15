@@ -84,7 +84,7 @@ type AdminStat = {
           <div class="status-item">
             <span class="status-dot status-dot--ok"></span>
             <div>
-              <strong>项目治理</strong>
+              <strong>项目管理</strong>
               <small>已迁回普通平台侧入口</small>
             </div>
           </div>

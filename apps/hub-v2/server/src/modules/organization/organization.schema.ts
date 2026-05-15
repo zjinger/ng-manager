@@ -24,3 +24,8 @@ export const userDepartmentSchema = z.object({
   departmentId: z.string().trim().min(1),
   roleCode: z.string().trim().nullable().optional()
 });
+
+export const departmentTitleSchema = z.object({
+  titleCode: z.string().trim().min(1),
+  sort: z.coerce.number().int().min(0).optional()
+});

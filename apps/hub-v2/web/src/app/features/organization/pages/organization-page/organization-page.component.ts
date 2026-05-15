@@ -1,22 +1,135 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { DialogShellComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzFormModule } from 'ng-zorro-antd/form';
+import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 
 import { DepartmentFormDialogComponent } from '../../dialogs/department-form-dialog/department-form-dialog.component';
-import type { CreateDepartmentInput, DepartmentEntity, DepartmentTreeNode, UpdateDepartmentInput } from '../../models/organization.model';
+import type {
+  CreateDepartmentInput,
+  DepartmentEntity,
+  DepartmentTitleEntity,
+  DepartmentTitleInput,
+  DepartmentTreeNode,
+  UpdateDepartmentInput
+} from '../../models/organization.model';
 import { OrganizationApiService } from '../../services/organization-api.service';
 import type { UserEntity } from '../../../users/models/user.model';
 import { UserApiService } from '../../../users/services/user-api.service';
+import { SystemTitleApiService } from '../../../admin/services/system-title-api.service';
+import type { CreateSystemTitleInput, SystemTitleEntity, UpdateSystemTitleInput } from '../../../admin/models/system-title.model';
+import { TitleFormDialogComponent } from '../../../admin/pages/titles-page/titles-page.component';
 
 type FlatDepartmentNode = DepartmentTreeNode & {
   level: number;
 };
 
 @Component({
+  selector: 'app-department-title-attach-dialog',
+  standalone: true,
+  imports: [FormsModule, NzButtonModule, NzFormModule, NzInputModule, NzSelectModule, DialogShellComponent],
+  template: `
+    <app-dialog-shell [open]="open()" [width]="520" title="关联已有岗位" icon="link" (cancel)="cancel.emit()">
+      <div dialog-body>
+        <form nz-form [nzLayout]="'vertical'" class="title-attach-form">
+          <nz-form-item>
+            <nz-form-label nzRequired nzFor="existingTitleCode">岗位</nz-form-label>
+            <nz-form-control nzErrorTip="请选择岗位">
+              <nz-select
+                nzShowSearch
+                nzPlaceHolder="请选择全局职务"
+                [ngModel]="titleCode()"
+                name="existingTitleCode"
+                (ngModelChange)="titleCode.set($event || '')"
+              >
+                @for (item of options(); track item.code) {
+                  <nz-option [nzLabel]="item.name + ' / ' + item.code" [nzValue]="item.code"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+
+          <nz-form-item>
+            <nz-form-label nzFor="existingTitleSort">排序</nz-form-label>
+            <nz-form-control>
+              <input
+                id="existingTitleSort"
+                nz-input
+                type="number"
+                [ngModel]="sort()"
+                name="existingTitleSort"
+                (ngModelChange)="sort.set(+$event || 0)"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        </form>
+      </div>
+      <ng-container dialog-footer>
+        <button nz-button type="button" (click)="cancel.emit()">取消</button>
+        <button nz-button nzType="primary" type="button" [disabled]="!titleCode()" (click)="submit()">关联</button>
+      </ng-container>
+    </app-dialog-shell>
+  `,
+})
+export class DepartmentTitleAttachDialogComponent {
+  readonly open = input(false);
+  readonly options = input<SystemTitleEntity[]>([]);
+  readonly cancel = output<void>();
+  readonly save = output<DepartmentTitleInput>();
+
+  readonly titleCode = signal('');
+  readonly sort = signal(0);
+
+  constructor() {
+    effect(() => {
+      if (!this.open()) {
+        return;
+      }
+      this.titleCode.set('');
+      this.sort.set(0);
+    });
+  }
+
+  submit(): void {
+    const titleCode = this.titleCode().trim();
+    if (!titleCode) {
+      return;
+    }
+    this.save.emit({
+      titleCode,
+      sort: this.sort(),
+    });
+  }
+}
+
+@Component({
   selector: 'app-organization-page',
-  imports: [NzButtonModule, NzIconModule, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent, DepartmentFormDialogComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    NzButtonModule,
+    NzFormModule,
+    NzGridModule,
+    NzIconModule,
+    NzInputModule,
+    NzPopconfirmModule,
+    NzSelectModule,
+    NzTagModule,
+    PageHeaderComponent,
+    PageToolbarComponent,
+    SearchBoxComponent,
+    DepartmentFormDialogComponent,
+    DepartmentTitleAttachDialogComponent,
+    TitleFormDialogComponent
+  ],
   template: `
     <app-page-header title="部门组织" subtitle="管理公司组织架构、部门层级和人员分配" />
 
@@ -111,8 +224,89 @@ type FlatDepartmentNode = DepartmentTreeNode & {
         </section>
 
         <section class="department-card">
+          <header class="department-card__header">
+            <h2>部门岗位 <span>{{ departmentTitles().length }}</span></h2>
+            <div class="department-actions">
+              @if (selectedDepartment()) {
+                <button nz-button (click)="openAttachTitleDialog()">
+                  <span nz-icon nzType="link"></span>
+                  关联岗位
+                </button>
+                <button nz-button nzType="primary" (click)="openQuickCreateTitleDialog()">
+                  <span nz-icon nzType="plus"></span>
+                  新增岗位
+                </button>
+              }
+              <a nz-button routerLink="/admin/titles">查看全部职务</a>
+            </div>
+          </header>
+
+          @if (!selectedDepartment()) {
+            <div class="empty-state">先选择部门，再维护该部门岗位</div>
+          } @else if (departmentTitles().length === 0) {
+            <div class="empty-state">当前部门还没有关联岗位</div>
+          } @else {
+            <div class="members-table-wrap">
+              <table class="members-table">
+                <thead>
+                  <tr>
+                    <th>岗位名称</th>
+                    <th>岗位编码</th>
+                    <th>状态</th>
+                    <th>部门成员数</th>
+                    <th>排序</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (title of departmentTitles(); track title.id) {
+                    <tr>
+                      <td>{{ title.titleName }}</td>
+                      <td class="mono">{{ title.titleCode }}</td>
+                      <td>
+                        <nz-tag [nzColor]="title.status === 'active' ? 'green' : 'default'">
+                          {{ title.status === 'active' ? '启用' : '停用' }}
+                        </nz-tag>
+                      </td>
+                      <td>{{ title.memberCount }} 人</td>
+                      <td>{{ title.sort }}</td>
+                      <td>
+                        <div class="actions">
+                          <button nz-button nzSize="small" (click)="filterMembersByTitle(title.titleCode)">查看成员</button>
+                          <button
+                            nz-button
+                            nzSize="small"
+                            nzDanger
+                            nz-popconfirm
+                            nzPopconfirmTitle="确认从当前部门移除该岗位？"
+                            (nzOnConfirm)="removeDepartmentTitle(title)"
+                          >
+                            移除
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+
+        <section class="department-card">
           <header class="department-card__header department-members__header">
-            <h2>部门成员 <span>{{ memberTotal() }}</span></h2>
+            <h2>
+              部门成员
+              <span>{{ memberTotal() }}</span>
+              @if (memberTitleFilterLabel()) {
+                <nz-tag nzColor="blue">{{ memberTitleFilterLabel() }}</nz-tag>
+              }
+            </h2>
+            <div class="department-members__actions">
+              @if (memberTitleFilterCode()) {
+                <button nz-button nzSize="small" (click)="clearMemberTitleFilter()">清除岗位筛选</button>
+              }
+            </div>
             <app-search-box
               placeholder="搜索成员"
               [value]="memberKeyword()"
@@ -174,6 +368,21 @@ type FlatDepartmentNode = DepartmentTreeNode & {
       (cancel)="closeDepartmentDialog()"
       (create)="createDepartment($event)"
       (update)="updateDepartment($event)"
+    />
+
+    <app-department-title-attach-dialog
+      [open]="attachTitleDialogOpen()"
+      [options]="availableTitleOptions()"
+      (cancel)="closeAttachTitleDialog()"
+      (save)="attachExistingTitle($event)"
+    />
+
+    <app-title-form-dialog
+      [open]="quickCreateTitleDialogOpen()"
+      mode="create"
+      [initial]="null"
+      (cancel)="closeQuickCreateTitleDialog()"
+      (save)="createDepartmentTitle($event)"
     />
   `,
   styles: [
@@ -316,6 +525,10 @@ type FlatDepartmentNode = DepartmentTreeNode & {
         width: 220px;
       }
 
+      .department-members__actions {
+        margin-left: auto;
+      }
+
       .members-table-wrap {
         overflow-x: auto;
       }
@@ -417,12 +630,16 @@ type FlatDepartmentNode = DepartmentTreeNode & {
 export class OrganizationPageComponent {
   private readonly organizationApi = inject(OrganizationApiService);
   private readonly userApi = inject(UserApiService);
+  private readonly systemTitleApi = inject(SystemTitleApiService);
   private readonly message = inject(NzMessageService);
 
   readonly keyword = signal('');
   readonly memberKeyword = signal('');
+  readonly memberTitleFilterCode = signal('');
   readonly departmentTree = signal<DepartmentTreeNode[]>([]);
   readonly allDepartments = signal<DepartmentEntity[]>([]);
+  readonly departmentTitles = signal<DepartmentTitleEntity[]>([]);
+  readonly allTitleLibrary = signal<SystemTitleEntity[]>([]);
   readonly selectedDepartmentId = signal('');
   readonly members = signal<UserEntity[]>([]);
   readonly memberTotal = signal(0);
@@ -431,12 +648,26 @@ export class OrganizationPageComponent {
   readonly dialogMode = signal<'create' | 'edit'>('create');
   readonly dialogParentId = signal('');
   readonly editingDepartment = signal<DepartmentEntity | null>(null);
+  readonly attachTitleDialogOpen = signal(false);
+  readonly quickCreateTitleDialogOpen = signal(false);
 
   readonly flatTree = computed(() => this.flattenTree(this.departmentTree()));
   readonly selectedDepartment = computed(() => this.allDepartments().find((department) => department.id === this.selectedDepartmentId()) ?? null);
+  readonly titleLabelMap = computed<Record<string, string>>(() =>
+    Object.fromEntries(this.allTitleLibrary().map((item) => [item.code, item.name]))
+  );
+  readonly memberTitleFilterLabel = computed(() => {
+    const code = this.memberTitleFilterCode();
+    return code ? this.titleLabelMap()[code] ?? code : '';
+  });
+  readonly availableTitleOptions = computed(() => {
+    const attachedCodes = new Set(this.departmentTitles().map((item) => item.titleCode));
+    return this.allTitleLibrary().filter((item) => !attachedCodes.has(item.code));
+  });
 
   constructor() {
     this.loadDepartments();
+    this.loadTitleLibrary();
   }
 
   loadDepartments(): void {
@@ -449,6 +680,7 @@ export class OrganizationPageComponent {
           this.selectedDepartmentId.set(flat[0]?.id ?? '');
         }
         this.loadMembers();
+        this.loadDepartmentTitles();
       },
       error: () => this.message.error('加载部门树失败'),
     });
@@ -460,7 +692,9 @@ export class OrganizationPageComponent {
 
   selectDepartment(departmentId: string): void {
     this.selectedDepartmentId.set(departmentId);
+    this.memberTitleFilterCode.set('');
     this.loadMembers();
+    this.loadDepartmentTitles();
   }
 
   startCreateDepartment(): void {
@@ -533,8 +767,10 @@ export class OrganizationPageComponent {
       })
       .subscribe({
         next: (result) => {
-          this.members.set(result.items);
-          this.memberTotal.set(result.total);
+          const titleCode = this.memberTitleFilterCode().trim();
+          const items = titleCode ? result.items.filter((item) => item.titleCode === titleCode) : result.items;
+          this.members.set(items);
+          this.memberTotal.set(items.length);
         },
         error: () => {
           this.members.set([]);
@@ -556,7 +792,10 @@ export class OrganizationPageComponent {
   }
 
   titleLabel(titleCode: string | null): string {
-    return titleCode || '未设置';
+    if (!titleCode) {
+      return '未设置';
+    }
+    return this.titleLabelMap()[titleCode] ?? titleCode;
   }
 
   relationLabel(user: UserEntity): string {
@@ -564,7 +803,106 @@ export class OrganizationPageComponent {
     if (!relation) {
       return '-';
     }
-    return relation.relationType === 'primary' ? '主部门' : '部门成员';
+    return user.primaryDepartment?.departmentId === relation.departmentId ? '主部门' : '关联部门';
+  }
+
+  openAttachTitleDialog(): void {
+    this.attachTitleDialogOpen.set(true);
+  }
+
+  closeAttachTitleDialog(): void {
+    this.attachTitleDialogOpen.set(false);
+  }
+
+  attachExistingTitle(input: DepartmentTitleInput): void {
+    const departmentId = this.selectedDepartmentId();
+    if (!departmentId) {
+      return;
+    }
+    this.organizationApi.addDepartmentTitle(departmentId, input).subscribe({
+      next: () => {
+        this.message.success('岗位已关联到当前部门');
+        this.closeAttachTitleDialog();
+        this.loadDepartmentTitles();
+      },
+      error: () => this.message.error('关联岗位失败'),
+    });
+  }
+
+  openQuickCreateTitleDialog(): void {
+    this.quickCreateTitleDialogOpen.set(true);
+  }
+
+  closeQuickCreateTitleDialog(): void {
+    this.quickCreateTitleDialogOpen.set(false);
+  }
+
+  createDepartmentTitle(payload: CreateSystemTitleInput | UpdateSystemTitleInput): void {
+    const departmentId = this.selectedDepartmentId();
+    if (!departmentId) {
+      return;
+    }
+    this.systemTitleApi.createTitle(payload as CreateSystemTitleInput).subscribe({
+      next: (title) => {
+        this.organizationApi.addDepartmentTitle(departmentId, { titleCode: title.code, sort: title.sort }).subscribe({
+          next: () => {
+            this.message.success('岗位已创建并关联到当前部门');
+            this.closeQuickCreateTitleDialog();
+            this.loadTitleLibrary();
+            this.loadDepartmentTitles();
+          },
+          error: () => this.message.error('岗位创建成功，但关联到部门失败'),
+        });
+      },
+      error: () => this.message.error('新建岗位失败'),
+    });
+  }
+
+  removeDepartmentTitle(item: DepartmentTitleEntity): void {
+    const departmentId = this.selectedDepartmentId();
+    if (!departmentId) {
+      return;
+    }
+    this.organizationApi.removeDepartmentTitle(departmentId, item.titleCode).subscribe({
+      next: () => {
+        if (this.memberTitleFilterCode() === item.titleCode) {
+          this.memberTitleFilterCode.set('');
+          this.loadMembers();
+        }
+        this.message.success('岗位已从当前部门移除');
+        this.loadDepartmentTitles();
+      },
+      error: () => this.message.error('移除岗位失败'),
+    });
+  }
+
+  filterMembersByTitle(titleCode: string): void {
+    this.memberTitleFilterCode.set(titleCode);
+    this.loadMembers();
+  }
+
+  clearMemberTitleFilter(): void {
+    this.memberTitleFilterCode.set('');
+    this.loadMembers();
+  }
+
+  private loadDepartmentTitles(): void {
+    const departmentId = this.selectedDepartmentId();
+    if (!departmentId) {
+      this.departmentTitles.set([]);
+      return;
+    }
+    this.organizationApi.listDepartmentTitles(departmentId).subscribe({
+      next: (items) => this.departmentTitles.set(items),
+      error: () => this.departmentTitles.set([]),
+    });
+  }
+
+  private loadTitleLibrary(): void {
+    this.systemTitleApi.listTitles().subscribe({
+      next: (items) => this.allTitleLibrary.set(items),
+      error: () => this.allTitleLibrary.set([]),
+    });
   }
 
   private flattenTree(nodes: DepartmentTreeNode[], level = 0): FlatDepartmentNode[] {

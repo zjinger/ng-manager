@@ -115,7 +115,7 @@ function createDb() {
   db.prepare(
     `INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
      VALUES (?, ?, ?, '', 0, 'platform_admin', '平台管理角色', 'active', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
-  ).run("role_project_ops", "project_ops", "项目治理");
+  ).run("role_project_ops", "project_ops", "项目管理");
 
   const permissions = [
     ["perm_read_all", "project.read.all"],
@@ -126,7 +126,7 @@ function createDb() {
   for (const [id, code] of permissions) {
     db.prepare(
       `INSERT INTO system_permissions (id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at)
-       VALUES (?, ?, ?, 'project', '项目治理', 'project', '项目治理', '', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+       VALUES (?, ?, ?, 'project', '项目管理', 'project', '项目管理', '', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     ).run(id, code, code);
   }
 

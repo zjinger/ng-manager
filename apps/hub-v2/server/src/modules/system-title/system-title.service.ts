@@ -76,7 +76,7 @@ export class SystemTitleService implements SystemTitleCommandContract, SystemTit
     if (!current) {
       throw new AppError(ERROR_CODES.SYSTEM_TITLE_NOT_FOUND, `system title not found: ${titleId}`, 404);
     }
-    if (this.repo.countUsersByTitleCode(current.code) > 0) {
+    if (this.repo.countUsersByTitleCode(current.code) > 0 || this.repo.countDepartmentBindingsByTitleCode(current.code) > 0) {
       throw new AppError(ERROR_CODES.SYSTEM_TITLE_IN_USE, `system title is in use: ${current.code}`, 409);
     }
     this.repo.delete(titleId);

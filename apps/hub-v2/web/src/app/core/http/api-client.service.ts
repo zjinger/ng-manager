@@ -66,7 +66,7 @@ export class ApiClientService {
 
     let params = new HttpParams();
     for (const [key, value] of Object.entries(query)) {
-      if (!this.isQueryValue(value) || value === '') {
+      if (!this.isQueryValue(value) || value === undefined || value === null || value === '') {
         continue;
       }
       params = params.set(key, String(value));

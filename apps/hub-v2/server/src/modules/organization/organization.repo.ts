@@ -1,6 +1,8 @@
 import type Database from "better-sqlite3";
 import type {
+  DepartmentTitleEntity,
   DepartmentEntity,
+  DepartmentTitleInput,
   DepartmentStatus,
   ListDepartmentsQuery,
   UserDepartmentEntity,
@@ -29,6 +31,18 @@ type UserDepartmentRow = {
   department_code: string;
   department_name: string;
   role_code: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type DepartmentTitleRow = {
+  id: string;
+  department_id: string;
+  title_code: string;
+  title_name: string;
+  title_status: "active" | "inactive";
+  sort: number;
+  member_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -256,6 +270,69 @@ export class OrganizationRepo {
     this.db.prepare("DELETE FROM user_departments WHERE user_id = ? AND department_id = ?").run(userId, departmentId);
   }
 
+  listDepartmentTitles(departmentId: string): DepartmentTitleEntity[] {
+    const rows = this.db.prepare(
+      `
+        SELECT
+          dt.id,
+          dt.department_id,
+          dt.title_code,
+          st.name AS title_name,
+          st.status AS title_status,
+          COALESCE(dt.sort, st.sort) AS sort,
+          (
+            SELECT COUNT(*)
+            FROM users u
+            INNER JOIN user_departments ud ON ud.user_id = u.id
+            WHERE ud.department_id = dt.department_id AND u.title_code = dt.title_code
+          ) AS member_count,
+          dt.created_at,
+          dt.updated_at
+        FROM department_titles dt
+        INNER JOIN system_titles st ON st.code = dt.title_code
+        WHERE dt.department_id = ?
+        ORDER BY dt.sort ASC, st.sort ASC, st.name ASC, dt.created_at DESC
+      `
+    ).all(departmentId) as DepartmentTitleRow[];
+    return rows.map((row) => this.mapDepartmentTitle(row));
+  }
+
+  addDepartmentTitle(
+    departmentId: string,
+    input: DepartmentTitleInput & { id: string; createdAt: string; updatedAt: string }
+  ): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO department_titles (
+            id, department_id, title_code, sort, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(input.id, departmentId, input.titleCode, input.sort ?? 0, input.createdAt, input.updatedAt);
+  }
+
+  removeDepartmentTitle(departmentId: string, titleCode: string): void {
+    this.db.prepare("DELETE FROM department_titles WHERE department_id = ? AND title_code = ?").run(departmentId, titleCode);
+  }
+
+  departmentTitleExists(departmentId: string, titleCode: string): boolean {
+    const row = this.db
+      .prepare("SELECT id FROM department_titles WHERE department_id = ? AND title_code = ?")
+      .get(departmentId, titleCode) as { id: string } | undefined;
+    return !!row;
+  }
+
+  titleExists(titleCode: string): boolean {
+    const row = this.db.prepare("SELECT code FROM system_titles WHERE code = ?").get(titleCode) as { code: string } | undefined;
+    return !!row;
+  }
+
+  countDepartmentTitleBindings(titleCode: string): number {
+    const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM department_titles WHERE title_code = ?").get(titleCode) as { cnt: number };
+    return row.cnt;
+  }
+
   userExists(userId: string): boolean {
     const row = this.db.prepare("SELECT id FROM users WHERE id = ?").get(userId) as { id: string } | undefined;
     return !!row;
@@ -291,6 +368,20 @@ export class OrganizationRepo {
       departmentCode: row.department_code,
       departmentName: row.department_name,
       roleCode: row.role_code,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapDepartmentTitle(row: DepartmentTitleRow): DepartmentTitleEntity {
+    return {
+      id: row.id,
+      departmentId: row.department_id,
+      titleCode: row.title_code,
+      titleName: row.title_name,
+      status: row.title_status,
+      sort: row.sort,
+      memberCount: row.member_count,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

@@ -6,6 +6,8 @@ import type {
   CreateDepartmentInput,
   CreateFinanceRoleInput,
   DepartmentEntity,
+  DepartmentTitleEntity,
+  DepartmentTitleInput,
   DepartmentTreeNode,
   FinanceRoleEntity,
   UpdateDepartmentInput,
@@ -32,6 +34,18 @@ export class OrganizationApiService {
 
   updateDepartment(departmentId: string, input: UpdateDepartmentInput) {
     return this.api.patch<DepartmentEntity, UpdateDepartmentInput>(`/departments/${departmentId}`, input);
+  }
+
+  listDepartmentTitles(departmentId: string) {
+    return this.api.get<{ items: DepartmentTitleEntity[] }>(`/departments/${departmentId}/titles`).pipe(map((response) => response.items));
+  }
+
+  addDepartmentTitle(departmentId: string, input: DepartmentTitleInput) {
+    return this.api.post<DepartmentTitleEntity, DepartmentTitleInput>(`/departments/${departmentId}/titles`, input);
+  }
+
+  removeDepartmentTitle(departmentId: string, titleCode: string) {
+    return this.api.delete<{ id: string }>(`/departments/${departmentId}/titles/${encodeURIComponent(titleCode)}`);
   }
 
   addUserDepartment(userId: string, input: UserDepartmentInput) {
