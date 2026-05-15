@@ -211,8 +211,8 @@ export class OrganizationRepo {
       const insert = this.db.prepare(
         `
           INSERT INTO user_departments (
-            id, user_id, department_id, relation_type, role_code, created_at, updated_at
-          ) VALUES (?, ?, ?, 'primary', ?, ?, ?)
+            id, user_id, department_id, role_code, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?)
         `
       );
       for (const entry of entries) {
@@ -236,8 +236,8 @@ export class OrganizationRepo {
         .prepare(
           `
             INSERT INTO user_departments (
-              id, user_id, department_id, relation_type, role_code, created_at, updated_at
-            ) VALUES (?, ?, ?, 'primary', ?, ?, ?)
+              id, user_id, department_id, role_code, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
           `
         )
         .run(

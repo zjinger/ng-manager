@@ -32,7 +32,6 @@ function createDb() {
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       department_id TEXT NOT NULL,
-      relation_type TEXT NOT NULL DEFAULT 'primary',
       role_code TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
@@ -75,7 +74,7 @@ describe("OrganizationService", () => {
     }
   });
 
-  it("rejects more than one primary department for a user", async () => {
+  it("rejects assigning more than one department to a user", async () => {
     const db = createDb();
     try {
       db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_1", "u1", "用户一");
@@ -89,14 +88,14 @@ describe("OrganizationService", () => {
             { departmentId: dep1.id },
             { departmentId: dep2.id }
           ]),
-        /only one primary department/
+        /only one department/
       );
     } finally {
       db.close();
     }
   });
 
-  it("stores department manager and replaces the user primary department", async () => {
+  it("stores department manager and replaces the user department", async () => {
     const db = createDb();
     try {
       db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_1", "u1", "用户一");

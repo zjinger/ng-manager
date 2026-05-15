@@ -46,7 +46,7 @@ export default async function organizationRoutes(app: FastifyInstance) {
     const params = request.params as { userId: string };
     const body = userDepartmentSchema.parse(request.body);
     const item = await app.container.organizationCommand.addUserDepartment(params.userId, body, ctx);
-    return reply.status(201).send(ok(item, "user primary department saved"));
+    return reply.status(201).send(ok(item, "user department saved"));
   });
 
   app.delete("/users/:userId/departments/:departmentId", async (request) => {

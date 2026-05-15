@@ -13,7 +13,7 @@ export interface UserDraft {
   status: UserStatus;
   loginEnabled: boolean;
   primaryDepartmentId: string;
-  secondaryDepartmentIds: string[];
+  managerUserId: string;
 }
 
 export const DEFAULT_USER_DRAFT: UserDraft = {
@@ -26,5 +26,5 @@ export const DEFAULT_USER_DRAFT: UserDraft = {
   status: 'active',
   loginEnabled: true,
   primaryDepartmentId: '',
-  secondaryDepartmentIds: [],
+  managerUserId: '',
 };

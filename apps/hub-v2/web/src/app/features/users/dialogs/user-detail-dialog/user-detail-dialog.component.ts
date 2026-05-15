@@ -8,8 +8,11 @@ import { DialogShellComponent, ListStateComponent } from '@shared/ui';
 import type { DepartmentEntity } from '../../../organization/models/organization.model';
 import { UserStatusTagComponent } from '../../components/user-status-tag/user-status-tag.component';
 import { UserEditDialogComponent } from '../user-edit-dialog';
-import { USER_TITLE_OPTIONS, type UserEntity, type UserTitleCode } from '../../models/user.model';
+import type { UserEntity } from '../../models/user.model';
 import { UserApiService } from '../../services/user-api.service';
+import { UserRbacApiService } from '../../services/user-rbac-api.service';
+import { UserRoleSyncService } from '../../services/user-role-sync.service';
+import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.model';
 
 @Component({
   selector: 'app-user-detail-dialog',
@@ -56,6 +59,9 @@ import { UserApiService } from '../../services/user-api.service';
                     <span class="hero-pill" [class.hero-pill--muted]="!currentUser.loginEnabled">
                       {{ currentUser.loginEnabled ? '可登录后台' : '后台已关闭' }}
                     </span>
+                    @for (role of roleAssignments(); track role.id) {
+                      <span class="hero-pill hero-pill--role">{{ role.roleName }}</span>
+                    }
                   </div>
                 </div>
                 <div class="user-hero__actions">
@@ -84,6 +90,14 @@ import { UserApiService } from '../../services/user-api.service';
                   <strong>{{ currentUser.mobile || '未设置' }}</strong>
                 </div>
                 <div class="detail-field">
+                  <span>直属上级</span>
+                  <strong>{{ currentUser.managerUser?.displayName || currentUser.managerUser?.username || '未设置' }}</strong>
+                </div>
+                <div class="detail-field">
+                  <span>财务审批人</span>
+                  <strong>{{ currentUser.financeApproverUser?.displayName || currentUser.financeApproverUser?.username || '未设置' }}</strong>
+                </div>
+                <div class="detail-field">
                   <span>创建时间</span>
                   <strong>{{ currentUser.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}</strong>
                 </div>
@@ -110,10 +124,13 @@ import { UserApiService } from '../../services/user-api.service';
       <app-user-edit-dialog
         [open]="editOpen()"
         [busy]="busy()"
-        [user]="currentUser"
-        [departments]="departments()"
-        (cancel)="closeEdit()"
+      [user]="currentUser"
+      [departments]="departments()"
+      [userOptions]="userOptions()"
+      [titleOptions]="titleOptions()"
+      (cancel)="closeEdit()"
         (update)="updateUser($event)"
+        (roleSync)="pendingRoleIds.set($event)"
         (resetPassword)="resetPassword()"
       />
     }
@@ -241,10 +258,15 @@ import { UserApiService } from '../../services/user-api.service';
 export class UserDetailDialogComponent {
   private readonly userApi = inject(UserApiService);
   private readonly message = inject(NzMessageService);
+  private readonly userRbacApi = inject(UserRbacApiService);
+  private readonly roleSync = inject(UserRoleSyncService);
 
   readonly open = input(false);
   readonly userId = input('');
   readonly departments = input<DepartmentEntity[]>([]);
+  readonly userOptions = input<UserEntity[]>([]);
+  readonly titleLabelMap = input<Record<string, string>>({});
+  readonly titleOptions = input<Array<{ label: string; value: string }>>([]);
   readonly updated = output<UserEntity>();
   readonly closed = output<void>();
 
@@ -252,6 +274,8 @@ export class UserDetailDialogComponent {
   readonly busy = signal(false);
   readonly editOpen = signal(false);
   readonly user = signal<UserEntity | null>(null);
+  readonly pendingRoleIds = signal<string[]>([]);
+  readonly roleAssignments = signal<UserSystemRoleEntity[]>([]);
 
   constructor() {
     effect(() => {
@@ -260,10 +284,12 @@ export class UserDetailDialogComponent {
       if (!open || !userId) {
         if (!open) {
           this.editOpen.set(false);
+          this.roleAssignments.set([]);
         }
         return;
       }
       this.loadUser(userId);
+      this.loadRoles(userId);
     });
   }
 
@@ -272,11 +298,13 @@ export class UserDetailDialogComponent {
   }
 
   startEdit(): void {
+    this.pendingRoleIds.set([]);
     this.editOpen.set(true);
   }
 
   closeEdit(): void {
     this.editOpen.set(false);
+    this.pendingRoleIds.set([]);
   }
 
   updateUser(input: Parameters<UserApiService['update']>[1]): void {
@@ -287,11 +315,22 @@ export class UserDetailDialogComponent {
     this.busy.set(true);
     this.userApi.update(currentUser.id, input).subscribe({
       next: (updated) => {
-        this.user.set(updated);
-        this.busy.set(false);
-        this.editOpen.set(false);
-        this.updated.emit(updated);
-        this.message.success('用户资料已更新');
+        this.roleSync.syncUserRoles(updated.id, this.pendingRoleIds()).subscribe({
+          next: () => {
+            this.user.set(updated);
+            this.busy.set(false);
+            this.editOpen.set(false);
+            this.pendingRoleIds.set([]);
+            this.loadRoles(updated.id);
+            this.updated.emit(updated);
+            this.message.success('用户资料已更新');
+          },
+          error: () => {
+            this.user.set(updated);
+            this.busy.set(false);
+            this.updated.emit(updated);
+          },
+        });
       },
       error: () => {
         this.busy.set(false);
@@ -322,11 +361,11 @@ export class UserDetailDialogComponent {
     return (user.displayName || user.username).trim().slice(0, 1).toUpperCase();
   }
 
-  titleLabel(titleCode: UserTitleCode | null): string {
+  titleLabel(titleCode: string | null): string {
     if (!titleCode) {
       return '未设置';
     }
-    return USER_TITLE_OPTIONS.find((item) => item.value === titleCode)?.label ?? titleCode;
+    return this.titleLabelMap()[titleCode] ?? titleCode;
   }
 
   primaryDepartmentLabel(user: UserEntity): string {
@@ -345,6 +384,13 @@ export class UserDetailDialogComponent {
         this.loading.set(false);
         this.message.error('加载用户详情失败');
       },
+    });
+  }
+
+  private loadRoles(userId: string): void {
+    this.userRbacApi.listUserSystemRoles(userId).subscribe({
+      next: (items) => this.roleAssignments.set(items),
+      error: () => this.roleAssignments.set([]),
     });
   }
 }

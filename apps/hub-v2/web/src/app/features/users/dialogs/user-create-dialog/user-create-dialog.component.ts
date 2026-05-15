@@ -7,7 +7,7 @@ import { DialogShellComponent } from '@shared/ui';
 import { UserBasicFormComponent } from '../../components/user-basic-form';
 import { UserStatusSectionComponent } from '../../components/user-status-section';
 import type { DepartmentEntity } from '../../../organization/models/organization.model';
-import { USER_TITLE_OPTIONS, type CreateUserInput } from '../../models/user.model';
+import type { CreateUserInput, UserEntity } from '../../models/user.model';
 import { DEFAULT_USER_DRAFT, type UserDraft } from '../../models/user-form.types';
 
 @Component({
@@ -32,10 +32,10 @@ import { DEFAULT_USER_DRAFT, type UserDraft } from '../../models/user-form.types
         <app-user-basic-form
           [draft]="draft()"
           [departments]="departments()"
-          [titleOptions]="titleOptions"
+          [userOptions]="userOptions()"
+          [titleOptions]="titleOptions()"
           [usernameEditable]="true"
           [usernameInvalid]="usernameInvalid()"
-          [showSecondaryDepartments]="false"
           (fieldChange)="updateField($event.field, $event.value)"
         />
 
@@ -76,11 +76,12 @@ export class UserCreateDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly departments = input<DepartmentEntity[]>([]);
+  readonly userOptions = input<UserEntity[]>([]);
+  readonly titleOptions = input<Array<{ label: string; value: string }>>([]);
   readonly create = output<CreateUserInput>();
   readonly cancel = output<void>();
 
   readonly draft = signal<UserDraft>({ ...DEFAULT_USER_DRAFT });
-  readonly titleOptions = USER_TITLE_OPTIONS;
   readonly usernamePattern = /^[A-Za-z0-9]{4,24}$/;
 
   readonly usernameInvalid = computed(() => {
@@ -122,9 +123,6 @@ export class UserCreateDialogComponent {
       ...(draft.primaryDepartmentId
         ? [{ departmentId: draft.primaryDepartmentId, relationType: 'primary' as const }]
         : []),
-      ...draft.secondaryDepartmentIds
-        .filter((departmentId) => departmentId && departmentId !== draft.primaryDepartmentId)
-        .map((departmentId) => ({ departmentId, relationType: 'secondary' as const })),
     ];
 
     this.create.emit({
@@ -136,6 +134,7 @@ export class UserCreateDialogComponent {
       remark: draft.remark.trim() || undefined,
       loginEnabled: draft.loginEnabled,
       departments,
+      managerUserId: draft.managerUserId.trim() || undefined,
     });
   }
 }

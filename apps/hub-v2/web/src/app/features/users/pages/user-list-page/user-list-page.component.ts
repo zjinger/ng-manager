@@ -12,6 +12,8 @@ import { UserCreateDialogComponent } from '../../dialogs/user-create-dialog';
 import { UserDetailDialogComponent } from '../../dialogs/user-detail-dialog/user-detail-dialog.component';
 import { UserEditDialogComponent } from '../../dialogs/user-edit-dialog';
 import type { UserEntity } from '../../models/user.model';
+import { UserRoleSyncService } from '../../services/user-role-sync.service';
+import { UserTitleApiService } from '../../services/user-title-api.service';
 import { UserStore } from '../../store/user.store';
 
 @Component({
@@ -73,6 +75,7 @@ import { UserStore } from '../../store/user.store';
     <app-list-state [loading]="store.loading()" [empty]="store.items().length === 0" loadingText="正在加载用户列表…" emptyTitle="当前没有用户数据">
       <app-user-list-table
         [items]="store.items()"
+        [titleLabelMap]="titleLabelMap()"
         [canEdit]="canCreate()"
         (view)="openDetail($event)"
         (edit)="openEdit($event)"
@@ -84,6 +87,8 @@ import { UserStore } from '../../store/user.store';
       [open]="createDialogOpen()"
       [busy]="store.busy()"
       [departments]="departments()"
+      [userOptions]="userOptions()"
+      [titleOptions]="titleOptions()"
       (cancel)="closeCreateDialog()"
       (create)="createUser($event)"
     />
@@ -94,8 +99,11 @@ import { UserStore } from '../../store/user.store';
         [busy]="store.busy()"
         [user]="user"
         [departments]="departments()"
+        [userOptions]="userOptions()"
+        [titleOptions]="titleOptions()"
         (cancel)="closeEditDialog()"
         (update)="updateUser($event)"
+        (roleSync)="editingRoleIds.set($event)"
         (resetPassword)="resetEditingUserPassword()"
       />
     }
@@ -104,6 +112,9 @@ import { UserStore } from '../../store/user.store';
       [open]="detailDialogOpen()"
       [userId]="detailUserId()"
       [departments]="departments()"
+      [userOptions]="userOptions()"
+      [titleLabelMap]="titleLabelMap()"
+      [titleOptions]="titleOptions()"
       (closed)="closeDetail()"
       (updated)="reloadList()"
     />
@@ -121,16 +132,22 @@ export class UserListPageComponent {
   readonly store = inject(UserStore);
   readonly authStore = inject(AuthStore);
   private readonly organizationApi = inject(OrganizationApiService);
+  private readonly roleSync = inject(UserRoleSyncService);
+  private readonly titleApi = inject(UserTitleApiService);
 
   readonly keyword = signal('');
   readonly status = signal<'active' | 'inactive' | ''>('');
   readonly departmentId = signal('');
   readonly departments = signal<DepartmentEntity[]>([]);
+  readonly userOptions = signal<UserEntity[]>([]);
   readonly createDialogOpen = signal(false);
   readonly editDialogOpen = signal(false);
   readonly editingUser = signal<UserEntity | null>(null);
+  readonly editingRoleIds = signal<string[]>([]);
   readonly detailDialogOpen = signal(false);
   readonly detailUserId = signal('');
+  readonly titleOptions = signal<Array<{ label: string; value: string }>>([]);
+  readonly titleLabelMap = signal<Record<string, string>>({});
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个用户`);
   readonly canCreate = computed(() => this.authStore.currentUser()?.role === 'admin');
 
@@ -140,6 +157,17 @@ export class UserListPageComponent {
       next: (items) => this.departments.set(items),
       error: () => this.departments.set([]),
     });
+    this.titleApi.listAllTitles().subscribe({
+      next: (items) => {
+        this.titleOptions.set(items.filter((item) => item.status === 'active').map((item) => ({ label: item.name, value: item.code })));
+        this.titleLabelMap.set(Object.fromEntries(items.map((item) => [item.code, item.name])));
+      },
+      error: () => {
+        this.titleOptions.set([]);
+        this.titleLabelMap.set({});
+      },
+    });
+    this.store.loadOptions((items) => this.userOptions.set(items));
   }
 
   applyFilters(): void {
@@ -157,6 +185,7 @@ export class UserListPageComponent {
 
   openEdit(user: UserEntity): void {
     this.editingUser.set(user);
+    this.editingRoleIds.set([]);
     this.editDialogOpen.set(true);
   }
 
@@ -172,10 +201,14 @@ export class UserListPageComponent {
   closeEditDialog(): void {
     this.editDialogOpen.set(false);
     this.editingUser.set(null);
+    this.editingRoleIds.set([]);
   }
 
   createUser(input: Parameters<UserStore['create']>[0]): void {
-    this.store.create(input, () => this.closeCreateDialog());
+    this.store.create(input, () => {
+      this.closeCreateDialog();
+      this.store.loadOptions((items) => this.userOptions.set(items));
+    });
   }
 
   updateUser(input: Parameters<UserStore['update']>[1]): void {
@@ -183,7 +216,19 @@ export class UserListPageComponent {
     if (!user) {
       return;
     }
-    this.store.update(user.id, input, () => this.closeEditDialog());
+    this.store.update(user.id, input, () => {
+      this.roleSync.syncUserRoles(user.id, this.editingRoleIds()).subscribe({
+        next: () => {
+          this.closeEditDialog();
+          this.reloadList();
+          this.store.loadOptions((items) => this.userOptions.set(items));
+        },
+        error: () => {
+          this.reloadList();
+          this.store.loadOptions((items) => this.userOptions.set(items));
+        },
+      });
+    });
   }
 
   resetPassword(user: UserEntity): void {

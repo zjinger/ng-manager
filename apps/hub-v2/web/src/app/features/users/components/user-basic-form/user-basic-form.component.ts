@@ -8,7 +8,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import type { DepartmentEntity } from '../../../organization/models/organization.model';
 import type { UserDraft } from '../../models/user-form.types';
-import type { USER_TITLE_OPTIONS } from '../../models/user.model';
+import type { UserEntity } from '../../models/user.model';
 
 @Component({
   selector: 'app-user-basic-form',
@@ -108,7 +108,7 @@ import type { USER_TITLE_OPTIONS } from '../../models/user.model';
                   name="titleCode"
                   (ngModelChange)="onFieldChange('titleCode', $event)"
                 >
-                  @for (item of titleOptions(); track item.value) {
+                  @for (item of titleOptionsForDisplay(); track item.value) {
                     <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
                   }
                 </nz-select>
@@ -147,49 +147,24 @@ import type { USER_TITLE_OPTIONS } from '../../models/user.model';
             <nz-form-item>
               <nz-form-label nzFor="manager">直属上级</nz-form-label>
               <nz-form-control>
-                <input nz-input name="manager" value="待后端接入" disabled />
-                <span class="user-form-hint">后续接审批关系主数据后再开放维护。</span>
+                <nz-select
+                  nzAllowClear
+                  nzPlaceHolder="请选择直属上级"
+                  [ngModel]="draft().managerUserId"
+                  name="managerUserId"
+                  (ngModelChange)="onFieldChange('managerUserId', $event || '')"
+                >
+                  <nz-option nzLabel="无" nzValue=""></nz-option>
+                  @for (user of managerOptions(); track user.id) {
+                    <nz-option [nzLabel]="userLabel(user)" [nzValue]="user.id"></nz-option>
+                  }
+                </nz-select>
               </nz-form-control>
             </nz-form-item>
           </div>
         </div>
 
-        @if (showSecondaryDepartments() && draft().secondaryDepartmentIds.length > 0) {
-          <div class="row" nz-row [nzGutter]="16">
-            <div class="col" nz-col [nzSpan]="24">
-              <nz-form-item>
-                <nz-form-label nzFor="secondaryDepartmentIds">兼职部门</nz-form-label>
-                <nz-form-control>
-                  <nz-select
-                    nzMode="multiple"
-                    nzAllowClear
-                    nzPlaceHolder="请选择兼职部门"
-                    [ngModel]="draft().secondaryDepartmentIds"
-                    name="secondaryDepartmentIds"
-                    (ngModelChange)="onFieldChange('secondaryDepartmentIds', $event || [])"
-                  >
-                    @for (department of departments(); track department.id) {
-                      <nz-option [nzLabel]="department.name" [nzValue]="department.id"></nz-option>
-                    }
-                  </nz-select>
-                  <span class="user-form-hint"
-                    >当前仍兼容已有兼职部门数据，后续会随组织模型收口调整。</span
-                  >
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-          </div>
-        }
-
         <div class="row" nz-row [nzGutter]="16">
-          <div class="col" nz-col [nzSpan]="12">
-            <nz-form-item>
-              <nz-form-label nzFor="hireDate">入职日期</nz-form-label>
-              <nz-form-control>
-                <input nz-input name="hireDate" value="待后端接入" disabled />
-              </nz-form-control>
-            </nz-form-item>
-          </div>
           <div class="col" nz-col [nzSpan]="12">
             <nz-form-item>
               <nz-form-label nzFor="employeeType">员工类型</nz-form-label>
@@ -247,11 +222,32 @@ import type { USER_TITLE_OPTIONS } from '../../models/user.model';
 export class UserBasicFormComponent {
   readonly draft = input.required<UserDraft>();
   readonly departments = input.required<DepartmentEntity[]>();
-  readonly titleOptions = input.required<typeof USER_TITLE_OPTIONS>();
+  readonly userOptions = input.required<UserEntity[]>();
+  readonly titleOptions = input.required<Array<{ label: string; value: string }>>();
   readonly usernameEditable = input(true);
   readonly usernameInvalid = input(false);
-  readonly showSecondaryDepartments = input(false);
   readonly fieldChange = output<{ field: keyof UserDraft; value: any }>();
+
+  managerOptions(): UserEntity[] {
+    const currentUsername = this.draft().username.trim();
+    return this.userOptions().filter((user) => user.username !== currentUsername);
+  }
+
+  userLabel(user: UserEntity): string {
+    return user.displayName ? `${user.displayName} - ${user.username}` : user.username;
+  }
+
+  titleOptionsForDisplay(): Array<{ label: string; value: string }> {
+    const options = this.titleOptions();
+    const current = this.draft().titleCode?.trim();
+    if (!current) {
+      return options;
+    }
+    if (options.some((option) => option.value === current)) {
+      return options;
+    }
+    return [...options, { label: `${current}（已停用，仅历史）`, value: current }];
+  }
 
   onFieldChange(field: keyof UserDraft, value: any): void {
     this.fieldChange.emit({ field, value });

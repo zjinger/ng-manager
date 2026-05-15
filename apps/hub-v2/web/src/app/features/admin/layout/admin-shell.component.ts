@@ -20,6 +20,7 @@ const ADMIN_NAV: NavSection[] = [
     items: [
       { key: 'users', label: '用户管理', icon: 'team', route: '/admin/users' },
       { key: 'departments', label: '部门组织', icon: 'cluster', route: '/admin/departments' },
+      { key: 'titles', label: '职务管理', icon: 'idcard', route: '/admin/titles' },
       // { key: 'groups', label: '用户组', icon: 'usergroup-add', route: '/admin/groups' },
     ],
   },

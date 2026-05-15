@@ -8,6 +8,7 @@ import { AuthRepo } from "../auth/auth.repo";
 import { requireAdmin } from "../utils/require-admin";
 import { OrganizationService } from "../organization/organization.service";
 import { PlatformRoleSyncService } from "../system-rbac/platform-role-sync.service";
+import { SystemTitleService } from "../system-title/system-title.service";
 import { UserRepo } from "./user.repo";
 import type { UserCommandContract, UserQueryContract } from "./user.contract";
 import type {
@@ -27,7 +28,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
     private readonly repo: UserRepo,
     private readonly authRepo: AuthRepo,
     private readonly organization: OrganizationService,
-    private readonly platformRoleSync: PlatformRoleSyncService
+    private readonly platformRoleSync: PlatformRoleSyncService,
+    private readonly systemTitleService: SystemTitleService
   ) {}
 
   async create(input: CreateUserInput, ctx: RequestContext): Promise<UserEntity> {
@@ -37,6 +39,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
       throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS, `user already exists: ${input.username}`, 409);
     }
     this.organization.validateUserDepartmentInputs(input.departments);
+    this.validateTitleCode(input.titleCode);
     this.validateUserReference(input.managerUserId, "manager user");
     this.validateUserReference(input.financeApproverUserId, "finance approver user");
 
@@ -110,6 +113,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
     this.organization.validateUserDepartmentInputs(input.departments);
+    this.validateTitleCode(input.titleCode);
     this.validateUserReference(input.managerUserId, "manager user", id);
     this.validateUserReference(input.financeApproverUserId, "finance approver user", id);
 
@@ -230,6 +234,20 @@ export class UserService implements UserCommandContract, UserQueryContract {
     }
     if (!this.repo.findById(normalized)) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `${label} not found: ${normalized}`, 404);
+    }
+  }
+
+  private validateTitleCode(titleCode: string | null | undefined): void {
+    const normalized = titleCode?.trim();
+    if (!normalized) {
+      return;
+    }
+    const title = this.systemTitleService.getSystemTitleByCode(normalized);
+    if (!title) {
+      throw new AppError(ERROR_CODES.SYSTEM_TITLE_NOT_FOUND, `system title not found: ${normalized}`, 404);
+    }
+    if (title.status !== "active") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, `system title is inactive: ${normalized}`, 400);
     }
   }
 }

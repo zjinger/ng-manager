@@ -82,6 +82,9 @@ import type { SystemRbacCommandContract, SystemRbacQueryContract } from "../modu
 import { PlatformRoleSyncService } from "../modules/system-rbac/platform-role-sync.service";
 import { SystemRbacRepo } from "../modules/system-rbac/system-rbac.repo";
 import { SystemRbacService } from "../modules/system-rbac/system-rbac.service";
+import type { SystemTitleCommandContract, SystemTitleQueryContract } from "../modules/system-title/system-title.contract";
+import { SystemTitleRepo } from "../modules/system-title/system-title.repo";
+import { SystemTitleService } from "../modules/system-title/system-title.service";
 import type { SystemSettingsCommandContract, SystemSettingsQueryContract } from "../modules/system-settings/system-settings.contract";
 import { SystemSettingsRepo } from "../modules/system-settings/system-settings.repo";
 import { SystemSettingsService } from "../modules/system-settings/system-settings.service";
@@ -150,6 +153,8 @@ export type AppContainer = {
   sharedConfigQuery: SharedConfigQueryContract;
   systemRbacCommand: SystemRbacCommandContract;
   systemRbacQuery: SystemRbacQueryContract;
+  systemTitleCommand: SystemTitleCommandContract;
+  systemTitleQuery: SystemTitleQueryContract;
   systemSettingsCommand: SystemSettingsCommandContract;
   systemSettingsQuery: SystemSettingsQueryContract;
   uploadCommand: UploadCommandContract;
@@ -180,8 +185,9 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const authService = new AuthService(config, authRepo);
   const organizationRepo = new OrganizationRepo(db);
   const organizationService = new OrganizationService(organizationRepo);
+  const systemTitleService = new SystemTitleService(new SystemTitleRepo(db));
   const userRepo = new UserRepo(db);
-  const userService = new UserService(userRepo, authRepo, organizationService, platformRoleSync);
+  const userService = new UserService(userRepo, authRepo, organizationService, platformRoleSync, systemTitleService);
   const projectRepo = new ProjectRepo(db);
   const rdRepo = new RdRepo(db);
   const projectAuthorization = new ProjectAuthorizationService(db, projectRepo);
@@ -330,6 +336,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     sharedConfigQuery: sharedConfigService,
     systemRbacCommand: systemRbacService,
     systemRbacQuery: systemRbacService,
+    systemTitleCommand: systemTitleService,
+    systemTitleQuery: systemTitleService,
     systemSettingsCommand: systemSettingsService,
     systemSettingsQuery: systemSettingsService,
     uploadCommand: uploadService,

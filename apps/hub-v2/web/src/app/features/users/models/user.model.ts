@@ -2,23 +2,7 @@ import type { PageResult } from '@core/types';
 import type { UserDepartmentEntity, UserDepartmentInput } from '../../organization/models/organization.model';
 
 export type UserStatus = 'active' | 'inactive';
-export type UserTitleCode = 'product' | 'ui' | 'frontend_dev' | 'backend_dev' | 'mobile_dev' | 'qa' | 'operation' | 'business' | 'hr' | 'finance' | 'admin' | 'ops' | 'other';
-
-export const USER_TITLE_OPTIONS: ReadonlyArray<{ label: string; value: UserTitleCode }> = [
-  { label: '产品', value: 'product' },
-  { label: 'UI', value: 'ui' },
-  { label: '前端开发', value: 'frontend_dev' },
-  { label: '后端开发', value: 'backend_dev' },
-  { label: '移动端开发', value: 'mobile_dev' },
-  { label: '测试', value: 'qa' },
-  { label: '运营', value: 'operation' },
-  { label: '商务', value: 'business' },
-  { label: '人事', value: 'hr' },
-  { label: '财务', value: 'finance' },
-  { label: '行政', value: 'admin' },
-  { label: '运维', value: 'ops' },
-  { label: '其他', value: 'other' },
-];
+export type UserTitleCode = string;
 
 export interface UserEntity {
   id: string;
@@ -34,8 +18,19 @@ export interface UserEntity {
   source: 'local' | 'imported';
   remark: string | null;
   departments: UserDepartmentEntity[];
+  primaryDepartment: UserDepartmentEntity | null;
+  managerUserId: string | null;
+  managerUser: UserRef | null;
+  financeApproverUserId: string | null;
+  financeApproverUser: UserRef | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserRef {
+  id: string;
+  username: string;
+  displayName: string | null;
 }
 
 export interface UserListQuery {
@@ -55,6 +50,8 @@ export interface CreateUserInput {
   remark?: string;
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
+  managerUserId?: string | null;
+  financeApproverUserId?: string | null;
 }
 
 export interface UpdateUserInput {
@@ -66,6 +63,8 @@ export interface UpdateUserInput {
   remark?: string | null;
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
+  managerUserId?: string | null;
+  financeApproverUserId?: string | null;
 }
 
 export interface ResetUserPasswordInput {

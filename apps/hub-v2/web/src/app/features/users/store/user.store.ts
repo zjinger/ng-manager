@@ -34,6 +34,13 @@ export class UserStore {
     this.load();
   }
 
+  loadOptions(done: (items: UserEntity[]) => void): void {
+    this.userApi.list({ page: 1, pageSize: 200, status: 'active' }).subscribe({
+      next: (result) => done(result.items),
+      error: () => done([]),
+    });
+  }
+
   updateQuery(patch: Partial<UserListQuery>): void {
     this.queryState.update((query) => ({
       ...query,

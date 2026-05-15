@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -9,10 +10,12 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { DialogShellComponent, TabsComponent } from '@shared/ui';
 import { UserBasicFormComponent } from '../../components/user-basic-form';
 import { UserStatusSectionComponent } from '../../components/user-status-section';
-import { UserPermissionsTabComponent, type PermissionOverrides } from '../../components/user-permissions-tab';
+import { UserPermissionsTabComponent } from '../../components/user-permissions-tab';
 import type { DepartmentEntity } from '../../../organization/models/organization.model';
-import { USER_TITLE_OPTIONS, type UpdateUserInput, type UserEntity } from '../../models/user.model';
+import type { UpdateUserInput, UserEntity } from '../../models/user.model';
 import { DEFAULT_USER_DRAFT, type EditTab, type UserDraft } from '../../models/user-form.types';
+import type { SystemRoleEntity } from '../../../admin/models/system-rbac.model';
+import { UserRbacApiService } from '../../services/user-rbac-api.service';
 
 @Component({
   selector: 'app-user-edit-dialog',
@@ -52,10 +55,10 @@ import { DEFAULT_USER_DRAFT, type EditTab, type UserDraft } from '../../models/u
             <app-user-basic-form
               [draft]="draft()"
               [departments]="departments()"
-              [titleOptions]="titleOptions"
+              [userOptions]="userOptions()"
+              [titleOptions]="titleOptions()"
               [usernameEditable]="false"
               [usernameInvalid]="false"
-              [showSecondaryDepartments]="true"
               (fieldChange)="updateField($event.field, $event.value)"
             />
 
@@ -124,10 +127,10 @@ import { DEFAULT_USER_DRAFT, type EditTab, type UserDraft } from '../../models/u
 
           @case ('permissions') {
             <app-user-permissions-tab
-              [selectedRole]="selectedRole()"
-              [overrides]="permissionOverrides()"
-              (roleChange)="selectedRole.set($event)"
-              (overridesChange)="permissionOverrides.set($event)"
+              [roles]="availableRoles()"
+              [selectedRoleIds]="selectedRoleIds()"
+              [readonly]="rolesLoading()"
+              (selectionChange)="selectedRoleIds.set($event)"
             />
           }
 
@@ -320,27 +323,26 @@ import { DEFAULT_USER_DRAFT, type EditTab, type UserDraft } from '../../models/u
 })
 export class UserEditDialogComponent {
   private readonly message = inject(NzMessageService);
+  private readonly userRbacApi = inject(UserRbacApiService);
 
   readonly open = input(false);
   readonly busy = input(false);
   readonly user = input.required<UserEntity>();
   readonly departments = input<DepartmentEntity[]>([]);
+  readonly userOptions = input<UserEntity[]>([]);
+  readonly titleOptions = input<Array<{ label: string; value: string }>>([]);
   readonly update = output<UpdateUserInput>();
+  readonly roleSync = output<string[]>();
   readonly resetPassword = output<void>();
   readonly cancel = output<void>();
 
   readonly activeTab = signal<EditTab>('basic');
   readonly draft = signal<UserDraft>({ ...DEFAULT_USER_DRAFT });
   readonly generatedPassword = signal('Hub@2026#New');
-  readonly titleOptions = USER_TITLE_OPTIONS;
 
-  readonly selectedRole = signal<string>('member');
-  readonly permissionOverrides = signal<PermissionOverrides>({
-    allowExport: true,
-    allowDelete: false,
-    allowApiAccess: true,
-    viewAuditLog: false,
-  });
+  readonly availableRoles = signal<SystemRoleEntity[]>([]);
+  readonly selectedRoleIds = signal<string[]>([]);
+  readonly rolesLoading = signal(false);
 
   readonly editTabs: { id: EditTab; label: string; icon?: string }[] = [
     { id: 'basic', label: '基本信息', icon: 'user' },
@@ -397,12 +399,11 @@ export class UserEditDialogComponent {
               status: user.status,
               loginEnabled: user.loginEnabled,
               primaryDepartmentId: user.departments.find((item) => item.relationType === 'primary')?.departmentId || '',
-              secondaryDepartmentIds: user.departments
-                .filter((item) => item.relationType === 'secondary')
-                .map((item) => item.departmentId),
+              managerUserId: user.managerUserId || '',
             }
           : { ...DEFAULT_USER_DRAFT }
       );
+      this.loadRoles(user.id);
     });
   }
 
@@ -411,6 +412,7 @@ export class UserEditDialogComponent {
   }
 
   submitForm(): void {
+    const currentUser = this.user();
     const draft = this.draft();
     if (!this.canSubmit()) {
       return;
@@ -420,21 +422,24 @@ export class UserEditDialogComponent {
       ...(draft.primaryDepartmentId
         ? [{ departmentId: draft.primaryDepartmentId, relationType: 'primary' as const }]
         : []),
-      ...draft.secondaryDepartmentIds
-        .filter((departmentId) => departmentId && departmentId !== draft.primaryDepartmentId)
-        .map((departmentId) => ({ departmentId, relationType: 'secondary' as const })),
     ];
+
+    const normalizedTitleCode = draft.titleCode?.trim() || '';
+    const isActiveTitle = this.titleOptions().some((item) => item.value === normalizedTitleCode);
+    const keepHistoricalInactiveTitle = !!currentUser.titleCode && normalizedTitleCode === currentUser.titleCode && !isActiveTitle;
 
     this.update.emit({
       displayName: draft.displayName.trim() || null,
       email: draft.email.trim() || null,
       mobile: draft.mobile.trim() || null,
-      titleCode: draft.titleCode || null,
+      titleCode: keepHistoricalInactiveTitle ? undefined : (normalizedTitleCode || null),
       remark: draft.remark.trim() || null,
       status: draft.status,
       loginEnabled: draft.loginEnabled,
       departments,
+      managerUserId: draft.managerUserId.trim() || null,
     });
+    this.roleSync.emit(this.selectedRoleIds());
   }
 
   regeneratePassword(): void {
@@ -454,5 +459,25 @@ export class UserEditDialogComponent {
       minute: '2-digit',
       hour12: false,
     }).format(date);
+  }
+
+  private loadRoles(userId: string): void {
+    this.rolesLoading.set(true);
+    forkJoin({
+      roles: this.userRbacApi.listRoles({ status: 'active' }),
+      selected: this.userRbacApi.listUserSystemRoles(userId),
+    }).subscribe({
+      next: ({ roles, selected }) => {
+        this.availableRoles.set(roles);
+        this.selectedRoleIds.set(selected.map((item) => item.roleId));
+        this.rolesLoading.set(false);
+      },
+      error: () => {
+        this.availableRoles.set([]);
+        this.selectedRoleIds.set([]);
+        this.rolesLoading.set(false);
+        this.message.error('加载用户角色失败');
+      },
+    });
   }
 }

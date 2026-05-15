@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 
 import { DataTableComponent } from '@shared/ui';
-import { USER_TITLE_OPTIONS, type UserEntity, type UserTitleCode } from '../../models/user.model';
+import type { UserEntity } from '../../models/user.model';
 import { UserStatusTagComponent } from '../user-status-tag/user-status-tag.component';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
@@ -209,6 +209,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 })
 export class UserListTableComponent {
   readonly items = input.required<UserEntity[]>();
+  readonly titleLabelMap = input<Record<string, string>>({});
   readonly canEdit = input(false);
   readonly view = output<UserEntity>();
   readonly edit = output<UserEntity>();
@@ -227,11 +228,11 @@ export class UserListTableComponent {
     this.brokenAvatarMap.update((state) => ({ ...state, [userId]: true }));
   }
 
-  titleLabel(titleCode: UserTitleCode | null): string {
+  titleLabel(titleCode: string | null): string {
     if (!titleCode) {
       return '—';
     }
-    return USER_TITLE_OPTIONS.find((item) => item.value === titleCode)?.label ?? titleCode;
+    return this.titleLabelMap()[titleCode] ?? titleCode;
   }
 
   departmentLabel(item: UserEntity): string {

@@ -184,7 +184,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       seen.add(departmentId);
     }
     if (normalized.length > 1) {
-      throw new AppError(ERROR_CODES.ORGANIZATION_USER_PRIMARY_DEPARTMENT_CONFLICT, "only one primary department is allowed", 400);
+      throw new AppError(ERROR_CODES.ORGANIZATION_USER_PRIMARY_DEPARTMENT_CONFLICT, "only one department is allowed", 400);
     }
     return normalized;
   }

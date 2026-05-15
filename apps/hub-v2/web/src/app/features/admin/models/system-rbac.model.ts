@@ -6,6 +6,8 @@ export interface SystemRoleEntity {
   name: string;
   description: string | null;
   isBuiltin: boolean;
+  purposeCode: string;
+  purposeName: string;
   status: SystemRoleStatus;
   sort: number;
   createdAt: string;
@@ -23,6 +25,8 @@ export interface SystemPermissionEntity {
   name: string;
   groupCode: string;
   groupName: string;
+  domainCode: string;
+  domainName: string;
   description: string | null;
   sort: number;
   createdAt: string;

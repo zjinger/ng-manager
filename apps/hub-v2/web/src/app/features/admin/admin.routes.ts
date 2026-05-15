@@ -21,6 +21,12 @@ export const ADMIN_ROUTES: Routes = [
         loadChildren: () => import('../organization/routes').then((m) => m.ORGANIZATION_ROUTES),
       },
       {
+        path: 'titles',
+        data: { title: '职务管理', icon: 'idcard' },
+        loadComponent: () =>
+          import('./pages/titles-page/titles-page.component').then((m) => m.TitlesPageComponent),
+      },
+      {
         path: 'roles',
         data: { title: '角色管理', icon: 'safety-certificate' },
         loadComponent: () =>

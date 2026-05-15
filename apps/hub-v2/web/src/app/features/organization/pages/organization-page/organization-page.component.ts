@@ -7,7 +7,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { DepartmentFormDialogComponent } from '../../dialogs/department-form-dialog/department-form-dialog.component';
 import type { CreateDepartmentInput, DepartmentEntity, DepartmentTreeNode, UpdateDepartmentInput } from '../../models/organization.model';
 import { OrganizationApiService } from '../../services/organization-api.service';
-import { USER_TITLE_OPTIONS, type UserEntity, type UserTitleCode } from '../../../users/models/user.model';
+import type { UserEntity } from '../../../users/models/user.model';
 import { UserApiService } from '../../../users/services/user-api.service';
 
 type FlatDepartmentNode = DepartmentTreeNode & {
@@ -126,7 +126,7 @@ type FlatDepartmentNode = DepartmentTreeNode & {
                 <tr>
                   <th>成员</th>
                   <th>职位</th>
-                  <th>部门关系</th>
+                  <th>归属关系</th>
                   <th>账号状态</th>
                 </tr>
               </thead>
@@ -555,8 +555,8 @@ export class OrganizationPageComponent {
     return (user.displayName || user.username).trim().charAt(0).toUpperCase() || 'U';
   }
 
-  titleLabel(titleCode: UserTitleCode | null): string {
-    return USER_TITLE_OPTIONS.find((option) => option.value === titleCode)?.label ?? '未设置';
+  titleLabel(titleCode: string | null): string {
+    return titleCode || '未设置';
   }
 
   relationLabel(user: UserEntity): string {
@@ -564,7 +564,7 @@ export class OrganizationPageComponent {
     if (!relation) {
       return '-';
     }
-    return relation.relationType === 'primary' ? '主部门' : '兼职部门';
+    return relation.relationType === 'primary' ? '主部门' : '部门成员';
   }
 
   private flattenTree(nodes: DepartmentTreeNode[], level = 0): FlatDepartmentNode[] {
