@@ -7,3 +7,14 @@ export type ApiCollectionKind = "folder" | "collection";
 export type ApiRequestBodyMode = "none" | "json" | "text" | "form" | "urlencoded" | "binary";
 
 export type ApiRequestAuthType = "none" | "basic" | "bearer" | "apikey" | "cookie";
+
+export type ApiResponseBodyType =
+    | "json"
+    | "text"
+    | "html"
+    | "xml"
+    | "image"
+    | "audio"
+    | "video"
+    | "pdf"
+    | "binary";

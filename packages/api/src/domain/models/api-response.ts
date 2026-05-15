@@ -1,10 +1,14 @@
-export interface ApiResponseEntity {
-    status: number;
-    statusText?: string;
-    headers: Record<string, string>;
-    bodyText?: string;
-    bodySize?: number;
-}
+import {ApiResponseEntityDto} from "@yinuo-ngm/protocol";
+
+export type ApiResponseEntity = ApiResponseEntityDto;
+
+// export interface ApiResponseEntity {
+//     status: number;
+//     statusText?: string;
+//     headers: Record<string, string>;
+//     bodyText?: string;
+//     bodySize?: number;
+// }
 
 export interface ApiResponseMetrics {
     startedAt: number;

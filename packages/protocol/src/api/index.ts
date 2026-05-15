@@ -4,6 +4,7 @@ export type {
     ApiCollectionKind,
     ApiRequestBodyMode,
     ApiRequestAuthType,
+    ApiResponseBodyType
 } from "./api-common.dto";
 
 export type {

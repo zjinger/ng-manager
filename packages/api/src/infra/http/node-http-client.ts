@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import type { ApiHttpMethod } from "../../domain/models";
+import { ApiResponseEntityDto } from "@yinuo-ngm/protocol";
+import { ApiResponseBodyType } from "@yinuo-ngm/protocol";
 
 export type NodeHttpSendInput = {
     method: ApiHttpMethod;
@@ -14,12 +16,7 @@ export type NodeHttpSendInput = {
     };
 };
 
-export type NodeHttpSendOutput = {
-    status: number;
-    statusText?: string;
-    headers: Record<string, string>;
-    bodyText: string;
-    bodySize: number;
+export type NodeHttpSendOutput = ApiResponseEntityDto & {
     setCookies?: string[];
 };
 
@@ -69,7 +66,8 @@ export class NodeHttpClient {
         const followRedirects = input.options?.followRedirects ?? true;
         const insecureTLS = input.options?.insecureTLS ?? false;
 
-        const headers: Record<string, string> = { ...input.headers };
+        const headers = normalizeHeaders(input.headers);
+        // const headers: Record<string, string> = { ...input.headers };
         applyAuth(headers, input.auth);
 
         const body = buildBodyTextForSend(input.body, headers);
@@ -100,15 +98,45 @@ export class NodeHttpClient {
             }
 
             const res = await fetch(input.url, init);
-            const bodyText = await res.text();
-            const bufSize = Buffer.byteLength(bodyText, "utf8");
+            const contentType = res.headers.get("content-type") ?? "";
+            // 判断类型
+            const bodyType = resolveResponseBodyType(contentType);
+            const isTextLike =
+                bodyType === "json" ||
+                bodyType === "text" ||
+                bodyType === "html" ||
+                bodyType === "xml";
+
+            let bodyText: string | undefined;
+            let bodyBase64: string | undefined;
+            let bodySize = 0;
+                    
+            if (isTextLike) {
+                bodyText = await res.text();
+                // json 自动格式化
+                if (bodyType === "json") {
+                    try {
+                        bodyText = JSON.stringify(JSON.parse(bodyText), null, 2);
+                    } catch {
+                        // ignore
+                    }
+                }
+                bodySize = Buffer.byteLength(bodyText, "utf8");
+            } else {
+                const ab = await res.arrayBuffer();
+                const buffer = Buffer.from(ab);
+                bodyBase64 = buffer.toString("base64");
+                bodySize = buffer.length;
+            }
 
             return {
                 status: res.status,
                 statusText: res.statusText,
                 headers: headersToRecord(res.headers),
+                bodyType,
                 bodyText,
-                bodySize: bufSize,
+                bodyBase64,
+                bodySize,
                 setCookies: extractSetCookies(res.headers),
             };
         } finally {
@@ -124,6 +152,83 @@ function extractSetCookies(headers: Headers): string[] {
     }
     const single = headers.get("set-cookie");
     return single ? [single] : [];
+}
+
+// 判断是否文本类型 (content-type)，用于决定 response body 是走 text 还是 binary 路径
+function isTextContentType(contentType: string): boolean{
+    const ct = contentType.toLowerCase();
+
+    return (
+        ct.startsWith("text/") ||
+        ct.includes("json") ||
+        ct.includes("xml") ||
+        ct.includes("javascript") ||
+        ct.includes("html") ||
+        ct.includes("svg") ||
+        ct.includes("x-www-form-urlencoded")
+    );
+}
+
+// headers 大小写统一为小写
+function normalizeHeaders(headers: Record<string,string>) {
+    const out: Record<string,string> = {};
+
+    for (const [k,v] of Object.entries(headers)) {
+        out[k.toLowerCase()] = v;
+    }
+
+    return out;
+}
+
+function resolveResponseBodyType(contentType: string): ApiResponseBodyType {
+    const ct = contentType.toLowerCase();
+
+    // json
+    if (ct.includes("json")) {
+        return "json";
+    }
+
+    // html
+    if (ct.includes("html")) {
+        return "html";
+    }
+
+    // xml
+    if (ct.includes("xml")) {
+        return "xml";
+    }
+
+    // 普通文本
+    if (
+        ct.startsWith("text/") ||
+        ct.includes("javascript") ||
+        ct.includes("x-www-form-urlencoded")
+    ) {
+        return "text";
+    }
+
+    // 图片
+    if (ct.startsWith("image/")) {
+        return "image";
+    }
+
+    // 音频
+    if (ct.startsWith("audio/")) {
+        return "audio";
+    }
+
+    // 视频
+    if (ct.startsWith("video/")) {
+        return "video";
+    }
+
+    // PDF
+    if (ct.includes("pdf")) {
+        return "pdf";
+    }
+
+    // 兜底
+    return "binary";
 }
 
 // 小工具：生成 id（给 history 用）

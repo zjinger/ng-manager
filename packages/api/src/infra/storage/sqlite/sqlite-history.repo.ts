@@ -8,19 +8,51 @@ function scopeKey(scope: ApiScope, projectId?: string) {
 }
 
 function truncateBody(h: ApiHistoryEntity, bodyMaxChars = 200_000): ApiHistoryEntity {
-    const body = h.response?.bodyText;
-    if (!body) return h;
-    const text = String(body);
-    if (text.length <= bodyMaxChars) return h;
+    // 如果没有响应体，直接不处理
+    if (!h.response) return h;
 
+    const { bodyText, bodyBase64, ...restResponse } = h.response;
+    let newText = bodyText;
+    let newBase64 = bodyBase64;
+    let isTruncated = false;
+
+    // base64过长的情况下，强制修正 bodyType 的旗标
+    let forceTextType = false;
+    
+    // 处理过长文本截断
+    if (bodyText && bodyText.length > bodyMaxChars) {
+        newText = bodyText.slice(0, bodyMaxChars) + "\n/* truncated */";
+        isTruncated = true;
+    }
+
+    // 处理过长 Base64  (二进制文件截断没有意义，退化成文本说明)
+    if (bodyBase64 && bodyBase64.length > bodyMaxChars) {
+        newBase64 = undefined; // 彻底丢弃，不存这几十万长度的无用垃圾数据
+        newText = `/* [System] Base64 data was omitted because it exceeded the size limit.
+                    * Original Type: ${h.response.bodyType ?? "unknown"}
+                    * Original Size: ${(bodyBase64.length / 1024).toFixed(1)} KB
+                    */`;
+        isTruncated = true;
+        forceTextType = true;
+    }
+
+    // 如果都没有超限，直接原样返回，避免生成新对象
+    if (!isTruncated) return h;
+
+    // 计算真实的 bodySize
+    const originalSize = h.response.bodySize ?? (bodyText ? bodyText.length : bodyBase64?.length ?? 0);
+    // 最终的bodyType，如果强制文本化则为"text"，否则保持原有类型
+    const finalBodyType = forceTextType ? "text" : (h.response.bodyType ?? "text");
     return {
         ...h,
         response: {
             status: h.response?.status!,
             statusText: h.response?.statusText,
             headers: h.response?.headers ?? {},
-            bodyText: text.slice(0, bodyMaxChars) + "\n/* truncated */",
-            bodySize: h.response?.bodySize ?? text.length,
+            bodyType: finalBodyType,
+            bodyText: newText,
+            bodyBase64: newBase64,
+            bodySize: h.response.bodySize ?? originalSize,
         },
     };
 }

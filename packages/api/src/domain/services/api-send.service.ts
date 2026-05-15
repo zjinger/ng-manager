@@ -164,7 +164,9 @@ export class ApiSendService {
                     status: out.status,
                     statusText: out.statusText,
                     headers: out.headers,
+                    bodyType: out.bodyType,
                     bodyText: out.bodyText,
+                    bodyBase64: out.bodyBase64,
                     bodySize: out.bodySize,
                 },
                 metrics: {

@@ -1,4 +1,4 @@
-import type { ApiScope } from "./api-common.dto";
+import type { ApiScope, ApiResponseBodyType } from "./api-common.dto";
 import type { ApiRequestEntityDto } from "./api-request.dto";
 
 export interface ListHistoryQueryDto {
@@ -29,9 +29,13 @@ export interface ApiResponseEntityDto {
     status: number;
     statusText?: string;
     headers: Record<string, string>;
+    bodyType: ApiResponseBodyType;
     bodyText?: string;
+    bodyBase64?: string;
     bodySize?: number;
 }
+
+
 
 export interface ApiResponseErrorDto {
     code: string;
