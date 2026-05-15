@@ -8,7 +8,9 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import type { DepartmentEntity } from '../../../organization/models/organization.model';
 import { OrganizationApiService } from '../../../organization/services/organization-api.service';
 import { UserListTableComponent } from '../../components/user-list-table/user-list-table.component';
-import { UserFormDialogComponent } from '../../dialogs/user-form-dialog/user-form-dialog.component';
+import { UserCreateDialogComponent } from '../../dialogs/user-create-dialog';
+import { UserDetailDialogComponent } from '../../dialogs/user-detail-dialog/user-detail-dialog.component';
+import { UserEditDialogComponent } from '../../dialogs/user-edit-dialog';
 import type { UserEntity } from '../../models/user.model';
 import { UserStore } from '../../store/user.store';
 
@@ -25,7 +27,9 @@ import { UserStore } from '../../store/user.store';
     SearchBoxComponent,
     FilterBarComponent,
     ListStateComponent,
-    UserFormDialogComponent,
+    UserCreateDialogComponent,
+    UserEditDialogComponent,
+    UserDetailDialogComponent,
     UserListTableComponent,
   ],
   providers: [UserStore],
@@ -70,20 +74,38 @@ import { UserStore } from '../../store/user.store';
       <app-user-list-table
         [items]="store.items()"
         [canEdit]="canCreate()"
+        (view)="openDetail($event)"
         (edit)="openEdit($event)"
         (resetPassword)="resetPassword($event)"
       />
     </app-list-state>
 
-    <app-user-form-dialog
-      [open]="dialogOpen()"
+    <app-user-create-dialog
+      [open]="createDialogOpen()"
       [busy]="store.busy()"
-      [mode]="dialogMode()"
-      [user]="editingUser()"
       [departments]="departments()"
-      (cancel)="closeDialog()"
+      (cancel)="closeCreateDialog()"
       (create)="createUser($event)"
-      (update)="updateUser($event)"
+    />
+
+    @if (editingUser(); as user) {
+      <app-user-edit-dialog
+        [open]="editDialogOpen()"
+        [busy]="store.busy()"
+        [user]="user"
+        [departments]="departments()"
+        (cancel)="closeEditDialog()"
+        (update)="updateUser($event)"
+        (resetPassword)="resetEditingUserPassword()"
+      />
+    }
+
+    <app-user-detail-dialog
+      [open]="detailDialogOpen()"
+      [userId]="detailUserId()"
+      [departments]="departments()"
+      (closed)="closeDetail()"
+      (updated)="reloadList()"
     />
   `,
   styles: [
@@ -104,9 +126,11 @@ export class UserListPageComponent {
   readonly status = signal<'active' | 'inactive' | ''>('');
   readonly departmentId = signal('');
   readonly departments = signal<DepartmentEntity[]>([]);
-  readonly dialogOpen = signal(false);
-  readonly dialogMode = signal<'create' | 'edit'>('create');
+  readonly createDialogOpen = signal(false);
+  readonly editDialogOpen = signal(false);
   readonly editingUser = signal<UserEntity | null>(null);
+  readonly detailDialogOpen = signal(false);
+  readonly detailUserId = signal('');
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个用户`);
   readonly canCreate = computed(() => this.authStore.currentUser()?.role === 'admin');
 
@@ -127,24 +151,31 @@ export class UserListPageComponent {
   }
 
   openCreate(): void {
-    this.dialogMode.set('create');
     this.editingUser.set(null);
-    this.dialogOpen.set(true);
+    this.createDialogOpen.set(true);
   }
 
   openEdit(user: UserEntity): void {
-    this.dialogMode.set('edit');
     this.editingUser.set(user);
-    this.dialogOpen.set(true);
+    this.editDialogOpen.set(true);
   }
 
-  closeDialog(): void {
-    this.dialogOpen.set(false);
+  openDetail(user: UserEntity): void {
+    this.detailUserId.set(user.id);
+    this.detailDialogOpen.set(true);
+  }
+
+  closeCreateDialog(): void {
+    this.createDialogOpen.set(false);
+  }
+
+  closeEditDialog(): void {
+    this.editDialogOpen.set(false);
     this.editingUser.set(null);
   }
 
   createUser(input: Parameters<UserStore['create']>[0]): void {
-    this.store.create(input, () => this.closeDialog());
+    this.store.create(input, () => this.closeCreateDialog());
   }
 
   updateUser(input: Parameters<UserStore['update']>[1]): void {
@@ -152,10 +183,27 @@ export class UserListPageComponent {
     if (!user) {
       return;
     }
-    this.store.update(user.id, input, () => this.closeDialog());
+    this.store.update(user.id, input, () => this.closeEditDialog());
   }
 
   resetPassword(user: UserEntity): void {
     this.store.resetPassword(user.id);
+  }
+
+  resetEditingUserPassword(): void {
+    const user = this.editingUser();
+    if (!user) {
+      return;
+    }
+    this.store.resetPassword(user.id);
+  }
+
+  closeDetail(): void {
+    this.detailDialogOpen.set(false);
+    this.detailUserId.set('');
+  }
+
+  reloadList(): void {
+    this.store.load();
   }
 }

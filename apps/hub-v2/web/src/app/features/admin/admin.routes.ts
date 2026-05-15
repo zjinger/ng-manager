@@ -38,12 +38,12 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
       },
-      {
-        path: 'groups',
-        data: { title: '用户组', icon: 'team' },
-        loadComponent: () =>
-          import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
-      },
+      // {
+      //   path: 'groups',
+      //   data: { title: '用户组', icon: 'team' },
+      //   loadComponent: () =>
+      //     import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
+      // },
       {
         path: 'settings',
         data: { title: '系统设置', icon: 'setting' },

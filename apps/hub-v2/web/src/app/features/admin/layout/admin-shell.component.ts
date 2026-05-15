@@ -16,26 +16,26 @@ const ADMIN_NAV: NavSection[] = [
   },
   {
     key: 'organization',
-    label: '组织与账号',
+    label: '用户与组织',
     items: [
       { key: 'users', label: '用户管理', icon: 'team', route: '/admin/users' },
       { key: 'departments', label: '部门组织', icon: 'cluster', route: '/admin/departments' },
-      { key: 'groups', label: '用户组', icon: 'usergroup-add', route: '/admin/groups' },
+      // { key: 'groups', label: '用户组', icon: 'usergroup-add', route: '/admin/groups' },
     ],
   },
   {
     key: 'governance',
-    label: '权限与治理',
+    label: '角色与权限',
     items: [
       { key: 'roles', label: '角色管理', icon: 'safety-certificate', route: '/admin/roles' },
       { key: 'permissions', label: '权限配置', icon: 'key', route: '/admin/permissions' },
-      { key: 'audit', label: '审计日志', icon: 'audit', route: '/admin/audit', badge: '占位', tone: 'info' },
     ],
   },
   {
     key: 'system',
     label: '系统',
     items: [
+      { key: 'audit', label: '审计日志', icon: 'audit', route: '/admin/audit', badge: '占位', tone: 'info' },
       { key: 'settings', label: '系统设置', icon: 'setting', route: '/admin/settings' },
     ],
   },

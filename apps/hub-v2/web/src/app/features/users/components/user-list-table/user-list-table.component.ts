@@ -28,7 +28,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       </div>
       <div table-body class="user-table__body">
         @for (item of items(); track item.id) {
-          <div class="user-row" [class.user-row--editable]="canEdit()">
+          <div class="user-row" [class.user-row--editable]="canEdit()" role="button" tabindex="0" (click)="view.emit(item)">
             <div class="user-cell user-cell--user">
               <div class="user-avatar">
                 @if (showAvatarImage(item)) {
@@ -64,7 +64,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
             </div>
             @if (canEdit()) {
               <div class="user-cell user-cell--actions">
-                <button class="edit-btn" type="button" (click)="edit.emit(item)">
+                <button class="edit-btn" type="button" (click)="$event.stopPropagation(); edit.emit(item)">
                   <nz-icon nzType="edit" nzTheme="outline"></nz-icon>
                 </button>
                 <button
@@ -73,6 +73,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
                   nz-popconfirm
                   nzPopconfirmTitle="确认重置该用户密码为默认密码 12345678？"
                   nzPopconfirmPlacement="topRight"
+                  (click)="$event.stopPropagation()"
                   (nzOnConfirm)="resetPassword.emit(item)"
                 >
                   <nz-icon nzType="key" nzTheme="outline"></nz-icon>
@@ -108,6 +109,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         padding: 14px 16px;
         border-top: 1px solid var(--border-color-soft);
         transition: background 0.2s ease;
+        cursor: pointer;
       }
       .user-row:hover {
         background: var(--bg-subtle);
@@ -208,6 +210,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 export class UserListTableComponent {
   readonly items = input.required<UserEntity[]>();
   readonly canEdit = input(false);
+  readonly view = output<UserEntity>();
   readonly edit = output<UserEntity>();
   readonly resetPassword = output<UserEntity>();
   private readonly brokenAvatarMap = signal<Record<string, true>>({});
