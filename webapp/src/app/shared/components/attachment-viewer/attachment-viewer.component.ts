@@ -1,4 +1,5 @@
-import { Component, inject, input, signal, TemplateRef, ViewChild } from '@angular/core';
+import { Component, computed, inject, input, signal, TemplateRef, ViewChild } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { NzImageModule } from 'ng-zorro-antd/image';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
@@ -7,7 +8,7 @@ export interface AttachmentPreviewItem {
   id: string;
   name: string;
   url: string;
-  kind: 'image' | 'video' | 'file';
+  kind: 'image' | 'video' | 'pdf' | 'file';
   meta?: string;
 }
 
@@ -23,6 +24,8 @@ export interface AttachmentPreviewItem {
           图片
         } @else if (item().kind === 'video') {
           视频
+        } @else if (item().kind === 'pdf') {
+          PDF
         } @else {
           文件
         }
@@ -39,6 +42,11 @@ export interface AttachmentPreviewItem {
         />
       } @else if (item().kind === 'video') {
         <video class="attachment-viewer__video" [src]="item().url"></video>
+      } @else if (item().kind === 'pdf') {
+        <div class="attachment-viewer__pdf">
+          <span nz-icon nzType="file-pdf" class="attachment-viewer__pdf-icon"></span>
+          <span class="attachment-viewer__file-name">{{ item().name }}</span>
+        </div>
       } @else {
         <div class="attachment-viewer__file">
           <span nz-icon nzType="file"></span>
@@ -69,6 +77,10 @@ export interface AttachmentPreviewItem {
           <span class="attachment-viewer__preview">
             <span nz-icon nzType="play-circle"></span>
           </span>
+        } @else if (item().kind === 'pdf') {
+          <span class="attachment-viewer__preview">
+            <span nz-icon nzType="file-pdf"></span>
+          </span>
         } @else if (item().kind === 'file') {
           <span class="attachment-viewer__preview">
             <span nz-icon nzType="download"></span>
@@ -83,6 +95,10 @@ export interface AttachmentPreviewItem {
           autoplay
           style="width:100%;height:100%;background:#000"
         ></video>
+      </ng-template>
+
+      <ng-template #pdfTpl>
+        <iframe [src]="previewSafeUrl()" class="attachment-viewer__pdf-frame"></iframe>
       </ng-template>
     </div>
   `,
@@ -103,7 +119,7 @@ export interface AttachmentPreviewItem {
           z-index: 2;
 
           padding: 4px 8px;
-          font-size: .75rem;
+          font-size: 0.75rem;
           line-height: 1;
           border-radius: 4px;
 
@@ -201,15 +217,28 @@ export interface AttachmentPreviewItem {
         font-size: 18px;
         color: #fff;
       }
+
+      .attachment-viewer__pdf-frame {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+      }
     `,
   ],
 })
 export class AttachmentViewerComponent {
   private readonly modal = inject(NzModalService);
+  private readonly sanitizer = inject(DomSanitizer);
   readonly item = input.required<AttachmentPreviewItem>();
 
   @ViewChild('videoTpl', { static: true }) videoTpl!: TemplateRef<any>;
+  @ViewChild('pdfTpl', { static: true }) pdfTpl!: TemplateRef<any>;
   previewUrl = signal('');
+  previewSafeUrl = computed(() => {
+    const url = this.previewUrl();
+    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+  });
 
   openPreview(item: AttachmentPreviewItem) {
     if (item.kind === 'image') {
@@ -231,6 +260,22 @@ export class AttachmentViewerComponent {
         nzBodyStyle: {
           padding: '0',
           background: '#000',
+        },
+        nzCentered: true,
+      });
+    }
+
+    if (item.kind === 'pdf') {
+      this.previewUrl.set(item.url);
+
+      this.modal.create({
+        nzContent: this.pdfTpl,
+        nzFooter: null,
+        nzWidth: '90vw',
+        nzWrapClassName: 'attachment-viewer__pdf-modal',
+        nzBodyStyle: {
+          padding: '0',
+          height: '90vh',
         },
         nzCentered: true,
       });

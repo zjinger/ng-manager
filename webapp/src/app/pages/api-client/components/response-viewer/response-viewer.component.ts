@@ -1,5 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, OnInit, SimpleChanges, computed, signal } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnChanges,
+  OnInit,
+  SimpleChanges,
+  computed,
+  signal,
+} from '@angular/core';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -8,12 +16,20 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { CurlActionsComponent } from './curl-actions.component';
 import { ApiResponseEntity } from '@models/api-client/api-response.model';
 import { SendResponse } from '@models/api-client';
-
+import { ResponseBodyViewerComponent } from './response-body-viewer/response-body-viewer.component';
 
 @Component({
   selector: 'app-response-viewer',
   standalone: true,
-  imports: [CommonModule, NzTabsModule, NzTagModule, NzSpinModule, NzAlertModule, CurlActionsComponent],
+  imports: [
+    CommonModule,
+    NzTabsModule,
+    NzTagModule,
+    NzSpinModule,
+    NzAlertModule,
+    CurlActionsComponent,
+    ResponseBodyViewerComponent,
+  ],
   template: `
     <div class="wrap">
       <div class="top">
@@ -48,11 +64,12 @@ import { SendResponse } from '@models/api-client';
         <nz-tabs class="tabs" [(nzSelectedIndex)]="tabIndex">
           <nz-tab nzTitle="Body">
             <div class="pane">
-              @if (isJson()) {
+              <!-- @if (isJson()) {
                 <pre class="code">{{ prettyJson() }}</pre>
               } @else {
                 <pre class="code">{{ response()?.bodyText }}</pre>
-              }
+              } -->
+              <app-response-body-viewer [response]="response()"></app-response-body-viewer>
             </div>
           </nz-tab>
 
@@ -78,51 +95,97 @@ import { SendResponse } from '@models/api-client';
       }
     </div>
   `,
-  styles: [`
-    :host{ display:flex; height:100%; min-height:0; }
-    .wrap{ display:flex; flex-direction:column; height:100%; min-height:0; width:100%; }
+  styles: [
+    `
+      :host {
+        display: flex;
+        height: 100%;
+        min-height: 0;
+      }
+      .wrap {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+        width: 100%;
+      }
 
-    .top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:10px 12px;
-      border-bottom:1px solid #f0f0f0;
-    }
-    .left{ display:flex; gap:10px; align-items:center; }
-    .title{ font-weight:700; }
-    .meta{ font-size:12px; opacity:.65; }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .left {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .title {
+        font-weight: 700;
+      }
+      .meta {
+        font-size: 12px;
+        opacity: 0.65;
+      }
 
-    .loading{ padding:16px; }
-    .empty{ padding:16px; opacity:.6; }
+      .loading {
+        padding: 16px;
+      }
+      .empty {
+        padding: 16px;
+        opacity: 0.6;
+      }
 
-    .tabs{ flex:1 1 auto; min-height:0; }
-    .pane{ height:100%; min-height:0; overflow:auto; padding:10px 12px; }
+      .tabs {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      .pane {
+        height: 100%;
+        min-height: 0;
+        overflow: auto;
+        padding: 10px 12px;
+      }
 
-    .code{
-      margin:0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size:12px;
-      line-height:1.5;
-      white-space:pre-wrap;
-      word-break:break-word;
-    }
+      .code {
+        margin: 0;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+          monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
 
-    .hlist{ display:flex; flex-direction:column; gap:8px; }
-    .hrow{
-      display:grid;
-      grid-template-columns: 200px 1fr;
-      gap:10px;
-      padding:8px;
-      border:1px solid #f0f0f0;
-      border-radius:8px;
-    }
-    .hk{ font-weight:600; font-size:12px; }
-    .hv{ font-size:12px; opacity:.85; word-break:break-word; }
-  `],
+      .hlist {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .hrow {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 10px;
+        padding: 8px;
+        border: 1px solid #f0f0f0;
+        border-radius: 8px;
+      }
+      .hk {
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .hv {
+        font-size: 12px;
+        opacity: 0.85;
+        word-break: break-word;
+      }
+    `,
+  ],
 })
 export class ResponseViewerComponent implements OnChanges {
-
   @Input() sending = false;
   @Input() result: SendResponse | null = null;
 
