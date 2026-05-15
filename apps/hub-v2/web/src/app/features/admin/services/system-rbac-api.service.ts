@@ -11,7 +11,9 @@ import type {
   CreateSystemRoleInput,
   UpdateSystemRoleInput,
   UpdateRolePermissionsInput,
-  AddRoleUsersInput
+  AddRoleUsersInput,
+  CreateSystemPermissionInput,
+  UpdateSystemPermissionInput
 } from '../models/system-rbac.model';
 
 @Injectable({ providedIn: 'root' })
@@ -39,9 +41,21 @@ export class SystemRbacApiService {
     return this.api.delete<{ id: string }>(`/system-roles/${roleId}`);
   }
 
-  listPermissions() {
-    return this.api.get<{ items: SystemPermissionEntity[] }>('/system-permissions')
+  listPermissions(query: { keyword?: string; status?: string } = {}) {
+    return this.api.get<{ items: SystemPermissionEntity[] }>('/system-permissions', query)
       .pipe(map((response) => response.items));
+  }
+
+  createPermission(input: CreateSystemPermissionInput) {
+    return this.api.post<SystemPermissionEntity, CreateSystemPermissionInput>('/system-permissions', input);
+  }
+
+  updatePermission(permissionId: string, input: UpdateSystemPermissionInput) {
+    return this.api.patch<SystemPermissionEntity, UpdateSystemPermissionInput>(`/system-permissions/${permissionId}`, input);
+  }
+
+  deletePermission(permissionId: string) {
+    return this.api.delete<{ id: string }>(`/system-permissions/${permissionId}`);
   }
 
   getRolePermissions(roleId: string) {

@@ -39,6 +39,12 @@ export const ADMIN_ROUTES: Routes = [
           import('./pages/permissions-page.component').then((m) => m.PermissionsPageComponent),
       },
       {
+        path: 'permission-items',
+        data: { title: '权限项管理', icon: 'unordered-list' },
+        loadComponent: () =>
+          import('./pages/permission-items-page/permission-items-page.component').then((m) => m.PermissionItemsPageComponent),
+      },
+      {
         path: 'audit',
         data: { title: '审计日志', icon: 'audit' },
         loadComponent: () =>

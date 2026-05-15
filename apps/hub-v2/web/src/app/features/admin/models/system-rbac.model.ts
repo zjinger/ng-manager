@@ -23,6 +23,8 @@ export interface SystemPermissionEntity {
   id: string;
   code: string;
   name: string;
+  status: 'active' | 'inactive';
+  isBuiltin: boolean;
   groupCode: string;
   groupName: string;
   domainCode: string;
@@ -73,6 +75,21 @@ export type UpdateSystemRoleInput = Partial<Omit<CreateSystemRoleInput, 'permiss
 export interface UpdateRolePermissionsInput {
   permissionIds: string[];
 }
+
+export interface CreateSystemPermissionInput {
+  code: string;
+  name: string;
+  status?: 'active' | 'inactive';
+  isBuiltin?: boolean;
+  groupCode: string;
+  groupName: string;
+  domainCode?: string;
+  domainName?: string;
+  description?: string | null;
+  sort?: number;
+}
+
+export type UpdateSystemPermissionInput = Partial<Omit<CreateSystemPermissionInput, 'isBuiltin'>>;
 
 export interface AddRoleUsersInput {
   userIds: string[];

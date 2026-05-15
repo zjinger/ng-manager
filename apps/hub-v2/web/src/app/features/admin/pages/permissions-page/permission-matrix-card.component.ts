@@ -4,7 +4,6 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import type { SystemPermissionEntity, SystemRoleDetail } from '../../models/system-rbac.model';
 import {
   groupSystemPermissions,
-  PERMISSION_MATRIX_COLUMNS,
   type PermissionMatrixColumn
 } from '../../utils/system-rbac-ui';
 import { SystemRoleSummaryComponent } from '../../components/system-role-summary.component';
@@ -22,7 +21,7 @@ import { SystemRoleSummaryComponent } from '../../components/system-role-summary
             [fallbackDescription]="'按角色集中查看和维护系统权限。'"
           />
           <span class="permissions-card__readonly">
-            {{ currentRole.isBuiltin ? '内置角色仅支持查看' : '仅“管理”列可编辑' }}
+            {{ currentRole.isBuiltin ? '内置角色仅支持查看' : '按角色维护系统权限' }}
           </span>
         </div>
 
@@ -38,15 +37,13 @@ import { SystemRoleSummaryComponent } from '../../components/system-role-summary
               <thead>
                 <tr>
                   <th>权限项</th>
-                  @for (column of matrixColumns; track column.key) {
-                    <th>{{ column.label }}</th>
-                  }
+                  <th>管理</th>
                 </tr>
               </thead>
               <tbody>
                 @for (group of permissionGroups(); track group.groupCode) {
                   <tr class="permissions-matrix__group-row">
-                    <td [attr.colspan]="matrixColumns.length + 1">{{ group.groupName }}</td>
+                    <td colspan="2">{{ group.groupName }}</td>
                   </tr>
                   @for (perm of group.items; track perm.id) {
                     <tr>
@@ -54,21 +51,19 @@ import { SystemRoleSummaryComponent } from '../../components/system-role-summary
                         <div class="permissions-matrix__permission-name">{{ perm.name }}</div>
                         <div class="permissions-matrix__permission-code">{{ perm.code }}</div>
                       </td>
-                      @for (column of matrixColumns; track column.key) {
-                        <td>
-                          <button
-                            type="button"
-                            class="perm-check"
-                            [class.perm-check--granted]="isCellGranted(perm.id, column.key)"
-                            [class.perm-check--disabled]="column.key !== 'manage' || currentRole.isBuiltin"
-                            [disabled]="column.key !== 'manage' || currentRole.isBuiltin"
-                            [attr.aria-label]="perm.name + ' ' + column.label"
-                            (click)="toggle.emit({ permissionId: perm.id, column: column.key })"
-                          >
-                            <nz-icon [nzType]="getCellIcon(perm.id, column.key)" />
-                          </button>
-                        </td>
-                      }
+                      <td>
+                        <button
+                          type="button"
+                          class="perm-check"
+                          [class.perm-check--granted]="isCellGranted(perm.id)"
+                          [class.perm-check--disabled]="currentRole.isBuiltin"
+                          [disabled]="currentRole.isBuiltin"
+                          [attr.aria-label]="perm.name + ' 管理'"
+                          (click)="toggle.emit({ permissionId: perm.id, column: 'manage' })"
+                        >
+                          <nz-icon [nzType]="getCellIcon(perm.id)" />
+                        </button>
+                      </td>
                     </tr>
                   }
                 }
@@ -114,7 +109,7 @@ import { SystemRoleSummaryComponent } from '../../components/system-role-summary
     .permissions-matrix {
       width: 100%;
       border-collapse: collapse;
-      min-width: 860px;
+      min-width: 520px;
     }
 
     .permissions-matrix th {
@@ -210,17 +205,13 @@ export class PermissionMatrixCardComponent {
 
   readonly toggle = output<{ permissionId: string; column: PermissionMatrixColumn }>();
 
-  readonly matrixColumns = PERMISSION_MATRIX_COLUMNS;
   readonly permissionGroups = computed(() => groupSystemPermissions(this.permissions()));
 
-  isCellGranted(permissionId: string, column: PermissionMatrixColumn): boolean {
-    return column === 'manage' && this.checkedPermissionIds().has(permissionId);
+  isCellGranted(permissionId: string): boolean {
+    return this.checkedPermissionIds().has(permissionId);
   }
 
-  getCellIcon(permissionId: string, column: PermissionMatrixColumn): string {
-    if (column !== 'manage') {
-      return 'minus';
-    }
+  getCellIcon(permissionId: string): string {
     return this.checkedPermissionIds().has(permissionId) ? 'check' : 'close';
   }
 }

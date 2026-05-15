@@ -6,14 +6,9 @@ export interface SystemPermissionGroup {
   items: SystemPermissionEntity[];
 }
 
-export type PermissionMatrixColumn = 'view' | 'create' | 'edit' | 'delete' | 'export' | 'manage';
+export type PermissionMatrixColumn = 'manage';
 
 export const PERMISSION_MATRIX_COLUMNS: Array<{ key: PermissionMatrixColumn; label: string }> = [
-  { key: 'view', label: '查看' },
-  { key: 'create', label: '创建' },
-  { key: 'edit', label: '编辑' },
-  { key: 'delete', label: '删除' },
-  { key: 'export', label: '导出' },
   { key: 'manage', label: '管理' }
 ];
 

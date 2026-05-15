@@ -6,7 +6,10 @@ import {
   createSystemRoleSchema,
   updateSystemRoleSchema,
   updateRolePermissionsSchema,
-  addRoleUsersSchema
+  addRoleUsersSchema,
+  listSystemPermissionsQuerySchema,
+  createSystemPermissionSchema,
+  updateSystemPermissionSchema
 } from "./system-rbac.schema";
 
 export default async function systemRbacRoutes(app: FastifyInstance) {
@@ -47,8 +50,31 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.get("/system-permissions", async (request) => {
     const ctx = requireAuth(request);
-    const items = await app.container.systemRbacQuery.listPermissions(ctx);
+    const query = listSystemPermissionsQuerySchema.parse(request.query);
+    const items = await app.container.systemRbacQuery.listPermissions(query, ctx);
     return ok({ items });
+  });
+
+  app.post("/system-permissions", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const body = createSystemPermissionSchema.parse(request.body);
+    const item = await app.container.systemRbacCommand.createSystemPermission(body, ctx);
+    return reply.status(201).send(ok(item, "system permission created"));
+  });
+
+  app.patch("/system-permissions/:permissionId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { permissionId: string };
+    const body = updateSystemPermissionSchema.parse(request.body);
+    const item = await app.container.systemRbacCommand.updateSystemPermission(params.permissionId, body, ctx);
+    return ok(item, "system permission updated");
+  });
+
+  app.delete("/system-permissions/:permissionId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { permissionId: string };
+    await app.container.systemRbacCommand.deleteSystemPermission(params.permissionId, ctx);
+    return ok({ id: params.permissionId }, "system permission deleted");
   });
 
   app.get("/system-roles/:roleId/permissions", async (request) => {

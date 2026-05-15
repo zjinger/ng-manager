@@ -8,8 +8,11 @@ import type {
   CreateSystemRoleInput,
   UpdateSystemRoleInput,
   ListSystemRolesQuery,
+  ListSystemPermissionsQuery,
   UpdateRolePermissionsInput,
-  AddRoleUsersInput
+  AddRoleUsersInput,
+  CreateSystemPermissionInput,
+  UpdateSystemPermissionInput
 } from "./system-rbac.types";
 
 export interface SystemRbacCommandContract {
@@ -19,6 +22,9 @@ export interface SystemRbacCommandContract {
   setRolePermissions(roleId: string, input: UpdateRolePermissionsInput, ctx: RequestContext): Promise<void>;
   addRoleUsers(roleId: string, input: AddRoleUsersInput, ctx: RequestContext): Promise<void>;
   removeRoleUser(roleId: string, userId: string, ctx: RequestContext): Promise<void>;
+  createSystemPermission(input: CreateSystemPermissionInput, ctx: RequestContext): Promise<SystemPermissionEntity>;
+  updateSystemPermission(id: string, input: UpdateSystemPermissionInput, ctx: RequestContext): Promise<SystemPermissionEntity>;
+  deleteSystemPermission(id: string, ctx: RequestContext): Promise<void>;
 }
 
 export interface SystemRoleWithCounts extends SystemRoleEntity {
@@ -29,7 +35,7 @@ export interface SystemRoleWithCounts extends SystemRoleEntity {
 export interface SystemRbacQueryContract {
   listSystemRoles(query: ListSystemRolesQuery, ctx: RequestContext): Promise<SystemRoleWithCounts[]>;
   getSystemRoleDetail(id: string, ctx: RequestContext): Promise<SystemRoleDetail>;
-  listPermissions(ctx: RequestContext): Promise<SystemPermissionEntity[]>;
+  listPermissions(query: ListSystemPermissionsQuery, ctx: RequestContext): Promise<SystemPermissionEntity[]>;
   listRoleUsers(roleId: string, ctx: RequestContext): Promise<RoleUserEntity[]>;
   listUserSystemRoles(userId: string, ctx: RequestContext): Promise<UserSystemRoleEntity[]>;
 }

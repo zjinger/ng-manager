@@ -14,8 +14,11 @@ import type {
   CreateSystemRoleInput,
   UpdateSystemRoleInput,
   ListSystemRolesQuery,
+  ListSystemPermissionsQuery,
   UpdateRolePermissionsInput,
-  AddRoleUsersInput
+  AddRoleUsersInput,
+  CreateSystemPermissionInput,
+  UpdateSystemPermissionInput
 } from "./system-rbac.types";
 import { SystemRbacRepo } from "./system-rbac.repo";
 
@@ -48,9 +51,9 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     };
   }
 
-  async listPermissions(ctx: RequestContext): Promise<SystemPermissionEntity[]> {
+  async listPermissions(query: ListSystemPermissionsQuery, ctx: RequestContext): Promise<SystemPermissionEntity[]> {
     requireAdmin(ctx);
-    return this.repo.listPermissions();
+    return this.repo.listPermissions(query);
   }
 
   async listRoleUsers(roleId: string, ctx: RequestContext): Promise<RoleUserEntity[]> {
@@ -189,5 +192,77 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${userId}`, 404);
     }
     this.repo.removeRoleUser(roleId, userId);
+  }
+
+  async createSystemPermission(input: CreateSystemPermissionInput, ctx: RequestContext): Promise<SystemPermissionEntity> {
+    requireAdmin(ctx);
+    const code = input.code.trim();
+    if (this.repo.findPermissionByCode(code)) {
+      throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_EXISTS, `system permission already exists: ${code}`, 409);
+    }
+    const now = nowIso();
+    const entity: SystemPermissionEntity = {
+      id: genId("sperm"),
+      code,
+      name: input.name.trim(),
+      status: input.status ?? "active",
+      isBuiltin: input.isBuiltin === true,
+      groupCode: input.groupCode.trim(),
+      groupName: input.groupName.trim(),
+      domainCode: input.domainCode?.trim() || "admin",
+      domainName: input.domainName?.trim() || "后台管理",
+      description: input.description?.trim() || null,
+      sort: input.sort ?? 0,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.repo.createPermission(entity);
+    return entity;
+  }
+
+  async updateSystemPermission(id: string, input: UpdateSystemPermissionInput, ctx: RequestContext): Promise<SystemPermissionEntity> {
+    requireAdmin(ctx);
+    const current = this.repo.findPermissionById(id);
+    if (!current) {
+      throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_NOT_FOUND, `system permission not found: ${id}`, 404);
+    }
+    if (current.isBuiltin && input.code && input.code.trim() !== current.code) {
+      throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_BUILTIN_UPDATE, "built-in permission code cannot be modified", 403);
+    }
+    const nextCode = input.code?.trim() ?? current.code;
+    const sameCode = this.repo.findPermissionByCode(nextCode);
+    if (sameCode && sameCode.id !== current.id) {
+      throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_EXISTS, `system permission already exists: ${nextCode}`, 409);
+    }
+    const entity: SystemPermissionEntity = {
+      ...current,
+      code: nextCode,
+      name: input.name?.trim() ?? current.name,
+      status: input.status ?? current.status,
+      groupCode: input.groupCode?.trim() ?? current.groupCode,
+      groupName: input.groupName?.trim() ?? current.groupName,
+      domainCode: input.domainCode?.trim() ?? current.domainCode,
+      domainName: input.domainName?.trim() ?? current.domainName,
+      description: input.description === undefined ? current.description : input.description?.trim() || null,
+      sort: input.sort ?? current.sort,
+      updatedAt: nowIso()
+    };
+    this.repo.updatePermission(entity);
+    return entity;
+  }
+
+  async deleteSystemPermission(id: string, ctx: RequestContext): Promise<void> {
+    requireAdmin(ctx);
+    const current = this.repo.findPermissionById(id);
+    if (!current) {
+      throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_NOT_FOUND, `system permission not found: ${id}`, 404);
+    }
+    if (current.isBuiltin) {
+      throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_BUILTIN_DELETE, "built-in permission cannot be deleted", 403);
+    }
+    if (this.repo.countPermissionRoleBindings(id) > 0) {
+      throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_IN_USE, `system permission is in use: ${id}`, 409);
+    }
+    this.repo.deletePermission(id);
   }
 }

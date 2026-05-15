@@ -30,3 +30,25 @@ export const updateRolePermissionsSchema = z.object({
 export const addRoleUsersSchema = z.object({
   userIds: z.array(z.string().trim().min(1)).min(1)
 });
+
+export const listSystemPermissionsQuerySchema = z.object({
+  keyword: z.string().trim().optional(),
+  status: z.union([statusSchema, z.literal("")]).optional()
+});
+
+export const createSystemPermissionSchema = z.object({
+  code: codeSchema,
+  name: z.string().trim().min(1).max(80),
+  status: statusSchema.optional(),
+  isBuiltin: z.boolean().optional(),
+  groupCode: z.string().trim().min(1).max(48),
+  groupName: z.string().trim().min(1).max(80),
+  domainCode: z.string().trim().min(1).max(48).optional(),
+  domainName: z.string().trim().min(1).max(80).optional(),
+  description: z.string().trim().nullable().optional(),
+  sort: z.coerce.number().int().min(0).optional()
+});
+
+export const updateSystemPermissionSchema = createSystemPermissionSchema
+  .omit({ isBuiltin: true })
+  .partial();

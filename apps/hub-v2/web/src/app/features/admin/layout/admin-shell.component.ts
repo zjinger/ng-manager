@@ -29,6 +29,7 @@ const ADMIN_NAV: NavSection[] = [
     items: [
       { key: 'roles', label: '角色管理', icon: 'safety-certificate', route: '/admin/roles' },
       { key: 'permissions', label: '权限配置', icon: 'key', route: '/admin/permissions' },
+      { key: 'permission-items', label: '权限项管理', icon: 'unordered-list', route: '/admin/permission-items' },
     ],
   },
   {

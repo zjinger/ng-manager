@@ -93,7 +93,7 @@ import { PermissionMatrixCardComponent } from './permissions-page/permission-mat
       <section class="permissions-page">
         <app-permission-matrix-card
           [role]="detail()"
-          [permissions]="permissions()"
+          [permissions]="matrixPermissions()"
           [checkedPermissionIds]="checkedPermissionIds()"
           [loading]="detailLoading()"
           (toggle)="togglePermission($event.permissionId, $event.column)"
@@ -142,6 +142,17 @@ export class PermissionsPageComponent {
   readonly detailLoading = signal(false);
   readonly permissionsLoading = signal(false);
   readonly saving = signal(false);
+  readonly matrixPermissions = computed(() => {
+    const activePermissions = this.permissions();
+    const rolePermissions = this.detail()?.permissions ?? [];
+    const merged = new Map(activePermissions.map((item) => [item.id, item]));
+    for (const permission of rolePermissions) {
+      if (!merged.has(permission.id)) {
+        merged.set(permission.id, permission);
+      }
+    }
+    return Array.from(merged.values());
+  });
 
   readonly loading = computed(() => this.rolesLoading() || this.permissionsLoading());
   readonly headerSubtitle = computed(() => {
@@ -181,7 +192,7 @@ export class PermissionsPageComponent {
 
   loadPermissions(): void {
     this.permissionsLoading.set(true);
-    this.api.listPermissions().subscribe({
+    this.api.listPermissions({ status: 'active' }).subscribe({
       next: (items) => {
         this.permissions.set(items);
         this.permissionsLoading.set(false);

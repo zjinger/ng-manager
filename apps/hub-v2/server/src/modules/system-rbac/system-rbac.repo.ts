@@ -3,10 +3,11 @@ import type {
   SystemRoleEntity,
   SystemRoleStatus,
   SystemPermissionEntity,
-  SystemRolePermissionRow,
+  SystemPermissionStatus,
   UserSystemRoleEntity,
   RoleUserEntity,
-  ListSystemRolesQuery
+  ListSystemRolesQuery,
+  ListSystemPermissionsQuery
 } from "./system-rbac.types";
 
 type SystemRoleRow = {
@@ -27,6 +28,8 @@ type SystemPermissionRow = {
   id: string;
   code: string;
   name: string;
+  status: SystemPermissionStatus;
+  is_builtin: number;
   group_code: string;
   group_name: string;
   domain_code: string;
@@ -109,18 +112,58 @@ export class SystemRbacRepo {
     this.db.prepare("DELETE FROM system_roles WHERE id = ?").run(id);
   }
 
-  listPermissions(): SystemPermissionEntity[] {
+  listPermissions(query: ListSystemPermissionsQuery = {}): SystemPermissionEntity[] {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    if (query.status) {
+      conditions.push("status = ?");
+      params.push(query.status);
+    }
+    if (query.keyword?.trim()) {
+      const keyword = `%${query.keyword.trim()}%`;
+      conditions.push("(code LIKE ? OR name LIKE ? OR group_name LIKE ? OR domain_name LIKE ?)");
+      params.push(keyword, keyword, keyword, keyword);
+    }
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const rows = this.db
-      .prepare("SELECT id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at FROM system_permissions ORDER BY domain_code ASC, group_code ASC, sort ASC")
-      .all() as SystemPermissionRow[];
+      .prepare(`SELECT id, code, name, status, is_builtin, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at FROM system_permissions ${whereClause} ORDER BY domain_code ASC, group_code ASC, sort ASC`)
+      .all(...params) as SystemPermissionRow[];
     return rows.map((row) => this.mapPermission(row));
   }
 
   findPermissionById(id: string): SystemPermissionEntity | null {
     const row = this.db
-      .prepare("SELECT id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at FROM system_permissions WHERE id = ?")
+      .prepare("SELECT id, code, name, status, is_builtin, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at FROM system_permissions WHERE id = ?")
       .get(id) as SystemPermissionRow | undefined;
     return row ? this.mapPermission(row) : null;
+  }
+
+  findPermissionByCode(code: string): SystemPermissionEntity | null {
+    const row = this.db
+      .prepare("SELECT id, code, name, status, is_builtin, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at FROM system_permissions WHERE code = ?")
+      .get(code) as SystemPermissionRow | undefined;
+    return row ? this.mapPermission(row) : null;
+  }
+
+  createPermission(entity: SystemPermissionEntity): void {
+    this.db
+      .prepare("INSERT INTO system_permissions (id, code, name, status, is_builtin, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(entity.id, entity.code, entity.name, entity.status, entity.isBuiltin ? 1 : 0, entity.groupCode, entity.groupName, entity.domainCode, entity.domainName, entity.description, entity.sort, entity.createdAt, entity.updatedAt);
+  }
+
+  updatePermission(entity: SystemPermissionEntity): void {
+    this.db
+      .prepare("UPDATE system_permissions SET code = ?, name = ?, status = ?, group_code = ?, group_name = ?, domain_code = ?, domain_name = ?, description = ?, sort = ?, updated_at = ? WHERE id = ?")
+      .run(entity.code, entity.name, entity.status, entity.groupCode, entity.groupName, entity.domainCode, entity.domainName, entity.description, entity.sort, entity.updatedAt, entity.id);
+  }
+
+  deletePermission(id: string): void {
+    this.db.prepare("DELETE FROM system_permissions WHERE id = ?").run(id);
+  }
+
+  countPermissionRoleBindings(permissionId: string): number {
+    const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM system_role_permissions WHERE permission_id = ?").get(permissionId) as { cnt: number };
+    return row.cnt;
   }
 
   listRolePermissionIds(roleId: string): string[] {
@@ -133,7 +176,7 @@ export class SystemRbacRepo {
   listRolePermissions(roleId: string): SystemPermissionEntity[] {
     const rows = this.db
       .prepare(`
-        SELECT p.id, p.code, p.name, p.group_code, p.group_name, p.domain_code, p.domain_name, p.description, p.sort, p.created_at, p.updated_at
+        SELECT p.id, p.code, p.name, p.status, p.is_builtin, p.group_code, p.group_name, p.domain_code, p.domain_name, p.description, p.sort, p.created_at, p.updated_at
         FROM system_role_permissions rp
         INNER JOIN system_permissions p ON p.id = rp.permission_id
         WHERE rp.role_id = ?
@@ -260,6 +303,8 @@ export class SystemRbacRepo {
       id: row.id,
       code: row.code,
       name: row.name,
+      status: row.status,
+      isBuiltin: row.is_builtin === 1,
       groupCode: row.group_code,
       groupName: row.group_name,
       domainCode: row.domain_code,
