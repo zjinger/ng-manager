@@ -75,6 +75,17 @@ export const UPLOAD_TARGETS = {
     invalidTypeMessage: '仅支持上传图片或视频文件',
     sizeLimitMessage: '单个文件最大 10MB',
   },
+  reimbursementAttachment: {
+    bucket: 'reimbursements',
+    category: 'attachment',
+    visibility: 'private',
+    accept: buildAcceptValue(['image/jpeg', 'image/png', 'application/pdf'], ['.jpg', '.jpeg', '.png', '.pdf']),
+    maxSizeBytes: 10 * MB,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'application/pdf'],
+    allowedExtensions: ['.jpg', '.jpeg', '.png', '.pdf'],
+    invalidTypeMessage: '仅支持 JPG / PNG / PDF',
+    sizeLimitMessage: '单个文件最大 10MB',
+  },
 } satisfies Record<string, UploadTargetPolicy>;
 
 export function validateUploadFile(file: File, policy: UploadTargetPolicy): string | null {

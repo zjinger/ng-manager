@@ -12,7 +12,7 @@ export class ApiClientService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(API_BASE_URL);
 
-  get<T>(path: string, query?: Record<string, QueryValue>): Observable<T> {
+  get<T>(path: string, query?: object): Observable<T> {
     return this.http
       .get<ApiSuccessResponse<T>>(this.buildUrl(path), {
         params: this.buildParams(query),
@@ -21,7 +21,7 @@ export class ApiClientService {
       .pipe(map((response) => response.data));
   }
 
-  post<T, B = unknown>(path: string, body?: B, query?: Record<string, QueryValue>): Observable<T> {
+  post<T, B = unknown>(path: string, body?: B, query?: object): Observable<T> {
     return this.http
       .post<ApiSuccessResponse<T>>(this.buildUrl(path), body ?? {}, {
         params: this.buildParams(query),
@@ -59,19 +59,23 @@ export class ApiClientService {
     return `${this.baseUrl}${normalizedPath}`;
   }
 
-  private buildParams(query?: Record<string, QueryValue>): HttpParams | undefined {
+  private buildParams(query?: object): HttpParams | undefined {
     if (!query) {
       return undefined;
     }
 
     let params = new HttpParams();
     for (const [key, value] of Object.entries(query)) {
-      if (value === undefined || value === null || value === '') {
+      if (!this.isQueryValue(value) || value === '') {
         continue;
       }
       params = params.set(key, String(value));
     }
 
     return params;
+  }
+
+  private isQueryValue(value: unknown): value is QueryValue {
+    return value === null || value === undefined || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
   }
 }
