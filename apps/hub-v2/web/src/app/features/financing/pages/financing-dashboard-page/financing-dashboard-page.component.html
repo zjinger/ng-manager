@@ -1,0 +1,16 @@
+<app-page-header title="报销工作台" subtitle="集中处理报销申请、审批流转、财务审核与付款进度。" />
+
+<financing-dashboard-panel />
+
+<div class="dashboard-content">
+  <div class="dashboard-main">
+    <financing-my-todos-card [items]="mockTodos" [total]="16" />
+  </div>
+
+  <div class="dashboard-sidebar">
+    <financing-quick-entry-card />
+    <div class="announcements-wrapper">
+      <financing-announcements-card [items]="announcements" />
+    </div>
+  </div>
+</div>

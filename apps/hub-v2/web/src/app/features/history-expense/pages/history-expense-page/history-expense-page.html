@@ -1,0 +1,60 @@
+<app-page-header
+  title="历史报销单"
+  subtitle="用于查看当前登录人的历史报销单，便于追溯流程和查询处理记录。"
+/>
+
+<!-- 顶部统计 -->
+<statistics-dashboard-panel [stats]="dashboardStats()" />
+
+<!-- 筛选栏 -->
+<app-history-expense-filter-bar
+  [query]="query()"
+  [roleNodeOptions]="roleNodeOptions"
+  [actionTypeOptions]="actionTypeOptions"
+  [statusOptions]="statusOptions"
+  [departmentOptions]="departmentOptions"
+  (submit)="handleFilter($event)"
+/>
+
+<!-- 激活筛选 -->
+<app-active-filters-bar
+  [tags]="activeFilterTags()"
+  (remove)="onRemoveFilter($event)"
+  (clear)="resetFilters()"
+/>
+
+<!-- 列表状态 -->
+<app-list-state
+  [loading]="loading()"
+  [empty]="displayData().length === 0"
+  loadingText="正在加载历史报销单..."
+  emptyTitle="暂无历史报销单"
+>
+  <!-- 历史列表 -->
+  <app-history-expense-list-table
+    [items]="displayData()"
+    (view)="handleView($event)"
+    (export)="handleExport($event)"
+  />
+
+  <!-- 分页 -->
+  @if (totalCount() > 0) {
+  <div class="expenses-pagination">
+    <nz-pagination
+      [nzTotal]="totalCount()"
+      [nzPageIndex]="query().page"
+      [nzPageSize]="query().pageSize"
+      [nzPageSizeOptions]="pageSizeOptions"
+      [nzShowSizeChanger]="true"
+      [nzShowQuickJumper]="true"
+      [nzShowTotal]="totalTpl"
+      (nzPageIndexChange)="onPageIndexChange($event)"
+      (nzPageSizeChange)="onPageSizeChange($event)"
+    />
+
+    <ng-template #totalTpl let-total>
+      共 {{ total }} 条
+    </ng-template>
+  </div>
+  }
+</app-list-state>

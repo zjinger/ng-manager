@@ -1,0 +1,59 @@
+<app-page-header title="我的报销" subtitle="查看我提交的差旅费报销与费用报销。">
+  <div page-header-actions class="header-actions">
+    <button nz-button nzType="primary" (click)="createTravelReport()">
+      <i nz-icon nzType="plus"></i> 新建差旅费报销
+    </button>
+    <button nz-button nzType="default" (click)="createExpenseReport()">新建费用报销</button>
+  </div>
+</app-page-header>
+<!-- 筛选栏组件 -->
+<app-expenses-filter-bar
+  [query]="currentQuery"
+  [expenseTypeOptions]="expenseTypeOptions"
+  [statusOptions]="statusOptions"
+  [approvalNodeOptions]="approvalNodeOptions"
+  (submit)="handleFilter($event)"
+  (reset)="handleReset()"
+/>
+<!-- 激活的筛选条件标签 -->
+<app-active-filters-bar
+  [tags]="activeFilterBarTags()"
+  (remove)="onActiveFilterRemove($event)"
+  (clear)="resetFilters()"
+/>
+<!-- 报销单列表组件状态 -->
+<app-list-state
+  [loading]="loading()"
+  [empty]="displayData().length === 0"
+  loadingText="正在加载报销单…"
+  emptyTitle="当前还没有报销单数据"
+>
+  <app-expenses-list-table
+    [items]="displayData()"
+    [page]="currentQuery.page"
+    [pageSize]="currentQuery.pageSize"
+    [expenseTypeOptions]="expenseTypeOptions"
+    [statusOptions]="statusOptions"
+    [approvalNodeOptions]="approvalNodeOptions"
+    (selectItem)="handleSelectItem($event)"
+    (view)="handleView($event)"
+    (export)="handleExport($event)"
+  />
+  <!-- 分页组件 - 没有数据时不显示 -->
+  @if (totalCount() > 0) {
+  <div class="expenses-pagination">
+    <nz-pagination
+      [nzTotal]="totalCount()"
+      [nzPageIndex]="currentQuery.page"
+      [nzPageSize]="currentQuery.pageSize"
+      [nzPageSizeOptions]="[10, 20, 50, 100]"
+      [nzShowSizeChanger]="true"
+      [nzShowQuickJumper]="true"
+      [nzShowTotal]="totalTpl"
+      (nzPageIndexChange)="onPageIndexChange($event)"
+      (nzPageSizeChange)="onPageSizeChange($event)"
+    ></nz-pagination>
+    <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+  </div>
+  }
+</app-list-state>
