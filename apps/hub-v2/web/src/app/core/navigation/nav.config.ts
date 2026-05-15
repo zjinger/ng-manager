@@ -38,9 +38,9 @@ export const NAV_ITEMS: NavSection[] = [
     key: 'financing-center',
     label: '财务中心',
     items: [
-      { key: 'financing-dashboard', label: '报销工作台', icon: 'container', route: '/financing/dashboard' },
+      { key: 're-dashboard', label: '报销工作台', icon: 'container', route: '/re-dashboard' },
       { key: 'my-expenses', label: '我的报销', icon: 'message', route: '/my-expenses' },
-      { key: 'approval-pending', label: '待审批', icon: 'file-text', route: '/approval-pending' },
+      { key: 'approval-pending', label: '待我审批', icon: 'file-text', route: '/approval-pending' },
       { key: 'history-expense', label: '历史报销单', icon: 'history', route: '/history-expense' },
       { key: 'expense-notice', label: '公告管理', icon: 'file-text', route: '/expense-notice' },
     ],
