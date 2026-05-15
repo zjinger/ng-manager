@@ -88,6 +88,42 @@ export class BreadcrumbService {
     if (path.startsWith('/feedbacks')) {
       return [{ label: '系统反馈' }];
     }
+    if (path.startsWith('/financing/dashboard')) {
+      return [{ label: '报销工作台' }];
+    }
+    if (path.startsWith('/travel-expense/new')) {
+      return [{ label: '新建差旅费报销' }];
+    }
+    if (path.startsWith('/travel-expense/detail')) {
+      return [{ label: '差旅费报销详情' }];
+    }
+    if (path.startsWith('/travel-expense/edit')) {
+      return [{ label: '编辑差旅费报销' }];
+    }
+    if (path.startsWith('/expense/new')) {
+      return [{ label: '新建费用报销' }];
+    }
+    if (path.startsWith('/expense/edit')) {
+      return [{ label: '编辑费用报销' }];
+    }
+    if (path.startsWith('/expense/detail')) {
+      return [{ label: '费用报销详情' }];
+    }
+    if (path.startsWith('/my-expenses')) {
+      return [{ label: '我的报销' }];
+    }
+    if (path.startsWith('/approval-pending')) {
+      return [{ label: '待我审批' }];
+    }
+    if (path.startsWith('/history-expense')) {
+      return [{ label: '历史报销单' }];
+    }
+    if (path.startsWith('/expense-notice')) {
+      return [{ label: '公告管理' }];
+    }
+    if (path.startsWith('/my-todos')) {
+      return [{ label: '我的待办' }];
+    }
 
     if (path.startsWith('/projects')) {
       return [{ label: '项目管理' }];

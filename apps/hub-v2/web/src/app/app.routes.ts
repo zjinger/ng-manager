@@ -112,6 +112,43 @@ export const routes: Routes = [
             },
           ]
         : []),
+        // ========
+        {
+          path: 'financing',
+          loadChildren: () =>
+            import('./features/financing/routes').then((m) => m.FINANCING_ROUTES),
+        },
+        {
+          path: 'travel-expense',
+          loadChildren: () =>
+            import('./features/travel-expense/routes').then((m) => m.TRAVEL_EXPENSE_ROUTES),
+        },
+        {
+          path: 'expense',
+          loadChildren: () =>
+            import('./features/expense/routes').then((m) => m.EXPENSE_ROUTES),
+        },
+        {
+          path: 'my-expenses',
+          loadChildren: () =>
+            import('./features/my-expenses/routes').then((m) => m.MY_EXPENSES_ROUTES),
+        },
+        {
+          path: 'approval-pending',
+          loadChildren: () =>
+            import('./features/approval-pending/routes').then((m) => m.APPROVAL_PENDING_ROUTES),
+        },
+        {
+          path: 'history-expense',
+          loadChildren: () =>
+            import('./features/history-expense/routes').then((m) => m.HISTORY_EXPENSE_ROUTES),
+        },
+        {
+          path: 'expense-notice',
+          loadChildren: () =>
+            import('./features/expense-notice/routes').then((m) => m.EXPENSE_NOTICE_ROUTES),
+        },
+        //=========
       {
         path: 'profile',
         loadChildren: () => import('./features/profile/routes').then((m) => m.PROFILE_ROUTES),
