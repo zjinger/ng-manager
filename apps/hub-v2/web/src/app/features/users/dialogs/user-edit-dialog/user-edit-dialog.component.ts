@@ -398,7 +398,7 @@ export class UserEditDialogComponent {
               remark: user.remark || '',
               status: user.status,
               loginEnabled: user.loginEnabled,
-              primaryDepartmentId: user.departments.find((item) => item.relationType === 'primary')?.departmentId || '',
+              primaryDepartmentId: user.primaryDepartment?.departmentId || user.departments[0]?.departmentId || '',
               managerUserId: user.managerUserId || '',
             }
           : { ...DEFAULT_USER_DRAFT }
@@ -420,7 +420,7 @@ export class UserEditDialogComponent {
 
     const departments = [
       ...(draft.primaryDepartmentId
-        ? [{ departmentId: draft.primaryDepartmentId, relationType: 'primary' as const }]
+        ? [{ departmentId: draft.primaryDepartmentId }]
         : []),
     ];
 

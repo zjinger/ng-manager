@@ -95,33 +95,12 @@ import type { UserEntity } from '../../models/user.model';
             </nz-form-item>
           </div>
         </div>
-
-        <div class="row" nz-row [nzGutter]="16">
-          <div class="col" nz-col [nzSpan]="24">
-            <nz-form-item>
-              <nz-form-label nzFor="titleCode">职位</nz-form-label>
-              <nz-form-control>
-                <nz-select
-                  nzAllowClear
-                  nzPlaceHolder="请选择职位"
-                  [ngModel]="draft().titleCode"
-                  name="titleCode"
-                  (ngModelChange)="onFieldChange('titleCode', $event)"
-                >
-                  @for (item of titleOptionsForDisplay(); track item.value) {
-                    <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
-                  }
-                </nz-select>
-              </nz-form-control>
-            </nz-form-item>
-          </div>
-        </div>
       </section>
 
       <section class="user-form-section">
         <div class="user-form-section__title">
           <nz-icon nzType="bank" nzTheme="outline" />
-          组织信息
+          部门信息
         </div>
 
         <div class="row" nz-row [nzGutter]="16">
@@ -145,6 +124,27 @@ import type { UserEntity } from '../../models/user.model';
           </div>
           <div class="col" nz-col [nzSpan]="12">
             <nz-form-item>
+              <nz-form-label nzFor="titleCode">职位</nz-form-label>
+              <nz-form-control>
+                <nz-select
+                  nzAllowClear
+                  nzPlaceHolder="请选择职位"
+                  [ngModel]="draft().titleCode"
+                  name="titleCode"
+                  (ngModelChange)="onFieldChange('titleCode', $event)"
+                >
+                  @for (item of titleOptionsForDisplay(); track item.value) {
+                    <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+
+        <div class="row" nz-row [nzGutter]="16">
+          <div class="col" nz-col [nzSpan]="12">
+            <nz-form-item>
               <nz-form-label nzFor="manager">直属上级</nz-form-label>
               <nz-form-control>
                 <nz-select
@@ -162,9 +162,6 @@ import type { UserEntity } from '../../models/user.model';
               </nz-form-control>
             </nz-form-item>
           </div>
-        </div>
-
-        <div class="row" nz-row [nzGutter]="16">
           <div class="col" nz-col [nzSpan]="12">
             <nz-form-item>
               <nz-form-label nzFor="employeeType">员工类型</nz-form-label>

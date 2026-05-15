@@ -94,10 +94,6 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
                   <strong>{{ currentUser.managerUser?.displayName || currentUser.managerUser?.username || '未设置' }}</strong>
                 </div>
                 <div class="detail-field">
-                  <span>财务审批人</span>
-                  <strong>{{ currentUser.financeApproverUser?.displayName || currentUser.financeApproverUser?.username || '未设置' }}</strong>
-                </div>
-                <div class="detail-field">
                   <span>创建时间</span>
                   <strong>{{ currentUser.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}</strong>
                 </div>
@@ -105,10 +101,10 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
                   <span>最后登录</span>
                   <strong class="detail-field__placeholder">待接入</strong>
                 </div>
-                <div class="detail-field">
+                <!-- <div class="detail-field">
                   <span>登录次数</span>
                   <strong class="detail-field__placeholder">待接入</strong>
-                </div>
+                </div> -->
               </div>
             </section>
           }
@@ -369,7 +365,7 @@ export class UserDetailDialogComponent {
   }
 
   primaryDepartmentLabel(user: UserEntity): string {
-    return user.departments.find((item) => item.relationType === 'primary')?.departmentName ?? user.departments[0]?.departmentName ?? '未设置';
+    return user.primaryDepartment?.departmentName ?? user.departments[0]?.departmentName ?? '未设置';
   }
 
   private loadUser(userId: string): void {

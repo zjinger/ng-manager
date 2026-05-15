@@ -18,7 +18,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
         <div>邮箱</div>
         <div>手机号</div>
         <div>部门</div>
-        <div>职能</div>
+        <div>职务</div>
         <div>后台登录</div>
         <div>状态</div>
         <div>时间</div>
