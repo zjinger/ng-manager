@@ -9,7 +9,21 @@
     "GET /api/admin/feedbacks": "反馈-获取列表",
     "GET /api/admin/feedbacks/:feedbackId": "反馈-获取详情",
     "PUT /api/admin/feedbacks/:feedbackId/status": "反馈-更新状态",
-    "POST /api/public/feedbacks": "反馈-提交"
+    "POST /api/public/feedbacks": "反馈-提交",
+    "GET /api/admin/reimbursements/dashboard": "报销-工作台",
+    "GET /api/admin/reimbursements/stats": "报销-统计",
+    "GET /api/admin/reimbursements/claims": "报销单-获取列表",
+    "POST /api/admin/reimbursements/claims": "报销单-创建草稿",
+    "GET /api/admin/reimbursements/claims/:claimId": "报销单-获取详情",
+    "PATCH /api/admin/reimbursements/claims/:claimId": "报销单-更新",
+    "POST /api/admin/reimbursements/claims/:claimId/submit": "报销单-提交审批",
+    "POST /api/admin/reimbursements/claims/:claimId/approve": "报销审批-通过",
+    "POST /api/admin/reimbursements/claims/:claimId/reject": "报销审批-驳回",
+    "POST /api/admin/reimbursements/claims/:claimId/transfer": "报销审批-转交",
+    "POST /api/admin/reimbursements/claims/:claimId/add-sign": "报销审批-加签",
+    "POST /api/admin/reimbursements/claims/:claimId/attachments": "报销附件-绑定",
+    "DELETE /api/admin/reimbursements/claims/:claimId/attachments/:attachmentId": "报销附件-移除",
+    "GET /api/admin/reimbursements/claims/:claimId/export": "报销单-导出Word"
   },
   "path": {
     "/api/admin/projects/:projectId/members": "项目成员-管理",

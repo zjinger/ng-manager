@@ -7,6 +7,7 @@
  * 
  * 2. 生成并应用到数据目录（覆盖现有同名数据）：
  *   node generate-hub-v2-api-data.js --apply
+ *   - 同时同步写入 dataDir 下的 ng-manager.db API 表
  * 
  * 可选参数：
  * --dataDir <path>   指定数据目录，默认为 ~/.ng-manager
@@ -17,7 +18,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const crypto = require("node:crypto");
 const DEFAULT_NAME_MAP_PATH = path.join(__dirname, "generate-hub-v2-api-name-map.json");
+const GENERATED_COLLECTION_PREFIX = "col_hubv2_";
+const GENERATED_REQUEST_PREFIX = "req_hubv2_";
+const GENERATED_ENV_PREFIX = "env_hubv2_";
 
 function parseArg(name) {
   const idx = process.argv.indexOf(`--${name}`);
@@ -54,6 +59,11 @@ function safeRead(filePath) {
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
+}
+
+function stableId(prefix, value) {
+  const digest = crypto.createHash("sha1").update(String(value)).digest("hex").slice(0, 16);
+  return `${prefix}${digest}`;
 }
 
 function readKvFile(filePath) {
@@ -246,6 +256,7 @@ function resourceNameCn(endpoint) {
     notifications: "通知",
     feedbacks: "反馈",
     uploads: "上传",
+    reimbursements: "报销",
     announcements: "公告",
     documents: "文档",
     releases: "发布",
@@ -326,6 +337,7 @@ function groupName(endpoint) {
   if (p.startsWith("/api/admin/notifications")) return "通知中心";
   if (p.startsWith("/api/admin/feedbacks")) return "反馈";
   if (p.startsWith("/api/admin/uploads")) return "上传";
+  if (p.startsWith("/api/admin/reimbursements")) return "报销管理";
   if (p.startsWith("/api/admin/announcements")) return "内容中心";
   if (p.startsWith("/api/admin/documents")) return "内容中心";
   if (p.startsWith("/api/admin/releases")) return "内容中心";
@@ -335,7 +347,10 @@ function groupName(endpoint) {
 }
 
 function buildRequest(endpoint, index, now, collectionId, nameMap) {
-  const id = `req_hubv2_${String(index + 1).padStart(3, "0")}_${now.toString(36)}`;
+  const id = stableId(
+    GENERATED_REQUEST_PREFIX,
+    `${endpoint.method} ${endpoint.fullPath}::${collectionId}`
+  );
   const isWrite = ["POST", "PUT", "PATCH"].includes(endpoint.method);
   const isNoAuth = endpoint.fullPath.startsWith("/api/admin/auth/login") || endpoint.fullPath.startsWith("/api/public/");
   const pathParams = (endpoint.pathKeys || []).map((key) => ({
@@ -379,10 +394,86 @@ function toKvMap(items) {
   return { version: 1, items: map };
 }
 
-function mergeAndWriteKv(filePath, appendItems) {
+function syncGeneratedKv(filePath, nextItems, generatedPrefix) {
   const existing = readKvFile(filePath);
-  for (const item of appendItems) existing.items[item.id] = item;
+  for (const key of Object.keys(existing.items)) {
+    if (key.startsWith(generatedPrefix) && !nextItems.some((item) => item.id === key)) {
+      delete existing.items[key];
+    }
+  }
+  for (const item of nextItems) existing.items[item.id] = item;
   writeJson(filePath, existing);
+}
+
+function initApiSqliteSchema(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS api_requests (
+      scope TEXT NOT NULL,
+      project_id TEXT NOT NULL DEFAULT '',
+      id TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (scope, project_id, id)
+    );
+    CREATE TABLE IF NOT EXISTS api_envs (
+      scope TEXT NOT NULL,
+      project_id TEXT NOT NULL DEFAULT '',
+      id TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (scope, project_id, id)
+    );
+    CREATE TABLE IF NOT EXISTS api_collections (
+      scope TEXT NOT NULL,
+      project_id TEXT NOT NULL DEFAULT '',
+      id TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (scope, project_id, id)
+    );
+  `);
+}
+
+function syncGeneratedSqlite(opts) {
+  const Database = require("better-sqlite3");
+  const dbPath = path.join(opts.targetDataDir, "ng-manager.db");
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const db = new Database(dbPath);
+  try {
+    db.pragma("journal_mode = WAL");
+    db.pragma("foreign_keys = ON");
+    initApiSqliteSchema(db);
+
+    const scopeProjectId = opts.scope === "project" ? String(opts.projectId ?? "").trim() : "";
+    const syncTable = (tableName, items, generatedPrefix) => {
+      const tx = db.transaction(() => {
+        const rows = db
+          .prepare(`SELECT id FROM ${tableName} WHERE scope = ? AND project_id = ?`)
+          .all(opts.scope, scopeProjectId);
+        const nextIds = new Set(items.map((item) => item.id));
+        const remove = db.prepare(`DELETE FROM ${tableName} WHERE scope = ? AND project_id = ? AND id = ?`);
+        for (const row of rows) {
+          const id = String(row.id || "");
+          if (id.startsWith(generatedPrefix) && !nextIds.has(id)) {
+            remove.run(opts.scope, scopeProjectId, id);
+          }
+        }
+        const upsert = db.prepare(`
+          INSERT INTO ${tableName} (scope, project_id, id, value)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(scope, project_id, id) DO UPDATE SET value = excluded.value
+        `);
+        for (const item of items) {
+          upsert.run(opts.scope, scopeProjectId, item.id, JSON.stringify(item));
+        }
+      });
+      tx();
+    };
+
+    syncTable("api_collections", opts.collections, GENERATED_COLLECTION_PREFIX);
+    syncTable("api_requests", opts.requests, GENERATED_REQUEST_PREFIX);
+    syncTable("api_envs", opts.envs, GENERATED_ENV_PREFIX);
+    return dbPath;
+  } finally {
+    db.close();
+  }
 }
 
 function main() {
@@ -418,7 +509,10 @@ function main() {
 
   for (const [name, list] of Array.from(grouped.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
     colIdx += 1;
-    const colId = `col_hubv2_${String(colIdx).padStart(2, "0")}_${now.toString(36)}`;
+    const colId = stableId(
+      GENERATED_COLLECTION_PREFIX,
+      `${scope}:${projectId ?? ""}:${name}`
+    );
 
     collections.push({
       id: colId,
@@ -440,7 +534,7 @@ function main() {
   }
 
   const envEntity = {
-    id: `env_hubv2_${now.toString(36)}`,
+    id: stableId(GENERATED_ENV_PREFIX, `${scope}:${projectId ?? ""}:Hub-v2`),
     scope,
     name: "Hub-v2",
     ...(projectId ? { projectId } : {}),
@@ -478,9 +572,17 @@ function main() {
       ? path.join(targetDataDir, "api", "projects", projectId)
       : path.join(targetDataDir, "api", "global");
     fs.mkdirSync(apiScopeDir, { recursive: true });
-    mergeAndWriteKv(path.join(apiScopeDir, "collections.kv.json"), collections);
-    mergeAndWriteKv(path.join(apiScopeDir, "requests.kv.json"), requests);
-    mergeAndWriteKv(path.join(apiScopeDir, "envs.kv.json"), [envEntity]);
+    syncGeneratedKv(path.join(apiScopeDir, "collections.kv.json"), collections, GENERATED_COLLECTION_PREFIX);
+    syncGeneratedKv(path.join(apiScopeDir, "requests.kv.json"), requests, GENERATED_REQUEST_PREFIX);
+    syncGeneratedKv(path.join(apiScopeDir, "envs.kv.json"), [envEntity], GENERATED_ENV_PREFIX);
+    var sqliteDbPath = syncGeneratedSqlite({
+      targetDataDir,
+      scope,
+      projectId,
+      collections,
+      requests,
+      envs: [envEntity]
+    });
   }
 
   console.log(
@@ -493,6 +595,7 @@ function main() {
         projectId: projectId ?? null,
         nameMapPath: fs.existsSync(nameMapPath) ? nameMapPath : null,
         targetDataDir: apply ? targetDataDir : null,
+        sqliteDbPath: apply ? sqliteDbPath : null,
         generated: {
           collections: collections.length,
           requests: requests.length,
