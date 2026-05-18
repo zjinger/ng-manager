@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { AdminAccountEntity } from "./auth.types";
+import type { AdminAccountEntity, AdminProfileDepartment, AdminProfileSystemRole } from "./auth.types";
 
 type AdminAccountRow = {
   id: string;
@@ -265,6 +265,61 @@ export class AuthRepo {
         `
       )
       .run(status, updatedAt, id);
+  }
+
+  findUserPrimaryDepartment(userId: string): AdminProfileDepartment | null {
+    if (!userId.trim()) {
+      return null;
+    }
+    const row = this.db
+      .prepare(
+        `
+          SELECT d.id, d.code, d.name
+          FROM user_departments ud
+          INNER JOIN departments d ON d.id = ud.department_id
+          WHERE ud.user_id = ?
+          ORDER BY d.sort ASC, d.created_at ASC
+          LIMIT 1
+        `
+      )
+      .get(userId) as AdminProfileDepartment | undefined;
+    return row ?? null;
+  }
+
+  listUserSystemRoles(userId: string): AdminProfileSystemRole[] {
+    if (!userId.trim()) {
+      return [];
+    }
+    return this.db
+      .prepare(
+        `
+          SELECT r.id, r.code, r.name, r.purpose_code as purposeCode, r.purpose_name as purposeName
+          FROM user_system_roles ur
+          INNER JOIN system_roles r ON r.id = ur.role_id
+          WHERE ur.user_id = ?
+          ORDER BY r.sort ASC, r.created_at ASC
+        `
+      )
+      .all(userId) as AdminProfileSystemRole[];
+  }
+
+  listUserPermissionCodes(userId: string): string[] {
+    if (!userId.trim()) {
+      return [];
+    }
+    const rows = this.db
+      .prepare(
+        `
+          SELECT DISTINCT p.code
+          FROM user_system_roles ur
+          INNER JOIN system_role_permissions rp ON rp.role_id = ur.role_id
+          INNER JOIN system_permissions p ON p.id = rp.permission_id
+          WHERE ur.user_id = ?
+          ORDER BY p.code ASC
+        `
+      )
+      .all(userId) as Array<{ code: string }>;
+    return rows.map((row) => row.code);
   }
 
   private mapRow(row: AdminAccountRow): AdminAccountEntity {

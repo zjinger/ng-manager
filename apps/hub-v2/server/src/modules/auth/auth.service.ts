@@ -155,6 +155,11 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
   }
 
   private toProfile(account: AdminAccountEntity): AdminProfile {
+    const userId = account.userId?.trim() ?? "";
+    const department = userId ? this.repo.findUserPrimaryDepartment(userId) : null;
+    const systemRoles = userId ? this.repo.listUserSystemRoles(userId) : [];
+    const permissionCodes = userId ? this.repo.listUserPermissionCodes(userId) : [];
+
     return {
       id: account.id,
       userId: account.userId ?? null,
@@ -166,6 +171,9 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       avatarUploadId: account.avatarUploadId ?? null,
       avatarUrl: account.avatarUploadId ? `/api/admin/uploads/${account.avatarUploadId}/raw` : null,
       role: account.role,
+      department,
+      systemRoles,
+      permissionCodes,
       mustChangePassword: account.mustChangePassword,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt

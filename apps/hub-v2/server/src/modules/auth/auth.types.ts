@@ -30,9 +30,26 @@ export interface AdminProfile {
   avatarUploadId: string | null;
   avatarUrl: string | null;
   role: AdminAccountRole;
+  department: AdminProfileDepartment | null;
+  systemRoles: AdminProfileSystemRole[];
+  permissionCodes: string[];
   mustChangePassword: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AdminProfileDepartment {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface AdminProfileSystemRole {
+  id: string;
+  code: string;
+  name: string;
+  purposeCode: string;
+  purposeName: string;
 }
 
 export interface LoginChallenge {

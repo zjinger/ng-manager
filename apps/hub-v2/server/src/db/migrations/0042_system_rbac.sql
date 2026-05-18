@@ -75,7 +75,7 @@ INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, pur
 VALUES
   ('srole_super_admin', 'super_admin', '超级管理员', '拥有系统全部管理权限。', 1, 'hybrid', '混合角色', 'active', 10, datetime('now'), datetime('now')),
   ('srole_admin', 'admin', '管理员', '可管理后台基础能力。', 1, 'platform_admin', '平台管理角色', 'active', 20, datetime('now'), datetime('now')),
-  ('srole_member', 'member', '成员', '普通协作成员账号。', 1, 'platform_admin', '平台成员角色', 'active', 30, datetime('now'), datetime('now'));
+  ('srole_member', 'member', '成员', '普通协作成员账号。', 1, 'platform_member', '平台成员角色', 'active', 30, datetime('now'), datetime('now'));
 
 INSERT OR IGNORE INTO system_permissions (id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at)
 VALUES
