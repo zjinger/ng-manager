@@ -25,7 +25,7 @@ export const reimbursementItemSchema = z.object({
 
 export const createReimbursementClaimSchema = z.object({
   claimType: claimTypeSchema,
-  departmentId: z.string().trim().min(1),
+  departmentId: z.string().trim().min(1).optional(),
   reason: z.string().trim().min(1).max(255),
   fillDate: z.string().trim().optional(),
   travelStartDate: z.string().trim().nullable().optional(),

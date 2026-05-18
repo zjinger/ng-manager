@@ -349,7 +349,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `claimType` | `"travel" \| "general"` | 是 | 报销单类型 |
-| `departmentId` | `string` | 是 | 归属部门 ID |
+| `departmentId` | `string` | 否 | 归属部门 ID；不传则回退到当前用户主部门，无主部门时报错 |
 | `reason` | `string` | 是 | 报销事由，1-255 字符 |
 | `fillDate` | `string` | 否 | 填报日期，不传则后端默认当天 |
 | `travelStartDate` | `string \| null` | 差旅必填 | 差旅开始日期，建议 `YYYY-MM-DD` |
@@ -734,6 +734,14 @@
    - `fillDate`
    - `receiptCount`
 3. 行程和费用逐行金额仍放在 `items[]`
+
+## 5.6 部门归属来源
+
+创建草稿时 `departmentId` 允许不传：
+
+1. 如果前端传了 `departmentId`，后端按传入值校验并使用
+2. 如果前端没传，后端自动读取当前登录用户主部门
+3. 如果用户没有主部门，创建接口返回 `400`
 
 ## 6. 当前已知实现边界
 

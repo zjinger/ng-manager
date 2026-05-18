@@ -17,7 +17,6 @@
 ```json
 {
   "claimType": "travel",
-  "departmentId": "dep_rd",
   "reason": "上海到杭州客户拜访差旅报销",
   "fillDate": "2026-05-15",
   "travelStartDate": "2026-05-14",
@@ -78,7 +77,6 @@
 ```json
 {
   "claimType": "general",
-  "departmentId": "dep_finance",
   "reason": "办公用品采购报销",
   "fillDate": "2026-05-15",
   "receiptCount": 5,
@@ -265,7 +263,7 @@
 ## 11. 前端建议的最小联调顺序
 
 1. 调登录接口拿到 cookie
-2. `POST /claims` 创建草稿
+2. `POST /claims` 创建草稿；可省略 `departmentId`，由后端自动取当前用户主部门
 3. `POST /claims/:claimId/attachments` 绑定附件
 4. `PATCH /claims/:claimId` 保存完整明细
 5. `POST /claims/:claimId/submit` 提交审批

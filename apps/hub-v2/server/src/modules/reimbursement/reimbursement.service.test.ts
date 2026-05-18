@@ -42,6 +42,14 @@ function createDb() {
       user_id TEXT NOT NULL,
       role_id TEXT NOT NULL
     );
+    CREATE TABLE user_departments (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE,
+      department_id TEXT NOT NULL,
+      role_code TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
     CREATE TABLE uploads (
       id TEXT PRIMARY KEY,
       file_name TEXT,
@@ -168,6 +176,8 @@ function createDb() {
   db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_cashier", "usr_cashier", "srole_cashier");
   db.prepare("INSERT INTO approval_templates (id, code, name, status) VALUES (?, ?, ?, ?)").run("tpl_expense", "expense_default", "默认报销审批", "active");
   const now = new Date().toISOString();
+  db.prepare("INSERT INTO user_departments (id, user_id, department_id, role_code, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .run("ud_applicant", "usr_applicant", "dep_rd", null, now, now);
   db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .run("stg_direct", "tpl_expense", "direct", "直属主管", "direct_manager", "direct_manager", null, 10, now);
   db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
@@ -233,6 +243,25 @@ describe("ReimbursementService", () => {
       detail = await service.approve(detail.id, { taskId: cashierTasks.find((task) => task.assigneeUserId === "usr_cashier")!.id }, ctx("usr_cashier"));
       assert.equal(detail.status, "completed");
       assert.equal(detail.tasks.some((task) => task.status === "cancelled" && task.assigneeUserId === "usr_applicant"), true);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("falls back to applicant primary department when departmentId is omitted", async () => {
+    const db = createDb();
+    try {
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const created = await service.create(
+        {
+          claimType: "general",
+          reason: "办公用品",
+          items: [{ amount: 30 }]
+        },
+        ctx("usr_applicant")
+      );
+      assert.equal(created.departmentId, "dep_rd");
+      assert.equal(created.departmentName, "研发部");
     } finally {
       db.close();
     }

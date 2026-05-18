@@ -196,6 +196,19 @@ export class ReimbursementRepo {
     return row ? { id: row.id, name: row.name, managerUserId: row.manager_user_id } : null;
   }
 
+  findPrimaryDepartmentForUser(userId: string): DepartmentApprovalProfile | null {
+    const row = this.db
+      .prepare(`
+        SELECT d.id, d.name, d.manager_user_id
+        FROM user_departments ud
+        INNER JOIN departments d ON d.id = ud.department_id
+        WHERE ud.user_id = ? AND d.status = 'active'
+        LIMIT 1
+      `)
+      .get(userId) as { id: string; name: string; manager_user_id: string | null } | undefined;
+    return row ? { id: row.id, name: row.name, managerUserId: row.manager_user_id } : null;
+  }
+
   userHasPermission(userId: string, permissionCode: string): boolean {
     const row = this.db
       .prepare(`

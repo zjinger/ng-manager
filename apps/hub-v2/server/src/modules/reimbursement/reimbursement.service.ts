@@ -62,7 +62,9 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     this.ensurePermission(userId, "expense.submit", ctx);
     this.ensureRequiredClaimFields(input.claimType, input);
     const applicant = this.requireUser(userId);
-    const department = this.requireDepartment(input.departmentId);
+    const department = input.departmentId?.trim()
+      ? this.requireDepartment(input.departmentId)
+      : this.requirePrimaryDepartment(userId);
     const now = nowIso();
     const items = this.buildItems(genId("pending"), input.claimType, input.items ?? [], now);
     const totalAmount = this.sumItems(items);
@@ -468,6 +470,14 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     const department = this.repo.findDepartmentProfile(departmentId);
     if (!department) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_NOT_FOUND, `department not found: ${departmentId}`, 404);
+    }
+    return department;
+  }
+
+  private requirePrimaryDepartment(userId: string) {
+    const department = this.repo.findPrimaryDepartmentForUser(userId);
+    if (!department) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "primary department is required to create reimbursement claim", 400);
     }
     return department;
   }

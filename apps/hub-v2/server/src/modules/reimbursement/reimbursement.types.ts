@@ -131,7 +131,7 @@ export interface ReimbursementItemInput {
 
 export interface CreateReimbursementClaimInput {
   claimType: ReimbursementClaimType;
-  departmentId: string;
+  departmentId?: string;
   reason: string;
   fillDate?: string;
   travelStartDate?: string | null;
