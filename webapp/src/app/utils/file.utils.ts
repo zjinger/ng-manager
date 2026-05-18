@@ -74,3 +74,26 @@ export function downloadByUrl(url: string, filename: string) {
 
   a.click();
 }
+
+/**
+ * 格式化字节大小
+ * @param bytes 字节数
+ * @returns 格式化后的字符串
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const units = ['KB', 'MB', 'GB', 'TB'];
+
+  let size = bytes / 1024;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(1)} ${units[unitIndex]}`;
+}

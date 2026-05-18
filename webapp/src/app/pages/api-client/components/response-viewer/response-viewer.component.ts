@@ -17,6 +17,7 @@ import { CurlActionsComponent } from './curl-actions.component';
 import { ApiResponseEntity } from '@models/api-client/api-response.model';
 import { SendResponse } from '@models/api-client';
 import { ResponseBodyViewerComponent } from './response-body-viewer/response-body-viewer.component';
+import { formatBytes } from '@app/utils/file.utils';
 
 @Component({
   selector: 'app-response-viewer',
@@ -188,6 +189,7 @@ import { ResponseBodyViewerComponent } from './response-body-viewer/response-bod
 export class ResponseViewerComponent implements OnChanges {
   @Input() sending = false;
   @Input() result: SendResponse | null = null;
+  @Input() activedTabId: string | null = null;
 
   resultSig = signal<SendResponse | null>(null);
 
@@ -256,6 +258,12 @@ export class ResponseViewerComponent implements OnChanges {
 
   rawDump = computed(() => {
     if (!this.response()) return '';
-    return JSON.stringify(this.response(), null, 2);
+    // 避免直接修改原对象
+    const raw = structuredClone(this.response()!);
+    // 处理超大的 base64 内容
+    if (raw.bodyBase64) {
+      raw.bodyBase64 = `[base64 content omitted: ${formatBytes(raw.bodySize ?? 0)}]`;
+    }
+    return JSON.stringify(raw, null, 2);
   });
 }

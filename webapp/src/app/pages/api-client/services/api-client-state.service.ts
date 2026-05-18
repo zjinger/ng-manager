@@ -38,7 +38,7 @@ export class ApiClientStateService {
   q = signal(''); // 搜索关键词
 
   // 使用 Tab Store 的 sending 状态
-  sending = this.tabStore.sending;
+  activeSending = this.tabStore.activeSending;
   requests = signal<ApiRequestEntity[]>([]); // 全部请求列表
 
   // 当前选中请求 ID - 改用 Tab Store
@@ -661,9 +661,12 @@ export class ApiClientStateService {
       return;
     }
 
+    const activeTabId = this.tabStore.activeTabId();
+    if (!activeTabId) return;
+
     // 允许未保存直接发送：request 直传
-    this.tabStore.setSending(true);
-    this.tabStore.updateActiveResponse(null);
+    this.tabStore.setSending(activeTabId, true);
+    this.tabStore.updateTabResponse(activeTabId, null);
     try {
       const res = await this.api.send({
         scope,
@@ -672,7 +675,8 @@ export class ApiClientStateService {
         envId: this.activeEnvId() ?? undefined,
         projectRoot:(this.projectContext.currentProject() as any)?.root, // 有就传，没有就 undefined
       });
-      this.tabStore.updateActiveResponse(res);
+      // 需要根据 activeTabId 更新，防止切换Tab 后结果更新到错误的 Tab 上
+      this.tabStore.updateTabResponse(activeTabId, res);
       if (res.error) {
         this.msg.error(`${res.error.code}: ${res.error.message}`);
       } else {
@@ -681,7 +685,7 @@ export class ApiClientStateService {
     } catch (e: any) {
       this.msg.error(e?.message ?? '发送失败');
     } finally {
-      this.tabStore.setSending(false);
+      this.tabStore.setSending(activeTabId, false);
     }
   }
 

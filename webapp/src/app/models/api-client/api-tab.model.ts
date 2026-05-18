@@ -28,6 +28,8 @@ export interface ApiClientTab {
   createdAt: number;
   /** 更新时间 */
   updatedAt: number;
+  /** 是否正在发送 */
+  sending: boolean;
 }
 
 /**

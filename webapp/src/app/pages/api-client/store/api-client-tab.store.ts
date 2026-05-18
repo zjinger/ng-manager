@@ -26,7 +26,6 @@ export class ApiClientTabStore {
   // State
   readonly tabs = signal<ApiClientTab[]>([]);
   readonly activeTabId = signal<string | null>(null);
-  readonly sending = signal(false);
 
   // Computed
   readonly activeTab = computed(() => {
@@ -35,6 +34,9 @@ export class ApiClientTabStore {
     return id ? tabs.find((t) => t.id === id) ?? null : null;
   });
 
+  /** 当前Tab是否正在发送 */
+  readonly activeSending = computed(() => this.activeTab()?.sending ?? false); 
+
   readonly activeRequest = computed(() => this.activeTab()?.request ?? null);
 
   readonly activeResponse = computed(() => this.activeTab()?.lastResponse ?? null);
@@ -42,6 +44,8 @@ export class ApiClientTabStore {
   readonly canOpenMore = computed(() => this.tabs().length < this.maxTabs);
 
   readonly tabCount = computed(() => this.tabs().length);
+
+
 
   constructor() {
     // 初始化时从 LocalStorage 恢复
@@ -86,6 +90,7 @@ export class ApiClientTabStore {
       lastResponse: null,
       createdAt: t,
       updatedAt: t,
+      sending: false
     };
   }
 
@@ -130,6 +135,7 @@ export class ApiClientTabStore {
       lastResponse: null,
       createdAt: t,
       updatedAt: t,
+      sending: false
     };
 
     this.tabs.update((tabs) => [...tabs, tab]);
@@ -255,6 +261,7 @@ export class ApiClientTabStore {
       lastResponse: null,
       createdAt: t,
       updatedAt: t,
+      sending: false
     };
 
     // 插入到当前 Tab 后面
@@ -364,6 +371,17 @@ export class ApiClientTabStore {
   }
 
   /**
+   * 更新指定 Tab 的响应（根据 Tab ID）
+   */
+  updateTabResponse(tabId: string, response: SendResponse | null): void {
+    this.tabs.update((tabs) =>
+      tabs.map((t) =>
+        t.id === tabId ? { ...t, lastResponse: response, updatedAt: now() } : t
+      )
+    );
+  }
+
+  /**
    * 标记当前 Tab 为已保存
    */
   markActiveSaved(requestId: string): void {
@@ -402,8 +420,12 @@ export class ApiClientTabStore {
   /**
    * 设置发送状态
    */
-  setSending(value: boolean): void {
-    this.sending.set(value);
+  setSending(tabId: string, value: boolean): void {
+    this.tabs.update((tabs) =>
+      tabs.map((t) =>
+        t.id === tabId ? { ...t, sending: value } : t
+      )
+    );
   }
 
   /**

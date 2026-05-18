@@ -113,7 +113,8 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
                   [collectionPath]="store.collectionPath()"
                   [baseUrl]="store.activeEnv()?.baseUrl ?? null"
                   [request]="store.activeRequest()"
-                  [sending]="store.sending()"
+                  [sending]="store.activeSending()"
+                  [activedTabId]="store.activeTabId()"
                   [envVars]="store.envVarRecord()"
                   [openEnv]="openEnv"
                   (patch)="store.patchActive($event)"
@@ -121,7 +122,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
                   (send)="store.sendActive()"
                 />
                 <app-response-viewer
-                  [sending]="store.sending()"
+                  [sending]="store.activeSending()"
                   [result]="store.lastResult()"
                 />
               </div>

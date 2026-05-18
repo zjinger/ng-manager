@@ -1,4 +1,4 @@
-<div class="tabs-container" cdkDropList (cdkDropListDropped)="onDrop($event)">
+<div class="tabs-container" cdkDropList cdkDropListOrientation="horizontal" (cdkDropListDropped)="onDrop($event)">
   @for (tab of tabs(); track tab.id; let i = $index) {
     <div
       class="tab-item"
