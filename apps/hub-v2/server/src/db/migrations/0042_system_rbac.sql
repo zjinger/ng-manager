@@ -73,9 +73,9 @@ CREATE INDEX IF NOT EXISTS idx_user_system_roles_role_id ON user_system_roles(ro
 -- Insert initial data
 INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
 VALUES
-  ('srole_super_admin', 'super_admin', '超级管理员', '拥有系统全部管理权限，作为后续 RBAC 接管的最高权限角色。', 1, 'hybrid', '混合角色', 'active', 10, datetime('now'), datetime('now')),
-  ('srole_admin', 'admin', '管理员', '对应现有 admin 账号语义，可管理后台基础能力。', 1, 'platform_admin', '平台管理角色', 'active', 20, datetime('now'), datetime('now')),
-  ('srole_member', 'member', '成员', '对应现有普通协作成员账号语义。', 1, 'platform_admin', '平台管理角色', 'active', 30, datetime('now'), datetime('now'));
+  ('srole_super_admin', 'super_admin', '超级管理员', '拥有系统全部管理权限。', 1, 'hybrid', '混合角色', 'active', 10, datetime('now'), datetime('now')),
+  ('srole_admin', 'admin', '管理员', '可管理后台基础能力。', 1, 'platform_admin', '平台管理角色', 'active', 20, datetime('now'), datetime('now')),
+  ('srole_member', 'member', '成员', '普通协作成员账号。', 1, 'platform_admin', '平台成员角色', 'active', 30, datetime('now'), datetime('now'));
 
 INSERT OR IGNORE INTO system_permissions (id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at)
 VALUES
@@ -114,7 +114,7 @@ WHERE code IN ('admin.dashboard.view', 'admin.users.manage', 'admin.departments.
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_member', id, datetime('now')
 FROM system_permissions
-WHERE code = 'admin.dashboard.view';
+WHERE code IN ('expense.submit', 'expense.view.self');
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_super_admin', id, datetime('now')
