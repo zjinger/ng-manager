@@ -359,36 +359,6 @@ export class AuthRepo {
       .run(userId, updatedAt, accountId);
   }
 
-  syncPlatformRoleForUser(userId: string, legacyRole: "admin" | "user", createdAt: string): void {
-    const roleCode = legacyRole === "admin" ? "admin" : "member";
-    const tx = this.db.transaction(() => {
-      this.db
-        .prepare(
-          `
-            DELETE FROM user_system_roles
-            WHERE user_id = ?
-              AND role_id IN (
-                SELECT id FROM system_roles WHERE code IN ('admin', 'member')
-              )
-          `
-        )
-        .run(userId);
-
-      this.db
-        .prepare(
-          `
-            INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
-            SELECT ?, ?, id, ?
-            FROM system_roles
-            WHERE code = ?
-            LIMIT 1
-          `
-        )
-        .run(`usr_sync_${userId}_${roleCode}`, userId, createdAt, roleCode);
-    });
-    tx();
-  }
-
   ensureSystemRoleBindingByCode(userId: string, roleCode: string, createdAt: string): void {
     this.db
       .prepare(

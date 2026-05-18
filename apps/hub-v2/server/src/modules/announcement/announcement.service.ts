@@ -6,7 +6,7 @@ import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ContentLogCommandContract } from "../content-log/content-log.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
-import { requireAdmin } from "../utils/require-admin";
+import { requirePermission } from "../utils/require-permission";
 import type { AnnouncementCommandContract, AnnouncementQueryContract } from "./announcement.contract";
 import { AnnouncementRepo } from "./announcement.repo";
 import type {
@@ -18,6 +18,8 @@ import type {
 } from "./announcement.types";
 
 export class AnnouncementService implements AnnouncementCommandContract, AnnouncementQueryContract {
+  private static readonly GLOBAL_MANAGE_PERMISSION = "project.manage.all";
+
   constructor(
     private readonly repo: AnnouncementRepo,
     private readonly projectAccess: ProjectAccessContract,
@@ -133,7 +135,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     if (projectId) {
       await this.projectAccess.requireProjectAccess(projectId, ctx, "list announcements");
     } else {
-      requireAdmin(ctx);
+      this.requireGlobalManagePermission(ctx);
     }
     return this.repo.list(query);
   }
@@ -253,7 +255,11 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       }
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden: project admin only`, 403);
     }
-    requireAdmin(ctx);
+    this.requireGlobalManagePermission(ctx);
+  }
+
+  private requireGlobalManagePermission(ctx: RequestContext): void {
+    requirePermission(ctx, AnnouncementService.GLOBAL_MANAGE_PERMISSION);
   }
 
   private async requireReadableAnnouncement(entity: AnnouncementEntity, ctx: RequestContext, action: string): Promise<void> {

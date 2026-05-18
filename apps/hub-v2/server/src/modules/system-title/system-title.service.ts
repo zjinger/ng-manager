@@ -3,7 +3,6 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
-import { requireAdmin } from "../utils/require-admin";
 import type { SystemTitleCommandContract, SystemTitleQueryContract } from "./system-title.contract";
 import { SystemTitleRepo } from "./system-title.repo";
 import type {
@@ -16,8 +15,7 @@ import type {
 export class SystemTitleService implements SystemTitleCommandContract, SystemTitleQueryContract {
   constructor(private readonly repo: SystemTitleRepo) {}
 
-  async listSystemTitles(query: ListSystemTitlesQuery, ctx: RequestContext): Promise<SystemTitleEntity[]> {
-    requireAdmin(ctx);
+  async listSystemTitles(query: ListSystemTitlesQuery, _ctx: RequestContext): Promise<SystemTitleEntity[]> {
     return this.repo.listTitles(query);
   }
 
@@ -25,8 +23,7 @@ export class SystemTitleService implements SystemTitleCommandContract, SystemTit
     return this.repo.findByCode(code.trim());
   }
 
-  async createSystemTitle(input: CreateSystemTitleInput, ctx: RequestContext): Promise<SystemTitleEntity> {
-    requireAdmin(ctx);
+  async createSystemTitle(input: CreateSystemTitleInput, _ctx: RequestContext): Promise<SystemTitleEntity> {
     const code = input.code.trim();
     if (this.repo.findByCode(code)) {
       throw new AppError(ERROR_CODES.SYSTEM_TITLE_EXISTS, `system title already exists: ${code}`, 409);
@@ -46,8 +43,7 @@ export class SystemTitleService implements SystemTitleCommandContract, SystemTit
     return entity;
   }
 
-  async updateSystemTitle(titleId: string, input: UpdateSystemTitleInput, ctx: RequestContext): Promise<SystemTitleEntity> {
-    requireAdmin(ctx);
+  async updateSystemTitle(titleId: string, input: UpdateSystemTitleInput, _ctx: RequestContext): Promise<SystemTitleEntity> {
     const current = this.repo.findById(titleId);
     if (!current) {
       throw new AppError(ERROR_CODES.SYSTEM_TITLE_NOT_FOUND, `system title not found: ${titleId}`, 404);
@@ -70,8 +66,7 @@ export class SystemTitleService implements SystemTitleCommandContract, SystemTit
     return entity;
   }
 
-  async deleteSystemTitle(titleId: string, ctx: RequestContext): Promise<void> {
-    requireAdmin(ctx);
+  async deleteSystemTitle(titleId: string, _ctx: RequestContext): Promise<void> {
     const current = this.repo.findById(titleId);
     if (!current) {
       throw new AppError(ERROR_CODES.SYSTEM_TITLE_NOT_FOUND, `system title not found: ${titleId}`, 404);

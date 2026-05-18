@@ -21,8 +21,6 @@ export interface UserEntity {
   primaryDepartment: UserDepartmentEntity | null;
   managerUserId: string | null;
   managerUser: UserRef | null;
-  financeApproverUserId: string | null;
-  financeApproverUser: UserRef | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,7 +49,6 @@ export interface CreateUserInput {
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
   managerUserId?: string | null;
-  financeApproverUserId?: string | null;
 }
 
 export interface UpdateUserInput {
@@ -64,7 +61,6 @@ export interface UpdateUserInput {
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
   managerUserId?: string | null;
-  financeApproverUserId?: string | null;
 }
 
 export interface ResetUserPasswordInput {

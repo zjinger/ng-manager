@@ -6,7 +6,7 @@ import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ContentLogCommandContract } from "../content-log/content-log.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
-import { requireAdmin } from "../utils/require-admin";
+import { requirePermission } from "../utils/require-permission";
 import { ProjectRepo } from "../project/project.repo";
 import type { ReleaseCommandContract, ReleaseQueryContract } from "./release.contract";
 import { ReleaseRepo } from "./release.repo";
@@ -19,6 +19,8 @@ import type {
 } from "./release.types";
 
 export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContract {
+  private static readonly GLOBAL_MANAGE_PERMISSION = "project.manage.all";
+
   constructor(
     private readonly repo: ReleaseRepo,
     private readonly projectRepo: ProjectRepo,
@@ -182,7 +184,7 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
     if (projectId) {
       await this.projectAccess.requireProjectAccess(projectId, ctx, "list releases");
     } else {
-      requireAdmin(ctx);
+      this.requireGlobalManagePermission(ctx);
     }
     return this.repo.list(query);
   }
@@ -234,7 +236,11 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
       }
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden: project admin only`, 403);
     }
-    requireAdmin(ctx);
+    this.requireGlobalManagePermission(ctx);
+  }
+
+  private requireGlobalManagePermission(ctx: RequestContext): void {
+    requirePermission(ctx, ReleaseService.GLOBAL_MANAGE_PERMISSION);
   }
 
   private resolveActorId(ctx: RequestContext): string | null {

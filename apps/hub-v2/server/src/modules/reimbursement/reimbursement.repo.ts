@@ -24,7 +24,6 @@ export interface UserApprovalProfile {
   username: string;
   displayName: string | null;
   managerUserId: string | null;
-  financeApproverUserId: string | null;
 }
 
 export interface DepartmentApprovalProfile {
@@ -170,21 +169,19 @@ export class ReimbursementRepo {
 
   findUserProfile(userId: string): UserApprovalProfile | null {
     const row = this.db
-      .prepare("SELECT id, username, display_name, manager_user_id, finance_approver_user_id FROM users WHERE id = ? AND status = 'active'")
+      .prepare("SELECT id, username, display_name, manager_user_id FROM users WHERE id = ? AND status = 'active'")
       .get(userId) as {
         id: string;
         username: string;
         display_name: string | null;
         manager_user_id: string | null;
-        finance_approver_user_id: string | null;
       } | undefined;
     return row
       ? {
           id: row.id,
           username: row.username,
           displayName: row.display_name,
-          managerUserId: row.manager_user_id,
-          financeApproverUserId: row.finance_approver_user_id
+          managerUserId: row.manager_user_id
         }
       : null;
   }
@@ -268,7 +265,7 @@ export class ReimbursementRepo {
   listActiveRoleUsers(roleId: string): UserApprovalProfile[] {
     const rows = this.db
       .prepare(`
-        SELECT u.id, u.username, u.display_name, u.manager_user_id, u.finance_approver_user_id
+        SELECT u.id, u.username, u.display_name, u.manager_user_id
         FROM user_system_roles usr
         INNER JOIN users u ON u.id = usr.user_id AND u.status = 'active'
         INNER JOIN system_roles sr ON sr.id = usr.role_id AND sr.status = 'active'
@@ -280,14 +277,12 @@ export class ReimbursementRepo {
         username: string;
         display_name: string | null;
         manager_user_id: string | null;
-        finance_approver_user_id: string | null;
       }>;
     return rows.map((row) => ({
       id: row.id,
       username: row.username,
       displayName: row.display_name,
-      managerUserId: row.manager_user_id,
-      financeApproverUserId: row.finance_approver_user_id
+      managerUserId: row.manager_user_id
     }));
   }
 

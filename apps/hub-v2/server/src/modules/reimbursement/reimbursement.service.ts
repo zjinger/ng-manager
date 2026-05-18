@@ -367,9 +367,6 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       const department = this.requireDepartment(claim.departmentId);
       return [this.requireConfiguredUser(department.managerUserId, `${stage.stageName} department manager`)];
     }
-    if (stage.resolverType === "finance_approver") {
-      return [this.requireConfiguredUser(applicant.financeApproverUserId, `${stage.stageName} finance approver`)];
-    }
     if (stage.resolverType === "system_role") {
       if (!stage.resolverRef) {
         throw new AppError(ERROR_CODES.BAD_REQUEST, `${stage.stageName} resolverRef is required`, 400);
@@ -496,7 +493,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     if (!task || task.claimId !== claimId) {
       throw new AppError(ERROR_CODES.NOT_FOUND, `approval task not found: ${taskId}`, 404);
     }
-    if (task.assigneeUserId !== userId && !ctx.roles.includes("admin")) {
+    if (task.assigneeUserId !== userId && !this.canBypassApprovalAssignee(ctx, userId)) {
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "approval task assignee mismatch", 403);
     }
     if (task.status !== "pending" && task.status !== "addsign_pending") {
@@ -518,7 +515,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
 
   private ensureCanMutateDraft(claim: ReimbursementClaimEntity, ctx: RequestContext): void {
     const userId = this.requireUserId(ctx);
-    if (claim.applicantUserId !== userId && !ctx.roles.includes("admin")) {
+    if (claim.applicantUserId !== userId && !this.canBypassApprovalAssignee(ctx, userId)) {
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "reimbursement claim applicant required", 403);
     }
     if (claim.status !== "draft" && claim.status !== "rejected") {
@@ -528,7 +525,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
 
   private ensureCanEditOrApprove(claim: ReimbursementClaimEntity, ctx: RequestContext): void {
     const userId = this.requireUserId(ctx);
-    if (claim.applicantUserId === userId || ctx.roles.includes("admin")) {
+    if (claim.applicantUserId === userId || this.canBypassApprovalAssignee(ctx, userId)) {
       return;
     }
     const task = this.repo.listTasks(claim.id).find((item) => item.assigneeUserId === userId && (item.status === "pending" || item.status === "addsign_pending"));
@@ -538,7 +535,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   }
 
   private canSeeAll(ctx: RequestContext, userId: string): boolean {
-    return ctx.roles.includes("admin") || this.repo.userHasPermission(userId, "expense.report.view");
+    return this.canBypassApprovalAssignee(ctx, userId) || this.repo.userHasPermission(userId, "expense.report.view");
   }
 
   private canViewReport(ctx: RequestContext, userId: string): boolean {
@@ -546,10 +543,17 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   }
 
   private ensurePermission(userId: string, permission: string, ctx: RequestContext): void {
-    if (ctx.roles.includes("admin") || this.repo.userHasPermission(userId, permission)) {
+    if (this.canBypassApprovalAssignee(ctx, userId) || this.repo.userHasPermission(userId, permission)) {
       return;
     }
     throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, `${permission} required`, 403);
+  }
+
+  private canBypassApprovalAssignee(ctx: RequestContext, userId: string): boolean {
+    return (
+      this.repo.userHasPermission(userId, "project.manage.all") ||
+      this.repo.userHasPermission(userId, "expense.rule.manage")
+    );
   }
 
   private requireUserId(ctx: RequestContext): string {

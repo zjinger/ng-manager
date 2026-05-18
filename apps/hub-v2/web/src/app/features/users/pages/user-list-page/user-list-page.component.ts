@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthStore } from '@core/auth';
+import { hasRequiredPermissions } from '@core/auth';
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -149,7 +150,9 @@ export class UserListPageComponent {
   readonly titleOptions = signal<Array<{ label: string; value: string }>>([]);
   readonly titleLabelMap = signal<Record<string, string>>({});
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个用户`);
-  readonly canCreate = computed(() => this.authStore.currentUser()?.role === 'admin');
+  readonly canCreate = computed(() =>
+    hasRequiredPermissions(this.authStore.currentUser()?.permissionCodes ?? [], ['admin.users.manage'], 'any')
+  );
 
   constructor() {
     this.store.initialize();

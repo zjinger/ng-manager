@@ -2,7 +2,7 @@ import type { PageResult } from "../../shared/http/pagination";
 
 export type ApprovalTemplateStatus = "active" | "inactive";
 export type ApprovalStageType = "direct_manager" | "department_manager" | "finance_review" | "cashier" | "special_authorizer";
-export type ApprovalResolverType = "direct_manager" | "department_manager" | "department_chain" | "finance_approver" | "system_role";
+export type ApprovalResolverType = "direct_manager" | "department_manager" | "department_chain" | "system_role";
 
 export interface ApprovalTemplateEntity {
   id: string;

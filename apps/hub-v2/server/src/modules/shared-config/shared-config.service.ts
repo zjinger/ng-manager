@@ -4,7 +4,6 @@ import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ProjectAccessContract } from "../project/project-access.contract";
-import { requireAdmin } from "../utils/require-admin";
 import type { SharedConfigCommandContract, SharedConfigQueryContract } from "./shared-config.contract";
 import { SharedConfigRepo } from "./shared-config.repo";
 import type {
@@ -23,8 +22,6 @@ export class SharedConfigService implements SharedConfigCommandContract, SharedC
   ) {}
 
   async create(input: CreateSharedConfigInput, ctx: RequestContext): Promise<SharedConfigEntity> {
-    requireAdmin(ctx);
-
     const projectId = input.projectId?.trim() || null;
     if (projectId) {
       await this.projectAccess.requireProjectAccess(projectId, ctx, "create shared config");
@@ -57,7 +54,6 @@ export class SharedConfigService implements SharedConfigCommandContract, SharedC
   }
 
   async update(id: string, input: UpdateSharedConfigInput, ctx: RequestContext): Promise<SharedConfigEntity> {
-    requireAdmin(ctx);
     const current = this.requireById(id);
 
     const projectId =
@@ -87,13 +83,11 @@ export class SharedConfigService implements SharedConfigCommandContract, SharedC
     return this.requireById(id);
   }
 
-  async list(query: ListSharedConfigsQuery, ctx: RequestContext): Promise<SharedConfigListResult> {
-    requireAdmin(ctx);
+  async list(query: ListSharedConfigsQuery, _ctx: RequestContext): Promise<SharedConfigListResult> {
     return this.repo.list(query);
   }
 
   async getById(id: string, ctx: RequestContext): Promise<SharedConfigEntity> {
-    requireAdmin(ctx);
     const entity = this.requireById(id);
     if (entity.projectId) {
       await this.projectAccess.requireProjectAccess(entity.projectId, ctx, "get shared config");

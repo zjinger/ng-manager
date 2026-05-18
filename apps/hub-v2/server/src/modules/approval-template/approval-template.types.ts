@@ -11,7 +11,6 @@ export type ApprovalResolverType =
   | "direct_manager"
   | "department_manager"
   | "department_chain"
-  | "finance_approver"
   | "system_role";
 
 export interface ApprovalTemplateStageEntity {

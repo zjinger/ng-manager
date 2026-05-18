@@ -15,8 +15,7 @@ function createDb() {
       username TEXT NOT NULL,
       display_name TEXT,
       status TEXT NOT NULL DEFAULT 'active',
-      manager_user_id TEXT,
-      finance_approver_user_id TEXT
+      manager_user_id TEXT
     );
     CREATE TABLE departments (
       id TEXT PRIMARY KEY,
@@ -160,19 +159,22 @@ function createDb() {
       created_at TEXT NOT NULL
     );
   `);
-  db.prepare("INSERT INTO users (id, username, display_name, status, manager_user_id, finance_approver_user_id) VALUES (?, ?, ?, ?, ?, ?)")
-    .run("usr_applicant", "applicant", "申请人", "active", "usr_manager", "usr_finance_approver");
+  db.prepare("INSERT INTO users (id, username, display_name, status, manager_user_id) VALUES (?, ?, ?, ?, ?)")
+    .run("usr_applicant", "applicant", "申请人", "active", "usr_manager");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_manager", "manager", "直属主管", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_dept_manager", "dept", "部门负责人", "active");
-  db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_finance_approver", "finance", "财务审批人", "active");
+  db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_finance_reviewer", "finance", "财务复核人", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_cashier", "cashier", "出纳", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_other", "other", "无关人员", "active");
   db.prepare("INSERT INTO departments (id, name, status, manager_user_id) VALUES (?, ?, ?, ?)").run("dep_rd", "研发部", "active", "usr_dept_manager");
+  db.prepare("INSERT INTO system_roles (id, code, status) VALUES (?, ?, ?)").run("srole_finance_reviewer", "finance_reviewer", "active");
   db.prepare("INSERT INTO system_roles (id, code, status) VALUES (?, ?, ?)").run("srole_cashier", "finance_cashier", "active");
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)").run("perm_submit", "expense.submit");
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)").run("perm_report", "expense.report.view");
+  db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)").run("srole_finance_reviewer", "perm_submit");
   db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)").run("srole_cashier", "perm_submit");
   db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_applicant", "usr_applicant", "srole_cashier");
+  db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_finance", "usr_finance_reviewer", "srole_finance_reviewer");
   db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_cashier", "usr_cashier", "srole_cashier");
   db.prepare("INSERT INTO approval_templates (id, code, name, status) VALUES (?, ?, ?, ?)").run("tpl_expense", "expense_default", "默认报销审批", "active");
   const now = new Date().toISOString();
@@ -183,7 +185,7 @@ function createDb() {
   db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .run("stg_dept", "tpl_expense", "dept", "部门负责人", "department_manager", "department_manager", null, 20, now);
   db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("stg_finance", "tpl_expense", "finance", "财务审批", "finance_review", "finance_approver", null, 30, now);
+    .run("stg_finance", "tpl_expense", "finance", "财务审批", "finance_review", "system_role", "srole_finance_reviewer", 30, now);
   db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .run("stg_cashier", "tpl_expense", "cashier", "出纳", "cashier", "system_role", "srole_cashier", 40, now);
   db.prepare("INSERT INTO uploads (id, file_name, original_name, mime_type, file_size, status) VALUES (?, ?, ?, ?, ?, ?)")
@@ -234,9 +236,9 @@ describe("ReimbursementService", () => {
       assert.equal(detail.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_dept_manager");
 
       detail = await service.approve(detail.id, { taskId: detail.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_dept_manager"));
-      assert.equal(detail.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_finance_approver");
+      assert.equal(detail.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_finance_reviewer");
 
-      detail = await service.approve(detail.id, { taskId: detail.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_finance_approver"));
+      detail = await service.approve(detail.id, { taskId: detail.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_finance_reviewer"));
       const cashierTasks = detail.tasks.filter((task) => task.status === "pending");
       assert.equal(cashierTasks.length, 2);
 

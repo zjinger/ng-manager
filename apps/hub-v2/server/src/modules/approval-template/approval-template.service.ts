@@ -2,7 +2,6 @@ import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
-import { requireAdmin } from "../utils/require-admin";
 import type { RequestContext } from "../../shared/context/request-context";
 import type { ApprovalTemplateCommandContract, ApprovalTemplateQueryContract } from "./approval-template.contract";
 import { ApprovalTemplateRepo } from "./approval-template.repo";
@@ -19,13 +18,11 @@ import type {
 export class ApprovalTemplateService implements ApprovalTemplateCommandContract, ApprovalTemplateQueryContract {
   constructor(private readonly repo: ApprovalTemplateRepo) {}
 
-  async list(query: ListApprovalTemplatesQuery, ctx: RequestContext) {
-    requireAdmin(ctx);
+  async list(query: ListApprovalTemplatesQuery, _ctx: RequestContext) {
     return this.repo.list(query);
   }
 
-  async getById(id: string, ctx: RequestContext): Promise<ApprovalTemplateDetail> {
-    requireAdmin(ctx);
+  async getById(id: string, _ctx: RequestContext): Promise<ApprovalTemplateDetail> {
     const template = this.repo.findById(id);
     if (!template) {
       throw new AppError(ERROR_CODES.APPROVAL_TEMPLATE_NOT_FOUND, `approval template not found: ${id}`, 404);
@@ -36,8 +33,7 @@ export class ApprovalTemplateService implements ApprovalTemplateCommandContract,
     };
   }
 
-  async create(input: CreateApprovalTemplateInput, ctx: RequestContext): Promise<ApprovalTemplateDetail> {
-    requireAdmin(ctx);
+  async create(input: CreateApprovalTemplateInput, _ctx: RequestContext): Promise<ApprovalTemplateDetail> {
     const code = input.code.trim();
     if (this.repo.findByCode(code)) {
       throw new AppError(ERROR_CODES.APPROVAL_TEMPLATE_EXISTS, `approval template already exists: ${code}`, 409);
@@ -62,8 +58,7 @@ export class ApprovalTemplateService implements ApprovalTemplateCommandContract,
     };
   }
 
-  async update(id: string, input: UpdateApprovalTemplateInput, ctx: RequestContext): Promise<ApprovalTemplateDetail> {
-    requireAdmin(ctx);
+  async update(id: string, input: UpdateApprovalTemplateInput, _ctx: RequestContext): Promise<ApprovalTemplateDetail> {
     const current = this.repo.findById(id);
     if (!current) {
       throw new AppError(ERROR_CODES.APPROVAL_TEMPLATE_NOT_FOUND, `approval template not found: ${id}`, 404);
@@ -88,7 +83,7 @@ export class ApprovalTemplateService implements ApprovalTemplateCommandContract,
     if (input.stages) {
       this.repo.replaceStages(id, this.normalizeStages(id, input.stages, updatedAt));
     }
-    return this.getById(id, ctx);
+    return this.getById(id, _ctx);
   }
 
   private normalizeStages(templateId: string, inputs: CreateApprovalTemplateStageInput[], timestamp: string): ApprovalTemplateStageEntity[] {

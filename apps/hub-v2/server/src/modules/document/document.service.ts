@@ -8,7 +8,7 @@ import type { ContentLogCommandContract } from "../content-log/content-log.contr
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import { ProjectRepo } from "../project/project.repo";
 import type { UploadCommandContract } from "../upload/upload.contract";
-import { requireAdmin } from "../utils/require-admin";
+import { requirePermission } from "../utils/require-permission";
 import type { DocumentCommandContract, DocumentQueryContract } from "./document.contract";
 import { DocumentRepo } from "./document.repo";
 import type {
@@ -20,6 +20,8 @@ import type {
 } from "./document.types";
 
 export class DocumentService implements DocumentCommandContract, DocumentQueryContract {
+  private static readonly GLOBAL_MANAGE_PERMISSION = "project.manage.all";
+
   constructor(
     private readonly repo: DocumentRepo,
     private readonly projectRepo: ProjectRepo,
@@ -188,7 +190,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     if (projectId) {
       await this.projectAccess.requireProjectAccess(projectId, ctx, "list documents");
     } else {
-      requireAdmin(ctx);
+      this.requireGlobalManagePermission(ctx);
     }
     return this.repo.list(query);
   }
@@ -252,7 +254,11 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
       await this.projectAccess.requireProjectAccess(projectId, ctx, action);
       return;
     }
-    requireAdmin(ctx);
+    this.requireGlobalManagePermission(ctx);
+  }
+
+  private requireGlobalManagePermission(ctx: RequestContext): void {
+    requirePermission(ctx, DocumentService.GLOBAL_MANAGE_PERMISSION);
   }
 
   private requireDocumentOwner(entity: DocumentEntity, ctx: RequestContext, action: string): void {

@@ -5,7 +5,6 @@ import { genId } from "../../shared/utils/id";
 import { hashPassword } from "../../shared/utils/password";
 import { nowIso } from "../../shared/utils/time";
 import { AuthRepo } from "../auth/auth.repo";
-import { requireAdmin } from "../utils/require-admin";
 import { OrganizationService } from "../organization/organization.service";
 import { PlatformRoleSyncService } from "../system-rbac/platform-role-sync.service";
 import { SystemTitleService } from "../system-title/system-title.service";
@@ -32,8 +31,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     private readonly systemTitleService: SystemTitleService
   ) {}
 
-  async create(input: CreateUserInput, ctx: RequestContext): Promise<UserEntity> {
-    requireAdmin(ctx);
+  async create(input: CreateUserInput, _ctx: RequestContext): Promise<UserEntity> {
     const username = input.username.trim();
     if (this.repo.findByUsername(username) || this.authRepo.findByUsername(username)) {
       throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS, `user already exists: ${input.username}`, 409);
@@ -41,7 +39,6 @@ export class UserService implements UserCommandContract, UserQueryContract {
     this.organization.validateUserDepartmentInputs(input.departments);
     this.validateTitleCode(input.titleCode);
     this.validateUserReference(input.managerUserId, "manager user");
-    this.validateUserReference(input.financeApproverUserId, "finance approver user");
 
     const now = nowIso();
     const loginEnabled = input.loginEnabled !== false;
@@ -62,8 +59,6 @@ export class UserService implements UserCommandContract, UserQueryContract {
       primaryDepartment: null,
       managerUserId: input.managerUserId?.trim() || null,
       managerUser: null,
-      financeApproverUserId: input.financeApproverUserId?.trim() || null,
-      financeApproverUser: null,
       createdAt: now,
       updatedAt: now
     };
@@ -91,7 +86,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
   }
 
   async list(query: ListUsersQuery, ctx: RequestContext): Promise<UserListResult> {
-    if (!ctx.userId?.trim() && !ctx.roles.includes("admin")) {
+    if (!ctx.userId?.trim() && !this.canManageUsers(ctx)) {
       return {
         items: [],
         page: query.page && query.page > 0 ? query.page : 1,
@@ -106,8 +101,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     };
   }
 
-  async update(id: string, input: UpdateUserInput, ctx: RequestContext): Promise<UserEntity> {
-    requireAdmin(ctx);
+  async update(id: string, input: UpdateUserInput, _ctx: RequestContext): Promise<UserEntity> {
     const user = this.repo.findById(id);
     if (!user) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
@@ -115,7 +109,6 @@ export class UserService implements UserCommandContract, UserQueryContract {
     this.organization.validateUserDepartmentInputs(input.departments);
     this.validateTitleCode(input.titleCode);
     this.validateUserReference(input.managerUserId, "manager user", id);
-    this.validateUserReference(input.financeApproverUserId, "finance approver user", id);
 
     const updated: UserEntity = {
       ...user,
@@ -128,8 +121,6 @@ export class UserService implements UserCommandContract, UserQueryContract {
       remark: input.remark === undefined ? user.remark : input.remark?.trim() || null,
       managerUserId: input.managerUserId === undefined ? user.managerUserId : input.managerUserId?.trim() || null,
       managerUser: input.managerUserId === undefined ? user.managerUser : null,
-      financeApproverUserId: input.financeApproverUserId === undefined ? user.financeApproverUserId : input.financeApproverUserId?.trim() || null,
-      financeApproverUser: input.financeApproverUserId === undefined ? user.financeApproverUser : null,
       updatedAt: nowIso()
     };
 
@@ -165,7 +156,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
   }
 
   async getById(id: string, ctx: RequestContext): Promise<UserEntity> {
-    if (!ctx.userId?.trim() && !ctx.roles.includes("admin")) {
+    if (!ctx.userId?.trim() && !this.canManageUsers(ctx)) {
       throw new AppError(ERROR_CODES.USER_ACCESS_DENIED, "get user forbidden", 403);
     }
     const user = this.repo.findById(id);
@@ -175,8 +166,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     return this.withDepartments(user);
   }
 
-  async resetPassword(id: string, input: ResetUserPasswordInput, ctx: RequestContext): Promise<ResetUserPasswordResult> {
-    requireAdmin(ctx);
+  async resetPassword(id: string, input: ResetUserPasswordInput, _ctx: RequestContext): Promise<ResetUserPasswordResult> {
     const user = this.repo.findById(id);
     if (!user) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
@@ -249,5 +239,9 @@ export class UserService implements UserCommandContract, UserQueryContract {
     if (title.status !== "active") {
       throw new AppError(ERROR_CODES.BAD_REQUEST, `system title is inactive: ${normalized}`, 400);
     }
+  }
+
+  private canManageUsers(ctx: RequestContext): boolean {
+    return (ctx.authScopes ?? []).includes("admin.users.manage");
   }
 }

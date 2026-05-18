@@ -3,7 +3,6 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
-import { requireAdmin } from "../utils/require-admin";
 import type { OrganizationCommandContract, OrganizationQueryContract } from "./organization.contract";
 import { OrganizationRepo } from "./organization.repo";
 import type {
@@ -23,7 +22,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
 
   async listDepartments(query: ListDepartmentsQuery, ctx: RequestContext): Promise<DepartmentEntity[]> {
     this.requireReadable(ctx);
-    if (ctx.roles.includes("admin")) {
+    if (this.canManageDepartments(ctx)) {
       return this.repo.listDepartments(query);
     }
     const assigned = this.repo.listUserDepartments(ctx.userId ?? "");
@@ -46,8 +45,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     return this.repo.listDepartmentTitles(departmentId);
   }
 
-  async createDepartment(input: CreateDepartmentInput, ctx: RequestContext): Promise<DepartmentEntity> {
-    requireAdmin(ctx);
+  async createDepartment(input: CreateDepartmentInput, _ctx: RequestContext): Promise<DepartmentEntity> {
     const code = input.code.trim();
     if (this.repo.findDepartmentByCode(code)) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_EXISTS, `department already exists: ${code}`, 409);
@@ -79,8 +77,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     return entity;
   }
 
-  async updateDepartment(id: string, input: UpdateDepartmentInput, ctx: RequestContext): Promise<DepartmentEntity> {
-    requireAdmin(ctx);
+  async updateDepartment(id: string, input: UpdateDepartmentInput, _ctx: RequestContext): Promise<DepartmentEntity> {
     const current = this.repo.findDepartmentById(id);
     if (!current) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_NOT_FOUND, `department not found: ${id}`, 404);
@@ -118,8 +115,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     return entity;
   }
 
-  async addDepartmentTitle(departmentId: string, input: DepartmentTitleInput, ctx: RequestContext): Promise<DepartmentTitleEntity> {
-    requireAdmin(ctx);
+  async addDepartmentTitle(departmentId: string, input: DepartmentTitleInput, _ctx: RequestContext): Promise<DepartmentTitleEntity> {
     const department = this.repo.findDepartmentById(departmentId);
     if (!department) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_NOT_FOUND, `department not found: ${departmentId}`, 404);
@@ -142,8 +138,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     return this.repo.listDepartmentTitles(department.id).find((item) => item.titleCode === titleCode)!;
   }
 
-  async removeDepartmentTitle(departmentId: string, titleCode: string, ctx: RequestContext): Promise<void> {
-    requireAdmin(ctx);
+  async removeDepartmentTitle(departmentId: string, titleCode: string, _ctx: RequestContext): Promise<void> {
     const department = this.repo.findDepartmentById(departmentId);
     if (!department) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_NOT_FOUND, `department not found: ${departmentId}`, 404);
@@ -151,8 +146,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     this.repo.removeDepartmentTitle(department.id, titleCode.trim());
   }
 
-  async addUserDepartment(userId: string, input: UserDepartmentInput, ctx: RequestContext): Promise<UserDepartmentEntity> {
-    requireAdmin(ctx);
+  async addUserDepartment(userId: string, input: UserDepartmentInput, _ctx: RequestContext): Promise<UserDepartmentEntity> {
     this.ensureUser(userId);
     this.normalizeUserDepartmentInputs([input]);
     const department = this.repo.findDepartmentById(input.departmentId);
@@ -170,14 +164,13 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     return this.repo.listUserDepartments(userId).find((item) => item.departmentId === input.departmentId)!;
   }
 
-  async removeUserDepartment(userId: string, departmentId: string, ctx: RequestContext): Promise<void> {
-    requireAdmin(ctx);
+  async removeUserDepartment(userId: string, departmentId: string, _ctx: RequestContext): Promise<void> {
     this.ensureUser(userId);
     this.repo.removeUserDepartment(userId, departmentId);
   }
 
   async listUserDepartments(userId: string, ctx: RequestContext): Promise<UserDepartmentEntity[]> {
-    if (!ctx.roles.includes("admin") && ctx.userId !== userId) {
+    if (!this.canManageDepartments(ctx) && ctx.userId !== userId) {
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "forbidden", 403);
     }
     this.ensureUser(userId);
@@ -267,13 +260,13 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
   }
 
   private requireReadable(ctx: RequestContext): void {
-    if (!ctx.userId?.trim() && !ctx.roles.includes("admin")) {
+    if (!ctx.userId?.trim() && !this.canManageDepartments(ctx)) {
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "forbidden", 403);
     }
   }
 
   private requireDepartmentReadable(departmentId: string, ctx: RequestContext): void {
-    if (ctx.roles.includes("admin")) {
+    if (this.canManageDepartments(ctx)) {
       return;
     }
     const userId = ctx.userId?.trim();
@@ -284,5 +277,9 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     if (!assigned.some((item) => item.departmentId === departmentId)) {
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "forbidden", 403);
     }
+  }
+
+  private canManageDepartments(ctx: RequestContext): boolean {
+    return (ctx.authScopes ?? []).includes("admin.departments.manage");
   }
 }

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { AuthStore } from '@core/auth';
+import { AuthStore, hasRequiredPermissions } from '@core/auth';
 import { ProjectContextStore, type ProjectScopeMode } from '@core/state';
 import { UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 import { AvatarImageNormalizerService } from '@shared/services/avatar-image-normalizer.service';
@@ -42,6 +42,14 @@ type ProfileTab = 'basic' | 'security' | 'notifications' | 'project-visibility' 
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfilePageComponent {
+  private static readonly ADMIN_VIEW_PERMISSIONS = [
+    'admin.dashboard.view',
+    'admin.users.manage',
+    'admin.departments.manage',
+    'admin.roles.manage',
+    'admin.settings.manage',
+  ];
+
   readonly authStore = inject(AuthStore);
   private readonly profileApi = inject(ProfileApiService);
   private readonly projectContext = inject(ProjectContextStore);
@@ -107,15 +115,22 @@ export class ProfilePageComponent {
 
   readonly displayName = computed(() => this.authStore.currentUser()?.nickname || this.authStore.currentUser()?.username || '当前账号');
   readonly email = computed(() => this.authStore.currentUser()?.email || '');
+  readonly isAdminView = computed(() =>
+    hasRequiredPermissions(
+      this.authStore.currentUser()?.permissionCodes ?? [],
+      ProfilePageComponent.ADMIN_VIEW_PERMISSIONS,
+      'any'
+    )
+  );
   readonly heroTags = computed(() => [
-    this.authStore.currentUser()?.role === 'admin' ? 'Admin' : '项目成员',
-    this.authStore.currentUser()?.role === 'admin' ? '系统管理员' : '协作成员'
+    this.isAdminView() ? 'Admin' : '项目成员',
+    this.isAdminView() ? '系统管理员' : '协作成员'
   ]);
 
   readonly heroStats = computed(() => [
-    { label: '已创建测试单', value: this.authStore.currentUser()?.role === 'admin' ? 128 : 36 },
-    { label: '研发项', value: this.authStore.currentUser()?.role === 'admin' ? 36 : 12 },
-    { label: '项目', value: this.authStore.currentUser()?.role === 'admin' ? 12 : 4 },
+    { label: '已创建测试单', value: this.isAdminView() ? 128 : 36 },
+    { label: '研发项', value: this.isAdminView() ? 36 : 12 },
+    { label: '项目', value: this.isAdminView() ? 12 : 4 },
   ]);
 
   readonly securityMethods = computed(() => [

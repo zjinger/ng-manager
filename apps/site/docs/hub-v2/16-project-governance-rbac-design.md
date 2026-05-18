@@ -235,10 +235,10 @@
 1. 创建项目时，创建者自动成为 owner
 2. `requireProjectMaintainer()` 已经把 `owner/project_admin` 作为维护者
 3. `assertCanTransferOwner()` 当前允许：
-   - 全局 admin
+   - 具备 `project.owner.transfer` 的用户
    - 当前 owner
 
-建议下一步不要再继续写死 `ctx.roles.includes("admin")`，而是改造成统一入口：
+建议下一步不要再继续写死角色字面量判断，而是改造成统一入口：
 
 1. `hasSystemPermission(ctx, 'project.manage.all')`
 2. `hasSystemPermission(ctx, 'project.archive')`
@@ -302,7 +302,7 @@
 2. 抽项目授权服务
 
 3. 把 `ProjectService` 里的：
-   - `ctx.roles.includes("admin")`
+   - 基于 legacy 角色字段的硬编码判断
    - `owner/project_admin` 判断
    
    替换成统一授权入口

@@ -4,6 +4,16 @@ import { map } from 'rxjs';
 
 import { AuthService } from './auth.service';
 import { AuthStore } from './auth.store';
+import { hasRequiredPermissions } from './permission.utils';
+
+const ADMIN_CONSOLE_PERMISSIONS = [
+  'admin.dashboard.view',
+  'admin.users.manage',
+  'admin.departments.manage',
+  'admin.roles.manage',
+  'admin.audit.view',
+  'admin.settings.manage',
+];
 
 export const adminGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
@@ -15,7 +25,10 @@ export const adminGuard: CanActivateFn = () => {
       if (!ok) {
         return router.createUrlTree(['/login']);
       }
-      return authStore.currentUser()?.role === 'admin' ? true : router.createUrlTree(['/dashboard']);
+      const granted = authStore.currentUser()?.permissionCodes ?? [];
+      return hasRequiredPermissions(granted, ADMIN_CONSOLE_PERMISSIONS, 'any')
+        ? true
+        : router.createUrlTree(['/dashboard']);
     })
   );
 };

@@ -141,7 +141,8 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
   }
 
   ensureDefaultAdmin(): void {
-    const existing = this.repo.findByUsername(this.config.initAdminUsername);
+    const initAdminUsername = this.normalizeUsername(this.config.initAdminUsername);
+    const existing = this.repo.findByUsername(initAdminUsername);
     if (existing) {
       this.ensureAccountUserBindingsAndPlatformRoles();
       return;
@@ -151,7 +152,7 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     const userId = genId("usr");
     this.repo.createUserForAccount({
       id: userId,
-      username: this.config.initAdminUsername,
+      username: initAdminUsername,
       displayName: this.config.initAdminNickname,
       status: "active",
       source: "local",
@@ -161,7 +162,7 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     this.repo.create({
       id: genId("adm"),
       userId,
-      username: this.config.initAdminUsername,
+      username: initAdminUsername,
       passwordHash: hashPassword(this.config.initAdminPassword),
       nickname: this.config.initAdminNickname,
       role: "admin",
@@ -221,12 +222,24 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
         });
         this.repo.bindAccountUser(account.id, userId, now);
       }
-      if (account.username === this.config.initAdminUsername) {
+      if (this.isInitAdminUsername(account.username)) {
         this.repo.replacePlatformRoleBindings(userId, "super_admin", now);
       } else {
-        this.repo.syncPlatformRoleForUser(userId, account.role, now);
+        const roles = this.repo.listUserSystemRoles(userId);
+        const hasPlatformRole = roles.some((role) => role.code === "super_admin" || role.code === "admin" || role.code === "member");
+        if (!hasPlatformRole) {
+          this.repo.ensureSystemRoleBindingByCode(userId, "member", now);
+        }
       }
     }
+  }
+
+  private isInitAdminUsername(username: string): boolean {
+    return this.normalizeUsername(username) === this.normalizeUsername(this.config.initAdminUsername);
+  }
+
+  private normalizeUsername(username: string): string {
+    return username.trim().toLowerCase();
   }
 
   private loginByPassword(username: string, password: string): AdminProfile {

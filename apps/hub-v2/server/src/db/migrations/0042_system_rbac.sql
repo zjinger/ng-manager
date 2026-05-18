@@ -3,9 +3,7 @@
 -- Notes: 仅建立授权底座；admin 登录链路兼容层不在本迁移接管
 -- Add columns to users table
 ALTER TABLE users ADD COLUMN manager_user_id TEXT;
-ALTER TABLE users ADD COLUMN finance_approver_user_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_users_manager_user_id ON users(manager_user_id);
-CREATE INDEX IF NOT EXISTS idx_users_finance_approver_user_id ON users(finance_approver_user_id);
 
 -- Create system roles table
 CREATE TABLE IF NOT EXISTS system_roles (
@@ -137,9 +135,18 @@ WHERE code IN ('expense.view.self', 'expense.report.view', 'finance.cashier');
 
 -- Assign roles to users
 INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
+SELECT 'usr_super_admin_' || aa.user_id, aa.user_id, 'srole_super_admin', datetime('now')
+FROM admin_accounts aa
+WHERE aa.role = 'admin'
+  AND aa.user_id IS NOT NULL
+  AND lower(trim(aa.username)) = 'admin';
+
+INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
 SELECT 'usr_admin_' || aa.user_id, aa.user_id, 'srole_admin', datetime('now')
 FROM admin_accounts aa
-WHERE aa.role = 'admin' AND aa.user_id IS NOT NULL;
+WHERE aa.role = 'admin'
+  AND aa.user_id IS NOT NULL
+  AND lower(trim(aa.username)) <> 'admin';
 
 INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
 SELECT 'usr_member_' || aa.user_id, aa.user_id, 'srole_member', datetime('now')

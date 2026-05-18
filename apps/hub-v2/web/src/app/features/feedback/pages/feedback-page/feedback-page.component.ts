@@ -8,7 +8,7 @@ import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
-import { AuthStore } from '@core/auth';
+import { AuthStore, hasRequiredPermissions } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { DataTableComponent, FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import type { FeedbackCategory, FeedbackSource, FeedbackStatus } from '../../models/feedback.model';
@@ -390,7 +390,9 @@ export class FeedbackPageComponent {
   readonly source = signal<FeedbackSource[]>([]);
   readonly onlySurvey = signal(false);
   readonly pendingStatus = signal<FeedbackStatus>('open');
-  readonly canUseGlobalSurveyFilter = computed(() => this.authStore.currentUser()?.role === 'admin');
+  readonly canUseGlobalSurveyFilter = computed(() =>
+    hasRequiredPermissions(this.authStore.currentUser()?.permissionCodes ?? [], ['admin.users.manage'], 'any')
+  );
 
   readonly subtitle = computed(() => {
     if (this.onlySurvey()) {

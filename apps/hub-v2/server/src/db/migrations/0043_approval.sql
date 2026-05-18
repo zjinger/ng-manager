@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS approval_template_stages (
   stage_code TEXT NOT NULL,
   stage_name TEXT NOT NULL,
   stage_type TEXT NOT NULL CHECK (stage_type IN ('direct_manager', 'department_manager', 'finance_review', 'cashier', 'special_authorizer')),
-  resolver_type TEXT NOT NULL CHECK (resolver_type IN ('direct_manager', 'department_manager', 'department_chain', 'finance_approver', 'system_role')),
+  resolver_type TEXT NOT NULL CHECK (resolver_type IN ('direct_manager', 'department_manager', 'department_chain', 'system_role')),
   resolver_ref TEXT,
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,

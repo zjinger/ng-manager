@@ -23,7 +23,7 @@
         }
 
         @for (item of section.items; track item.key) {
-          @if (!item.adminOnly || currentUser()?.role === 'admin') {
+          <ng-container *appHasPermission="itemPermissions(item); appHasPermissionMode: itemPermissionMode(item)">
             <a
               class="nav__item"
               [routerLink]="item.route"
@@ -43,7 +43,7 @@
                 </span>
               }
             </a>
-          }
+          </ng-container>
         }
       </section>
     }

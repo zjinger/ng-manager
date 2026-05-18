@@ -3,7 +3,7 @@ import { z } from "zod";
 const codeSchema = z.string().trim().regex(/^[A-Za-z0-9_-]{2,48}$/, "code must be 2-48 chars, alphanumeric, hyphen or underscore");
 const statusSchema = z.enum(["active", "inactive"]);
 const stageTypeSchema = z.enum(["direct_manager", "department_manager", "finance_review", "cashier", "special_authorizer"]);
-const resolverTypeSchema = z.enum(["direct_manager", "department_manager", "department_chain", "finance_approver", "system_role"]);
+const resolverTypeSchema = z.enum(["direct_manager", "department_manager", "department_chain", "system_role"]);
 
 export const approvalTemplateStageSchema = z.object({
   stageCode: codeSchema,

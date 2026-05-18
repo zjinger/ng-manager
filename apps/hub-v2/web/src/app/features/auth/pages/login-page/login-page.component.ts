@@ -8,6 +8,16 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { AuthService } from '@core/auth';
+import { hasRequiredPermissions } from '@core/auth';
+
+const ADMIN_CONSOLE_PERMISSIONS = [
+  'admin.dashboard.view',
+  'admin.users.manage',
+  'admin.departments.manage',
+  'admin.roles.manage',
+  'admin.audit.view',
+  'admin.settings.manage',
+];
 
 @Component({
   selector: 'app-login-page',
@@ -36,7 +46,8 @@ export class LoginPageComponent {
 
     this.authService.login(this.form.getRawValue()).subscribe({
       next: (user) => {
-        void this.router.navigateByUrl(user.role === 'admin' ? '/admin' : '/dashboard');
+        const canAccessAdmin = hasRequiredPermissions(user.permissionCodes ?? [], ADMIN_CONSOLE_PERMISSIONS, 'any');
+        void this.router.navigateByUrl(canAccessAdmin ? '/admin' : '/dashboard');
       },
       error: () => {
         this.message.error('登录失败，请检查用户名和密码');

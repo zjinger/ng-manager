@@ -39,7 +39,7 @@ function createDb() {
 }
 
 describe("PlatformRoleSyncService", () => {
-  it("assigns member role for legacy user accounts", () => {
+  it("assigns member role when user has no platform role", () => {
     const db = createDb();
     try {
       const service = new PlatformRoleSyncService(new SystemRbacRepo(db));
@@ -52,9 +52,11 @@ describe("PlatformRoleSyncService", () => {
     }
   });
 
-  it("switches admin/member platform role and preserves business roles", () => {
+  it("does not overwrite existing platform roles", () => {
     const db = createDb();
     try {
+      db.prepare("INSERT INTO user_system_roles (id, user_id, role_id, created_at) VALUES (?, ?, ?, ?)")
+        .run("usr_admin_usr_1", "usr_1", "srole_admin", "2026-01-01T00:00:00.000Z");
       db.prepare("INSERT INTO user_system_roles (id, user_id, role_id, created_at) VALUES (?, ?, ?, ?)")
         .run("usr_finance_usr_1", "usr_1", "srole_finance", "2026-01-01T00:00:00.000Z");
 

@@ -70,7 +70,7 @@
 - 成员可被提升为 `project_admin`
 - 支持转移 `owner`
 - `owner` 转移后，原 `owner` 自动降级为普通成员
-- 仅当前 `owner` 或具备全局项目治理权限的管理员可执行 `owner` 转移
+- 仅当前 `owner` 或具备 `project.owner.transfer` 权限的用户可执行 `owner` 转移
 
 ## 6. 个人项目显示范围偏好
 
