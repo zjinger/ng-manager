@@ -12,6 +12,12 @@
   "departmentId": "dep_rd",
   "reason": "上海到杭州客户拜访差旅报销",
   "fillDate": "2026-05-15",
+  "travelStartDate": "2026-05-14",
+  "travelStartHalf": "am",
+  "travelEndDate": "2026-05-15",
+  "travelEndHalf": "pm",
+  "travelDays": 2,
+  "receiptCount": 8,
   "advanceAmount": 300,
   "items": [
     {
@@ -67,6 +73,7 @@
   "departmentId": "dep_finance",
   "reason": "办公用品采购报销",
   "fillDate": "2026-05-15",
+  "receiptCount": 5,
   "advanceAmount": 0,
   "items": [
     {
@@ -110,6 +117,12 @@
   "departmentId": "dep_rd",
   "reason": "上海到杭州客户拜访差旅报销（补充住宿）",
   "fillDate": "2026-05-15",
+  "travelStartDate": "2026-05-14",
+  "travelStartHalf": "am",
+  "travelEndDate": "2026-05-15",
+  "travelEndHalf": "pm",
+  "travelDays": 2,
+  "receiptCount": 9,
   "advanceAmount": 300,
   "items": [
     {

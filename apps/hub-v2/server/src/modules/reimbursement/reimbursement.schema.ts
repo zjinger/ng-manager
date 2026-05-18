@@ -3,8 +3,11 @@ import { z } from "zod";
 const claimTypeSchema = z.enum(["travel", "general"]);
 const claimStatusSchema = z.enum(["draft", "submitted", "approving", "rejected", "completed", "cancelled"]);
 const attachmentCategorySchema = z.enum(["invoice", "itinerary", "payment_proof", "other"]);
+const halfDaySchema = z.enum(["am", "pm"]);
 
 const amountSchema = z.coerce.number().finite().min(0).max(999999999);
+const nonNegativeNumberSchema = z.coerce.number().finite().min(0).max(999999999);
+const nonNegativeIntSchema = z.coerce.number().int().min(0).max(999999999);
 
 export const reimbursementItemSchema = z.object({
   itemType: z.enum(["travel", "general"]).optional(),
@@ -25,6 +28,12 @@ export const createReimbursementClaimSchema = z.object({
   departmentId: z.string().trim().min(1),
   reason: z.string().trim().min(1).max(255),
   fillDate: z.string().trim().optional(),
+  travelStartDate: z.string().trim().nullable().optional(),
+  travelStartHalf: halfDaySchema.nullable().optional(),
+  travelEndDate: z.string().trim().nullable().optional(),
+  travelEndHalf: halfDaySchema.nullable().optional(),
+  travelDays: nonNegativeNumberSchema.nullable().optional(),
+  receiptCount: nonNegativeIntSchema.nullable().optional(),
   advanceAmount: amountSchema.optional(),
   items: z.array(reimbursementItemSchema).optional()
 });
@@ -33,6 +42,12 @@ export const updateReimbursementClaimSchema = z.object({
   departmentId: z.string().trim().min(1).optional(),
   reason: z.string().trim().min(1).max(255).optional(),
   fillDate: z.string().trim().optional(),
+  travelStartDate: z.string().trim().nullable().optional(),
+  travelStartHalf: halfDaySchema.nullable().optional(),
+  travelEndDate: z.string().trim().nullable().optional(),
+  travelEndHalf: halfDaySchema.nullable().optional(),
+  travelDays: nonNegativeNumberSchema.nullable().optional(),
+  receiptCount: nonNegativeIntSchema.nullable().optional(),
   advanceAmount: amountSchema.optional(),
   items: z.array(reimbursementItemSchema).optional()
 });

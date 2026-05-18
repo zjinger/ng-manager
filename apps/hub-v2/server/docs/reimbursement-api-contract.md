@@ -123,6 +123,12 @@
   "departmentName": "财务部",
   "reason": "上海出差报销",
   "fillDate": "2026-05-15",
+  "travelStartDate": "2026-05-13",
+  "travelStartHalf": "am",
+  "travelEndDate": "2026-05-15",
+  "travelEndHalf": "pm",
+  "travelDays": 3,
+  "receiptCount": 12,
   "totalAmount": 1234.56,
   "advanceAmount": 200,
   "balanceAmount": 1034.56,
@@ -138,10 +144,12 @@
 字段说明：
 
 1. `claimNo`: 后端生成的报销编号，前端创建时不传
-2. `totalAmount`: 后端按 `items[].amount` 自动汇总
-3. `advanceAmount`: 预支金额，前端可传
-4. `balanceAmount`: 后端计算值，等于 `totalAmount - advanceAmount`
-5. `currentStageCode/currentStageName`: 当前审批节点，草稿时为空
+2. `travelStartDate/travelStartHalf/travelEndDate/travelEndHalf/travelDays`: 差旅报销主表字段；普通费用报销可为 `null`
+3. `receiptCount`: 单据数量/张数，差旅和普通费用都可传
+4. `totalAmount`: 后端按 `items[].amount` 自动汇总
+5. `advanceAmount`: 预支金额，前端可传
+6. `balanceAmount`: 后端计算值，等于 `totalAmount - advanceAmount`
+7. `currentStageCode/currentStageName`: 当前审批节点，草稿时为空
 
 ## 3.2 报销明细 `ReimbursementItem`
 
@@ -311,6 +319,12 @@
   "departmentId": "dep_xxx",
   "reason": "上海出差报销",
   "fillDate": "2026-05-15",
+  "travelStartDate": "2026-05-13",
+  "travelStartHalf": "am",
+  "travelEndDate": "2026-05-15",
+  "travelEndHalf": "pm",
+  "travelDays": 3,
+  "receiptCount": 12,
   "advanceAmount": 200,
   "items": [
     {
@@ -338,6 +352,12 @@
 | `departmentId` | `string` | 是 | 归属部门 ID |
 | `reason` | `string` | 是 | 报销事由，1-255 字符 |
 | `fillDate` | `string` | 否 | 填报日期，不传则后端默认当天 |
+| `travelStartDate` | `string \| null` | 否 | 差旅开始日期，建议 `YYYY-MM-DD` |
+| `travelStartHalf` | `"am" \| "pm" \| null` | 否 | 差旅开始时段，`am=上午`，`pm=下午` |
+| `travelEndDate` | `string \| null` | 否 | 差旅结束日期，建议 `YYYY-MM-DD` |
+| `travelEndHalf` | `"am" \| "pm" \| null` | 否 | 差旅结束时段，`am=上午`，`pm=下午` |
+| `travelDays` | `number \| null` | 否 | 出差天数，支持 `0.5` |
+| `receiptCount` | `number \| null` | 否 | 单据数量/张数 |
 | `advanceAmount` | `number` | 否 | 预支金额，不传默认 `0` |
 | `items` | `ReimbursementItemInput[]` | 否 | 报销明细列表 |
 
@@ -386,6 +406,12 @@
   "departmentId": "dep_xxx",
   "reason": "更新后的报销事由",
   "fillDate": "2026-05-15",
+  "travelStartDate": "2026-05-13",
+  "travelStartHalf": "am",
+  "travelEndDate": "2026-05-15",
+  "travelEndHalf": "pm",
+  "travelDays": 3,
+  "receiptCount": 12,
   "advanceAmount": 300,
   "items": [
     {
@@ -688,6 +714,25 @@
 ```
 
 但前后端需要约定好字段名，避免后续导出模板映射时再返工。
+
+## 5.5 表单字段归属建议
+
+为避免前端把基础信息和明细字段混放，当前建议按下面口径传输：
+
+1. 差旅基础信息：
+   - `reason`
+   - `fillDate`
+   - `travelStartDate`
+   - `travelStartHalf`
+   - `travelEndDate`
+   - `travelEndHalf`
+   - `travelDays`
+   - `receiptCount`
+2. 普通费用基础信息：
+   - `reason`
+   - `fillDate`
+   - `receiptCount`
+3. 行程和费用逐行金额仍放在 `items[]`
 
 ## 6. 当前已知实现边界
 

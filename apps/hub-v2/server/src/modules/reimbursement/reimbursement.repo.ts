@@ -62,6 +62,12 @@ type ClaimRow = {
   department_name: string;
   reason: string;
   fill_date: string;
+  travel_start_date: string | null;
+  travel_start_half: "am" | "pm" | null;
+  travel_end_date: string | null;
+  travel_end_half: "am" | "pm" | null;
+  travel_days: number | null;
+  receipt_count: number | null;
   total_amount_cents: number;
   advance_amount_cents: number;
   balance_amount_cents: number;
@@ -276,9 +282,10 @@ export class ReimbursementRepo {
     this.db.prepare(`
       INSERT INTO reimbursement_claims (
         id, claim_no, claim_type, status, applicant_user_id, applicant_name, department_id, department_name,
-        reason, fill_date, total_amount_cents, advance_amount_cents, balance_amount_cents,
+        reason, fill_date, travel_start_date, travel_start_half, travel_end_date, travel_end_half, travel_days, receipt_count,
+        total_amount_cents, advance_amount_cents, balance_amount_cents,
         current_stage_code, current_stage_name, submitted_at, completed_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       claim.id,
       claim.claimNo,
@@ -290,6 +297,12 @@ export class ReimbursementRepo {
       claim.departmentName,
       claim.reason,
       claim.fillDate,
+      claim.travelStartDate,
+      claim.travelStartHalf,
+      claim.travelEndDate,
+      claim.travelEndHalf,
+      claim.travelDays,
+      claim.receiptCount,
       toCents(claim.totalAmount),
       toCents(claim.advanceAmount),
       toCents(claim.balanceAmount),
@@ -306,6 +319,7 @@ export class ReimbursementRepo {
     this.db.prepare(`
       UPDATE reimbursement_claims
       SET status = ?, department_id = ?, department_name = ?, reason = ?, fill_date = ?,
+          travel_start_date = ?, travel_start_half = ?, travel_end_date = ?, travel_end_half = ?, travel_days = ?, receipt_count = ?,
           total_amount_cents = ?, advance_amount_cents = ?, balance_amount_cents = ?,
           current_stage_code = ?, current_stage_name = ?, submitted_at = ?, completed_at = ?, updated_at = ?
       WHERE id = ?
@@ -315,6 +329,12 @@ export class ReimbursementRepo {
       claim.departmentName,
       claim.reason,
       claim.fillDate,
+      claim.travelStartDate,
+      claim.travelStartHalf,
+      claim.travelEndDate,
+      claim.travelEndHalf,
+      claim.travelDays,
+      claim.receiptCount,
       toCents(claim.totalAmount),
       toCents(claim.advanceAmount),
       toCents(claim.balanceAmount),
@@ -695,6 +715,12 @@ export class ReimbursementRepo {
       departmentName: row.department_name,
       reason: row.reason,
       fillDate: row.fill_date,
+      travelStartDate: row.travel_start_date,
+      travelStartHalf: row.travel_start_half,
+      travelEndDate: row.travel_end_date,
+      travelEndHalf: row.travel_end_half,
+      travelDays: row.travel_days,
+      receiptCount: row.receipt_count,
       totalAmount: toAmount(row.total_amount_cents),
       advanceAmount: toAmount(row.advance_amount_cents),
       balanceAmount: toAmount(row.balance_amount_cents),

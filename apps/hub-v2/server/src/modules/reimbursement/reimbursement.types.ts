@@ -27,6 +27,12 @@ export interface ReimbursementClaimEntity {
   departmentName: string;
   reason: string;
   fillDate: string;
+  travelStartDate: string | null;
+  travelStartHalf: "am" | "pm" | null;
+  travelEndDate: string | null;
+  travelEndHalf: "am" | "pm" | null;
+  travelDays: number | null;
+  receiptCount: number | null;
   totalAmount: number;
   advanceAmount: number;
   balanceAmount: number;
@@ -128,6 +134,12 @@ export interface CreateReimbursementClaimInput {
   departmentId: string;
   reason: string;
   fillDate?: string;
+  travelStartDate?: string | null;
+  travelStartHalf?: "am" | "pm" | null;
+  travelEndDate?: string | null;
+  travelEndHalf?: "am" | "pm" | null;
+  travelDays?: number | null;
+  receiptCount?: number | null;
   advanceAmount?: number;
   items?: ReimbursementItemInput[];
 }
@@ -136,6 +148,12 @@ export interface UpdateReimbursementClaimInput {
   departmentId?: string;
   reason?: string;
   fillDate?: string;
+  travelStartDate?: string | null;
+  travelStartHalf?: "am" | "pm" | null;
+  travelEndDate?: string | null;
+  travelEndHalf?: "am" | "pm" | null;
+  travelDays?: number | null;
+  receiptCount?: number | null;
   advanceAmount?: number;
   items?: ReimbursementItemInput[];
 }
