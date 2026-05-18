@@ -15,6 +15,7 @@
     "uploads:cleanup-issues-orphan:dist": "node dist/scripts/cleanup-issue-orphan-uploads.js",
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:reset:migrations:0041-0049": "tsx src/db/reset-migrations-0041-0049-cli.ts",
+    "db:reseed:user-departments": "tsx src/db/reseed-user-departments-cli.ts",
     "db:seed": "tsx src/db/seed-cli.ts",
     "db:migrate:from-v1": "tsx src/db/migrate-from-v1.ts",
     "db:verify:from-v1": "tsx src/db/migrate-from-v1.verify.ts",
