@@ -60,6 +60,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   async create(input: CreateReimbursementClaimInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
     const userId = this.requireUserId(ctx);
     this.ensurePermission(userId, "expense.submit", ctx);
+    this.ensureRequiredClaimFields(input.claimType, input);
     const applicant = this.requireUser(userId);
     const department = this.requireDepartment(input.departmentId);
     const now = nowIso();
@@ -132,6 +133,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       completedAt: null,
       updatedAt: now
     };
+    this.ensureRequiredClaimFields(updated.claimType, updated);
     this.repo.transaction(() => {
       this.repo.updateClaim(updated);
       if (input.items !== undefined) {
@@ -401,6 +403,37 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
 
   private sumItems(items: ReimbursementItemEntity[]): number {
     return Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
+  }
+
+  private ensureRequiredClaimFields(
+    claimType: "travel" | "general",
+    data: {
+      travelStartDate?: string | null;
+      travelStartHalf?: "am" | "pm" | null;
+      travelEndDate?: string | null;
+      travelEndHalf?: "am" | "pm" | null;
+      travelDays?: number | null;
+      receiptCount?: number | null;
+    }
+  ): void {
+    if (claimType !== "travel") {
+      return;
+    }
+    if (!data.travelStartDate?.trim()) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "travelStartDate is required for travel claims", 400);
+    }
+    if (!data.travelStartHalf) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "travelStartHalf is required for travel claims", 400);
+    }
+    if (!data.travelEndDate?.trim()) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "travelEndDate is required for travel claims", 400);
+    }
+    if (!data.travelEndHalf) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "travelEndHalf is required for travel claims", 400);
+    }
+    if (data.travelDays == null) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "travelDays is required for travel claims", 400);
+    }
   }
 
   private generateClaimNo(claimType: "travel" | "general"): string {

@@ -6,6 +6,14 @@
 
 `POST /api/admin/reimbursements/claims`
 
+说明：差旅报销以下字段必填：
+
+1. `travelStartDate`
+2. `travelStartHalf`
+3. `travelEndDate`
+4. `travelEndHalf`
+5. `travelDays`
+
 ```json
 {
   "claimType": "travel",

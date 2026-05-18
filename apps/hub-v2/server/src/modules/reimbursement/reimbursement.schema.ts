@@ -36,6 +36,25 @@ export const createReimbursementClaimSchema = z.object({
   receiptCount: nonNegativeIntSchema.nullable().optional(),
   advanceAmount: amountSchema.optional(),
   items: z.array(reimbursementItemSchema).optional()
+}).superRefine((input, ctx) => {
+  if (input.claimType !== "travel") {
+    return;
+  }
+  if (!input.travelStartDate?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["travelStartDate"], message: "travelStartDate is required for travel claims" });
+  }
+  if (!input.travelStartHalf) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["travelStartHalf"], message: "travelStartHalf is required for travel claims" });
+  }
+  if (!input.travelEndDate?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["travelEndDate"], message: "travelEndDate is required for travel claims" });
+  }
+  if (!input.travelEndHalf) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["travelEndHalf"], message: "travelEndHalf is required for travel claims" });
+  }
+  if (input.travelDays == null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["travelDays"], message: "travelDays is required for travel claims" });
+  }
 });
 
 export const updateReimbursementClaimSchema = z.object({

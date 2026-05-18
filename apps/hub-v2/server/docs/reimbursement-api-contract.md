@@ -352,13 +352,13 @@
 | `departmentId` | `string` | 是 | 归属部门 ID |
 | `reason` | `string` | 是 | 报销事由，1-255 字符 |
 | `fillDate` | `string` | 否 | 填报日期，不传则后端默认当天 |
-| `travelStartDate` | `string \| null` | 否 | 差旅开始日期，建议 `YYYY-MM-DD` |
-| `travelStartHalf` | `"am" \| "pm" \| null` | 否 | 差旅开始时段，`am=上午`，`pm=下午` |
-| `travelEndDate` | `string \| null` | 否 | 差旅结束日期，建议 `YYYY-MM-DD` |
-| `travelEndHalf` | `"am" \| "pm" \| null` | 否 | 差旅结束时段，`am=上午`，`pm=下午` |
-| `travelDays` | `number \| null` | 否 | 出差天数，支持 `0.5` |
-| `receiptCount` | `number \| null` | 否 | 单据数量/张数 |
-| `advanceAmount` | `number` | 否 | 预支金额，不传默认 `0` |
+| `travelStartDate` | `string \| null` | 差旅必填 | 差旅开始日期，建议 `YYYY-MM-DD` |
+| `travelStartHalf` | `"am" \| "pm" \| null` | 差旅必填 | 差旅开始时段，`am=上午`，`pm=下午` |
+| `travelEndDate` | `string \| null` | 差旅必填 | 差旅结束日期，建议 `YYYY-MM-DD` |
+| `travelEndHalf` | `"am" \| "pm" \| null` | 差旅必填 | 差旅结束时段，`am=上午`，`pm=下午` |
+| `travelDays` | `number \| null` | 差旅必填 | 出差天数，支持 `0.5` |
+| `receiptCount` | `number \| null` | 否 | 单据数量/张数，选填 |
+| `advanceAmount` | `number \| null` | 否 | 预支金额，不传默认 `0` |
 | `items` | `ReimbursementItemInput[]` | 否 | 报销明细列表 |
 
 返回：
@@ -426,9 +426,10 @@
 
 说明：
 
-1. 所有字段均可选
+1. 所有字段都可按 patch 语义传入；但保存后的整单仍必须满足必填校验
 2. 如果传 `items`，后端会整单替换原有明细
 3. 如果不传 `items`，保留原明细
+4. `travel` 单据在保存后仍必须具备 `travelStartDate / travelStartHalf / travelEndDate / travelEndHalf / travelDays`
 
 返回：
 

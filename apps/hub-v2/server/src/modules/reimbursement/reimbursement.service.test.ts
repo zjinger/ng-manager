@@ -201,6 +201,12 @@ describe("ReimbursementService", () => {
           claimType: "travel",
           departmentId: "dep_rd",
           reason: "客户现场支持",
+          travelStartDate: "2026-05-01",
+          travelStartHalf: "am",
+          travelEndDate: "2026-05-02",
+          travelEndHalf: "pm",
+          travelDays: 2,
+          receiptCount: 3,
           items: [{ amount: 100.25, description: "交通" }, { amount: 20, description: "餐费" }],
           advanceAmount: 10
         },
@@ -237,7 +243,7 @@ describe("ReimbursementService", () => {
     try {
       const service = new ReimbursementService(new ReimbursementRepo(db));
       const created = await service.create(
-        { claimType: "general", departmentId: "dep_rd", reason: "办公用品", items: [{ amount: 30 }] },
+        { claimType: "general", departmentId: "dep_rd", reason: "办公用品", receiptCount: 2, items: [{ amount: 30 }] },
         ctx("usr_applicant")
       );
       const submitted = await service.submit(created.id, ctx("usr_applicant"));
@@ -259,7 +265,7 @@ describe("ReimbursementService", () => {
     try {
       const service = new ReimbursementService(new ReimbursementRepo(db));
       const created = await service.create(
-        { claimType: "general", departmentId: "dep_rd", reason: "付款证明", items: [{ amount: 90 }] },
+        { claimType: "general", departmentId: "dep_rd", reason: "付款证明", receiptCount: 1, items: [{ amount: 90 }] },
         ctx("usr_applicant")
       );
       const withAttachment = await service.attach(created.id, { uploadId: "upl_invoice", category: "invoice" }, ctx("usr_applicant"));
@@ -294,6 +300,12 @@ describe("ReimbursementService", () => {
           claimType: "travel",
           departmentId: "dep_rd",
           reason: "客户现场支持",
+          travelStartDate: "2026-05-01",
+          travelStartHalf: "am",
+          travelEndDate: "2026-05-03",
+          travelEndHalf: "pm",
+          travelDays: 3,
+          receiptCount: 5,
           advanceAmount: 50,
           items: [
             {
@@ -321,6 +333,7 @@ describe("ReimbursementService", () => {
           claimType: "general",
           departmentId: "dep_rd",
           reason: "办公用品",
+          receiptCount: 2,
           advanceAmount: 80,
           items: [{ amount: 30, description: "打印纸" }]
         },
@@ -340,7 +353,7 @@ describe("ReimbursementService", () => {
     try {
       const service = new ReimbursementService(new ReimbursementRepo(db));
       const created = await service.create(
-        { claimType: "general", departmentId: "dep_rd", reason: "办公用品", items: [{ amount: 30 }] },
+        { claimType: "general", departmentId: "dep_rd", reason: "办公用品", receiptCount: 2, items: [{ amount: 30 }] },
         ctx("usr_applicant")
       );
       await assert.rejects(() => service.exportWord(created.id, ctx("usr_other")), /forbidden/);
