@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { permissionGuard } from '@core/auth';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -14,39 +15,48 @@ export const ADMIN_ROUTES: Routes = [
       },
       {
         path: 'users',
+        canActivate: [permissionGuard],
+        data: { permissions: ['admin.users.manage'] },
         loadChildren: () => import('../users/routes').then((m) => m.USER_ROUTES),
       },
       {
         path: 'departments',
+        canActivate: [permissionGuard],
+        data: { permissions: ['admin.departments.manage'] },
         loadChildren: () => import('../organization/routes').then((m) => m.ORGANIZATION_ROUTES),
       },
       {
         path: 'titles',
-        data: { title: '职务管理', icon: 'idcard' },
+        canActivate: [permissionGuard],
+        data: { title: '职务管理', icon: 'idcard', permissions: ['admin.users.manage'] },
         loadComponent: () =>
           import('./pages/titles-page/titles-page.component').then((m) => m.TitlesPageComponent),
       },
       {
         path: 'roles',
-        data: { title: '角色管理', icon: 'safety-certificate' },
+        canActivate: [permissionGuard],
+        data: { title: '角色管理', icon: 'safety-certificate', permissions: ['admin.roles.manage'] },
         loadComponent: () =>
           import('./pages/roles-page/roles-page.component').then((m) => m.RolesPageComponent),
       },
       {
         path: 'permissions',
-        data: { title: '权限配置', icon: 'key' },
+        canActivate: [permissionGuard],
+        data: { title: '权限配置', icon: 'key', permissions: ['admin.roles.manage'] },
         loadComponent: () =>
           import('./pages/permissions-page.component').then((m) => m.PermissionsPageComponent),
       },
       {
         path: 'permission-items',
-        data: { title: '权限项管理', icon: 'unordered-list' },
+        canActivate: [permissionGuard],
+        data: { title: '权限项管理', icon: 'unordered-list', permissions: ['admin.roles.manage'] },
         loadComponent: () =>
           import('./pages/permission-items-page/permission-items-page.component').then((m) => m.PermissionItemsPageComponent),
       },
       {
         path: 'audit',
-        data: { title: '审计日志', icon: 'audit' },
+        canActivate: [permissionGuard],
+        data: { title: '审计日志', icon: 'audit', permissions: ['admin.audit.view'] },
         loadComponent: () =>
           import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
       },
@@ -58,7 +68,8 @@ export const ADMIN_ROUTES: Routes = [
       // },
       {
         path: 'settings',
-        data: { title: '系统设置', icon: 'setting' },
+        canActivate: [permissionGuard],
+        data: { title: '系统设置', icon: 'setting', permissions: ['admin.settings.manage'] },
         loadComponent: () =>
           import('./pages/settings-page/settings-page.component').then((m) => m.SettingsPageComponent),
       },

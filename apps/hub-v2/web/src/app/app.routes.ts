@@ -4,6 +4,7 @@ import { authGuard } from './core/auth/auth.guard';
 import { FEATURE_FLAGS } from './core/feature-flags';
 
 export const routes: Routes = [
+  // 登录页面路由
   {
     path: 'login',
     loadComponent: () =>
@@ -11,6 +12,7 @@ export const routes: Routes = [
         (m) => m.LoginPageComponent,
       ),
   },
+  // 公开文档页面路由
   {
     path: 'public/docs/:projectKey/:slug',
     loadComponent: () =>
@@ -25,13 +27,7 @@ export const routes: Routes = [
         (m) => m.PublicDocumentLegacyPageComponent,
       ),
   },
-  // {
-  //   path: 'public/survey',
-  //   loadComponent: () =>
-  //     import('./features/feedback/pages/public-survey-page/public-survey-page.component').then(
-  //       (m) => m.PublicSurveyPageComponent
-  //     ),
-  // },
+  // 问卷调差公开页面路由
   ...(FEATURE_FLAGS.survey
     ? [
         {
@@ -43,16 +39,19 @@ export const routes: Routes = [
         },
       ]
     : []),
+  // 积木报表对外公开页面路由
   // {
   //   path: 'public/report',
   //   loadChildren: () =>
   //     import('./features/public-report/routes').then((m) => m.PUBLIC_REPORT_ROUTES),
   // },
+  // 管理员页面路由
   {
     path: 'admin',
     canActivate: [adminGuard],
     loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },
+  // 其他页面路由，需登录后访问
   {
     path: '',
     canActivate: [authGuard],
@@ -68,32 +67,32 @@ export const routes: Routes = [
         path: 'dashboard',
         loadChildren: () => import('./features/dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
       },
-      // {
-      //   path: 'report',
-      //   pathMatch: 'full',
-      //   redirectTo: 'reports',
-      // },
+      // 积木报表路由
       // {
       //   path: 'reports',
       //   loadChildren: () => import('./features/report/routes').then((m) => m.REPORT_ROUTES),
       // },
+      // 测试跟踪
       {
         path: 'issues',
         loadChildren: () => import('./features/issues/routes').then((m) => m.ISSUE_ROUTES),
       },
+      // 研发路由
       {
         path: 'rd',
         loadChildren: () => import('./features/rd/routes').then((m) => m.RD_ROUTES),
       },
+      // 内容路由：公告、文档、版本发布等
       {
         path: 'content',
         loadChildren: () => import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
       },
+      // 项目路由
       {
         path: 'projects',
         loadChildren: () => import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
       },
-
+      // 系统反馈路由
       ...(FEATURE_FLAGS.feedback
         ? [
             {
@@ -103,7 +102,7 @@ export const routes: Routes = [
             },
           ]
         : []),
-
+      // 问卷调查路由
       ...(FEATURE_FLAGS.survey
         ? [
             {
@@ -112,47 +111,18 @@ export const routes: Routes = [
             },
           ]
         : []),
-        // ========
-        {
-          path: 're-dashboard',
-          loadChildren: () =>
-            import('./features/reimbursement/dashboard/routes').then((m) => m.RE_DASHBOARD_ROUTES),
-        },
-        {
-          path: 'travel-expense',
-          loadChildren: () =>
-            import('./features/reimbursement/travel-expense/routes').then((m) => m.TRAVEL_EXPENSE_ROUTES),
-        },
-        {
-          path: 'expense',
-          loadChildren: () =>
-            import('./features/reimbursement/expense/routes').then((m) => m.EXPENSE_ROUTES),
-        },
-        {
-          path: 'my-expenses',
-          loadChildren: () =>
-            import('./features/reimbursement/my-expenses/routes').then((m) => m.MY_EXPENSES_ROUTES),
-        },
-        {
-          path: 'approval-pending',
-          loadChildren: () =>
-            import('./features/reimbursement/approval-pending/routes').then((m) => m.APPROVAL_PENDING_ROUTES),
-        },
-        {
-          path: 'history-expense',
-          loadChildren: () =>
-            import('./features/reimbursement/history-expense/routes').then((m) => m.HISTORY_EXPENSE_ROUTES),
-        },
-        {
-          path: 'expense-notice',
-          loadChildren: () =>
-            import('./features/reimbursement/expense-notice/routes').then((m) => m.EXPENSE_NOTICE_ROUTES),
-        },
-        //=========
+      // 报销路由
+      {
+        path: '',
+        loadChildren: () =>
+          import('./features/reimbursement/routes').then((m) => m.REIMBURSEMENT_ROUTES),
+      },
+      // 个人中心
       {
         path: 'profile',
         loadChildren: () => import('./features/profile/routes').then((m) => m.PROFILE_ROUTES),
       },
+      // 通知路由
       {
         path: 'notifications',
         loadChildren: () =>

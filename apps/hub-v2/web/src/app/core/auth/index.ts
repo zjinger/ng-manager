@@ -3,4 +3,7 @@ export * from './auth.interceptor';
 export * from './auth.service';
 export * from './auth.store';
 export * from './auth.types';
+export * from './has-permission.directive';
 export * from './login-crypto.util';
+export * from './permission.guard';
+export * from './permission.utils';
