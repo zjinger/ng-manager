@@ -1,3 +1,6 @@
+-- [0044] 报销业务基础表（单据、明细、附件、审批任务、日志）
+-- Depends on: users, uploads, departments, approval_templates, approval_template_stages
+-- Notes: 与 0043 配套；支持“审批任务可转交”口径
 CREATE TABLE IF NOT EXISTS reimbursement_claims (
   id TEXT PRIMARY KEY,
   claim_no TEXT NOT NULL UNIQUE,

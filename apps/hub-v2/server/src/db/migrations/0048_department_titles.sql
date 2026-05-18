@@ -1,3 +1,6 @@
+-- [0048] 部门可用职务映射（department_titles）
+-- Depends on: 0041_user_org, 0048_system_titles
+-- Notes: 仅做部门与全局职务字典关联，不承载权限
 CREATE TABLE IF NOT EXISTS department_titles (
   id TEXT PRIMARY KEY,
   department_id TEXT NOT NULL,
@@ -12,4 +15,3 @@ CREATE TABLE IF NOT EXISTS department_titles (
 
 CREATE INDEX IF NOT EXISTS idx_department_titles_department_sort
   ON department_titles(department_id, sort, created_at);
-

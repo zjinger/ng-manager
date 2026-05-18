@@ -1,3 +1,6 @@
+-- [0042] 系统 RBAC 基础模型与初始化数据
+-- Depends on: users, admin_accounts, 0041_user_org
+-- Notes: 仅建立授权底座；admin 登录链路兼容层不在本迁移接管
 -- Add columns to users table
 ALTER TABLE users ADD COLUMN manager_user_id TEXT;
 ALTER TABLE users ADD COLUMN finance_approver_user_id TEXT;

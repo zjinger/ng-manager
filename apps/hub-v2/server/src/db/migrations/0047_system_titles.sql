@@ -1,3 +1,6 @@
+-- [0047] 全局职务字典（system_titles）
+-- Depends on: none
+-- Notes: 停用后不可新写入，历史数据可展示
 CREATE TABLE IF NOT EXISTS system_titles (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,

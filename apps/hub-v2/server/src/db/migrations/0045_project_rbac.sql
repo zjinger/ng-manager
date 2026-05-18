@@ -1,3 +1,6 @@
+-- [0045] 项目治理权限码补充（并入 system_permissions）
+-- Depends on: 0042_system_rbac
+-- Notes: 项目 owner/管理员的运行时规则仍由项目治理逻辑判定
 INSERT OR IGNORE INTO system_permissions (
   id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at
 )

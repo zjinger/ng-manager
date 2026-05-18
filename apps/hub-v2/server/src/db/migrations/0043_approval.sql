@@ -1,3 +1,6 @@
+-- [0043] 审批模板主数据（固定阶段模板）
+-- Depends on: 0042_system_rbac
+-- Notes: 仅配置模板与阶段，不落审批实例执行数据
 CREATE TABLE IF NOT EXISTS approval_templates (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
