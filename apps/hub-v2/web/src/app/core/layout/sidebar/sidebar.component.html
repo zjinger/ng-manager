@@ -23,7 +23,7 @@
         }
 
         @for (item of section.items; track item.key) {
-          <ng-container *appHasPermission="itemPermissions(item); appHasPermissionMode: itemPermissionMode(item)">
+          <ng-container *appHasPermission="itemPermissions(item); mode: itemPermissionMode(item)">
             <a
               class="nav__item"
               [routerLink]="item.route"
