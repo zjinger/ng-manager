@@ -98,7 +98,7 @@ VALUES
 -- Insert business roles
 INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
 VALUES
-  ('srole_expense_manager', 'expense_manager', '报销规则管理员', '维护报销规则、审批模板并查看报表。', 1, 'business', '业务角色', 'active', 110, datetime('now'), datetime('now')),
+  ('srole_expense_manager', 'expense_manager', '报销管理员', '维护报销规则、审批模板并查看报表。', 1, 'business', '业务角色', 'active', 110, datetime('now'), datetime('now')),
   ('srole_finance_reviewer', 'finance_reviewer', '财务复核', '具备财务复核能力。', 1, 'business', '业务角色', 'active', 120, datetime('now'), datetime('now')),
   ('srole_finance_cashier', 'finance_cashier', '出纳', '具备付款出纳能力。', 1, 'business', '业务角色', 'active', 130, datetime('now'), datetime('now'));
 
