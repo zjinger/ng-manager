@@ -257,6 +257,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     authRepo,
     projectRepo,
     projectAccess,
+    projectAuthorization,
     issueService,
     issueCommentService,
     issueParticipantService,

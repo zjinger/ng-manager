@@ -13,6 +13,7 @@ import type { IssueAttachmentQueryContract } from "../issue/attachment/issue-att
 import type { IssueBranchQueryContract } from "../issue/branch/issue-branch.contract";
 import type { ProjectQueryContract } from "../project/project.contract";
 import type { ProjectAccessContract } from "../project/project-access.contract";
+import { ProjectAuthorizationService } from "../project/project-authorization.service";
 import { ProjectRepo } from "../project/project.repo";
 import type { RdQueryContract } from "../rd/rd.contract";
 import type { ApiTokenCommandContract, ApiTokenQueryContract } from "./api-token.contract";
@@ -54,6 +55,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     private readonly authRepo: AuthRepo,
     private readonly projectRepo: ProjectRepo,
     private readonly projectAccess: ProjectAccessContract,
+    private readonly projectAuthorization: ProjectAuthorizationService,
     private readonly issueQuery: IssueQueryContract,
     private readonly issueCommentQuery: IssueCommentQueryContract,
     private readonly issueParticipantQuery: IssueParticipantQueryContract,
@@ -330,6 +332,9 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
   }
 
   private async requireTokenManager(projectId: string, ctx: RequestContext, action: string): Promise<void> {
+    if (this.projectAuthorization.canManageAllProjects(ctx)) {
+      return;
+    }
     if (ctx.roles.includes("admin")) {
       return;
     }

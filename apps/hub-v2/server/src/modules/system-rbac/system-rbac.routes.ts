@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
+import { requirePermission } from "../utils/require-permission";
 import {
   listSystemRolesQuerySchema,
   createSystemRoleSchema,
@@ -15,6 +16,7 @@ import {
 export default async function systemRbacRoutes(app: FastifyInstance) {
   app.get("/system-roles", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const query = listSystemRolesQuerySchema.parse(request.query);
     const items = await app.container.systemRbacQuery.listSystemRoles(query, ctx);
     return ok({ items });
@@ -22,6 +24,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.get("/system-roles/:roleId", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string };
     const detail = await app.container.systemRbacQuery.getSystemRoleDetail(params.roleId, ctx);
     return ok(detail);
@@ -29,6 +32,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.post("/system-roles", async (request, reply) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const body = createSystemRoleSchema.parse(request.body);
     const item = await app.container.systemRbacCommand.createSystemRole(body, ctx);
     return reply.status(201).send(ok(item, "system role created"));
@@ -36,6 +40,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.patch("/system-roles/:roleId", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string };
     const body = updateSystemRoleSchema.parse(request.body);
     return ok(await app.container.systemRbacCommand.updateSystemRole(params.roleId, body, ctx), "system role updated");
@@ -43,6 +48,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.delete("/system-roles/:roleId", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string };
     await app.container.systemRbacCommand.deleteSystemRole(params.roleId, ctx);
     return ok({ id: params.roleId }, "system role deleted");
@@ -50,6 +56,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.get("/system-permissions", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const query = listSystemPermissionsQuerySchema.parse(request.query);
     const items = await app.container.systemRbacQuery.listPermissions(query, ctx);
     return ok({ items });
@@ -57,6 +64,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.post("/system-permissions", async (request, reply) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const body = createSystemPermissionSchema.parse(request.body);
     const item = await app.container.systemRbacCommand.createSystemPermission(body, ctx);
     return reply.status(201).send(ok(item, "system permission created"));
@@ -64,6 +72,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.patch("/system-permissions/:permissionId", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { permissionId: string };
     const body = updateSystemPermissionSchema.parse(request.body);
     const item = await app.container.systemRbacCommand.updateSystemPermission(params.permissionId, body, ctx);
@@ -72,6 +81,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.delete("/system-permissions/:permissionId", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { permissionId: string };
     await app.container.systemRbacCommand.deleteSystemPermission(params.permissionId, ctx);
     return ok({ id: params.permissionId }, "system permission deleted");
@@ -79,6 +89,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.get("/system-roles/:roleId/permissions", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string };
     const detail = await app.container.systemRbacQuery.getSystemRoleDetail(params.roleId, ctx);
     return ok({ items: detail.permissions });
@@ -86,6 +97,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.put("/system-roles/:roleId/permissions", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string };
     const body = updateRolePermissionsSchema.parse(request.body);
     await app.container.systemRbacCommand.setRolePermissions(params.roleId, body, ctx);
@@ -94,6 +106,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.get("/system-roles/:roleId/users", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string };
     const items = await app.container.systemRbacQuery.listRoleUsers(params.roleId, ctx);
     return ok({ items });
@@ -101,6 +114,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.post("/system-roles/:roleId/users", async (request, reply) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string };
     const body = addRoleUsersSchema.parse(request.body);
     await app.container.systemRbacCommand.addRoleUsers(params.roleId, body, ctx);
@@ -109,6 +123,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.delete("/system-roles/:roleId/users/:userId", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { roleId: string; userId: string };
     await app.container.systemRbacCommand.removeRoleUser(params.roleId, params.userId, ctx);
     return ok(null, "user removed from role");
@@ -116,6 +131,7 @@ export default async function systemRbacRoutes(app: FastifyInstance) {
 
   app.get("/users/:userId/system-roles", async (request) => {
     const ctx = requireAuth(request);
+    requirePermission(ctx, "admin.roles.manage");
     const params = request.params as { userId: string };
     const items = await app.container.systemRbacQuery.listUserSystemRoles(params.userId, ctx);
     return ok({ items });

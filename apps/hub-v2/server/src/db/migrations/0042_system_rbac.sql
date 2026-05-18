@@ -83,7 +83,6 @@ VALUES
   ('sperm_admin_users_manage', 'admin.users.manage', '管理用户', 'admin', '后台管理', 'admin', '后台管理', '维护用户账号和用户部门关系。', 20, datetime('now'), datetime('now')),
   ('sperm_admin_departments_manage', 'admin.departments.manage', '管理部门组织', 'admin', '后台管理', 'admin', '后台管理', '维护部门组织结构。', 30, datetime('now'), datetime('now')),
   ('sperm_admin_roles_manage', 'admin.roles.manage', '管理系统角色', 'admin', '后台管理', 'admin', '后台管理', '维护系统角色、权限与成员授权。', 40, datetime('now'), datetime('now')),
-  ('sperm_admin_projects_manage', 'admin.projects.manage', '管理项目', 'admin', '后台管理', 'admin', '后台管理', '维护后台项目管理入口。', 50, datetime('now'), datetime('now')),
   ('sperm_admin_audit_view', 'admin.audit.view', '查看审计日志', 'admin', '后台管理', 'admin', '后台管理', '查看后台审计日志。', 60, datetime('now'), datetime('now')),
   ('sperm_admin_settings_manage', 'admin.settings.manage', '管理系统设置', 'admin', '后台管理', 'admin', '后台管理', '维护系统设置。', 70, datetime('now'), datetime('now')),
   ('sperm_expense_submit', 'expense.submit', '提交报销', 'expense', '报销业务', 'expense', '财务报销', '创建并提交个人报销单。', 10, datetime('now'), datetime('now')),
@@ -109,7 +108,7 @@ SELECT 'srole_super_admin', id, datetime('now') FROM system_permissions;
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_admin', id, datetime('now')
 FROM system_permissions
-WHERE code IN ('admin.dashboard.view', 'admin.users.manage', 'admin.departments.manage', 'admin.roles.manage', 'admin.projects.manage');
+WHERE code IN ('admin.dashboard.view', 'admin.users.manage', 'admin.departments.manage', 'admin.roles.manage');
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_member', id, datetime('now')

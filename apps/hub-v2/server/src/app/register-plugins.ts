@@ -102,12 +102,19 @@ export async function registerPlugins(app: FastifyInstance) {
           payload = null;
         }
 
+        const accountId = payload?.accountId ?? "anonymous";
+        const permissionCodes =
+          payload && accountId !== "anonymous"
+            ? await fastify.container.authQuery.listPermissionCodesByAccountId(accountId)
+            : [];
+
         request.requestContext = createRequestContext({
-          accountId: payload?.accountId ?? "anonymous",
+          accountId,
           nickname: payload?.nickname ?? null,
           userId: payload?.userId ?? null,
           roles: payload?.role ? [payload.role] : [],
           authType: payload ? "user" : "anonymous",
+          authScopes: permissionCodes,
           source: "http",
           requestId: request.id,
           ip: request.ip,

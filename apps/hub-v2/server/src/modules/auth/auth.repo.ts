@@ -21,6 +21,17 @@ type AdminAccountRow = {
   updated_at: string;
 };
 
+type AccountIdentityRow = {
+  id: string;
+  user_id: string | null;
+  username: string;
+  nickname: string;
+  role: "admin" | "user";
+  status: "active" | "inactive";
+  created_at: string;
+  updated_at: string;
+};
+
 export class AuthRepo {
   private readonly hasAvatarUploadColumn: boolean;
 
@@ -278,6 +289,149 @@ export class AuthRepo {
       .run(status, updatedAt, id);
   }
 
+  listAccountIdentities(): Array<{
+    id: string;
+    userId: string | null;
+    username: string;
+    nickname: string;
+    role: "admin" | "user";
+    status: "active" | "inactive";
+    createdAt: string;
+    updatedAt: string;
+  }> {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT id, user_id, username, nickname, role, status, created_at, updated_at
+          FROM admin_accounts
+        `
+      )
+      .all() as AccountIdentityRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      username: row.username,
+      nickname: row.nickname,
+      role: row.role,
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  }
+
+  createUserForAccount(input: {
+    id: string;
+    username: string;
+    displayName: string | null;
+    status: "active" | "inactive";
+    source: "local";
+    createdAt: string;
+    updatedAt: string;
+  }): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO users (
+            id, username, display_name, status, source, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        input.id,
+        input.username,
+        input.displayName,
+        input.status,
+        input.source,
+        input.createdAt,
+        input.updatedAt
+      );
+  }
+
+  bindAccountUser(accountId: string, userId: string, updatedAt: string): void {
+    this.db
+      .prepare(
+        `
+          UPDATE admin_accounts
+          SET user_id = ?, updated_at = ?
+          WHERE id = ?
+        `
+      )
+      .run(userId, updatedAt, accountId);
+  }
+
+  syncPlatformRoleForUser(userId: string, legacyRole: "admin" | "user", createdAt: string): void {
+    const roleCode = legacyRole === "admin" ? "admin" : "member";
+    const tx = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `
+            DELETE FROM user_system_roles
+            WHERE user_id = ?
+              AND role_id IN (
+                SELECT id FROM system_roles WHERE code IN ('admin', 'member')
+              )
+          `
+        )
+        .run(userId);
+
+      this.db
+        .prepare(
+          `
+            INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
+            SELECT ?, ?, id, ?
+            FROM system_roles
+            WHERE code = ?
+            LIMIT 1
+          `
+        )
+        .run(`usr_sync_${userId}_${roleCode}`, userId, createdAt, roleCode);
+    });
+    tx();
+  }
+
+  ensureSystemRoleBindingByCode(userId: string, roleCode: string, createdAt: string): void {
+    this.db
+      .prepare(
+        `
+          INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
+          SELECT ?, ?, id, ?
+          FROM system_roles
+          WHERE code = ?
+          LIMIT 1
+        `
+      )
+      .run(`usr_sync_${userId}_${roleCode}`, userId, createdAt, roleCode);
+  }
+
+  replacePlatformRoleBindings(userId: string, roleCode: string, createdAt: string): void {
+    const tx = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `
+            DELETE FROM user_system_roles
+            WHERE user_id = ?
+              AND role_id IN (
+                SELECT id FROM system_roles WHERE code IN ('super_admin', 'admin', 'member')
+              )
+          `
+        )
+        .run(userId);
+
+      this.db
+        .prepare(
+          `
+            INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
+            SELECT ?, ?, id, ?
+            FROM system_roles
+            WHERE code = ?
+            LIMIT 1
+          `
+        )
+        .run(`usr_sync_${userId}_${roleCode}`, userId, createdAt, roleCode);
+    });
+    tx();
+  }
+
   findUserPrimaryDepartment(userId: string): AdminProfileDepartment | null {
     if (!userId.trim()) {
       return null;
@@ -330,6 +484,27 @@ export class AuthRepo {
         `
       )
       .all(userId) as Array<{ code: string }>;
+    return rows.map((row) => row.code);
+  }
+
+  listPermissionCodesByAccountId(accountId: string): string[] {
+    const normalized = accountId.trim();
+    if (!normalized) {
+      return [];
+    }
+    const rows = this.db
+      .prepare(
+        `
+          SELECT DISTINCT p.code
+          FROM admin_accounts a
+          INNER JOIN user_system_roles ur ON ur.user_id = a.user_id
+          INNER JOIN system_role_permissions rp ON rp.role_id = ur.role_id
+          INNER JOIN system_permissions p ON p.id = rp.permission_id
+          WHERE a.id = ?
+          ORDER BY p.code ASC
+        `
+      )
+      .all(normalized) as Array<{ code: string }>;
     return rows.map((row) => row.code);
   }
 

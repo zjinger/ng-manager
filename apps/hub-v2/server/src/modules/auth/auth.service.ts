@@ -67,6 +67,14 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     return this.toProfile(account);
   }
 
+  async listPermissionCodesByAccountId(accountId: string): Promise<string[]> {
+    const normalized = accountId.trim();
+    if (!normalized || normalized === "anonymous") {
+      return [];
+    }
+    return this.repo.listPermissionCodesByAccountId(normalized);
+  }
+
   async changePassword(input: ChangePasswordInput, ctx: RequestContext): Promise<AdminProfile> {
     const account = this.repo.findById(ctx.accountId);
     if (!account || account.status !== "active") {
@@ -135,13 +143,24 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
   ensureDefaultAdmin(): void {
     const existing = this.repo.findByUsername(this.config.initAdminUsername);
     if (existing) {
+      this.ensureAccountUserBindingsAndPlatformRoles();
       return;
     }
 
     const now = nowIso();
+    const userId = genId("usr");
+    this.repo.createUserForAccount({
+      id: userId,
+      username: this.config.initAdminUsername,
+      displayName: this.config.initAdminNickname,
+      status: "active",
+      source: "local",
+      createdAt: now,
+      updatedAt: now
+    });
     this.repo.create({
       id: genId("adm"),
-      userId: null,
+      userId,
       username: this.config.initAdminUsername,
       passwordHash: hashPassword(this.config.initAdminPassword),
       nickname: this.config.initAdminNickname,
@@ -152,6 +171,8 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       createdAt: now,
       updatedAt: now
     });
+    this.repo.replacePlatformRoleBindings(userId, "super_admin", now);
+    this.ensureAccountUserBindingsAndPlatformRoles();
   }
 
   private toProfile(account: AdminAccountEntity): AdminProfile {
@@ -180,6 +201,32 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     };
+  }
+
+  private ensureAccountUserBindingsAndPlatformRoles(): void {
+    const now = nowIso();
+    const accounts = this.repo.listAccountIdentities();
+    for (const account of accounts) {
+      let userId = account.userId?.trim() || null;
+      if (!userId) {
+        userId = genId("usr");
+        this.repo.createUserForAccount({
+          id: userId,
+          username: account.username,
+          displayName: account.nickname ?? null,
+          status: account.status,
+          source: "local",
+          createdAt: account.createdAt,
+          updatedAt: now
+        });
+        this.repo.bindAccountUser(account.id, userId, now);
+      }
+      if (account.username === this.config.initAdminUsername) {
+        this.repo.replacePlatformRoleBindings(userId, "super_admin", now);
+      } else {
+        this.repo.syncPlatformRoleForUser(userId, account.role, now);
+      }
+    }
   }
 
   private loginByPassword(username: string, password: string): AdminProfile {
