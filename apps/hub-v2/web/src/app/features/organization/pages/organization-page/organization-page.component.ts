@@ -24,9 +24,9 @@ import type {
 import { OrganizationApiService } from '../../services/organization-api.service';
 import type { UserEntity } from '../../../users/models/user.model';
 import { UserApiService } from '../../../users/services/user-api.service';
+import { TitleFormDialogComponent } from '../../../admin/components/title-form-dialog/title-form-dialog.component';
 import { SystemTitleApiService } from '../../../admin/services/system-title-api.service';
 import type { CreateSystemTitleInput, SystemTitleEntity, UpdateSystemTitleInput } from '../../../admin/models/system-title.model';
-import { TitleFormDialogComponent } from '../../../admin/pages/titles-page/titles-page.component';
 
 type FlatDepartmentNode = DepartmentTreeNode & {
   level: number;
