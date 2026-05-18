@@ -5,6 +5,8 @@ export interface AuthUser {
   email: string | null;
   mobile: string | null;
   remark: string | null;
+  titleCode: string | null;
+  titleName: string | null;
   nickname: string;
   avatarUploadId: string | null;
   avatarUrl: string | null;

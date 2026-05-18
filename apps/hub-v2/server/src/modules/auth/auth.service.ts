@@ -167,6 +167,8 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       email: account.email ?? null,
       mobile: account.mobile ?? null,
       remark: account.remark ?? null,
+      titleCode: account.titleCode ?? null,
+      titleName: account.titleName ?? null,
       nickname: account.nickname,
       avatarUploadId: account.avatarUploadId ?? null,
       avatarUrl: account.avatarUploadId ? `/api/admin/uploads/${account.avatarUploadId}/raw` : null,

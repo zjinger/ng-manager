@@ -8,6 +8,8 @@ type AdminAccountRow = {
   email: string | null;
   mobile: string | null;
   remark: string | null;
+  title_code: string | null;
+  title_name: string | null;
   password_hash: string;
   nickname: string;
   avatar_upload_id?: string | null;
@@ -37,6 +39,8 @@ export class AuthRepo {
             u.email,
             u.mobile,
             u.remark,
+            u.title_code,
+            st.name as title_name,
             a.password_hash,
             a.nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
@@ -48,6 +52,7 @@ export class AuthRepo {
             a.updated_at
           FROM admin_accounts a
           LEFT JOIN users u ON u.id = a.user_id
+          LEFT JOIN system_titles st ON st.code = u.title_code
           WHERE a.username = ? COLLATE NOCASE
           LIMIT 1
         `
@@ -68,6 +73,8 @@ export class AuthRepo {
             u.email,
             u.mobile,
             u.remark,
+            u.title_code,
+            st.name as title_name,
             a.password_hash,
             a.nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
@@ -79,6 +86,7 @@ export class AuthRepo {
             a.updated_at
           FROM admin_accounts a
           LEFT JOIN users u ON u.id = a.user_id
+          LEFT JOIN system_titles st ON st.code = u.title_code
           WHERE a.id = ?
         `
       )
@@ -98,6 +106,8 @@ export class AuthRepo {
             u.email,
             u.mobile,
             u.remark,
+            u.title_code,
+            st.name as title_name,
             a.password_hash,
             a.nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
@@ -109,6 +119,7 @@ export class AuthRepo {
             a.updated_at
           FROM admin_accounts a
           LEFT JOIN users u ON u.id = a.user_id
+          LEFT JOIN system_titles st ON st.code = u.title_code
           WHERE a.user_id = ?
           LIMIT 1
         `
@@ -330,6 +341,8 @@ export class AuthRepo {
       email: row.email,
       mobile: row.mobile,
       remark: row.remark,
+      titleCode: row.title_code,
+      titleName: row.title_name ?? row.title_code,
       passwordHash: row.password_hash,
       nickname: row.nickname,
       avatarUploadId: row.avatar_upload_id ?? null,
