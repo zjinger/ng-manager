@@ -94,7 +94,6 @@ export class TopbarComponent {
   }
 
   logout(): void {
-    this.projectContext.reset();
     this.authService.logout().subscribe();
   }
 

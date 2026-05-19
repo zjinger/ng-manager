@@ -326,6 +326,10 @@ export class ContentManagementPageComponent {
     this.store.initialize();
 
     effect(() => {
+      if (!this.authStore.isAuthenticated()) {
+        this.closeDetailDrawer(false);
+        return;
+      }
       const projectId = this.projectContext.currentProjectId();
       this.store.refreshForProject(projectId);
       this.loadProjectMembers(projectId);

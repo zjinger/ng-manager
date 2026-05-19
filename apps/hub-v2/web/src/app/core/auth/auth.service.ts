@@ -6,12 +6,14 @@ import { ApiClientService } from '../http/api-client.service';
 import { AuthStore } from './auth.store';
 import { encryptLoginPassword } from './login-crypto.util';
 import type { AuthUser, LoginChallenge, LoginInput } from './auth.types';
+import { ProjectContextStore } from '../state/project-context.store';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly api = inject(ApiClientService);
   private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly projectContext = inject(ProjectContextStore);
 
   login(input: LoginInput): Observable<AuthUser> {
     const username = input.username.trim();
@@ -38,6 +40,7 @@ export class AuthService {
     return this.api.post<{ ok: true }>('/auth/logout').pipe(
       tap(() => {
         this.authStore.reset();
+        this.projectContext.reset();
         void this.router.navigateByUrl('/login');
       })
     );
