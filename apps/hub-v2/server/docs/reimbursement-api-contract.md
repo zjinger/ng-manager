@@ -326,6 +326,12 @@
   "travelDays": 3,
   "receiptCount": 12,
   "advanceAmount": 200,
+  "attachments": [
+    {
+      "uploadId": "upl_invoice_001",
+      "category": "invoice"
+    }
+  ],
   "items": [
     {
       "itemType": "travel",
@@ -359,6 +365,7 @@
 | `travelDays` | `number \| null` | 差旅必填 | 出差天数，支持 `0.5` |
 | `receiptCount` | `number \| null` | 否 | 单据数量/张数，选填 |
 | `advanceAmount` | `number \| null` | 否 | 预支金额，不传默认 `0` |
+| `attachments` | `AttachReimbursementUploadInput[]` | 否 | 已上传附件引用，创建草稿时可直接绑定 |
 | `items` | `ReimbursementItemInput[]` | 否 | 报销明细列表 |
 
 返回：
@@ -552,7 +559,12 @@
 
 1. 前端先调用上传接口上传文件
 2. 上传成功后拿到 `uploadId`
-3. 再调用本接口建立报销业务绑定
+3. 已有草稿时，再调用本接口建立报销业务绑定
+
+说明：
+
+1. 新建草稿时，也可以直接在 `POST /claims` 请求体中传 `attachments`
+2. 本接口主要用于草稿创建后的补传/补绑
 
 请求体：
 
@@ -675,7 +687,7 @@
 
 建议前端按以下节奏：
 
-1. `POST /claims` 创建草稿
+1. `POST /claims` 创建草稿；如果附件已经上传完成，可直接在创建请求中带 `attachments`
 2. 用返回的 `claimId` 继续维护详情页状态
 3. 明细表每次保存时调用 `PATCH /claims/:claimId`
 
@@ -689,8 +701,9 @@
 建议流程：
 
 1. 调上传接口拿到 `uploadId`
-2. 调 `POST /claims/:claimId/attachments`
-3. 用详情接口回填附件列表
+2. 可直接放进 `POST /claims` 的 `attachments` 中一起创建
+3. 也可以在草稿创建后再调 `POST /claims/:claimId/attachments`
+4. 用详情接口回填附件列表
 
 ## 5.3 审批页
 

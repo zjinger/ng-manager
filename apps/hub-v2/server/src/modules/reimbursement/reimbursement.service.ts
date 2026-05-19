@@ -69,6 +69,8 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     const items = this.buildItems(genId("pending"), input.claimType, input.items ?? [], now);
     const totalAmount = this.sumItems(items);
     const advanceAmount = input.advanceAmount ?? 0;
+    const attachments = input.attachments ?? [];
+    this.ensureUploadsExist(attachments);
     const claim: ReimbursementClaimEntity = {
       id: genId("rbc"),
       claimNo: this.generateClaimNo(input.claimType),
@@ -100,6 +102,10 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     this.repo.transaction(() => {
       this.repo.createClaim(claim);
       this.repo.replaceItems(claim.id, claimItems);
+      for (const attachment of attachments) {
+        this.repo.addAttachment(genId("rba"), claim.id, attachment, ctx.userId ?? null, now);
+        this.addLog(claim.id, ctx, "attachment.added", null, attachment.uploadId, now);
+      }
       this.addLog(claim.id, ctx, "create", null, "create reimbursement claim", now);
     });
     return this.repo.detail(this.requireClaim(claim.id));
@@ -157,9 +163,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       throw new AppError(ERROR_CODES.BAD_REQUEST, `${DEFAULT_TEMPLATE_CODE} has no approval stages`, 400);
     }
     const now = nowIso();
-    const tasks = this.buildApprovalTasks(claim, template, now);
-    const firstSort = Math.min(...tasks.map((task) => task.sort));
-    const firstTasks = tasks.filter((task) => task.sort === firstSort);
+    const firstStage = template.stages.slice().sort((left, right) => left.sort - right.sort)[0];
+    if (!firstStage) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, `${DEFAULT_TEMPLATE_CODE} has no approval stages`, 400);
+    }
+    const firstTasks = this.buildStageTasks(claim, template, firstStage, now);
     const firstTask = firstTasks[0];
     const updated: ReimbursementClaimEntity = {
       ...claim,
@@ -173,7 +181,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     this.repo.transaction(() => {
       this.repo.deleteTasksForClaim(claim.id);
       this.repo.updateClaim(updated);
-      this.repo.createTasks(tasks);
+      this.repo.createTasks(firstTasks);
       this.addLog(claim.id, ctx, "submit", null, "submit reimbursement claim", now);
     });
     return this.repo.detail(this.requireClaim(claim.id));
@@ -299,12 +307,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   }
 
   private advanceAfterApproval(claim: ReimbursementClaimEntity, task: ReimbursementApprovalTaskEntity, now: string): void {
-    const tasks = this.repo.listTasks(claim.id).filter((item) => !item.parentTaskId);
-    const nextSort = tasks
-      .map((item) => item.sort)
-      .filter((sort) => sort > task.sort)
-      .sort((left, right) => left - right)[0];
-    if (nextSort === undefined) {
+    const stages = this.repo.listTemplateStages(task.templateId);
+    const nextStage = stages
+      .filter((item) => item.sort > task.sort)
+      .sort((left, right) => left.sort - right.sort)[0];
+    if (!nextStage) {
       this.repo.updateClaim({
         ...claim,
         status: "completed",
@@ -315,7 +322,8 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       });
       return;
     }
-    const nextTasks = this.repo.activateTasksBySort(claim.id, nextSort, now);
+    const nextTasks = this.buildStageTasks(claim, { id: task.templateId }, nextStage, now);
+    this.repo.createTasks(nextTasks);
     const nextTask = nextTasks[0];
     this.repo.updateClaim({
       ...claim,
@@ -326,36 +334,33 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     });
   }
 
-  private buildApprovalTasks(claim: ReimbursementClaimEntity, template: ApprovalTemplateWithStages, now: string): ReimbursementApprovalTaskEntity[] {
-    const tasks: ReimbursementApprovalTaskEntity[] = [];
-    const firstSort = Math.min(...template.stages.map((stage) => stage.sort));
-    for (const stage of template.stages) {
-      const assignees = this.resolveAssignees(claim, stage);
-      for (const assignee of assignees) {
-        tasks.push({
-          id: genId("rbt"),
-          claimId: claim.id,
-          templateId: template.id,
-          templateStageId: stage.id,
-          stageCode: stage.stageCode,
-          stageName: stage.stageName,
-          stageType: stage.stageType,
-          resolverType: stage.resolverType,
-          resolverRef: stage.resolverRef,
-          assigneeUserId: assignee.id,
-          assigneeName: assignee.displayName || assignee.username,
-          status: stage.sort === firstSort ? "pending" : "cancelled",
-          sort: stage.sort,
-          parentTaskId: null,
-          transferredFromTaskId: null,
-          comment: null,
-          actedAt: null,
-          createdAt: now,
-          updatedAt: now
-        });
-      }
-    }
-    return tasks;
+  private buildStageTasks(
+    claim: ReimbursementClaimEntity,
+    template: Pick<ApprovalTemplateWithStages, "id">,
+    stage: ApprovalTemplateStage,
+    now: string
+  ): ReimbursementApprovalTaskEntity[] {
+    return this.resolveAssignees(claim, stage).map((assignee) => ({
+      id: genId("rbt"),
+      claimId: claim.id,
+      templateId: template.id,
+      templateStageId: stage.id,
+      stageCode: stage.stageCode,
+      stageName: stage.stageName,
+      stageType: stage.stageType,
+      resolverType: stage.resolverType,
+      resolverRef: stage.resolverRef,
+      assigneeUserId: assignee.id,
+      assigneeName: assignee.displayName || assignee.username,
+      status: "pending",
+      sort: stage.sort,
+      parentTaskId: null,
+      transferredFromTaskId: null,
+      comment: null,
+      actedAt: null,
+      createdAt: now,
+      updatedAt: now
+    }));
   }
 
   private resolveAssignees(claim: ReimbursementClaimEntity, stage: ApprovalTemplateStage): UserApprovalProfile[] {
@@ -432,6 +437,14 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     }
     if (data.travelDays == null) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, "travelDays is required for travel claims", 400);
+    }
+  }
+
+  private ensureUploadsExist(attachments: AttachReimbursementUploadInput[]): void {
+    for (const attachment of attachments) {
+      if (!this.repo.uploadExists(attachment.uploadId)) {
+        throw new AppError(ERROR_CODES.UPLOAD_NOT_FOUND, `upload not found: ${attachment.uploadId}`, 404);
+      }
     }
   }
 

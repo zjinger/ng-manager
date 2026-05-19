@@ -9,6 +9,11 @@ const amountSchema = z.coerce.number().finite().min(0).max(999999999);
 const nonNegativeNumberSchema = z.coerce.number().finite().min(0).max(999999999);
 const nonNegativeIntSchema = z.coerce.number().int().min(0).max(999999999);
 
+export const attachReimbursementUploadSchema = z.object({
+  uploadId: z.string().trim().min(1),
+  category: attachmentCategorySchema
+});
+
 export const reimbursementItemSchema = z.object({
   itemType: z.enum(["travel", "general"]).optional(),
   category: z.string().trim().nullable().optional(),
@@ -35,7 +40,8 @@ export const createReimbursementClaimSchema = z.object({
   travelDays: nonNegativeNumberSchema.nullable().optional(),
   receiptCount: nonNegativeIntSchema.nullable().optional(),
   advanceAmount: amountSchema.optional(),
-  items: z.array(reimbursementItemSchema).optional()
+  items: z.array(reimbursementItemSchema).optional(),
+  attachments: z.array(attachReimbursementUploadSchema).optional()
 }).superRefine((input, ctx) => {
   if (input.claimType !== "travel") {
     return;
@@ -97,9 +103,4 @@ export const reimbursementActionSchema = z.object({
 
 export const reimbursementTransferSchema = reimbursementActionSchema.extend({
   targetUserId: z.string().trim().min(1)
-});
-
-export const attachReimbursementUploadSchema = z.object({
-  uploadId: z.string().trim().min(1),
-  category: attachmentCategorySchema
 });

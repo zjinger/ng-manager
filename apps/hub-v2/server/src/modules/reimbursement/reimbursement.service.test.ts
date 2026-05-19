@@ -61,7 +61,10 @@ function createDb() {
       id TEXT PRIMARY KEY,
       code TEXT NOT NULL,
       name TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'active'
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE approval_template_stages (
       id TEXT PRIMARY KEY,
@@ -72,7 +75,8 @@ function createDb() {
       resolver_type TEXT NOT NULL,
       resolver_ref TEXT,
       sort INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE reimbursement_claims (
       id TEXT PRIMARY KEY,
@@ -161,33 +165,37 @@ function createDb() {
   `);
   db.prepare("INSERT INTO users (id, username, display_name, status, manager_user_id) VALUES (?, ?, ?, ?, ?)")
     .run("usr_applicant", "applicant", "申请人", "active", "usr_manager");
-  db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_manager", "manager", "直属主管", "active");
-  db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_dept_manager", "dept", "部门负责人", "active");
+  db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_manager", "manager", "审核人", "active");
+  db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_dept_manager", "dept", "部门主管", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_finance_reviewer", "finance", "财务复核人", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_cashier", "cashier", "出纳", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_other", "other", "无关人员", "active");
   db.prepare("INSERT INTO departments (id, name, status, manager_user_id) VALUES (?, ?, ?, ?)").run("dep_rd", "研发部", "active", "usr_dept_manager");
+  db.prepare("INSERT INTO system_roles (id, code, status) VALUES (?, ?, ?)").run("srole_expense_manager", "expense_manager", "active");
   db.prepare("INSERT INTO system_roles (id, code, status) VALUES (?, ?, ?)").run("srole_finance_reviewer", "finance_reviewer", "active");
-  db.prepare("INSERT INTO system_roles (id, code, status) VALUES (?, ?, ?)").run("srole_cashier", "finance_cashier", "active");
+  db.prepare("INSERT INTO system_roles (id, code, status) VALUES (?, ?, ?)").run("srole_finance_cashier", "finance_cashier", "active");
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)").run("perm_submit", "expense.submit");
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)").run("perm_report", "expense.report.view");
+  db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)").run("srole_expense_manager", "perm_submit");
   db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)").run("srole_finance_reviewer", "perm_submit");
-  db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)").run("srole_cashier", "perm_submit");
-  db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_applicant", "usr_applicant", "srole_cashier");
+  db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)").run("srole_finance_cashier", "perm_submit");
+  db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_applicant", "usr_applicant", "srole_finance_cashier");
+  db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_manager", "usr_manager", "srole_expense_manager");
   db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_finance", "usr_finance_reviewer", "srole_finance_reviewer");
-  db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_cashier", "usr_cashier", "srole_cashier");
-  db.prepare("INSERT INTO approval_templates (id, code, name, status) VALUES (?, ?, ?, ?)").run("tpl_expense", "expense_default", "默认报销审批", "active");
+  db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)").run("usr_role_cashier", "usr_cashier", "srole_finance_cashier");
   const now = new Date().toISOString();
+  db.prepare("INSERT INTO approval_templates (id, code, name, description, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run("tpl_expense", "expense_default", "默认报销审批", null, "active", now, now);
   db.prepare("INSERT INTO user_departments (id, user_id, department_id, role_code, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
     .run("ud_applicant", "usr_applicant", "dep_rd", null, now, now);
-  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("stg_direct", "tpl_expense", "direct", "直属主管", "direct_manager", "direct_manager", null, 10, now);
-  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("stg_dept", "tpl_expense", "dept", "部门负责人", "department_manager", "department_manager", null, 20, now);
-  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("stg_finance", "tpl_expense", "finance", "财务审批", "finance_review", "system_role", "srole_finance_reviewer", 30, now);
-  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run("stg_cashier", "tpl_expense", "cashier", "出纳", "cashier", "system_role", "srole_cashier", 40, now);
+  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("stg_direct", "tpl_expense", "review", "审核", "special_authorizer", "system_role", "srole_expense_manager", 10, now, now);
+  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("stg_dept", "tpl_expense", "department_manager", "部门主管", "department_manager", "department_manager", null, 20, now, now);
+  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("stg_finance", "tpl_expense", "finance_review", "会计", "finance_review", "system_role", "srole_finance_reviewer", 30, now, now);
+  db.prepare("INSERT INTO approval_template_stages (id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run("stg_cashier", "tpl_expense", "cashier", "出纳", "cashier", "system_role", "srole_finance_cashier", 40, now, now);
   db.prepare("INSERT INTO uploads (id, file_name, original_name, mime_type, file_size, status) VALUES (?, ?, ?, ?, ?, ?)")
     .run("upl_invoice", "invoice.pdf", "发票.pdf", "application/pdf", 1024, "active");
   return db;
@@ -231,20 +239,23 @@ describe("ReimbursementService", () => {
       assert.equal(submitted.status, "approving");
       assert.equal(submitted.tasks.filter((task) => task.status === "pending").length, 1);
       assert.equal(submitted.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_manager");
+      assert.equal(submitted.currentStageName, "审核");
 
       let detail = await service.approve(submitted.id, { taskId: submitted.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_manager"));
       assert.equal(detail.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_dept_manager");
+      assert.equal(detail.currentStageName, "部门主管");
 
       detail = await service.approve(detail.id, { taskId: detail.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_dept_manager"));
       assert.equal(detail.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_finance_reviewer");
+      assert.equal(detail.currentStageName, "会计");
 
       detail = await service.approve(detail.id, { taskId: detail.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_finance_reviewer"));
-      const cashierTasks = detail.tasks.filter((task) => task.status === "pending");
-      assert.equal(cashierTasks.length, 2);
+      assert.equal(detail.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_cashier");
+      assert.equal(detail.currentStageName, "出纳");
 
-      detail = await service.approve(detail.id, { taskId: cashierTasks.find((task) => task.assigneeUserId === "usr_cashier")!.id }, ctx("usr_cashier"));
+      detail = await service.approve(detail.id, { taskId: detail.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_cashier"));
       assert.equal(detail.status, "completed");
-      assert.equal(detail.tasks.some((task) => task.status === "cancelled" && task.assigneeUserId === "usr_applicant"), true);
+      assert.equal(detail.currentStageName, null);
     } finally {
       db.close();
     }
@@ -313,6 +324,76 @@ describe("ReimbursementService", () => {
         ctx("usr_other")
       );
       assert.equal(submitted.tasks.some((item) => item.status === "addsign_pending" && item.assigneeUserId === "usr_manager"), true);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("bootstraps the default approval template when the database has no template seed", async () => {
+    const db = createDb();
+    try {
+      db.prepare("DELETE FROM approval_template_stages").run();
+      db.prepare("DELETE FROM approval_templates").run();
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const created = await service.create(
+        { claimType: "general", reason: "办公用品", items: [{ amount: 90 }] },
+        ctx("usr_applicant")
+      );
+      const submitted = await service.submit(created.id, ctx("usr_applicant"));
+      assert.equal(submitted.status, "approving");
+      assert.equal(submitted.tasks.find((task) => task.status === "pending")?.assigneeUserId, "usr_manager");
+      assert.equal(submitted.currentStageName, "审核");
+      const templateRow = db.prepare("SELECT code, status FROM approval_templates WHERE code = ?").get("expense_default") as
+        | { code: string; status: string }
+        | undefined;
+      assert.equal(templateRow?.code, "expense_default");
+      assert.equal(templateRow?.status, "active");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("submits with only the first stage configured and fails only when advancing into a missing later stage", async () => {
+    const db = createDb();
+    try {
+      db.prepare("UPDATE departments SET manager_user_id = NULL WHERE id = ?").run("dep_rd");
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const created = await service.create(
+        { claimType: "general", reason: "办公用品", items: [{ amount: 90 }] },
+        ctx("usr_applicant")
+      );
+      const submitted = await service.submit(created.id, ctx("usr_applicant"));
+      assert.equal(submitted.status, "approving");
+      assert.equal(submitted.currentStageName, "审核");
+      assert.equal(submitted.tasks.length, 1);
+      await assert.rejects(
+        () => service.approve(submitted.id, { taskId: submitted.tasks[0]!.id }, ctx("usr_manager")),
+        /department manager is not configured/
+      );
+      const afterFailedAdvance = await service.getById(submitted.id, ctx("usr_applicant"));
+      assert.equal(afterFailedAdvance.tasks[0]?.status, "pending");
+      assert.equal(afterFailedAdvance.currentStageName, "审核");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("creates claim with uploaded attachments in create payload", async () => {
+    const db = createDb();
+    try {
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const created = await service.create(
+        {
+          claimType: "general",
+          reason: "办公用品",
+          items: [{ amount: 90 }],
+          attachments: [{ uploadId: "upl_invoice", category: "invoice" }]
+        },
+        ctx("usr_applicant")
+      );
+      assert.equal(created.attachments.length, 1);
+      assert.equal(created.attachments[0]?.uploadId, "upl_invoice");
+      assert.equal(created.attachments[0]?.category, "invoice");
     } finally {
       db.close();
     }

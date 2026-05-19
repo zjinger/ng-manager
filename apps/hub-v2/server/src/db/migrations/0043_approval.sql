@@ -33,3 +33,69 @@ CREATE TABLE IF NOT EXISTS approval_template_stages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_approval_template_stages_template ON approval_template_stages(template_id, sort);
+
+INSERT OR IGNORE INTO approval_templates (
+  id, code, name, description, status, created_at, updated_at
+)
+VALUES (
+  'tpl_expense_default',
+  'expense_default',
+  '默认报销审批',
+  '系统默认报销审批模板。',
+  'active',
+  datetime('now'),
+  datetime('now')
+);
+
+INSERT OR IGNORE INTO approval_template_stages (
+  id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at, updated_at
+)
+VALUES
+  (
+    'stg_expense_direct_manager',
+    'tpl_expense_default',
+    'review',
+    '审核',
+    'special_authorizer',
+    'system_role',
+    'srole_expense_manager',
+    10,
+    datetime('now'),
+    datetime('now')
+  ),
+  (
+    'stg_expense_department_manager',
+    'tpl_expense_default',
+    'department_manager',
+    '部门主管',
+    'department_manager',
+    'department_manager',
+    NULL,
+    20,
+    datetime('now'),
+    datetime('now')
+  ),
+  (
+    'stg_expense_finance_review',
+    'tpl_expense_default',
+    'finance_review',
+    '会计',
+    'finance_review',
+    'system_role',
+    'srole_finance_reviewer',
+    30,
+    datetime('now'),
+    datetime('now')
+  ),
+  (
+    'stg_expense_cashier',
+    'tpl_expense_default',
+    'cashier',
+    '出纳',
+    'cashier',
+    'system_role',
+    'srole_finance_cashier',
+    40,
+    datetime('now'),
+    datetime('now')
+  );

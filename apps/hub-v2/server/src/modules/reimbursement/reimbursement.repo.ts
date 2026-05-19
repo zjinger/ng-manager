@@ -50,6 +50,47 @@ export interface ApprovalTemplateWithStages {
   stages: ApprovalTemplateStage[];
 }
 
+const DEFAULT_APPROVAL_TEMPLATE_ID = "tpl_expense_default";
+const DEFAULT_APPROVAL_TEMPLATE_CODE = "expense_default";
+const DEFAULT_APPROVAL_STAGE_SEEDS = [
+  {
+    id: "stg_expense_direct_manager",
+    stageCode: "review",
+    stageName: "审核",
+    stageType: "special_authorizer",
+    resolverType: "system_role",
+    resolverRef: "srole_expense_manager",
+    sort: 10
+  },
+  {
+    id: "stg_expense_department_manager",
+    stageCode: "department_manager",
+    stageName: "部门主管",
+    stageType: "department_manager",
+    resolverType: "department_manager",
+    resolverRef: null,
+    sort: 20
+  },
+  {
+    id: "stg_expense_finance_review",
+    stageCode: "finance_review",
+    stageName: "会计",
+    stageType: "finance_review",
+    resolverType: "system_role",
+    resolverRef: "srole_finance_reviewer",
+    sort: 30
+  },
+  {
+    id: "stg_expense_cashier",
+    stageCode: "cashier",
+    stageName: "出纳",
+    stageType: "cashier",
+    resolverType: "system_role",
+    resolverRef: "srole_finance_cashier",
+    sort: 40
+  }
+] as const;
+
 type ClaimRow = {
   id: string;
   claim_no: string;
@@ -222,9 +263,10 @@ export class ReimbursementRepo {
   }
 
   findDefaultTemplate(): ApprovalTemplateWithStages | null {
+    this.seedDefaultTemplateIfMissing();
     const template = this.db
-      .prepare("SELECT id, code, name FROM approval_templates WHERE code = 'expense_default' AND status = 'active'")
-      .get() as { id: string; code: string; name: string } | undefined;
+      .prepare("SELECT id, code, name FROM approval_templates WHERE code = ? AND status = 'active'")
+      .get(DEFAULT_APPROVAL_TEMPLATE_CODE) as { id: string; code: string; name: string } | undefined;
     if (!template) {
       return null;
     }
@@ -260,6 +302,36 @@ export class ReimbursementRepo {
         sort: stage.sort
       }))
     };
+  }
+
+  listTemplateStages(templateId: string): ApprovalTemplateStage[] {
+    const stages = this.db
+      .prepare(`
+        SELECT id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort
+        FROM approval_template_stages
+        WHERE template_id = ?
+        ORDER BY sort ASC, created_at ASC
+      `)
+      .all(templateId) as Array<{
+        id: string;
+        template_id: string;
+        stage_code: string;
+        stage_name: string;
+        stage_type: string;
+        resolver_type: string;
+        resolver_ref: string | null;
+        sort: number;
+      }>;
+    return stages.map((stage) => ({
+      id: stage.id,
+      templateId: stage.template_id,
+      stageCode: stage.stage_code,
+      stageName: stage.stage_name,
+      stageType: stage.stage_type,
+      resolverType: stage.resolver_type,
+      resolverRef: stage.resolver_ref,
+      sort: stage.sort
+    }));
   }
 
   listActiveRoleUsers(roleId: string): UserApprovalProfile[] {
@@ -763,5 +835,51 @@ export class ReimbursementRepo {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  private seedDefaultTemplateIfMissing(): void {
+    const existing = this.db
+      .prepare("SELECT id FROM approval_templates WHERE code = ? LIMIT 1")
+      .get(DEFAULT_APPROVAL_TEMPLATE_CODE) as { id: string } | undefined;
+    if (existing) {
+      return;
+    }
+    const now = new Date().toISOString();
+    this.transaction(() => {
+      this.db
+        .prepare(`
+          INSERT OR IGNORE INTO approval_templates (
+            id, code, name, description, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `)
+        .run(
+          DEFAULT_APPROVAL_TEMPLATE_ID,
+          DEFAULT_APPROVAL_TEMPLATE_CODE,
+          "默认报销审批",
+          "系统默认报销审批模板。",
+          "active",
+          now,
+          now
+        );
+      const insertStage = this.db.prepare(`
+        INSERT OR IGNORE INTO approval_template_stages (
+          id, template_id, stage_code, stage_name, stage_type, resolver_type, resolver_ref, sort, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const stage of DEFAULT_APPROVAL_STAGE_SEEDS) {
+        insertStage.run(
+          stage.id,
+          DEFAULT_APPROVAL_TEMPLATE_ID,
+          stage.stageCode,
+          stage.stageName,
+          stage.stageType,
+          stage.resolverType,
+          stage.resolverRef,
+          stage.sort,
+          now,
+          now
+        );
+      }
+    });
   }
 }

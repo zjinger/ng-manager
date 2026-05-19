@@ -26,6 +26,16 @@
   "travelDays": 2,
   "receiptCount": 8,
   "advanceAmount": 300,
+  "attachments": [
+    {
+      "uploadId": "upl_invoice_001",
+      "category": "invoice"
+    },
+    {
+      "uploadId": "upl_itinerary_001",
+      "category": "itinerary"
+    }
+  ],
   "items": [
     {
       "itemType": "travel",
@@ -81,6 +91,12 @@
   "fillDate": "2026-05-15",
   "receiptCount": 5,
   "advanceAmount": 0,
+  "attachments": [
+    {
+      "uploadId": "upl_invoice_101",
+      "category": "invoice"
+    }
+  ],
   "items": [
     {
       "itemType": "general",
@@ -169,6 +185,7 @@
 1. 先上传文件到 `/api/admin/uploads`
 2. 上传时使用 `bucket=reimbursements`、`category=attachment`
 3. 上传成功后得到 `uploadId`
+4. 如果草稿还没创建，也可以把这些 `uploadId` 直接放进 `POST /claims` 的 `attachments` 字段
 
 `POST /api/admin/reimbursements/claims/:claimId/attachments`
 
@@ -263,9 +280,10 @@
 ## 11. 前端建议的最小联调顺序
 
 1. 调登录接口拿到 cookie
-2. `POST /claims` 创建草稿；可省略 `departmentId`，由后端自动取当前用户主部门
-3. `POST /claims/:claimId/attachments` 绑定附件
-4. `PATCH /claims/:claimId` 保存完整明细
-5. `POST /claims/:claimId/submit` 提交审批
-6. `GET /claims/:claimId` 拉详情，读取 `tasks`
-7. 审批人再调 `approve/reject/transfer/add-sign`
+2. 先调 `/api/admin/uploads` 上传附件，拿到 `uploadId`
+3. `POST /claims` 创建草稿；可省略 `departmentId`，由后端自动取当前用户主部门，也可在此步直接传 `attachments`
+4. 如需后续继续补传附件，再调 `POST /claims/:claimId/attachments`
+5. `PATCH /claims/:claimId` 保存完整明细
+6. `POST /claims/:claimId/submit` 提交审批
+7. `GET /claims/:claimId` 拉详情，读取 `tasks`
+8. 审批人再调 `approve/reject/transfer/add-sign`

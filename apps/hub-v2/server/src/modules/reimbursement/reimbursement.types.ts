@@ -142,6 +142,7 @@ export interface CreateReimbursementClaimInput {
   receiptCount?: number | null;
   advanceAmount?: number;
   items?: ReimbursementItemInput[];
+  attachments?: AttachReimbursementUploadInput[];
 }
 
 export interface UpdateReimbursementClaimInput {
