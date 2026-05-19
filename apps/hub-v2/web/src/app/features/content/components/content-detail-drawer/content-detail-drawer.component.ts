@@ -108,10 +108,6 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
                   <span>生效日期</span>
                   <strong>{{ item.effectiveAt ? (item.effectiveAt | date: 'yyyy-MM-dd HH:mm') : '-' }}</strong>
                 </div>
-                <div class="detail-field">
-                  <span>通知相关人员</span>
-                  <strong>{{ item.notifyRelatedUsers ? '是' : '否' }}</strong>
-                </div>
               }
             </div>
 

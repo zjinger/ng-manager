@@ -11,7 +11,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
 import type { AnnouncementEntity, CreateAnnouncementInput } from '../../../content/models/content.model';
 
-type Draft = Pick<CreateAnnouncementInput, 'title' | 'summary' | 'contentMd' | 'pinned' | 'effectiveAt' | 'notifyRelatedUsers' | 'expireAt'>;
+type Draft = Pick<CreateAnnouncementInput, 'title' | 'summary' | 'contentMd' | 'pinned' | 'effectiveAt' | 'expireAt'>;
 
 const DEFAULT_DRAFT: Draft = {
   title: '',
@@ -19,7 +19,6 @@ const DEFAULT_DRAFT: Draft = {
   contentMd: '',
   pinned: false,
   effectiveAt: '',
-  notifyRelatedUsers: false,
   expireAt: '',
 };
 
@@ -138,7 +137,7 @@ const DEFAULT_DRAFT: Draft = {
           </div>
 
           <div nz-row nzGutter="16">
-            <div nz-col nzSpan="12">
+            <div nz-col nzSpan="24">
               <label
                 nz-checkbox
                 [ngModel]="draft().pinned"
@@ -146,16 +145,6 @@ const DEFAULT_DRAFT: Draft = {
                 (ngModelChange)="updateField('pinned', $event)"
               >
                 置顶显示
-              </label>
-            </div>
-            <div nz-col nzSpan="12">
-              <label
-                nz-checkbox
-                [ngModel]="draft().notifyRelatedUsers"
-                name="notifyRelatedUsers"
-                (ngModelChange)="updateField('notifyRelatedUsers', $event)"
-              >
-                通知相关人员
               </label>
             </div>
           </div>
@@ -214,7 +203,6 @@ export class ReimbursementAnnouncementDialogComponent {
           contentMd: value.contentMd,
           pinned: value.pinned,
           effectiveAt: value.effectiveAt ?? '',
-          notifyRelatedUsers: value.notifyRelatedUsers,
           expireAt: value.expireAt ?? '',
         });
         return;

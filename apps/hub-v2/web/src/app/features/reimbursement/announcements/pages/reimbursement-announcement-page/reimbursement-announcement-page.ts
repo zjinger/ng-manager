@@ -19,7 +19,7 @@ import { ReimbursementAnnouncementDialogComponent } from '../../dialogs/reimburs
 
 type ReimbursementAnnouncementDialogValue = Pick<
   CreateAnnouncementInput,
-  'title' | 'summary' | 'contentMd' | 'pinned' | 'effectiveAt' | 'notifyRelatedUsers' | 'expireAt'
+  'title' | 'summary' | 'contentMd' | 'pinned' | 'effectiveAt' | 'expireAt'
 >;
 
 @Component({
