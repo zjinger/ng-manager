@@ -14,9 +14,12 @@ import { DashboardPanelComponent } from '@shared/ui';
       [count]="items().length"
       [empty]="items().length === 0"
       emptyText="暂无公告"
+      [actionIcon]="'arrow-right'"
+      [actionText]="'进入报销公告管理'"
+      [actionLink]="['/expense-notice']"
     >
       @for (item of items(); track item.id) {
-        <a class="announcement" [routerLink]="['/content', 'announcements', item.id]">
+        <a class="announcement" [routerLink]="['/expense-notice']" [queryParams]="{ detail: item.id }">
           <div class="announcement__title">
             @if (item.pinned) {
               <span class="pin">置顶</span>

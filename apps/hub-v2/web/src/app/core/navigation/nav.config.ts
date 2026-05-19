@@ -39,10 +39,10 @@ export const NAV_ITEMS: NavSection[] = [
     label: '财务中心',
     items: [
       { key: 're-dashboard', label: '报销工作台', icon: 'container', route: '/re-dashboard' },
+      { key: 'expense-notice', label: '报销公告管理', icon: 'notification', route: '/expense-notice' },
       { key: 'my-expenses', label: '我的报销', icon: 'message', route: '/my-expenses' },
       { key: 'approval-pending', label: '待我审批', icon: 'file-text', route: '/approval-pending' },
       { key: 'history-expense', label: '历史报销单', icon: 'history', route: '/history-expense' },
-      { key: 'expense-notice', label: '公告管理', icon: 'file-text', route: '/expense-notice' },
     ],
   },
   {

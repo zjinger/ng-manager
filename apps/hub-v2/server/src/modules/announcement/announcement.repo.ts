@@ -9,11 +9,14 @@ import type {
 type AnnouncementRow = {
   id: string;
   project_id: string | null;
+  domain: "content" | "reimbursement";
   title: string;
   summary: string | null;
   content_md: string;
   scope: "global" | "project";
   pinned: number;
+  effective_at: string | null;
+  notify_related_users: number;
   status: "draft" | "published" | "archived";
   publish_at: string | null;
   expire_at: string | null;
@@ -35,19 +38,22 @@ export class AnnouncementRepo {
       .prepare(
         `
         INSERT INTO announcements (
-          id, project_id, title, summary, content_md, scope, pinned, status,
-          publish_at, expire_at, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, project_id, domain, title, summary, content_md, scope, pinned,
+          effective_at, notify_related_users, status, publish_at, expire_at, created_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
         entity.id,
         entity.projectId,
+        entity.domain,
         entity.title,
         entity.summary,
         entity.contentMd,
         entity.scope,
         entity.pinned ? 1 : 0,
+        entity.effectiveAt,
+        entity.notifyRelatedUsers ? 1 : 0,
         entity.status,
         entity.publishAt,
         entity.expireAt,
@@ -68,18 +74,22 @@ export class AnnouncementRepo {
       .prepare(
         `
         UPDATE announcements
-        SET project_id = ?, title = ?, summary = ?, content_md = ?, scope = ?, pinned = ?, status = ?,
-            publish_at = ?, expire_at = ?, created_by = ?, created_at = ?, updated_at = ?
+        SET project_id = ?, domain = ?, title = ?, summary = ?, content_md = ?, scope = ?,
+            pinned = ?, effective_at = ?, notify_related_users = ?, status = ?, publish_at = ?, expire_at = ?,
+            created_by = ?, created_at = ?, updated_at = ?
         WHERE id = ?
       `
       )
       .run(
         next.projectId,
+        next.domain,
         next.title,
         next.summary,
         next.contentMd,
         next.scope,
         next.pinned ? 1 : 0,
+        next.effectiveAt,
+        next.notifyRelatedUsers ? 1 : 0,
         next.status,
         next.publishAt,
         next.expireAt,
@@ -107,6 +117,11 @@ export class AnnouncementRepo {
     if (query.status) {
       conditions.push("status = ?");
       params.push(query.status);
+    }
+
+    if (query.domain) {
+      conditions.push("domain = ?");
+      params.push(query.domain);
     }
 
     if (query.projectId?.trim()) {
@@ -146,8 +161,8 @@ export class AnnouncementRepo {
 
   listPublic(projectIds: string[], query: ListAnnouncementsQuery): AnnouncementListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = ["status = 'published'"];
-    const params: unknown[] = [];
+    const conditions: string[] = ["status = 'published'", "domain = ?"];
+    const params: unknown[] = [query.domain ?? "content"];
 
     if (projectIds.length > 0) {
       const placeholders = projectIds.map(() => "?").join(", ");
@@ -188,7 +203,7 @@ export class AnnouncementRepo {
   }
 
   listRecentForDashboard(projectIds: string[], limit: number): AnnouncementEntity[] {
-    const conditions: string[] = ["status = 'published'"];
+    const conditions: string[] = ["status = 'published'", "domain = 'content'"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -214,7 +229,7 @@ export class AnnouncementRepo {
   }
 
   listRecentArchivedForNotifications(projectIds: string[], limit: number): AnnouncementEntity[] {
-    const conditions: string[] = ["status = 'archived'"];
+    const conditions: string[] = ["status = 'archived'", "domain = 'content'"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -287,11 +302,14 @@ export class AnnouncementRepo {
     return {
       id: row.id,
       projectId: row.project_id,
+      domain: row.domain,
       title: row.title,
       summary: row.summary,
       contentMd: row.content_md,
       scope: row.scope,
       pinned: row.pinned === 1,
+      effectiveAt: row.effective_at,
+      notifyRelatedUsers: row.notify_related_users === 1,
       status: row.status,
       publishAt: row.publish_at,
       expireAt: row.expire_at,

@@ -26,7 +26,9 @@ import type { AnnouncementEntity } from '../../models/content.model';
             (click)="select.emit(item)"
           >
             <div class="content-cell content-cell--title">
-              <div class="content-title">{{ item.title }}</div>
+              <div class="content-title">
+                {{ item.title }}
+              </div>
               <div class="content-meta">{{ item.summary || '暂无摘要' }}</div>
             </div>
             <div class="content-cell">{{ item.scope === 'global' ? '全局' : '项目' }}</div>
@@ -91,6 +93,9 @@ import type { AnnouncementEntity } from '../../models/content.model';
         color: var(--text-primary);
       }
       .content-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
         font-weight: 700;
         color: var(--text-heading);
       }

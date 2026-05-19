@@ -2,15 +2,19 @@ import type { PageResult } from '@core/types';
 
 export type ContentTab = 'announcements' | 'documents' | 'releases';
 export type ContentStatus = 'draft' | 'published' | 'archived' | '';
+export type AnnouncementDomain = 'content' | 'reimbursement';
 
 export interface AnnouncementEntity {
   id: string;
   projectId: string | null;
+  domain: AnnouncementDomain;
   title: string;
   summary: string | null;
   contentMd: string;
   scope: 'global' | 'project';
   pinned: boolean;
+  effectiveAt: string | null;
+  notifyRelatedUsers: boolean;
   status: 'draft' | 'published' | 'archived';
   publishAt: string | null;
   expireAt: string | null;
@@ -56,6 +60,7 @@ export interface ContentQuery {
   pageSize: number;
   keyword?: string;
   status?: ContentStatus;
+  domain?: AnnouncementDomain | '';
   projectId?: string;
 }
 
@@ -65,11 +70,14 @@ export type ReleaseListResult = PageResult<ReleaseEntity>;
 
 export interface CreateAnnouncementInput {
   projectId?: string | null;
+  domain?: AnnouncementDomain;
   title: string;
   summary?: string;
   contentMd: string;
   scope?: 'global' | 'project';
   pinned?: boolean;
+  effectiveAt?: string;
+  notifyRelatedUsers?: boolean;
   expireAt?: string;
 }
 
@@ -95,11 +103,14 @@ export interface CreateReleaseInput {
 
 export interface UpdateAnnouncementInput {
   projectId?: string | null;
+  domain?: AnnouncementDomain;
   title?: string;
   summary?: string;
   contentMd?: string;
   scope?: 'global' | 'project';
   pinned?: boolean;
+  effectiveAt?: string | null;
+  notifyRelatedUsers?: boolean;
   expireAt?: string | null;
 }
 

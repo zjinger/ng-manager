@@ -5,27 +5,26 @@ import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
-import type { AnnouncementEntity, CreateAnnouncementInput } from '../../models/content.model';
+import type { AnnouncementEntity, CreateAnnouncementInput } from '../../../content/models/content.model';
 
-type Draft = Omit<CreateAnnouncementInput, 'projectId' | 'domain' | 'effectiveAt' | 'notifyRelatedUsers'> & {
-  scope: 'global' | 'project';
-};
+type Draft = Pick<CreateAnnouncementInput, 'title' | 'summary' | 'contentMd' | 'pinned' | 'effectiveAt' | 'notifyRelatedUsers' | 'expireAt'>;
 
 const DEFAULT_DRAFT: Draft = {
   title: '',
   summary: '',
   contentMd: '',
-  scope: 'project',
   pinned: false,
+  effectiveAt: '',
+  notifyRelatedUsers: false,
   expireAt: '',
 };
 
 @Component({
-  selector: 'app-announcement-create-dialog',
+  selector: 'app-reimbursement-announcement-dialog',
   standalone: true,
   imports: [
     FormsModule,
@@ -34,8 +33,8 @@ const DEFAULT_DRAFT: Draft = {
     NzDatePickerModule,
     NzFormModule,
     NzGridModule,
+    NzIconModule,
     NzInputModule,
-    NzSelectModule,
     DialogShellComponent,
     FormActionsComponent,
   ],
@@ -43,13 +42,13 @@ const DEFAULT_DRAFT: Draft = {
     <app-dialog-shell
       [open]="open()"
       [width]="860"
-      [title]="(isEdit() ? '编辑公告' : '新建公告') + (projectName() ? ' · ' + projectName() : '')"
-      [subtitle]="''"
+      [title]="isEdit() ? '编辑报销公告' : '新建报销公告'"
+      [subtitle]="'全局公告'"
       [icon]="'notification'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body>
-        <form id="announcement-create-form" nz-form nzLayout="vertical" (ngSubmit)="submitForm()">
+        <form id="reimbursement-announcement-form" nz-form nzLayout="vertical" (ngSubmit)="submitForm()">
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="24">
               <nz-form-item>
@@ -58,7 +57,7 @@ const DEFAULT_DRAFT: Draft = {
                   <input
                     nz-input
                     maxlength="120"
-                    placeholder="例如：Hub v2 本周发布计划"
+                    placeholder="例如：报销提交流程调整通知"
                     [ngModel]="draft().title"
                     name="title"
                     (ngModelChange)="updateField('title', $event)"
@@ -71,16 +70,16 @@ const DEFAULT_DRAFT: Draft = {
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="12">
               <nz-form-item>
-                <nz-form-label>范围</nz-form-label>
+                <nz-form-label>生效日期</nz-form-label>
                 <nz-form-control>
-                  <nz-select
-                    [ngModel]="draft().scope"
-                    name="scope"
-                    (ngModelChange)="updateField('scope', $event)"
-                  >
-                    <nz-option nzLabel="项目内" nzValue="project"></nz-option>
-                    <nz-option nzLabel="全局" nzValue="global"></nz-option>
-                  </nz-select>
+                  <nz-date-picker
+                    class="reimbursement-announcement-dialog__date-picker"
+                    nzFormat="yyyy-MM-dd"
+                    nzPlaceHolder="选择生效日期"
+                    [ngModel]="effectiveAtDate()"
+                    name="effectiveAtDate"
+                    (ngModelChange)="onDateChange('effectiveAt', $event)"
+                  ></nz-date-picker>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -90,12 +89,12 @@ const DEFAULT_DRAFT: Draft = {
                 <nz-form-label>过期时间</nz-form-label>
                 <nz-form-control>
                   <nz-date-picker
-                    class="announcement-create-dialog__date-picker"
+                    class="reimbursement-announcement-dialog__date-picker"
                     nzFormat="yyyy-MM-dd"
                     nzPlaceHolder="选择过期时间"
                     [ngModel]="expireAtDate()"
                     name="expireAtDate"
-                    (ngModelChange)="onExpireAtDateChange($event)"
+                    (ngModelChange)="onDateChange('expireAt', $event)"
                   ></nz-date-picker>
                 </nz-form-control>
               </nz-form-item>
@@ -110,7 +109,7 @@ const DEFAULT_DRAFT: Draft = {
                   <textarea
                     nz-input
                     rows="3"
-                    placeholder="给列表卡片使用的简短摘要。"
+                    placeholder="给工作台公告卡片使用的简短摘要。"
                     [ngModel]="draft().summary"
                     name="summary"
                     (ngModelChange)="updateField('summary', $event)"
@@ -123,12 +122,12 @@ const DEFAULT_DRAFT: Draft = {
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="24">
               <nz-form-item>
-                <nz-form-label>正文</nz-form-label>
+                <nz-form-label nzRequired>正文</nz-form-label>
                 <nz-form-control>
                   <textarea
                     nz-input
                     rows="10"
-                    placeholder="公告正文，当前先用 textarea 代替富文本编辑器。"
+                    placeholder="请输入报销公告正文。"
                     [ngModel]="draft().contentMd"
                     name="contentMd"
                     (ngModelChange)="updateField('contentMd', $event)"
@@ -139,7 +138,7 @@ const DEFAULT_DRAFT: Draft = {
           </div>
 
           <div nz-row nzGutter="16">
-            <div nz-col nzSpan="24">
+            <div nz-col nzSpan="12">
               <label
                 nz-checkbox
                 [ngModel]="draft().pinned"
@@ -147,6 +146,16 @@ const DEFAULT_DRAFT: Draft = {
                 (ngModelChange)="updateField('pinned', $event)"
               >
                 置顶显示
+              </label>
+            </div>
+            <div nz-col nzSpan="12">
+              <label
+                nz-checkbox
+                [ngModel]="draft().notifyRelatedUsers"
+                name="notifyRelatedUsers"
+                (ngModelChange)="updateField('notifyRelatedUsers', $event)"
+              >
+                通知相关人员
               </label>
             </div>
           </div>
@@ -160,7 +169,7 @@ const DEFAULT_DRAFT: Draft = {
             nz-button
             nzType="primary"
             type="submit"
-            form="announcement-create-form"
+            form="reimbursement-announcement-form"
             [nzLoading]="busy()"
             [disabled]="!canSubmit()"
           >
@@ -173,31 +182,24 @@ const DEFAULT_DRAFT: Draft = {
   `,
   styles: [
     `
-      .announcement-create-dialog__date-picker {
+      .reimbursement-announcement-dialog__date-picker {
         width: 100%;
       }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AnnouncementCreateDialogComponent {
+export class ReimbursementAnnouncementDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly value = input<AnnouncementEntity | null>(null);
-  readonly projectName = input<string>('');
-  readonly create = output<Draft>();
+  readonly submit = output<Draft>();
   readonly cancel = output<void>();
 
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
   readonly isEdit = computed(() => !!this.value());
-  readonly expireAtDate = computed<Date | null>(() => {
-    const value = this.draft().expireAt?.trim();
-    if (!value) {
-      return null;
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  });
+  readonly effectiveAtDate = computed(() => this.parseDate(this.draft().effectiveAt ?? ''));
+  readonly expireAtDate = computed(() => this.parseDate(this.draft().expireAt ?? ''));
 
   constructor() {
     effect(() => {
@@ -210,8 +212,9 @@ export class AnnouncementCreateDialogComponent {
           title: value.title,
           summary: value.summary ?? '',
           contentMd: value.contentMd,
-          scope: value.scope,
           pinned: value.pinned,
+          effectiveAt: value.effectiveAt ?? '',
+          notifyRelatedUsers: value.notifyRelatedUsers,
           expireAt: value.expireAt ?? '',
         });
         return;
@@ -229,29 +232,38 @@ export class AnnouncementCreateDialogComponent {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
   }
 
-  onExpireAtDateChange(value: Date | null): void {
+  onDateChange(key: 'effectiveAt' | 'expireAt', value: Date | null): void {
     if (!value) {
-      this.updateField('expireAt', '' as Draft['expireAt']);
+      this.updateField(key, '' as Draft[typeof key]);
       return;
     }
     const year = value.getFullYear();
     const month = `${value.getMonth() + 1}`.padStart(2, '0');
     const day = `${value.getDate()}`.padStart(2, '0');
-    this.updateField('expireAt', `${year}-${month}-${day}` as Draft['expireAt']);
+    this.updateField(key, `${year}-${month}-${day}` as Draft[typeof key]);
   }
 
   submitForm(): void {
     if (!this.canSubmit()) {
       return;
     }
-
     const draft = this.draft();
-    this.create.emit({
+    this.submit.emit({
       ...draft,
       title: draft.title.trim(),
       summary: draft.summary?.trim() || '',
       contentMd: draft.contentMd.trim(),
+      effectiveAt: draft.effectiveAt || '',
       expireAt: draft.expireAt || '',
     });
+  }
+
+  private parseDate(value: string): Date | null {
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 }

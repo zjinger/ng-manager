@@ -10,6 +10,7 @@ import { requirePermission } from "../utils/require-permission";
 import type { AnnouncementCommandContract, AnnouncementQueryContract } from "./announcement.contract";
 import { AnnouncementRepo } from "./announcement.repo";
 import type {
+  AnnouncementDomain,
   AnnouncementEntity,
   AnnouncementListResult,
   CreateAnnouncementInput,
@@ -17,8 +18,22 @@ import type {
   UpdateAnnouncementInput
 } from "./announcement.types";
 
+type NormalizedAnnouncementInput = {
+  projectId: string | null;
+  domain: AnnouncementDomain;
+  title: string;
+  summary: string | null;
+  contentMd: string;
+  scope: "global" | "project";
+  pinned: boolean;
+  effectiveAt: string | null;
+  notifyRelatedUsers: boolean;
+  expireAt: string | null;
+};
+
 export class AnnouncementService implements AnnouncementCommandContract, AnnouncementQueryContract {
   private static readonly GLOBAL_MANAGE_PERMISSION = "project.manage.all";
+  private static readonly REIMBURSEMENT_MANAGE_PERMISSION = "expense.rule.manage";
 
   constructor(
     private readonly repo: AnnouncementRepo,
@@ -28,21 +43,25 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   ) {}
 
   async create(input: CreateAnnouncementInput, ctx: RequestContext): Promise<AnnouncementEntity> {
-    const projectId = input.projectId?.trim() || null;
-    await this.requireProjectOrAdmin(projectId, ctx, "create announcement");
+    const normalized = this.normalizeDraftInput(input);
+    const projectId = normalized.projectId;
+    await this.requireAnnouncementManage(normalized.domain, projectId, ctx, "create announcement");
 
     const now = nowIso();
     const entity: AnnouncementEntity = {
       id: genId("ann"),
       projectId,
-      title: input.title.trim(),
-      summary: input.summary?.trim() || null,
-      contentMd: input.contentMd,
-      scope: input.scope ?? (projectId ? "project" : "global"),
-      pinned: input.pinned === true,
+      domain: normalized.domain,
+      title: normalized.title,
+      summary: normalized.summary,
+      contentMd: normalized.contentMd,
+      scope: normalized.scope,
+      pinned: normalized.pinned,
+      effectiveAt: normalized.effectiveAt,
+      notifyRelatedUsers: normalized.notifyRelatedUsers,
       status: "draft",
       publishAt: null,
-      expireAt: input.expireAt?.trim() || null,
+      expireAt: normalized.expireAt,
       createdBy: ctx.accountId,
       createdAt: now,
       updatedAt: now
@@ -59,18 +78,35 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       throw new AppError(ERROR_CODES.ANNOUNCEMENT_NOT_FOUND, `announcement not found: ${id}`, 404);
     }
 
-    const nextProjectId =
-      input.projectId === undefined ? current.projectId : input.projectId?.trim() || null;
-    await this.requireProjectOrAdmin(nextProjectId, ctx, "update announcement");
+    const normalized = this.normalizeDraftInput(
+      {
+        projectId: input.projectId === undefined ? current.projectId : input.projectId,
+        domain: input.domain ?? current.domain,
+        title: input.title ?? current.title,
+        summary: input.summary === undefined ? current.summary ?? "" : input.summary,
+        contentMd: input.contentMd ?? current.contentMd,
+        scope: input.scope ?? current.scope,
+        pinned: input.pinned ?? current.pinned,
+        effectiveAt: input.effectiveAt === undefined ? current.effectiveAt ?? "" : input.effectiveAt ?? "",
+        notifyRelatedUsers: input.notifyRelatedUsers ?? current.notifyRelatedUsers,
+        expireAt: input.expireAt === undefined ? current.expireAt ?? "" : input.expireAt ?? ""
+      },
+      current.domain
+    );
+    const nextProjectId = normalized.projectId;
+    await this.requireAnnouncementManage(normalized.domain, nextProjectId, ctx, "update announcement");
 
     const updated = this.repo.update(id, {
       projectId: nextProjectId,
-      title: input.title?.trim() || current.title,
-      summary: input.summary === undefined ? current.summary : input.summary?.trim() || null,
-      contentMd: input.contentMd ?? current.contentMd,
-      scope: input.scope ?? current.scope,
-      pinned: input.pinned ?? current.pinned,
-      expireAt: input.expireAt === undefined ? current.expireAt : input.expireAt?.trim() || null,
+      domain: normalized.domain,
+      title: normalized.title,
+      summary: normalized.summary,
+      contentMd: normalized.contentMd,
+      scope: normalized.scope,
+      pinned: normalized.pinned,
+      effectiveAt: normalized.effectiveAt,
+      notifyRelatedUsers: normalized.notifyRelatedUsers,
+      expireAt: normalized.expireAt,
       updatedAt: nowIso()
     });
 
@@ -99,7 +135,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
 
   async publish(id: string, ctx: RequestContext): Promise<AnnouncementEntity> {
     const current = this.requireById(id);
-    await this.requireProjectOrAdmin(current.projectId, ctx, "publish announcement");
+    await this.requireAnnouncementManage(current.domain, current.projectId, ctx, "publish announcement");
 
     const publishAt = nowIso();
     const updated = this.repo.update(id, {
@@ -131,6 +167,13 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
   }
 
   async list(query: ListAnnouncementsQuery, ctx: RequestContext): Promise<AnnouncementListResult> {
+    if (query.domain === "reimbursement" && query.projectId?.trim()) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "reimbursement announcements do not support project scope", 400);
+    }
+    if (query.domain === "reimbursement") {
+      this.requireListReimbursementAnnouncements(query, ctx);
+      return this.repo.list({ ...query, projectId: undefined });
+    }
     const projectId = query.projectId?.trim();
     if (projectId) {
       await this.projectAccess.requireProjectAccess(projectId, ctx, "list announcements");
@@ -148,7 +191,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
 
   async archive(id: string, ctx: RequestContext): Promise<AnnouncementEntity> {
     const current = this.requireById(id);
-    await this.requireProjectOrAdmin(current.projectId, ctx, "archive announcement");
+    await this.requireAnnouncementManage(current.domain, current.projectId, ctx, "archive announcement");
 
     if (current.status === "archived") {
       return current;
@@ -185,7 +228,7 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
 
   async listPublic(query: ListAnnouncementsQuery, ctx: RequestContext): Promise<AnnouncementListResult> {
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
-    return this.repo.listPublic(projectIds, query);
+    return this.repo.listPublic(projectIds, { ...query, domain: "content" });
   }
 
   async listRecentForDashboard(projectIds: string[], limit: number, _ctx: RequestContext): Promise<AnnouncementEntity[]> {
@@ -258,11 +301,36 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     this.requireGlobalManagePermission(ctx);
   }
 
+  private async requireAnnouncementManage(
+    domain: AnnouncementDomain,
+    projectId: string | null,
+    ctx: RequestContext,
+    action: string
+  ): Promise<void> {
+    if (domain === "reimbursement") {
+      this.requireReimbursementManagePermission(ctx);
+      return;
+    }
+    await this.requireProjectOrAdmin(projectId, ctx, action);
+  }
+
   private requireGlobalManagePermission(ctx: RequestContext): void {
     requirePermission(ctx, AnnouncementService.GLOBAL_MANAGE_PERMISSION);
   }
 
+  private requireReimbursementManagePermission(ctx: RequestContext): void {
+    requirePermission(ctx, AnnouncementService.REIMBURSEMENT_MANAGE_PERMISSION);
+  }
+
   private async requireReadableAnnouncement(entity: AnnouncementEntity, ctx: RequestContext, action: string): Promise<void> {
+    if (entity.domain === "reimbursement") {
+      if (entity.status === "published") {
+        return;
+      }
+      this.requireReimbursementManagePermission(ctx);
+      return;
+    }
+
     if (entity.status !== "published") {
       await this.requireProjectOrAdmin(entity.projectId, ctx, action);
       return;
@@ -272,6 +340,13 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       await this.projectAccess.requireProjectAccess(entity.projectId, ctx, action);
       return;
     }
+  }
+
+  private requireListReimbursementAnnouncements(query: ListAnnouncementsQuery, ctx: RequestContext): void {
+    if (query.status === "published") {
+      return;
+    }
+    this.requireReimbursementManagePermission(ctx);
   }
 
   private resolveActorId(ctx: RequestContext): string | null {
@@ -302,8 +377,32 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       summary,
       operatorId: ctx.userId ?? null,
       operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
-      metaJson: JSON.stringify({ status: entity.status, scope: entity.scope }),
+      metaJson: JSON.stringify({ status: entity.status, scope: entity.scope, domain: entity.domain }),
       createdAt: nowIso()
     });
+  }
+
+  private normalizeDraftInput(
+    input: CreateAnnouncementInput,
+    fallbackDomain: AnnouncementDomain = "content"
+  ): NormalizedAnnouncementInput {
+    const domain = input.domain ?? fallbackDomain;
+    const isReimbursement = domain === "reimbursement";
+    const projectId = isReimbursement ? null : input.projectId?.trim() || null;
+    const scope = isReimbursement ? "global" : input.scope ?? (projectId ? "project" : "global");
+
+    return {
+      ...input,
+      projectId,
+      domain,
+      title: input.title.trim(),
+      summary: input.summary?.trim() || null,
+      contentMd: input.contentMd,
+      scope,
+      pinned: input.pinned === true,
+      effectiveAt: isReimbursement ? input.effectiveAt?.trim() || null : null,
+      notifyRelatedUsers: isReimbursement ? input.notifyRelatedUsers === true : false,
+      expireAt: input.expireAt?.trim() || null
+    };
   }
 }

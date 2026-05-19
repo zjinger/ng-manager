@@ -2,6 +2,11 @@ import { Routes } from '@angular/router';
 
 export const REIMBURSEMENT_ROUTES: Routes = [
   {
+    path: 'expense-notice',
+    loadChildren: () =>
+      import('./announcements/routes').then((m) => m.REIMBURSEMENT_ANNOUNCEMENT_ROUTES),
+  },
+  {
     path: 're-dashboard',
     loadChildren: () =>
       import('./dashboard/routes').then((m) => m.RE_DASHBOARD_ROUTES),
@@ -30,10 +35,5 @@ export const REIMBURSEMENT_ROUTES: Routes = [
     path: 'history-expense',
     loadChildren: () =>
       import('./history-expense/routes').then((m) => m.HISTORY_EXPENSE_ROUTES),
-  },
-  {
-    path: 'expense-notice',
-    loadChildren: () =>
-      import('./expense-notice/routes').then((m) => m.EXPENSE_NOTICE_ROUTES),
   },
 ];

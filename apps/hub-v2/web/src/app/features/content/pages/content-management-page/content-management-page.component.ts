@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -10,9 +11,13 @@ import { map } from 'rxjs';
 
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
-import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
-
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import {
+  FilterBarComponent,
+  ListStateComponent,
+  PageHeaderComponent,
+  PageToolbarComponent,
+  SearchBoxComponent,
+} from '@shared/ui';
 import { AnnouncementListComponent } from '../../components/announcement-list/announcement-list.component';
 import { ContentDetailDrawerComponent } from '../../components/content-detail-drawer/content-detail-drawer.component';
 import { ContentTabsComponent } from '../../components/content-tabs/content-tabs.component';
@@ -123,7 +128,6 @@ import { ContentStore } from '../../store/content.store';
             [selectedId]="selectedDocumentId()"
             [projectKey]="projectContext.currentProjectKey() || ''"
             (select)="openDocumentDetail($event)"
-
           />
         }
         @case ('releases') {
@@ -188,7 +192,6 @@ import { ContentStore } from '../../store/content.store';
         gap: 12px;
         flex-wrap: wrap;
       }
-     
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -229,7 +232,7 @@ export class ContentManagementPageComponent {
     const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
     const tabLabel =
       {
-        announcements: '公告',
+        announcements: '协作公告',
         documents: '文档',
         releases: '发布',
       }[this.store.activeTab()] ?? '内容';
@@ -238,29 +241,29 @@ export class ContentManagementPageComponent {
 
   readonly createLabel = computed(
     () =>
-    ({
-      announcements: '新建公告',
-      documents: '新建文档',
-      releases: '新建发布',
-    }[this.store.activeTab()]),
+      ({
+        announcements: '新建公告',
+        documents: '新建文档',
+        releases: '新建发布',
+      }[this.store.activeTab()]),
   );
 
   readonly emptyTitle = computed(
     () =>
-    ({
-      announcements: '当前筛选条件下没有公告',
-      documents: '当前筛选条件下没有文档',
-      releases: '当前筛选条件下没有发布记录',
-    }[this.store.activeTab()]),
+      ({
+        announcements: '当前筛选条件下没有公告',
+        documents: '当前筛选条件下没有文档',
+        releases: '当前筛选条件下没有发布记录',
+      }[this.store.activeTab()]),
   );
 
   readonly emptyDescription = computed(
     () =>
-    ({
-      announcements: '先创建一条公告或调整筛选条件。',
-      documents: '先创建一篇文档或调整筛选条件。',
-      releases: '先创建一条发布记录或调整筛选条件。',
-    }[this.store.activeTab()]),
+      ({
+        announcements: '先创建一条公告或调整筛选条件。',
+        documents: '先创建一篇文档或调整筛选条件。',
+        releases: '先创建一条发布记录或调整筛选条件。',
+      }[this.store.activeTab()]),
   );
 
   readonly announcementItems = computed(() => this.store.items() as AnnouncementEntity[]);
@@ -296,7 +299,20 @@ export class ContentManagementPageComponent {
     }
     return this.projectMembers().some((member) => actorIds.has(member.userId));
   });
+  readonly hasGlobalAnnouncementManagePermission = computed(() => {
+    const current = this.authStore.currentUser();
+    if (!current) {
+      return false;
+    }
+    if (current.role === 'admin') {
+      return true;
+    }
+    return current.permissionCodes.includes('project.manage.all');
+  });
   readonly canCreateCurrentTab = computed(() => {
+    if (this.store.activeTab() === 'announcements') {
+      return this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission();
+    }
     if (this.store.activeTab() === 'documents') {
       return this.isCurrentProjectMember();
     }
@@ -317,6 +333,13 @@ export class ContentManagementPageComponent {
     });
 
     effect(() => {
+      const routeTab = this.normalizeTabQuery(this.tabQuery());
+      if (routeTab && routeTab !== this.store.activeTab()) {
+        this.store.setTab(routeTab);
+      }
+    });
+
+    effect(() => {
       const detailId = this.normalizeDetailQuery(this.detailQuery());
       if (!detailId) {
         this.handledRouteDetailKey.set(null);
@@ -328,16 +351,13 @@ export class ContentManagementPageComponent {
       if (this.handledRouteDetailKey() === routeKey) {
         return;
       }
-
       if (this.store.activeTab() !== tab) {
         this.store.setTab(tab);
         return;
       }
-
       if (this.store.loading()) {
         return;
       }
-
       if (this.openRouteDetail(tab, detailId)) {
         this.handledRouteDetailKey.set(routeKey);
       }
@@ -346,6 +366,7 @@ export class ContentManagementPageComponent {
 
   switchTab(tab: ContentTab): void {
     this.store.setTab(tab);
+    this.syncListRouteQuery();
     this.closeDetailDrawer(true);
   }
 
@@ -354,6 +375,7 @@ export class ContentManagementPageComponent {
       keyword: this.keyword().trim(),
       status: this.status(),
     });
+    this.syncListRouteQuery();
   }
 
   openCreateDialog(): void {
@@ -417,32 +439,23 @@ export class ContentManagementPageComponent {
   }
 
   createAnnouncement(input: CreateAnnouncementInput): void {
+    const payload = {
+      ...input,
+      projectId: this.projectContext.currentProjectId(),
+    };
     const editing = this.editingAnnouncement();
     if (editing) {
-      this.store.updateAnnouncement(
-        editing.id,
-        {
-          ...input,
-          projectId: this.projectContext.currentProjectId(),
-        },
-        (entity) => {
-          this.closeAnnouncementDialog();
-          this.syncAnnouncementDetail(entity);
-        },
-      );
+      this.store.updateAnnouncement(editing.id, payload, (entity) => {
+        this.closeAnnouncementDialog();
+        this.syncAnnouncementDetail(entity);
+      });
       return;
     }
 
-    this.store.createAnnouncement(
-      {
-        ...input,
-        projectId: this.projectContext.currentProjectId(),
-      },
-      (created) => {
-        this.closeAnnouncementDialog();
-        this.confirmPublishAfterCreate('announcements', created.id);
-      },
-    );
+    this.store.createAnnouncement(payload, (created) => {
+      this.closeAnnouncementDialog();
+      this.confirmPublishAfterCreateAnnouncement(created);
+    });
   }
 
   createDocument(input: CreateDocumentInput): void {
@@ -633,22 +646,20 @@ export class ContentManagementPageComponent {
     }
   }
 
-  private confirmPublishAfterCreate(
-    type: 'announcements' | 'documents' | 'releases',
-    entityId: string,
-  ): void {
-    const title =
-      type === 'announcements'
-        ? '公告已创建，是否立即发布？'
-        : type === 'documents'
-          ? '文档已创建，是否立即发布？'
-          : '发布记录已创建，是否立即发布？';
+  private confirmPublishAfterCreateAnnouncement(entity: AnnouncementEntity): void {
+    this.modal.confirm({
+      nzTitle: '公告已创建，是否立即发布？',
+      nzContent: '立即发布后，项目成员将可见该公告。',
+      nzOkText: '立即发布',
+      nzCancelText: '暂不发布',
+      nzOnOk: () => this.store.publishAnnouncement(entity.id, (next) => this.syncAnnouncementDetail(next)),
+    });
+  }
+
+  private confirmPublishAfterCreate(type: 'documents' | 'releases', entityId: string): void {
+    const title = type === 'documents' ? '文档已创建，是否立即发布？' : '发布记录已创建，是否立即发布？';
     const content =
-      type === 'announcements'
-        ? '立即发布后，项目成员将可见该公告。'
-        : type === 'documents'
-          ? '立即发布后，项目成员将可见该文档。'
-          : '立即发布后，项目成员将可见该版本发布信息。';
+      type === 'documents' ? '立即发布后，项目成员将可见该文档。' : '立即发布后，项目成员将可见该版本发布信息。';
 
     this.modal.confirm({
       nzTitle: title,
@@ -656,10 +667,6 @@ export class ContentManagementPageComponent {
       nzOkText: '立即发布',
       nzCancelText: '暂不发布',
       nzOnOk: () => {
-        if (type === 'announcements') {
-          this.store.publishAnnouncement(entityId, (entity) => this.syncAnnouncementDetail(entity));
-          return;
-        }
         if (type === 'documents') {
           this.store.publishDocument(entityId, (entity) => this.syncDocumentDetail(entity));
           return;
@@ -688,7 +695,10 @@ export class ContentManagementPageComponent {
   }
 
   private canEditByTab(tab: ContentTab | null): boolean {
-    if (tab === 'announcements' || tab === 'releases') {
+    if (tab === 'announcements') {
+      return this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission();
+    }
+    if (tab === 'releases') {
       return this.isCurrentProjectAdmin();
     }
     if (tab === 'documents') {
@@ -700,7 +710,8 @@ export class ContentManagementPageComponent {
 
   private canPublishByTab(tab: ContentTab | null): boolean {
     if (tab === 'announcements') {
-      return this.isCurrentProjectAdmin() && this.detailAnnouncement()?.status !== 'published';
+      const item = this.detailAnnouncement();
+      return !!item && item.status !== 'published' && (this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission());
     }
     if (tab === 'documents') {
       const item = this.detailDocument();
@@ -714,7 +725,8 @@ export class ContentManagementPageComponent {
 
   private canArchiveByTab(tab: ContentTab | null): boolean {
     if (tab === 'announcements') {
-      return this.isCurrentProjectAdmin() && this.detailAnnouncement()?.status !== 'archived';
+      const item = this.detailAnnouncement();
+      return !!item && item.status !== 'archived' && (this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission());
     }
     if (tab === 'documents') {
       const item = this.detailDocument();
@@ -754,6 +766,17 @@ export class ContentManagementPageComponent {
   private normalizeDetailQuery(value: string | null): string | null {
     const normalized = value?.trim() ?? '';
     return normalized || null;
+  }
+
+  private syncListRouteQuery(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        tab: this.store.activeTab(),
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private openRouteDetail(tab: ContentTab, detailId: string): boolean {

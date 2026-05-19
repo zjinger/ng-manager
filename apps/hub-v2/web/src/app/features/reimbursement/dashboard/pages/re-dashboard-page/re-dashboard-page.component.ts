@@ -8,6 +8,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
+import type { AnnouncementEntity } from '../../../../content/models/content.model';
+import { ContentApiService } from '../../../../content/services/content-api.service';
 import type { ReimbursementClaimEntity, ReimbursementDashboard, ReimbursementStats } from '../../../models/reimbursement.model';
 import { ReimbursementApiService } from '../../../services/reimbursement-api.service';
 import { MyTodosCardComponent, type TodoItem } from '../../components/my-todos-card/my-todos-card';
@@ -44,6 +46,7 @@ type AnnouncementItem = {
 })
 export class ReDashboardPageComponent {
   private readonly reimbursementApi = inject(ReimbursementApiService);
+  private readonly contentApi = inject(ContentApiService);
   private readonly message = inject(NzMessageService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -70,32 +73,7 @@ export class ReDashboardPageComponent {
   readonly todoItems = computed<TodoItem[]>(() => this.mapTodoItems(this.dashboard()?.recentTodos ?? []));
   readonly todoTotal = computed(() => this.dashboard()?.todoCount ?? 0);
 
-  readonly announcements: AnnouncementItem[] = [
-    {
-      id: '1',
-      title: '关于2025年第一季度报销截止日期的通知',
-      summary: '请各部门注意，第一季度报销截止日期为2025年3月31日，逾期将不再受理。',
-      publishAt: '2025-03-15T09:00:00',
-      pinned: true,
-      projectId: null,
-    },
-    {
-      id: '2',
-      title: '差旅费报销标准调整公告',
-      summary: '根据公司最新政策，自2025年4月1日起，差旅费报销标准将进行调整。',
-      publishAt: '2025-03-10T14:30:00',
-      pinned: true,
-      projectId: null,
-    },
-    {
-      id: '3',
-      title: '关于报销发票合规性要求的提醒',
-      summary: '近期发现部分报销发票存在合规性问题，请务必按照财务规定提供发票。',
-      publishAt: '2025-03-01T11:00:00',
-      pinned: false,
-      projectId: null,
-    },
-  ];
+  readonly announcements = signal<AnnouncementItem[]>([]);
 
   constructor() {
     this.load();
@@ -109,23 +87,42 @@ export class ReDashboardPageComponent {
       dashboard: this.reimbursementApi.getDashboard(),
       monthStats: this.reimbursementApi.getStats({ dateFrom, dateTo }),
       rejectedPage: this.reimbursementApi.listClaims({ scope: 'my', status: 'rejected', page: 1, pageSize: 1 }),
+      announcements: this.contentApi.listAnnouncements({
+        domain: 'reimbursement',
+        status: 'published',
+        page: 1,
+        pageSize: 5,
+      }),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ dashboard, monthStats, rejectedPage }) => {
+        next: ({ dashboard, monthStats, rejectedPage, announcements }) => {
           this.dashboard.set(dashboard);
           this.monthStats.set(monthStats);
           this.rejectedCount.set(rejectedPage.total);
+          this.announcements.set(announcements.items.map((item) => this.mapAnnouncement(item)));
           this.loading.set(false);
         },
         error: () => {
           this.dashboard.set(null);
           this.monthStats.set(null);
           this.rejectedCount.set(0);
+          this.announcements.set([]);
           this.loading.set(false);
           this.message.error('加载报销工作台失败');
         },
       });
+  }
+
+  private mapAnnouncement(item: AnnouncementEntity): AnnouncementItem {
+    return {
+      id: item.id,
+      title: item.title,
+      summary: item.summary ?? '',
+      publishAt: item.publishAt ?? item.updatedAt,
+      pinned: item.pinned,
+      projectId: item.projectId,
+    };
   }
 
   private mapTodoItems(claims: ReimbursementClaimEntity[]): TodoItem[] {

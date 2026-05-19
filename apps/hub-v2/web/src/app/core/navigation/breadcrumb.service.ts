@@ -91,6 +91,9 @@ export class BreadcrumbService {
     if (path.startsWith('/re-dashboard')) {
       return [{ label: '报销工作台' }];
     }
+    if (path.startsWith('/expense-notice')) {
+      return [{ label: '报销公告管理' }];
+    }
     if (path.startsWith('/travel-expense/new')) {
       return [{ label: '新建差旅费报销' }];
     }
@@ -117,9 +120,6 @@ export class BreadcrumbService {
     }
     if (path.startsWith('/history-expense')) {
       return [{ label: '历史报销单' }];
-    }
-    if (path.startsWith('/expense-notice')) {
-      return [{ label: '公告管理' }];
     }
     if (path.startsWith('/my-todos')) {
       return [{ label: '我的待办' }];

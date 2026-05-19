@@ -78,7 +78,7 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
               </div>
               <div class="detail-field">
                 <span>范围</span>
-                <strong>{{ item.scope === 'global' ? '全局' : projectName() || '当前项目' }}</strong>
+                <strong>{{ item.domain === 'reimbursement' ? '全局' : (item.scope === 'global' ? '全局' : projectName() || '当前项目') }}</strong>
               </div>
               <div class="detail-field">
                 <span>发布时间</span>
@@ -88,6 +88,16 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
                 <span>过期时间</span>
                 <strong>{{ item.expireAt ? (item.expireAt | date: 'yyyy-MM-dd HH:mm') : '-' }}</strong>
               </div>
+              @if (item.domain === 'reimbursement') {
+                <div class="detail-field">
+                  <span>生效日期</span>
+                  <strong>{{ item.effectiveAt ? (item.effectiveAt | date: 'yyyy-MM-dd HH:mm') : '-' }}</strong>
+                </div>
+                <div class="detail-field">
+                  <span>通知相关人员</span>
+                  <strong>{{ item.notifyRelatedUsers ? '是' : '否' }}</strong>
+                </div>
+              }
             </div>
 
             @if (item.summary) {
@@ -412,6 +422,10 @@ export class ContentDetailDrawerComponent {
   publishConfirmText(): string {
     const republish = this.isArchived();
     if (this.tab() === 'announcements') {
+      const announcement = this.announcement();
+      if (announcement?.domain === 'reimbursement') {
+        return republish ? '确认重新发布这条报销公告吗？' : '确认发布这条报销公告吗？发布后将对协作平台内可见人员展示。';
+      }
       return republish ? '确认重新发布这条公告吗？' : '确认发布这条公告吗？发布后将对项目成员可见。';
     }
     if (this.tab() === 'documents') {

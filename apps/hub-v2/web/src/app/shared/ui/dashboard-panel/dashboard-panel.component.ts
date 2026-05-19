@@ -19,7 +19,13 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         <div class="panel__header-right">
           <span class="panel__count">{{ count() }}</span>
           @if (actionIcon()&& actionLink().length > 0) {
-             <a class="panel__action" [routerLink]="actionLink()" nz-tooltip [nzTooltipTitle]="actionText() || ''">
+             <a
+               class="panel__action"
+               [routerLink]="actionLink()"
+               [queryParams]="actionQueryParams()"
+               nz-tooltip
+               [nzTooltipTitle]="actionText() || ''"
+             >
               <nz-icon class="panel__action-icon" [nzType]="actionIcon()!"></nz-icon>
              </a>
           }
@@ -140,4 +146,5 @@ export class DashboardPanelComponent {
   readonly actionIcon = input<string | null>(null);
   readonly actionText = input<string | null>(null);
   readonly actionLink = input<string[]>([]);
+  readonly actionQueryParams = input<Record<string, string> | null>(null);
 }
