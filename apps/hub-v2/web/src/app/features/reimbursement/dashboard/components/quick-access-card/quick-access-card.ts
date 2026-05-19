@@ -245,14 +245,14 @@ export class QuickAccessCardComponent {
     },
     {
       icon: 'bar-chart',
-      title: '报销统计',
-      meta: '费用趋势',
-      routerLink: ['/financing/statistics'],
+      title: '待我审批',
+      meta: '进入审批列表',
+      routerLink: ['/approval-pending'],
     },
   ]);
 
   readonly showMoreLink = input(false);
-  readonly moreLink = input<string[]>(['/financing']);
+  readonly moreLink = input<string[]>(['/re-dashboard']);
 
   private readonly backgrounds = ['#eef2ff', '#eff6ff', '#ecfdf5', '#fffbeb'];
 

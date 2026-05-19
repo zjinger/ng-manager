@@ -6,6 +6,7 @@ export type ReimbursementItemType = 'travel' | 'general';
 export type ReimbursementAttachmentCategory = 'invoice' | 'itinerary' | 'payment_proof' | 'other';
 export type ReimbursementTaskStatus = 'pending' | 'approved' | 'rejected' | 'transferred' | 'addsign_pending' | 'cancelled';
 export type ReimbursementListScope = 'my' | 'all' | 'todo';
+export type ReimbursementApprovalPreviewNodeStatus = 'approved' | 'current' | 'pending' | 'rejected' | 'cancelled';
 
 export interface ReimbursementClaimEntity {
   id: string;
@@ -18,6 +19,12 @@ export interface ReimbursementClaimEntity {
   departmentName: string;
   reason: string;
   fillDate: string;
+  travelStartDate: string | null;
+  travelStartHalf: 'am' | 'pm' | null;
+  travelEndDate: string | null;
+  travelEndHalf: 'am' | 'pm' | null;
+  travelDays: number | null;
+  receiptCount: number | null;
   totalAmount: number;
   advanceAmount: number;
   balanceAmount: number;
@@ -93,11 +100,27 @@ export interface ReimbursementLogEntity {
   createdAt: string;
 }
 
+export interface ReimbursementApprovalPreviewNode {
+  stageCode: string;
+  stageName: string;
+  status: ReimbursementApprovalPreviewNodeStatus;
+  assignees: Array<{ userId: string; name: string }>;
+}
+
+export interface ReimbursementApprovalPreview {
+  claimId: string;
+  claimStatus: ReimbursementClaimStatus;
+  currentStageCode: string | null;
+  currentStageName: string | null;
+  nodes: ReimbursementApprovalPreviewNode[];
+}
+
 export interface ReimbursementClaimDetail extends ReimbursementClaimEntity {
   items: ReimbursementItemEntity[];
   attachments: ReimbursementAttachmentEntity[];
   tasks: ReimbursementApprovalTaskEntity[];
   logs: ReimbursementLogEntity[];
+  approvalPreview: ReimbursementApprovalPreview;
 }
 
 export interface ReimbursementItemInput {
@@ -116,10 +139,17 @@ export interface ReimbursementItemInput {
 
 export interface CreateReimbursementClaimInput {
   claimType: ReimbursementClaimType;
-  departmentId: string;
+  departmentId?: string;
   reason: string;
   fillDate?: string;
+  travelStartDate?: string | null;
+  travelStartHalf?: 'am' | 'pm' | null;
+  travelEndDate?: string | null;
+  travelEndHalf?: 'am' | 'pm' | null;
+  travelDays?: number | null;
+  receiptCount?: number | null;
   advanceAmount?: number;
+  attachments?: AttachReimbursementUploadInput[];
   items?: ReimbursementItemInput[];
 }
 
@@ -127,6 +157,12 @@ export interface UpdateReimbursementClaimInput {
   departmentId?: string;
   reason?: string;
   fillDate?: string;
+  travelStartDate?: string | null;
+  travelStartHalf?: 'am' | 'pm' | null;
+  travelEndDate?: string | null;
+  travelEndHalf?: 'am' | 'pm' | null;
+  travelDays?: number | null;
+  receiptCount?: number | null;
   advanceAmount?: number;
   items?: ReimbursementItemInput[];
 }

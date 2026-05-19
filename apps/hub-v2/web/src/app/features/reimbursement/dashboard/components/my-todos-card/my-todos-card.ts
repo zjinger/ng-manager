@@ -4,17 +4,19 @@ import { RouterLink } from '@angular/router';
 
 import { DashboardPanelComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import type { ReimbursementClaimType } from '../../../models/reimbursement.model';
 
 export interface TodoItem {
   id: string;
   code: string;
-  kind: 'rd_verify' | 'issue_verify' | 'issue_assigned' | 'rd_assigned' | 'issue_collaborating';
+  claimType: ReimbursementClaimType;
+  stageCode: string | null;
+  stageName: string;
   title: string;
   applicant: string;
   amount: number;
   waitingHours: number;
-  entityId: string;
-  projectId?: string;
+  claimId: string;
   highAmount?: boolean;
 }
 
@@ -28,7 +30,7 @@ export interface TodoItem {
       [count]="total()"
       [actionIcon]="showMoreIcon() ? 'more' : null"
       [actionText]="showMoreIcon() ? '查看更多待办' : null"
-      [actionLink]="showMoreIcon() ? ['/financing//my-todos'] : []"
+      [actionLink]="showMoreIcon() ? ['/re-dashboard', 'my-todos'] : []"
       [empty]="items().length === 0"
       emptyText="当前没有待办"
     >
@@ -38,8 +40,8 @@ export interface TodoItem {
             <div class="todo__header">
               <div class="todo__info">
                 <span class="todo__code">{{ item.code }}</span>
-                <span class="todo__tag" [attr.data-kind]="item.kind">
-                  {{ kindLabel(item) }}
+                <span class="todo__tag" [attr.data-kind]="tagTone(item)">
+                  {{ item.stageName }}
                 </span>
                 @if (shouldShowHighAmountTag(item)) {
                   <span class="todo__role" data-kind="high_amount">高金额</span>
@@ -118,19 +120,19 @@ export interface TodoItem {
         flex: 0 0 auto;
       }
 
-      .todo__tag[data-kind^="rd_verify"],
-      .todo__tag[data-kind^="issue_verify"] {
+      .todo__tag[data-kind="review"],
+      .todo__tag[data-kind="finance_review"],
+      .todo__tag[data-kind="cashier"] {
         background: rgba(245, 158, 11, 0.16);
         color: #b45309;
       }
 
-      .todo__tag[data-kind^="rd_assigned"],
-      .todo__tag[data-kind^="issue_assigned"] {
+      .todo__tag[data-kind="department_manager"] {
         background: rgba(6, 182, 212, 0.14);
         color: #0e7490;
       }
 
-      .todo__tag[data-kind="issue_collaborating"] {
+      .todo__tag[data-kind="default"] {
         background: color-mix(in srgb, var(--primary-500) 14%, transparent);
         color: var(--primary-600, #4f46e5);
       }
@@ -186,8 +188,9 @@ export interface TodoItem {
       }
 
       /* 暗色主题适配 */
-      :host-context(html[data-theme='dark']) .todo__tag[data-kind^="rd_verify"],
-      :host-context(html[data-theme='dark']) .todo__tag[data-kind^="issue_verify"] {
+      :host-context(html[data-theme='dark']) .todo__tag[data-kind="review"],
+      :host-context(html[data-theme='dark']) .todo__tag[data-kind="finance_review"],
+      :host-context(html[data-theme='dark']) .todo__tag[data-kind="cashier"] {
         background: rgba(245, 158, 11, 0.2);
       }
 
@@ -217,7 +220,7 @@ export class MyTodosCardComponent {
   readonly projectNames = input<Record<string, string>>({});
   readonly maxDisplayCount = input(5); // 最多显示数量
 
-  readonly showMoreIcon = computed(() => this.total() > 10);
+  readonly showMoreIcon = computed(() => this.total() > this.displayItems().length);
   
   readonly displayItems = computed(() => {
     const items = this.items();
@@ -226,24 +229,28 @@ export class MyTodosCardComponent {
   });
 
   detailLink(item: TodoItem): string[] {
-    const isRdRelated = item.kind.startsWith('rd');
-    return isRdRelated ? ['/rd', item.entityId] : ['/issues', item.entityId];
+    return item.claimType === 'travel'
+      ? ['/travel-expense/detail', item.claimId]
+      : ['/expense/detail', item.claimId];
   }
 
-  kindLabel(item: TodoItem): string {
-    const kindMap: Record<TodoItem['kind'], string> = {
-      issue_collaborating: '待部门主管审批',
-      issue_verify: '待会计处理',
-      rd_verify: '待会计处理',
-      issue_assigned: '待审批',
-      rd_assigned: '待审批'
-    };
-    return kindMap[item.kind] || '';
+  tagTone(item: TodoItem): 'review' | 'department_manager' | 'finance_review' | 'cashier' | 'default' {
+    switch (item.stageCode) {
+      case 'review':
+        return 'review';
+      case 'department_manager':
+        return 'department_manager';
+      case 'finance_review':
+        return 'finance_review';
+      case 'cashier':
+        return 'cashier';
+      default:
+        return 'default';
+    }
   }
 
   shouldShowHighAmountTag(item: TodoItem): boolean {
     const HIGH_AMOUNT_THRESHOLD = 5000;
-    return item.amount >= HIGH_AMOUNT_THRESHOLD && 
-           (item.kind === 'issue_verify' || item.kind === 'rd_verify');
+    return item.amount >= HIGH_AMOUNT_THRESHOLD;
   }
 }

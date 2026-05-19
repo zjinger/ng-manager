@@ -1,38 +1,19 @@
 import { CommonModule } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  signal,
-  DestroyRef,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import { ProjectContextStore } from '@core/state';
-import {
-  ListStateComponent,
-  PageHeaderComponent,
-  PageToolbarComponent,
-} from '@app/shared/ui';
-
-export interface TodoItem {
-  id: string;
-  code: string;
-  kind: 'rd_verify' | 'issue_verify' | 'issue_assigned' | 'rd_assigned' | 'issue_collaborating';
-  title: string;
-  applicant: string;
-  amount: number;
-  waitingHours: number;
-  entityId: string;
-  projectId?: string;
-  highAmount?: boolean;
-}
+import { ListStateComponent, PageHeaderComponent, PageToolbarComponent } from '@app/shared/ui';
+import type { ReimbursementClaimEntity, ReimbursementClaimType } from '../../../models/reimbursement.model';
+import { ReimbursementApiService } from '../../../services/reimbursement-api.service';
+import type { TodoItem } from '../../components/my-todos-card/my-todos-card';
 
 @Component({
   selector: 'app-my-todos-page',
@@ -45,37 +26,33 @@ export interface TodoItem {
     NzPaginationModule,
     NzSelectModule,
     NzIconModule,
+    NzInputModule,
     PageToolbarComponent,
     PageHeaderComponent,
     ListStateComponent,
   ],
   template: `
-    <app-page-header title="我的待办" subtitle="报销审批、财务处理等待办事项。" />
+    <app-page-header title="我的待办" subtitle="当前分配给我的报销审批事项。" />
 
     <app-page-toolbar>
       <div toolbar-filters class="todo-toolbar__main">
         <nz-select
           nzPlaceHolder="全部类型"
           class="toolbar-select"
-          [ngModel]="draftKindFilter()"
-          (ngModelChange)="onKindChange($event)"
+          [ngModel]="draftClaimTypeFilter()"
+          (ngModelChange)="onClaimTypeChange($event)"
         >
           <nz-option nzLabel="全部类型" nzValue=""></nz-option>
-          <nz-option nzLabel="待审批" nzValue="assigned"></nz-option>
-          <nz-option nzLabel="待部门主管审批" nzValue="collaborating"></nz-option>
-          <nz-option nzLabel="待会计处理" nzValue="verify"></nz-option>
+          <nz-option nzLabel="差旅报销" nzValue="travel"></nz-option>
+          <nz-option nzLabel="费用报销" nzValue="general"></nz-option>
         </nz-select>
-        <nz-select
-          nzPlaceHolder="全部项目"
-          class="toolbar-select"
-          [ngModel]="draftProjectIdFilter()"
-          (ngModelChange)="onProjectChange($event)"
-        >
-          <nz-option nzLabel="全部项目" nzValue=""></nz-option>
-          @for (project of projects(); track project.id) {
-          <nz-option [nzLabel]="project.name" [nzValue]="project.id"></nz-option>
-          }
-        </nz-select>
+        <input
+          nz-input
+          class="toolbar-input"
+          placeholder="搜索编号、申请人、事由"
+          [ngModel]="draftKeyword()"
+          (ngModelChange)="onKeywordChange($event)"
+        />
         <button nz-button class="toolbar-filter-btn" (click)="applyFilters()">筛选</button>
         <button nz-button class="toolbar-filter-btn" (click)="resetFilters()">清空</button>
       </div>
@@ -91,51 +68,49 @@ export interface TodoItem {
     >
       <div class="todos__list">
         @for (item of items(); track item.id) {
-        <div class="todo__item" [routerLink]="detailLink(item)">
-          <div class="todo__header">
-            <div class="todo__info">
-              <span class="todo__code">{{ item.code }}</span>
-              <span class="todo__tag" [attr.data-kind]="item.kind">
-                {{ kindLabel(item) }}
-              </span>
-              @if (shouldShowHighAmountTag(item)) {
-              <span class="todo__role" data-kind="high_amount">高金额</span>
-              }
+          <div class="todo__item" [routerLink]="detailLink(item)">
+            <div class="todo__header">
+              <div class="todo__info">
+                <span class="todo__code">{{ item.code }}</span>
+                <span class="todo__tag" [attr.data-kind]="tagTone(item)">
+                  {{ item.stageName }}
+                </span>
+                @if (item.highAmount) {
+                  <span class="todo__role" data-kind="high_amount">高金额</span>
+                }
+              </div>
+              <nz-icon class="todo__icon" nzType="right" nzTheme="outline" />
             </div>
-            <nz-icon class="todo__icon" nzType="right" nzTheme="outline" />
-          </div>
 
-          <span class="todo__title">{{ item.title }}</span>
+            <span class="todo__title">{{ item.title }}</span>
 
-          <div class="todo__meta">
-            @if (projectNameById()[item.projectId || '']) {
-            <span class="todo__project">{{ projectNameById()[item.projectId!] }}</span>
-            }
-            <span>申请人: {{ item.applicant }}</span>
-            <span [class.todo__amount--high]="item.amount >= 5000">
-              金额: ¥{{ item.amount | number : '1.2-2' }}
-            </span>
-            <span>等待 {{ formatWaitingTime(item.waitingHours) }}</span>
+            <div class="todo__meta">
+              <span>{{ claimTypeLabel(item.claimType) }}</span>
+              <span>申请人: {{ item.applicant }}</span>
+              <span [class.todo__amount--high]="item.highAmount">
+                金额: ¥{{ item.amount | number : '1.2-2' }}
+              </span>
+              <span>等待 {{ formatWaitingTime(item.waitingHours) }}</span>
+            </div>
           </div>
-        </div>
         }
       </div>
 
       @if (total() > 0) {
-      <div class="pagination">
-        <nz-pagination
-          [nzTotal]="total()"
-          [nzPageIndex]="page()"
-          [nzPageSize]="pageSize()"
-          [nzPageSizeOptions]="[10, 20, 50, 100]"
-          [nzShowSizeChanger]="true"
-          [nzShowQuickJumper]="true"
-          [nzShowTotal]="totalTpl"
-          (nzPageIndexChange)="onPageIndexChange($event)"
-          (nzPageSizeChange)="onPageSizeChange($event)"
-        ></nz-pagination>
-        <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
-      </div>
+        <div class="pagination">
+          <nz-pagination
+            [nzTotal]="total()"
+            [nzPageIndex]="page()"
+            [nzPageSize]="pageSize()"
+            [nzPageSizeOptions]="[10, 20, 50, 100]"
+            [nzShowSizeChanger]="true"
+            [nzShowQuickJumper]="true"
+            [nzShowTotal]="totalTpl"
+            (nzPageIndexChange)="onPageIndexChange($event)"
+            (nzPageSizeChange)="onPageSizeChange($event)"
+          ></nz-pagination>
+          <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+        </div>
       }
     </app-list-state>
   `,
@@ -150,6 +125,10 @@ export interface TodoItem {
 
       .toolbar-select {
         width: 220px;
+      }
+
+      .toolbar-input {
+        width: 280px;
       }
 
       .todo-toolbar__total {
@@ -209,19 +188,19 @@ export interface TodoItem {
         flex: 0 0 auto;
       }
 
-      .todo__tag[data-kind^='rd_verify'],
-      .todo__tag[data-kind^='issue_verify'] {
+      .todo__tag[data-kind='review'],
+      .todo__tag[data-kind='finance_review'],
+      .todo__tag[data-kind='cashier'] {
         background: rgba(245, 158, 11, 0.16);
         color: #b45309;
       }
 
-      .todo__tag[data-kind^='rd_assigned'],
-      .todo__tag[data-kind^='issue_assigned'] {
+      .todo__tag[data-kind='department_manager'] {
         background: rgba(6, 182, 212, 0.14);
         color: #0e7490;
       }
 
-      .todo__tag[data-kind='issue_collaborating'] {
+      .todo__tag[data-kind='default'] {
         background: color-mix(in srgb, var(--primary-500) 14%, transparent);
         color: var(--primary-600, #4f46e5);
       }
@@ -281,25 +260,15 @@ export interface TodoItem {
         font-weight: 600;
       }
 
-      .todo__project {
-        display: inline-flex;
-        align-items: center;
-        padding: 0 6px;
-        border-radius: 4px;
-        background: var(--bg-subtle, #f1f5f9);
-        color: var(--text-secondary, #64748b);
-        font-size: 0.7rem;
-      }
-
       .pagination {
         display: flex;
         justify-content: flex-end;
         padding: 16px 0 4px;
       }
 
-      /* 暗色主题适配 */
-      :host-context(html[data-theme='dark']) .todo__tag[data-kind^='rd_verify'],
-      :host-context(html[data-theme='dark']) .todo__tag[data-kind^='issue_verify'] {
+      :host-context(html[data-theme='dark']) .todo__tag[data-kind='review'],
+      :host-context(html[data-theme='dark']) .todo__tag[data-kind='finance_review'],
+      :host-context(html[data-theme='dark']) .todo__tag[data-kind='cashier'] {
         background: rgba(245, 158, 11, 0.2);
       }
 
@@ -320,70 +289,65 @@ export interface TodoItem {
       :host-context(html[data-theme='dark']) .todo__meta {
         color: #94a3b8;
       }
-
-      :host-context(html[data-theme='dark']) .todo__project {
-        background: #334155;
-        color: #94a3b8;
-      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MyTodosPageComponent {
-  // private readonly dashboardApi = inject(DashboardApiService);
-  private readonly projectContext = inject(ProjectContextStore);
+  private readonly reimbursementApi = inject(ReimbursementApiService);
+  private readonly message = inject(NzMessageService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(false);
-  readonly items = signal<TodoItem[]>([]);
+  readonly claims = signal<ReimbursementClaimEntity[]>([]);
   readonly total = signal(0);
   readonly page = signal(1);
   readonly pageSize = signal(20);
+  readonly draftClaimTypeFilter = signal<ReimbursementClaimType | ''>('');
+  readonly draftKeyword = signal('');
+  readonly claimTypeFilter = signal<ReimbursementClaimType | ''>('');
+  readonly keyword = signal('');
 
-  // 筛选条件（草稿状态）
-  readonly draftKindFilter = signal<string>('');
-  readonly draftProjectIdFilter = signal<string>('');
-
-  // 实际生效的筛选条件
-  readonly kindFilter = signal<string>('');
-  readonly projectIdFilter = signal<string>('');
-
-  readonly projectNameById = computed<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
-    for (const project of this.projectContext.projects()) {
-      map[project.id] = project.name;
-    }
-    return map;
-  });
-
-  readonly projects = this.projectContext.projects;
+  readonly items = computed<TodoItem[]>(() =>
+    this.claims().map((claim) => ({
+      id: claim.id,
+      code: claim.claimNo,
+      claimType: claim.claimType,
+      stageCode: claim.currentStageCode,
+      stageName: claim.currentStageName ?? '待审批',
+      title: claim.reason,
+      applicant: claim.applicantName,
+      amount: claim.totalAmount,
+      waitingHours: this.diffHours(claim.submittedAt ?? claim.createdAt),
+      claimId: claim.id,
+      highAmount: claim.totalAmount >= 5000,
+    })),
+  );
 
   constructor() {
-    this.draftKindFilter.set(this.kindFilter());
-    this.draftProjectIdFilter.set(this.projectIdFilter());
     this.load();
   }
 
-  onKindChange(kind: string): void {
-    this.draftKindFilter.set(kind);
+  onClaimTypeChange(claimType: ReimbursementClaimType | ''): void {
+    this.draftClaimTypeFilter.set(claimType);
   }
 
-  onProjectChange(projectId: string): void {
-    this.draftProjectIdFilter.set(projectId || '');
+  onKeywordChange(keyword: string): void {
+    this.draftKeyword.set(keyword ?? '');
   }
 
   applyFilters(): void {
-    this.kindFilter.set(this.draftKindFilter());
-    this.projectIdFilter.set(this.draftProjectIdFilter());
+    this.claimTypeFilter.set(this.draftClaimTypeFilter());
+    this.keyword.set(this.draftKeyword().trim());
     this.page.set(1);
     this.load();
   }
 
   resetFilters(): void {
-    this.draftKindFilter.set('');
-    this.draftProjectIdFilter.set('');
-    this.kindFilter.set('');
-    this.projectIdFilter.set('');
+    this.draftClaimTypeFilter.set('');
+    this.draftKeyword.set('');
+    this.claimTypeFilter.set('');
+    this.keyword.set('');
     this.page.set(1);
     this.load();
   }
@@ -400,63 +364,74 @@ export class MyTodosPageComponent {
   }
 
   detailLink(item: TodoItem): string[] {
-    const isRdRelated = item.kind.startsWith('rd');
-    return isRdRelated ? ['/rd', item.entityId] : ['/issues', item.entityId];
+    return item.claimType === 'travel'
+      ? ['/travel-expense/detail', item.claimId]
+      : ['/expense/detail', item.claimId];
   }
 
-  kindLabel(item: TodoItem): string {
-    const kindMap: Record<string, string> = {
-      issue_collaborating: '待部门主管审批',
-      issue_verify: '待会计处理',
-      rd_verify: '待会计处理',
-      issue_assigned: '待审批',
-      rd_assigned: '待审批',
-    };
-    return kindMap[item.kind] || '';
+  tagTone(item: TodoItem): 'review' | 'department_manager' | 'finance_review' | 'cashier' | 'default' {
+    switch (item.stageCode) {
+      case 'review':
+        return 'review';
+      case 'department_manager':
+        return 'department_manager';
+      case 'finance_review':
+        return 'finance_review';
+      case 'cashier':
+        return 'cashier';
+      default:
+        return 'default';
+    }
   }
 
-  shouldShowHighAmountTag(item: TodoItem): boolean {
-    const HIGH_AMOUNT_THRESHOLD = 5000;
-    return (
-      item.amount >= HIGH_AMOUNT_THRESHOLD &&
-      (item.kind === 'issue_verify' || item.kind === 'rd_verify')
-    );
+  claimTypeLabel(claimType: ReimbursementClaimType): string {
+    return claimType === 'travel' ? '差旅报销' : '费用报销';
   }
 
   formatWaitingTime(hours: number): string {
     if (hours >= 24) {
       const days = Math.floor(hours / 24);
-      return `${days}天${hours % 24 > 0 ? ` ${hours % 24}小时` : ''}`;
+      const remainHours = hours % 24;
+      return remainHours > 0 ? `${days}天 ${remainHours}小时` : `${days}天`;
     }
     if (hours < 1) {
-      return '即将超时';
+      return '不足1小时';
     }
     return `${hours}小时`;
   }
 
   private load(): void {
     this.loading.set(true);
-    // const subscription = this.dashboardApi
-    //   .getTodosPage({
-    //     page: this.page(),
-    //     pageSize: this.pageSize(),
-    //     kind: this.kindFilter() || undefined,
-    //     projectId: this.projectIdFilter() || undefined,
-    //   })
-    //   .subscribe({
-    //     next: (result) => {
-    //       this.items.set(result.items);
-    //       this.total.set(result.total);
-    //       this.loading.set(false);
-    //     },
-    //     error: (error) => {
-    //       console.error('加载待办列表失败:', error);
-    //       this.items.set([]);
-    //       this.total.set(0);
-    //       this.loading.set(false);
-    //     },
-    //   });
+    this.reimbursementApi
+      .listClaims({
+        page: this.page(),
+        pageSize: this.pageSize(),
+        scope: 'todo',
+        claimType: this.claimTypeFilter(),
+        keyword: this.keyword() || undefined,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.claims.set(result.items);
+          this.total.set(result.total);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.claims.set([]);
+          this.total.set(0);
+          this.loading.set(false);
+          this.message.error('加载待办列表失败');
+        },
+      });
+  }
 
-    // this.destroyRef.onDestroy(() => subscription.unsubscribe());
+  private diffHours(startAt: string): number {
+    const started = new Date(startAt).getTime();
+    if (Number.isNaN(started)) {
+      return 0;
+    }
+    const diff = Date.now() - started;
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60)));
   }
 }

@@ -1,46 +1,54 @@
+import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { StatCardComponent } from '@shared/ui';
-// import type { DashboardStats } from '../../models/dashboard.model';
+
+export interface ReDashboardStats {
+  todoCount: number;
+  myApprovingCount: number;
+  rejectedCount: number;
+  completedThisMonthCount: number;
+  monthAmount: number;
+}
 
 @Component({
   selector: 're-dashboard-panel',
   standalone: true,
-  imports: [StatCardComponent],
+  imports: [CommonModule, StatCardComponent],
   template: `
     <div class="grid">
       <app-stat-card
         label="待我审批"
-        [value]="3"
+        [value]="stats().todoCount"
         hint="含主管、审核、会计节点"
         icon="bug"
         tone="blue"
       />
       <app-stat-card
         label="审批中"
-        [value]="6"
+        [value]="stats().myApprovingCount"
         hint="我提交后仍在流转中"
         icon="safety-certificate"
         tone="purple"
       />
       <app-stat-card
         label="已驳回"
-        [value]="1"
+        [value]="stats().rejectedCount"
         hint="需补充票据或说明"
         icon="alert"
         tone="cyan"
       />
       <app-stat-card
         label="本月已完成"
-        [value]="12"
-        hint="已完成付款归档"
+        [value]="stats().completedThisMonthCount"
+        hint="本月完成审批的单据数"
         icon="rocket"
         tone="green"
       />
       <app-stat-card
         label="本月报销金额"
-        [value]="42.8"
-        hint="较上月 +8.6%"
+        [value]="'¥' + (stats().monthAmount | number:'1.2-2')"
+        hint="本月单据金额汇总"
         icon="team"
         tone="orange"
       />
@@ -74,5 +82,11 @@ import { StatCardComponent } from '@shared/ui';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReDashboardPanelComponent {
-//   readonly stats = input.required<DashboardStats>();
+  readonly stats = input<ReDashboardStats>({
+    todoCount: 0,
+    myApprovingCount: 0,
+    rejectedCount: 0,
+    completedThisMonthCount: 0,
+    monthAmount: 0,
+  });
 }

@@ -1,10 +1,10 @@
 <app-page-header title="报销工作台" subtitle="集中处理报销申请、审批流转、财务审核与付款进度。" />
 
-<re-dashboard-panel />
+<re-dashboard-panel [stats]="stats()" />
 
 <div class="dashboard-content">
   <div class="dashboard-main">
-    <my-todos-card [items]="mockTodos" [total]="16" />
+    <my-todos-card [items]="todoItems()" [total]="todoTotal()" />
   </div>
 
   <div class="dashboard-sidebar">
