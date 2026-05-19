@@ -1,26 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { PanelCardComponent } from '@shared/ui/panel-card';
-
-interface Integration {
-  name: string;
-  description: string;
-  status: 'active' | 'inactive';
-  icon: string;
-}
-
-interface ApiKey {
-  name: string;
-  key: string;
-  scope: string;
-  createdAt: string;
-  lastUsed: string;
-  status: 'active' | 'inactive';
-}
+import { SystemSettingsApiService, type IntegrationSettings, type IntegrationItem, type ApiKeyItem } from '../../services/system-settings-api.service';
 
 @Component({
   selector: 'app-integration-settings',
@@ -34,6 +19,22 @@ interface ApiKey {
   template: `
     <div class="settings-section">
       <app-panel-card title="第三方集成">
+        <div panel-actions class="settings-actions">
+          @if (!editable()) {
+            <button nz-button (click)="startEdit()">编辑</button>
+          } @else {
+            <button nz-button (click)="cancel()" [disabled]="saving()">取消</button>
+            <button
+              nz-button
+              nzType="primary"
+              (click)="save()"
+              [disabled]="!dirty() || saving()"
+            >
+              {{ saving() ? '保存中…' : '保存' }}
+            </button>
+          }
+        </div>
+
         <div class="settings-list">
           @for (item of integrations(); track item.name) {
             <div class="settings-item">
@@ -63,7 +64,7 @@ interface ApiKey {
       <app-panel-card title="API 密钥">
         <div panel-actions>
           <button nz-button nzType="primary" (click)="generateKey()">
-            <span nz-icon nzType="plus"></span> 生成新密钥
+            <nz-icon nzType="plus"></nz-icon> 生成新密钥
           </button>
         </div>
 
@@ -117,6 +118,12 @@ interface ApiKey {
       display: flex;
       flex-direction: column;
       gap: 20px;
+    }
+
+    .settings-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .settings-list {
@@ -224,56 +231,83 @@ interface ApiKey {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IntegrationSettingsComponent {
+export class IntegrationSettingsComponent implements OnInit {
   private readonly message = inject(NzMessageService);
+  private readonly settingsApi = inject(SystemSettingsApiService);
 
-  readonly integrations = signal<Integration[]>([
-    {
-      name: 'GitLab 集成',
-      description: '关联 GitLab 仓库，自动同步代码提交和 MR',
-      status: 'active',
-      icon: 'gitlab',
-    },
-    {
-      name: 'Jenkins CI/CD',
-      description: '关联 Jenkins 构建流水线',
-      status: 'active',
-      icon: 'build',
-    },
-    {
-      name: 'HR 系统同步',
-      description: '自动同步组织架构和人员信息',
-      status: 'active',
-      icon: 'sync',
-    },
-    {
-      name: 'Jira 同步',
-      description: '双向同步 Jira Issue',
-      status: 'inactive',
-      icon: 'issues-close',
-    },
-  ]);
+  readonly editable = signal(false);
+  readonly dirty = signal(false);
+  readonly saving = signal(false);
 
-  readonly apiKeys = signal<ApiKey[]>([
-    {
-      name: 'CI/CD Pipeline',
-      key: 'hub_api_••••••••7f3a',
-      scope: '读写',
-      createdAt: '2026-03-15',
-      lastUsed: '2 分钟前',
-      status: 'active',
-    },
-    {
-      name: 'Webhook 回调',
-      key: 'hub_api_••••••••b2e1',
-      scope: '只读',
-      createdAt: '2026-04-20',
-      lastUsed: '1 天前',
-      status: 'active',
-    },
-  ]);
+  readonly integrations = signal<IntegrationItem[]>([]);
+  readonly apiKeys = signal<ApiKeyItem[]>([]);
+
+  private savedState: IntegrationSettings = { integrations: [], apiKeys: [] };
+
+  ngOnInit(): void {
+    this.loadSettings();
+  }
+
+  private loadSettings(): void {
+    this.settingsApi.getIntegrationSettings().subscribe({
+      next: (settings) => {
+        this.integrations.set(settings.integrations);
+        this.apiKeys.set(settings.apiKeys);
+        this.savedState = this.getSnapshot();
+      },
+      error: () => {
+        this.message.error('加载设置失败');
+      }
+    });
+  }
+
+  private getSnapshot(): IntegrationSettings {
+    return {
+      integrations: [...this.integrations()],
+      apiKeys: [...this.apiKeys()],
+    };
+  }
+
+  startEdit(): void {
+    this.savedState = this.getSnapshot();
+    this.editable.set(true);
+    this.dirty.set(false);
+  }
+
+  cancel(): void {
+    this.integrations.set(this.savedState.integrations);
+    this.apiKeys.set(this.savedState.apiKeys);
+    this.editable.set(false);
+    this.dirty.set(false);
+  }
+
+  save(): void {
+    this.saving.set(true);
+    const data = this.getSnapshot();
+    this.settingsApi.updateIntegrationSettings(data).subscribe({
+      next: () => {
+        this.savedState = this.getSnapshot();
+        this.saving.set(false);
+        this.editable.set(false);
+        this.dirty.set(false);
+        this.message.success('集成设置已保存');
+      },
+      error: () => {
+        this.saving.set(false);
+        this.message.error('保存失败');
+      }
+    });
+  }
+
+  checkDirty(): void {
+    const current = this.getSnapshot();
+    this.dirty.set(
+      JSON.stringify(current.integrations) !== JSON.stringify(this.savedState.integrations) ||
+      JSON.stringify(current.apiKeys) !== JSON.stringify(this.savedState.apiKeys)
+    );
+  }
 
   generateKey(): void {
-    this.message.info('生成新密钥功能开发中');
+    this.message.info('生成功能开发中');
   }
 }

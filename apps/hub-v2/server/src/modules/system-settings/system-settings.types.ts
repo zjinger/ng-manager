@@ -67,7 +67,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
   timezone: 'Asia/Shanghai',
   dateFormat: 'YYYY-MM-DD',
   openRegistration: false,
-  emailWhitelist: '@hub.com, @xiaomi.com',
+  emailWhitelist: '@shenlaninfo.com',
   defaultRole: 'developer',
   requireApproval: true
 };

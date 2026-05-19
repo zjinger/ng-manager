@@ -24,7 +24,8 @@ export class SystemSettingsService implements SystemSettingsCommandContract, Sys
       return defaults;
     }
     try {
-      return JSON.parse(entity.settingsData) as T;
+      const parsed = JSON.parse(entity.settingsData) as Partial<T>;
+      return { ...defaults, ...parsed };
     } catch {
       return defaults;
     }

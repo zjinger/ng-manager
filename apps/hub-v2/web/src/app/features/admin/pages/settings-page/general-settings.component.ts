@@ -67,10 +67,12 @@ interface RegistrationSettings {
                   <nz-form-control>
                     <input
                       nz-input
-                      [(ngModel)]="platformName"
+                      [ngModel]="platformName()"
+                      (ngModelChange)="platformName.set($event)"
                       name="platformName"
                       placeholder="输入平台名称"
                       [disabled]="!platformEditable()"
+                      (blur)="checkPlatformDirty()"
                     />
                   </nz-form-control>
                 </nz-form-item>
@@ -84,10 +86,12 @@ interface RegistrationSettings {
                   <nz-form-control>
                     <input
                       nz-input
-                      [(ngModel)]="platformDesc"
+                      [ngModel]="platformDesc()"
+                      (ngModelChange)="platformDesc.set($event)"
                       name="platformDesc"
                       placeholder="输入平台描述"
                       [disabled]="!platformEditable()"
+                      (blur)="checkPlatformDirty()"
                     />
                   </nz-form-control>
                 </nz-form-item>
@@ -97,7 +101,8 @@ interface RegistrationSettings {
                   <nz-form-label>默认语言</nz-form-label>
                   <nz-form-control>
                     <nz-select
-                      [(ngModel)]="defaultLanguage"
+                      [ngModel]="defaultLanguage()"
+                      (ngModelChange)="defaultLanguage.set($event); checkPlatformDirty()"
                       name="defaultLanguage"
                       style="width: 100%"
                       [nzDisabled]="!platformEditable()"
@@ -116,7 +121,8 @@ interface RegistrationSettings {
                   <nz-form-label>时区</nz-form-label>
                   <nz-form-control>
                     <nz-select
-                      [(ngModel)]="timezone"
+                      [ngModel]="timezone()"
+                      (ngModelChange)="timezone.set($event); checkPlatformDirty()"
                       name="timezone"
                       style="width: 100%"
                       [nzDisabled]="!platformEditable()"
@@ -133,7 +139,8 @@ interface RegistrationSettings {
                   <nz-form-label>日期格式</nz-form-label>
                   <nz-form-control>
                     <nz-select
-                      [(ngModel)]="dateFormat"
+                      [ngModel]="dateFormat()"
+                      (ngModelChange)="dateFormat.set($event); checkPlatformDirty()"
                       name="dateFormat"
                       style="width: 100%"
                       [nzDisabled]="!platformEditable()"
@@ -174,7 +181,8 @@ interface RegistrationSettings {
               <div class="settings-item__desc">允许用户通过邮箱自主注册账号</div>
             </div>
             <nz-switch
-              [(ngModel)]="openRegistration"
+              [ngModel]="openRegistration()"
+              (ngModelChange)="openRegistration.set($event); checkRegistrationDirty()"
               [nzDisabled]="!registrationEditable()"
             />
           </div>
@@ -186,10 +194,12 @@ interface RegistrationSettings {
             </div>
             <input
               nz-input
-              [(ngModel)]="emailWhitelist"
+              [ngModel]="emailWhitelist()"
+              (ngModelChange)="emailWhitelist.set($event)"
               placeholder="@example.com"
               style="width: 240px"
               [disabled]="!registrationEditable()"
+              (blur)="checkRegistrationDirty()"
             />
           </div>
 
@@ -199,7 +209,8 @@ interface RegistrationSettings {
               <div class="settings-item__desc">新注册用户自动分配的角色</div>
             </div>
             <nz-select
-              [(ngModel)]="defaultRole"
+              [ngModel]="defaultRole()"
+              (ngModelChange)="defaultRole.set($event); checkRegistrationDirty()"
               style="width: 160px"
               [nzDisabled]="!registrationEditable()"
             >
@@ -215,7 +226,8 @@ interface RegistrationSettings {
               <div class="settings-item__desc">新用户注册后需要管理员审批才能激活</div>
             </div>
             <nz-switch
-              [(ngModel)]="requireApproval"
+              [ngModel]="requireApproval()"
+              (ngModelChange)="requireApproval.set($event); checkRegistrationDirty()"
               [nzDisabled]="!registrationEditable()"
             />
           </div>

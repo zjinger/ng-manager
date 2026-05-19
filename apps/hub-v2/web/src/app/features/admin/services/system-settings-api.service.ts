@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { ApiClientService } from '@core/http';
 
 export interface GeneralSettings {
   platformName: string;
@@ -55,38 +55,37 @@ export interface IntegrationSettings {
 
 @Injectable({ providedIn: 'root' })
 export class SystemSettingsApiService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/admin/system-settings';
+  private readonly api = inject(ApiClientService);
 
   getGeneralSettings(): Observable<GeneralSettings> {
-    return this.http.get<GeneralSettings>(`${this.baseUrl}/general`);
+    return this.api.get<GeneralSettings>('/system-settings/general');
   }
 
   updateGeneralSettings(data: GeneralSettings): Observable<void> {
-    return this.http.put<void>(`${this.baseUrl}/general`, data);
+    return this.api.put<void, GeneralSettings>('/system-settings/general', data);
   }
 
   getSecuritySettings(): Observable<SecuritySettings> {
-    return this.http.get<SecuritySettings>(`${this.baseUrl}/security`);
+    return this.api.get<SecuritySettings>('/system-settings/security');
   }
 
   updateSecuritySettings(data: SecuritySettings): Observable<void> {
-    return this.http.put<void>(`${this.baseUrl}/security`, data);
+    return this.api.put<void, SecuritySettings>('/system-settings/security', data);
   }
 
   getNotificationSettings(): Observable<NotificationSettings> {
-    return this.http.get<NotificationSettings>(`${this.baseUrl}/notification`);
+    return this.api.get<NotificationSettings>('/system-settings/notification');
   }
 
   updateNotificationSettings(data: NotificationSettings): Observable<void> {
-    return this.http.put<void>(`${this.baseUrl}/notification`, data);
+    return this.api.put<void, NotificationSettings>('/system-settings/notification', data);
   }
 
   getIntegrationSettings(): Observable<IntegrationSettings> {
-    return this.http.get<IntegrationSettings>(`${this.baseUrl}/integration`);
+    return this.api.get<IntegrationSettings>('/system-settings/integration');
   }
 
   updateIntegrationSettings(data: IntegrationSettings): Observable<void> {
-    return this.http.put<void>(`${this.baseUrl}/integration`, data);
+    return this.api.put<void, IntegrationSettings>('/system-settings/integration', data);
   }
 }

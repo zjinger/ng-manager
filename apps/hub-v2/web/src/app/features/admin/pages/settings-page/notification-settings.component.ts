@@ -35,7 +35,8 @@ import { SystemSettingsApiService, type NotificationSettings } from '../../servi
             <div class="settings-item__desc">通过 SMTP 发送邮件通知</div>
           </div>
           <nz-switch
-            [(ngModel)]="emailEnabled"
+            [ngModel]="emailEnabled()"
+            (ngModelChange)="emailEnabled.set($event); checkDirty()"
             [nzDisabled]="!editable()"
           />
         </div>
@@ -46,7 +47,8 @@ import { SystemSettingsApiService, type NotificationSettings } from '../../servi
             <div class="settings-item__desc">通过企业微信 Webhook 推送通知</div>
           </div>
           <nz-switch
-            [(ngModel)]="wechatWorkEnabled"
+            [ngModel]="wechatWorkEnabled()"
+            (ngModelChange)="wechatWorkEnabled.set($event); checkDirty()"
             [nzDisabled]="!editable()"
           />
         </div>
@@ -57,7 +59,8 @@ import { SystemSettingsApiService, type NotificationSettings } from '../../servi
             <div class="settings-item__desc">通过飞书机器人推送通知</div>
           </div>
           <nz-switch
-            [(ngModel)]="feishuEnabled"
+            [ngModel]="feishuEnabled()"
+            (ngModelChange)="feishuEnabled.set($event); checkDirty()"
             [nzDisabled]="!editable()"
           />
         </div>
@@ -68,7 +71,8 @@ import { SystemSettingsApiService, type NotificationSettings } from '../../servi
             <div class="settings-item__desc">通过钉钉机器人推送通知</div>
           </div>
           <nz-switch
-            [(ngModel)]="dingtalkEnabled"
+            [ngModel]="dingtalkEnabled()"
+            (ngModelChange)="dingtalkEnabled.set($event); checkDirty()"
             [nzDisabled]="!editable()"
           />
         </div>
@@ -79,7 +83,8 @@ import { SystemSettingsApiService, type NotificationSettings } from '../../servi
             <div class="settings-item__desc">通过 Web Push API 发送浏览器通知</div>
           </div>
           <nz-switch
-            [(ngModel)]="browserPushEnabled"
+            [ngModel]="browserPushEnabled()"
+            (ngModelChange)="browserPushEnabled.set($event); checkDirty()"
             [nzDisabled]="!editable()"
           />
         </div>

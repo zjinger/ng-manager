@@ -57,7 +57,8 @@ interface TwoFactorSettings {
               <div class="settings-item__desc">用户密码的最少字符数</div>
             </div>
             <nz-select
-              [(ngModel)]="minPasswordLength"
+              [ngModel]="minPasswordLength()"
+              (ngModelChange)="minPasswordLength.set($event); checkPasswordDirty()"
               style="width: 100px"
               [nzDisabled]="!passwordEditable()"
             >
@@ -74,7 +75,8 @@ interface TwoFactorSettings {
               <div class="settings-item__desc">必须包含大写、小写、数字和特殊字符</div>
             </div>
             <nz-switch
-              [(ngModel)]="requireComplexity"
+              [ngModel]="requireComplexity()"
+              (ngModelChange)="requireComplexity.set($event); checkPasswordDirty()"
               [nzDisabled]="!passwordEditable()"
             />
           </div>
@@ -85,7 +87,8 @@ interface TwoFactorSettings {
               <div class="settings-item__desc">强制用户定期更换密码</div>
             </div>
             <nz-select
-              [(ngModel)]="passwordExpiry"
+              [ngModel]="passwordExpiry()"
+              (ngModelChange)="passwordExpiry.set($event); checkPasswordDirty()"
               style="width: 120px"
               [nzDisabled]="!passwordEditable()"
             >
@@ -102,7 +105,8 @@ interface TwoFactorSettings {
               <div class="settings-item__desc">连续失败次数达到阈值后自动锁定账号</div>
             </div>
             <nz-select
-              [(ngModel)]="loginFailureLock"
+              [ngModel]="loginFailureLock()"
+              (ngModelChange)="loginFailureLock.set($event); checkPasswordDirty()"
               style="width: 120px"
               [nzDisabled]="!passwordEditable()"
             >
@@ -139,7 +143,8 @@ interface TwoFactorSettings {
               <div class="settings-item__desc">要求所有用户启用双因素认证</div>
             </div>
             <nz-switch
-              [(ngModel)]="globalForce2FA"
+              [ngModel]="globalForce2FA()"
+              (ngModelChange)="globalForce2FA.set($event); checkTwoFADirty()"
               [nzDisabled]="!twoFAEditable()"
             />
           </div>
@@ -150,7 +155,8 @@ interface TwoFactorSettings {
               <div class="settings-item__desc">要求所有管理员角色必须启用 2FA</div>
             </div>
             <nz-switch
-              [(ngModel)]="adminForce2FA"
+              [ngModel]="adminForce2FA()"
+              (ngModelChange)="adminForce2FA.set($event); checkTwoFADirty()"
               [nzDisabled]="!twoFAEditable()"
             />
           </div>
@@ -161,7 +167,8 @@ interface TwoFactorSettings {
               <div class="settings-item__desc">无操作后自动登出的时间</div>
             </div>
             <nz-select
-              [(ngModel)]="sessionTimeout"
+              [ngModel]="sessionTimeout()"
+              (ngModelChange)="sessionTimeout.set($event); checkTwoFADirty()"
               style="width: 120px"
               [nzDisabled]="!twoFAEditable()"
             >
