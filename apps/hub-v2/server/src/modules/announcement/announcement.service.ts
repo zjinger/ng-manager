@@ -231,6 +231,14 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     return this.repo.listPublic(projectIds, { ...query, domain: "content" });
   }
 
+  async getPublicById(id: string): Promise<AnnouncementEntity> {
+    const entity = this.requireById(id);
+    if (entity.domain !== "reimbursement" || entity.status !== "published") {
+      throw new AppError(ERROR_CODES.ANNOUNCEMENT_NOT_FOUND, `announcement not found: ${id}`, 404);
+    }
+    return entity;
+  }
+
   async listRecentForDashboard(projectIds: string[], limit: number, _ctx: RequestContext): Promise<AnnouncementEntity[]> {
     return this.repo.listRecentForDashboard(projectIds, limit);
   }

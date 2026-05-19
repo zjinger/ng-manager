@@ -19,6 +19,7 @@ export interface AnnouncementQueryContract {
   list(query: ListAnnouncementsQuery, ctx: RequestContext): Promise<AnnouncementListResult>;
   getById(id: string, ctx: RequestContext): Promise<AnnouncementEntity>;
   listPublic(query: ListAnnouncementsQuery, ctx: RequestContext): Promise<AnnouncementListResult>;
+  getPublicById(id: string): Promise<AnnouncementEntity>;
   listRecentForDashboard(projectIds: string[], limit: number, ctx: RequestContext): Promise<AnnouncementEntity[]>;
   listRecentArchivedForNotifications(projectIds: string[], limit: number, ctx: RequestContext): Promise<AnnouncementEntity[]>;
   getReadVersions(ids: string[], ctx: RequestContext): Promise<Map<string, string>>;

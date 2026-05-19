@@ -89,6 +89,21 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
                 <strong>{{ item.expireAt ? (item.expireAt | date: 'yyyy-MM-dd HH:mm') : '-' }}</strong>
               </div>
               @if (item.domain === 'reimbursement') {
+                <div class="detail-field detail-field--full">
+                  <span>对外访问链接</span>
+                  @if (item.status === 'published' && publicAnnouncementLink(item.id); as link) {
+                    <a
+                      class="detail-link"
+                      [href]="link"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {{ link }}
+                    </a>
+                  } @else {
+                    <strong>公告发布后可访问</strong>
+                  }
+                </div>
                 <div class="detail-field">
                   <span>生效日期</span>
                   <strong>{{ item.effectiveAt ? (item.effectiveAt | date: 'yyyy-MM-dd HH:mm') : '-' }}</strong>
@@ -444,6 +459,17 @@ export class ContentDetailDrawerComponent {
       return `/public/docs/${normalizedProjectKey}/${normalizedSlug}`;
     }
     return `${window.location.origin}/public/docs/${normalizedProjectKey}/${normalizedSlug}`;
+  }
+
+  publicAnnouncementLink(announcementId: string): string | null {
+    const normalizedId = encodeURIComponent((announcementId || '').trim());
+    if (!normalizedId) {
+      return null;
+    }
+    if (typeof window === 'undefined') {
+      return `/public/announcements/${normalizedId}`;
+    }
+    return `${window.location.origin}/public/announcements/${normalizedId}`;
   }
 
   archiveActionLabel(): string {

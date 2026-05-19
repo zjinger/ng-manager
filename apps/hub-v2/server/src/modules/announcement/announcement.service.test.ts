@@ -162,6 +162,41 @@ describe("AnnouncementService", () => {
     }
   });
 
+  it("returns published reimbursement announcement from the public detail endpoint only", async () => {
+    const db = createDb();
+    try {
+      const service = new AnnouncementService(new AnnouncementRepo(db), projectAccess, eventBus, contentLogCommand);
+      const reimbursement = await service.create(
+        {
+          domain: "reimbursement",
+          title: "报销公告",
+          contentMd: "已发布正文"
+        },
+        reimbursementManagerCtx
+      );
+      const content = await service.create(
+        {
+          domain: "content",
+          projectId: "proj_1",
+          title: "项目公告",
+          contentMd: "项目正文",
+          scope: "project"
+        },
+        adminCtx
+      );
+      await service.publish(reimbursement.id, reimbursementManagerCtx);
+      await service.publish(content.id, adminCtx);
+
+      const publicDetail = await service.getPublicById(reimbursement.id);
+      assert.equal(publicDetail.id, reimbursement.id);
+      assert.equal(publicDetail.domain, "reimbursement");
+
+      await assert.rejects(() => service.getPublicById(content.id), /announcement not found/);
+    } finally {
+      db.close();
+    }
+  });
+
   it("allows reimbursement managers to list reimbursement announcements", async () => {
     const db = createDb();
     try {

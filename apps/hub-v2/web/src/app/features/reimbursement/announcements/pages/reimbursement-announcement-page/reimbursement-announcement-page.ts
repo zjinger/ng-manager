@@ -44,6 +44,11 @@ type ReimbursementAnnouncementDialogValue = Pick<
 
     <app-page-toolbar>
       <app-filter-bar toolbar-filters class="notice-toolbar">
+        <button nz-button nzType="primary" [disabled]="!canManage()" (click)="openCreateDialog()">
+          <nz-icon nzType="plus" nzTheme="outline" />
+          新建报销公告
+        </button>
+
         <nz-select
           nzPlaceHolder="全部状态"
           class="toolbar-select"
@@ -58,11 +63,6 @@ type ReimbursementAnnouncementDialogValue = Pick<
         </nz-select>
 
         <button nz-button class="toolbar-filter-btn" (click)="applyFilters()">筛选</button>
-
-        <button nz-button nzType="primary" [disabled]="!canManage()" (click)="openCreateDialog()">
-          <nz-icon nzType="plus" nzTheme="outline" />
-          新建报销公告
-        </button>
       </app-filter-bar>
 
       <app-search-box

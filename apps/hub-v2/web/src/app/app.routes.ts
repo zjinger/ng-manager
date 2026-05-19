@@ -20,6 +20,7 @@ export const routes: Routes = [
         (m) => m.PublicDocumentPageComponent,
       ),
   },
+  // 公开文档旧页面路由，兼容之前分享的链接
   {
     path: 'public/docs/:slug',
     loadComponent: () =>
@@ -27,7 +28,15 @@ export const routes: Routes = [
         (m) => m.PublicDocumentLegacyPageComponent,
       ),
   },
-  // 问卷调差公开页面路由
+  // 公开公告页面路由
+  {
+    path: 'public/announcements/:announcementId',
+    loadComponent: () =>
+      import('./features/content/pages/public-announcement-page/public-announcement-page.component').then(
+        (m) => m.PublicAnnouncementPageComponent,
+      ),
+  },
+  // 问卷调查公开页面路由
   ...(FEATURE_FLAGS.survey
     ? [
         {

@@ -34,3 +34,7 @@ export const listAnnouncementsQuerySchema = z.object({
   domain: z.enum(["content", "reimbursement"]).optional(),
   projectId: z.string().trim().optional()
 });
+
+export const announcementIdParamSchema = z.object({
+  announcementId: z.string().trim().min(1)
+});
