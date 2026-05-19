@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   effect,
   input,
   output,
@@ -14,17 +13,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { FilterBarComponent, PageToolbarComponent } from '@shared/ui';
-
-// 定义筛选条件类型
-export interface ExpensesFilterQuery {
-  page: number;
-  pageSize: number;
-  keyword: string; // 搜索编号/事由
-  expenseTypes: string[]; // 报销类型（多选）
-  statuses: string[]; // 报销状态（多选）
-  approvalNodes: string[]; // 审批节点（多选）
-  submitDate: Date | null; // 提交日期（单个日期）
-}
+import { ReimbursementListQuery } from '@app/features/reimbursement/models/reimbursement.model';
 
 // 选项配置类型
 export interface SelectOption {
@@ -48,15 +37,27 @@ export interface SelectOption {
   template: `
     <app-page-toolbar>
       <app-filter-bar toolbar-filters class="expenses-toolbar__main">
-        <!-- 报销类型（多选） -->
+        <!-- 范围筛选 -->
         <nz-select
-          nzPlaceHolder="报销类型，支持多选"
-          style="width:270px"
+          nzPlaceHolder="查看范围"
+          style="width:150px"
           class="toolbar-select"
-          [ngModel]="draft().expenseTypes"
-          (ngModelChange)="updateField('expenseTypes', $event)"
-          nzMode="multiple"
-          [nzMaxTagCount]="2"
+          [ngModel]="draft().scope"
+          (ngModelChange)="updateField('scope', $event)"
+          [nzAllowClear]="true"
+        >
+          <nz-option nzLabel="我的报销" nzValue="my"></nz-option>
+          <nz-option nzLabel="全部报销" nzValue="all"></nz-option>
+          <nz-option nzLabel="待审批" nzValue="todo"></nz-option>
+        </nz-select>
+
+        <!-- 报销类型 -->
+        <nz-select
+          nzPlaceHolder="报销类型"
+          style="width:160px"
+          class="toolbar-select"
+          [ngModel]="draft().claimType"
+          (ngModelChange)="updateField('claimType', $event)"
           [nzAllowClear]="true"
         >
           @for (item of expenseTypeOptions(); track item.value) {
@@ -64,15 +65,13 @@ export interface SelectOption {
           }
         </nz-select>
 
-        <!-- 报销状态（多选） -->
+        <!-- 报销状态 -->
         <nz-select
-          nzPlaceHolder="报销状态，支持多选"
-          style="width:270px"
+          nzPlaceHolder="报销状态"
+          style="width:160px"
           class="toolbar-select"
-          [ngModel]="draft().statuses"
-          (ngModelChange)="updateField('statuses', $event)"
-          nzMode="multiple"
-          [nzMaxTagCount]="2"
+          [ngModel]="draft().status"
+          (ngModelChange)="updateField('status', $event)"
           [nzAllowClear]="true"
         >
           @for (item of statusOptions(); track item.value) {
@@ -80,33 +79,43 @@ export interface SelectOption {
           }
         </nz-select>
 
-        <!-- 审批节点（多选） -->
+        <!-- 部门筛选 -->
         <nz-select
-          nzPlaceHolder="审批节点，支持多选"
-          style="width:270px"
+          nzPlaceHolder="所属部门"
+          style="width:180px"
           class="toolbar-select"
-          [ngModel]="draft().approvalNodes"
-          (ngModelChange)="updateField('approvalNodes', $event)"
-          nzMode="multiple"
-          [nzMaxTagCount]="2"
+          [ngModel]="draft().departmentId"
+          (ngModelChange)="updateField('departmentId', $event)"
           [nzAllowClear]="true"
+          nzShowSearch
         >
-          @for (item of approvalNodeOptions(); track item.value) {
+          @for (item of departmentOptions(); track item.value) {
           <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
           }
         </nz-select>
 
-        <!-- 提交日期选择（单个日期） -->
+        <!-- 开始日期 -->
         <nz-date-picker
-          style="width:270px"
+          style="width:160px"
           class="toolbar-datepicker"
-          [ngModel]="draft().submitDate"
-          (ngModelChange)="updateField('submitDate', $event)"
+          [ngModel]="draft().dateFrom"
+          (ngModelChange)="updateField('dateFrom', $event ? $event.toISOString().split('T')[0] : null)"
           [nzAllowClear]="true"
-          nzPlaceHolder="提交日期"
+          nzPlaceHolder="开始日期"
         ></nz-date-picker>
-        <!-- 搜索框：编号/事由（使用 NzInput） -->
-        <div style="width:270px" class="toolbar-datepicker">
+
+        <!-- 结束日期 -->
+        <nz-date-picker
+          style="width:160px"
+          class="toolbar-datepicker"
+          [ngModel]="draft().dateTo"
+          (ngModelChange)="updateField('dateTo', $event ? $event.toISOString().split('T')[0] : null)"
+          [nzAllowClear]="true"
+          nzPlaceHolder="结束日期"
+        ></nz-date-picker>
+
+        <!-- 搜索框 -->
+        <div style="width:270px" class="toolbar-search-wrapper">
           <nz-input-group [nzPrefix]="searchIcon">
             <input
               nz-input
@@ -120,8 +129,8 @@ export interface SelectOption {
             <nz-icon nzType="search" nzTheme="outline" />
           </ng-template>
         </div>
+
         <div toolbar-actions class="toolbar-actions">
-          <!-- 按钮组 -->
           <button nz-button nzType="default" (click)="onFilter()">
             <nz-icon nzType="search" nzTheme="outline" />
             筛选
@@ -155,17 +164,10 @@ export interface SelectOption {
         align-items: center;
       }
 
-      .toolbar-select,
-      .toolbar-datepicker {
-        width: auto;
-      }
-
-      /* 响应式布局 */
       @media (max-width: 1200px) {
         .expenses-toolbar__main {
           width: 100%;
         }
-
         .toolbar-search-wrapper {
           flex: 1;
           min-width: 200px;
@@ -177,89 +179,67 @@ export interface SelectOption {
 })
 export class ExpensesFilterBarComponent {
   // ========== 输入参数 ==========
-  // 筛选条件（来自父组件）
-  readonly query = input.required<ExpensesFilterQuery>();
-
-  // 下拉选项配置（从父组件传入，支持动态配置）
+  readonly query = input.required<ReimbursementListQuery>();
   readonly expenseTypeOptions = input<SelectOption[]>([]);
   readonly statusOptions = input<SelectOption[]>([]);
-  readonly approvalNodeOptions = input<SelectOption[]>([]);
+  readonly departmentOptions = input<SelectOption[]>([]);
 
   // ========== 输出事件 ==========
-  readonly submit = output<ExpensesFilterQuery>(); // 筛选事件
-  readonly reset = output<void>(); // 清空事件
-  readonly create = output<void>(); // 新建事件
+  readonly submit = output<ReimbursementListQuery>();
+  readonly reset = output<void>();
 
   // ========== 内部状态 ==========
-  // 草稿状态（用户正在编辑的筛选条件）
-  readonly draft = signal<ExpensesFilterQuery>({
+  readonly draft = signal<ReimbursementListQuery>({
     page: 1,
     pageSize: 20,
+    scope: 'all',
+    claimType: '',
+    status: '',
+    departmentId: undefined,
     keyword: '',
-    expenseTypes: [],
-    statuses: [],
-    approvalNodes: [],
-    submitDate: null,
+    dateFrom: undefined,
+    dateTo: undefined,
   });
 
-  // ========== 生命周期 ==========
   constructor() {
-    // 监听外部 query 变化，同步到草稿
     effect(() => {
       const externalQuery = this.query();
       if (externalQuery) {
         this.draft.set({
           page: externalQuery.page,
           pageSize: externalQuery.pageSize,
-          keyword: externalQuery.keyword || '',
-          expenseTypes: externalQuery.expenseTypes || [],
-          statuses: externalQuery.statuses || [],
-          approvalNodes: externalQuery.approvalNodes || [],
-          submitDate: externalQuery.submitDate || null,
+          scope: externalQuery.scope ?? 'all',
+          claimType: externalQuery.claimType ?? '',
+          status: externalQuery.status ?? '',
+          departmentId: externalQuery.departmentId,
+          keyword: externalQuery.keyword ?? '',
+          dateFrom: externalQuery.dateFrom,
+          dateTo: externalQuery.dateTo,
         });
       }
     });
   }
 
-  // ========== 公共方法 ==========
-
-  /**
-   * 更新草稿中的字段
-   */
-  updateField<K extends keyof ExpensesFilterQuery>(key: K, value: ExpensesFilterQuery[K]): void {
+  updateField<K extends keyof ReimbursementListQuery>(key: K, value: ReimbursementListQuery[K]): void {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
   }
 
-  /**
-   * 筛选按钮点击
-   */
   onFilter(): void {
     this.submit.emit(this.draft());
   }
 
-  /**
-   * 清空所有筛选条件
-   */
   onReset(): void {
-    // 重置草稿
     this.draft.set({
       page: 1,
-      pageSize: this.draft().pageSize, // 保留 pageSize
+      pageSize: this.draft().pageSize,
+      scope: 'all',
+      claimType: '',
+      status: '',
+      departmentId: undefined,
       keyword: '',
-      expenseTypes: [],
-      statuses: [],
-      approvalNodes: [],
-      submitDate: null,
+      dateFrom: undefined,
+      dateTo: undefined,
     });
-
-    // 通知父组件
     this.reset.emit();
-  }
-
-  /**
-   * 获取当前筛选条件（供父组件使用）
-   */
-  getCurrentFilters(): ExpensesFilterQuery {
-    return this.draft();
   }
 }

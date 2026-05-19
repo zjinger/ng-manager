@@ -2,8 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
-  input,
   model,
   output,
   signal,
@@ -18,28 +18,94 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ExpenseLocationPickerComponent } from '../expense-location-picker/expense-location-picker.component';
 import { COMMON_PLACES, OTHER_PLACES } from '../../models/place';
-import { TravelExpenseItem, formatDate } from '../../models';
+import { ReimbursementItemInput } from '@app/features/reimbursement/models/reimbursement.model';
+
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+// Meta 数据类型
+interface ExpenseMeta {
+  days: number | null;
+  airfare: number | null;
+  transportation: number | null;
+  localTransport: number | null;
+  accommodation: number | null;
+  mealAllowance: number | null;
+  mealExpenses: number | null;
+  other: number | null;
+}
+
 // 默认空行程
-const createEmptyItem = (): TravelExpenseItem => ({
+const createEmptyItem = (): ReimbursementItemInput => ({
   id: generateId(),
-  date: null,
-  startEndLocation: [],
-  days: null,
-  airfare: null,
-  transportation: null,
-  localTransport: null,
-  accommodation: null,
-  mealAllowance: null,
-  other: null,
-  subtotal: 0,
+  itemType: 'travel',
+  occurredDate: null,
+  fromLocation: '',
+  toLocation: '',
+  amount: 0,
+  meta: {
+    days: null,
+    airfare: null,
+    transportation: null,
+    localTransport: null,
+    accommodation: null,
+    mealAllowance: null,
+    mealExpenses: null,
+    other: null,
+  } ,
+  sort: 0,
 });
 
 // 默认3行数据
-const getDefaultItems = (): TravelExpenseItem[] => {
+const getDefaultItems = (): ReimbursementItemInput[] => {
   return [createEmptyItem(), createEmptyItem(), createEmptyItem()];
+};
+
+// 辅助函数：从 meta 中获取值
+const getMetaValue = (item: ReimbursementItemInput, key: keyof ExpenseMeta): number | null => {
+  const meta = item.meta as any;
+  const value = meta?.[key];
+  return value !== null && value !== undefined ? value : null;
+};
+
+// 辅助函数：更新 meta 中的值
+const updateMetaValue = (
+  item: ReimbursementItemInput,
+  key: keyof ExpenseMeta,
+  value: number | null
+): ReimbursementItemInput => {
+  const currentMeta = (item.meta as any) || {
+    days: null,
+    airfare: null,
+    transportation: null,
+    localTransport: null,
+    accommodation: null,
+    mealAllowance: null,
+    mealExpenses: null,
+    other: null,
+  };
+
+  return {
+    ...item,
+    meta: {
+      ...currentMeta,
+      [key]: value === null ? null : value,
+    },
+  };
+};
+
+// 计算单行小计
+const calculateSubtotal = (item: ReimbursementItemInput): number => {
+  const meta = item.meta as any;
+  return (
+    (meta?.airfare || 0) +
+    (meta?.transportation || 0) +
+    (meta?.localTransport || 0) +
+    (meta?.accommodation || 0) +
+    (meta?.mealAllowance || 0) +
+    (meta?.mealExpenses || 0) +
+    (meta?.other || 0)
+  );
 };
 
 @Component({
@@ -56,150 +122,153 @@ const getDefaultItems = (): TravelExpenseItem[] => {
     ExpenseLocationPickerComponent,
   ],
   template: `
-    <div class="details-container">
-      <div class="details-header">
-        <div class="query-card__label">行程与费用明细</div>
-        <button nz-button nzType="default" (click)="addItem()">
-          <nz-icon nzType="plus" nzTheme="outline" />
-          添加行程
-        </button>
-      </div>
-
-      <div class="table-wrapper">
-        <table class="expense-table">
-          <thead>
-            <tr>
-              <th style="width: 120px">日期</th>
-              <th style="width: 180px">起讫地点</th>
-              <th style="width: 80px">天数</th>
-              <th style="width: 100px">机票</th>
-              <th style="width: 100px">车船</th>
-              <th style="width: 100px">市内交通</th>
-              <th style="width: 100px">住宿</th>
-              <th style="width: 100px">餐补</th>
-              <th style="width: 100px">其他</th>
-              <th style="width: 100px">小计</th>
-              <th style="width: 60px">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of items(); track item.id; let idx = $index) {
-            <tr>
-              <td>
-                <nz-date-picker
-                  nzFormat="MM-dd"
-                  nzPlaceHolder="请选择日期"
-                  [ngModel]="item.date"
-                  (ngModelChange)="updateDate(item, $event)"
-                  style="width: 100%"
-                ></nz-date-picker>
-              </td>
-              <td style="min-width: 100px">
-                <app-expense-location-picker
-                  [(ngModel)]="item.startEndLocation"
-                  [commonPlaces]="commonPlaces"
-                  [otherPlaces]="otherPlaces"
-                  (ngModelChange)="onLocationChange(item, $event)"
-                  triggerWidth="400px"
-                />
-              </td>
-              <td>
-                <input
-                  nz-input
-                  type="number"
-                  placeholder="天数"
-                  [ngModel]="item.days"
-                  (ngModelChange)="updateField(item, 'days', $event)"
-                />
-              </td>
-              <td>
-                <input
-                  nz-input
-                  type="number"
-                  placeholder="0.00"
-                  [ngModel]="item.airfare"
-                  (ngModelChange)="updateField(item, 'airfare', $event)"
-                />
-              </td>
-              <td>
-                <input
-                  nz-input
-                  type="number"
-                  placeholder="0.00"
-                  [ngModel]="item.transportation"
-                  (ngModelChange)="updateField(item, 'transportation', $event)"
-                />
-              </td>
-              <td>
-                <input
-                  nz-input
-                  type="number"
-                  placeholder="0.00"
-                  [ngModel]="item.localTransport"
-                  (ngModelChange)="updateField(item, 'localTransport', $event)"
-                />
-              </td>
-              <td>
-                <input
-                  nz-input
-                  type="number"
-                  placeholder="0.00"
-                  [ngModel]="item.accommodation"
-                  (ngModelChange)="updateField(item, 'accommodation', $event)"
-                />
-              </td>
-              <td>
-                <input
-                  nz-input
-                  type="number"
-                  placeholder="0.00"
-                  [ngModel]="item.mealAllowance"
-                  (ngModelChange)="updateField(item, 'mealAllowance', $event)"
-                />
-              </td>
-              <td>
-                <input
-                  nz-input
-                  type="number"
-                  placeholder="0.00"
-                  [ngModel]="item.other"
-                  (ngModelChange)="updateField(item, 'other', $event)"
-                />
-              </td>
-              <td>
-                <span class="subtotal">{{ item.subtotal | number : '1.2-2' }}</span>
-              </td>
-              <td>
-                <button
-                  nz-button
-                  nzType="link"
-                  nzDanger
-                  (click)="removeItem(item.id)"
-                  [disabled]="items().length <= 1"
-                >
-                  <nz-icon nzType="delete" nzTheme="outline" />
-                </button>
-              </td>
-            </tr>
-            }
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td colspan="2" class="total-label">合计</td>
-              <td>{{ totalDays() }}</td>
-              <td>{{ totalAirfare() | number : '1.2-2' }}</td>
-              <td>{{ totalTransportation() | number : '1.2-2' }}</td>
-              <td>{{ totalLocalTransport() | number : '1.2-2' }}</td>
-              <td>{{ totalAccommodation() | number : '1.2-2' }}</td>
-              <td>{{ totalMealAllowance() | number : '1.2-2' }}</td>
-              <td>{{ totalOther() | number : '1.2-2' }}</td>
-              <td colspan="2" class="grand-total">总计：{{ grandTotal() | number : '1.2-2' }}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+  <div class="details-container">
+    <div class="details-header">
+      <div class="query-card__label">行程与费用明细</div>
     </div>
-  `,
+
+    <div class="table-wrapper">
+      <table class="expense-table">
+        <thead>
+          <tr>
+            <th style="width: 120px">日期</th>
+            <th style="width: 180px">起讫地点</th>
+            <th style="width: 80px">天数</th>
+            <th style="width: 100px">机票</th>
+            <th style="width: 100px">车船</th>
+            <th style="width: 100px">市内交通</th>
+            <th style="width: 100px">住宿</th>
+            <th style="width: 100px">餐补</th>
+            <th style="width: 100px">餐费</th>
+            <th style="width: 100px">其他</th>
+            <th style="width: 100px">小计</th>
+            <th style="width: 60px">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.id; let idx = $index) {
+          <tr>
+            <td>
+              <nz-date-picker
+                nzFormat="yyyy-MM-dd"
+                nzPlaceHolder="请选择日期"
+                [ngModel]="item.occurredDate"
+                (ngModelChange)="updateOccurredDate(item, $event)"
+                style="width: 100%"
+              ></nz-date-picker>
+            </td>
+            <td style="min-width: 100px">
+              <app-expense-location-picker
+                [fromLocation]="item.fromLocation!"
+                [toLocation]="item.toLocation!"
+                [commonPlaces]="commonPlaces"
+                [otherPlaces]="otherPlaces"
+                (locationChange)="onLocationChange(item, $event)"
+                triggerWidth="400px"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="number"
+                placeholder="天数"
+                [ngModel]="getMetaValue(item, 'days') === null ? '' : getMetaValue(item, 'days')"
+                (ngModelChange)="updateMetaField(item, 'days', $event)"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="number"
+                placeholder="0.00"
+                [ngModel]="getMetaValue(item, 'airfare') === null ? '' : getMetaValue(item, 'airfare')"
+                (ngModelChange)="updateMetaField(item, 'airfare', $event)"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="number"
+                placeholder="0.00"
+                [ngModel]="getMetaValue(item, 'transportation') === null ? '' : getMetaValue(item, 'transportation')"
+                (ngModelChange)="updateMetaField(item, 'transportation', $event)"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="number"
+                placeholder="0.00"
+                [ngModel]="getMetaValue(item, 'localTransport') === null ? '' : getMetaValue(item, 'localTransport')"
+                (ngModelChange)="updateMetaField(item, 'localTransport', $event)"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="number"
+                placeholder="0.00"
+                [ngModel]="getMetaValue(item, 'accommodation') === null ? '' : getMetaValue(item, 'accommodation')"
+                (ngModelChange)="updateMetaField(item, 'accommodation', $event)"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="number"
+                placeholder="0.00"
+                [ngModel]="getMetaValue(item, 'mealAllowance') === null ? '' : getMetaValue(item, 'mealAllowance')"
+                (ngModelChange)="updateMetaField(item, 'mealAllowance', $event)"
+              />
+            </td>
+            <td>
+            <input
+                nz-input
+                type="number"
+                placeholder="0.00"
+                [ngModel]="getMetaValue(item, 'mealExpenses') === null ? '' : getMetaValue(item, 'mealExpenses')"
+                (ngModelChange)="updateMetaField(item, 'mealExpenses', $event)"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="number"
+                placeholder="0.00"
+                [ngModel]="getMetaValue(item, 'other') === null ? '' : getMetaValue(item, 'other')"
+                (ngModelChange)="updateMetaField(item, 'other', $event)"
+              />
+            </td>
+            <td>
+              <span class="subtotal">{{ calculateItemSubtotal(item) | number : '1.2-2' }}</span>
+            </td>
+            <td>
+              <button nz-button nzType="link" (click)="resetItem(item.id!)">
+                <nz-icon nzType="reload" nzTheme="outline" />
+                重置
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="2" class="total-label">合计</td>
+            <td>{{ totalDays() }}</td>
+            <td>{{ totalAirfare() | number : '1.2-2' }}</td>
+            <td>{{ totalTransportation() | number : '1.2-2' }}</td>
+            <td>{{ totalLocalTransport() | number : '1.2-2' }}</td>
+            <td>{{ totalAccommodation() | number : '1.2-2' }}</td>
+            <td>{{ totalMealAllowance() | number : '1.2-2' }}</td>
+            <td>{{ totalMealExpenses() | number : '1.2-2' }}</td>
+            <td>{{ totalOther() | number : '1.2-2' }}</td>
+            <td colspan="2" class="grand-total">总计：{{ grandTotal() | number : '1.2-2' }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+`,
   styles: [
     `
       .details-container {
@@ -282,7 +351,6 @@ const getDefaultItems = (): TravelExpenseItem[] => {
         padding: 0 8px;
       }
 
-      // 数字输入框样式
       input[type='number'] {
         &::-webkit-inner-spin-button,
         &::-webkit-outer-spin-button {
@@ -294,7 +362,7 @@ const getDefaultItems = (): TravelExpenseItem[] => {
           opacity: 1;
         }
       }
-      /* ========== 暗色主题适配 ========== */
+
       :host-context(html[data-theme='dark']) {
         .query-card__label {
           color: var(--text-heading-dark, #e2e8f0);
@@ -349,7 +417,6 @@ const getDefaultItems = (): TravelExpenseItem[] => {
           }
         }
 
-        // nz-date-picker 暗色主题覆盖
         nz-date-picker {
           .ant-picker {
             background-color: var(--bg-container-dark, #1e293b);
@@ -362,7 +429,6 @@ const getDefaultItems = (): TravelExpenseItem[] => {
           }
         }
 
-        // 按钮暗色主题
         button[nz-button] {
           &:not([nzType='primary']) {
             background-color: var(--bg-container-dark, #1e293b);
@@ -382,20 +448,25 @@ const getDefaultItems = (): TravelExpenseItem[] => {
 })
 export class ExpenseDetailsComponent {
   private readonly message = inject(NzMessageService);
+
   // 支持双向绑定
-  readonly items = model<TravelExpenseItem[]>(getDefaultItems());
-  readonly itemsChange = output<TravelExpenseItem[]>();
+  readonly items = model<ReimbursementItemInput[]>([]);
+  readonly itemsChange = output<ReimbursementItemInput[]>();
+
   // 地点选项
   commonPlaces = COMMON_PLACES;
   otherPlaces = OTHER_PLACES;
+
   // 金额合计
-  totalDays = computed(() => this.sumField('days'));
-  totalAirfare = computed(() => this.sumField('airfare'));
-  totalTransportation = computed(() => this.sumField('transportation'));
-  totalLocalTransport = computed(() => this.sumField('localTransport'));
-  totalAccommodation = computed(() => this.sumField('accommodation'));
-  totalMealAllowance = computed(() => this.sumField('mealAllowance'));
-  totalOther = computed(() => this.sumField('other'));
+  totalDays = computed(() => this.sumMetaField('days'));
+  totalAirfare = computed(() => this.sumMetaField('airfare'));
+  totalTransportation = computed(() => this.sumMetaField('transportation'));
+  totalLocalTransport = computed(() => this.sumMetaField('localTransport'));
+  totalAccommodation = computed(() => this.sumMetaField('accommodation'));
+  totalMealAllowance = computed(() => this.sumMetaField('mealAllowance'));
+  totalMealExpenses = computed(() => this.sumMetaField('mealExpenses'));
+  totalOther = computed(() => this.sumMetaField('other'));
+
   grandTotal = computed(() => {
     return (
       this.totalAirfare() +
@@ -403,57 +474,47 @@ export class ExpenseDetailsComponent {
       this.totalLocalTransport() +
       this.totalAccommodation() +
       this.totalMealAllowance() +
+      this.totalMealExpenses() +
       this.totalOther()
     );
   });
 
-  // 辅助函数：计算字段总和
-  private sumField(field: keyof TravelExpenseItem): number {
+  constructor() {
+    effect(() => {
+      const currentItems = this.items();
+      if (!currentItems?.length) {
+        const defaultItems = getDefaultItems();
+        this.items.set(defaultItems);
+        this.itemsChange.emit(defaultItems);
+      }
+    });
+  }
+
+  // 获取 meta 中的值
+  getMetaValue(item: ReimbursementItemInput, key: keyof ExpenseMeta): number | null {
+    return getMetaValue(item, key);
+  }
+
+  // 计算单行小计
+  calculateItemSubtotal(item: ReimbursementItemInput): number {
+    return calculateSubtotal(item);
+  }
+
+  // 辅助函数：计算 meta 字段总和
+  private sumMetaField(field: keyof ExpenseMeta): number {
     return this.items().reduce((sum, item) => {
-      const value = item[field];
+      const value = getMetaValue(item, field);
       return sum + (typeof value === 'number' ? value : 0);
     }, 0);
   }
 
-  // 获取日期值（字符串转Date对象）
-  getDateValue(dateStr: string | null): Date | null {
-    if (!dateStr) return null;
-    const date = new Date(dateStr);
-    return isNaN(date.getTime()) ? null : date;
-  }
+  // 更新日期 (occurredDate)
+  updateOccurredDate(item: ReimbursementItemInput, date: Date | null): void {
+    const dateStr = date ? this.formatDate(date) : null;
+    const updatedItem = { ...item, occurredDate: dateStr };
 
-  // 更新日期
-  updateDate(item: TravelExpenseItem, date: Date | null): void {
-    const updatedItem = {
-      ...item,
-      date,
-    };
-  
-    updatedItem.subtotal = this.calculateSubtotal(updatedItem);
-  
-    const updatedItems = this.items().map((i) =>
-      i.id === item.id ? updatedItem : i
-    );
-  
-    this.items.set(updatedItems);
-    this.itemsChange.emit(updatedItems);
-  }
-
-  // 通用字段更新
-  updateField<K extends keyof TravelExpenseItem>(
-    item: TravelExpenseItem,
-    field: K,
-    value: TravelExpenseItem[K]
-  ): void {
-    // 处理数字类型
-    let processedValue = value;
-    if (typeof item[field] === 'number') {
-      processedValue = (Number(value) || 0) as TravelExpenseItem[K];
-    }
-
-    const updatedItem = { ...item, [field]: processedValue };
-    // 重新计算小计
-    updatedItem.subtotal = this.calculateSubtotal(updatedItem);
+    // 更新 amount
+    updatedItem.amount = calculateSubtotal(updatedItem);
 
     const updatedItems = this.items().map((i) => (i.id === item.id ? updatedItem : i));
 
@@ -461,38 +522,40 @@ export class ExpenseDetailsComponent {
     this.itemsChange.emit(updatedItems);
   }
 
-  // 计算单行小计
-  private calculateSubtotal(item: TravelExpenseItem): number {
-    return (
-      (item.airfare || 0) +
-      (item.transportation || 0) +
-      (item.localTransport || 0) +
-      (item.accommodation || 0) +
-      (item.mealAllowance || 0) +
-      (item.other || 0)
-    );
+  // 更新 meta 字段
+  updateMetaField(
+    item: ReimbursementItemInput,
+    field: keyof ExpenseMeta,
+    value: number | string | null
+  ): void {
+    let numValue: number | null = null;
+    if (value !== null && value !== '') {
+      numValue = typeof value === 'string' ? parseFloat(value) : value;
+      if (isNaN(numValue)) numValue = null;
+    }
+
+    let updatedItem = updateMetaValue(item, field, numValue);
+    // 更新 amount
+    updatedItem.amount = calculateSubtotal(updatedItem);
+
+    const updatedItems = this.items().map((i) => (i.id === item.id ? updatedItem : i));
+
+    this.items.set(updatedItems);
+    this.itemsChange.emit(updatedItems);
   }
 
-  // 添加新行程
-  addItem(): void {
-    const currentCount = this.items().length;
-    if (currentCount >= 3) {
-      this.message.warning('最多只能添加3条行程');
-      return;
-    }
-    const newItems = [...this.items(), createEmptyItem()];
-    this.items.set(newItems);
-    this.itemsChange.emit(newItems);
-  }
+  // 重置单行
+  resetItem(id: string): void {
+    const updatedItems = this.items().map((item) => {
+      if (item.id !== id) return item;
+      return {
+        ...createEmptyItem(),
+        id, // 保留当前行 id，避免 DOM 重新创建
+      };
+    });
 
-  // 删除行程
-  removeItem(id: string): void {
-    if (this.items().length <= 1) {
-      return; // 至少保留一行
-    }
-    const newItems = this.items().filter((item) => item.id !== id);
-    this.items.set(newItems);
-    this.itemsChange.emit(newItems);
+    this.items.set(updatedItems);
+    this.itemsChange.emit(updatedItems);
   }
 
   // 重置所有行程
@@ -502,23 +565,44 @@ export class ExpenseDetailsComponent {
   }
 
   // 设置行程数据（用于编辑模式）
-  setItems(items: TravelExpenseItem[]): void {
-    // 确保每个item都有正确的subtotal
-    const itemsWithSubtotal = items.map((item) => ({
+  setItems(items: ReimbursementItemInput[]): void {
+    const normalizedItems = [...items];
+
+    while (normalizedItems.length < 3) {
+      normalizedItems.push(createEmptyItem());
+    }
+
+    const itemsWithAmount = normalizedItems.map((item) => ({
       ...item,
-      subtotal: this.calculateSubtotal(item),
+      amount: calculateSubtotal(item),
     }));
-    this.items.set(itemsWithSubtotal.length ? itemsWithSubtotal : getDefaultItems());
-    this.itemsChange.emit(itemsWithSubtotal);
+
+    this.items.set(itemsWithAmount);
+    this.itemsChange.emit(itemsWithAmount);
   }
+
   // 位置选择器更新
-  onLocationChange(item: TravelExpenseItem, value: string[]): void {
-    const updatedItem = { ...item, startEndLocation: value };
-    updatedItem.subtotal = this.calculateSubtotal(updatedItem);
+  onLocationChange(
+    item: ReimbursementItemInput,
+    location: { from: string | null; to: string | null }
+  ): void {
+    const updatedItem = {
+      ...item,
+      fromLocation: location.from,
+      toLocation: location.to,
+    };
+    updatedItem.amount = calculateSubtotal(updatedItem);
 
     const updatedItems = this.items().map((i) => (i.id === item.id ? updatedItem : i));
 
     this.items.set(updatedItems);
     this.itemsChange.emit(updatedItems);
+  }
+
+  private formatDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

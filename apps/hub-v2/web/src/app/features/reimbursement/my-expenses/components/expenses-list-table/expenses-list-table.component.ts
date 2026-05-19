@@ -1,25 +1,20 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-
 import { DataTableComponent } from '@shared/ui';
+import { ReimbursementClaimEntity } from '@app/features/reimbursement/models/reimbursement.model';
+// import type { ReimbursementClaimEntity } from '@app/features/reimbursement/types';
 
-// 报销单数据类型
-export interface ExpenseItem {
-  id: string;
-  code: string; // 单据编号
-  expenseType: string; // 报销类型
-  title: string; // 报销事由
-  amount: number; // 金额
-  approvalNode: string; // 当前节点
-  status: string; // 状态
-  submitDate: Date; // 提交时间
+// 扩展实体以包含前端需要的额外字段
+export interface ExpenseItem extends ReimbursementClaimEntity {
+  // 可以添加前端特有的计算属性
+  title?: string;
 }
 
-// 选项配置类型（用于显示标签）
+// 选项配置类型
 export interface SelectOption {
   value: string;
   label: string;
@@ -61,32 +56,32 @@ export interface SelectOption {
           <div class="expenses-cell expenses-cell__seq" data-label="序号">{{ sequence(i) }}</div>
 
           <div class="expenses-cell expenses-cell__code" data-label="单据编号">
-            <span class="expenses-code-text" [nz-tooltip]="item.code">
-              {{ item.code }}
+            <span class="expenses-code-text" [nz-tooltip]="item.claimNo">
+              {{ item.claimNo }}
             </span>
           </div>
 
           <div class="expenses-cell" data-label="报销类型">
-            <nz-tag [nzColor]="getExpenseTypeColor(item.expenseType)">
-              {{ getExpenseTypeLabel(item.expenseType) }}
+            <nz-tag [nzColor]="getExpenseTypeColor(item.claimType)">
+              {{ getExpenseTypeLabel(item.claimType) }}
             </nz-tag>
           </div>
 
           <div class="expenses-cell expenses-cell__title" data-label="报销事由">
-            <span class="expenses-title-text" [nz-tooltip]="item.title">
-              {{ item.title }}
+            <span class="expenses-title-text" [nz-tooltip]="item.reason">
+              {{ item.reason }}
             </span>
           </div>
 
           <div class="expenses-cell expenses-cell__amount" data-label="金额(元)">
-            <span class="expenses-amount" [class.high-amount]="item.amount >= 10000">
-              ¥{{ item.amount | number : '1.2-2' }}
+            <span class="expenses-amount" [class.high-amount]="item.totalAmount >= 10000">
+              ¥{{ item.totalAmount | number : '1.2-2' }}
             </span>
           </div>
 
           <div class="expenses-cell" data-label="当前节点">
-            <span class="expenses-node-text" [nz-tooltip]="getApprovalNodeLabel(item.approvalNode)">
-              {{ getApprovalNodeLabel(item.approvalNode) }}
+            <span class="expenses-node-text" [nz-tooltip]="item.currentStageName || '-'">
+              {{ item.currentStageName || '-' }}
             </span>
           </div>
 
@@ -98,7 +93,7 @@ export interface SelectOption {
 
           <div class="expenses-cell expenses-cell__date" data-label="提交时间">
             <span class="expenses-date-text">
-              {{ item.submitDate | date : 'yyyy-MM-dd HH:mm' }}
+              {{ item.submittedAt | date : 'yyyy-MM-dd HH:mm' }}
             </span>
           </div>
 
@@ -134,7 +129,6 @@ export interface SelectOption {
           106px
           140px
           140px;
-
         gap: 12px;
         align-items: center;
       }
@@ -172,7 +166,6 @@ export interface SelectOption {
       .expenses-row.is-active {
         background: linear-gradient(90deg, rgba(24, 144, 255, 0.14), rgba(24, 144, 255, 0.04)),
           var(--bg-subtle);
-
         box-shadow: inset 3px 0 0 var(--primary-color);
       }
 
@@ -255,10 +248,6 @@ export interface SelectOption {
         font-size: 12px;
       }
 
-      /* =========================
-     * Large Desktop Compact
-     * ========================= */
-
       @media (max-width: 1440px) {
         .expenses-table__head,
         .expenses-row {
@@ -272,18 +261,12 @@ export interface SelectOption {
             84px
             120px
             100px;
-
           gap: 10px;
         }
-
         .expenses-row {
           padding-inline: 12px;
         }
       }
-
-      /* =========================
-     * Compact Desktop
-     * ========================= */
 
       @media (max-width: 1200px) {
         .expenses-table__head,
@@ -296,26 +279,17 @@ export interface SelectOption {
             100px
             90px
             100px;
-
           gap: 10px;
         }
-
-        /* 隐藏报销类型 */
         .expenses-table__head > :nth-child(3),
         .expenses-row > :nth-child(3) {
           display: none;
         }
-
-        /* 隐藏提交时间 */
         .expenses-table__head > :nth-child(8),
         .expenses-row > :nth-child(8) {
           display: none;
         }
       }
-
-      /* =========================
-     * Tablet
-     * ========================= */
 
       @media (max-width: 960px) {
         .expenses-table__head,
@@ -326,76 +300,57 @@ export interface SelectOption {
             90px
             90px
             90px;
-
           gap: 8px;
         }
-
-        /* 隐藏编号 */
         .expenses-table__head > :nth-child(2),
         .expenses-row > :nth-child(2) {
           display: none;
         }
-
-        /* 隐藏当前节点 */
         .expenses-table__head > :nth-child(6),
         .expenses-row > :nth-child(6) {
           display: none;
         }
-
         .expenses-actions button {
           padding-inline: 2px;
           font-size: 12px;
         }
       }
 
-      /* =========================
-     * Mobile Card
-     * ========================= */
-
       @media (max-width: 768px) {
         .expenses-table__head {
           display: none;
         }
-
         .expenses-row {
           display: flex;
           flex-direction: column;
           gap: 12px;
-
           padding: 14px;
           border-radius: 12px;
           margin-bottom: 12px;
-
           border: 1px solid var(--border-color-soft);
           background: var(--bg-container);
         }
-
         .expenses-cell {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
           gap: 16px;
         }
-
         .expenses-cell::before {
           content: attr(data-label);
           flex: 0 0 84px;
-
           color: var(--text-muted);
           font-size: 12px;
           font-weight: 600;
         }
-
         .expenses-cell > * {
           min-width: 0;
           flex: 1;
           text-align: right;
         }
-
         .expenses-actions {
           justify-content: flex-end;
         }
-
         .expenses-cell__actions::before {
           display: none;
         }
@@ -418,77 +373,60 @@ export interface SelectOption {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExpensesListTableComponent {
-  // ========== 输入参数 ==========
-  readonly items = input<ExpenseItem[]>([]);
+  readonly items = input<ReimbursementClaimEntity[]>([]);
   readonly selectedItemId = input<string | null>(null);
   readonly page = input<number>(1);
   readonly pageSize = input<number>(20);
-
-  // 选项配置（从父组件传入）
   readonly expenseTypeOptions = input<SelectOption[]>([]);
   readonly statusOptions = input<SelectOption[]>([]);
-  readonly approvalNodeOptions = input<SelectOption[]>([]);
 
-  // ========== 输出事件 ==========
-  readonly selectItem = output<ExpenseItem>();
-  readonly view = output<ExpenseItem>();
-  readonly export = output<ExpenseItem>();
+  readonly selectItem = output<ReimbursementClaimEntity>();
+  readonly view = output<ReimbursementClaimEntity>();
+  readonly export = output<ReimbursementClaimEntity>();
 
-  // ========== 辅助方法 ==========
-
-  /**
-   * 计算序号
-   */
   sequence(index: number): number {
     const page = this.page() || 1;
     const pageSize = this.pageSize() || 20;
     return (page - 1) * pageSize + index + 1;
   }
 
-  /**
-   * 获取报销类型显示文本
-   */
   getExpenseTypeLabel(value: string): string {
-    return this.expenseTypeOptions().find((opt) => opt.value === value)?.label || value;
+    const labelMap: Record<string, string> = {
+      travel: '差旅费报销',
+      general: '费用报销',
+    };
+    return labelMap[value] || value;
   }
 
-  /**
-   * 获取报销类型标签颜色
-   */
   getExpenseTypeColor(value: string): string {
     const colorMap: Record<string, string> = {
       travel: 'blue',
-      expense: 'cyan',
+      general: 'cyan',
     };
     return colorMap[value] || 'default';
   }
 
-  /**
-   * 获取状态显示文本
-   */
   getStatusLabel(value: string): string {
-    return this.statusOptions().find((opt) => opt.value === value)?.label || value;
+    const labelMap: Record<string, string> = {
+      draft: '草稿',
+      submitted: '已提交',
+      approving: '审批中',
+      rejected: '已驳回',
+      completed: '已完成',
+      cancelled: '已取消',
+    };
+    return labelMap[value] || value;
   }
 
-  /**
-   * 获取状态标签颜色
-   */
   getStatusColor(status: string): string {
     const colorMap: Record<string, string> = {
       draft: 'default',
-      pending: 'processing',
-      approved: 'success',
+      submitted: 'processing',
+      approving: 'processing',
       rejected: 'error',
-      paid: 'cyan',
+      completed: 'success',
       cancelled: 'default',
     };
     return colorMap[status] || 'default';
-  }
-
-  /**
-   * 获取审批节点显示文本
-   */
-  getApprovalNodeLabel(value: string): string {
-    return this.approvalNodeOptions().find((opt) => opt.value === value)?.label || value;
   }
 }

@@ -6,6 +6,8 @@ import {
   input,
   output,
   signal,
+  OnChanges,
+  SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -20,14 +22,64 @@ import {
   CountersignData,
 } from '../../dialogs';
 import { NzMessageService } from 'ng-zorro-antd/message';
-
-export interface ApprovalStep {
-  id: number;
-  title: string;
-  status?: 'wait' | 'process' | 'finish';
-}
+import { ReimbursementApprovalPreview, ReimbursementApprovalPreviewNode } from '@app/features/reimbursement/models/reimbursement.model';
 
 export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
+
+/** 流程节点显示数据 */
+export interface FlowDisplayNode {
+  stageCode: string;
+  stageName: string;
+  status: 'wait' | 'process' | 'finish' | 'rejected' | 'cancelled';
+  assignees: Array<{ userId: string; name: string }>;
+  index: number;
+}
+
+/** 默认流程节点（用于无数据时的展示） */
+const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
+  {
+    stageCode: 'applicant',
+    stageName: '报销人/出差人',
+    status: 'process',
+    assignees: [],
+    index: 1,
+  },
+  {
+    stageCode: 'current',
+    stageName: '审核',
+    status: 'wait',
+    assignees: [],
+    index: 2,
+  },
+  {
+    stageCode: 'next',
+    stageName: '部门主管',
+    status: 'wait',
+    assignees: [],
+    index: 3,
+  },
+  {
+    stageCode: 'next',
+    stageName: '会计',
+    status: 'wait',
+    assignees: [],
+    index: 4,
+  },
+  {
+    stageCode: 'next',
+    stageName: '出纳',
+    status: 'wait',
+    assignees: [],
+    index: 5,
+  },
+  {
+    stageCode: 'next',
+    stageName: '完成',
+    status: 'wait',
+    assignees: [],
+    index: 6,
+  }
+];
 
 @Component({
   selector: 'app-approval-flow',
@@ -43,38 +95,45 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="approval-wrapper">
-      <!-- 流程 -->
+      <!-- 流程  -->
       <div class="approval-flow">
-        @for (step of displaySteps(); track step.id; let last = $last) {
+        @for (node of displayNodes(); track node.stageCode; let last = $last) {
         <div class="flow-item">
           <!-- 左侧 -->
           <div class="flow-left">
             <div
               class="flow-circle"
-              [class.wait]="step.status === 'wait'"
-              [class.process]="step.status === 'process'"
-              [class.finish]="step.status === 'finish'"
+              [class.wait]="node.status === 'wait'"
+              [class.process]="node.status === 'process'"
+              [class.finish]="node.status === 'finish'"
+              [class.rejected]="node.status === 'rejected'"
+              [class.cancelled]="node.status === 'cancelled'"
             >
-              {{ step.id }}
+              {{ node.index }}
             </div>
 
             @if (!last) {
-            <div class="flow-line" [class.active]="step.status === 'finish'"></div>
+            <div class="flow-line" [class.active]="isLineActive(node)"></div>
             }
           </div>
 
           <!-- 右侧 -->
           <div class="flow-content">
             <div class="flow-title">
-              {{ step.title }}
+              {{ node.stageName }}
+              @if (node.assignees && node.assignees.length > 0) {
+              <span class="assignee-badge">
+                {{ getAssigneeNames(node.assignees) }}
+              </span>
+              }
             </div>
 
             <div
               class="flow-desc"
-              [class.process-text]="step.status === 'process'"
-              [class.finish-text]="step.status === 'finish'"
+              [class.process-text]="node.status === 'process'"
+              [class.finish-text]="node.status === 'finish'"
             >
-              {{ step.desc }}
+              {{ getStatusText(node.status) }}
             </div>
           </div>
         </div>
@@ -98,13 +157,13 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
         </div>
 
         <!-- 第二行 -->
-        <div class="action-row">
+        <!-- <div class="action-row">
           <button class="action-btn secondary" (click)="onTransfer()">↷ 转交</button>
           <button class="action-btn secondary" (click)="onAddSign()">⊕ 加签</button>
-        </div>
+        </div> -->
 
         <!-- 说明 -->
-        <div class="helper-card">
+        <!-- <div class="helper-card">
           <div class="helper-title">辅助流转说明</div>
           <div class="helper-item">
             <span class="helper-label">转交：</span>
@@ -115,7 +174,7 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
             邀请他人补充意见，完成后回到当前审批人继续处理。
           </div>
         </div>
-      </div>
+      </div> -->
     </div>
 
     <!-- 转交弹窗 -->
@@ -210,6 +269,16 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
           background: var(--finish-color, #52c41a);
           color: #ffffff;
         }
+
+        &.rejected {
+          background: #ef4444;
+          color: #ffffff;
+        }
+
+        &.cancelled {
+          background: #8c8c8c;
+          color: #ffffff;
+        }
       }
 
       .flow-line {
@@ -226,6 +295,7 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
       .flow-content {
         padding-left: 14px;
         padding-bottom: 26px;
+        flex: 1;
       }
 
       .flow-title {
@@ -233,6 +303,19 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
         font-weight: 600;
         line-height: 1;
         color: var(--text-primary, #111827);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .assignee-badge {
+        font-size: 12px;
+        font-weight: 400;
+        background: #f3f4f6;
+        padding: 4px 10px;
+        border-radius: 20px;
+        color: #374151;
       }
 
       .flow-desc {
@@ -248,6 +331,30 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
 
       .finish-text {
         color: var(--finish-color, #52c41a);
+      }
+
+      /* 演示模式提示 */
+      .demo-tip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: #e6f7ff;
+        border: 1px solid #91d5ff;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #0050b3;
+        margin-bottom: 8px;
+
+        nz-icon {
+          font-size: 14px;
+        }
+      }
+
+      :host-context(html[data-theme='dark']) .demo-tip {
+        background: #0c2a3e;
+        border-color: #1e4a6e;
+        color: #7ab8e6;
       }
 
       /* ========= 审批面板 ========= */
@@ -390,11 +497,18 @@ export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
         --bg-container: #1e293b;
         --bg-helper: #0f172a;
       }
+
+      /* 暗色主题下 badge 样式覆盖 */
+      :host-context(html[data-theme='dark']) .assignee-badge {
+        background: #334155;
+        color: #cbd5e1;
+      }
     `,
   ],
 })
-export class ApprovalFlowComponent {
+export class ApprovalFlowComponent implements OnChanges {
   private messageService = inject(NzMessageService);
+
   // ========== 输入输出 ==========
   readonly action = output<{
     type: ApprovalAction;
@@ -402,43 +516,8 @@ export class ApprovalFlowComponent {
     detail?: TransferData | CountersignData | ApprovalPassData | ApprovalRejectData;
   }>();
 
-  readonly steps = input<ApprovalStep[]>([
-    {
-      id: 1,
-      title: '报销人/出差人',
-      status: 'finish',
-    },
-    {
-      id: 2,
-      title: '负责人',
-      status: 'process',
-    },
-    {
-      id: 3,
-      title: '部门主管',
-      status: 'wait',
-    },
-    {
-      id: 4,
-      title: '审核',
-      status: 'wait',
-    },
-    {
-      id: 5,
-      title: '会计',
-      status: 'wait',
-    },
-    {
-      id: 6,
-      title: '出纳',
-      status: 'wait',
-    },
-    {
-      id: 7,
-      title: '完成',
-      status: 'wait',
-    },
-  ]);
+  /** 审批预览数据（从接口获取） */
+  readonly approvalPreview = input<ReimbursementApprovalPreview | null>(null);
 
   // ========== 审批意见 ==========
   protected opinion = '';
@@ -456,24 +535,82 @@ export class ApprovalFlowComponent {
   protected isRejecting = signal(false);
 
   // ========== 计算属性 ==========
-  protected readonly displaySteps = computed(() => {
-    return this.steps().map((step) => ({
-      ...step,
-      desc: this.getStatusText(step.status),
-    }));
+  /** 显示的节点列表 */
+  protected readonly displayNodes = computed<FlowDisplayNode[]>(() => {
+    const preview = this.approvalPreview();
+
+    // 有数据时，根据接口返回的数据显示
+    if (preview?.nodes && preview.nodes.length > 0) {
+      return preview.nodes
+        .filter((node: ReimbursementApprovalPreviewNode) => node.status !== 'cancelled')
+        .map((node: ReimbursementApprovalPreviewNode, idx: number) => ({
+          stageCode: node.stageCode,
+          stageName: node.stageName,
+          status: this.mapNodeStatus(node.status),
+          assignees: node.assignees || [],
+          index: idx + 1,
+        }));
+    }
+
+    // 无数据时，显示默认的演示流程（只显示第一步）
+    return DEFAULT_FLOW_NODES;
   });
 
+  // ========== 生命周期 ==========
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['approvalPreview']) {
+      console.log('审批预览数据:', this.approvalPreview());
+    }
+  }
+
   // ========== 私有方法 ==========
-  private getStatusText(status?: ApprovalStep['status']): string {
+  /** 映射节点状态 */
+  private mapNodeStatus(status: string): FlowDisplayNode['status'] {
+    switch (status) {
+      case 'approved':
+        return 'finish';
+      case 'current':
+        return 'process';
+      case 'pending':
+        return 'wait';
+      case 'rejected':
+        return 'rejected';
+      case 'cancelled':
+        return 'cancelled';
+      default:
+        return 'wait';
+    }
+  }
+
+  /** 获取状态显示文本 */
+  protected getStatusText(status: FlowDisplayNode['status']): string {
     switch (status) {
       case 'process':
         return '当前处理节点';
       case 'finish':
         return '已通过';
+      case 'rejected':
+        return '已驳回';
+      case 'cancelled':
+        return '已取消';
       case 'wait':
       default:
         return '待处理';
     }
+  }
+
+  /** 获取审批人名称列表 */
+  protected getAssigneeNames(assignees: Array<{ userId: string; name: string }>): string {
+    if (!assignees || assignees.length === 0) return '';
+    return assignees.map((a) => a.name).join(', ');
+  }
+
+  /** 判断流程线是否激活 */
+  protected isLineActive(node: FlowDisplayNode): boolean {
+    const nodes = this.displayNodes();
+    const currentIndex = nodes.findIndex((n) => n.stageCode === node.stageCode);
+    const prevNode = nodes[currentIndex ];
+    return prevNode.status === 'finish';
   }
 
   private emitAction(type: ApprovalAction, detail?: any): void {
@@ -513,18 +650,35 @@ export class ApprovalFlowComponent {
 
   // ========== 审批操作 ==========
   protected onPass(): void {
+    // 无数据时提示
+    if (!this.approvalPreview()) {
+      this.messageService.warning('请先保存并提交报销单');
+      return;
+    }
     this.showPassDialog.set(true);
   }
 
   protected onReject(): void {
+    if (!this.approvalPreview()) {
+      this.messageService.warning('请先保存并提交报销单');
+      return;
+    }
     this.showRejectDialog.set(true);
   }
 
   protected onTransfer(): void {
+    if (!this.approvalPreview()) {
+      this.messageService.warning('请先保存并提交报销单');
+      return;
+    }
     this.showTransferDialog.set(true);
   }
 
   protected onAddSign(): void {
+    if (!this.approvalPreview()) {
+      this.messageService.warning('请先保存并提交报销单');
+      return;
+    }
     this.showCountersignDialog.set(true);
   }
 
@@ -532,7 +686,6 @@ export class ApprovalFlowComponent {
   protected handleTransfer(data: TransferData): void {
     this.isTransferring.set(true);
 
-    // 模拟异步提交
     setTimeout(() => {
       this.emitAction('transfer', data);
       console.log('转交审批：', {

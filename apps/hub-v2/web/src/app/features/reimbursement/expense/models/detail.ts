@@ -44,22 +44,22 @@ export const ExpenseMockDetailData: ExpenseCollect = {
     differenceAmount: -1860,
 
     attachments: [
-      {
-        id: '1',
-        name: '发票.pdf',
-        url: '/mock/invoice.pdf',
-        size: 1024 * 500,
-        type: 'application/pdf',
-        uploadTime: new Date('2026-05-11 10:30:00'),
-      },
-      {
-        id: '2',
-        name: '采购清单.xlsx',
-        url: '/mock/list.xlsx',
-        size: 1024 * 300,
-        type: 'application/vnd.ms-excel',
-        uploadTime: new Date('2026-05-11 11:00:00'),
-      },
+      // {
+      //   id: '1',
+      //   name: '发票.pdf',
+      //   url: '/mock/invoice.pdf',
+      //   size: 1024 * 500,
+      //   type: 'application/pdf',
+      //   uploadTime: new Date('2026-05-11 10:30:00'),
+      // },
+      // {
+      //   id: '2',
+      //   name: '采购清单.xlsx',
+      //   url: '/mock/list.xlsx',
+      //   size: 1024 * 300,
+      //   type: 'application/vnd.ms-excel',
+      //   uploadTime: new Date('2026-05-11 11:00:00'),
+      // },
     ],
   },
 };

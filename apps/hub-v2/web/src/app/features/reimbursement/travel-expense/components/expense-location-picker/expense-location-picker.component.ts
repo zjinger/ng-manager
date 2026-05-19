@@ -62,10 +62,11 @@ export interface Area {
           nz-input
           autocomplete="off"
           [placeholder]="leftPlaceholder()"
-          [ngModel]="startLabel()"
-          (ngModelChange)="onInputChange($event, 'left')"
+          [ngModel]="fromLocation()"
+          (ngModelChange)="onFromChange($event)"
           (focus)="onFocus('left')"
           (click)="open()"
+          [disabled]="disabled()"
         />
       </div>
 
@@ -79,10 +80,11 @@ export interface Area {
           nz-input
           autocomplete="off"
           [placeholder]="rightPlaceholder()"
-          [ngModel]="endLabel()"
-          (ngModelChange)="onInputChange($event, 'right')"
+          [ngModel]="toLocation()"
+          (ngModelChange)="onToChange($event)"
           (focus)="onFocus('right')"
           (click)="open()"
+          [disabled]="disabled()"
         />
       </div>
 
@@ -187,8 +189,6 @@ export interface Area {
         transition: all 0.2s;
         color: var(--text-primary, #1e293b);
         text-decoration: none;
-        /* background: var(--bg-secondary, #f8fafc); */
-        /* font-size: 13px; */
 
         &:hover {
           background: var(--primary-color, #1677ff);
@@ -302,7 +302,6 @@ export interface Area {
           color: var(--text-placeholder-dark, #64748b);
         }
 
-        // nz-tabset 暗色主题
         ::ng-deep .ant-tabs {
           .ant-tabs-nav {
             &::before {
@@ -329,7 +328,6 @@ export interface Area {
           }
         }
 
-        // 按钮暗色主题
         button[nz-button] {
           &.ant-btn-primary {
             background: var(--primary-color-dark, #4f46e5);
@@ -373,10 +371,16 @@ export class ExpenseLocationPickerComponent implements ControlValueAccessor {
   triggerWidth = input<number | string>('100%');
 
   // =========================
-  // outputs
+  // 双向绑定支持
   // =========================
 
-  determine = output<string[]>();
+  // fromLocation 双向绑定
+  readonly fromLocation = model<string | null>(null);
+  // toLocation 双向绑定
+  readonly toLocation = model<string | null>(null);
+
+  // 位置变化输出
+  readonly locationChange = output<{ from: string | null; to: string | null }>();
 
   // =========================
   // state
@@ -386,9 +390,6 @@ export class ExpenseLocationPickerComponent implements ControlValueAccessor {
 
   activeInput = signal<'left' | 'right'>('left');
 
-  startLabel = signal('');
-  endLabel = signal('');
-
   disabled = signal(false);
 
   // =========================
@@ -396,31 +397,36 @@ export class ExpenseLocationPickerComponent implements ControlValueAccessor {
   // =========================
 
   okDisabled = computed(() => {
-    return !this.startLabel() || !this.endLabel();
+    return !this.fromLocation() || !this.toLocation();
   });
 
   showClear = computed(() => {
-    return !!this.startLabel() && !!this.endLabel();
+    return !!this.fromLocation() && !!this.toLocation();
   });
 
   // =========================
-  // ControlValueAccessor
+  // ControlValueAccessor (保留兼容性)
   // =========================
 
   private onChange = (value: string[]) => {};
   private onTouched = () => {};
 
-  writeValue(value: string[] | string): void {
+  writeValue(value: string[] | string | null): void {
+    if (!value) {
+      this.fromLocation.set(null);
+      this.toLocation.set(null);
+      return;
+    }
+
     if (typeof value === 'string') {
       const [start, end] = value.split('-');
-
-      this.startLabel.set(start || '');
-      this.endLabel.set(end || '');
+      this.fromLocation.set(start?.trim() || null);
+      this.toLocation.set(end?.trim() || null);
     }
 
     if (Array.isArray(value)) {
-      this.startLabel.set(value[0] || '');
-      this.endLabel.set(value[1] || '');
+      this.fromLocation.set(value[0] || null);
+      this.toLocation.set(value[1] || null);
     }
   }
 
@@ -442,7 +448,6 @@ export class ExpenseLocationPickerComponent implements ControlValueAccessor {
 
   open() {
     if (this.disabled()) return;
-
     this.openState.set(true);
   }
 
@@ -452,29 +457,30 @@ export class ExpenseLocationPickerComponent implements ControlValueAccessor {
 
   onFocus(type: 'left' | 'right') {
     this.activeInput.set(type);
+    this.onTouched();
   }
 
-  onInputChange(value: string, type: 'left' | 'right') {
-    if (type === 'left') {
-      this.startLabel.set(value);
-    } else {
-      this.endLabel.set(value);
-    }
+  onFromChange(value: string | null): void {
+    this.fromLocation.set(value);
+    this.emitValue();
+  }
 
+  onToChange(value: string | null): void {
+    this.toLocation.set(value);
     this.emitValue();
   }
 
   selectPlace(city: string) {
+    // 支持 "北京-上海" 格式的快捷输入
     if (city.includes('-')) {
       const [start, end] = city.split('-');
-
-      this.startLabel.set(start.trim());
-      this.endLabel.set(end.trim());
+      this.fromLocation.set(start.trim());
+      this.toLocation.set(end.trim());
     } else {
       if (this.activeInput() === 'left') {
-        this.startLabel.set(city);
+        this.fromLocation.set(city);
       } else {
-        this.endLabel.set(city);
+        this.toLocation.set(city);
       }
     }
 
@@ -483,22 +489,21 @@ export class ExpenseLocationPickerComponent implements ControlValueAccessor {
 
   confirm() {
     this.emitValue();
-
-    this.determine.emit([this.startLabel(), this.endLabel()]);
-
+    this.locationChange.emit({ from: this.fromLocation(), to: this.toLocation() });
     this.close();
   }
 
   clear(event: MouseEvent) {
     event.stopPropagation();
-
-    this.startLabel.set('');
-    this.endLabel.set('');
-
+    this.fromLocation.set(null);
+    this.toLocation.set(null);
     this.emitValue();
   }
 
   private emitValue() {
-    this.onChange([this.startLabel(), this.endLabel()]);
+    // 触发 ControlValueAccessor 的 onChange（兼容旧用法）
+    this.onChange([this.fromLocation() || '', this.toLocation() || '']);
+    // 触发双向绑定更新
+    this.locationChange.emit({ from: this.fromLocation(), to: this.toLocation() });
   }
 }

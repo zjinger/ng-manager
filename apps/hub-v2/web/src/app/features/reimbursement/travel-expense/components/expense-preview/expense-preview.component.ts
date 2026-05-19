@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ExpenseSummary, TravelExpenseBasicInfo, TravelExpenseItem, formatTravelRoute } from '../../models';
+import { CreateReimbursementClaimInput, ReimbursementItemInput } from '@app/features/reimbursement/models/reimbursement.model';
 
 // 中文数字映射
 const chineseNumbers = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
@@ -54,6 +54,27 @@ const TIME_LABEL_MAP: Record<string, string> = {
   pm: '下午',
 };
 
+// 格式化路线
+function formatTravelRoute(fromLocation: string | null | undefined, toLocation: string | null | undefined): string {
+  const from = fromLocation || '';
+  const to = toLocation || '';
+  if (!from && !to) return '-';
+  if (!from) return to;
+  if (!to) return from;
+  return `${from} → ${to}`;
+}
+
+interface ExpenseMeta {
+  days: number | null;
+  airfare: number | null;
+  transportation: number | null;
+  localTransport: number | null;
+  accommodation: number | null;
+  mealAllowance: number | null;
+  mealExpenses: number | null;
+  other: number | null;
+}
+
 @Component({
   selector: 'app-expense-preview',
   standalone: true,
@@ -62,7 +83,6 @@ const TIME_LABEL_MAP: Record<string, string> = {
     <div class="back">
       <div class="back-scroll">
         <div class="back-div">
-          <!-- <div style="width: 918px; height: 503px"> -->
           <div class="expense-sheet">
             <div class="top-title">
               <div class="title">差旅费报销单</div>
@@ -76,19 +96,19 @@ const TIME_LABEL_MAP: Record<string, string> = {
             <div class="top-div">
               <span style="margin-left: 13px">报销部门：</span>
               <span style="display: inline-block; width: 128px" class="typeface">{{
-                getDepartmentLabel(basicInfo().department)
+                formData().departmentName || '-'
               }}</span>
               <span style="margin-left: 76px; margin-right: 50px">填报日期：</span>
               <span class="typeface" style="display: inline-block; width: 43px; margin-right: 6px">
-                {{ getYear(basicInfo().reportDate) }}
+                {{ getYear(formData().fillDate) }}
               </span>
               <span>年</span>
               <span class="typeface" style="width: 42px; display: inline-block; text-align: center">
-                {{ getMonth(basicInfo().reportDate) }}
+                {{ getMonth(formData().fillDate) }}
               </span>
               <span>月</span>
               <span class="typeface" style="width: 42px; display: inline-block; text-align: center">
-                {{ getDay(basicInfo().reportDate) }}
+                {{ getDay(formData().fillDate) }}
               </span>
               <span>日</span>
             </div>
@@ -101,18 +121,18 @@ const TIME_LABEL_MAP: Record<string, string> = {
                   class="typeface right-div"
                   style="width: 148px; height: 100%; text-align: center; border-right: 1px solid black"
                 >
-                  {{ basicInfo().name || '-' }}
+                  {{ formData().applicantName || '-' }}
                 </div>
                 <div class="rowOne-title" style="width: 91px">职&nbsp;&nbsp;&nbsp;&nbsp;别</div>
                 <div
                   class="typeface right-div"
                   style="width: 157px; height: 100%; text-align: center; border-right: 1px solid black"
                 >
-                  {{ basicInfo().position || '-' }}
+                  {{ formData().titleName || '-' }}
                 </div>
                 <div class="rowOne-title" style="width: 94px">出差事由</div>
                 <div style="width: 337px; height: 100%; text-align: center" class="typeface">
-                  {{ basicInfo().travelReason || '-' }}
+                  {{ formData().reason || '-' }}
                 </div>
               </div>
 
@@ -124,63 +144,63 @@ const TIME_LABEL_MAP: Record<string, string> = {
                     style="display: inline-block; text-align: center; width: 71px"
                     class="typeface"
                   >
-                    {{ getYear(basicInfo().startDate) }}
+                    {{ getYear(formData().travelStartDate) }}
                   </span>
                   <span>年</span>
                   <span
                     style="width: 37px; display: inline-block; text-align: center"
                     class="typeface"
                   >
-                    {{ getMonth(basicInfo().startDate) }}
+                    {{ getMonth(formData().travelStartDate) }}
                   </span>
                   <span>月</span>
                   <span
                     style="width: 37px; display: inline-block; text-align: center"
                     class="typeface"
                   >
-                    {{ getDay(basicInfo().startDate) }}
+                    {{ getDay(formData().travelStartDate) }}
                   </span>
                   <span>日</span>
                   <span
                     style="display: inline-block; width: 53px; text-align: center"
                     class="typeface"
                   >
-                    {{ getTimeLabelByValue(basicInfo().startTime) }}
+                    {{ getTimeLabelByValue(formData().travelStartHalf) }}
                   </span>
                   <span>起至</span>
                   <span
                     style="display: inline-block; width: 69px; text-align: center"
                     class="typeface"
                   >
-                    {{ getYear(basicInfo().endDate) }}
+                    {{ getYear(formData().travelEndDate) }}
                   </span>
                   <span>年</span>
                   <span
                     style="width: 37px; display: inline-block; text-align: center"
                     class="typeface"
                   >
-                    {{ getMonth(basicInfo().endDate) }}
+                    {{ getMonth(formData().travelEndDate) }}
                   </span>
                   <span>月</span>
                   <span
                     style="width: 37px; display: inline-block; text-align: center"
                     class="typeface"
                   >
-                    {{ getDay(basicInfo().endDate) }}
+                    {{ getDay(formData().travelEndDate) }}
                   </span>
                   <span>日</span>
                   <span
                     style="display: inline-block; width: 53px; text-align: center"
                     class="typeface"
                   >
-                    {{ getTimeLabelByValue(basicInfo().endTime) }}
+                    {{ getTimeLabelByValue(formData().travelEndHalf) }}
                   </span>
                   <span>止&nbsp;共</span>
                   <span
                     style="width: 67px; display: inline-block; text-align: center"
                     class="typeface"
                   >
-                    {{ basicInfo().travelDays || 0 }}
+                    {{ formData().travelDays || 0 }}
                   </span>
                   <span style="margin-right: 15px;">天</span>
                   <span>附单据</span>
@@ -188,7 +208,7 @@ const TIME_LABEL_MAP: Record<string, string> = {
                     style="display: inline-block; width: 55px; text-align: center"
                     class="typeface"
                   >
-                    {{ basicInfo().receiptCount || 0 }}
+                    {{ formData().receiptCount || 0 }}
                   </span>
                   <span>张</span>
                 </div>
@@ -226,28 +246,28 @@ const TIME_LABEL_MAP: Record<string, string> = {
                 </div>
               </div>
 
-              <!-- 动态行数据 - 最多3行 -->
-              @for (item of expenseItems(); track item.id; let idx = $index) {
+              <!-- 动态行数据 -->
+              @for (item of items(); track item.id; let idx = $index) {
               <div class="rowFour" [class.rowFive]="idx === 1" [class.rowSix]="idx === 2">
                 <div class="dateVessel">
-                  <div class="dateVesselO typeface">{{ getMonthFromDate(item.date) }}</div>
+                  <div class="dateVesselO typeface">{{ getMonthFromDate(item.occurredDate) }}</div>
                   <div
                     style="width: 50%; display: flex; align-items: center; justify-content: center"
                     class="typeface"
                   >
-                    {{ getDayFromDate(item.date) }}
+                    {{ getDayFromDate(item.occurredDate) }}
                   </div>
                 </div>
-                <div class="place typeface">{{ formatTravelRoute(item.startEndLocation || []) }}</div>
-                <div class="days typeface">{{ item.days || 0 }}</div>
-                <div class="airFare typeface">{{ formatMoney(item.airfare) }}</div>
-                <div class="carOrShip typeface">{{ formatMoney(item.transportation) }}</div>
-                <div class="traffic typeface">{{ formatMoney(item.localTransport) }}</div>
-                <div class="hotel typeface">{{ formatMoney(item.accommodation) }}</div>
-                <div class="travel typeface">{{ formatMoney(item.mealAllowance) }}</div>
-                <div class="meals typeface">0.00</div>
-                <div class="other typeface">{{ formatMoney(item.other) }}</div>
-                <div class="subtotal typeface">{{ formatMoney(item.subtotal) }}</div>
+                <div class="place typeface">{{ formatTravelRoute(item.fromLocation, item.toLocation) }}</div>
+                <div class="days typeface">{{ getMetaValue(item, 'days') }}</div>
+                <div class="airFare typeface">{{ formatMoney(getMetaValue(item, 'airfare')) }}</div>
+                <div class="carOrShip typeface">{{ formatMoney(getMetaValue(item, 'transportation')) }}</div>
+                <div class="traffic typeface">{{ formatMoney(getMetaValue(item, 'localTransport')) }}</div>
+                <div class="hotel typeface">{{ formatMoney(getMetaValue(item, 'accommodation')) }}</div>
+                <div class="travel typeface">{{ formatMoney(getMetaValue(item, 'mealAllowance')) }}</div>
+                <div class="meals typeface">{{ formatMoney(getMetaValue(item, 'mealExpenses')) }}</div>
+                <div class="other typeface">{{ formatMoney(getMetaValue(item, 'other')) }}</div>
+                <div class="subtotal typeface">{{ formatMoney(item.amount) }}</div>
               </div>
               }
 
@@ -281,7 +301,9 @@ const TIME_LABEL_MAP: Record<string, string> = {
                 <div class="total typeface" style="color: black; width: 85px">
                   {{ formatMoney(totalMealAllowance()) }}
                 </div>
-                <div class="total typeface" style="color: black; width: 84px">0.00</div>
+                <div class="total typeface" style="color: black; width: 84px">
+                  {{ formatMoney(totalMealExpenses()) }}
+                </div>
                 <div class="total typeface" style="color: black; width: 65px">
                   {{ formatMoney(totalOther()) }}
                 </div>
@@ -330,19 +352,19 @@ const TIME_LABEL_MAP: Record<string, string> = {
                   style="width: 88px; text-align: center; border-bottom: 1px solid black; height: 34px; margin-top: 10px"
                 >
                   <span style="display: block; margin-top: -10px" class="typeface">
-                    {{ formatMoney(summary().advanceAmount) }}
+                    {{ formatMoney(formData().advanceAmount) }}
                   </span>
                 </div>
                 <span>元</span>
                 <span style="margin-left: 20px">{{
-                  summary().advanceAmount - grandTotal() >= 0 ? '应退' : '应补'
+                  (formData().advanceAmount || 0) - grandTotal() >= 0 ? '应退' : '应补'
                 }}</span>
                 <div
                   class="boottom-div"
                   style="width: 88px; text-align: center; border-bottom: 1px solid black; height: 34px; margin-top: 10px"
                 >
                   <span style="display: block; margin-top: -10px" class="typeface">
-                    {{ formatMoney(Math.abs(summary().advanceAmount - grandTotal())) }}
+                    {{ formatMoney(Math.abs((formData().advanceAmount || 0) - grandTotal())) }}
                   </span>
                 </div>
                 <span>元</span>
@@ -363,7 +385,7 @@ const TIME_LABEL_MAP: Record<string, string> = {
       </div>
     </div>
   `,
-  styles: [
+   styles: [
     `
       .typeface {
         color: black;
@@ -720,136 +742,147 @@ const TIME_LABEL_MAP: Record<string, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExpensePreviewComponent {
-  // 部门选项映射
-  private readonly departmentMap: Record<string, string> = {
-    tech: '技术部',
-    product: '产品部',
-    sales: '销售部',
-    marketing: '市场部',
-    hr: '人力资源部',
-  };
-
-  // 输入数据
-  readonly basicInfo = input<TravelExpenseBasicInfo>({
-    department: '',
-    name: '',
-    position: '',
-    reportDate: '',
-    travelReason: '',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: '',
-    travelDays: 0,
-    receiptCount: 0,
-  });
-
-  readonly expenseItems = input<TravelExpenseItem[]>([]);
-  readonly summary = input<ExpenseSummary>({
-    totalAmount: 0,
+  // 输入数据 - 使用完整的表单数据
+  readonly formData = input<CreateReimbursementClaimInput>({
+    claimType: 'travel',
+    departmentId: '',
+    departmentName: '',
+    applicantName: '',
+    titleName: '',
+    reason: '',
+    fillDate: '',
     advanceAmount: 0,
-    differenceAmount: 0,
-    attachments: [],
+    travelStartDate: null,
+    travelStartHalf: null,
+    travelEndDate: null,
+    travelEndHalf: null,
+    travelDays: null,
+    receiptCount: null,
+    items: [],
   });
+
+  // 行程明细
+  readonly items = computed(() => this.formData().items || []);
+
+  // 获取 meta 中的值
+  getMetaValue(item: ReimbursementItemInput, key: keyof ExpenseMeta): number {
+    const meta = item.meta as any;
+    return meta?.[key] ?? 0;
+  }
 
   // 计算属性
   totalDays = computed(() => {
-    return this.expenseItems().reduce((sum, item) => sum + (item.days || 0), 0);
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'days') || 0), 0);
   });
 
   totalAirfare = computed(() => {
-    return this.expenseItems().reduce((sum, item) => sum + (item.airfare || 0), 0);
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'airfare') || 0), 0);
   });
 
   totalTransportation = computed(() => {
-    return this.expenseItems().reduce((sum, item) => sum + (item.transportation || 0), 0);
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'transportation') || 0), 0);
   });
 
   totalLocalTransport = computed(() => {
-    return this.expenseItems().reduce((sum, item) => sum + (item.localTransport || 0), 0);
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'localTransport') || 0), 0);
   });
 
   totalAccommodation = computed(() => {
-    return this.expenseItems().reduce((sum, item) => sum + (item.accommodation || 0), 0);
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'accommodation') || 0), 0);
   });
 
   totalMealAllowance = computed(() => {
-    return this.expenseItems().reduce((sum, item) => sum + (item.mealAllowance || 0), 0);
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'mealAllowance') || 0), 0);
   });
 
+  totalMealExpenses = computed(() => {
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'mealExpenses') || 0), 0);
+   });
+
   totalOther = computed(() => {
-    return this.expenseItems().reduce((sum, item) => sum + (item.other || 0), 0);
+    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'other') || 0), 0);
   });
 
   grandTotal = computed(() => {
-    return (
-      this.totalAirfare() +
-      this.totalTransportation() +
-      this.totalLocalTransport() +
-      this.totalAccommodation() +
-      this.totalMealAllowance() +
-      this.totalOther()
-    );
+    return this.items().reduce((sum, item) => sum + (item.amount || 0), 0);
   });
 
-  chineseTotalAmount = computed(() => {
-    return convertToChineseAmount(this.grandTotal());
-  });
-
-  // 辅助方法
-  getDepartmentLabel(value: string): string {
-    return this.departmentMap[value] || value || '-';
-  }
-
-  getYear(dateStr: string): string {
+  // 辅助方法 - 处理 null 和 undefined
+  getYear(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
     return parts[0] || '';
   }
 
-  getMonth(dateStr: string): string {
+  getMonth(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
     return parts[1] || '';
   }
 
-  getDay(dateStr: string): string {
+  getDay(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
     return parts[2] || '';
   }
 
-  getMonthFromDate(date: Date | null): string {
-    if (!date) return '';
-    return (date.getMonth() + 1).toString();
+  getMonthFromDate(dateStr: string | null | undefined): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    return parts[1] || '';
   }
 
-  getDayFromDate(date: Date | null): string {
-    if (!date) return '';
-    return date.getDate().toString();
+  getDayFromDate(dateStr: string | null | undefined): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    return parts[2] || '';
   }
 
-  getTimeLabelByValue(value: 'am' | 'pm' | ''): string {
+  getTimeLabelByValue(value: 'am' | 'pm' | null | undefined): string {
+    if (!value) return '';
     return TIME_LABEL_MAP[value] || '';
   }
 
   getChineseDigit(amount: number, position: number): string {
     const total = Math.floor(amount);
-    const str = total.toString().padStart(7, '0');
-    const digits = str.split('');
-    if (position <= digits.length) {
-      const num = parseInt(digits[position - 1]);
-      return chineseNumbers[num];
+    // 金额单位顺序：万、仟、佰、拾、元、角、分
+    const wan = Math.floor(total / 10000);
+    const remainder = total % 10000;
+    const qian = Math.floor(remainder / 1000);
+    const bai = Math.floor((remainder % 1000) / 100);
+    const shi = Math.floor((remainder % 100) / 10);
+    const yuan = remainder % 10;
+    
+    const decimalPart = Math.round((amount - total) * 100);
+    const jiao = Math.floor(decimalPart / 10);
+    const fen = decimalPart % 10;
+    
+    const digits: Record<number, number> = {
+      1: wan,   // 万
+      2: qian,  // 仟
+      3: bai,   // 佰
+      4: shi,   // 拾
+      5: yuan,  // 元
+      6: jiao,  // 角
+      7: fen,   // 分
+    };
+    
+    const num = digits[position];
+    // 特殊处理：万位为0时不显示，但为了保持位置，返回空字符串
+    if (position === 1 && num === 0 && total < 10000) {
+      return '零';
     }
-    return '零';
+    return chineseNumbers[num] || '零';
   }
 
   formatMoney(value: number | null | undefined): string {
     if (value === null || value === undefined) return '0.00';
     return value.toFixed(2);
   }
-  formatTravelRoute(routes: string[]): string {
-    return formatTravelRoute(routes);
+
+  formatTravelRoute(fromLocation: string | null | undefined, toLocation: string | null | undefined): string {
+    return formatTravelRoute(fromLocation, toLocation);
   }
+
   readonly Math = Math;
 }

@@ -1,3 +1,5 @@
+import { ReimbursementAttachmentEntity } from "../../models/reimbursement.model";
+
 // 单条行程明细类型
 export interface TravelExpenseItem {
   id: string;
@@ -26,7 +28,7 @@ export type ExpenseSummary = {
   totalAmount: number; // 总计金额（自动计算，不可编辑）
   advanceAmount: number; // 预支金额（用户输入）
   differenceAmount: number; // 应退/应补（自动计算）
-  attachments: ExpenseAttachment[]; // 附件列表
+  attachments: ReimbursementAttachmentEntity[]; // 附件列表
 };
 // 基础信息类型
 export type TravelExpenseBasicInfo = {

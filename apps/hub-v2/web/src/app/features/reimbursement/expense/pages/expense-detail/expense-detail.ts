@@ -2,28 +2,21 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonComponent } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import {
-  AttachmentPreviewItem,
-  AttachmentPreviewKind,
-  AttachmentPreviewWallComponent,
-} from '@app/shared/ui';
+import { AttachmentPreviewItem, AttachmentPreviewKind } from '@app/shared/ui';
 import { ExpenseBillPreviewComponent } from '../../components';
 import { ExpenseCollect } from '../../models';
 import { ExpenseMockDetailData } from '../../models/detail';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ApprovalFlowComponent } from '@app/features/reimbursement/travel-expense/components/approval-flow/approval-flow.component';
 import { MockRecordListData } from '@app/features/reimbursement/travel-expense/models/detail';
-import { ProcessOperationRecord, RecordListComponent } from '@app/features/reimbursement/travel-expense/components/record-list/record-list.component';
-import { ProcessHeaderCardComponent } from '@app/features/reimbursement/travel-expense/components/process-header-card/process-header-card.component';
+import { RecordListComponent } from '@app/features/reimbursement/travel-expense/components/record-list/record-list.component';
 
 @Component({
   selector: 'app-expense-detail',
   standalone: true,
   imports: [
     NzButtonComponent,
-    ProcessHeaderCardComponent,
     ExpenseBillPreviewComponent,
-    AttachmentPreviewWallComponent,
     RecordListComponent,
     ApprovalFlowComponent,
     NzIconModule,
@@ -50,7 +43,7 @@ export class ExpenseDetail {
   /**
    * 操作记录
    */
-  readonly recordListData = signal<ProcessOperationRecord[]>(MockRecordListData);
+  readonly recordListData = signal<any[]>(MockRecordListData);
 
   /**
    * header
@@ -86,14 +79,15 @@ export class ExpenseDetail {
   readonly attachmentItems = computed<AttachmentPreviewItem[]>(() => {
     const attachments = this.summary()?.attachments ?? [];
 
-    return attachments.map((att) => ({
-      id: att.id,
-      name: att.name,
-      url: att.url,
-      kind: this.getFileKind(att.type),
-      meta: this.formatFileSize(att.size),
-      removable: false,
-    }));
+    // return attachments.map((att) => ({
+    //   id: att.id,
+    //   name: att.name,
+    //   url: att.url,
+    //   kind: this.getFileKind(att.type),
+    //   meta: this.formatFileSize(att.size),
+    //   removable: false,
+    // }));
+    return [];
   });
 
   /**

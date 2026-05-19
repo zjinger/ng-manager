@@ -1,4 +1,4 @@
-import { ProcessOperationRecord } from '../components/record-list/record-list.component';
+// import { ProcessOperationRecord } from '../components/record-list/record-list.component';
 import { TravelExpenseDetailData } from './travel.model';
 
 export const MockDetailData: TravelExpenseDetailData = {
@@ -119,28 +119,28 @@ export const MockDetailData: TravelExpenseDetailData = {
     differenceAmount: 765,
 
     attachments: [
-      {
-        id: '1',
-        name: '高铁行程单.pdf',
-        url: '/mock/gaotie.pdf',
-        size: 1024 * 500,
-        type: 'pdf',
-        uploadTime: new Date(),
-      },
+      // {
+      //   id: '1',
+      //   name: '高铁行程单.pdf',
+      //   url: '/mock/gaotie.pdf',
+      //   size: 1024 * 500,
+      //   type: 'pdf',
+      //   uploadTime: new Date(),
+      // },
 
-      {
-        id: '2',
-        name: '住宿发票.jpg',
-        url: '/mock/hotel.jpg',
-        size: 1024 * 300,
-        type: 'image',
-        uploadTime: new Date(),
-      },
+      // {
+      //   id: '2',
+      //   name: '住宿发票.jpg',
+      //   url: '/mock/hotel.jpg',
+      //   size: 1024 * 300,
+      //   type: 'image',
+      //   uploadTime: new Date(),
+      // },
     ],
   },
 };
 
-export const MockRecordListData: ProcessOperationRecord[] = [
+export const MockRecordListData: any[] = [
   {
     id: '1',
     time: '04-30 16:51',

@@ -6,46 +6,45 @@
     <button nz-button nzType="default" (click)="createExpenseReport()">新建费用报销</button>
   </div>
 </app-page-header>
-<!-- 筛选栏组件 -->
+
 <app-expenses-filter-bar
-  [query]="currentQuery"
+  [query]="store.currentQuery()"
   [expenseTypeOptions]="expenseTypeOptions"
   [statusOptions]="statusOptions"
-  [approvalNodeOptions]="approvalNodeOptions"
+  [departmentOptions]="departmentOptions()"
   (submit)="handleFilter($event)"
   (reset)="handleReset()"
 />
-<!-- 激活的筛选条件标签 -->
+
 <app-active-filters-bar
   [tags]="activeFilterBarTags()"
   (remove)="onActiveFilterRemove($event)"
-  (clear)="resetFilters()"
+  (clear)="handleReset()"
 />
-<!-- 报销单列表组件状态 -->
+
 <app-list-state
-  [loading]="loading()"
-  [empty]="displayData().length === 0"
+  [loading]="store.isLoading()"
+  [empty]="store.isEmpty()"
   loadingText="正在加载报销单…"
   emptyTitle="当前还没有报销单数据"
 >
   <app-expenses-list-table
-    [items]="displayData()"
-    [page]="currentQuery.page"
-    [pageSize]="currentQuery.pageSize"
+    [items]="store.displayData()"
+    [page]="store.currentPage()"
+    [pageSize]="store.currentPageSize()"
     [expenseTypeOptions]="expenseTypeOptions"
     [statusOptions]="statusOptions"
-    [approvalNodeOptions]="approvalNodeOptions"
     (selectItem)="handleSelectItem($event)"
     (view)="handleView($event)"
     (export)="handleExport($event)"
   />
-  <!-- 分页组件 - 没有数据时不显示 -->
-  @if (totalCount() > 0) {
+
+  @if (store.hasData()) {
   <div class="expenses-pagination">
     <nz-pagination
-      [nzTotal]="totalCount()"
-      [nzPageIndex]="currentQuery.page"
-      [nzPageSize]="currentQuery.pageSize"
+      [nzTotal]="store.totalCount()"
+      [nzPageIndex]="store.currentPage()"
+      [nzPageSize]="store.currentPageSize()"
       [nzPageSizeOptions]="[10, 20, 50, 100]"
       [nzShowSizeChanger]="true"
       [nzShowQuickJumper]="true"

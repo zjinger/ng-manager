@@ -1,14 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-
-import { CommonModule, CurrencyPipe } from '@angular/common';
-import { ProcessHeaderInfo } from '../../models';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import type { ReimbursementClaimDetail } from '@app/features/reimbursement/models/reimbursement.model';
 
 @Component({
   selector: 'app-process-header-card',
   standalone: true,
   imports: [CommonModule, CurrencyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-
   styles: [
     `
       .process-card {
@@ -60,7 +58,6 @@ import { ProcessHeaderInfo } from '../../models';
       .process-card__desc {
         font-size: 14px;
         color: #64748b;
-
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -85,11 +82,8 @@ import { ProcessHeaderInfo } from '../../models';
 
       .process-stat__value {
         min-width: 72px;
-
         font-size: 20px;
         font-weight: 700;
-        /* color: #0f172a; */
-
         white-space: nowrap;
       }
 
@@ -142,7 +136,6 @@ import { ProcessHeaderInfo } from '../../models';
       }
     `,
   ],
-
   template: `
     <div class="process-card">
       <div class="process-card__content">
@@ -150,11 +143,11 @@ import { ProcessHeaderInfo } from '../../models';
         <div class="process-card__left">
           <div class="process-card__top">
             <div class="process-card__code">
-              {{ data().code || '--' }}
+              {{ data().claimNo || '--' }}
             </div>
 
             <div class="process-card__status">
-              {{ data().status || '--' }}
+              {{ statusLabel() }}
             </div>
           </div>
 
@@ -168,12 +161,9 @@ import { ProcessHeaderInfo } from '../../models';
           <!-- 报销金额 -->
           <div class="process-stat">
             <div class="process-stat__label">报销金额</div>
-
             <div class="process-stat__value money">
-              @if (data().amount !== undefined && data().amount !== null) {
-
-              {{ data().amount | currency : '¥' : 'symbol' : '1.2-2' }}
-
+              @if (data().totalAmount !== undefined && data().totalAmount !== null) {
+              {{ data().totalAmount | currency : '¥' : 'symbol' : '1.2-2' }}
               } @else { -- }
             </div>
           </div>
@@ -181,18 +171,16 @@ import { ProcessHeaderInfo } from '../../models';
           <!-- 当前节点 -->
           <div class="process-stat">
             <div class="process-stat__label">当前节点</div>
-
             <div class="process-stat__value">
-              {{ data().currentNode || '--' }}
+              {{ currentStageName() }}
             </div>
           </div>
 
-          <!-- 等待时长 -->
+          <!-- 等待时长（可选，需要后端提供） -->
           <div class="process-stat">
             <div class="process-stat__label">等待时长</div>
-
             <div class="process-stat__value warning">
-              {{ data().waitTime || '--' }}
+              {{ waitTime() }}
             </div>
           </div>
         </div>
@@ -201,19 +189,101 @@ import { ProcessHeaderInfo } from '../../models';
   `,
 })
 export class ProcessHeaderCardComponent {
-  // 统一对象输入
-  readonly data = input<ProcessHeaderInfo>({});
+  // 使用 ReimbursementClaimDetail 类型
+  readonly data = input<ReimbursementClaimDetail>({} as ReimbursementClaimDetail);
+
+  // 状态标签映射
+  private readonly statusMap: Record<string, string> = {
+    draft: '草稿',
+    submitted: '已提交',
+    approving: '审批中',
+    rejected: '已驳回',
+    completed: '已完成',
+    cancelled: '已取消',
+  };
+
+  // 报销类型标签
+  private readonly claimTypeMap: Record<string, string> = {
+    travel: '差旅费报销',
+    general: '费用报销',
+  };
+
+  // 状态标签
+  readonly statusLabel = computed(() => {
+    const status = this.data().status;
+    return this.statusMap[status] || status || '--';
+  });
+
+  // 当前节点名称（优先使用 approvalPreview 中的 currentStageName）
+  readonly currentStageName = computed(() => {
+    const data = this.data();
+    if (data.approvalPreview?.currentStageName) {
+      return data.approvalPreview.currentStageName;
+    }
+    return data.currentStageName || '--';
+  });
 
   // 描述信息
   readonly description = computed(() => {
-    const d = this.data();
+    const data = this.data();
+    const parts: string[] = [];
 
-    const arr = [
-      d.title || '--',
-      d.scene || '--',
-      d.submitTime ? `提交时间 ${d.submitTime}` : '--',
-    ];
+    // 报销类型
+    const claimTypeLabel = this.claimTypeMap[data.claimType] || data.claimType || '--';
+    parts.push(claimTypeLabel);
 
-    return arr.join(' · ');
+    // 报销事由
+    if (data.reason) {
+      parts.push(data.reason);
+    }
+
+    // 提交时间
+    if (data.submittedAt) {
+      const formattedDate = new Date(data.submittedAt).toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      parts.push(`提交时间 ${formattedDate}`);
+    }
+
+    return parts.join(' · ');
+  });
+
+  // 等待时长计算（基于任务审批时间）
+  readonly waitTime = computed(() => {
+    const data = this.data();
+
+    // 如果已完成，计算总耗时
+    if (data.status === 'completed' && data.completedAt && data.submittedAt) {
+      const submitted = new Date(data.submittedAt);
+      const completed = new Date(data.completedAt);
+      const diffMs = completed.getTime() - submitted.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+      if (diffHours < 24) {
+        return `${diffHours}小时`;
+      } else {
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays}天`;
+      }
+    }
+
+    // 如果审批中，计算已等待时间
+    if (data.status === 'approving' && data.submittedAt) {
+      const submitted = new Date(data.submittedAt);
+      const now = new Date();
+      const diffMs = now.getTime() - submitted.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+      if (diffHours < 24) {
+        return `${diffHours}小时`;
+      } else {
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays}天`;
+      }
+    }
+
+    return '--';
   });
 }
