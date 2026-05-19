@@ -5,6 +5,7 @@ export type ReimbursementClaimStatus = "draft" | "submitted" | "approving" | "re
 export type ReimbursementItemType = "travel" | "general";
 export type ReimbursementAttachmentCategory = "invoice" | "itinerary" | "payment_proof" | "other";
 export type ReimbursementTaskStatus = "pending" | "approved" | "rejected" | "transferred" | "addsign_pending" | "cancelled";
+export type ReimbursementApprovalPreviewNodeStatus = "approved" | "current" | "pending" | "rejected" | "cancelled";
 export type ReimbursementLogAction =
   | "create"
   | "update"
@@ -108,11 +109,27 @@ export interface ReimbursementLogEntity {
   createdAt: string;
 }
 
+export interface ReimbursementApprovalPreviewNode {
+  stageCode: string;
+  stageName: string;
+  status: ReimbursementApprovalPreviewNodeStatus;
+  assignees: Array<{ userId: string; name: string }>;
+}
+
+export interface ReimbursementApprovalPreview {
+  claimId: string;
+  claimStatus: ReimbursementClaimStatus;
+  currentStageCode: string | null;
+  currentStageName: string | null;
+  nodes: ReimbursementApprovalPreviewNode[];
+}
+
 export interface ReimbursementClaimDetail extends ReimbursementClaimEntity {
   items: ReimbursementItemEntity[];
   attachments: ReimbursementAttachmentEntity[];
   tasks: ReimbursementApprovalTaskEntity[];
   logs: ReimbursementLogEntity[];
+  approvalPreview: ReimbursementApprovalPreview;
 }
 
 export interface ReimbursementItemInput {

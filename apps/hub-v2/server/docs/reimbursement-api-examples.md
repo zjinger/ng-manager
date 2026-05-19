@@ -285,5 +285,6 @@
 4. 如需后续继续补传附件，再调 `POST /claims/:claimId/attachments`
 5. `PATCH /claims/:claimId` 保存完整明细
 6. `POST /claims/:claimId/submit` 提交审批
-7. `GET /claims/:claimId` 拉详情，读取 `tasks`
-8. 审批人再调 `approve/reject/transfer/add-sign`
+7. `GET /claims/:claimId` 拉详情，读取 `tasks + approvalPreview`
+8. 如需局部刷新审批步骤，可单独调 `GET /claims/:claimId/approval-preview`
+9. 审批人再调 `approve/reject/transfer/add-sign`

@@ -9,6 +9,8 @@ import type {
   CreateReimbursementClaimInput,
   ListReimbursementClaimsQuery,
   ReimbursementActionInput,
+  ReimbursementApprovalPreview,
+  ReimbursementApprovalPreviewNodeStatus,
   ReimbursementApprovalTaskEntity,
   ReimbursementClaimDetail,
   ReimbursementClaimEntity,
@@ -43,13 +45,19 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   async getById(id: string, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
     const claim = this.requireClaim(id);
     this.ensureCanRead(claim, ctx);
-    return this.repo.detail(claim);
+    return this.buildDetail(claim);
+  }
+
+  async approvalPreview(id: string, ctx: RequestContext): Promise<ReimbursementApprovalPreview> {
+    const claim = this.requireClaim(id);
+    this.ensureCanRead(claim, ctx);
+    return this.buildApprovalPreview(claim, this.repo.detail(claim));
   }
 
   async exportWord(id: string, ctx: RequestContext): Promise<ReimbursementExportFile> {
     const claim = this.requireClaim(id);
     this.ensureCanRead(claim, ctx);
-    return renderReimbursementWord(this.repo.detail(claim));
+    return renderReimbursementWord(this.buildDetail(claim));
   }
 
   async stats(query: ReimbursementStatsQuery, ctx: RequestContext): Promise<ReimbursementStats> {
@@ -104,11 +112,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.replaceItems(claim.id, claimItems);
       for (const attachment of attachments) {
         this.repo.addAttachment(genId("rba"), claim.id, attachment, ctx.userId ?? null, now);
-        this.addLog(claim.id, ctx, "attachment.added", null, attachment.uploadId, now);
+        this.addLog(claim.id, ctx, "attachment.added", null, `绑定附件：${attachment.uploadId}`, now);
       }
-      this.addLog(claim.id, ctx, "create", null, "create reimbursement claim", now);
+      this.addLog(claim.id, ctx, "create", null, "创建报销单", now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
   }
 
   async update(id: string, input: UpdateReimbursementClaimInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -150,9 +158,9 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       if (claim.status === "rejected") {
         this.repo.cancelOpenTasks(claim.id, now);
       }
-      this.addLog(claim.id, ctx, "update", null, "update reimbursement claim", now);
+      this.addLog(claim.id, ctx, "update", null, "更新报销单", now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
   }
 
   async submit(id: string, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -182,9 +190,9 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.deleteTasksForClaim(claim.id);
       this.repo.updateClaim(updated);
       this.repo.createTasks(firstTasks);
-      this.addLog(claim.id, ctx, "submit", null, "submit reimbursement claim", now);
+      this.addLog(claim.id, ctx, "submit", null, "提交审批", now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
   }
 
   async approve(id: string, input: ReimbursementActionInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -216,9 +224,9 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     this.repo.transaction(() => {
       this.repo.updateTask(updatedTask);
       this.repo.createTasks([newTask]);
-      this.addLog(claim.id, ctx, "transfer", task.id, input.comment?.trim() || `transfer to ${newTask.assigneeName}`, now);
+      this.addLog(claim.id, ctx, "transfer", task.id, input.comment?.trim() || `转交给 ${newTask.assigneeName}`, now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
   }
 
   async addSign(id: string, input: ReimbursementTransferInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -241,9 +249,9 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     };
     this.repo.transaction(() => {
       this.repo.createTasks([addSignTask]);
-      this.addLog(claim.id, ctx, "add_sign", task.id, input.comment?.trim() || `add sign ${addSignTask.assigneeName}`, now);
+      this.addLog(claim.id, ctx, "add_sign", task.id, input.comment?.trim() || `加签给 ${addSignTask.assigneeName}`, now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
   }
 
   async attach(id: string, input: AttachReimbursementUploadInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -255,9 +263,9 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     const now = nowIso();
     this.repo.transaction(() => {
       this.repo.addAttachment(genId("rba"), claim.id, input, ctx.userId ?? null, now);
-      this.addLog(claim.id, ctx, "attachment.added", null, input.uploadId, now);
+      this.addLog(claim.id, ctx, "attachment.added", null, `绑定附件：${input.uploadId}`, now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
   }
 
   async detach(id: string, attachmentId: string, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -266,9 +274,9 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     const now = nowIso();
     this.repo.transaction(() => {
       this.repo.deleteAttachment(claim.id, attachmentId);
-      this.addLog(claim.id, ctx, "attachment.removed", null, attachmentId, now);
+      this.addLog(claim.id, ctx, "attachment.removed", null, `移除附件：${attachmentId}`, now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
   }
 
   private handleApprovalAction(id: string, input: ReimbursementActionInput, ctx: RequestContext, action: "approve" | "reject"): ReimbursementClaimDetail {
@@ -303,7 +311,15 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       }
       this.advanceAfterApproval(claim, task, now);
     });
-    return this.repo.detail(this.requireClaim(claim.id));
+    return this.buildDetail(this.requireClaim(claim.id));
+  }
+
+  private buildDetail(claim: ReimbursementClaimEntity): ReimbursementClaimDetail {
+    const detail = this.repo.detail(claim);
+    return {
+      ...detail,
+      approvalPreview: this.buildApprovalPreview(claim, detail)
+    };
   }
 
   private advanceAfterApproval(claim: ReimbursementClaimEntity, task: ReimbursementApprovalTaskEntity, now: string): void {
@@ -361,6 +377,86 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       createdAt: now,
       updatedAt: now
     }));
+  }
+
+  private buildApprovalPreview(
+    claim: ReimbursementClaimEntity,
+    detail: Omit<ReimbursementClaimDetail, "approvalPreview">
+  ): ReimbursementApprovalPreview {
+    const template = this.requireDefaultTemplate();
+    const orderedStages = template.stages.slice().sort((left, right) => left.sort - right.sort);
+    const currentStageIndex = orderedStages.findIndex((stage) => stage.stageCode === claim.currentStageCode);
+    const nodes: ReimbursementApprovalPreview["nodes"] = [
+      {
+        stageCode: "applicant",
+        stageName: "报销人/出差人",
+        status: this.resolveApplicantPreviewStatus(claim.status),
+        assignees: [{ userId: claim.applicantUserId, name: claim.applicantName }]
+      },
+      ...orderedStages.map((stage, index) => ({
+        stageCode: stage.stageCode,
+        stageName: stage.stageName,
+        status: this.resolveStagePreviewStatus(claim, index, currentStageIndex),
+        assignees: detail.tasks
+          .filter((task) => !task.parentTaskId && task.stageCode === stage.stageCode)
+          .map((task) => ({ userId: task.assigneeUserId, name: task.assigneeName }))
+      })),
+      {
+        stageCode: "completed",
+        stageName: "完成",
+        status: (claim.status === "completed" ? "approved" : "pending") as ReimbursementApprovalPreviewNodeStatus,
+        assignees: []
+      }
+    ];
+    return {
+      claimId: claim.id,
+      claimStatus: claim.status,
+      currentStageCode: claim.currentStageCode,
+      currentStageName: claim.currentStageName,
+      nodes
+    };
+  }
+
+  private resolveApplicantPreviewStatus(status: ReimbursementClaimEntity["status"]): ReimbursementApprovalPreviewNodeStatus {
+    if (status === "draft") {
+      return "current";
+    }
+    if (status === "cancelled") {
+      return "cancelled";
+    }
+    return "approved";
+  }
+
+  private resolveStagePreviewStatus(
+    claim: ReimbursementClaimEntity,
+    stageIndex: number,
+    currentStageIndex: number
+  ): ReimbursementApprovalPreviewNodeStatus {
+    if (claim.status === "draft" || claim.status === "submitted") {
+      return stageIndex === 0 ? "pending" : "pending";
+    }
+    if (claim.status === "completed") {
+      return "approved";
+    }
+    if (claim.status === "cancelled") {
+      if (currentStageIndex >= 0 && stageIndex < currentStageIndex) {
+        return "approved";
+      }
+      return stageIndex === currentStageIndex ? "cancelled" : "pending";
+    }
+    if (claim.status === "rejected") {
+      if (currentStageIndex >= 0 && stageIndex < currentStageIndex) {
+        return "approved";
+      }
+      return stageIndex === currentStageIndex ? "rejected" : "pending";
+    }
+    if (currentStageIndex >= 0 && stageIndex < currentStageIndex) {
+      return "approved";
+    }
+    if (stageIndex === currentStageIndex) {
+      return "current";
+    }
+    return "pending";
   }
 
   private resolveAssignees(claim: ReimbursementClaimEntity, stage: ApprovalTemplateStage): UserApprovalProfile[] {

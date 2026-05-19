@@ -709,7 +709,7 @@ export class ReimbursementRepo {
     };
   }
 
-  detail(claim: ReimbursementClaimEntity): ReimbursementClaimDetail {
+  detail(claim: ReimbursementClaimEntity): Omit<ReimbursementClaimDetail, "approvalPreview"> {
     return {
       ...claim,
       items: this.listItems(claim.id),

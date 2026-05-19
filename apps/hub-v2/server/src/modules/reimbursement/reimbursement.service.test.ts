@@ -399,6 +399,56 @@ describe("ReimbursementService", () => {
     }
   });
 
+  it("builds approval preview nodes from template and current claim state", async () => {
+    const db = createDb();
+    try {
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const created = await service.create(
+        {
+          claimType: "general",
+          reason: "办公用品",
+          items: [{ amount: 90 }]
+        },
+        ctx("usr_applicant")
+      );
+      const draftPreview = await service.approvalPreview(created.id, ctx("usr_applicant"));
+      const draftDetail = await service.getById(created.id, ctx("usr_applicant"));
+      assert.deepEqual(
+        draftPreview.nodes.map((node) => [node.stageCode, node.status]),
+        [
+          ["applicant", "current"],
+          ["review", "pending"],
+          ["department_manager", "pending"],
+          ["finance_review", "pending"],
+          ["cashier", "pending"],
+          ["completed", "pending"]
+        ]
+      );
+      assert.deepEqual(
+        draftDetail.approvalPreview.nodes.map((node) => [node.stageCode, node.status]),
+        draftPreview.nodes.map((node) => [node.stageCode, node.status])
+      );
+
+      const submitted = await service.submit(created.id, ctx("usr_applicant"));
+      const submittedPreview = await service.approvalPreview(submitted.id, ctx("usr_applicant"));
+      assert.deepEqual(
+        submittedPreview.nodes.map((node) => [node.stageCode, node.status]),
+        [
+          ["applicant", "approved"],
+          ["review", "current"],
+          ["department_manager", "pending"],
+          ["finance_review", "pending"],
+          ["cashier", "pending"],
+          ["completed", "pending"]
+        ]
+      );
+      assert.equal(submittedPreview.nodes[1]?.assignees[0]?.userId, "usr_manager");
+      assert.equal(submitted.approvalPreview.nodes[1]?.status, "current");
+    } finally {
+      db.close();
+    }
+  });
+
   it("exports travel and general claims as docx using balance template type", async () => {
     assert.equal(resolveTemplateType(0), "0");
     assert.equal(resolveTemplateType(12.3), "1");

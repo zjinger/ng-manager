@@ -385,7 +385,14 @@
   "items": [],
   "attachments": [],
   "tasks": [],
-  "logs": []
+  "logs": [],
+  "approvalPreview": {
+    "claimId": "rbc_xxx",
+    "claimStatus": "approving",
+    "currentStageCode": "review",
+    "currentStageName": "审核",
+    "nodes": []
+  }
 }
 ```
 
@@ -395,6 +402,40 @@
 2. `attachments` 使用 `ReimbursementAttachment[]`
 3. `tasks` 使用 `ReimbursementApprovalTask[]`
 4. `logs` 使用 `ReimbursementLog[]`
+5. `approvalPreview` 为审批流程预览，前端可直接渲染审批步骤
+
+### `approvalPreview` 结构
+
+```json
+{
+  "claimId": "rbc_xxx",
+  "claimStatus": "approving",
+  "currentStageCode": "review",
+  "currentStageName": "审核",
+  "nodes": [
+    {
+      "stageCode": "applicant",
+      "stageName": "报销人/出差人",
+      "status": "approved",
+      "assignees": [{ "userId": "usr_xxx", "name": "张三" }]
+    },
+    {
+      "stageCode": "review",
+      "stageName": "审核",
+      "status": "current",
+      "assignees": [{ "userId": "usr_manager", "name": "王雯" }]
+    }
+  ]
+}
+```
+
+`approvalPreview.nodes[].status` 可能值：
+
+- `approved`
+- `current`
+- `pending`
+- `rejected`
+- `cancelled`
 
 ## 4.5 `PATCH /claims/:claimId`
 
@@ -661,7 +702,20 @@
 1. admin 或具备 `expense.report.view` 的用户可看全量
 2. 普通用户只能看到本人数据
 
-## 4.14 `GET /claims/:claimId/export`
+## 4.14 `GET /claims/:claimId/approval-preview`
+
+获取审批流程预览。
+
+说明：
+
+1. `GET /claims/:claimId` 已经内嵌返回 `approvalPreview`
+2. 本接口保留给前端单独刷新审批预览场景
+
+返回：
+
+`data` 结构与详情中的 `approvalPreview` 完全一致。
+
+## 4.15 `GET /claims/:claimId/export`
 
 导出 Word 报销单。
 

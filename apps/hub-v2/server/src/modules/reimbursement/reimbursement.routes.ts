@@ -48,6 +48,12 @@ export default async function reimbursementRoutes(app: FastifyInstance) {
       .send(file.buffer);
   });
 
+  app.get("/reimbursements/claims/:claimId/approval-preview", async (request) => {
+    const ctx = requireAuth(request);
+    const { claimId } = request.params as { claimId: string };
+    return ok(await app.container.reimbursementQuery.approvalPreview(claimId, ctx));
+  });
+
   app.get("/reimbursements/claims/:claimId", async (request) => {
     const ctx = requireAuth(request);
     const { claimId } = request.params as { claimId: string };
