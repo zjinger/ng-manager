@@ -11,6 +11,12 @@ import {
 } from "./organization.schema";
 
 export default async function organizationRoutes(app: FastifyInstance) {
+  app.get("/departments/all", async (request) => {
+    const ctx = requireAuth(request);
+    const query = listDepartmentsQuerySchema.parse(request.query);
+    return ok({ items: await app.container.organizationQuery.listAllDepartments(query, ctx) });
+  });
+
   app.get("/departments", async (request) => {
     const ctx = requireAuth(request);
     requirePermission(ctx, "admin.departments.manage");

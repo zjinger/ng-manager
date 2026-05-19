@@ -22,6 +22,7 @@ export interface OrganizationCommandContract {
 
 export interface OrganizationQueryContract {
   listDepartments(query: ListDepartmentsQuery, ctx: RequestContext): Promise<DepartmentEntity[]>;
+  listAllDepartments(query: ListDepartmentsQuery, ctx: RequestContext): Promise<DepartmentEntity[]>;
   listDepartmentTree(query: ListDepartmentsQuery, ctx: RequestContext): Promise<DepartmentTreeNode[]>;
   listDepartmentTitles(departmentId: string, ctx: RequestContext): Promise<DepartmentTitleEntity[]>;
   listUserDepartments(userId: string, ctx: RequestContext): Promise<UserDepartmentEntity[]>;

@@ -21,11 +21,15 @@ export class OrganizationApiService {
   private readonly api = inject(ApiClientService);
 
   listDepartments(query: { keyword?: string; status?: string } = {}) {
-    return this.api.get<{ items: DepartmentEntity[] }>('/departments', query).pipe(map((response) => response.items));
+    return this.api
+      .get<{ items: DepartmentEntity[] }>('/departments', query)
+      .pipe(map((response) => response.items));
   }
 
   listDepartmentTree(query: { keyword?: string; status?: string } = {}) {
-    return this.api.get<{ items: DepartmentTreeNode[] }>('/departments/tree', query).pipe(map((response) => response.items));
+    return this.api
+      .get<{ items: DepartmentTreeNode[] }>('/departments/tree', query)
+      .pipe(map((response) => response.items));
   }
 
   createDepartment(input: CreateDepartmentInput) {
@@ -33,23 +37,36 @@ export class OrganizationApiService {
   }
 
   updateDepartment(departmentId: string, input: UpdateDepartmentInput) {
-    return this.api.patch<DepartmentEntity, UpdateDepartmentInput>(`/departments/${departmentId}`, input);
+    return this.api.patch<DepartmentEntity, UpdateDepartmentInput>(
+      `/departments/${departmentId}`,
+      input,
+    );
   }
 
   listDepartmentTitles(departmentId: string) {
-    return this.api.get<{ items: DepartmentTitleEntity[] }>(`/departments/${departmentId}/titles`).pipe(map((response) => response.items));
+    return this.api
+      .get<{ items: DepartmentTitleEntity[] }>(`/departments/${departmentId}/titles`)
+      .pipe(map((response) => response.items));
   }
 
   addDepartmentTitle(departmentId: string, input: DepartmentTitleInput) {
-    return this.api.post<DepartmentTitleEntity, DepartmentTitleInput>(`/departments/${departmentId}/titles`, input);
+    return this.api.post<DepartmentTitleEntity, DepartmentTitleInput>(
+      `/departments/${departmentId}/titles`,
+      input,
+    );
   }
 
   removeDepartmentTitle(departmentId: string, titleCode: string) {
-    return this.api.delete<{ id: string }>(`/departments/${departmentId}/titles/${encodeURIComponent(titleCode)}`);
+    return this.api.delete<{ id: string }>(
+      `/departments/${departmentId}/titles/${encodeURIComponent(titleCode)}`,
+    );
   }
 
   addUserDepartment(userId: string, input: UserDepartmentInput) {
-    return this.api.post<UserDepartmentEntity, UserDepartmentInput>(`/users/${userId}/departments`, input);
+    return this.api.post<UserDepartmentEntity, UserDepartmentInput>(
+      `/users/${userId}/departments`,
+      input,
+    );
   }
 
   removeUserDepartment(userId: string, departmentId: string) {
@@ -57,7 +74,9 @@ export class OrganizationApiService {
   }
 
   listFinanceRoles(query: { keyword?: string; status?: string } = {}) {
-    return this.api.get<{ items: FinanceRoleEntity[] }>('/finance-roles', query).pipe(map((response) => response.items));
+    return this.api
+      .get<{ items: FinanceRoleEntity[] }>('/finance-roles', query)
+      .pipe(map((response) => response.items));
   }
 
   createFinanceRole(input: CreateFinanceRoleInput) {
@@ -65,10 +84,19 @@ export class OrganizationApiService {
   }
 
   updateFinanceRole(roleId: string, input: UpdateFinanceRoleInput) {
-    return this.api.patch<FinanceRoleEntity, UpdateFinanceRoleInput>(`/finance-roles/${roleId}`, input);
+    return this.api.patch<FinanceRoleEntity, UpdateFinanceRoleInput>(
+      `/finance-roles/${roleId}`,
+      input,
+    );
   }
 
   deleteFinanceRole(roleId: string) {
     return this.api.delete<{ id: string }>(`/finance-roles/${roleId}`);
+  }
+
+  listAllDepartments(query?: { keyword?: string; status?: string }) {
+    return this.api
+      .get<{ items: DepartmentEntity[] }>('/departments/all', query)
+      .pipe(map((response) => response.items));
   }
 }

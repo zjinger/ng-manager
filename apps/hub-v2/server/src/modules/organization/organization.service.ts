@@ -31,6 +31,11 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       .filter((item): item is DepartmentEntity => !!item && item.status === "active");
   }
 
+  async listAllDepartments(query: ListDepartmentsQuery, ctx: RequestContext): Promise<DepartmentEntity[]> {
+    this.requireReadable(ctx);
+    return this.repo.listDepartments(query);
+  }
+
   async listDepartmentTree(query: ListDepartmentsQuery, ctx: RequestContext): Promise<DepartmentTreeNode[]> {
     const departments = await this.listDepartments(query, ctx);
     return this.buildTree(departments);
