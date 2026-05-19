@@ -322,6 +322,7 @@ describe("ReimbursementService", () => {
       );
       const withAttachment = await service.attach(created.id, { uploadId: "upl_invoice", category: "invoice" }, ctx("usr_applicant"));
       assert.equal(withAttachment.attachments.length, 1);
+      assert.equal(withAttachment.logs.some((item) => item.action === "attachment.added" && item.comment === "上传发票.pdf"), true);
 
       let submitted = await service.submit(created.id, ctx("usr_applicant"));
       const task = submitted.tasks.find((item) => item.status === "pending")!;

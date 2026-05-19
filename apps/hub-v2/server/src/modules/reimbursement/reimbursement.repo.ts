@@ -53,6 +53,11 @@ export interface ApprovalTemplateWithStages {
   stages: ApprovalTemplateStage[];
 }
 
+export interface UploadDisplayInfo {
+  fileName: string | null;
+  originalName: string | null;
+}
+
 const DEFAULT_APPROVAL_TEMPLATE_ID = "tpl_expense_default";
 const DEFAULT_APPROVAL_TEMPLATE_CODE = "expense_default";
 const DEFAULT_APPROVAL_STAGE_SEEDS = [
@@ -602,6 +607,18 @@ export class ReimbursementRepo {
     return !!row;
   }
 
+  findUploadDisplayInfo(uploadId: string): UploadDisplayInfo | null {
+    const row = this.db
+      .prepare("SELECT file_name, original_name FROM uploads WHERE id = ? AND status = 'active'")
+      .get(uploadId) as { file_name: string | null; original_name: string | null } | undefined;
+    return row
+      ? {
+          fileName: row.file_name,
+          originalName: row.original_name
+        }
+      : null;
+  }
+
   listAttachments(claimId: string): ReimbursementAttachmentEntity[] {
     const rows = this.db
       .prepare(`
@@ -625,6 +642,33 @@ export class ReimbursementRepo {
       createdByUserId: row.created_by_user_id,
       createdAt: row.created_at
     }));
+  }
+
+  findAttachmentById(claimId: string, attachmentId: string): ReimbursementAttachmentEntity | null {
+    const row = this.db
+      .prepare(`
+        SELECT a.id, a.claim_id, a.upload_id, a.category, u.file_name, u.original_name, u.mime_type, u.file_size,
+               a.created_by_user_id, a.created_at
+        FROM reimbursement_attachments a
+        LEFT JOIN uploads u ON u.id = a.upload_id
+        WHERE a.claim_id = ? AND a.id = ?
+        LIMIT 1
+      `)
+      .get(claimId, attachmentId) as AttachmentRow | undefined;
+    return row
+      ? {
+          id: row.id,
+          claimId: row.claim_id,
+          uploadId: row.upload_id,
+          category: row.category,
+          fileName: row.file_name,
+          originalName: row.original_name,
+          mimeType: row.mime_type,
+          fileSize: row.file_size,
+          createdByUserId: row.created_by_user_id,
+          createdAt: row.created_at
+        }
+      : null;
   }
 
   addLog(input: {

@@ -24,7 +24,7 @@ import type {
   UpdateReimbursementClaimInput,
 } from "./reimbursement.types";
 import { ReimbursementRepo } from "./reimbursement.repo";
-import type { ApprovalTemplateStage, ApprovalTemplateWithStages, UserApprovalProfile } from "./reimbursement.repo";
+import type { ApprovalTemplateStage, ApprovalTemplateWithStages, UploadDisplayInfo, UserApprovalProfile } from "./reimbursement.repo";
 import type { ReimbursementItemEntity, ReimbursementItemInput, ReimbursementLogAction } from "./reimbursement.types";
 import { renderReimbursementWord } from "./reimbursement-word-export";
 
@@ -113,7 +113,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.replaceItems(claim.id, claimItems);
       for (const attachment of attachments) {
         this.repo.addAttachment(genId("rba"), claim.id, attachment, ctx.userId ?? null, now);
-        this.addLog(claim.id, ctx, "attachment.added", null, `绑定附件：${attachment.uploadId}`, now);
+        this.addLog(claim.id, ctx, "attachment.added", null, this.buildAttachmentAddedComment(attachment.uploadId), now);
       }
       this.addLog(claim.id, ctx, "create", null, "创建报销单", now);
     });
@@ -264,7 +264,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     const now = nowIso();
     this.repo.transaction(() => {
       this.repo.addAttachment(genId("rba"), claim.id, input, ctx.userId ?? null, now);
-      this.addLog(claim.id, ctx, "attachment.added", null, `绑定附件：${input.uploadId}`, now);
+      this.addLog(claim.id, ctx, "attachment.added", null, this.buildAttachmentAddedComment(input.uploadId), now);
     });
     return this.buildDetail(this.requireClaim(claim.id));
   }
@@ -272,10 +272,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   async detach(id: string, attachmentId: string, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
     const claim = this.requireClaim(id);
     this.ensureCanEditOrApprove(claim, ctx);
+    const attachment = this.repo.findAttachmentById(claim.id, attachmentId);
     const now = nowIso();
     this.repo.transaction(() => {
       this.repo.deleteAttachment(claim.id, attachmentId);
-      this.addLog(claim.id, ctx, "attachment.removed", null, `移除附件：${attachmentId}`, now);
+      this.addLog(claim.id, ctx, "attachment.removed", null, this.buildAttachmentRemovedComment(attachment, attachmentId), now);
     });
     return this.buildDetail(this.requireClaim(claim.id));
   }
@@ -548,6 +549,24 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   private generateClaimNo(claimType: "travel" | "general"): string {
     const prefix = `${claimType === "travel" ? "CL" : "BX"}-${new Date().toISOString().slice(0, 7).replace("-", "")}-`;
     return `${prefix}${String(this.repo.nextClaimSequence(prefix)).padStart(3, "0")}`;
+  }
+
+  private buildAttachmentAddedComment(uploadId: string): string {
+    return `上传${this.resolveUploadDisplayName(this.repo.findUploadDisplayInfo(uploadId), uploadId)}`;
+  }
+
+  private buildAttachmentRemovedComment(
+    attachment: { fileName: string | null; originalName: string | null } | null,
+    fallbackAttachmentId: string
+  ): string {
+    return `移除附件${this.resolveUploadDisplayName(attachment, fallbackAttachmentId)}`;
+  }
+
+  private resolveUploadDisplayName(
+    upload: Pick<UploadDisplayInfo, "fileName" | "originalName"> | null,
+    fallback: string
+  ): string {
+    return upload?.originalName?.trim() || upload?.fileName?.trim() || fallback;
   }
 
   private requireClaim(id: string): ReimbursementClaimEntity {
