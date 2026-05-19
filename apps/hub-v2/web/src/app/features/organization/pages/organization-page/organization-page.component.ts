@@ -150,7 +150,7 @@ export class DepartmentTitleAttachDialogComponent {
     <section class="department-layout">
       <aside class="department-card department-tree-card">
         <header class="department-card__header">
-          <h2>组织架构树</h2>
+          <h2>组织架构</h2>
           <span>{{ flatTree().length }} 个部门</span>
         </header>
         <div class="department-tree">
@@ -216,6 +216,14 @@ export class DepartmentTitleAttachDialogComponent {
                 <strong class="status-text" [class.status-text--inactive]="department.status === 'inactive'">
                   {{ department.status === 'active' ? '启用' : '停用' }}
                 </strong>
+              </div>
+              <div class="department-info-item">
+                <span>部门负责人</span>
+                <strong>{{ department.managerUser?.displayName || department.managerUser?.username || '未设置' }}</strong>
+              </div>
+              <div class="department-info-item department-info-item--wide">
+                <span>部门描述</span>
+                <strong>{{ department.description || '未填写' }}</strong>
               </div>
             </div>
           } @else {
@@ -365,6 +373,7 @@ export class DepartmentTitleAttachDialogComponent {
       [department]="editingDepartment()"
       [parentId]="dialogParentId()"
       [departments]="allDepartments()"
+      [userOptions]="allUsers()"
       (cancel)="closeDepartmentDialog()"
       (create)="createDepartment($event)"
       (update)="updateDepartment($event)"
@@ -508,6 +517,10 @@ export class DepartmentTitleAttachDialogComponent {
         padding: 12px;
       }
 
+      .department-info-item--wide {
+        grid-column: span 3;
+      }
+
       .department-info-item span,
       .members-table th,
       .member-cell small {
@@ -622,6 +635,10 @@ export class DepartmentTitleAttachDialogComponent {
         .department-info-grid {
           grid-template-columns: 1fr;
         }
+
+        .department-info-item--wide {
+          grid-column: auto;
+        }
       }
     `,
   ],
@@ -638,6 +655,7 @@ export class OrganizationPageComponent {
   readonly memberTitleFilterCode = signal('');
   readonly departmentTree = signal<DepartmentTreeNode[]>([]);
   readonly allDepartments = signal<DepartmentEntity[]>([]);
+  readonly allUsers = signal<UserEntity[]>([]);
   readonly departmentTitles = signal<DepartmentTitleEntity[]>([]);
   readonly allTitleLibrary = signal<SystemTitleEntity[]>([]);
   readonly selectedDepartmentId = signal('');
@@ -668,6 +686,7 @@ export class OrganizationPageComponent {
   constructor() {
     this.loadDepartments();
     this.loadTitleLibrary();
+    this.loadUserOptions();
   }
 
   loadDepartments(): void {
@@ -749,6 +768,19 @@ export class OrganizationPageComponent {
         this.message.error('保存部门失败');
       },
     });
+  }
+
+  loadUserOptions(): void {
+    this.userApi
+      .list({
+        page: 1,
+        pageSize: 200,
+        keyword: '',
+      })
+      .subscribe({
+        next: (result) => this.allUsers.set(result.items),
+        error: () => this.allUsers.set([]),
+      });
   }
 
   loadMembers(): void {

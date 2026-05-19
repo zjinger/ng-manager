@@ -11,6 +11,7 @@ export const listDepartmentsQuerySchema = z.object({
 export const createDepartmentSchema = z.object({
   code: codeSchema,
   name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(500).nullable().optional(),
   parentId: z.string().trim().nullable().optional(),
   externalFinanceCode: z.string().trim().nullable().optional(),
   managerUserId: z.string().trim().nullable().optional(),

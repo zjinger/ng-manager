@@ -14,6 +14,7 @@ type DepartmentRow = {
   parent_id: string | null;
   code: string;
   name: string;
+  description: string | null;
   external_finance_code: string | null;
   manager_user_id: string | null;
   manager_username: string | null;
@@ -68,6 +69,7 @@ export class OrganizationRepo {
         `
           SELECT
             d.id, d.parent_id, d.code, d.name, d.external_finance_code, d.manager_user_id,
+            d.description,
             u.username AS manager_username,
             u.display_name AS manager_display_name,
             d.status, d.sort, d.created_at, d.updated_at
@@ -87,6 +89,7 @@ export class OrganizationRepo {
         `
           SELECT
             d.id, d.parent_id, d.code, d.name, d.external_finance_code, d.manager_user_id,
+            d.description,
             u.username AS manager_username,
             u.display_name AS manager_display_name,
             d.status, d.sort, d.created_at, d.updated_at
@@ -105,6 +108,7 @@ export class OrganizationRepo {
         `
           SELECT
             d.id, d.parent_id, d.code, d.name, d.external_finance_code, d.manager_user_id,
+            d.description,
             u.username AS manager_username,
             u.display_name AS manager_display_name,
             d.status, d.sort, d.created_at, d.updated_at
@@ -122,8 +126,8 @@ export class OrganizationRepo {
       .prepare(
         `
           INSERT INTO departments (
-            id, parent_id, code, name, external_finance_code, manager_user_id, status, sort, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, parent_id, code, name, description, external_finance_code, manager_user_id, status, sort, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
@@ -131,6 +135,7 @@ export class OrganizationRepo {
         entity.parentId,
         entity.code,
         entity.name,
+        entity.description,
         entity.externalFinanceCode,
         entity.managerUserId,
         entity.status,
@@ -145,7 +150,7 @@ export class OrganizationRepo {
       .prepare(
         `
           UPDATE departments
-          SET parent_id = ?, code = ?, name = ?, external_finance_code = ?, manager_user_id = ?, status = ?, sort = ?, updated_at = ?
+          SET parent_id = ?, code = ?, name = ?, description = ?, external_finance_code = ?, manager_user_id = ?, status = ?, sort = ?, updated_at = ?
           WHERE id = ?
         `
       )
@@ -153,6 +158,7 @@ export class OrganizationRepo {
         entity.parentId,
         entity.code,
         entity.name,
+        entity.description,
         entity.externalFinanceCode,
         entity.managerUserId,
         entity.status,
@@ -344,6 +350,7 @@ export class OrganizationRepo {
       parentId: row.parent_id,
       code: row.code,
       name: row.name,
+      description: row.description,
       externalFinanceCode: row.external_finance_code,
       managerUserId: row.manager_user_id,
       managerUser: row.manager_user_id

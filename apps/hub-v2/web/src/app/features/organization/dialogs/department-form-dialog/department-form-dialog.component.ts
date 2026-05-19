@@ -9,13 +9,16 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import type { CreateDepartmentInput, DepartmentEntity, DepartmentStatus, UpdateDepartmentInput } from '../../models/organization.model';
+import type { UserEntity } from '../../../users/models/user.model';
 
 type DepartmentFormMode = 'create' | 'edit';
 
 type DepartmentDraft = {
   code: string;
   name: string;
+  description: string;
   parentId: string;
+  managerUserId: string;
   externalFinanceCode: string;
   status: DepartmentStatus;
   sort: number;
@@ -24,7 +27,9 @@ type DepartmentDraft = {
 const DEFAULT_DRAFT: DepartmentDraft = {
   code: '',
   name: '',
+  description: '',
   parentId: '',
+  managerUserId: '',
   externalFinanceCode: '',
   status: 'active',
   sort: 0,
@@ -84,6 +89,7 @@ export class DepartmentFormDialogComponent {
   readonly department = input<DepartmentEntity | null>(null);
   readonly parentId = input<string>('');
   readonly departments = input<DepartmentEntity[]>([]);
+  readonly userOptions = input<UserEntity[]>([]);
   readonly create = output<CreateDepartmentInput>();
   readonly update = output<UpdateDepartmentInput>();
   readonly cancel = output<void>();
@@ -106,7 +112,9 @@ export class DepartmentFormDialogComponent {
           ? {
               code: department.code,
               name: department.name,
+              description: department.description || '',
               parentId: department.parentId || '',
+              managerUserId: department.managerUserId || '',
               externalFinanceCode: department.externalFinanceCode || '',
               status: department.status,
               sort: department.sort,
@@ -128,7 +136,9 @@ export class DepartmentFormDialogComponent {
     const input = {
       code: draft.code.trim(),
       name: draft.name.trim(),
+      description: draft.description.trim() || null,
       parentId: draft.parentId || null,
+      managerUserId: draft.managerUserId.trim() || null,
       externalFinanceCode: draft.externalFinanceCode.trim() || null,
       status: draft.status,
       sort: draft.sort,
@@ -143,5 +153,9 @@ export class DepartmentFormDialogComponent {
 
   private generateDepartmentCode(): string {
     return `DEPT-${Date.now().toString(36).toUpperCase()}`;
+  }
+
+  userLabel(user: UserEntity): string {
+    return user.displayName ? `${user.displayName} - ${user.username}` : user.username;
   }
 }

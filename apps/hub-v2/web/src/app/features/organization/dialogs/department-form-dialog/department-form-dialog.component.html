@@ -44,7 +44,18 @@
         <nz-form-item>
           <nz-form-label nzFor="departmentOwner">部门负责人</nz-form-label>
           <nz-form-control>
-            <input nz-input name="departmentOwner" placeholder="暂未接入负责人字段" disabled />
+            <nz-select
+              nzShowSearch
+              nzAllowClear
+              nzPlaceHolder="请选择部门负责人"
+              name="departmentOwner"
+              [ngModel]="draft().managerUserId"
+              (ngModelChange)="updateField('managerUserId', $event || '')"
+            >
+              @for (user of userOptions(); track user.id) {
+                <nz-option [nzLabel]="userLabel(user)" [nzValue]="user.id"></nz-option>
+              }
+            </nz-select>
           </nz-form-control>
         </nz-form-item>
 
@@ -66,7 +77,14 @@
       <nz-form-item>
         <nz-form-label nzFor="departmentDescription">部门描述</nz-form-label>
         <nz-form-control>
-          <textarea nz-input name="departmentDescription" placeholder="暂未接入部门描述字段" disabled></textarea>
+          <textarea
+            nz-input
+            name="departmentDescription"
+            rows="4"
+            placeholder="输入部门职责、说明或备注信息"
+            [ngModel]="draft().description"
+            (ngModelChange)="updateField('description', $event)"
+          ></textarea>
         </nz-form-control>
       </nz-form-item>
     </form>

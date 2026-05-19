@@ -21,6 +21,7 @@ function createDb() {
       parent_id TEXT,
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
+      description TEXT,
       external_finance_code TEXT,
       manager_user_id TEXT,
       status TEXT NOT NULL DEFAULT 'active',
@@ -68,6 +69,7 @@ const adminCtx = createRequestContext({
   accountId: "adm_1",
   userId: "usr_admin",
   roles: ["admin"],
+  authScopes: ["admin.departments.manage"],
   source: "http"
 });
 
@@ -123,12 +125,13 @@ describe("OrganizationService", () => {
       db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_1", "u1", "用户一");
       db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_2", "u2", "用户二");
       const service = new OrganizationService(new OrganizationRepo(db));
-      const dep1 = await service.createDepartment({ code: "dep1", name: "部门一", managerUserId: "usr_2" }, adminCtx);
+      const dep1 = await service.createDepartment({ code: "dep1", name: "部门一", description: "核心业务部门", managerUserId: "usr_2" }, adminCtx);
       const dep2 = await service.createDepartment({ code: "dep2", name: "部门二" }, adminCtx);
 
       const created = await service.listDepartments({ keyword: "dep1" }, adminCtx);
       assert.equal(created[0].managerUserId, "usr_2");
       assert.equal(created[0].managerUser?.username, "u2");
+      assert.equal(created[0].description, "核心业务部门");
 
       await service.addUserDepartment("usr_1", { departmentId: dep1.id }, adminCtx);
       await service.addUserDepartment("usr_1", { departmentId: dep2.id }, adminCtx);

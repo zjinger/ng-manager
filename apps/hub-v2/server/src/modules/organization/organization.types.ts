@@ -13,6 +13,7 @@ export interface DepartmentEntity {
   parentId: string | null;
   code: string;
   name: string;
+  description: string | null;
   externalFinanceCode: string | null;
   managerUserId: string | null;
   managerUser: OrganizationUserRef | null;
@@ -62,6 +63,7 @@ export interface DepartmentTitleInput {
 export interface CreateDepartmentInput {
   code: string;
   name: string;
+  description?: string | null;
   parentId?: string | null;
   externalFinanceCode?: string | null;
   managerUserId?: string | null;
@@ -72,6 +74,7 @@ export interface CreateDepartmentInput {
 export interface UpdateDepartmentInput {
   code?: string;
   name?: string;
+  description?: string | null;
   parentId?: string | null;
   externalFinanceCode?: string | null;
   managerUserId?: string | null;

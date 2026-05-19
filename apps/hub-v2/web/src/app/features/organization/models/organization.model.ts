@@ -7,7 +7,14 @@ export interface DepartmentEntity {
   parentId: string | null;
   code: string;
   name: string;
+  description: string | null;
   externalFinanceCode: string | null;
+  managerUserId: string | null;
+  managerUser: {
+    id: string;
+    username: string;
+    displayName: string | null;
+  } | null;
   status: DepartmentStatus;
   sort: number;
   createdAt: string;
@@ -56,8 +63,10 @@ export interface DepartmentTitleInput {
 export interface CreateDepartmentInput {
   code: string;
   name: string;
+  description?: string | null;
   parentId?: string | null;
   externalFinanceCode?: string | null;
+  managerUserId?: string | null;
   status?: DepartmentStatus;
   sort?: number;
 }
