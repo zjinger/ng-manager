@@ -14,8 +14,15 @@ function createDb() {
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL,
       display_name TEXT,
+      title_code TEXT,
       status TEXT NOT NULL DEFAULT 'active',
       manager_user_id TEXT
+    );
+    CREATE TABLE system_titles (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active'
     );
     CREATE TABLE departments (
       id TEXT PRIMARY KEY,
@@ -163,8 +170,9 @@ function createDb() {
       created_at TEXT NOT NULL
     );
   `);
-  db.prepare("INSERT INTO users (id, username, display_name, status, manager_user_id) VALUES (?, ?, ?, ?, ?)")
-    .run("usr_applicant", "applicant", "申请人", "active", "usr_manager");
+  db.prepare("INSERT INTO system_titles (id, code, name, status) VALUES (?, ?, ?, ?)").run("title_pm", "product", "产品经理", "active");
+  db.prepare("INSERT INTO users (id, username, display_name, title_code, status, manager_user_id) VALUES (?, ?, ?, ?, ?, ?)")
+    .run("usr_applicant", "applicant", "申请人", "product", "active", "usr_manager");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_manager", "manager", "审核人", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_dept_manager", "dept", "部门主管", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_finance_reviewer", "finance", "财务复核人", "active");
@@ -234,6 +242,8 @@ describe("ReimbursementService", () => {
       );
       assert.equal(created.totalAmount, 120.25);
       assert.equal(created.balanceAmount, 110.25);
+      assert.equal(created.applicantTitleCode, "product");
+      assert.equal(created.applicantTitleName, "产品经理");
 
       const submitted = await service.submit(created.id, ctx("usr_applicant"));
       assert.equal(submitted.status, "approving");
@@ -478,7 +488,16 @@ describe("ReimbursementService", () => {
               endDate: "2026-05-03",
               fromLocation: "深圳",
               toLocation: "上海",
-              meta: { taxi: 120, days: 3 }
+              meta: {
+                days: 3,
+                airfareAmount: 0,
+                carriageAmount: 0,
+                localTransportAmount: 120,
+                lodgingAmount: 0,
+                mealAllowanceAmount: 0,
+                mealAmount: 0,
+                otherAmount: 0
+              }
             }
           ]
         },
@@ -505,6 +524,46 @@ describe("ReimbursementService", () => {
       assert.equal(generalFile.templateType, "2");
       assert.equal(generalFile.buffer.subarray(0, 2).toString(), "PK");
       assert.match(generalFile.fileName, /费用报销单\.docx$/);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("normalizes travel item meta into a fixed structure", async () => {
+    const db = createDb();
+    try {
+      const service = new ReimbursementService(new ReimbursementRepo(db));
+      const created = await service.create(
+        {
+          claimType: "travel",
+          departmentId: "dep_rd",
+          reason: "客户现场支持",
+          travelStartDate: "2026-05-01",
+          travelStartHalf: "am",
+          travelEndDate: "2026-05-02",
+          travelEndHalf: "pm",
+          travelDays: 2,
+          items: [
+            {
+              amount: 120,
+              fromLocation: "深圳",
+              toLocation: "上海",
+              meta: { taxi: 30, hotel: 90, days: 2 }
+            }
+          ]
+        },
+        ctx("usr_applicant")
+      );
+      assert.deepEqual(created.items[0]?.meta, {
+        days: 2,
+        airfareAmount: 0,
+        carriageAmount: 0,
+        localTransportAmount: 30,
+        lodgingAmount: 90,
+        mealAllowanceAmount: 0,
+        mealAmount: 0,
+        otherAmount: 0
+      });
     } finally {
       db.close();
     }

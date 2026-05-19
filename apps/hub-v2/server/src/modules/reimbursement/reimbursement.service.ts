@@ -4,6 +4,7 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { ReimbursementCommandContract, ReimbursementQueryContract } from "./reimbursement.contract";
+import { normalizeTravelItemMeta } from "./reimbursement.types";
 import type {
   AttachReimbursementUploadInput,
   CreateReimbursementClaimInput,
@@ -20,7 +21,7 @@ import type {
   ReimbursementStats,
   ReimbursementStatsQuery,
   ReimbursementTransferInput,
-  UpdateReimbursementClaimInput
+  UpdateReimbursementClaimInput,
 } from "./reimbursement.types";
 import { ReimbursementRepo } from "./reimbursement.repo";
 import type { ApprovalTemplateStage, ApprovalTemplateWithStages, UserApprovalProfile } from "./reimbursement.repo";
@@ -494,7 +495,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       fromLocation: input.fromLocation?.trim() || null,
       toLocation: input.toLocation?.trim() || null,
       amount: input.amount ?? 0,
-      meta: input.meta ?? null,
+      meta: (input.itemType ?? claimType) === "travel" ? normalizeTravelItemMeta(input.meta) : null,
       sort: input.sort ?? (index + 1) * 10,
       createdAt: now,
       updatedAt: now

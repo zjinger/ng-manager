@@ -68,26 +68,26 @@ function buildTravelData(claim: ReimbursementClaimDetail): TemplateData {
     Q: fillDate.month,
     Z: fillDate.day,
     name: claim.applicantName,
-    profession: "",
+    profession: claim.applicantTitleName ?? "",
     reason: claim.reason,
     A: startDate.year,
     B: startDate.month,
     C: startDate.day,
-    D: metaString(firstTravel, "startTime"),
+    D: "",
     E: endDate.year,
     F: endDate.month,
     G: endDate.day,
-    H: metaString(firstTravel, "endTime"),
-    I: sumMetaNumber(rows, "days") || "",
+    H: "",
+    I: sumTravelMetaNumber(rows, "days") || "",
     O: claim.attachments.length || "",
-    d4: formatOptionalNumber(sumMetaNumber(rows, "days")),
-    a4: formatOptionalNumber(sumTravelAmount(rows, "air", "机票")),
-    c4: formatOptionalNumber(sumTravelAmount(rows, "ship", "车船")),
-    u4: formatOptionalNumber(sumTravelAmount(rows, "taxi", "交通")),
-    s4: formatOptionalNumber(sumTravelAmount(rows, "hotel", "住宿")),
-    e4: formatOptionalNumber(sumTravelAmount(rows, "travel", "出差")),
-    m4: formatOptionalNumber(sumTravelAmount(rows, "meals", "餐费")),
-    o4: formatOptionalNumber(sumTravelAmount(rows, "other", "其他")),
+    d4: formatOptionalNumber(sumTravelMetaNumber(rows, "days")),
+    a4: formatOptionalNumber(sumTravelMetaNumber(rows, "airfareAmount")),
+    c4: formatOptionalNumber(sumTravelMetaNumber(rows, "carriageAmount")),
+    u4: formatOptionalNumber(sumTravelMetaNumber(rows, "localTransportAmount")),
+    s4: formatOptionalNumber(sumTravelMetaNumber(rows, "lodgingAmount")),
+    e4: formatOptionalNumber(sumTravelMetaNumber(rows, "mealAllowanceAmount")),
+    m4: formatOptionalNumber(sumTravelMetaNumber(rows, "mealAmount")),
+    o4: formatOptionalNumber(sumTravelMetaNumber(rows, "otherAmount")),
     t4: formatMoney(claim.totalAmount),
     h: formatMoney(claim.advanceAmount),
     i: formatMoney(Math.abs(claim.balanceAmount)),
@@ -101,14 +101,14 @@ function buildTravelData(claim: ReimbursementClaimDetail): TemplateData {
     data[`x${suffix}`] = rowDate.month;
     data[`y${suffix}`] = rowDate.day;
     data[`p${suffix}`] = item ? buildLocation(item) : "";
-    data[`d${suffix}`] = metaString(item, "days");
-    data[`a${suffix}`] = formatOptionalNumber(travelAmount(item, "air", "机票"));
-    data[`c${suffix}`] = formatOptionalNumber(travelAmount(item, "ship", "车船"));
-    data[`u${suffix}`] = formatOptionalNumber(travelAmount(item, "taxi", "交通"));
-    data[`s${suffix}`] = formatOptionalNumber(travelAmount(item, "hotel", "住宿"));
-    data[`e${suffix}`] = formatOptionalNumber(travelAmount(item, "travel", "出差"));
-    data[`m${suffix}`] = formatOptionalNumber(travelAmount(item, "meals", "餐费"));
-    data[`o${suffix}`] = formatOptionalNumber(travelAmount(item, "other", "其他"));
+    data[`d${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "days"));
+    data[`a${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "airfareAmount"));
+    data[`c${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "carriageAmount"));
+    data[`u${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "localTransportAmount"));
+    data[`s${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "lodgingAmount"));
+    data[`e${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "mealAllowanceAmount"));
+    data[`m${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "mealAmount"));
+    data[`o${suffix}`] = formatOptionalNumber(travelMetaNumber(item, "otherAmount"));
     data[`t${suffix}`] = rowTotal ? formatMoney(rowTotal) : "";
   }
   return data;
@@ -168,39 +168,13 @@ function buildLocation(item: ReimbursementItemEntity): string {
   return item.fromLocation || item.toLocation || item.description || "";
 }
 
-function sumTravelAmount(items: ReimbursementItemEntity[], metaKey: string, categoryKeyword: string): number {
-  return items.reduce((sum, item) => sum + travelAmount(item, metaKey, categoryKeyword), 0);
+function sumTravelMetaNumber(items: ReimbursementItemEntity[], key: keyof NonNullable<ReimbursementItemEntity["meta"]>): number {
+  return items.reduce((sum, item) => sum + travelMetaNumber(item, key), 0);
 }
 
-function travelAmount(item: ReimbursementItemEntity | undefined, metaKey: string, categoryKeyword: string): number {
-  if (!item) {
-    return 0;
-  }
-  const metaAmount = metaNumber(item, metaKey);
-  if (metaAmount !== 0) {
-    return metaAmount;
-  }
-  if ((item.category ?? "").includes(categoryKeyword)) {
-    return item.amount;
-  }
-  return 0;
-}
-
-function sumMetaNumber(items: ReimbursementItemEntity[], key: string): number {
-  return items.reduce((sum, item) => sum + metaNumber(item, key), 0);
-}
-
-function metaNumber(item: ReimbursementItemEntity | undefined, key: string): number {
+function travelMetaNumber(item: ReimbursementItemEntity | undefined, key: keyof NonNullable<ReimbursementItemEntity["meta"]>): number {
   const value = item?.meta?.[key];
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function metaString(item: ReimbursementItemEntity | undefined, key: string): string {
-  const value = item?.meta?.[key];
-  if (value === undefined || value === null) {
-    return "";
-  }
-  return String(value);
 }
 
 function formatMoney(amount: number): string {

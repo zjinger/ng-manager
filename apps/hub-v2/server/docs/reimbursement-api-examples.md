@@ -46,9 +46,14 @@
       "toLocation": "杭州",
       "amount": 73.5,
       "meta": {
-        "vehicle": "train",
-        "ticketType": "second_class",
-        "tripDirection": "go"
+        "days": 0,
+        "airfareAmount": 73.5,
+        "carriageAmount": 0,
+        "localTransportAmount": 0,
+        "lodgingAmount": 0,
+        "mealAllowanceAmount": 0,
+        "mealAmount": 0,
+        "otherAmount": 0
       },
       "sort": 10
     },
@@ -60,8 +65,14 @@
       "endDate": "2026-05-15",
       "amount": 428,
       "meta": {
-        "hotelName": "杭州城西酒店",
-        "roomNights": 1
+        "days": 1,
+        "airfareAmount": 0,
+        "carriageAmount": 0,
+        "localTransportAmount": 0,
+        "lodgingAmount": 428,
+        "mealAllowanceAmount": 0,
+        "mealAmount": 0,
+        "otherAmount": 0
       },
       "sort": 20
     },
@@ -72,7 +83,14 @@
       "occurredDate": "2026-05-14",
       "amount": 96,
       "meta": {
-        "vehicle": "taxi"
+        "days": 0,
+        "airfareAmount": 0,
+        "carriageAmount": 0,
+        "localTransportAmount": 96,
+        "lodgingAmount": 0,
+        "mealAllowanceAmount": 0,
+        "mealAmount": 0,
+        "otherAmount": 0
       },
       "sort": 30
     }

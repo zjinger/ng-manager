@@ -119,6 +119,8 @@
   "status": "draft",
   "applicantUserId": "usr_xxx",
   "applicantName": "张三",
+  "applicantTitleCode": "product",
+  "applicantTitleName": "产品经理",
   "departmentId": "dep_xxx",
   "departmentName": "财务部",
   "reason": "上海出差报销",
@@ -145,11 +147,12 @@
 
 1. `claimNo`: 后端生成的报销编号，前端创建时不传
 2. `travelStartDate/travelStartHalf/travelEndDate/travelEndHalf/travelDays`: 差旅报销主表字段；普通费用报销可为 `null`
-3. `receiptCount`: 单据数量/张数，差旅和普通费用都可传
-4. `totalAmount`: 后端按 `items[].amount` 自动汇总
-5. `advanceAmount`: 预支金额，前端可传
-6. `balanceAmount`: 后端计算值，等于 `totalAmount - advanceAmount`
-7. `currentStageCode/currentStageName`: 当前审批节点，草稿时为空
+3. `applicantTitleCode/applicantTitleName`: 申请人职务快照展示字段，供详情/导出展示使用
+4. `receiptCount`: 单据数量/张数，差旅和普通费用都可传
+5. `totalAmount`: 后端按 `items[].amount` 自动汇总
+6. `advanceAmount`: 预支金额，前端可传
+7. `balanceAmount`: 后端计算值，等于 `totalAmount - advanceAmount`
+8. `currentStageCode/currentStageName`: 当前审批节点，草稿时为空
 
 ## 3.2 报销明细 `ReimbursementItem`
 
@@ -167,8 +170,14 @@
   "toLocation": "杭州",
   "amount": 123.5,
   "meta": {
-    "vehicle": "train",
-    "ticketNo": "E123456"
+    "days": 1,
+    "airfareAmount": 0,
+    "carriageAmount": 123.5,
+    "localTransportAmount": 0,
+    "lodgingAmount": 0,
+    "mealAllowanceAmount": 0,
+    "mealAmount": 0,
+    "otherAmount": 0
   },
   "sort": 10,
   "createdAt": "2026-05-15T08:00:00.000Z",
@@ -183,8 +192,34 @@
 3. `occurredDate`: 普通费用或单次发生日期
 4. `startDate/endDate`: 行程起止日期
 5. `fromLocation/toLocation`: 差旅行程起止地
-6. `meta`: 扩展字段对象，后端原样保存，不做结构校验
+6. `meta`: 差旅明细固定结构对象；普通费用报销当前返回 `null`
 7. `sort`: 排序值，建议前端按 10、20、30 递增传输
+
+### 差旅明细 `meta` 固定结构
+
+```json
+{
+  "days": 1,
+  "airfareAmount": 0,
+  "carriageAmount": 123.5,
+  "localTransportAmount": 40,
+  "lodgingAmount": 260,
+  "mealAllowanceAmount": 80,
+  "mealAmount": 60,
+  "otherAmount": 10
+}
+```
+
+字段说明：
+
+1. `days`: 本行对应天数，可为 `null`
+2. `airfareAmount`: 机票金额
+3. `carriageAmount`: 车船金额
+4. `localTransportAmount`: 市内交通金额
+5. `lodgingAmount`: 住宿金额
+6. `mealAllowanceAmount`: 餐补金额
+7. `mealAmount`: 餐费金额
+8. `otherAmount`: 其他金额
 
 ## 3.3 附件 `ReimbursementAttachment`
 
@@ -342,7 +377,14 @@
       "toLocation": "杭州",
       "amount": 123.5,
       "meta": {
-        "vehicle": "train"
+        "days": 1,
+        "airfareAmount": 0,
+        "carriageAmount": 123.5,
+        "localTransportAmount": 0,
+        "lodgingAmount": 0,
+        "mealAllowanceAmount": 0,
+        "mealAmount": 0,
+        "otherAmount": 0
       },
       "sort": 10
     }
@@ -768,20 +810,27 @@
 
 然后把该任务的 `id` 作为 `taskId` 提交到审批动作接口。
 
-## 5.4 差旅明细扩展字段
+## 5.4 差旅明细 `meta` 传输约束
 
-当前后端对 `items[].meta` 不做结构约束，因此前端可以按设计稿自行组织，例如：
+当前后端已将 `travel` 明细的 `meta` 收口为固定结构，前端不要再自由扩展键名，统一使用：
 
 ```json
 {
-  "vehicle": "plane",
-  "tripType": "round_trip",
-  "city": "北京",
-  "days": 2
+  "days": 2,
+  "airfareAmount": 0,
+  "carriageAmount": 320,
+  "localTransportAmount": 60,
+  "lodgingAmount": 480,
+  "mealAllowanceAmount": 120,
+  "mealAmount": 90,
+  "otherAmount": 0
 }
 ```
 
-但前后端需要约定好字段名，避免后续导出模板映射时再返工。
+说明：
+
+1. 每个字段都建议显式传值，未填写则传 `0`
+2. 后端会兼容旧键名数据读取，但新接入请只使用上述固定键
 
 ## 5.5 表单字段归属建议
 

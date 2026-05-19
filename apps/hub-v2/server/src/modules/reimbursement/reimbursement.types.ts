@@ -17,6 +17,17 @@ export type ReimbursementLogAction =
   | "attachment.added"
   | "attachment.removed";
 
+export interface TravelReimbursementItemMeta {
+  days: number | null;
+  airfareAmount: number;
+  carriageAmount: number;
+  localTransportAmount: number;
+  lodgingAmount: number;
+  mealAllowanceAmount: number;
+  mealAmount: number;
+  otherAmount: number;
+}
+
 export interface ReimbursementClaimEntity {
   id: string;
   claimNo: string;
@@ -57,7 +68,7 @@ export interface ReimbursementItemEntity {
   fromLocation: string | null;
   toLocation: string | null;
   amount: number;
-  meta: Record<string, unknown> | null;
+  meta: TravelReimbursementItemMeta | null;
   sort: number;
   createdAt: string;
   updatedAt: string;
@@ -125,6 +136,8 @@ export interface ReimbursementApprovalPreview {
 }
 
 export interface ReimbursementClaimDetail extends ReimbursementClaimEntity {
+  applicantTitleCode: string | null;
+  applicantTitleName: string | null;
   items: ReimbursementItemEntity[];
   attachments: ReimbursementAttachmentEntity[];
   tasks: ReimbursementApprovalTaskEntity[];
@@ -232,3 +245,32 @@ export interface ReimbursementExportFile {
 }
 
 export type ReimbursementClaimListResult = PageResult<ReimbursementClaimEntity>;
+
+function toFiniteNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function toNullableFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function toObjectRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+export function normalizeTravelItemMeta(value: unknown): TravelReimbursementItemMeta {
+  const record = toObjectRecord(value) ?? {};
+  return {
+    days: toNullableFiniteNumber(record["days"]),
+    airfareAmount: toFiniteNumber(record["airfareAmount"] ?? record["air"]),
+    carriageAmount: toFiniteNumber(record["carriageAmount"] ?? record["ship"]),
+    localTransportAmount: toFiniteNumber(record["localTransportAmount"] ?? record["taxi"]),
+    lodgingAmount: toFiniteNumber(record["lodgingAmount"] ?? record["hotel"]),
+    mealAllowanceAmount: toFiniteNumber(record["mealAllowanceAmount"] ?? record["travel"]),
+    mealAmount: toFiniteNumber(record["mealAmount"] ?? record["meals"]),
+    otherAmount: toFiniteNumber(record["otherAmount"] ?? record["other"])
+  };
+}

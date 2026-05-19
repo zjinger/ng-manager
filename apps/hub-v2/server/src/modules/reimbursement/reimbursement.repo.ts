@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
+import { normalizeTravelItemMeta } from "./reimbursement.types";
 import type {
   AttachReimbursementUploadInput,
   ListReimbursementClaimsQuery,
@@ -23,6 +24,8 @@ export interface UserApprovalProfile {
   id: string;
   username: string;
   displayName: string | null;
+  titleCode: string | null;
+  titleName: string | null;
   managerUserId: string | null;
 }
 
@@ -210,11 +213,18 @@ export class ReimbursementRepo {
 
   findUserProfile(userId: string): UserApprovalProfile | null {
     const row = this.db
-      .prepare("SELECT id, username, display_name, manager_user_id FROM users WHERE id = ? AND status = 'active'")
+      .prepare(`
+        SELECT u.id, u.username, u.display_name, u.title_code, st.name AS title_name, u.manager_user_id
+        FROM users u
+        LEFT JOIN system_titles st ON st.code = u.title_code
+        WHERE u.id = ? AND u.status = 'active'
+      `)
       .get(userId) as {
         id: string;
         username: string;
         display_name: string | null;
+        title_code: string | null;
+        title_name: string | null;
         manager_user_id: string | null;
       } | undefined;
     return row
@@ -222,6 +232,8 @@ export class ReimbursementRepo {
           id: row.id,
           username: row.username,
           displayName: row.display_name,
+          titleCode: row.title_code,
+          titleName: row.title_name,
           managerUserId: row.manager_user_id
         }
       : null;
@@ -337,10 +349,11 @@ export class ReimbursementRepo {
   listActiveRoleUsers(roleId: string): UserApprovalProfile[] {
     const rows = this.db
       .prepare(`
-        SELECT u.id, u.username, u.display_name, u.manager_user_id
+        SELECT u.id, u.username, u.display_name, u.title_code, st.name AS title_name, u.manager_user_id
         FROM user_system_roles usr
         INNER JOIN users u ON u.id = usr.user_id AND u.status = 'active'
         INNER JOIN system_roles sr ON sr.id = usr.role_id AND sr.status = 'active'
+        LEFT JOIN system_titles st ON st.code = u.title_code
         WHERE usr.role_id = ?
         ORDER BY u.display_name ASC, u.username ASC
       `)
@@ -348,12 +361,16 @@ export class ReimbursementRepo {
         id: string;
         username: string;
         display_name: string | null;
+        title_code: string | null;
+        title_name: string | null;
         manager_user_id: string | null;
       }>;
     return rows.map((row) => ({
       id: row.id,
       username: row.username,
       displayName: row.display_name,
+      titleCode: row.title_code,
+      titleName: row.title_name,
       managerUserId: row.manager_user_id
     }));
   }
@@ -480,7 +497,7 @@ export class ReimbursementRepo {
       fromLocation: row.from_location,
       toLocation: row.to_location,
       amount: toAmount(row.amount_cents),
-      meta: row.meta_json ? JSON.parse(row.meta_json) as Record<string, unknown> : null,
+      meta: row.item_type === "travel" ? normalizeTravelItemMeta(row.meta_json ? JSON.parse(row.meta_json) : null) : null,
       sort: row.sort,
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -710,8 +727,11 @@ export class ReimbursementRepo {
   }
 
   detail(claim: ReimbursementClaimEntity): Omit<ReimbursementClaimDetail, "approvalPreview"> {
+    const applicant = this.findUserProfile(claim.applicantUserId);
     return {
       ...claim,
+      applicantTitleCode: applicant?.titleCode ?? null,
+      applicantTitleName: applicant?.titleName ?? null,
       items: this.listItems(claim.id),
       attachments: this.listAttachments(claim.id),
       tasks: this.listTasks(claim.id),
