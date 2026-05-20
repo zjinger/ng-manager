@@ -14,18 +14,27 @@ import {
   getMimeType,
   guessExtension,
 } from '@app/utils/file.utils';
+import { JsonViewerComponent } from '@app/shared/components/json-viewer/json-viewer.component';
+import { MarkupViewerComponent } from '@app/shared/components/markup-viewer/markup-viewer.component';
 
 type PreviewKind = 'json' | 'image' | 'video' | 'audio' | 'pdf' | 'binary' | 'text';
 
 @Component({
   selector: 'app-response-body-viewer',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, AttachmentViewerComponent],
+  imports: [
+    NzButtonModule,
+    NzIconModule,
+    AttachmentViewerComponent,
+    JsonViewerComponent,
+    MarkupViewerComponent,
+  ],
   template: `
     <div class="pane">
       @switch (response()?.bodyType ?? 'text') {
         @case ('json') {
-          <pre class="code">{{ prettyJson() }}</pre>
+          <!-- <pre class="code">{{ prettyJson() }}</pre> -->
+          <app-json-viewer [json]="response()?.bodyText ?? ''" />
         }
         @case ('image') {
           <div class="attachment-preview-wrap">
@@ -54,6 +63,12 @@ type PreviewKind = 'json' | 'image' | 'video' | 'audio' | 'pdf' | 'binary' | 'te
               点击下载
             </button>
           </div>
+        }
+        @case ('html') {
+          <app-markup-viewer [content]="response()?.bodyText ?? ''" />
+        }
+        @case ('xml') {
+          <app-markup-viewer [content]="response()?.bodyText ?? ''" />
         }
         @default {
           <pre class="code"
@@ -164,16 +179,16 @@ export class ResponseBodyViewerComponent {
   /**
    * JSON 美化
    */
-  readonly prettyJson = computed(() => {
-    const text = this.response()?.bodyText?.trim();
-    if (!text) return '';
+  // readonly prettyJson = computed(() => {
+  //   const text = this.response()?.bodyText?.trim();
+  //   if (!text) return '';
 
-    try {
-      return JSON.stringify(JSON.parse(text), null, 2);
-    } catch {
-      return text;
-    }
-  });
+  //   try {
+  //     return JSON.stringify(JSON.parse(text), null, 2);
+  //   } catch {
+  //     return text;
+  //   }
+  // });
 
   /**
    * 下载文件

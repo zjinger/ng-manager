@@ -25,7 +25,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
       <textarea
         #jsonTextarea
         nz-input
-        [readOnly]="readonly"
+        [readonly]="readonly"
         wrap="off"
         spellcheck="false"
         [ngStyle]="{ minHeight: minHeight + 'px', height: currentHeight + 'px', maxHeight: currentHeight + 'px' }"

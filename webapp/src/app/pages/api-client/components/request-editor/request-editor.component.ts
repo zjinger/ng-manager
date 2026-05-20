@@ -43,7 +43,7 @@ import { extractPathParamKeys, syncPathParamsByUrl } from '@pages/api-client/uti
         <input nz-input placeholder="未命名接口名称" [ngModel]="request.name" (ngModelChange)="patch.emit({name:$event})" />
       </nz-input-wrapper>
     </div>
-    <app-request-tabs class="tabs" [req]="request" (patch)="patch.emit($event)" />
+    <app-request-tabs class="tabs" [req]="request" (patch)="patch.emit($event)"  (optTabChange)="optTabChange.emit($event)"/>
   }    
   `,
   styles: [`
@@ -64,6 +64,7 @@ export class RequestEditorComponent {
   @Output() patch = new EventEmitter<Partial<ApiRequestEntity>>();
   @Output() send = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
+  @Output() optTabChange = new EventEmitter();
   @Input() collectionPath: string | null = null; // 分类路径
 
   methods: ApiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];

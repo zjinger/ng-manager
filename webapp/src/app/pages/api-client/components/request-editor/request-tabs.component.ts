@@ -10,7 +10,7 @@ import { KvTableComponent } from './kv-table.component';
   selector: 'app-request-tabs',
   imports: [NzTabsModule, KvTableComponent, BodyEditorComponent, AuthEditorComponent, AdvancedEditorComponent],
   template: `
-    <nz-tabs class="tabs">
+    <nz-tabs class="tabs" (nzSelectChange)="optTabChange.emit()">
         <nz-tab nzTitle="Params">
           <div class="tab">
             <div class="item">
@@ -111,5 +111,6 @@ export class RequestTabsComponent {
 
   @Input() req: ApiRequestEntity | null = null;
   @Output() patch = new EventEmitter<Partial<ApiRequestEntity>>();
+  @Output() optTabChange = new EventEmitter();
 }
 

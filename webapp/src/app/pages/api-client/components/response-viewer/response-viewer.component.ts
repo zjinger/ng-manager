@@ -18,6 +18,7 @@ import { ApiResponseEntity } from '@models/api-client/api-response.model';
 import { SendResponse } from '@models/api-client';
 import { ResponseBodyViewerComponent } from './response-body-viewer/response-body-viewer.component';
 import { formatBytes } from '@app/utils/file.utils';
+import { JsonViewerComponent } from '@app/shared/components/json-viewer';
 
 @Component({
   selector: 'app-response-viewer',
@@ -30,6 +31,7 @@ import { formatBytes } from '@app/utils/file.utils';
     NzAlertModule,
     CurlActionsComponent,
     ResponseBodyViewerComponent,
+    JsonViewerComponent,
   ],
   template: `
     <div class="wrap">
@@ -89,7 +91,8 @@ import { formatBytes } from '@app/utils/file.utils';
 
           <nz-tab nzTitle="Raw">
             <div class="pane">
-              <pre class="code">{{ rawDump() }}</pre>
+              <!-- <pre class="code">{{ rawDump() }}</pre> -->
+              <app-json-viewer [json]="rawDump()" />
             </div>
           </nz-tab>
         </nz-tabs>
@@ -234,27 +237,27 @@ export class ResponseViewerComponent implements OnChanges {
     return 'red';
   });
 
-  isJson = computed(() => {
-    const res = this.response();
-    if (!res) return false;
+  // isJson = computed(() => {
+  //   const res = this.response();
+  //   if (!res) return false;
 
-    const ct = (res.headers?.['content-type'] ?? res.headers?.['Content-Type'] ?? '').toLowerCase();
-    if (ct.includes('application/json')) return true;
+  //   const ct = (res.headers?.['content-type'] ?? res.headers?.['Content-Type'] ?? '').toLowerCase();
+  //   if (ct.includes('application/json')) return true;
 
-    // 容错：bodyText 看起来像 JSON
-    const t = (res.bodyText ?? '').trim();
-    return (t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'));
-  });
+  //   // 容错：bodyText 看起来像 JSON
+  //   const t = (res.bodyText ?? '').trim();
+  //   return (t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'));
+  // });
 
-  prettyJson = computed(() => {
-    const t = (this.response()?.bodyText ?? '').trim();
-    try {
-      const obj = JSON.parse(t);
-      return JSON.stringify(obj, null, 2);
-    } catch {
-      return this.response()?.bodyText ?? '';
-    }
-  });
+  // prettyJson = computed(() => {
+  //   const t = (this.response()?.bodyText ?? '').trim();
+  //   try {
+  //     const obj = JSON.parse(t);
+  //     return JSON.stringify(obj, null, 2);
+  //   } catch {
+  //     return this.response()?.bodyText ?? '';
+  //   }
+  // });
 
   rawDump = computed(() => {
     if (!this.response()) return '';
