@@ -1,4 +1,3 @@
-// travel-expense-basicInfo.component.ts
 import {
   ChangeDetectionStrategy,
   Component,

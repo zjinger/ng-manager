@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { Router } from '@angular/router';
+import { lastValueFrom } from 'rxjs';
 import {
   CreateReimbursementClaimInput,
   ReimbursementApprovalPreview,
@@ -59,7 +60,7 @@ const DEFAULT_DRAFT: TravelExpenseDraft = {
     differenceAmount: 0,
     attachments: [],
   },
-  approvalPreview:{},
+  approvalPreview: {} as ReimbursementApprovalPreview,
   status: 'draft',
 };
 
@@ -87,6 +88,9 @@ export class TravelExpenseStore {
 
   /** 当前编辑的报销单ID */
   private readonly currentClaimIdState = signal<string | null>(null);
+
+  /** 防重复提交标志 */
+  private isSubmitting = false;
 
   // =========================
   // Public Selectors
@@ -116,6 +120,15 @@ export class TravelExpenseStore {
     return items.reduce((sum, item) => sum + (item.amount || 0), 0);
   });
 
+  /** 预支金额 */
+  readonly advanceAmount = computed(() => this.draftState().summary.advanceAmount);
+
+  /** 差额 */
+  readonly differenceAmount = computed(() => {
+    const summary = this.draftState().summary;
+    return summary.totalAmount - summary.advanceAmount;
+  });
+
   /** 预览数据 */
   readonly previewData = computed(() => {
     const draft = this.draftState();
@@ -123,6 +136,8 @@ export class TravelExpenseStore {
       ...draft.basicInfo,
       items: draft.expenseItems,
       advanceAmount: draft.summary.advanceAmount,
+      totalAmount: draft.summary.totalAmount,
+      differenceAmount: draft.summary.differenceAmount,
     };
   });
 
@@ -153,6 +168,14 @@ export class TravelExpenseStore {
     const hasAdvanceAmount = (draft.summary.advanceAmount ?? 0) > 0;
 
     return hasBasicInfo || hasExpenseItems || hasAttachments || hasAdvanceAmount;
+  });
+
+  /** 是否有未保存的更改 */
+  readonly hasUnsavedChanges = computed(() => {
+    if (this.isEditMode()) {
+      return true; // 编辑模式下总是认为有更改，由组件控制保存逻辑
+    }
+    return JSON.stringify(this.draftState()) !== JSON.stringify(DEFAULT_DRAFT);
   });
 
   // =========================
@@ -215,6 +238,19 @@ export class TravelExpenseStore {
   }
 
   /**
+   * 更新附件
+   */
+  updateAttachments(attachments: ReimbursementAttachmentEntity[]): void {
+    this.draftState.update((draft) => ({
+      ...draft,
+      summary: {
+        ...draft.summary,
+        attachments: attachments,
+      },
+    }));
+  }
+
+  /**
    * 设置编辑模式的数据（从详情接口转换）
    */
   setEditData(claimId: string, detail: ReimbursementClaimDetail): void {
@@ -246,12 +282,12 @@ export class TravelExpenseStore {
       reason: detail.reason,
       fillDate: detail.fillDate,
       advanceAmount: detail.advanceAmount,
-      travelStartDate: (detail as any).travelStartDate,
-      travelStartHalf: (detail as any).travelStartHalf,
-      travelEndDate: (detail as any).travelEndDate,
-      travelEndHalf: (detail as any).travelEndHalf,
-      travelDays: (detail as any).travelDays,
-      receiptCount: (detail as any).receiptCount,
+      travelStartDate: detail.travelStartDate,
+      travelStartHalf: detail.travelStartHalf,
+      travelEndDate: detail.travelEndDate,
+      travelEndHalf: detail.travelEndHalf,
+      travelDays: detail.travelDays,
+      receiptCount: detail.receiptCount,
       items: expenseItems,
     };
 
@@ -262,14 +298,12 @@ export class TravelExpenseStore {
       differenceAmount: detail.balanceAmount,
       attachments: detail.attachments,
     };
-    // 构建审批流预览
-    const approvalPreview: ReimbursementApprovalPreview = detail.approvalPreview || {};
 
     this.draftState.set({
       basicInfo,
       expenseItems,
       summary,
-      approvalPreview,
+      approvalPreview: detail.approvalPreview,
       status: detail.status === 'draft' ? 'draft' : 'submitted',
     });
 
@@ -280,115 +314,146 @@ export class TravelExpenseStore {
   /**
    * 加载详情数据
    */
-  loadDetail(claimId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+  async loadDetail(claimId: string): Promise<void> {
+    try {
       this.loadingState.set(true);
-
-      this.reimbursementApi.getClaimById(claimId).subscribe({
-        next: (detail: ReimbursementClaimDetail) => {
-          console.log('detail', detail);
-          this.setEditData(claimId, detail);
-          this.loadingState.set(false);
-          resolve();
-        },
-        error: (error) => {
-          console.error('详情加载失败:', error);
-          this.message.error('详情加载失败');
-          this.loadingState.set(false);
-          reject(error);
-        },
-      });
-    });
+      const detail = await lastValueFrom(this.reimbursementApi.getClaimById(claimId));
+      this.setEditData(claimId, detail);
+    } catch (error) {
+      console.error('详情加载失败:', error);
+      this.message.error('详情加载失败');
+      throw error;
+    } finally {
+      this.loadingState.set(false);
+    }
   }
 
   /**
-   * 保存草稿 - 调用 createClaim API
+   * 保存草稿 - 自动判断新建或编辑
    */
-  saveDraft(): Promise<boolean> {
+  async saveDraft(): Promise<boolean> {
     if (!this.canSaveDraft()) {
       this.message.warning('请至少填写一项内容');
-      return Promise.resolve(false);
+      return false;
     }
 
-    this.submittingState.set(true);
-    const payload = this.buildSubmitPayload();
-
-    return new Promise((resolve) => {
-      this.reimbursementApi.createClaim(payload).subscribe({
-        next: (result) => {
-          this.submittingState.set(false);
-          // 保存成功后更新 currentClaimId
-          this.currentClaimIdState.set(result.id);
-          this.message.success('草稿保存成功');
-          resolve(true);
-        },
-        error: (error) => {
-          this.submittingState.set(false);
-          this.message.error(error.message || '保存失败，请重试');
-          resolve(false);
-        },
-      });
-    });
-  }
-
-  /**
-   * 提交审批 - 完整流程：先创建报销单，再提交审批
-   * 带防重复提交保护
-   */
-  private isSubmitting = false;
-
-  submitApproval(): Promise<boolean> {
-    if (!this.canSubmit()) {
-      this.message.warning('请填写完整的报销信息');
-      return Promise.resolve(false);
-    }
-
-    // 防止重复提交
     if (this.isSubmitting) {
-      this.message.warning('正在提交中，请勿重复操作');
-      return Promise.resolve(false);
+      this.message.warning('正在保存中，请勿重复操作');
+      return false;
     }
 
     this.isSubmitting = true;
     this.submittingState.set(true);
-    const payload = this.buildSubmitPayload();
 
-    return new Promise((resolve) => {
-      // 第一步：创建报销单
-      this.reimbursementApi.createClaim(payload).subscribe({
-        next: (createResult) => {
-          console.log(createResult, 'createResult');
-          const claimId = createResult.id;
+    try {
+      const payload = this.buildSubmitPayload();
+      console.log('payload:', payload);
+      
+      if (this.isEditMode()) {
+        // 编辑模式：更新报销单
+        const claimId = this.currentClaimIdState()!;
+        const result = await lastValueFrom(this.reimbursementApi.updateClaim(claimId, payload));
+        this.message.success('报销单更新成功');
+        return true;
+      } else {
+        // 新建模式：创建报销单
+        const result = await lastValueFrom(this.reimbursementApi.createClaim(payload));
+        this.currentClaimIdState.set(result.id);
+        this.message.success('草稿保存成功');
+        return true;
+      }
+    } catch (error: any) {
+      this.message.error(error.message || '保存失败，请重试');
+      return false;
+    } finally {
+      this.isSubmitting = false;
+      this.submittingState.set(false);
+    }
+  }
 
-          // 保存 claimId 到状态
-          this.currentClaimIdState.set(claimId);
+  /**
+   * 提交审批 - 自动判断新建或编辑
+   */
+  async submitApproval(): Promise<boolean> {
+    if (!this.canSubmit()) {
+      this.message.warning('请填写完整的报销信息');
+      return false;
+    }
 
-          // 第二步：提交审批
-          this.reimbursementApi.submitClaim(claimId).subscribe({
-            next: () => {
-              this.isSubmitting = false;
-              this.submittingState.set(false);
-              this.draftState.update((draft) => ({ ...draft, status: 'submitted' }));
-              this.message.success('提交审批成功');
-              resolve(true);
-            },
-            error: (submitError) => {
-              this.isSubmitting = false;
-              this.submittingState.set(false);
-              // 创建成功但提交失败，提示用户可稍后提交
-              this.message.error(submitError.message || '创建成功，但提交审批失败，请稍后重试');
-              resolve(false);
-            },
-          });
-        },
-        error: (createError) => {
-          this.isSubmitting = false;
-          this.submittingState.set(false);
-          this.message.error(createError.message || '创建报销单失败，请重试');
-          resolve(false);
-        },
-      });
-    });
+    if (this.isSubmitting) {
+      this.message.warning('正在提交中，请勿重复操作');
+      return false;
+    }
+
+    this.isSubmitting = true;
+    this.submittingState.set(true);
+
+    try {
+      const payload = this.buildSubmitPayload();
+      let claimId: string;
+
+      if (this.isEditMode()) {
+        // 编辑模式：先更新报销单
+        claimId = this.currentClaimIdState()!;
+        await lastValueFrom(this.reimbursementApi.updateClaim(claimId, payload));
+      } else {
+        // 新建模式：创建报销单
+        const createResult = await lastValueFrom(this.reimbursementApi.createClaim(payload));
+        claimId = createResult.id;
+        this.currentClaimIdState.set(claimId);
+      }
+
+      // 提交审批
+      await lastValueFrom(this.reimbursementApi.submitClaim(claimId));
+
+      this.draftState.update((draft) => ({ ...draft, status: 'submitted' }));
+      this.message.success('提交审批成功');
+      return true;
+    } catch (error: any) {
+      this.message.error(error.message || '提交审批失败，请重试');
+      return false;
+    } finally {
+      this.isSubmitting = false;
+      this.submittingState.set(false);
+    }
+  }
+
+  /**
+   * 仅更新报销单（不提交）
+   */
+  async updateClaimOnly(): Promise<boolean> {
+    const claimId = this.currentClaimIdState();
+
+    if (!claimId) {
+      this.message.error('未找到要编辑的报销单');
+      return false;
+    }
+
+    if (!this.canSubmit()) {
+      this.message.warning('请填写完整的报销信息');
+      return false;
+    }
+
+    if (this.isSubmitting) {
+      this.message.warning('正在保存中，请勿重复操作');
+      return false;
+    }
+
+    this.isSubmitting = true;
+    this.submittingState.set(true);
+
+    try {
+      const payload = this.buildSubmitPayload();
+      await lastValueFrom(this.reimbursementApi.updateClaim(claimId, payload));
+      this.message.success('报销单更新成功');
+      return true;
+    } catch (error: any) {
+      this.message.error(error.message || '更新失败，请重试');
+      return false;
+    } finally {
+      this.isSubmitting = false;
+      this.submittingState.set(false);
+    }
   }
 
   /**
@@ -398,6 +463,7 @@ export class TravelExpenseStore {
     this.draftState.set({ ...DEFAULT_DRAFT });
     this.basicInfoValidState.set(false);
     this.currentClaimIdState.set(null);
+    this.isSubmitting = false;
     this.message.info('表单已重置');
   }
 
@@ -412,10 +478,16 @@ export class TravelExpenseStore {
   // Private Methods
   // =========================
 
+  /**
+   * 计算总金额
+   */
   private calculateTotalAmount(items: ReimbursementItemInput[]): number {
     return items.reduce((total, item) => total + (item.amount || 0), 0);
   }
 
+  /**
+   * 更新汇总总金额
+   */
   private updateSummaryTotal(totalAmount: number): void {
     const currentSummary = this.draftState().summary;
     this.draftState.update((draft) => ({
@@ -423,27 +495,33 @@ export class TravelExpenseStore {
       summary: {
         ...currentSummary,
         totalAmount: totalAmount,
-        differenceAmount: (currentSummary.advanceAmount ?? 0) - totalAmount,
+        differenceAmount: currentSummary.advanceAmount - totalAmount,
       },
     }));
   }
-  updateAttachments(attachments: any[]): void {
-    this.draftState.update((draft) => ({
-      ...draft,
-      summary: {
-        ...draft.summary,
-        attachments: attachments,
-      },
-    }));
-  }
+
+  /**
+   * 构建提交数据
+   */
   private buildSubmitPayload(): CreateReimbursementClaimInput {
     const draft = this.draftState();
     const basicInfo = draft.basicInfo;
-    // 转换附件格式，确保包含必要的字段
-    const attachments: any = (draft.summary.attachments || []).map((att) => ({
-      uploadId: att.uploadId || att.id, // 使用 uploadId 或 id
-      category: att.category || 'other',
-    }));
+
+    // 过滤无效的 expenseItems
+    const validExpenseItems = draft.expenseItems.filter((item) => {
+      const hasAmount = item.amount !== null && item.amount !== undefined && item.amount !== 0;
+      const hasLocation = (item.fromLocation?.trim() !== '') || (item.toLocation?.trim() !== '');
+      return hasAmount || hasLocation;
+    });
+    
+    // 转换附件格式
+    const attachments:any = (draft.summary.attachments || [])
+      .filter((att) => att.uploadId || att.id)
+      .map((att) => ({
+        uploadId: att.uploadId || att.id,
+        category: att.category || 'other',
+      }));
+      console.log(draft.summary.attachments,'draft.summary.attachments',draft,'构建后',attachments,validExpenseItems);
 
     return {
       claimType: basicInfo.claimType,
@@ -457,8 +535,8 @@ export class TravelExpenseStore {
       travelDays: basicInfo.travelDays,
       receiptCount: basicInfo.receiptCount,
       advanceAmount: draft.summary.advanceAmount,
-      attachments: attachments, // 使用转换后的附件格式
-      items: draft.expenseItems.map((item, index) => ({
+      attachments: attachments,
+      items: validExpenseItems.map((item, index) => ({
         ...item,
         sort: index + 1,
       })),

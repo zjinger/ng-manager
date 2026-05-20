@@ -19,7 +19,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzUploadFile, NzUploadModule, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { Subscription } from 'rxjs';
+import { Subscription, lastValueFrom } from 'rxjs';
 
 import {
   AttachmentPreviewKind,
@@ -35,6 +35,7 @@ import {
   ReimbursementAttachmentEntity,
   ReimbursementAttachmentCategory,
 } from '@app/features/reimbursement/models/reimbursement.model';
+import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
 
 const DEFAULT_SUMMARY: ExpenseSummary = {
   totalAmount: 0,
@@ -332,6 +333,7 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)
 export class ExpenseSummaryAttachmentComponent implements OnDestroy {
   private readonly message = inject(NzMessageService);
   private readonly reimbursementUpload = inject(ReimbursementUploadService);
+  private readonly reimbursementApi = inject(ReimbursementApiService);
 
   /**
    * 预览URL缓存
@@ -366,6 +368,11 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
   readonly attachmentCategory = input<ReimbursementAttachmentCategory>('other');
 
   /**
+   * 报销单ID（用于绑定附件）
+   */
+  readonly claimId = input<string | null>(null);
+
+  /**
    * 上传策略配置
    */
   readonly uploadPolicy = UPLOAD_POLICY;
@@ -390,7 +397,6 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
    * 附件预览列表
    */
   readonly attachmentPreviewItems = computed<AttachmentPreviewItem[]>(() => {
-     console.log('attachments:', this.summary().attachments);
     return this.summary().attachments.map((att) => ({
       id: att.id!,
       name: att.originalName || att.fileName || '未知文件',
@@ -400,23 +406,6 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
       removable: true,
     }));
   });
-
-  /**
-   * 获取附件URL
-   */
-  private getAttachmentUrl(attachment: ReimbursementAttachmentEntity): string {
-    // 优先返回服务器 URL（以 http 开头的）
-    if (attachment.fileName) {
-      return attachment.fileName;
-    }
-
-    // 如果是上传中的临时附件，返回临时 URL
-    if ((attachment as any).uploading && (attachment as any).tempUrl) {
-      return (attachment as any).tempUrl;
-    }
-    // 默认返回空字符串
-    return '';
-  }
 
   /**
    * 预支金额变化
@@ -432,11 +421,11 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
       differenceAmount: finalAmount - current.totalAmount,
     };
 
-    this.updateSummary(updated);
+    this.updateSummary(updated, { skipAttachments: true });
   }
 
   /**
-   * 更新总金额
+   * 更新总金额（由外部调用）
    */
   updateTotalAmount(totalAmount: number): void {
     const current = this.summary();
@@ -447,115 +436,132 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
       differenceAmount: current.advanceAmount - totalAmount,
     };
 
-    this.updateSummary(updated);
+    // 总金额变化只更新 summary，不触发附件和预支金额变化
+    this.updateSummary(updated, { skipAttachments: true, skipAdvance: true });
   }
 
   /**
    * 上传前校验
    */
- /**
- * 上传前校验
- */
- readonly beforeUpload = async (file: NzUploadFile): Promise<boolean> => {
-  const rawFile = this.toRawFile(file);
+  readonly beforeUpload = async (file: NzUploadFile): Promise<boolean> => {
+    const rawFile = this.toRawFile(file);
 
-  if (!rawFile) {
-    this.message.error('文件读取失败');
+    if (!rawFile) {
+      this.message.error('文件读取失败');
+      return false;
+    }
+
+    // 使用策略进行校验
+    const validationMessage = validateUploadFile(rawFile, this.uploadPolicy);
+    if (validationMessage) {
+      this.message.error(validationMessage);
+      return false;
+    }
+
+    const exists = this.summary().attachments.some(
+      (att) => att.originalName === rawFile.name && att.fileSize === rawFile.size
+    );
+
+    if (exists) {
+      this.message.warning('文件已存在');
+      return false;
+    }
+
+    // 开始上传
+    this.uploading.set(true);
+
+    let tempId = '';
+
+    try {
+      tempId = generateId();
+      const previewUrl = URL.createObjectURL(rawFile);
+      this.previewUrlMap.set(this.fileIdentity(rawFile), previewUrl);
+
+      // 添加临时附件（上传中状态）
+      const tempAttachment: ReimbursementAttachmentEntity & {
+        uploading: boolean;
+        tempUrl: string;
+      } = {
+        id: tempId,
+        originalName: rawFile.name,
+        fileName: previewUrl,
+        mimeType: rawFile.type,
+        fileSize: rawFile.size,
+        category: this.attachmentCategory(),
+        uploading: true,
+        tempUrl: previewUrl,
+        createdAt: new Date().toISOString(),
+      };
+
+      const updatedWithTemp = {
+        ...this.summary(),
+        attachments: [...this.summary().attachments, tempAttachment],
+      };
+      // 添加临时附件，需要触发 attachmentsChange
+      this.updateSummary(updatedWithTemp);
+
+      // 实际上传到服务器（获取 uploadId）
+      const result = await this.reimbursementUpload.uploadReimbursementFile(rawFile);
+      const uploadId = result.uploadId;
+      const serverUrl = result.fileUrl;
+
+      // 如果有 claimId，调用 attachUpload 绑定附件到报销单
+      const currentClaimId = this.claimId();
+      if (currentClaimId) {
+        try {
+          await lastValueFrom(
+            this.reimbursementApi.attachUpload(currentClaimId, {
+              uploadId: uploadId,
+              category: this.attachmentCategory(),
+            })
+          );
+        } catch (attachError) {
+          console.error('绑定附件失败:', attachError);
+          this.message.warning('文件已上传但绑定失败，请稍后重试');
+          // 上传成功但绑定失败，不移除文件，让用户可以重试
+        }
+      }
+
+      // 上传成功，更新附件信息
+      const finalAttachment: ReimbursementAttachmentEntity = {
+        id: tempId,
+        uploadId: uploadId,
+        originalName: rawFile.name,
+        fileName: serverUrl,
+        mimeType: rawFile.type,
+        fileSize: rawFile.size,
+        category: this.attachmentCategory(),
+        createdAt: new Date().toISOString(),
+      };
+
+      const updatedWithFinal = {
+        ...this.summary(),
+        attachments: this.summary().attachments.map((att) =>
+          att.id === tempId ? finalAttachment : att
+        ),
+      };
+      // 更新最终附件，需要触发 attachmentsChange
+      this.updateSummary(updatedWithFinal);
+
+      this.message.success(`${rawFile.name} 上传成功`);
+    } catch (error) {
+      // 上传失败，移除临时附件
+      const updated = {
+        ...this.summary(),
+        attachments: this.summary().attachments.filter((att) => att.id !== tempId),
+      };
+      // 移除临时附件，需要触发 attachmentsChange
+      this.updateSummary(updated);
+
+      const errorMessage = error instanceof Error ? error.message : '文件上传失败';
+      this.message.error(`${rawFile.name} ${errorMessage}`);
+    } finally {
+      this.uploading.set(false);
+    }
+
     return false;
-  }
+  };
 
-  // 使用策略进行校验
-  const validationMessage = validateUploadFile(rawFile, this.uploadPolicy);
-  if (validationMessage) {
-    this.message.error(validationMessage);
-    return false;
-  }
-
-  const exists = this.summary().attachments.some(
-    (att) => att.originalName === rawFile.name && att.fileSize === rawFile.size
-  );
-
-  if (exists) {
-    this.message.warning('文件已存在');
-    return false;
-  }
-
-  // 开始上传
-  this.uploading.set(true);
-  
-  let tempId = '';
-
-  try {
-    tempId = generateId();
-    const previewUrl = URL.createObjectURL(rawFile);
-    this.previewUrlMap.set(this.fileIdentity(rawFile), previewUrl);
-
-    // 添加临时附件（上传中状态）
-    const tempAttachment: ReimbursementAttachmentEntity & { uploading: boolean; tempUrl: string } = {
-      id: tempId,
-      originalName: rawFile.name,
-      fileName: previewUrl,
-      mimeType: rawFile.type,
-      fileSize: rawFile.size,
-      category: this.attachmentCategory(),
-      uploading: true,
-      tempUrl: previewUrl,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedWithTemp = {
-      ...this.summary(),
-      attachments: [...this.summary().attachments, tempAttachment],
-    };
-    this.updateSummary(updatedWithTemp);
-
-    // 实际上传到服务器
-    const result = await this.reimbursementUpload.uploadReimbursementFile(rawFile);
-    console.log('Upload result:', result);
-    
-    // 使用返回的数据
-    const uploadId = result.uploadId;
-    const serverUrl = result.fileUrl;  // 完整的访问 URL
-
-    // 上传成功，更新附件信息
-    const finalAttachment: ReimbursementAttachmentEntity = {
-      id: tempId,
-      uploadId: uploadId,  // 保存 uploadId
-      originalName: rawFile.name,
-      fileName: serverUrl,  // 使用完整的服务器 URL
-      mimeType: rawFile.type,
-      fileSize: rawFile.size,
-      category: this.attachmentCategory(),
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedWithFinal = {
-      ...this.summary(),
-      attachments: this.summary().attachments.map(att => 
-        att.id === tempId ? finalAttachment : att
-      ),
-    };
-    this.updateSummary(updatedWithFinal);
-
-    this.message.success(`${rawFile.name} 上传成功`);
-    
-  } catch (error) {
-    // 上传失败，移除临时附件
-    const updated = {
-      ...this.summary(),
-      attachments: this.summary().attachments.filter(att => att.id !== tempId),
-    };
-    this.updateSummary(updated);
-    
-    const errorMessage = error instanceof Error ? error.message : '文件上传失败';
-    this.message.error(`${rawFile.name} ${errorMessage}`);
-    
-  } finally {
-    this.uploading.set(false);
-  }
-
-  return false;
-};
   /**
    * 自定义上传（不做实际请求，因为已经在 beforeUpload 中处理了）
    */
@@ -569,13 +575,11 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
   /**
    * 删除附件
    */
-  removeAttachmentById(id: string): void {
-    const attachment = this.summary().attachments.find((item) => item.id === id);
-
+  async removeAttachmentById(id: string): Promise<void> {
+    const attachment:any = this.summary().attachments.find((item) => item.id === id);
     if (!attachment) {
       return;
     }
-
     // 如果是上传中的附件，直接移除
     if ((attachment as any).uploading) {
       this.revokePreviewUrlByUrl((attachment as any).tempUrl);
@@ -588,7 +592,21 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
       return;
     }
 
-    // 已上传的附件，释放预览URL
+    // 已上传的附件，需要调用 detachUpload 解绑
+    const currentClaimId = this.claimId();
+    if (currentClaimId && attachment.uploadId) {
+      try {
+        await lastValueFrom(
+          this.reimbursementApi.detachUpload(currentClaimId, attachment.id)
+        );
+      } catch (detachError) {
+        console.error('解绑附件失败:', detachError);
+        this.message.error('删除附件失败，请重试');
+        return;
+      }
+    }
+
+    // 释放预览URL
     if (attachment.fileName) {
       this.revokePreviewUrlByUrl(attachment.fileName);
     }
@@ -599,18 +617,45 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
     };
 
     this.updateSummary(updated);
-
     this.message.success(`${attachment.originalName || attachment.fileName} 已删除`);
+  }
+
+  /**
+   * 设置附件列表（外部设置时使用）
+   */
+  setAttachments(attachments: ReimbursementAttachmentEntity[]): void {
+    const current = this.summary();
+    const updated: ExpenseSummary = {
+      ...current,
+      attachments,
+    };
+    this.updateSummary(updated);
+  }
+
+  /**
+   * 获取所有附件（供外部使用）
+   */
+  getAttachments(): ReimbursementAttachmentEntity[] {
+    return this.summary().attachments;
   }
 
   /**
    * 统一更新 summary
    */
-  private updateSummary(summary: ExpenseSummary): void {
+  private updateSummary(
+    summary: ExpenseSummary,
+    emitOptions?: { skipAttachments?: boolean; skipAdvance?: boolean }
+  ): void {
     this.summary.set(summary);
     this.summaryChange.emit(summary);
-    this.attachmentsChange.emit(summary.attachments as ReimbursementAttachmentEntity[]);
-    this.advanceAmountChange.emit(summary.advanceAmount);
+
+    if (!emitOptions?.skipAttachments) {
+      this.attachmentsChange.emit(summary.attachments as ReimbursementAttachmentEntity[]);
+    }
+
+    if (!emitOptions?.skipAdvance) {
+      this.advanceAmountChange.emit(summary.advanceAmount);
+    }
   }
 
   /**

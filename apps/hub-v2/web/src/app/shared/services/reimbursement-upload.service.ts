@@ -19,24 +19,17 @@ export class ReimbursementUploadService {
   ): Promise<{ uploadId: string; fileUrl: string; fileInfo: UploadEntity }> {
     this.validateFile(file, policy);
     const formData = buildUploadFormData(file, policy, options);
-
     try {
       // ApiClientService 可能已经自动解包，直接返回 data
       const uploadData = await firstValueFrom(
-        this.api.post<UploadEntity, FormData>('/uploads', formData)
+        this.api.post<UploadEntity, FormData>(`/uploads`, formData)
       );
-      
-      console.log('API Response (auto-unwrapped):', uploadData);
-      
       // 直接检查 uploadData 是否有 id
       if (!uploadData || !uploadData.id) {
         throw new Error('上传失败：未获取到文件ID');
       }
 
       const fileUrl = `${this.apiBaseUrl}/uploads/${uploadData.id}/raw`;
-      
-      console.log('Upload success:', { uploadId: uploadData.id, fileUrl });
-      
       return {
         uploadId: uploadData.id,
         fileUrl: fileUrl,

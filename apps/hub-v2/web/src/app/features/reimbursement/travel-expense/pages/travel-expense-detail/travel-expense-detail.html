@@ -3,7 +3,17 @@
     <button nz-button nzType="default" (click)="goBack()">
       <i nz-icon nzType="arrow-left"></i>返回
     </button>
-    <button nz-button nzType="primary" (click)="goEdit()"><i nz-icon nzType="edit"></i>编辑</button>
+    <ng-container>
+      @if (headerData().status == 'draft') {
+        <button 
+          nz-button 
+          nzType="primary" 
+          (click)="goEdit()"
+        >
+          <i nz-icon nzType="edit"></i>编辑
+        </button>
+      }
+    </ng-container>
   </div>
   <!-- 顶部信息 -->
   <app-process-header-card [data]="headerData()" />
@@ -39,7 +49,7 @@
     <!-- 右侧审批流 -->
     <aside class="report-layout__side">
       <div class="card query-card">
-        <div class="query-card__label">审批流预览</div>
+        <div class="query-card__label">审批流程预览</div>
         <app-approval-flow
           [approvalPreview]="approvalPreview()"
           (action)="handleApprovalAction($event)"

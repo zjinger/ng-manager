@@ -34,6 +34,7 @@
       <!-- 金额汇总与附件组件 -->
       <app-expense-summary-attachment
         [(summary)]="draft().summary"
+        [claimId]="expenseId"
         (summaryChange)="onSummaryChange($event)"
         (attachmentsChange)="onAttachmentsChange($event)"
         (advanceAmountChange)="onAdvanceAmountChange($event)"
@@ -46,7 +47,6 @@
       <div class="query-card__label">审批流预览</div>
       <app-approval-flow
         [approvalPreview]="draft().approvalPreview!"
-        (action)="handleApprovalAction($event)"
       />
     </div>
   </div>

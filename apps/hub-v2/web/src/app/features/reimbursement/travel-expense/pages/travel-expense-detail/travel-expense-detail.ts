@@ -30,11 +30,14 @@ import type {
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { CreateReimbursementClaimInput } from '@app/features/reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
+import { HasPermissionDirective } from '@app/core/auth/has-permission.directive';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-travel-expense-detail',
   standalone: true,
   imports: [
+    CommonModule,
     NzButtonComponent,
     NzIconModule,
     NzSpinModule,
@@ -43,6 +46,7 @@ import { ReimbursementApiService } from '@app/features/reimbursement/services/re
     AttachmentPreviewWallComponent,
     ApprovalFlowComponent,
     RecordListComponent,
+    HasPermissionDirective
   ],
   templateUrl: './travel-expense-detail.html',
   styleUrls: ['./travel-expense-detail.less'],

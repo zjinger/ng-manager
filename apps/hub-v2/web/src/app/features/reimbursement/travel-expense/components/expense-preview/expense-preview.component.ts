@@ -1,6 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CreateReimbursementClaimInput, ReimbursementItemInput } from '@app/features/reimbursement/models/reimbursement.model';
+import {
+  CreateReimbursementClaimInput,
+  ReimbursementItemInput,
+  TravelReimbursementItemMeta,
+} from '@app/features/reimbursement/models/reimbursement.model';
 
 // 中文数字映射
 const chineseNumbers = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
@@ -55,7 +59,10 @@ const TIME_LABEL_MAP: Record<string, string> = {
 };
 
 // 格式化路线
-function formatTravelRoute(fromLocation: string | null | undefined, toLocation: string | null | undefined): string {
+function formatTravelRoute(
+  fromLocation: string | null | undefined,
+  toLocation: string | null | undefined
+): string {
   const from = fromLocation || '';
   const to = toLocation || '';
   if (!from && !to) return '-';
@@ -247,7 +254,7 @@ interface ExpenseMeta {
               </div>
 
               <!-- 动态行数据 -->
-              @for (item of items(); track item.id; let idx = $index) {
+              @for (item of displayItems(); track item.id; let idx = $index) {
               <div class="rowFour" [class.rowFive]="idx === 1" [class.rowSix]="idx === 2">
                 <div class="dateVessel">
                   <div class="dateVesselO typeface">{{ getMonthFromDate(item.occurredDate) }}</div>
@@ -258,15 +265,31 @@ interface ExpenseMeta {
                     {{ getDayFromDate(item.occurredDate) }}
                   </div>
                 </div>
-                <div class="place typeface">{{ formatTravelRoute(item.fromLocation, item.toLocation) }}</div>
+                <div class="place typeface">
+                  {{ formatTravelRoute(item.fromLocation, item.toLocation) }}
+                </div>
                 <div class="days typeface">{{ getMetaValue(item, 'days') }}</div>
-                <div class="airFare typeface">{{ formatMoney(getMetaValue(item, 'airfare')) }}</div>
-                <div class="carOrShip typeface">{{ formatMoney(getMetaValue(item, 'transportation')) }}</div>
-                <div class="traffic typeface">{{ formatMoney(getMetaValue(item, 'localTransport')) }}</div>
-                <div class="hotel typeface">{{ formatMoney(getMetaValue(item, 'accommodation')) }}</div>
-                <div class="travel typeface">{{ formatMoney(getMetaValue(item, 'mealAllowance')) }}</div>
-                <div class="meals typeface">{{ formatMoney(getMetaValue(item, 'mealExpenses')) }}</div>
-                <div class="other typeface">{{ formatMoney(getMetaValue(item, 'other')) }}</div>
+                <div class="airFare typeface">
+                  {{ formatMoney(getMetaValue(item, 'airfareAmount')) }}
+                </div>
+                <div class="carOrShip typeface">
+                  {{ formatMoney(getMetaValue(item, 'carriageAmount')) }}
+                </div>
+                <div class="traffic typeface">
+                  {{ formatMoney(getMetaValue(item, 'localTransportAmount')) }}
+                </div>
+                <div class="hotel typeface">
+                  {{ formatMoney(getMetaValue(item, 'lodgingAmount')) }}
+                </div>
+                <div class="travel typeface">
+                  {{ formatMoney(getMetaValue(item, 'mealAllowanceAmount')) }}
+                </div>
+                <div class="meals typeface">
+                  {{ formatMoney(getMetaValue(item, 'mealAmount')) }}
+                </div>
+                <div class="other typeface">
+                  {{ formatMoney(getMetaValue(item, 'otherAmount')) }}
+                </div>
                 <div class="subtotal typeface">{{ formatMoney(item.amount) }}</div>
               </div>
               }
@@ -284,7 +307,7 @@ interface ExpenseMeta {
                   合&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;计
                 </div>
                 <div class="total typeface" style="color: black; width: 52px">
-                  {{ totalDays() }}
+                {{ totalDays() === 0 ? '' : totalDays() }}
                 </div>
                 <div class="total typeface" style="color: black; width: 70px">
                   {{ formatMoney(totalAirfare()) }}
@@ -385,7 +408,7 @@ interface ExpenseMeta {
       </div>
     </div>
   `,
-   styles: [
+  styles: [
     `
       .typeface {
         color: black;
@@ -765,9 +788,9 @@ export class ExpensePreviewComponent {
   readonly items = computed(() => this.formData().items || []);
 
   // 获取 meta 中的值
-  getMetaValue(item: ReimbursementItemInput, key: keyof ExpenseMeta): number {
+  getMetaValue(item: ReimbursementItemInput, key: keyof TravelReimbursementItemMeta): number {
     const meta = item.meta as any;
-    return meta?.[key] ?? 0;
+    return meta?.[key] ?? null;
   }
 
   // 计算属性
@@ -776,31 +799,52 @@ export class ExpensePreviewComponent {
   });
 
   totalAirfare = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'airfare') || 0), 0);
+    return this.items().reduce(
+      (sum, item) => sum + (this.getMetaValue(item, 'airfareAmount') || 0),
+      0
+    );
   });
 
   totalTransportation = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'transportation') || 0), 0);
+    return this.items().reduce(
+      (sum, item) => sum + (this.getMetaValue(item, 'carriageAmount') || 0),
+      0
+    );
   });
 
   totalLocalTransport = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'localTransport') || 0), 0);
+    return this.items().reduce(
+      (sum, item) => sum + (this.getMetaValue(item, 'localTransportAmount') || 0),
+      0
+    );
   });
 
   totalAccommodation = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'accommodation') || 0), 0);
+    return this.items().reduce(
+      (sum, item) => sum + (this.getMetaValue(item, 'lodgingAmount') || 0),
+      0
+    );
   });
 
   totalMealAllowance = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'mealAllowance') || 0), 0);
+    return this.items().reduce(
+      (sum, item) => sum + (this.getMetaValue(item, 'mealAllowanceAmount') || 0),
+      0
+    );
   });
 
   totalMealExpenses = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'mealExpenses') || 0), 0);
-   });
+    return this.items().reduce(
+      (sum, item) => sum + (this.getMetaValue(item, 'mealAmount') || 0),
+      0
+    );
+  });
 
   totalOther = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'other') || 0), 0);
+    return this.items().reduce(
+      (sum, item) => sum + (this.getMetaValue(item, 'otherAmount') || 0),
+      0
+    );
   });
 
   grandTotal = computed(() => {
@@ -842,7 +886,35 @@ export class ExpensePreviewComponent {
     if (!value) return '';
     return TIME_LABEL_MAP[value] || '';
   }
+// 创建空行的工厂函数
+private createEmptyItem(id: string): ReimbursementItemInput {
+  return {
+    id: id,
+    itemType: 'travel',
+    category: null,
+    description: null,
+    occurredDate: null,
+    startDate: null,
+    endDate: null,
+    fromLocation: null,
+    toLocation: null,
+    amount: 0,
+    meta: null,
+  };
+}
 
+// 始终显示3行的行程明细
+readonly displayItems = computed(() => {
+  const actualItems = this.items();
+  const targetRowCount = 3;
+  const displayList = [...actualItems];
+  
+  for (let i = displayList.length; i < targetRowCount; i++) {
+    displayList.push(this.createEmptyItem(`empty-${i}`));
+  }
+  
+  return displayList;
+});
   getChineseDigit(amount: number, position: number): string {
     const total = Math.floor(amount);
     // 金额单位顺序：万、仟、佰、拾、元、角、分
@@ -852,21 +924,21 @@ export class ExpensePreviewComponent {
     const bai = Math.floor((remainder % 1000) / 100);
     const shi = Math.floor((remainder % 100) / 10);
     const yuan = remainder % 10;
-    
+
     const decimalPart = Math.round((amount - total) * 100);
     const jiao = Math.floor(decimalPart / 10);
     const fen = decimalPart % 10;
-    
+
     const digits: Record<number, number> = {
-      1: wan,   // 万
-      2: qian,  // 仟
-      3: bai,   // 佰
-      4: shi,   // 拾
-      5: yuan,  // 元
-      6: jiao,  // 角
-      7: fen,   // 分
+      1: wan, // 万
+      2: qian, // 仟
+      3: bai, // 佰
+      4: shi, // 拾
+      5: yuan, // 元
+      6: jiao, // 角
+      7: fen, // 分
     };
-    
+
     const num = digits[position];
     // 特殊处理：万位为0时不显示，但为了保持位置，返回空字符串
     if (position === 1 && num === 0 && total < 10000) {
@@ -876,11 +948,16 @@ export class ExpensePreviewComponent {
   }
 
   formatMoney(value: number | null | undefined): string {
-    if (value === null || value === undefined) return '0.00';
+    if (value === null || value === undefined || value === 0) {
+      return '';
+    }
     return value.toFixed(2);
   }
 
-  formatTravelRoute(fromLocation: string | null | undefined, toLocation: string | null | undefined): string {
+  formatTravelRoute(
+    fromLocation: string | null | undefined,
+    toLocation: string | null | undefined
+  ): string {
     return formatTravelRoute(fromLocation, toLocation);
   }
 

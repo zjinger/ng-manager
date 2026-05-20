@@ -4,14 +4,14 @@ import { CommonModule } from '@angular/common';
 import { PageHeaderComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzModalService } from 'ng-zorro-antd/modal';
 import { TravelExpenseBasicInfoComponent } from '../../components/travel-expense-basicInfo/travel-expense-basicInfo.component';
 import { ExpenseDetailsComponent } from '../../components/expense-details/expense-details.component';
 import { ExpenseSummaryAttachmentComponent } from '../../components/expense-summary-attachment/expense-summary-attachment.component';
 import { ApprovalFlowComponent } from '../../components/approval-flow/approval-flow.component';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SaveDialogComponent } from '../../dialogs';
 import { TravelExpenseStore } from '@app/features/reimbursement/stores/travel-expense.store';
-
 
 @Component({
   selector: 'app-add-travel-expense',
@@ -36,6 +36,8 @@ import { TravelExpenseStore } from '@app/features/reimbursement/stores/travel-ex
 export class AddTravelExpense implements OnInit {
   private readonly store = inject(TravelExpenseStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly modalService = inject(NzModalService);
 
   // 路由参数
   public expenseId = this.route.snapshot.paramMap.get('id');
@@ -52,6 +54,8 @@ export class AddTravelExpense implements OnInit {
   readonly canSaveDraft = this.store.canSaveDraft;
   readonly previewData = this.store.previewData;
   readonly totalAmount = this.store.totalAmount;
+  readonly isEditMode = this.store.isEditMode;
+  readonly currentClaimId = this.store.currentClaimId;
 
   ngOnInit(): void {
     this.initPage();
@@ -59,8 +63,10 @@ export class AddTravelExpense implements OnInit {
 
   private async initPage(): Promise<void> {
     if (this.expenseId) {
+      // 编辑模式：加载详情
       await this.store.loadDetail(this.expenseId);
     } else {
+      // 新建模式：重置表单
       this.store.resetForm();
     }
   }
@@ -90,14 +96,42 @@ export class AddTravelExpense implements OnInit {
     this.store.updateAdvanceAmount(amount);
   }
 
+  // 附件变化
+  onAttachmentsChange(attachments: any[]): void {
+    this.store.updateAttachments(attachments);
+  }
+
   // 保存草稿
   async saveDraft(): Promise<void> {
-    await this.store.saveDraft();
+    const success = await this.store.saveDraft();
+    if (success) {
+      // 提交成功后跳转到列表页
+      this.modalService.success({
+        nzTitle: '提交成功',
+        nzContent: this.isEditMode() ? '草稿更新并提交成功' : '草稿提交成功',
+        nzOkText: '确定',
+        nzKeyboard: false,
+        nzMaskClosable: false,
+        nzClosable: false,  
+        nzOnOk: () => {
+          this.router.navigate(['/my-expenses']);
+        },
+        nzCancelText: '继续编辑',
+        nzOnCancel: () => {
+          // 留在当前页面继续编辑
+        },
+      });
+    }
   }
 
   // 打开预览弹窗
   openPreviewDialog(): void {
     if (!this.canSubmit()) {
+      this.modalService.warning({
+        nzTitle: '提示',
+        nzContent: '请填写完整的报销信息后再提交',
+        nzOkText: '知道了',
+      });
       return;
     }
     this.previewDialogOpen.set(true);
@@ -106,10 +140,25 @@ export class AddTravelExpense implements OnInit {
   // 确认提交
   async confirmSubmit(action: string): Promise<void> {
     this.previewDialogOpen.set(false);
+
     if (action === 'submit') {
-      await this.store.submitApproval();
-    } else {
-      await this.store.saveDraft();
+      const success = await this.store.submitApproval();
+      if (success) {
+        // 提交成功后跳转到列表页
+        this.modalService.success({
+          nzTitle: '提交成功',
+          nzContent: this.isEditMode() ? '报销单更新并提交成功' : '报销单提交成功',
+          nzOkText: '确定',
+          nzKeyboard: false,
+          nzMaskClosable: false,
+          nzClosable: false,  
+          nzOnOk: () => {
+            this.router.navigate(['/my-expenses']);
+          }
+        });
+      }
+    } else if (action === 'draft') {
+       await this.saveDraft();
     }
   }
 
@@ -117,29 +166,56 @@ export class AddTravelExpense implements OnInit {
   closePreviewDialog(): void {
     this.previewDialogOpen.set(false);
   }
-  onAttachmentsChange(attachments: any): void {
-    console.log('附件变化:', attachments);
-    // 更新 store 中的附件数据
-    this.store.updateAttachments(attachments);
-  }
-  // 返回
+
+  // 返回上一页
   goBack(): void {
-    this.store.goBack();
+    // 检查是否有未保存的更改（注意：hasUnsavedChanges 是 Signal，需要加括号调用）
+    if (this.store.hasUnsavedChanges() && this.store.canSaveDraft()) {
+      this.modalService.confirm({
+        nzTitle: '提示',
+        nzContent: '您有未保存的更改，确定要离开吗？',
+        nzOkText: '离开',
+        nzCancelText: '取消',
+        nzOnOk: () => {
+          this.store.goBack();
+        },
+      });
+    } else {
+      this.store.goBack();
+    }
   }
 
-  // 导出（如需使用）
+  // 导出报销单
   exportForm(): void {
+    if (!this.isEditMode()) {
+      this.modalService.info({
+        nzTitle: '提示',
+        nzContent: '请先保存报销单后再导出',
+        nzOkText: '知道了',
+      });
+      return;
+    }
+    // TODO: 调用导出接口
     console.log('导出报销单:', this.draft());
   }
-  handleApprovalAction(event: any) {
-    // 调用接口提交审批
-    switch (event.type) {
-      case 'pass':
-        // 调用通过接口
-        break;
-      case 'reject':
-        // 调用驳回接口
-        break;
-      // ...
-    }}
+
+
+  // 获取页面标题
+  getPageTitle(): string {
+    if (this.loading()) {
+      return '加载中...';
+    }
+    if (this.isEditMode()) {
+      return this.draft().status === 'submitted' ? '查看报销单' : '编辑报销单';
+    }
+    return '新增报销单';
+  }
+
+  // 获取按钮文本
+  getSubmitButtonText(): string {
+    if (this.isEditMode()) {
+      return this.draft().status === 'submitted' ? '重新提交' : '提交审批';
+    }
+    return '提交审批';
+  }
 }

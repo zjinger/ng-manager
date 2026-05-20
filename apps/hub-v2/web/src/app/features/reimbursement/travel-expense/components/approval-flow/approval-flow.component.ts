@@ -5,7 +5,6 @@ import {
   inject,
   input,
   output,
-  signal,
   OnChanges,
   SimpleChanges,
 } from '@angular/core';
@@ -21,65 +20,15 @@ import {
   CountersignAffirmDialogComponent,
   CountersignData,
 } from '../../dialogs';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { ReimbursementApprovalPreview, ReimbursementApprovalPreviewNode } from '@app/features/reimbursement/models/reimbursement.model';
-
-export type ApprovalAction = 'pass' | 'reject' | 'transfer' | 'addSign';
-
-/** 流程节点显示数据 */
-export interface FlowDisplayNode {
-  stageCode: string;
-  stageName: string;
-  status: 'wait' | 'process' | 'finish' | 'rejected' | 'cancelled';
-  assignees: Array<{ userId: string; name: string }>;
-  index: number;
-}
-
-/** 默认流程节点（用于无数据时的展示） */
-const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
-  {
-    stageCode: 'applicant',
-    stageName: '报销人/出差人',
-    status: 'process',
-    assignees: [],
-    index: 1,
-  },
-  {
-    stageCode: 'current',
-    stageName: '审核',
-    status: 'wait',
-    assignees: [],
-    index: 2,
-  },
-  {
-    stageCode: 'next',
-    stageName: '部门主管',
-    status: 'wait',
-    assignees: [],
-    index: 3,
-  },
-  {
-    stageCode: 'next',
-    stageName: '会计',
-    status: 'wait',
-    assignees: [],
-    index: 4,
-  },
-  {
-    stageCode: 'next',
-    stageName: '出纳',
-    status: 'wait',
-    assignees: [],
-    index: 5,
-  },
-  {
-    stageCode: 'next',
-    stageName: '完成',
-    status: 'wait',
-    assignees: [],
-    index: 6,
-  }
-];
+import { HasPermissionDirective } from '@app/core/auth/has-permission.directive';
+import { ReimbursementApprovalPreview } from '@app/features/reimbursement/models/reimbursement.model';
+import { ApprovalAction, ApprovalActionService } from '../../service/approval-action.service';
+import {
+  FlowDisplayNode,
+  getAssigneeNames,
+  getStatusText,
+  transformToDisplayNodes,
+} from '../../models/flow-node.utils';
 
 @Component({
   selector: 'app-approval-flow',
@@ -91,15 +40,16 @@ const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
     CountersignAffirmDialogComponent,
     ApprovalPassDialogComponent,
     ApprovalRejectDialogComponent,
+    HasPermissionDirective,
   ],
+  providers: [ApprovalActionService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="approval-wrapper">
-      <!-- 流程  -->
+      <!-- 流程 -->
       <div class="approval-flow">
-        @for (node of displayNodes(); track node.stageCode; let last = $last) {
+      @for (node of displayNodes(); track $index; let last = $last) {
         <div class="flow-item">
-          <!-- 左侧 -->
           <div class="flow-left">
             <div
               class="flow-circle"
@@ -111,13 +61,11 @@ const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
             >
               {{ node.index }}
             </div>
-
             @if (!last) {
             <div class="flow-line" [class.active]="isLineActive(node)"></div>
             }
           </div>
 
-          <!-- 右侧 -->
           <div class="flow-content">
             <div class="flow-title">
               {{ node.stageName }}
@@ -127,7 +75,6 @@ const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
               </span>
               }
             </div>
-
             <div
               class="flow-desc"
               [class.process-text]="node.status === 'process'"
@@ -141,72 +88,48 @@ const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
       </div>
 
       <!-- 审批意见 -->
-      <div class="approval-panel">
-        <div class="panel-title">审批意见</div>
-
+      <div class="approval-panel" *appHasPermission="['expense.rule.manage']">
+        <div class="panel-title">备注说明</div>
         <textarea
           class="approval-textarea"
-          [(ngModel)]="opinion"
-          placeholder="请输入审批意见，例如：票据完整，同意报销"
+          [(ngModel)]="comment"
+          placeholder="请输入相关备注说明，例如：票据完整，同意报销"
         ></textarea>
 
-        <!-- 第一行 -->
         <div class="action-row action-row--primary">
           <button class="action-btn pass" (click)="onPass()">✓ 通过</button>
           <button class="action-btn reject" (click)="onReject()">✕ 驳回</button>
         </div>
-
-        <!-- 第二行 -->
-        <!-- <div class="action-row">
-          <button class="action-btn secondary" (click)="onTransfer()">↷ 转交</button>
-          <button class="action-btn secondary" (click)="onAddSign()">⊕ 加签</button>
-        </div> -->
-
-        <!-- 说明 -->
-        <!-- <div class="helper-card">
-          <div class="helper-title">辅助流转说明</div>
-          <div class="helper-item">
-            <span class="helper-label">转交：</span>
-            当前节点责任人变更为其他审批人。
-          </div>
-          <div class="helper-item">
-            <span class="helper-label">加签：</span>
-            邀请他人补充意见，完成后回到当前审批人继续处理。
-          </div>
-        </div>
-      </div> -->
+      </div>
     </div>
 
-    <!-- 转交弹窗 -->
+    <!-- 弹窗组件 -->
     <approval-transfer-dialog
-      [open]="showTransferDialog()"
-      [submitting]="isTransferring()"
+      [open]="approvalAction.showTransferDialog()"
+      [submitting]="approvalAction.isTransferring()"
       (submit)="handleTransfer($event)"
-      (cancel)="closeTransferDialog()"
+      (cancel)="approvalAction.closeTransferDialog()"
     />
 
-    <!-- 加签弹窗 -->
     <countersign-affirm-dialog
-      [open]="showCountersignDialog()"
-      [submitting]="isCountersigning()"
+      [open]="approvalAction.showCountersignDialog()"
+      [submitting]="approvalAction.isCountersigning()"
       (submit)="handleCountersign($event)"
-      (cancel)="closeCountersignDialog()"
+      (cancel)="approvalAction.closeCountersignDialog()"
     />
 
-    <!-- 通过弹窗 -->
     <approval-pass-dialog
-      [open]="showPassDialog()"
-      [submitting]="isPassing()"
+      [open]="approvalAction.showPassDialog()"
+      [submitting]="approvalAction.isPassing()"
       (submit)="handlePass($event)"
-      (cancel)="closePassDialog()"
+      (cancel)="approvalAction.closePassDialog()"
     />
 
-    <!-- 驳回弹窗 -->
     <approval-reject-dialog
-      [open]="showRejectDialog()"
-      [submitting]="isRejecting()"
+      [open]="approvalAction.showRejectDialog()"
+      [submitting]="approvalAction.isRejecting()"
       (submit)="handleReject($event)"
-      (cancel)="closeRejectDialog()"
+      (cancel)="approvalAction.closeRejectDialog()"
     />
   `,
   styles: [
@@ -507,54 +430,28 @@ const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
   ],
 })
 export class ApprovalFlowComponent implements OnChanges {
-  private messageService = inject(NzMessageService);
+  public approvalAction = inject(ApprovalActionService);
 
   // ========== 输入输出 ==========
   readonly action = output<{
     type: ApprovalAction;
     opinion: string;
-    detail?: TransferData | CountersignData | ApprovalPassData | ApprovalRejectData;
+    detail?: any;
   }>();
 
-  /** 审批预览数据（从接口获取） */
   readonly approvalPreview = input<ReimbursementApprovalPreview | null>(null);
 
   // ========== 审批意见 ==========
-  protected opinion = '';
-
-  // ========== 弹窗显示状态 ==========
-  protected showTransferDialog = signal(false);
-  protected showCountersignDialog = signal(false);
-  protected showPassDialog = signal(false);
-  protected showRejectDialog = signal(false);
-
-  // ========== 提交状态 ==========
-  protected isTransferring = signal(false);
-  protected isCountersigning = signal(false);
-  protected isPassing = signal(false);
-  protected isRejecting = signal(false);
+  protected comment = '';
 
   // ========== 计算属性 ==========
-  /** 显示的节点列表 */
   protected readonly displayNodes = computed<FlowDisplayNode[]>(() => {
-    const preview = this.approvalPreview();
-
-    // 有数据时，根据接口返回的数据显示
-    if (preview?.nodes && preview.nodes.length > 0) {
-      return preview.nodes
-        .filter((node: ReimbursementApprovalPreviewNode) => node.status !== 'cancelled')
-        .map((node: ReimbursementApprovalPreviewNode, idx: number) => ({
-          stageCode: node.stageCode,
-          stageName: node.stageName,
-          status: this.mapNodeStatus(node.status),
-          assignees: node.assignees || [],
-          index: idx + 1,
-        }));
-    }
-
-    // 无数据时，显示默认的演示流程（只显示第一步）
-    return DEFAULT_FLOW_NODES;
+    return transformToDisplayNodes(this.approvalPreview()?.nodes);
   });
+
+  // ========== 工具方法（模板使用） ==========
+  protected getStatusText = getStatusText;
+  protected getAssigneeNames = getAssigneeNames;
 
   // ========== 生命周期 ==========
   ngOnChanges(changes: SimpleChanges): void {
@@ -564,174 +461,97 @@ export class ApprovalFlowComponent implements OnChanges {
   }
 
   // ========== 私有方法 ==========
-  /** 映射节点状态 */
-  private mapNodeStatus(status: string): FlowDisplayNode['status'] {
-    switch (status) {
-      case 'approved':
-        return 'finish';
-      case 'current':
-        return 'process';
-      case 'pending':
-        return 'wait';
-      case 'rejected':
-        return 'rejected';
-      case 'cancelled':
-        return 'cancelled';
-      default:
-        return 'wait';
-    }
-  }
-
-  /** 获取状态显示文本 */
-  protected getStatusText(status: FlowDisplayNode['status']): string {
-    switch (status) {
-      case 'process':
-        return '当前处理节点';
-      case 'finish':
-        return '已通过';
-      case 'rejected':
-        return '已驳回';
-      case 'cancelled':
-        return '已取消';
-      case 'wait':
-      default:
-        return '待处理';
-    }
-  }
-
-  /** 获取审批人名称列表 */
-  protected getAssigneeNames(assignees: Array<{ userId: string; name: string }>): string {
-    if (!assignees || assignees.length === 0) return '';
-    return assignees.map((a) => a.name).join(', ');
-  }
-
-  /** 判断流程线是否激活 */
-  protected isLineActive(node: FlowDisplayNode): boolean {
-    const nodes = this.displayNodes();
-    const currentIndex = nodes.findIndex((n) => n.stageCode === node.stageCode);
-    const prevNode = nodes[currentIndex ];
-    return prevNode.status === 'finish';
+  private syncComment(): void {
+    this.approvalAction.setComment(this.comment);
   }
 
   private emitAction(type: ApprovalAction, detail?: any): void {
     this.action.emit({
       type,
-      opinion: this.opinion.trim(),
+      opinion: this.comment.trim(),
       detail,
     });
   }
 
-  private resetOpinion(): void {
-    this.opinion = '';
-  }
-
-  // ========== 弹窗关闭方法 ==========
-  protected closeTransferDialog(): void {
-    this.showTransferDialog.set(false);
-    this.isTransferring.set(false);
-  }
-
-  protected closeCountersignDialog(): void {
-    this.showCountersignDialog.set(false);
-    this.isCountersigning.set(false);
-  }
-
-  protected closePassDialog(): void {
-    this.showPassDialog.set(false);
-    this.isPassing.set(false);
-    this.resetOpinion();
-  }
-
-  protected closeRejectDialog(): void {
-    this.showRejectDialog.set(false);
-    this.isRejecting.set(false);
-    this.resetOpinion();
+  // ========== 判断流程线是否激活 ==========
+  protected isLineActive(node: FlowDisplayNode): boolean {
+    const nodes = this.displayNodes();
+    const currentIndex = nodes.findIndex((n) => n.stageCode === node.stageCode);
+    const prevNode = nodes[currentIndex];
+    return prevNode?.status === 'finish';
   }
 
   // ========== 审批操作 ==========
   protected onPass(): void {
-    // 无数据时提示
-    if (!this.approvalPreview()) {
-      this.messageService.warning('请先保存并提交报销单');
-      return;
-    }
-    this.showPassDialog.set(true);
+    if (!this.approvalAction.checkApprovalPreview(!!this.approvalPreview())) return;
+    this.syncComment();
+    this.approvalAction.openPassDialog();
   }
 
   protected onReject(): void {
-    if (!this.approvalPreview()) {
-      this.messageService.warning('请先保存并提交报销单');
-      return;
-    }
-    this.showRejectDialog.set(true);
+    if (!this.approvalAction.checkApprovalPreview(!!this.approvalPreview())) return;
+    this.syncComment();
+    this.approvalAction.openRejectDialog();
   }
 
   protected onTransfer(): void {
-    if (!this.approvalPreview()) {
-      this.messageService.warning('请先保存并提交报销单');
-      return;
-    }
-    this.showTransferDialog.set(true);
+    if (!this.approvalAction.checkApprovalPreview(!!this.approvalPreview())) return;
+    this.syncComment();
+    this.approvalAction.openTransferDialog();
   }
 
   protected onAddSign(): void {
-    if (!this.approvalPreview()) {
-      this.messageService.warning('请先保存并提交报销单');
-      return;
-    }
-    this.showCountersignDialog.set(true);
+    if (!this.approvalAction.checkApprovalPreview(!!this.approvalPreview())) return;
+    this.syncComment();
+    this.approvalAction.openCountersignDialog();
   }
 
   // ========== 弹窗提交处理 ==========
-  protected handleTransfer(data: TransferData): void {
-    this.isTransferring.set(true);
-
-    setTimeout(() => {
-      this.emitAction('transfer', data);
-      console.log('转交审批：', {
-        opinion: this.opinion,
-        transferData: data,
-      });
-      this.closeTransferDialog();
-    }, 500);
+  protected async handleTransfer(data: TransferData): Promise<void> {
+    const result = await this.approvalAction.submitWithLoading(
+      this.approvalAction.isTransferring,
+      () => {
+        this.emitAction('transfer', data);
+        return { type: 'transfer', opinion: this.comment, detail: data };
+      }
+    );
+    console.log('转交审批：', result);
+    this.approvalAction.closeTransferDialog();
   }
 
-  protected handleCountersign(data: CountersignData): void {
-    this.isCountersigning.set(true);
-
-    setTimeout(() => {
-      this.emitAction('addSign', data);
-      console.log('加签确认：', {
-        opinion: this.opinion,
-        countersignData: data,
-      });
-      this.closeCountersignDialog();
-    }, 500);
+  protected async handleCountersign(data: CountersignData): Promise<void> {
+    const result = await this.approvalAction.submitWithLoading(
+      this.approvalAction.isCountersigning,
+      () => {
+        this.emitAction('addSign', data);
+        return { type: 'addSign', opinion: this.comment, detail: data };
+      }
+    );
+    console.log('加签确认：', result);
+    this.approvalAction.closeCountersignDialog();
   }
 
-  protected handlePass(data: ApprovalPassData): void {
-    this.isPassing.set(true);
-
-    setTimeout(() => {
-      this.emitAction('pass', data);
-      console.log('审批通过：', {
-        opinion: this.opinion,
-        remark: data.remark,
-      });
-      this.closePassDialog();
-    }, 500);
+  protected async handlePass(data: ApprovalPassData): Promise<void> {
+    const result = await this.approvalAction.submitWithLoading(
+      this.approvalAction.isPassing,
+      () => {
+        this.emitAction('pass', data);
+        return { type: 'pass', opinion: this.comment, detail: data };
+      }
+    );
+    console.log('审批通过：', result);
+    this.approvalAction.closePassDialog();
   }
 
-  protected handleReject(data: ApprovalRejectData): void {
-    this.isRejecting.set(true);
-
-    setTimeout(() => {
-      this.emitAction('reject', data);
-      console.log('驳回单据：', {
-        opinion: this.opinion,
-        remark: data.remark,
-      });
-      this.closeRejectDialog();
-    }, 500);
+  protected async handleReject(data: ApprovalRejectData): Promise<void> {
+    const result = await this.approvalAction.submitWithLoading(
+      this.approvalAction.isRejecting,
+      () => {
+        this.emitAction('reject', data);
+        return { type: 'reject', opinion: this.comment, detail: data };
+      }
+    );
+    console.log('驳回单据：', result);
+    this.approvalAction.closeRejectDialog();
   }
 }

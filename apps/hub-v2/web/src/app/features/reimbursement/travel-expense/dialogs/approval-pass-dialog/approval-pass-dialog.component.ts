@@ -7,7 +7,7 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
 export interface ApprovalPassData {
-  remark: string;
+  // 已移除 remark 字段
 }
 
 @Component({
@@ -38,27 +38,6 @@ export interface ApprovalPassData {
         <div class="dialog-body-tips-wrapper">
           <span class="dialog-body-text">确认通过后，单据将流转到下一个审批节点。</span>
         </div>
-
-        <!-- 表单 -->
-        <form nz-form [nzLayout]="'vertical'" class="approval-pass-form">
-          <!-- 备注说明 -->
-          <div nz-row [nzGutter]="16">
-            <div nz-col [nzSpan]="24">
-              <nz-form-item>
-                <nz-form-label>备注说明</nz-form-label>
-                <nz-form-control>
-                  <textarea
-                    nz-input
-                    rows="4"
-                    placeholder="可填写提交说明或审批意见"
-                    [(ngModel)]="formData.remark"
-                    name="remark"
-                  ></textarea>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-          </div>
-        </form>
       </div>
 
       <ng-container dialog-footer>
@@ -87,9 +66,6 @@ export interface ApprovalPassData {
         display: block;
         line-height: 1.5;
       }
-      .approval-pass-form {
-        margin-top: 16px;
-      }
     `,
   ],
 })
@@ -102,11 +78,10 @@ export class ApprovalPassDialogComponent implements OnInit {
   readonly cancel = output<void>();
 
   // 表单数据
-  protected formData: ApprovalPassData = {
-    remark: '',
-  };
+  protected formData: ApprovalPassData = {};
   // 记录上一次的 open 状态
   private previousOpenState = false;
+
   constructor() {
     effect(() => {
       const currentOpen = this.open();
@@ -122,9 +97,7 @@ export class ApprovalPassDialogComponent implements OnInit {
   }
 
   private resetForm(): void {
-    this.formData = {
-      remark: '',
-    };
+    this.formData = {};
   }
 
   protected onCancel(): void {

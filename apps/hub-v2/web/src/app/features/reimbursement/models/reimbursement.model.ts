@@ -135,7 +135,7 @@ export interface ReimbursementItemInput {
   fromLocation?: string | null;
   toLocation?: string | null;
   amount?: number;
-  meta?: Record<string, unknown> | null;
+  meta?: TravelReimbursementItemMeta | null;
   sort?: number;
 }
 
@@ -211,6 +211,18 @@ export interface ReimbursementDashboard {
   completedThisMonthAmount: number;
   recentTodos: ReimbursementClaimEntity[];
   recentClaims: ReimbursementClaimEntity[];
+}
+
+/** 差旅明细固定 meta 结构。 */
+export interface TravelReimbursementItemMeta {
+  days?: number | null;
+  airfareAmount?: number | null;
+  carriageAmount?: number | null;
+  localTransportAmount?: number | null;
+  lodgingAmount?: number | null;
+  mealAllowanceAmount?: number | null;
+  mealAmount?: number | null;
+  otherAmount?: number | null;
 }
 
 export interface ReimbursementStats {
