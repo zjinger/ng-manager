@@ -8,6 +8,7 @@ import { AuthRepo } from "../auth/auth.repo";
 import { OrganizationService } from "../organization/organization.service";
 import { PlatformRoleSyncService } from "../system-rbac/platform-role-sync.service";
 import { SystemTitleService } from "../system-title/system-title.service";
+import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
 import { UserRepo } from "./user.repo";
 import type { UserCommandContract, UserQueryContract } from "./user.contract";
 import type {
@@ -28,7 +29,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
     private readonly authRepo: AuthRepo,
     private readonly organization: OrganizationService,
     private readonly platformRoleSync: PlatformRoleSyncService,
-    private readonly systemTitleService: SystemTitleService
+    private readonly systemTitleService: SystemTitleService,
+    private readonly auditLog?: AuditLogCommandContract
   ) {}
 
   async create(input: CreateUserInput, _ctx: RequestContext): Promise<UserEntity> {
@@ -82,6 +84,19 @@ export class UserService implements UserCommandContract, UserQueryContract {
       this.platformRoleSync.syncFromLegacyRole(entity.id, "user", now);
     }
 
+    this.auditLog?.record(
+      {
+        module: "user",
+        action: "create",
+        targetType: "user",
+        targetId: entity.id,
+        targetName: entity.displayName || entity.username,
+        summary: `创建用户「${entity.displayName || entity.username}」`,
+        after: { ...entity, departments: input.departments ?? [] },
+        meta: { loginEnabled }
+      },
+      _ctx
+    );
     return this.withDepartments(entity);
   }
 
@@ -152,6 +167,22 @@ export class UserService implements UserCommandContract, UserQueryContract {
 
     this.repo.update(id, updated, updated.updatedAt);
     this.organization.replaceUserDepartmentsFromUserModule(id, input.departments);
+    const action = user.loginEnabled !== updated.loginEnabled
+      ? updated.loginEnabled ? "enable" : "disable"
+      : updated.status === "inactive" ? "disable" : "update";
+    this.auditLog?.record(
+      {
+        module: "user",
+        action,
+        targetType: "user",
+        targetId: updated.id,
+        targetName: updated.displayName || updated.username,
+        summary: `更新用户「${updated.displayName || updated.username}」`,
+        before: user,
+        after: { ...updated, departments: input.departments ?? undefined }
+      },
+      _ctx
+    );
     return this.withDepartments(updated);
   }
 
@@ -197,6 +228,18 @@ export class UserService implements UserCommandContract, UserQueryContract {
       this.platformRoleSync.syncFromLegacyRole(user.id, account.role, now);
     }
 
+    this.auditLog?.record(
+      {
+        module: "user",
+        action: "reset",
+        targetType: "user",
+        targetId: user.id,
+        targetName: user.displayName || user.username,
+        summary: `重置用户「${user.displayName || user.username}」的登录密码`,
+        meta: { mustChangePassword: true }
+      },
+      _ctx
+    );
     return {
       userId: user.id,
       username: user.username,

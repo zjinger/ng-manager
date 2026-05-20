@@ -3,6 +3,9 @@ import { AnnouncementService } from "../modules/announcement/announcement.servic
 import type { ApprovalTemplateCommandContract, ApprovalTemplateQueryContract } from "../modules/approval-template/approval-template.contract";
 import { ApprovalTemplateRepo } from "../modules/approval-template/approval-template.repo";
 import { ApprovalTemplateService } from "../modules/approval-template/approval-template.service";
+import type { AuditLogCommandContract, AuditLogQueryContract } from "../modules/audit-log/audit-log.contract";
+import { AuditLogRepo } from "../modules/audit-log/audit-log.repo";
+import { AuditLogService } from "../modules/audit-log/audit-log.service";
 import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
 import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
 import { SearchRepo } from "../modules/search/search.repo";
@@ -123,6 +126,8 @@ export type AppContainer = {
   announcementQuery: AnnouncementQueryContract;
   approvalTemplateCommand: ApprovalTemplateCommandContract;
   approvalTemplateQuery: ApprovalTemplateQueryContract;
+  auditLogCommand: AuditLogCommandContract;
+  auditLogQuery: AuditLogQueryContract;
   dashboardQuery: DashboardQueryContract;
   notificationQuery: NotificationQueryContract;
   notificationCommand: NotificationCommandContract;
@@ -180,14 +185,15 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     logger: options.eventBusLogger
   });
   const authRepo = new AuthRepo(db);
+  const auditLogService = new AuditLogService(new AuditLogRepo(db));
   const systemRbacRepo = new SystemRbacRepo(db);
   const platformRoleSync = new PlatformRoleSyncService(systemRbacRepo);
   const authService = new AuthService(config, authRepo);
   const organizationRepo = new OrganizationRepo(db);
-  const organizationService = new OrganizationService(organizationRepo);
-  const systemTitleService = new SystemTitleService(new SystemTitleRepo(db));
+  const organizationService = new OrganizationService(organizationRepo, auditLogService);
+  const systemTitleService = new SystemTitleService(new SystemTitleRepo(db), auditLogService);
   const userRepo = new UserRepo(db);
-  const userService = new UserService(userRepo, authRepo, organizationService, platformRoleSync, systemTitleService);
+  const userService = new UserService(userRepo, authRepo, organizationService, platformRoleSync, systemTitleService, auditLogService);
   const projectRepo = new ProjectRepo(db);
   const rdRepo = new RdRepo(db);
   const projectAuthorization = new ProjectAuthorizationService(db, projectRepo);
@@ -269,9 +275,9 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
-  const systemRbacService = new SystemRbacService(systemRbacRepo);
+  const systemRbacService = new SystemRbacService(systemRbacRepo, auditLogService);
   const systemSettingsRepo = new SystemSettingsRepo(db);
-  const systemSettingsService = new SystemSettingsService(systemSettingsRepo);
+  const systemSettingsService = new SystemSettingsService(systemSettingsRepo, auditLogService);
   authService.ensureDefaultAdmin();
 
   const openaiClient = config.openaiApiKey
@@ -307,6 +313,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     announcementQuery: announcementService,
     approvalTemplateCommand: approvalTemplateService,
     approvalTemplateQuery: approvalTemplateService,
+    auditLogCommand: auditLogService,
+    auditLogQuery: auditLogService,
     dashboardQuery: dashboardService,
     notificationQuery: notificationService,
     notificationCommand: notificationService,

@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
 import type { SystemSettingsCommandContract, SystemSettingsQueryContract } from "./system-settings.contract";
 import type {
   GeneralSettings,
@@ -16,7 +17,10 @@ import {
 import { SystemSettingsRepo } from "./system-settings.repo";
 
 export class SystemSettingsService implements SystemSettingsCommandContract, SystemSettingsQueryContract {
-  constructor(private readonly repo: SystemSettingsRepo) {}
+  constructor(
+    private readonly repo: SystemSettingsRepo,
+    private readonly auditLog?: AuditLogCommandContract
+  ) {}
 
   private getSettings<T>(category: SettingsCategory, defaults: T): T {
     const entity = this.repo.findByCategory(category);
@@ -57,18 +61,74 @@ export class SystemSettingsService implements SystemSettingsCommandContract, Sys
   }
 
   async updateGeneralSettings(data: GeneralSettings, ctx: RequestContext): Promise<void> {
+    const before = await this.getGeneralSettings(ctx);
     this.repo.upsert('general', JSON.stringify(data));
+    this.auditLog?.record(
+      {
+        module: "settings",
+        action: "update",
+        targetType: "system_settings",
+        targetId: "general",
+        targetName: "常规设置",
+        summary: "更新常规设置",
+        before,
+        after: data
+      },
+      ctx
+    );
   }
 
   async updateSecuritySettings(data: SecuritySettings, ctx: RequestContext): Promise<void> {
+    const before = await this.getSecuritySettings(ctx);
     this.repo.upsert('security', JSON.stringify(data));
+    this.auditLog?.record(
+      {
+        module: "settings",
+        action: "update",
+        targetType: "system_settings",
+        targetId: "security",
+        targetName: "安全设置",
+        summary: "更新安全设置",
+        before,
+        after: data
+      },
+      ctx
+    );
   }
 
   async updateNotificationSettings(data: NotificationSettings, ctx: RequestContext): Promise<void> {
+    const before = await this.getNotificationSettings(ctx);
     this.repo.upsert('notification', JSON.stringify(data));
+    this.auditLog?.record(
+      {
+        module: "settings",
+        action: "update",
+        targetType: "system_settings",
+        targetId: "notification",
+        targetName: "通知设置",
+        summary: "更新通知设置",
+        before,
+        after: data
+      },
+      ctx
+    );
   }
 
   async updateIntegrationSettings(data: IntegrationSettings, ctx: RequestContext): Promise<void> {
+    const before = await this.getIntegrationSettings(ctx);
     this.repo.upsert('integration', JSON.stringify(data));
+    this.auditLog?.record(
+      {
+        module: "settings",
+        action: "update",
+        targetType: "system_settings",
+        targetId: "integration",
+        targetName: "集成设置",
+        summary: "更新集成设置",
+        before,
+        after: data
+      },
+      ctx
+    );
   }
 }

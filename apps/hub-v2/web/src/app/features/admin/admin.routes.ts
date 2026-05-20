@@ -58,7 +58,7 @@ export const ADMIN_ROUTES: Routes = [
         canActivate: [permissionGuard],
         data: { title: '审计日志', icon: 'audit', permissions: ['admin.audit.view'] },
         loadComponent: () =>
-          import('./pages/admin-placeholder-page.component').then((m) => m.AdminPlaceholderPageComponent),
+          import('./pages/audit-log-page/audit-log-page.component').then((m) => m.AuditLogPageComponent),
       },
       // {
       //   path: 'groups',

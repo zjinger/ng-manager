@@ -3,6 +3,7 @@ import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { RequestContext } from "../../shared/context/request-context";
+import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
 import type { SystemRbacCommandContract, SystemRbacQueryContract, SystemRoleWithCounts } from "./system-rbac.contract";
 import type {
   SystemRoleEntity,
@@ -22,7 +23,10 @@ import type {
 import { SystemRbacRepo } from "./system-rbac.repo";
 
 export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQueryContract {
-  constructor(private readonly repo: SystemRbacRepo) {}
+  constructor(
+    private readonly repo: SystemRbacRepo,
+    private readonly auditLog?: AuditLogCommandContract
+  ) {}
 
   async listSystemRoles(query: ListSystemRolesQuery, _ctx: RequestContext): Promise<SystemRoleWithCounts[]> {
     const roles = this.repo.listRoles(query);
@@ -100,6 +104,19 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       }
     }
 
+    this.auditLog?.record(
+      {
+        module: "role",
+        action: "create",
+        targetType: "system_role",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `创建角色「${entity.name}」`,
+        after: entity,
+        meta: { permissionTemplateRoleId: input.permissionTemplateRoleId ?? null }
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -128,6 +145,19 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       updatedAt: nowIso()
     };
     this.repo.updateRole(entity);
+    this.auditLog?.record(
+      {
+        module: "role",
+        action: entity.status === "inactive" ? "disable" : "update",
+        targetType: "system_role",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `更新角色「${entity.name}」`,
+        before: current,
+        after: entity
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -140,6 +170,18 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_DELETE, "built-in role cannot be deleted", 403);
     }
     this.repo.deleteRole(id);
+    this.auditLog?.record(
+      {
+        module: "role",
+        action: "delete",
+        targetType: "system_role",
+        targetId: role.id,
+        targetName: role.name,
+        summary: `删除角色「${role.name}」`,
+        before: role
+      },
+      _ctx
+    );
   }
 
   async setRolePermissions(roleId: string, input: UpdateRolePermissionsInput, _ctx: RequestContext): Promise<void> {
@@ -155,7 +197,21 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
         throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_NOT_FOUND, `system permission not found: ${permissionId}`, 404);
       }
     }
+    const beforePermissionIds = this.repo.listRolePermissionIds(roleId);
     this.repo.setRolePermissions(roleId, input.permissionIds);
+    this.auditLog?.record(
+      {
+        module: "role",
+        action: "assign",
+        targetType: "system_role_permissions",
+        targetId: role.id,
+        targetName: role.name,
+        summary: `更新角色「${role.name}」的权限配置`,
+        before: { permissionIds: beforePermissionIds },
+        after: { permissionIds: input.permissionIds }
+      },
+      _ctx
+    );
   }
 
   async addRoleUsers(roleId: string, input: AddRoleUsersInput, _ctx: RequestContext): Promise<void> {
@@ -170,6 +226,18 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       }
       this.repo.addRoleUser(roleId, userId, genId("usr"), now);
     }
+    this.auditLog?.record(
+      {
+        module: "role",
+        action: "assign",
+        targetType: "system_role_users",
+        targetId: role.id,
+        targetName: role.name,
+        summary: `为角色「${role.name}」添加 ${input.userIds.length} 名用户`,
+        after: { userIds: input.userIds }
+      },
+      _ctx
+    );
   }
 
   async removeRoleUser(roleId: string, userId: string, _ctx: RequestContext): Promise<void> {
@@ -181,6 +249,18 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${userId}`, 404);
     }
     this.repo.removeRoleUser(roleId, userId);
+    this.auditLog?.record(
+      {
+        module: "role",
+        action: "remove",
+        targetType: "system_role_user",
+        targetId: `${role.id}:${userId}`,
+        targetName: role.name,
+        summary: `从角色「${role.name}」移除用户「${userId}」`,
+        before: { userId }
+      },
+      _ctx
+    );
   }
 
   async createSystemPermission(input: CreateSystemPermissionInput, _ctx: RequestContext): Promise<SystemPermissionEntity> {
@@ -205,6 +285,18 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       updatedAt: now
     };
     this.repo.createPermission(entity);
+    this.auditLog?.record(
+      {
+        module: "permission",
+        action: "create",
+        targetType: "system_permission",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `创建权限项「${entity.name}」`,
+        after: entity
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -235,6 +327,19 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       updatedAt: nowIso()
     };
     this.repo.updatePermission(entity);
+    this.auditLog?.record(
+      {
+        module: "permission",
+        action: entity.status === "inactive" ? "disable" : "update",
+        targetType: "system_permission",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `更新权限项「${entity.name}」`,
+        before: current,
+        after: entity
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -250,5 +355,17 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_IN_USE, `system permission is in use: ${id}`, 409);
     }
     this.repo.deletePermission(id);
+    this.auditLog?.record(
+      {
+        module: "permission",
+        action: "delete",
+        targetType: "system_permission",
+        targetId: current.id,
+        targetName: current.name,
+        summary: `删除权限项「${current.name}」`,
+        before: current
+      },
+      _ctx
+    );
   }
 }

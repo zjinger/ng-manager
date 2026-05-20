@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import announcementPublicRoutes from "../modules/announcement/announcement-public.routes";
 import announcementRoutes from "../modules/announcement/announcement.routes";
 import approvalTemplateRoutes from "../modules/approval-template/approval-template.routes";
+import auditLogRoutes from "../modules/audit-log/audit-log.routes";
 import apiTokenAdminRoutes from "../modules/api-token/api-token-admin.routes";
 import apiTokenRoutes from "../modules/api-token/api-token.routes";
 import authRoutes from "../modules/auth/auth.routes";
@@ -100,6 +101,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(apiTokenAdminRoutes, { prefix: "/api/admin" });
   await app.register(announcementRoutes, { prefix: "/api/admin" });
   await app.register(approvalTemplateRoutes, { prefix: "/api/admin" });
+  await app.register(auditLogRoutes, { prefix: "/api/admin" });
   await app.register(dashboardRoutes, { prefix: "/api/admin" });
   await app.register(feedbackRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });

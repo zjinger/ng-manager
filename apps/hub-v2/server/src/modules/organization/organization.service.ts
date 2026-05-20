@@ -3,6 +3,7 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
+import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
 import type { OrganizationCommandContract, OrganizationQueryContract } from "./organization.contract";
 import { OrganizationRepo } from "./organization.repo";
 import type {
@@ -18,7 +19,10 @@ import type {
 } from "./organization.types";
 
 export class OrganizationService implements OrganizationCommandContract, OrganizationQueryContract {
-  constructor(private readonly repo: OrganizationRepo) {}
+  constructor(
+    private readonly repo: OrganizationRepo,
+    private readonly auditLog?: AuditLogCommandContract
+  ) {}
 
   async listDepartments(query: ListDepartmentsQuery, ctx: RequestContext): Promise<DepartmentEntity[]> {
     this.requireReadable(ctx);
@@ -80,6 +84,18 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       updatedAt: now
     };
     this.repo.createDepartment(entity);
+    this.auditLog?.record(
+      {
+        module: "organization",
+        action: "create",
+        targetType: "department",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `创建部门「${entity.name}」`,
+        after: entity
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -119,6 +135,19 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       updatedAt: nowIso()
     };
     this.repo.updateDepartment(entity);
+    this.auditLog?.record(
+      {
+        module: "organization",
+        action: "update",
+        targetType: "department",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `更新部门「${entity.name}」`,
+        before: current,
+        after: entity
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -142,7 +171,20 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       createdAt: now,
       updatedAt: now
     });
-    return this.repo.listDepartmentTitles(department.id).find((item) => item.titleCode === titleCode)!;
+    const item = this.repo.listDepartmentTitles(department.id).find((entry) => entry.titleCode === titleCode)!;
+    this.auditLog?.record(
+      {
+        module: "organization",
+        action: "assign",
+        targetType: "department_title",
+        targetId: `${department.id}:${titleCode}`,
+        targetName: `${department.name} / ${titleCode}`,
+        summary: `为部门「${department.name}」绑定职务「${titleCode}」`,
+        after: item
+      },
+      _ctx
+    );
+    return item;
   }
 
   async removeDepartmentTitle(departmentId: string, titleCode: string, _ctx: RequestContext): Promise<void> {
@@ -151,6 +193,17 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_NOT_FOUND, `department not found: ${departmentId}`, 404);
     }
     this.repo.removeDepartmentTitle(department.id, titleCode.trim());
+    this.auditLog?.record(
+      {
+        module: "organization",
+        action: "remove",
+        targetType: "department_title",
+        targetId: `${department.id}:${titleCode.trim()}`,
+        targetName: `${department.name} / ${titleCode.trim()}`,
+        summary: `移除部门「${department.name}」的职务「${titleCode.trim()}」`
+      },
+      _ctx
+    );
   }
 
   async addUserDepartment(userId: string, input: UserDepartmentInput, _ctx: RequestContext): Promise<UserDepartmentEntity> {
@@ -168,12 +221,36 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       createdAt: now,
       updatedAt: now
     });
-    return this.repo.listUserDepartments(userId).find((item) => item.departmentId === input.departmentId)!;
+    const item = this.repo.listUserDepartments(userId).find((entry) => entry.departmentId === input.departmentId)!;
+    this.auditLog?.record(
+      {
+        module: "organization",
+        action: "assign",
+        targetType: "user_department",
+        targetId: `${userId}:${input.departmentId}`,
+        targetName: userId,
+        summary: `为用户「${userId}」绑定部门「${input.departmentId}」`,
+        after: item
+      },
+      _ctx
+    );
+    return item;
   }
 
   async removeUserDepartment(userId: string, departmentId: string, _ctx: RequestContext): Promise<void> {
     this.ensureUser(userId);
     this.repo.removeUserDepartment(userId, departmentId);
+    this.auditLog?.record(
+      {
+        module: "organization",
+        action: "remove",
+        targetType: "user_department",
+        targetId: `${userId}:${departmentId}`,
+        targetName: userId,
+        summary: `移除用户「${userId}」的部门「${departmentId}」`
+      },
+      _ctx
+    );
   }
 
   async listUserDepartments(userId: string, ctx: RequestContext): Promise<UserDepartmentEntity[]> {

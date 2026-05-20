@@ -3,6 +3,7 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
+import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
 import type { SystemTitleCommandContract, SystemTitleQueryContract } from "./system-title.contract";
 import { SystemTitleRepo } from "./system-title.repo";
 import type {
@@ -13,7 +14,10 @@ import type {
 } from "./system-title.types";
 
 export class SystemTitleService implements SystemTitleCommandContract, SystemTitleQueryContract {
-  constructor(private readonly repo: SystemTitleRepo) {}
+  constructor(
+    private readonly repo: SystemTitleRepo,
+    private readonly auditLog?: AuditLogCommandContract
+  ) {}
 
   async listSystemTitles(query: ListSystemTitlesQuery, _ctx: RequestContext): Promise<SystemTitleEntity[]> {
     return this.repo.listTitles(query);
@@ -40,6 +44,18 @@ export class SystemTitleService implements SystemTitleCommandContract, SystemTit
       updatedAt: now
     };
     this.repo.create(entity);
+    this.auditLog?.record(
+      {
+        module: "title",
+        action: "create",
+        targetType: "system_title",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `创建职务「${entity.name}」`,
+        after: entity
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -63,6 +79,19 @@ export class SystemTitleService implements SystemTitleCommandContract, SystemTit
       updatedAt: nowIso()
     };
     this.repo.update(entity);
+    this.auditLog?.record(
+      {
+        module: "title",
+        action: "update",
+        targetType: "system_title",
+        targetId: entity.id,
+        targetName: entity.name,
+        summary: `更新职务「${entity.name}」`,
+        before: current,
+        after: entity
+      },
+      _ctx
+    );
     return entity;
   }
 
@@ -75,5 +104,17 @@ export class SystemTitleService implements SystemTitleCommandContract, SystemTit
       throw new AppError(ERROR_CODES.SYSTEM_TITLE_IN_USE, `system title is in use: ${current.code}`, 409);
     }
     this.repo.delete(titleId);
+    this.auditLog?.record(
+      {
+        module: "title",
+        action: "delete",
+        targetType: "system_title",
+        targetId: current.id,
+        targetName: current.name,
+        summary: `删除职务「${current.name}」`,
+        before: current
+      },
+      _ctx
+    );
   }
 }
