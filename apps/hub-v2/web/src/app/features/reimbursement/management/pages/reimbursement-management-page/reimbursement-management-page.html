@@ -1,0 +1,55 @@
+<app-page-header
+  title="报销管理"
+  subtitle="统一查看和筛选全部报销单，供报销管理员、财务复核和出纳处理。"
+></app-page-header>
+
+<app-expenses-filter-bar
+  [query]="store.currentQuery()"
+  [expenseTypeOptions]="expenseTypeOptions"
+  [statusOptions]="statusOptions"
+  [departmentOptions]="departmentOptions()"
+  [showScopeFilter]="false"
+  (submit)="handleFilter($event)"
+  (reset)="handleReset()"
+/>
+
+<app-active-filters-bar
+  [tags]="activeFilterBarTags()"
+  (remove)="onActiveFilterRemove($event)"
+  (clear)="handleReset()"
+/>
+
+<app-list-state
+  [loading]="store.isLoading()"
+  [empty]="store.isEmpty()"
+  loadingText="正在加载报销管理列表…"
+  emptyTitle="当前筛选条件下没有报销单"
+>
+  <app-expenses-list-table
+    [items]="store.displayData()"
+    [page]="store.currentPage()"
+    [pageSize]="store.currentPageSize()"
+    [expenseTypeOptions]="expenseTypeOptions"
+    [statusOptions]="statusOptions"
+    (selectItem)="handleSelectItem($event)"
+    (view)="handleView($event)"
+    (export)="handleExport($event)"
+  />
+
+  @if (store.hasData()) {
+    <div class="expenses-pagination">
+      <nz-pagination
+        [nzTotal]="store.totalCount()"
+        [nzPageIndex]="store.currentPage()"
+        [nzPageSize]="store.currentPageSize()"
+        [nzPageSizeOptions]="[10, 20, 50, 100]"
+        [nzShowSizeChanger]="true"
+        [nzShowQuickJumper]="true"
+        [nzShowTotal]="totalTpl"
+        (nzPageIndexChange)="onPageIndexChange($event)"
+        (nzPageSizeChange)="onPageSizeChange($event)"
+      ></nz-pagination>
+      <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+    </div>
+  }
+</app-list-state>

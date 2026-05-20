@@ -91,6 +91,9 @@ export class BreadcrumbService {
     if (path.startsWith('/expense-notice')) {
       return [{ label: '公告管理' }];
     }
+    if (path.startsWith('/reimbursements')) {
+      return [{ label: '报销管理' }];
+    }
     if (path.startsWith('/travel-expense/new')) {
       return [{ label: '新建差旅费报销' }];
     }

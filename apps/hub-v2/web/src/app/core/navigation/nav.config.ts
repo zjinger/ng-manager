@@ -67,6 +67,14 @@ export const NAV_ITEMS: NavSection[] = [
     label: '财务中心',
     items: [
       {
+        key: 'reimbursements',
+        label: '报销管理',
+        icon: 'profile',
+        route: '/reimbursements',
+        permissions: ['expense.rule.manage', 'finance.review', 'finance.cashier'],
+        permissionMode: 'any',
+      },
+      {
         key: 'my-expenses',
         label: '我的报销',
         icon: 'message',

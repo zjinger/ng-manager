@@ -38,6 +38,7 @@ export interface SelectOption {
     <app-page-toolbar>
       <app-filter-bar toolbar-filters class="expenses-toolbar__main">
         <!-- 范围筛选 -->
+        @if (showScopeFilter()) {
         <nz-select
           nzPlaceHolder="查看范围"
           style="width:150px"
@@ -50,6 +51,7 @@ export interface SelectOption {
           <nz-option nzLabel="全部报销" nzValue="all"></nz-option>
           <nz-option nzLabel="待审批" nzValue="todo"></nz-option>
         </nz-select>
+        }
 
         <!-- 报销类型 -->
         <nz-select
@@ -183,6 +185,7 @@ export class ExpensesFilterBarComponent {
   readonly expenseTypeOptions = input<SelectOption[]>([]);
   readonly statusOptions = input<SelectOption[]>([]);
   readonly departmentOptions = input<SelectOption[]>([]);
+  readonly showScopeFilter = input(true);
 
   // ========== 输出事件 ==========
   readonly submit = output<ReimbursementListQuery>();

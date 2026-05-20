@@ -3,6 +3,16 @@ import { permissionGuard } from '@core/auth';
 
 export const REIMBURSEMENT_ROUTES: Routes = [
   {
+    path: 'reimbursements',
+    canActivate: [permissionGuard],
+    data: {
+      permissions: ['expense.rule.manage', 'finance.review', 'finance.cashier'],
+      permissionMode: 'any',
+    },
+    loadChildren: () =>
+      import('./management/routes').then((m) => m.REIMBURSEMENT_MANAGEMENT_ROUTES),
+  },
+  {
     path: 'expense-notice',
     canActivate: [permissionGuard],
     data: { permissions: ['expense.rule.manage'] },
