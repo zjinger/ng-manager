@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ExpenseBasicInfo, ExpenseDetailItem } from '../../models';
-import { ExpenseSummary } from '@app/features/reimbursement/travel-expense/models';
+import {
+  CreateReimbursementClaimInput,
+  ReimbursementItemInput,
+} from '@app/features/reimbursement/models/reimbursement.model';
 
 // 中文数字映射
 const chineseNumbers = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
@@ -25,11 +27,11 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
 
   if (type === 'jiao') {
     const jiao = Math.floor(decimal / 10);
-    return chineseNumbers[jiao];
+    return chineseNumbers[jiao] || '零';
   }
 
   const fen = decimal % 10;
-  return chineseNumbers[fen];
+  return chineseNumbers[fen] || '零';
 }
 
 @Component({
@@ -63,23 +65,23 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
             <span>报销部门：</span>
 
             <div class="text" style="text-align: left">
-              {{ getDepartmentLabel(basicInfo().department) }}
+              {{ formData().departmentName || '-' }}
             </div>
             <section style="display: flex; align-items: center;">
               <div class="text" style="width: 100px">
-                {{ getYear(basicInfo().reportDate) }}
+                {{ getYear(formData().fillDate) }}
               </div>
 
               <span>年</span>
 
               <div class="text" style="width: 60px">
-                {{ getMonth(basicInfo().reportDate) }}
+                {{ getMonth(formData().fillDate) }}
               </div>
 
               <span>月</span>
 
               <div class="text" style="width: 60px">
-                {{ getDay(basicInfo().reportDate) }}
+                {{ getDay(formData().fillDate) }}
               </div>
 
               <span>日</span>
@@ -90,7 +92,7 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
             <span>单据及附件共</span>
 
             <div class="input-page border-b">
-              {{ basicInfo().receiptCount || 0 }}
+              {{ formData().receiptCount || 0 }}
             </div>
 
             <span>页</span>
@@ -122,7 +124,7 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
               </td>
 
               <td style="width: 370px" colspan="3" rowspan="3">
-                <textarea readonly>{{ basicInfo().remark || '' }}</textarea>
+                <textarea readonly>{{ formData().reason || '' }}</textarea>
               </td>
             </tr>
 
@@ -131,12 +133,12 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
             <tr>
               <!-- 用途 -->
               <td>
-                {{ item.purpose || '-' }}
+                {{ getItemDescription(item) || '-' }}
               </td>
 
               <!-- 金额 -->
               <td>
-                {{ formatMoney(item.amount) }}
+                {{ formatMoney(getItemAmount(item)) }}
               </td>
 
               <!-- 第3行插入审批区域 -->
@@ -218,7 +220,7 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
                 <label>预支:</label>
 
                 <span style="width: 70px">
-                  {{ formatMoney(summary().advanceAmount) }}
+                  {{ formatMoney(formData().advanceAmount) }}
                 </span>
 
                 <label>元</label>
@@ -226,11 +228,11 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
 
               <td colspan="2" class="caption">
                 <label>
-                  {{ summary().advanceAmount - totalAmount() >= 0 ? '应退' : '应补' }}
+                  {{ (formData().advanceAmount || 0) - totalAmount() >= 0 ? '应退' : '应补' }}
                 </label>
 
                 <span style="width: 70px">
-                  {{ formatMoney(Math.abs(summary().advanceAmount - totalAmount())) }}
+                  {{ formatMoney(Math.abs((formData().advanceAmount || 0) - totalAmount())) }}
                 </span>
 
                 <label>元</label>
@@ -250,7 +252,7 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
               报销人
 
               <span class="reimburser border-b">
-                {{ basicInfo().expensePerson || '' }}
+                {{ formData().applicantName || '' }}
               </span>
             </span>
 
@@ -522,85 +524,86 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
   ],
 })
 export class ExpenseBillPreviewComponent {
-  // 部门映射
-  private readonly departmentMap: Record<string, string> = {
-    tech: '技术部',
-    product: '产品部',
-    sales: '销售部',
-    marketing: '市场部',
-    hr: '人力资源部',
-    finance: '财务部',
-    admin: '行政部',
-  };
-
-  // 基础信息
-  readonly basicInfo = input<ExpenseBasicInfo>({
-    department: '',
-    expensePerson: '',
-    reportDate: '',
-    receiptCount: 0,
-    remark: '',
-  });
-
-  // 费用项
-  readonly expenseItems = input<ExpenseDetailItem[]>([]);
-
-  // 汇总
-  readonly summary = input<ExpenseSummary>({
-    totalAmount: 0,
+  // 输入数据 - 使用完整的表单数据
+  readonly formData = input<CreateReimbursementClaimInput>({
+    claimType: 'general',
+    departmentId: '',
+    departmentName: '',
+    applicantName: '',
+    titleName: '',
+    reason: '',
+    fillDate: '',
     advanceAmount: 0,
-    differenceAmount: 0,
-    attachments: [],
+    travelStartDate: null,
+    travelStartHalf: null,
+    travelEndDate: null,
+    travelEndHalf: null,
+    travelDays: null,
+    receiptCount: null,
+    items: [],
   });
+
+  // 费用明细项
+  readonly items = computed(() => this.formData().items || []);
 
   // 总金额
   readonly totalAmount = computed(() => {
-    const aaa = this.expenseItems().reduce((sum, item) => {
+    return this.items().reduce((sum, item) => {
       return sum + (item.amount || 0);
     }, 0);
-    return aaa;
   });
 
-  // 显示行
+  // 显示行（固定4行）
   readonly displayItems = computed(() => {
-    const items = [...this.expenseItems()];
+    const actualItems = [...this.items()];
+    const targetRowCount = 4;
 
-    const maxRows = 4;
-
-    if (items.length < maxRows) {
-      const emptyCount = maxRows - items.length;
-
+    if (actualItems.length < targetRowCount) {
+      const emptyCount = targetRowCount - actualItems.length;
       for (let i = 0; i < emptyCount; i++) {
-        items.push({
+        actualItems.push({
           id: `empty-${i}`,
-          purpose: '',
-          amount: null,
-        });
+          itemType: 'general',
+          occurredDate: null,
+          fromLocation: '',
+          toLocation: '',
+          amount: 0,
+          meta: null,
+          sort: 0,
+          description: '',
+        } as ReimbursementItemInput);
       }
     }
 
-    return items;
+    return actualItems;
   });
 
-  getDepartmentLabel(value: string): string {
-    return this.departmentMap[value] || value || '-';
+  /**
+   * 获取费用用途描述
+   */
+  getItemDescription(item: ReimbursementItemInput): string {
+    return item.description || '';
   }
 
-  getYear(dateStr: string): string {
-    if (!dateStr) return '';
+  /**
+   * 获取费用金额
+   */
+  getItemAmount(item: ReimbursementItemInput): number {
+    return item.amount || 0;
+  }
 
+  getYear(dateStr: string | null | undefined): string {
+    if (!dateStr) return '';
     return dateStr.split('-')[0] || '';
   }
 
-  getMonth(dateStr: string): string {
+  getMonth(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
-
     return dateStr.split('-')[1] || '';
   }
 
-  getDay(dateStr: string): string {
+  getDay(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
-
     return dateStr.split('-')[2] || '';
   }
 
@@ -608,7 +611,6 @@ export class ExpenseBillPreviewComponent {
     if (value === null || value === undefined) {
       return '0.00';
     }
-
     return Number(value).toFixed(2);
   }
 

@@ -1,22 +1,10 @@
-<app-page-header title="{{expenseId ? '编辑' : '新建' }}费用报销" subtitle="适用于办公用品、行政费用、采购等普通费用报销。">
+<app-page-header
+  title="{{ getPageTitle() }}"
+  subtitle="适用于办公用品、行政费用、采购等普通费用报销。"
+>
   <div page-header-actions class="header-actions">
-    <button nz-button nzType="default" (click)="goBack()">
-      <i nz-icon nzType="close"></i> 取消
-    </button>
-    <button nz-button nzType="default" (click)="saveDraft()" [disabled]="!canSaveDraft()">
-      <i nz-icon nzType="save"></i> 保存草稿箱
-    </button>
-    <button nz-button nzType="default" (click)="exportForm()">
-      <i nz-icon nzType="export"></i> 导出
-    </button>
-    <button
-      nz-button
-      nzType="primary"
-      (click)="submitApproval()"
-      [nzLoading]="submitting()"
-      [disabled]="!canSubmit()"
-    >
-      <i nz-icon nzType="check-circle"></i> 提交审批
+    <button nz-button nzType="primary" (click)="openPreviewDialog()" [disabled]="!canSubmit() || submitting()">
+      <i nz-icon nzType="save"></i> 保存
     </button>
   </div>
 </app-page-header>
@@ -43,30 +31,31 @@
 
     <div class="card query-card">
       <div class="query-card__label">金额汇总与附件</div>
-      <!-- 金额汇总与附件组件 -->
       <app-expense-summary-attachment
         [(summary)]="draft().summary"
+        [claimId]="expenseId"
         (summaryChange)="onSummaryChange($event)"
+        (attachmentsChange)="onAttachmentsChange($event)"
         (advanceAmountChange)="onAdvanceAmountChange($event)"
-      />
-    </div>
-    <div class="card query-card">
-      <div class="query-card__label">报销单预览</div>
-      <!-- 报销单预览组件 -->
-      <app-expense-bill-preview
-        [basicInfo]="draft().basicInfo"
-        [expenseItems]="draft().expenseItems"
-        [summary]="draft().summary"
       />
     </div>
   </div>
 
-  <!-- 右侧栏可以暂时留空或显示提示 -->
+  <!-- 右侧栏 -->
   <div class="report-layout__side">
     <div class="card query-card">
-      <!-- 流程组件 -->
       <div class="query-card__label">审批流预览</div>
-      <app-approval-flow />
+      <app-approval-flow
+        [approvalPreview]="draft().approvalPreview!"
+      />
     </div>
   </div>
 </section>
+
+<!-- 预览弹窗 -->
+<ex-save-dialog
+  [open]="previewDialogOpen()"
+  [formData]="previewData()"
+  (confirm)="confirmSubmit($event)"
+  (cancel)="closePreviewDialog()"
+/>

@@ -464,7 +464,7 @@ export class TravelExpenseStore {
     this.basicInfoValidState.set(false);
     this.currentClaimIdState.set(null);
     this.isSubmitting = false;
-    this.message.info('表单已重置');
+    // this.message.info('表单已重置');
   }
 
   /**

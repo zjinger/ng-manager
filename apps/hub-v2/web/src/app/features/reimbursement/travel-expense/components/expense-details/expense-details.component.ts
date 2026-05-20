@@ -26,18 +26,6 @@ import {
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-// Meta 数据类型
-// interface TravelReimbursementItemMeta {
-//   days: number | null;
-//   airfare: number | null;
-//   transportation: number | null;
-//   localTransport: number | null;
-//   accommodation: number | null;
-//   mealAllowance: number | null;
-//   mealExpenses: number | null;
-//   other: number | null;
-// }
-
 // 默认空行程
 const createEmptyItem = (): ReimbursementItemInput => ({
   id: generateId(),

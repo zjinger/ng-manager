@@ -6,6 +6,7 @@ import {
   output,
   signal,
   inject,
+  effect,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -13,21 +14,23 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { ExpenseDetailItem } from '../../models';
+import { ReimbursementItemInput } from '@app/features/reimbursement/models/reimbursement.model';
 
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 // 默认空明细
-const createEmptyItem = (): ExpenseDetailItem => ({
+const createEmptyItem = (): ReimbursementItemInput => ({
   id: generateId(),
-  purpose: '',
-  amount: null,
+  itemType: 'general', // 或其他合适的类型
+  amount: 0,
+  sort: 0,
+  description: '', // 用于存储费用用途
 });
 
-// 默认3行数据
-const getDefaultItems = (): ExpenseDetailItem[] => {
-  return [createEmptyItem(), createEmptyItem(), createEmptyItem()];
+// 固定4行数据
+const getDefaultItems = (): ReimbursementItemInput[] => {
+  return [createEmptyItem(), createEmptyItem(), createEmptyItem(), createEmptyItem()];
 };
 
 @Component({
@@ -38,10 +41,6 @@ const getDefaultItems = (): ExpenseDetailItem[] => {
     <div class="details-container">
       <div class="details-header">
         <div class="query-card__label">费用明细</div>
-        <button nz-button nzType="default" (click)="addItem()" [disabled]="items().length >= 4">
-          <nz-icon nzType="plus" nzTheme="outline" />
-          添加费用
-        </button>
       </div>
 
       <div class="table-wrapper">
@@ -55,15 +54,15 @@ const getDefaultItems = (): ExpenseDetailItem[] => {
             </tr>
           </thead>
           <tbody>
-            @for (item of items(); track item.id; let idx = $index) {
+            @for (item of displayItems(); track item.id; let idx = $index) {
             <tr>
               <td class="seq-cell">{{ idx + 1 }}</td>
               <td>
                 <input
                   nz-input
                   placeholder="请输入费用用途，如：办公用品采购"
-                  [ngModel]="item.purpose"
-                  (ngModelChange)="updateField(item, 'purpose', $event)"
+                  [ngModel]="item.description"
+                  (ngModelChange)="updateDescription(item, $event)"
                 />
               </td>
               <td>
@@ -73,7 +72,7 @@ const getDefaultItems = (): ExpenseDetailItem[] => {
                   placeholder="0.00"
                   inputmode="decimal"
                   [ngModel]="item.amount"
-                  (ngModelChange)="updateField(item, 'amount', $event)"
+                  (ngModelChange)="updateAmount(item, $event)"
                 />
               </td>
               <td class="action-cell">
@@ -81,10 +80,10 @@ const getDefaultItems = (): ExpenseDetailItem[] => {
                   nz-button
                   nzType="link"
                   nzDanger
-                  (click)="removeItem(item.id)"
-                  [disabled]="items().length <= 1"
+                  (click)="clearItem(item.id!)"
                 >
                   <nz-icon nzType="delete" nzTheme="outline" />
+                  清空
                 </button>
               </td>
             </tr>
@@ -194,6 +193,7 @@ const getDefaultItems = (): ExpenseDetailItem[] => {
           opacity: 1;
         }
       }
+
       /* ========== 暗色主题适配 ========== */
       :host-context(html[data-theme='dark']) {
         .query-card__label {
@@ -274,54 +274,121 @@ const getDefaultItems = (): ExpenseDetailItem[] => {
 export class ExpenseDetailItemComponent {
   private readonly message = inject(NzMessageService);
 
-  readonly items = model<ExpenseDetailItem[]>(getDefaultItems());
-  readonly itemsChange = output<ExpenseDetailItem[]>();
+  readonly items = model<ReimbursementItemInput[]>(getDefaultItems());
+  readonly itemsChange = output<ReimbursementItemInput[]>();
+
+  // 显示的明细列表（固定4行）
+  readonly displayItems = computed(() => {
+    const currentItems = this.items();
+    const targetRowCount = 4;
+    const displayList = [...currentItems];
+
+    // 如果实际数据不足4行，用空行填充
+    for (let i = displayList.length; i < targetRowCount; i++) {
+      displayList.push(createEmptyItem());
+    }
+
+    return displayList;
+  });
 
   // 计算总金额
   totalAmount = computed(() => {
     return this.items().reduce((sum, item) => sum + (item.amount || 0), 0);
   });
 
-  updateField<K extends keyof ExpenseDetailItem>(
-    item: ExpenseDetailItem,
-    field: K,
-    value: ExpenseDetailItem[K]
-  ): void {
-    let processedValue: ExpenseDetailItem[K] | null = value;
-    if (field === 'amount') {
-      const numValue = Number(value);
-      processedValue = isNaN(numValue) || value === '' ? null : (numValue as ExpenseDetailItem[K]);
-    }
-
-    const updatedItem = { ...item, [field]: processedValue };
-    const updatedItems = this.items().map((i) => (i.id === item.id ? updatedItem : i));
-
-    this.items.set(updatedItems);
-    this.itemsChange.emit(updatedItems);
+  constructor() {
+    // 初始化时确保有4行数据
+    effect(() => {
+      const currentItems = this.items();
+      if (!currentItems?.length || currentItems.length < 4) {
+        const defaultItems = getDefaultItems();
+        this.items.set(defaultItems);
+        this.itemsChange.emit(defaultItems);
+      }
+    });
   }
 
-  addItem(): void {
-    if (this.items().length >= 4) {
-      this.message.warning('最多只能添加4条费用明细');
-      return;
-    }
-    const newItems = [...this.items(), createEmptyItem()];
-    this.items.set(newItems);
-    this.itemsChange.emit(newItems);
+  updateDescription(item: ReimbursementItemInput, value: string): void {
+    const updatedItem = { ...item, description: value };
+    this.updateItem(updatedItem);
   }
 
-  removeItem(id: string): void {
-    if (this.items().length <= 1) {
-      this.message.warning('至少保留一条费用明细');
-      return;
+  updateAmount(item: ReimbursementItemInput, value: string | number | null): void {
+    let numValue: number = 0;
+    if (value !== null && value !== '') {
+      const parsed = typeof value === 'string' ? parseFloat(value) : value;
+      numValue = isNaN(parsed) ? 0 : parsed;
     }
-    const newItems = this.items().filter((item) => item.id !== id);
-    this.items.set(newItems);
-    this.itemsChange.emit(newItems);
+
+    const updatedItem = { ...item, amount: numValue };
+    this.updateItem(updatedItem);
   }
 
+  // 清空单行数据
+  clearItem(id: string): void {
+    const currentItems = this.items();
+    const existingIndex = currentItems.findIndex((i) => i.id === id);
+    
+    if (existingIndex >= 0) {
+      // 清空该行数据
+      const clearedItem = {
+        ...createEmptyItem(),
+        id: currentItems[existingIndex].id, // 保留原ID
+      };
+      const newItems = currentItems.map((i) => (i.id === id ? clearedItem : i));
+      this.items.set(newItems);
+      this.itemsChange.emit(newItems);
+      this.message.success('已清空该行数据');
+    }
+  }
+
+  // 通用更新方法
+  private updateItem(updatedItem: ReimbursementItemInput): void {
+    const currentItems = this.items();
+    const existingIndex = currentItems.findIndex((i) => i.id === updatedItem.id);
+
+    let newItems: ReimbursementItemInput[];
+
+    if (existingIndex >= 0) {
+      // 更新已存在的行
+      newItems = currentItems.map((i) => (i.id === updatedItem.id ? updatedItem : i));
+    } else {
+      // 新增的行，添加到数组中
+      newItems = [...currentItems, updatedItem];
+    }
+
+    // 过滤掉完全空白的行（description为空且amount为0）
+    const filteredItems = this.filterEmptyItems(newItems);
+
+    // 确保至少有4行数据
+    let finalItems = [...filteredItems];
+    while (finalItems.length < 4) {
+      finalItems.push(createEmptyItem());
+    }
+
+    this.items.set(finalItems);
+    this.itemsChange.emit(finalItems);
+  }
+
+  // 过滤空数据行（description为空且amount为0）
+  private filterEmptyItems(items: ReimbursementItemInput[]): ReimbursementItemInput[] {
+    return items.filter((item) => {
+      const hasContent = 
+        (item.description && item.description.trim() !== '') ||
+        (item.amount && item.amount !== 0);
+      return hasContent;
+    });
+  }
+
+  // 重置所有明细
   resetItems(): void {
     this.items.set(getDefaultItems());
     this.itemsChange.emit(getDefaultItems());
+    this.message.success('已重置所有费用明细');
+  }
+
+  // 获取实际有效的明细数据（用于提交）
+  getValidItems(): ReimbursementItemInput[] {
+    return this.filterEmptyItems(this.items());
   }
 }

@@ -71,17 +71,6 @@ function formatTravelRoute(
   return `${from} → ${to}`;
 }
 
-interface ExpenseMeta {
-  days: number | null;
-  airfare: number | null;
-  transportation: number | null;
-  localTransport: number | null;
-  accommodation: number | null;
-  mealAllowance: number | null;
-  mealExpenses: number | null;
-  other: number | null;
-}
-
 @Component({
   selector: 'app-expense-preview',
   standalone: true,

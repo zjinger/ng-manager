@@ -142,7 +142,7 @@ export interface ReimbursementItemInput {
 export interface CreateReimbursementClaimInput {
   claimType: ReimbursementClaimType;
   departmentId?: string;
-  reason: string;
+  reason?: string;
   fillDate?: string;
   departmentName?: string;
   applicantName?: string;
