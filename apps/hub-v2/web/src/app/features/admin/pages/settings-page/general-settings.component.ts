@@ -10,6 +10,8 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { PanelCardComponent } from '@shared/ui/panel-card';
 import { SystemSettingsApiService, type GeneralSettings } from '../../services/system-settings-api.service';
+import { SystemRbacApiService } from '../../services/system-rbac-api.service';
+import type { SystemRoleWithCounts } from '../../models/system-rbac.model';
 
 interface PlatformInfo {
   platformName: string;
@@ -214,9 +216,9 @@ interface RegistrationSettings {
               style="width: 160px"
               [nzDisabled]="!registrationEditable()"
             >
-              <nz-option nzLabel="访客" nzValue="guest" />
-              <nz-option nzLabel="开发者" nzValue="developer" />
-              <nz-option nzLabel="项目经理" nzValue="manager" />
+              @for (role of roles(); track role.id) {
+                <nz-option [nzLabel]="role.name" [nzValue]="role.code" />
+              }
             </nz-select>
           </div>
 
@@ -290,6 +292,9 @@ interface RegistrationSettings {
 export class GeneralSettingsComponent implements OnInit {
   private readonly message = inject(NzMessageService);
   private readonly settingsApi = inject(SystemSettingsApiService);
+  private readonly rbacApi = inject(SystemRbacApiService);
+
+  readonly roles = signal<SystemRoleWithCounts[]>([]);
 
   readonly platformEditable = signal(false);
   readonly platformDirty = signal(false);
@@ -314,7 +319,15 @@ export class GeneralSettingsComponent implements OnInit {
   private savedRegistration: RegistrationSettings = this.getRegistrationSnapshot();
 
   ngOnInit(): void {
+    this.loadRoles();
     this.loadSettings();
+  }
+
+  private loadRoles(): void {
+    this.rbacApi.listRoles({ status: 'active' }).subscribe({
+      next: (items) => this.roles.set(items),
+      error: () => {}
+    });
   }
 
   private loadSettings(): void {
