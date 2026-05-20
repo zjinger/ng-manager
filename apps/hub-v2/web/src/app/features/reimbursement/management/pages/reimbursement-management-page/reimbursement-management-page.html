@@ -53,3 +53,10 @@
     </div>
   }
 </app-list-state>
+
+<app-reimbursement-detail-drawer
+  [open]="!!selectedClaimId()"
+  [claimId]="selectedClaimId()"
+  [claim]="selectedClaim()"
+  (close)="closeDetail()"
+/>

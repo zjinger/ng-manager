@@ -6,9 +6,11 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
+import { map } from 'rxjs';
 
 import type { DepartmentEntity } from '@app/features/organization/models/organization.model';
 import { OrganizationApiService } from '@app/features/organization/services/organization-api.service';
@@ -28,6 +30,7 @@ import {
   SelectOption,
 } from '../../../my-expenses/components/expenses-filter-bar/expenses-filter-bar.component';
 import { ExpensesListTableComponent } from '../../../my-expenses/components/expenses-list-table/expenses-list-table.component';
+import { ReimbursementDetailDrawerComponent } from '../../components/reimbursement-detail-drawer/reimbursement-detail-drawer.component';
 
 @Component({
   selector: 'app-reimbursement-management-page',
@@ -40,6 +43,7 @@ import { ExpensesListTableComponent } from '../../../my-expenses/components/expe
     ActiveFiltersBarComponent,
     ExpensesListTableComponent,
     ListStateComponent,
+    ReimbursementDetailDrawerComponent,
   ],
   templateUrl: './reimbursement-management-page.html',
   styleUrls: ['./reimbursement-management-page.less'],
@@ -48,8 +52,12 @@ import { ExpensesListTableComponent } from '../../../my-expenses/components/expe
 })
 export class ReimbursementManagementPage implements OnInit {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly organizationApi = inject(OrganizationApiService);
   readonly store = inject(ExpensesListStore);
+  private readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
+    initialValue: this.route.snapshot.queryParamMap.get('detail'),
+  });
 
   readonly expenseTypeOptions: SelectOption[] = [
     { value: 'travel', label: '差旅费报销' },
@@ -66,6 +74,14 @@ export class ReimbursementManagementPage implements OnInit {
   ];
 
   readonly departmentOptions = signal<SelectOption[]>([]);
+  readonly selectedClaimId = computed(() => this.detailQuery());
+  readonly selectedClaim = computed<ReimbursementClaimEntity | null>(() => {
+    const claimId = this.selectedClaimId();
+    if (!claimId) {
+      return null;
+    }
+    return this.store.displayData().find((item) => item.id === claimId) ?? null;
+  });
 
   ngOnInit(): void {
     this.store.updateQuery({ scope: 'all', page: 1 });
@@ -207,18 +223,30 @@ export class ReimbursementManagementPage implements OnInit {
   }
 
   handleSelectItem(item: ReimbursementClaimEntity): void {
-    void item;
+    this.openDetail(item);
   }
 
   handleView(item: ReimbursementClaimEntity): void {
-    if (item.claimType === 'general') {
-      void this.router.navigate(['/expense/detail', item.id]);
-      return;
-    }
-    void this.router.navigate(['/travel-expense/detail', item.id]);
+    this.openDetail(item);
   }
 
   handleExport(item: ReimbursementClaimEntity): void {
     void item;
+  }
+
+  closeDetail(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { detail: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  private openDetail(item: ReimbursementClaimEntity): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { detail: item.id },
+      queryParamsHandling: 'merge',
+    });
   }
 }
