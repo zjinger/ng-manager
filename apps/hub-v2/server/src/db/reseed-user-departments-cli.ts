@@ -43,6 +43,14 @@ const USER_MANAGER_SEEDS: UserManagerSeed[] = [
   { username: "qa.hub", managerUsername: "pmmanager" }
 ];
 
+const SEED_MANAGED_SYSTEM_ROLE_CODES = [
+  "member",
+  "expense_employee",
+  "expense_manager",
+  "finance_reviewer",
+  "finance_cashier"
+];
+
 function parseMode(argv: string[]): Mode {
   const modeArg = argv.find((item) => item.startsWith("--mode="));
   if (!modeArg) {
@@ -73,6 +81,14 @@ function main() {
     INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
     VALUES (?, ?, ?, datetime('now'))
   `);
+  const deleteSeedManagedRoles = db.prepare(`
+    DELETE FROM user_system_roles
+     WHERE user_id = ?
+       AND role_id IN (
+         SELECT id FROM system_roles
+          WHERE code IN (${SEED_MANAGED_SYSTEM_ROLE_CODES.map(() => "?").join(", ")})
+       )
+  `);
   const updateDepartmentManager = db.prepare(`
     UPDATE departments
        SET manager_user_id = ?, updated_at = datetime('now')
@@ -87,6 +103,7 @@ function main() {
   let inserted = 0;
   let replaced = 0;
   let roleBindingsInserted = 0;
+  let roleBindingsRemoved = 0;
   let departmentManagersUpdated = 0;
   let userManagersUpdated = 0;
   let skippedExists = 0;
@@ -126,7 +143,11 @@ function main() {
         inserted += 1;
       }
 
-      for (const roleCode of parseRoleCodes(item.roleCode)) {
+      const desiredRoleCodes = parseRoleCodes(item.roleCode);
+      const cleanupResult = deleteSeedManagedRoles.run(userRow.id, ...SEED_MANAGED_SYSTEM_ROLE_CODES);
+      roleBindingsRemoved += Number(cleanupResult.changes ?? 0);
+
+      for (const roleCode of desiredRoleCodes) {
         const roleRow = findSystemRoleId.get(roleCode) as { id: string } | undefined;
         if (!roleRow) {
           missingSystemRoles.push(roleCode);
@@ -184,6 +205,7 @@ function main() {
         inserted,
         replaced,
         roleBindingsInserted,
+        roleBindingsRemoved,
         departmentManagersUpdated,
         userManagersUpdated,
         skippedExists,

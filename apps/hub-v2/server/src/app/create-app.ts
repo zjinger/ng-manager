@@ -7,7 +7,6 @@ import { buildContainer } from "./build-container";
 import { registerPlugins } from "./register-plugins";
 import { registerRoutes } from "./register-routes";
 import { createSqliteDatabase } from "../shared/db/sqlite";
-import { runMigrations } from "../shared/db/migrate";
 import { loadEnv } from "../shared/env/env";
 
 function resolveHttpsOptions(
@@ -41,7 +40,6 @@ function resolveHttpsOptions(
 export async function createApp() {
   const config = loadEnv();
   const db = createSqliteDatabase(config);
-  const migrationResult = runMigrations(db);
   const https = resolveHttpsOptions(config);
   const loggerOptions = {
     level: config.logLevel,
@@ -74,10 +72,6 @@ export async function createApp() {
   app.decorate("container", container);
   app.decorate("db", db);
 
-  app.log.info(
-    { appliedMigrations: migrationResult.applied },
-    "[hub-v2] migrations completed"
-  );
   if (config.httpsEnabled) {
     app.log.info(
       {
