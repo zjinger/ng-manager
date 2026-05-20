@@ -90,6 +90,9 @@ export class LatestAnnouncementsCardComponent {
   readonly projectNames = input<Record<string, string>>({});
 
   projectLabel(item: DashboardAnnouncement): string {
+    if (item.domain === 'reimbursement') {
+      return '报销公告';
+    }
     if (!item.projectId) {
       return '全局公告';
     }

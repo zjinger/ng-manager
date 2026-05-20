@@ -11,12 +11,12 @@
     }
   </a>
 
-  @if (!collapsed() && showProjectSwitcher()) {
+  @if (!collapsed() && canShowProjectSwitcher()) {
     <app-project-switcher />
   }
 
   <nav class="nav">
-    @for (section of items(); track section.key) {
+    @for (section of visibleSections(); track section.key) {
       <section class="nav__section">
         @if (!collapsed()) {
           <div class="nav__section-label">{{ section.label }}</div>

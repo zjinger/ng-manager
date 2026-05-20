@@ -8,6 +8,8 @@ import type {
   DashboardBoardData,
   DashboardBoardRange,
   DashboardDocument,
+  DashboardPreferences,
+  DashboardWidgetPreference,
   DashboardHomeData,
   DashboardReportedIssueItem,
   DashboardReportedIssuePageQuery,
@@ -83,6 +85,16 @@ export class DashboardApiService {
 
   getBoardData(params: { projectId?: string; range: DashboardBoardRange }): Observable<DashboardBoardData> {
     return this.api.get<DashboardBoardData>('/dashboard/board', params);
+  }
+
+  getPreferences(): Observable<DashboardPreferences> {
+    return this.api.get<DashboardPreferences>('/dashboard/preferences');
+  }
+
+  updatePreferences(widgets: DashboardWidgetPreference[]): Observable<DashboardPreferences> {
+    return this.api.put<DashboardPreferences, { widgets: DashboardWidgetPreference[] }>('/dashboard/preferences', {
+      widgets,
+    });
   }
 
   invalidateHomeDataCache(): void {

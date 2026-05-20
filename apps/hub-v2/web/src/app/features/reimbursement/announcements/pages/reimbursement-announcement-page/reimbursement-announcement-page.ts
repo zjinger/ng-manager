@@ -40,7 +40,7 @@ type ReimbursementAnnouncementDialogValue = Pick<
     ReimbursementAnnouncementDialogComponent,
   ],
   template: `
-    <app-page-header title="报销公告管理" [subtitle]="subtitle()" />
+    <app-page-header title="公告管理" [subtitle]="subtitle()" />
 
     <app-page-toolbar>
       <app-filter-bar toolbar-filters class="notice-toolbar">

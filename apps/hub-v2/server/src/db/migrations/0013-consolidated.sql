@@ -7,19 +7,6 @@
 -- - This file is not used by runtime migration runner.
 -- - Do not move this file into `src/db/migrations`.
 
--- dashboard_preferences (0013)
-CREATE TABLE IF NOT EXISTS dashboard_preferences (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL UNIQUE,
-  stats_config_json TEXT NOT NULL DEFAULT '{}',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_dashboard_preferences_user_id
-  ON dashboard_preferences(user_id);
-
 -- project meta tables (0016)
 CREATE TABLE IF NOT EXISTS project_modules (
   id TEXT PRIMARY KEY,

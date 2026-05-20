@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PageHeaderComponent } from '@shared/ui';
+import { AuthStore } from '@core/auth';
 import { forkJoin } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -15,7 +16,7 @@ import { ReimbursementApiService } from '../../../services/reimbursement-api.ser
 import { MyTodosCardComponent, type TodoItem } from '../../components/my-todos-card/my-todos-card';
 import { QuickAccessCardComponent } from '../../components/quick-access-card/quick-access-card';
 import { ReAnnouncementsComponent } from '../../components/re-announcements-card/re-announcements-card';
-import { ReDashboardPanelComponent, type ReDashboardStats } from '../../components/re-dashboard-panel/re-dashboard-panel';
+import { ReDashboardPanelComponent, type ReDashboardStatKey, type ReDashboardStats } from '../../components/re-dashboard-panel/re-dashboard-panel';
 
 type AnnouncementItem = {
   id: string;
@@ -45,6 +46,7 @@ type AnnouncementItem = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReDashboardPageComponent {
+  private readonly authStore = inject(AuthStore);
   private readonly reimbursementApi = inject(ReimbursementApiService);
   private readonly contentApi = inject(ContentApiService);
   private readonly message = inject(NzMessageService);
@@ -69,6 +71,20 @@ export class ReDashboardPageComponent {
       monthAmount: byMonth.reduce((sum, item) => sum + item.totalAmount, 0),
     };
   });
+  readonly statKeys = computed<ReDashboardStatKey[]>(() => {
+    const keys: ReDashboardStatKey[] = [];
+    const todoCount = this.dashboard()?.todoCount ?? 0;
+    if (this.hasReimbursementApprovalPermission() || todoCount > 0) {
+      keys.push('approvalTodos');
+    }
+    if (this.hasPersonalReimbursementPermission()) {
+      keys.push('myApproving', 'myRejected', 'myCompletedThisMonth', 'myMonthAmount');
+    } else if (this.reportMode()) {
+      keys.push('myCompletedThisMonth', 'myMonthAmount');
+    }
+    return keys;
+  });
+  readonly reportMode = computed(() => this.hasPermission('expense.report.view'));
 
   readonly todoItems = computed<TodoItem[]>(() => this.mapTodoItems(this.dashboard()?.recentTodos ?? []));
   readonly todoTotal = computed(() => this.dashboard()?.todoCount ?? 0);
@@ -167,5 +183,21 @@ export class ReDashboardPageComponent {
     const month = `${date.getMonth() + 1}`.padStart(2, '0');
     const day = `${date.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private hasPersonalReimbursementPermission(): boolean {
+    return this.hasPermission('expense.submit') || this.hasPermission('expense.view.self');
+  }
+
+  private hasReimbursementApprovalPermission(): boolean {
+    return this.hasAnyPermission(['approval.department', 'approval.cross_department', 'finance.review', 'finance.cashier']);
+  }
+
+  private hasAnyPermission(codes: string[]): boolean {
+    return codes.some((code) => this.hasPermission(code));
+  }
+
+  private hasPermission(code: string): boolean {
+    return this.authStore.currentUser()?.permissionCodes.includes(code) ?? false;
   }
 }

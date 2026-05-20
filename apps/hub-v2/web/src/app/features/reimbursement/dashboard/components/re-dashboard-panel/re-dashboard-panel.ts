@@ -3,6 +3,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { StatCardComponent } from '@shared/ui';
 
+export type ReDashboardStatKey = 'approvalTodos' | 'myApproving' | 'myRejected' | 'myCompletedThisMonth' | 'myMonthAmount';
+
 export interface ReDashboardStats {
   todoCount: number;
   myApprovingCount: number;
@@ -17,41 +19,51 @@ export interface ReDashboardStats {
   imports: [CommonModule, StatCardComponent],
   template: `
     <div class="grid">
-      <app-stat-card
-        label="待我审批"
-        [value]="stats().todoCount"
-        hint="含主管、审核、会计节点"
-        icon="bug"
-        tone="blue"
-      />
-      <app-stat-card
-        label="审批中"
-        [value]="stats().myApprovingCount"
-        hint="我提交后仍在流转中"
-        icon="safety-certificate"
-        tone="purple"
-      />
-      <app-stat-card
-        label="已驳回"
-        [value]="stats().rejectedCount"
-        hint="需补充票据或说明"
-        icon="alert"
-        tone="cyan"
-      />
-      <app-stat-card
-        label="本月已完成"
-        [value]="stats().completedThisMonthCount"
-        hint="本月完成审批的单据数"
-        icon="rocket"
-        tone="green"
-      />
-      <app-stat-card
-        label="本月报销金额"
-        [value]="'¥' + (stats().monthAmount | number:'1.2-2')"
-        hint="本月单据金额汇总"
-        icon="team"
-        tone="orange"
-      />
+      @if (isVisible('approvalTodos')) {
+        <app-stat-card
+          label="待我审批"
+          [value]="stats().todoCount"
+          hint="分配给我的待处理报销单"
+          icon="bug"
+          tone="blue"
+        />
+      }
+      @if (isVisible('myApproving')) {
+        <app-stat-card
+          label="我的审批中"
+          [value]="stats().myApprovingCount"
+          hint="我提交后仍在流转中"
+          icon="safety-certificate"
+          tone="purple"
+        />
+      }
+      @if (isVisible('myRejected')) {
+        <app-stat-card
+          label="我的已驳回"
+          [value]="stats().rejectedCount"
+          hint="需补充票据或说明"
+          icon="alert"
+          tone="cyan"
+        />
+      }
+      @if (isVisible('myCompletedThisMonth')) {
+        <app-stat-card
+          [label]="reportMode() ? '本月已完成' : '我本月完成'"
+          [value]="stats().completedThisMonthCount"
+          [hint]="reportMode() ? '本月完成审批的单据数' : '我本月完成审批的单据数'"
+          icon="rocket"
+          tone="green"
+        />
+      }
+      @if (isVisible('myMonthAmount')) {
+        <app-stat-card
+          [label]="reportMode() ? '本月报销金额' : '我本月报销金额'"
+          [value]="'¥' + (stats().monthAmount | number:'1.2-2')"
+          [hint]="reportMode() ? '本月单据金额汇总' : '我本月单据金额汇总'"
+          icon="team"
+          tone="orange"
+        />
+      }
     </div>
   `,
   styles: [
@@ -89,4 +101,16 @@ export class ReDashboardPanelComponent {
     completedThisMonthCount: 0,
     monthAmount: 0,
   });
+  readonly visibleKeys = input<ReDashboardStatKey[]>([
+    'approvalTodos',
+    'myApproving',
+    'myRejected',
+    'myCompletedThisMonth',
+    'myMonthAmount',
+  ]);
+  readonly reportMode = input(false);
+
+  isVisible(key: ReDashboardStatKey): boolean {
+    return this.visibleKeys().includes(key);
+  }
 }

@@ -121,6 +121,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
     if (!user) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${id}`, 404);
     }
+    const before = this.withDepartments(user);
     this.organization.validateUserDepartmentInputs(input.departments);
     this.validateTitleCode(input.titleCode);
     this.validateUserReference(input.managerUserId, "manager user", id);
@@ -167,23 +168,26 @@ export class UserService implements UserCommandContract, UserQueryContract {
 
     this.repo.update(id, updated, updated.updatedAt);
     this.organization.replaceUserDepartmentsFromUserModule(id, input.departments);
-    const action = user.loginEnabled !== updated.loginEnabled
-      ? updated.loginEnabled ? "enable" : "disable"
-      : updated.status === "inactive" ? "disable" : "update";
-    this.auditLog?.record(
-      {
-        module: "user",
-        action,
-        targetType: "user",
-        targetId: updated.id,
-        targetName: updated.displayName || updated.username,
-        summary: `更新用户「${updated.displayName || updated.username}」`,
-        before: user,
-        after: { ...updated, departments: input.departments ?? undefined }
-      },
-      _ctx
-    );
-    return this.withDepartments(updated);
+    const after = this.withDepartments(updated);
+    if (this.hasUserAuditChange(before, after, input)) {
+      const action = before.loginEnabled !== after.loginEnabled
+        ? after.loginEnabled ? "enable" : "disable"
+        : after.status === "inactive" && before.status !== "inactive" ? "disable" : "update";
+      this.auditLog?.record(
+        {
+          module: "user",
+          action,
+          targetType: "user",
+          targetId: after.id,
+          targetName: after.displayName || after.username,
+          summary: `更新用户「${after.displayName || after.username}」`,
+          before,
+          after
+        },
+        _ctx
+      );
+    }
+    return after;
   }
 
   async getById(id: string, ctx: RequestContext): Promise<UserEntity> {
@@ -255,6 +259,30 @@ export class UserService implements UserCommandContract, UserQueryContract {
   private withDepartmentsMany(users: UserEntity[]): UserEntity[] {
     const map = this.organization.listUserDepartmentsForUsers(users.map((user) => user.id));
     return users.map((user) => this.repo.attachDepartments(user, map.get(user.id) ?? []));
+  }
+
+  private hasUserAuditChange(before: UserEntity, after: UserEntity, input: UpdateUserInput): boolean {
+    const fields: Array<keyof Pick<
+      UserEntity,
+      "displayName" | "email" | "mobile" | "titleCode" | "loginEnabled" | "status" | "remark" | "managerUserId"
+    >> = ["displayName", "email", "mobile", "titleCode", "loginEnabled", "status", "remark", "managerUserId"];
+
+    for (const field of fields) {
+      if (input[field] !== undefined && before[field] !== after[field]) {
+        return true;
+      }
+    }
+
+    if (input.departments !== undefined) {
+      const beforeDepartments = before.departments.map((item) => `${item.departmentId}:${item.roleCode ?? ""}`).sort();
+      const afterDepartments = after.departments.map((item) => `${item.departmentId}:${item.roleCode ?? ""}`).sort();
+      if (beforeDepartments.length !== afterDepartments.length) {
+        return true;
+      }
+      return beforeDepartments.some((item, index) => item !== afterDepartments[index]);
+    }
+
+    return false;
   }
 
   private validateUserReference(userId: string | null | undefined, label: string, currentUserId?: string): void {

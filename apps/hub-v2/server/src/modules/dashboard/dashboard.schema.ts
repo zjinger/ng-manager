@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DASHBOARD_WIDGET_KEYS } from "./dashboard.types";
 
 export const dashboardBoardRangeSchema = z.enum(["7d", "30d"]);
 
@@ -27,3 +28,15 @@ export const dashboardReportedIssuesPageQuerySchema = z.object({
 });
 
 export type DashboardReportedIssuesPageQuery = z.infer<typeof dashboardReportedIssuesPageQuerySchema>;
+
+export const updateDashboardPreferencesSchema = z.object({
+  widgets: z.array(
+    z.object({
+      key: z.enum(DASHBOARD_WIDGET_KEYS),
+      visible: z.boolean(),
+      order: z.coerce.number().int().min(1).max(100)
+    })
+  ).min(1)
+});
+
+export type UpdateDashboardPreferencesBody = z.infer<typeof updateDashboardPreferencesSchema>;

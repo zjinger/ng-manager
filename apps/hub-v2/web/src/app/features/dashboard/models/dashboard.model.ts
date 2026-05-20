@@ -1,5 +1,7 @@
-export type DashboardTodoItemKind = "issue_assigned" | "issue_collaborating" | "issue_verify" | "rd_assigned" | "rd_verify";
-export type DashboardActivityItemKind = "issue_activity" | "rd_activity" | "content_activity";
+import type { ReimbursementClaimType } from '../../reimbursement/models/reimbursement.model';
+
+export type DashboardTodoItemKind = "issue_assigned" | "issue_collaborating" | "issue_verify" | "rd_assigned" | "rd_verify" | "reimbursement_todo";
+export type DashboardActivityItemKind = "issue_activity" | "rd_activity" | "content_activity" | "reimbursement_activity";
 export interface DashboardStats {
   assignedIssues: number;
   verifyingIssues: number;
@@ -17,6 +19,10 @@ export interface DashboardTodoItem {
   updatedAt: string;
   sortAt?: string;
   projectId: string;
+  claimType?: ReimbursementClaimType;
+  applicantName?: string;
+  amount?: number;
+  stageName?: string | null;
 }
 
 export interface DashboardTodoPageQuery {
@@ -65,12 +71,16 @@ export interface DashboardActivityItem {
   summary: string | null;
   createdAt: string;
   projectId: string;
+  claimType?: ReimbursementClaimType;
+  amount?: number;
+  status?: string;
 }
 
 export interface DashboardAnnouncement {
   id: string;
   title: string;
   summary: string | null;
+  domain: 'content' | 'reimbursement';
   projectId: string | null;
   publishAt: string | null;
   pinned: boolean;
@@ -132,4 +142,47 @@ export interface DashboardBoardData {
   overview: DashboardBoardOverview;
   trend: DashboardBoardTrend;
   distribution: DashboardBoardDistribution;
+}
+
+export type DashboardWidgetKey =
+  | 'reimbursement.stats'
+  | 'collab.todos'
+  | 'collab.issues'
+  | 'collab.activities'
+  | 'collab.announcements'
+  | 'collab.documents';
+
+export type DashboardWidgetDomain = 'reimbursement' | 'collab';
+
+export interface WorkspaceCapabilities {
+  canAccessReimbursementWorkspace: boolean;
+  canAccessCollaborationWorkspace: boolean;
+  isReimbursementOnlyUser: boolean;
+  isCollaborationOnlyUser: boolean;
+  isMixedWorkspaceUser: boolean;
+}
+
+export interface DashboardWidgetPreference {
+  key: DashboardWidgetKey;
+  visible: boolean;
+  order: number;
+}
+
+export interface DashboardWidgetPreferenceItem extends DashboardWidgetPreference {
+  label: string;
+  domain: DashboardWidgetDomain;
+  defaultVisible: boolean;
+  defaultOrder: number;
+}
+
+export interface DashboardPreferences {
+  dashboardCode: 'home';
+  capabilities: WorkspaceCapabilities;
+  widgets: DashboardWidgetPreferenceItem[];
+  updatedAt: string | null;
+}
+
+export interface UnifiedDashboardViewModel {
+  preferences: DashboardPreferences;
+  collab: DashboardHomeData | null;
 }

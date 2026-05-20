@@ -8,8 +8,8 @@ export const REIMBURSEMENT_ROUTES: Routes = [
   },
   {
     path: 're-dashboard',
-    loadChildren: () =>
-      import('./dashboard/routes').then((m) => m.RE_DASHBOARD_ROUTES),
+    pathMatch: 'prefix',
+    redirectTo: '/dashboard',
   },
   {
     path: 'travel-expense',

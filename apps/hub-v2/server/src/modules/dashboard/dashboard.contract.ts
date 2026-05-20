@@ -5,6 +5,7 @@ import type {
   DashboardBoardData,
   DashboardBoardRange,
   DashboardDocumentSummary,
+  DashboardPreferences,
   DashboardHomeData,
   DashboardReportedIssueItem,
   DashboardReportedIssueListQuery,
@@ -12,7 +13,8 @@ import type {
   DashboardStats,
   DashboardTodoItem,
   DashboardTodoListQuery,
-  DashboardTodoListResult
+  DashboardTodoListResult,
+  UpdateDashboardPreferencesInput
 } from "./dashboard.types";
 
 export interface DashboardQueryContract {
@@ -26,4 +28,6 @@ export interface DashboardQueryContract {
   getActivities(ctx: RequestContext): Promise<DashboardActivityItem[]>;
   getAnnouncements(ctx: RequestContext): Promise<DashboardAnnouncementSummary[]>;
   getDocuments(ctx: RequestContext): Promise<DashboardDocumentSummary[]>;
+  getPreferences(ctx: RequestContext): Promise<DashboardPreferences>;
+  updatePreferences(input: UpdateDashboardPreferencesInput, ctx: RequestContext): Promise<DashboardPreferences>;
 }

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
+import { permissionGuard, PROJECT_GOVERNANCE_PERMISSIONS } from './core/auth';
 import { FEATURE_FLAGS } from './core/feature-flags';
 
 export const routes: Routes = [
@@ -84,21 +85,29 @@ export const routes: Routes = [
       // 测试跟踪
       {
         path: 'issues',
+        canActivate: [permissionGuard],
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
         loadChildren: () => import('./features/issues/routes').then((m) => m.ISSUE_ROUTES),
       },
       // 研发路由
       {
         path: 'rd',
+        canActivate: [permissionGuard],
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
         loadChildren: () => import('./features/rd/routes').then((m) => m.RD_ROUTES),
       },
       // 内容路由：公告、文档、版本发布等
       {
         path: 'content',
+        canActivate: [permissionGuard],
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
         loadChildren: () => import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
       },
       // 项目路由
       {
         path: 'projects',
+        canActivate: [permissionGuard],
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
         loadChildren: () => import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
       },
       // 系统反馈路由

@@ -26,6 +26,7 @@ export interface DashboardAnnouncementSummary {
   id: string;
   title: string;
   summary: string | null;
+  domain: "content" | "reimbursement";
   projectId: string | null;
   publishAt: string | null;
   pinned: boolean;
@@ -133,4 +134,48 @@ export interface DashboardBoardData {
   overview: DashboardBoardOverview;
   trend: DashboardBoardTrend;
   distribution: DashboardBoardDistribution;
+}
+
+export const DASHBOARD_WIDGET_KEYS = [
+  "reimbursement.stats",
+  "collab.todos",
+  "collab.issues",
+  "collab.activities",
+  "collab.announcements",
+  "collab.documents"
+] as const;
+
+export type DashboardWidgetKey = typeof DASHBOARD_WIDGET_KEYS[number];
+export type DashboardWidgetDomain = "reimbursement" | "collab";
+
+export interface WorkspaceCapabilities {
+  canAccessReimbursementWorkspace: boolean;
+  canAccessCollaborationWorkspace: boolean;
+  isReimbursementOnlyUser: boolean;
+  isCollaborationOnlyUser: boolean;
+  isMixedWorkspaceUser: boolean;
+}
+
+export interface DashboardWidgetPreference {
+  key: DashboardWidgetKey;
+  visible: boolean;
+  order: number;
+}
+
+export interface DashboardWidgetPreferenceItem extends DashboardWidgetPreference {
+  label: string;
+  domain: DashboardWidgetDomain;
+  defaultVisible: boolean;
+  defaultOrder: number;
+}
+
+export interface DashboardPreferences {
+  dashboardCode: "home";
+  capabilities: WorkspaceCapabilities;
+  widgets: DashboardWidgetPreferenceItem[];
+  updatedAt: string | null;
+}
+
+export interface UpdateDashboardPreferencesInput {
+  widgets: DashboardWidgetPreference[];
 }

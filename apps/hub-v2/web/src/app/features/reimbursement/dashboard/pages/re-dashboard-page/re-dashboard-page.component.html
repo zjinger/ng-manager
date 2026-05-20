@@ -1,6 +1,8 @@
 <app-page-header title="报销工作台" subtitle="集中处理报销申请、审批流转、财务审核与付款进度。" />
 
-<re-dashboard-panel [stats]="stats()" />
+@if (statKeys().length > 0) {
+  <re-dashboard-panel [stats]="stats()" [visibleKeys]="statKeys()" [reportMode]="reportMode()" />
+}
 
 <div class="dashboard-content">
   <div class="dashboard-main">

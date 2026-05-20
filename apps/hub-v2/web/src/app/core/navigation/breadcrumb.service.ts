@@ -88,11 +88,8 @@ export class BreadcrumbService {
     if (path.startsWith('/feedbacks')) {
       return [{ label: '系统反馈' }];
     }
-    if (path.startsWith('/re-dashboard')) {
-      return [{ label: '报销工作台' }];
-    }
     if (path.startsWith('/expense-notice')) {
-      return [{ label: '报销公告管理' }];
+      return [{ label: '公告管理' }];
     }
     if (path.startsWith('/travel-expense/new')) {
       return [{ label: '新建差旅费报销' }];

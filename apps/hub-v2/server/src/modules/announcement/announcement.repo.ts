@@ -203,15 +203,15 @@ export class AnnouncementRepo {
   }
 
   listRecentForDashboard(projectIds: string[], limit: number): AnnouncementEntity[] {
-    const conditions: string[] = ["status = 'published'", "domain = 'content'"];
+    const conditions: string[] = ["status = 'published'"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
       const placeholders = projectIds.map(() => "?").join(", ");
-      conditions.push(`(scope = 'global' OR project_id IN (${placeholders}))`);
+      conditions.push(`((domain = 'content' AND (scope = 'global' OR project_id IN (${placeholders}))) OR domain = 'reimbursement')`);
       params.push(...projectIds);
     } else {
-      conditions.push("(scope = 'global' OR project_id IS NULL)");
+      conditions.push("((domain = 'content' AND (scope = 'global' OR project_id IS NULL)) OR domain = 'reimbursement')");
     }
 
     const rows = this.db

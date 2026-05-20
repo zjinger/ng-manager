@@ -4,6 +4,7 @@ import type {
   SystemRoleStatus,
   SystemPermissionEntity,
   SystemPermissionStatus,
+  SystemRbacUserSummary,
   UserSystemRoleEntity,
   RoleUserEntity,
   ListSystemRolesQuery,
@@ -58,6 +59,12 @@ type RoleUserRow = {
   display_name: string;
   email: string | null;
   avatar_upload_id: string | null;
+};
+
+type UserSummaryRow = {
+  id: string;
+  username: string;
+  display_name: string | null;
 };
 
 export class SystemRbacRepo {
@@ -264,6 +271,19 @@ export class SystemRbacRepo {
   userExists(userId: string): boolean {
     const row = this.db.prepare("SELECT 1 FROM users WHERE id = ?").get(userId) as { 1: number } | undefined;
     return !!row;
+  }
+
+  findUserById(userId: string): SystemRbacUserSummary | null {
+    const row = this.db
+      .prepare("SELECT id, username, display_name FROM users WHERE id = ?")
+      .get(userId) as UserSummaryRow | undefined;
+    return row
+      ? {
+          id: row.id,
+          username: row.username,
+          displayName: row.display_name
+        }
+      : null;
   }
 
   private mapRole(row: SystemRoleRow): SystemRoleEntity {

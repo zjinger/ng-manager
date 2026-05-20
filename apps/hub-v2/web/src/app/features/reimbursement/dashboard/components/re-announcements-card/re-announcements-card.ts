@@ -15,7 +15,7 @@ import { DashboardPanelComponent } from '@shared/ui';
       [empty]="items().length === 0"
       emptyText="暂无公告"
       [actionIcon]="'arrow-right'"
-      [actionText]="'进入报销公告管理'"
+      [actionText]="'进入公告管理'"
       [actionLink]="['/expense-notice']"
     >
       @for (item of items(); track item.id) {

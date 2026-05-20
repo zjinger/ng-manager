@@ -296,14 +296,25 @@ export class DashboardTodosPageComponent {
   }
 
   detailLink(item: DashboardTodoItem): string[] {
+    if (item.kind === 'reimbursement_todo') {
+      return item.claimType === 'travel'
+        ? ['/travel-expense/detail', item.entityId]
+        : ['/expense/detail', item.entityId];
+    }
     return item.kind.startsWith('rd') ? ['/rd', item.entityId] : ['/issues', item.entityId];
   }
 
   kindLabel(kind: DashboardTodoItemKind): string {
+    if (kind === 'reimbursement_todo') {
+      return '报销单';
+    }
     return kind.startsWith('rd') ? '研发项' : '测试单';
   }
 
   roleLabel(kind: DashboardTodoItemKind): string {
+    if (kind === 'reimbursement_todo') {
+      return '待审批';
+    }
     if (kind === 'issue_collaborating') {
       return '协作中';
     }
@@ -314,6 +325,9 @@ export class DashboardTodosPageComponent {
   }
 
   projectLabel(projectId: string): string {
+    if (!projectId) {
+      return '报销';
+    }
     return this.projectNameById()[projectId] || '未知项目';
   }
 
@@ -328,6 +342,7 @@ export class DashboardTodosPageComponent {
       issue_verify: '测试单待验证',
       rd_assigned: '研发项负责人',
       rd_verify: '研发项待验证',
+      reimbursement_todo: '报销单待审批',
     };
     return map[kind] || kind;
   }

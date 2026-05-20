@@ -16,11 +16,11 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
       [count]="total()"
       [actionIcon]="showMoreIcon() ? 'more' : null"
       [actionText]="showMoreIcon() ? '查看更多待办' : null"
-      [actionLink]="showMoreIcon() ? ['/dashboard/todos'] : []"
+      [actionLink]="showMoreIcon() ? actionLink() : []"
       [empty]="items().length === 0"
       emptyText="当前没有待办"
     >
-      @for (item of items(); track item.entityId) {
+      @for (item of items(); track item.kind + '-' + item.entityId) {
         <a
           class="todo"
           [routerLink]="detailLink(item)"
@@ -29,7 +29,7 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
           <div class="todo__body">
             <div class="todo__title">
               <span class="todo__tag" [attr.data-kind]="item.kind">
-                {{ item.kind.startsWith('rd') ? '研发项' : '测试单' }}
+                {{ kindLabel(item) }}
               </span>
               @if (roleLabel(item)) {
                 <span class="todo__role" [attr.data-kind]="item.kind">{{ roleLabel(item) }}</span>
@@ -40,6 +40,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
               <span class="todo__code">{{ item.code }}</span>
               <app-status-badge [status]="item.status" />
               <span>{{ projectLabel(item.projectId) }}</span>
+              @if (item.amount !== undefined) {
+                <span>¥{{ item.amount | number : '1.2-2' }}</span>
+              }
               <span>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
             </div>
           </div>
@@ -80,6 +83,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
       .todo__priority[data-kind='issue_collaborating'] {
         background: var(--primary-500);
       }
+      .todo__priority[data-kind='reimbursement_todo'] {
+        background: #e11d48;
+      }
       .todo__body {
         min-width: 0;
       }
@@ -110,6 +116,10 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         background: color-mix(in srgb, var(--primary-500) 14%, transparent);
         color: var(--primary-500);
       }
+      .todo__tag[data-kind='reimbursement_todo'] {
+        background: rgba(225, 29, 72, 0.12);
+        color: #be123c;
+      }
       .todo__role {
         display: inline-flex;
         align-items: center;
@@ -138,6 +148,10 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
         background: rgba(245, 158, 11, 0.16);
         color: #b45309;
       }
+      .todo__role[data-kind='reimbursement_todo'] {
+        background: rgba(225, 29, 72, 0.1);
+        color: #be123c;
+      }
       .todo__meta {
         display: flex;
         align-items: center;
@@ -153,6 +167,9 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
       :host-context(html[data-theme='dark']) .todo__tag[data-kind^='rd'] {
         background: color-mix(in srgb, var(--primary-500) 18%, transparent);
       }
+      :host-context(html[data-theme='dark']) .todo__tag[data-kind='reimbursement_todo'] {
+        background: rgba(244, 63, 94, 0.18);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -161,9 +178,15 @@ export class MyTodosCardComponent {
   readonly items = input.required<DashboardTodoItem[]>();
   readonly total = input(0);
   readonly projectNames = input<Record<string, string>>({});
-  readonly showMoreIcon = computed(() => this.total() > 10);
+  readonly actionLink = input<string[]>(['/dashboard/todos']);
+  readonly showMoreIcon = computed(() => this.total() > 10 && this.actionLink().length > 0);
 
   detailLink(item: DashboardTodoItem): string[] {
+    if (item.kind === 'reimbursement_todo') {
+      return item.claimType === 'travel'
+        ? ['/travel-expense/detail', item.entityId]
+        : ['/expense/detail', item.entityId];
+    }
     if (item.kind.startsWith('rd')) {
       return ['/rd', item.entityId];
     }
@@ -171,10 +194,23 @@ export class MyTodosCardComponent {
   }
 
   projectLabel(projectId: string): string {
+    if (!projectId) {
+      return '报销';
+    }
     return this.projectNames()[projectId] || '未知项目';
   }
 
+  kindLabel(item: DashboardTodoItem): string {
+    if (item.kind === 'reimbursement_todo') {
+      return '报销单';
+    }
+    return item.kind.startsWith('rd') ? '研发项' : '测试单';
+  }
+
   roleLabel(item: DashboardTodoItem): string {
+    if (item.kind === 'reimbursement_todo') {
+      return item.stageName ?? '待审批';
+    }
     if (item.kind === 'issue_collaborating') {
       return '协作中';
     }

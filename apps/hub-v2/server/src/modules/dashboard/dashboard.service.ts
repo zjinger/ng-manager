@@ -2,6 +2,8 @@ import type { RequestContext } from "../../shared/context/request-context";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { normalizePage } from "../../shared/http/pagination";
+import { genId } from "../../shared/utils/id";
+import { nowIso } from "../../shared/utils/time";
 import type { AnnouncementQueryContract } from "../announcement/announcement.contract";
 import type { ContentLogQueryContract } from "../content-log/content-log.contract";
 import type { DocumentQueryContract } from "../document/document.contract";
@@ -17,6 +19,10 @@ import type {
   DashboardBoardData,
   DashboardBoardRange,
   DashboardDocumentSummary,
+  DashboardPreferences,
+  DashboardWidgetKey,
+  DashboardWidgetPreference,
+  DashboardWidgetPreferenceItem,
   DashboardHomeData,
   DashboardReportedIssueItem,
   DashboardReportedIssueListQuery,
@@ -24,7 +30,10 @@ import type {
   DashboardStats,
   DashboardTodoItem,
   DashboardTodoListQuery,
-  DashboardTodoListResult
+  DashboardTodoListResult,
+  DashboardWidgetDomain,
+  UpdateDashboardPreferencesInput,
+  WorkspaceCapabilities
 } from "./dashboard.types";
 
 type DashboardScope = {
@@ -32,6 +41,49 @@ type DashboardScope = {
   effectiveProjectIds: string[];
   userId: string | null;
 };
+
+type DashboardWidgetDefinition = {
+  key: DashboardWidgetKey;
+  label: string;
+  domain: DashboardWidgetDomain;
+  defaultOrder: number;
+  defaultVisible: boolean;
+};
+
+const DASHBOARD_CODE = "home";
+const REIMBURSEMENT_PERMISSION_CODES = new Set([
+  "expense.submit",
+  "expense.view.self",
+  "expense.report.view",
+  "expense.rule.manage",
+  "finance.review",
+  "finance.cashier"
+]);
+const REIMBURSEMENT_APPROVAL_PERMISSION_CODES = new Set([
+  "approval.department",
+  "approval.cross_department",
+  "finance.review",
+  "finance.cashier"
+]);
+const COLLABORATION_PERMISSION_CODES = new Set([
+  "project.create",
+  "project.manage",
+  "project.read.all",
+  "project.manage.all",
+  "project.archive",
+  "project.owner.transfer"
+]);
+
+const DASHBOARD_WIDGET_DEFINITIONS: DashboardWidgetDefinition[] = [
+  { key: "reimbursement.stats", label: "报销统计", domain: "reimbursement", defaultOrder: 30, defaultVisible: true },
+  { key: "collab.todos", label: "我的待办", domain: "collab", defaultOrder: 110, defaultVisible: true },
+  { key: "collab.issues", label: "我提的测试单", domain: "collab", defaultOrder: 120, defaultVisible: true },
+  { key: "collab.activities", label: "我的动态", domain: "collab", defaultOrder: 130, defaultVisible: true },
+  { key: "collab.announcements", label: "最新公告", domain: "collab", defaultOrder: 140, defaultVisible: true },
+  { key: "collab.documents", label: "最新文档", domain: "collab", defaultOrder: 150, defaultVisible: true }
+];
+
+const DASHBOARD_WIDGET_DEFINITION_MAP = new Map(DASHBOARD_WIDGET_DEFINITIONS.map((definition) => [definition.key, definition]));
 
 export class DashboardService implements DashboardQueryContract {
   private static readonly ISSUE_CREATE_ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
@@ -105,6 +157,49 @@ export class DashboardService implements DashboardQueryContract {
     return this.getDocumentsByScope(scope, ctx);
   }
 
+  async getPreferences(ctx: RequestContext): Promise<DashboardPreferences> {
+    const { userId, capabilities, availableDefinitions } = await this.resolvePreferenceContext(ctx);
+    const record = this.dashboardRepo.findPreference(userId, DASHBOARD_CODE);
+    const widgets = this.toPreferenceItems(
+      this.normalizeWidgetPreferences(this.parseStoredWidgetPreferences(record?.layoutJson), availableDefinitions),
+      availableDefinitions
+    );
+
+    return {
+      dashboardCode: DASHBOARD_CODE,
+      capabilities,
+      widgets,
+      updatedAt: record?.updatedAt ?? null
+    };
+  }
+
+  async updatePreferences(input: UpdateDashboardPreferencesInput, ctx: RequestContext): Promise<DashboardPreferences> {
+    const { userId, capabilities, availableDefinitions } = await this.resolvePreferenceContext(ctx);
+    const normalized = this.normalizeWidgetPreferences(input.widgets, availableDefinitions);
+    if (!normalized.some((item) => item.visible)) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "at least one dashboard widget must be visible", 400);
+    }
+
+    const current = this.dashboardRepo.findPreference(userId, DASHBOARD_CODE);
+    const now = nowIso();
+    this.dashboardRepo.savePreference({
+      id: current?.id ?? genId("dpf"),
+      userId,
+      dashboardCode: DASHBOARD_CODE,
+      layoutJson: JSON.stringify(normalized),
+      statsConfigJson: current?.statsConfigJson ?? "{}",
+      createdAt: current?.createdAt ?? now,
+      updatedAt: now
+    });
+
+    return {
+      dashboardCode: DASHBOARD_CODE,
+      capabilities,
+      widgets: this.toPreferenceItems(normalized, availableDefinitions),
+      updatedAt: now
+    };
+  }
+
   private async resolveScope(ctx: RequestContext): Promise<DashboardScope> {
     const projectIds = await this.projectAccess.listAccessibleProjectIds(ctx);
     return {
@@ -112,6 +207,157 @@ export class DashboardService implements DashboardQueryContract {
       effectiveProjectIds: projectIds,
       userId: ctx.userId ?? null
     };
+  }
+
+  private async resolvePreferenceContext(ctx: RequestContext): Promise<{
+    userId: string;
+    capabilities: WorkspaceCapabilities;
+    availableDefinitions: DashboardWidgetDefinition[];
+  }> {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "user context required", 403);
+    }
+    const [projectIds, permissionCodes] = await Promise.all([
+      this.projectAccess.listAccessibleProjectIds(ctx),
+      Promise.resolve(this.dashboardRepo.listUserPermissionCodes(userId))
+    ]);
+    const permissions = new Set(permissionCodes);
+    const hasReimbursementPermission = [...REIMBURSEMENT_PERMISSION_CODES].some((code) => permissions.has(code));
+    const hasReimbursementApprovalPermission = [...REIMBURSEMENT_APPROVAL_PERMISSION_CODES].some((code) => permissions.has(code));
+    const hasPendingReimbursementTasks = this.dashboardRepo.hasPendingReimbursementTasks(userId);
+    const shouldShowReimbursementStatsByDefault = this.shouldShowReimbursementStatsByDefault(
+      permissions,
+      hasReimbursementApprovalPermission,
+      hasPendingReimbursementTasks
+    );
+    const canAccessReimbursementWorkspace =
+      hasReimbursementPermission || hasReimbursementApprovalPermission || hasPendingReimbursementTasks;
+    const canAccessCollaborationWorkspace =
+      projectIds.length > 0 || [...COLLABORATION_PERMISSION_CODES].some((code) => permissions.has(code));
+    const capabilities: WorkspaceCapabilities = {
+      canAccessReimbursementWorkspace,
+      canAccessCollaborationWorkspace,
+      isReimbursementOnlyUser: canAccessReimbursementWorkspace && !canAccessCollaborationWorkspace,
+      isCollaborationOnlyUser: !canAccessReimbursementWorkspace && canAccessCollaborationWorkspace,
+      isMixedWorkspaceUser: canAccessReimbursementWorkspace && canAccessCollaborationWorkspace
+    };
+    const availableDefinitions = DASHBOARD_WIDGET_DEFINITIONS
+      .filter((definition) => {
+        if (definition.domain === "reimbursement") {
+          return canAccessReimbursementWorkspace;
+        }
+        if (definition.key === "collab.todos" || definition.key === "collab.activities" || definition.key === "collab.announcements") {
+          return canAccessCollaborationWorkspace || canAccessReimbursementWorkspace;
+        }
+        return canAccessCollaborationWorkspace;
+      })
+      .map((definition) => definition.key === "reimbursement.stats"
+        ? { ...definition, defaultVisible: shouldShowReimbursementStatsByDefault }
+        : definition);
+
+    return { userId, capabilities, availableDefinitions };
+  }
+
+  private normalizeWidgetPreferences(
+    widgets: DashboardWidgetPreference[],
+    availableDefinitions: DashboardWidgetDefinition[]
+  ): DashboardWidgetPreference[] {
+    const availableKeys = new Set(availableDefinitions.map((definition) => definition.key));
+    const overrides = new Map<DashboardWidgetKey, DashboardWidgetPreference>();
+
+    for (const widget of widgets) {
+      if (!availableKeys.has(widget.key) || overrides.has(widget.key)) {
+        continue;
+      }
+      const definition = DASHBOARD_WIDGET_DEFINITION_MAP.get(widget.key);
+      overrides.set(widget.key, {
+        key: widget.key,
+        visible: widget.visible,
+        order: Number.isFinite(widget.order) ? Math.max(1, Math.round(widget.order)) : definition?.defaultOrder ?? 999
+      });
+    }
+
+    return availableDefinitions
+      .map((definition) => {
+        const override = overrides.get(definition.key);
+        return {
+          key: definition.key,
+          visible: override?.visible ?? definition.defaultVisible,
+          order: override?.order ?? definition.defaultOrder
+        };
+      })
+      .sort((left, right) => {
+        if (left.order !== right.order) {
+          return left.order - right.order;
+        }
+        return (DASHBOARD_WIDGET_DEFINITION_MAP.get(left.key)?.defaultOrder ?? 999) -
+          (DASHBOARD_WIDGET_DEFINITION_MAP.get(right.key)?.defaultOrder ?? 999);
+      })
+      .map((item, index) => ({ ...item, order: index + 1 }));
+  }
+
+  private toPreferenceItems(
+    widgets: DashboardWidgetPreference[],
+    availableDefinitions: DashboardWidgetDefinition[]
+  ): DashboardWidgetPreferenceItem[] {
+    const available = new Map(availableDefinitions.map((definition) => [definition.key, definition]));
+    return widgets
+      .map((widget) => {
+        const definition = available.get(widget.key);
+        if (!definition) {
+          return null;
+        }
+        return {
+          ...widget,
+          label: definition.label,
+          domain: definition.domain,
+          defaultVisible: definition.defaultVisible,
+          defaultOrder: definition.defaultOrder
+        };
+      })
+      .filter((item): item is DashboardWidgetPreferenceItem => !!item);
+  }
+
+  private parseStoredWidgetPreferences(raw: string | undefined): DashboardWidgetPreference[] {
+    if (!raw) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed
+        .filter((item): item is DashboardWidgetPreference => {
+          if (typeof item !== "object" || item === null) {
+            return false;
+          }
+          const maybe = item as Partial<DashboardWidgetPreference>;
+          return typeof maybe.key === "string" &&
+            DASHBOARD_WIDGET_DEFINITION_MAP.has(maybe.key as DashboardWidgetKey) &&
+            typeof maybe.visible === "boolean" &&
+            typeof maybe.order === "number";
+        })
+        .map((item) => ({
+          key: item.key,
+          visible: item.visible,
+          order: item.order
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  private shouldShowReimbursementStatsByDefault(
+    permissions: Set<string>,
+    hasReimbursementApprovalPermission: boolean,
+    hasPendingReimbursementTasks: boolean
+  ): boolean {
+    if (hasReimbursementApprovalPermission || hasPendingReimbursementTasks) {
+      return true;
+    }
+    return permissions.has("expense.report.view") || permissions.has("expense.rule.manage");
   }
 
   private async resolveBoardScope(projectId: string | undefined, ctx: RequestContext): Promise<{
@@ -472,6 +718,7 @@ export class DashboardService implements DashboardQueryContract {
       id: item.id,
       title: item.title,
       summary: item.summary,
+      domain: item.domain,
       projectId: item.projectId,
       publishAt: item.publishAt,
       pinned: item.pinned

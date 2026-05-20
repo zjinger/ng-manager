@@ -9,17 +9,38 @@ type UserDepartmentSeed = {
   roleCode: string | null;
 };
 
+type DepartmentManagerSeed = {
+  departmentCode: string;
+  managerUsername: string;
+};
+
+type UserManagerSeed = {
+  username: string;
+  managerUsername: string;
+};
+
 const DEFAULT_MODE: Mode = "append";
 
 const USER_DEPARTMENT_SEEDS: UserDepartmentSeed[] = [
+  { username: "pmmanager", departmentCode: "planning_mgmt", roleCode: "member" },
   { username: "pm.hub", departmentCode: "planning_mgmt", roleCode: "member" },
   { username: "dev.hub", departmentCode: "frontend_rd_1", roleCode: "member" },
   { username: "dev.runtime", departmentCode: "backend_rd", roleCode: "member" },
   { username: "qa.hub", departmentCode: "planning_mgmt", roleCode: "member" },
   { username: "ux.hub", departmentCode: "planning_mgmt", roleCode: "member" },
   { username: "ops.hub", departmentCode: "backend_rd", roleCode: "member" },
-  { username: "finance", departmentCode: "finance_legal_tax", roleCode: "member" },
-  { username: "bizdev", departmentCode: "business_marketing", roleCode: "member" }
+  { username: "finance", departmentCode: "finance_legal_tax", roleCode: "finance_reviewer+finance_cashier" },
+  { username: "bizdev", departmentCode: "business_marketing", roleCode: "expense_manager" }
+];
+
+const DEPARTMENT_MANAGER_SEEDS: DepartmentManagerSeed[] = [
+  { departmentCode: "planning_mgmt", managerUsername: "pmmanager" }
+];
+
+const USER_MANAGER_SEEDS: UserManagerSeed[] = [
+  { username: "pm.hub", managerUsername: "pmmanager" },
+  { username: "dev.hub", managerUsername: "pmmanager" },
+  { username: "qa.hub", managerUsername: "pmmanager" }
 ];
 
 function parseMode(argv: string[]): Mode {
@@ -42,17 +63,39 @@ function main() {
   const findUserId = db.prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
   const findDepartmentId = db.prepare("SELECT id FROM departments WHERE code = ? LIMIT 1");
   const findExisting = db.prepare("SELECT id FROM user_departments WHERE user_id = ? LIMIT 1");
+  const findSystemRoleId = db.prepare("SELECT id FROM system_roles WHERE code = ? AND status = 'active' LIMIT 1");
   const deleteExisting = db.prepare("DELETE FROM user_departments WHERE user_id = ?");
   const insertRel = db.prepare(`
     INSERT OR IGNORE INTO user_departments (id, user_id, department_id, role_code, created_at, updated_at)
     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
   `);
+  const insertSystemRole = db.prepare(`
+    INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
+    VALUES (?, ?, ?, datetime('now'))
+  `);
+  const updateDepartmentManager = db.prepare(`
+    UPDATE departments
+       SET manager_user_id = ?, updated_at = datetime('now')
+     WHERE code = ?
+  `);
+  const updateUserManager = db.prepare(`
+    UPDATE users
+       SET manager_user_id = ?, updated_at = datetime('now')
+     WHERE username = ?
+  `);
 
   let inserted = 0;
   let replaced = 0;
+  let roleBindingsInserted = 0;
+  let departmentManagersUpdated = 0;
+  let userManagersUpdated = 0;
   let skippedExists = 0;
   const missingUsers: string[] = [];
   const missingDepartments: string[] = [];
+  const missingSystemRoles: string[] = [];
+  const missingManagerUsers: string[] = [];
+  const missingManagerDepartments: string[] = [];
+  const missingManagedUsers: string[] = [];
 
   try {
     db.pragma("foreign_keys = ON");
@@ -73,15 +116,55 @@ function main() {
       const existing = findExisting.get(userRow.id) as { id: string } | undefined;
       if (mode === "append" && existing) {
         skippedExists += 1;
-        continue;
-      }
-      if (mode === "replace" && existing) {
+      } else if (mode === "replace" && existing) {
         deleteExisting.run(userRow.id);
         replaced += 1;
+        insertRel.run(`ud_seed_${userRow.id}`, userRow.id, departmentRow.id, item.roleCode);
+        inserted += 1;
+      } else {
+        insertRel.run(`ud_seed_${userRow.id}`, userRow.id, departmentRow.id, item.roleCode);
+        inserted += 1;
       }
 
-      insertRel.run(`ud_seed_${userRow.id}`, userRow.id, departmentRow.id, item.roleCode);
-      inserted += 1;
+      for (const roleCode of parseRoleCodes(item.roleCode)) {
+        const roleRow = findSystemRoleId.get(roleCode) as { id: string } | undefined;
+        if (!roleRow) {
+          missingSystemRoles.push(roleCode);
+          continue;
+        }
+        const result = insertSystemRole.run(`usr_seed_${userRow.id}_${roleCode}`, userRow.id, roleRow.id);
+        roleBindingsInserted += Number(result.changes ?? 0);
+      }
+    }
+
+    for (const item of DEPARTMENT_MANAGER_SEEDS) {
+      const managerRow = findUserId.get(item.managerUsername) as { id: string } | undefined;
+      if (!managerRow) {
+        missingManagerUsers.push(item.managerUsername);
+        continue;
+      }
+      const departmentRow = findDepartmentId.get(item.departmentCode) as { id: string } | undefined;
+      if (!departmentRow) {
+        missingManagerDepartments.push(item.departmentCode);
+        continue;
+      }
+      const result = updateDepartmentManager.run(managerRow.id, item.departmentCode);
+      departmentManagersUpdated += Number(result.changes ?? 0);
+    }
+
+    for (const item of USER_MANAGER_SEEDS) {
+      const managerRow = findUserId.get(item.managerUsername) as { id: string } | undefined;
+      if (!managerRow) {
+        missingManagerUsers.push(item.managerUsername);
+        continue;
+      }
+      const userRow = findUserId.get(item.username) as { id: string } | undefined;
+      if (!userRow) {
+        missingManagedUsers.push(item.username);
+        continue;
+      }
+      const result = updateUserManager.run(managerRow.id, item.username);
+      userManagersUpdated += Number(result.changes ?? 0);
     }
 
     db.exec("COMMIT");
@@ -100,14 +183,28 @@ function main() {
         totalSeeds: USER_DEPARTMENT_SEEDS.length,
         inserted,
         replaced,
+        roleBindingsInserted,
+        departmentManagersUpdated,
+        userManagersUpdated,
         skippedExists,
         missingUsers,
-        missingDepartments: [...new Set(missingDepartments)]
+        missingDepartments: [...new Set(missingDepartments)],
+        missingSystemRoles: [...new Set(missingSystemRoles)],
+        missingManagerUsers: [...new Set(missingManagerUsers)],
+        missingManagerDepartments: [...new Set(missingManagerDepartments)],
+        missingManagedUsers: [...new Set(missingManagedUsers)]
       },
       null,
       2
     )
   );
+}
+
+function parseRoleCodes(roleCode: string | null): string[] {
+  return (roleCode ?? "")
+    .split("+")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
 
 main();

@@ -248,6 +248,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     if (!this.repo.userExists(userId)) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${userId}`, 404);
     }
+    const user = this.repo.findUserById(userId);
+    const userLabel = user?.displayName?.trim() || user?.username?.trim() || userId;
     this.repo.removeRoleUser(roleId, userId);
     this.auditLog?.record(
       {
@@ -256,8 +258,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
         targetType: "system_role_user",
         targetId: `${role.id}:${userId}`,
         targetName: role.name,
-        summary: `从角色「${role.name}」移除用户「${userId}」`,
-        before: { userId }
+        summary: `从角色「${role.name}」移除用户「${userLabel}」`,
+        before: { userId, username: user?.username ?? null, displayName: user?.displayName ?? null }
       },
       _ctx
     );

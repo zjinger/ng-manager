@@ -57,6 +57,12 @@ export interface RoleUserEntity {
   avatarUploadId: string | null;
 }
 
+export interface SystemRbacUserSummary {
+  id: string;
+  username: string;
+  displayName: string | null;
+}
+
 export interface CreateSystemRoleInput {
   code: string;
   name: string;

@@ -8,6 +8,16 @@ import type {
   DashboardBoardTrend
 } from "./dashboard.types";
 
+export interface DashboardPreferenceRecord {
+  id: string;
+  userId: string;
+  dashboardCode: string;
+  layoutJson: string;
+  statsConfigJson: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 type DashboardScope = {
   includeAll: boolean;
   projectIds: string[];
@@ -28,6 +38,16 @@ type StageBucketRow = {
   key: string | null;
   label: string | null;
   total: number;
+};
+
+type DashboardPreferenceRow = {
+  id: string;
+  user_id: string;
+  dashboard_code: string;
+  layout_json: string;
+  stats_config_json: string;
+  created_at: string;
+  updated_at: string;
 };
 
 const ISSUE_PRIORITY_LABELS: Record<string, string> = {
@@ -58,6 +78,69 @@ const RD_STATUS_LABELS: Record<string, string> = {
 
 export class DashboardRepo {
   constructor(private readonly db: Database.Database) {}
+
+  findPreference(userId: string, dashboardCode: string): DashboardPreferenceRecord | null {
+    const row = this.db
+      .prepare("SELECT * FROM dashboard_preferences WHERE user_id = ? AND dashboard_code = ?")
+      .get(userId, dashboardCode) as DashboardPreferenceRow | undefined;
+    return row ? this.toPreferenceRecord(row) : null;
+  }
+
+  savePreference(record: DashboardPreferenceRecord): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO dashboard_preferences (
+            id, user_id, dashboard_code, layout_json, stats_config_json, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(user_id, dashboard_code) DO UPDATE SET
+            layout_json = excluded.layout_json,
+            stats_config_json = dashboard_preferences.stats_config_json,
+            updated_at = excluded.updated_at
+        `
+      )
+      .run(
+        record.id,
+        record.userId,
+        record.dashboardCode,
+        record.layoutJson,
+        record.statsConfigJson,
+        record.createdAt,
+        record.updatedAt
+      );
+  }
+
+  listUserPermissionCodes(userId: string): string[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT DISTINCT p.code
+          FROM user_system_roles ur
+          INNER JOIN system_roles r ON r.id = ur.role_id AND r.status = 'active'
+          INNER JOIN system_role_permissions rp ON rp.role_id = ur.role_id
+          INNER JOIN system_permissions p ON p.id = rp.permission_id
+          WHERE ur.user_id = ?
+          ORDER BY p.code ASC
+        `
+      )
+      .all(userId) as Array<{ code: string }>;
+    return rows.map((row) => row.code);
+  }
+
+  hasPendingReimbursementTasks(userId: string): boolean {
+    const row = this.db
+      .prepare(
+        `
+          SELECT 1
+          FROM reimbursement_approval_tasks
+          WHERE assignee_user_id = ?
+            AND status IN ('pending', 'addsign_pending')
+          LIMIT 1
+        `
+      )
+      .get(userId) as { 1: number } | undefined;
+    return !!row;
+  }
 
   getBoardData(range: DashboardBoardRange, scope: DashboardScope): DashboardBoardData {
     return {
@@ -327,6 +410,18 @@ export class DashboardRepo {
       joinClause: "LEFT JOIN projects ON projects.project_key = feedbacks.project_key",
       whereClause: `AND projects.id IN (${scope.projectIds.map(() => "?").join(", ")})`,
       params: scope.projectIds
+    };
+  }
+
+  private toPreferenceRecord(row: DashboardPreferenceRow): DashboardPreferenceRecord {
+    return {
+      id: row.id,
+      userId: row.user_id,
+      dashboardCode: row.dashboard_code,
+      layoutJson: row.layout_json,
+      statsConfigJson: row.stats_config_json,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
     };
   }
 }

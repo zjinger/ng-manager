@@ -1,41 +1,127 @@
-<app-page-header title="工作台" subtitle="我的待办、测试单、研发项与最新公告。" />
+<app-page-header title="工作台" subtitle="我的待办、报销审批、协作动态与最新公告。">
+  <button header-actions nz-button nzType="default" (click)="openPreferenceModal()" [disabled]="preferencesLoading()">
+    <span nz-icon nzType="setting"></span>
+    定制卡片
+  </button>
+</app-page-header>
 
-@if (store.loading()) {
+@if (loading() || preferencesLoading()) {
   <div class="empty">
     <div class="empty__title">正在加载首页数据…</div>
-    <div class="empty__hint">正在同步与我相关的待办、动态和公告。</div>
+    <div class="empty__hint">正在同步与我相关的待办、审批、动态和公告。</div>
   </div>
-} @else if (store.data(); as data) {
-  <app-dashboard-stat-grid [stats]="data.stats" />
+} @else if (visibleWidgets().length > 0) {
+  @if (store.data(); as data) {
+    @if (canAccessCollaborationWorkspace() && (isWidgetVisible('collab.todos') || isWidgetVisible('collab.issues') || isWidgetVisible('collab.activities'))) {
+      <app-dashboard-stat-grid [stats]="data.stats" />
+    }
+  }
 
-  <div class="dashboard-grid">
-    <app-my-todos-card [items]="data.todos" [total]="store.todosTotal()" [projectNames]="projectNames()" />
-    <app-reported-issues-card
-      [items]="data.reportedIssues"
-      [total]="data.stats.reportedUnresolvedIssues"
-      [projectNames]="projectNames()"
-      (urged)="onIssueUrged()"
-    />
-    <app-my-activities-card [items]="data.activities" [projectNames]="projectNames()" />
-    <div class="dashboard-side">
-      <app-latest-announcements-card
-        [items]="data.announcements"
-        [currentProjectId]="projectContext.currentProjectId()"
-        [currentProjectName]="projectContext.currentProject()?.name || null"
-        [projectNames]="projectNames()"
-      />
-      <app-latest-documents-card
-        [items]="data.documents"
-        [currentProjectId]="projectContext.currentProjectId()"
-        [currentProjectName]="projectContext.currentProject()?.name || null"
-        [projectNames]="projectNames()"
-      />
-    </div>
+  <div class="unified-dashboard-grid">
+    @for (widget of visibleWidgets(); track widget.key) {
+      @switch (widget.key) {
+        @case ('reimbursement.stats') {
+          @if (reimbursementStatKeys().length > 0) {
+            <re-dashboard-panel
+              class="dashboard-widget dashboard-widget--wide"
+              [stats]="reimbursementStats()"
+              [visibleKeys]="reimbursementStatKeys()"
+              [reportMode]="reimbursementReportMode()"
+            />
+          }
+        }
+        @case ('collab.todos') {
+          <app-my-todos-card class="dashboard-widget" [items]="mergedTodoItems()" [total]="mergedTodoTotal()" [projectNames]="projectNames()" [actionLink]="todoActionLink()" />
+        }
+        @case ('collab.issues') {
+          @if (store.data(); as data) {
+            <app-reported-issues-card
+              class="dashboard-widget"
+              [items]="data.reportedIssues"
+              [total]="data.stats.reportedUnresolvedIssues"
+              [projectNames]="projectNames()"
+              (urged)="onIssueUrged()"
+            />
+          }
+        }
+        @case ('collab.activities') {
+          <app-my-activities-card class="dashboard-widget" [items]="mergedActivityItems()" [projectNames]="projectNames()" />
+        }
+        @case ('collab.announcements') {
+          @if (store.data(); as data) {
+            <app-latest-announcements-card
+              class="dashboard-widget"
+              [items]="data.announcements"
+              [currentProjectId]="projectContext.currentProjectId()"
+              [currentProjectName]="projectContext.currentProject()?.name || null"
+              [projectNames]="projectNames()"
+            />
+          }
+        }
+        @case ('collab.documents') {
+          @if (store.data(); as data) {
+            <app-latest-documents-card
+              class="dashboard-widget"
+              [items]="data.documents"
+              [currentProjectId]="projectContext.currentProjectId()"
+              [currentProjectName]="projectContext.currentProject()?.name || null"
+              [projectNames]="projectNames()"
+            />
+          }
+        }
+      }
+    }
   </div>
-  <app-dashboard-shortcuts [items]="shortcutItems" />
+
+  @if (shortcutItems().length > 0) {
+    <app-dashboard-shortcuts [items]="shortcutItems()" />
+  }
 } @else {
   <div class="empty">
-    <div class="empty__title">首页数据加载失败或当前项目暂无内容</div>
-    <div class="empty__hint">可以先创建用户、项目或录入协作数据后再返回首页查看。</div>
+    <div class="empty__title">暂无可显示的工作台卡片</div>
+    <div class="empty__hint">可以打开定制卡片恢复默认显示。</div>
   </div>
 }
+
+<nz-modal
+  [nzVisible]="preferenceModalVisible()"
+  nzTitle="定制工作台卡片"
+  nzOkText="保存"
+  nzCancelText="取消"
+  [nzCentered]="true"
+  [nzWidth]="720"
+  [nzOkLoading]="preferencesSaving()"
+  [nzOkDisabled]="visibleDraftCount() === 0"
+  (nzOnCancel)="closePreferenceModal()"
+  (nzOnOk)="savePreferences()"
+>
+  <ng-container *nzModalContent>
+    <div class="preference-modal">
+      <div class="preference-modal__toolbar">
+        <span>已显示 {{ visibleDraftCount() }} / {{ preferenceDraft().length }} 张</span>
+        <button nz-button nzType="default" nzSize="small" (click)="resetPreferenceDraft()" [disabled]="preferencesSaving()">恢复默认</button>
+      </div>
+
+      <div class="preference-list">
+        @for (item of preferenceDraft(); track item.key; let index = $index) {
+          <article class="preference-item" [class.preference-item--disabled]="!item.visible">
+            <div class="preference-item__main">
+              <div class="preference-item__index">{{ index + 1 }}</div>
+              <div>
+                <div class="preference-item__title">{{ item.label }}</div>
+                <div class="preference-item__meta">{{ item.domain === 'reimbursement' ? '报销' : '协作' }}</div>
+              </div>
+            </div>
+
+            <div class="preference-item__actions">
+              <button nz-button nzType="default" nzSize="small" (click)="movePreference(item.key, -1)" [disabled]="index === 0 || preferencesSaving()">上移</button>
+              <button nz-button nzType="default" nzSize="small" (click)="movePreference(item.key, 1)" [disabled]="index === preferenceDraft().length - 1 || preferencesSaving()">下移</button>
+              <span class="preference-item__switch-label">{{ item.visible ? '显示' : '隐藏' }}</span>
+              <nz-switch [ngModel]="item.visible" (ngModelChange)="setWidgetVisible(item.key, $event)" [disabled]="preferencesSaving()"></nz-switch>
+            </div>
+          </article>
+        }
+      </div>
+    </div>
+  </ng-container>
+</nz-modal>

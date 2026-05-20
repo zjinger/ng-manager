@@ -1,7 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
-import { dashboardBoardQuerySchema, dashboardReportedIssuesPageQuerySchema, dashboardTodosPageQuerySchema } from "./dashboard.schema";
+import {
+  dashboardBoardQuerySchema,
+  dashboardReportedIssuesPageQuerySchema,
+  dashboardTodosPageQuerySchema,
+  updateDashboardPreferencesSchema
+} from "./dashboard.schema";
 
 export default async function dashboardRoutes(app: FastifyInstance) {
   app.get("/dashboard/board", async (request) => {
@@ -60,5 +65,16 @@ export default async function dashboardRoutes(app: FastifyInstance) {
   app.get("/dashboard/documents", async (request) => {
     const ctx = requireAuth(request);
     return ok(await app.container.dashboardQuery.getDocuments(ctx));
+  });
+
+  app.get("/dashboard/preferences", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.dashboardQuery.getPreferences(ctx));
+  });
+
+  app.put("/dashboard/preferences", async (request) => {
+    const ctx = requireAuth(request);
+    const body = updateDashboardPreferencesSchema.parse(request.body);
+    return ok(await app.container.dashboardQuery.updatePreferences(body, ctx), "dashboard preferences updated");
   });
 }

@@ -73,7 +73,7 @@ INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, pur
 VALUES
   ('srole_super_admin', 'super_admin', '超级管理员', '拥有系统全部管理权限。', 1, 'hybrid', '混合角色', 'active', 10, datetime('now'), datetime('now')),
   ('srole_admin', 'admin', '管理员', '可管理后台基础能力。', 1, 'platform_admin', '平台管理角色', 'active', 20, datetime('now'), datetime('now')),
-  ('srole_member', 'member', '成员', '普通协作成员账号。', 1, 'platform_member', '平台成员角色', 'active', 30, datetime('now'), datetime('now'));
+  ('srole_member', 'member', '成员', '研发协作基础成员账号。', 1, 'platform_member', '平台成员角色', 'active', 30, datetime('now'), datetime('now'));
 
 INSERT OR IGNORE INTO system_permissions (id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at)
 VALUES
@@ -95,6 +95,7 @@ VALUES
 -- Insert business roles
 INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
 VALUES
+  ('srole_expense_employee', 'expense_employee', '报销员工', '仅具备个人报销提交与本人报销查看能力。', 1, 'business', '业务角色', 'active', 100, datetime('now'), datetime('now')),
   ('srole_expense_manager', 'expense_manager', '报销管理员', '维护报销规则、审批模板并查看报表。', 1, 'business', '业务角色', 'active', 110, datetime('now'), datetime('now')),
   ('srole_finance_reviewer', 'finance_reviewer', '财务复核', '具备财务复核能力。', 1, 'business', '业务角色', 'active', 120, datetime('now'), datetime('now')),
   ('srole_finance_cashier', 'finance_cashier', '出纳', '具备付款出纳能力。', 1, 'business', '业务角色', 'active', 130, datetime('now'), datetime('now'));
@@ -110,6 +111,11 @@ WHERE code IN ('admin.dashboard.view', 'admin.users.manage', 'admin.departments.
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_member', id, datetime('now')
+FROM system_permissions
+WHERE code IN ('expense.submit', 'expense.view.self');
+
+INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
+SELECT 'srole_expense_employee', id, datetime('now')
 FROM system_permissions
 WHERE code IN ('expense.submit', 'expense.view.self');
 

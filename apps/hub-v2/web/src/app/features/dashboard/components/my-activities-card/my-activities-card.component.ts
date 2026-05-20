@@ -34,7 +34,7 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
               <span class="activity__tag" [attr.data-kind]="item.kind">
                 {{ kindLabel(item.kind) }}
               </span>
-              <span>{{ projectLabel(item.projectId) }}</span>
+              <span>{{ projectLabel(item) }}</span>
               <span>{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
             </div>
           </div>
@@ -73,6 +73,9 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
       }
       .activity__dot[data-kind='content_activity'] {
         background: var(--color-warning);
+      }
+      .activity__dot[data-kind='reimbursement_activity'] {
+        background: #e11d48;
       }
       .activity__body {
         min-width: 0;
@@ -118,11 +121,18 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         background: color-mix(in srgb, var(--color-warning) 18%, transparent);
         color: var(--color-warning-hover);
       }
+      .activity__tag[data-kind='reimbursement_activity'] {
+        background: rgba(225, 29, 72, 0.12);
+        color: #be123c;
+      }
       :host-context(html[data-theme='dark']) .activity__tag {
         background: rgba(59, 130, 246, 0.16);
       }
       :host-context(html[data-theme='dark']) .activity__tag[data-kind='rd_activity'] {
         background: color-mix(in srgb, var(--primary-500) 18%, transparent);
+      }
+      :host-context(html[data-theme='dark']) .activity__tag[data-kind='reimbursement_activity'] {
+        background: rgba(244, 63, 94, 0.18);
       }
     `,
   ],
@@ -136,17 +146,27 @@ export class MyActivitiesCardComponent {
     if (item.kind === 'content_activity') {
       return { path: this.contentDetailPath(item) };
     }
+    if (item.kind === 'reimbursement_activity') {
+      return {
+        path: item.claimType === 'travel'
+          ? ['/travel-expense/detail', item.entityId]
+          : ['/expense/detail', item.entityId],
+      };
+    }
     if (item.kind === 'rd_activity') {
       return { path: ['/rd', item.entityId] };
     }
     return { path: ['/issues', item.entityId] };
   }
 
-  projectLabel(projectId: string): string {
-    if (!projectId) {
+  projectLabel(item: DashboardActivityItem): string {
+    if (item.kind === 'reimbursement_activity') {
+      return '报销';
+    }
+    if (!item.projectId) {
       return '全局';
     }
-    return this.projectNames()[projectId] || '未知项目';
+    return this.projectNames()[item.projectId] || '未知项目';
   }
 
   kindLabel(kind: DashboardActivityItem['kind']): string {
@@ -155,6 +175,9 @@ export class MyActivitiesCardComponent {
     }
     if (kind === 'content_activity') {
       return '内容动态';
+    }
+    if (kind === 'reimbursement_activity') {
+      return '报销单';
     }
     return '测试单';
   }
