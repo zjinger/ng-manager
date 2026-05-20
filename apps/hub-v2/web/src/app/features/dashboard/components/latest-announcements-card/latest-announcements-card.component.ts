@@ -18,7 +18,12 @@ import type { DashboardAnnouncement } from '../../models/dashboard.model';
       emptyText="暂无公告"
     >
       @for (item of items(); track item.id) {
-        <a class="announcement" [routerLink]="['/content', 'announcements', item.id]">
+        <a
+          class="announcement"
+          [routerLink]="announcementLink(item)"
+          [attr.target]="isPublicAnnouncement(item) ? '_blank' : null"
+          [attr.rel]="isPublicAnnouncement(item) ? 'noopener noreferrer' : null"
+        >
           <div class="announcement__title">
             @if (item.pinned) {
               <span class="pin">置顶</span>
@@ -88,6 +93,17 @@ export class LatestAnnouncementsCardComponent {
   readonly currentProjectId = input<string | null>(null);
   readonly currentProjectName = input<string | null>(null);
   readonly projectNames = input<Record<string, string>>({});
+
+  announcementLink(item: DashboardAnnouncement): string[] {
+    if (this.isPublicAnnouncement(item)) {
+      return ['/public', 'announcements', item.id];
+    }
+    return ['/content', 'announcements', item.id];
+  }
+
+  isPublicAnnouncement(item: DashboardAnnouncement): boolean {
+    return item.domain === 'reimbursement' || !item.projectId;
+  }
 
   projectLabel(item: DashboardAnnouncement): string {
     if (item.domain === 'reimbursement') {

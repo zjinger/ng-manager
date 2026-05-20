@@ -1,9 +1,14 @@
 .unified-dashboard-grid {
     --dashboard-widget-height: clamp(360px, 48vh, 520px);
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
     gap: 20px;
     align-items: stretch;
+}
+
+.unified-dashboard-grid--side-stack {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, calc((var(--dashboard-widget-height) - 20px) / 2)));
 }
 
 .dashboard-widget {
@@ -19,6 +24,22 @@
 .unified-dashboard-grid>app-my-activities-card,
 .unified-dashboard-grid>app-reported-issues-card {
     height: var(--dashboard-widget-height);
+}
+
+.unified-dashboard-grid--side-stack>app-my-todos-card,
+.unified-dashboard-grid--side-stack>app-my-activities-card,
+.unified-dashboard-grid--side-stack>app-reported-issues-card {
+    grid-row: span 2;
+}
+
+.unified-dashboard-grid>app-latest-announcements-card,
+.unified-dashboard-grid>app-latest-documents-card {
+    height: var(--dashboard-widget-height);
+}
+
+.unified-dashboard-grid--side-stack>app-latest-announcements-card,
+.unified-dashboard-grid--side-stack>app-latest-documents-card {
+    height: 100%;
 }
 
 .preference-modal {
@@ -115,19 +136,37 @@
 }
 
 @media (max-width: 1320px) {
-    .unified-dashboard-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .unified-dashboard-grid,
+    .unified-dashboard-grid--side-stack {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: none;
+    }
+
+    .unified-dashboard-grid--side-stack>app-my-todos-card,
+    .unified-dashboard-grid--side-stack>app-my-activities-card,
+    .unified-dashboard-grid--side-stack>app-reported-issues-card {
+        grid-row: auto;
     }
 }
 
 @media (max-width: 1100px) {
-    .unified-dashboard-grid {
+    .unified-dashboard-grid,
+    .unified-dashboard-grid--side-stack {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .unified-dashboard-grid,
+    .unified-dashboard-grid--side-stack {
         grid-template-columns: 1fr;
     }
 
     .unified-dashboard-grid>app-my-todos-card,
     .unified-dashboard-grid>app-my-activities-card,
-    .unified-dashboard-grid>app-reported-issues-card {
+    .unified-dashboard-grid>app-reported-issues-card,
+    .unified-dashboard-grid>app-latest-announcements-card,
+    .unified-dashboard-grid>app-latest-documents-card {
         height: auto;
     }
 

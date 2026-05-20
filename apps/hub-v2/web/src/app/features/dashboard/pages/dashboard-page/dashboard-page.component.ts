@@ -15,8 +15,7 @@ import { ProjectContextStore } from '@core/state';
 import { DashboardRefreshBusService } from '@core/realtime';
 import type { ReimbursementClaimEntity, ReimbursementClaimStatus, ReimbursementDashboard, ReimbursementStats } from '../../../reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '../../../reimbursement/services/reimbursement-api.service';
-import { ReDashboardPanelComponent, type ReDashboardStatKey, type ReDashboardStats } from '../../../reimbursement/dashboard/components/re-dashboard-panel/re-dashboard-panel';
-import { DashboardStatGridComponent } from '../../components/dashboard-stat-grid/dashboard-stat-grid.component';
+import { DashboardStatGridComponent, type DashboardStatCardItem } from '../../components/dashboard-stat-grid/dashboard-stat-grid.component';
 import { LatestAnnouncementsCardComponent } from '../../components/latest-announcements-card/latest-announcements-card.component';
 import { LatestDocumentsCardComponent } from '../../components/latest-documents-card/latest-documents-card.component';
 import { MyActivitiesCardComponent } from '../../components/my-activities-card/my-activities-card.component';
@@ -41,7 +40,6 @@ import { DashboardStore } from '../../store/dashboard.store';
     LatestDocumentsCardComponent,
     DashboardShortcutsComponent,
     ReportedIssuesCardComponent,
-    ReDashboardPanelComponent,
     NzButtonModule,
     NzIconModule,
     NzModalModule,
@@ -142,35 +140,151 @@ export class DashboardPageComponent {
 
   readonly visibleWidgets = computed(() => this.preferences().filter((item) => item.visible).sort((left, right) => left.order - right.order));
   readonly visibleDraftCount = computed(() => this.preferenceDraft().filter((item) => item.visible).length);
+  readonly shouldStackInfoWidgets = computed(() => this.isWidgetVisible('collab.announcements') && this.isWidgetVisible('collab.documents'));
 
-  readonly reimbursementStats = computed<ReDashboardStats>(() => {
+  readonly dashboardStatItems = computed<DashboardStatCardItem[]>(() => {
+    const items: DashboardStatCardItem[] = [];
+    const data = this.store.data();
+
+    if (this.shouldShowCollaborationStats() && data) {
+      items.push(
+        {
+          key: 'collab.assignedIssues',
+          label: '待处理测试单',
+          value: data.stats.assignedIssues,
+          hint: '包含负责人和协作人的待处理测试单',
+          icon: 'bug',
+          tone: 'blue',
+        },
+        {
+          key: 'collab.verifyingIssues',
+          label: '待验证项',
+          value: data.stats.verifyingIssues,
+          hint: '包含待验证测试单和待验证研发项',
+          icon: 'safety-certificate',
+          tone: 'purple',
+        },
+        {
+          key: 'collab.reportedUnresolvedIssues',
+          label: '我提报未解决',
+          value: data.stats.reportedUnresolvedIssues,
+          hint: '我提报且尚未标记已解决的测试单',
+          icon: 'alert',
+          tone: 'cyan',
+        },
+        {
+          key: 'collab.assignedRdItems',
+          label: '未完成研发项',
+          value: data.stats.assignedRdItems,
+          hint: '分配给你且尚未完成的研发项',
+          icon: 'rocket',
+          tone: 'green',
+        },
+        {
+          key: 'collab.myProjects',
+          label: '我参与的项目数',
+          value: data.stats.myProjects,
+          hint: '当前可访问的项目总数',
+          icon: 'team',
+          tone: 'orange',
+        },
+      );
+    }
+
+    if (this.isWidgetVisible('reimbursement.stats')) {
+      items.push(...this.reimbursementStatItems());
+    }
+
+    return items;
+  });
+
+  readonly reimbursementStatItems = computed<DashboardStatCardItem[]>(() => {
     const dashboard = this.reimbursementDashboard();
     const stats = this.reimbursementMonthStats();
     const byStatus = stats?.byStatus ?? [];
     const byMonth = stats?.byMonth ?? [];
+    const todoCount = dashboard?.todoCount ?? 0;
+    const approvingCount = byStatus.filter((item) => item.status === 'submitted' || item.status === 'approving').reduce((sum, item) => sum + item.count, 0);
+    const completedThisMonthCount = byStatus.find((item) => item.status === 'completed')?.count ?? 0;
+    const monthAmount = byMonth.reduce((sum, item) => sum + item.totalAmount, 0);
+    const hasManagerStats = this.hasReimbursementManagerStatPermission();
+    const hasReportStats = this.hasPermission('expense.report.view');
+    const hasPersonalStats = this.hasPermission('expense.view.self');
+    const items: DashboardStatCardItem[] = [];
 
-    return {
-      todoCount: dashboard?.todoCount ?? 0,
-      myApprovingCount: dashboard?.myApprovingCount ?? 0,
-      rejectedCount: this.reimbursementRejectedCount(),
-      completedThisMonthCount: byStatus.find((item) => item.status === 'completed')?.count ?? 0,
-      monthAmount: byMonth.reduce((sum, item) => sum + item.totalAmount, 0),
-    };
-  });
-  readonly reimbursementStatKeys = computed<ReDashboardStatKey[]>(() => {
-    const keys: ReDashboardStatKey[] = [];
-    const todoCount = this.reimbursementDashboard()?.todoCount ?? 0;
-    if (this.hasReimbursementApprovalPermission() || todoCount > 0) {
-      keys.push('approvalTodos');
+    if (this.hasReimbursementApprovalStatPermission() || todoCount > 0) {
+      items.push({
+        key: 'reimbursement.approvalTodos',
+        label: '待我审批',
+        value: todoCount,
+        hint: '分配给我的待处理报销单',
+        icon: 'audit',
+        tone: 'blue',
+      });
     }
-    if (this.hasPersonalReimbursementPermission()) {
-      keys.push('myApproving', 'myRejected', 'myCompletedThisMonth', 'myMonthAmount');
-    } else if (this.reimbursementReportMode()) {
-      keys.push('myCompletedThisMonth', 'myMonthAmount');
+
+    if (hasManagerStats) {
+      items.push({
+        key: 'reimbursement.approving',
+        label: '审批中',
+        value: approvingCount,
+        hint: '当前可管理范围内流转中的报销单',
+        icon: 'safety-certificate',
+        tone: 'purple',
+      }, {
+        key: 'reimbursement.rejected',
+        label: '已驳回',
+        value: this.reimbursementRejectedCount(),
+        hint: '当前可管理范围内已驳回的报销单',
+        icon: 'alert',
+        tone: 'cyan',
+      });
     }
-    return keys;
+
+    if (!hasManagerStats && hasPersonalStats) {
+      items.push(
+        {
+          key: 'reimbursement.myApproving',
+          label: '我的审批中',
+          value: dashboard?.myApprovingCount ?? 0,
+          hint: '我提交后仍在流转中的报销单',
+          icon: 'safety-certificate',
+          tone: 'purple',
+        },
+        {
+          key: 'reimbursement.myRejected',
+          label: '我的已驳回',
+          value: this.reimbursementRejectedCount(),
+          hint: '需我补充票据或说明的报销单',
+          icon: 'alert',
+          tone: 'cyan',
+        },
+      );
+    }
+
+    if (hasManagerStats || hasReportStats || hasPersonalStats) {
+      items.push(
+        {
+          key: 'reimbursement.completedThisMonth',
+          label: '本月已完成',
+          value: completedThisMonthCount,
+          hint: hasManagerStats || hasReportStats ? '本月完成审批的单据数' : '我本月完成审批的单据数',
+          icon: 'rocket',
+          tone: 'green',
+        },
+        {
+          key: 'reimbursement.monthAmount',
+          label: '本月报销金额',
+          value: this.formatCurrency(monthAmount),
+          hint: hasManagerStats || hasReportStats ? '本月单据金额汇总' : '我本月单据金额汇总',
+          icon: 'team',
+          tone: 'orange',
+        },
+      );
+    }
+
+    return items;
   });
-  readonly reimbursementReportMode = computed(() => this.hasPermission('expense.report.view'));
 
   readonly mergedTodoItems = computed<DashboardTodoItem[]>(() => {
     const collabTodos = this.store.data()?.todos ?? [];
@@ -343,7 +457,7 @@ export class DashboardPageComponent {
     forkJoin({
       dashboard: this.reimbursementApi.getDashboard(),
       monthStats: this.reimbursementApi.getStats({ dateFrom, dateTo }),
-      rejectedPage: this.reimbursementApi.listClaims({ scope: 'my', status: 'rejected', page: 1, pageSize: 1 }),
+      rejectedPage: this.reimbursementApi.listClaims({ scope: this.reimbursementRejectedScope(), status: 'rejected', page: 1, pageSize: 1 }),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -415,16 +529,32 @@ export class DashboardPageComponent {
     return `${year}-${month}-${day}`;
   }
 
+  private formatCurrency(value: number): string {
+    return `¥${value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
   private reindexWidgets(widgets: DashboardWidgetPreferenceItem[]): DashboardWidgetPreferenceItem[] {
     return widgets.map((item, index) => ({ ...item, order: index + 1 }));
   }
 
-  private hasPersonalReimbursementPermission(): boolean {
-    return this.hasPermission('expense.submit') || this.hasPermission('expense.view.self');
+  private shouldShowCollaborationStats(): boolean {
+    return this.canAccessCollaborationWorkspace() && (this.isWidgetVisible('collab.todos') || this.isWidgetVisible('collab.issues') || this.isWidgetVisible('collab.activities'));
   }
 
-  private hasReimbursementApprovalPermission(): boolean {
-    return this.hasAnyPermission(['approval.department', 'approval.cross_department', 'finance.review', 'finance.cashier', 'expense.rule.manage']);
+  private reimbursementRejectedScope(): 'my' | 'all' {
+    return this.hasReimbursementGlobalStatPermission() ? 'all' : 'my';
+  }
+
+  private hasReimbursementGlobalStatPermission(): boolean {
+    return this.hasReimbursementManagerStatPermission() || this.hasPermission('expense.report.view');
+  }
+
+  private hasReimbursementManagerStatPermission(): boolean {
+    return this.hasAnyPermission(['expense.rule.manage', 'finance.review', 'finance.cashier']);
+  }
+
+  private hasReimbursementApprovalStatPermission(): boolean {
+    return this.hasAnyPermission(['expense.rule.manage', 'finance.review', 'finance.cashier']);
   }
 
   private hasAnyPermission(codes: string[]): boolean {

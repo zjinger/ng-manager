@@ -27,14 +27,14 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
           <div class="activity__body">
             <div class="activity__title">
               <span class="activity__code">{{ item.code }}</span>
-              <span>{{ item.title }}</span>
+              <span class="activity__title-text">{{ item.title }}</span>
             </div>
             <div class="activity__summary">{{ item.summary || item.action }}</div>
             <div class="activity__meta">
               <span class="activity__tag" [attr.data-kind]="item.kind">
                 {{ kindLabel(item.kind) }}
               </span>
-              <span>{{ projectLabel(item) }}</span>
+              <span class="activity__project">{{ projectLabel(item) }}</span>
               <span>{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
             </div>
           </div>
@@ -83,6 +83,7 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
       .activity__title {
         display: flex;
         gap: 8px;
+        min-width: 0;
         color: var(--text-primary);
         font-weight: 600;
       }
@@ -91,6 +92,12 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         font-size: 12px;
         font-weight: 700;
         flex-shrink: 0;
+      }
+      .activity__title-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .activity__summary {
         margin-top: 4px;
@@ -112,6 +119,12 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
         color: var(--color-info);
         font-size: 11px;
         font-weight: 600;
+      }
+      .activity__project{
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .activity__tag[data-kind='rd_activity'] {
         background: color-mix(in srgb, var(--primary-500) 14%, transparent);

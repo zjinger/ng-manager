@@ -11,25 +11,13 @@
     <div class="empty__hint">正在同步与我相关的待办、审批、动态和公告。</div>
   </div>
 } @else if (visibleWidgets().length > 0) {
-  @if (store.data(); as data) {
-    @if (canAccessCollaborationWorkspace() && (isWidgetVisible('collab.todos') || isWidgetVisible('collab.issues') || isWidgetVisible('collab.activities'))) {
-      <app-dashboard-stat-grid [stats]="data.stats" />
-    }
+  @if (dashboardStatItems().length > 0) {
+    <app-dashboard-stat-grid [items]="dashboardStatItems()" />
   }
 
-  <div class="unified-dashboard-grid">
+  <div class="unified-dashboard-grid" [class.unified-dashboard-grid--side-stack]="shouldStackInfoWidgets()">
     @for (widget of visibleWidgets(); track widget.key) {
       @switch (widget.key) {
-        @case ('reimbursement.stats') {
-          @if (reimbursementStatKeys().length > 0) {
-            <re-dashboard-panel
-              class="dashboard-widget dashboard-widget--wide"
-              [stats]="reimbursementStats()"
-              [visibleKeys]="reimbursementStatKeys()"
-              [reportMode]="reimbursementReportMode()"
-            />
-          }
-        }
         @case ('collab.todos') {
           <app-my-todos-card class="dashboard-widget" [items]="mergedTodoItems()" [total]="mergedTodoTotal()" [projectNames]="projectNames()" [actionLink]="todoActionLink()" />
         }
