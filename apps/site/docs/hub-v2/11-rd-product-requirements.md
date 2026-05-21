@@ -628,7 +628,7 @@ WHERE assignee_id IS NOT NULL AND progress > 0;
 
 ### 7.2 参考资料
 
-- [RD 权限矩阵（冻结版）](./10-rd-permission-matrix.md)
+- [RD 权限矩阵（冻结版）](/hub-v2/10-rd-permission-matrix)
 - 现有数据模型：`web/src/app/features/rd/models/rd.model.ts`
 
 ---

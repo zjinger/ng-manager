@@ -21,9 +21,9 @@
 
 关联文档：
 
-1. [01-hub-redesign-implementation-plan.md](d:/ng-manager/apps/hub-v2/docs/01-hub-redesign-implementation-plan.md)
-2. [02-architecture-design.md](d:/ng-manager/apps/hub-v2/docs/02-architecture-design.md)
-3. [03-database-design.md](d:/ng-manager/apps/hub-v2/docs/03-database-design.md)
+1. [01-hub-redesign-implementation-plan.md](/hub-v2/01-hub-redesign-implementation-plan)
+2. [02-architecture-design.md](/hub-v2/02-architecture-design)
+3. [03-database-design.md](/hub-v2/03-database-design)
 
 ---
 
@@ -53,6 +53,18 @@ API 设计遵循以下目标：
 
 ```text
 /api/public/*
+```
+
+Personal Token 接口：
+
+```text
+/api/personal/*
+```
+
+Project Token 接口：
+
+```text
+/api/token/*
 ```
 
 ### 3.2 资源风格
@@ -487,6 +499,17 @@ GET  /api/admin/feedbacks
 GET  /api/admin/feedbacks/:feedbackId
 PATCH /api/admin/feedbacks/:feedbackId
 ```
+
+### 8.13 当前已注册模块摘要
+
+当前 `apps/hub-v2/server/src/app/register-routes.ts` 已注册的接口面比早期设计更完整。除 Auth、Users、Projects、Uploads、Announcements、Documents、Releases、Shared Config、Issues、RD、Dashboard、Feedback 外，还包括：
+
+- 组织与系统治理：Organization、System RBAC、System Settings、System Title、Audit Log、Approval Template。
+- 集成与令牌：API Token、Personal Token introspect、Personal Token Issue/RD。
+- 协作扩展：Notifications、Search、Survey、Report Public、AI、AI Report。
+- 业务扩展：Reimbursement。
+
+后续新增 API 文档时，应先确认 `register-routes.ts` 中的实际 prefix：管理端统一挂在 `/api/admin/*`，公开接口挂在 `/api/public/*`，Project Token 挂在 `/api/token/*`，Personal Token 挂在 `/api/personal/*`。
 
 ---
 

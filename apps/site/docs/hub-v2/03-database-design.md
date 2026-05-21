@@ -14,10 +14,12 @@
 - 索引、唯一约束、事务边界如何设计
 - v1 到 v2 如何迁移
 
+当前实现基线：截至 2026-05，`apps/hub-v2/server/src/db/migrations` 已推进到 `0052_admin_audit_logs.sql`。阅读本文时，核心表设计仍作为分层与命名基线；具体字段、索引和新增业务域以当前 migration 序列为准。
+
 本文档是以下文档的配套展开：
 
-1. [01-hub-redesign-implementation-plan.md](d:/ng-manager/apps/hub-v2/docs/01-hub-redesign-implementation-plan.md)
-2. [02-architecture-design.md](d:/ng-manager/apps/hub-v2/docs/02-architecture-design.md)
+1. [01-hub-redesign-implementation-plan.md](/hub-v2/01-hub-redesign-implementation-plan)
+2. [02-architecture-design.md](/hub-v2/02-architecture-design)
 
 ---
 

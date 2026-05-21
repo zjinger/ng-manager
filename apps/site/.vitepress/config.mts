@@ -54,7 +54,7 @@ export default defineConfig({
       ],
       "/hub-v2/": [
         {
-          text: "方案与实施文档",
+          text: "总览与设计",
           items: [
             { text: "使用指南", link: "/hub-v2/" },
             { text: "设计方案", link: "/hub-v2/01-hub-redesign-implementation-plan" },
@@ -62,8 +62,42 @@ export default defineConfig({
             { text: "数据库设计", link: "/hub-v2/03-database-design" },
             { text: "API 设计", link: "/hub-v2/04-api-design" },
             { text: "实施路线图", link: "/hub-v2/05-implementation-roadmap" },
-            { text: "Web 端架构设计", link: "/hub-v2/06-web-architecture" },
+            { text: "Web 端架构设计", link: "/hub-v2/06-web-architecture" }
+          ]
+        },
+        {
+          text: "迁移与部署",
+          items: [
+            { text: "数据迁移映射", link: "/hub-v2/08-migration-mapping" },
+            { text: "迁移执行 Runbook", link: "/hub-v2/09-migration-runbook" },
+            { text: "内网部署与迁移", link: "/hub-v2/12-deploy-intranet" }
+          ]
+        },
+        {
+          text: "权限与治理",
+          items: [
+            { text: "RD 权限矩阵", link: "/hub-v2/10-rd-permission-matrix" },
+            { text: "RD 产品需求", link: "/hub-v2/11-rd-product-requirements" },
+            { text: "Issue 权限矩阵", link: "/hub-v2/11-issue-permission-matrix" },
+            { text: "项目规则与流转", link: "/hub-v2/15-project-governance-rules" },
+            { text: "项目治理 RBAC", link: "/hub-v2/16-project-governance-rbac-design" },
+            { text: "错误码治理", link: "/hub-v2/16-error-code-governance" },
+            { text: "RBAC 收口清单", link: "/hub-v2/20-rbac-convergence-checklist" }
+          ]
+        },
+        {
+          text: "集成与实时",
+          items: [
+            { text: "Token 接入", link: "/hub-v2/13-api-token-integration" },
+            { text: "WS 实时通知", link: "/hub-v2/14-ws-realtime-notification" },
             { text: "通知机制", link: "/hub-v2/18-notification-mechanism" }
+          ]
+        },
+        {
+          text: "运维与发布",
+          items: [
+            { text: "发布流程", link: "/hub-v2/17-release-process" },
+            { text: "上传生命周期", link: "/hub-v2/19-upload-lifecycle-and-cleanup" }
           ]
         }
       ],

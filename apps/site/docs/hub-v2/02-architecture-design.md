@@ -13,7 +13,7 @@
 - 哪些能力属于共享基础设施
 - 如何保证后续编码不重新回到高耦合单体实现
 
-本文档是 [01-hub-redesign-implementation-plan.md](d:/ng-manager/apps/hub-v2/docs/01-hub-redesign-implementation-plan.md) 的架构展开文档，重点覆盖：
+本文档是 [01-hub-redesign-implementation-plan.md](/hub-v2/01-hub-redesign-implementation-plan) 的架构展开文档，重点覆盖：
 
 - 分层架构
 - 模块依赖方向
@@ -660,7 +660,7 @@ after commit {
 
 建议配套阅读：
 
-1. [01-hub-redesign-implementation-plan.md](d:/ng-manager/apps/hub-v2/docs/01-hub-redesign-implementation-plan.md)
+1. [01-hub-redesign-implementation-plan.md](/hub-v2/01-hub-redesign-implementation-plan)
 2. `03-database-design.md`
 3. `04-api-design.md`
 4. `05-implementation-roadmap.md`

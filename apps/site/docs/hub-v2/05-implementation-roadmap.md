@@ -14,10 +14,10 @@
 
 本文件是以下文档的执行层补充：
 
-1. [01-hub-redesign-implementation-plan.md](d:/ng-manager/apps/hub-v2/docs/01-hub-redesign-implementation-plan.md)
-2. [02-architecture-design.md](d:/ng-manager/apps/hub-v2/docs/02-architecture-design.md)
-3. [03-database-design.md](d:/ng-manager/apps/hub-v2/docs/03-database-design.md)
-4. [04-api-design.md](d:/ng-manager/apps/hub-v2/docs/04-api-design.md)
+1. [01-hub-redesign-implementation-plan.md](/hub-v2/01-hub-redesign-implementation-plan)
+2. [02-architecture-design.md](/hub-v2/02-architecture-design)
+3. [03-database-design.md](/hub-v2/03-database-design)
+4. [04-api-design.md](/hub-v2/04-api-design)
 
 ---
 
