@@ -10,7 +10,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import type { AuditLogAction, AuditLogEntity, AuditLogLevel, AuditLogModule } from '../../models/audit-log.model';
 import { AUDIT_ACTION_LABELS, AUDIT_LEVEL_LABELS, AUDIT_MODULE_LABELS } from '../../models/audit-log.model';
 import { AuditLogApiService } from '../../services/audit-log-api.service';
@@ -27,7 +27,7 @@ import { AuditLogApiService } from '../../services/audit-log-api.service';
     NzPaginationModule,
     NzSelectModule,
     NzTagModule,
-    NzToolTipModule,
+    NzTooltipModule,
     PageHeaderComponent,
     PageToolbarComponent,
     SearchBoxComponent,

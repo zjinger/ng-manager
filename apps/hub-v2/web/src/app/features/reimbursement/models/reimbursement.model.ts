@@ -177,6 +177,10 @@ export interface ReimbursementActionInput {
   comment?: string | null;
 }
 
+export interface ReimbursementSubmitInput {
+  comment?: string | null;
+}
+
 export interface ReimbursementTransferInput extends ReimbursementActionInput {
   targetUserId: string;
 }

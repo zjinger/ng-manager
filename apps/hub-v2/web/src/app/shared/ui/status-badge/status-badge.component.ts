@@ -21,17 +21,20 @@ import { RD_STATUS_LABELS } from '../../constants';
       .status-badge[data-status='verified'],
       .status-badge[data-status='done'],
       .status-badge[data-status='accepted'],
-      .status-badge[data-status='published'] {
+      .status-badge[data-status='published'],
+      .status-badge[data-status='completed'] {
         background: rgba(34, 197, 94, 0.14);
         color: #16a34a;
       }
       .status-badge[data-status='open'],
-      .status-badge[data-status='todo'] {
+      .status-badge[data-status='todo'],
+      .status-badge[data-status='submitted'] {
         background: rgba(245, 158, 11, 0.18);
         color: #b45309;
       }
       .status-badge[data-status='doing'],
-      .status-badge[data-status='in_progress'] {
+      .status-badge[data-status='in_progress'],
+      .status-badge[data-status='approving'] {
         background: rgba(6, 182, 212, 0.2);
         color: #0e7490;
       }
@@ -43,7 +46,8 @@ import { RD_STATUS_LABELS } from '../../constants';
         background: rgba(245, 158, 11, 0.18);
         color: #b45309;
       }
-      .status-badge[data-status='blocked'] {
+      .status-badge[data-status='blocked'],
+      .status-badge[data-status='rejected'] {
         background: rgba(239, 68, 68, 0.14);
         color: #dc2626;
       }
@@ -53,7 +57,8 @@ import { RD_STATUS_LABELS } from '../../constants';
         color: #0284c7;
       }
       .status-badge[data-status='closed'],
-      .status-badge[data-status='canceled'] {
+      .status-badge[data-status='canceled'],
+      .status-badge[data-status='cancelled'] {
         background: rgba(148, 163, 184, 0.18);
         color: var(--text-muted);
       }
@@ -63,17 +68,20 @@ import { RD_STATUS_LABELS } from '../../constants';
       :host-context(html[data-theme='dark']) .status-badge[data-status='resolved'],
       :host-context(html[data-theme='dark']) .status-badge[data-status='done'],
       :host-context(html[data-theme='dark']) .status-badge[data-status='accepted'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='published'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='published'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='completed'] {
         background: rgba(34, 197, 94, 0.22);
         color: #86efac;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='open'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='todo'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='todo'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='submitted'] {
         background: rgba(245, 158, 11, 0.26);
         color: #fcd34d;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='doing'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='in_progress'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='in_progress'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='approving'] {
         background: rgba(34, 211, 238, 0.26);
         color: #67e8f9;
       }
@@ -85,7 +93,8 @@ import { RD_STATUS_LABELS } from '../../constants';
         background: rgba(245, 158, 11, 0.24);
         color: #fcd34d;
       }
-      :host-context(html[data-theme='dark']) .status-badge[data-status='blocked'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='blocked'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='rejected'] {
         background: rgba(239, 68, 68, 0.22);
         color: #fca5a5;
       }
@@ -94,7 +103,8 @@ import { RD_STATUS_LABELS } from '../../constants';
         color: #7dd3fc;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='closed'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='canceled'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='canceled'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='cancelled'] {
         background: rgba(100, 116, 139, 0.3);
         color: #cbd5e1;
       }
@@ -126,6 +136,11 @@ const STATUS_TEXT_MAP: Record<string, string> = {
   verified: '已验证',
   closed: '已关闭',
   draft: '草稿',
+  submitted: '审批中',
+  approving: '审批中',
+  rejected: '已驳回',
+  completed: '已完成',
+  cancelled: '已取消',
   published: '已发布',
   archived: '已归档',
   canceled: '已取消',

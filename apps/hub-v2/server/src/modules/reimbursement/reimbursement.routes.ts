@@ -6,6 +6,7 @@ import {
   createReimbursementClaimSchema,
   listReimbursementClaimsQuerySchema,
   reimbursementActionSchema,
+  reimbursementSubmitSchema,
   reimbursementStatsQuerySchema,
   reimbursementTransferSchema,
   updateReimbursementClaimSchema
@@ -70,7 +71,8 @@ export default async function reimbursementRoutes(app: FastifyInstance) {
   app.post("/reimbursements/claims/:claimId/submit", async (request) => {
     const ctx = requireAuth(request);
     const { claimId } = request.params as { claimId: string };
-    return ok(await app.container.reimbursementCommand.submit(claimId, ctx), "reimbursement claim submitted");
+    const body = reimbursementSubmitSchema.parse(request.body ?? {});
+    return ok(await app.container.reimbursementCommand.submit(claimId, ctx, body), "reimbursement claim submitted");
   });
 
   app.post("/reimbursements/claims/:claimId/approve", async (request) => {

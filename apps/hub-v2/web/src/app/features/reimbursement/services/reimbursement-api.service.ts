@@ -12,6 +12,7 @@ import type {
   ReimbursementDashboard,
   ReimbursementStats,
   ReimbursementStatsQuery,
+  ReimbursementSubmitInput,
   ReimbursementTransferInput,
   ReimbursementListQuery,
   UpdateReimbursementClaimInput,
@@ -74,8 +75,11 @@ export class ReimbursementApiService {
   /**
    * 提交报销审批
    */
-  submitClaim(claimId: string) {
-    return this.api.post<ReimbursementClaimDetail>(`/reimbursements/claims/${claimId}/submit`);
+  submitClaim(claimId: string, input: ReimbursementSubmitInput = {}) {
+    return this.api.post<ReimbursementClaimDetail, ReimbursementSubmitInput>(
+      `/reimbursements/claims/${claimId}/submit`,
+      input
+    );
   }
 
   /**

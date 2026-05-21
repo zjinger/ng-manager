@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
@@ -8,7 +9,7 @@ import { ReimbursementDetailDrawerPageComponent } from '../../pages/reimbursemen
 @Component({
   selector: 'app-reimbursement-detail-drawer',
   standalone: true,
-  imports: [NzDrawerModule, NzIconModule, ReimbursementDetailDrawerPageComponent],
+  imports: [NzButtonModule, NzDrawerModule, NzIconModule, ReimbursementDetailDrawerPageComponent],
   template: `
     <nz-drawer
       [nzVisible]="open()"
@@ -37,7 +38,11 @@ import { ReimbursementDetailDrawerPageComponent } from '../../pages/reimbursemen
 
       <ng-template nzDrawerContent>
         @if (claimId(); as id) {
-          <app-reimbursement-detail-drawer-page [claimId]="id" />
+          <app-reimbursement-detail-drawer-page
+            [claimId]="id"
+            (changed)="changed.emit()"
+            (openFullPage)="openFullPage.emit($event)"
+          />
         }
       </ng-template>
     </nz-drawer>
@@ -97,6 +102,8 @@ export class ReimbursementDetailDrawerComponent {
   readonly claimId = input<string | null>(null);
   readonly claim = input<ReimbursementClaimEntity | null>(null);
   readonly close = output<void>();
+  readonly changed = output<void>();
+  readonly openFullPage = output<ReimbursementClaimEntity>();
 
   readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
   readonly titleText = computed(() => this.claim()?.reason || '报销单详情');

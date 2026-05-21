@@ -17,19 +17,20 @@ import { OrganizationApiService } from '@app/features/organization/services/orga
 import type {
   ReimbursementClaimEntity,
   ReimbursementListQuery,
+  ReimbursementListScope,
 } from '@app/features/reimbursement/models/reimbursement.model';
-import { ExpensesListStore } from '@app/features/reimbursement/stores/expenses-list.store';
-import {
-  ActiveFilterTag,
-  ActiveFiltersBarComponent,
-  ListStateComponent,
-  PageHeaderComponent,
-} from '@app/shared/ui';
 import {
   ExpensesFilterBarComponent,
   SelectOption,
-} from '../../../my-expenses/components/expenses-filter-bar/expenses-filter-bar.component';
-import { ExpensesListTableComponent } from '../../../my-expenses/components/expenses-list-table/expenses-list-table.component';
+} from '@app/features/reimbursement/shared/components/expenses-filter-bar/expenses-filter-bar.component';
+import { ExpensesListTableComponent } from '@app/features/reimbursement/shared/components/expenses-list-table/expenses-list-table.component';
+import { ExpensesListStore } from '@app/features/reimbursement/stores/expenses-list.store';
+import {
+  ActiveFiltersBarComponent,
+  ActiveFilterTag,
+  ListStateComponent,
+  PageHeaderComponent,
+} from '@app/shared/ui';
 import { ReimbursementDetailDrawerComponent } from '../../components/reimbursement-detail-drawer/reimbursement-detail-drawer.component';
 
 @Component({
@@ -84,9 +85,14 @@ export class ReimbursementManagementPage implements OnInit {
   });
 
   ngOnInit(): void {
-    this.store.updateQuery({ scope: 'all', page: 1 });
+    this.store.updateQuery({ scope: this.initialScope(), page: 1 });
     void this.store.loadClaims();
     this.loadDepartments();
+  }
+
+  private initialScope(): ReimbursementListScope {
+    const scope = this.route.snapshot.queryParamMap.get('scope');
+    return scope === 'todo' || scope === 'my' || scope === 'all' ? scope : 'all';
   }
 
   private loadDepartments(): void {
@@ -232,6 +238,16 @@ export class ReimbursementManagementPage implements OnInit {
 
   handleExport(item: ReimbursementClaimEntity): void {
     void item;
+  }
+
+  handleDrawerChanged(): void {
+    void this.store.refresh();
+  }
+
+  openFullDetail(item: ReimbursementClaimEntity): void {
+    void this.router.navigate(['/reimbursements', item.id], {
+      queryParams: { source: 'management' },
+    });
   }
 
   closeDetail(): void {

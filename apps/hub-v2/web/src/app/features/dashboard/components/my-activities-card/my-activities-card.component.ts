@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 
 import { DashboardPanelComponent } from '@shared/ui';
 import type { DashboardActivityItem } from '../../models/dashboard.model';
+import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/components';
 
 @Component({
   selector: 'app-my-activities-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, DashboardPanelComponent],
+  imports: [CommonModule, RouterLink, DashboardPanelComponent, ReimbursementTypeTagComponent],
   template: `
     <app-dashboard-panel
       title="我的动态"
@@ -31,9 +32,13 @@ import type { DashboardActivityItem } from '../../models/dashboard.model';
             </div>
             <div class="activity__summary">{{ item.summary || item.action }}</div>
             <div class="activity__meta">
-              <span class="activity__tag" [attr.data-kind]="item.kind">
-                {{ kindLabel(item.kind) }}
-              </span>
+              @if (item.kind === 'reimbursement_activity') {
+                <app-reimbursement-type-tag [type]="item.claimType" />
+              } @else {
+                <span class="activity__tag" [attr.data-kind]="item.kind">
+                  {{ kindLabel(item.kind) }}
+                </span>
+              }
               <span class="activity__project">{{ projectLabel(item) }}</span>
               <span>{{ item.createdAt | date: 'MM-dd HH:mm' }}</span>
             </div>
@@ -161,9 +166,7 @@ export class MyActivitiesCardComponent {
     }
     if (item.kind === 'reimbursement_activity') {
       return {
-        path: item.claimType === 'travel'
-          ? ['/travel-expense/detail', item.entityId]
-          : ['/expense/detail', item.entityId],
+        path: ['/reimbursements', item.entityId],
       };
     }
     if (item.kind === 'rd_activity') {

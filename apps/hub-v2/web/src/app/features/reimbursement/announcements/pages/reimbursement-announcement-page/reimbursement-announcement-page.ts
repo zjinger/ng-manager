@@ -6,7 +6,7 @@ import { map } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { AuthStore } from '@core/auth';
@@ -29,6 +29,7 @@ type ReimbursementAnnouncementDialogValue = Pick<
     FormsModule,
     NzButtonModule,
     NzIconModule,
+    NzModalModule,
     NzSelectModule,
     PageHeaderComponent,
     PageToolbarComponent,

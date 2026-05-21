@@ -164,7 +164,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     return this.buildDetail(this.requireClaim(claim.id));
   }
 
-  async submit(id: string, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
+  async submit(id: string, ctx: RequestContext, input: { comment?: string | null } = {}): Promise<ReimbursementClaimDetail> {
     const claim = this.requireClaim(id);
     this.ensureCanMutateDraft(claim, ctx);
     const template = this.requireDefaultTemplate();
@@ -191,7 +191,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.deleteTasksForClaim(claim.id);
       this.repo.updateClaim(updated);
       this.repo.createTasks(firstTasks);
-      this.addLog(claim.id, ctx, "submit", null, "提交审批", now);
+      this.addLog(claim.id, ctx, "submit", null, input.comment?.trim() || "提交审批", now);
     });
     return this.buildDetail(this.requireClaim(claim.id));
   }

@@ -11,6 +11,7 @@ import type {
   ReimbursementDashboard,
   ReimbursementStats,
   ReimbursementStatsQuery,
+  ReimbursementSubmitInput,
   ReimbursementTransferInput,
   UpdateReimbursementClaimInput
 } from "./reimbursement.types";
@@ -18,7 +19,7 @@ import type {
 export interface ReimbursementCommandContract {
   create(input: CreateReimbursementClaimInput, ctx: RequestContext): Promise<ReimbursementClaimDetail>;
   update(id: string, input: UpdateReimbursementClaimInput, ctx: RequestContext): Promise<ReimbursementClaimDetail>;
-  submit(id: string, ctx: RequestContext): Promise<ReimbursementClaimDetail>;
+  submit(id: string, ctx: RequestContext, input?: ReimbursementSubmitInput): Promise<ReimbursementClaimDetail>;
   approve(id: string, input: ReimbursementActionInput, ctx: RequestContext): Promise<ReimbursementClaimDetail>;
   reject(id: string, input: ReimbursementActionInput, ctx: RequestContext): Promise<ReimbursementClaimDetail>;
   transfer(id: string, input: ReimbursementTransferInput, ctx: RequestContext): Promise<ReimbursementClaimDetail>;

@@ -4,3 +4,4 @@ export * from './navigation';
 export * from './realtime';
 export * from './state';
 export * from './types';
+export * from './icons';

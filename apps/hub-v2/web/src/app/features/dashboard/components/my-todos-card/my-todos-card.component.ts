@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 
 import { DashboardPanelComponent, StatusBadgeComponent } from '@shared/ui';
 import type { DashboardTodoItem } from '../../models/dashboard.model';
+import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/components';
 
 @Component({
   selector: 'app-my-todos-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatusBadgeComponent, DashboardPanelComponent],
+  imports: [CommonModule, RouterLink, StatusBadgeComponent, DashboardPanelComponent, ReimbursementTypeTagComponent],
   template: `
     <app-dashboard-panel
       title="我的待办"
@@ -28,9 +29,13 @@ import type { DashboardTodoItem } from '../../models/dashboard.model';
           <div class="todo__priority" [attr.data-kind]="item.kind"></div>
           <div class="todo__body">
             <div class="todo__title">
-              <span class="todo__tag" [attr.data-kind]="item.kind">
-                {{ kindLabel(item) }}
-              </span>
+              @if (item.kind === 'reimbursement_todo') {
+                <app-reimbursement-type-tag [type]="item.claimType" />
+              } @else {
+                <span class="todo__tag" [attr.data-kind]="item.kind">
+                  {{ kindLabel(item) }}
+                </span>
+              }
               @if (roleLabel(item)) {
                 <span class="todo__role" [attr.data-kind]="item.kind">{{ roleLabel(item) }}</span>
               }
@@ -183,9 +188,7 @@ export class MyTodosCardComponent {
 
   detailLink(item: DashboardTodoItem): string[] {
     if (item.kind === 'reimbursement_todo') {
-      return item.claimType === 'travel'
-        ? ['/travel-expense/detail', item.entityId]
-        : ['/expense/detail', item.entityId];
+      return ['/reimbursements', item.entityId];
     }
     if (item.kind.startsWith('rd')) {
       return ['/rd', item.entityId];

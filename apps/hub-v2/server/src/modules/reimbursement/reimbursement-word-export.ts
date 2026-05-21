@@ -35,7 +35,7 @@ export function renderReimbursementWord(claim: ReimbursementClaimDetail): Render
   doc.render(claim.claimType === "travel" ? buildTravelData(claim) : buildGeneralData(claim));
 
   return {
-    fileName: `${sanitizeFileName(claim.claimNo)}-${claim.claimType === "travel" ? "差旅费报销单" : "费用报销单"}.docx`,
+    fileName: `${sanitizeFileName(claim.claimNo)}-${sanitizeFileName(claim.applicantName)}-${Date.now()}.docx`,
     mimeType: WORD_MIME_TYPE,
     buffer: doc.getZip().generate({ type: "nodebuffer" }) as Buffer,
     templateType
@@ -115,7 +115,10 @@ function buildTravelData(claim: ReimbursementClaimDetail): TemplateData {
 }
 
 function buildGeneralData(claim: ReimbursementClaimDetail): TemplateData {
-  const items = claim.items.slice().sort((left, right) => left.sort - right.sort);
+  const items = claim.items
+    .filter((item) => Boolean(item.description?.trim()) || item.amount > 0)
+    .slice()
+    .sort((left, right) => left.sort - right.sort);
   const fillDate = splitDate(claim.fillDate);
   const data: TemplateData = {
     A: claim.departmentName,
@@ -132,8 +135,8 @@ function buildGeneralData(claim: ReimbursementClaimDetail): TemplateData {
   };
   for (let index = 0; index < 4; index += 1) {
     const item = items[index];
-    data[`Z${index + 1}`] = item ? (item.description || item.category || claim.reason) : "";
-    data[`X${index + 1}`] = item ? formatMoney(item.amount) : "";
+    data[`Z${index + 1}`] = item ? (item.description?.trim() || item.category || "") : "";
+    data[`X${index + 1}`] = item && item.amount > 0 ? formatMoney(item.amount) : "";
   }
   return data;
 }
@@ -150,15 +153,31 @@ function amountDigitData(amount: number): TemplateData {
   const cents = Math.abs(Math.round(amount * 100));
   const digits = String(cents).padStart(8, "0").slice(-8).split("");
   return {
-    o: digits[0],
-    a: digits[1],
-    b: digits[2],
-    c: digits[3],
-    d: digits[4],
-    e: digits[5],
-    f: digits[6],
-    g: digits[7]
+    o: toUppercaseDigit(digits[0]),
+    a: toUppercaseDigit(digits[1]),
+    b: toUppercaseDigit(digits[2]),
+    c: toUppercaseDigit(digits[3]),
+    d: toUppercaseDigit(digits[4]),
+    e: toUppercaseDigit(digits[5]),
+    f: toUppercaseDigit(digits[6]),
+    g: toUppercaseDigit(digits[7])
   };
+}
+
+function toUppercaseDigit(value: string): string {
+  const map: Record<string, string> = {
+    "0": "零",
+    "1": "壹",
+    "2": "贰",
+    "3": "叁",
+    "4": "肆",
+    "5": "伍",
+    "6": "陆",
+    "7": "柒",
+    "8": "捌",
+    "9": "玖"
+  };
+  return map[value] ?? "零";
 }
 
 function buildLocation(item: ReimbursementItemEntity): string {

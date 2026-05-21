@@ -10,6 +10,7 @@ import { ProjectContextStore } from '@core/state';
 import { ActiveFilterTag, ActiveFiltersBarComponent, FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, StatusBadgeComponent } from '@shared/ui';
 import { DashboardTodoItem, DashboardTodoItemKind } from '../../models/dashboard.model';
 import { DashboardApiService } from '../../services/dashboard-api.service';
+import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/components';
 
 @Component({
   selector: 'app-dashboard-todos-page',
@@ -27,6 +28,7 @@ import { DashboardApiService } from '../../services/dashboard-api.service';
     PageHeaderComponent,
     ListStateComponent,
     StatusBadgeComponent,
+    ReimbursementTypeTagComponent,
   ],
   template: `
     <app-page-header title="我的待办" subtitle="测试单与研发项的待处理、待验证事项。" />
@@ -76,7 +78,11 @@ import { DashboardApiService } from '../../services/dashboard-api.service';
           <a class="todo-row" [routerLink]="detailLink(item)">
             <div class="todo-row__main">
               <div class="todo-row__title">
-                <span class="todo-row__tag" [attr.data-kind]="item.kind">{{ kindLabel(item.kind) }}</span>
+                @if (item.kind === 'reimbursement_todo') {
+                  <app-reimbursement-type-tag [type]="item.claimType" />
+                } @else {
+                  <span class="todo-row__tag" [attr.data-kind]="item.kind">{{ kindLabel(item.kind) }}</span>
+                }
                 <span class="todo-row__role" [attr.data-kind]="item.kind">{{ roleLabel(item.kind) }}</span>
                 <span>{{ item.title }}</span>
               </div>
@@ -297,9 +303,7 @@ export class DashboardTodosPageComponent {
 
   detailLink(item: DashboardTodoItem): string[] {
     if (item.kind === 'reimbursement_todo') {
-      return item.claimType === 'travel'
-        ? ['/travel-expense/detail', item.entityId]
-        : ['/expense/detail', item.entityId];
+      return ['/reimbursements', item.entityId];
     }
     return item.kind.startsWith('rd') ? ['/rd', item.entityId] : ['/issues', item.entityId];
   }

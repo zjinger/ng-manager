@@ -31,9 +31,8 @@
     [pageSize]="store.currentPageSize()"
     [expenseTypeOptions]="expenseTypeOptions"
     [statusOptions]="statusOptions"
+    [selectedItemId]="selectedClaimId()"
     (selectItem)="handleSelectItem($event)"
-    (view)="handleView($event)"
-    (export)="handleExport($event)"
   />
 
   @if (store.hasData()) {
@@ -59,4 +58,6 @@
   [claimId]="selectedClaimId()"
   [claim]="selectedClaim()"
   (close)="closeDetail()"
+  (changed)="handleDrawerChanged()"
+  (openFullPage)="openFullDetail($event)"
 />

@@ -47,9 +47,9 @@ const DEFAULT_DRAFT: TravelExpenseDraft = {
     fillDate: '',
     advanceAmount: 0,
     travelStartDate: null,
-    travelStartHalf: null,
+    travelStartHalf: 'am',
     travelEndDate: null,
-    travelEndHalf: null,
+    travelEndHalf: 'am',
     travelDays: null,
     receiptCount: null,
   },
@@ -374,7 +374,7 @@ export class TravelExpenseStore {
   /**
    * 提交审批 - 自动判断新建或编辑
    */
-  async submitApproval(): Promise<boolean> {
+  async submitApproval(comment?: string | null): Promise<boolean> {
     if (!this.canSubmit()) {
       this.message.warning('请填写完整的报销信息');
       return false;
@@ -404,10 +404,11 @@ export class TravelExpenseStore {
       }
 
       // 提交审批
-      await lastValueFrom(this.reimbursementApi.submitClaim(claimId));
+      await lastValueFrom(this.reimbursementApi.submitClaim(claimId, {
+        comment: comment?.trim() || null,
+      }));
 
       this.draftState.update((draft) => ({ ...draft, status: 'submitted' }));
-      this.message.success('提交审批成功');
       return true;
     } catch (error: any) {
       this.message.error(error.message || '提交审批失败，请重试');
@@ -510,8 +511,12 @@ export class TravelExpenseStore {
     // 过滤无效的 expenseItems
     const validExpenseItems = draft.expenseItems.filter((item) => {
       const hasAmount = item.amount !== null && item.amount !== undefined && item.amount !== 0;
-      const hasLocation = (item.fromLocation?.trim() !== '') || (item.toLocation?.trim() !== '');
-      return hasAmount || hasLocation;
+      const hasDescription = Boolean(item.description?.trim());
+      const hasLocation = Boolean(item.fromLocation?.trim()) || Boolean(item.toLocation?.trim());
+      const hasTravelMeta = item.meta
+        ? Object.values(item.meta).some((value) => Number(value || 0) !== 0)
+        : false;
+      return hasAmount || hasDescription || hasLocation || hasTravelMeta;
     });
     
     // 转换附件格式

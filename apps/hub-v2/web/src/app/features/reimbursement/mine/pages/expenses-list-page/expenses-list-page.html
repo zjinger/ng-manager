@@ -1,0 +1,69 @@
+<app-page-header title="我的报销" subtitle="查看我提交的差旅费报销与费用报销。" />
+
+<app-expenses-filter-bar
+  [query]="store.currentQuery()"
+  [expenseTypeOptions]="expenseTypeOptions"
+  [statusOptions]="statusOptions"
+  [showScopeFilter]="false"
+  [showDepartmentFilter]="false"
+  (submit)="handleFilter($event)"
+  (reset)="handleReset()"
+>
+  <div toolbar-primary class="header-actions">
+    <button nz-button nzType="primary" (click)="createTravelReport()">
+      <i nz-icon nzType="custom:airplane"></i> 新建差旅费报销
+    </button>
+    <button nz-button nzType="primary" (click)="createExpenseReport()">
+      <i nz-icon nzType="file-text"></i> 新建费用报销
+    </button>
+  </div>
+</app-expenses-filter-bar>
+
+<app-active-filters-bar
+  [tags]="activeFilterBarTags()"
+  (remove)="onActiveFilterRemove($event)"
+  (clear)="handleReset()"
+/>
+
+<app-list-state
+  [loading]="store.isLoading()"
+  [empty]="store.isEmpty()"
+  loadingText="正在加载报销单…"
+  emptyTitle="当前还没有报销单数据"
+>
+  <app-expenses-list-table
+    [items]="store.displayData()"
+    [page]="store.currentPage()"
+    [pageSize]="store.currentPageSize()"
+    [expenseTypeOptions]="expenseTypeOptions"
+    [statusOptions]="statusOptions"
+    [selectedItemId]="selectedClaimId()"
+    (selectItem)="handleSelectItem($event)"
+  />
+
+  @if (store.hasData()) {
+  <div class="expenses-pagination">
+    <nz-pagination
+      [nzTotal]="store.totalCount()"
+      [nzPageIndex]="store.currentPage()"
+      [nzPageSize]="store.currentPageSize()"
+      [nzPageSizeOptions]="[10, 20, 50, 100]"
+      [nzShowSizeChanger]="true"
+      [nzShowQuickJumper]="true"
+      [nzShowTotal]="totalTpl"
+      (nzPageIndexChange)="onPageIndexChange($event)"
+      (nzPageSizeChange)="onPageSizeChange($event)"
+    ></nz-pagination>
+    <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+  </div>
+  }
+</app-list-state>
+
+<app-reimbursement-detail-drawer
+  [open]="!!selectedClaimId()"
+  [claimId]="selectedClaimId()"
+  [claim]="selectedClaim()"
+  (close)="closeDetail()"
+  (changed)="handleDrawerChanged()"
+  (openFullPage)="openFullDetail($event)"
+/>

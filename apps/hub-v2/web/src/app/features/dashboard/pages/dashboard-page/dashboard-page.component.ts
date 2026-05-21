@@ -79,12 +79,19 @@ export class DashboardPageComponent {
     }
     return map;
   });
-  private readonly reimbursementShortcutItems: DashboardShortcutItem[] = [
-    { key: 'travel-expense', label: '差旅费报销', description: '行程与交通住宿', route: '/travel-expense/new', icon: 'plus-circle', tone: 'blue' },
-    { key: 'expense', label: '费用报销', description: '办公采购等', route: '/expense/new', icon: 'file-text', tone: 'green' },
-    { key: 'my-expenses', label: '我的报销', description: '查看报销进度', route: '/my-expenses', icon: 'history', tone: 'amber' },
-    { key: 'approval-pending', label: '待我审批', description: '进入审批列表', route: '/approval-pending', icon: 'bar-chart', tone: 'rose' },
+  private readonly reimbursementBaseShortcutItems: DashboardShortcutItem[] = [
+    { key: 'travel-expense', label: '差旅费报销', description: '行程与交通住宿', route: '/reimbursements/new/travel', icon: 'custom:airplane', tone: 'blue' },
+    { key: 'expense', label: '费用报销', description: '办公采购等', route: '/reimbursements/new/general', icon: 'file-text', tone: 'green' },
+    { key: 'my-expenses', label: '我的报销', description: '查看报销进度', route: '/reimbursements/mine', icon: 'history', tone: 'amber' },
   ];
+  private readonly reimbursementManagementShortcutItem: DashboardShortcutItem = {
+    key: 'reimbursement-management',
+    label: '报销管理',
+    description: '查看和处理报销单',
+    route: '/reimbursements',
+    icon: 'bar-chart',
+    tone: 'rose',
+  };
 
   private readonly collaborationShortcutItems: DashboardShortcutItem[] = [
     {
@@ -133,8 +140,16 @@ export class DashboardPageComponent {
     },
   ];
 
+  readonly reimbursementShortcutItems = computed<DashboardShortcutItem[]>(() => {
+    const items = [...this.reimbursementBaseShortcutItems];
+    if (this.hasReimbursementManagementPermission()) {
+      items.push(this.reimbursementManagementShortcutItem);
+    }
+    return items;
+  });
+
   readonly shortcutItems = computed<DashboardShortcutItem[]>(() => [
-    ...(this.canAccessReimbursementWorkspace() ? this.reimbursementShortcutItems : []),
+    ...(this.canAccessReimbursementWorkspace() ? this.reimbursementShortcutItems() : []),
     ...(this.canAccessCollaborationWorkspace() ? this.collaborationShortcutItems : []),
   ]);
 
@@ -302,7 +317,7 @@ export class DashboardPageComponent {
       return ['/dashboard/todos'];
     }
     if (this.canAccessReimbursementWorkspace()) {
-      return ['/approval-pending'];
+      return ['/reimbursements'];
     }
     return [];
   });
@@ -550,11 +565,15 @@ export class DashboardPageComponent {
   }
 
   private hasReimbursementManagerStatPermission(): boolean {
+    return this.hasReimbursementManagementPermission();
+  }
+
+  private hasReimbursementManagementPermission(): boolean {
     return this.hasAnyPermission(['expense.rule.manage', 'finance.review', 'finance.cashier']);
   }
 
   private hasReimbursementApprovalStatPermission(): boolean {
-    return this.hasAnyPermission(['expense.rule.manage', 'finance.review', 'finance.cashier']);
+    return this.hasReimbursementManagementPermission();
   }
 
   private hasAnyPermission(codes: string[]): boolean {

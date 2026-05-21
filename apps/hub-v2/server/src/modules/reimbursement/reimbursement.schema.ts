@@ -101,6 +101,10 @@ export const reimbursementActionSchema = z.object({
   comment: z.string().trim().nullable().optional()
 });
 
+export const reimbursementSubmitSchema = z.object({
+  comment: z.string().trim().nullable().optional()
+});
+
 export const reimbursementTransferSchema = reimbursementActionSchema.extend({
   targetUserId: z.string().trim().min(1)
 });

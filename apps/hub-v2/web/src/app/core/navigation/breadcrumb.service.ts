@@ -13,7 +13,9 @@ export class BreadcrumbService {
   }
 
   getBreadcrumbs(url: string): BreadcrumbItem[] {
-    const path = url.split('?')[0].split('#')[0];
+    const [pathWithQuery] = url.split('#');
+    const [path, query = ''] = pathWithQuery.split('?');
+    const queryParams = new URLSearchParams(query);
 
     if (path === '/' || path === '/dashboard') {
       return [];
@@ -88,38 +90,38 @@ export class BreadcrumbService {
     if (path.startsWith('/feedbacks')) {
       return [{ label: '系统反馈' }];
     }
-    if (path.startsWith('/expense-notice')) {
+    if (path.startsWith('/reimbursements/new/travel')) {
+      return [{ label: '新建差旅费报销' }];
+    }
+    if (path.startsWith('/reimbursements/new/general')) {
+      return [{ label: '新建费用报销' }];
+    }
+    if (path.startsWith('/reimbursements/announcements')) {
       return [{ label: '公告管理' }];
+    }
+    if (path.startsWith('/reimbursements/mine')) {
+      return [{ label: '我的报销' }];
+    }
+    if (path.endsWith('/edit') && path.startsWith('/reimbursements/')) {
+      return [
+        { label: '报销管理', route: '/reimbursements' },
+        { label: '编辑报销单' },
+      ];
+    }
+    if (path.startsWith('/reimbursements/')) {
+      if (queryParams.get('source') === 'mine') {
+        return [
+          { label: '我的报销', route: '/reimbursements/mine' },
+          { label: '报销单详情' },
+        ];
+      }
+      return [
+        { label: '报销管理', route: '/reimbursements' },
+        { label: '报销单详情' },
+      ];
     }
     if (path.startsWith('/reimbursements')) {
       return [{ label: '报销管理' }];
-    }
-    if (path.startsWith('/travel-expense/new')) {
-      return [{ label: '新建差旅费报销' }];
-    }
-    if (path.startsWith('/travel-expense/detail')) {
-      return [{ label: '差旅费报销详情' }];
-    }
-    if (path.startsWith('/travel-expense/edit')) {
-      return [{ label: '编辑差旅费报销' }];
-    }
-    if (path.startsWith('/expense/new')) {
-      return [{ label: '新建费用报销' }];
-    }
-    if (path.startsWith('/expense/edit')) {
-      return [{ label: '编辑费用报销' }];
-    }
-    if (path.startsWith('/expense/detail')) {
-      return [{ label: '费用报销详情' }];
-    }
-    if (path.startsWith('/my-expenses')) {
-      return [{ label: '我的报销' }];
-    }
-    if (path.startsWith('/approval-pending')) {
-      return [{ label: '待我审批' }];
-    }
-    if (path.startsWith('/history-expense')) {
-      return [{ label: '历史报销单' }];
     }
     if (path.startsWith('/my-todos')) {
       return [{ label: '我的待办' }];

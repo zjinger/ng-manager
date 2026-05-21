@@ -1,0 +1,61 @@
+<app-page-header
+  title="{{ getPageTitle() }}"
+  subtitle="适用于办公用品、行政费用、采购等普通费用报销。"
+/>
+
+<section class="travel-layout">
+  <div class="travel-layout__main">
+    <!-- 基础信息组件 -->
+    <div class="card query-card">
+      <div class="query-card__label">基础信息</div>
+      <app-expense-basic-info
+        [(value)]="draft().basicInfo"
+        (valueChange)="onBasicInfoChange($event)"
+        (validChange)="onBasicInfoValidChange($event)"
+      />
+    </div>
+
+    <!-- 费用明细组件 -->
+    <div class="card query-card">
+      <app-expense-detail-item
+        [(items)]="draft().expenseItems"
+        (itemsChange)="onExpenseItemsChange($event)"
+      />
+    </div>
+
+    <div class="card query-card">
+      <div class="query-card__label">金额与附件</div>
+      <app-expense-summary-attachment
+        [(summary)]="draft().summary"
+        [claimId]="expenseId"
+        (summaryChange)="onSummaryChange($event)"
+        (attachmentsChange)="onAttachmentsChange($event)"
+        (advanceAmountChange)="onAdvanceAmountChange($event)"
+      />
+    </div>
+  </div>
+
+  <!-- 右侧栏 -->
+  <div class="report-layout__side">
+    <div class="card query-card">
+      <div class="query-card__label">审批流程</div>
+      <app-approval-flow
+        [approvalPreview]="draft().approvalPreview!"
+      />
+    </div>
+
+    <app-reimbursement-submit-action-card
+      [(comment)]="submitComment"
+      [submitting]="submitting()"
+      (submit)="openPreviewDialog()"
+    />
+  </div>
+</section>
+
+<!-- 预览弹窗 -->
+<ex-save-dialog
+  [open]="previewDialogOpen()"
+  [formData]="previewData()"
+  (confirm)="confirmSubmit($event)"
+  (cancel)="closePreviewDialog()"
+/>
