@@ -102,10 +102,7 @@
 4. `project.archive`
    - 允许切换项目 `active/inactive`
 
-5. `project.governance.manage`
-   - 允许维护项目治理规则、约束配置或项目级策略
-
-6. `project.owner.transfer`
+5. `project.owner.transfer`
    - 如需把 owner 转移与一般维护权限分开，可单独配置
 
 ### 可选后续权限
@@ -114,6 +111,7 @@
 2. `project.read.private.all`
 3. `project.member.assign.admin`
 4. `project.member.remove`
+5. `project.governance.manage`
 
 第一阶段不必拆太细，先保证最小可用。
 
@@ -280,7 +278,8 @@
 ### 报销域
 
 1. 全局权限：`expense.* / approval.* / finance.*`
-2. 业务内关系：直属上级、部门负责人、财务审批责任人、审批模板阶段解析
+2. 业务内关系：直属上级、部门负责人、审批模板阶段解析
+3. 业务授权角色：报销管理员、财务等系统角色
 
 统一模式是：
 

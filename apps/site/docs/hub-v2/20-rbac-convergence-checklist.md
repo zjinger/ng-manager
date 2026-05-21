@@ -119,7 +119,83 @@ HAVING SUM(CASE WHEN sr.code IN ('super_admin', 'admin', 'member') THEN 1 ELSE 0
 
 ---
 
-## 5. 实施原则
+## 5. 当前 RBAC 基线口径
+
+### 5.1 内置角色
+
+当前内置角色按小团队使用场景收口为：
+
+| 角色编码 | 角色名称 | 默认职责 |
+| --- | --- | --- |
+| `super_admin` | 超级管理员 | 系统全部权限，唯一不可修改的内置角色 |
+| `admin` | 管理员 | 后台管理基础能力，可由具备角色管理权限的管理员调整权限与成员 |
+| `member` | 成员 | 普通员工基础角色，可提交并查看本人报销，可使用项目基础能力 |
+| `expense_manager` | 报销管理员 | 报销审核管理、报销规则配置、报表查看 |
+| `finance` | 财务 | 个人报销提交、本人报销查看、报表查看、财务复核、出纳处理 |
+
+已移除或不再使用：
+
+- `expense_employee`：报销员工角色已并入 `member`。
+- `finance_reviewer` / `finance_cashier`：财务复核与出纳角色已合并为 `finance`。
+
+### 5.2 默认权限
+
+`member` 默认权限：
+
+- `expense.submit`
+- `expense.view.self`
+- `project.manage`
+
+`expense_manager` 默认权限：
+
+- `expense.submit`
+- `expense.view.self`
+- `expense.report.view`
+- `expense.review.manage`
+- `expense.rule.manage`
+
+`finance` 默认权限：
+
+- `expense.submit`
+- `expense.view.self`
+- `expense.report.view`
+- `finance.review`
+- `finance.cashier`
+
+项目权限当前基线：
+
+- `project.manage`：普通项目基础能力，包括创建项目；创建后的维护仍按 owner/project_admin/project.manage.all 联合判定。
+- `project.read.all`：查看全部项目。
+- `project.manage.all`：管理全部项目。
+- `project.archive`：归档项目。
+- `project.owner.transfer`：转移项目 owner。
+
+已删除或不再使用：
+
+- `project.create`：由 `project.manage` 承担创建入口判断。
+- `admin.projects.manage`：不再作为项目治理主权限，项目治理归入 `project.*` 权限域。
+
+### 5.3 报销权限边界
+
+- `expense.review.manage`：报销审核/审批管理能力。
+- `expense.rule.manage`：报销规则、审批模板、报销公告等规则配置能力。
+- `finance.review`：财务复核阶段处理能力。
+- `finance.cashier`：出纳付款阶段处理能力。
+
+报销审批链继续按“组织关系 + 业务授权”并列解析：
+
+- 组织关系：直属上级、部门负责人。
+- 业务授权：`expense.review.manage`、`finance.review`、`finance.cashier` 等角色权限。
+
+### 5.4 内置角色修改规则
+
+- `super_admin`：不可修改基本信息、权限、成员。
+- 其他内置角色：可由具备角色管理权限的管理员调整基本信息、权限和成员。
+- 内置角色仍不允许删除，避免破坏系统基线角色。
+
+---
+
+## 6. 实施原则
 
 1. 未部署阶段优先“清理基线”，少打补丁迁移。  
 2. 已部署后采用“增量迁移 + 自愈脚本 + 回归验证”策略。  
@@ -127,7 +203,7 @@ HAVING SUM(CASE WHEN sr.code IN ('super_admin', 'admin', 'member') THEN 1 ELSE 0
 
 ---
 
-## 6. 当前状态（2026-05-18，更新）
+## 7. 当前状态（2026-05-21，更新）
 
 - 已完成
   - Phase A1：账号绑定自愈、角色同步、自检脚本。
@@ -135,6 +211,7 @@ HAVING SUM(CASE WHEN sr.code IN ('super_admin', 'admin', 'member') THEN 1 ELSE 0
   - Phase A3：`finance_approver_user_id` 已停止前后端写入与展示（字段暂存仅保留历史）。
   - Phase B1：核心后台模块已从 `requireAdmin` 切到权限码校验（用户/组织/角色权限/系统设置/职务/审批模板/共享配置，以及公告/文档/版本发布的 global 分支）。
   - Phase B2：管理端入口、侧边栏菜单、关键按钮与登录跳转已按权限码控制。
+  - RBAC 基线角色已收口：移除报销员工角色，财务复核/出纳合并为 `finance`，项目创建入口统一为 `project.manage`。
 
 - 结论
   - `admin_accounts.role` 已降级为登录分组字段，不再驱动 `user_system_roles` 自动同步；系统角色以显式 RBAC 绑定为准。
