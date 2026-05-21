@@ -588,8 +588,8 @@ export class ExpenseBillPreviewComponent {
   /**
    * 获取费用金额
    */
-  getItemAmount(item: ReimbursementItemInput): number {
-    return item.amount || 0;
+  getItemAmount(item: ReimbursementItemInput): number | null {
+    return item.amount ?? null;
   }
 
   getYear(dateStr: string | null | undefined): string {
@@ -608,9 +608,10 @@ export class ExpenseBillPreviewComponent {
   }
 
   formatMoney(value: number | null | undefined): string {
-    if (value === null || value === undefined) {
-      return '0.00';
+    if (value === null || value === undefined || value === 0) {
+      return '';
     }
+
     return Number(value).toFixed(2);
   }
 

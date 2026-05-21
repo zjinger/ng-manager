@@ -1,15 +1,22 @@
 <section>
+  <!-- 按钮区域 -->
   <div class="btn-group">
     <button nz-button nzType="default" (click)="goBack()">
-      <i nz-icon nzType="arrow-left"></i>返回
+      <i nz-icon nzType="arrow-left"></i>
+      返回
     </button>
+    @if (headerData()?.status == 'draft' ) {
     <button nz-button nzType="primary" (click)="goEdit()">
-      <i nz-icon nzType="edit"></i>编辑
+      <i nz-icon nzType="edit"></i>
+      编辑
     </button>
+    }
   </div>
 
   <!-- 顶部信息 -->
-  <!-- <app-process-header-card [data]="headerData()" /> -->
+  @if (headerData(); as header) {
+  <app-process-header-card [data]="header" />
+  }
 
   <section class="travel-layout">
     <!-- 主区域 -->
@@ -17,16 +24,13 @@
       <!-- 单据内容 -->
       <div class="card query-card">
         <div class="query-card__label">单据内容</div>
-
-        <!-- <app-expense-bill-preview
-          [basicInfo]="basicInfo()!"
-          [expenseItems]="expenseItems()"
-          [summary]="summary()!"
-        /> -->
+        @if (formData(); as formData) {
+        <app-expense-bill-preview [formData]="formData" />
+        }
       </div>
 
-      <!-- 附件 -->
-      <!-- <div class="card query-card">
+      <!-- 附件材料 -->
+      <div class="card query-card">
         <div class="query-card__label">附件材料</div>
         @if (hasAttachments()) {
         <app-attachment-preview-wall
@@ -37,7 +41,7 @@
         } @else {
         <div class="query-card__content">暂无附件</div>
         }
-      </div> -->
+      </div>
 
       <!-- 操作记录 -->
       <div class="card query-card">
@@ -46,11 +50,11 @@
       </div>
     </div>
 
-    <!-- 侧边栏 -->
+    <!-- 右侧审批流 -->
     <aside class="report-layout__side">
       <div class="card query-card">
         <div class="query-card__label">审批流预览</div>
-        <app-approval-flow />
+        <app-approval-flow [approvalPreview]="approvalPreview()" />
       </div>
     </aside>
   </section>
