@@ -18,31 +18,17 @@
   gap: 16px;
 }
 
-.travel-layout__side {
+.travel-layout__side,
+.report-layout__side {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 
   /* 可选：桌面端吸顶 */
   position: sticky;
   top: 16px;
   align-self: start;
-}
-
-.card {
-  background: var(--bg-container);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 16px;
-  min-width: 0;
-}
-
-.query-card__label {
-  margin-bottom: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-heading);
 }
 
 .card-two {
@@ -51,6 +37,15 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.form-panel-body {
+  padding: 16px 20px 20px;
+  min-width: 0;
+}
+
+.form-panel-body--table {
+  overflow-x: auto;
 }
 
 /* =========================
@@ -62,7 +57,8 @@
     grid-template-columns: 1fr;
   }
 
-  .travel-layout__side {
+  .travel-layout__side,
+  .report-layout__side {
     position: static;
   }
 }
@@ -72,9 +68,8 @@
 ========================= */
 
 @media (max-width: 780px) {
-  .card {
+  .form-panel-body {
     padding: 12px;
-    border-radius: 12px;
   }
 
   .header-actions {

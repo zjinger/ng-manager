@@ -219,7 +219,6 @@ export class ApprovalTransferDialogComponent implements OnInit {
     if (!this.isFormValid) {
       return;
     }
-    console.log(this.formData, '转交单');
     this.submit.emit(this.formData);
   }
 }

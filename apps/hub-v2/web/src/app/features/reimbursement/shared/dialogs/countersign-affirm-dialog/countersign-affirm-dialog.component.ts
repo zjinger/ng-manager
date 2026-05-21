@@ -221,7 +221,6 @@ export class CountersignAffirmDialogComponent implements OnInit {
     if (!this.isFormValid) {
       return;
     }
-    console.log(this.formData, '加签单');
     this.submit.emit(this.formData);
   }
 }

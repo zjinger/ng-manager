@@ -196,7 +196,6 @@ export class ExpensesListPage implements OnInit {
   // ========== 筛选事件处理 ==========
 
   async handleFilter(query: ReimbursementListQuery): Promise<void> {
-    console.log('筛选条件:', query);
     await this.store.filter({
       ...query,
       scope: 'my',
@@ -205,7 +204,6 @@ export class ExpensesListPage implements OnInit {
   }
 
   async handleReset(): Promise<void> {
-    console.log('清空所有筛选条件');
     await this.store.filter({
       page: 1,
       pageSize: this.store.currentPageSize(),
@@ -236,19 +234,7 @@ export class ExpensesListPage implements OnInit {
   // ========== 表格事件处理 ==========
 
   handleSelectItem(item: ReimbursementClaimEntity): void {
-    console.log('选中报销单:', item);
     this.openDetail(item);
-  }
-
-  handleView(item: ReimbursementClaimEntity): void {
-    console.log('查看报销单:', item);
-    this.openFullDetail(item);
-  }
-
-  openFullDetail(item: ReimbursementClaimEntity): void {
-    void this.router.navigate(['/reimbursements', item.id], {
-      queryParams: { source: 'mine' },
-    });
   }
 
   closeDetail(): void {
@@ -258,12 +244,6 @@ export class ExpensesListPage implements OnInit {
   handleDrawerChanged(): void {
     void this.store.refresh();
   }
-
-  handleExport(item: ReimbursementClaimEntity): void {
-    console.log('导出报销单:', item);
-    // TODO: 导出报销单
-  }
-
   private openDetail(item: ReimbursementClaimEntity): void {
     this.selectedClaimId.set(item.id);
   }

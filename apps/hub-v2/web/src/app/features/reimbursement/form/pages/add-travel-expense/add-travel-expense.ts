@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { PageHeaderComponent } from '@shared/ui';
+import { PageHeaderComponent, PanelCardComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
@@ -12,7 +12,10 @@ import { ApprovalFlowComponent } from '@app/features/reimbursement/shared/compon
 import { ActivatedRoute, Router } from '@angular/router';
 import { SaveDialogComponent } from '@app/features/reimbursement/shared/dialogs';
 import { TravelExpenseStore } from '@app/features/reimbursement/stores/travel-expense.store';
-import { ReimbursementSubmitActionCardComponent } from '@app/features/reimbursement/shared/components';
+import {
+  ReimbursementLogsCardComponent,
+  ReimbursementSubmitActionCardComponent,
+} from '@app/features/reimbursement/shared/components';
 
 @Component({
   selector: 'app-add-travel-expense',
@@ -29,7 +32,9 @@ import { ReimbursementSubmitActionCardComponent } from '@app/features/reimbursem
     ExpenseSummaryAttachmentComponent,
     ApprovalFlowComponent,
     ReimbursementSubmitActionCardComponent,
+    ReimbursementLogsCardComponent,
     SaveDialogComponent,
+    PanelCardComponent,
   ],
   templateUrl: './add-travel-expense.html',
   styleUrls: ['./add-travel-expense.less'],
@@ -190,21 +195,6 @@ export class AddTravelExpense implements OnInit {
       this.store.goBack();
     }
   }
-
-  // 导出报销单
-  exportForm(): void {
-    if (!this.isEditMode()) {
-      this.modalService.info({
-        nzTitle: '提示',
-        nzContent: '请先保存报销单后再导出',
-        nzOkText: '知道了',
-      });
-      return;
-    }
-    // TODO: 调用导出接口
-    console.log('导出报销单:', this.draft());
-  }
-
 
   // 获取页面标题
   getPageTitle(): string {

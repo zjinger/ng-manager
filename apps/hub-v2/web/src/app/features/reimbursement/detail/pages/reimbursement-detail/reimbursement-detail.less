@@ -1,0 +1,58 @@
+.reimbursement-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 430px;
+  gap: 16px;
+}
+
+.btn-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.reimbursement-detail-layout__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reimbursement-detail-layout__side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-panel {
+  padding: 20px;
+  overflow: auto;
+}
+
+@media (max-width: 1280px) {
+  .reimbursement-detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .btn-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-group button {
+    width: 100%;
+  }
+
+  .reimbursement-detail-layout,
+  .reimbursement-detail-layout__main,
+  .reimbursement-detail-layout__side {
+    gap: 12px;
+  }
+
+  .preview-panel {
+    padding: 12px;
+  }
+}

@@ -7,8 +7,10 @@ import {
   ReimbursementApprovalPreview,
   ReimbursementAttachmentEntity,
   ReimbursementClaimDetail,
+  ReimbursementClaimStatus,
   ReimbursementItemEntity,
   ReimbursementItemInput,
+  ReimbursementLogEntity,
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
 
@@ -33,7 +35,8 @@ export interface TravelExpenseDraft {
   expenseItems: ReimbursementItemInput[];
   summary: ExpenseSummary;
   approvalPreview?: ReimbursementApprovalPreview;
-  status: 'draft' | 'submitted';
+  logs: ReimbursementLogEntity[];
+  status: ReimbursementClaimStatus;
 }
 
 const DEFAULT_DRAFT: TravelExpenseDraft = {
@@ -61,6 +64,7 @@ const DEFAULT_DRAFT: TravelExpenseDraft = {
     attachments: [],
   },
   approvalPreview: {} as ReimbursementApprovalPreview,
+  logs: [],
   status: 'draft',
 };
 
@@ -304,7 +308,8 @@ export class TravelExpenseStore {
       expenseItems,
       summary,
       approvalPreview: detail.approvalPreview,
-      status: detail.status === 'draft' ? 'draft' : 'submitted',
+      logs: detail.logs ?? [],
+      status: detail.status,
     });
 
     this.currentClaimIdState.set(claimId);
@@ -347,7 +352,6 @@ export class TravelExpenseStore {
 
     try {
       const payload = this.buildSubmitPayload();
-      console.log('payload:', payload);
       
       if (this.isEditMode()) {
         // 编辑模式：更新报销单
@@ -526,7 +530,6 @@ export class TravelExpenseStore {
         uploadId: att.uploadId || att.id,
         category: att.category || 'other',
       }));
-      console.log(draft.summary.attachments,'draft.summary.attachments',draft,'构建后',attachments,validExpenseItems);
 
     return {
       claimType: basicInfo.claimType,

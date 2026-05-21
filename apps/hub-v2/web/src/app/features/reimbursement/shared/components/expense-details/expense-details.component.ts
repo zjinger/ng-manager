@@ -117,10 +117,6 @@ const calculateSubtotal = (item: ReimbursementItemInput): number => {
   ],
   template: `
     <div class="details-container">
-      <div class="details-header">
-        <div class="query-card__label">行程与费用明细</div>
-      </div>
-
       <div class="table-wrapper">
         <table class="expense-table">
           <thead>
@@ -298,20 +294,6 @@ const calculateSubtotal = (item: ReimbursementItemInput): number => {
         width: 100%;
       }
 
-      .details-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-      }
-
-      .query-card__label {
-        font-size: 15px;
-        font-weight: 600;
-        margin: 0;
-        color: var(--text-heading);
-      }
-
       .table-wrapper {
         overflow-x: auto;
       }
@@ -391,10 +373,6 @@ const calculateSubtotal = (item: ReimbursementItemInput): number => {
       }
 
       :host-context(html[data-theme='dark']) {
-        .query-card__label {
-          color: var(--text-heading-dark, #e2e8f0);
-        }
-
         .expense-table {
           th,
           td {

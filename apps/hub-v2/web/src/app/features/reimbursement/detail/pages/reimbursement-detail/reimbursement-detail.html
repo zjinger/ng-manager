@@ -1,0 +1,47 @@
+<section>
+  <div class="btn-group">
+    <button nz-button nzType="default" (click)="goBack()">
+      <i nz-icon nzType="arrow-left"></i>返回
+    </button>
+    @if (headerData().status === 'draft' || headerData().status === 'rejected') {
+      <button nz-button nzType="primary" (click)="goEdit()">
+        <i nz-icon nzType="edit"></i>编辑
+      </button>
+    }
+  </div>
+
+  <app-process-header-card [data]="headerData()" />
+
+  <section class="reimbursement-detail-layout">
+    <div class="reimbursement-detail-layout__main">
+      <app-panel-card title="单据内容">
+        <div class="preview-panel">
+          @if (formData().claimType === 'general') {
+            <app-expense-bill-preview [formData]="formData()" />
+          } @else {
+            <app-expense-preview [formData]="formData()" />
+          }
+        </div>
+      </app-panel-card>
+
+      <app-reimbursement-attachments-panel [attachments]="claimDetail()?.attachments || []" />
+
+      <app-reimbursement-logs-card [records]="recordListData()" />
+    </div>
+
+    <aside class="reimbursement-detail-layout__side">
+      <app-reimbursement-approval-flow-panel [approvalPreview]="approvalPreview()" />
+      @if (currentTask(); as task) {
+        <app-reimbursement-approval-action-panel
+          [task]="task"
+          [comment]="approvalComment()"
+          (commentChange)="approvalComment.set($event)"
+          [approving]="approving()"
+          [rejecting]="rejecting()"
+          (approve)="confirmApprove($event)"
+          (reject)="confirmReject($event)"
+        />
+      }
+    </aside>
+  </section>
+</section>

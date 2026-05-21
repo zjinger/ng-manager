@@ -5,13 +5,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   ExpenseBasicInfoComponent,
   ExpenseDetailItemComponent,
+  ReimbursementLogsCardComponent,
   ReimbursementSubmitActionCardComponent,
 } from '@app/features/reimbursement/shared/components';
 import { ApprovalFlowComponent } from '@app/features/reimbursement/shared/components/approval-flow/approval-flow.component';
 import { ExpenseSummaryAttachmentComponent } from '@app/features/reimbursement/shared/components/expense-summary-attachment/expense-summary-attachment.component';
 import { ExSaveDialogComponent } from '@app/features/reimbursement/shared/dialogs/ex-save-dialog/ex-save-dialog.component';
 import { TravelExpenseStore } from '@app/features/reimbursement/stores/travel-expense.store';
-import { PageHeaderComponent } from '@app/shared/ui';
+import { PageHeaderComponent, PanelCardComponent } from '@app/shared/ui';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 
 @Component({
@@ -27,7 +28,9 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
     ExpenseSummaryAttachmentComponent,
     ApprovalFlowComponent,
     ReimbursementSubmitActionCardComponent,
+    ReimbursementLogsCardComponent,
     ExSaveDialogComponent,
+    PanelCardComponent,
   ],
   templateUrl: './add-expense.html',
   styleUrls: ['./add-expense.less'],
@@ -184,20 +187,6 @@ export class AddExpense implements OnInit {
     } else {
       this.store.goBack();
     }
-  }
-
-  // 导出报销单
-  exportForm(): void {
-    if (!this.isEditMode()) {
-      this.modalService.info({
-        nzTitle: '提示',
-        nzContent: '请先保存报销单后再导出',
-        nzOkText: '知道了',
-      });
-      return;
-    }
-    // TODO: 调用导出接口
-    console.log('导出报销单:', this.draft());
   }
 
   // 获取页面标题

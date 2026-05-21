@@ -8,61 +8,56 @@ import {
   OnInit,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { AuthStore } from '@app/core/auth';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { PanelCardComponent } from '@app/shared/ui';
 import {
-  AttachmentPreviewItem,
-  AttachmentPreviewKind,
-  AttachmentPreviewWallComponent,
-} from '@app/shared/ui';
-import { ApprovalFlowComponent } from '@app/features/reimbursement/shared/components/approval-flow/approval-flow.component';
-import { ExpenseBillPreviewComponent } from '@app/features/reimbursement/shared/components';
+  ExpenseBillPreviewComponent,
+  ReimbursementApprovalActionPanelComponent,
+  ReimbursementApprovalFlowPanelComponent,
+  ReimbursementAttachmentsPanelComponent,
+  ReimbursementLogsCardComponent,
+} from '@app/features/reimbursement/shared/components';
 import { ExpensePreviewComponent } from '@app/features/reimbursement/shared/components/expense-preview/expense-preview.component';
 import { ProcessHeaderCardComponent } from '@app/features/reimbursement/shared/components/process-header-card/process-header-card.component';
-import { RecordListComponent } from '@app/features/reimbursement/shared/components/record-list/record-list.component';
-// import { ReimbursementApiService } from '@app/features/reimbursement/api/reimbursement-api.service';
 import type {
   ReimbursementClaimDetail,
-  ReimbursementItemEntity,
-  ReimbursementAttachmentEntity,
   ReimbursementLogEntity,
-  ReimbursementItemInput,
   ReimbursementApprovalTaskEntity,
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { CreateReimbursementClaimInput } from '@app/features/reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
 import { ReimbursementRefreshBusService } from '@app/features/reimbursement/services/reimbursement-refresh-bus.service';
 import { CommonModule } from '@angular/common';
+import { mapReimbursementDetailToClaimInput } from '@app/features/reimbursement/shared/utils/reimbursement-detail-display.util';
 
 @Component({
-  selector: 'app-travel-expense-detail',
+  selector: 'app-reimbursement-detail-page',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     NzButtonModule,
     NzIconModule,
-    NzInputModule,
     NzModalModule,
     NzSpinModule,
     ProcessHeaderCardComponent,
     ExpensePreviewComponent,
     ExpenseBillPreviewComponent,
-    AttachmentPreviewWallComponent,
-    ApprovalFlowComponent,
-    RecordListComponent,
+    PanelCardComponent,
+    ReimbursementApprovalActionPanelComponent,
+    ReimbursementApprovalFlowPanelComponent,
+    ReimbursementAttachmentsPanelComponent,
+    ReimbursementLogsCardComponent,
   ],
-  templateUrl: './travel-expense-detail.html',
-  styleUrls: ['./travel-expense-detail.less'],
+  templateUrl: './reimbursement-detail.html',
+  styleUrls: ['./reimbursement-detail.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TravelExpenseDetail implements OnInit {
+export class ReimbursementDetailPage implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly message = inject(NzMessageService);
@@ -122,59 +117,8 @@ export class TravelExpenseDetail implements OnInit {
     }
 
     return {
-      claimType: detail.claimType,
-      departmentId: detail.departmentId,
-      departmentName: detail.departmentName,
-      applicantName: detail.applicantName,
-      titleName: detail.applicantTitleName, // API 返回中没有 titleName，可能需要从其他字段获取 TODO
-      reason: detail.reason,
-      fillDate: detail.fillDate,
-      advanceAmount: detail.advanceAmount,
-      travelStartDate: detail.travelStartDate,
-      travelStartHalf: detail.travelStartHalf,
-      travelEndDate: detail.travelEndDate,
-      travelEndHalf: detail.travelEndHalf,
-      travelDays: detail.travelDays,
-      receiptCount: detail.receiptCount,
-      items: detail.items.map((item) => this.mapItemToInput(item)),
+      ...mapReimbursementDetailToClaimInput(detail),
     };
-  });
-
-  /**
-   * 费用明细 - 提供给模板使用
-   */
-  readonly expenseItems = computed(() => {
-    return this.formData().items || [];
-  });
-
-  /**
-   * 汇总信息（用于附件等）
-   */
-  readonly summary = computed(() => {
-    const detail = this.claimDetail();
-    return {
-      totalAmount: detail?.totalAmount || 0,
-      advanceAmount: detail?.advanceAmount || 0,
-      balanceAmount: detail?.balanceAmount || 0,
-      attachments: detail?.attachments || [],
-    };
-  });
-
-  /**
-   * 附件列表
-   */
-  readonly attachmentItems = computed<any[]>(() => {
-    const attachments = this.claimDetail()?.attachments || [];
-
-    return attachments.map((att: ReimbursementAttachmentEntity) => ({
-      id: att.id,
-      name: att.originalName || att.fileName || '附件',
-      url: `/api/admin/uploads/${att.uploadId}/raw`, // 根据实际 API 调整
-      kind: this.getFileKindByMimeType(att.mimeType!),
-      meta: this.formatFileSize(att.fileSize!),
-      removable: false,
-    }));
-   
   });
 
   /**
@@ -217,13 +161,6 @@ export class TravelExpenseDetail implements OnInit {
       nzOnOk: () => this.reject(task),
     });
   }
-
-  /**
-   * 是否存在附件
-   */
-  readonly hasAttachments = computed(() => {
-    return this.attachmentItems().length > 0;
-  });
 
   /**
    * 操作记录 - 适配 RecordListComponent
@@ -326,51 +263,4 @@ export class TravelExpenseDetail implements OnInit {
     });
   }
 
-  /**
-   * 将 Item Entity 转换为 Input 类型
-   */
-  private mapItemToInput(item: ReimbursementItemEntity): ReimbursementItemInput {
-    return {
-      id: item.id,
-      itemType: item.itemType,
-      category: item.category,
-      description: item.description,
-      occurredDate: item.occurredDate,
-      startDate: item.startDate,
-      endDate: item.endDate,
-      fromLocation: item.fromLocation,
-      toLocation: item.toLocation,
-      amount: item.amount,
-      meta: item.meta,
-      sort: item.sort,
-    };
-  }
-
-  /**
-   * 根据 MIME 类型获取文件预览类型
-   */
-  private getFileKindByMimeType(mimeType: string | null): AttachmentPreviewKind {
-    if (!mimeType) return 'file';
-
-    if (mimeType.startsWith('image/')) {
-      return 'image';
-    }
-    if (mimeType.startsWith('video/')) {
-      return 'video';
-    }
-    return 'file';
-  }
-
-  /**
-   * 文件大小格式化
-   */
-  private formatFileSize(bytes: number | null): string {
-    if (!bytes || bytes === 0) {
-      return '0 B';
-    }
-    const unit = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const index = Math.floor(Math.log(bytes) / Math.log(unit));
-    return `${parseFloat((bytes / Math.pow(unit, index)).toFixed(2))} ${sizes[index]}`;
-  }
 }

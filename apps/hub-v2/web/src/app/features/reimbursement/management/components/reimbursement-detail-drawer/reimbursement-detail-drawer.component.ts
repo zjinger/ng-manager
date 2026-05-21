@@ -41,7 +41,6 @@ import { ReimbursementDetailDrawerPageComponent } from '../../pages/reimbursemen
           <app-reimbursement-detail-drawer-page
             [claimId]="id"
             (changed)="changed.emit()"
-            (openFullPage)="openFullPage.emit($event)"
           />
         }
       </ng-template>
@@ -103,7 +102,6 @@ export class ReimbursementDetailDrawerComponent {
   readonly claim = input<ReimbursementClaimEntity | null>(null);
   readonly close = output<void>();
   readonly changed = output<void>();
-  readonly openFullPage = output<ReimbursementClaimEntity>();
 
   readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
   readonly titleText = computed(() => this.claim()?.reason || '报销单详情');

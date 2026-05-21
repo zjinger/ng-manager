@@ -1,7 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { DataTableComponent } from '@shared/ui';
@@ -27,8 +25,6 @@ export interface SelectOption {
   imports: [
     DatePipe,
     DecimalPipe,
-    NzButtonModule,
-    NzIconModule,
     NzTooltipModule,
     NzTagModule,
     DataTableComponent,
@@ -332,8 +328,6 @@ export class ExpensesListTableComponent {
   readonly statusOptions = input<SelectOption[]>([]);
 
   readonly selectItem = output<ReimbursementClaimEntity>();
-  readonly view = output<ReimbursementClaimEntity>();
-  readonly export = output<ReimbursementClaimEntity>();
 
   sequence(index: number): number {
     const page = this.page() || 1;

@@ -9,7 +9,6 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { map } from 'rxjs';
 
@@ -40,7 +39,6 @@ import { ReimbursementRefreshBusService } from '../../../services/reimbursement-
   standalone: true,
   imports: [
     PageHeaderComponent,
-    NzIconModule,
     NzPaginationModule,
     ExpensesFilterBarComponent,
     ActiveFiltersBarComponent,
@@ -245,22 +243,8 @@ export class ReimbursementManagementPage implements OnInit {
     this.openDetail(item);
   }
 
-  handleView(item: ReimbursementClaimEntity): void {
-    this.openDetail(item);
-  }
-
-  handleExport(item: ReimbursementClaimEntity): void {
-    void item;
-  }
-
   handleDrawerChanged(): void {
     void this.store.refresh();
-  }
-
-  openFullDetail(item: ReimbursementClaimEntity): void {
-    void this.router.navigate(['/reimbursements', item.id], {
-      queryParams: { source: 'management' },
-    });
   }
 
   closeDetail(): void {

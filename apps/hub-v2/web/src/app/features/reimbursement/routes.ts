@@ -54,8 +54,8 @@ export const REIMBURSEMENT_ROUTES: Routes = [
       {
         path: ':claimId',
         loadComponent: () =>
-          import('./detail/pages/travel-expense-detail/travel-expense-detail').then(
-            (m) => m.TravelExpenseDetail
+          import('./detail/pages/reimbursement-detail/reimbursement-detail').then(
+            (m) => m.ReimbursementDetailPage
           ),
       },
     ],

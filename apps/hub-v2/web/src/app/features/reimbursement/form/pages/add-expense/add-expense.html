@@ -5,50 +5,56 @@
 
 <section class="travel-layout">
   <div class="travel-layout__main">
-    <!-- 基础信息组件 -->
-    <div class="card query-card">
-      <div class="query-card__label">基础信息</div>
-      <app-expense-basic-info
-        [(value)]="draft().basicInfo"
-        (valueChange)="onBasicInfoChange($event)"
-        (validChange)="onBasicInfoValidChange($event)"
-      />
-    </div>
+    <app-panel-card title="基础信息">
+      <div class="form-panel-body">
+        <app-expense-basic-info
+          [(value)]="draft().basicInfo"
+          (valueChange)="onBasicInfoChange($event)"
+          (validChange)="onBasicInfoValidChange($event)"
+        />
+      </div>
+    </app-panel-card>
 
-    <!-- 费用明细组件 -->
-    <div class="card query-card">
-      <app-expense-detail-item
-        [(items)]="draft().expenseItems"
-        (itemsChange)="onExpenseItemsChange($event)"
-      />
-    </div>
+    <app-panel-card title="费用明细">
+      <div class="form-panel-body form-panel-body--table">
+        <app-expense-detail-item
+          [(items)]="draft().expenseItems"
+          (itemsChange)="onExpenseItemsChange($event)"
+        />
+      </div>
+    </app-panel-card>
 
-    <div class="card query-card">
-      <div class="query-card__label">金额与附件</div>
-      <app-expense-summary-attachment
-        [(summary)]="draft().summary"
-        [claimId]="expenseId"
-        (summaryChange)="onSummaryChange($event)"
-        (attachmentsChange)="onAttachmentsChange($event)"
-        (advanceAmountChange)="onAdvanceAmountChange($event)"
-      />
-    </div>
+    <app-panel-card title="金额与附件">
+      <div class="form-panel-body">
+        <app-expense-summary-attachment
+          [(summary)]="draft().summary"
+          [claimId]="expenseId"
+          (summaryChange)="onSummaryChange($event)"
+          (attachmentsChange)="onAttachmentsChange($event)"
+          (advanceAmountChange)="onAdvanceAmountChange($event)"
+        />
+      </div>
+    </app-panel-card>
   </div>
 
-  <!-- 右侧栏 -->
   <div class="report-layout__side">
-    <div class="card query-card">
-      <div class="query-card__label">审批流程</div>
-      <app-approval-flow
-        [approvalPreview]="draft().approvalPreview!"
-      />
-    </div>
+    <app-panel-card title="审批流程">
+      <div class="form-panel-body">
+        <app-approval-flow
+          [approvalPreview]="draft().approvalPreview!"
+        />
+      </div>
+    </app-panel-card>
 
     <app-reimbursement-submit-action-card
       [(comment)]="submitComment"
       [submitting]="submitting()"
       (submit)="openPreviewDialog()"
     />
+
+    @if (draft().logs.length > 0) {
+      <app-reimbursement-logs-card [records]="draft().logs" />
+    }
   </div>
 </section>
 

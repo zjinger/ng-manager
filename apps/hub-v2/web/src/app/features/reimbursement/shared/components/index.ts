@@ -3,3 +3,10 @@ export { ExpenseDetailItemComponent } from './expense-detail-item/expense-detail
 export { ExpenseBillPreviewComponent } from './expense-bill-preview/expense-bill-preview.component';
 export { ReimbursementSubmitActionCardComponent } from './reimbursement-submit-action-card/reimbursement-submit-action-card.component';
 export { ReimbursementTypeTagComponent } from './reimbursement-type-tag/reimbursement-type-tag.component';
+export { ReimbursementLogsCardComponent } from './reimbursement-logs-card/reimbursement-logs-card.component';
+export { ReimbursementApprovalActionPanelComponent } from './detail-panels/reimbursement-approval-action-panel.component';
+export { ReimbursementApprovalFlowPanelComponent } from './detail-panels/reimbursement-approval-flow-panel.component';
+export { ReimbursementAmountSummaryPanelComponent } from './detail-panels/reimbursement-amount-summary-panel.component';
+export { ReimbursementAttachmentsPanelComponent } from './detail-panels/reimbursement-attachments-panel.component';
+export { ReimbursementBasicInfoPanelComponent } from './detail-panels/reimbursement-basic-info-panel.component';
+export { ReimbursementItemsPanelComponent } from './detail-panels/reimbursement-items-panel.component';
