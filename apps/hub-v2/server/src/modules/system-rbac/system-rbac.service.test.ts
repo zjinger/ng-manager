@@ -96,6 +96,7 @@ const adminCtx = createRequestContext({
   accountId: "adm_1",
   userId: "usr_admin",
   roles: ["admin"],
+  authScopes: ["admin.roles.manage"],
   source: "http"
 });
 

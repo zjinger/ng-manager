@@ -152,6 +152,17 @@ export type DashboardWidgetKey =
   | 'collab.announcements'
   | 'collab.documents';
 
+export type DashboardShortcutKey =
+  | 'collab.issueCreate'
+  | 'collab.rdCreate'
+  | 'collab.content'
+  | 'collab.feedbacks'
+  | 'collab.profile'
+  | 'reimbursement.travelExpense'
+  | 'reimbursement.generalExpense'
+  | 'reimbursement.myExpenses'
+  | 'reimbursement.management';
+
 export type DashboardWidgetDomain = 'reimbursement' | 'collab';
 
 export interface WorkspaceCapabilities {
@@ -168,7 +179,20 @@ export interface DashboardWidgetPreference {
   order: number;
 }
 
+export interface DashboardShortcutPreference {
+  key: DashboardShortcutKey;
+  visible: boolean;
+  order: number;
+}
+
 export interface DashboardWidgetPreferenceItem extends DashboardWidgetPreference {
+  label: string;
+  domain: DashboardWidgetDomain;
+  defaultVisible: boolean;
+  defaultOrder: number;
+}
+
+export interface DashboardShortcutPreferenceItem extends DashboardShortcutPreference {
   label: string;
   domain: DashboardWidgetDomain;
   defaultVisible: boolean;
@@ -179,6 +203,7 @@ export interface DashboardPreferences {
   dashboardCode: 'home';
   capabilities: WorkspaceCapabilities;
   widgets: DashboardWidgetPreferenceItem[];
+  shortcuts: DashboardShortcutPreferenceItem[];
   updatedAt: string | null;
 }
 

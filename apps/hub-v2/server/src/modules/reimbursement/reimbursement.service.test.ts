@@ -508,7 +508,7 @@ describe("ReimbursementService", () => {
       assert.equal(travelFile.templateType, "1");
       assert.equal(travelFile.mimeType, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       assert.equal(travelFile.buffer.subarray(0, 2).toString(), "PK");
-      assert.match(travelFile.fileName, /差旅费报销单\.docx$/);
+      assert.match(travelFile.fileName, /^CL-\d{6}-\d{3}-申请人-\d+\.docx$/);
 
       const general = await service.create(
         {
@@ -524,7 +524,7 @@ describe("ReimbursementService", () => {
       const generalFile = await service.exportWord(general.id, ctx("usr_applicant"));
       assert.equal(generalFile.templateType, "2");
       assert.equal(generalFile.buffer.subarray(0, 2).toString(), "PK");
-      assert.match(generalFile.fileName, /费用报销单\.docx$/);
+      assert.match(generalFile.fileName, /^BX-\d{6}-\d{3}-申请人-\d+\.docx$/);
     } finally {
       db.close();
     }

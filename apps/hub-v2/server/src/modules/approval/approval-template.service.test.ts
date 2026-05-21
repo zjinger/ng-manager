@@ -48,6 +48,7 @@ const adminCtx = createRequestContext({
   accountId: "adm_1",
   userId: "usr_admin",
   roles: ["admin"],
+  authScopes: ["expense.rule.manage"],
   source: "http"
 });
 

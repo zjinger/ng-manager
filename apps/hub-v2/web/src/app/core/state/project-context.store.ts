@@ -2,6 +2,7 @@ import { inject, Injectable, signal, computed } from '@angular/core';
 import { Observable, map, of, switchMap, tap } from 'rxjs';
 
 import { ApiClientService } from '@core/http';
+import { AuthStore } from '@core/auth';
 import { ProjectApiService } from '../../features/projects/services/project-api.service';
 import type { ProjectSummary } from '../../features/projects/models/project.model';
 import type { ProfileNotificationPrefs } from '../../features/profile/models/profile.model';
@@ -16,6 +17,7 @@ export type ProjectScopeMode = 'all_accessible' | 'member_only';
 export class ProjectContextStore {
   private readonly projectApi = inject(ProjectApiService);
   private readonly api = inject(ApiClientService);
+  private readonly authStore = inject(AuthStore);
 
   private readonly projectsState = signal<ProjectSummary[]>([]);
   private readonly currentProjectIdState = signal<string | null>(
@@ -111,7 +113,9 @@ export class ProjectContextStore {
     return this.api.get<ProfileNotificationPrefs>('/profile/preferences').pipe(
       map((prefs): ProjectScopeMode => {
         this.notificationPrefsState.set(prefs);
-        const mode: ProjectScopeMode = prefs?.projectScopeMode === 'all_accessible' ? 'all_accessible' : 'member_only';
+        const mode: ProjectScopeMode = this.hasGlobalProjectAccess()
+          ? 'all_accessible'
+          : (prefs?.projectScopeMode === 'all_accessible' ? 'all_accessible' : 'member_only');
         this.setProjectScopeMode(mode);
         if (typeof prefs?.includeArchivedProjects === 'boolean') {
           this.setIncludeArchivedProjects(prefs.includeArchivedProjects);
@@ -119,5 +123,10 @@ export class ProjectContextStore {
         return mode;
       })
     );
+  }
+
+  private hasGlobalProjectAccess(): boolean {
+    const permissions = this.authStore.currentUser()?.permissionCodes ?? [];
+    return permissions.includes('project.read.all') || permissions.includes('project.manage.all');
   }
 }

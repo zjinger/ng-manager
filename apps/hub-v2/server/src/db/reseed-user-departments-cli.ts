@@ -45,7 +45,6 @@ const USER_MANAGER_SEEDS: UserManagerSeed[] = [
 
 const SEED_MANAGED_SYSTEM_ROLE_CODES = [
   "member",
-  "expense_employee",
   "expense_manager",
   "finance_reviewer",
   "finance_cashier"

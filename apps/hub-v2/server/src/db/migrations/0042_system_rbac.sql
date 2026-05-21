@@ -86,7 +86,8 @@ VALUES
   ('sperm_expense_submit', 'expense.submit', '提交报销', 'expense', '报销业务', 'expense', '财务报销', '创建并提交个人报销单。', 10, datetime('now'), datetime('now')),
   ('sperm_expense_view_self', 'expense.view.self', '查看本人报销', 'expense', '报销业务', 'expense', '财务报销', '查看本人报销记录。', 20, datetime('now'), datetime('now')),
   ('sperm_expense_report_view', 'expense.report.view', '查看报销报表', 'expense', '报销业务', 'expense', '财务报销', '查看报销统计报表。', 30, datetime('now'), datetime('now')),
-  ('sperm_expense_rule_manage', 'expense.rule.manage', '管理报销规则', 'expense', '报销业务', 'expense', '财务报销', '维护报销规则与审批模板。', 40, datetime('now'), datetime('now')),
+  ('sperm_expense_review_manage', 'expense.review.manage', '管理报销审核', 'expense', '报销业务', 'expense', '财务报销', '处理报销审核管理能力。', 35, datetime('now'), datetime('now')),
+  ('sperm_expense_rule_manage', 'expense.rule.manage', '管理报销规则', 'expense', '报销业务', 'expense', '财务报销', '维护报销规则、审批模板与报销公告。', 40, datetime('now'), datetime('now')),
   ('sperm_approval_department', 'approval.department', '部门审批', 'approval', '审批能力', 'approval', '审批管理', '处理本部门审批。', 10, datetime('now'), datetime('now')),
   ('sperm_approval_cross_department', 'approval.cross_department', '跨部门审批', 'approval', '审批能力', 'approval', '审批管理', '处理跨部门审批。', 20, datetime('now'), datetime('now')),
   ('sperm_finance_review', 'finance.review', '财务复核', 'finance', '财务能力', 'finance', '财务管理', '进行财务复核。', 10, datetime('now'), datetime('now')),
@@ -95,7 +96,6 @@ VALUES
 -- Insert business roles
 INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
 VALUES
-  ('srole_expense_employee', 'expense_employee', '报销员工', '仅具备个人报销提交与本人报销查看能力。', 1, 'business', '业务角色', 'active', 100, datetime('now'), datetime('now')),
   ('srole_expense_manager', 'expense_manager', '报销管理员', '维护报销规则、审批模板并查看报表。', 1, 'business', '业务角色', 'active', 110, datetime('now'), datetime('now')),
   ('srole_finance_reviewer', 'finance_reviewer', '财务复核', '具备财务复核能力。', 1, 'business', '业务角色', 'active', 120, datetime('now'), datetime('now')),
   ('srole_finance_cashier', 'finance_cashier', '出纳', '具备付款出纳能力。', 1, 'business', '业务角色', 'active', 130, datetime('now'), datetime('now'));
@@ -115,11 +115,6 @@ FROM system_permissions
 WHERE code IN ('expense.submit', 'expense.view.self');
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
-SELECT 'srole_expense_employee', id, datetime('now')
-FROM system_permissions
-WHERE code IN ('expense.submit', 'expense.view.self');
-
-INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_super_admin', id, datetime('now')
 FROM system_permissions
 WHERE domain_code IN ('expense', 'approval', 'finance');
@@ -127,7 +122,7 @@ WHERE domain_code IN ('expense', 'approval', 'finance');
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_expense_manager', id, datetime('now')
 FROM system_permissions
-WHERE code IN ('expense.submit', 'expense.view.self', 'expense.report.view', 'expense.rule.manage');
+WHERE code IN ('expense.submit', 'expense.view.self', 'expense.report.view', 'expense.review.manage', 'expense.rule.manage');
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_finance_reviewer', id, datetime('now')

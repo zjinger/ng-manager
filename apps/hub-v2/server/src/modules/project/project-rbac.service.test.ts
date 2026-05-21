@@ -192,6 +192,32 @@ describe("project RBAC integration", () => {
     }
   });
 
+  it("lists all active project ids for project.read.all users", async () => {
+    const db = createDb();
+    try {
+      grantPermission(db, "usr_operator", "project.read.all");
+      db.prepare(
+        `INSERT INTO projects (id, project_key, project_no, display_code, name, description, icon, avatar_upload_id, project_type, contract_no, delivery_date, product_line, sla_level, status, visibility, created_at, updated_at)
+         VALUES ('prj_2', 'prj_key_2', 'P002', 'P02', '第二个项目', NULL, NULL, NULL, 'self_dev', NULL, NULL, NULL, NULL, 'active', 'private', '2026-01-02T00:00:00.000Z', '2026-01-02T00:00:00.000Z'),
+                ('prj_archived', 'prj_key_archived', 'P003', 'P03', '归档项目', NULL, NULL, NULL, 'self_dev', NULL, NULL, NULL, NULL, 'inactive', 'private', '2026-01-03T00:00:00.000Z', '2026-01-03T00:00:00.000Z')`
+      ).run();
+      const repo = new ProjectRepo(db);
+      const authorization = new ProjectAuthorizationService(db, repo);
+      const access = new ProjectAccessService(repo, authorization);
+
+      const projectIds = await access.listAccessibleProjectIds(createRequestContext({
+        accountId: "adm_operator",
+        userId: "usr_operator",
+        roles: ["user"],
+        source: "http"
+      }));
+
+      assert.deepEqual(projectIds.sort(), ["prj_1", "prj_2"]);
+    } finally {
+      db.close();
+    }
+  });
+
   it("allows non-member to update a project with project.manage.all", async () => {
     const db = createDb();
     try {

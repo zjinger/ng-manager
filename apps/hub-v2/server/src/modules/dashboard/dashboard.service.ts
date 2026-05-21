@@ -20,6 +20,9 @@ import type {
   DashboardBoardRange,
   DashboardDocumentSummary,
   DashboardPreferences,
+  DashboardShortcutKey,
+  DashboardShortcutPreference,
+  DashboardShortcutPreferenceItem,
   DashboardWidgetKey,
   DashboardWidgetPreference,
   DashboardWidgetPreferenceItem,
@@ -50,11 +53,25 @@ type DashboardWidgetDefinition = {
   defaultVisible: boolean;
 };
 
+type DashboardShortcutDefinition = {
+  key: DashboardShortcutKey;
+  label: string;
+  domain: DashboardWidgetDomain;
+  defaultOrder: number;
+  defaultVisible: boolean;
+};
+
+type StoredDashboardLayout = {
+  widgets: DashboardWidgetPreference[];
+  shortcuts: DashboardShortcutPreference[];
+};
+
 const DASHBOARD_CODE = "home";
 const REIMBURSEMENT_PERMISSION_CODES = new Set([
   "expense.submit",
   "expense.view.self",
   "expense.report.view",
+  "expense.review.manage",
   "expense.rule.manage",
   "finance.review",
   "finance.cashier"
@@ -66,7 +83,6 @@ const REIMBURSEMENT_APPROVAL_PERMISSION_CODES = new Set([
   "finance.cashier"
 ]);
 const COLLABORATION_PERMISSION_CODES = new Set([
-  "project.create",
   "project.manage",
   "project.read.all",
   "project.manage.all",
@@ -84,6 +100,20 @@ const DASHBOARD_WIDGET_DEFINITIONS: DashboardWidgetDefinition[] = [
 ];
 
 const DASHBOARD_WIDGET_DEFINITION_MAP = new Map(DASHBOARD_WIDGET_DEFINITIONS.map((definition) => [definition.key, definition]));
+
+const DASHBOARD_SHORTCUT_DEFINITIONS: DashboardShortcutDefinition[] = [
+  { key: "collab.issueCreate", label: "新建测试单", domain: "collab", defaultOrder: 10, defaultVisible: true },
+  { key: "collab.rdCreate", label: "新建研发项", domain: "collab", defaultOrder: 20, defaultVisible: true },
+  { key: "collab.content", label: "内容管理", domain: "collab", defaultOrder: 30, defaultVisible: true },
+  { key: "collab.feedbacks", label: "反馈管理", domain: "collab", defaultOrder: 40, defaultVisible: true },
+  { key: "collab.profile", label: "个人中心", domain: "collab", defaultOrder: 50, defaultVisible: true },
+  { key: "reimbursement.travelExpense", label: "差旅费报销", domain: "reimbursement", defaultOrder: 110, defaultVisible: true },
+  { key: "reimbursement.generalExpense", label: "费用报销", domain: "reimbursement", defaultOrder: 120, defaultVisible: true },
+  { key: "reimbursement.myExpenses", label: "我的报销", domain: "reimbursement", defaultOrder: 130, defaultVisible: true },
+  { key: "reimbursement.management", label: "报销管理", domain: "reimbursement", defaultOrder: 140, defaultVisible: true }
+];
+
+const DASHBOARD_SHORTCUT_DEFINITION_MAP = new Map(DASHBOARD_SHORTCUT_DEFINITIONS.map((definition) => [definition.key, definition]));
 
 export class DashboardService implements DashboardQueryContract {
   private static readonly ISSUE_CREATE_ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
@@ -158,35 +188,46 @@ export class DashboardService implements DashboardQueryContract {
   }
 
   async getPreferences(ctx: RequestContext): Promise<DashboardPreferences> {
-    const { userId, capabilities, availableDefinitions } = await this.resolvePreferenceContext(ctx);
+    const { userId, capabilities, availableDefinitions, availableShortcutDefinitions } = await this.resolvePreferenceContext(ctx);
     const record = this.dashboardRepo.findPreference(userId, DASHBOARD_CODE);
+    const storedLayout = this.parseStoredLayout(record?.layoutJson);
     const widgets = this.toPreferenceItems(
-      this.normalizeWidgetPreferences(this.parseStoredWidgetPreferences(record?.layoutJson), availableDefinitions),
+      this.normalizeWidgetPreferences(storedLayout.widgets, availableDefinitions),
       availableDefinitions
+    );
+    const shortcuts = this.toShortcutPreferenceItems(
+      this.normalizeShortcutPreferences(storedLayout.shortcuts, availableShortcutDefinitions),
+      availableShortcutDefinitions
     );
 
     return {
       dashboardCode: DASHBOARD_CODE,
       capabilities,
       widgets,
+      shortcuts,
       updatedAt: record?.updatedAt ?? null
     };
   }
 
   async updatePreferences(input: UpdateDashboardPreferencesInput, ctx: RequestContext): Promise<DashboardPreferences> {
-    const { userId, capabilities, availableDefinitions } = await this.resolvePreferenceContext(ctx);
+    const { userId, capabilities, availableDefinitions, availableShortcutDefinitions } = await this.resolvePreferenceContext(ctx);
+    const current = this.dashboardRepo.findPreference(userId, DASHBOARD_CODE);
+    const currentLayout = this.parseStoredLayout(current?.layoutJson);
     const normalized = this.normalizeWidgetPreferences(input.widgets, availableDefinitions);
+    const normalizedShortcuts = this.normalizeShortcutPreferences(
+      input.shortcuts ?? currentLayout.shortcuts,
+      availableShortcutDefinitions
+    );
     if (!normalized.some((item) => item.visible)) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, "at least one dashboard widget must be visible", 400);
     }
 
-    const current = this.dashboardRepo.findPreference(userId, DASHBOARD_CODE);
     const now = nowIso();
     this.dashboardRepo.savePreference({
       id: current?.id ?? genId("dpf"),
       userId,
       dashboardCode: DASHBOARD_CODE,
-      layoutJson: JSON.stringify(normalized),
+      layoutJson: JSON.stringify({ widgets: normalized, shortcuts: normalizedShortcuts }),
       statsConfigJson: current?.statsConfigJson ?? "{}",
       createdAt: current?.createdAt ?? now,
       updatedAt: now
@@ -196,6 +237,7 @@ export class DashboardService implements DashboardQueryContract {
       dashboardCode: DASHBOARD_CODE,
       capabilities,
       widgets: this.toPreferenceItems(normalized, availableDefinitions),
+      shortcuts: this.toShortcutPreferenceItems(normalizedShortcuts, availableShortcutDefinitions),
       updatedAt: now
     };
   }
@@ -213,6 +255,7 @@ export class DashboardService implements DashboardQueryContract {
     userId: string;
     capabilities: WorkspaceCapabilities;
     availableDefinitions: DashboardWidgetDefinition[];
+    availableShortcutDefinitions: DashboardShortcutDefinition[];
   }> {
     const userId = ctx.userId?.trim();
     if (!userId) {
@@ -255,8 +298,18 @@ export class DashboardService implements DashboardQueryContract {
       .map((definition) => definition.key === "reimbursement.stats"
         ? { ...definition, defaultVisible: shouldShowReimbursementStatsByDefault }
         : definition);
+    const availableShortcutDefinitions = DASHBOARD_SHORTCUT_DEFINITIONS
+      .filter((definition) => {
+        if (definition.domain === "collab") {
+          return canAccessCollaborationWorkspace;
+        }
+        if (definition.key === "reimbursement.management") {
+          return canAccessReimbursementWorkspace && this.hasReimbursementManagementPermission(permissions);
+        }
+        return canAccessReimbursementWorkspace;
+      });
 
-    return { userId, capabilities, availableDefinitions };
+    return { userId, capabilities, availableDefinitions, availableShortcutDefinitions };
   }
 
   private normalizeWidgetPreferences(
@@ -297,6 +350,44 @@ export class DashboardService implements DashboardQueryContract {
       .map((item, index) => ({ ...item, order: index + 1 }));
   }
 
+  private normalizeShortcutPreferences(
+    shortcuts: DashboardShortcutPreference[],
+    availableDefinitions: DashboardShortcutDefinition[]
+  ): DashboardShortcutPreference[] {
+    const availableKeys = new Set(availableDefinitions.map((definition) => definition.key));
+    const overrides = new Map<DashboardShortcutKey, DashboardShortcutPreference>();
+
+    for (const shortcut of shortcuts) {
+      if (!availableKeys.has(shortcut.key) || overrides.has(shortcut.key)) {
+        continue;
+      }
+      const definition = DASHBOARD_SHORTCUT_DEFINITION_MAP.get(shortcut.key);
+      overrides.set(shortcut.key, {
+        key: shortcut.key,
+        visible: shortcut.visible,
+        order: Number.isFinite(shortcut.order) ? Math.max(1, Math.round(shortcut.order)) : definition?.defaultOrder ?? 999
+      });
+    }
+
+    return availableDefinitions
+      .map((definition) => {
+        const override = overrides.get(definition.key);
+        return {
+          key: definition.key,
+          visible: override?.visible ?? definition.defaultVisible,
+          order: override?.order ?? definition.defaultOrder
+        };
+      })
+      .sort((left, right) => {
+        if (left.order !== right.order) {
+          return left.order - right.order;
+        }
+        return (DASHBOARD_SHORTCUT_DEFINITION_MAP.get(left.key)?.defaultOrder ?? 999) -
+          (DASHBOARD_SHORTCUT_DEFINITION_MAP.get(right.key)?.defaultOrder ?? 999);
+      })
+      .map((item, index) => ({ ...item, order: index + 1 }));
+  }
+
   private toPreferenceItems(
     widgets: DashboardWidgetPreference[],
     availableDefinitions: DashboardWidgetDefinition[]
@@ -319,34 +410,98 @@ export class DashboardService implements DashboardQueryContract {
       .filter((item): item is DashboardWidgetPreferenceItem => !!item);
   }
 
+  private toShortcutPreferenceItems(
+    shortcuts: DashboardShortcutPreference[],
+    availableDefinitions: DashboardShortcutDefinition[]
+  ): DashboardShortcutPreferenceItem[] {
+    const available = new Map(availableDefinitions.map((definition) => [definition.key, definition]));
+    return shortcuts
+      .map((shortcut) => {
+        const definition = available.get(shortcut.key);
+        if (!definition) {
+          return null;
+        }
+        return {
+          ...shortcut,
+          label: definition.label,
+          domain: definition.domain,
+          defaultVisible: definition.defaultVisible,
+          defaultOrder: definition.defaultOrder
+        };
+      })
+      .filter((item): item is DashboardShortcutPreferenceItem => !!item);
+  }
+
+  private parseStoredLayout(raw: string | undefined): StoredDashboardLayout {
+    if (!raw) {
+      return { widgets: [], shortcuts: [] };
+    }
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return { widgets: this.parseWidgetPreferencesArray(parsed), shortcuts: [] };
+      }
+      if (typeof parsed !== "object" || parsed === null) {
+        return { widgets: [], shortcuts: [] };
+      }
+      const maybe = parsed as { widgets?: unknown; shortcuts?: unknown };
+      return {
+        widgets: Array.isArray(maybe.widgets) ? this.parseWidgetPreferencesArray(maybe.widgets) : [],
+        shortcuts: Array.isArray(maybe.shortcuts) ? this.parseShortcutPreferencesArray(maybe.shortcuts) : []
+      };
+    } catch {
+      return { widgets: [], shortcuts: [] };
+    }
+  }
+
   private parseStoredWidgetPreferences(raw: string | undefined): DashboardWidgetPreference[] {
     if (!raw) {
       return [];
     }
     try {
       const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-      return parsed
-        .filter((item): item is DashboardWidgetPreference => {
-          if (typeof item !== "object" || item === null) {
-            return false;
-          }
-          const maybe = item as Partial<DashboardWidgetPreference>;
-          return typeof maybe.key === "string" &&
-            DASHBOARD_WIDGET_DEFINITION_MAP.has(maybe.key as DashboardWidgetKey) &&
-            typeof maybe.visible === "boolean" &&
-            typeof maybe.order === "number";
-        })
-        .map((item) => ({
-          key: item.key,
-          visible: item.visible,
-          order: item.order
-        }));
+      return Array.isArray(parsed) ? this.parseWidgetPreferencesArray(parsed) : [];
     } catch {
       return [];
     }
+  }
+
+  private parseWidgetPreferencesArray(items: unknown[]): DashboardWidgetPreference[] {
+    return items
+      .filter((item): item is DashboardWidgetPreference => {
+        if (typeof item !== "object" || item === null) {
+          return false;
+        }
+        const maybe = item as Partial<DashboardWidgetPreference>;
+        return typeof maybe.key === "string" &&
+          DASHBOARD_WIDGET_DEFINITION_MAP.has(maybe.key as DashboardWidgetKey) &&
+          typeof maybe.visible === "boolean" &&
+          typeof maybe.order === "number";
+      })
+      .map((item) => ({
+        key: item.key,
+        visible: item.visible,
+        order: item.order
+      }));
+  }
+
+  private parseShortcutPreferencesArray(items: unknown[]): DashboardShortcutPreference[] {
+    return items
+      .filter((item): item is DashboardShortcutPreference => {
+        if (typeof item !== "object" || item === null) {
+          return false;
+        }
+        const maybe = item as Partial<DashboardShortcutPreference>;
+        return typeof maybe.key === "string" &&
+          DASHBOARD_SHORTCUT_DEFINITION_MAP.has(maybe.key as DashboardShortcutKey) &&
+          typeof maybe.visible === "boolean" &&
+          typeof maybe.order === "number";
+      })
+      .map((item) => ({
+        key: item.key,
+        visible: item.visible,
+        order: item.order
+      }));
   }
 
   private shouldShowReimbursementStatsByDefault(
@@ -357,7 +512,11 @@ export class DashboardService implements DashboardQueryContract {
     if (hasReimbursementApprovalPermission || hasPendingReimbursementTasks) {
       return true;
     }
-    return permissions.has("expense.report.view") || permissions.has("expense.rule.manage");
+    return permissions.has("expense.report.view") || permissions.has("expense.review.manage") || permissions.has("expense.rule.manage");
+  }
+
+  private hasReimbursementManagementPermission(permissions: Set<string>): boolean {
+    return permissions.has("expense.review.manage") || permissions.has("finance.review") || permissions.has("finance.cashier");
   }
 
   private async resolveBoardScope(projectId: string | undefined, ctx: RequestContext): Promise<{

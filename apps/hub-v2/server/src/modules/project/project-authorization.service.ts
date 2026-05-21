@@ -12,7 +12,7 @@ export class ProjectAuthorizationService {
     if (!ctx.userId?.trim()) {
       return false;
     }
-    return this.hasSystemPermission(ctx, "project.create");
+    return this.hasSystemPermission(ctx, "project.manage");
   }
 
   canReadAllProjects(ctx: RequestContext): boolean {

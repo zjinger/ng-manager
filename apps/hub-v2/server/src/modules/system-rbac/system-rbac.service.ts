@@ -4,6 +4,7 @@ import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { RequestContext } from "../../shared/context/request-context";
 import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
+import { requirePermission } from "../utils/require-permission";
 import type { SystemRbacCommandContract, SystemRbacQueryContract, SystemRoleWithCounts } from "./system-rbac.contract";
 import type {
   SystemRoleEntity,
@@ -23,12 +24,15 @@ import type {
 import { SystemRbacRepo } from "./system-rbac.repo";
 
 export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQueryContract {
+  private static readonly MANAGE_PERMISSION = "admin.roles.manage";
+
   constructor(
     private readonly repo: SystemRbacRepo,
     private readonly auditLog?: AuditLogCommandContract
   ) {}
 
-  async listSystemRoles(query: ListSystemRolesQuery, _ctx: RequestContext): Promise<SystemRoleWithCounts[]> {
+  async listSystemRoles(query: ListSystemRolesQuery, ctx: RequestContext): Promise<SystemRoleWithCounts[]> {
+    this.requireManage(ctx);
     const roles = this.repo.listRoles(query);
     return roles.map((role) => ({
       ...role,
@@ -37,7 +41,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     }));
   }
 
-  async getSystemRoleDetail(id: string, _ctx: RequestContext): Promise<SystemRoleDetail> {
+  async getSystemRoleDetail(id: string, ctx: RequestContext): Promise<SystemRoleDetail> {
+    this.requireManage(ctx);
     const role = this.repo.findRoleById(id);
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${id}`, 404);
@@ -52,11 +57,13 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     };
   }
 
-  async listPermissions(query: ListSystemPermissionsQuery, _ctx: RequestContext): Promise<SystemPermissionEntity[]> {
+  async listPermissions(query: ListSystemPermissionsQuery, ctx: RequestContext): Promise<SystemPermissionEntity[]> {
+    this.requireManage(ctx);
     return this.repo.listPermissions(query);
   }
 
-  async listRoleUsers(roleId: string, _ctx: RequestContext): Promise<RoleUserEntity[]> {
+  async listRoleUsers(roleId: string, ctx: RequestContext): Promise<RoleUserEntity[]> {
+    this.requireManage(ctx);
     if (!this.repo.findRoleById(roleId)) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
     }
@@ -64,8 +71,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async listUserSystemRoles(userId: string, ctx: RequestContext): Promise<UserSystemRoleEntity[]> {
-    if (!ctx.roles.includes("admin") && ctx.userId !== userId) {
-      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "forbidden", 403);
+    if (ctx.userId !== userId) {
+      this.requireManage(ctx);
     }
     if (!this.repo.userExists(userId)) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${userId}`, 404);
@@ -74,6 +81,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async createSystemRole(input: CreateSystemRoleInput, _ctx: RequestContext): Promise<SystemRoleEntity> {
+    this.requireManage(_ctx);
     const code = input.code.trim();
     if (this.repo.findRoleByCode(code)) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_EXISTS, `system role already exists: ${code}`, 409);
@@ -121,6 +129,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async updateSystemRole(id: string, input: UpdateSystemRoleInput, _ctx: RequestContext): Promise<SystemRoleEntity> {
+    this.requireManage(_ctx);
     const current = this.repo.findRoleById(id);
     if (!current) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${id}`, 404);
@@ -162,6 +171,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async deleteSystemRole(id: string, _ctx: RequestContext): Promise<void> {
+    this.requireManage(_ctx);
     const role = this.repo.findRoleById(id);
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${id}`, 404);
@@ -185,6 +195,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async setRolePermissions(roleId: string, input: UpdateRolePermissionsInput, _ctx: RequestContext): Promise<void> {
+    this.requireManage(_ctx);
     const role = this.repo.findRoleById(roleId);
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
@@ -215,6 +226,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async addRoleUsers(roleId: string, input: AddRoleUsersInput, _ctx: RequestContext): Promise<void> {
+    this.requireManage(_ctx);
     const role = this.repo.findRoleById(roleId);
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
@@ -241,6 +253,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async removeRoleUser(roleId: string, userId: string, _ctx: RequestContext): Promise<void> {
+    this.requireManage(_ctx);
     const role = this.repo.findRoleById(roleId);
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
@@ -266,6 +279,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async createSystemPermission(input: CreateSystemPermissionInput, _ctx: RequestContext): Promise<SystemPermissionEntity> {
+    this.requireManage(_ctx);
     const code = input.code.trim();
     if (this.repo.findPermissionByCode(code)) {
       throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_EXISTS, `system permission already exists: ${code}`, 409);
@@ -303,6 +317,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async updateSystemPermission(id: string, input: UpdateSystemPermissionInput, _ctx: RequestContext): Promise<SystemPermissionEntity> {
+    this.requireManage(_ctx);
     const current = this.repo.findPermissionById(id);
     if (!current) {
       throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_NOT_FOUND, `system permission not found: ${id}`, 404);
@@ -346,6 +361,7 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
   }
 
   async deleteSystemPermission(id: string, _ctx: RequestContext): Promise<void> {
+    this.requireManage(_ctx);
     const current = this.repo.findPermissionById(id);
     if (!current) {
       throw new AppError(ERROR_CODES.SYSTEM_PERMISSION_NOT_FOUND, `system permission not found: ${id}`, 404);
@@ -369,5 +385,9 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       },
       _ctx
     );
+  }
+
+  private requireManage(ctx: RequestContext): void {
+    requirePermission(ctx, SystemRbacService.MANAGE_PERMISSION);
   }
 }

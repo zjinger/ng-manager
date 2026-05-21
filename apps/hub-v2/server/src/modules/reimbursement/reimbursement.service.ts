@@ -681,7 +681,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
   private canBypassApprovalAssignee(ctx: RequestContext, userId: string): boolean {
     return (
       this.repo.userHasPermission(userId, "project.manage.all") ||
-      this.repo.userHasPermission(userId, "expense.rule.manage")
+      this.repo.userHasPermission(userId, "expense.review.manage")
     );
   }
 

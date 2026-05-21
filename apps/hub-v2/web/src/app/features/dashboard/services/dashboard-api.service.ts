@@ -9,6 +9,7 @@ import type {
   DashboardBoardRange,
   DashboardDocument,
   DashboardPreferences,
+  DashboardShortcutPreference,
   DashboardWidgetPreference,
   DashboardHomeData,
   DashboardReportedIssueItem,
@@ -91,9 +92,10 @@ export class DashboardApiService {
     return this.api.get<DashboardPreferences>('/dashboard/preferences');
   }
 
-  updatePreferences(widgets: DashboardWidgetPreference[]): Observable<DashboardPreferences> {
-    return this.api.put<DashboardPreferences, { widgets: DashboardWidgetPreference[] }>('/dashboard/preferences', {
+  updatePreferences(widgets: DashboardWidgetPreference[], shortcuts?: DashboardShortcutPreference[]): Observable<DashboardPreferences> {
+    return this.api.put<DashboardPreferences, { widgets: DashboardWidgetPreference[]; shortcuts?: DashboardShortcutPreference[] }>('/dashboard/preferences', {
       widgets,
+      shortcuts,
     });
   }
 

@@ -57,7 +57,13 @@ function createDb() {
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)")
     .run("sperm_expense_submit", "expense.submit");
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)")
-    .run("sperm_project_create", "project.create");
+    .run("sperm_expense_review_manage", "expense.review.manage");
+  db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)")
+    .run("sperm_expense_rule_manage", "expense.rule.manage");
+  db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)")
+    .run("sperm_finance_review", "finance.review");
+  db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)")
+    .run("sperm_finance_cashier", "finance.cashier");
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)")
     .run("sperm_project_manage", "project.manage");
   db.prepare("INSERT INTO system_permissions (id, code) VALUES (?, ?)")
@@ -104,11 +110,21 @@ function grantProjectPermissions(db: Database.Database, userId = "usr_1") {
   db.prepare("INSERT INTO system_roles (id, code, name, status) VALUES (?, ?, ?, ?)")
     .run("srole_project", "project_member", "项目成员", "active");
   db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)")
-    .run("srole_project", "sperm_project_create");
-  db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)")
     .run("srole_project", "sperm_project_manage");
   db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)")
     .run(`usr_project_${userId}`, userId, "srole_project");
+}
+
+function grantRoleWithPermissions(db: Database.Database, roleCode: string, permissionIds: string[], userId = "usr_1") {
+  const roleId = `srole_${roleCode}`;
+  db.prepare("INSERT INTO system_roles (id, code, name, status) VALUES (?, ?, ?, ?)")
+    .run(roleId, roleCode, roleCode, "active");
+  const insertRolePermission = db.prepare("INSERT INTO system_role_permissions (role_id, permission_id) VALUES (?, ?)");
+  for (const permissionId of permissionIds) {
+    insertRolePermission.run(roleId, permissionId);
+  }
+  db.prepare("INSERT INTO user_system_roles (id, user_id, role_id) VALUES (?, ?, ?)")
+    .run(`usr_${roleCode}_${userId}`, userId, roleId);
 }
 
 function addPendingReimbursementTask(db: Database.Database, userId = "usr_1") {
@@ -129,6 +145,19 @@ describe("Dashboard preferences", () => {
     assert.equal(preferences.widgets[0]?.key, "reimbursement.stats");
     assert.equal(preferences.widgets.some((item) => item.key === "collab.announcements"), true);
     assert.deepEqual(preferences.widgets.map((item) => item.order), [1, 2, 3, 4, 5, 6]);
+    assert.deepEqual(
+      preferences.shortcuts.map((item) => item.key),
+      [
+        "collab.issueCreate",
+        "collab.rdCreate",
+        "collab.content",
+        "collab.feedbacks",
+        "collab.profile",
+        "reimbursement.travelExpense",
+        "reimbursement.generalExpense",
+        "reimbursement.myExpenses"
+      ]
+    );
   });
 
   it("saves normalized widget preferences and filters unavailable keys", async () => {
@@ -156,7 +185,80 @@ describe("Dashboard preferences", () => {
 
     const row = db.prepare("SELECT layout_json FROM dashboard_preferences WHERE user_id = ? AND dashboard_code = ?")
       .get("usr_1", "home") as { layout_json: string };
-    assert.equal(JSON.parse(row.layout_json).some((item: { key: string }) => item.key === "collab.todos"), true);
+    const layout = JSON.parse(row.layout_json) as { widgets: Array<{ key: string }>; shortcuts: Array<{ key: string }> };
+    assert.equal(layout.widgets.some((item) => item.key === "collab.todos"), true);
+    assert.equal(layout.shortcuts.every((item) => item.key.startsWith("reimbursement.")), true);
+  });
+
+  it("keeps old array layout as widgets and uses default shortcuts", async () => {
+    const db = createDb();
+    grantExpenseRole(db);
+    const service = createService(db, []);
+    db.prepare(`
+      INSERT INTO dashboard_preferences (id, user_id, dashboard_code, layout_json, stats_config_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "dpf_old_array",
+      "usr_1",
+      "home",
+      JSON.stringify([
+        { key: "collab.todos", visible: false, order: 2 },
+        { key: "reimbursement.stats", visible: true, order: 1 }
+      ]),
+      "{}",
+      "2026-01-01T00:00:00.000Z",
+      "2026-01-01T00:00:00.000Z"
+    );
+
+    const preferences = await service.getPreferences(ctx());
+
+    assert.equal(preferences.widgets.find((item) => item.key === "collab.todos")?.visible, false);
+    assert.deepEqual(
+      preferences.shortcuts.map((item) => item.key),
+      ["reimbursement.travelExpense", "reimbursement.generalExpense", "reimbursement.myExpenses"]
+    );
+  });
+
+  it("only returns reimbursement management shortcut for management or finance users", async () => {
+    const db = createDb();
+    grantExpenseRole(db, "usr_basic");
+    grantRoleWithPermissions(db, "expense_manager", ["sperm_expense_review_manage"], "usr_manager");
+    const service = createService(db, []);
+
+    const basic = await service.getPreferences(ctx("usr_basic"));
+    const manager = await service.getPreferences(ctx("usr_manager"));
+
+    assert.equal(basic.shortcuts.some((item) => item.key === "reimbursement.management"), false);
+    assert.equal(manager.shortcuts.some((item) => item.key === "reimbursement.management"), true);
+  });
+
+  it("saves normalized shortcut preferences and filters unavailable shortcut keys", async () => {
+    const db = createDb();
+    grantExpenseRole(db);
+    const service = createService(db, []);
+
+    const preferences = await service.updatePreferences(
+      {
+        widgets: [
+          { key: "collab.todos", visible: true, order: 1 },
+          { key: "reimbursement.stats", visible: false, order: 2 }
+        ],
+        shortcuts: [
+          { key: "collab.issueCreate", visible: true, order: 1 },
+          { key: "reimbursement.myExpenses", visible: false, order: 99 },
+          { key: "reimbursement.travelExpense", visible: true, order: 2 },
+          { key: "reimbursement.travelExpense", visible: false, order: 1 }
+        ]
+      },
+      ctx()
+    );
+
+    assert.equal(preferences.shortcuts.some((item) => item.key === "collab.issueCreate"), false);
+    assert.equal(preferences.shortcuts.find((item) => item.key === "reimbursement.myExpenses")?.visible, false);
+    assert.deepEqual(preferences.shortcuts.map((item) => item.order), [1, 2, 3]);
+
+    const reloaded = await service.getPreferences(ctx());
+    assert.equal(reloaded.shortcuts.find((item) => item.key === "reimbursement.myExpenses")?.visible, false);
   });
 
   it("does not show reimbursement stats by default for personal reimbursement-only users", async () => {

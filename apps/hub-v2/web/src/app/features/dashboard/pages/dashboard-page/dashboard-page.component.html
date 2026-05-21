@@ -86,10 +86,11 @@
   <ng-container *nzModalContent>
     <div class="preference-modal">
       <div class="preference-modal__toolbar">
-        <span>已显示 {{ visibleDraftCount() }} / {{ preferenceDraft().length }} 张</span>
+        <span>卡片 {{ visibleDraftCount() }} / {{ preferenceDraft().length }}，快捷入口 {{ visibleShortcutDraftCount() }} / {{ shortcutPreferenceDraft().length }}</span>
         <button nz-button nzType="default" nzSize="small" (click)="resetPreferenceDraft()" [disabled]="preferencesSaving()">恢复默认</button>
       </div>
 
+      <div class="preference-section-title">工作台卡片</div>
       <div class="preference-list">
         @for (item of preferenceDraft(); track item.key; let index = $index) {
           <article class="preference-item" [class.preference-item--disabled]="!item.visible">
@@ -106,6 +107,28 @@
               <button nz-button nzType="default" nzSize="small" (click)="movePreference(item.key, 1)" [disabled]="index === preferenceDraft().length - 1 || preferencesSaving()">下移</button>
               <span class="preference-item__switch-label">{{ item.visible ? '显示' : '隐藏' }}</span>
               <nz-switch [ngModel]="item.visible" (ngModelChange)="setWidgetVisible(item.key, $event)" [disabled]="preferencesSaving()"></nz-switch>
+            </div>
+          </article>
+        }
+      </div>
+
+      <div class="preference-section-title">快捷入口</div>
+      <div class="preference-list">
+        @for (item of shortcutPreferenceDraft(); track item.key; let index = $index) {
+          <article class="preference-item" [class.preference-item--disabled]="!item.visible">
+            <div class="preference-item__main">
+              <div class="preference-item__index">{{ index + 1 }}</div>
+              <div>
+                <div class="preference-item__title">{{ item.label }}</div>
+                <div class="preference-item__meta">{{ item.domain === 'reimbursement' ? '报销' : '协作' }}</div>
+              </div>
+            </div>
+
+            <div class="preference-item__actions">
+              <button nz-button nzType="default" nzSize="small" (click)="moveShortcutPreference(item.key, -1)" [disabled]="index === 0 || preferencesSaving()">上移</button>
+              <button nz-button nzType="default" nzSize="small" (click)="moveShortcutPreference(item.key, 1)" [disabled]="index === shortcutPreferenceDraft().length - 1 || preferencesSaving()">下移</button>
+              <span class="preference-item__switch-label">{{ item.visible ? '显示' : '隐藏' }}</span>
+              <nz-switch [ngModel]="item.visible" (ngModelChange)="setShortcutVisible(item.key, $event)" [disabled]="preferencesSaving()"></nz-switch>
             </div>
           </article>
         }

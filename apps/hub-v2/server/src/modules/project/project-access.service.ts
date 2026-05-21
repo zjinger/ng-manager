@@ -27,6 +27,12 @@ export class ProjectAccessService {
       return [];
     }
 
+    if (this.authorization.canReadAllProjects(ctx) || this.authorization.canManageAllProjects(ctx)) {
+      return this.repo
+        .listAllProjectIds()
+        .filter((projectId) => this.repo.findById(projectId)?.status === "active");
+    }
+
     const collected = new Set<string>();
     for (const userId of candidates) {
       for (const projectId of this.repo.listProjectIdsByUserId(userId)) {

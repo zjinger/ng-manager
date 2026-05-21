@@ -22,7 +22,7 @@ import { MyActivitiesCardComponent } from '../../components/my-activities-card/m
 import { MyTodosCardComponent } from '../../components/my-todos-card/my-todos-card.component';
 import { ReportedIssuesCardComponent } from '../../components/reported-issues-card/reported-issues-card.component';
 import { DashboardShortcutsComponent, type DashboardShortcutItem } from '../../components/dashboard-shortcuts/dashboard-shortcuts.component';
-import type { DashboardActivityItem, DashboardTodoItem, DashboardWidgetKey, DashboardWidgetPreferenceItem } from '../../models/dashboard.model';
+import type { DashboardActivityItem, DashboardPreferences, DashboardShortcutKey, DashboardShortcutPreferenceItem, DashboardTodoItem, DashboardWidgetKey, DashboardWidgetPreferenceItem } from '../../models/dashboard.model';
 import { DashboardApiService } from '../../services/dashboard-api.service';
 import { DashboardStore } from '../../store/dashboard.store';
 
@@ -65,7 +65,9 @@ export class DashboardPageComponent {
   readonly preferencesSaving = signal(false);
   readonly preferenceModalVisible = signal(false);
   readonly preferenceDraft = signal<DashboardWidgetPreferenceItem[]>([]);
+  readonly shortcutPreferenceDraft = signal<DashboardShortcutPreferenceItem[]>([]);
   readonly preferences = signal<DashboardWidgetPreferenceItem[]>([]);
+  readonly shortcutPreferences = signal<DashboardShortcutPreferenceItem[]>([]);
   readonly canAccessReimbursementWorkspace = signal(false);
   readonly canAccessCollaborationWorkspace = signal(false);
   readonly reimbursementDashboard = signal<ReimbursementDashboard | null>(null);
@@ -80,12 +82,12 @@ export class DashboardPageComponent {
     return map;
   });
   private readonly reimbursementBaseShortcutItems: DashboardShortcutItem[] = [
-    { key: 'travel-expense', label: '差旅费报销', description: '行程与交通住宿', route: '/reimbursements/new/travel', icon: 'custom:airplane', tone: 'blue' },
-    { key: 'expense', label: '费用报销', description: '办公采购等', route: '/reimbursements/new/general', icon: 'file-text', tone: 'green' },
-    { key: 'my-expenses', label: '我的报销', description: '查看报销进度', route: '/reimbursements/mine', icon: 'history', tone: 'amber' },
+    { key: 'reimbursement.travelExpense', label: '差旅费报销', description: '行程与交通住宿', route: '/reimbursements/new/travel', icon: 'custom:airplane', tone: 'blue' },
+    { key: 'reimbursement.generalExpense', label: '费用报销', description: '办公采购等', route: '/reimbursements/new/general', icon: 'file-text', tone: 'green' },
+    { key: 'reimbursement.myExpenses', label: '我的报销', description: '查看报销进度', route: '/reimbursements/mine', icon: 'history', tone: 'amber' },
   ];
   private readonly reimbursementManagementShortcutItem: DashboardShortcutItem = {
-    key: 'reimbursement-management',
+    key: 'reimbursement.management',
     label: '报销管理',
     description: '查看和处理报销单',
     route: '/reimbursements',
@@ -95,7 +97,7 @@ export class DashboardPageComponent {
 
   private readonly collaborationShortcutItems: DashboardShortcutItem[] = [
     {
-      key: 'issues',
+      key: 'collab.issueCreate',
       label: '新建测试单  ',
       description: '跳转测试跟踪并打开新增弹窗',
       route: '/issues',
@@ -105,7 +107,7 @@ export class DashboardPageComponent {
       tone: 'blue',
     },
     {
-      key: 'rd',
+      key: 'collab.rdCreate',
       label: '新建研发项',
       description: '跳转研发管理并打开新增弹窗',
       route: '/rd',
@@ -115,7 +117,7 @@ export class DashboardPageComponent {
       tone: 'violet',
     },
     {
-      key: 'content',
+      key: 'collab.content',
       label: '内容管理',
       description: '公告、文档与版本发布',
       route: '/content',
@@ -123,7 +125,7 @@ export class DashboardPageComponent {
       tone: 'green',
     },
     {
-      key: 'feedbacks',
+      key: 'collab.feedbacks',
       label: '反馈管理',
       description: '处理上线反馈问题',
       route: '/feedbacks',
@@ -131,7 +133,7 @@ export class DashboardPageComponent {
       tone: 'amber',
     },
     {
-      key: 'profile',
+      key: 'collab.profile',
       label: '个人中心',
       description: '查看并维护个人信息与偏好',
       route: '/profile',
@@ -149,13 +151,24 @@ export class DashboardPageComponent {
   });
 
   readonly shortcutItems = computed<DashboardShortcutItem[]>(() => [
-    ...(this.canAccessReimbursementWorkspace() ? this.reimbursementShortcutItems() : []),
-    ...(this.canAccessCollaborationWorkspace() ? this.collaborationShortcutItems : []),
+    ...this.shortcutPreferences()
+      .filter((item) => item.visible)
+      .sort((left, right) => left.order - right.order)
+      .map((item) => this.shortcutItemMap().get(item.key))
+      .filter((item): item is DashboardShortcutItem => !!item)
   ]);
 
   readonly visibleWidgets = computed(() => this.preferences().filter((item) => item.visible).sort((left, right) => left.order - right.order));
   readonly visibleDraftCount = computed(() => this.preferenceDraft().filter((item) => item.visible).length);
+  readonly visibleShortcutDraftCount = computed(() => this.shortcutPreferenceDraft().filter((item) => item.visible).length);
   readonly shouldStackInfoWidgets = computed(() => this.isWidgetVisible('collab.announcements') && this.isWidgetVisible('collab.documents'));
+  private readonly shortcutItemMap = computed(() => {
+    const items = [
+      ...(this.canAccessCollaborationWorkspace() ? this.collaborationShortcutItems : []),
+      ...(this.canAccessReimbursementWorkspace() ? this.reimbursementShortcutItems() : []),
+    ];
+    return new Map(items.map((item) => [item.key as DashboardShortcutKey, item]));
+  });
 
   readonly dashboardStatItems = computed<DashboardStatCardItem[]>(() => {
     const items: DashboardStatCardItem[] = [];
@@ -353,6 +366,7 @@ export class DashboardPageComponent {
 
   openPreferenceModal(): void {
     this.preferenceDraft.set(this.preferences().map((item) => ({ ...item })));
+    this.shortcutPreferenceDraft.set(this.shortcutPreferences().map((item) => ({ ...item })));
     this.preferenceModalVisible.set(true);
   }
 
@@ -375,14 +389,37 @@ export class DashboardPageComponent {
     this.preferenceDraft.set(this.reindexWidgets(widgets));
   }
 
+  moveShortcutPreference(key: DashboardShortcutKey, offset: -1 | 1): void {
+    const shortcuts = [...this.shortcutPreferenceDraft()];
+    const index = shortcuts.findIndex((item) => item.key === key);
+    const targetIndex = index + offset;
+    if (index < 0 || targetIndex < 0 || targetIndex >= shortcuts.length) {
+      return;
+    }
+    const [item] = shortcuts.splice(index, 1);
+    shortcuts.splice(targetIndex, 0, item);
+    this.shortcutPreferenceDraft.set(this.reindexShortcuts(shortcuts));
+  }
+
   setWidgetVisible(key: DashboardWidgetKey, visible: boolean): void {
     this.preferenceDraft.update((widgets) => widgets.map((item) => (item.key === key ? { ...item, visible } : item)));
+  }
+
+  setShortcutVisible(key: DashboardShortcutKey, visible: boolean): void {
+    this.shortcutPreferenceDraft.update((shortcuts) => shortcuts.map((item) => (item.key === key ? { ...item, visible } : item)));
   }
 
   resetPreferenceDraft(): void {
     this.preferenceDraft.set(
       this.reindexWidgets(
         [...this.preferenceDraft()]
+          .sort((left, right) => left.defaultOrder - right.defaultOrder)
+          .map((item) => ({ ...item, visible: item.defaultVisible })),
+      ),
+    );
+    this.shortcutPreferenceDraft.set(
+      this.reindexShortcuts(
+        [...this.shortcutPreferenceDraft()]
           .sort((left, right) => left.defaultOrder - right.defaultOrder)
           .map((item) => ({ ...item, visible: item.defaultVisible })),
       ),
@@ -397,7 +434,10 @@ export class DashboardPageComponent {
 
     this.preferencesSaving.set(true);
     this.dashboardApi
-      .updatePreferences(this.preferenceDraft().map(({ key, visible, order }) => ({ key, visible, order })))
+      .updatePreferences(
+        this.preferenceDraft().map(({ key, visible, order }) => ({ key, visible, order })),
+        this.shortcutPreferenceDraft().map(({ key, visible, order }) => ({ key, visible, order })),
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (preferences) => {
@@ -459,12 +499,15 @@ export class DashboardPageComponent {
       });
   }
 
-  private applyPreferences(preferences: { capabilities: { canAccessReimbursementWorkspace: boolean; canAccessCollaborationWorkspace: boolean }; widgets: DashboardWidgetPreferenceItem[] }): void {
+  private applyPreferences(preferences: DashboardPreferences): void {
     this.canAccessReimbursementWorkspace.set(preferences.capabilities.canAccessReimbursementWorkspace);
     this.canAccessCollaborationWorkspace.set(preferences.capabilities.canAccessCollaborationWorkspace);
     const widgets = [...preferences.widgets].sort((left, right) => left.order - right.order);
+    const shortcuts = [...(preferences.shortcuts ?? [])].sort((left, right) => left.order - right.order);
     this.preferences.set(widgets);
     this.preferenceDraft.set(widgets.map((item) => ({ ...item })));
+    this.shortcutPreferences.set(shortcuts);
+    this.shortcutPreferenceDraft.set(shortcuts.map((item) => ({ ...item })));
   }
 
   private loadReimbursementData(): void {
@@ -552,6 +595,10 @@ export class DashboardPageComponent {
     return widgets.map((item, index) => ({ ...item, order: index + 1 }));
   }
 
+  private reindexShortcuts(shortcuts: DashboardShortcutPreferenceItem[]): DashboardShortcutPreferenceItem[] {
+    return shortcuts.map((item, index) => ({ ...item, order: index + 1 }));
+  }
+
   private shouldShowCollaborationStats(): boolean {
     return this.canAccessCollaborationWorkspace() && (this.isWidgetVisible('collab.todos') || this.isWidgetVisible('collab.issues') || this.isWidgetVisible('collab.activities'));
   }
@@ -569,7 +616,7 @@ export class DashboardPageComponent {
   }
 
   private hasReimbursementManagementPermission(): boolean {
-    return this.hasAnyPermission(['expense.rule.manage', 'finance.review', 'finance.cashier']);
+    return this.hasAnyPermission(['expense.review.manage', 'finance.review', 'finance.cashier']);
   }
 
   private hasReimbursementApprovalStatPermission(): boolean {

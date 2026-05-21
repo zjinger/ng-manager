@@ -86,8 +86,9 @@
 
 ### 项目平台权限
 
-1. `project.create`
+1. `project.manage`
    - 允许创建项目
+   - 允许管理自己创建或负责的项目
 
 2. `project.read.all`
    - 允许读取所有项目
@@ -180,12 +181,12 @@
 
 ## 7.1 创建项目
 
-当前实现是“登录用户即可创建项目”。
+当前实现按 `project.manage` 判断是否允许创建项目。
 
-建议未来改为：
+建议规则：
 
-1. 有 `project.create` 权限的用户可创建
-2. 兼容期内若没有接 RBAC，可保留“登录用户可创建”
+1. 有 `project.manage` 权限的用户可创建
+2. 创建后的具体维护动作继续受 owner/project_admin/project.manage.all 等规则约束
 
 创建后：
 
@@ -293,7 +294,7 @@
 建议按下面顺序推进：
 
 1. 先补权限码：
-   - `project.create`
+   - `project.manage`
    - `project.read.all`
    - `project.manage.all`
    - `project.archive`
@@ -329,7 +330,7 @@
    - `member`
 
 2. **引入平台级项目权限**
-   - `project.create`
+   - `project.manage`
    - `project.read.all`
    - `project.manage.all`
    - `project.archive`

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DASHBOARD_WIDGET_KEYS } from "./dashboard.types";
+import { DASHBOARD_SHORTCUT_KEYS, DASHBOARD_WIDGET_KEYS } from "./dashboard.types";
 
 export const dashboardBoardRangeSchema = z.enum(["7d", "30d"]);
 
@@ -36,7 +36,14 @@ export const updateDashboardPreferencesSchema = z.object({
       visible: z.boolean(),
       order: z.coerce.number().int().min(1).max(100)
     })
-  ).min(1)
+  ).min(1),
+  shortcuts: z.array(
+    z.object({
+      key: z.enum(DASHBOARD_SHORTCUT_KEYS),
+      visible: z.boolean(),
+      order: z.coerce.number().int().min(1).max(100)
+    })
+  ).optional()
 });
 
 export type UpdateDashboardPreferencesBody = z.infer<typeof updateDashboardPreferencesSchema>;

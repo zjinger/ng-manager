@@ -72,7 +72,7 @@ export const NAV_ITEMS: NavSection[] = [
         icon: 'profile',
         route: '/reimbursements',
         exact: true,
-        permissions: ['expense.rule.manage', 'finance.review', 'finance.cashier'],
+        permissions: ['expense.review.manage', 'finance.review', 'finance.cashier'],
         permissionMode: 'any',
       },
       {
