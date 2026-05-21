@@ -1,6 +1,6 @@
 export function compareVersions(v1: string, v2: string): number {
-  const parts1 = v1.split('.').map(Number);
-  const parts2 = v2.split('.').map(Number);
+  const parts1 = stripVersionPrefix(v1).split('.').map(Number);
+  const parts2 = stripVersionPrefix(v2).split('.').map(Number);
 
   for (let i = 0; i < 3; i++) {
     const p1 = parts1[i] || 0;
@@ -11,6 +11,10 @@ export function compareVersions(v1: string, v2: string): number {
   }
 
   return 0;
+}
+
+function stripVersionPrefix(v: string): string {
+  return v.trim().replace(/^v/i, '');
 }
 
 // ─── 模块内部类型，不在 public API 中 ─────────────────────────────────────────
@@ -67,22 +71,22 @@ function satisfiesTilde(version: string, required: string): boolean {
 // 单个版本范围（不含 ||）是否满足
 function satisfiesSingleRange(version: string, range: string): boolean {
   range = range.trim();
-  const cleanVersion = version.replace(/^v/, '');
+  const cleanVersion = stripVersionPrefix(version);
 
   if (range.startsWith('>=')) {
-    return compareVersions(cleanVersion, range.substring(2)) >= 0;
+    return compareVersions(cleanVersion, stripVersionPrefix(range.substring(2))) >= 0;
   } else if (range.startsWith('<=')) {
-    return compareVersions(cleanVersion, range.substring(2)) <= 0;
+    return compareVersions(cleanVersion, stripVersionPrefix(range.substring(2))) <= 0;
   } else if (range.startsWith('>')) {
-    return compareVersions(cleanVersion, range.substring(1)) > 0;
+    return compareVersions(cleanVersion, stripVersionPrefix(range.substring(1))) > 0;
   } else if (range.startsWith('<')) {
-    return compareVersions(cleanVersion, range.substring(1)) < 0;
+    return compareVersions(cleanVersion, stripVersionPrefix(range.substring(1))) < 0;
   } else if (range.startsWith('^')) {
-    return satisfiesCaret(cleanVersion, range.substring(1));
+    return satisfiesCaret(cleanVersion, stripVersionPrefix(range.substring(1)));
   } else if (range.startsWith('~')) {
-    return satisfiesTilde(cleanVersion, range.substring(1));
+    return satisfiesTilde(cleanVersion, stripVersionPrefix(range.substring(1)));
   } else if (range.startsWith('=')) {
-    const required = range.substring(1).trim();
+    const required = stripVersionPrefix(range.substring(1));
     if (!required.includes('.')) {
       return cleanVersion.startsWith(required + '.') || cleanVersion === required;
     }
@@ -90,12 +94,12 @@ function satisfiesSingleRange(version: string, range: string): boolean {
   } else if (range === '*' || range === 'x' || range === 'X') {
     return true;
   } else {
-    return cleanVersion === range;
+    return cleanVersion === stripVersionPrefix(range);
   }
 }
 
 export function satisfiesVersion(version: string, requirement: string): boolean {
-  const cleanVersion = version.replace(/^v/, '');
+  const cleanVersion = stripVersionPrefix(version);
 
   const rangeParts = requirement.split('||').map(r => r.trim());
 
@@ -110,24 +114,24 @@ export function satisfiesVersion(version: string, requirement: string): boolean 
 
 // 计算版本对需求的匹配得分，用于 findBestMatchingVersion 排序
 function calculateMatchScore(version: string, requirement: string): number {
-  const cleanVersion = version.replace(/^v/, '');
+  const cleanVersion = stripVersionPrefix(version);
   const versionParts = cleanVersion.split('.').map(Number);
 
   if (requirement.startsWith('^')) {
-    const required = requirement.substring(1).split('.').map(Number);
+    const required = stripVersionPrefix(requirement.substring(1)).split('.').map(Number);
     let score = 1000;
     if (versionParts[0] === required[0]) score += 100;
     if (versionParts[1] === required[1]) score += 50;
     score += (versionParts[2] - required[2]) * 10;
     return score;
   } else if (requirement.startsWith('~')) {
-    const required = requirement.substring(1).split('.').map(Number);
+    const required = stripVersionPrefix(requirement.substring(1)).split('.').map(Number);
     let score = 1000;
     if (versionParts[0] === required[0] && versionParts[1] === required[1]) score += 100;
     score += (versionParts[2] - required[2]) * 10;
     return score;
   } else if (requirement.startsWith('>=')) {
-    const required = requirement.substring(2).split('.').map(Number);
+    const required = stripVersionPrefix(requirement.substring(2)).split('.').map(Number);
     let score = 1000;
     score -= (versionParts[0] - required[0]) * 100;
     score -= (versionParts[1] - required[1]) * 10;
