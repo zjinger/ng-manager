@@ -1,6 +1,8 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent, LoadingStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
@@ -308,6 +310,8 @@ import { AuditLogApiService } from '../../services/audit-log-api.service';
 export class AuditLogPageComponent {
   private readonly api = inject(AuditLogApiService);
   private readonly message = inject(NzMessageService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly items = signal<AuditLogEntity[]>([]);
   readonly total = signal(0);
@@ -330,7 +334,11 @@ export class AuditLogPageComponent {
   readonly levelOptions = Object.entries(AUDIT_LEVEL_LABELS).map(([value, label]) => ({ value: value as AuditLogLevel, label }));
 
   constructor() {
-    this.load();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.keyword.set(params.get('keyword') ?? '');
+      this.page.set(1);
+      this.load();
+    });
   }
 
   load(): void {

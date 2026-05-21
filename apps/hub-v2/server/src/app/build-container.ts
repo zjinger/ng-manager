@@ -8,6 +8,7 @@ import { AuditLogRepo } from "../modules/audit-log/audit-log.repo";
 import { AuditLogService } from "../modules/audit-log/audit-log.service";
 import { AiReportSqlService } from "../modules/ai/ai-report-sql.service";
 import { AiReportRenderService } from "../modules/ai/ai-report-render.service";
+import { AdminSearchService } from "../modules/admin-search/admin-search.service";
 import { SearchRepo } from "../modules/search/search.repo";
 import { SearchService } from "../modules/search/search.service";
 import type { SurveyCommandContract, SurveyQueryContract } from "../modules/survey/survey.contract";
@@ -168,6 +169,7 @@ export type AppContainer = {
   aiIssueService: AiIssueService;
   aiReportSqlService: AiReportSqlService;
   aiReportRenderService: AiReportRenderService;
+  adminSearchService: AdminSearchService;
   reportPublicService: ReportPublicService;
   searchService: SearchService;
   surveyCommand: SurveyCommandContract;
@@ -289,6 +291,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const aiIssueService = new AiIssueService(config, openaiClient);
   const aiReportSqlService = new AiReportSqlService(config, openaiClient, projectAccess);
   const aiReportRenderService = new AiReportRenderService(db);
+  const adminSearchService = new AdminSearchService(db);
   const reportPublicService = new ReportPublicService(config, new ReportPublicRepo(db), projectRepo);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
   const surveyService = new SurveyService(new SurveyRepo(db));
@@ -355,6 +358,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     aiIssueService,
     aiReportSqlService,
     aiReportRenderService,
+    adminSearchService,
     reportPublicService,
     searchService,
     surveyCommand: surveyService,

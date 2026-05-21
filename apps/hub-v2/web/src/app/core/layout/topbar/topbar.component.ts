@@ -5,6 +5,7 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { NotificationBellComponent } from '../../../features/notifications/components/notification-bell/notification-bell.component';
+import type { SearchMode } from '../../../features/search/models/search.model';
 import { GlobalSearchStore } from '../../../features/search/store/global-search.store';
 import { AuthService } from '../../auth/auth.service';
 import { AuthStore } from '../../auth/auth.store';
@@ -48,6 +49,7 @@ export class TopbarComponent {
   readonly rootLabel = input('首页');
   readonly rootRoute = input('/dashboard');
   readonly searchPlaceholder = input('搜索测试单、研发项、文档、发布…');
+  readonly searchMode = input<SearchMode>('workspace');
   readonly searchEnabled = input(true);
   readonly showThemeToggle = input(true);
   readonly showWsIndicator = input(true);
@@ -110,6 +112,6 @@ export class TopbarComponent {
   }
 
   openGlobalSearch(): void {
-    this.globalSearchStore.openPanel();
+    this.globalSearchStore.openPanel('', this.searchMode());
   }
 }

@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DialogShellComponent, EmptyStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -231,6 +233,8 @@ export class PermissionItemFormDialogComponent {
 export class PermissionItemsPageComponent {
   private readonly api = inject(SystemRbacApiService);
   private readonly message = inject(NzMessageService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly items = signal<SystemPermissionEntity[]>([]);
   readonly keyword = signal('');
@@ -240,7 +244,10 @@ export class PermissionItemsPageComponent {
   readonly editing = signal<SystemPermissionEntity | null>(null);
 
   constructor() {
-    this.load();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.keyword.set(params.get('keyword') ?? '');
+      this.load();
+    });
   }
 
   load(): void {

@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PageHeaderComponent, TabsComponent } from '@shared/ui';
 import { GeneralSettingsComponent } from './general-settings.component';
 import { SecuritySettingsComponent } from './security-settings.component';
@@ -49,6 +51,8 @@ type SettingsTab = 'general' | 'security' | 'notifications' | 'integration';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsPageComponent {
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   readonly activeTab = signal<SettingsTab>('general');
   readonly tabs = [
     { id: 'general', label: '常规设置', icon: 'setting' },
@@ -56,4 +60,17 @@ export class SettingsPageComponent {
     { id: 'notifications', label: '通知配置', icon: 'bell' },
     { id: 'integration', label: '集成与 API', icon: 'api' },
   ];
+
+  constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const tab = params.get('tab');
+      if (this.isSettingsTab(tab)) {
+        this.activeTab.set(tab);
+      }
+    });
+  }
+
+  private isSettingsTab(value: string | null): value is SettingsTab {
+    return value === 'general' || value === 'security' || value === 'notifications' || value === 'integration';
+  }
 }

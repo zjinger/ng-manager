@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent } from '@shared/ui/empty-state';
 import { LoadingStateComponent } from '@shared/ui/loading-state';
 import { PageHeaderComponent } from '@shared/ui/page-header';
@@ -295,6 +297,8 @@ import { RoleFormDialogComponent } from './role-form-dialog.component';
 export class RolesPageComponent {
   private readonly api = inject(SystemRbacApiService);
   private readonly message = inject(NzMessageService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly roles = signal<SystemRoleWithCounts[]>([]);
   readonly loading = signal(false);
@@ -343,7 +347,10 @@ export class RolesPageComponent {
   readonly existingUserIds = computed(() => this.detailUsers().map((u) => u.userId));
 
   constructor() {
-    this.loadRoles();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.keyword.set(params.get('keyword') ?? '');
+      this.loadRoles();
+    });
     this.loadPermissions();
   }
 

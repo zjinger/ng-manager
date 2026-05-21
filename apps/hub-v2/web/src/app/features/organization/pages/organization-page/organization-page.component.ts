@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DialogShellComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -645,6 +646,8 @@ export class DepartmentTitleAttachDialogComponent {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OrganizationPageComponent {
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly organizationApi = inject(OrganizationApiService);
   private readonly userApi = inject(UserApiService);
   private readonly systemTitleApi = inject(SystemTitleApiService);
@@ -684,7 +687,10 @@ export class OrganizationPageComponent {
   });
 
   constructor() {
-    this.loadDepartments();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.keyword.set(params.get('keyword') ?? '');
+      this.loadDepartments();
+    });
     this.loadTitleLibrary();
     this.loadUserOptions();
   }

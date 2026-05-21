@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthStore } from '@core/auth';
 import { hasRequiredPermissions } from '@core/auth';
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
@@ -132,6 +134,8 @@ import { UserStore } from '../../store/user.store';
 export class UserListPageComponent {
   readonly store = inject(UserStore);
   readonly authStore = inject(AuthStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly organizationApi = inject(OrganizationApiService);
   private readonly roleSync = inject(UserRoleSyncService);
   private readonly titleApi = inject(UserTitleApiService);
@@ -155,7 +159,11 @@ export class UserListPageComponent {
   );
 
   constructor() {
-    this.store.initialize();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const keyword = params.get('keyword') ?? '';
+      this.keyword.set(keyword);
+      this.store.updateQuery({ keyword });
+    });
     this.organizationApi.listDepartments({ status: 'active' }).subscribe({
       next: (items) => this.departments.set(items),
       error: () => this.departments.set([]),

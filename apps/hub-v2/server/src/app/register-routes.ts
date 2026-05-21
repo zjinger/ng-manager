@@ -38,6 +38,7 @@ import systemSettingsRoutes from "../modules/system-settings/system-settings.rou
 import healthRoutes from "../modules/system/health.routes";
 import uploadRoutes from "../modules/upload/upload.routes";
 import userRoutes from "../modules/user/user.routes";
+import adminSearchRoutes from "../modules/admin-search/admin-search.routes";
 import aiRoutes from "../modules/ai/ai.routes";
 import aiReportRoutes from "../modules/ai/ai-report.routes";
 import aiReportPublicRoutes from "../modules/ai/ai-report-public.routes";
@@ -121,6 +122,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(systemTitleRoutes, { prefix: "/api/admin" });
   await app.register(systemSettingsRoutes, { prefix: "/api/admin" });
   await app.register(userRoutes, { prefix: "/api/admin" });
+  await app.register(adminSearchRoutes, { prefix: "/api/admin" });
   await app.register(projectRoutes, { prefix: "/api/admin" });
   await app.register(uploadRoutes, { prefix: "/api/admin" });
   await app.register(announcementPublicRoutes, { prefix: "/api/public" });

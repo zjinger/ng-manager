@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { ProjectContextStore } from '../../../core/state/project-context.store';
-import type { SearchEntityType, SearchItem } from '../models/search.model';
+import type { AdminSearchEntityType, SearchEntityType, SearchItem, SearchMode, WorkspaceSearchEntityType } from '../models/search.model';
 import { SearchApiService } from '../services/search-api.service';
 
 export type SearchFilterType = 'all' | SearchEntityType;
@@ -13,7 +13,7 @@ type SearchTypeOption = {
   label: string;
 };
 
-type SearchTypeCountMap = Record<SearchFilterType, number>;
+type SearchTypeCountMap = Record<string, number>;
 
 type SearchGroupedEntry = {
   index: number;
@@ -26,50 +26,62 @@ type SearchGroupedSection = {
   entries: SearchGroupedEntry[];
 };
 
+const WORKSPACE_TYPE_OPTIONS: ReadonlyArray<SearchTypeOption> = [
+  { value: 'all', label: '全部' },
+  { value: 'issue', label: '测试单' },
+  { value: 'rd', label: '研发项' },
+  { value: 'document', label: '文档' },
+  { value: 'release', label: '发布' },
+];
+
+const ADMIN_TYPE_OPTIONS: ReadonlyArray<SearchTypeOption> = [
+  { value: 'all', label: '全部' },
+  { value: 'user', label: '用户' },
+  { value: 'department', label: '部门' },
+  { value: 'role', label: '角色' },
+  { value: 'permission', label: '权限' },
+  { value: 'audit_log', label: '审计' },
+  { value: 'setting', label: '设置' },
+];
+
+const WORKSPACE_TYPE_ORDER: ReadonlyArray<WorkspaceSearchEntityType> = ['issue', 'rd', 'document', 'release'];
+const ADMIN_TYPE_ORDER: ReadonlyArray<AdminSearchEntityType> = ['user', 'department', 'role', 'permission', 'audit_log', 'setting'];
+
 @Injectable({ providedIn: 'root' })
 export class GlobalSearchStore {
   private readonly searchApi = inject(SearchApiService);
   private readonly router = inject(Router);
   private readonly projectContext = inject(ProjectContextStore);
-  readonly typeOptions: ReadonlyArray<SearchTypeOption> = [
-    { value: 'all', label: '全部' },
-    { value: 'issue', label: '测试单' },
-    { value: 'rd', label: '研发项' },
-    { value: 'document', label: '文档' },
-    { value: 'release', label: '发布' },
-  ];
-  private readonly typeOrder: ReadonlyArray<SearchEntityType> = ['issue', 'rd', 'document', 'release'];
 
   readonly open = signal(false);
+  readonly mode = signal<SearchMode>('workspace');
   readonly keyword = signal('');
   readonly loading = signal(false);
   readonly items = signal<SearchItem[]>([]);
   readonly activeType = signal<SearchFilterType>('all');
   readonly activeIndex = signal(0);
   readonly error = signal<string | null>(null);
+
+  readonly typeOptions = computed<ReadonlyArray<SearchTypeOption>>(() => this.mode() === 'admin' ? ADMIN_TYPE_OPTIONS : WORKSPACE_TYPE_OPTIONS);
+  readonly placeholder = computed(() =>
+    this.mode() === 'admin'
+      ? '搜索用户、部门、角色、权限、审计、设置（至少2个字符）'
+      : '搜索测试单、研发项、文档、发布（至少2个字符）'
+  );
+  private readonly typeOrder = computed<ReadonlyArray<SearchEntityType>>(() => this.mode() === 'admin' ? ADMIN_TYPE_ORDER : WORKSPACE_TYPE_ORDER);
+
   readonly typeCounts = computed<SearchTypeCountMap>(() => {
-    const counts: SearchTypeCountMap = {
-      all: 0,
-      issue: 0,
-      rd: 0,
-      document: 0,
-      release: 0,
-    };
+    const counts: SearchTypeCountMap = Object.fromEntries(this.typeOptions().map((option) => [option.value, 0]));
 
     for (const item of this.items()) {
-      counts[item.type] += 1;
-      counts.all += 1;
+      counts[item.type] = (counts[item.type] ?? 0) + 1;
+      counts['all'] = (counts['all'] ?? 0) + 1;
     }
     return counts;
   });
 
   readonly groupedEntries = computed<SearchGroupedSection[]>(() => {
-    const groupedItems: Record<SearchEntityType, SearchItem[]> = {
-      issue: [],
-      rd: [],
-      document: [],
-      release: [],
-    };
+    const groupedItems = Object.fromEntries(this.typeOrder().map((type) => [type, [] as SearchItem[]])) as Record<SearchEntityType, SearchItem[]>;
     const activeType = this.activeType();
 
     for (const item of this.items()) {
@@ -82,7 +94,7 @@ export class GlobalSearchStore {
     }
 
     let nextIndex = 0;
-    return this.typeOrder
+    return this.typeOrder()
       .filter((type) => groupedItems[type].length > 0)
       .map((type) => {
         const entries = groupedItems[type].map((item) => {
@@ -116,7 +128,15 @@ export class GlobalSearchStore {
   private currentSearchSub: Subscription | null = null;
   private requestId = 0;
 
-  openPanel(seedKeyword = ''): void {
+  openPanel(seedKeyword = '', mode: SearchMode = 'workspace'): void {
+    if (this.mode() !== mode) {
+      this.mode.set(mode);
+      this.keyword.set('');
+      this.items.set([]);
+      this.activeType.set('all');
+      this.activeIndex.set(0);
+      this.error.set(null);
+    }
     this.open.set(true);
     if (seedKeyword.trim()) {
       this.setKeyword(seedKeyword);
@@ -206,30 +226,29 @@ export class GlobalSearchStore {
     this.currentSearchSub?.unsubscribe();
     this.loading.set(true);
 
-    this.currentSearchSub = this.searchApi
-      .search({
-        q: keyword,
-        limit: 20,
-      })
-      .subscribe({
-        next: (res) => {
-          if (this.requestId !== currentRequestId || this.keyword().trim() !== keyword) {
-            return;
-          }
-          this.items.set(res.items);
-          this.activeIndex.set(0);
-          this.error.set(null);
-          this.loading.set(false);
-        },
-        error: () => {
-          if (this.requestId !== currentRequestId || this.keyword().trim() !== keyword) {
-            return;
-          }
-          this.items.set([]);
-          this.error.set('搜索失败，请稍后重试');
-          this.loading.set(false);
-        },
-      });
+    const request$ = this.mode() === 'admin'
+      ? this.searchApi.searchAdmin({ q: keyword, limit: 20 })
+      : this.searchApi.search({ q: keyword, limit: 20 });
+
+    this.currentSearchSub = request$.subscribe({
+      next: (res) => {
+        if (this.requestId !== currentRequestId || this.keyword().trim() !== keyword) {
+          return;
+        }
+        this.items.set(res.items);
+        this.activeIndex.set(0);
+        this.error.set(null);
+        this.loading.set(false);
+      },
+      error: () => {
+        if (this.requestId !== currentRequestId || this.keyword().trim() !== keyword) {
+          return;
+        }
+        this.items.set([]);
+        this.error.set('搜索失败，请稍后重试');
+        this.loading.set(false);
+      },
+    });
   }
 
   private clearScheduledSearch(): void {
@@ -246,6 +265,12 @@ export class GlobalSearchStore {
         rd: '研发项',
         document: '文档',
         release: '发布',
+        user: '用户',
+        department: '部门',
+        role: '角色',
+        permission: '权限',
+        audit_log: '审计',
+        setting: '设置',
       }[type] || type
     );
   }

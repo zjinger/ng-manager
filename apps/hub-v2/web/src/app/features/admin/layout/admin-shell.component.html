@@ -15,7 +15,8 @@
       rootLabel="系统管理"
       rootRoute="/admin"
       searchPlaceholder="搜索用户、部门、角色…"
-      [searchEnabled]="false"
+      searchMode="admin"
+      [searchEnabled]="true"
       [showWsIndicator]="false"
       [showNotificationBell]="false"
       [showReturnToWorkbench]="true"
@@ -26,3 +27,5 @@
     </main>
   </div>
 </div>
+
+<app-global-search-modal />

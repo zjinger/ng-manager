@@ -10,6 +10,8 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: '',
         pathMatch: 'full',
+        canActivate: [permissionGuard],
+        data: { permissions: ['admin.dashboard.view'] },
         loadComponent: () =>
           import('./pages/admin-dashboard-page.component').then((m) => m.AdminDashboardPageComponent),
       },

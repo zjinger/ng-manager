@@ -127,7 +127,25 @@ export class GlobalSearchModalComponent {
     if (type === 'document') {
       return '文档';
     }
-    return '发布';
+    if (type === 'release') {
+      return '发布';
+    }
+    if (type === 'user') {
+      return '用户';
+    }
+    if (type === 'department') {
+      return '部门';
+    }
+    if (type === 'role') {
+      return '角色';
+    }
+    if (type === 'permission') {
+      return '权限';
+    }
+    if (type === 'audit_log') {
+      return '审计';
+    }
+    return '设置';
   }
 
   formatTime(value: string): string {
