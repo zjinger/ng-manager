@@ -9,7 +9,8 @@ function shouldNotify(event: DomainEvent): boolean {
     event.entityType === "rd" ||
     event.entityType === "announcement" ||
     event.entityType === "document" ||
-    event.entityType === "release"
+    event.entityType === "release" ||
+    event.entityType === "reimbursement"
   );
 }
 

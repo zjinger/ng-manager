@@ -292,7 +292,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const reportPublicService = new ReportPublicService(config, new ReportPublicRepo(db), projectRepo);
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
   const surveyService = new SurveyService(new SurveyRepo(db));
-  const reimbursementService = new ReimbursementService(new ReimbursementRepo(db));
+  const reimbursementService = new ReimbursementService(new ReimbursementRepo(db), eventBus);
 
   return {
     healthQuery: new HealthQueryService(config),

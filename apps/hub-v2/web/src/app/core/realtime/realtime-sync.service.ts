@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 
 import { NotificationStore } from '../../features/notifications/store/notification.store';
+import { ReimbursementRefreshBusService } from '../../features/reimbursement/services/reimbursement-refresh-bus.service';
 import { SystemNotificationService } from '../../shared/services/system-notification.service';
 import { NavigationBadgeStore } from '../navigation/navigation-badge.store';
 import { ProjectContextStore } from '../state/project-context.store';
@@ -15,6 +16,7 @@ export class RealtimeSyncService {
   private readonly notificationStore = inject(NotificationStore);
   private readonly navigationBadgeStore = inject(NavigationBadgeStore);
   private readonly dashboardRefreshBus = inject(DashboardRefreshBusService);
+  private readonly reimbursementRefreshBus = inject(ReimbursementRefreshBusService);
   private readonly projectContext = inject(ProjectContextStore);
   private readonly systemNotification = inject(SystemNotificationService);
 
@@ -69,7 +71,7 @@ export class RealtimeSyncService {
         this.scheduleBadgeReload();
       }
       if (hints.has('dashboard')) {
-        this.scheduleDashboardReload(message.payload.entityType);
+        this.scheduleDashboardReload(message.payload.entityType, message.payload.entityId, message.payload.action);
       }
       return;
     }
@@ -85,7 +87,7 @@ export class RealtimeSyncService {
     if (message.type === 'dashboard.changed') {
       const hints = this.resolveHints(message);
       if (hints.has('dashboard')) {
-        this.scheduleDashboardReload(message.payload.entityType);
+        this.scheduleDashboardReload(message.payload.entityType, message.payload.entityId, message.payload.action);
       }
     }
   }
@@ -139,10 +141,13 @@ export class RealtimeSyncService {
     }, 120);
   }
 
-  private scheduleDashboardReload(entityType?: string): void {
+  private scheduleDashboardReload(entityType?: string, entityId?: string, action?: string): void {
     // Coalesce multiple ws signals and flush one dashboard refresh batch.
     if (entityType) {
       this.pendingDashboardEntityTypes.add(entityType);
+      if (entityType === 'reimbursement') {
+        this.reimbursementRefreshBus.notify({ claimId: entityId ?? null, action: action ?? null, source: 'ws' });
+      }
     }
     if (this.dashboardReloadTimer) {
       return;

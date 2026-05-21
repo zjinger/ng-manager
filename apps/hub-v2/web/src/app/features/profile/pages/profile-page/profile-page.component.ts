@@ -105,6 +105,8 @@ export class ProfilePageComponent {
     { id: 'document_published', title: '文档发布', description: '项目文档发布时通知', enabled: true, icon: 'file-text' },
     { id: 'release_published', title: '版本发布', description: '项目版本发布时通知', enabled: true, icon: 'notification' },
     { id: 'project_member_changed', title: '项目成员变更', description: '你被加入、移出项目或角色变更时通知', enabled: true, icon: 'team' },
+    { id: 'reimbursement_todo', title: '报销待办', description: '报销单流转到你审批时通知', enabled: true, icon: 'audit' },
+    { id: 'reimbursement_activity', title: '报销动态', description: '与你相关的报销单状态变化时通知', enabled: true, icon: 'account-book' },
   ]);
 
   readonly initials = computed(() => {

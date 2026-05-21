@@ -23,7 +23,9 @@ const DEFAULT_EVENTS: Record<string, boolean> = {
   announcement_published: true,
   document_published: true,
   release_published: true,
-  project_member_changed: true
+  project_member_changed: true,
+  reimbursement_todo: true,
+  reimbursement_activity: true
 };
 
 const DEFAULT_PROJECT_SCOPE_MODE = "member_only" as const;

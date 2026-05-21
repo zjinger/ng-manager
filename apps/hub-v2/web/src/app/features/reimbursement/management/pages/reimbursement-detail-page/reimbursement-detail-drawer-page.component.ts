@@ -12,6 +12,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { lastValueFrom } from 'rxjs';
 
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
+import { ReimbursementRefreshBusService } from '@app/features/reimbursement/services/reimbursement-refresh-bus.service';
 import type {
   ReimbursementAttachmentEntity,
   ReimbursementClaimDetail,
@@ -620,6 +621,7 @@ export class ReimbursementDetailDrawerPageComponent {
   private readonly message = inject(NzMessageService);
   private readonly modal = inject(NzModalService);
   private readonly authStore = inject(AuthStore);
+  private readonly reimbursementRefreshBus = inject(ReimbursementRefreshBusService);
 
   readonly claimId = input<string | null>(null);
   readonly changed = output<void>();
@@ -645,6 +647,17 @@ export class ReimbursementDetailDrawerPageComponent {
         return;
       }
       this.loadedClaimId.set(claimId);
+      this.load(claimId);
+    });
+    effect(() => {
+      const event = this.reimbursementRefreshBus.event();
+      const claimId = this.claimId();
+      if (event.version === 0 || event.source !== 'ws' || !claimId) {
+        return;
+      }
+      if (event.claimId && event.claimId !== claimId) {
+        return;
+      }
       this.load(claimId);
     });
   }

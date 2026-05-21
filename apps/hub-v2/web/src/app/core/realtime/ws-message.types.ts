@@ -28,7 +28,9 @@ export type WsServerMessage =
             | 'announcement'
             | 'document'
             | 'release'
-            | 'project_member';
+            | 'project_member'
+            | 'reimbursement_todo'
+            | 'reimbursement_activity';
           title: string;
           description: string;
           sourceLabel: string;

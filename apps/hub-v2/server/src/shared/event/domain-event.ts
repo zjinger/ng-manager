@@ -2,7 +2,7 @@ export interface DomainEvent {
   type: string;
   scope: "global" | "project";
   projectId?: string;
-  entityType: "announcement" | "document" | "release" | "issue" | "rd" | "project" | "system";
+  entityType: "announcement" | "document" | "release" | "issue" | "rd" | "project" | "reimbursement" | "system";
   entityId: string;
   action: string;
   actorId?: string;

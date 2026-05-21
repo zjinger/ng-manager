@@ -1,4 +1,5 @@
 import type { RequestContext } from "../../shared/context/request-context";
+import type { EventBus } from "../../shared/event/event-bus";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { genId } from "../../shared/utils/id";
@@ -31,7 +32,10 @@ import { renderReimbursementWord } from "./reimbursement-word-export";
 const DEFAULT_TEMPLATE_CODE = "expense_default";
 
 export class ReimbursementService implements ReimbursementCommandContract, ReimbursementQueryContract {
-  constructor(private readonly repo: ReimbursementRepo) {}
+  constructor(
+    private readonly repo: ReimbursementRepo,
+    private readonly eventBus?: EventBus
+  ) {}
 
   async dashboard(ctx: RequestContext): Promise<ReimbursementDashboard> {
     const userId = this.requireUserId(ctx);
@@ -117,7 +121,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       }
       this.addLog(claim.id, ctx, "create", null, "创建报销单", now);
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const created = this.requireClaim(claim.id);
+    await this.emitReimbursementEvent("created", created, ctx, {
+      affectedUserIds: [created.applicantUserId]
+    });
+    return this.buildDetail(created);
   }
 
   async update(id: string, input: UpdateReimbursementClaimInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -161,7 +169,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       }
       this.addLog(claim.id, ctx, "update", null, "更新报销单", now);
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const next = this.requireClaim(claim.id);
+    await this.emitReimbursementEvent("updated", next, ctx, {
+      affectedUserIds: this.collectReimbursementRelatedUserIds(next)
+    });
+    return this.buildDetail(next);
   }
 
   async submit(id: string, ctx: RequestContext, input: { comment?: string | null } = {}): Promise<ReimbursementClaimDetail> {
@@ -193,7 +205,13 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.createTasks(firstTasks);
       this.addLog(claim.id, ctx, "submit", null, input.comment?.trim() || "提交审批", now);
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const next = this.requireClaim(claim.id);
+    await this.emitReimbursementEvent("submitted", next, ctx, {
+      currentAssigneeUserIds: firstTasks.map((task) => task.assigneeUserId),
+      affectedUserIds: this.uniqueUserIds([next.applicantUserId, ...firstTasks.map((task) => task.assigneeUserId)]),
+      stageName: firstTask.stageName
+    });
+    return this.buildDetail(next);
   }
 
   async approve(id: string, input: ReimbursementActionInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -227,7 +245,14 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.createTasks([newTask]);
       this.addLog(claim.id, ctx, "transfer", task.id, input.comment?.trim() || `转交给 ${newTask.assigneeName}`, now);
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const next = this.requireClaim(claim.id);
+    await this.emitReimbursementEvent("transferred", next, ctx, {
+      currentAssigneeUserIds: [newTask.assigneeUserId],
+      previousAssigneeUserIds: [task.assigneeUserId],
+      affectedUserIds: this.uniqueUserIds([next.applicantUserId, task.assigneeUserId, newTask.assigneeUserId]),
+      stageName: newTask.stageName
+    });
+    return this.buildDetail(next);
   }
 
   async addSign(id: string, input: ReimbursementTransferInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -252,7 +277,14 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.createTasks([addSignTask]);
       this.addLog(claim.id, ctx, "add_sign", task.id, input.comment?.trim() || `加签给 ${addSignTask.assigneeName}`, now);
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const next = this.requireClaim(claim.id);
+    await this.emitReimbursementEvent("add_sign", next, ctx, {
+      currentAssigneeUserIds: [addSignTask.assigneeUserId],
+      previousAssigneeUserIds: [task.assigneeUserId],
+      affectedUserIds: this.uniqueUserIds([next.applicantUserId, task.assigneeUserId, addSignTask.assigneeUserId]),
+      stageName: addSignTask.stageName
+    });
+    return this.buildDetail(next);
   }
 
   async attach(id: string, input: AttachReimbursementUploadInput, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -266,7 +298,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.addAttachment(genId("rba"), claim.id, input, ctx.userId ?? null, now);
       this.addLog(claim.id, ctx, "attachment.added", null, this.buildAttachmentAddedComment(input.uploadId), now);
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const next = this.requireClaim(claim.id);
+    await this.emitReimbursementEvent("attachment.added", next, ctx, {
+      affectedUserIds: this.collectReimbursementRelatedUserIds(next)
+    });
+    return this.buildDetail(next);
   }
 
   async detach(id: string, attachmentId: string, ctx: RequestContext): Promise<ReimbursementClaimDetail> {
@@ -278,15 +314,22 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       this.repo.deleteAttachment(claim.id, attachmentId);
       this.addLog(claim.id, ctx, "attachment.removed", null, this.buildAttachmentRemovedComment(attachment, attachmentId), now);
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const next = this.requireClaim(claim.id);
+    await this.emitReimbursementEvent("attachment.removed", next, ctx, {
+      affectedUserIds: this.collectReimbursementRelatedUserIds(next)
+    });
+    return this.buildDetail(next);
   }
 
-  private handleApprovalAction(id: string, input: ReimbursementActionInput, ctx: RequestContext, action: "approve" | "reject"): ReimbursementClaimDetail {
+  private async handleApprovalAction(id: string, input: ReimbursementActionInput, ctx: RequestContext, action: "approve" | "reject"): Promise<ReimbursementClaimDetail> {
     const claim = this.requireClaim(id);
     const task = this.requireActionableTask(input.taskId, claim.id, ctx);
     const now = nowIso();
     const taskStatus = action === "approve" ? "approved" as const : "rejected" as const;
     const updatedTask = { ...task, status: taskStatus, comment: input.comment?.trim() || null, actedAt: now, updatedAt: now };
+    const participantUserIdsBefore = this.collectReimbursementRelatedUserIds(claim);
+    let nextTasks: ReimbursementApprovalTaskEntity[] = [];
+    let completed = false;
     this.repo.transaction(() => {
       this.repo.updateTask(updatedTask);
       if (action === "reject") {
@@ -311,9 +354,46 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
           this.repo.updateTask({ ...sibling, status: "cancelled", updatedAt: now });
         }
       }
-      this.advanceAfterApproval(claim, task, now);
+      const result = this.advanceAfterApproval(claim, task, now);
+      nextTasks = result.nextTasks;
+      completed = result.completed;
     });
-    return this.buildDetail(this.requireClaim(claim.id));
+    const next = this.requireClaim(claim.id);
+    if (action === "reject") {
+      await this.emitReimbursementEvent("rejected", next, ctx, {
+        previousAssigneeUserIds: [task.assigneeUserId],
+        participantUserIds: participantUserIdsBefore,
+        affectedUserIds: participantUserIdsBefore,
+        stageName: task.stageName
+      });
+      return this.buildDetail(next);
+    }
+
+    if (completed) {
+      await this.emitReimbursementEvent("completed", next, ctx, {
+        previousAssigneeUserIds: [task.assigneeUserId],
+        participantUserIds: participantUserIdsBefore,
+        affectedUserIds: participantUserIdsBefore,
+        stageName: task.stageName
+      });
+      return this.buildDetail(next);
+    }
+
+    await this.emitReimbursementEvent("approved", next, ctx, {
+      previousAssigneeUserIds: [task.assigneeUserId],
+      participantUserIds: participantUserIdsBefore,
+      affectedUserIds: this.uniqueUserIds([...participantUserIdsBefore, ...nextTasks.map((item) => item.assigneeUserId)]),
+      stageName: task.stageName
+    });
+    if (nextTasks.length > 0) {
+      await this.emitReimbursementEvent("stage.pending", next, ctx, {
+        currentAssigneeUserIds: nextTasks.map((item) => item.assigneeUserId),
+        previousAssigneeUserIds: [task.assigneeUserId],
+        affectedUserIds: this.uniqueUserIds([next.applicantUserId, ...nextTasks.map((item) => item.assigneeUserId)]),
+        stageName: nextTasks[0]?.stageName ?? next.currentStageName ?? undefined
+      });
+    }
+    return this.buildDetail(next);
   }
 
   private buildDetail(claim: ReimbursementClaimEntity): ReimbursementClaimDetail {
@@ -324,7 +404,11 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     };
   }
 
-  private advanceAfterApproval(claim: ReimbursementClaimEntity, task: ReimbursementApprovalTaskEntity, now: string): void {
+  private advanceAfterApproval(
+    claim: ReimbursementClaimEntity,
+    task: ReimbursementApprovalTaskEntity,
+    now: string
+  ): { completed: boolean; nextTasks: ReimbursementApprovalTaskEntity[] } {
     const stages = this.repo.listTemplateStages(task.templateId);
     const nextStage = stages
       .filter((item) => item.sort > task.sort)
@@ -338,7 +422,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
         completedAt: now,
         updatedAt: now
       });
-      return;
+      return { completed: true, nextTasks: [] };
     }
     const nextTasks = this.buildStageTasks(claim, { id: task.templateId }, nextStage, now);
     this.repo.createTasks(nextTasks);
@@ -350,6 +434,7 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       currentStageName: nextTask?.stageName ?? claim.currentStageName,
       updatedAt: now
     });
+    return { completed: false, nextTasks };
   }
 
   private buildStageTasks(
@@ -691,6 +776,60 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "user context required", 403);
     }
     return userId;
+  }
+
+  private collectReimbursementRelatedUserIds(claim: ReimbursementClaimEntity): string[] {
+    return this.uniqueUserIds([
+      claim.applicantUserId,
+      ...this.repo.listTasks(claim.id).map((task) => task.assigneeUserId)
+    ]);
+  }
+
+  private uniqueUserIds(userIds: Array<string | null | undefined>): string[] {
+    return Array.from(new Set(userIds.map((item) => item?.trim() ?? "").filter(Boolean)));
+  }
+
+  private async emitReimbursementEvent(
+    action: string,
+    claim: ReimbursementClaimEntity,
+    ctx: RequestContext,
+    options: {
+      currentAssigneeUserIds?: string[];
+      previousAssigneeUserIds?: string[];
+      participantUserIds?: string[];
+      affectedUserIds?: string[];
+      stageName?: string | null;
+    } = {}
+  ): Promise<void> {
+    if (!this.eventBus) {
+      return;
+    }
+    const participantUserIds = this.uniqueUserIds(options.participantUserIds ?? this.collectReimbursementRelatedUserIds(claim));
+    const affectedUserIds = this.uniqueUserIds(options.affectedUserIds ?? participantUserIds);
+    await this.eventBus.emit({
+      type: `reimbursement.${action}`,
+      scope: "global",
+      entityType: "reimbursement",
+      entityId: claim.id,
+      action,
+      actorId: ctx.userId ?? undefined,
+      occurredAt: claim.updatedAt || nowIso(),
+      payload: {
+        claimId: claim.id,
+        claimNo: claim.claimNo,
+        claimType: claim.claimType,
+        title: claim.reason,
+        reason: claim.reason,
+        applicantUserId: claim.applicantUserId,
+        applicantName: claim.applicantName,
+        currentAssigneeUserIds: this.uniqueUserIds(options.currentAssigneeUserIds ?? []),
+        previousAssigneeUserIds: this.uniqueUserIds(options.previousAssigneeUserIds ?? []),
+        participantUserIds,
+        affectedUserIds,
+        stageName: options.stageName ?? claim.currentStageName,
+        totalAmount: claim.totalAmount
+      }
+    });
   }
 
   private addLog(claimId: string, ctx: RequestContext, action: ReimbursementLogAction, taskId: string | null, comment: string | null, createdAt: string): void {

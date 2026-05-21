@@ -152,19 +152,20 @@ export class NotificationListComponent {
   }
 
   categoryLabel(category: NotificationItem['category']): string {
-    return (
-      {
-        issue_todo: '测试单待办',
-        issue_mention: '@我的评论',
-        issue_activity: '测试单动态',
-        rd_todo: '研发项待办',
-        rd_activity: '研发项动态',
-        announcement: '公告',
-        document: '文档',
-        release: '版本',
-        project_member: '成员变更',
-      }[category] || '通知'
-    );
+    const labels: Record<NotificationItem['category'], string> = {
+      issue_todo: '测试单待办',
+      issue_mention: '@我的评论',
+      issue_activity: '测试单动态',
+      rd_todo: '研发项待办',
+      rd_activity: '研发项动态',
+      announcement: '公告',
+      document: '文档',
+      release: '版本',
+      project_member: '成员变更',
+      reimbursement_todo: '报销待办',
+      reimbursement_activity: '报销动态',
+    };
+    return labels[category] || '通知';
   }
 
   formatRelativeTime(value: string): string {

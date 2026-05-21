@@ -8,7 +8,9 @@ export type NotificationCategory =
   | "announcement"
   | "document"
   | "release"
-  | "project_member";
+  | "project_member"
+  | "reimbursement_todo"
+  | "reimbursement_activity";
 
 export interface NotificationItem {
   id: string;

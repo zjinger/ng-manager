@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   OnInit,
   signal,
@@ -32,6 +33,7 @@ import {
   PageHeaderComponent,
 } from '@app/shared/ui';
 import { ReimbursementDetailDrawerComponent } from '../../components/reimbursement-detail-drawer/reimbursement-detail-drawer.component';
+import { ReimbursementRefreshBusService } from '../../../services/reimbursement-refresh-bus.service';
 
 @Component({
   selector: 'app-reimbursement-management-page',
@@ -55,6 +57,7 @@ export class ReimbursementManagementPage implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly organizationApi = inject(OrganizationApiService);
+  private readonly reimbursementRefreshBus = inject(ReimbursementRefreshBusService);
   readonly store = inject(ExpensesListStore);
   private readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
@@ -83,6 +86,16 @@ export class ReimbursementManagementPage implements OnInit {
     }
     return this.store.displayData().find((item) => item.id === claimId) ?? null;
   });
+
+  constructor() {
+    effect(() => {
+      const event = this.reimbursementRefreshBus.event();
+      if (event.version === 0 || event.source !== 'ws') {
+        return;
+      }
+      void this.store.refresh();
+    });
+  }
 
   ngOnInit(): void {
     this.store.updateQuery({ scope: this.initialScope(), page: 1 });

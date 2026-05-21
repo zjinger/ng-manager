@@ -43,7 +43,9 @@ const DEFAULT_EVENT_FLAGS: Record<string, boolean> = {
   announcement_published: true,
   document_published: true,
   release_published: true,
-  project_member_changed: true
+  project_member_changed: true,
+  reimbursement_todo: true,
+  reimbursement_activity: true
 };
 
 const MAX_NOTIFICATION_TITLE_LENGTH = 80;
@@ -180,7 +182,7 @@ export class NotificationService
   }
 
   private isSupportedEntityType(entityType: DomainEvent["entityType"]): boolean {
-    return ["issue", "rd", "announcement", "document", "release", "project"].includes(entityType);
+    return ["issue", "rd", "announcement", "document", "release", "project", "reimbursement"].includes(entityType);
   }
 
   // 按实体/操作的接收人策略来控制通知量。
@@ -201,6 +203,10 @@ export class NotificationService
         this.collectUserIds(payload["targetUserId"], payload["affectedUserIds"], payload["userIds"]),
         actorIds
       );
+    }
+
+    if (event.entityType === "reimbursement") {
+      return this.resolveReimbursementRecipientUserIds(event, normalized.action);
     }
 
     if (event.entityType === "announcement" || event.entityType === "document" || event.entityType === "release") {
@@ -269,6 +275,9 @@ export class NotificationService
     }
     if (event.entityType === "project") {
       return this.normalizeProjectEvent(event);
+    }
+    if (event.entityType === "reimbursement") {
+      return this.normalizeReimbursementEvent(event);
     }
     if (event.entityType === "announcement" || event.entityType === "document" || event.entityType === "release") {
       return this.normalizeContentEvent(event);
@@ -372,12 +381,47 @@ export class NotificationService
     };
   }
 
+  private normalizeReimbursementEvent(event: DomainEvent): NormalizedNotification | null {
+    if (
+      event.action === "created" ||
+      event.action === "updated" ||
+      event.action === "attachment.added" ||
+      event.action === "attachment.removed"
+    ) {
+      return null;
+    }
+
+    const payload = event.payload ?? {};
+    const claimNo = this.pickString(payload["claimNo"]);
+    const reason = this.pickString(payload["reason"]) || this.pickString(payload["title"]);
+    const stageName = this.pickString(payload["stageName"]);
+    const applicantName = this.pickString(payload["applicantName"]);
+    const title = claimNo ? `报销单 ${claimNo}` : `报销单 ${event.entityId}`;
+    const kind: NotificationKind = this.isReimbursementTodoAction(event.action) ? "todo" : "activity";
+
+    return {
+      kind,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      action: event.action,
+      title,
+      description: this.reimbursementNotificationDescription(event.action, claimNo, reason, stageName, applicantName),
+      sourceLabel: kind === "todo" ? "报销待办" : "报销动态",
+      projectId: null,
+      route: `/reimbursements/${event.entityId}`
+    };
+  }
+
   private isIssueTodoAction(action: string): boolean {
     return action === "assign" || action === "claim" || action === "participant.added" || action === "verify.pending";
   }
 
   private isRdTodoAction(action: string): boolean {
     return action === "created" || action === "complete";
+  }
+
+  private isReimbursementTodoAction(action: string): boolean {
+    return action === "submitted" || action === "stage.pending" || action === "transferred" || action === "add_sign";
   }
 
   private issueActionLabel(action: string, kind: NotificationKind): string {
@@ -460,6 +504,41 @@ export class NotificationService
         advance_stage: "阶段已推进"
       }[action] || "状态已更新"
     );
+  }
+
+  private reimbursementNotificationDescription(
+    action: string,
+    claimNo: string,
+    reason: string,
+    stageName: string,
+    applicantName: string
+  ): string {
+    const prefix = claimNo || "报销单";
+    const applicantText = applicantName ? ` · ${applicantName}` : "";
+    const reasonText = reason ? ` · ${reason}` : "";
+
+    if (action === "submitted") {
+      return `${prefix}${applicantText}${reasonText} · 待你审批`;
+    }
+    if (action === "stage.pending") {
+      return `${prefix}${reasonText} · 流转到${stageName || "下一审批节点"}`;
+    }
+    if (action === "transferred") {
+      return `${prefix}${reasonText} · 已转交给你处理`;
+    }
+    if (action === "add_sign") {
+      return `${prefix}${reasonText} · 需要你加签`;
+    }
+    if (action === "approved") {
+      return `${prefix}${reasonText} · ${stageName || "审批节点"}已通过`;
+    }
+    if (action === "rejected") {
+      return `${prefix}${reasonText} · 已驳回`;
+    }
+    if (action === "completed") {
+      return `${prefix}${reasonText} · 已完成`;
+    }
+    return `${prefix}${reasonText} · 状态已更新`;
   }
 
   // Normalize issue actions into notification actions.
@@ -579,6 +658,24 @@ export class NotificationService
     );
   }
 
+  private resolveReimbursementRecipientUserIds(event: DomainEvent, action: string): string[] {
+    const payload = event.payload ?? {};
+    const actorIds = this.collectActorCandidateIds(event, payload);
+
+    if (this.isReimbursementTodoAction(action)) {
+      return this.excludeActorIds(this.collectUserIds(payload["currentAssigneeUserIds"]), actorIds);
+    }
+
+    if (action === "approved" || action === "rejected" || action === "completed") {
+      return this.excludeActorIds(
+        this.collectUserIds(payload["applicantUserId"], payload["participantUserIds"]),
+        actorIds
+      );
+    }
+
+    return this.excludeActorIds(this.extractAffectedUserIds(event), actorIds);
+  }
+
   private collectUserIds(...values: unknown[]): string[] {
     const ids = new Set<string>();
     for (const value of values) {
@@ -655,6 +752,12 @@ export class NotificationService
     if (category === "project_member") {
       return "project_member_changed";
     }
+    if (category === "reimbursement_todo") {
+      return "reimbursement_todo";
+    }
+    if (category === "reimbursement_activity") {
+      return "reimbursement_activity";
+    }
     return null;
   }
 
@@ -677,6 +780,9 @@ export class NotificationService
     }
     if (normalized.entityType === "project") {
       return "project_member";
+    }
+    if (normalized.entityType === "reimbursement") {
+      return normalized.kind === "todo" ? "reimbursement_todo" : "reimbursement_activity";
     }
     return "issue_activity";
   }

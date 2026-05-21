@@ -455,6 +455,12 @@ export class NotificationRepo {
     if (category === "project_member") {
       return { clause: "(n.entity_type = ?)", params: ["project"] };
     }
+    if (category === "reimbursement_todo") {
+      return { clause: "(n.entity_type = ? AND n.kind = 'todo')", params: ["reimbursement"] };
+    }
+    if (category === "reimbursement_activity") {
+      return { clause: "(n.entity_type = ? AND n.kind = 'activity')", params: ["reimbursement"] };
+    }
     return { clause: "(n.entity_type = ?)", params: [category] };
   }
 
@@ -473,6 +479,9 @@ export class NotificationRepo {
     }
     if (entityType === "project") {
       return "project_member";
+    }
+    if (entityType === "reimbursement") {
+      return kind === "todo" ? "reimbursement_todo" : "reimbursement_activity";
     }
     if (entityType === "announcement" || entityType === "document" || entityType === "release") {
       return entityType;

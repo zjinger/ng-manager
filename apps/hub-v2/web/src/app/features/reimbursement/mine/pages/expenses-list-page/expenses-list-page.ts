@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   OnInit,
   signal,
@@ -27,6 +28,7 @@ import type {
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { ExpensesListStore } from '@app/features/reimbursement/stores/expenses-list.store';
 import { ReimbursementDetailDrawerComponent } from '@app/features/reimbursement/management/components/reimbursement-detail-drawer/reimbursement-detail-drawer.component';
+import { ReimbursementRefreshBusService } from '@app/features/reimbursement/services/reimbursement-refresh-bus.service';
 
 @Component({
   selector: 'app-expenses-list-page',
@@ -49,6 +51,7 @@ import { ReimbursementDetailDrawerComponent } from '@app/features/reimbursement/
 })
 export class ExpensesListPage implements OnInit {
   private router = inject(Router);
+  private readonly reimbursementRefreshBus = inject(ReimbursementRefreshBusService);
   readonly store = inject(ExpensesListStore);
 
   // ========== 配置数据 ==========
@@ -75,6 +78,16 @@ export class ExpensesListPage implements OnInit {
     }
     return this.store.displayData().find((item) => item.id === claimId) ?? null;
   });
+
+  constructor() {
+    effect(() => {
+      const event = this.reimbursementRefreshBus.event();
+      if (event.version === 0 || event.source !== 'ws') {
+        return;
+      }
+      void this.store.refresh();
+    });
+  }
 
   // ========== 生命周期 ==========
 

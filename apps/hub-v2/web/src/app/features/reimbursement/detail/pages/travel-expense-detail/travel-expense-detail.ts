@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   signal,
   OnInit,
@@ -36,6 +37,7 @@ import type {
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { CreateReimbursementClaimInput } from '@app/features/reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
+import { ReimbursementRefreshBusService } from '@app/features/reimbursement/services/reimbursement-refresh-bus.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -67,6 +69,7 @@ export class TravelExpenseDetail implements OnInit {
   private readonly modal = inject(NzModalService);
   private readonly authStore = inject(AuthStore);
   private readonly reimbursementApi = inject(ReimbursementApiService);
+  private readonly reimbursementRefreshBus = inject(ReimbursementRefreshBusService);
   readonly loading = signal(true);
   readonly approving = signal(false);
   readonly rejecting = signal(false);
@@ -77,6 +80,20 @@ export class TravelExpenseDetail implements OnInit {
     if (!detail) return {} as ReimbursementClaimDetail;
     return detail;
   });
+
+  constructor() {
+    effect(() => {
+      const event = this.reimbursementRefreshBus.event();
+      const claimId = this.route.snapshot.paramMap.get('claimId') ?? this.route.snapshot.paramMap.get('id');
+      if (event.version === 0 || event.source !== 'ws' || !claimId) {
+        return;
+      }
+      if (event.claimId && event.claimId !== claimId) {
+        return;
+      }
+      this.loadDetailData();
+    });
+  }
 
   /**
    * 表单数据 - 适配 ExpensePreviewComponent

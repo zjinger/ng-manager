@@ -13,6 +13,7 @@ type ParsedRoute = {
 const ISSUE_CATEGORIES: NotificationCategory[] = ['issue_todo', 'issue_mention', 'issue_activity'];
 const RD_CATEGORIES: NotificationCategory[] = ['rd_todo', 'rd_activity'];
 const CONTENT_CATEGORIES: NotificationCategory[] = ['announcement', 'document', 'release'];
+const REIMBURSEMENT_CATEGORIES: NotificationCategory[] = ['reimbursement_todo', 'reimbursement_activity'];
 
 export function buildNotificationRouteTarget(item: NotificationItem): NotificationRouteTarget {
   if (item.category === 'project_member') {
@@ -37,6 +38,15 @@ export function buildNotificationRouteTarget(item: NotificationItem): Notificati
       query['detail'] = entityId;
     }
     return withQuery(['/content'], query);
+  }
+
+  if (REIMBURSEMENT_CATEGORIES.includes(item.category)) {
+    const pathParts = parsed.path.split('/').filter(Boolean);
+    const claimId = pathParts[0] === 'reimbursements' && pathParts[1] ? pathParts[1] : entityId;
+    if (claimId) {
+      return withQuery(['/reimbursements', claimId], parsed.query);
+    }
+    return withQuery(['/reimbursements'], parsed.query);
   }
 
   const path = normalizePath(parsed.path);

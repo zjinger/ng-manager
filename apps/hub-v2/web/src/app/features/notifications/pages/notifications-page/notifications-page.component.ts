@@ -55,6 +55,8 @@ import { NotificationStore } from '../../store/notification.store';
           <nz-option nzLabel="文档" nzValue="document"></nz-option>
           <nz-option nzLabel="版本" nzValue="release"></nz-option>
           <nz-option nzLabel="成员变更" nzValue="project_member"></nz-option>
+          <nz-option nzLabel="报销待办" nzValue="reimbursement_todo"></nz-option>
+          <nz-option nzLabel="报销动态" nzValue="reimbursement_activity"></nz-option>
         </nz-select>
 
         <nz-select

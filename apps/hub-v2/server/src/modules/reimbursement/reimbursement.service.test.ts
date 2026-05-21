@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import Database from "better-sqlite3";
 
 import { createRequestContext } from "../../shared/context/request-context";
+import type { DomainEvent } from "../../shared/event/domain-event";
+import type { EventBus } from "../../shared/event/event-bus";
 import { ReimbursementRepo } from "./reimbursement.repo";
 import { ReimbursementService } from "./reimbursement.service";
 import { resolveTemplateType } from "./reimbursement-word-export";
@@ -217,6 +219,17 @@ function ctx(userId: string, roles: string[] = ["user"]) {
   });
 }
 
+function createRecordingEventBus(events: DomainEvent[]): EventBus {
+  return {
+    async emit(event) {
+      events.push(event);
+    },
+    subscribe() {
+      return () => {};
+    }
+  };
+}
+
 describe("ReimbursementService", () => {
   it("creates, submits and approves through every configured stage", async () => {
     const db = createDb();
@@ -264,6 +277,58 @@ describe("ReimbursementService", () => {
       detail = await service.approve(detail.id, { taskId: detail.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_finance"));
       assert.equal(detail.status, "completed");
       assert.equal(detail.currentStageName, null);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("publishes reimbursement domain events for workflow changes", async () => {
+    const db = createDb();
+    const events: DomainEvent[] = [];
+    try {
+      const service = new ReimbursementService(new ReimbursementRepo(db), createRecordingEventBus(events));
+      const created = await service.create(
+        {
+          claimType: "general",
+          departmentId: "dep_rd",
+          reason: "办公用品",
+          items: [{ amount: 60 }]
+        },
+        ctx("usr_applicant")
+      );
+      const submitted = await service.submit(created.id, ctx("usr_applicant"));
+      const submittedEvent = events.find((event) => event.action === "submitted");
+      assert.equal(submittedEvent?.entityType, "reimbursement");
+      assert.equal(submittedEvent?.entityId, created.id);
+      assert.deepEqual(submittedEvent?.payload?.currentAssigneeUserIds, ["usr_manager"]);
+      assert.deepEqual(submittedEvent?.payload?.affectedUserIds, ["usr_applicant", "usr_manager"]);
+      assert.equal(submittedEvent?.payload?.claimNo, submitted.claimNo);
+
+      await service.approve(submitted.id, { taskId: submitted.tasks.find((task) => task.status === "pending")!.id }, ctx("usr_manager"));
+      const approvedEvent = events.find((event) => event.action === "approved");
+      const nextStageEvent = events.find((event) => event.action === "stage.pending");
+      assert.deepEqual(approvedEvent?.payload?.previousAssigneeUserIds, ["usr_manager"]);
+      assert.deepEqual(nextStageEvent?.payload?.currentAssigneeUserIds, ["usr_dept_manager"]);
+      assert.equal(nextStageEvent?.payload?.stageName, "部门主管");
+
+      const rejectedClaim = await service.create(
+        {
+          claimType: "general",
+          departmentId: "dep_rd",
+          reason: "差旅补贴",
+          items: [{ amount: 20 }]
+        },
+        ctx("usr_applicant")
+      );
+      const rejectedSubmitted = await service.submit(rejectedClaim.id, ctx("usr_applicant"));
+      await service.reject(
+        rejectedSubmitted.id,
+        { taskId: rejectedSubmitted.tasks.find((task) => task.status === "pending")!.id, comment: "请补充说明" },
+        ctx("usr_manager")
+      );
+      const rejectedEvent = events.find((event) => event.entityId === rejectedClaim.id && event.action === "rejected");
+      assert.deepEqual(rejectedEvent?.payload?.affectedUserIds, ["usr_applicant", "usr_manager"]);
+      assert.equal(rejectedEvent?.payload?.stageName, "审核");
     } finally {
       db.close();
     }
