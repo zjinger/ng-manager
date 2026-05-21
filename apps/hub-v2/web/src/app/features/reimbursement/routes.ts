@@ -14,7 +14,7 @@ export const REIMBURSEMENT_ROUTES: Routes = [
           permissionMode: 'any',
         },
         loadComponent: () =>
-          import('./management/pages/reimbursement-management-page/reimbursement-management-page').then(
+          import('./management/reimbursement-management-page/reimbursement-management-page').then(
             (m) => m.ReimbursementManagementPage
           ),
       },
@@ -23,38 +23,38 @@ export const REIMBURSEMENT_ROUTES: Routes = [
         canActivate: [permissionGuard],
         data: { permissions: ['expense.view.self'] },
         loadComponent: () =>
-          import('./mine/pages/expenses-list-page/expenses-list-page').then((m) => m.ExpensesListPage),
+          import('./mine/expenses-list-page/expenses-list-page').then((m) => m.ExpensesListPage),
       },
       {
         path: 'new/travel',
         loadComponent: () =>
-          import('./form/pages/add-travel-expense/add-travel-expense').then((m) => m.AddTravelExpense),
+          import('./form/add-travel-expense/add-travel-expense').then((m) => m.AddTravelExpense),
       },
       {
         path: 'new/general',
         loadComponent: () =>
-          import('./form/pages/add-expense/add-expense').then((m) => m.AddExpense),
+          import('./form/add-expense/add-expense').then((m) => m.AddExpense),
       },
       {
         path: 'announcements',
         canActivate: [permissionGuard],
         data: { permissions: ['expense.rule.manage'] },
         loadComponent: () =>
-          import('./announcements/pages/reimbursement-announcement-page/reimbursement-announcement-page').then(
+          import('./announcements/reimbursement-announcement-page/reimbursement-announcement-page').then(
             (m) => m.ReimbursementAnnouncementPage
           ),
       },
       {
         path: ':claimId/edit',
         loadComponent: () =>
-          import('./form/pages/reimbursement-edit-page/reimbursement-edit-page').then(
+          import('./form/reimbursement-edit-page/reimbursement-edit-page').then(
             (m) => m.ReimbursementEditPage
           ),
       },
       {
         path: ':claimId',
         loadComponent: () =>
-          import('./detail/pages/reimbursement-detail/reimbursement-detail').then(
+          import('./detail/reimbursement-detail/reimbursement-detail').then(
             (m) => m.ReimbursementDetailPage
           ),
       },

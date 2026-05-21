@@ -31,8 +31,8 @@ import {
   ListStateComponent,
   PageHeaderComponent,
 } from '@app/shared/ui';
-import { ReimbursementDetailDrawerComponent } from '../../components/reimbursement-detail-drawer/reimbursement-detail-drawer.component';
-import { ReimbursementRefreshBusService } from '../../../services/reimbursement-refresh-bus.service';
+import { ReimbursementDetailDrawerComponent } from '../components/reimbursement-detail-drawer/reimbursement-detail-drawer.component';
+import { ReimbursementRefreshBusService } from '../../services/reimbursement-refresh-bus.service';
 
 @Component({
   selector: 'app-reimbursement-management-page',

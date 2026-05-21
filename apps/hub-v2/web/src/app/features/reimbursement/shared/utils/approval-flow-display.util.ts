@@ -1,4 +1,4 @@
-import { ReimbursementApprovalPreviewNode } from '@app/features/reimbursement/models/reimbursement.model';
+import type { ReimbursementApprovalPreviewNode } from '@app/features/reimbursement/models/reimbursement.model';
 
 export type FlowNodeStatus = 'wait' | 'process' | 'finish' | 'rejected' | 'cancelled';
 
@@ -94,7 +94,7 @@ export function getStatusText(status: FlowNodeStatus): string {
 /** 获取审批人名称列表 */
 export function getAssigneeNames(assignees: Array<{ userId: string; name: string }>): string {
   if (!assignees || assignees.length === 0) return '';
-  return assignees.map((a) => a.name).join(', ');
+  return assignees.map((assignee) => assignee.name).join(', ');
 }
 
 /** 转换预览数据为显示节点 */

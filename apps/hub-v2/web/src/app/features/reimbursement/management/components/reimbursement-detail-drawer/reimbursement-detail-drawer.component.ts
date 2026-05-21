@@ -4,7 +4,7 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import type { ReimbursementClaimEntity } from '@app/features/reimbursement/models/reimbursement.model';
-import { ReimbursementDetailDrawerPageComponent } from '../../pages/reimbursement-detail-page/reimbursement-detail-drawer-page.component';
+import { ReimbursementDetailDrawerPageComponent } from './reimbursement-detail-drawer-page.component';
 
 @Component({
   selector: 'app-reimbursement-detail-drawer',

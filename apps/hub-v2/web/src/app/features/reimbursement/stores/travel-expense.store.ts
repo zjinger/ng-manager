@@ -13,22 +13,7 @@ import {
   ReimbursementLogEntity,
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
-
-export interface ExpenseAttachment {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  size: number;
-  uploadTime: Date;
-}
-
-export interface ExpenseSummary {
-  totalAmount: number;
-  advanceAmount: number;
-  differenceAmount: number;
-  attachments: ReimbursementAttachmentEntity[];
-}
+import type { ExpenseSummary } from '@app/features/reimbursement/shared/models/expense-summary.model';
 
 export interface TravelExpenseDraft {
   basicInfo: CreateReimbursementClaimInput;

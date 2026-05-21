@@ -29,7 +29,7 @@ import {
 
 import { formatUploadSizeLimit, UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
 
-import { ExpenseSummary } from '../../models';
+import type { ExpenseSummary } from '../../models/expense-summary.model';
 import { ReimbursementUploadService } from '@app/shared/services/reimbursement-upload.service';
 import {
   ReimbursementAttachmentEntity,
@@ -92,7 +92,7 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)
             <nz-form-label>
               预支金额
 
-              <span class="editable-tip"> 可编辑 </span>
+              <!-- <span class="editable-tip"> 可编辑 </span> -->
             </nz-form-label>
 
             <nz-form-control>

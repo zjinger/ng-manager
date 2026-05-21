@@ -26,7 +26,7 @@ import {
   getAssigneeNames,
   getStatusText,
   transformToDisplayNodes,
-} from '../../models/flow-node.utils';
+} from '../../utils/approval-flow-display.util';
 
 @Component({
   selector: 'app-approval-flow',

@@ -11,11 +11,11 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { AuthStore } from '@core/auth';
 import { FilterBarComponent, ListStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
-import { AnnouncementListComponent } from '../../../../content/components/announcement-list/announcement-list.component';
-import { ContentDetailDrawerComponent } from '../../../../content/components/content-detail-drawer/content-detail-drawer.component';
-import type { AnnouncementEntity, ContentStatus, CreateAnnouncementInput } from '../../../../content/models/content.model';
-import { ContentApiService } from '../../../../content/services/content-api.service';
-import { ReimbursementAnnouncementDialogComponent } from '../../dialogs/reimbursement-announcement-dialog.component';
+import { AnnouncementListComponent } from '../../../content/components/announcement-list/announcement-list.component';
+import { ContentDetailDrawerComponent } from '../../../content/components/content-detail-drawer/content-detail-drawer.component';
+import type { AnnouncementEntity, ContentStatus, CreateAnnouncementInput } from '../../../content/models/content.model';
+import { ContentApiService } from '../../../content/services/content-api.service';
+import { ReimbursementAnnouncementDialogComponent } from '../dialogs/reimbursement-announcement-dialog.component';
 
 type ReimbursementAnnouncementDialogValue = Pick<
   CreateAnnouncementInput,
