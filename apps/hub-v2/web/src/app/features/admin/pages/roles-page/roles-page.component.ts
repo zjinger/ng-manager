@@ -21,6 +21,7 @@ import type {
   UpdateSystemRoleInput,
 } from '../../models/system-rbac.model';
 import { SystemRbacApiService } from '../../services/system-rbac-api.service';
+import { canModifySystemRole } from '../../utils/system-rbac-ui';
 import { AddUsersDialogComponent } from './add-users-dialog.component';
 import { RoleDetailDialogComponent } from './role-detail-dialog.component';
 import { RoleFormDialogComponent } from './role-form-dialog.component';
@@ -120,23 +121,25 @@ import { RoleFormDialogComponent } from './role-form-dialog.component';
               <div class="role-card__meta">
                 <span><nz-icon nzType="team" /> {{ role.userCount }} 人</span>
                 <span><nz-icon nzType="key" /> {{ role.permissionCount }} 项权限</span>
-                @if (role.isBuiltin) {
+                @if (!canModifyRole(role)) {
                   <span><nz-icon nzType="lock" /> 不可编辑</span>
                 }
               </div>
             </div>
-            @if (!role.isBuiltin) {
+            @if (canModifyRole(role)) {
               <div class="role-card__actions" (click)="$event.stopPropagation()">
                 <button nz-button nzSize="small" (click)="openEditRole(role)">编辑</button>
                 <button nz-button nzSize="small" (click)="toggleRoleStatus(role)">
                   {{ role.status === 'active' ? '停用' : '启用' }}
                 </button>
-                <nz-popconfirm
-                  nzPopconfirmTitle="确定删除该角色？"
-                  (nzOnConfirm)="deleteRole(role)"
-                >
-                  <button nz-button nzDanger nzSize="small" nz-popconfirm>删除</button>
-                </nz-popconfirm>
+                @if (!role.isBuiltin) {
+                  <nz-popconfirm
+                    nzPopconfirmTitle="确定删除该角色？"
+                    (nzOnConfirm)="deleteRole(role)"
+                  >
+                    <button nz-button nzDanger nzSize="small" nz-popconfirm>删除</button>
+                  </nz-popconfirm>
+                }
               </div>
             }
           </div>
@@ -375,6 +378,10 @@ export class RolesPageComponent {
     if (role.code === 'admin') return 'admin';
     if (role.code === 'member') return 'member';
     return 'custom';
+  }
+
+  canModifyRole(role: SystemRoleWithCounts | SystemRoleDetail | null): boolean {
+    return canModifySystemRole(role);
   }
 
   openCreateRole(): void {

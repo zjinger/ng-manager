@@ -1,4 +1,4 @@
-import type { SystemPermissionEntity, SystemRoleDetail } from '../models/system-rbac.model';
+import type { SystemPermissionEntity, SystemRoleDetail, SystemRoleEntity } from '../models/system-rbac.model';
 
 export interface SystemPermissionGroup {
   groupCode: string;
@@ -38,6 +38,10 @@ export function getSystemRoleBadgeClass(roleCode: string): string {
     return 'member';
   }
   return 'custom';
+}
+
+export function canModifySystemRole(role: Pick<SystemRoleEntity, 'code'> | null | undefined): boolean {
+  return !!role && role.code !== 'super_admin';
 }
 
 export function areStringSetsEqual(left: Set<string>, right: Set<string>): boolean {

@@ -82,7 +82,7 @@ VALUES
     '会计',
     'finance_review',
     'system_role',
-    'srole_finance_reviewer',
+    'srole_finance',
     30,
     datetime('now'),
     datetime('now')
@@ -94,7 +94,7 @@ VALUES
     '出纳',
     'cashier',
     'system_role',
-    'srole_finance_cashier',
+    'srole_finance',
     40,
     datetime('now'),
     datetime('now')

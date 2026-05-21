@@ -3,6 +3,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import type { SystemPermissionEntity, SystemRoleDetail } from '../../models/system-rbac.model';
 import {
+  canModifySystemRole,
   groupSystemPermissions,
   type PermissionMatrixColumn
 } from '../../utils/system-rbac-ui';
@@ -21,7 +22,7 @@ import { SystemRoleSummaryComponent } from '../../components/system-role-summary
             [fallbackDescription]="'按角色集中查看和维护系统权限。'"
           />
           <span class="permissions-card__readonly">
-            {{ currentRole.isBuiltin ? '内置角色仅支持查看' : '按角色维护系统权限' }}
+            {{ canModifyRole() ? '按角色维护系统权限' : '超级管理员角色仅支持查看' }}
           </span>
         </div>
 
@@ -56,8 +57,8 @@ import { SystemRoleSummaryComponent } from '../../components/system-role-summary
                           type="button"
                           class="perm-check"
                           [class.perm-check--granted]="isCellGranted(perm.id)"
-                          [class.perm-check--disabled]="currentRole.isBuiltin"
-                          [disabled]="currentRole.isBuiltin"
+                          [class.perm-check--disabled]="!canModifyRole()"
+                          [disabled]="!canModifyRole()"
                           [attr.aria-label]="perm.name + ' 管理'"
                           (click)="toggle.emit({ permissionId: perm.id, column: 'manage' })"
                         >
@@ -206,6 +207,7 @@ export class PermissionMatrixCardComponent {
   readonly toggle = output<{ permissionId: string; column: PermissionMatrixColumn }>();
 
   readonly permissionGroups = computed(() => groupSystemPermissions(this.permissions()));
+  readonly canModifyRole = computed(() => canModifySystemRole(this.role()));
 
   isCellGranted(permissionId: string): boolean {
     return this.checkedPermissionIds().has(permissionId);

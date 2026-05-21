@@ -134,8 +134,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     if (!current) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${id}`, 404);
     }
-    if (current.isBuiltin) {
-      throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "built-in role cannot be modified", 403);
+    if (this.isProtectedSystemRole(current)) {
+      throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "super admin role cannot be modified", 403);
     }
     const nextCode = input.code?.trim() ?? current.code;
     const sameCode = this.repo.findRoleByCode(nextCode);
@@ -200,8 +200,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
     }
-    if (role.isBuiltin) {
-      throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "built-in role cannot be modified", 403);
+    if (this.isProtectedSystemRole(role)) {
+      throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "super admin role cannot be modified", 403);
     }
     for (const permissionId of input.permissionIds) {
       if (!this.repo.findPermissionById(permissionId)) {
@@ -231,6 +231,9 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
     }
+    if (this.isProtectedSystemRole(role)) {
+      throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "super admin role cannot be modified", 403);
+    }
     const now = nowIso();
     for (const userId of input.userIds) {
       if (!this.repo.userExists(userId)) {
@@ -257,6 +260,9 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
     const role = this.repo.findRoleById(roleId);
     if (!role) {
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_NOT_FOUND, `system role not found: ${roleId}`, 404);
+    }
+    if (this.isProtectedSystemRole(role)) {
+      throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "super admin role cannot be modified", 403);
     }
     if (!this.repo.userExists(userId)) {
       throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${userId}`, 404);
@@ -389,5 +395,9 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
 
   private requireManage(ctx: RequestContext): void {
     requirePermission(ctx, SystemRbacService.MANAGE_PERMISSION);
+  }
+
+  private isProtectedSystemRole(role: SystemRoleEntity): boolean {
+    return role.code === "super_admin";
   }
 }

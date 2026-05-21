@@ -40,7 +40,7 @@ function createDb() {
       UNIQUE(template_id, stage_code)
     );
   `);
-  db.prepare("INSERT INTO system_roles (id, code, name, status) VALUES (?, ?, ?, ?)").run("srole_finance_reviewer", "finance_reviewer", "财务复核", "active");
+  db.prepare("INSERT INTO system_roles (id, code, name, status) VALUES (?, ?, ?, ?)").run("srole_finance", "finance", "财务", "active");
   return db;
 }
 
@@ -73,7 +73,7 @@ describe("ApprovalTemplateService", () => {
               stageName: "财务复核",
               stageType: "finance_review",
               resolverType: "system_role",
-              resolverRef: "srole_finance_reviewer"
+              resolverRef: "srole_finance"
             }
           ]
         },
@@ -82,7 +82,7 @@ describe("ApprovalTemplateService", () => {
 
       assert.equal(template.code, "expense_default");
       assert.equal(template.stages.length, 2);
-      assert.equal(template.stages[1].resolverRef, "srole_finance_reviewer");
+      assert.equal(template.stages[1].resolverRef, "srole_finance");
     } finally {
       db.close();
     }
@@ -133,7 +133,7 @@ describe("ApprovalTemplateService", () => {
                   stageName: "直属主管",
                   stageType: "direct_manager",
                   resolverType: "direct_manager",
-                  resolverRef: "srole_finance_reviewer"
+                  resolverRef: "srole_finance"
                 }
               ]
             },

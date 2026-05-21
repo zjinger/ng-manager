@@ -97,8 +97,7 @@ VALUES
 INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
 VALUES
   ('srole_expense_manager', 'expense_manager', '报销管理员', '维护报销规则、审批模板并查看报表。', 1, 'business', '业务角色', 'active', 110, datetime('now'), datetime('now')),
-  ('srole_finance_reviewer', 'finance_reviewer', '财务复核', '具备财务复核能力。', 1, 'business', '业务角色', 'active', 120, datetime('now'), datetime('now')),
-  ('srole_finance_cashier', 'finance_cashier', '出纳', '具备付款出纳能力。', 1, 'business', '业务角色', 'active', 130, datetime('now'), datetime('now'));
+  ('srole_finance', 'finance', '财务', '具备个人报销提交、财务复核与出纳处理能力。', 1, 'business', '业务角色', 'active', 120, datetime('now'), datetime('now'));
 
 -- Assign permissions to roles
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
@@ -125,14 +124,9 @@ FROM system_permissions
 WHERE code IN ('expense.submit', 'expense.view.self', 'expense.report.view', 'expense.review.manage', 'expense.rule.manage');
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
-SELECT 'srole_finance_reviewer', id, datetime('now')
+SELECT 'srole_finance', id, datetime('now')
 FROM system_permissions
-WHERE code IN ('expense.view.self', 'expense.report.view', 'finance.review');
-
-INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
-SELECT 'srole_finance_cashier', id, datetime('now')
-FROM system_permissions
-WHERE code IN ('expense.view.self', 'expense.report.view', 'finance.cashier');
+WHERE code IN ('expense.submit', 'expense.view.self', 'expense.report.view', 'finance.review', 'finance.cashier');
 
 -- Assign roles to users
 INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
@@ -141,13 +135,6 @@ FROM admin_accounts aa
 WHERE aa.role = 'admin'
   AND aa.user_id IS NOT NULL
   AND lower(trim(aa.username)) = 'admin';
-
-INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
-SELECT 'usr_admin_' || aa.user_id, aa.user_id, 'srole_admin', datetime('now')
-FROM admin_accounts aa
-WHERE aa.role = 'admin'
-  AND aa.user_id IS NOT NULL
-  AND lower(trim(aa.username)) <> 'admin';
 
 INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
 SELECT 'usr_member_' || aa.user_id, aa.user_id, 'srole_member', datetime('now')

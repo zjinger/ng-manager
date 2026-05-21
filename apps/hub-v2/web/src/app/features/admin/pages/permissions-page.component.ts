@@ -12,6 +12,7 @@ import type { SystemPermissionEntity, SystemRoleDetail, SystemRoleWithCounts } f
 import { SystemRbacApiService } from '../services/system-rbac-api.service';
 import {
   areStringSetsEqual,
+  canModifySystemRole,
   createStringSet,
   getRolePermissionIdSet,
   toggleStringSetValue,
@@ -165,7 +166,7 @@ export class PermissionsPageComponent {
   readonly hasSelectionSnapshot = computed(() => this.loadedPermissionSnapshot() !== null);
   readonly canSave = computed(() => {
     const role = this.detail();
-    return !!role && !role.isBuiltin && !this.detailLoading() && this.hasChanges();
+    return canModifySystemRole(role) && !this.detailLoading() && this.hasChanges();
   });
 
   constructor() {
@@ -238,7 +239,7 @@ export class PermissionsPageComponent {
 
   togglePermission(permissionId: string, column: PermissionMatrixColumn): void {
     const role = this.detail();
-    if (!role || role.isBuiltin || column !== 'manage') {
+    if (!role || !canModifySystemRole(role) || column !== 'manage') {
       return;
     }
     this.checkedPermissionIds.update((current) => toggleStringSetValue(current, permissionId));
@@ -246,7 +247,7 @@ export class PermissionsPageComponent {
 
   savePermissions(): void {
     const role = this.detail();
-    if (!role || role.isBuiltin || !this.hasChanges()) {
+    if (!role || !canModifySystemRole(role) || !this.hasChanges()) {
       return;
     }
     this.saving.set(true);

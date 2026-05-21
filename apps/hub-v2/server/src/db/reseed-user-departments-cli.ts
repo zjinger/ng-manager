@@ -29,7 +29,7 @@ const USER_DEPARTMENT_SEEDS: UserDepartmentSeed[] = [
   { username: "qa.hub", departmentCode: "planning_mgmt", roleCode: "member" },
   { username: "ux.hub", departmentCode: "planning_mgmt", roleCode: "member" },
   { username: "ops.hub", departmentCode: "backend_rd", roleCode: "member" },
-  { username: "finance", departmentCode: "finance_legal_tax", roleCode: "finance_reviewer+finance_cashier" },
+  { username: "finance", departmentCode: "finance_legal_tax", roleCode: "finance" },
   { username: "bizdev", departmentCode: "business_marketing", roleCode: "expense_manager" }
 ];
 
@@ -46,8 +46,7 @@ const USER_MANAGER_SEEDS: UserManagerSeed[] = [
 const SEED_MANAGED_SYSTEM_ROLE_CODES = [
   "member",
   "expense_manager",
-  "finance_reviewer",
-  "finance_cashier"
+  "finance"
 ];
 
 function parseMode(argv: string[]): Mode {

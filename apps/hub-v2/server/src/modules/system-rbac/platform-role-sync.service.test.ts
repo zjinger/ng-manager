@@ -33,7 +33,7 @@ function createDb() {
     VALUES
       ('srole_admin', 'admin', '管理员', '', 1, 'platform_admin', '平台管理角色', 'active', 10, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
       ('srole_member', 'member', '成员', '', 1, 'platform_admin', '平台管理角色', 'active', 20, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
-      ('srole_finance', 'finance_reviewer', '财务复核', '', 1, 'business', '业务角色', 'active', 30, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+      ('srole_finance', 'finance', '财务', '', 1, 'business', '业务角色', 'active', 30, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
   `);
   return db;
 }

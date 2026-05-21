@@ -8,7 +8,7 @@ import { DialogShellComponent } from '@shared/ui/dialog';
 import type { SystemRoleDetail, SystemPermissionEntity, RoleUserEntity } from '../../models/system-rbac.model';
 import { PermissionEditorListComponent } from '../../components/permission-editor-list.component';
 import { SystemRoleSummaryComponent } from '../../components/system-role-summary.component';
-import { createStringSet, getRolePermissionIdSet, toggleStringSetValue } from '../../utils/system-rbac-ui';
+import { canModifySystemRole, createStringSet, getRolePermissionIdSet, toggleStringSetValue } from '../../utils/system-rbac-ui';
 
 @Component({
   selector: 'app-role-detail-dialog',
@@ -48,7 +48,7 @@ import { createStringSet, getRolePermissionIdSet, toggleStringSetValue } from '.
               <app-permission-editor-list
                 [permissions]="permissions()"
                 [checkedPermissionIds]="checkedPermissionIds()"
-                [disabled]="isBuiltIn()"
+                [disabled]="!canModifyRole()"
                 [saving]="permissionsSaving()"
                 (toggle)="handlePermissionToggle($event.permissionId, $event.checked)"
                 (save)="emitSavePermissions()"
@@ -57,7 +57,7 @@ import { createStringSet, getRolePermissionIdSet, toggleStringSetValue } from '.
 
             <nz-tab [nzTitle]="'成员管理 (' + users().length + ')'">
               <div class="members-header">
-                <button nz-button nzType="primary" nzSize="small" (click)="addUsers.emit()">
+                <button nz-button nzType="primary" nzSize="small" [disabled]="!canModifyRole()" (click)="addUsers.emit()">
                   <nz-icon nzType="user-add" /> 添加用户
                 </button>
               </div>
@@ -179,7 +179,7 @@ export class RoleDetailDialogComponent {
   readonly activeTab = signal(0);
   readonly checkedPermissionIds = signal<Set<string>>(createStringSet());
 
-  readonly isBuiltIn = computed(() => this.role()?.isBuiltin ?? true);
+  readonly canModifyRole = computed(() => canModifySystemRole(this.role()));
 
   constructor() {
     effect(() => {
@@ -208,11 +208,11 @@ export class RoleDetailDialogComponent {
   canRemoveUser(user: RoleUserEntity): boolean {
     const role = this.role();
     if (!role) return false;
-    if (role.isBuiltin && role.code === 'super_admin') return false;
-    return true;
+    return canModifySystemRole(role);
   }
 
   emitSavePermissions(): void {
+    if (!this.canModifyRole()) return;
     this.savePermissions.emit(Array.from(this.checkedPermissionIds()));
   }
 }

@@ -167,12 +167,14 @@ describe("SystemRbacService", () => {
     }
   });
 
-  it("prevents updating built-in role", async () => {
+  it("allows updating built-in roles except super admin", async () => {
     const db = createDb();
     try {
       const service = new SystemRbacService(new SystemRbacRepo(db));
+      const updated = await service.updateSystemRole("srole_admin", { name: "管理员（调整）" }, adminCtx);
+      assert.equal(updated.name, "管理员（调整）");
       await assert.rejects(
-        () => service.updateSystemRole("srole_admin", { name: "changed" }, adminCtx),
+        () => service.updateSystemRole("srole_super_admin", { name: "changed" }, adminCtx),
         /cannot be modified/
       );
     } finally {
@@ -222,12 +224,15 @@ describe("SystemRbacService", () => {
     }
   });
 
-  it("prevents setting permissions on built-in role", async () => {
+  it("allows setting permissions on built-in roles except super admin", async () => {
     const db = createDb();
     try {
       const service = new SystemRbacService(new SystemRbacRepo(db));
+      await service.setRolePermissions("srole_admin", { permissionIds: ["sperm_1"] }, adminCtx);
+      const admin = await service.getSystemRoleDetail("srole_admin", adminCtx);
+      assert.deepEqual(admin.permissions.map((permission) => permission.id), ["sperm_1"]);
       await assert.rejects(
-        () => service.setRolePermissions("srole_admin", { permissionIds: ["sperm_1"] }, adminCtx),
+        () => service.setRolePermissions("srole_super_admin", { permissionIds: ["sperm_1"] }, adminCtx),
         /cannot be modified/
       );
     } finally {
@@ -280,6 +285,23 @@ describe("SystemRbacService", () => {
       users = await service.listRoleUsers(role.id, adminCtx);
       assert.equal(users.length, 1);
       assert.equal(users[0].userId, "usr_2");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("prevents modifying super admin role users", async () => {
+    const db = createDb();
+    try {
+      const service = new SystemRbacService(new SystemRbacRepo(db));
+      await assert.rejects(
+        () => service.addRoleUsers("srole_super_admin", { userIds: ["usr_1"] }, adminCtx),
+        /cannot be modified/
+      );
+      await assert.rejects(
+        () => service.removeRoleUser("srole_super_admin", "usr_1", adminCtx),
+        /cannot be modified/
+      );
     } finally {
       db.close();
     }

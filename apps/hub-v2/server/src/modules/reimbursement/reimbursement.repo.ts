@@ -85,7 +85,7 @@ const DEFAULT_APPROVAL_STAGE_SEEDS = [
     stageName: "会计",
     stageType: "finance_review",
     resolverType: "system_role",
-    resolverRef: "srole_finance_reviewer",
+    resolverRef: "srole_finance",
     sort: 30
   },
   {
@@ -94,7 +94,7 @@ const DEFAULT_APPROVAL_STAGE_SEEDS = [
     stageName: "出纳",
     stageType: "cashier",
     resolverType: "system_role",
-    resolverRef: "srole_finance_cashier",
+    resolverRef: "srole_finance",
     sort: 40
   }
 ] as const;
