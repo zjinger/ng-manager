@@ -65,7 +65,7 @@ function formatTravelRoute(
 ): string {
   const from = fromLocation || '';
   const to = toLocation || '';
-  if (!from && !to) return '-';
+  if (!from && !to) return '';
   if (!from) return to;
   if (!to) return from;
   return `${from} → ${to}`;
@@ -364,7 +364,7 @@ function formatTravelRoute(
                   style="width: 88px; text-align: center; border-bottom: 1px solid black; height: 34px; margin-top: 10px"
                 >
                   <span style="display: block; margin-top: -10px" class="typeface">
-                    {{ formatMoney(formData().advanceAmount) }}
+                    {{ formatMoneyOrZero(formData().advanceAmount) }}
                   </span>
                 </div>
                 <span>元</span>
@@ -941,6 +941,10 @@ readonly displayItems = computed(() => {
       return '';
     }
     return value.toFixed(2);
+  }
+
+  formatMoneyOrZero(value: number | null | undefined): string {
+    return Number(value ?? 0).toFixed(2);
   }
 
   formatTravelRoute(

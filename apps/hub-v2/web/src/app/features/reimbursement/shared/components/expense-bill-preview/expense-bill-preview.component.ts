@@ -220,7 +220,7 @@ function getDecimalPart(amount: number, type: 'jiao' | 'fen'): string {
                 <label>预支:</label>
 
                 <span style="width: 70px">
-                  {{ formatMoney(formData().advanceAmount) }}
+                  {{ formatMoneyOrZero(formData().advanceAmount) }}
                 </span>
 
                 <label>元</label>
@@ -613,6 +613,10 @@ export class ExpenseBillPreviewComponent {
     }
 
     return Number(value).toFixed(2);
+  }
+
+  formatMoneyOrZero(value: number | null | undefined): string {
+    return Number(value ?? 0).toFixed(2);
   }
 
   getChineseDigit(amount: number, position: number): string {

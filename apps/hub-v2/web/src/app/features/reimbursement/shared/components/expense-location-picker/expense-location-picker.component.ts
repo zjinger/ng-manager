@@ -150,11 +150,14 @@ export interface Area {
   styles: [
     `
       :host {
-        display: inline-flex;
+        display: flex;
+        width: 100%;
+        min-width: 0;
       }
 
       .sl-travel-range-picker {
-        width: 180px;
+        width: 100%;
+        min-width: 0;
         display: flex;
         align-items: center;
         position: relative;
@@ -219,6 +222,11 @@ export interface Area {
       .ant-picker-range-separator {
         color: var(--text-placeholder, #bfbfbf);
         padding: 0 4px;
+      }
+
+      .ant-picker-input {
+        flex: 1 1 0;
+        min-width: 0;
       }
 
       input {

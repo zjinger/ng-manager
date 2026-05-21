@@ -151,8 +151,9 @@ const calculateSubtotal = (item: ReimbursementItemInput): number => {
                   style="width: 100%"
                 ></nz-date-picker>
               </td>
-              <td style="min-width: 100px">
+              <td>
                 <app-expense-location-picker
+                  class="location-picker"
                   [fromLocation]="item.fromLocation!"
                   [toLocation]="item.toLocation!"
                   [commonPlaces]="commonPlaces"
@@ -366,6 +367,10 @@ const calculateSubtotal = (item: ReimbursementItemInput): number => {
       }
 
       nz-date-picker {
+        width: 100%;
+      }
+
+      .location-picker {
         width: 100%;
       }
 
