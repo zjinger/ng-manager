@@ -6,7 +6,6 @@ import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
 import type { AnnouncementEntity, CreateAnnouncementInput } from '../../models/content.model';
@@ -35,7 +34,6 @@ const DEFAULT_DRAFT: Draft = {
     NzFormModule,
     NzGridModule,
     NzInputModule,
-    NzSelectModule,
     DialogShellComponent,
     FormActionsComponent,
   ],
@@ -69,22 +67,6 @@ const DEFAULT_DRAFT: Draft = {
           </div>
 
           <div nz-row nzGutter="16">
-            <div nz-col nzSpan="12">
-              <nz-form-item>
-                <nz-form-label>范围</nz-form-label>
-                <nz-form-control>
-                  <nz-select
-                    [ngModel]="draft().scope"
-                    name="scope"
-                    (ngModelChange)="updateField('scope', $event)"
-                  >
-                    <nz-option nzLabel="项目内" nzValue="project"></nz-option>
-                    <nz-option nzLabel="全局" nzValue="global"></nz-option>
-                  </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-
             <div nz-col nzSpan="12">
               <nz-form-item>
                 <nz-form-label>过期时间</nz-form-label>
@@ -185,6 +167,7 @@ export class AnnouncementCreateDialogComponent {
   readonly busy = input(false);
   readonly value = input<AnnouncementEntity | null>(null);
   readonly projectName = input<string>('');
+  readonly scope = input<'global' | 'project'>('project');
   readonly create = output<Draft>();
   readonly cancel = output<void>();
 
@@ -210,13 +193,13 @@ export class AnnouncementCreateDialogComponent {
           title: value.title,
           summary: value.summary ?? '',
           contentMd: value.contentMd,
-          scope: value.scope,
+          scope: this.scope(),
           pinned: value.pinned,
           expireAt: value.expireAt ?? '',
         });
         return;
       }
-      this.draft.set({ ...DEFAULT_DRAFT });
+      this.draft.set({ ...DEFAULT_DRAFT, scope: this.scope() });
     });
   }
 
@@ -248,6 +231,7 @@ export class AnnouncementCreateDialogComponent {
     const draft = this.draft();
     this.create.emit({
       ...draft,
+      scope: this.scope(),
       title: draft.title.trim(),
       summary: draft.summary?.trim() || '',
       contentMd: draft.contentMd.trim(),

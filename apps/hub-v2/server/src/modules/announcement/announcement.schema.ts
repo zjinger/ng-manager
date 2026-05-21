@@ -32,6 +32,7 @@ export const listAnnouncementsQuerySchema = z.object({
   keyword: z.string().trim().optional(),
   status: z.enum(["draft", "published", "archived"]).optional(),
   domain: z.enum(["content", "reimbursement"]).optional(),
+  scope: z.enum(["global", "project"]).optional(),
   projectId: z.string().trim().optional()
 });
 

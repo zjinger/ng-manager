@@ -61,6 +61,7 @@ export interface ContentQuery {
   keyword?: string;
   status?: ContentStatus;
   domain?: AnnouncementDomain | '';
+  scope?: 'global' | 'project';
   projectId?: string;
 }
 

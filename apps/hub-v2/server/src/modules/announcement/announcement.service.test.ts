@@ -66,6 +66,14 @@ const reimbursementManagerCtx = createRequestContext({
   source: "http"
 });
 
+const globalAnnouncementManagerCtx = createRequestContext({
+  accountId: "adm_4",
+  userId: "usr_global_announcement_manager",
+  roles: ["user"],
+  authScopes: ["announcement.global.manage"],
+  source: "http"
+});
+
 const eventBus: EventBus = {
   async emit() {},
   subscribe() {
@@ -98,6 +106,162 @@ const projectAccess: ProjectAccessContract = {
 };
 
 describe("AnnouncementService", () => {
+  it("allows project admins to create and publish project announcements", async () => {
+    const db = createDb();
+    try {
+      const service = new AnnouncementService(new AnnouncementRepo(db), projectAccess, eventBus, contentLogCommand);
+      const created = await service.create(
+        {
+          projectId: "proj_1",
+          domain: "content",
+          title: "项目公告",
+          contentMd: "项目正文",
+          scope: "project"
+        },
+        adminCtx
+      );
+      const published = await service.publish(created.id, adminCtx);
+
+      assert.equal(created.projectId, "proj_1");
+      assert.equal(created.scope, "project");
+      assert.equal(published.status, "published");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rejects non-admin project members from publishing project announcements", async () => {
+    const db = createDb();
+    const memberAccess: ProjectAccessContract = {
+      ...projectAccess,
+      async requireProjectMember() {
+        return {
+          id: "pm_2",
+          projectId: "proj_1",
+          userId: "usr_user",
+          displayName: "成员",
+          roleCode: "member",
+          isOwner: false,
+          joinedAt: "2026-01-01T00:00:00.000Z",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z"
+        };
+      }
+    };
+    try {
+      const service = new AnnouncementService(new AnnouncementRepo(db), projectAccess, eventBus, contentLogCommand);
+      const created = await service.create(
+        {
+          projectId: "proj_1",
+          domain: "content",
+          title: "项目公告",
+          contentMd: "项目正文",
+          scope: "project"
+        },
+        adminCtx
+      );
+      const memberService = new AnnouncementService(new AnnouncementRepo(db), memberAccess, eventBus, contentLogCommand);
+
+      await assert.rejects(() => memberService.publish(created.id, userCtx), /project admin only/);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("allows announcement global managers to manage global content announcements", async () => {
+    const db = createDb();
+    try {
+      const service = new AnnouncementService(new AnnouncementRepo(db), projectAccess, eventBus, contentLogCommand);
+      const created = await service.create(
+        {
+          domain: "content",
+          title: "全局公告",
+          contentMd: "全局正文",
+          scope: "global"
+        },
+        globalAnnouncementManagerCtx
+      );
+      const updated = await service.update(created.id, { title: "全局公告更新" }, globalAnnouncementManagerCtx);
+      const published = await service.publish(created.id, globalAnnouncementManagerCtx);
+      const archived = await service.archive(created.id, globalAnnouncementManagerCtx);
+      const list = await service.list({ domain: "content", page: 1, pageSize: 20 }, globalAnnouncementManagerCtx);
+
+      assert.equal(created.projectId, null);
+      assert.equal(created.scope, "global");
+      assert.equal(updated.title, "全局公告更新");
+      assert.equal(published.status, "published");
+      assert.equal(archived.status, "archived");
+      assert.equal(list.total, 1);
+      assert.equal(list.items[0]?.id, created.id);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rejects users without announcement.global.manage from managing global content announcements", async () => {
+    const db = createDb();
+    try {
+      const service = new AnnouncementService(new AnnouncementRepo(db), projectAccess, eventBus, contentLogCommand);
+      const created = await service.create(
+        {
+          domain: "content",
+          title: "全局公告",
+          contentMd: "全局正文",
+          scope: "global"
+        },
+        globalAnnouncementManagerCtx
+      );
+
+      await assert.rejects(
+        () => service.create({ domain: "content", title: "无权全局", contentMd: "正文", scope: "global" }, adminCtx),
+        /forbidden/
+      );
+      await assert.rejects(() => service.update(created.id, { title: "无权更新" }, adminCtx), /forbidden/);
+      await assert.rejects(() => service.publish(created.id, adminCtx), /forbidden/);
+      await assert.rejects(() => service.archive(created.id, adminCtx), /forbidden/);
+      await assert.rejects(() => service.list({ domain: "content", page: 1, pageSize: 20 }, adminCtx), /forbidden/);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rejects conflicting content announcement scope and projectId input", async () => {
+    const db = createDb();
+    try {
+      const service = new AnnouncementService(new AnnouncementRepo(db), projectAccess, eventBus, contentLogCommand);
+
+      await assert.rejects(
+        () =>
+          service.create(
+            {
+              domain: "content",
+              title: "缺少项目",
+              contentMd: "正文",
+              scope: "project"
+            },
+            adminCtx
+          ),
+        /project announcements require projectId/
+      );
+      await assert.rejects(
+        () =>
+          service.create(
+            {
+              projectId: "proj_1",
+              domain: "content",
+              title: "错误全局",
+              contentMd: "正文",
+              scope: "global"
+            },
+            globalAnnouncementManagerCtx
+          ),
+        /global announcements must not include projectId/
+      );
+    } finally {
+      db.close();
+    }
+  });
+
   it("creates reimbursement announcements as global records with reimbursement fields", async () => {
     const db = createDb();
     try {

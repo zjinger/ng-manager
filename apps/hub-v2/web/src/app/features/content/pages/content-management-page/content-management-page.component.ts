@@ -299,19 +299,9 @@ export class ContentManagementPageComponent {
     }
     return this.projectMembers().some((member) => actorIds.has(member.userId));
   });
-  readonly hasGlobalAnnouncementManagePermission = computed(() => {
-    const current = this.authStore.currentUser();
-    if (!current) {
-      return false;
-    }
-    if (current.role === 'admin') {
-      return true;
-    }
-    return current.permissionCodes.includes('project.manage.all');
-  });
   readonly canCreateCurrentTab = computed(() => {
     if (this.store.activeTab() === 'announcements') {
-      return this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission();
+      return this.isCurrentProjectAdmin();
     }
     if (this.store.activeTab() === 'documents') {
       return this.isCurrentProjectMember();
@@ -445,6 +435,8 @@ export class ContentManagementPageComponent {
   createAnnouncement(input: CreateAnnouncementInput): void {
     const payload = {
       ...input,
+      domain: 'content' as const,
+      scope: 'project' as const,
       projectId: this.projectContext.currentProjectId(),
     };
     const editing = this.editingAnnouncement();
@@ -700,7 +692,7 @@ export class ContentManagementPageComponent {
 
   private canEditByTab(tab: ContentTab | null): boolean {
     if (tab === 'announcements') {
-      return this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission();
+      return this.isCurrentProjectAdmin();
     }
     if (tab === 'releases') {
       return this.isCurrentProjectAdmin();
@@ -715,7 +707,7 @@ export class ContentManagementPageComponent {
   private canPublishByTab(tab: ContentTab | null): boolean {
     if (tab === 'announcements') {
       const item = this.detailAnnouncement();
-      return !!item && item.status !== 'published' && (this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission());
+      return !!item && item.status !== 'published' && this.isCurrentProjectAdmin();
     }
     if (tab === 'documents') {
       const item = this.detailDocument();
@@ -730,7 +722,7 @@ export class ContentManagementPageComponent {
   private canArchiveByTab(tab: ContentTab | null): boolean {
     if (tab === 'announcements') {
       const item = this.detailAnnouncement();
-      return !!item && item.status !== 'archived' && (this.isCurrentProjectAdmin() || this.hasGlobalAnnouncementManagePermission());
+      return !!item && item.status !== 'archived' && this.isCurrentProjectAdmin();
     }
     if (tab === 'documents') {
       const item = this.detailDocument();

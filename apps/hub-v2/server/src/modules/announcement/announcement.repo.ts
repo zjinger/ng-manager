@@ -124,6 +124,11 @@ export class AnnouncementRepo {
       params.push(query.domain);
     }
 
+    if (query.scope) {
+      conditions.push("scope = ?");
+      params.push(query.scope);
+    }
+
     if (query.projectId?.trim()) {
       conditions.push("project_id = ?");
       params.push(query.projectId.trim());

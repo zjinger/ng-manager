@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
-import { permissionGuard, PROJECT_GOVERNANCE_PERMISSIONS } from './core/auth';
+import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, permissionGuard, PROJECT_GOVERNANCE_PERMISSIONS } from './core/auth';
 import { FEATURE_FLAGS } from './core/feature-flags';
 
 export const routes: Routes = [
@@ -100,7 +100,7 @@ export const routes: Routes = [
       {
         path: 'content',
         canActivate: [permissionGuard],
-        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS, ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION] },
         loadChildren: () => import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
       },
       // 项目路由

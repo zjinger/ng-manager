@@ -55,6 +55,7 @@ export interface ListAnnouncementsQuery {
   keyword?: string;
   status?: AnnouncementStatus;
   domain?: AnnouncementDomain;
+  scope?: AnnouncementScope;
   projectId?: string;
 }
 

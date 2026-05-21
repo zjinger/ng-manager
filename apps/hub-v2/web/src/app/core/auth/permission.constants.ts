@@ -7,6 +7,7 @@
  * - project.manage.all: 管理所有项目
  * - project.archive: 归档项目
  * - project.owner.transfer: 转移项目所有权
+ * - announcement.global.manage: 管理全局公告
  */
 export const PROJECT_GOVERNANCE_PERMISSIONS = [
   'project.manage',
@@ -15,4 +16,6 @@ export const PROJECT_GOVERNANCE_PERMISSIONS = [
   'project.archive',
   'project.owner.transfer',
 ] as const;
+
+export const ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION = 'announcement.global.manage' as const;
 

@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS system_permissions (
   domain_code TEXT NOT NULL DEFAULT 'admin',
   domain_name TEXT NOT NULL DEFAULT '后台管理',
   description TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  is_builtin INTEGER NOT NULL DEFAULT 1,
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -41,6 +43,7 @@ CREATE TABLE IF NOT EXISTS system_permissions (
 
 CREATE INDEX IF NOT EXISTS idx_system_permissions_group ON system_permissions(group_code, sort);
 CREATE INDEX IF NOT EXISTS idx_system_permissions_domain ON system_permissions(domain_code, group_code, sort);
+CREATE INDEX IF NOT EXISTS idx_system_permissions_status ON system_permissions(status);
 
 -- Create role-permission association table
 CREATE TABLE IF NOT EXISTS system_role_permissions (
@@ -91,7 +94,8 @@ VALUES
   ('sperm_approval_department', 'approval.department', '部门审批', 'approval', '审批能力', 'approval', '审批管理', '处理本部门审批。', 10, datetime('now'), datetime('now')),
   ('sperm_approval_cross_department', 'approval.cross_department', '跨部门审批', 'approval', '审批能力', 'approval', '审批管理', '处理跨部门审批。', 20, datetime('now'), datetime('now')),
   ('sperm_finance_review', 'finance.review', '财务复核', 'finance', '财务能力', 'finance', '财务管理', '进行财务复核。', 10, datetime('now'), datetime('now')),
-  ('sperm_finance_cashier', 'finance.cashier', '出纳付款', 'finance', '财务能力', 'finance', '财务管理', '进行出纳付款处理。', 20, datetime('now'), datetime('now'));
+  ('sperm_finance_cashier', 'finance.cashier', '出纳付款', 'finance', '财务能力', 'finance', '财务管理', '进行出纳付款处理。', 20, datetime('now'), datetime('now')),
+  ('sperm_announcement_global_manage', 'announcement.global.manage', '管理全局公告', 'announcement', '公告管理', 'content', '内容中心', '允许创建、编辑、发布和下线全局公告。', 10, datetime('now'), datetime('now'));
 
 -- Insert business roles
 INSERT OR IGNORE INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)

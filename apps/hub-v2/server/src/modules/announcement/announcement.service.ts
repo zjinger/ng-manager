@@ -32,7 +32,7 @@ type NormalizedAnnouncementInput = {
 };
 
 export class AnnouncementService implements AnnouncementCommandContract, AnnouncementQueryContract {
-  private static readonly GLOBAL_MANAGE_PERMISSION = "project.manage.all";
+  private static readonly GLOBAL_MANAGE_PERMISSION = "announcement.global.manage";
   private static readonly REIMBURSEMENT_MANAGE_PERMISSION = "expense.rule.manage";
 
   constructor(
@@ -177,10 +177,10 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     const projectId = query.projectId?.trim();
     if (projectId) {
       await this.projectAccess.requireProjectAccess(projectId, ctx, "list announcements");
-    } else {
-      this.requireGlobalManagePermission(ctx);
+      return this.repo.list({ ...query, domain: query.domain ?? "content", scope: query.scope ?? "project" });
     }
-    return this.repo.list(query);
+    this.requireGlobalManagePermission(ctx);
+    return this.repo.list({ ...query, domain: query.domain ?? "content", scope: "global", projectId: undefined });
   }
 
   async getById(id: string, ctx: RequestContext): Promise<AnnouncementEntity> {
@@ -398,6 +398,15 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     const isReimbursement = domain === "reimbursement";
     const projectId = isReimbursement ? null : input.projectId?.trim() || null;
     const scope = isReimbursement ? "global" : input.scope ?? (projectId ? "project" : "global");
+
+    if (!isReimbursement) {
+      if (scope === "project" && !projectId) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "project announcements require projectId", 400);
+      }
+      if (scope === "global" && projectId) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "global announcements must not include projectId", 400);
+      }
+    }
 
     return {
       ...input,

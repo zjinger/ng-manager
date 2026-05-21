@@ -9,8 +9,7 @@ const MIGRATIONS_TO_RESET = [
   "0045_project_rbac.sql",
   "0046_system_settings.sql",
   "0047_system_titles.sql",
-  "0048_department_titles.sql",
-  "0049_system_permissions_status.sql"
+  "0048_department_titles.sql"
 ];
 
 function main() {

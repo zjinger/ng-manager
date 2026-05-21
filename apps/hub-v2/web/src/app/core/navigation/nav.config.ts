@@ -1,5 +1,5 @@
 import type { NavSection } from './menu.types';
-import { PROJECT_GOVERNANCE_PERMISSIONS } from '../auth/permission.constants';
+import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, PROJECT_GOVERNANCE_PERMISSIONS } from '../auth/permission.constants';
 
 export const NAV_ITEMS: NavSection[] = [
   {
@@ -49,6 +49,14 @@ export const NAV_ITEMS: NavSection[] = [
         icon: 'read',
         route: '/content',
         permissions: [...PROJECT_GOVERNANCE_PERMISSIONS],
+      },
+      {
+        key: 'global-announcements',
+        label: '全局公告',
+        icon: 'notification',
+        route: '/content/global-announcements',
+        exact: true,
+        permissions: [ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION],
       },
     ],
   },

@@ -27,8 +27,7 @@
             <a
               class="nav__item"
               [routerLink]="item.route"
-              routerLinkActive="is-active"
-              [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+              [class.is-active]="activeItemKey() === item.key"
             >
               <span class="nav__item-main">
                 <span nz-icon [nzType]="item.icon"></span>

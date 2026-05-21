@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { filter, map, startWith } from 'rxjs';
 
 import { AuthStore } from '../../auth/auth.store';
 import { HasPermissionDirective } from '../../auth/has-permission.directive';
@@ -14,7 +16,7 @@ import { ProjectSwitcherComponent } from '../project-switcher/project-switcher.c
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, NzIconModule, ProjectSwitcherComponent, HasPermissionDirective],
+  imports: [RouterLink, NzIconModule, ProjectSwitcherComponent, HasPermissionDirective],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,8 +31,17 @@ export class SidebarComponent {
   readonly brandLogo = input('/logo.svg');
   readonly brandLogoAlt = input('深蓝协作平台');
   readonly uiStore = inject(UiStore);
+  private readonly router = inject(Router);
   private readonly authStore = inject(AuthStore);
   private readonly badgeStore = inject(NavigationBadgeStore);
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => this.normalizeUrl(event.urlAfterRedirects)),
+      startWith(this.normalizeUrl(this.router.url))
+    ),
+    { initialValue: this.normalizeUrl(this.router.url) }
+  );
 
   readonly canShowProjectSwitcher = computed(() =>
     this.showProjectSwitcher() &&
@@ -44,6 +55,15 @@ export class SidebarComponent {
       }))
       .filter((section) => section.items.length > 0)
   );
+  readonly activeItemKey = computed(() => {
+    const currentUrl = this.currentUrl();
+    const matches = this.visibleSections()
+      .flatMap((section) => section.items)
+      .filter((item) => this.matchesRoute(currentUrl, item));
+
+    matches.sort((left, right) => right.route.length - left.route.length);
+    return matches[0]?.key ?? null;
+  });
 
   itemPermissions(item: NavItem): string[] {
     return item.permissions ?? [];
@@ -73,5 +93,19 @@ export class SidebarComponent {
       this.itemPermissions(item),
       this.itemPermissionMode(item)
     );
+  }
+
+  private matchesRoute(currentUrl: string, item: NavItem): boolean {
+    const route = this.normalizeUrl(item.route);
+    if (item.exact) {
+      return currentUrl === route;
+    }
+    return currentUrl === route || currentUrl.startsWith(`${route}/`);
+  }
+
+  private normalizeUrl(url: string): string {
+    const [path] = url.split(/[?#]/);
+    const normalized = path.trim() || '/';
+    return normalized.length > 1 && normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
   }
 }
