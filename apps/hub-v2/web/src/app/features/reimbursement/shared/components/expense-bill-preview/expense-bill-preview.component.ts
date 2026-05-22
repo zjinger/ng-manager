@@ -4,6 +4,12 @@ import {
   CreateReimbursementClaimInput,
   ReimbursementItemInput,
 } from '@app/features/reimbursement/models/reimbursement.model';
+import {
+  filterValidItems,
+  parseMoneyInput,
+  roundMoney,
+  sumMoney,
+} from '../../utils/reimbursement-money.util';
 
 // 中文数字映射
 const chineseNumbers = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
@@ -544,13 +550,11 @@ export class ExpenseBillPreviewComponent {
   });
 
   // 费用明细项
-  readonly items = computed(() => this.formData().items || []);
+  readonly items = computed(() => filterValidItems(this.formData().items || []));
 
   // 总金额
   readonly totalAmount = computed(() => {
-    return this.items().reduce((sum, item) => {
-      return sum + (item.amount || 0);
-    }, 0);
+    return sumMoney(this.items().map((item) => item.amount));
   });
 
   // 显示行（固定4行）
@@ -589,7 +593,8 @@ export class ExpenseBillPreviewComponent {
    * 获取费用金额
    */
   getItemAmount(item: ReimbursementItemInput): number | null {
-    return item.amount ?? null;
+    const amount = parseMoneyInput(item.amount);
+    return amount > 0 ? amount : null;
   }
 
   getYear(dateStr: string | null | undefined): string {
@@ -612,11 +617,11 @@ export class ExpenseBillPreviewComponent {
       return '';
     }
 
-    return Number(value).toFixed(2);
+    return parseMoneyInput(value).toFixed(2);
   }
 
   formatMoneyOrZero(value: number | null | undefined): string {
-    return Number(value ?? 0).toFixed(2);
+    return roundMoney(value ?? 0).toFixed(2);
   }
 
   getChineseDigit(amount: number, position: number): string {

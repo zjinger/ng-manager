@@ -5,6 +5,7 @@ import { lastValueFrom } from 'rxjs';
 import {
   CreateReimbursementClaimInput,
   ReimbursementApprovalPreview,
+  ReimbursementApprovalPreviewInput,
   ReimbursementAttachmentEntity,
   ReimbursementClaimDetail,
   ReimbursementClaimStatus,
@@ -14,6 +15,12 @@ import {
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
 import type { ExpenseSummary } from '@app/features/reimbursement/shared/models/expense-summary.model';
+import {
+  filterValidItems,
+  isPositiveMoney,
+  roundMoney,
+  sumMoney,
+} from '@app/features/reimbursement/shared/utils/reimbursement-money.util';
 
 export interface TravelExpenseDraft {
   basicInfo: CreateReimbursementClaimInput;
@@ -81,6 +88,9 @@ export class TravelExpenseStore {
   /** 防重复提交标志 */
   private isSubmitting = false;
 
+  /** 审批预览请求序号，防止旧请求覆盖新表单状态 */
+  private approvalPreviewRequestSeq = 0;
+
   // =========================
   // Public Selectors
   // =========================
@@ -106,7 +116,7 @@ export class TravelExpenseStore {
   /** 总计金额 */
   readonly totalAmount = computed(() => {
     const items = this.draftState().expenseItems;
-    return items.reduce((sum, item) => sum + (item.amount || 0), 0);
+    return sumMoney(items.map((item) => item.amount));
   });
 
   /** 预支金额 */
@@ -115,7 +125,7 @@ export class TravelExpenseStore {
   /** 差额 */
   readonly differenceAmount = computed(() => {
     const summary = this.draftState().summary;
-    return summary.totalAmount - summary.advanceAmount;
+    return roundMoney(summary.advanceAmount - summary.totalAmount);
   });
 
   /** 预览数据 */
@@ -132,7 +142,7 @@ export class TravelExpenseStore {
 
   /** 是否可以提交 */
   readonly canSubmit = computed(() => {
-    return this.basicInfoValidState() && this.draftState().expenseItems.length > 0;
+    return this.basicInfoValidState() && filterValidItems(this.draftState().expenseItems).length > 0;
   });
 
   /** 是否可以保存草稿 */
@@ -152,9 +162,9 @@ export class TravelExpenseStore {
       (basicInfo.travelDays ?? 0) > 0 ||
       (basicInfo.receiptCount ?? 0) > 0;
 
-    const hasExpenseItems = draft.expenseItems.length > 0;
+    const hasExpenseItems = filterValidItems(draft.expenseItems).length > 0;
     const hasAttachments = draft.summary.attachments.length > 0;
-    const hasAdvanceAmount = (draft.summary.advanceAmount ?? 0) > 0;
+    const hasAdvanceAmount = isPositiveMoney(draft.summary.advanceAmount);
 
     return hasBasicInfo || hasExpenseItems || hasAttachments || hasAdvanceAmount;
   });
@@ -179,19 +189,22 @@ export class TravelExpenseStore {
       ...draft,
       basicInfo,
     }));
+    void this.refreshApprovalPreview();
   }
 
   /**
    * 更新行程明细
    */
   updateExpenseItems(items: ReimbursementItemInput[]): void {
+    const validItems = filterValidItems(items);
     this.draftState.update((draft) => ({
       ...draft,
-      expenseItems: items,
+      expenseItems: validItems,
     }));
     // 更新总金额
-    const totalAmount = this.calculateTotalAmount(items);
+    const totalAmount = this.calculateTotalAmount(validItems);
     this.updateSummaryTotal(totalAmount);
+    void this.refreshApprovalPreview();
   }
 
   /**
@@ -205,9 +218,16 @@ export class TravelExpenseStore {
    * 更新汇总数据
    */
   updateSummary(summary: ExpenseSummary): void {
+    const totalAmount = roundMoney(summary.totalAmount);
+    const advanceAmount = roundMoney(summary.advanceAmount);
     this.draftState.update((draft) => ({
       ...draft,
-      summary,
+      summary: {
+        ...summary,
+        totalAmount,
+        advanceAmount,
+        differenceAmount: roundMoney(advanceAmount - totalAmount),
+      },
     }));
   }
 
@@ -216,14 +236,16 @@ export class TravelExpenseStore {
    */
   updateAdvanceAmount(amount: number): void {
     const currentSummary = this.draftState().summary;
+    const normalizedAmount = roundMoney(amount);
     this.draftState.update((draft) => ({
       ...draft,
       summary: {
         ...currentSummary,
-        advanceAmount: amount,
-        differenceAmount: currentSummary.totalAmount - amount,
+        advanceAmount: normalizedAmount,
+        differenceAmount: roundMoney(normalizedAmount - currentSummary.totalAmount),
       },
     }));
+    void this.refreshApprovalPreview();
   }
 
   /**
@@ -284,7 +306,7 @@ export class TravelExpenseStore {
     const summary: ExpenseSummary = {
       totalAmount: detail.totalAmount,
       advanceAmount: detail.advanceAmount,
-      differenceAmount: detail.balanceAmount,
+      differenceAmount: roundMoney(detail.advanceAmount - detail.totalAmount),
       attachments: detail.attachments,
     };
 
@@ -449,8 +471,14 @@ export class TravelExpenseStore {
   /**
    * 重置表单
    */
-  resetForm(): void {
-    this.draftState.set({ ...DEFAULT_DRAFT });
+  resetForm(claimType: CreateReimbursementClaimInput['claimType'] = 'travel'): void {
+    this.draftState.set({
+      ...DEFAULT_DRAFT,
+      basicInfo: {
+        ...DEFAULT_DRAFT.basicInfo,
+        claimType,
+      },
+    });
     this.basicInfoValidState.set(false);
     this.currentClaimIdState.set(null);
     this.isSubmitting = false;
@@ -472,7 +500,7 @@ export class TravelExpenseStore {
    * 计算总金额
    */
   private calculateTotalAmount(items: ReimbursementItemInput[]): number {
-    return items.reduce((total, item) => total + (item.amount || 0), 0);
+    return sumMoney(items.map((item) => item.amount));
   }
 
   /**
@@ -480,12 +508,13 @@ export class TravelExpenseStore {
    */
   private updateSummaryTotal(totalAmount: number): void {
     const currentSummary = this.draftState().summary;
+    const normalizedTotal = roundMoney(totalAmount);
     this.draftState.update((draft) => ({
       ...draft,
       summary: {
         ...currentSummary,
-        totalAmount: totalAmount,
-        differenceAmount: currentSummary.advanceAmount - totalAmount,
+        totalAmount: normalizedTotal,
+        differenceAmount: roundMoney(currentSummary.advanceAmount - normalizedTotal),
       },
     }));
   }
@@ -498,15 +527,7 @@ export class TravelExpenseStore {
     const basicInfo = draft.basicInfo;
 
     // 过滤无效的 expenseItems
-    const validExpenseItems = draft.expenseItems.filter((item) => {
-      const hasAmount = item.amount !== null && item.amount !== undefined && item.amount !== 0;
-      const hasDescription = Boolean(item.description?.trim());
-      const hasLocation = Boolean(item.fromLocation?.trim()) || Boolean(item.toLocation?.trim());
-      const hasTravelMeta = item.meta
-        ? Object.values(item.meta).some((value) => Number(value || 0) !== 0)
-        : false;
-      return hasAmount || hasDescription || hasLocation || hasTravelMeta;
-    });
+    const validExpenseItems = filterValidItems(draft.expenseItems);
     
     // 转换附件格式
     const attachments:any = (draft.summary.attachments || [])
@@ -518,7 +539,7 @@ export class TravelExpenseStore {
 
     return {
       claimType: basicInfo.claimType,
-      departmentId: basicInfo.departmentId,
+      departmentId: this.optionalString(basicInfo.departmentId),
       reason: basicInfo.reason,
       fillDate: basicInfo.fillDate,
       travelStartDate: basicInfo.travelStartDate,
@@ -534,5 +555,54 @@ export class TravelExpenseStore {
         sort: index + 1,
       })),
     };
+  }
+
+  private async refreshApprovalPreview(): Promise<void> {
+    if (this.isEditMode()) {
+      return;
+    }
+    const draft = this.draftState();
+    const requestSeq = ++this.approvalPreviewRequestSeq;
+    try {
+      const preview = await lastValueFrom(this.reimbursementApi.previewApproval(this.buildPreviewPayload(draft)));
+      if (requestSeq !== this.approvalPreviewRequestSeq) {
+        return;
+      }
+      this.draftState.update((current) => ({
+        ...current,
+        approvalPreview: preview,
+      }));
+    } catch {
+      if (requestSeq !== this.approvalPreviewRequestSeq) {
+        return;
+      }
+      this.draftState.update((current) => ({
+        ...current,
+        approvalPreview: { nodes: [] },
+      }));
+    }
+  }
+
+  private buildPreviewPayload(draft: TravelExpenseDraft): ReimbursementApprovalPreviewInput {
+    const basicInfo = draft.basicInfo;
+    return {
+      claimType: basicInfo.claimType,
+      departmentId: this.optionalString(basicInfo.departmentId),
+      reason: basicInfo.reason,
+      fillDate: basicInfo.fillDate,
+      travelStartDate: basicInfo.travelStartDate,
+      travelStartHalf: basicInfo.travelStartHalf,
+      travelEndDate: basicInfo.travelEndDate,
+      travelEndHalf: basicInfo.travelEndHalf,
+      travelDays: basicInfo.travelDays,
+      receiptCount: basicInfo.receiptCount,
+      advanceAmount: draft.summary.advanceAmount,
+      items: filterValidItems(draft.expenseItems),
+    };
+  }
+
+  private optionalString(value: string | null | undefined): string | undefined {
+    const normalized = value?.trim();
+    return normalized || undefined;
   }
 }

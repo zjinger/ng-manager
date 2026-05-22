@@ -7,6 +7,8 @@ import type {
   AttachReimbursementUploadInput,
   CreateReimbursementClaimInput,
   ReimbursementActionInput,
+  ReimbursementApprovalPreview,
+  ReimbursementApprovalPreviewInput,
   ReimbursementClaimDetail,
   ReimbursementClaimListResult,
   ReimbursementDashboard,
@@ -43,6 +45,16 @@ export class ReimbursementApiService {
    */
   listClaims(query: ReimbursementListQuery) {
     return this.api.get<ReimbursementClaimListResult>('/reimbursements/claims', query);
+  }
+
+  /**
+   * 预览未保存报销单的审批流程
+   */
+  previewApproval(input: ReimbursementApprovalPreviewInput) {
+    return this.api.post<ReimbursementApprovalPreview, ReimbursementApprovalPreviewInput>(
+      '/reimbursements/approval-preview',
+      input
+    );
   }
 
   /**

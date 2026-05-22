@@ -11,6 +11,7 @@ import type {
   CreateReimbursementClaimInput,
   ListReimbursementClaimsQuery,
   ReimbursementActionInput,
+  ReimbursementApprovalPreviewInput,
   ReimbursementApprovalPreview,
   ReimbursementApprovalPreviewNodeStatus,
   ReimbursementApprovalTaskEntity,
@@ -57,6 +58,47 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
     const claim = this.requireClaim(id);
     this.ensureCanRead(claim, ctx);
     return this.buildApprovalPreview(claim, this.repo.detail(claim));
+  }
+
+  async previewApproval(input: ReimbursementApprovalPreviewInput, ctx: RequestContext): Promise<ReimbursementApprovalPreview> {
+    const userId = this.requireUserId(ctx);
+    this.ensurePermission(userId, "expense.submit", ctx);
+    const applicant = this.requireUser(userId);
+    const department = input.departmentId?.trim()
+      ? this.requireDepartment(input.departmentId)
+      : this.requirePrimaryDepartment(userId);
+    const now = nowIso();
+    const items = this.buildItems("preview", input.claimType, input.items ?? [], now);
+    const totalAmount = this.sumItems(items);
+    const advanceAmount = input.advanceAmount ?? 0;
+    const claim: ReimbursementClaimEntity = {
+      id: "preview",
+      claimNo: "",
+      claimType: input.claimType,
+      status: "draft",
+      applicantUserId: applicant.id,
+      applicantName: applicant.displayName || applicant.username,
+      departmentId: department.id,
+      departmentName: department.name,
+      reason: input.reason?.trim() || "",
+      fillDate: input.fillDate?.trim() || now.slice(0, 10),
+      travelStartDate: input.travelStartDate?.trim() || null,
+      travelStartHalf: input.travelStartHalf ?? null,
+      travelEndDate: input.travelEndDate?.trim() || null,
+      travelEndHalf: input.travelEndHalf ?? null,
+      travelDays: input.travelDays ?? null,
+      receiptCount: input.receiptCount ?? null,
+      totalAmount,
+      advanceAmount,
+      balanceAmount: totalAmount - advanceAmount,
+      currentStageCode: null,
+      currentStageName: null,
+      submittedAt: null,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now
+    };
+    return this.buildApprovalPreviewFromTemplate(claim);
   }
 
   async exportWord(id: string, ctx: RequestContext): Promise<ReimbursementExportFile> {
@@ -502,6 +544,55 @@ export class ReimbursementService implements ReimbursementCommandContract, Reimb
       currentStageName: claim.currentStageName,
       nodes
     };
+  }
+
+  private buildApprovalPreviewFromTemplate(claim: ReimbursementClaimEntity): ReimbursementApprovalPreview {
+    const template = this.requireDefaultTemplate();
+    const orderedStages = template.stages.slice().sort((left, right) => left.sort - right.sort);
+    const nodes: ReimbursementApprovalPreview["nodes"] = [
+      {
+        stageCode: "applicant",
+        stageName: "报销人/出差人",
+        status: "current",
+        assignees: [{ userId: claim.applicantUserId, name: claim.applicantName }]
+      },
+      ...orderedStages.map((stage) => ({
+        stageCode: stage.stageCode,
+        stageName: stage.stageName,
+        status: "pending" as ReimbursementApprovalPreviewNodeStatus,
+        assignees: this.resolvePreviewAssignees(claim, stage)
+      })),
+      {
+        stageCode: "completed",
+        stageName: "完成",
+        status: "pending" as ReimbursementApprovalPreviewNodeStatus,
+        assignees: []
+      }
+    ];
+    return {
+      claimId: claim.id,
+      claimStatus: claim.status,
+      currentStageCode: claim.currentStageCode,
+      currentStageName: claim.currentStageName,
+      nodes
+    };
+  }
+
+  private resolvePreviewAssignees(
+    claim: ReimbursementClaimEntity,
+    stage: ApprovalTemplateStage
+  ): ReimbursementApprovalPreview["nodes"][number]["assignees"] {
+    try {
+      return this.resolveAssignees(claim, stage).map((assignee) => ({
+        userId: assignee.id,
+        name: assignee.displayName || assignee.username
+      }));
+    } catch (error) {
+      if (error instanceof AppError) {
+        return [];
+      }
+      throw error;
+    }
   }
 
   private resolveApplicantPreviewStatus(status: ReimbursementClaimEntity["status"]): ReimbursementApprovalPreviewNodeStatus {

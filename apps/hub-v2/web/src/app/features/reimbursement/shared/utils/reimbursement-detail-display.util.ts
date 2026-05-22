@@ -7,6 +7,12 @@ import type {
   TravelReimbursementItemMeta,
 } from '@app/features/reimbursement/models/reimbursement.model';
 import type { AttachmentPreviewItem, AttachmentPreviewKind } from '@app/shared/ui';
+import {
+  parseMoneyInput,
+  roundMoney,
+  travelMetaNumber,
+  travelSubtotal,
+} from './reimbursement-money.util';
 
 export function reimbursementStatusLabel(status: string): string {
   const labelMap: Record<string, string> = {
@@ -38,30 +44,20 @@ export function reimbursementLocationLabel(item: ReimbursementItemEntity): strin
 }
 
 export function reimbursementTravelMetaNumber(item: ReimbursementItemEntity, key: keyof TravelReimbursementItemMeta): number {
-  const value = item.meta?.[key];
-  const numeric = Number(value ?? 0);
-  return Number.isFinite(numeric) ? numeric : 0;
+  return travelMetaNumber(item, key);
 }
 
 export function reimbursementTravelSubtotal(item: ReimbursementItemEntity): number {
-  return (
-    reimbursementTravelMetaNumber(item, 'airfareAmount') +
-    reimbursementTravelMetaNumber(item, 'carriageAmount') +
-    reimbursementTravelMetaNumber(item, 'localTransportAmount') +
-    reimbursementTravelMetaNumber(item, 'lodgingAmount') +
-    reimbursementTravelMetaNumber(item, 'mealAllowanceAmount') +
-    reimbursementTravelMetaNumber(item, 'mealAmount') +
-    reimbursementTravelMetaNumber(item, 'otherAmount')
-  );
+  return travelSubtotal(item);
 }
 
 export function reimbursementMoneyCell(value: number | null | undefined): string {
-  const numeric = Number(value || 0);
+  const numeric = parseMoneyInput(value);
   return numeric === 0 ? '' : numeric.toFixed(2);
 }
 
 export function reimbursementNumberCell(value: number | null | undefined): string {
-  const numeric = Number(value || 0);
+  const numeric = parseMoneyInput(value);
   return numeric === 0 ? '' : String(numeric);
 }
 
@@ -75,7 +71,7 @@ export function reimbursementBalanceAmountLabel(detail: ReimbursementClaimDetail
 }
 
 export function reimbursementBalanceDisplayAmount(detail: ReimbursementClaimDetail): number {
-  return Math.abs(detail.balanceAmount);
+  return roundMoney(Math.abs(detail.balanceAmount));
 }
 
 export function reimbursementAttachmentKind(mimeType: string | null | undefined): AttachmentPreviewKind {

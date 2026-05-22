@@ -36,6 +36,7 @@ import {
   ReimbursementAttachmentCategory,
 } from '@app/features/reimbursement/models/reimbursement.model';
 import { ReimbursementApiService } from '@app/features/reimbursement/services/reimbursement-api.service';
+import { parseMoneyInput, roundMoney } from '../../utils/reimbursement-money.util';
 
 const DEFAULT_SUMMARY: ExpenseSummary = {
   totalAmount: 0,
@@ -426,7 +427,7 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
    */
   readonly differenceAmount = computed(() => {
     const summary = this.summary();
-    return (summary.advanceAmount ?? 0) - (summary.totalAmount ?? 0);
+    return roundMoney(summary.advanceAmount) - roundMoney(summary.totalAmount);
   });
 
   /**
@@ -447,14 +448,13 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
    * 预支金额变化
    */
   onAdvanceAmountChange(value: string | number | null): void {
-    const amount = Number(value ?? 0);
-    const finalAmount = Number.isFinite(amount) ? amount : 0;
+    const finalAmount = parseMoneyInput(value);
     const current = this.summary();
 
     const updated: ExpenseSummary = {
       ...current,
       advanceAmount: finalAmount,
-      differenceAmount: finalAmount - current.totalAmount,
+      differenceAmount: roundMoney(finalAmount - current.totalAmount),
     };
 
     this.updateSummary(updated, { skipAttachments: true });
@@ -465,11 +465,12 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
    */
   updateTotalAmount(totalAmount: number): void {
     const current = this.summary();
+    const normalizedTotal = roundMoney(totalAmount);
 
     const updated: ExpenseSummary = {
       ...current,
-      totalAmount,
-      differenceAmount: current.advanceAmount - totalAmount,
+      totalAmount: normalizedTotal,
+      differenceAmount: roundMoney(current.advanceAmount - normalizedTotal),
     };
 
     // 总金额变化只更新 summary，不触发附件和预支金额变化

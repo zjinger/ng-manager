@@ -73,7 +73,7 @@ export class AddExpense implements OnInit {
       await this.store.loadDetail(this.expenseId);
     } else {
       // 新建模式：重置表单
-      this.store.resetForm();
+      this.store.resetForm('general');
     }
   }
 

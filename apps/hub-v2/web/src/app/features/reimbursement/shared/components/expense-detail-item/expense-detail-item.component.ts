@@ -13,6 +13,11 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ReimbursementItemInput } from '@app/features/reimbursement/models/reimbursement.model';
+import {
+  filterValidItems,
+  parseMoneyInput,
+  sumMoney,
+} from '../../utils/reimbursement-money.util';
 
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -21,7 +26,7 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9
 const createEmptyItem = (): ReimbursementItemInput => ({
   id: generateId(),
   itemType: 'general', // 或其他合适的类型
-  amount: 0,
+  amount: undefined,
   sort: 0,
   description: '', // 用于存储费用用途
 });
@@ -269,7 +274,7 @@ export class ExpenseDetailItemComponent {
 
   // 计算总金额
   totalAmount = computed(() => {
-    return this.items().reduce((sum, item) => sum + (item.amount || 0), 0);
+    return sumMoney(this.items().map((item) => item.amount));
   });
 
   updateDescription(item: ReimbursementItemInput, value: string): void {
@@ -278,13 +283,7 @@ export class ExpenseDetailItemComponent {
   }
 
   updateAmount(item: ReimbursementItemInput, value: string | number | null): void {
-    let numValue: number = 0;
-    if (value !== null && value !== '') {
-      const parsed = typeof value === 'string' ? parseFloat(value) : value;
-      numValue = isNaN(parsed) ? 0 : parsed;
-    }
-
-    const updatedItem = { ...item, amount: numValue };
+    const updatedItem = { ...item, amount: parseMoneyInput(value) };
     this.updateItem(updatedItem);
   }
 
@@ -325,20 +324,10 @@ export class ExpenseDetailItemComponent {
       newItems = [...currentItems, updatedItem];
     }
 
-    const validItems = this.filterEmptyItems(newItems);
+    const validItems = filterValidItems(newItems);
 
     this.items.set(validItems);
     this.itemsChange.emit(validItems);
-  }
-
-  // 过滤空数据行（description为空且amount为0）
-  private filterEmptyItems(items: ReimbursementItemInput[]): ReimbursementItemInput[] {
-    return items.filter((item) => {
-      const hasContent = 
-        (item.description && item.description.trim() !== '') ||
-        (item.amount && item.amount !== 0);
-      return hasContent;
-    });
   }
 
   // 重置所有明细
@@ -350,6 +339,6 @@ export class ExpenseDetailItemComponent {
 
   // 获取实际有效的明细数据（用于提交）
   getValidItems(): ReimbursementItemInput[] {
-    return this.filterEmptyItems(this.items());
+    return filterValidItems(this.items());
   }
 }

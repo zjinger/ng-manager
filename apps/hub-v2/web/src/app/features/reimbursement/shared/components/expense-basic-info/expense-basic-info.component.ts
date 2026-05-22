@@ -239,24 +239,4 @@ export class ExpenseBasicInfoComponent {
   private formatDate(value: Date | null): string | null {
     return formatDateValue(value);
   }
-
-  reset(): void {
-    const user = this.currentUser();
-    if (user) {
-      const resetValue = {
-        ...DEFAULT_BASIC_INFO,
-        departmentName: user.department?.name || '',
-        departmentId: user.department?.id || '',
-        applicantName: user.nickname || '',
-        titleName: user.titleName || '',
-        fillDate: formatDateValue(new Date()) || '',
-      };
-      this.value.set(resetValue);
-    } else {
-      this.value.set({ ...DEFAULT_BASIC_INFO });
-    }
-    this.fillDateValue.set(this.parseDate(this.value().fillDate || ''));
-    this.valueChange.emit(this.value());
-    this.validChange.emit(false);
-  }
 }

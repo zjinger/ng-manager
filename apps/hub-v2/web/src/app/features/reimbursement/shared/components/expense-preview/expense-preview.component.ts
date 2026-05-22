@@ -5,6 +5,13 @@ import {
   ReimbursementItemInput,
   TravelReimbursementItemMeta,
 } from '@app/features/reimbursement/models/reimbursement.model';
+import {
+  filterValidItems,
+  parseMoneyInput,
+  roundMoney,
+  sumMoney,
+  travelMetaNumber,
+} from '../../utils/reimbursement-money.util';
 
 // 中文数字映射
 const chineseNumbers = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
@@ -774,70 +781,48 @@ export class ExpensePreviewComponent {
   });
 
   // 行程明细
-  readonly items = computed(() => this.formData().items || []);
+  readonly items = computed(() => filterValidItems(this.formData().items || []));
 
   // 获取 meta 中的值
   getMetaValue(item: ReimbursementItemInput, key: keyof TravelReimbursementItemMeta): number {
-    const meta = item.meta as any;
-    return meta?.[key] ?? null;
+    return travelMetaNumber(item, key);
   }
 
   // 计算属性
   totalDays = computed(() => {
-    return this.items().reduce((sum, item) => sum + (this.getMetaValue(item, 'days') || 0), 0);
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'days')));
   });
 
   totalAirfare = computed(() => {
-    return this.items().reduce(
-      (sum, item) => sum + (this.getMetaValue(item, 'airfareAmount') || 0),
-      0
-    );
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'airfareAmount')));
   });
 
   totalTransportation = computed(() => {
-    return this.items().reduce(
-      (sum, item) => sum + (this.getMetaValue(item, 'carriageAmount') || 0),
-      0
-    );
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'carriageAmount')));
   });
 
   totalLocalTransport = computed(() => {
-    return this.items().reduce(
-      (sum, item) => sum + (this.getMetaValue(item, 'localTransportAmount') || 0),
-      0
-    );
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'localTransportAmount')));
   });
 
   totalAccommodation = computed(() => {
-    return this.items().reduce(
-      (sum, item) => sum + (this.getMetaValue(item, 'lodgingAmount') || 0),
-      0
-    );
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'lodgingAmount')));
   });
 
   totalMealAllowance = computed(() => {
-    return this.items().reduce(
-      (sum, item) => sum + (this.getMetaValue(item, 'mealAllowanceAmount') || 0),
-      0
-    );
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'mealAllowanceAmount')));
   });
 
   totalMealExpenses = computed(() => {
-    return this.items().reduce(
-      (sum, item) => sum + (this.getMetaValue(item, 'mealAmount') || 0),
-      0
-    );
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'mealAmount')));
   });
 
   totalOther = computed(() => {
-    return this.items().reduce(
-      (sum, item) => sum + (this.getMetaValue(item, 'otherAmount') || 0),
-      0
-    );
+    return sumMoney(this.items().map((item) => this.getMetaValue(item, 'otherAmount')));
   });
 
   grandTotal = computed(() => {
-    return this.items().reduce((sum, item) => sum + (item.amount || 0), 0);
+    return sumMoney(this.items().map((item) => item.amount));
   });
 
   // 辅助方法 - 处理 null 和 undefined
@@ -940,11 +925,11 @@ readonly displayItems = computed(() => {
     if (value === null || value === undefined || value === 0) {
       return '';
     }
-    return value.toFixed(2);
+    return parseMoneyInput(value).toFixed(2);
   }
 
   formatMoneyOrZero(value: number | null | undefined): string {
-    return Number(value ?? 0).toFixed(2);
+    return roundMoney(value ?? 0).toFixed(2);
   }
 
   formatTravelRoute(

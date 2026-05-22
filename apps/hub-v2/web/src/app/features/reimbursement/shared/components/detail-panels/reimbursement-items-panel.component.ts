@@ -10,6 +10,7 @@ import {
   reimbursementTravelMetaNumber,
   reimbursementTravelSubtotal,
 } from '../../utils/reimbursement-detail-display.util';
+import { sumMoney } from '../../utils/reimbursement-money.util';
 
 @Component({
   selector: 'app-reimbursement-items-panel',
@@ -181,6 +182,6 @@ export class ReimbursementItemsPanelComponent {
   protected readonly grandTotalCell = reimbursementGrandTotalCell;
 
   protected travelTotal(key: keyof TravelReimbursementItemMeta): number {
-    return this.detail().items.reduce((total, item) => total + reimbursementTravelMetaNumber(item, key), 0);
+    return sumMoney(this.detail().items.map((item) => reimbursementTravelMetaNumber(item, key)));
   }
 }

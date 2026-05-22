@@ -158,6 +158,21 @@ export interface CreateReimbursementClaimInput {
   items?: ReimbursementItemInput[];
 }
 
+export interface ReimbursementApprovalPreviewInput {
+  claimType: ReimbursementClaimType;
+  departmentId?: string;
+  reason?: string;
+  fillDate?: string;
+  travelStartDate?: string | null;
+  travelStartHalf?: 'am' | 'pm' | null;
+  travelEndDate?: string | null;
+  travelEndHalf?: 'am' | 'pm' | null;
+  travelDays?: number | null;
+  receiptCount?: number | null;
+  advanceAmount?: number;
+  items?: ReimbursementItemInput[];
+}
+
 export interface UpdateReimbursementClaimInput {
   departmentId?: string;
   reason?: string;

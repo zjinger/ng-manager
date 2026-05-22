@@ -6,6 +6,7 @@ import {
   createReimbursementClaimSchema,
   listReimbursementClaimsQuerySchema,
   reimbursementActionSchema,
+  reimbursementApprovalPreviewSchema,
   reimbursementSubmitSchema,
   reimbursementStatsQuerySchema,
   reimbursementTransferSchema,
@@ -23,6 +24,12 @@ export default async function reimbursementRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const query = reimbursementStatsQuerySchema.parse(request.query) as ReimbursementStatsQuery;
     return ok(await app.container.reimbursementQuery.stats(query, ctx));
+  });
+
+  app.post("/reimbursements/approval-preview", async (request) => {
+    const ctx = requireAuth(request);
+    const body = reimbursementApprovalPreviewSchema.parse(request.body ?? {});
+    return ok(await app.container.reimbursementQuery.previewApproval(body, ctx));
   });
 
   app.get("/reimbursements/claims", async (request) => {

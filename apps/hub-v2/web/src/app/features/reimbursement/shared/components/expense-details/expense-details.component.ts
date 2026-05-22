@@ -2,11 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   model,
   output,
-  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -22,6 +20,13 @@ import {
   ReimbursementItemInput,
   TravelReimbursementItemMeta,
 } from '@app/features/reimbursement/models/reimbursement.model';
+import {
+  filterValidItems,
+  parseMoneyInput,
+  sumMoney,
+  travelMetaNumber,
+  travelSubtotal,
+} from '../../utils/reimbursement-money.util';
 
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -33,7 +38,7 @@ const createEmptyItem = (): ReimbursementItemInput => ({
   occurredDate: null,
   fromLocation: '',
   toLocation: '',
-  amount: 0,
+  amount: undefined,
   meta: {
     days: null,
     airfareAmount: null,
@@ -47,19 +52,13 @@ const createEmptyItem = (): ReimbursementItemInput => ({
   sort: 0,
 });
 
-// 默认3行数据
-const getDefaultItems = (): ReimbursementItemInput[] => {
-  return [createEmptyItem(), createEmptyItem(), createEmptyItem()];
-};
-
 // 辅助函数：从 meta 中获取值
 const getMetaValue = (
   item: ReimbursementItemInput,
   key: keyof TravelReimbursementItemMeta
 ): number | null => {
-  const meta = item.meta as any;
-  const value = meta?.[key];
-  return value !== null && value !== undefined ? value : null;
+  const value = travelMetaNumber(item, key);
+  return value > 0 ? value : null;
 };
 
 // 辅助函数：更新 meta 中的值
@@ -86,20 +85,6 @@ const updateMetaValue = (
       [key]: value === null ? null : value,
     },
   };
-};
-
-// 计算单行小计
-const calculateSubtotal = (item: ReimbursementItemInput): number => {
-  const meta = item.meta as TravelReimbursementItemMeta;
-  return (
-    (meta?.airfareAmount || 0) +
-    (meta?.carriageAmount || 0) +
-    (meta?.localTransportAmount || 0) +
-    (meta?.lodgingAmount || 0) +
-    (meta?.mealAllowanceAmount || 0) +
-    (meta?.mealAmount || 0) +
-    (meta?.otherAmount || 0)
-  );
 };
 
 @Component({
@@ -488,26 +473,17 @@ export class ExpenseDetailsComponent {
 
   grandTotal = computed(() => {
     return (
-      this.totalAirfare() +
-      this.totalTransportation() +
-      this.totalLocalTransport() +
-      this.totalAccommodation() +
-      this.totalMealAllowance() +
-      this.totalMealExpenses() +
-      this.totalOther()
+      sumMoney([
+        this.totalAirfare(),
+        this.totalTransportation(),
+        this.totalLocalTransport(),
+        this.totalAccommodation(),
+        this.totalMealAllowance(),
+        this.totalMealExpenses(),
+        this.totalOther(),
+      ])
     );
   });
-
-  constructor() {
-    effect(() => {
-      const currentItems = this.items();
-      if (!currentItems?.length) {
-        const defaultItems = getDefaultItems();
-        this.items.set(defaultItems);
-        this.itemsChange.emit(defaultItems);
-      }
-    });
-  }
 
   // 获取 meta 中的值
   getMetaValue(
@@ -519,22 +495,19 @@ export class ExpenseDetailsComponent {
 
   // 计算单行小计
   calculateItemSubtotal(item: ReimbursementItemInput): number {
-    return calculateSubtotal(item);
+    return travelSubtotal(item);
   }
 
   // 辅助函数：计算 meta 字段总和
   private sumMetaField(field: keyof TravelReimbursementItemMeta): number {
-    return this.items().reduce((sum, item) => {
-      const value = getMetaValue(item, field);
-      return sum + (typeof value === 'number' ? value : 0);
-    }, 0);
+    return sumMoney(this.items().map((item) => getMetaValue(item, field)));
   }
 
   // 更新日期 (occurredDate)
   updateOccurredDate(item: ReimbursementItemInput, date: Date | null): void {
     const dateStr = date ? this.formatDate(date) : null;
     const updatedItem = { ...item, occurredDate: dateStr };
-    updatedItem.amount = calculateSubtotal(updatedItem);
+    updatedItem.amount = travelSubtotal(updatedItem);
 
     this.updateItem(updatedItem);
   }
@@ -545,14 +518,10 @@ export class ExpenseDetailsComponent {
     field: keyof TravelReimbursementItemMeta,
     value: number | string | null
   ): void {
-    let numValue: number | null = null;
-    if (value !== null && value !== '') {
-      numValue = typeof value === 'string' ? parseFloat(value) : value;
-      if (isNaN(numValue)) numValue = null;
-    }
+    const numValue = parseMoneyInput(value);
 
     let updatedItem = updateMetaValue(item, field, numValue);
-    updatedItem.amount = calculateSubtotal(updatedItem);
+    updatedItem.amount = travelSubtotal(updatedItem);
 
     this.updateItem(updatedItem);
   }
@@ -567,7 +536,7 @@ export class ExpenseDetailsComponent {
       fromLocation: location.from,
       toLocation: location.to,
     };
-    updatedItem.amount = calculateSubtotal(updatedItem);
+    updatedItem.amount = travelSubtotal(updatedItem);
 
     this.updateItem(updatedItem);
   }
@@ -587,42 +556,10 @@ export class ExpenseDetailsComponent {
       newItems = [...currentItems, updatedItem];
     }
 
-    // 过滤掉空数据（金额为0且所有字段都为空的行），但保留至少3行
-    let filteredItems = this.filterEmptyItems(newItems);
-
-    // 确保至少有3行数据
-    while (filteredItems.length < 3) {
-      filteredItems.push(createEmptyItem());
-    }
+    const filteredItems = filterValidItems(newItems);
 
     this.items.set(filteredItems);
     this.itemsChange.emit(filteredItems);
-  }
-
-  // 过滤空数据行（金额为0且没有填写任何内容）
-  private filterEmptyItems(items: ReimbursementItemInput[]): ReimbursementItemInput[] {
-    return items.filter((item) => {
-      // 检查是否有实际内容
-      const hasContent =
-        item.occurredDate !== null ||
-        (item.fromLocation && item.fromLocation.trim() !== '') ||
-        (item.toLocation && item.toLocation.trim() !== '') ||
-        (getMetaValue(item, 'days') !== null && getMetaValue(item, 'days') !== 0) ||
-        (getMetaValue(item, 'airfareAmount') !== null &&
-          getMetaValue(item, 'airfareAmount') !== 0) ||
-        (getMetaValue(item, 'carriageAmount') !== null &&
-          getMetaValue(item, 'carriageAmount') !== 0) ||
-        (getMetaValue(item, 'localTransportAmount') !== null &&
-          getMetaValue(item, 'localTransportAmount') !== 0) ||
-        (getMetaValue(item, 'lodgingAmount') !== null &&
-          getMetaValue(item, 'lodgingAmount') !== 0) ||
-        (getMetaValue(item, 'mealAllowanceAmount') !== null &&
-          getMetaValue(item, 'mealAllowanceAmount') !== 0) ||
-        (getMetaValue(item, 'mealAmount') !== null && getMetaValue(item, 'mealAmount') !== 0) ||
-        (getMetaValue(item, 'otherAmount') !== null && getMetaValue(item, 'otherAmount') !== 0);
-
-      return hasContent;
-    });
   }
 
   // 重置单行
@@ -638,22 +575,15 @@ export class ExpenseDetailsComponent {
 
   // 重置所有行程
   resetItems(): void {
-    this.items.set(getDefaultItems());
-    this.itemsChange.emit(getDefaultItems());
+    this.items.set([]);
+    this.itemsChange.emit([]);
   }
 
   // 设置行程数据（用于编辑模式）
   setItems(items: ReimbursementItemInput[]): void {
-    let normalizedItems = [...items];
-
-    // 确保至少有3条数据
-    while (normalizedItems.length < 3) {
-      normalizedItems.push(createEmptyItem());
-    }
-
-    const itemsWithAmount = normalizedItems.map((item) => ({
+    const itemsWithAmount = filterValidItems(items).map((item) => ({
       ...item,
-      amount: calculateSubtotal(item),
+      amount: travelSubtotal(item),
     }));
 
     this.items.set(itemsWithAmount);
@@ -662,7 +592,7 @@ export class ExpenseDetailsComponent {
 
   // 获取实际有效的行程数据（用于提交）
   getValidItems(): ReimbursementItemInput[] {
-    return this.filterEmptyItems(this.items());
+    return filterValidItems(this.items());
   }
 
   private formatDate(date: Date): string {

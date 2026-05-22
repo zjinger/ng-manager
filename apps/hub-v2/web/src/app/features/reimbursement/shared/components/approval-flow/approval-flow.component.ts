@@ -46,7 +46,10 @@ import {
     <div class="approval-wrapper">
       <!-- 流程 -->
       <div class="approval-flow">
-      @for (node of displayNodes(); track $index; let last = $last) {
+        @if (displayNodes().length === 0) {
+          <div class="approval-empty">暂无审批流程预览</div>
+        }
+        @for (node of displayNodes(); track $index; let last = $last) {
         <div class="flow-item">
           <div class="flow-left">
             <div
@@ -150,6 +153,13 @@ import {
       .approval-flow {
         display: flex;
         flex-direction: column;
+      }
+
+      .approval-empty {
+        padding: 18px 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        text-align: center;
       }
 
       .flow-item {

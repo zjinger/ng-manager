@@ -744,7 +744,41 @@
 1. admin 或具备 `expense.report.view` 的用户可看全量
 2. 普通用户只能看到本人数据
 
-## 4.14 `GET /claims/:claimId/approval-preview`
+## 4.14 `POST /approval-preview`
+
+预览未保存报销单的审批流程，用于新建差旅费/费用报销表单右侧流程预览。
+
+说明：
+
+1. 读取默认启用审批模板 `expense_default`
+2. `departmentId` 未传时，后端使用当前登录用户的主部门
+3. 节点来自审批模板配置，不再由前端硬编码
+4. 预览阶段如果某节点审批人暂未配置，该节点仍返回，但 `assignees` 为空；正式提交审批时仍会严格校验审批人配置
+
+请求体：
+
+```json
+{
+  "claimType": "travel",
+  "departmentId": "dep_xxx",
+  "reason": "客户现场支持",
+  "fillDate": "2026-05-21",
+  "travelStartDate": "2026-05-20",
+  "travelStartHalf": "am",
+  "travelEndDate": "2026-05-21",
+  "travelEndHalf": "pm",
+  "travelDays": 2,
+  "receiptCount": 3,
+  "advanceAmount": 0,
+  "items": []
+}
+```
+
+返回：
+
+`data` 结构与详情中的 `approvalPreview` 完全一致。
+
+## 4.15 `GET /claims/:claimId/approval-preview`
 
 获取审批流程预览。
 
@@ -757,7 +791,7 @@
 
 `data` 结构与详情中的 `approvalPreview` 完全一致。
 
-## 4.15 `GET /claims/:claimId/export`
+## 4.16 `GET /claims/:claimId/export`
 
 导出 Word 报销单。
 

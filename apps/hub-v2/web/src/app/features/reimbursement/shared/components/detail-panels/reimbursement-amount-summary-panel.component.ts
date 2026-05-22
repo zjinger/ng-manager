@@ -6,6 +6,7 @@ import {
   reimbursementBalanceAmountLabel,
   reimbursementBalanceDisplayAmount,
 } from '../../utils/reimbursement-detail-display.util';
+import { roundMoney } from '../../utils/reimbursement-money.util';
 
 @Component({
   selector: 'app-reimbursement-amount-summary-panel',
@@ -16,11 +17,11 @@ import {
       <div class="amount-grid">
         <div class="amount-tile amount-tile--total">
           <span>总金额</span>
-          <strong>¥{{ detail().totalAmount.toFixed(2) }}</strong>
+          <strong>¥{{ money(detail().totalAmount) }}</strong>
         </div>
         <div class="amount-tile amount-tile--advance">
           <span>预支金额</span>
-          <strong>¥{{ detail().advanceAmount.toFixed(2) }}</strong>
+          <strong>¥{{ money(detail().advanceAmount) }}</strong>
         </div>
         <div class="amount-tile amount-tile--balance">
           <span>{{ balanceAmountLabel(detail()) }}</span>
@@ -28,7 +29,7 @@ import {
             [class.positive]="detail().balanceAmount > 0"
             [class.negative]="detail().balanceAmount < 0"
           >
-            ¥{{ balanceDisplayAmount(detail()).toFixed(2) }}
+            ¥{{ money(balanceDisplayAmount(detail())) }}
           </strong>
         </div>
       </div>
@@ -120,4 +121,8 @@ export class ReimbursementAmountSummaryPanelComponent {
 
   protected readonly balanceAmountLabel = reimbursementBalanceAmountLabel;
   protected readonly balanceDisplayAmount = reimbursementBalanceDisplayAmount;
+
+  protected money(value: number): string {
+    return roundMoney(value).toFixed(2);
+  }
 }

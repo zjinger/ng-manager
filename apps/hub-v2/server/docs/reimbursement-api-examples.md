@@ -2,6 +2,65 @@
 
 本文档提供前端联调可直接参考的请求体示例，字段说明请配合 [reimbursement-api-contract.md](D:/ng-manager/apps/hub-v2/server/docs/reimbursement-api-contract.md:1) 一起使用。
 
+## 0. 新建表单审批流程预览
+
+`POST /api/admin/reimbursements/approval-preview`
+
+说明：
+
+1. 用于新建差旅费/费用报销时，在单据未保存前预览审批流程
+2. 后端按默认启用模板 `expense_default` 返回节点
+3. `departmentId` 可省略，省略时后端取当前登录用户主部门
+4. 预览阶段审批人缺失时，节点仍返回但 `assignees` 为空；正式提交审批仍会校验审批人配置
+
+差旅报销预览：
+
+```json
+{
+  "claimType": "travel",
+  "reason": "上海到杭州客户拜访差旅报销",
+  "fillDate": "2026-05-15",
+  "travelStartDate": "2026-05-14",
+  "travelStartHalf": "am",
+  "travelEndDate": "2026-05-15",
+  "travelEndHalf": "pm",
+  "travelDays": 2,
+  "receiptCount": 8,
+  "advanceAmount": 300,
+  "items": [
+    {
+      "itemType": "travel",
+      "occurredDate": "2026-05-14",
+      "fromLocation": "上海",
+      "toLocation": "杭州",
+      "amount": 73.5,
+      "meta": {
+        "airfareAmount": 73.5
+      }
+    }
+  ]
+}
+```
+
+普通费用报销预览：
+
+```json
+{
+  "claimType": "general",
+  "reason": "办公用品采购报销",
+  "fillDate": "2026-05-15",
+  "receiptCount": 5,
+  "advanceAmount": 0,
+  "items": [
+    {
+      "itemType": "general",
+      "description": "打印纸与签字笔",
+      "amount": 186.4
+    }
+  ]
+}
+```
+
 ## 1. 差旅报销草稿
 
 `POST /api/admin/reimbursements/claims`
@@ -304,5 +363,6 @@
 5. `PATCH /claims/:claimId` 保存完整明细
 6. `POST /claims/:claimId/submit` 提交审批
 7. `GET /claims/:claimId` 拉详情，读取 `tasks + approvalPreview`
-8. 如需局部刷新审批步骤，可单独调 `GET /claims/:claimId/approval-preview`
-9. 审批人再调 `approve/reject/transfer/add-sign`
+8. 新建表单未保存前如需预览审批步骤，调 `POST /approval-preview`
+9. 如需局部刷新已保存单据审批步骤，可单独调 `GET /claims/:claimId/approval-preview`
+10. 审批人再调 `approve/reject/transfer/add-sign`

@@ -10,52 +10,6 @@ export interface FlowDisplayNode {
   index: number;
 }
 
-/** 默认流程节点（用于无数据时的展示） */
-export const DEFAULT_FLOW_NODES: FlowDisplayNode[] = [
-  {
-    stageCode: 'applicant',
-    stageName: '报销人/出差人',
-    status: 'process',
-    assignees: [],
-    index: 1,
-  },
-  {
-    stageCode: 'current',
-    stageName: '审核',
-    status: 'wait',
-    assignees: [],
-    index: 2,
-  },
-  {
-    stageCode: 'next',
-    stageName: '部门主管',
-    status: 'wait',
-    assignees: [],
-    index: 3,
-  },
-  {
-    stageCode: 'next',
-    stageName: '会计',
-    status: 'wait',
-    assignees: [],
-    index: 4,
-  },
-  {
-    stageCode: 'next',
-    stageName: '出纳',
-    status: 'wait',
-    assignees: [],
-    index: 5,
-  },
-  {
-    stageCode: 'next',
-    stageName: '完成',
-    status: 'wait',
-    assignees: [],
-    index: 6,
-  },
-];
-
 /** 映射节点状态 */
 export function mapNodeStatus(status: string): FlowNodeStatus {
   switch (status) {
@@ -102,7 +56,7 @@ export function transformToDisplayNodes(
   nodes: ReimbursementApprovalPreviewNode[] | undefined
 ): FlowDisplayNode[] {
   if (!nodes || nodes.length === 0) {
-    return DEFAULT_FLOW_NODES;
+    return [];
   }
 
   return nodes

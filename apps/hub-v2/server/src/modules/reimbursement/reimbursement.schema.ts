@@ -8,6 +8,7 @@ const halfDaySchema = z.enum(["am", "pm"]);
 const amountSchema = z.coerce.number().finite().min(0).max(999999999);
 const nonNegativeNumberSchema = z.coerce.number().finite().min(0).max(999999999);
 const nonNegativeIntSchema = z.coerce.number().int().min(0).max(999999999);
+const optionalNonEmptyStringSchema = z.string().trim().transform((value) => value || undefined).optional();
 
 export const attachReimbursementUploadSchema = z.object({
   uploadId: z.string().trim().min(1),
@@ -30,7 +31,7 @@ export const reimbursementItemSchema = z.object({
 
 export const createReimbursementClaimSchema = z.object({
   claimType: claimTypeSchema,
-  departmentId: z.string().trim().min(1).optional(),
+  departmentId: optionalNonEmptyStringSchema,
   reason: z.string().trim().min(1).max(255),
   fillDate: z.string().trim().optional(),
   travelStartDate: z.string().trim().nullable().optional(),
@@ -64,8 +65,23 @@ export const createReimbursementClaimSchema = z.object({
 });
 
 export const updateReimbursementClaimSchema = z.object({
-  departmentId: z.string().trim().min(1).optional(),
+  departmentId: optionalNonEmptyStringSchema,
   reason: z.string().trim().min(1).max(255).optional(),
+  fillDate: z.string().trim().optional(),
+  travelStartDate: z.string().trim().nullable().optional(),
+  travelStartHalf: halfDaySchema.nullable().optional(),
+  travelEndDate: z.string().trim().nullable().optional(),
+  travelEndHalf: halfDaySchema.nullable().optional(),
+  travelDays: nonNegativeNumberSchema.nullable().optional(),
+  receiptCount: nonNegativeIntSchema.nullable().optional(),
+  advanceAmount: amountSchema.optional(),
+  items: z.array(reimbursementItemSchema).optional()
+});
+
+export const reimbursementApprovalPreviewSchema = z.object({
+  claimType: claimTypeSchema,
+  departmentId: optionalNonEmptyStringSchema,
+  reason: z.string().trim().optional(),
   fillDate: z.string().trim().optional(),
   travelStartDate: z.string().trim().nullable().optional(),
   travelStartHalf: halfDaySchema.nullable().optional(),
