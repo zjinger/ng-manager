@@ -1,8 +1,8 @@
 <app-dialog-shell
   [open]="open()"
   [width]="1080"
-  [title]="project() ? project()!.name + ' · 子项目/模块管理' : '子项目/模块管理'"
-  [subtitle]="'按子项目和模块结构管理配置，支持启用/停用、编辑配置、成员管理和删除等操作。'"
+  [title]="project() ? '子项目/模块管理 · ' + project()!.name : '子项目/模块管理'"
+  [subtitle]="'子项目/模块用于按层级拆分项目范围，可配置项目编号、成员和关联研发项。'"
   [icon]="'cluster'"
   (cancel)="cancel.emit()"
 >
@@ -18,6 +18,7 @@
           (createModule)="openCreate()"
           (editModuleConfig)="openDetail.emit({ moduleId: $event, tab: 'basic' })"
           (manageModuleMembers)="openDetail.emit({ moduleId: $event, tab: 'members' })"
+          (manageModuleRdItems)="openDetail.emit({ moduleId: $event, tab: 'rdItems' })"
           (toggleModuleEnabled)="updateModule.emit({ id: $event.id, patch: { enabled: $event.enabled } })"
           (removeModule)="removeModule.emit($event)"
         />
@@ -46,7 +47,7 @@
               <nz-select
                 [ngModel]="createNodeType()"
                 [ngModelOptions]="{ standalone: true }"
-                (ngModelChange)="createNodeType.set($event || 'module')"
+                (ngModelChange)="onCreateNodeTypeChange($event)"
               >
                 <nz-option nzLabel="子项目" nzValue="subsystem"></nz-option>
                 <nz-option nzLabel="模块" nzValue="module"></nz-option>
@@ -56,18 +57,17 @@
         </div>
         <div nz-col [nzSpan]="12">
           <nz-form-item>
-            <nz-form-label>所属子项目（可选）</nz-form-label>
+            <nz-form-label>上级子项目/模块</nz-form-label>
             <nz-form-control>
               <nz-select
                 [ngModel]="createParentId()"
                 [ngModelOptions]="{ standalone: true }"
                 nzAllowClear
-                nzPlaceHolder="选择子项目"
-                [nzDisabled]="createNodeType() === 'subsystem'"
+                nzPlaceHolder="不选择则作为顶层节点"
                 (ngModelChange)="createParentId.set($event || null)"
               >
-                @for (item of subsystemItems(); track item.id) {
-                  <nz-option [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+                @for (item of availableParentItems(); track item.id) {
+                  <nz-option [nzLabel]="parentOptionLabel(item)" [nzValue]="item.id"></nz-option>
                 }
               </nz-select>
             </nz-form-control>
@@ -87,22 +87,20 @@
             </nz-form-control>
           </nz-form-item>
         </div>
-        @if (createNodeType() === 'subsystem') {
-          <div nz-col [nzSpan]="12">
-            <nz-form-item>
-              <nz-form-label>项目编号</nz-form-label>
-              <nz-form-control>
-                <input
-                  nz-input
-                  [ngModel]="createProjectNo()"
-                  [ngModelOptions]="{ standalone: true }"
-                  (ngModelChange)="createProjectNo.set($event)"
-                  placeholder="例如 SL20260001，建议以 SL 开头加上日期流水"
-                />
-              </nz-form-control>
-            </nz-form-item>
-          </div>
-        }
+        <div nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label>项目编号</nz-form-label>
+            <nz-form-control>
+              <input
+                nz-input
+                [ngModel]="createProjectNo()"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="createProjectNo.set($event)"
+                placeholder="可选，例如 SL20260001"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
         <div nz-col [nzSpan]="12">
           <nz-form-item>
             <nz-form-label>优先级</nz-form-label>

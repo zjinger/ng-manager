@@ -140,7 +140,7 @@ export class IssueRepo {
           SELECT COALESCE(NULLIF(pm.code, ''), pm.name) AS module_code
           FROM project_module_rd_items l
           INNER JOIN project_modules pm ON pm.id = l.module_id
-          WHERE l.project_id = ? AND l.rd_item_id = ? AND pm.node_type = 'module'
+          WHERE l.project_id = ? AND l.rd_item_id = ?
           ORDER BY pm.sort ASC, pm.created_at ASC, pm.id ASC, l.sort ASC, l.created_at ASC, l.id ASC
           LIMIT 1
         `

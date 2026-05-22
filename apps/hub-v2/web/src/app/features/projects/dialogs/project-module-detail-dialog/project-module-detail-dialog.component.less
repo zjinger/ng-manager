@@ -46,6 +46,12 @@
   gap: 8px;
 }
 
+.list--rd-links {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .member-row {
   display: flex;
   align-items: center;
@@ -73,10 +79,91 @@
   padding: 12px 0;
 }
 
+.rd-picker {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+}
+
+.rd-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.rd-check-list {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.rd-check-item {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color-soft);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+:host ::ng-deep .rd-check-item .ant-checkbox + span {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding-inline-start: 0;
+  padding-inline-end: 0;
+}
+
+:host ::ng-deep .rd-check-item .ant-checkbox {
+  margin-top: 2px;
+}
+
+:host ::ng-deep .rd-check-item .rd-check-item__text {
+  margin-left: 10px;
+}
+
+.rd-check-item__text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rd-check-item__text > strong {
+  line-height: 1.25;
+}
+
+.rd-check-item__text > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.rd-check-item__text > em {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.rd-pagination {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
   .row--pair,
   .row--triple {
     grid-template-columns: 1fr;
   }
 }
-

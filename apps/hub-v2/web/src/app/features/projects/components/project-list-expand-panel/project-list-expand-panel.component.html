@@ -49,6 +49,7 @@
       <app-project-submodule-structure
         [modules]="modules()"
         [modulesLoading]="modulesLoading()"
+        [defaultCollapsed]="true"
         mode="summary"
         (editModuleConfig)="editModuleConfig.emit($event)"
         (manageModuleMembers)="manageModuleMembers.emit($event)"

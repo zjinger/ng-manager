@@ -387,10 +387,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   }
 
   async listModuleRdLinks(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]> {
-    const module = await this.getModule(projectId, moduleId, ctx);
-    if (module.nodeType !== "module") {
-      return [];
-    }
+    await this.getModule(projectId, moduleId, ctx);
     return this.repo.listModuleRdLinks(projectId, moduleId);
   }
 
@@ -413,7 +410,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         id,
         name: input.name.trim(),
         code: input.code?.trim(),
-        projectNo: nodeType === "subsystem" ? (this.trimToNull(input.projectNo) ?? undefined) : undefined,
+        projectNo: this.trimToNull(input.projectNo) ?? undefined,
         parentId: input.parentId?.trim() || null,
         nodeType,
         ownerUserId: this.resolveModuleOwnerUserId(projectId, input.ownerUserId),
@@ -449,16 +446,10 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       moduleId,
       targetNodeType
     );
-    let nextProjectNo: string | null | undefined = undefined;
-    if (input.projectNo !== undefined) {
-      nextProjectNo = targetNodeType === "subsystem" ? this.trimToNull(input.projectNo) : null;
-    } else if (targetNodeType !== "subsystem" && current.projectNo) {
-      nextProjectNo = null;
-    }
     const changed = this.repo.updateModule(projectId, moduleId, {
       name: input.name?.trim(),
       code: input.code === undefined ? undefined : input.code?.trim() || null,
-      projectNo: nextProjectNo,
+      projectNo: input.projectNo === undefined ? undefined : this.trimToNull(input.projectNo),
       parentId: input.parentId === undefined ? undefined : input.parentId?.trim() || null,
       nodeType: input.nodeType,
       ownerUserId:
@@ -534,10 +525,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     ctx: RequestContext
   ): Promise<ProjectModuleRdLinkEntity[]> {
     await this.requireProjectMaintainer(projectId, ctx, "replace project module rd links");
-    const module = await this.getModule(projectId, moduleId, ctx);
-    if (module.nodeType !== "module") {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "仅模块节点可关联研发项", 400);
-    }
+    await this.getModule(projectId, moduleId, ctx);
 
     const uniqueIds = Array.from(new Set((input.rdItemIds ?? []).map((item) => item.trim()).filter(Boolean)));
     for (const rdItemId of uniqueIds) {
@@ -546,7 +534,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         throw new AppError(ERROR_CODES.BAD_REQUEST, "关联研发项不存在或不在当前项目", 400);
       }
       if (rdItem.status === "closed") {
-        throw new AppError(ERROR_CODES.BAD_REQUEST, "已关闭研发项不允许新增模块关联", 400);
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "已关闭研发项不允许新增子项目/模块关联", 400);
       }
     }
 
@@ -989,19 +977,38 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     nodeType: "subsystem" | "module"
   ): void {
     const normalizedParentId = parentId?.trim() || null;
-    if (nodeType === "subsystem" && normalizedParentId) {
-      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "子项目不能挂在其他节点下", 400);
-    }
     if (!normalizedParentId) {
       return;
     }
     if (selfId && normalizedParentId === selfId) {
-      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "模块不能选择自己作为父节点", 400);
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "不能选择自己作为父节点", 400);
     }
     const parent = items.find((item) => item.id === normalizedParentId);
-    if (!parent || parent.nodeType !== "subsystem") {
-      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "父节点必须是同项目下的子项目（系统）", 400);
+    if (!parent) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "父节点必须是同项目下的子项目/模块", 400);
     }
+    if (nodeType === "subsystem" && parent.nodeType !== "subsystem") {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "子项目不能挂在模块下", 400);
+    }
+    if (selfId && this.isModuleDescendant(items, normalizedParentId, selfId)) {
+      throw new AppError(ERROR_CODES.PROJECT_MODULE_PARENT_INVALID, "不能选择自己的下级作为父节点", 400);
+    }
+  }
+
+  private isModuleDescendant(items: ProjectConfigItemEntity[], candidateId: string, ancestorId: string): boolean {
+    let current = items.find((item) => item.id === candidateId);
+    const visited = new Set<string>();
+    while (current?.parentId) {
+      if (current.parentId === ancestorId) {
+        return true;
+      }
+      if (visited.has(current.parentId)) {
+        return false;
+      }
+      visited.add(current.parentId);
+      current = items.find((item) => item.id === current?.parentId);
+    }
+    return false;
   }
 
   private findVersionById(items: ProjectVersionItemEntity[], id: string, code: string): ProjectVersionItemEntity {

@@ -84,7 +84,7 @@ export class ProjectListPageComponent {
   readonly editDialogOpen = signal(false);
   readonly moduleDialogOpen = signal(false);
   readonly moduleDetailDialogOpen = signal(false);
-  readonly moduleDetailInitialTab = signal<'basic' | 'members'>('basic');
+  readonly moduleDetailInitialTab = signal<'basic' | 'members' | 'rdItems'>('basic');
   readonly configDialogOpen = signal(false);
   readonly membersDialogOpen = signal(false);
   readonly selectedProject = signal<ProjectSummary | null>(null);
@@ -258,7 +258,7 @@ export class ProjectListPageComponent {
     this.pendingModuleMap.set({});
   }
 
-  openModuleDetailDialog(moduleId: string, tab: 'basic' | 'members' = 'basic'): void {
+  openModuleDetailDialog(moduleId: string, tab: 'basic' | 'members' | 'rdItems' = 'basic'): void {
     const project = this.moduleProject();
     if (!project) {
       return;
@@ -270,19 +270,15 @@ export class ProjectListPageComponent {
     this.projectApi.getModule(project.id, moduleId).subscribe({
       next: (module) => {
         this.selectedModule.set(module);
-        if (module.nodeType === 'module') {
-          this.projectApi.listModuleRdLinks(project.id, module.id).subscribe({
-            next: (links) => this.moduleRdLinks.set(links),
-            error: () => this.moduleRdLinks.set([]),
-          });
-        } else {
-          this.moduleRdLinks.set([]);
-        }
+        this.projectApi.listModuleRdLinks(project.id, module.id).subscribe({
+          next: (links) => this.moduleRdLinks.set(links),
+          error: () => this.moduleRdLinks.set([]),
+        });
       },
       error: () => {
         const fallback = this.modules().find((item) => item.id === moduleId) ?? null;
         this.selectedModule.set(fallback);
-        if (fallback?.nodeType === 'module') {
+        if (fallback) {
           this.projectApi.listModuleRdLinks(project.id, moduleId).subscribe({
             next: (links) => this.moduleRdLinks.set(links),
             error: () => this.moduleRdLinks.set([]),
@@ -317,7 +313,7 @@ export class ProjectListPageComponent {
   openModuleDetailFromList(
     project: ProjectSummary,
     moduleId: string,
-    tab: 'basic' | 'members'
+    tab: 'basic' | 'members' | 'rdItems'
   ): void {
     this.openModuleDialog(project);
     this.openModuleDetailDialog(moduleId, tab);
@@ -495,12 +491,12 @@ export class ProjectListPageComponent {
       next: (updated) => {
         this.moduleBusy.set(false);
         this.selectedModule.set(updated);
-        this.message.success('模块信息已更新');
+        this.message.success('子项目/模块信息已更新');
         this.reloadModules(project.id);
       },
       error: () => {
         this.moduleBusy.set(false);
-        this.message.error('更新模块信息失败');
+        this.message.error('更新子项目/模块信息失败');
       }
     });
   }
@@ -515,7 +511,7 @@ export class ProjectListPageComponent {
     this.projectApi.addModuleMember(project.id, module.id, input).subscribe({
       next: () => {
         this.moduleMembersBusy.set(false);
-        this.message.success('模块成员已添加');
+        this.message.success('子项目/模块成员已添加');
         this.projectApi.listModuleMembers(project.id, module.id).subscribe({
           next: (items) => this.moduleMembers.set(items),
           error: () => this.moduleMembers.set([])
@@ -523,7 +519,7 @@ export class ProjectListPageComponent {
       },
       error: () => {
         this.moduleMembersBusy.set(false);
-        this.message.error('添加模块成员失败');
+        this.message.error('添加子项目/模块成员失败');
       }
     });
   }
@@ -538,7 +534,7 @@ export class ProjectListPageComponent {
     this.projectApi.removeModuleMember(project.id, module.id, moduleMemberId).subscribe({
       next: () => {
         this.moduleMembersBusy.set(false);
-        this.message.success('模块成员已移除');
+        this.message.success('子项目/模块成员已移除');
         this.projectApi.listModuleMembers(project.id, module.id).subscribe({
           next: (items) => this.moduleMembers.set(items),
           error: () => this.moduleMembers.set([])
@@ -546,7 +542,7 @@ export class ProjectListPageComponent {
       },
       error: () => {
         this.moduleMembersBusy.set(false);
-        this.message.error('移除模块成员失败');
+        this.message.error('移除子项目/模块成员失败');
       }
     });
   }
@@ -562,11 +558,11 @@ export class ProjectListPageComponent {
       next: ({ items }) => {
         this.moduleRdLinksBusy.set(false);
         this.moduleRdLinks.set(items);
-        this.message.success('模块研发项关联已更新');
+        this.message.success('子项目/模块研发项关联已更新');
       },
       error: () => {
         this.moduleRdLinksBusy.set(false);
-        this.message.error('更新模块研发项关联失败');
+        this.message.error('更新子项目/模块研发项关联失败');
       }
     });
   }

@@ -69,7 +69,7 @@
         @if (hasModulePreview(item.id)) {
           <div class="card-stat">
             <nz-icon nzType="cluster" nzTheme="outline" />
-            <span>{{ modulePreviewCount(item.id) }} 个模块</span>
+            <span>{{ modulePreviewCount(item.id) }} 个子项目/模块</span>
           </div>
         }
         <div class="card-stat card-stat--time">
@@ -90,7 +90,7 @@
         <button nz-button nzType="text" class="card-action-btn" nz-tooltip="成员" (click)="manageMembers.emit(item); $event.stopPropagation()">
           <nz-icon nzType="team" nzTheme="outline" />
         </button>
-        <button nz-button nzType="text" class="card-action-btn" nz-tooltip="模块" (click)="manageModules.emit(item); $event.stopPropagation()">
+        <button nz-button nzType="text" class="card-action-btn" nz-tooltip="子项目/模块" (click)="manageModules.emit(item); $event.stopPropagation()">
           <nz-icon nzType="cluster" nzTheme="outline" />
         </button>
         <button nz-button nzType="text" class="card-action-btn" nz-tooltip="配置" (click)="manageConfig.emit(item); $event.stopPropagation()">

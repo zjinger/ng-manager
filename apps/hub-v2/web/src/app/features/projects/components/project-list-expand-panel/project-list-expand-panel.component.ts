@@ -63,6 +63,6 @@ export class ProjectListExpandPanelComponent {
   }
 
   mainModuleCount(): number {
-    return this.modules().filter((item) => item.nodeType === 'module').length;
+    return this.modules().filter((item) => item.nodeType === 'module' && !item.parentId).length;
   }
 }

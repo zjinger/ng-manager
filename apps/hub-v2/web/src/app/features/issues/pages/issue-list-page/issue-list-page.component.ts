@@ -276,7 +276,7 @@ export class IssueListPageComponent {
     if (query.moduleCodes.length > 0) {
       for (const code of query.moduleCodes) {
         const name = this.modules().find((item) => (item.code || item.name) === code)?.name || code;
-        tags.push({ kind: 'moduleCodes', value: code, label: withPrefix('moduleCodes', '模块', name) });
+        tags.push({ kind: 'moduleCodes', value: code, label: withPrefix('moduleCodes', '子项目/模块', name) });
       }
     }
     if (query.versionCodes.length > 0) {

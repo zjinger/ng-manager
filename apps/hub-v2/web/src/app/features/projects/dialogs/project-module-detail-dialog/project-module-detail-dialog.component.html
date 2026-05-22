@@ -2,7 +2,7 @@
   [open]="open()"
   [width]="980"
   [title]=" module()?.name|| '详情'"
-  [subtitle]="'管理模块基础信息、成员与研发项关联。'"
+  [subtitle]="'管理子项目/模块基础信息、成员与研发项关联。'"
   [icon]="'appstore'"
   (cancel)="cancel.emit()"
 >
@@ -20,6 +20,39 @@
               <div nz-row [nzGutter]="16">
                 <div nz-col [nzSpan]="12">
                   <nz-form-item>
+                    <nz-form-label nzRequired>类型</nz-form-label>
+                    <nz-form-control>
+                      <nz-select
+                        [ngModel]="formNodeType()"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="onNodeTypeChange($event)"
+                      >
+                        <nz-option nzLabel="子项目" nzValue="subsystem"></nz-option>
+                        <nz-option nzLabel="模块" nzValue="module"></nz-option>
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="12">
+                  <nz-form-item>
+                    <nz-form-label>上级子项目/模块</nz-form-label>
+                    <nz-form-control>
+                      <nz-select
+                        nzAllowClear
+                        nzPlaceHolder="不选择则作为顶层节点"
+                        [ngModel]="formParentId()"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="formParentId.set($event || null)"
+                      >
+                        @for (item of availableParentItems(); track item.id) {
+                          <nz-option [nzLabel]="parentOptionLabel(item)" [nzValue]="item.id"></nz-option>
+                        }
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col [nzSpan]="12">
+                  <nz-form-item>
                     <nz-form-label nzRequired>名称</nz-form-label>
                     <nz-form-control>
                       <input
@@ -31,21 +64,19 @@
                     </nz-form-control>
                   </nz-form-item>
                 </div>
-                @if (current.nodeType === 'subsystem') {
-                  <div nz-col [nzSpan]="12">
-                    <nz-form-item>
+                <div nz-col [nzSpan]="12">
+                  <nz-form-item>
                     <nz-form-label>项目编号</nz-form-label>
                     <nz-form-control>
-                        <input
-                          nz-input
-                          [ngModel]="formProjectNo()"
-                          [ngModelOptions]="{ standalone: true }"
-                          (ngModelChange)="formProjectNo.set($event || '')"
-                        />
+                      <input
+                        nz-input
+                        [ngModel]="formProjectNo()"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="formProjectNo.set($event || '')"
+                      />
                     </nz-form-control>
                   </nz-form-item>
                 </div>
-                }
                 <div nz-col [nzSpan]="12">
                   <nz-form-item>
                     <nz-form-label>优先级</nz-form-label>
@@ -77,23 +108,20 @@
                     </nz-form-control>
                   </nz-form-item>
                 </div>
-                @if (current.nodeType === 'module') {
-                  <div nz-col [nzSpan]="12">
-                    <nz-form-item>
+                <div nz-col [nzSpan]="12">
+                  <nz-form-item>
                     <nz-form-label>启用状态</nz-form-label>
                     <nz-form-control>
-                        <nz-select
-                          [ngModel]="formEnabled()"
-                          [ngModelOptions]="{ standalone: true }"
-                          (ngModelChange)="formEnabled.set($event !== false)"
-                        >
-                          <nz-option nzLabel="启用" [nzValue]="true"></nz-option>
-                          <nz-option nzLabel="停用" [nzValue]="false"></nz-option>
-                        </nz-select>
-                      </nz-form-control>
-                    </nz-form-item>
-                  </div>
-                }
+                      <nz-switch
+                        [ngModel]="formEnabled()"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="formEnabled.set($event !== false)"
+                        nzCheckedChildren="启用"
+                        nzUnCheckedChildren="停用"
+                      ></nz-switch>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
                 <div nz-col [nzSpan]="24">
                   <nz-form-item>
                     <nz-form-label>描述</nz-form-label>
@@ -123,120 +151,139 @@
             </div>
           </section>
         </nz-tab>
-        @if (current.nodeType === 'subsystem') {
-          <nz-tab nzTitle="成员">
-            <section class="section">
-              <div class="creator">
-                <nz-select
-                  style="min-width: 240px"
-                  [ngModel]="candidateUserId()"
-                  (ngModelChange)="candidateUserId.set($event || null)"
-                  nzPlaceHolder="选择成员"
-                >
-                  @for (item of addableMembers(); track item.id) {
-                    <nz-option [nzLabel]="item.displayName" [nzValue]="item.userId"></nz-option>
-                  }
-                </nz-select>
-                <nz-select
-                  style="min-width: 160px"
-                  [ngModel]="candidateRoleCode()"
-                  (ngModelChange)="candidateRoleCode.set($event || 'member')"
-                >
-                  @for (item of roleOptions; track item.value) {
-                    <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
-                  }
-                </nz-select>
-                <button
-                  nz-button
-                  nzType="primary"
-                  [disabled]="!candidateUserId() || membersBusy() || !canManageModules()"
-                  [nzLoading]="membersBusy()"
-                  (click)="submitAddMember()"
-                >
-                  添加成员
-                </button>
-              </div>
-              <div class="list">
-                @for (member of scopedModuleMembers(); track member.id) {
-                  <div class="member-row">
-                    <div class="member-meta">
-                      <strong>{{ member.displayName }}</strong>
-                      <span class="muted">{{ roleLabel(member.roleCode) }}</span>
-                    </div>
-                    <div>
-                      @if (canManageModules()) {
-                        <button
-                          nz-button
-                          nzType="default"
-                          nzDanger
-                          [disabled]="membersBusy()"
-                          nz-popconfirm
-                          nzPopconfirmTitle="确认移除该模块成员？"
-                          (nzOnConfirm)="removeMember.emit(member.id)"
-                        >
-                          移除
-                        </button>
-                      }
-                    </div>
-                  </div>
-                } @empty {
-                  <div class="empty">暂无模块成员</div>
+        <nz-tab nzTitle="成员">
+          <section class="section">
+            <div class="creator">
+              <nz-select
+                style="min-width: 240px"
+                [ngModel]="candidateUserId()"
+                (ngModelChange)="candidateUserId.set($event || null)"
+                nzPlaceHolder="选择成员"
+              >
+                @for (item of addableMembers(); track item.id) {
+                  <nz-option [nzLabel]="item.displayName" [nzValue]="item.userId"></nz-option>
                 }
-              </div>
-            </section>
-          </nz-tab>
-        }
-        @if (current.nodeType === 'module') {
-          <nz-tab nzTitle="研发项">
-            <section class="section">
-              <nz-form-item>
-                <nz-form-label>已关联研发项</nz-form-label>
-                <nz-form-control>
-                  <nz-select
-                    nzMode="multiple"
-                    nzAllowClear
-                    nzPlaceHolder="可多选研发项"
-                    [ngModel]="selectedRdItemIds()"
-                    [ngModelOptions]="{ standalone: true }"
-                    (ngModelChange)="selectedRdItemIds.set($event || [])"
-                  >
-                    @for (rd of rdItems(); track rd.id) {
-                      <nz-option
-                        [nzLabel]="rdLabel(rd)"
-                        [nzValue]="rd.id"
-                        [nzDisabled]="isRdOptionDisabled(rd)"
-                      ></nz-option>
+              </nz-select>
+              <nz-select
+                style="min-width: 160px"
+                [ngModel]="candidateRoleCode()"
+                (ngModelChange)="candidateRoleCode.set($event || 'member')"
+              >
+                @for (item of roleOptions; track item.value) {
+                  <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+                }
+              </nz-select>
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="!candidateUserId() || membersBusy() || !canManageModules()"
+                [nzLoading]="membersBusy()"
+                (click)="submitAddMember()"
+              >
+                添加成员
+              </button>
+            </div>
+            <div class="list">
+              @for (member of scopedModuleMembers(); track member.id) {
+                <div class="member-row">
+                  <div class="member-meta">
+                    <strong>{{ member.displayName }}</strong>
+                    <span class="muted">{{ roleLabel(member.roleCode) }}</span>
+                  </div>
+                  <div>
+                    @if (canManageModules()) {
+                      <button
+                        nz-button
+                        nzType="default"
+                        nzDanger
+                        [disabled]="membersBusy()"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认移除该子项目/模块成员？"
+                        (nzOnConfirm)="removeMember.emit(member.id)"
+                      >
+                        移除
+                      </button>
                     }
-                  </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-              <div class="list">
-                @for (link of moduleRdLinks(); track link.id) {
-                  <div class="member-row">
-                    <div class="member-meta">
-                      <strong>{{ link.rdNo || '-' }}</strong>
-                      <span>{{ link.rdTitle || link.rdItemId }}</span>
-                    </div>
-                    <div class="muted">{{ link.rdStatus || '-' }}</div>
                   </div>
-                } @empty {
-                  <div class="empty">暂无关联研发项</div>
-                }
-              </div>
-              <div class="actions">
-                <button
-                  nz-button
-                  nzType="primary"
-                  [disabled]="rdLinksBusy() || !canManageModules()"
-                  [nzLoading]="rdLinksBusy()"
-                  (click)="submitSaveRdLinks()"
-                >
-                  保存研发项关联
-                </button>
-              </div>
-            </section>
-          </nz-tab>
-        }
+                </div>
+              } @empty {
+                <div class="empty">暂无子项目/模块成员</div>
+              }
+            </div>
+          </section>
+        </nz-tab>
+        <nz-tab nzTitle="研发项">
+          <section class="section">
+            <nz-form-item>
+              <nz-form-label>已关联研发项</nz-form-label>
+              <nz-form-control>
+                <div class="rd-picker">
+                  <div class="rd-picker__header">
+                    <span>可选研发项</span>
+                    <span class="muted">已选 {{ selectedRdItemIds().length }} 项</span>
+                  </div>
+                  <div class="rd-check-list">
+                    @for (rd of pagedRdItems(); track rd.id) {
+                      <label
+                        nz-checkbox
+                        class="rd-check-item"
+                        [ngModel]="isRdSelected(rd.id)"
+                        [ngModelOptions]="{ standalone: true }"
+                        [nzDisabled]="isRdOptionDisabled(rd)"
+                        (ngModelChange)="toggleRdItem(rd.id, $event)"
+                      >
+                        <div class="rd-check-item__text">
+                          <strong>{{ rd.rdNo || '-' }}</strong>
+                          <span>{{ rd.title }}</span>
+                          @if (rd.status === 'closed') {
+                            <em>已关闭</em>
+                          }
+                        </div>
+                      </label>
+                    } @empty {
+                      <div class="empty">暂无可关联研发项</div>
+                    }
+                  </div>
+                  @if (rdItems().length > rdPageSize) {
+                    <div class="rd-pagination">
+                      <nz-pagination
+                        nzSize="small"
+                        [nzPageIndex]="rdPageIndex()"
+                        [nzPageSize]="rdPageSize"
+                        [nzTotal]="rdItems().length"
+                        (nzPageIndexChange)="rdPageIndex.set($event)"
+                      ></nz-pagination>
+                    </div>
+                  }
+                </div>
+              </nz-form-control>
+            </nz-form-item>
+            <div class="list list--rd-links">
+              @for (link of moduleRdLinks(); track link.id) {
+                <div class="member-row">
+                  <div class="member-meta">
+                    <strong>{{ link.rdNo || '-' }}</strong>
+                    <span>{{ link.rdTitle || link.rdItemId }}</span>
+                  </div>
+                  <div class="muted">{{ link.rdStatus || '-' }}</div>
+                </div>
+              } @empty {
+                <div class="empty">暂无关联研发项</div>
+              }
+            </div>
+            <div class="actions">
+              <button
+                nz-button
+                nzType="primary"
+                [disabled]="rdLinksBusy() || !canManageModules()"
+                [nzLoading]="rdLinksBusy()"
+                (click)="submitSaveRdLinks()"
+              >
+                保存研发项关联
+              </button>
+            </div>
+          </section>
+        </nz-tab>
       </nz-tabs>
     }
   </div>

@@ -14,13 +14,14 @@ import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
 import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { IssueEntity, IssuePriority, IssueType, UpdateIssueInput } from '../../models/issue.model';
-
-type IssueRdCandidate = {
-  id: string;
-  rdNo: string;
-  title: string;
-  status: string;
-};
+import {
+  buildModuleRdCascaderOptions,
+  findModuleRdSelectionPath,
+  moduleRdCascaderOptionIcon,
+  resolveModuleRdSelection,
+  type ModuleRdCascaderOption,
+  type ModuleRdCascaderRdItem
+} from '../../utils';
 
 type EditDraft = {
   title: string;
@@ -129,7 +130,7 @@ const EMPTY_DRAFT: EditDraft = {
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="8">
               <nz-form-item>
-                <nz-form-label nzFor="moduleCode">模块/研发项</nz-form-label>
+                <nz-form-label nzFor="moduleCode">子项目/模块/研发项</nz-form-label>
                 <nz-form-control>
                   <nz-cascader
                     #moduleCascaderRef
@@ -138,6 +139,7 @@ const EMPTY_DRAFT: EditDraft = {
                     [nzChangeOnSelect]="true"
                     nzColumnClassName="issue-module-cascader-column"
                     nzMenuClassName="issue-module-cascader-menu"
+                    [nzOptionRender]="moduleOptionTpl"
                     [nzOptions]="moduleRdCascaderOptions()"
                     [nzMenuStyle]="moduleMenuStyle()"
                     [ngModel]="modulePath()"
@@ -145,6 +147,12 @@ const EMPTY_DRAFT: EditDraft = {
                     (nzVisibleChange)="onModuleCascaderVisibleChange($event)"
                     (ngModelChange)="onModulePathChange($event)"
                   ></nz-cascader>
+                  <ng-template #moduleOptionTpl let-option>
+                    <span class="issue-module-option" [attr.data-kind]="option.kind">
+                      <nz-icon [nzType]="moduleOptionIcon(option)" nzTheme="outline" />
+                      <span>{{ option.label }}</span>
+                    </span>
+                  </ng-template>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -210,6 +218,27 @@ const EMPTY_DRAFT: EditDraft = {
       ::ng-deep .issue-module-cascader-menu.ant-cascader-menus {
         width: auto;
       }
+      .issue-module-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+      .issue-module-option nz-icon {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+      .issue-module-option[data-kind='subsystem'] nz-icon {
+        color: var(--primary-600);
+      }
+      .issue-module-option[data-kind='module'] nz-icon {
+        color: #64748b;
+      }
+      .issue-module-option[data-kind='rd'] nz-icon,
+      .issue-module-option[data-kind='rd-direct'] nz-icon,
+      .issue-module-option[data-kind='rd-group'] nz-icon {
+        color: #0f766e;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -223,7 +252,7 @@ export class IssueEditDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly issue = input<IssueEntity | null>(null);
-  readonly rdItems = input<IssueRdCandidate[]>([]);
+  readonly rdItems = input<ModuleRdCascaderRdItem[]>([]);
   readonly modules = input<ProjectMetaItem[]>([]);
   readonly moduleRdLinks = input<ProjectModuleRdLinkEntity[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
@@ -240,7 +269,14 @@ export class IssueEditDialogComponent {
       ? { '--issue-module-cascader-col-width': `${this.moduleTriggerWidth()}px` }
       : null
   );
-  readonly moduleRdCascaderOptions = computed(() => this.buildModuleRdCascaderOptions());
+  readonly moduleRdCascaderOptions = computed(() =>
+    buildModuleRdCascaderOptions({
+      modules: this.modules(),
+      moduleRdLinks: this.moduleRdLinks(),
+      rdItems: this.rdItems(),
+      currentRdItemId: this.draft().rdItemId
+    })
+  );
   readonly uploadMarkdownImage = async (file: File): Promise<string> => this.imageUpload.uploadImage(file);
   @ViewChild('moduleCascaderRef', { read: ElementRef }) moduleCascaderRef?: ElementRef<HTMLElement>;
 
@@ -260,7 +296,14 @@ export class IssueEditDialogComponent {
         versionCode: issue?.versionCode || '',
         environmentCode: issue?.environmentCode || '',
       });
-      this.setModulePath(this.findSelectionPath(issue?.moduleCode, issue?.rdItemId));
+      this.setModulePath(
+        findModuleRdSelectionPath({
+          modules: this.modules(),
+          moduleRdLinks: this.moduleRdLinks(),
+          moduleCode: issue?.moduleCode,
+          rdItemId: issue?.rdItemId
+        })
+      );
       this.scheduleSyncModuleMenuWidth();
     });
 
@@ -268,7 +311,14 @@ export class IssueEditDialogComponent {
       if (!this.open()) {
         return;
       }
-      this.setModulePath(this.findSelectionPath(this.draft().moduleCode, this.draft().rdItemId));
+      this.setModulePath(
+        findModuleRdSelectionPath({
+          modules: this.modules(),
+          moduleRdLinks: this.moduleRdLinks(),
+          moduleCode: this.draft().moduleCode,
+          rdItemId: this.draft().rdItemId
+        })
+      );
       this.scheduleSyncModuleMenuWidth();
     });
   }
@@ -289,7 +339,7 @@ export class IssueEditDialogComponent {
     const path =
       Array.isArray(value) && value.length > 0 ? value.map((item) => `${item}`.trim()).filter(Boolean) : null;
     this.setModulePath(path);
-    const { moduleCode, rdItemId } = this.resolveSelection(path);
+    const { moduleCode, rdItemId } = resolveModuleRdSelection({ modules: this.modules(), path });
     this.updateField('moduleCode', moduleCode);
     this.updateField('rdItemId', rdItemId);
   }
@@ -373,158 +423,7 @@ export class IssueEditDialogComponent {
     return true;
   }
 
-  private buildModuleRdCascaderOptions(): Array<{
-    label: string;
-    value: string;
-    children?: Array<{ label: string; value: string; isLeaf?: boolean; children?: Array<{ label: string; value: string; isLeaf: boolean }> }>;
-    isLeaf?: boolean;
-  }> {
-    const items = this.modules();
-    const subsystemItems = items.filter((item) => item.nodeType === 'subsystem');
-    const subsystemIdSet = new Set(subsystemItems.map((item) => item.id));
-    const modulesByParent = new Map<string, ProjectMetaItem[]>();
-    const standaloneModules: ProjectMetaItem[] = [];
-    const rdLinksByModule = new Map<string, IssueRdCandidate[]>();
-    const rdById = new Map(this.rdItems().map((item) => [item.id, item] as const));
-    for (const link of this.moduleRdLinks()) {
-      const rd = rdById.get(link.rdItemId);
-      if (!rd) {
-        continue;
-      }
-      const list = rdLinksByModule.get(link.moduleId) ?? [];
-      list.push(rd);
-      rdLinksByModule.set(link.moduleId, list);
-    }
-
-    for (const item of items) {
-      if (item.nodeType !== 'module') {
-        continue;
-      }
-      if (item.parentId && subsystemIdSet.has(item.parentId)) {
-        const list = modulesByParent.get(item.parentId) ?? [];
-        list.push(item);
-        modulesByParent.set(item.parentId, list);
-        continue;
-      }
-      standaloneModules.push(item);
-    }
-
-    const toRdLeaf = (rd: IssueRdCandidate) => ({
-      label: `${rd.rdNo} · ${rd.title}${rd.status === 'closed' ? '（已关闭）' : ''}`,
-      value: `rd:${rd.id}`,
-      isLeaf: true as const
-    });
-    const toModuleNode = (item: ProjectMetaItem) => {
-      const rdChildren = (rdLinksByModule.get(item.id) ?? []).map(toRdLeaf).filter((child) => {
-        const rdId = child.value.slice(3);
-        const rd = rdById.get(rdId);
-        return !!rd && (rd.status !== 'closed' || this.draft().rdItemId === rdId);
-      });
-      return {
-        label: item.name,
-        value: item.id,
-        children: rdChildren.length > 0 ? rdChildren : undefined,
-        isLeaf: rdChildren.length > 0 ? undefined : true
-      };
-    };
-
-    const options: Array<{
-      label: string;
-      value: string;
-      children?: Array<{ label: string; value: string; isLeaf?: boolean; children?: Array<{ label: string; value: string; isLeaf: boolean }> }>;
-      isLeaf?: boolean;
-    }> = [];
-    for (const sub of subsystemItems) {
-      const children = (modulesByParent.get(sub.id) ?? []).map(toModuleNode);
-      options.push({
-        label: sub.name,
-        value: sub.id,
-        children: children.length > 0 ? children : undefined,
-        isLeaf: children.length > 0 ? undefined : true
-      });
-    }
-    for (const item of standaloneModules) {
-      options.push(toModuleNode(item));
-    }
-
-    const directRdOptions = this.rdItems()
-      .filter((rd) => rd.status !== 'closed' || this.draft().rdItemId === rd.id)
-      .map((rd) => ({
-        label: `${rd.rdNo} · ${rd.title}${rd.status === 'closed' ? '（已关闭）' : ''}`,
-        value: `rd-direct:${rd.id}`,
-        isLeaf: true as const
-      }));
-    options.push({
-      label: '直接关联研发项',
-      value: '__rd_direct__',
-      children: directRdOptions
-    });
-    return options;
-  }
-
-  private findSelectionPath(moduleCode: string | null | undefined, rdItemId: string | null | undefined): string[] | null {
-    const normalizedRdId = rdItemId?.trim() || null;
-    if (normalizedRdId) {
-      const mapped = this.findMappedModuleIdByRdItemId(normalizedRdId);
-      if (mapped) {
-        const module = this.modules().find((item) => item.id === mapped);
-        if (module?.parentId && this.modules().some((item) => item.id === module.parentId && item.nodeType === 'subsystem')) {
-          return [module.parentId, module.id, `rd:${normalizedRdId}`];
-        }
-        return [mapped, `rd:${normalizedRdId}`];
-      }
-      return ['__rd_direct__', `rd-direct:${normalizedRdId}`];
-    }
-    return this.findModulePathByCode(moduleCode);
-  }
-
-  private findModulePathByCode(moduleCode: string | null | undefined): string[] | null {
-    const normalized = moduleCode?.trim();
-    if (!normalized) {
-      return null;
-    }
-    const target = this.modules().find((item) => this.moduleValue(item) === normalized);
-    if (!target) {
-      return null;
-    }
-    if (
-      target.nodeType === 'module' &&
-      target.parentId &&
-      this.modules().some((item) => item.id === target.parentId && item.nodeType === 'subsystem')
-    ) {
-      return [target.parentId, target.id];
-    }
-    return [target.id];
-  }
-
-  private resolveSelection(path: string[] | null): { moduleCode: string; rdItemId: string | null } {
-    if (!path || path.length === 0) {
-      return { moduleCode: '', rdItemId: null };
-    }
-    const last = path[path.length - 1];
-    if (last.startsWith('rd:')) {
-      const rdItemId = last.slice(3);
-      const moduleId = path.length >= 2 ? path[path.length - 2] : null;
-      const moduleCode = moduleId ? this.resolveModuleCodeById(moduleId) : '';
-      return { moduleCode, rdItemId };
-    }
-    if (last.startsWith('rd-direct:')) {
-      return { moduleCode: '', rdItemId: last.slice('rd-direct:'.length) };
-    }
-    return { moduleCode: this.resolveModuleCodeById(last), rdItemId: null };
-  }
-
-  private resolveModuleCodeById(moduleId: string): string {
-    const target = this.modules().find((item) => item.id === moduleId);
-    return target ? this.moduleValue(target) : '';
-  }
-
-  private moduleValue(item: ProjectMetaItem): string {
-    return (item.code || item.name || '').trim();
-  }
-
-  private findMappedModuleIdByRdItemId(rdItemId: string): string | null {
-    const link = this.moduleRdLinks().find((item) => item.rdItemId === rdItemId);
-    return link?.moduleId ?? null;
+  moduleOptionIcon(option: ModuleRdCascaderOption | null | undefined): string {
+    return moduleRdCascaderOptionIcon(option);
   }
 }

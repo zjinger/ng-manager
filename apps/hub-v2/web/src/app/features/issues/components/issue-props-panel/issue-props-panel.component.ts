@@ -71,7 +71,7 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
           </dd>
         </div>
         <div>
-          <dt>模块</dt>
+          <dt>子项目/模块</dt>
           <dd>{{ issue().moduleCode || '-' }}</dd>
         </div>
         <div>

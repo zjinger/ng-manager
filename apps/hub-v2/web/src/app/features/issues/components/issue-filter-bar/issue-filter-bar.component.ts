@@ -145,10 +145,10 @@ export type IssueListViewMode = 'list' | 'card';
       <ng-template nzDrawerContent>
         <div class="advanced-panel">
           <div class="advanced-field">
-            <label>模块</label>
+            <label>子项目/模块</label>
             <nz-select
               nzMode="multiple"
-              nzPlaceHolder="选择模块"
+              nzPlaceHolder="选择子项目/模块"
               [nzAllowClear]="true"
               [ngModel]="draft().moduleCodes"
               (ngModelChange)="updateField('moduleCodes', $event)"

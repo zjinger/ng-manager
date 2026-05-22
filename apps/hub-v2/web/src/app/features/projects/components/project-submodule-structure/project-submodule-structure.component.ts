@@ -3,28 +3,21 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
-import type { ProjectMetaItem } from '../../models/project.model';
+import type { ProjectMetaItem, ProjectModuleNodeType } from '../../models/project.model';
 
 type StructureMode = 'summary' | 'detail';
 
-type ModuleView = {
+type TreeNodeView = {
   id: string;
   parentId: string | null;
   name: string;
   code: string | null;
   projectNo: string | null;
+  nodeType: ProjectModuleNodeType;
   description: string | null;
   enabled: boolean;
-};
-
-type SubsystemView = {
-  id: string;
-  name: string;
-  code: string | null;
-  projectNo: string | null;
-  description: string | null;
-  enabled: boolean;
-  modules: ModuleView[];
+  level: number;
+  children: TreeNodeView[];
 };
 
 @Component({
@@ -41,16 +34,18 @@ export class ProjectSubmoduleStructureComponent {
   readonly busy = input(false);
   readonly canManageModules = input(false);
   readonly mode = input<StructureMode>('summary');
+  readonly defaultCollapsed = input(false);
 
   readonly createModule = output<void>();
   readonly editModuleConfig = output<string>();
   readonly manageModuleMembers = output<string>();
+  readonly manageModuleRdItems = output<string>();
   readonly toggleModuleEnabled = output<{ id: string; enabled: boolean }>();
   readonly removeModule = output<string>();
 
-  readonly expandedSubsystemIds = new Set<string>();
+  readonly collapsedNodeIds = new Set<string>();
 
-  subsystemInitial(name: string): string {
+  nodeInitial(name: string): string {
     return (name || 'S').slice(0, 1).toUpperCase();
   }
 
@@ -66,71 +61,105 @@ export class ProjectSubmoduleStructureComponent {
     return this.isDetailMode();
   }
 
-  toggleSubsystem(subsystemId: string, event: Event): void {
+  toggleNode(nodeId: string, event: Event): void {
     event.stopPropagation();
-    if (this.expandedSubsystemIds.has(subsystemId)) {
-      this.expandedSubsystemIds.delete(subsystemId);
+    if (this.collapsedNodeIds.has(nodeId)) {
+      this.collapsedNodeIds.delete(nodeId);
     } else {
-      this.expandedSubsystemIds.add(subsystemId);
+      this.collapsedNodeIds.add(nodeId);
     }
   }
 
-  isSubsystemExpanded(subsystemId: string): boolean {
-    return !this.expandedSubsystemIds.has(subsystemId);
+  isNodeExpanded(nodeId: string): boolean {
+    return this.defaultCollapsed() ? this.collapsedNodeIds.has(nodeId) : !this.collapsedNodeIds.has(nodeId);
   }
 
   headerCount(): number {
-    return this.isDetailMode() ? this.modules().length : this.subsystems().length;
+    return this.modules().length;
   }
 
-  subsystems(): SubsystemView[] {
-    const items = this.modules();
-    const subsystemItems = items.filter((item) => item.nodeType === 'subsystem');
-    const subsystemIdSet = new Set(subsystemItems.map((item) => item.id));
-    const modulesByParent = new Map<string, ModuleView[]>();
-    for (const item of items) {
-      if (item.nodeType !== 'module') {
-        continue;
-      }
-      if (!item.parentId || !subsystemIdSet.has(item.parentId)) {
-        continue;
-      }
-      const list = modulesByParent.get(item.parentId) ?? [];
-      list.push({
-        id: item.id,
-        parentId: item.parentId,
-        name: item.name,
-        code: item.code ?? null,
-        projectNo: item.projectNo ?? null,
-        description: item.description ?? null,
-        enabled: item.enabled
-      });
-      modulesByParent.set(item.parentId, list);
-    }
-    return subsystemItems.map((sub) => ({
-      id: sub.id,
-      name: sub.name,
-      code: sub.code ?? null,
-      projectNo: sub.projectNo ?? null,
-      description: sub.description ?? null,
-      enabled: sub.enabled,
-      modules: modulesByParent.get(sub.id) ?? []
-    }));
+  topLevelNodes(): TreeNodeView[] {
+    return this.buildTree();
   }
 
-  standaloneModules(): ModuleView[] {
-    const items = this.modules();
-    const subsystemIdSet = new Set(items.filter((item) => item.nodeType === 'subsystem').map((item) => item.id));
-    return items
-      .filter((item) => item.nodeType === 'module' && (!item.parentId || !subsystemIdSet.has(item.parentId)))
-      .map((item) => ({
+  visibleNodes(): TreeNodeView[] {
+    const result: TreeNodeView[] = [];
+    const walk = (nodes: TreeNodeView[]) => {
+      for (const node of nodes) {
+        result.push(node);
+        if (node.children.length > 0 && this.isNodeExpanded(node.id)) {
+          walk(node.children);
+        }
+      }
+    };
+    walk(this.topLevelNodes());
+    return result;
+  }
+
+  typeLabel(type: ProjectModuleNodeType): string {
+    return type === 'subsystem' ? '子项目' : '模块';
+  }
+
+  childCount(node: TreeNodeView): number {
+    return this.countDescendantsById(node.id);
+  }
+
+  hasChildNodes(node: TreeNodeView): boolean {
+    return this.modules().some((item) => item.parentId === node.id);
+  }
+
+  private buildTree(): TreeNodeView[] {
+    const sortedItems = [...this.modules()].sort((a, b) => this.compareNodes(a, b));
+    const nodeMap = new Map<string, TreeNodeView>();
+    for (const item of sortedItems) {
+      nodeMap.set(item.id, {
         id: item.id,
         parentId: item.parentId ?? null,
         name: item.name,
         code: item.code ?? null,
         projectNo: item.projectNo ?? null,
+        nodeType: item.nodeType,
         description: item.description ?? null,
-        enabled: item.enabled
-      }));
+        enabled: item.enabled,
+        level: 0,
+        children: []
+      });
+    }
+
+    const roots: TreeNodeView[] = [];
+    for (const item of sortedItems) {
+      const node = nodeMap.get(item.id);
+      if (!node) continue;
+      const parent = item.parentId ? nodeMap.get(item.parentId) : null;
+      if (parent && parent.id !== node.id) {
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    const setLevel = (nodes: TreeNodeView[], level: number) => {
+      for (const node of nodes) {
+        node.level = level;
+        setLevel(node.children, level + 1);
+      }
+    };
+    setLevel(roots, 0);
+    return roots;
+  }
+
+  private countDescendantsById(parentId: string): number {
+    const children = this.modules().filter((item) => item.parentId === parentId);
+    return children.reduce((total, child) => total + 1 + this.countDescendantsById(child.id), 0);
+  }
+
+  private compareNodes(a: ProjectMetaItem, b: ProjectMetaItem): number {
+    if (a.nodeType !== b.nodeType) {
+      return a.nodeType === 'subsystem' ? -1 : 1;
+    }
+    if (a.sort !== b.sort) {
+      return a.sort - b.sort;
+    }
+    return a.createdAt.localeCompare(b.createdAt);
   }
 }
