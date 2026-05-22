@@ -504,10 +504,10 @@ PATCH /api/admin/feedbacks/:feedbackId
 
 当前 `apps/hub-v2/server/src/app/register-routes.ts` 已注册的接口面比早期设计更完整。除 Auth、Users、Projects、Uploads、Announcements、Documents、Releases、Shared Config、Issues、RD、Dashboard、Feedback 外，还包括：
 
-- 组织与系统治理：Organization、System RBAC、System Settings、System Title、Audit Log、Approval Template。
+- 组织与系统治理：Organization、Organization Title、Project Title、System RBAC、System Settings、Audit Log、Admin Search、Approval Template。
 - 集成与令牌：API Token、Personal Token introspect、Personal Token Issue/RD。
-- 协作扩展：Notifications、Search、Survey、Report Public、AI、AI Report。
-- 业务扩展：Reimbursement。
+- 协作扩展：Notifications、Search、Survey、Report Public、AI、AI Report、Worklog。
+- 业务扩展：Reimbursement、Approval。
 
 后续新增 API 文档时，应先确认 `register-routes.ts` 中的实际 prefix：管理端统一挂在 `/api/admin/*`，公开接口挂在 `/api/public/*`，Project Token 挂在 `/api/token/*`，Personal Token 挂在 `/api/personal/*`。
 

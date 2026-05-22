@@ -16,7 +16,7 @@
 
 ## 2. 一次性初始化（本地执行）
 
-在 `d:/ng-manager/apps/hub-v2` 下执行：
+在仓库的 `apps/hub-v2` 目录下执行：
 
 ```bash
 npm install

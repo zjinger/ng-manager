@@ -1,6 +1,6 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-04-20
+最后更新：2026-05-22
 
 ## 1. 背景与目标
 
@@ -122,6 +122,13 @@ Issue：
 
 说明：
 
+- Issue 列表支持 `rdItemId` 查询参数（`/issues?rdItemId=<RD_ITEM_ID>`），用于按研发项过滤关联测试单
+- Issue 列表与详情返回新增关联快照字段：
+  - `rdItemId`
+  - `rdNoSnapshot`
+  - `rdTitleSnapshot`
+  - `rdStatusSnapshot`
+- 关键字检索会命中 `title/issueNo/description`，也会命中 `rdNoSnapshot/rdTitleSnapshot`
 - `attachmentId` 对应 `issue_attachments.id`，仅用于显式附件
 - `uploadId` 对应 Markdown 图片上传后的 `uploads.id`
 - 内联图片不要求存在 `issue_attachment` 记录，但要求该 `uploadId` 已被当前 Issue 描述或评论内容引用，且上传分类为 `markdown*` 或 `comment`
@@ -136,11 +143,13 @@ RD：
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/progress`（成员进度）
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/progress/history`（成员进度历史）
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/uploads/:uploadId/raw`（RD 描述中的 Markdown 图片展示）
+- `GET /api/token/projects/:projectKey/issues?rdItemId=:itemId`（RD 详情关联测试单列表）
 
 说明：
 
 - RD Markdown 图片能力与 Issue 一致，`uploadId` 对应 `uploads.id`
 - 不要求存在 `issue_attachment` 记录，但要求该 `uploadId` 已被当前 RD 描述引用，且上传分类为 `markdown`
+- 研发项关闭后保留历史关联测试单；已关闭研发项不允许新增/改绑测试单关联
 
 Feedback：
 - `GET /api/token/projects/:projectKey/feedbacks`

@@ -36,7 +36,7 @@
 - 现有 `apps/hub-v2/web` 路由骨架
 - 已经落地的 `hub-v2 server` 模块能力
 
-当前实现基线：`apps/hub-v2/web/src/app/app.routes.ts` 已形成工作台一级路由，包括 `dashboard`、`issues`、`rd`、`content`、`projects`、`profile`、`notifications`、`reimbursements` 和 `admin`；`feedbacks`、`surveys` 由 feature flag 控制。后续调整目录或菜单时，应以实际路由和权限守卫为准。
+当前实现基线：`apps/hub-v2/web/src/app/app.routes.ts` 已形成工作台一级路由，包括 `dashboard`、`issues`、`rd`、`content`、`projects`、`users`、`profile`、`notifications`、`reimbursements` 和 `admin`；`feedbacks`、`surveys` 由 feature flag 控制。`/users` 是协作平台只读入口，完整管理能力仍在 `/admin/users`。内容中心的全局公告入口受 `ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION` 控制。左侧菜单当前按工作台、协作中心、内容中心、财务中心、系统管理组织，后续调整目录或菜单时，应以实际路由、菜单配置和权限守卫为准。
 
 ---
 
@@ -135,6 +135,8 @@ src/app
 │  ├─ content/
 │  ├─ projects/
 │  ├─ organization/
+│  ├─ project-title/
+│  ├─ organization-title/
 │  ├─ reimbursement/
 │  ├─ search/
 │  ├─ survey/
@@ -714,4 +716,3 @@ src/app
 7. 统一 `api-client` 调用规范
 
 ---
-
