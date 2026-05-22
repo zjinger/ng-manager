@@ -20,5 +20,6 @@ export interface AuthCommandContract {
 
 export interface AuthQueryContract {
   me(ctx: RequestContext): Promise<AdminProfile>;
+  isAccountActive(accountId: string): Promise<boolean>;
   listPermissionCodesByAccountId(accountId: string): Promise<string[]>;
 }

@@ -44,6 +44,6 @@ export class UserStatusTagComponent {
   readonly status = input.required<'active' | 'inactive'>();
 
   statusLabel(): string {
-    return this.status() === 'active' ? '活跃' : '停用';
+    return this.status() === 'active' ? '启用' : '停用';
   }
 }

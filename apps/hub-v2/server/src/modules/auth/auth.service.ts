@@ -67,6 +67,15 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     return this.toProfile(account);
   }
 
+  async isAccountActive(accountId: string): Promise<boolean> {
+    const normalized = accountId.trim();
+    if (!normalized || normalized === "anonymous") {
+      return false;
+    }
+    const account = this.repo.findById(normalized);
+    return account?.status === "active";
+  }
+
   async listPermissionCodesByAccountId(accountId: string): Promise<string[]> {
     const normalized = accountId.trim();
     if (!normalized || normalized === "anonymous") {

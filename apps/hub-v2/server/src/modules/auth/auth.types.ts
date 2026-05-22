@@ -66,6 +66,7 @@ export interface EncryptedLoginInput {
   username: string;
   nonce: string;
   cipherText: string;
+  remember?: boolean;
 }
 
 export type LoginInput = EncryptedLoginInput;

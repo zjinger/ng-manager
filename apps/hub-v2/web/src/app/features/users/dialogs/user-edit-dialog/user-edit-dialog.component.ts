@@ -428,6 +428,8 @@ export class UserEditDialogComponent {
     const isActiveTitle = this.titleOptions().some((item) => item.value === normalizedTitleCode);
     const keepHistoricalInactiveTitle = !!currentUser.titleCode && normalizedTitleCode === currentUser.titleCode && !isActiveTitle;
 
+    const loginEnabled = draft.status === 'active' && draft.loginEnabled;
+
     this.update.emit({
       displayName: draft.displayName.trim() || null,
       email: draft.email.trim() || null,
@@ -435,7 +437,7 @@ export class UserEditDialogComponent {
       titleCode: keepHistoricalInactiveTitle ? undefined : (normalizedTitleCode || null),
       remark: draft.remark.trim() || null,
       status: draft.status,
-      loginEnabled: draft.loginEnabled,
+      loginEnabled,
       departments,
       managerUserId: draft.managerUserId.trim() || null,
     });

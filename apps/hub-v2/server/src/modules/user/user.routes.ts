@@ -7,7 +7,6 @@ import { createUserSchema, listUsersQuerySchema, resetUserPasswordSchema, update
 export default async function userRoutes(app: FastifyInstance) {
   app.get("/users", async (request) => {
     const ctx = requireAuth(request);
-    requirePermission(ctx, "admin.users.manage");
     const query = listUsersQuerySchema.parse(request.query);
     return ok(await app.container.userQuery.list(query, ctx));
   });
@@ -22,7 +21,6 @@ export default async function userRoutes(app: FastifyInstance) {
 
   app.get("/users/:userId", async (request) => {
     const ctx = requireAuth(request);
-    requirePermission(ctx, "admin.users.manage");
     const params = request.params as { userId: string };
     return ok(await app.container.userQuery.getById(params.userId, ctx));
   });

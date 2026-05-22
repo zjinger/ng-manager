@@ -36,6 +36,7 @@ export class LoginPageComponent {
   readonly form = this.fb.nonNullable.group({
     username: ['', [Validators.required]],
     password: ['', [Validators.required]],
+    remember: [true],
   });
 
   submit(): void {

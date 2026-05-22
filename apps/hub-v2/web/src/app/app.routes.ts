@@ -110,6 +110,12 @@ export const routes: Routes = [
         data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
         loadChildren: () => import('./features/projects/routes').then((m) => m.PROJECT_ROUTES),
       },
+      // 用户通讯录：协作平台只读入口，完整管理能力仍在 /admin/users
+      {
+        path: 'users',
+        data: { readonly: true },
+        loadChildren: () => import('./features/users/routes').then((m) => m.USER_ROUTES),
+      },
       // 系统反馈路由
       ...(FEATURE_FLAGS.feedback
         ? [

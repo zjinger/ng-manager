@@ -103,13 +103,17 @@ export async function registerPlugins(app: FastifyInstance) {
         }
 
         const accountId = payload?.accountId ?? "anonymous";
+        if (payload && accountId !== "anonymous" && !(await fastify.container.authQuery.isAccountActive(accountId))) {
+          payload = null;
+        }
+        const activeAccountId = payload?.accountId ?? "anonymous";
         const permissionCodes =
-          payload && accountId !== "anonymous"
-            ? await fastify.container.authQuery.listPermissionCodesByAccountId(accountId)
+          payload && activeAccountId !== "anonymous"
+            ? await fastify.container.authQuery.listPermissionCodesByAccountId(activeAccountId)
             : [];
 
         request.requestContext = createRequestContext({
-          accountId,
+          accountId: activeAccountId,
           nickname: payload?.nickname ?? null,
           userId: payload?.userId ?? null,
           roles: payload?.role ? [payload.role] : [],

@@ -36,6 +36,7 @@ export interface AuthUserSystemRole {
 export interface LoginInput {
   username: string;
   password: string;
+  remember?: boolean;
 }
 
 export interface LoginChallenge {

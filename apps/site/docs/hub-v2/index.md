@@ -30,6 +30,7 @@
 - [16 项目治理与 RBAC 结合方案](/hub-v2/16-project-governance-rbac-design)：说明系统 RBAC 与项目内角色的分工、判定顺序和落地边界。
 - [16 全局错误码规范](/hub-v2/16-error-code-governance)：统一服务端错误码注册、抛错约束、全局错误处理与前端错误拦截映射。
 - [20 RBAC 收口迁移清单](/hub-v2/20-rbac-convergence-checklist)：跟踪 `users`、`admin_accounts`、`user_system_roles` 的权限来源收口和回归检查。
+- [21 用户状态与后台登录语义](/hub-v2/21-user-status-and-login-semantics)：收口人员状态、后台登录账号状态、认证拦截和 RBAC 的职责边界。
 
 ### 集成与实时
 
@@ -48,7 +49,7 @@
 2. 再读 [02 架构设计文档](/hub-v2/02-architecture-design)、[03 数据库设计文档](/hub-v2/03-database-design)、[04 API 设计文档](/hub-v2/04-api-design)，冻结核心技术口径。
 3. 前端实现前读 [06 Web 架构设计文档](/hub-v2/06-web-architecture)，确认目录、路由、组件和状态边界。
 4. 研发 Issue/RD 能力时读 [10 RD 权限矩阵](/hub-v2/10-rd-permission-matrix)、[11 RD 产品需求](/hub-v2/11-rd-product-requirements)、[11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix)。
-5. 做项目治理、系统权限或错误处理时读 [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)、[16 项目治理与 RBAC 结合方案](/hub-v2/16-project-governance-rbac-design)、[16 全局错误码规范](/hub-v2/16-error-code-governance)、[20 RBAC 收口迁移清单](/hub-v2/20-rbac-convergence-checklist)。
+5. 做项目治理、系统权限、用户状态或错误处理时读 [15 项目规则与流转说明](/hub-v2/15-project-governance-rules)、[16 项目治理与 RBAC 结合方案](/hub-v2/16-project-governance-rbac-design)、[16 全局错误码规范](/hub-v2/16-error-code-governance)、[20 RBAC 收口迁移清单](/hub-v2/20-rbac-convergence-checklist)、[21 用户状态与后台登录语义](/hub-v2/21-user-status-and-login-semantics)。
 6. 如需 webapp 直连 Hub V2 数据并推进 Issue/RD 可操作化，读 [13 Token 体系与 webapp 读写接入方案](/hub-v2/13-api-token-integration)。
 7. 如需统一实时刷新、通知入库和 Bell 计数，读 [14 WS 实时通知机制](/hub-v2/14-ws-realtime-notification) 与 [18 通知机制](/hub-v2/18-notification-mechanism)。
 8. 准备接现网时读 [08 数据迁移映射清单](/hub-v2/08-migration-mapping)、[09 迁移执行 Runbook](/hub-v2/09-migration-runbook)、[12 内网部署与迁移执行](/hub-v2/12-deploy-intranet)。
@@ -74,5 +75,5 @@
 - 数据库建模、索引、migration 演进与 v1 -> v2 迁移
 - HTTP API、Token API、Personal Token 与 WS 事件规范
 - 前端目录结构、UI 分层、一级路由和状态边界
-- 项目治理、系统 RBAC、项目角色、错误码和权限收口
+- 项目治理、系统 RBAC、项目角色、用户状态、后台登录账号、错误码和权限收口
 - 迁移演练、正式切流、内网部署、发布、回滚与上传清理策略

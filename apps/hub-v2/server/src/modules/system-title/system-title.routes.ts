@@ -11,7 +11,6 @@ import {
 export default async function systemTitleRoutes(app: FastifyInstance) {
   app.get("/titles", async (request) => {
     const ctx = requireAuth(request);
-    requirePermission(ctx, "admin.users.manage");
     const query = listSystemTitlesQuerySchema.parse(request.query);
     const items = await app.container.systemTitleQuery.listSystemTitles(query, ctx);
     return ok({ items });

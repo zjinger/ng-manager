@@ -42,7 +42,7 @@ import { UserStore } from '../../store/user.store';
     <app-page-header title="用户管理" [subtitle]="subtitle()" />
 
     <app-page-toolbar>
-      @if (canCreate()) {
+      @if (canManageUsers()) {
         <button toolbar-primary nz-button nzType="primary" class="toolbar__create" (click)="openCreate()">
           <nz-icon nzType="user-add" nzTheme="outline" />
           新建用户
@@ -52,7 +52,7 @@ import { UserStore } from '../../store/user.store';
       <app-filter-bar toolbar-filters class="toolbar__filters">
         <nz-select class="toolbar__status" [ngModel]="status()" (ngModelChange)="status.set($event)">
           <nz-option nzLabel="全部状态" nzValue=""></nz-option>
-          <nz-option nzLabel="活跃" nzValue="active"></nz-option>
+          <nz-option nzLabel="启用" nzValue="active"></nz-option>
           <nz-option nzLabel="停用" nzValue="inactive"></nz-option>
         </nz-select>
 
@@ -79,7 +79,7 @@ import { UserStore } from '../../store/user.store';
       <app-user-list-table
         [items]="store.items()"
         [titleLabelMap]="titleLabelMap()"
-        [canEdit]="canCreate()"
+        [canEdit]="canManageUsers()"
         (view)="openDetail($event)"
         (edit)="openEdit($event)"
         (resetPassword)="resetPassword($event)"
@@ -118,6 +118,7 @@ import { UserStore } from '../../store/user.store';
       [userOptions]="userOptions()"
       [titleLabelMap]="titleLabelMap()"
       [titleOptions]="titleOptions()"
+      [readonly]="isReadonly()"
       (closed)="closeDetail()"
       (updated)="reloadList()"
     />
@@ -154,8 +155,9 @@ export class UserListPageComponent {
   readonly titleOptions = signal<Array<{ label: string; value: string }>>([]);
   readonly titleLabelMap = signal<Record<string, string>>({});
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个用户`);
-  readonly canCreate = computed(() =>
-    hasRequiredPermissions(this.authStore.currentUser()?.permissionCodes ?? [], ['admin.users.manage'], 'any')
+  readonly isReadonly = signal(this.route.snapshot.pathFromRoot.some((item) => item.data['readonly'] === true));
+  readonly canManageUsers = computed(() =>
+    !this.isReadonly() && hasRequiredPermissions(this.authStore.currentUser()?.permissionCodes ?? [], ['admin.users.manage'], 'any')
   );
 
   constructor() {
@@ -164,7 +166,7 @@ export class UserListPageComponent {
       this.keyword.set(keyword);
       this.store.updateQuery({ keyword });
     });
-    this.organizationApi.listDepartments({ status: 'active' }).subscribe({
+    this.organizationApi.listAllDepartments({ status: 'active' }).subscribe({
       next: (items) => this.departments.set(items),
       error: () => this.departments.set([]),
     });
@@ -190,11 +192,17 @@ export class UserListPageComponent {
   }
 
   openCreate(): void {
+    if (!this.canManageUsers()) {
+      return;
+    }
     this.editingUser.set(null);
     this.createDialogOpen.set(true);
   }
 
   openEdit(user: UserEntity): void {
+    if (!this.canManageUsers()) {
+      return;
+    }
     this.editingUser.set(user);
     this.editingRoleIds.set([]);
     this.editDialogOpen.set(true);
@@ -216,6 +224,9 @@ export class UserListPageComponent {
   }
 
   createUser(input: Parameters<UserStore['create']>[0]): void {
+    if (!this.canManageUsers()) {
+      return;
+    }
     this.store.create(input, () => {
       this.closeCreateDialog();
       this.store.loadOptions((items) => this.userOptions.set(items));
@@ -223,6 +234,9 @@ export class UserListPageComponent {
   }
 
   updateUser(input: Parameters<UserStore['update']>[1]): void {
+    if (!this.canManageUsers()) {
+      return;
+    }
     const user = this.editingUser();
     if (!user) {
       return;
@@ -243,10 +257,16 @@ export class UserListPageComponent {
   }
 
   resetPassword(user: UserEntity): void {
+    if (!this.canManageUsers()) {
+      return;
+    }
     this.store.resetPassword(user.id);
   }
 
   resetEditingUserPassword(): void {
+    if (!this.canManageUsers()) {
+      return;
+    }
     const user = this.editingUser();
     if (!user) {
       return;

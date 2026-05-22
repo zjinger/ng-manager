@@ -43,7 +43,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
     this.validateUserReference(input.managerUserId, "manager user");
 
     const now = nowIso();
-    const loginEnabled = input.loginEnabled !== false;
+    const status = "active";
+    const loginEnabled = status === "active" && input.loginEnabled !== false;
     const entity: UserEntity = {
       id: genId("usr"),
       username,
@@ -54,13 +55,14 @@ export class UserService implements UserCommandContract, UserQueryContract {
       avatarUploadId: null,
       avatarUrl: null,
       loginEnabled,
-      status: "active",
+      status,
       source: "local",
       remark: input.remark?.trim() || null,
       departments: [],
       primaryDepartment: null,
       managerUserId: input.managerUserId?.trim() || null,
       managerUser: null,
+      lastLoginAt: null,
       createdAt: now,
       updatedAt: now
     };
@@ -126,14 +128,16 @@ export class UserService implements UserCommandContract, UserQueryContract {
     this.validateTitleCode(input.titleCode);
     this.validateUserReference(input.managerUserId, "manager user", id);
 
+    const nextStatus = input.status ?? user.status;
+    const nextLoginEnabled = nextStatus === "active" && (input.loginEnabled === undefined ? user.loginEnabled : input.loginEnabled);
     const updated: UserEntity = {
       ...user,
       displayName: input.displayName === undefined ? user.displayName : input.displayName?.trim() || null,
       email: input.email === undefined ? user.email : input.email?.trim() || null,
       mobile: input.mobile === undefined ? user.mobile : input.mobile?.trim() || null,
       titleCode: input.titleCode === undefined ? user.titleCode : input.titleCode?.trim() || null,
-      loginEnabled: input.loginEnabled === undefined ? user.loginEnabled : input.loginEnabled,
-      status: input.status ?? user.status,
+      loginEnabled: nextLoginEnabled,
+      status: nextStatus,
       remark: input.remark === undefined ? user.remark : input.remark?.trim() || null,
       managerUserId: input.managerUserId === undefined ? user.managerUserId : input.managerUserId?.trim() || null,
       managerUser: input.managerUserId === undefined ? user.managerUser : null,

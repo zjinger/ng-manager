@@ -21,6 +21,7 @@ export interface UserEntity {
   primaryDepartment: UserDepartmentEntity | null;
   managerUserId: string | null;
   managerUser: UserRef | null;
+  lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

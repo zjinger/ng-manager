@@ -14,7 +14,31 @@ export default async function authRoutes(app: FastifyInstance) {
     source: "http" as const
   });
 
-  const setAuthCookie = async (request: FastifyRequest, reply: FastifyReply, profile: AdminProfile) => {
+  const resolveCookieMaxAgeSeconds = (expiresIn: string): number | undefined => {
+    const normalized = expiresIn.trim().toLowerCase();
+    const match = normalized.match(/^(\d+)(ms|s|m|h|d|w)?$/);
+    if (!match) {
+      return undefined;
+    }
+
+    const amount = Number(match[1]);
+    const unit = match[2] ?? "s";
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return undefined;
+    }
+
+    const secondsByUnit: Record<string, number> = {
+      ms: 1 / 1000,
+      s: 1,
+      m: 60,
+      h: 60 * 60,
+      d: 24 * 60 * 60,
+      w: 7 * 24 * 60 * 60
+    };
+    return Math.max(1, Math.floor(amount * secondsByUnit[unit]));
+  };
+
+  const setAuthCookie = async (request: FastifyRequest, reply: FastifyReply, profile: AdminProfile, remember: boolean) => {
     const secure = app.config.authCookieSecure && request.protocol === "https";
     const token = await reply.jwtSign(
       {
@@ -28,12 +52,14 @@ export default async function authRoutes(app: FastifyInstance) {
         expiresIn: app.config.authTokenExpiresIn
       }
     );
+    const maxAge = remember ? resolveCookieMaxAgeSeconds(app.config.authTokenExpiresIn) : undefined;
 
     reply.setCookie(app.config.authCookieName, token, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      secure
+      secure,
+      ...(maxAge ? { maxAge } : {})
     });
   };
 
@@ -88,7 +114,7 @@ export default async function authRoutes(app: FastifyInstance) {
       throw error;
     }
 
-    await setAuthCookie(request, reply, profile);
+    await setAuthCookie(request, reply, profile, body.remember);
     logLoginResult("challenge", "success", request, username, {
       accountId: profile.id,
       role: profile.role

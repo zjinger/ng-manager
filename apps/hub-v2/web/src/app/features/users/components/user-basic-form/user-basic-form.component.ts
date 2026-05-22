@@ -162,14 +162,6 @@ import type { UserEntity } from '../../models/user.model';
               </nz-form-control>
             </nz-form-item>
           </div>
-          <div class="col" nz-col [nzSpan]="12">
-            <nz-form-item>
-              <nz-form-label nzFor="employeeType">员工类型</nz-form-label>
-              <nz-form-control>
-                <input nz-input name="employeeType" value="待后端接入" disabled />
-              </nz-form-control>
-            </nz-form-item>
-          </div>
         </div>
       </section>
     </form>

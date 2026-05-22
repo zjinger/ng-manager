@@ -64,16 +64,14 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
                     }
                   </div>
                 </div>
-                <div class="user-hero__actions">
-                  <button nz-button (click)="startEdit()">
-                    <nz-icon nzType="edit" nzTheme="outline" />
-                    编辑
-                  </button>
-                  <button nz-button disabled>
-                    <nz-icon nzType="lock" nzTheme="outline" />
-                    锁定
-                  </button>
-                </div>
+                @if (!readonly()) {
+                  <div class="user-hero__actions">
+                    <button nz-button (click)="startEdit()">
+                      <nz-icon nzType="edit" nzTheme="outline" />
+                      编辑
+                    </button>
+                  </div>
+                }
               </div>
 
               <div class="user-detail__grid">
@@ -99,7 +97,9 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
                 </div>
                 <div class="detail-field">
                   <span>最后登录</span>
-                  <strong class="detail-field__placeholder">待接入</strong>
+                  <strong [class.detail-field__placeholder]="!currentUser.lastLoginAt">
+                    {{ currentUser.lastLoginAt ? (currentUser.lastLoginAt | date: 'yyyy-MM-dd HH:mm:ss') : '从未登录' }}
+                  </strong>
                 </div>
                 <!-- <div class="detail-field">
                   <span>登录次数</span>
@@ -116,19 +116,21 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
       </ng-container>
     </app-dialog-shell>
 
-    @if (user(); as currentUser) {
-      <app-user-edit-dialog
-        [open]="editOpen()"
-        [busy]="busy()"
-      [user]="currentUser"
-      [departments]="departments()"
-      [userOptions]="userOptions()"
-      [titleOptions]="titleOptions()"
-      (cancel)="closeEdit()"
-        (update)="updateUser($event)"
-        (roleSync)="pendingRoleIds.set($event)"
-        (resetPassword)="resetPassword()"
-      />
+    @if (!readonly()) {
+      @if (user(); as currentUser) {
+        <app-user-edit-dialog
+          [open]="editOpen()"
+          [busy]="busy()"
+          [user]="currentUser"
+          [departments]="departments()"
+          [userOptions]="userOptions()"
+          [titleOptions]="titleOptions()"
+          (cancel)="closeEdit()"
+          (update)="updateUser($event)"
+          (roleSync)="pendingRoleIds.set($event)"
+          (resetPassword)="resetPassword()"
+        />
+      }
     }
   `,
   styles: [
@@ -263,6 +265,7 @@ export class UserDetailDialogComponent {
   readonly userOptions = input<UserEntity[]>([]);
   readonly titleLabelMap = input<Record<string, string>>({});
   readonly titleOptions = input<Array<{ label: string; value: string }>>([]);
+  readonly readonly = input(false);
   readonly updated = output<UserEntity>();
   readonly closed = output<void>();
 
@@ -285,7 +288,11 @@ export class UserDetailDialogComponent {
         return;
       }
       this.loadUser(userId);
-      this.loadRoles(userId);
+      if (this.readonly()) {
+        this.roleAssignments.set([]);
+      } else {
+        this.loadRoles(userId);
+      }
     });
   }
 
@@ -294,6 +301,9 @@ export class UserDetailDialogComponent {
   }
 
   startEdit(): void {
+    if (this.readonly()) {
+      return;
+    }
     this.pendingRoleIds.set([]);
     this.editOpen.set(true);
   }
@@ -304,6 +314,9 @@ export class UserDetailDialogComponent {
   }
 
   updateUser(input: Parameters<UserApiService['update']>[1]): void {
+    if (this.readonly()) {
+      return;
+    }
     const currentUser = this.user();
     if (!currentUser) {
       return;
@@ -336,6 +349,9 @@ export class UserDetailDialogComponent {
   }
 
   resetPassword(): void {
+    if (this.readonly()) {
+      return;
+    }
     const currentUser = this.user();
     if (!currentUser) {
       return;

@@ -6,7 +6,8 @@ const mobilePattern = /^1\d{10}$/;
 export const encryptedLoginSchema = z.object({
   username: usernameSchema,
   nonce: z.string().trim().min(16).max(200),
-  cipherText: z.string().trim().min(16).max(8192)
+  cipherText: z.string().trim().min(16).max(8192),
+  remember: z.boolean().optional().default(false)
 });
 
 export const loginSchema = encryptedLoginSchema;

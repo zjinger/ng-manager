@@ -56,7 +56,7 @@ export class AuthRepo {
             a.nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
             a.role,
-            a.status,
+            CASE WHEN u.id IS NOT NULL AND u.status = 'inactive' THEN 'inactive' ELSE a.status END AS status,
             a.must_change_password,
             a.last_login_at,
             a.created_at,
@@ -90,7 +90,7 @@ export class AuthRepo {
             a.nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
             a.role,
-            a.status,
+            CASE WHEN u.id IS NOT NULL AND u.status = 'inactive' THEN 'inactive' ELSE a.status END AS status,
             a.must_change_password,
             a.last_login_at,
             a.created_at,
@@ -123,7 +123,7 @@ export class AuthRepo {
             a.nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
             a.role,
-            a.status,
+            CASE WHEN u.id IS NOT NULL AND u.status = 'inactive' THEN 'inactive' ELSE a.status END AS status,
             a.must_change_password,
             a.last_login_at,
             a.created_at,

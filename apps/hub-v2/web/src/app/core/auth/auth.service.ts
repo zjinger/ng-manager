@@ -21,10 +21,11 @@ export class AuthService {
       switchMap((challenge) => {
         return from(encryptLoginPassword(`${challenge.nonce}:${input.password}`, challenge.nonce)).pipe(
           switchMap((encrypted) =>
-            this.api.post<AuthUser, { username: string; nonce: string; cipherText: string }>('/auth/login', {
+            this.api.post<AuthUser, { username: string; nonce: string; cipherText: string; remember: boolean }>('/auth/login', {
               username,
               nonce: challenge.nonce,
               cipherText: encrypted.cipherText,
+              remember: input.remember === true,
             })
           )
         );

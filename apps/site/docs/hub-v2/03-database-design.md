@@ -200,6 +200,12 @@ updated_at
 - `status` 限定为 `active | inactive`
 - `source` 限定为 `local | imported`
 
+关键语义：
+
+- `status` 表示人员主数据状态，不等同于后台登录开关。
+- `inactive` 人员必须视为不可登录，即使历史登录账号仍为 `active`，服务端读取和认证也应归一为不可登录。
+- 详细规则见 [21 用户状态与后台登录语义](/hub-v2/21-user-status-and-login-semantics)。
+
 建议索引：
 
 - `idx_users_status`
@@ -232,6 +238,8 @@ updated_at
 
 - `user_id` 允许为空，但必须在编码前明确是否长期允许
 - `role` 当前可保持 `admin | user`
+- `status` 表示登录账号状态；实际可登录状态还必须受绑定 `users.status` 约束
+- `role` 不作为系统 RBAC 权限来源，权限以 `user_system_roles` 和 `system_permissions` 为准
 
 建议约束：
 

@@ -18,6 +18,7 @@ type UserRow = {
   manager_user_id: string | null;
   manager_username: string | null;
   manager_display_name: string | null;
+  last_login_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -41,13 +42,14 @@ export class UserRepo {
             u.mobile,
             u.title_code,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
-            CASE WHEN aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
+            CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
             u.source,
             u.remark,
             u.manager_user_id,
             manager.username AS manager_username,
             manager.display_name AS manager_display_name,
+            aa.last_login_at,
             u.created_at,
             u.updated_at
           FROM users u
@@ -72,13 +74,14 @@ export class UserRepo {
             u.mobile,
             u.title_code,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
-            CASE WHEN aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
+            CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
             u.source,
             u.remark,
             u.manager_user_id,
             manager.username AS manager_username,
             manager.display_name AS manager_display_name,
+            aa.last_login_at,
             u.created_at,
             u.updated_at
           FROM users u
@@ -186,13 +189,14 @@ export class UserRepo {
             u.mobile,
             u.title_code,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
-            CASE WHEN aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
+            CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
             u.source,
             u.remark,
             u.manager_user_id,
             manager.username AS manager_username,
             manager.display_name AS manager_display_name,
+            aa.last_login_at,
             u.created_at,
             u.updated_at
           FROM users u
@@ -245,6 +249,7 @@ export class UserRepo {
             displayName: row.manager_display_name
           }
         : null,
+      lastLoginAt: row.last_login_at ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
