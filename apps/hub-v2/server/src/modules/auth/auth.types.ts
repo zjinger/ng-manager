@@ -8,8 +8,8 @@ export interface AdminAccountEntity {
   email?: string | null;
   mobile?: string | null;
   remark?: string | null;
-  titleCode?: string | null;
-  titleName?: string | null;
+  organizationTitleCode?: string | null;
+  organizationTitleName?: string | null;
   passwordHash: string;
   nickname: string;
   avatarUploadId?: string | null;
@@ -28,8 +28,8 @@ export interface AdminProfile {
   email: string | null;
   mobile: string | null;
   remark: string | null;
-  titleCode: string | null;
-  titleName: string | null;
+  organizationTitleCode: string | null;
+  organizationTitleName: string | null;
   nickname: string;
   avatarUploadId: string | null;
   avatarUrl: string | null;

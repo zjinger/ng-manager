@@ -40,10 +40,10 @@
                 <nz-select
                   name="role"
                   [ngModel]="roleCode()"
-                  (ngModelChange)="roleCode.set($event || 'member')"
+                  (ngModelChange)="setRoleCode($event)"
                   nzPlaceHolder="选择角色"
                 >
-                  @for (option of roleOptions; track option.value) {
+                  @for (option of roleOptions(); track option.value) {
                     <nz-option [nzLabel]="option.label" [nzValue]="option.value"></nz-option>
                   }
                 </nz-select>

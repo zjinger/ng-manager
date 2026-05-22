@@ -7,7 +7,8 @@ import { nowIso } from "../../shared/utils/time";
 import { AuthRepo } from "../auth/auth.repo";
 import { OrganizationService } from "../organization/organization.service";
 import { PlatformRoleSyncService } from "../system-rbac/platform-role-sync.service";
-import { SystemTitleService } from "../system-title/system-title.service";
+import { OrganizationTitleService } from "../organization-title/organization-title.service";
+import { ProjectTitleService } from "../project-title/project-title.service";
 import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
 import { UserRepo } from "./user.repo";
 import type { UserCommandContract, UserQueryContract } from "./user.contract";
@@ -29,7 +30,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
     private readonly authRepo: AuthRepo,
     private readonly organization: OrganizationService,
     private readonly platformRoleSync: PlatformRoleSyncService,
-    private readonly systemTitleService: SystemTitleService,
+    private readonly organizationTitleService: OrganizationTitleService,
+    private readonly projectTitleService: ProjectTitleService,
     private readonly auditLog?: AuditLogCommandContract
   ) {}
 
@@ -39,7 +41,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
       throw new AppError(ERROR_CODES.USER_ALREADY_EXISTS, `user already exists: ${input.username}`, 409);
     }
     this.organization.validateUserDepartmentInputs(input.departments);
-    this.validateTitleCode(input.titleCode);
+    this.validateOrganizationTitleCode(input.organizationTitleCode);
+    this.validateDefaultProjectTitleCode(input.defaultProjectTitleCode);
     this.validateUserReference(input.managerUserId, "manager user");
 
     const now = nowIso();
@@ -51,7 +54,10 @@ export class UserService implements UserCommandContract, UserQueryContract {
       displayName: input.displayName?.trim() || null,
       email: input.email?.trim() || null,
       mobile: input.mobile?.trim() || null,
-      titleCode: input.titleCode?.trim() || null,
+      organizationTitleCode: input.organizationTitleCode?.trim() || null,
+      organizationTitleName: null,
+      defaultProjectTitleCode: input.defaultProjectTitleCode?.trim() || null,
+      defaultProjectTitleName: null,
       avatarUploadId: null,
       avatarUrl: null,
       loginEnabled,
@@ -125,7 +131,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
     }
     const before = this.withDepartments(user);
     this.organization.validateUserDepartmentInputs(input.departments);
-    this.validateTitleCode(input.titleCode);
+    this.validateOrganizationTitleCode(input.organizationTitleCode);
+    this.validateDefaultProjectTitleCode(input.defaultProjectTitleCode);
     this.validateUserReference(input.managerUserId, "manager user", id);
 
     const nextStatus = input.status ?? user.status;
@@ -135,7 +142,11 @@ export class UserService implements UserCommandContract, UserQueryContract {
       displayName: input.displayName === undefined ? user.displayName : input.displayName?.trim() || null,
       email: input.email === undefined ? user.email : input.email?.trim() || null,
       mobile: input.mobile === undefined ? user.mobile : input.mobile?.trim() || null,
-      titleCode: input.titleCode === undefined ? user.titleCode : input.titleCode?.trim() || null,
+      organizationTitleCode: input.organizationTitleCode === undefined ? user.organizationTitleCode : input.organizationTitleCode?.trim() || null,
+      organizationTitleName: input.organizationTitleCode === undefined ? user.organizationTitleName : null,
+      defaultProjectTitleCode:
+        input.defaultProjectTitleCode === undefined ? user.defaultProjectTitleCode : input.defaultProjectTitleCode?.trim() || null,
+      defaultProjectTitleName: input.defaultProjectTitleCode === undefined ? user.defaultProjectTitleName : null,
       loginEnabled: nextLoginEnabled,
       status: nextStatus,
       remark: input.remark === undefined ? user.remark : input.remark?.trim() || null,
@@ -268,8 +279,26 @@ export class UserService implements UserCommandContract, UserQueryContract {
   private hasUserAuditChange(before: UserEntity, after: UserEntity, input: UpdateUserInput): boolean {
     const fields: Array<keyof Pick<
       UserEntity,
-      "displayName" | "email" | "mobile" | "titleCode" | "loginEnabled" | "status" | "remark" | "managerUserId"
-    >> = ["displayName", "email", "mobile", "titleCode", "loginEnabled", "status", "remark", "managerUserId"];
+      | "displayName"
+      | "email"
+      | "mobile"
+      | "organizationTitleCode"
+      | "defaultProjectTitleCode"
+      | "loginEnabled"
+      | "status"
+      | "remark"
+      | "managerUserId"
+    >> = [
+      "displayName",
+      "email",
+      "mobile",
+      "organizationTitleCode",
+      "defaultProjectTitleCode",
+      "loginEnabled",
+      "status",
+      "remark",
+      "managerUserId"
+    ];
 
     for (const field of fields) {
       if (input[field] !== undefined && before[field] !== after[field]) {
@@ -302,17 +331,31 @@ export class UserService implements UserCommandContract, UserQueryContract {
     }
   }
 
-  private validateTitleCode(titleCode: string | null | undefined): void {
+  private validateOrganizationTitleCode(titleCode: string | null | undefined): void {
     const normalized = titleCode?.trim();
     if (!normalized) {
       return;
     }
-    const title = this.systemTitleService.getSystemTitleByCode(normalized);
+    const title = this.organizationTitleService.getOrganizationTitleByCode(normalized);
     if (!title) {
-      throw new AppError(ERROR_CODES.SYSTEM_TITLE_NOT_FOUND, `system title not found: ${normalized}`, 404);
+      throw new AppError(ERROR_CODES.ORGANIZATION_TITLE_NOT_FOUND, `organization title not found: ${normalized}`, 404);
     }
     if (title.status !== "active") {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, `system title is inactive: ${normalized}`, 400);
+      throw new AppError(ERROR_CODES.BAD_REQUEST, `organization title is inactive: ${normalized}`, 400);
+    }
+  }
+
+  private validateDefaultProjectTitleCode(titleCode: string | null | undefined): void {
+    const normalized = titleCode?.trim();
+    if (!normalized) {
+      return;
+    }
+    const title = this.projectTitleService.getProjectTitleByCode(normalized);
+    if (!title) {
+      throw new AppError(ERROR_CODES.PROJECT_TITLE_NOT_FOUND, `project title not found: ${normalized}`, 404);
+    }
+    if (title.status !== "active") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, `project title is inactive: ${normalized}`, 400);
     }
   }
 

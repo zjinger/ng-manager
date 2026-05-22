@@ -102,6 +102,8 @@ export interface ProjectMemberCandidate {
   id: string;
   username: string;
   displayName: string | null;
+  defaultProjectTitleCode: ProjectMemberRole | null;
+  defaultProjectTitleName: string | null;
 }
 
 export interface ProjectConfigItemEntity {

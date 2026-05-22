@@ -13,7 +13,7 @@ function createDb() {
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL,
       display_name TEXT,
-      title_code TEXT
+      organization_title_code TEXT
     );
 
     CREATE TABLE departments (
@@ -41,7 +41,7 @@ function createDb() {
     );
     CREATE UNIQUE INDEX idx_user_departments_primary ON user_departments(user_id);
 
-    CREATE TABLE system_titles (
+    CREATE TABLE organization_titles (
       id TEXT PRIMARY KEY,
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
@@ -55,11 +55,11 @@ function createDb() {
     CREATE TABLE department_titles (
       id TEXT PRIMARY KEY,
       department_id TEXT NOT NULL,
-      title_code TEXT NOT NULL,
+      organization_title_code TEXT NOT NULL,
       sort INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      UNIQUE(department_id, title_code)
+      UNIQUE(department_id, organization_title_code)
     );
   `);
   return db;
@@ -147,13 +147,13 @@ describe("OrganizationService", () => {
     const db = createDb();
     try {
       db.prepare("INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)").run("usr_1", "u1", "用户一");
-      db.prepare("INSERT INTO system_titles (id, code, name, status, sort, remark, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      db.prepare("INSERT INTO organization_titles (id, code, name, status, sort, remark, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
         .run("title_1", "frontend_dev", "前端开发", "active", 10, null, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z");
 
       const service = new OrganizationService(new OrganizationRepo(db));
       const dep = await service.createDepartment({ code: "dep1", name: "部门一" }, adminCtx);
       await service.addUserDepartment("usr_1", { departmentId: dep.id }, adminCtx);
-      db.prepare("UPDATE users SET title_code = ? WHERE id = ?").run("frontend_dev", "usr_1");
+      db.prepare("UPDATE users SET organization_title_code = ? WHERE id = ?").run("frontend_dev", "usr_1");
 
       await service.addDepartmentTitle(dep.id, { titleCode: "frontend_dev" }, adminCtx);
       const titles = await service.listDepartmentTitles(dep.id, adminCtx);

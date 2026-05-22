@@ -44,6 +44,7 @@ INSERT OR IGNORE INTO departments (
 )
 VALUES
   ('dep_seed_company_sl', NULL, 'company_sl', '深蓝信息', NULL, NULL, NULL, 'active', 10, datetime('now'), datetime('now')),
+  ('dep_seed_general_office', 'dep_seed_company_sl', 'general_office', '总经办', NULL, NULL, NULL, 'active', 15, datetime('now'), datetime('now')),
   ('dep_seed_optics_rd', 'dep_seed_company_sl', 'optics_rd', '光学研发部', NULL, NULL, NULL, 'active', 20, datetime('now'), datetime('now')),
   ('dep_seed_software_rd', 'dep_seed_company_sl', 'software_rd', '软件研发部', NULL, NULL, NULL, 'active', 30, datetime('now'), datetime('now')),
   ('dep_seed_finance_legal_tax', 'dep_seed_company_sl', 'finance_legal_tax', '财务法税部', NULL, NULL, NULL, 'active', 40, datetime('now'), datetime('now')),

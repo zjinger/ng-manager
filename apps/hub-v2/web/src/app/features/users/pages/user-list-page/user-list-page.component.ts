@@ -18,6 +18,7 @@ import type { UserEntity } from '../../models/user.model';
 import { UserRoleSyncService } from '../../services/user-role-sync.service';
 import { UserTitleApiService } from '../../services/user-title-api.service';
 import { UserStore } from '../../store/user.store';
+import { ProjectTitleApiService } from '../../../admin/services/project-title-api.service';
 
 @Component({
   selector: 'app-user-list-page',
@@ -92,6 +93,7 @@ import { UserStore } from '../../store/user.store';
       [departments]="departments()"
       [userOptions]="userOptions()"
       [titleOptions]="titleOptions()"
+      [projectTitleOptions]="projectTitleOptions()"
       (cancel)="closeCreateDialog()"
       (create)="createUser($event)"
     />
@@ -104,6 +106,7 @@ import { UserStore } from '../../store/user.store';
         [departments]="departments()"
         [userOptions]="userOptions()"
         [titleOptions]="titleOptions()"
+        [projectTitleOptions]="projectTitleOptions()"
         (cancel)="closeEditDialog()"
         (update)="updateUser($event)"
         (roleSync)="editingRoleIds.set($event)"
@@ -118,6 +121,7 @@ import { UserStore } from '../../store/user.store';
       [userOptions]="userOptions()"
       [titleLabelMap]="titleLabelMap()"
       [titleOptions]="titleOptions()"
+      [projectTitleOptions]="projectTitleOptions()"
       [readonly]="isReadonly()"
       (closed)="closeDetail()"
       (updated)="reloadList()"
@@ -140,6 +144,7 @@ export class UserListPageComponent {
   private readonly organizationApi = inject(OrganizationApiService);
   private readonly roleSync = inject(UserRoleSyncService);
   private readonly titleApi = inject(UserTitleApiService);
+  private readonly projectTitleApi = inject(ProjectTitleApiService);
 
   readonly keyword = signal('');
   readonly status = signal<'active' | 'inactive' | ''>('');
@@ -153,6 +158,7 @@ export class UserListPageComponent {
   readonly detailDialogOpen = signal(false);
   readonly detailUserId = signal('');
   readonly titleOptions = signal<Array<{ label: string; value: string }>>([]);
+  readonly projectTitleOptions = signal<Array<{ label: string; value: string }>>([]);
   readonly titleLabelMap = signal<Record<string, string>>({});
   readonly subtitle = computed(() => `当前共 ${this.store.total()} 个用户`);
   readonly isReadonly = signal(this.route.snapshot.pathFromRoot.some((item) => item.data['readonly'] === true));
@@ -178,6 +184,14 @@ export class UserListPageComponent {
       error: () => {
         this.titleOptions.set([]);
         this.titleLabelMap.set({});
+      },
+    });
+    this.projectTitleApi.listTitles().subscribe({
+      next: (items) => {
+        this.projectTitleOptions.set(items.filter((item) => item.status === 'active').map((item) => ({ label: item.name, value: item.code })));
+      },
+      error: () => {
+        this.projectTitleOptions.set([]);
       },
     });
     this.store.loadOptions((items) => this.userOptions.set(items));

@@ -114,7 +114,7 @@
 | `display_name` | `display_name` | 直接保留 |
 | `email` | `email` | 直接保留 |
 | `mobile` | `mobile` | 直接保留 |
-| `title_code` | `title_code` | 直接保留 |
+| `title_code` | `organization_title_code` | 迁移为组织职务编码；项目角色不从用户职务推导 |
 | `status` | `status` | 直接保留 |
 | `source` | `source` | 直接保留 |
 | `remark` | `remark` | 直接保留 |

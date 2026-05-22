@@ -34,6 +34,7 @@ import { DEFAULT_USER_DRAFT, type UserDraft } from '../../models/user-form.types
           [departments]="departments()"
           [userOptions]="userOptions()"
           [titleOptions]="titleOptions()"
+          [projectTitleOptions]="projectTitleOptions()"
           [usernameEditable]="true"
           [usernameInvalid]="usernameInvalid()"
           (fieldChange)="updateField($event.field, $event.value)"
@@ -78,6 +79,7 @@ export class UserCreateDialogComponent {
   readonly departments = input<DepartmentEntity[]>([]);
   readonly userOptions = input<UserEntity[]>([]);
   readonly titleOptions = input<Array<{ label: string; value: string }>>([]);
+  readonly projectTitleOptions = input<Array<{ label: string; value: string }>>([]);
   readonly create = output<CreateUserInput>();
   readonly cancel = output<void>();
 
@@ -130,7 +132,8 @@ export class UserCreateDialogComponent {
       displayName: draft.displayName.trim() || undefined,
       email: draft.email.trim() || undefined,
       mobile: draft.mobile.trim() || undefined,
-      titleCode: draft.titleCode || undefined,
+      organizationTitleCode: draft.organizationTitleCode || undefined,
+      defaultProjectTitleCode: draft.defaultProjectTitleCode || undefined,
       remark: draft.remark.trim() || undefined,
       loginEnabled: draft.loginEnabled,
       departments,

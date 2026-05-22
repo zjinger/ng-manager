@@ -219,9 +219,9 @@ export class ReimbursementRepo {
   findUserProfile(userId: string): UserApprovalProfile | null {
     const row = this.db
       .prepare(`
-        SELECT u.id, u.username, u.display_name, u.title_code, st.name AS title_name, u.manager_user_id
+        SELECT u.id, u.username, u.display_name, u.organization_title_code AS title_code, ot.name AS title_name, u.manager_user_id
         FROM users u
-        LEFT JOIN system_titles st ON st.code = u.title_code
+        LEFT JOIN organization_titles ot ON ot.code = u.organization_title_code
         WHERE u.id = ? AND u.status = 'active'
       `)
       .get(userId) as {
@@ -354,11 +354,11 @@ export class ReimbursementRepo {
   listActiveRoleUsers(roleId: string): UserApprovalProfile[] {
     const rows = this.db
       .prepare(`
-        SELECT u.id, u.username, u.display_name, u.title_code, st.name AS title_name, u.manager_user_id
+        SELECT u.id, u.username, u.display_name, u.organization_title_code AS title_code, ot.name AS title_name, u.manager_user_id
         FROM user_system_roles usr
         INNER JOIN users u ON u.id = usr.user_id AND u.status = 'active'
         INNER JOIN system_roles sr ON sr.id = usr.role_id AND sr.status = 'active'
-        LEFT JOIN system_titles st ON st.code = u.title_code
+        LEFT JOIN organization_titles ot ON ot.code = u.organization_title_code
         WHERE usr.role_id = ?
         ORDER BY u.display_name ASC, u.username ASC
       `)

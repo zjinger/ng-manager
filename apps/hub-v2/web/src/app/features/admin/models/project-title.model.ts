@@ -1,28 +1,28 @@
-export type SystemTitleStatus = 'active' | 'inactive';
+export type ProjectTitleStatus = 'active' | 'inactive';
 
-export interface SystemTitleEntity {
+export interface ProjectTitleEntity {
   id: string;
   code: string;
   name: string;
-  status: SystemTitleStatus;
+  status: ProjectTitleStatus;
   sort: number;
   remark: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateSystemTitleInput {
+export interface CreateProjectTitleInput {
   code: string;
   name: string;
-  status?: SystemTitleStatus;
+  status?: ProjectTitleStatus;
   sort?: number;
   remark?: string | null;
 }
 
-export interface UpdateSystemTitleInput {
+export interface UpdateProjectTitleInput {
   code?: string;
   name?: string;
-  status?: SystemTitleStatus;
+  status?: ProjectTitleStatus;
   sort?: number;
   remark?: string | null;
 }

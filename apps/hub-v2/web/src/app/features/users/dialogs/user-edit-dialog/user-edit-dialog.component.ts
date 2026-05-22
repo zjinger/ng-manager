@@ -57,6 +57,7 @@ import { UserRbacApiService } from '../../services/user-rbac-api.service';
               [departments]="departments()"
               [userOptions]="userOptions()"
               [titleOptions]="titleOptions()"
+              [projectTitleOptions]="projectTitleOptions()"
               [usernameEditable]="false"
               [usernameInvalid]="false"
               (fieldChange)="updateField($event.field, $event.value)"
@@ -331,6 +332,7 @@ export class UserEditDialogComponent {
   readonly departments = input<DepartmentEntity[]>([]);
   readonly userOptions = input<UserEntity[]>([]);
   readonly titleOptions = input<Array<{ label: string; value: string }>>([]);
+  readonly projectTitleOptions = input<Array<{ label: string; value: string }>>([]);
   readonly update = output<UpdateUserInput>();
   readonly roleSync = output<string[]>();
   readonly resetPassword = output<void>();
@@ -394,7 +396,8 @@ export class UserEditDialogComponent {
               displayName: user.displayName || '',
               email: user.email || '',
               mobile: user.mobile || '',
-              titleCode: user.titleCode || '',
+              organizationTitleCode: user.organizationTitleCode || '',
+              defaultProjectTitleCode: user.defaultProjectTitleCode || '',
               remark: user.remark || '',
               status: user.status,
               loginEnabled: user.loginEnabled,
@@ -424,9 +427,16 @@ export class UserEditDialogComponent {
         : []),
     ];
 
-    const normalizedTitleCode = draft.titleCode?.trim() || '';
+    const normalizedTitleCode = draft.organizationTitleCode?.trim() || '';
     const isActiveTitle = this.titleOptions().some((item) => item.value === normalizedTitleCode);
-    const keepHistoricalInactiveTitle = !!currentUser.titleCode && normalizedTitleCode === currentUser.titleCode && !isActiveTitle;
+    const keepHistoricalInactiveTitle =
+      !!currentUser.organizationTitleCode && normalizedTitleCode === currentUser.organizationTitleCode && !isActiveTitle;
+    const normalizedProjectTitleCode = draft.defaultProjectTitleCode?.trim() || '';
+    const isActiveProjectTitle = this.projectTitleOptions().some((item) => item.value === normalizedProjectTitleCode);
+    const keepHistoricalInactiveProjectTitle =
+      !!currentUser.defaultProjectTitleCode &&
+      normalizedProjectTitleCode === currentUser.defaultProjectTitleCode &&
+      !isActiveProjectTitle;
 
     const loginEnabled = draft.status === 'active' && draft.loginEnabled;
 
@@ -434,7 +444,8 @@ export class UserEditDialogComponent {
       displayName: draft.displayName.trim() || null,
       email: draft.email.trim() || null,
       mobile: draft.mobile.trim() || null,
-      titleCode: keepHistoricalInactiveTitle ? undefined : (normalizedTitleCode || null),
+      organizationTitleCode: keepHistoricalInactiveTitle ? undefined : (normalizedTitleCode || null),
+      defaultProjectTitleCode: keepHistoricalInactiveProjectTitle ? undefined : (normalizedProjectTitleCode || null),
       remark: draft.remark.trim() || null,
       status: draft.status,
       loginEnabled,

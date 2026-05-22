@@ -57,7 +57,8 @@ type UserCandidateRow = {
   id: string;
   username: string;
   display_name: string | null;
-  title_code: string | null;
+  default_project_title_code: string | null;
+  default_project_title_name: string | null;
 };
 
 type ProjectConfigRow = {
@@ -383,10 +384,16 @@ export class ProjectRepo {
     const rows = this.db
       .prepare(
         `
-          SELECT id, username, display_name,title_code
-          FROM users
-          WHERE status = 'active'
-          ORDER BY updated_at DESC, created_at DESC
+          SELECT
+            u.id,
+            u.username,
+            u.display_name,
+            CASE WHEN pt.status = 'active' THEN u.default_project_title_code ELSE NULL END AS default_project_title_code,
+            CASE WHEN pt.status = 'active' THEN pt.name ELSE NULL END AS default_project_title_name
+          FROM users u
+          LEFT JOIN project_titles pt ON pt.code = u.default_project_title_code
+          WHERE u.status = 'active'
+          ORDER BY u.updated_at DESC, u.created_at DESC
         `
       )
       .all() as UserCandidateRow[];
@@ -395,7 +402,8 @@ export class ProjectRepo {
       id: row.id,
       username: row.username,
       displayName: row.display_name,
-      titleCode: row.title_code
+      defaultProjectTitleCode: this.mapOptionalMemberRole(row.default_project_title_code),
+      defaultProjectTitleName: row.default_project_title_name
     }));
   }
 
@@ -977,6 +985,26 @@ export class ProjectRepo {
       return role;
     }
     return "member";
+  }
+
+  private mapOptionalMemberRole(value: string | null): ProjectMemberRole | null {
+    if (!value) {
+      return null;
+    }
+    const role = value.trim();
+    if (
+      role === "member" ||
+      role === "product" ||
+      role === "ui" ||
+      role === "frontend_dev" ||
+      role === "backend_dev" ||
+      role === "qa" ||
+      role === "ops" ||
+      role === "project_admin"
+    ) {
+      return role;
+    }
+    return null;
   }
 
   private mapModuleMember(row: ProjectModuleMemberRow): ProjectModuleMemberEntity {

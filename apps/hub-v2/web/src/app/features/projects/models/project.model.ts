@@ -108,7 +108,8 @@ export interface ProjectMemberCandidate {
   id: string;
   username: string;
   displayName: string | null;
-  titleCode: ProjectMemberRole | null;
+  defaultProjectTitleCode: ProjectMemberRole | null;
+  defaultProjectTitleName: string | null;
 }
 
 export interface ProjectMetaItem {

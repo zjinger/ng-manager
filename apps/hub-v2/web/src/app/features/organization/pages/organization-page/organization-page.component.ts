@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { DialogShellComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -26,11 +27,20 @@ import { OrganizationApiService } from '../../services/organization-api.service'
 import type { UserEntity } from '../../../users/models/user.model';
 import { UserApiService } from '../../../users/services/user-api.service';
 import { TitleFormDialogComponent } from '../../../admin/components/title-form-dialog/title-form-dialog.component';
-import { SystemTitleApiService } from '../../../admin/services/system-title-api.service';
-import type { CreateSystemTitleInput, SystemTitleEntity, UpdateSystemTitleInput } from '../../../admin/models/system-title.model';
+import { OrganizationTitleApiService } from '../../../admin/services/organization-title-api.service';
+import type {
+  CreateOrganizationTitleInput,
+  OrganizationTitleEntity,
+  UpdateOrganizationTitleInput
+} from '../../../admin/models/organization-title.model';
 
 type FlatDepartmentNode = DepartmentTreeNode & {
   level: number;
+};
+
+type DepartmentTitleView = DepartmentTitleEntity & {
+  departmentNames: string[];
+  firstDepartmentOrder: number;
 };
 
 @Component({
@@ -82,7 +92,7 @@ type FlatDepartmentNode = DepartmentTreeNode & {
 })
 export class DepartmentTitleAttachDialogComponent {
   readonly open = input(false);
-  readonly options = input<SystemTitleEntity[]>([]);
+  readonly options = input<OrganizationTitleEntity[]>([]);
   readonly cancel = output<void>();
   readonly save = output<DepartmentTitleInput>();
 
@@ -246,7 +256,7 @@ export class DepartmentTitleAttachDialogComponent {
                   新增岗位
                 </button>
               }
-              <a nz-button routerLink="/admin/titles">查看全部职务</a>
+              <a nz-button routerLink="/admin/organization-titles">查看全部组织职务</a>
             </div>
           </header>
 
@@ -259,6 +269,7 @@ export class DepartmentTitleAttachDialogComponent {
               <table class="members-table">
                 <thead>
                   <tr>
+                    <th>所属部门</th>
                     <th>岗位名称</th>
                     <th>岗位编码</th>
                     <th>状态</th>
@@ -270,6 +281,7 @@ export class DepartmentTitleAttachDialogComponent {
                 <tbody>
                   @for (title of departmentTitles(); track title.id) {
                     <tr>
+                      <td>{{ title.departmentNames.join('、') }}</td>
                       <td>{{ title.titleName }}</td>
                       <td class="mono">{{ title.titleCode }}</td>
                       <td>
@@ -345,11 +357,11 @@ export class DepartmentTitleAttachDialogComponent {
                         </div>
                       </div>
                     </td>
-                    <td>{{ titleLabel(member.titleCode) }}</td>
+                    <td>{{ titleLabel(member.organizationTitleCode, member.organizationTitleName) }}</td>
                     <td>{{ relationLabel(member) }}</td>
                     <td>
                       <span class="status-text" [class.status-text--inactive]="member.status === 'inactive'">
-                        {{ member.status === 'active' ? '活跃' : '停用' }}
+                        {{ member.status === 'active' ? '启用' : '停用' }}
                       </span>
                     </td>
                   </tr>
@@ -505,6 +517,12 @@ export class DepartmentTitleAttachDialogComponent {
         gap: 8px;
       }
 
+      .actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .department-info-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -650,7 +668,7 @@ export class OrganizationPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly organizationApi = inject(OrganizationApiService);
   private readonly userApi = inject(UserApiService);
-  private readonly systemTitleApi = inject(SystemTitleApiService);
+  private readonly organizationTitleApi = inject(OrganizationTitleApiService);
   private readonly message = inject(NzMessageService);
 
   readonly keyword = signal('');
@@ -659,8 +677,9 @@ export class OrganizationPageComponent {
   readonly departmentTree = signal<DepartmentTreeNode[]>([]);
   readonly allDepartments = signal<DepartmentEntity[]>([]);
   readonly allUsers = signal<UserEntity[]>([]);
-  readonly departmentTitles = signal<DepartmentTitleEntity[]>([]);
-  readonly allTitleLibrary = signal<SystemTitleEntity[]>([]);
+  readonly departmentTitles = signal<DepartmentTitleView[]>([]);
+  readonly directDepartmentTitles = signal<DepartmentTitleEntity[]>([]);
+  readonly allTitleLibrary = signal<OrganizationTitleEntity[]>([]);
   readonly selectedDepartmentId = signal('');
   readonly members = signal<UserEntity[]>([]);
   readonly memberTotal = signal(0);
@@ -682,7 +701,7 @@ export class OrganizationPageComponent {
     return code ? this.titleLabelMap()[code] ?? code : '';
   });
   readonly availableTitleOptions = computed(() => {
-    const attachedCodes = new Set(this.departmentTitles().map((item) => item.titleCode));
+    const attachedCodes = new Set(this.directDepartmentTitles().map((item) => item.titleCode));
     return this.allTitleLibrary().filter((item) => !attachedCodes.has(item.code));
   });
 
@@ -697,9 +716,13 @@ export class OrganizationPageComponent {
 
   loadDepartments(): void {
     const query = { keyword: this.keyword().trim() };
-    this.organizationApi.listDepartmentTree(query).subscribe({
-      next: (tree) => {
+    forkJoin({
+      tree: this.organizationApi.listDepartmentTree(query),
+      departments: this.organizationApi.listDepartments(),
+    }).subscribe({
+      next: ({ tree, departments }) => {
         this.departmentTree.set(tree);
+        this.allDepartments.set(departments);
         const flat = this.flattenTree(tree);
         if (!flat.some((department) => department.id === this.selectedDepartmentId())) {
           this.selectedDepartmentId.set(flat[0]?.id ?? '');
@@ -708,10 +731,6 @@ export class OrganizationPageComponent {
         this.loadDepartmentTitles();
       },
       error: () => this.message.error('加载部门树失败'),
-    });
-    this.organizationApi.listDepartments().subscribe({
-      next: (items) => this.allDepartments.set(items),
-      error: () => this.allDepartments.set([]),
     });
   }
 
@@ -796,25 +815,48 @@ export class OrganizationPageComponent {
       this.memberTotal.set(0);
       return;
     }
-    this.userApi
-      .list({
+    const departmentIds = this.collectDepartmentAndDescendantIds(departmentId);
+    const keyword = this.memberKeyword().trim();
+    const requests = departmentIds.map((id) =>
+      this.userApi.list({
         page: 1,
         pageSize: 100,
-        departmentId,
-        keyword: this.memberKeyword().trim(),
+        departmentId: id,
+        keyword,
       })
-      .subscribe({
-        next: (result) => {
-          const titleCode = this.memberTitleFilterCode().trim();
-          const items = titleCode ? result.items.filter((item) => item.titleCode === titleCode) : result.items;
-          this.members.set(items);
-          this.memberTotal.set(items.length);
-        },
-        error: () => {
-          this.members.set([]);
-          this.memberTotal.set(0);
-        },
-      });
+    );
+
+    forkJoin(requests).subscribe({
+      next: (results) => {
+        if (this.selectedDepartmentId() !== departmentId) {
+          return;
+        }
+        const itemMap = new Map<string, UserEntity>();
+        for (const result of results) {
+          for (const item of result.items) {
+            itemMap.set(item.id, item);
+          }
+        }
+        const titleCode = this.memberTitleFilterCode().trim();
+        const items = Array.from(itemMap.values());
+        const visibleDepartmentIds = new Set(departmentIds);
+        const filteredItems = titleCode
+          ? items.filter((item) => item.organizationTitleCode === titleCode && this.userBelongsToAnyDepartment(item, visibleDepartmentIds))
+          : items.filter((item) => this.userBelongsToAnyDepartment(item, visibleDepartmentIds));
+        filteredItems.sort((a, b) => {
+          const relationA = this.findVisibleDepartmentRelation(a, visibleDepartmentIds);
+          const relationB = this.findVisibleDepartmentRelation(b, visibleDepartmentIds);
+          return (relationA?.departmentName ?? '').localeCompare(relationB?.departmentName ?? '', 'zh-Hans')
+            || (a.displayName || a.username).localeCompare(b.displayName || b.username, 'zh-Hans');
+        });
+        this.members.set(filteredItems);
+        this.memberTotal.set(filteredItems.length);
+      },
+      error: () => {
+        this.members.set([]);
+        this.memberTotal.set(0);
+      },
+    });
   }
 
   childCount(departmentId: string): number {
@@ -829,19 +871,47 @@ export class OrganizationPageComponent {
     return (user.displayName || user.username).trim().charAt(0).toUpperCase() || 'U';
   }
 
-  titleLabel(titleCode: string | null): string {
+  titleLabel(titleCode: string | null, titleName?: string | null): string {
     if (!titleCode) {
       return '未设置';
     }
-    return this.titleLabelMap()[titleCode] ?? titleCode;
+    return this.titleLabelMap()[titleCode] ?? titleName ?? titleCode;
   }
 
   relationLabel(user: UserEntity): string {
-    const relation = user.departments.find((department) => department.departmentId === this.selectedDepartmentId());
+    const departmentId = this.selectedDepartmentId();
+    const relation = this.findVisibleDepartmentRelation(user, new Set(this.collectDepartmentAndDescendantIds(departmentId)));
     if (!relation) {
       return '-';
     }
-    return user.primaryDepartment?.departmentId === relation.departmentId ? '主部门' : '关联部门';
+    const relationType = user.primaryDepartment?.departmentId === relation.departmentId ? '主部门' : '关联部门';
+    return relation.departmentId === departmentId ? relationType : `${relation.departmentName} / ${relationType}`;
+  }
+
+  private collectDepartmentAndDescendantIds(departmentId: string): string[] {
+    if (!departmentId) {
+      return [];
+    }
+    const ids = [departmentId];
+    const queue = [departmentId];
+    const departments = this.allDepartments();
+    while (queue.length > 0) {
+      const parentId = queue.shift()!;
+      const children = departments.filter((department) => department.parentId === parentId);
+      for (const child of children) {
+        ids.push(child.id);
+        queue.push(child.id);
+      }
+    }
+    return ids;
+  }
+
+  private userBelongsToAnyDepartment(user: UserEntity, departmentIds: Set<string>): boolean {
+    return user.departments.some((department) => departmentIds.has(department.departmentId));
+  }
+
+  private findVisibleDepartmentRelation(user: UserEntity, departmentIds: Set<string>) {
+    return user.departments.find((department) => departmentIds.has(department.departmentId)) ?? null;
   }
 
   openAttachTitleDialog(): void {
@@ -875,12 +945,12 @@ export class OrganizationPageComponent {
     this.quickCreateTitleDialogOpen.set(false);
   }
 
-  createDepartmentTitle(payload: CreateSystemTitleInput | UpdateSystemTitleInput): void {
+  createDepartmentTitle(payload: CreateOrganizationTitleInput | UpdateOrganizationTitleInput): void {
     const departmentId = this.selectedDepartmentId();
     if (!departmentId) {
       return;
     }
-    this.systemTitleApi.createTitle(payload as CreateSystemTitleInput).subscribe({
+    this.organizationTitleApi.createTitle(payload as CreateOrganizationTitleInput).subscribe({
       next: (title) => {
         this.organizationApi.addDepartmentTitle(departmentId, { titleCode: title.code, sort: title.sort }).subscribe({
           next: () => {
@@ -897,7 +967,7 @@ export class OrganizationPageComponent {
   }
 
   removeDepartmentTitle(item: DepartmentTitleEntity): void {
-    const departmentId = this.selectedDepartmentId();
+    const departmentId = item.departmentId || this.selectedDepartmentId();
     if (!departmentId) {
       return;
     }
@@ -928,16 +998,54 @@ export class OrganizationPageComponent {
     const departmentId = this.selectedDepartmentId();
     if (!departmentId) {
       this.departmentTitles.set([]);
+      this.directDepartmentTitles.set([]);
       return;
     }
-    this.organizationApi.listDepartmentTitles(departmentId).subscribe({
-      next: (items) => this.departmentTitles.set(items),
-      error: () => this.departmentTitles.set([]),
+    const departmentIds = this.collectDepartmentAndDescendantIds(departmentId);
+    const departments = this.allDepartments();
+    const departmentNameMap = new Map(departments.map((department) => [department.id, department.name]));
+    const departmentOrderMap = new Map(departmentIds.map((id, index) => [id, index]));
+    const requests = departmentIds.map((id) => this.organizationApi.listDepartmentTitles(id));
+    forkJoin(requests).subscribe({
+      next: (results) => {
+        if (this.selectedDepartmentId() !== departmentId) {
+          return;
+        }
+        this.directDepartmentTitles.set(results[0] ?? []);
+        const grouped = new Map<string, DepartmentTitleView>();
+        for (const item of results.flat()) {
+          const existing = grouped.get(item.titleCode);
+          const departmentName = departmentNameMap.get(item.departmentId) ?? '-';
+          const departmentOrder = departmentOrderMap.get(item.departmentId) ?? Number.MAX_SAFE_INTEGER;
+          if (!existing) {
+            grouped.set(item.titleCode, {
+              ...item,
+              departmentNames: [departmentName],
+              firstDepartmentOrder: departmentOrder,
+            });
+            continue;
+          }
+          existing.departmentNames.push(departmentName);
+          existing.firstDepartmentOrder = Math.min(existing.firstDepartmentOrder, departmentOrder);
+          existing.sort = Math.min(existing.sort, item.sort);
+          existing.memberCount += item.memberCount;
+        }
+        const items = Array.from(grouped.values()).sort((a, b) =>
+          a.firstDepartmentOrder - b.firstDepartmentOrder
+          || a.sort - b.sort
+          || a.titleName.localeCompare(b.titleName, 'zh-Hans')
+        );
+        this.departmentTitles.set(items);
+      },
+      error: () => {
+        this.departmentTitles.set([]);
+        this.directDepartmentTitles.set([]);
+      },
     });
   }
 
   private loadTitleLibrary(): void {
-    this.systemTitleApi.listTitles().subscribe({
+    this.organizationTitleApi.listTitles().subscribe({
       next: (items) => this.allTitleLibrary.set(items),
       error: () => this.allTitleLibrary.set([]),
     });

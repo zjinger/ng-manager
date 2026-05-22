@@ -8,8 +8,8 @@ const MIGRATIONS_TO_RESET = [
   "0044_reimbursement.sql",
   "0045_project_rbac.sql",
   "0046_system_settings.sql",
-  "0047_system_titles.sql",
-  "0048_department_titles.sql"
+  "0047_project_titles.sql",
+  "0048_organization_titles.sql"
 ];
 
 function main() {
@@ -35,6 +35,8 @@ function main() {
       "user_departments",
       "departments",
       "system_settings",
+      "organization_titles",
+      "project_titles",
       "system_titles"
     ];
 

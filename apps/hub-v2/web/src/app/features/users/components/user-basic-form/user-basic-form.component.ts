@@ -124,14 +124,14 @@ import type { UserEntity } from '../../models/user.model';
           </div>
           <div class="col" nz-col [nzSpan]="12">
             <nz-form-item>
-              <nz-form-label nzFor="titleCode">职位</nz-form-label>
+              <nz-form-label nzFor="organizationTitleCode">职务</nz-form-label>
               <nz-form-control>
                 <nz-select
                   nzAllowClear
-                  nzPlaceHolder="请选择职位"
-                  [ngModel]="draft().titleCode"
-                  name="titleCode"
-                  (ngModelChange)="onFieldChange('titleCode', $event)"
+                  nzPlaceHolder="请选择职务"
+                  [ngModel]="draft().organizationTitleCode"
+                  name="organizationTitleCode"
+                  (ngModelChange)="onFieldChange('organizationTitleCode', $event)"
                 >
                   @for (item of titleOptionsForDisplay(); track item.value) {
                     <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
@@ -157,6 +157,24 @@ import type { UserEntity } from '../../models/user.model';
                   <nz-option nzLabel="无" nzValue=""></nz-option>
                   @for (user of managerOptions(); track user.id) {
                     <nz-option [nzLabel]="userLabel(user)" [nzValue]="user.id"></nz-option>
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div class="col" nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzFor="defaultProjectTitleCode">项目职能</nz-form-label>
+              <nz-form-control>
+                <nz-select
+                  nzAllowClear
+                  nzPlaceHolder="请选择默认项目职能"
+                  [ngModel]="draft().defaultProjectTitleCode"
+                  name="defaultProjectTitleCode"
+                  (ngModelChange)="onFieldChange('defaultProjectTitleCode', $event)"
+                >
+                  @for (item of projectTitleOptionsForDisplay(); track item.value) {
+                    <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
                   }
                 </nz-select>
               </nz-form-control>
@@ -213,6 +231,7 @@ export class UserBasicFormComponent {
   readonly departments = input.required<DepartmentEntity[]>();
   readonly userOptions = input.required<UserEntity[]>();
   readonly titleOptions = input.required<Array<{ label: string; value: string }>>();
+  readonly projectTitleOptions = input<Array<{ label: string; value: string }>>([]);
   readonly usernameEditable = input(true);
   readonly usernameInvalid = input(false);
   readonly fieldChange = output<{ field: keyof UserDraft; value: any }>();
@@ -228,7 +247,19 @@ export class UserBasicFormComponent {
 
   titleOptionsForDisplay(): Array<{ label: string; value: string }> {
     const options = this.titleOptions();
-    const current = this.draft().titleCode?.trim();
+    const current = this.draft().organizationTitleCode?.trim();
+    if (!current) {
+      return options;
+    }
+    if (options.some((option) => option.value === current)) {
+      return options;
+    }
+    return [...options, { label: `${current}（已停用，仅历史）`, value: current }];
+  }
+
+  projectTitleOptionsForDisplay(): Array<{ label: string; value: string }> {
+    const options = this.projectTitleOptions();
+    const current = this.draft().defaultProjectTitleCode?.trim();
     if (!current) {
       return options;
     }

@@ -9,7 +9,10 @@ type UserRow = {
   display_name: string | null;
   email: string | null;
   mobile: string | null;
-  title_code: string | null;
+  organization_title_code: string | null;
+  organization_title_name: string | null;
+  default_project_title_code: string | null;
+  default_project_title_name: string | null;
   avatar_upload_id: string | null;
   login_enabled: number;
   status: "active" | "inactive";
@@ -40,7 +43,10 @@ export class UserRepo {
             u.display_name,
             u.email,
             u.mobile,
-            u.title_code,
+            u.organization_title_code,
+            ot.name AS organization_title_name,
+            u.default_project_title_code,
+            pt.name AS default_project_title_name,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
             CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
@@ -55,6 +61,8 @@ export class UserRepo {
           FROM users u
           LEFT JOIN admin_accounts aa ON aa.user_id = u.id
           LEFT JOIN users manager ON manager.id = u.manager_user_id
+          LEFT JOIN organization_titles ot ON ot.code = u.organization_title_code
+          LEFT JOIN project_titles pt ON pt.code = u.default_project_title_code
           WHERE u.id = ?
         `
       )
@@ -72,7 +80,10 @@ export class UserRepo {
             u.display_name,
             u.email,
             u.mobile,
-            u.title_code,
+            u.organization_title_code,
+            ot.name AS organization_title_name,
+            u.default_project_title_code,
+            pt.name AS default_project_title_name,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
             CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
@@ -87,6 +98,8 @@ export class UserRepo {
           FROM users u
           LEFT JOIN admin_accounts aa ON aa.user_id = u.id
           LEFT JOIN users manager ON manager.id = u.manager_user_id
+          LEFT JOIN organization_titles ot ON ot.code = u.organization_title_code
+          LEFT JOIN project_titles pt ON pt.code = u.default_project_title_code
           WHERE u.username = ?
         `
       )
@@ -99,9 +112,9 @@ export class UserRepo {
       .prepare(
         `
         INSERT INTO users (
-          id, username, display_name, email, mobile, title_code, status, source, remark,
+          id, username, display_name, email, mobile, organization_title_code, default_project_title_code, status, source, remark,
           manager_user_id, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -110,7 +123,8 @@ export class UserRepo {
         entity.displayName,
         entity.email,
         entity.mobile,
-        entity.titleCode,
+        entity.organizationTitleCode,
+        entity.defaultProjectTitleCode,
         entity.status,
         entity.source,
         entity.remark,
@@ -129,7 +143,8 @@ export class UserRepo {
           display_name = ?,
           email = ?,
           mobile = ?,
-          title_code = ?,
+          organization_title_code = ?,
+          default_project_title_code = ?,
           status = ?,
           remark = ?,
           manager_user_id = ?,
@@ -141,7 +156,8 @@ export class UserRepo {
         input.displayName ?? null,
         input.email ?? null,
         input.mobile ?? null,
-        input.titleCode ?? null,
+        input.organizationTitleCode ?? null,
+        input.defaultProjectTitleCode ?? null,
         input.status ?? "active",
         input.remark ?? null,
         input.managerUserId ?? null,
@@ -187,7 +203,10 @@ export class UserRepo {
             u.display_name,
             u.email,
             u.mobile,
-            u.title_code,
+            u.organization_title_code,
+            ot.name AS organization_title_name,
+            u.default_project_title_code,
+            pt.name AS default_project_title_name,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
             CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
             u.status,
@@ -202,6 +221,8 @@ export class UserRepo {
           FROM users u
           LEFT JOIN admin_accounts aa ON aa.user_id = u.id
           LEFT JOIN users manager ON manager.id = u.manager_user_id
+          LEFT JOIN organization_titles ot ON ot.code = u.organization_title_code
+          LEFT JOIN project_titles pt ON pt.code = u.default_project_title_code
           ${whereClause}
           ORDER BY u.created_at DESC, u.updated_at DESC
           LIMIT ? OFFSET ?
@@ -232,7 +253,10 @@ export class UserRepo {
       displayName: row.display_name,
       email: row.email,
       mobile: row.mobile,
-      titleCode: row.title_code,
+      organizationTitleCode: row.organization_title_code,
+      organizationTitleName: row.organization_title_name ?? row.organization_title_code,
+      defaultProjectTitleCode: row.default_project_title_code,
+      defaultProjectTitleName: row.default_project_title_name ?? row.default_project_title_code,
       avatarUploadId: row.avatar_upload_id ?? null,
       avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
       loginEnabled: row.login_enabled === 1,

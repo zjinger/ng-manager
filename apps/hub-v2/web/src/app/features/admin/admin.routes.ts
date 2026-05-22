@@ -30,9 +30,16 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'titles',
         canActivate: [permissionGuard],
-        data: { title: '职务管理', icon: 'idcard', permissions: ['admin.users.manage'] },
+        data: { title: '项目角色库', icon: 'idcard', permissions: ['admin.users.manage'] },
         loadComponent: () =>
           import('./pages/titles-page/titles-page.component').then((m) => m.TitlesPageComponent),
+      },
+      {
+        path: 'organization-titles',
+        canActivate: [permissionGuard],
+        data: { title: '组织职务库', icon: 'solution', permissions: ['admin.users.manage'] },
+        loadComponent: () =>
+          import('./pages/organization-titles-page/organization-titles-page.component').then((m) => m.OrganizationTitlesPageComponent),
       },
       {
         path: 'roles',

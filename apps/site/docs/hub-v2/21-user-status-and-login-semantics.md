@@ -132,7 +132,9 @@
 - 建议字典：`system_employee_types`，包含 `code`、`name`、`status`、`sort`、`remark`。
 - 员工类型只表达人员属性，不承载权限。
 - 权限仍由 `system_roles` / `system_permissions` 表达。
-- 职务继续使用 `system_titles`，不要和员工类型混用。
+- 组织职务继续使用 `organization_titles`，不要和员工类型混用。
+- 项目角色/项目分工使用 `project_titles` 与 `project_members.role_code`，不要和组织职务混用。
+- 用户主数据可维护 `default_project_title_code` 作为“默认项目职能”，仅用于添加项目成员时自动带出建议角色；项目内真实角色仍以 `project_members.role_code` 为准，项目管理员可在添加成员时调整。
 
 ---
 

@@ -275,7 +275,8 @@ export class AdminDashboardPageComponent {
   readonly quickLinks = computed<AdminQuickLink[]>(() => [
     { label: '用户管理', description: '账号、部门归属、登录状态', route: '/admin/users', icon: 'team', permissions: ['admin.users.manage'] },
     { label: '部门组织', description: '组织树、主管和部门角色', route: '/admin/departments', icon: 'cluster', permissions: ['admin.departments.manage'] },
-    { label: '全局职务库', description: '用户职务和岗位标识', route: '/admin/titles', icon: 'idcard', permissions: ['admin.users.manage'] },
+    { label: '组织职务库', description: '用户组织职务和部门职务', route: '/admin/organization-titles', icon: 'solution', permissions: ['admin.users.manage'] },
+    { label: '项目角色库', description: '项目成员分工和角色标识', route: '/admin/titles', icon: 'idcard', permissions: ['admin.users.manage'] },
     { label: '角色管理', description: '系统角色、内置角色和用户绑定', route: '/admin/roles', icon: 'safety-certificate', permissions: ['admin.roles.manage'] },
     { label: '权限配置', description: '角色权限矩阵', route: '/admin/permissions', icon: 'key', permissions: ['admin.roles.manage'] },
     { label: '权限项管理', description: '权限编码、分组和启停状态', route: '/admin/permission-items', icon: 'unordered-list', permissions: ['admin.roles.manage'] },

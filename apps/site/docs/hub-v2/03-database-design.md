@@ -186,7 +186,8 @@ username
 display_name
 email
 mobile
-title_code
+organization_title_code
+default_project_title_code
 status
 source
 remark
@@ -198,6 +199,50 @@ updated_at
 
 - `username` 唯一
 - `status` 限定为 `active | inactive`
+
+### 6.2 project_titles
+
+用途：
+
+- 表示项目角色/项目分工字典
+- 用于项目成员角色候选和项目协作展示
+- 不表示人员在人事组织中的职务
+- 可作为 `users.default_project_title_code` 的候选来源，用于添加项目成员时自动带出默认项目职能
+
+建议字段：
+
+```text
+id
+code
+name
+status
+sort
+remark
+created_at
+updated_at
+```
+
+### 6.3 organization_titles
+
+用途：
+
+- 表示用户在人事/部门组织中的职务
+- `users.organization_title_code` 引用该字典
+- 用于部门职务维护和报销申请人职务快照
+- 不承载权限判断
+
+建议字段：
+
+```text
+id
+code
+name
+status
+sort
+remark
+created_at
+updated_at
+```
 - `source` 限定为 `local | imported`
 
 关键语义：

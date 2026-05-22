@@ -16,11 +16,11 @@ function createDb() {
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL,
       display_name TEXT,
-      title_code TEXT,
+      organization_title_code TEXT,
       status TEXT NOT NULL DEFAULT 'active',
       manager_user_id TEXT
     );
-    CREATE TABLE system_titles (
+    CREATE TABLE organization_titles (
       id TEXT PRIMARY KEY,
       code TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -172,8 +172,8 @@ function createDb() {
       created_at TEXT NOT NULL
     );
   `);
-  db.prepare("INSERT INTO system_titles (id, code, name, status) VALUES (?, ?, ?, ?)").run("title_pm", "product", "产品经理", "active");
-  db.prepare("INSERT INTO users (id, username, display_name, title_code, status, manager_user_id) VALUES (?, ?, ?, ?, ?, ?)")
+  db.prepare("INSERT INTO organization_titles (id, code, name, status) VALUES (?, ?, ?, ?)").run("title_pm", "product", "产品经理", "active");
+  db.prepare("INSERT INTO users (id, username, display_name, organization_title_code, status, manager_user_id) VALUES (?, ?, ?, ?, ?, ?)")
     .run("usr_applicant", "applicant", "申请人", "product", "active", "usr_manager");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_manager", "manager", "审核人", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_dept_manager", "dept", "部门主管", "active");

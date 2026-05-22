@@ -10,7 +10,10 @@ export interface UserEntity {
   displayName: string | null;
   email: string | null;
   mobile: string | null;
-  titleCode: string | null;
+  organizationTitleCode: string | null;
+  organizationTitleName: string | null;
+  defaultProjectTitleCode: string | null;
+  defaultProjectTitleName: string | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
   loginEnabled: boolean;
@@ -37,7 +40,8 @@ export interface CreateUserInput {
   displayName?: string;
   email?: string;
   mobile?: string;
-  titleCode?: string;
+  organizationTitleCode?: string;
+  defaultProjectTitleCode?: string;
   remark?: string;
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
@@ -48,7 +52,8 @@ export interface UpdateUserInput {
   displayName?: string | null;
   email?: string | null;
   mobile?: string | null;
-  titleCode?: string | null;
+  organizationTitleCode?: string | null;
+  defaultProjectTitleCode?: string | null;
   status?: UserStatus;
   remark?: string | null;
   loginEnabled?: boolean;

@@ -45,7 +45,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
             <div class="user-cell">{{ item.email || '—' }}</div>
             <div class="user-cell">{{ item.mobile || '—' }}</div>
             <div class="user-cell">{{ departmentLabel(item) }}</div>
-            <div class="user-cell">{{ titleLabel(item.titleCode) }}</div>
+            <div class="user-cell">{{ titleLabel(item.organizationTitleCode, item.organizationTitleName) }}</div>
             <div class="user-cell">
               <span class="login-tag" [class.login-tag--off]="!item.loginEnabled">
                 {{ item.loginEnabled ? '开启' : '关闭' }}
@@ -228,11 +228,11 @@ export class UserListTableComponent {
     this.brokenAvatarMap.update((state) => ({ ...state, [userId]: true }));
   }
 
-  titleLabel(titleCode: string | null): string {
+  titleLabel(titleCode: string | null, titleName?: string | null): string {
     if (!titleCode) {
-      return '—';
+      return '-';
     }
-    return this.titleLabelMap()[titleCode] ?? titleCode;
+    return this.titleLabelMap()[titleCode] ?? titleName ?? titleCode;
   }
 
   departmentLabel(item: UserEntity): string {

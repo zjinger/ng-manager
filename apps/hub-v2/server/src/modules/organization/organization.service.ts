@@ -158,7 +158,7 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     }
     const titleCode = input.titleCode.trim();
     if (!this.repo.titleExists(titleCode)) {
-      throw new AppError(ERROR_CODES.SYSTEM_TITLE_NOT_FOUND, `system title not found: ${titleCode}`, 404);
+      throw new AppError(ERROR_CODES.ORGANIZATION_TITLE_NOT_FOUND, `organization title not found: ${titleCode}`, 404);
     }
     if (this.repo.departmentTitleExists(department.id, titleCode)) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, `department title already exists: ${titleCode}`, 409);

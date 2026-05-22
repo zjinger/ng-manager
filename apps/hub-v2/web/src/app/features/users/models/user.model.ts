@@ -2,7 +2,8 @@ import type { PageResult } from '@core/types';
 import type { UserDepartmentEntity, UserDepartmentInput } from '../../organization/models/organization.model';
 
 export type UserStatus = 'active' | 'inactive';
-export type UserTitleCode = string;
+export type OrganizationTitleCode = string;
+export type ProjectTitleCode = string;
 
 export interface UserEntity {
   id: string;
@@ -10,7 +11,10 @@ export interface UserEntity {
   displayName: string | null;
   email: string | null;
   mobile: string | null;
-  titleCode: UserTitleCode | null;
+  organizationTitleCode: OrganizationTitleCode | null;
+  organizationTitleName: string | null;
+  defaultProjectTitleCode: ProjectTitleCode | null;
+  defaultProjectTitleName: string | null;
   avatarUploadId: string | null;
   avatarUrl: string | null;
   loginEnabled: boolean;
@@ -45,7 +49,8 @@ export interface CreateUserInput {
   displayName?: string;
   email?: string;
   mobile?: string;
-  titleCode?: UserTitleCode;
+  organizationTitleCode?: OrganizationTitleCode;
+  defaultProjectTitleCode?: ProjectTitleCode;
   remark?: string;
   loginEnabled?: boolean;
   departments?: UserDepartmentInput[];
@@ -56,7 +61,8 @@ export interface UpdateUserInput {
   displayName?: string | null;
   email?: string | null;
   mobile?: string | null;
-  titleCode?: UserTitleCode | null;
+  organizationTitleCode?: OrganizationTitleCode | null;
+  defaultProjectTitleCode?: ProjectTitleCode | null;
   status?: UserStatus;
   remark?: string | null;
   loginEnabled?: boolean;

@@ -3,10 +3,12 @@
 ## 1. 目标口径
 
 - `users`：唯一人员主数据（组织、职务、直属上级）
+- `users.default_project_title_code`：默认项目职能，仅作为添加项目成员时的建议值
 - `admin_accounts`：仅登录账号与认证状态（必须绑定 `user_id`）
 - `user_system_roles`：唯一授权来源
 - `manager_user_id`：保留（审批链组织关系）
 - `finance_approver_user_id`：下线（不再作为授权来源）
+- 默认项目职能不承载权限；项目内真实治理仍以 owner、`project_members.role_code` 与 `project.*` 权限联合判定
 
 ---
 
@@ -110,7 +112,7 @@ HAVING SUM(CASE WHEN sr.code IN ('super_admin', 'admin', 'member') THEN 1 ELSE 0
    - `department`
    - `systemRoles`
    - `permissionCodes`
-   - `titleCode/titleName`
+   - `organizationTitleCode/organizationTitleName`
 2. 管理端路由无权限用户被拦截到 `/dashboard`。  
 3. 页面按钮与菜单显隐与路由拦截一致。  
 4. `admin` 与 `member` 默认权限符合预期：

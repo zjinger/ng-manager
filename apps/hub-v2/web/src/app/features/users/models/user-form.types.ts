@@ -1,4 +1,4 @@
-import type { UserStatus, UserTitleCode } from './user.model';
+import type { OrganizationTitleCode, ProjectTitleCode, UserStatus } from './user.model';
 
 export type UserFormMode = 'create' | 'edit';
 export type EditTab = 'basic' | 'security' | 'permissions' | 'history';
@@ -8,7 +8,8 @@ export interface UserDraft {
   displayName: string;
   email: string;
   mobile: string;
-  titleCode: UserTitleCode | '';
+  organizationTitleCode: OrganizationTitleCode | '';
+  defaultProjectTitleCode: ProjectTitleCode | '';
   remark: string;
   status: UserStatus;
   loginEnabled: boolean;
@@ -21,7 +22,8 @@ export const DEFAULT_USER_DRAFT: UserDraft = {
   displayName: '',
   email: '',
   mobile: '',
-  titleCode: '',
+  organizationTitleCode: '',
+  defaultProjectTitleCode: '',
   remark: '',
   status: 'active',
   loginEnabled: true,

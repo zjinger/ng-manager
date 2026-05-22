@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 import { ApiClientService } from '@core/http';
-import type { SystemTitleEntity } from '../../admin/models/system-title.model';
+import type { OrganizationTitleEntity } from '../../admin/models/organization-title.model';
 
 @Injectable({ providedIn: 'root' })
 export class UserTitleApiService {
@@ -9,13 +9,13 @@ export class UserTitleApiService {
 
   listActiveTitles() {
     return this.api
-      .get<{ items: SystemTitleEntity[] }>('/titles', { status: 'active' })
+      .get<{ items: OrganizationTitleEntity[] }>('/organization-titles', { status: 'active' })
       .pipe(map((response) => response.items));
   }
 
   listAllTitles() {
     return this.api
-      .get<{ items: SystemTitleEntity[] }>('/titles')
+      .get<{ items: OrganizationTitleEntity[] }>('/organization-titles')
       .pipe(map((response) => response.items));
   }
 }

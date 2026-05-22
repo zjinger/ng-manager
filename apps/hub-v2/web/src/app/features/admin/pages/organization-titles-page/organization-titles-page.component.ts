@@ -11,11 +11,15 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { TitleFormDialogComponent } from '../../components/title-form-dialog/title-form-dialog.component';
-import type { CreateProjectTitleInput, ProjectTitleEntity, UpdateProjectTitleInput } from '../../models/project-title.model';
-import { ProjectTitleApiService } from '../../services/project-title-api.service';
+import type {
+  CreateOrganizationTitleInput,
+  OrganizationTitleEntity,
+  UpdateOrganizationTitleInput
+} from '../../models/organization-title.model';
+import { OrganizationTitleApiService } from '../../services/organization-title-api.service';
 
 @Component({
-  selector: 'app-titles-page',
+  selector: 'app-organization-titles-page',
   standalone: true,
   imports: [
     FormsModule,
@@ -34,20 +38,20 @@ import { ProjectTitleApiService } from '../../services/project-title-api.service
     TitleFormDialogComponent,
   ],
   template: `
-    <app-page-header title="项目角色库" [subtitle]="subtitle()" />
+    <app-page-header title="组织职务库" [subtitle]="subtitle()" />
     <app-page-toolbar>
-      <button toolbar-primary nz-button nzType="primary" (click)="openCreate()"> <nz-icon nzType="plus" /> 新建项目角色 </button>
+      <button toolbar-primary nz-button nzType="primary" (click)="openCreate()"> <nz-icon nzType="plus" /> 新建组织职务 </button>
       <a nz-button routerLink="/admin/departments">前往部门组织</a>
       <nz-select toolbar-filters style="width: 140px" [ngModel]="statusFilter()" (ngModelChange)="setStatusFilter($event)">
         <nz-option nzLabel="全部状态" nzValue="" />
         <nz-option nzLabel="启用中" nzValue="active" />
         <nz-option nzLabel="已停用" nzValue="inactive" />
       </nz-select>
-      <app-search-box toolbar-search placeholder="搜索项目角色名称或编码" [value]="keyword()" (valueChange)="keyword.set($event)" (submitted)="load()" />
+      <app-search-box toolbar-search placeholder="搜索组织职务名称或编码" [value]="keyword()" (valueChange)="keyword.set($event)" (submitted)="load()" />
     </app-page-toolbar>
 
     @if (items().length === 0) {
-      <app-empty-state title="暂无项目角色" description="点击新建项目角色开始维护" icon="idcard" />
+      <app-empty-state title="暂无组织职务" description="点击新建组织职务开始维护" icon="idcard" />
     } @else {
       <div class="table">
         <div class="table__head"><span>名称</span><span>编码</span><span>状态</span><span>排序</span><span>更新时间</span><span>操作</span></div>
@@ -61,7 +65,7 @@ import { ProjectTitleApiService } from '../../services/project-title-api.service
             <span class="actions">
               <button nz-button nzSize="small" (click)="openEdit(item)">编辑</button>
               <button nz-button nzSize="small" (click)="toggleStatus(item)">{{ item.status === 'active' ? '停用' : '启用' }}</button>
-              <button nz-button nzSize="small" nzDanger nz-popconfirm nzPopconfirmTitle="确认删除该项目角色？" (nzOnConfirm)="remove(item)">删除</button>
+              <button nz-button nzSize="small" nzDanger nz-popconfirm nzPopconfirmTitle="确认删除该组织职务？" (nzOnConfirm)="remove(item)">删除</button>
             </span>
           </div>
         }
@@ -71,7 +75,7 @@ import { ProjectTitleApiService } from '../../services/project-title-api.service
     <app-title-form-dialog
       [open]="dialogOpen()"
       [mode]="dialogMode()"
-      noun="项目角色"
+      noun="组织职务"
       [initial]="editing()"
       (cancel)="closeDialog()"
       (save)="saveTitle($event)"
@@ -87,17 +91,17 @@ import { ProjectTitleApiService } from '../../services/project-title-api.service
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TitlesPageComponent {
-  private readonly api = inject(ProjectTitleApiService);
+export class OrganizationTitlesPageComponent {
+  private readonly api = inject(OrganizationTitleApiService);
   private readonly message = inject(NzMessageService);
 
-  readonly items = signal<ProjectTitleEntity[]>([]);
+  readonly items = signal<OrganizationTitleEntity[]>([]);
   readonly keyword = signal('');
   readonly statusFilter = signal('');
   readonly dialogOpen = signal(false);
   readonly dialogMode = signal<'create' | 'edit'>('create');
-  readonly editing = signal<ProjectTitleEntity | null>(null);
-  readonly subtitle = computed(() => `共 ${this.items().length} 个项目角色，用于项目成员分工展示`);
+  readonly editing = signal<OrganizationTitleEntity | null>(null);
+  readonly subtitle = computed(() => `共 ${this.items().length} 个组织职务，用于用户主数据、部门职务和报销展示`);
 
   constructor() {
     this.load();
@@ -106,7 +110,7 @@ export class TitlesPageComponent {
   load(): void {
     this.api.listTitles({ keyword: this.keyword().trim() || undefined, status: this.statusFilter() || undefined }).subscribe({
       next: (items) => this.items.set(items),
-      error: () => this.message.error('加载项目角色失败'),
+      error: () => this.message.error('加载组织职务失败'),
     });
   }
 
@@ -121,7 +125,7 @@ export class TitlesPageComponent {
     this.dialogOpen.set(true);
   }
 
-  openEdit(item: ProjectTitleEntity): void {
+  openEdit(item: OrganizationTitleEntity): void {
     this.dialogMode.set('edit');
     this.editing.set(item);
     this.dialogOpen.set(true);
@@ -132,15 +136,15 @@ export class TitlesPageComponent {
     this.editing.set(null);
   }
 
-  saveTitle(payload: CreateProjectTitleInput | UpdateProjectTitleInput): void {
+  saveTitle(payload: CreateOrganizationTitleInput | UpdateOrganizationTitleInput): void {
     if (this.dialogMode() === 'create') {
-      this.api.createTitle(payload as CreateProjectTitleInput).subscribe({
+      this.api.createTitle(payload as CreateOrganizationTitleInput).subscribe({
         next: () => {
-          this.message.success('项目角色创建成功');
+          this.message.success('组织职务创建成功');
           this.closeDialog();
           this.load();
         },
-        error: () => this.message.error('创建项目角色失败'),
+        error: () => this.message.error('创建组织职务失败'),
       });
       return;
     }
@@ -148,34 +152,34 @@ export class TitlesPageComponent {
     if (!target) {
       return;
     }
-    this.api.updateTitle(target.id, payload as UpdateProjectTitleInput).subscribe({
+    this.api.updateTitle(target.id, payload as UpdateOrganizationTitleInput).subscribe({
       next: () => {
-        this.message.success('项目角色更新成功');
+        this.message.success('组织职务更新成功');
         this.closeDialog();
         this.load();
       },
-      error: () => this.message.error('更新项目角色失败'),
+      error: () => this.message.error('更新组织职务失败'),
     });
   }
 
-  toggleStatus(item: ProjectTitleEntity): void {
+  toggleStatus(item: OrganizationTitleEntity): void {
     const nextStatus = item.status === 'active' ? 'inactive' : 'active';
     this.api.updateTitle(item.id, { status: nextStatus }).subscribe({
       next: () => {
-        this.message.success(nextStatus === 'active' ? '已启用项目角色' : '已停用项目角色');
+        this.message.success(nextStatus === 'active' ? '已启用组织职务' : '已停用组织职务');
         this.load();
       },
-      error: () => this.message.error('更新项目角色状态失败'),
+      error: () => this.message.error('更新组织职务状态失败'),
     });
   }
 
-  remove(item: ProjectTitleEntity): void {
+  remove(item: OrganizationTitleEntity): void {
     this.api.deleteTitle(item.id).subscribe({
       next: () => {
-        this.message.success('项目角色已删除');
+        this.message.success('组织职务已删除');
         this.load();
       },
-      error: () => this.message.error('删除项目角色失败（可能已被项目成员引用）'),
+      error: () => this.message.error('删除组织职务失败（可能已被用户或部门引用）'),
     });
   }
 }

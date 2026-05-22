@@ -81,7 +81,11 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
                 </div>
                 <div class="detail-field">
                   <span>职位</span>
-                  <strong>{{ titleLabel(currentUser.titleCode) }}</strong>
+                  <strong>{{ titleLabel(currentUser.organizationTitleCode, currentUser.organizationTitleName) }}</strong>
+                </div>
+                <div class="detail-field">
+                  <span>项目职能</span>
+                  <strong>{{ titleLabel(currentUser.defaultProjectTitleCode, currentUser.defaultProjectTitleName) }}</strong>
                 </div>
                 <div class="detail-field">
                   <span>手机号</span>
@@ -125,6 +129,7 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
           [departments]="departments()"
           [userOptions]="userOptions()"
           [titleOptions]="titleOptions()"
+          [projectTitleOptions]="projectTitleOptions()"
           (cancel)="closeEdit()"
           (update)="updateUser($event)"
           (roleSync)="pendingRoleIds.set($event)"
@@ -265,6 +270,7 @@ export class UserDetailDialogComponent {
   readonly userOptions = input<UserEntity[]>([]);
   readonly titleLabelMap = input<Record<string, string>>({});
   readonly titleOptions = input<Array<{ label: string; value: string }>>([]);
+  readonly projectTitleOptions = input<Array<{ label: string; value: string }>>([]);
   readonly readonly = input(false);
   readonly updated = output<UserEntity>();
   readonly closed = output<void>();
@@ -373,11 +379,11 @@ export class UserDetailDialogComponent {
     return (user.displayName || user.username).trim().slice(0, 1).toUpperCase();
   }
 
-  titleLabel(titleCode: string | null): string {
+  titleLabel(titleCode: string | null, titleName?: string | null): string {
     if (!titleCode) {
       return '未设置';
     }
-    return this.titleLabelMap()[titleCode] ?? titleCode;
+    return this.titleLabelMap()[titleCode] ?? titleName ?? titleCode;
   }
 
   primaryDepartmentLabel(user: UserEntity): string {

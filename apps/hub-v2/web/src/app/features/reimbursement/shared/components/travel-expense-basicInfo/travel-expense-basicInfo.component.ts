@@ -386,7 +386,7 @@ export class TravelExpenseBasicInfoComponent {
           departmentName: user.department?.name || '',
           departmentId: user.department?.id || '',
           applicantName: user.nickname || '',
-          titleName: user.titleName || '',
+          titleName: user.organizationTitleName || '',
           fillDate: this.value().fillDate || formatDateValue(new Date()) || '',
         };
         if (!this.value().departmentName && !this.value().applicantName && !this.value().titleName) {

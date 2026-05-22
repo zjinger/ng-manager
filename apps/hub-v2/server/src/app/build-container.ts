@@ -86,9 +86,12 @@ import type { SystemRbacCommandContract, SystemRbacQueryContract } from "../modu
 import { PlatformRoleSyncService } from "../modules/system-rbac/platform-role-sync.service";
 import { SystemRbacRepo } from "../modules/system-rbac/system-rbac.repo";
 import { SystemRbacService } from "../modules/system-rbac/system-rbac.service";
-import type { SystemTitleCommandContract, SystemTitleQueryContract } from "../modules/system-title/system-title.contract";
-import { SystemTitleRepo } from "../modules/system-title/system-title.repo";
-import { SystemTitleService } from "../modules/system-title/system-title.service";
+import type { ProjectTitleCommandContract, ProjectTitleQueryContract } from "../modules/project-title/project-title.contract";
+import { ProjectTitleRepo } from "../modules/project-title/project-title.repo";
+import { ProjectTitleService } from "../modules/project-title/project-title.service";
+import type { OrganizationTitleCommandContract, OrganizationTitleQueryContract } from "../modules/organization-title/organization-title.contract";
+import { OrganizationTitleRepo } from "../modules/organization-title/organization-title.repo";
+import { OrganizationTitleService } from "../modules/organization-title/organization-title.service";
 import type { SystemSettingsCommandContract, SystemSettingsQueryContract } from "../modules/system-settings/system-settings.contract";
 import { SystemSettingsRepo } from "../modules/system-settings/system-settings.repo";
 import { SystemSettingsService } from "../modules/system-settings/system-settings.service";
@@ -159,8 +162,10 @@ export type AppContainer = {
   sharedConfigQuery: SharedConfigQueryContract;
   systemRbacCommand: SystemRbacCommandContract;
   systemRbacQuery: SystemRbacQueryContract;
-  systemTitleCommand: SystemTitleCommandContract;
-  systemTitleQuery: SystemTitleQueryContract;
+  projectTitleCommand: ProjectTitleCommandContract;
+  projectTitleQuery: ProjectTitleQueryContract;
+  organizationTitleCommand: OrganizationTitleCommandContract;
+  organizationTitleQuery: OrganizationTitleQueryContract;
   systemSettingsCommand: SystemSettingsCommandContract;
   systemSettingsQuery: SystemSettingsQueryContract;
   uploadCommand: UploadCommandContract;
@@ -193,9 +198,18 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const authService = new AuthService(config, authRepo);
   const organizationRepo = new OrganizationRepo(db);
   const organizationService = new OrganizationService(organizationRepo, auditLogService);
-  const systemTitleService = new SystemTitleService(new SystemTitleRepo(db), auditLogService);
+  const projectTitleService = new ProjectTitleService(new ProjectTitleRepo(db), auditLogService);
+  const organizationTitleService = new OrganizationTitleService(new OrganizationTitleRepo(db), auditLogService);
   const userRepo = new UserRepo(db);
-  const userService = new UserService(userRepo, authRepo, organizationService, platformRoleSync, systemTitleService, auditLogService);
+  const userService = new UserService(
+    userRepo,
+    authRepo,
+    organizationService,
+    platformRoleSync,
+    organizationTitleService,
+    projectTitleService,
+    auditLogService
+  );
   const projectRepo = new ProjectRepo(db);
   const rdRepo = new RdRepo(db);
   const projectAuthorization = new ProjectAuthorizationService(db, projectRepo);
@@ -348,8 +362,10 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     sharedConfigQuery: sharedConfigService,
     systemRbacCommand: systemRbacService,
     systemRbacQuery: systemRbacService,
-    systemTitleCommand: systemTitleService,
-    systemTitleQuery: systemTitleService,
+    projectTitleCommand: projectTitleService,
+    projectTitleQuery: projectTitleService,
+    organizationTitleCommand: organizationTitleService,
+    organizationTitleQuery: organizationTitleService,
     systemSettingsCommand: systemSettingsService,
     systemSettingsQuery: systemSettingsService,
     uploadCommand: uploadService,

@@ -162,13 +162,14 @@ function migrateUsersModule(db: Database.Database): ModuleSummary {
           "email",
           "mobile",
           "title_code",
+          "organization_title_code",
           "status",
           "source",
           "remark",
           "created_at",
           "updated_at"
         ],
-        `SELECT id, username, display_name, email, mobile, title_code, status, source, remark, created_at, updated_at FROM __SOURCE_TABLE__`
+        `SELECT id, username, display_name, email, mobile, title_code, title_code AS organization_title_code, status, source, remark, created_at, updated_at FROM __SOURCE_TABLE__`
       )
     );
   } else {

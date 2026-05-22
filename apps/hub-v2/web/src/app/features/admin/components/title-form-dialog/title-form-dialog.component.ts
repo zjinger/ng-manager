@@ -8,14 +8,29 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import type { CreateSystemTitleInput, SystemTitleEntity, UpdateSystemTitleInput } from '../../models/system-title.model';
+export interface TitleFormEntity {
+  id: string;
+  code: string;
+  name: string;
+  status: 'active' | 'inactive';
+  sort: number;
+  remark: string | null;
+}
+
+export interface TitleFormInput {
+  code?: string;
+  name?: string;
+  status?: 'active' | 'inactive';
+  sort?: number;
+  remark?: string | null;
+}
 
 @Component({
   selector: 'app-title-form-dialog',
   standalone: true,
   imports: [FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzIconModule, NzInputModule, NzSelectModule, DialogShellComponent],
   template: `
-    <app-dialog-shell [open]="open()" [width]="560" [title]="mode() === 'create' ? '新建职务' : '编辑职务'" icon="idcard" (cancel)="cancel.emit()">
+    <app-dialog-shell [open]="open()" [width]="560" [title]="mode() === 'create' ? '新建' + noun() : '编辑' + noun()" icon="idcard" (cancel)="cancel.emit()">
       <div dialog-body>
         <form nz-form [nzLayout]="'vertical'" class="title-form">
           <section class="title-form-section">
@@ -27,8 +42,8 @@ import type { CreateSystemTitleInput, SystemTitleEntity, UpdateSystemTitleInput 
             <div class="row" nz-row [nzGutter]="16">
               <div class="col" nz-col [nzSpan]="12">
                 <nz-form-item>
-                  <nz-form-label nzRequired nzFor="titleName">职务名称</nz-form-label>
-                  <nz-form-control nzErrorTip="请输入职务名称">
+                  <nz-form-label nzRequired nzFor="titleName">{{ noun() }}名称</nz-form-label>
+                  <nz-form-control [nzErrorTip]="'请输入' + noun() + '名称'">
                     <input
                       id="titleName"
                       nz-input
@@ -43,8 +58,8 @@ import type { CreateSystemTitleInput, SystemTitleEntity, UpdateSystemTitleInput 
 
               <div class="col" nz-col [nzSpan]="12">
                 <nz-form-item>
-                  <nz-form-label nzRequired nzFor="titleCode">职务编码</nz-form-label>
-                  <nz-form-control nzErrorTip="请输入职务编码">
+                  <nz-form-label nzRequired nzFor="titleCode">{{ noun() }}编码</nz-form-label>
+                  <nz-form-control [nzErrorTip]="'请输入' + noun() + '编码'">
                     <input
                       id="titleCode"
                       nz-input
@@ -144,9 +159,10 @@ import type { CreateSystemTitleInput, SystemTitleEntity, UpdateSystemTitleInput 
 export class TitleFormDialogComponent {
   readonly open = input(false);
   readonly mode = input<'create' | 'edit'>('create');
-  readonly initial = input<SystemTitleEntity | null>(null);
+  readonly noun = input('职务');
+  readonly initial = input<TitleFormEntity | null>(null);
   readonly cancel = output<void>();
-  readonly save = output<CreateSystemTitleInput | UpdateSystemTitleInput>();
+  readonly save = output<TitleFormInput>();
 
   readonly draftCode = signal('');
   readonly draftName = signal('');

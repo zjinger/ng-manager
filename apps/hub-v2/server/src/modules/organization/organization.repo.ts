@@ -39,7 +39,7 @@ type UserDepartmentRow = {
 type DepartmentTitleRow = {
   id: string;
   department_id: string;
-  title_code: string;
+  organization_title_code: string;
   title_name: string;
   title_status: "active" | "inactive";
   sort: number;
@@ -282,7 +282,7 @@ export class OrganizationRepo {
         SELECT
           dt.id,
           dt.department_id,
-          dt.title_code,
+          dt.organization_title_code,
           st.name AS title_name,
           st.status AS title_status,
           COALESCE(dt.sort, st.sort) AS sort,
@@ -290,12 +290,12 @@ export class OrganizationRepo {
             SELECT COUNT(*)
             FROM users u
             INNER JOIN user_departments ud ON ud.user_id = u.id
-            WHERE ud.department_id = dt.department_id AND u.title_code = dt.title_code
+            WHERE ud.department_id = dt.department_id AND u.organization_title_code = dt.organization_title_code
           ) AS member_count,
           dt.created_at,
           dt.updated_at
         FROM department_titles dt
-        INNER JOIN system_titles st ON st.code = dt.title_code
+        INNER JOIN organization_titles st ON st.code = dt.organization_title_code
         WHERE dt.department_id = ?
         ORDER BY dt.sort ASC, st.sort ASC, st.name ASC, dt.created_at DESC
       `
@@ -311,7 +311,7 @@ export class OrganizationRepo {
       .prepare(
         `
           INSERT INTO department_titles (
-            id, department_id, title_code, sort, created_at, updated_at
+            id, department_id, organization_title_code, sort, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?)
         `
       )
@@ -319,23 +319,23 @@ export class OrganizationRepo {
   }
 
   removeDepartmentTitle(departmentId: string, titleCode: string): void {
-    this.db.prepare("DELETE FROM department_titles WHERE department_id = ? AND title_code = ?").run(departmentId, titleCode);
+    this.db.prepare("DELETE FROM department_titles WHERE department_id = ? AND organization_title_code = ?").run(departmentId, titleCode);
   }
 
   departmentTitleExists(departmentId: string, titleCode: string): boolean {
     const row = this.db
-      .prepare("SELECT id FROM department_titles WHERE department_id = ? AND title_code = ?")
+      .prepare("SELECT id FROM department_titles WHERE department_id = ? AND organization_title_code = ?")
       .get(departmentId, titleCode) as { id: string } | undefined;
     return !!row;
   }
 
   titleExists(titleCode: string): boolean {
-    const row = this.db.prepare("SELECT code FROM system_titles WHERE code = ?").get(titleCode) as { code: string } | undefined;
+    const row = this.db.prepare("SELECT code FROM organization_titles WHERE code = ?").get(titleCode) as { code: string } | undefined;
     return !!row;
   }
 
   countDepartmentTitleBindings(titleCode: string): number {
-    const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM department_titles WHERE title_code = ?").get(titleCode) as { cnt: number };
+    const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM department_titles WHERE organization_title_code = ?").get(titleCode) as { cnt: number };
     return row.cnt;
   }
 
@@ -384,7 +384,7 @@ export class OrganizationRepo {
     return {
       id: row.id,
       departmentId: row.department_id,
-      titleCode: row.title_code,
+      titleCode: row.organization_title_code,
       titleName: row.title_name,
       status: row.title_status,
       sort: row.sort,

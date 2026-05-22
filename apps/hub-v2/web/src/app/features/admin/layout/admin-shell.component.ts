@@ -38,7 +38,8 @@ const ADMIN_NAV: NavSection[] = [
     key: 'system',
     label: '系统与日志',
     items: [
-      { key: 'titles', label: '全局职务库', icon: 'idcard', route: '/admin/titles', permissions: ['admin.users.manage'] },
+      { key: 'organization-titles', label: '组织职务库', icon: 'solution', route: '/admin/organization-titles', permissions: ['admin.users.manage'] },
+      { key: 'titles', label: '项目角色库', icon: 'idcard', route: '/admin/titles', permissions: ['admin.users.manage'] },
       { key: 'audit', label: '审计日志', icon: 'audit', route: '/admin/audit', permissions: ['admin.audit.view'] },
       { key: 'settings', label: '系统设置', icon: 'setting', route: '/admin/settings', permissions: ['admin.settings.manage'] },
     ],
