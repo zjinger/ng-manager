@@ -311,6 +311,7 @@ export class RdDetailPageComponent {
       if (!progressByUserId.has(userId)) {
         const fallbackProgress =
           useLegacyAssigneeProgressFallback && userId === item?.assigneeId ? Number(item?.progress ?? 0) : 0;
+        const fallbackUpdatedAt = useLegacyAssigneeProgressFallback && fallbackProgress > 0 ? (item?.updatedAt ?? '') : '';
         normalizedList.push({
           id: `legacy-${userId}`,
           itemId: item?.id || '',
@@ -318,7 +319,7 @@ export class RdDetailPageComponent {
           userName: userId === item?.assigneeId ? (item.assigneeName ?? userId) : userId,
           progress: Math.max(0, Math.min(100, fallbackProgress)),
           note: null,
-          updatedAt: item?.updatedAt ?? '',
+          updatedAt: fallbackUpdatedAt,
         });
       }
     }
