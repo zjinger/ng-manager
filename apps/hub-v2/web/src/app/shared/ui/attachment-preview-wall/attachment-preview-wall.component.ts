@@ -27,12 +27,13 @@ export interface AttachmentPreviewItem {
         @for (item of items(); track item.id) {
           <div class="attachment-wall__item">
             <div class="attachment-wall__badges">
-              <span class="attachment-wall__kind" [class.attachment-wall__kind--file]="item.kind === 'file'">
-                {{ kindLabel(item.kind) }}
-              </span>
-              @if (item.kind === 'file' && extensionLabel(item.name); as ext) {
-                <span class="attachment-wall__ext">{{ ext }}</span>
-              }
+              <span
+                nz-icon
+                class="attachment-wall__kind"
+                [class.attachment-wall__kind--file]="item.kind === 'file'"
+                [attr.data-type]="badgeType(item)"
+                [nzType]="badgeIcon(item)"
+              ></span>
             </div>
             @if (item.kind === 'image') {
               <img
@@ -46,7 +47,7 @@ export interface AttachmentPreviewItem {
               <video class="attachment-wall__video" [src]="item.url" controls preload="metadata"></video>
             } @else {
               <div class="attachment-wall__file">
-                <span nz-icon nzType="file"></span>
+                <!-- <span nz-icon [nzType]="fileIcon(item.name)"></span> -->
                 <span class="attachment-wall__file-name" [title]="item.name">{{ item.name }}</span>
               </div>
             }
@@ -132,31 +133,38 @@ export interface AttachmentPreviewItem {
       .attachment-wall__kind {
         display: inline-flex;
         align-items: center;
-        height: 22px;
-        padding: 0 8px;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
         border-radius: 999px;
         background: color-mix(in srgb, var(--primary-500) 88%, white);
         color: #fff;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.02em;
+        font-size: 15px;
         box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
       }
       .attachment-wall__kind--file {
         background: color-mix(in srgb, #334155 92%, white);
       }
-      .attachment-wall__ext {
-        display: inline-flex;
-        align-items: center;
-        height: 22px;
-        padding: 0 8px;
-        border-radius: 999px;
-        background: color-mix(in srgb, #0f172a 78%, white);
-        color: #fff;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+      .attachment-wall__kind[data-type='image'] {
+        background: color-mix(in srgb, #6366f1 88%, white);
+      }
+      .attachment-wall__kind[data-type='video'] {
+        background: color-mix(in srgb, #0f172a 92%, white);
+      }
+      .attachment-wall__kind[data-type='pdf'] {
+        background: color-mix(in srgb, #dc2626 90%, white);
+      }
+      .attachment-wall__kind[data-type='word'] {
+        background: color-mix(in srgb, #2563eb 90%, white);
+      }
+      .attachment-wall__kind[data-type='excel'] {
+        background: color-mix(in srgb, #16a34a 90%, white);
+      }
+      .attachment-wall__kind[data-type='ppt'] {
+        background: color-mix(in srgb, #ea580c 90%, white);
+      }
+      .attachment-wall__kind[data-type='txt'] {
+        background: color-mix(in srgb, #475569 90%, white);
       }
       .attachment-wall__video {
         background: #000;
@@ -240,14 +248,65 @@ export class AttachmentPreviewWallComponent {
   readonly showMeta = input(false);
   readonly remove = output<string>();
 
-  kindLabel(kind: AttachmentPreviewKind): string {
-    if (kind === 'image') {
-      return '图片';
+  badgeIcon(item: AttachmentPreviewItem): string {
+    if (item.kind === 'image') {
+      return 'file-image';
     }
-    if (kind === 'video') {
-      return '视频';
+    if (item.kind === 'video') {
+      return 'video-camera';
     }
-    return '文件';
+
+    return this.fileIcon(item.name);
+  }
+
+  badgeType(item: AttachmentPreviewItem): string {
+    if (item.kind === 'image' || item.kind === 'video') {
+      return item.kind;
+    }
+
+    return this.fileType(item.name);
+  }
+
+  fileType(name: string): string {
+    const ext = this.extensionLabel(name);
+    switch (ext) {
+      case 'PDF':
+        return 'pdf';
+      case 'XLS':
+      case 'XLSX':
+        return 'excel';
+      case 'DOC':
+      case 'DOCX':
+        return 'word';
+      case 'PPT':
+      case 'PPTX':
+        return 'ppt';
+      case 'TXT':
+        return 'txt';
+      default:
+        return 'file';
+    }
+  }
+
+  fileIcon(name: string): string {
+    const ext = this.extensionLabel(name);
+    switch (ext) {
+      case 'PDF':
+        return 'file-pdf';
+      case 'XLS':
+      case 'XLSX':
+        return 'file-excel';
+      case 'DOC':
+      case 'DOCX':
+        return 'file-word';
+      case 'PPT':
+      case 'PPTX':
+        return 'file-ppt';
+      case 'TXT':
+        return 'file-text';
+      default:
+        return 'file';
+    }
   }
 
   extensionLabel(name: string): string | null {
