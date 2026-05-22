@@ -30,6 +30,7 @@ import type {
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMemberRole,
+  ProjectModuleRdLinkEntity,
   ProjectModuleMemberEntity,
   ProjectMetaItem,
   ProjectStatus,
@@ -94,6 +95,8 @@ export class ProjectListPageComponent {
   readonly users = signal<ProjectMemberCandidate[]>([]);
   readonly modules = signal<ProjectMetaItem[]>([]);
   readonly moduleMembers = signal<ProjectModuleMemberEntity[]>([]);
+  readonly moduleRdLinks = signal<ProjectModuleRdLinkEntity[]>([]);
+  readonly moduleRdCandidates = signal<Array<{ id: string; rdNo: string; title: string; status: string }>>([]);
   readonly environments = signal<ProjectMetaItem[]>([]);
   readonly versions = signal<ProjectVersionItem[]>([]);
   readonly stages = signal<RdStageEntity[]>([]);
@@ -110,6 +113,7 @@ export class ProjectListPageComponent {
   readonly editBusy = signal(false);
   readonly moduleBusy = signal(false);
   readonly moduleMembersBusy = signal(false);
+  readonly moduleRdLinksBusy = signal(false);
   readonly configBusy = signal(false);
   readonly previewLoadingMap = signal<Record<string, true>>({});
   readonly memberPreviewLoadingMap = signal<Record<string, true>>({});
@@ -233,6 +237,7 @@ export class ProjectListPageComponent {
     this.moduleProject.set(project);
     this.moduleDialogOpen.set(true);
     this.loadProjectModules(project.id);
+    this.loadProjectRdCandidates(project.id);
     this.loadMembers(project.id);
     this.loadMemberCandidates(project.id);
   }
@@ -247,6 +252,9 @@ export class ProjectListPageComponent {
     this.moduleLoading.set(false);
     this.moduleMembersBusy.set(false);
     this.moduleMembersLoading.set(false);
+    this.moduleRdLinks.set([]);
+    this.moduleRdCandidates.set([]);
+    this.moduleRdLinksBusy.set(false);
     this.pendingModuleMap.set({});
   }
 
@@ -262,9 +270,26 @@ export class ProjectListPageComponent {
     this.projectApi.getModule(project.id, moduleId).subscribe({
       next: (module) => {
         this.selectedModule.set(module);
+        if (module.nodeType === 'module') {
+          this.projectApi.listModuleRdLinks(project.id, module.id).subscribe({
+            next: (links) => this.moduleRdLinks.set(links),
+            error: () => this.moduleRdLinks.set([]),
+          });
+        } else {
+          this.moduleRdLinks.set([]);
+        }
       },
       error: () => {
-        this.selectedModule.set(this.modules().find((item) => item.id === moduleId) ?? null);
+        const fallback = this.modules().find((item) => item.id === moduleId) ?? null;
+        this.selectedModule.set(fallback);
+        if (fallback?.nodeType === 'module') {
+          this.projectApi.listModuleRdLinks(project.id, moduleId).subscribe({
+            next: (links) => this.moduleRdLinks.set(links),
+            error: () => this.moduleRdLinks.set([]),
+          });
+        } else {
+          this.moduleRdLinks.set([]);
+        }
       }
     });
     this.projectApi.listModuleMembers(project.id, moduleId).subscribe({
@@ -286,6 +311,7 @@ export class ProjectListPageComponent {
     this.moduleMembers.set([]);
     this.moduleMembersBusy.set(false);
     this.moduleMembersLoading.set(false);
+    this.moduleRdLinks.set([]);
   }
 
   openModuleDetailFromList(
@@ -521,6 +547,26 @@ export class ProjectListPageComponent {
       error: () => {
         this.moduleMembersBusy.set(false);
         this.message.error('移除模块成员失败');
+      }
+    });
+  }
+
+  saveModuleRdLinks(input: { rdItemIds: string[] }): void {
+    const project = this.moduleProject();
+    const module = this.selectedModule();
+    if (!project || !module) {
+      return;
+    }
+    this.moduleRdLinksBusy.set(true);
+    this.projectApi.replaceModuleRdLinks(project.id, module.id, input).subscribe({
+      next: ({ items }) => {
+        this.moduleRdLinksBusy.set(false);
+        this.moduleRdLinks.set(items);
+        this.message.success('模块研发项关联已更新');
+      },
+      error: () => {
+        this.moduleRdLinksBusy.set(false);
+        this.message.error('更新模块研发项关联失败');
       }
     });
   }
@@ -864,6 +910,24 @@ export class ProjectListPageComponent {
       error: () => {
         this.modules.set([]);
         this.moduleLoading.set(false);
+      }
+    });
+  }
+
+  private loadProjectRdCandidates(projectId: string): void {
+    this.rdApi.listItems({ projectId, page: 1, pageSize: 500 }).subscribe({
+      next: (result) => {
+        this.moduleRdCandidates.set(
+          result.items.map((item) => ({
+            id: item.id,
+            rdNo: item.rdNo,
+            title: item.title,
+            status: item.status
+          }))
+        );
+      },
+      error: () => {
+        this.moduleRdCandidates.set([]);
       }
     });
   }

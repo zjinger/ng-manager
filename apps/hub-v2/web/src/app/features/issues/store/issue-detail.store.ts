@@ -2,8 +2,9 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { forkJoin, type Observable } from 'rxjs';
 
 import { AuthStore } from '@core/auth';
-import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../projects/models/project.model';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectModuleRdLinkEntity, ProjectVersionItem } from '../../projects/models/project.model';
 import { ProjectApiService } from '../../projects/services/project-api.service';
+import { RdApiService } from '../../rd/services/rd-api.service';
 import type {
   IssueAttachmentEntity,
   IssueBranchEntity,
@@ -24,6 +25,7 @@ export class IssueDetailStore {
   private readonly authStore = inject(AuthStore);
   private readonly permissionService = inject(IssuePermissionService);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly rdApi = inject(RdApiService);
 
   private readonly issueState = signal<IssueEntity | null>(null);
   private readonly logsState = signal<IssueLogEntity[]>([]);
@@ -33,8 +35,10 @@ export class IssueDetailStore {
   private readonly attachmentsState = signal<IssueAttachmentEntity[]>([]);
   private readonly membersState = signal<ProjectMemberEntity[]>([]);
   private readonly modulesState = signal<ProjectMetaItem[]>([]);
+  private readonly moduleRdLinksState = signal<ProjectModuleRdLinkEntity[]>([]);
   private readonly versionsState = signal<ProjectVersionItem[]>([]);
   private readonly environmentsState = signal<ProjectMetaItem[]>([]);
+  private readonly rdItemsState = signal<Array<{ id: string; rdNo: string; title: string; status: string }>>([]);
   private readonly loadingState = signal(false);
   private readonly busyState = signal(false);
   private readonly actionTickState = signal(0);
@@ -57,8 +61,10 @@ export class IssueDetailStore {
   readonly attachments = computed(() => this.attachmentsState());
   readonly members = computed(() => this.membersState());
   readonly modules = computed(() => this.modulesState());
+  readonly moduleRdLinks = computed(() => this.moduleRdLinksState());
   readonly versions = computed(() => this.versionsState());
   readonly environments = computed(() => this.environmentsState());
+  readonly rdItems = computed(() => this.rdItemsState());
   readonly loading = computed(() => this.loadingState());
   readonly busy = computed(() => this.busyState());
   readonly actionTick = computed(() => this.actionTickState());
@@ -243,22 +249,37 @@ export class IssueDetailStore {
         forkJoin({
           members: this.projectApi.listMembers(issue.projectId),
           modules: this.projectApi.listModules(issue.projectId),
+          moduleRdLinks: this.projectApi.listProjectModuleRdLinks(issue.projectId),
           versions: this.projectApi.listVersions(issue.projectId),
           environments: this.projectApi.listEnvironments(issue.projectId),
+          rdItems: this.rdApi.listItems({ projectId: issue.projectId, page: 1, pageSize: 500 }),
         }).subscribe({
-          next: ({ members, modules, versions, environments }) => {
+          next: ({ members, modules, moduleRdLinks, versions, environments, rdItems }) => {
             this.membersState.set(members);
             this.modulesState.set(modules.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+            this.moduleRdLinksState.set(moduleRdLinks);
             this.versionsState.set(versions.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
             this.environmentsState.set(environments.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+            this.rdItemsState.set(
+              rdItems.items.map((item) => ({
+                id: item.id,
+                rdNo: item.rdNo,
+                title: item.title,
+                status: item.status,
+              }))
+            );
             this.loadingState.set(false);
           },
           error: () => {
+            this.moduleRdLinksState.set([]);
+            this.rdItemsState.set([]);
             this.loadingState.set(false);
           },
         });
       },
       error: () => {
+        this.moduleRdLinksState.set([]);
+        this.rdItemsState.set([]);
         this.loadingState.set(false);
       },
     });

@@ -8,6 +8,8 @@ import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { ISSUE_PRIORITY_LABELS, RD_STATUS_LABELS } from '@shared/constants';
 import { ActiveFilterTag, ActiveFiltersBarComponent, PageHeaderComponent, ListStateComponent } from '@shared/ui';
+import type { IssueEntity } from '../../../issues/models/issue.model';
+import { IssueApiService } from '../../../issues/services/issue-api.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { RdBoardComponent } from '../../components/rd-board/rd-board.component';
@@ -118,6 +120,7 @@ import { map } from 'rxjs';
       [logs]="selectedLogs()"
       [stages]="store.stages()"
       [stageHistory]="selectedStageHistory()"
+      [linkedIssues]="selectedLinkedIssues()"
       [canEditBasic]="canEditSelectedBasic()"
       [canAdvance]="canAdvanceSelectedItem()"
       [canAccept]="canAcceptSelectedItem()"
@@ -201,6 +204,7 @@ export class RdBoardPageComponent {
   readonly projectContext = inject(ProjectContextStore);
   private readonly projectApi = inject(ProjectApiService);
   private readonly rdApi = inject(RdApiService);
+  private readonly issueApi = inject(IssueApiService);
   private readonly rdPermission = inject(RdPermissionService);
   private readonly message = inject(NzMessageService);
   private readonly route = inject(ActivatedRoute);
@@ -229,6 +233,7 @@ export class RdBoardPageComponent {
   readonly selectedLogs = signal<RdLogEntity[]>([]);
   readonly selectedStageHistory = signal<RdStageHistoryEntry[]>([]);
   readonly selectedProgressList = signal<RdItemProgress[]>([]);
+  readonly selectedLinkedIssues = signal<IssueEntity[]>([]);
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly selectedMemberProgressList = computed<MemberProgressItem[]>(() => {
     const item = this.selectedItem();
@@ -433,6 +438,7 @@ export class RdBoardPageComponent {
         this.selectedLogs.set([]);
         this.selectedStageHistory.set([]);
         this.selectedProgressList.set([]);
+        this.selectedLinkedIssues.set([]);
         return;
       }
       void selectedUpdatedAt;
@@ -448,10 +454,17 @@ export class RdBoardPageComponent {
         next: (items) => this.selectedStageHistory.set(items),
         error: () => this.selectedStageHistory.set([]),
       });
+      const linkedIssuesSub = this.issueApi
+        .list({ projectId: this.projectContext.currentProjectId() || undefined, rdItemId: selectedId, page: 1, pageSize: 20 })
+        .subscribe({
+          next: (result) => this.selectedLinkedIssues.set(result.items),
+          error: () => this.selectedLinkedIssues.set([]),
+        });
       onCleanup(() => {
         logsSub.unsubscribe();
         progressSub.unsubscribe();
         stageHistorySub.unsubscribe();
+        linkedIssuesSub.unsubscribe();
       });
     });
   }
@@ -546,6 +559,7 @@ export class RdBoardPageComponent {
     });
     this.selectedLogs.set([]);
     this.selectedStageHistory.set([]);
+    this.selectedLinkedIssues.set([]);
     this.advanceStageOpen.set(false);
     this.closeOpen.set(false);
     this.editOpen.set(false);

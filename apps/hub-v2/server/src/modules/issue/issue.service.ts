@@ -43,6 +43,13 @@ type IssueMemberRef = {
   verifierName: string | null;
 };
 
+type IssueRdAssociationRef = {
+  rdItemId: string | null;
+  rdNoSnapshot: string | null;
+  rdTitleSnapshot: string | null;
+  rdStatusSnapshot: string | null;
+};
+
 export class IssueService implements IssueCommandContract, IssueQueryContract {
   private static readonly URGE_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
@@ -58,10 +65,19 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const issueType = input.type ?? "bug";
     await this.projectAccess.requireProjectAccess(projectId, ctx, "create issue");
     const members = await this.resolveMembers(projectId, input.assigneeId ?? null, input.verifierId ?? null);
+    const rdAssociation = this.resolveRdAssociation(projectId, input.rdItemId ?? null);
     const reporterId = ctx.userId?.trim() || ctx.accountId;
     const reporterName = ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId;
     const effectiveVerifierId = members.verifierId ?? reporterId;
     const effectiveVerifierName = members.verifierName ?? reporterName;
+    const moduleCode = this.resolveModuleCodeForWrite({
+      projectId,
+      explicitModuleCode: input.moduleCode,
+      nextRdItemId: rdAssociation.rdItemId,
+      currentModuleCode: null,
+      rdAssociationTouched: true
+    });
+
     const now = nowIso();
     const entity: IssueEntity = {
       id: genId("iss"),
@@ -78,7 +94,11 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
       assigneeName: members.assigneeName,
       verifierId: effectiveVerifierId,
       verifierName: effectiveVerifierName,
-      moduleCode: input.moduleCode?.trim() || null,
+      rdItemId: rdAssociation.rdItemId,
+      rdNoSnapshot: rdAssociation.rdNoSnapshot,
+      rdTitleSnapshot: rdAssociation.rdTitleSnapshot,
+      rdStatusSnapshot: rdAssociation.rdStatusSnapshot,
+      moduleCode,
       versionCode: input.versionCode?.trim() || null,
       environmentCode: input.environmentCode?.trim() || null,
       resolutionSummary: null,
@@ -120,13 +140,30 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     const current = await this.requireByIdWithAccess(id, ctx, "update issue");
     requireIssueEditAccess(current, ctx);
 
+    const rdAssociation =
+      input.rdItemId === undefined
+        ? null
+        : this.resolveRdAssociation(current.projectId, input.rdItemId, current.rdItemId);
+    const nextRdItemId = rdAssociation ? rdAssociation.rdItemId : current.rdItemId;
+    const nextModuleCode = this.resolveModuleCodeForWrite({
+      projectId: current.projectId,
+      explicitModuleCode: input.moduleCode,
+      nextRdItemId,
+      currentModuleCode: current.moduleCode,
+      rdAssociationTouched: input.rdItemId !== undefined
+    });
+
     const updatedAt = nowIso();
     const updated = this.repo.update(id, {
       title: input.title?.trim() || current.title,
       description: input.description === undefined ? current.description : input.description?.trim() || null,
       type: input.type ?? current.type,
       priority: input.priority ?? current.priority,
-      module_code: input.moduleCode === undefined ? current.moduleCode : input.moduleCode?.trim() || null,
+      rd_item_id: rdAssociation ? rdAssociation.rdItemId : current.rdItemId,
+      rd_no_snapshot: rdAssociation ? rdAssociation.rdNoSnapshot : current.rdNoSnapshot,
+      rd_title_snapshot: rdAssociation ? rdAssociation.rdTitleSnapshot : current.rdTitleSnapshot,
+      rd_status_snapshot: rdAssociation ? rdAssociation.rdStatusSnapshot : current.rdStatusSnapshot,
+      module_code: nextModuleCode,
       version_code: input.versionCode === undefined ? current.versionCode : input.versionCode?.trim() || null,
       environment_code:
         input.environmentCode === undefined ? current.environmentCode : input.environmentCode?.trim() || null,
@@ -526,6 +563,9 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     if (input.priority !== undefined && input.priority !== current.priority) {
       changes.push("更新优先级");
     }
+    if (input.rdItemId !== undefined && (input.rdItemId?.trim() || null) !== current.rdItemId) {
+      changes.push("更新关联研发项");
+    }
     if (input.moduleCode !== undefined && (input.moduleCode?.trim() || null) !== current.moduleCode) {
       changes.push("更新模块");
     }
@@ -537,6 +577,59 @@ export class IssueService implements IssueCommandContract, IssueQueryContract {
     }
 
     return changes.length > 0 ? changes.join("；") : "更新问题信息";
+  }
+
+  private resolveRdAssociation(
+    projectId: string,
+    rdItemId: string | null | undefined,
+    currentRdItemId?: string | null
+  ): IssueRdAssociationRef {
+    const normalizedRdItemId = rdItemId?.trim() || null;
+    if (!normalizedRdItemId) {
+      return {
+        rdItemId: null,
+        rdNoSnapshot: null,
+        rdTitleSnapshot: null,
+        rdStatusSnapshot: null
+      };
+    }
+
+    const rdItem = this.repo.findRdItemSnapshotById(normalizedRdItemId);
+    if (!rdItem) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "关联研发项不存在", 400);
+    }
+    if (rdItem.projectId !== projectId) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "关联研发项与测试单不在同一项目", 400);
+    }
+    if (rdItem.status === "closed" && rdItem.id !== (currentRdItemId?.trim() || null)) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "已关闭研发项不允许新绑定", 400);
+    }
+
+    return {
+      rdItemId: rdItem.id,
+      rdNoSnapshot: rdItem.rdNo,
+      rdTitleSnapshot: rdItem.title,
+      rdStatusSnapshot: rdItem.status
+    };
+  }
+
+  private resolveModuleCodeForWrite(input: {
+    projectId: string;
+    explicitModuleCode: string | null | undefined;
+    nextRdItemId: string | null;
+    currentModuleCode: string | null;
+    rdAssociationTouched?: boolean;
+  }): string | null {
+    if (input.explicitModuleCode !== undefined) {
+      return input.explicitModuleCode?.trim() || null;
+    }
+    if (!input.rdAssociationTouched) {
+      return input.currentModuleCode;
+    }
+    if (!input.nextRdItemId) {
+      return input.currentModuleCode;
+    }
+    return this.repo.findFirstMappedModuleCodeByRdItemId(input.projectId, input.nextRdItemId);
   }
 
   private async emitIssueEvent(type: string, action: string, entity: IssueEntity, ctx: RequestContext): Promise<void> {

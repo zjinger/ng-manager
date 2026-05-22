@@ -14,8 +14,10 @@ import type {
   AddProjectModuleMemberInput,
   ProjectMemberEntity,
   ProjectMetaItem,
+  ProjectModuleRdLinkEntity,
   ProjectModuleMemberEntity,
   ProjectModulePriority,
+  ReplaceModuleRdLinksInput,
   UpdateProjectMetaItemInput
 } from '../../models/project.model';
 
@@ -40,18 +42,22 @@ import type {
 })
 export class ProjectModuleDetailDialogComponent {
   readonly open = input(false);
-  readonly initialTab = input<'basic' | 'members'>('basic');
+  readonly initialTab = input<'basic' | 'members' | 'rdItems'>('basic');
   readonly busy = input(false);
   readonly membersBusy = input(false);
+  readonly rdLinksBusy = input(false);
   readonly module = input<ProjectMetaItem | null>(null);
   readonly projectMembers = input<ProjectMemberEntity[]>([]);
   readonly moduleMembers = input<ProjectModuleMemberEntity[]>([]);
+  readonly moduleRdLinks = input<ProjectModuleRdLinkEntity[]>([]);
+  readonly rdItems = input<Array<{ id: string; rdNo: string; title: string; status: string }>>([]);
   readonly canManageModules = input(false);
 
   readonly cancel = output<void>();
   readonly save = output<UpdateProjectMetaItemInput>();
   readonly addMember = output<AddProjectModuleMemberInput>();
   readonly removeMember = output<string>();
+  readonly saveRdLinks = output<ReplaceModuleRdLinksInput>();
 
   readonly candidateUserId = signal<string | null>(null);
   readonly candidateRoleCode = signal<ProjectMemberEntity['roleCode']>('member');
@@ -62,6 +68,7 @@ export class ProjectModuleDetailDialogComponent {
   readonly formPriority = signal<ProjectModulePriority>('medium');
   readonly formSort = signal(0);
   readonly formEnabled = signal(true);
+  readonly selectedRdItemIds = signal<string[]>([]);
 
   readonly priorityOptions: Array<{ label: string; value: ProjectModulePriority }> = [
     { label: '紧急', value: 'critical' },
@@ -94,8 +101,16 @@ export class ProjectModuleDetailDialogComponent {
       if (!this.open() || !current) {
         return;
       }
+      const initialTab = this.initialTab();
       const allowMembersTab = current.nodeType === 'subsystem';
-      this.tabIndex.set(this.initialTab() === 'members' && allowMembersTab ? 1 : 0);
+      const allowRdTab = current.nodeType === 'module';
+      if (allowMembersTab && initialTab === 'members') {
+        this.tabIndex.set(1);
+      } else if (allowRdTab && initialTab === 'rdItems') {
+        this.tabIndex.set(1);
+      } else {
+        this.tabIndex.set(0);
+      }
       this.formName.set(current.name);
       this.formProjectNo.set(current.projectNo ?? '');
       this.formDescription.set(current.description ?? '');
@@ -104,6 +119,7 @@ export class ProjectModuleDetailDialogComponent {
       this.formEnabled.set(current.enabled !== false);
       this.candidateUserId.set(null);
       this.candidateRoleCode.set('member');
+      this.selectedRdItemIds.set(this.moduleRdLinks().map((item) => item.rdItemId));
     });
   }
 
@@ -151,5 +167,26 @@ export class ProjectModuleDetailDialogComponent {
     this.addMember.emit({ userId, roleCode: this.candidateRoleCode() });
     this.candidateUserId.set(null);
     this.candidateRoleCode.set('member');
+  }
+
+  rdLabel(rd: { id: string; rdNo: string; title: string; status: string }): string {
+    const base = `${rd.rdNo} · ${rd.title}`;
+    return rd.status === 'closed' ? `${base}（已关闭）` : base;
+  }
+
+  submitSaveRdLinks(): void {
+    const module = this.module();
+    if (!module || module.nodeType !== 'module') {
+      return;
+    }
+    const rdItemIds = Array.from(new Set(this.selectedRdItemIds().map((item) => item.trim()).filter(Boolean)));
+    this.saveRdLinks.emit({ rdItemIds });
+  }
+
+  isRdOptionDisabled(rd: { id: string; status: string }): boolean {
+    if (rd.status !== 'closed') {
+      return false;
+    }
+    return !this.selectedRdItemIds().includes(rd.id);
   }
 }

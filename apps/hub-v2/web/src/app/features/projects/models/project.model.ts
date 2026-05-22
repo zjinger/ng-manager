@@ -198,6 +198,23 @@ export interface AddProjectModuleMemberInput {
   roleCode?: ProjectMemberRole | 'member';
 }
 
+export interface ProjectModuleRdLinkEntity {
+  id: string;
+  projectId: string;
+  moduleId: string;
+  rdItemId: string;
+  sort: number;
+  createdAt: string;
+  updatedAt: string;
+  rdNo: string | null;
+  rdTitle: string | null;
+  rdStatus: string | null;
+}
+
+export interface ReplaceModuleRdLinksInput {
+  rdItemIds: string[];
+}
+
 export interface CreateProjectVersionItemInput {
   version: string;
   code?: string;

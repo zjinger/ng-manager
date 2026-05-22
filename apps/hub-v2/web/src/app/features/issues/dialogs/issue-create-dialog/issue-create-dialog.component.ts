@@ -17,11 +17,18 @@ import { NzUploadModule } from 'ng-zorro-antd/upload';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import { AiRecommendPanelComponent } from '../../../ai/components/ai-recommend-panel/ai-recommend-panel.component';
 import { AiIssueStore } from '../../../ai/store/ai-issue.store';
-import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '../../../projects/models/project.model';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectModuleRdLinkEntity, ProjectVersionItem } from '../../../projects/models/project.model';
 import type { CreateIssueInput, IssuePriority, IssueType } from '../../models/issue.model';
 
 type Draft = Omit<CreateIssueInput, 'projectId'> & {
   attachmentFiles: File[];
+};
+
+type IssueRdCandidate = {
+  id: string;
+  rdNo: string;
+  title: string;
+  status: string;
 };
 
 const DEFAULT_DRAFT: Draft = {
@@ -32,6 +39,7 @@ const DEFAULT_DRAFT: Draft = {
   assigneeId: null,
   participantIds: [],
   verifierId: null,
+  rdItemId: null,
   moduleCode: '',
   versionCode: '',
   environmentCode: '',
@@ -116,7 +124,7 @@ const DEFAULT_DRAFT: Draft = {
             </div>
           </div>
           <div class="row" nz-row nzGutter="16">
-            <div class="col" nz-col nzSpan="12">
+            <div class="col" nz-col nzSpan="8">
               <nz-form-item>
               <nz-form-label nzFor="type" nzRequired>类型</nz-form-label>
               <nz-form-control>
@@ -128,7 +136,7 @@ const DEFAULT_DRAFT: Draft = {
               </nz-form-control>
               </nz-form-item>
             </div>
-            <div class="col" nz-col nzSpan="12">
+            <div class="col" nz-col nzSpan="8">
               <nz-form-item>
               <nz-form-label nzFor="priority" nzRequired>优先级</nz-form-label>
               <nz-form-control>
@@ -207,7 +215,7 @@ const DEFAULT_DRAFT: Draft = {
           <div class="row" nz-row nzGutter="16">
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
-              <nz-form-label nzFor="moduleCode">模块</nz-form-label>
+              <nz-form-label nzFor="moduleCode">模块/研发项</nz-form-label>
               <nz-form-control>
                 <nz-cascader
                   #moduleCascaderRef
@@ -216,10 +224,10 @@ const DEFAULT_DRAFT: Draft = {
                   [nzChangeOnSelect]="true"
                   nzColumnClassName="issue-module-cascader-column"
                   nzMenuClassName="issue-module-cascader-menu"
-                  [nzOptions]="moduleCascaderOptions()"
+                  [nzOptions]="moduleRdCascaderOptions()"
                   [nzMenuStyle]="moduleMenuStyle()"
                   [ngModel]="modulePath()"
-                  name="moduleCode"
+                  name="moduleRdCode"
                   (nzVisibleChange)="onModuleCascaderVisibleChange($event)"
                   (ngModelChange)="onModulePathChange($event)"
                 ></nz-cascader>
@@ -425,7 +433,9 @@ export class IssueCreateDialogComponent implements OnDestroy {
   readonly open = input(false);
   readonly busy = input(false);
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly rdItems = input<IssueRdCandidate[]>([]);
   readonly modules = input<ProjectMetaItem[]>([]);
+  readonly moduleRdLinks = input<ProjectModuleRdLinkEntity[]>([]);
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
   readonly projectName = input<string>('');
@@ -459,7 +469,7 @@ export class IssueCreateDialogComponent implements OnDestroy {
       ? { '--issue-module-cascader-col-width': `${this.moduleTriggerWidth()}px` }
       : null
   );
-  readonly moduleCascaderOptions = computed(() => this.buildModuleCascaderOptions());
+  readonly moduleRdCascaderOptions = computed(() => this.buildModuleRdCascaderOptions());
   @ViewChild('moduleCascaderRef', { read: ElementRef }) moduleCascaderRef?: ElementRef<HTMLElement>;
 
   constructor() {
@@ -511,7 +521,7 @@ export class IssueCreateDialogComponent implements OnDestroy {
       if (!this.open()) {
         return;
       }
-      this.setModulePath(this.findModulePathByCode(this.draft().moduleCode));
+      this.setModulePath(this.findSelectionPath(this.draft().moduleCode, this.draft().rdItemId));
       this.scheduleSyncModuleMenuWidth();
     });
   }
@@ -731,8 +741,9 @@ export class IssueCreateDialogComponent implements OnDestroy {
     const path =
       Array.isArray(value) && value.length > 0 ? value.map((item) => `${item}`.trim()).filter(Boolean) : null;
     this.setModulePath(path);
-    const moduleCode = this.resolveModuleCodeByPath(path);
+    const { moduleCode, rdItemId } = this.resolveSelection(path);
     this.updateField('moduleCode', moduleCode);
+    this.updateField('rdItemId', rdItemId);
   }
 
   onModuleCascaderVisibleChange(visible: boolean): void {
@@ -764,12 +775,28 @@ export class IssueCreateDialogComponent implements OnDestroy {
     return true;
   }
 
-  private buildModuleCascaderOptions(): Array<{ label: string; value: string; children?: Array<{ label: string; value: string; isLeaf: true }>; isLeaf?: true }> {
+  private buildModuleRdCascaderOptions(): Array<{
+    label: string;
+    value: string;
+    children?: Array<{ label: string; value: string; isLeaf?: boolean; children?: Array<{ label: string; value: string; isLeaf: boolean }> }>;
+    isLeaf?: boolean;
+  }> {
     const items = this.modules();
     const subsystemItems = items.filter((item) => item.nodeType === 'subsystem');
     const subsystemIdSet = new Set(subsystemItems.map((item) => item.id));
     const modulesByParent = new Map<string, ProjectMetaItem[]>();
     const standaloneModules: ProjectMetaItem[] = [];
+    const rdLinksByModule = new Map<string, IssueRdCandidate[]>();
+    const rdById = new Map(this.rdItems().map((item) => [item.id, item] as const));
+    for (const link of this.moduleRdLinks()) {
+      const rd = rdById.get(link.rdItemId);
+      if (!rd) {
+        continue;
+      }
+      const list = rdLinksByModule.get(link.moduleId) ?? [];
+      list.push(rd);
+      rdLinksByModule.set(link.moduleId, list);
+    }
 
     for (const item of items) {
       if (item.nodeType !== 'module') {
@@ -784,13 +811,36 @@ export class IssueCreateDialogComponent implements OnDestroy {
       standaloneModules.push(item);
     }
 
-    const options: Array<{ label: string; value: string; children?: Array<{ label: string; value: string; isLeaf: true }>; isLeaf?: true }> = [];
-    for (const sub of subsystemItems) {
-      const children = (modulesByParent.get(sub.id) ?? []).map((item) => ({
+    const toRdLeaf = (rd: IssueRdCandidate) => ({
+      label: `${rd.rdNo} · ${rd.title}${rd.status === 'closed' ? '（已关闭）' : ''}`,
+      value: `rd:${rd.id}`,
+      isLeaf: true as const
+    });
+    const toModuleNode = (item: ProjectMetaItem) => {
+      const rdChildren = (rdLinksByModule.get(item.id) ?? []).map(toRdLeaf).filter((child) => {
+        if (!child.value.startsWith('rd:')) {
+          return true;
+        }
+        const rdId = child.value.slice(3);
+        const rd = rdById.get(rdId);
+        return !!rd && (rd.status !== 'closed' || this.draft().rdItemId === rdId);
+      });
+      return {
         label: item.name,
         value: item.id,
-        isLeaf: true as const
-      }));
+        children: rdChildren.length > 0 ? rdChildren : undefined,
+        isLeaf: rdChildren.length > 0 ? undefined : true
+      };
+    };
+
+    const options: Array<{
+      label: string;
+      value: string;
+      children?: Array<{ label: string; value: string; isLeaf?: boolean; children?: Array<{ label: string; value: string; isLeaf: boolean }> }>;
+      isLeaf?: boolean;
+    }> = [];
+    for (const sub of subsystemItems) {
+      const children = (modulesByParent.get(sub.id) ?? []).map(toModuleNode);
       options.push({
         label: sub.name,
         value: sub.id,
@@ -799,13 +849,38 @@ export class IssueCreateDialogComponent implements OnDestroy {
       });
     }
     for (const item of standaloneModules) {
-      options.push({
-        label: item.name,
-        value: item.id,
-        isLeaf: true
-      });
+      options.push(toModuleNode(item));
     }
+
+    const directRdOptions = this.rdItems()
+      .filter((rd) => rd.status !== 'closed' || this.draft().rdItemId === rd.id)
+      .map((rd) => ({
+        label: `${rd.rdNo} · ${rd.title}${rd.status === 'closed' ? '（已关闭）' : ''}`,
+        value: `rd-direct:${rd.id}`,
+        isLeaf: true as const
+      }));
+    options.push({
+      label: '直接关联研发项',
+      value: '__rd_direct__',
+      children: directRdOptions
+    });
     return options;
+  }
+
+  private findSelectionPath(moduleCode: string | null | undefined, rdItemId: string | null | undefined): string[] | null {
+    const normalizedRdId = rdItemId?.trim() || null;
+    if (normalizedRdId) {
+      const mapped = this.findMappedModuleIdByRdItemId(normalizedRdId);
+      if (mapped) {
+        const module = this.modules().find((item) => item.id === mapped);
+        if (module?.parentId && this.modules().some((item) => item.id === module.parentId && item.nodeType === 'subsystem')) {
+          return [module.parentId, module.id, `rd:${normalizedRdId}`];
+        }
+        return [mapped, `rd:${normalizedRdId}`];
+      }
+      return ['__rd_direct__', `rd-direct:${normalizedRdId}`];
+    }
+    return this.findModulePathByCode(moduleCode);
   }
 
   private findModulePathByCode(moduleCode: string | null | undefined): string[] | null {
@@ -817,22 +892,44 @@ export class IssueCreateDialogComponent implements OnDestroy {
     if (!target) {
       return null;
     }
-    if (target.nodeType === 'module' && target.parentId && this.modules().some((item) => item.id === target.parentId && item.nodeType === 'subsystem')) {
+    if (
+      target.nodeType === 'module' &&
+      target.parentId &&
+      this.modules().some((item) => item.id === target.parentId && item.nodeType === 'subsystem')
+    ) {
       return [target.parentId, target.id];
     }
     return [target.id];
   }
 
-  private resolveModuleCodeByPath(path: string[] | null): string {
+  private resolveSelection(path: string[] | null): { moduleCode: string; rdItemId: string | null } {
     if (!path || path.length === 0) {
-      return '';
+      return { moduleCode: '', rdItemId: null };
     }
-    const targetId = path[path.length - 1];
-    const target = this.modules().find((item) => item.id === targetId);
+    const last = path[path.length - 1];
+    if (last.startsWith('rd:')) {
+      const rdItemId = last.slice(3);
+      const moduleId = path.length >= 2 ? path[path.length - 2] : null;
+      const moduleCode = moduleId ? this.resolveModuleCodeById(moduleId) : '';
+      return { moduleCode, rdItemId };
+    }
+    if (last.startsWith('rd-direct:')) {
+      return { moduleCode: '', rdItemId: last.slice('rd-direct:'.length) };
+    }
+    return { moduleCode: this.resolveModuleCodeById(last), rdItemId: null };
+  }
+
+  private resolveModuleCodeById(moduleId: string): string {
+    const target = this.modules().find((item) => item.id === moduleId);
     return target ? this.moduleValue(target) : '';
   }
 
   private moduleValue(item: ProjectMetaItem): string {
     return (item.code || item.name || '').trim();
+  }
+
+  private findMappedModuleIdByRdItemId(rdItemId: string): string | null {
+    const link = this.moduleRdLinks().find((item) => item.rdItemId === rdItemId);
+    return link?.moduleId ?? null;
   }
 }

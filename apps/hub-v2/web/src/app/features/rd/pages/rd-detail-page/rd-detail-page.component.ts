@@ -11,6 +11,8 @@ import { ProjectContextStore } from '@core/state';
 import { ListStateComponent, SideDetailLayoutComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
+import type { IssueEntity } from '../../../issues/models/issue.model';
+import { IssueApiService } from '../../../issues/services/issue-api.service';
 import { RdDetailContentComponent } from '../../components/rd-detail-content/rd-detail-content.component';
 import { RdDetailHeaderComponent } from '../../components/rd-detail-header/rd-detail-header.component';
 import { RdProgressPanelComponent, type MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
@@ -106,6 +108,8 @@ import { map } from 'rxjs';
                 [canAdvance]="canAdvance()"
                 [canAccept]="canAccept()"
                 [canClose]="canClose()"
+                [showLinkedIssues]="true"
+                [linkedIssues]="linkedIssues()"
                 [showSummary]="false"
                 [showAction]="false"
                 [showProps]="false"
@@ -235,6 +239,7 @@ export class RdDetailPageComponent {
   private readonly projectApi = inject(ProjectApiService);
   private readonly authStore = inject(AuthStore);
   private readonly rdPermission = inject(RdPermissionService);
+  private readonly issueApi = inject(IssueApiService);
   private readonly message = inject(NzMessageService);
   private readonly routeItemId = toSignal(this.route.paramMap.pipe(map((params) => params.get('itemId'))), {
     initialValue: this.route.snapshot.paramMap.get('itemId'),
@@ -246,6 +251,7 @@ export class RdDetailPageComponent {
   readonly stages = signal<RdStageEntity[]>([]);
   readonly members = signal<ProjectMemberEntity[]>([]);
   readonly progressList = signal<RdItemProgress[]>([]);
+  readonly linkedIssues = signal<IssueEntity[]>([]);
   readonly loading = signal(false);
   readonly busy = signal(false);
   readonly blockOpen = signal(false);
@@ -341,6 +347,7 @@ export class RdDetailPageComponent {
         this.stages.set([]);
         this.members.set([]);
         this.progressList.set([]);
+        this.linkedIssues.set([]);
         return;
       }
       this.load(id);
@@ -513,13 +520,15 @@ export class RdDetailPageComponent {
           stages: this.rdApi.listStages(item.projectId),
           members: this.projectApi.listMembers(item.projectId),
           progress: this.rdApi.listProgress(item.id),
+          linkedIssues: this.issueApi.list({ projectId: item.projectId, rdItemId: item.id, page: 1, pageSize: 20 }),
         }).subscribe({
-          next: ({ logs, stageHistory, stages, members, progress }) => {
+          next: ({ logs, stageHistory, stages, members, progress, linkedIssues }) => {
             this.logs.set(logs);
             this.stageHistory.set(stageHistory);
             this.stages.set(stages);
             this.members.set(members);
             this.progressList.set(progress);
+            this.linkedIssues.set(linkedIssues.items);
             this.loading.set(false);
           },
           error: () => {
@@ -528,6 +537,7 @@ export class RdDetailPageComponent {
             this.stages.set([]);
             this.members.set([]);
             this.progressList.set([]);
+            this.linkedIssues.set([]);
             this.loading.set(false);
           },
         });
@@ -539,6 +549,7 @@ export class RdDetailPageComponent {
         this.stages.set([]);
         this.members.set([]);
         this.progressList.set([]);
+        this.linkedIssues.set([]);
         this.loading.set(false);
       },
     });

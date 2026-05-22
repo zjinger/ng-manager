@@ -118,14 +118,18 @@
   [initialTab]="moduleDetailInitialTab()"
   [busy]="moduleBusy()"
   [membersBusy]="moduleMembersBusy()"
+  [rdLinksBusy]="moduleRdLinksBusy()"
   [module]="selectedModule()"
   [projectMembers]="members()"
   [moduleMembers]="moduleMembers()"
+  [moduleRdLinks]="moduleRdLinks()"
+  [rdItems]="moduleRdCandidates()"
   [canManageModules]="isProjectAdmin()"
   (cancel)="closeModuleDetailDialog()"
   (save)="saveModuleDetail($event)"
   (addMember)="addModuleMember($event)"
   (removeMember)="removeModuleMember($event)"
+  (saveRdLinks)="saveModuleRdLinks($event)"
 />
 
 <app-project-members-dialog

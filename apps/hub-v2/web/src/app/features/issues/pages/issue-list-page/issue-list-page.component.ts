@@ -8,8 +8,9 @@ import { catchError, finalize, forkJoin, from, map, mergeMap, of, toArray } from
 
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
-import type { ProjectMemberEntity, ProjectMetaItem, ProjectVersionItem } from '@features/projects/models/project.model';
+import type { ProjectMemberEntity, ProjectMetaItem, ProjectModuleRdLinkEntity, ProjectVersionItem } from '@features/projects/models/project.model';
 import { ProjectApiService } from '@features/projects/services/project-api.service';
+import { RdApiService } from '@features/rd/services/rd-api.service';
 import { ISSUE_PRIORITY_LABELS, ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '@shared/constants';
 import { ActiveFilterTag, ActiveFiltersBarComponent, ListStateComponent, PageHeaderComponent } from '@shared/ui';
 import { IssueDetailDrawerComponent } from '../../components/issue-detail-drawer/issue-detail-drawer.component';
@@ -108,7 +109,9 @@ import { IssueListStore } from '../../store/issue-list.store';
       [open]="createOpen()"
       [busy]="store.loading()"
       [members]="members()"
+      [rdItems]="rdItems()"
       [modules]="modules()"
+      [moduleRdLinks]="moduleRdLinks()"
       [environments]="environments()"
       [versions]="versions()"
       [projectName]="projectContext.currentProject()?.name || ''"
@@ -154,6 +157,7 @@ export class IssueListPageComponent {
   readonly store = inject(IssueListStore);
   readonly authStore = inject(AuthStore);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly rdApi = inject(RdApiService);
   private readonly issueApi = inject(IssueApiService);
   private readonly message = inject(NzMessageService);
   readonly projectContext = inject(ProjectContextStore);
@@ -161,8 +165,10 @@ export class IssueListPageComponent {
   private readonly router = inject(Router);
   readonly members = signal<ProjectMemberEntity[]>([]);
   readonly modules = signal<ProjectMetaItem[]>([]);
+  readonly moduleRdLinks = signal<ProjectModuleRdLinkEntity[]>([]);
   readonly environments = signal<ProjectMetaItem[]>([]);
   readonly versions = signal<ProjectVersionItem[]>([]);
+  readonly rdItems = signal<Array<{ id: string; rdNo: string; title: string; status: string }>>([]);
   readonly createOpen = signal(false);
   readonly viewMode = signal<IssueListViewMode>('list');
   readonly selectedIssueIds = signal<string[]>([]);
@@ -348,28 +354,43 @@ export class IssueListPageComponent {
       if (!projectId) {
         this.members.set([]);
         this.modules.set([]);
+        this.moduleRdLinks.set([]);
         this.environments.set([]);
         this.versions.set([]);
+        this.rdItems.set([]);
         return;
       }
 
       const subscription = forkJoin({
         members: this.projectApi.listMembers(projectId),
         modules: this.projectApi.listModules(projectId),
+        moduleRdLinks: this.projectApi.listProjectModuleRdLinks(projectId),
         environments: this.projectApi.listEnvironments(projectId),
         versions: this.projectApi.listVersions(projectId),
+        rdItems: this.rdApi.listItems({ projectId, page: 1, pageSize: 500 }),
       }).subscribe({
-        next: ({ members, modules, environments, versions }) => {
+        next: ({ members, modules, moduleRdLinks, environments, versions, rdItems }) => {
           this.members.set(members);
           this.modules.set(modules.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+          this.moduleRdLinks.set(moduleRdLinks);
           this.environments.set(environments.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
           this.versions.set(versions.filter((item) => item.enabled).sort((a, b) => a.sort - b.sort));
+          this.rdItems.set(
+            rdItems.items.map((item) => ({
+              id: item.id,
+              rdNo: item.rdNo,
+              title: item.title,
+              status: item.status,
+            }))
+          );
         },
         error: () => {
           this.members.set([]);
           this.modules.set([]);
+          this.moduleRdLinks.set([]);
           this.environments.set([]);
           this.versions.set([]);
+          this.rdItems.set([]);
         },
       });
       onCleanup(() => subscription.unsubscribe());

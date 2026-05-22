@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
+import type { IssueEntity } from '../../../issues/models/issue.model';
 import type { RdItemEntity, RdLogEntity, RdStageEntity, RdStageHistoryEntry } from '../../models/rd.model';
 import { RdDetailContentComponent } from '../rd-detail-content/rd-detail-content.component';
 import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progress-panel/rd-progress-panel.component';
@@ -82,6 +83,8 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [canAdvance]="canAdvance()"
               [canAccept]="canAccept()"
               [canClose]="canClose()"
+              [showLinkedIssues]="true"
+              [linkedIssues]="linkedIssues()"
               [showAction]="false"
               [showProps]="false"
               (actionClick)="actionClick.emit($event)"
@@ -189,6 +192,7 @@ export class RdDetailDrawerComponent {
   readonly logs = input<RdLogEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
+  readonly linkedIssues = input<IssueEntity[]>([]);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
   readonly canAccept = input(false);

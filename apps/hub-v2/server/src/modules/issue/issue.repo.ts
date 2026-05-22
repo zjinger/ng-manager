@@ -26,6 +26,10 @@ type IssueRow = {
   participant_names?: string | null;
   verifier_id: string | null;
   verifier_name: string | null;
+  rd_item_id: string | null;
+  rd_no_snapshot: string | null;
+  rd_title_snapshot: string | null;
+  rd_status_snapshot: string | null;
   module_code: string | null;
   version_code: string | null;
   environment_code: string | null;
@@ -65,6 +69,10 @@ type UpdateIssueRowInput = Partial<{
   assignee_name: string | null;
   verifier_id: string | null;
   verifier_name: string | null;
+  rd_item_id: string | null;
+  rd_no_snapshot: string | null;
+  rd_title_snapshot: string | null;
+  rd_status_snapshot: string | null;
   module_code: string | null;
   version_code: string | null;
   environment_code: string | null;
@@ -94,6 +102,54 @@ export class IssueRepo {
 
   constructor(private readonly db: Database.Database) {}
 
+  findRdItemSnapshotById(rdItemId: string): { id: string; projectId: string; rdNo: string; title: string; status: string } | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT id, project_id, rd_no, title, status
+          FROM rd_items
+          WHERE id = ?
+          LIMIT 1
+        `
+      )
+      .get(rdItemId) as
+      | {
+          id: string;
+          project_id: string;
+          rd_no: string;
+          title: string;
+          status: string;
+        }
+      | undefined;
+    if (!row) {
+      return null;
+    }
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      rdNo: row.rd_no,
+      title: row.title,
+      status: row.status
+    };
+  }
+
+  findFirstMappedModuleCodeByRdItemId(projectId: string, rdItemId: string): string | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT COALESCE(NULLIF(pm.code, ''), pm.name) AS module_code
+          FROM project_module_rd_items l
+          INNER JOIN project_modules pm ON pm.id = l.module_id
+          WHERE l.project_id = ? AND l.rd_item_id = ? AND pm.node_type = 'module'
+          ORDER BY pm.sort ASC, pm.created_at ASC, pm.id ASC, l.sort ASC, l.created_at ASC, l.id ASC
+          LIMIT 1
+        `
+      )
+      .get(projectId, rdItemId) as { module_code: string | null } | undefined;
+    const moduleCode = row?.module_code?.trim() || null;
+    return moduleCode;
+  }
+
   create(entity: IssueEntity): void {
     this.db
       .prepare(
@@ -101,9 +157,10 @@ export class IssueRepo {
           INSERT INTO issues (
             id, project_id, issue_no, title, description, type, status, priority,
             reporter_id, reporter_name, assignee_id, assignee_name, verifier_id, verifier_name,
+            rd_item_id, rd_no_snapshot, rd_title_snapshot, rd_status_snapshot,
             module_code, version_code, environment_code, resolution_summary, close_reason, close_remark,
             reopen_count, started_at, resolved_at, verified_at, closed_at, last_urged_at, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
@@ -121,6 +178,10 @@ export class IssueRepo {
         entity.assigneeName,
         entity.verifierId,
         entity.verifierName,
+        entity.rdItemId,
+        entity.rdNoSnapshot,
+        entity.rdTitleSnapshot,
+        entity.rdStatusSnapshot,
         entity.moduleCode,
         entity.versionCode,
         entity.environmentCode,
@@ -246,10 +307,17 @@ export class IssueRepo {
       params.push(query.verifierId.trim());
     }
 
+    if (query.rdItemId?.trim()) {
+      conditions.push("i.rd_item_id = ?");
+      params.push(query.rdItemId.trim());
+    }
+
     if (query.keyword?.trim()) {
       const keyword = `%${query.keyword.trim()}%`;
-      conditions.push("(i.title LIKE ? OR i.issue_no LIKE ? OR i.description LIKE ? OR i.reporter_name LIKE ? OR i.reporter_id LIKE ?)");
-      params.push(keyword, keyword, keyword, keyword, keyword);
+      conditions.push(
+        "(i.title LIKE ? OR i.issue_no LIKE ? OR i.description LIKE ? OR i.reporter_name LIKE ? OR i.reporter_id LIKE ? OR COALESCE(i.rd_no_snapshot, '') LIKE ? OR COALESCE(i.rd_title_snapshot, '') LIKE ?)"
+      );
+      params.push(keyword, keyword, keyword, keyword, keyword, keyword, keyword);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -576,6 +644,10 @@ export class IssueRepo {
       participantNames: this.normalizeParticipantNames(row.participant_names),
       verifierId: row.verifier_id,
       verifierName: this.normalizeActorName(row.verifier_id, row.verifier_name),
+      rdItemId: row.rd_item_id,
+      rdNoSnapshot: row.rd_no_snapshot,
+      rdTitleSnapshot: row.rd_title_snapshot,
+      rdStatusSnapshot: row.rd_status_snapshot,
       moduleCode: row.module_code,
       versionCode: row.version_code,
       environmentCode: row.environment_code,

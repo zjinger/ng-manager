@@ -41,6 +41,10 @@ export interface IssueEntity {
   participantNames?: string[];
   verifierId: string | null;
   verifierName: string | null;
+  rdItemId: string | null;
+  rdNoSnapshot: string | null;
+  rdTitleSnapshot: string | null;
+  rdStatusSnapshot: string | null;
   moduleCode: string | null;
   versionCode: string | null;
   environmentCode: string | null;
@@ -100,6 +104,7 @@ export interface CreateIssueInput {
   priority?: IssuePriority;
   assigneeId?: string | null;
   verifierId?: string | null;
+  rdItemId?: string | null;
   moduleCode?: string;
   versionCode?: string;
   environmentCode?: string;
@@ -110,6 +115,7 @@ export interface UpdateIssueInput {
   description?: string | null;
   type?: IssueType;
   priority?: IssuePriority;
+  rdItemId?: string | null;
   moduleCode?: string | null;
   versionCode?: string | null;
   environmentCode?: string | null;
@@ -136,6 +142,7 @@ export interface ListIssuesQuery {
   page?: number;
   pageSize?: number;
   keyword?: string;
+  rdItemId?: string;
   projectId?: string;
   status?: IssueStatus[];
   types?: IssueType[];

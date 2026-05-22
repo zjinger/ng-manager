@@ -4,6 +4,7 @@ export type IssueType = 'bug' | 'feature' | 'change' | 'improvement' | 'task' | 
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
 export type IssueStatus = 'open' | 'in_progress' | 'pending_update' | 'resolved' | 'verified' | 'closed' | 'reopened';
 export type IssueBranchStatus = 'todo' | 'in_progress' | 'done';
+export type LinkedRdStatus = 'todo' | 'doing' | 'blocked' | 'done' | 'accepted' | 'closed';
 
 export interface IssueEntity {
   id: string;
@@ -22,6 +23,10 @@ export interface IssueEntity {
   participantNames?: string[];
   verifierId: string | null;
   verifierName: string | null;
+  rdItemId: string | null;
+  rdNoSnapshot: string | null;
+  rdTitleSnapshot: string | null;
+  rdStatusSnapshot: LinkedRdStatus | null;
   moduleCode: string | null;
   versionCode: string | null;
   environmentCode: string | null;
@@ -119,6 +124,7 @@ export interface IssueListQuery {
   page: number;
   pageSize: number;
   keyword?: string;
+  rdItemId?: string;
   projectId?: string;
   status: string[];
   types: IssueType[];
@@ -144,6 +150,7 @@ export interface CreateIssueInput {
   assigneeId?: string | null;
   participantIds?: string[];
   verifierId?: string | null;
+  rdItemId?: string | null;
   moduleCode?: string;
   versionCode?: string;
   environmentCode?: string;
@@ -154,6 +161,7 @@ export interface UpdateIssueInput {
   description?: string | null;
   type?: IssueType;
   priority?: IssuePriority;
+  rdItemId?: string | null;
   moduleCode?: string | null;
   versionCode?: string | null;
   environmentCode?: string | null;

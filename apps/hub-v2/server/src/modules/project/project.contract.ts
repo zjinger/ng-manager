@@ -4,6 +4,8 @@ import type {
   AddProjectMemberInput,
   CreateProjectConfigItemInput,
   CreateProjectInput,
+  ProjectModuleRdLinkEntity,
+  ReplaceModuleRdLinksInput,
   CreateProjectVersionItemInput,
   ListProjectsQuery,
   ProjectEntity,
@@ -40,6 +42,12 @@ export interface ProjectCommandContract {
     ctx: RequestContext
   ): Promise<ProjectModuleMemberEntity>;
   removeModuleMember(projectId: string, moduleId: string, moduleMemberId: string, ctx: RequestContext): Promise<void>;
+  replaceModuleRdLinks(
+    projectId: string,
+    moduleId: string,
+    input: ReplaceModuleRdLinksInput,
+    ctx: RequestContext
+  ): Promise<ProjectModuleRdLinkEntity[]>;
   addEnvironment(
     projectId: string,
     input: CreateProjectConfigItemInput,
@@ -71,6 +79,8 @@ export interface ProjectQueryContract {
   listModules(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]>;
   getModule(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity>;
   listModuleMembers(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleMemberEntity[]>;
+  listModuleRdLinks(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]>;
+  listProjectModuleRdLinks(projectId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]>;
   listEnvironments(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]>;
   listVersions(projectId: string, ctx: RequestContext): Promise<ProjectVersionItemEntity[]>;
 }

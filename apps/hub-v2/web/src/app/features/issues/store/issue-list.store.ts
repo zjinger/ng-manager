@@ -155,11 +155,22 @@ export class IssueListStore {
     );
     const createPayload = { ...input } as Omit<CreateIssueInput, 'projectId'> & { attachmentFiles?: File[] };
     delete createPayload.attachmentFiles;
+    const normalizedModuleCode = createPayload.moduleCode?.trim() || undefined;
+    const normalizedRdItemId = createPayload.rdItemId?.trim() || null;
+    const apiPayload: Omit<CreateIssueInput, 'projectId'> = {
+      ...createPayload,
+      rdItemId: normalizedRdItemId,
+      moduleCode: normalizedRdItemId && !normalizedModuleCode ? undefined : normalizedModuleCode,
+      versionCode: createPayload.versionCode?.trim() || undefined,
+      environmentCode: createPayload.environmentCode?.trim() || undefined,
+      assigneeId: createPayload.assigneeId?.trim() || null,
+      verifierId: createPayload.verifierId?.trim() || null,
+    };
 
     this.loadingState.set(true);
     this.issueApi
       .create({
-        ...createPayload,
+        ...apiPayload,
         projectId,
         title,
       })

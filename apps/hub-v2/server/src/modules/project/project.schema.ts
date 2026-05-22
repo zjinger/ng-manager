@@ -99,6 +99,10 @@ export const addProjectModuleMemberSchema = z.object({
   roleCode: z.enum(["member", "product", "ui", "frontend_dev", "backend_dev", "qa", "ops", "project_admin"]).optional()
 });
 
+export const replaceModuleRdLinksSchema = z.object({
+  rdItemIds: z.array(z.string().trim().min(1)).default([])
+});
+
 export const createProjectVersionItemSchema = z.object({
   version: z.string().trim().min(1),
   code: z.string().trim().optional(),

@@ -2,7 +2,7 @@
   [open]="open()"
   [width]="980"
   [title]=" module()?.name|| '详情'"
-  [subtitle]="'管理模块基础信息与模块专属成员。'"
+  [subtitle]="'管理模块基础信息、成员与研发项关联。'"
   [icon]="'appstore'"
   (cancel)="cancel.emit()"
 >
@@ -182,6 +182,57 @@
                 } @empty {
                   <div class="empty">暂无模块成员</div>
                 }
+              </div>
+            </section>
+          </nz-tab>
+        }
+        @if (current.nodeType === 'module') {
+          <nz-tab nzTitle="研发项">
+            <section class="section">
+              <nz-form-item>
+                <nz-form-label>已关联研发项</nz-form-label>
+                <nz-form-control>
+                  <nz-select
+                    nzMode="multiple"
+                    nzAllowClear
+                    nzPlaceHolder="可多选研发项"
+                    [ngModel]="selectedRdItemIds()"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="selectedRdItemIds.set($event || [])"
+                  >
+                    @for (rd of rdItems(); track rd.id) {
+                      <nz-option
+                        [nzLabel]="rdLabel(rd)"
+                        [nzValue]="rd.id"
+                        [nzDisabled]="isRdOptionDisabled(rd)"
+                      ></nz-option>
+                    }
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+              <div class="list">
+                @for (link of moduleRdLinks(); track link.id) {
+                  <div class="member-row">
+                    <div class="member-meta">
+                      <strong>{{ link.rdNo || '-' }}</strong>
+                      <span>{{ link.rdTitle || link.rdItemId }}</span>
+                    </div>
+                    <div class="muted">{{ link.rdStatus || '-' }}</div>
+                  </div>
+                } @empty {
+                  <div class="empty">暂无关联研发项</div>
+                }
+              </div>
+              <div class="actions">
+                <button
+                  nz-button
+                  nzType="primary"
+                  [disabled]="rdLinksBusy() || !canManageModules()"
+                  [nzLoading]="rdLinksBusy()"
+                  (click)="submitSaveRdLinks()"
+                >
+                  保存研发项关联
+                </button>
               </div>
             </section>
           </nz-tab>

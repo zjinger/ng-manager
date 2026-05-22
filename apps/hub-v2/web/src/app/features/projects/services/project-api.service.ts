@@ -16,10 +16,12 @@ import type {
   ProjectListQuery,
   ProjectMemberCandidate,
   ProjectMemberEntity,
+  ProjectModuleRdLinkEntity,
   ProjectModuleMemberEntity,
   ProjectMetaItem,
   ProjectSummary,
   ProjectVersionItem,
+  ReplaceModuleRdLinksInput,
   UpdateProjectMemberInput,
   UpdateProjectInput,
   UpdateProjectMetaItemInput,
@@ -120,6 +122,25 @@ export class ProjectApiService {
 
   removeModuleMember(projectId: string, moduleId: string, moduleMemberId: string) {
     return this.api.delete<{ id: string }>(`/projects/${projectId}/modules/${moduleId}/members/${moduleMemberId}`);
+  }
+
+  listModuleRdLinks(projectId: string, moduleId: string) {
+    return this.api
+      .get<{ items: ProjectModuleRdLinkEntity[] }>(`/projects/${projectId}/modules/${moduleId}/rd-items`)
+      .pipe(map((response) => response.items));
+  }
+
+  replaceModuleRdLinks(projectId: string, moduleId: string, input: ReplaceModuleRdLinksInput) {
+    return this.api.put<{ items: ProjectModuleRdLinkEntity[] }, ReplaceModuleRdLinksInput>(
+      `/projects/${projectId}/modules/${moduleId}/rd-items`,
+      input
+    );
+  }
+
+  listProjectModuleRdLinks(projectId: string) {
+    return this.api
+      .get<{ items: ProjectModuleRdLinkEntity[] }>(`/projects/${projectId}/module-rd-links`)
+      .pipe(map((response) => response.items));
   }
 
   listEnvironments(projectId: string) {

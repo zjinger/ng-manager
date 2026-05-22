@@ -26,8 +26,10 @@ import type {
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMemberRole,
+  ProjectModuleRdLinkEntity,
   ProjectModuleMemberEntity,
   ProjectType,
+  ReplaceModuleRdLinksInput,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
   UpdateProjectMemberInput,
@@ -384,6 +386,19 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return this.repo.listModuleMembers(projectId, moduleId);
   }
 
+  async listModuleRdLinks(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]> {
+    const module = await this.getModule(projectId, moduleId, ctx);
+    if (module.nodeType !== "module") {
+      return [];
+    }
+    return this.repo.listModuleRdLinks(projectId, moduleId);
+  }
+
+  async listProjectModuleRdLinks(projectId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]> {
+    await this.getById(projectId, ctx);
+    return this.repo.listProjectModuleRdLinks(projectId);
+  }
+
   async addModule(projectId: string, input: CreateProjectConfigItemInput, ctx: RequestContext): Promise<ProjectConfigItemEntity> {
     await this.requireProjectMaintainer(projectId, ctx, "add project module");
     await this.getById(projectId, ctx);
@@ -510,6 +525,48 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     if (!this.repo.deleteModuleMember(projectId, moduleId, moduleMemberId)) {
       throw new AppError(ERROR_CODES.PROJECT_MODULE_MEMBER_NOT_FOUND, "project module member not found", 404);
     }
+  }
+
+  async replaceModuleRdLinks(
+    projectId: string,
+    moduleId: string,
+    input: ReplaceModuleRdLinksInput,
+    ctx: RequestContext
+  ): Promise<ProjectModuleRdLinkEntity[]> {
+    await this.requireProjectMaintainer(projectId, ctx, "replace project module rd links");
+    const module = await this.getModule(projectId, moduleId, ctx);
+    if (module.nodeType !== "module") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "仅模块节点可关联研发项", 400);
+    }
+
+    const uniqueIds = Array.from(new Set((input.rdItemIds ?? []).map((item) => item.trim()).filter(Boolean)));
+    for (const rdItemId of uniqueIds) {
+      const rdItem = this.rdRepo.findItemById(rdItemId);
+      if (!rdItem || rdItem.projectId !== projectId) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "关联研发项不存在或不在当前项目", 400);
+      }
+      if (rdItem.status === "closed") {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "已关闭研发项不允许新增模块关联", 400);
+      }
+    }
+
+    const now = nowIso();
+    this.db.transaction(() => {
+      this.repo.removeModuleRdLinks(projectId, moduleId);
+      uniqueIds.forEach((rdItemId, index) => {
+        this.repo.addModuleRdLink({
+          id: genId("pmrd"),
+          projectId,
+          moduleId,
+          rdItemId,
+          sort: index,
+          createdAt: now,
+          updatedAt: now
+        });
+      });
+    })();
+
+    return this.repo.listModuleRdLinks(projectId, moduleId);
   }
 
   async listEnvironments(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]> {

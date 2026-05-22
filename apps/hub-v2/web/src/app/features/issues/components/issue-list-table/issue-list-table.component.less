@@ -171,6 +171,19 @@
     white-space: nowrap;
 }
 
+.issue-rd-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--primary-400) 35%, transparent);
+    background: color-mix(in srgb, var(--primary-500) 10%, transparent);
+    color: var(--primary-700);
+    font-size: 11px;
+    line-height: 18px;
+    white-space: nowrap;
+}
+
 .issue-row__assignee,
 .issue-card__assignee {
     display: inline-flex;
@@ -366,6 +379,12 @@
 :host-context(html[data-theme='dark']) .issue-type-tag {
     border-color: color-mix(in srgb, var(--primary-400) 44%, transparent);
     background: color-mix(in srgb, var(--primary-400) 22%, transparent);
+    color: var(--primary-300);
+}
+
+:host-context(html[data-theme='dark']) .issue-rd-tag {
+    border-color: color-mix(in srgb, var(--primary-300) 36%, transparent);
+    background: color-mix(in srgb, var(--primary-400) 20%, transparent);
     color: var(--primary-300);
 }
 

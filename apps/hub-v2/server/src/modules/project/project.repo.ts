@@ -10,6 +10,7 @@ import type {
   ProjectListResult,
   ProjectMemberCandidate,
   ProjectMemberEntity,
+  ProjectModuleRdLinkEntity,
   ProjectModuleMemberEntity,
   ProjectMemberRole,
   ProjectVersionItemEntity,
@@ -105,6 +106,19 @@ type ProjectVersionRow = {
   desc: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type ProjectModuleRdLinkRow = {
+  id: string;
+  project_id: string;
+  module_id: string;
+  rd_item_id: string;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+  rd_no: string | null;
+  rd_title: string | null;
+  rd_status: string | null;
 };
 
 export class ProjectRepo {
@@ -654,6 +668,79 @@ export class ProjectRepo {
     return result.changes > 0;
   }
 
+  listModuleRdLinks(projectId: string, moduleId: string): ProjectModuleRdLinkEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+        SELECT
+          l.id,
+          l.project_id,
+          l.module_id,
+          l.rd_item_id,
+          l.sort,
+          l.created_at,
+          l.updated_at,
+          r.rd_no,
+          r.title AS rd_title,
+          r.status AS rd_status
+        FROM project_module_rd_items l
+        LEFT JOIN rd_items r ON r.id = l.rd_item_id
+        WHERE l.project_id = ? AND l.module_id = ?
+        ORDER BY l.sort ASC, l.created_at ASC, l.id ASC
+        `
+      )
+      .all(projectId, moduleId) as ProjectModuleRdLinkRow[];
+    return rows.map((row) => this.mapModuleRdLink(row));
+  }
+
+  listProjectModuleRdLinks(projectId: string): ProjectModuleRdLinkEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+        SELECT
+          l.id,
+          l.project_id,
+          l.module_id,
+          l.rd_item_id,
+          l.sort,
+          l.created_at,
+          l.updated_at,
+          r.rd_no,
+          r.title AS rd_title,
+          r.status AS rd_status
+        FROM project_module_rd_items l
+        LEFT JOIN rd_items r ON r.id = l.rd_item_id
+        WHERE l.project_id = ?
+        ORDER BY l.module_id ASC, l.sort ASC, l.created_at ASC, l.id ASC
+        `
+      )
+      .all(projectId) as ProjectModuleRdLinkRow[];
+    return rows.map((row) => this.mapModuleRdLink(row));
+  }
+
+  removeModuleRdLinks(projectId: string, moduleId: string): void {
+    this.db.prepare("DELETE FROM project_module_rd_items WHERE project_id = ? AND module_id = ?").run(projectId, moduleId);
+  }
+
+  addModuleRdLink(input: {
+    id: string;
+    projectId: string;
+    moduleId: string;
+    rdItemId: string;
+    sort: number;
+    createdAt: string;
+    updatedAt: string;
+  }): void {
+    this.db
+      .prepare(
+        `
+        INSERT INTO project_module_rd_items (id, project_id, module_id, rd_item_id, sort, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(input.id, input.projectId, input.moduleId, input.rdItemId, input.sort, input.createdAt, input.updatedAt);
+  }
+
   listEnvironments(projectId: string): ProjectConfigItemEntity[] {
     const rows = this.db
       .prepare(
@@ -1022,6 +1109,21 @@ export class ProjectRepo {
       isOwner: false,
       createdAt: row.created_at,
       updatedAt: row.updated_at
+    };
+  }
+
+  private mapModuleRdLink(row: ProjectModuleRdLinkRow): ProjectModuleRdLinkEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      moduleId: row.module_id,
+      rdItemId: row.rd_item_id,
+      sort: row.sort,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      rdNo: row.rd_no,
+      rdTitle: row.rd_title,
+      rdStatus: row.rd_status
     };
   }
 }

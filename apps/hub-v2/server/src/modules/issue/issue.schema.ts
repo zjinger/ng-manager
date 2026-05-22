@@ -49,6 +49,7 @@ export const createIssueSchema = z.object({
   priority: issuePrioritySchema.optional(),
   assigneeId: z.string().trim().optional().nullable(),
   verifierId: z.string().trim().optional().nullable(),
+  rdItemId: z.string().trim().optional().nullable(),
   moduleCode: z.string().trim().optional(),
   versionCode: z.string().trim().optional(),
   environmentCode: z.string().trim().optional()
@@ -59,6 +60,7 @@ export const updateIssueSchema = z.object({
   description: z.string().nullable().optional(),
   type: issueTypeSchema.optional(),
   priority: issuePrioritySchema.optional(),
+  rdItemId: z.string().trim().nullable().optional(),
   moduleCode: z.string().trim().nullable().optional(),
   versionCode: z.string().trim().nullable().optional(),
   environmentCode: z.string().trim().nullable().optional()
@@ -85,6 +87,7 @@ export const listIssuesQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),
   keyword: z.string().trim().optional(),
+  rdItemId: z.string().trim().optional(),
   projectId: z.string().trim().optional(),
   status: csvEnumArray(["open", "in_progress", "pending_update", "resolved", "verified", "closed", "reopened"]),
   types: csvEnumArray(["bug", "feature", "change", "improvement", "task", "test"]),

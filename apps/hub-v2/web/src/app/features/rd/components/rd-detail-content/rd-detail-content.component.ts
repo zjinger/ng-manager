@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 
 import { MarkdownViewerComponent, PanelCardComponent } from '@shared/ui';
+import type { IssueEntity } from '../../../issues/models/issue.model';
 import { IssueDetailNoteComponent } from '../../../issues/components/issue-detail-note/issue-detail-note.component';
 import type { RdItemEntity, RdLogEntity, RdStageEntity, RdStageHistoryEntry } from '../../models/rd.model';
 import { RdActivityTimelineComponent } from '../rd-activity-timeline/rd-activity-timeline.component';
@@ -15,6 +18,7 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
   standalone: true,
   imports: [
     NzButtonModule,
+    DatePipe,
     PanelCardComponent,
     RdPropsPanelComponent,
     RdActivityTimelineComponent,
@@ -69,6 +73,21 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
             [stageHistory]="stageHistory()"
           />
         }
+        @if (showLinkedIssues()) {
+          <app-panel-card title="关联测试单" [empty]="linkedIssues().length === 0" [emptyText]="'暂无关联测试单'">
+            <div class="linked-issues">
+              @for (issue of linkedIssues(); track issue.id) {
+                <button type="button" class="linked-issues__item" (click)="openIssue(issue.id)">
+                  <div class="linked-issues__main">
+                    <span class="linked-issues__no">{{ issue.issueNo }}</span>
+                    <span class="linked-issues__title">{{ issue.title }}</span>
+                  </div>
+                  <span class="linked-issues__meta">{{ issue.updatedAt | date: 'MM-dd HH:mm' }}</span>
+                </button>
+              }
+            </div>
+          </app-panel-card>
+        }
         
         @if (showActivity()) {
           <app-rd-activity-timeline [item]="current" [logs]="logs()" />
@@ -104,11 +123,56 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
         color: var(--text-muted);
         font-size: 13px;
       }
+      .linked-issues {
+        display: grid;
+      }
+      .linked-issues__item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 20px;
+        border: 0;
+        border-top: 1px solid var(--border-color-soft);
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+      }
+      .linked-issues__item:hover {
+        background: var(--bg-subtle);
+      }
+      .linked-issues__main {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .linked-issues__no {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        color: var(--primary-700);
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .linked-issues__title {
+        color: var(--text-primary);
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .linked-issues__meta {
+        color: var(--text-muted);
+        font-size: 12px;
+        flex-shrink: 0;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RdDetailContentComponent {
+  private readonly router = inject(Router);
   readonly busy = input(false);
   readonly item = input<RdItemEntity | null>(null);
   readonly logs = input<RdLogEntity[]>([]);
@@ -124,6 +188,8 @@ export class RdDetailContentComponent {
   readonly showProps = input(true);
   readonly showStageHistory = input(true);
   readonly showActivity = input(true);
+  readonly showLinkedIssues = input(false);
+  readonly linkedIssues = input<IssueEntity[]>([]);
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
   readonly memberDisplayNames = computed(() => {
     const unique = new Set<string>();
@@ -180,4 +246,8 @@ export class RdDetailContentComponent {
   readonly actionClick = output<'advance' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
   constructor() {}
+
+  openIssue(issueId: string): void {
+    this.router.navigate(['/issues'], { queryParams: { detail: issueId } });
+  }
 }

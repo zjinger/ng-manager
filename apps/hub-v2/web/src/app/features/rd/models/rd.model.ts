@@ -6,6 +6,7 @@ export type RdItemType =
   | 'integration'
   | 'env_setup'
   | 'requirement_confirmation'
+  | 'bug_fix'
   | 'solution_design'
   | 'testing_validation'
   | 'delivery_launch'
@@ -150,6 +151,7 @@ export const RD_TYPE_OPTIONS: Array<{ label: string; value: RdItemType }> = [
   { label: '技术改造', value: 'tech_refactor' },
   { label: '联调协作', value: 'integration' },
   { label: '环境准备', value: 'env_setup' },
+  { label: 'BUG修复', value: 'bug_fix' },
   { label: '需求确认', value: 'requirement_confirmation' },
   { label: '方案设计', value: 'solution_design' },
   { label: '测试验证', value: 'testing_validation' },
@@ -161,6 +163,7 @@ export const RD_TYPE_LABELS: Record<RdItemType, string> = {
   feature_dev: '功能开发',
   tech_refactor: '技术改造',
   integration: '联调协作',
+  bug_fix: 'BUG修复',
   env_setup: '环境准备',
   requirement_confirmation: '需求确认',
   solution_design: '方案设计',
@@ -229,7 +232,9 @@ export interface UpdateRdStageInput {
   enabled?: boolean;
 }
 
-export function getRdMemberIds(item: Pick<RdItemEntity, 'memberIds' | 'assigneeId'> | null | undefined): string[] {
+export function getRdMemberIds(
+  item: Pick<RdItemEntity, 'memberIds' | 'assigneeId'> | null | undefined,
+): string[] {
   if (!item) {
     return [];
   }

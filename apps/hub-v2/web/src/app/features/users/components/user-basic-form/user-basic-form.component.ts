@@ -124,7 +124,8 @@ import type { UserEntity } from '../../models/user.model';
           </div>
           <div class="col" nz-col [nzSpan]="12">
             <nz-form-item>
-              <nz-form-label nzFor="organizationTitleCode">职务</nz-form-label>
+              <nz-form-label nzFor="organizationTitleCode" nzTooltipTitle="用户在组织中的职务，仅用于组织内的权限计算和展示"
+                  [nzTooltipIcon]="'question-circle'">职务</nz-form-label>
               <nz-form-control>
                 <nz-select
                   nzAllowClear
@@ -164,7 +165,8 @@ import type { UserEntity } from '../../models/user.model';
           </div>
           <div class="col" nz-col [nzSpan]="12">
             <nz-form-item>
-              <nz-form-label nzFor="defaultProjectTitleCode">项目职能</nz-form-label>
+              <nz-form-label nzFor="defaultProjectTitleCode" nzTooltipTitle="用户在项目中的默认职能，仅用于项目内的权限计算和展示"
+                  [nzTooltipIcon]="'question-circle'">项目职能</nz-form-label>
               <nz-form-control>
                 <nz-select
                   nzAllowClear

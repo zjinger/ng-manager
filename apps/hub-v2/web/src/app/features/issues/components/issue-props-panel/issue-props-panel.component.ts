@@ -56,6 +56,21 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
           </dd>
         </div>
         <div>
+          <dt>关联研发项</dt>
+          <dd>
+            @if (issue().rdNoSnapshot) {
+              <div class="rd-link">
+                <span class="rd-link__code">{{ issue().rdNoSnapshot }}</span>
+                @if (issue().rdTitleSnapshot) {
+                  <span class="rd-link__title">{{ issue().rdTitleSnapshot }}</span>
+                }
+              </div>
+            } @else {
+              <span class="meta-cell">未关联研发项</span>
+            }
+          </dd>
+        </div>
+        <div>
           <dt>模块</dt>
           <dd>{{ issue().moduleCode || '-' }}</dd>
         </div>
@@ -112,6 +127,26 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
       .meta-cell {
         font-size: 12px;
         color: var(--text-muted);
+      }
+      .rd-link {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        max-width: 220px;
+      }
+      .rd-link__code {
+        color: var(--primary-700);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .rd-link__title {
+        font-size: 12px;
+        color: var(--text-muted);
+        max-width: 220px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .mini-avatar {
         width: 24px;

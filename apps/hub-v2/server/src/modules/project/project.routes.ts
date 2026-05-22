@@ -8,6 +8,7 @@ import {
   createProjectSchema,
   createProjectVersionItemSchema,
   listProjectsQuerySchema,
+  replaceModuleRdLinksSchema,
   updateProjectMemberSchema,
   updateProjectConfigItemSchema,
   updateProjectSchema,
@@ -135,6 +136,26 @@ export default async function projectRoutes(app: FastifyInstance) {
       ctx
     );
     return ok({ id: params.moduleMemberId }, "project module member deleted");
+  });
+
+  app.get("/projects/:projectId/modules/:moduleId/rd-items", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; moduleId: string };
+    return ok({ items: await app.container.projectQuery.listModuleRdLinks(params.projectId, params.moduleId, ctx) });
+  });
+
+  app.put("/projects/:projectId/modules/:moduleId/rd-items", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; moduleId: string };
+    const body = replaceModuleRdLinksSchema.parse(request.body);
+    const items = await app.container.projectCommand.replaceModuleRdLinks(params.projectId, params.moduleId, body, ctx);
+    return ok({ items }, "project module rd links updated");
+  });
+
+  app.get("/projects/:projectId/module-rd-links", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    return ok({ items: await app.container.projectQuery.listProjectModuleRdLinks(params.projectId, ctx) });
   });
 
   app.get("/projects/:projectId/environments", async (request) => {
